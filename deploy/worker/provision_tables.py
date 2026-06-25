@@ -96,6 +96,20 @@ def provision(spec: dict, conn) -> list:
         coldefs = ",\n  ".join(['id bigserial PRIMARY KEY', 'cliente_id uuid NOT NULL']
                                + [_coldef(c) for c in cols])
         cur.execute(f'CREATE TABLE IF NOT EXISTS {SCHEMA}."{t}" (\n  {coldefs}\n);')
+        # GUARD anti-colisión (raíz 2026-06-25): el schema uc_factory es COMPARTIDO entre todas las apps. Si una
+        # tabla con nombre genérico (subscriptions/plans/orders…) YA existe porque OTRA app la creó con otro
+        # esquema, `CREATE TABLE IF NOT EXISTS` la deja intacta -> las columnas declaradas faltan -> el fallo
+        # recién aparece como PGRST204/205 dentro de validate_real (tarde y silencioso). Fail-loud acá: si una
+        # columna de negocio declarada NO está en la tabla viva => COLISIÓN de nombres -> abortar con causa clara.
+        declared = {_ident(c.split()[0]) for c in cols}
+        cur.execute("SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema=%s AND table_name=%s", (SCHEMA, t))
+        missing = sorted(declared - {r[0] for r in cur.fetchall()})
+        if missing:
+            raise ValueError(
+                f"colisión de tabla: {SCHEMA}.{t} ya existe SIN las columnas {missing} (otra app la creó con "
+                f"ese nombre en el schema compartido). Namespacá las tablas por app/sistema con un prefijo "
+                f"(p.ej. '<app>_{t}'). Ver domain-cards/postgres.md §8.")
         cur.execute(f'ALTER TABLE {SCHEMA}."{t}" ENABLE ROW LEVEL SECURITY;')
         cur.execute(f'DROP POLICY IF EXISTS tenant_isolation ON {SCHEMA}."{t}";')
         cur.execute(f'CREATE POLICY tenant_isolation ON {SCHEMA}."{t}" '
