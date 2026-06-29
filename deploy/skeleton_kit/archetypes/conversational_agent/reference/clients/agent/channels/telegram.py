@@ -20,6 +20,7 @@ class TelegramAdapter:
 
     def __init__(self, token: str, *, api_base: str = "https://api.telegram.org", timeout: float = 20.0):
         self._token = token
+        self._api_base = api_base
         self._base = f"{api_base}/bot{token}"
         self._timeout = timeout
 
@@ -43,7 +44,11 @@ class TelegramAdapter:
         if isinstance(msg.get("text"), str) and msg["text"].strip():
             return NormalizedMessage(channel=CHANNEL, channel_ref=ref, text=msg["text"], kind="text")
         if "voice" in msg or "audio" in msg:
-            return NormalizedMessage(channel=CHANNEL, channel_ref=ref, text="", kind="needs_stt")
+            media = msg.get("voice") or msg.get("audio") or {}
+            file_id = media.get("file_id")
+            if file_id:
+                # el file_id viaja en `text`; la activity transcribe_voice lo descarga y lo manda al STT.
+                return NormalizedMessage(channel=CHANNEL, channel_ref=ref, text=str(file_id), kind="needs_stt")
         return None
 
     def send(self, channel_ref: str, text: str, choices: list | None = None) -> dict:
@@ -71,3 +76,20 @@ class TelegramAdapter:
         with urllib.request.urlopen(req, timeout=timeout + 10) as resp:
             d = json.loads(resp.read().decode())
         return d.get("result") or []
+
+    def download_file(self, file_id: str) -> bytes:
+        """Descarga el binario de un file_id de Telegram: getFile -> file_path -> GET del archivo. Lo usa la
+        activity de STT para una nota de voz (el .oga OGG/Opus se manda al STT sin conversión). I/O bloqueante:
+        se invoca desde una activity vía asyncio.to_thread."""
+        body = json.dumps({"file_id": file_id}).encode()
+        req = urllib.request.Request(f"{self._base}/getFile", data=body, method="POST",
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+            d = json.loads(resp.read().decode())
+        file_path = (d.get("result") or {}).get("file_path")
+        if not file_path:
+            raise RuntimeError(f"getFile sin file_path para file_id={file_id}")
+        # la descarga del archivo usa /file/bot<token>/<path> (distinto de las llamadas a la API /bot<token>/...)
+        url = f"{self._api_base}/file/bot{self._token}/{file_path}"
+        with urllib.request.urlopen(url, timeout=self._timeout) as resp:
+            return resp.read()

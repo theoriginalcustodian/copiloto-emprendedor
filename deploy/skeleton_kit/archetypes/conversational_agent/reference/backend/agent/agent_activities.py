@@ -7,10 +7,11 @@ loop del worker — mismo patron que `infer` en la fabrica.
 from __future__ import annotations
 
 import asyncio
+import json
 
 from temporalio import activity
 
-from backend.agent.agent_runtime import get_channel, get_domain, get_staff_notifier
+from backend.agent.agent_runtime import get_channel, get_domain, get_staff_notifier, get_stt_provider
 from backend.agent.types import DispatchResult, Intent
 
 
@@ -50,3 +51,26 @@ async def notify_staff(payload: dict) -> dict:
         return {"notified": False}
     res = await asyncio.to_thread(notifier, payload)
     return res if isinstance(res, dict) else {"notified": True}
+
+
+@activity.defn
+async def transcribe_voice(payload: dict) -> dict:
+    """payload = {channel, file_id}. Descarga el audio del canal y lo transcribe (STT). Devuelve {'text': str}.
+    NUNCA cuelga la conversación: si no hay STT registrado o algo falla (descarga/transcripción/cuota), devuelve
+    {'text': '', 'error': <motivo>} y el motor le pide al paciente que escriba. El I/O va en thread."""
+    stt = get_stt_provider()
+    if stt is None:
+        return {"text": "", "error": "no_stt_provider"}
+    try:
+        adapter = get_channel(payload["channel"])
+        audio = await asyncio.to_thread(adapter.download_file, payload["file_id"])
+        text = await asyncio.to_thread(stt.transcribe, audio)
+        # observabilidad de voz: el transcript queda en el log (journalctl) para auditar qué entendió el STT.
+        # NOTA: en producción real con PHI sensible, gatear por env (un transcript puede traer datos del paciente).
+        print("STT_TRANSCRIPT " + json.dumps(
+            {"file_id": str(payload.get("file_id"))[:14], "bytes": len(audio), "text": text},
+            ensure_ascii=False), flush=True)
+        return {"text": text or ""}
+    except Exception as exc:  # noqa: BLE001 -- un fallo de STT NO debe romper el hilo: el motor pide texto
+        activity.logger.warning(f"[transcribe_voice] fallo STT: {exc}")
+        return {"text": "", "error": str(exc)}

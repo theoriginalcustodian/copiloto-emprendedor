@@ -85,6 +85,24 @@ class ConversationWorkflow:
             self._cursor += 1
             user_text = msg.get("text", "")
             kind = msg.get("kind", "text")
+
+            # Nota de voz: transcribir ANTES de seguir (el `text` traía el file_id, no el contenido). El STT va
+            # en una activity (I/O). Si no se pudo transcribir -> pedir texto, sin romper el hilo ni el history.
+            if kind == "needs_stt":
+                stt = await workflow.execute_activity(
+                    "transcribe_voice", {"channel": channel, "file_id": user_text},
+                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                transcript = ((stt or {}).get("text") or "").strip()
+                if not transcript:
+                    await workflow.execute_activity(
+                        "send_channel_message",
+                        {"channel": channel, "channel_ref": channel_ref,
+                         "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
+                        start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    continue
+                user_text = transcript                  # de acá en más es texto normal (lo clasifica el LLM)
+                kind = "text"
+
             prior = list(self._history)                 # contexto ANTES de este mensaje (resuelve confirmaciones cortas)
             self._history.append({"role": "user", "content": user_text})
 

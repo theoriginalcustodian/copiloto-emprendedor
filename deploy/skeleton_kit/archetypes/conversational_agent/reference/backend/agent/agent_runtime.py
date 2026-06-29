@@ -17,6 +17,7 @@ from __future__ import annotations
 _DOMAINS: dict[str, dict] = {}
 _CHANNELS: dict[str, object] = {}
 _STAFF_NOTIFIER = {"fn": None}
+_STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del dominio); la usa la activity transcribe_voice
 
 
 def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None) -> None:
@@ -48,8 +49,19 @@ def get_staff_notifier():
     return _STAFF_NOTIFIER["fn"]
 
 
+def register_stt_provider(provider) -> None:
+    """Registra el provider de transcripción de voz (objeto con `.transcribe(audio_bytes) -> str`). Global y
+    agnóstico al dominio: cualquier dominio con canal de voz lo reusa. Lo cablea el worker al arrancar."""
+    _STT_PROVIDER["provider"] = provider
+
+
+def get_stt_provider():
+    return _STT_PROVIDER["provider"]
+
+
 def reset_registry() -> None:
     """Solo para tests: limpia el registry entre casos."""
     _DOMAINS.clear()
     _CHANNELS.clear()
     _STAFF_NOTIFIER["fn"] = None
+    _STT_PROVIDER["provider"] = None
