@@ -1,0 +1,14 @@
+{
+  "copiloto_web_replies": [
+    "session_id text NOT NULL",
+    "reply_text text NOT NULL",
+    "choices jsonb",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_metering": [
+    "session_id text NOT NULL",
+    "model text NOT NULL",
+    "tokens bigint",
+    "created_at timestamptz DEFAULT now()"
+  ]
+}

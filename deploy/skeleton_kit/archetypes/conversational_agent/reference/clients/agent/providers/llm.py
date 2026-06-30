@@ -66,12 +66,14 @@ class LlmProvider:
         if history:
             messages.extend(history)            # [{role:'user'|'assistant', content:...}, ...]
         messages.append({"role": "user", "content": user})
-        body = json.dumps({
+        payload = {
             "model": model,
             "messages": messages,
             "max_tokens": self._max_tokens,
-            "provider": {"quantizations": self._quantizations},
-        }).encode()
+        }
+        if self._quantizations:                      # OpenRouter-only; OpenAI rechaza 'provider'
+            payload["provider"] = {"quantizations": self._quantizations}
+        body = json.dumps(payload).encode()
         req = urllib.request.Request(self._url, data=body, method="POST", headers={
             "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:

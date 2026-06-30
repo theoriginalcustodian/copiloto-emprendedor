@@ -111,31 +111,73 @@ class ComposioGateway:
         raise ValueError(f"mode inválido: {mode!r} (read|write|all)")
 
     # ── plano de conexión (onboarding) ────────────────────────────────────────
+    @staticmethod
+    def _slug_of(tk):
+        """Normaliza el toolkit de una connected account a su slug string. El SDK lo devuelve como
+        objeto ItemToolkit(slug=...), pero según el endpoint puede venir como dict o string → unificar.
+        Sin esto, comparar el objeto contra un slug string siempre da False (bug de connection_status)."""
+        if tk is None:
+            return None
+        if isinstance(tk, str):
+            return tk
+        slug = getattr(tk, "slug", None)
+        if slug:
+            return slug
+        if isinstance(tk, dict):
+            return tk.get("slug") or tk.get("toolkit")
+        return str(tk)
+
+    @staticmethod
+    def _unwrap_items(resp):
+        """Desempaqueta la lista de items de una respuesta paginada del SDK. Distingue 'sin atributo items'
+        (cae al propio resp — algunos endpoints devuelven la lista directa) de 'items == []' (lista vacía
+        legítima). El patrón ingenuo `getattr(resp, "items", None) or resp` cae al objeto contenedor cuando
+        la lista está vacía (usuario sin conexiones) → TypeError al iterar."""
+        if isinstance(resp, dict):
+            return resp.get("items", resp)
+        items = getattr(resp, "items", None)
+        return items if items is not None else resp
+
+    def _auth_config_id(self, toolkit: str) -> str:
+        """auth_config_id del toolkit (Composio-managed). Necesario para generar el link de conexión."""
+        acs = self._sdk.auth_configs.list(toolkit_slug=toolkit)
+        items = self._unwrap_items(acs)
+        for a in items:
+            ac_id = getattr(a, "id", None) or (a.get("id") if isinstance(a, dict) else None)
+            if ac_id:
+                return ac_id
+        raise ComposioExecutionError(f"no hay auth_config para toolkit={toolkit!r}")
+
     def authorize(self, user_id: str, toolkit: str) -> str:
-        session = self._sdk.create(user_id=user_id)
-        link = session.authorize(toolkit)
-        return (getattr(link, "redirect_url", None)
-                or (link.get("redirect_url") if isinstance(link, dict) else None)
-                or str(link))
+        """redirect_url para que el usuario conecte su cuenta del toolkit (onboarding OAuth). El endpoint
+        legacy (sdk.create().authorize()) fue RETIRADO por Composio (400 ConnectedAccount_BadRequest) →
+        se usa connected_accounts.link con el auth_config_id del toolkit."""
+        req = self._sdk.connected_accounts.link(user_id=user_id,
+                                                auth_config_id=self._auth_config_id(toolkit))
+        return (getattr(req, "redirect_url", None)
+                or (req.get("redirect_url") if isinstance(req, dict) else None)
+                or str(req))
 
     def list_connections(self, user_id: str) -> list:
         accounts = self._sdk.connected_accounts.list()
-        items = getattr(accounts, "items", None) or accounts
+        items = self._unwrap_items(accounts)
         out = []
         for a in items:
             a_uid = getattr(a, "user_id", None) or (a.get("user_id") if isinstance(a, dict) else None)
             if a_uid != user_id:
                 continue
+            tk = getattr(a, "toolkit", None) or (a.get("toolkit") if isinstance(a, dict) else None)
             out.append({
                 "id": getattr(a, "id", None) or (a.get("id") if isinstance(a, dict) else None),
-                "toolkit": getattr(a, "toolkit", None) or (a.get("toolkit") if isinstance(a, dict) else None),
+                "toolkit": self._slug_of(tk),          # slug string, NO el objeto ItemToolkit
                 "status": getattr(a, "status", None) or (a.get("status") if isinstance(a, dict) else None),
             })
         return out
 
     def connection_status(self, user_id: str, toolkit: str):
+        want = (toolkit or "").lower()
         for c in self.list_connections(user_id):
-            if c["toolkit"] == toolkit:
+            if (c["toolkit"] or "").lower() == want:
                 return c["status"]
         return None
 
