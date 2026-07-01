@@ -22,6 +22,9 @@ class ToolkitPolicy:
 # Meta-tools del workbench universal de Composio: ejecución arbitraria. Denylist HARD.
 DEFAULT_DENYLIST = frozenset({"COMPOSIO_REMOTE_BASH_TOOL", "COMPOSIO_MULTI_EXECUTE_TOOL"})
 
+# Prioridad de estados de una connected account: ACTIVE gana sobre intentos intermedios/expirados.
+_STATUS_RANK = {"ACTIVE": 3, "INITIALIZING": 2, "INITIATED": 2, "EXPIRED": 1}
+
 
 class ComposioPolicyError(Exception):
     """Base de los rechazos de policy del gateway."""
@@ -158,13 +161,28 @@ class ComposioGateway:
                 or (req.get("redirect_url") if isinstance(req, dict) else None)
                 or str(req))
 
+    def _iter_accounts(self, **filters):
+        """Itera TODAS las connected accounts que matchean los filtros server-side, paginando por cursor.
+        connected_accounts.list devuelve una pagina (~10-20 items) + next_cursor: sin paginar, una conexion
+        ACTIVE en una pagina posterior quedaba invisible (bug 2026-07-01)."""
+        kw = {k: v for k, v in filters.items() if v is not None}
+        cursor = None
+        while True:
+            page = self._sdk.connected_accounts.list(**kw, **({"cursor": cursor} if cursor else {}))
+            for a in self._unwrap_items(page):
+                yield a
+            cursor = (getattr(page, "next_cursor", None)
+                      or (page.get("next_cursor") if isinstance(page, dict) else None))
+            if not cursor:
+                break
+
     def list_connections(self, user_id: str) -> list:
-        accounts = self._sdk.connected_accounts.list()
-        items = self._unwrap_items(accounts)
+        """Todas las conexiones del user: filtro server-side por user_id + paginacion completa (antes traia
+        solo la primera pagina de connected_accounts.list() sin filtrar -> ocultaba conexiones)."""
         out = []
-        for a in items:
+        for a in self._iter_accounts(user_ids=[user_id]):
             a_uid = getattr(a, "user_id", None) or (a.get("user_id") if isinstance(a, dict) else None)
-            if a_uid != user_id:
+            if a_uid != user_id:            # defensa si el backend ignora el filtro server-side
                 continue
             tk = getattr(a, "toolkit", None) or (a.get("toolkit") if isinstance(a, dict) else None)
             out.append({
@@ -175,11 +193,17 @@ class ComposioGateway:
         return out
 
     def connection_status(self, user_id: str, toolkit: str):
+        """Estado de la conexion del toolkit para el user, priorizando ACTIVE sobre estados intermedios
+        (INITIALIZING/INITIATED/EXPIRED) — un intento a medias no debe ocultar una conexion ACTIVE."""
         want = (toolkit or "").lower()
+        best, best_rank = None, -1
         for c in self.list_connections(user_id):
-            if (c["toolkit"] or "").lower() == want:
-                return c["status"]
-        return None
+            if (c["toolkit"] or "").lower() != want:
+                continue
+            rank = _STATUS_RANK.get((c["status"] or "").upper(), 0)
+            if rank > best_rank:
+                best, best_rank = c["status"], rank
+        return best
 
     def revoke(self, connection_id: str) -> None:
         self._sdk.connected_accounts.delete(connection_id)
