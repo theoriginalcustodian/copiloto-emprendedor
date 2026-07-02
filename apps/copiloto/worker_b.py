@@ -25,6 +25,7 @@ from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
 from clients.agent.providers.llm import LlmProvider
 
+import services
 from calendar_policy import CALENDAR_POLICY
 from dispatcher_emprendedor import make_dispatcher
 
@@ -42,7 +43,9 @@ def build_llm() -> LlmProvider:
 def build_registrations(*, gateway, reply_sink: Callable[[str, str, list | None], None],
                         composio_user_id: str, now_iso_provider: Callable[[], str]) -> None:
     from system_prompt import SYSTEM_PROMPT
-    register_domain("emprendedor", system_prompt=SYSTEM_PROMPT, llm_provider=build_llm(),
+    # system prompt = base del dominio + fragmentos autodescubiertos de cada servicio (cero edición central)
+    system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
+    register_domain("emprendedor", system_prompt=system_prompt, llm_provider=build_llm(),
                     dispatcher=make_dispatcher(gateway, composio_user_id=composio_user_id,
                                                now_iso_provider=now_iso_provider))
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
@@ -63,7 +66,8 @@ async def main() -> None:
     def now_iso():
         return datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
 
-    gateway = ComposioGateway(CALENDAR_POLICY)
+    # policy = Calendar (verbo 'book') + policies mínimas de los módulos de servicio (discovery)
+    gateway = ComposioGateway({**CALENDAR_POLICY, **services.merged_policy()})
     reply_sink = make_pg_reply_sink(conn_factory, cliente_id)
     build_registrations(gateway=gateway, reply_sink=reply_sink,
                         composio_user_id=composio_user_id, now_iso_provider=now_iso)

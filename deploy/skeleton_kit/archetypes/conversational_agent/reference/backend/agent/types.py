@@ -19,6 +19,7 @@ ACTIONS = (
     "book", "reschedule", "cancel", "ask_info", "clarify",
     "confirm_pending", "out_of_scope", "emergency", "escalate_human",
     "callback",   # el interlocutor tocó un botón (inline keyboard); el valor va en entities['value'] — sin LLM
+    "tool_action",  # agente multi-servicio: ejecutar una tool de un servicio; entities={service, op, ...} (ver dispatcher del dominio)
 )
 
 # Acciones que SIEMPRE escalan a un humano (HITL), sea cual sea el dominio.

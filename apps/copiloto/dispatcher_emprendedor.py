@@ -1,10 +1,14 @@
 """Dispatcher del dominio 'emprendedor' (capa CLIENTE de B).
 
-Mapea el Intent (del LLM o de un botón determinístico) a acciones sobre Composio, con HITL conversacional:
-una acción con efecto se PROPONE primero (pending + botones) y solo se ejecuta tras confirmación, con
-confirmed=True (doble candado con el ComposioGateway). Firma esperada por dispatch_intent: (intent, state, ctx)."""
+Confirm-gate genérico (HITL) + ruteo a módulos de servicio (`services/<svc>.py`). El confirm-gate —proponer
+un write, botón Confirmar, ejecutar con confirmed=True (doble candado con el ComposioGateway)— es del CORE,
+común a TODO servicio. Cada servicio solo arma el call: Proposal (write, requiere confirmación) o Read
+(lectura, se ejecuta directo). Calendar conserva su verbo 'book' (path probado E2E, PR #97, intacto); los
+servicios nuevos usan action='tool_action' + entities{service, op, ...} y se enchufan agregando UN archivo en
+`services/` (cero fricción). Firma esperada por dispatch_intent: (intent, state, ctx)."""
 from __future__ import annotations
 
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -12,13 +16,17 @@ from typing import Callable
 
 ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
 sys.path.insert(0, str(ARCH))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from backend.agent.types import DispatchResult, Intent
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime
 
 from calendar_policy import CREATE_EVENT_SLUG
+import services
+from services.base import Proposal, Read
 
 _DEFAULT_DURATION_MIN = 60   # duración default del evento agendado (el dominio aún no pide duración explícita)
+_CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cancelar", "value": "cancel"}]
 
 
 def _plus_minutes(date_iso: str, hhmm: str, minutes: int) -> str:
@@ -29,11 +37,37 @@ def _plus_minutes(date_iso: str, hhmm: str, minutes: int) -> str:
 
 def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callable[[], str],
                     tz: str = DEFAULT_TZ) -> Callable[[Intent, dict, object], DispatchResult]:
+
+    def _execute_pending(pending: dict) -> DispatchResult:
+        """Ejecuta el write pendiente con confirmed=True (doble candado). Fail-closed: sin successful=True NO
+        declaramos éxito. Común a Calendar y a todo servicio nuevo.
+
+        Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
+        extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg']."""
+        res = gateway.execute(pending["slug"], user_id=composio_user_id,
+                              arguments=pending["arguments"], confirmed=True)
+        ok = bool(res.get("successful", False))
+        then = pending.get("then")
+        if ok and then:
+            data = res.get("data") if isinstance(res.get("data"), dict) else {}
+            cid = data.get(then["id_key"])
+            if cid is None:
+                m = re.search(rf'["\']{re.escape(then["id_key"])}["\']\s*:\s*["\']?([\w-]+)', str(res))
+                cid = m.group(1) if m else None
+            if cid is None:
+                return DispatchResult(reply_text="Uy, no pude completar el segundo paso. Probemos de nuevo.",
+                                      done=False, state_patch={"pending": None})
+            res2 = gateway.execute(then["slug"], user_id=composio_user_id,
+                                   arguments={**then.get("arguments", {}), then["id_arg"]: cid}, confirmed=True)
+            ok = bool(res2.get("successful", False))
+        txt = pending.get("ok_text", "Listo ✅") if ok else "Uy, no pude hacerlo. Probemos de nuevo."
+        return DispatchResult(reply_text=txt, done=ok, state_patch={"pending": None})
+
     def dispatch(intent: Intent, state: dict, ctx: object | None) -> DispatchResult:
         action = intent.action
         ent = intent.entities or {}
 
-        # ── confirmación / cancelación de una acción pendiente ─────────────────────────────
+        # ── confirmación / cancelación de una acción pendiente (genérico, todo servicio) ─────────────────
         if action in ("callback", "confirm_pending"):
             pending = (state or {}).get("pending")
             value = str(ent.get("value", "")).lower()
@@ -44,16 +78,10 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
             if said_cancel:
                 return DispatchResult(reply_text="Listo, lo cancelé. ¿Algo más?", done=True, state_patch={"pending": None})
             if said_confirm:
-                res = gateway.execute(pending["slug"], user_id=composio_user_id,
-                                      arguments=pending["arguments"], confirmed=True)
-                ok = bool(res.get("successful", False))   # fail-closed: sin la key NO declaramos éxito
-                txt = "Listo, lo agendé ✅" if ok else "Uy, no pude agendarlo. Probemos de nuevo."
-                return DispatchResult(reply_text=txt, done=ok, state_patch={"pending": None})
-            return DispatchResult(reply_text="¿Confirmás o cancelás?",
-                                  choices=[{"label": "Confirmar", "value": "confirm"},
-                                           {"label": "Cancelar", "value": "cancel"}])
+                return _execute_pending(pending)
+            return DispatchResult(reply_text="¿Confirmás o cancelás?", choices=list(_CONFIRM_CHOICES))
 
-        # ── proponer agendar un evento (NO ejecuta) ────────────────────────────────────────
+        # ── Calendar: verbo 'book' (path probado E2E #97, INTACTO) ───────────────────────────────────────
         if action == "book":
             title = ent.get("title") or "Reunión"
             resolved = resolve_datetime(ent.get("date_raw"), ent.get("time_raw"),
@@ -61,20 +89,33 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
             date, hhmm = resolved.get("date"), resolved.get("time")
             if not (date and hhmm):
                 return DispatchResult(reply_text="¿Para qué día y hora querés agendarlo?")
-            # Contrato CREATE_EVENT validado (spike wizard_flow2 + spike contrato 2026-06-30): start/end
-            # naive-LOCAL + timezone IANA. NO el datetime_iso UTC: mostraría y argumentaría la hora corrida +3h.
-            arguments = {"summary": title,
-                         "start_datetime": f"{date}T{hhmm}:00",
-                         "end_datetime": _plus_minutes(date, hhmm, _DEFAULT_DURATION_MIN),
-                         "timezone": tz}
-            pending = {"slug": CREATE_EVENT_SLUG, "arguments": arguments}
+            arguments = {"summary": title, "start_datetime": f"{date}T{hhmm}:00",
+                         "end_datetime": _plus_minutes(date, hhmm, _DEFAULT_DURATION_MIN), "timezone": tz}
+            pending = {"slug": CREATE_EVENT_SLUG, "arguments": arguments, "ok_text": "Listo, lo agendé ✅"}
             return DispatchResult(
                 reply_text=f"Voy a agendar «{title}» para el {date} a las {hhmm} hs. ¿Confirmás?",
-                choices=[{"label": "Confirmar", "value": "confirm"},
-                         {"label": "Cancelar", "value": "cancel"}],
-                state_patch={"pending": pending})
+                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending})
 
-        # ── cualquier otra cosa ────────────────────────────────────────────────────────────
+        # ── servicios nuevos: action='tool_action' + entities{service, op, ...} → módulo plug-in ─────────
+        if action == "tool_action":
+            mod = services.by_service(ent.get("service"))
+            if mod is None:
+                return DispatchResult(reply_text=intent.reply_es or "Ese servicio todavía no lo tengo disponible.")
+            out = mod.build(ent.get("op"), ent, now_iso=now_iso_provider())
+            if out is None:
+                return DispatchResult(reply_text=intent.reply_es or "Contame un poco más para poder hacerlo.")
+            if isinstance(out, Proposal):
+                pending = {"slug": out.slug, "arguments": out.arguments, "ok_text": out.ok_text}
+                if out.then:
+                    pending["then"] = out.then
+                return DispatchResult(reply_text=out.reply_text, choices=list(_CONFIRM_CHOICES),
+                                      state_patch={"pending": pending})
+            if isinstance(out, Read):
+                res = gateway.execute(out.slug, user_id=composio_user_id, arguments=out.arguments, confirmed=False)
+                return DispatchResult(reply_text=out.summarize(res))
+            return DispatchResult(reply_text=intent.reply_es or "No pude procesar eso.")
+
+        # ── cualquier otra cosa ──────────────────────────────────────────────────────────────────────────
         return DispatchResult(reply_text=intent.reply_es or "Contame qué necesitás y te ayudo.")
 
     return dispatch
