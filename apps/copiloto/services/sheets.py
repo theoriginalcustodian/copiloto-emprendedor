@@ -1,11 +1,16 @@
-"""Servicio Google Sheets: escribir fila (write, HITL) + leer rango (read). Toolkit 'googlesheets'.
+"""Servicio Google Sheets: append de fila real + update de celda/rango puntual + leer rango. Toolkit 'googlesheets'.
 
-Policy MÍNIMA: BATCH_UPDATE + BATCH_GET (2 de 53). Shapes confirmados (2026-07-02):
-BATCH_UPDATE(spreadsheet_id, sheet_name, values[2D]) · BATCH_GET(spreadsheet_id, ranges).
+Tres ops (2 write con HITL + 1 read):
+- append_row  -> GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND: agrega la fila DESPUÉS de la última fila con datos
+  (Google resuelve la posición del lado servidor; sirve para planilla vacía o poblada, sin pisar ni contar).
+- update_range -> GOOGLESHEETS_BATCH_UPDATE: sobreescribe a partir de una celda puntual (first_cell_location, ej "B3").
+- read_range   -> GOOGLESHEETS_BATCH_GET.
 
-DEUDA GESTIONADA (propietario: sprint copiloto · pago: cuando entre 'append a planilla poblada'): 'append_row'
-escribe desde first_cell_location (A1 por default) vía BATCH_UPDATE; para APPEND real a la próxima fila vacía de
-una planilla poblada, migrar a GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND. Suficiente para el MVP (escribir/leer real)."""
+Shapes CONFIRMADOS por introspección real (2026-07-02, composio 0.17.1, version 20260623_00):
+- VALUES_APPEND usa camelCase (spreadsheetId, valueInputOption, range, values) — required: range/spreadsheetId/
+  valueInputOption/values. El `range` localiza la tabla lógica; se appendea tras su última fila.
+- BATCH_UPDATE usa snake_case (spreadsheet_id, sheet_name, values, first_cell_location, value_input_option).
+El casing DIFIERE entre slugs: el gateway pasa `arguments` tal cual, así que cada op arma su propio casing."""
 from __future__ import annotations
 
 import sys
@@ -19,13 +24,27 @@ from services.base import Proposal, Read  # noqa: E402
 
 TOOLKIT = "googlesheets"
 SHEETS_VERSION = "20260623_00"
-WRITE_SLUG = "GOOGLESHEETS_BATCH_UPDATE"
+APPEND_SLUG = "GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND"   # append real (posición resuelta por Google)
+UPDATE_SLUG = "GOOGLESHEETS_BATCH_UPDATE"                 # sobreescribir desde una celda puntual
 READ_SLUG = "GOOGLESHEETS_BATCH_GET"
-POLICY = ToolkitPolicy(version=SHEETS_VERSION, read=frozenset({READ_SLUG}), write=frozenset({WRITE_SLUG}))
+SHEET_NAMES_SLUG = "GOOGLESHEETS_GET_SHEET_NAMES"        # resolver el nombre real de la 1ra pestaña (locale-agnóstico)
+POLICY = ToolkitPolicy(version=SHEETS_VERSION, read=frozenset({READ_SLUG, SHEET_NAMES_SLUG}),
+                       write=frozenset({APPEND_SLUG, UPDATE_SLUG}))
+
+
+def _resolve_first_sheet(sid: str, into: str) -> dict:
+    """Pre-paso `resolve` para el confirm-gate: si el usuario no nombró la pestaña, tomar la 1ra REAL en runtime.
+    NUNCA hardcodear 'Sheet1'/'Hoja 1' — el nombre depende del locale/renombrado de la planilla del usuario."""
+    return {"slug": SHEET_NAMES_SLUG, "arguments": {"spreadsheet_id": sid},
+            "path": ["data", "sheet_names", 0], "into": into}
 
 PROMPT_FRAGMENT = (
-    '- ESCRIBIR una fila en una planilla: action="tool_action", entities={"service":"sheets","op":"append_row",'
-    '"spreadsheet_id":<id de la planilla>,"values":[<celda1>,<celda2>,...],"sheet_name":<pestaña opcional, def Sheet1>}.\n'
+    '- AGREGAR una fila al FINAL de una planilla (append, NO pisa lo existente): action="tool_action", '
+    'entities={"service":"sheets","op":"append_row","spreadsheet_id":<id de la planilla>,'
+    '"values":[<celda1>,<celda2>,...],"sheet_name":<pestaña opcional, def Sheet1>}.\n'
+    '- CAMBIAR/ACTUALIZAR datos en una celda o rango puntual (sobreescribe desde esa celda): '
+    'action="tool_action", entities={"service":"sheets","op":"update_range","spreadsheet_id":<id>,'
+    '"cell":<celda destino en notación A1, ej "B3">,"values":[<celda1>,...],"sheet_name":<pestaña opcional>}.\n'
     '- LEER una planilla: action="tool_action", entities={"service":"sheets","op":"read_range",'
     '"spreadsheet_id":<id>,"range":<rango ej "A1:D20" opcional>}.'
 )
@@ -54,15 +73,31 @@ def _summarize_read(res: dict) -> str:
 
 def build(op: str, entities: dict, *, now_iso: str | None = None):
     sid = entities.get("spreadsheet_id")
+    sheet = entities.get("sheet_name")   # None => se resuelve la 1ra pestaña real en runtime (ver _resolve_first_sheet)
     if op == "append_row":
         if not sid:
             return None
         rows = _as_rows(entities.get("values"))
-        args = {"spreadsheet_id": sid, "sheet_name": entities.get("sheet_name") or "Sheet1",
-                "values": rows, "first_cell_location": "A1", "value_input_option": "USER_ENTERED"}
-        return Proposal(slug=WRITE_SLUG, arguments=args,
-                        reply_text="Voy a escribir esa fila en la planilla. ¿Confirmás?",
-                        ok_text="Listo, lo escribí en la planilla ✅")
+        # APPEND real: `range` = pestaña -> Google appendea tras la última fila de la tabla (camelCase).
+        # Sin pestaña explícita, `range` se rellena en el confirm-gate con el nombre real de la 1ra hoja.
+        args = {"spreadsheetId": sid, "range": sheet or "", "values": rows, "valueInputOption": "USER_ENTERED"}
+        return Proposal(slug=APPEND_SLUG, arguments=args,
+                        reply_text="Voy a agregar esa fila al final de la planilla. ¿Confirmás?",
+                        ok_text="Listo, agregué la fila ✅",
+                        resolve=None if sheet else _resolve_first_sheet(sid, "range"))
+    if op == "update_range":
+        if not sid:
+            return None
+        rows = _as_rows(entities.get("values"))
+        cell = entities.get("cell") or entities.get("first_cell_location") or "A1"
+        # UPDATE puntual: sobreescribe desde `first_cell_location` (snake_case). Sin pestaña explícita,
+        # `sheet_name` se resuelve a la 1ra hoja real (no confiar en el lenient de BATCH_UPDATE).
+        args = {"spreadsheet_id": sid, "sheet_name": sheet or "",
+                "values": rows, "first_cell_location": cell, "value_input_option": "USER_ENTERED"}
+        return Proposal(slug=UPDATE_SLUG, arguments=args,
+                        reply_text=f"Voy a escribir esos datos a partir de {cell} en la planilla (sobreescribe). ¿Confirmás?",
+                        ok_text="Listo, actualicé la planilla ✅",
+                        resolve=None if sheet else _resolve_first_sheet(sid, "sheet_name"))
     if op == "read_range":
         if not sid:
             return None

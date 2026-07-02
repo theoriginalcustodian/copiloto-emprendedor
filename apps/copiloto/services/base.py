@@ -24,6 +24,8 @@ class Proposal:
     reply_text: str                    # "Voy a enviar un mail a X. ¿Confirmás?"
     ok_text: str = "Listo ✅"          # texto al confirmar con éxito ("Listo, lo envié ✅")
     then: dict | None = None           # tool de 2 pasos: {slug, id_key, id_arg, arguments} — ver dispatcher _execute_pending
+    resolve: dict | None = None        # pre-paso: {slug(read), arguments, path, into} — resuelve un valor (ej nombre
+    #                                    real de la hoja) ANTES del write y lo inyecta en arguments[into]. Simétrico a `then`.
 
 
 @dataclass

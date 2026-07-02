@@ -35,6 +35,23 @@ def _plus_minutes(date_iso: str, hhmm: str, minutes: int) -> str:
     return (dt + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def _dig(obj, path):
+    """Extrae obj[path[0]][path[1]]... con claves str (dict) o índices int (list). None si no existe.
+    Serializable (no callables) → apto para el state durable del workflow. Usado por el pre-paso `resolve`."""
+    cur = obj
+    for k in path:
+        if isinstance(k, int):
+            if isinstance(cur, (list, tuple)) and -len(cur) <= k < len(cur):
+                cur = cur[k]
+            else:
+                return None
+        elif isinstance(cur, dict) and k in cur:
+            cur = cur[k]
+        else:
+            return None
+    return cur
+
+
 def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callable[[], str],
                     tz: str = DEFAULT_TZ) -> Callable[[Intent, dict, object], DispatchResult]:
 
@@ -43,9 +60,23 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
         declaramos éxito. Común a Calendar y a todo servicio nuevo.
 
         Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
-        extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg']."""
+        extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg'].
+
+        Soporta un pre-paso vía pending['resolve'] (patrón resolver-luego-escribir, ej nombre real de la hoja de
+        Sheets): ejecuta un read (resolve['slug']), extrae un valor por resolve['path'] y lo inyecta en
+        arguments[resolve['into']] ANTES del write. Fail-closed: si no se resuelve, NO escribimos."""
+        arguments = dict(pending["arguments"])
+        resolve = pending.get("resolve")
+        if resolve:
+            rr = gateway.execute(resolve["slug"], user_id=composio_user_id,
+                                 arguments=resolve["arguments"], confirmed=False)
+            val = _dig(rr, resolve["path"])
+            if val is None:
+                return DispatchResult(reply_text="Uy, no pude ubicar la hoja de la planilla. Probemos de nuevo.",
+                                      done=False, state_patch={"pending": None})
+            arguments[resolve["into"]] = val
         res = gateway.execute(pending["slug"], user_id=composio_user_id,
-                              arguments=pending["arguments"], confirmed=True)
+                              arguments=arguments, confirmed=True)
         ok = bool(res.get("successful", False))
         then = pending.get("then")
         if ok and then:
@@ -108,6 +139,8 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
                 pending = {"slug": out.slug, "arguments": out.arguments, "ok_text": out.ok_text}
                 if out.then:
                     pending["then"] = out.then
+                if out.resolve:
+                    pending["resolve"] = out.resolve
                 return DispatchResult(reply_text=out.reply_text, choices=list(_CONFIRM_CHOICES),
                                       state_patch={"pending": pending})
             if isinstance(out, Read):
