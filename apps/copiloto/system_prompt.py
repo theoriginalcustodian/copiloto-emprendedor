@@ -12,6 +12,8 @@ SYSTEM_PROMPT = (
     "\"time_raw\": <hora, ej '15'>}.\n"
     "- Si el usuario CONFIRMA algo pendiente (dice 'sí', 'dale', 'confirmá'): action=\"confirm_pending\".\n"
     "- Si CANCELA: action=\"confirm_pending\" y entities={\"value\": \"cancel\"}.\n"
+    "- Si el usuario pide COBRAR / generar un link de pago / mandar un link de MercadoPago: "
+    "action=\"mp_charge\" con entities={\"amount\": <número en pesos>, \"concept\": \"<qué cobra>\"}.\n"
     "- Para cualquier otra consulta: action=\"ask_info\".\n"
     "reply_es es un texto breve y amable en español rioplatense para mostrarle al usuario."
 )

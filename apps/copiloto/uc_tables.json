@@ -10,5 +10,24 @@
     "model text NOT NULL",
     "tokens bigint",
     "created_at timestamptz DEFAULT now()"
+  ],
+  "mp_credentials": [
+    "seller_user_id text NOT NULL",
+    "access_token_enc text NOT NULL",
+    "refresh_token_enc text NOT NULL",
+    "expires_at bigint NOT NULL",
+    "public_key text",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "mp_payments": [
+    "payment_id text NOT NULL",
+    "seller_user_id text NOT NULL",
+    "status text NOT NULL",
+    "amount numeric",
+    "external_reference text",
+    "payer_email text",
+    "raw jsonb",
+    "occurred_at timestamptz",
+    "created_at timestamptz DEFAULT now()"
   ]
 }

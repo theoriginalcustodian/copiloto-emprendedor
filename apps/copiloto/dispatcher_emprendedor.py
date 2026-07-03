@@ -9,6 +9,7 @@ servicios nuevos usan action='tool_action' + entities{service, op, ...} y se enc
 from __future__ import annotations
 
 import re
+import secrets
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -53,11 +54,16 @@ def _dig(obj, path):
 
 
 def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callable[[], str],
-                    tz: str = DEFAULT_TZ) -> Callable[[Intent, dict, object], DispatchResult]:
+                    tz: str = DEFAULT_TZ, mp_gateway=None, mp_cred_store=None,
+                    mp_seller_user_id: str | None = None, mp_webhook_base: str | None = None,
+                    cliente_id: str | None = None) -> Callable[[Intent, dict, object], DispatchResult]:
 
     def _execute_pending(pending: dict) -> DispatchResult:
         """Ejecuta el write pendiente con confirmed=True (doble candado). Fail-closed: sin successful=True NO
         declaramos éxito. Común a Calendar y a todo servicio nuevo.
+
+        MercadoPago (pending['provider']=='mercadopago') se rutea al mp_gateway ANTES de tocar el
+        ComposioGateway — es un boundary distinto (2º proveedor de writes del Copiloto).
 
         Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
         extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg'].
@@ -65,6 +71,19 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
         Soporta un pre-paso vía pending['resolve'] (patrón resolver-luego-escribir, ej nombre real de la hoja de
         Sheets): ejecuta un read (resolve['slug']), extrae un valor por resolve['path'] y lo inyecta en
         arguments[resolve['into']] ANTES del write. Fail-closed: si no se resuelve, NO escribimos."""
+        if pending.get("provider") == "mercadopago":
+            creds = mp_cred_store.get(mp_seller_user_id)
+            if not creds:
+                return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
+                                      done=False, state_patch={"pending": None})
+            ext_ref = f"copiloto-{secrets.token_hex(4)}"
+            notif = f"{mp_webhook_base}/mp/webhook?cid={cliente_id}&seller={mp_seller_user_id}"
+            link = mp_gateway.create_payment_link(
+                creds["access_token"], amount=pending["amount"],
+                external_reference=ext_ref, notification_url=notif, title=pending.get("concept", "Cobro"))
+            return DispatchResult(
+                reply_text=f"Listo, acá está el link de cobro por ${pending['amount']} 👉 {link['init_point']}",
+                done=True, state_patch={"pending": None})
         arguments = dict(pending["arguments"])
         resolve = pending.get("resolve")
         if resolve:
@@ -125,6 +144,19 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
             pending = {"slug": CREATE_EVENT_SLUG, "arguments": arguments, "ok_text": "Listo, lo agendé ✅"}
             return DispatchResult(
                 reply_text=f"Voy a agendar «{title}» para el {date} a las {hhmm} hs. ¿Confirmás?",
+                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending})
+
+        # ── MercadoPago: cobrar por chat (confirm-gate → mp_gateway) ─────────────────────────────────────
+        if action == "mp_charge":
+            if mp_gateway is None or mp_cred_store is None:
+                return DispatchResult(reply_text="El cobro por MercadoPago todavía no está disponible en tu cuenta.")
+            amount = ent.get("amount")
+            if not amount:
+                return DispatchResult(reply_text="¿Por qué monto querés el link de cobro?")
+            concept = ent.get("concept") or "Cobro"
+            pending = {"provider": "mercadopago", "amount": amount, "concept": concept}
+            return DispatchResult(
+                reply_text=f"Voy a generar un link de cobro de MercadoPago por ${amount} ({concept}). ¿Confirmás?",
                 choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending})
 
         # ── servicios nuevos: action='tool_action' + entities{service, op, ...} → módulo plug-in ─────────
