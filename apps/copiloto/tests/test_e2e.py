@@ -25,6 +25,7 @@ from backend.agent.inbound_router import route_inbound
 from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
 
+from _ctx_helper import make_ctx as _ctx
 from calendar_policy import CALENDAR_POLICY, FIND_EVENT_SLUG
 from dispatcher_emprendedor import make_dispatcher
 from reply_store import make_pg_reply_sink, read_replies
@@ -87,11 +88,12 @@ async def test_e2e_agenda_evento():
 
     reset_registry()
     gateway = ComposioGateway(CALENDAR_POLICY)
-    sink = make_pg_reply_sink(conn_factory, cliente_id)
+    sink = make_pg_reply_sink(conn_factory)
     register_channel("web", WebChannelAdapter(reply_sink=sink))
     register_domain("emprendedor", system_prompt="(scripted)", llm_provider=_ScriptedLlm(),
-                    dispatcher=make_dispatcher(gateway, composio_user_id=composio_user,
-                                               now_iso_provider=lambda: "2026-07-01T10:00:00-03:00"))
+                    dispatcher=make_dispatcher(gateway, now_iso_provider=lambda: "2026-07-01T10:00:00-03:00"),
+                    context_factory=lambda conv: _ctx(composio_user_id=composio_user,
+                                                      cliente_id=conv.get("cliente_id", cliente_id)))
     router_adapter = WebChannelAdapter(reply_sink=sink)
 
     client = await Client.connect(os.environ.get("TEMPORAL_TARGET", "localhost:7233"),

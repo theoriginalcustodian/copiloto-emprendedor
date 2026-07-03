@@ -19,8 +19,10 @@ class ChannelAdapter(Protocol):
         """Convierte un update crudo del canal en un NormalizedMessage. None si el update no es procesable."""
         ...
 
-    def send(self, channel_ref: str, text: str, choices: list | None = None) -> dict:
+    def send(self, channel_ref: str, text: str, choices: list | None = None, *, cliente_id: str | None = None) -> dict:
         """Envia `text` al interlocutor `channel_ref`. Si `choices` (lista de {label, value}), los renderiza
-        como opciones discretas (el canal decide cómo: inline keyboard, buttons, lista hablada). Devuelve
+        como opciones discretas (el canal decide cómo: inline keyboard, buttons, lista hablada). `cliente_id`
+        (tenant, per-request) es opcional: canales single-tenant o sin noción de tenant (Telegram) lo ignoran;
+        solo lo usan los canales cuyo transporte necesita el aislamiento (web -> reply_sink). Devuelve
         {'sent': bool, ...}."""
         ...

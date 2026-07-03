@@ -2,14 +2,21 @@
 
 Registra el dominio 'emprendedor' (system prompt + LlmProvider gpt-4o-mini + dispatcher) y el canal 'web'
 (WebChannelAdapter con reply_sink a uc_factory) en el registry del arquetipo, y corre un Worker Temporal
-propio con task_queue 'agent-emprendedor'. Proceso SEPARADO del de A (el registry es singleton de módulo)."""
+propio con task_queue 'agent-emprendedor'. Proceso SEPARADO del de A (el registry es singleton de módulo).
+
+Multitenant real (Task 8 del plan 2026-07-03): NINGÚN `cliente_id`/`composio_user_id`/seller MP sale de env
+— todo per-request vía `context_factory` (ver context_factory.py). El worker sirve N tenants sin fugas; el
+`context_factory` arma un `TenantCtx` NUEVO por request desde `conv["cliente_id"]`. También registra
+`MpRefreshWorkflow` (refresh durable del token de 180d) y cablea `set_refresh_deps` ANTES de que el worker
+empiece a pollear (si no, `refresh_credential` hace `_store_factory(None)` -> TypeError)."""
 from __future__ import annotations
 
 import asyncio
+import datetime
 import os
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
 
 ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
 sys.path.insert(0, str(ARCH))
@@ -23,15 +30,27 @@ from backend.agent.agent_runtime import register_channel, register_domain
 from backend.agent.conversation_workflow import ConversationWorkflow
 from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
+from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.llm import LlmProvider
+from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
+from clients.agent.providers.mp_refresh_activities import refresh_credential, set_refresh_deps
+from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 from calendar_policy import CALENDAR_POLICY
+from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
+from mp_credential_store import MpCredentialStore
+from reply_store import make_pg_reply_sink
+from system_prompt import SYSTEM_PROMPT
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
 _ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff]
+
+
+def _now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
 
 
 def build_llm() -> LlmProvider:
@@ -40,64 +59,57 @@ def build_llm() -> LlmProvider:
                        quantizations=())
 
 
-def build_registrations(*, gateway, reply_sink: Callable[[str, str, list | None], None],
-                        composio_user_id: str, now_iso_provider: Callable[[], str],
-                        mp_gateway=None, mp_cred_store=None, mp_seller_user_id: str | None = None,
-                        mp_webhook_base: str | None = None, cliente_id: str | None = None) -> None:
-    from system_prompt import SYSTEM_PROMPT
-    # system prompt = base del dominio + fragmentos autodescubiertos de cada servicio (cero edición central)
+def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
+    """Composition root PURO y multitenant real (Task 8): construye los recursos COMPARTIDOS una sola vez
+    (crypto, mp_gateway, composio gateway) y arma el `context_factory` que resuelve TODO lo per-tenant
+    (`cliente_id`, `composio_user_id`, seller MP) desde el `conv` de cada request — cero
+    cliente_id/composio_user_id/seller de env (elimina `COPILOTO_CLIENTE_ID`/`COPILOTO_COMPOSIO_USER_ID`/
+    `MP_SELLER_USER_ID`; `MP_WEBHOOK_BASE` sí sale de `env` por ser infra, no identidad de tenant).
+
+    Registra el dominio 'emprendedor' con `context_factory` no-None (ctx SIEMPRE presente en prod;
+    `dispatcher_emprendedor.make_dispatcher` es multitenant-only, sin fallback) y el canal 'web'. Cablea
+    `set_refresh_deps` ANTES de devolver, para que `MpRefreshWorkflow`/`refresh_credential` puedan correr en
+    cuanto el `Worker` arranque a pollear.
+
+    No abre I/O real al construirse (`conn_factory` solo se guarda; recién se invoca cuando una query lo
+    necesita) → testeable sin Temporal ni Postgres vivos. Devuelve {workflows, activities, context_factory}
+    listos para `Worker(...)`."""
+    crypto = FernetCrypto()
+    mp_gateway = MercadoPagoGateway()
+    # policy = Calendar (verbo 'book') + policies mínimas de los módulos de servicio (discovery)
+    gateway = ComposioGateway({**CALENDAR_POLICY, **services.merged_policy()})
+
+    ctx_factory = make_context_factory(conn_factory=conn_factory, crypto=crypto, mp_gateway=mp_gateway,
+                                       mp_webhook_base=env.get("MP_WEBHOOK_BASE"))
+    reply_sink = make_pg_reply_sink(conn_factory)
+
     system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
     register_domain("emprendedor", system_prompt=system_prompt, llm_provider=build_llm(),
-                    dispatcher=make_dispatcher(gateway, composio_user_id=composio_user_id,
-                                               now_iso_provider=now_iso_provider,
-                                               mp_gateway=mp_gateway, mp_cred_store=mp_cred_store,
-                                               mp_seller_user_id=mp_seller_user_id,
-                                               mp_webhook_base=mp_webhook_base, cliente_id=cliente_id))
+                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso),
+                    context_factory=ctx_factory)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
+
+    set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))
+
+    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow],
+            "activities": _ACTIVITIES + [refresh_credential],
+            "context_factory": ctx_factory}
 
 
 async def main() -> None:
-    import datetime
     import psycopg2
-    from reply_store import make_pg_reply_sink
 
-    cliente_id = os.environ["COPILOTO_CLIENTE_ID"]            # tenant sintético
-    composio_user_id = os.environ["COPILOTO_COMPOSIO_USER_ID"]
     db_url = os.environ["DATABASE_URL"]
 
     def conn_factory():
         c = psycopg2.connect(db_url); c.autocommit = True; return c
 
-    def now_iso():
-        return datetime.datetime.now(datetime.timezone.utc).astimezone().isoformat()
-
-    # policy = Calendar (verbo 'book') + policies mínimas de los módulos de servicio (discovery)
-    gateway = ComposioGateway({**CALENDAR_POLICY, **services.merged_policy()})
-    reply_sink = make_pg_reply_sink(conn_factory, cliente_id)
-
-    # MercadoPago: wiring GUARDADO/opcional — si falta el env, mp_gateway=None → mp_charge responde 'no
-    # disponible' (guard en el dispatcher), el resto igual que antes. MVP single-seller-por-tenant: el seller
-    # conectado se identifica por env.
-    mp_webhook_base = os.environ.get("MP_WEBHOOK_BASE")
-    mp_seller_user_id = os.environ.get("MP_SELLER_USER_ID")
-    mp_gateway = mp_cred_store = None
-    if mp_webhook_base and mp_seller_user_id:
-        from clients.agent.providers.crypto import FernetCrypto
-        from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
-        from mp_credential_store import MpCredentialStore
-        mp_gateway = MercadoPagoGateway()
-        mp_cred_store = MpCredentialStore(conn_factory, cliente_id, FernetCrypto())
-
-    build_registrations(gateway=gateway, reply_sink=reply_sink,
-                        composio_user_id=composio_user_id, now_iso_provider=now_iso,
-                        mp_gateway=mp_gateway, mp_cred_store=mp_cred_store,
-                        mp_seller_user_id=mp_seller_user_id, mp_webhook_base=mp_webhook_base,
-                        cliente_id=cliente_id)
+    cfg = build_worker_config(os.environ, conn_factory)
 
     target = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
     client = await Client.connect(target, namespace=os.environ.get("TEMPORAL_NAMESPACE", "default"))
     async with Worker(client, task_queue=AGENT_B_TASK_QUEUE,
-                      workflows=[ConversationWorkflow], activities=_ACTIVITIES):
+                      workflows=cfg["workflows"], activities=cfg["activities"]):
         print(f"AGENT_B worker up on {AGENT_B_TASK_QUEUE}", flush=True)
         await asyncio.Event().wait()
 

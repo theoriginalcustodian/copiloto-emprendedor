@@ -36,9 +36,12 @@ async def dispatch_intent(payload: dict) -> dict:
 
 @activity.defn
 async def send_channel_message(payload: dict) -> dict:
-    """payload = {channel, channel_ref, text, choices?}. Despacha al adapter del canal (choices opcional)."""
+    """payload = {channel, channel_ref, text, choices?, cliente_id?}. Despacha al adapter del canal (choices
+    opcional). `cliente_id` viaja per-request (tenant del workflow que originó el mensaje); los adapters que
+    no lo necesitan (Telegram) lo ignoran -- ver ChannelAdapter.send."""
     adapter = get_channel(payload["channel"])
-    res = await asyncio.to_thread(adapter.send, payload["channel_ref"], payload["text"], payload.get("choices"))
+    res = await asyncio.to_thread(adapter.send, payload["channel_ref"], payload["text"], payload.get("choices"),
+                                  cliente_id=payload.get("cliente_id"))
     return res if isinstance(res, dict) else {"sent": True}
 
 

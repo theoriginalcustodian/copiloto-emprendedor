@@ -51,7 +51,9 @@ class TelegramAdapter:
                 return NormalizedMessage(channel=CHANNEL, channel_ref=ref, text=str(file_id), kind="needs_stt")
         return None
 
-    def send(self, channel_ref: str, text: str, choices: list | None = None) -> dict:
+    def send(self, channel_ref: str, text: str, choices: list | None = None, *, cliente_id: str | None = None) -> dict:
+        # cliente_id: parte del contrato ChannelAdapter (multitenant del canal web); Telegram es single-tenant
+        # por bot -> se IGNORA acá a propósito (backward-compatible, no rompe al caller).
         payload = {"chat_id": channel_ref, "text": text}
         if choices:
             # un botón por fila (vertical, más legible en mobile). callback_data = el value (≤64 bytes).

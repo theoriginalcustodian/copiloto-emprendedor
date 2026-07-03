@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.drive import CREATE_SLUG, FIND_SLUG, DRIVE_VERSION, build
 
@@ -28,13 +29,13 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 def test_create_propone_y_no_ejecuta():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "drive", "op": "create_file",
-                  "name": "n.txt", "content": "hola"}), {}, None)
+                  "name": "n.txt", "content": "hola"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []
     p = r.state_patch["pending"]
     assert p["slug"] == CREATE_SLUG
@@ -45,14 +46,14 @@ def test_create_propone_y_no_ejecuta():
 def test_confirm_ejecuta_create():
     gw = _GatewaySpy()
     pending = {"slug": CREATE_SLUG, "arguments": {"file_name": "n.txt", "text_content": "x"}, "ok_text": "ok ✅"}
-    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, None)
+    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["confirmed"] is True and gw.calls[0]["slug"] == CREATE_SLUG
     assert r.done is True
 
 
 def test_find_es_lectura_directa():
     gw = _GatewaySpy(ret={"successful": True, "data": {"files": []}})
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "drive", "op": "find", "name": "x"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "drive", "op": "find", "name": "x"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == FIND_SLUG and gw.calls[0]["confirmed"] is False
     assert r.reply_text
 

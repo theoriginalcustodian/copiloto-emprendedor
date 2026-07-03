@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.gmail import SEND_SLUG, FETCH_SLUG, build
 
@@ -30,13 +31,13 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 def test_send_propone_y_no_ejecuta():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "gmail", "op": "send",
-                  "to": "x@y.com", "subject": "Hola", "body": "cuerpo"}), {}, None)
+                  "to": "x@y.com", "subject": "Hola", "body": "cuerpo"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []                                       # HITL: no ejecuta todavía
     p = r.state_patch["pending"]
     assert p["slug"] == SEND_SLUG
@@ -48,14 +49,14 @@ def test_confirm_ejecuta_send_con_confirmed_true():
     gw = _GatewaySpy()
     pending = {"slug": SEND_SLUG, "arguments": {"recipient_email": "x@y.com", "subject": "H", "body": "b"},
                "ok_text": "Listo, lo envié ✅"}
-    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, None)
+    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["confirmed"] is True and gw.calls[0]["slug"] == SEND_SLUG   # doble candado
     assert r.done is True and "✅" in r.reply_text
 
 
 def test_fetch_es_lectura_directa_sin_confirmar():
     gw = _GatewaySpy(ret={"successful": True, "data": {"messages": []}})
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "gmail", "op": "fetch", "query": "is:unread"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "gmail", "op": "fetch", "query": "is:unread"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == FETCH_SLUG and gw.calls[0]["confirmed"] is False  # read: sin HITL
     assert r.reply_text
 

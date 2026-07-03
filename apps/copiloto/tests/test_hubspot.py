@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.hubspot import CREATE_SLUG, SEARCH_SLUG, HUBSPOT_VERSION, build
 
@@ -27,13 +28,13 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 def test_create_contact_propone():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "hubspot", "op": "create_contact",
-                  "email": "a@b.com", "firstname": "Ana"}), {}, None)
+                  "email": "a@b.com", "firstname": "Ana"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []
     p = r.state_patch["pending"]
     assert p["slug"] == CREATE_SLUG and p["arguments"]["email"] == "a@b.com" and p["arguments"]["firstname"] == "Ana"
@@ -41,7 +42,7 @@ def test_create_contact_propone():
 
 def test_search_es_lectura_directa():
     gw = _GatewaySpy(ret={"successful": True, "data": {"results": []}})
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "hubspot", "op": "search_contact", "query": "a@b.com"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "hubspot", "op": "search_contact", "query": "a@b.com"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == SEARCH_SLUG and gw.calls[0]["confirmed"] is False
     assert r.reply_text
 

@@ -10,6 +10,11 @@ dominio; este workflow se reusa TAL CUAL.
 Determinismo (regla 3): cero I/O / random / time nativo aca. Todo I/O (LLM, DB, envio, notificacion) va en
 activities. La espera es workflow.wait_condition con timeout DURABLE (timer Temporal), nunca asyncio.sleep.
 Loop ACOTADO (MAX_TURNS) + history acotado para no reventar el history del workflow (patron del repo).
+
+Nota de replay (skill temporal-developer, doc oficial de versioning): agregar una key a un dict de payload de
+un activity call YA EXISTENTE (ej. `cliente_id` en `send_channel_message`) NO altera el Command sequence
+-> replay-safe SIEMPRE, sin Patching API. Lo que SÍ requeriría Patching: cambiar el NOMBRE de la activity, el
+ORDEN de las llamadas, o el NÚMERO de invocaciones (eso sí cambia la secuencia de Commands comparada en replay).
 """
 from __future__ import annotations
 
@@ -96,7 +101,7 @@ class ConversationWorkflow:
                 if not transcript:
                     await workflow.execute_activity(
                         "send_channel_message",
-                        {"channel": channel, "channel_ref": channel_ref,
+                        {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
                          "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
                         start_to_close_timeout=ACTIVITY_TIMEOUT)
                     continue
@@ -153,7 +158,8 @@ class ConversationWorkflow:
                 self._history.append({"role": "assistant", "content": reply})
                 await workflow.execute_activity(
                     "send_channel_message",
-                    {"channel": channel, "channel_ref": channel_ref, "text": reply, "choices": result.choices},
+                    {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+                     "text": reply, "choices": result.choices},
                     start_to_close_timeout=ACTIVITY_TIMEOUT)
 
             if result.done:

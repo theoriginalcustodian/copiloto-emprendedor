@@ -1,0 +1,29 @@
+# deploy/copiloto/Caddyfile.snippet — referencia de lo que `deploy.sh` aplica ADITIVAMENTE e
+# IDEMPOTENTE sobre /etc/caddy/Caddyfile (paso [6/7]). NO se copia/pega a mano: `deploy.sh` edita el
+# Caddyfile real vía un script Python idempotente + `caddy validate` OBLIGATORIO antes de cualquier
+# `systemctl reload caddy` (si no valida, aborta SIN tocar el archivo — hermes/temporal/mp siguen
+# intactos). Este archivo documenta el resultado esperado para que un humano pueda auditar el diff.
+#
+# Dominio/puerto/subdominios son PARAMETRIZABLES en deploy.sh (UC_BASE_DOMAIN, UC_COPILOTO_SUBDOMAIN,
+# UC_MP_SUBDOMAIN, COPILOTO_WEB_PORT) — acá se muestran los valores resueltos en el VPS actual
+# (unreal-copilot, 178.105.191.1, sslip.io wildcard DNS).
+
+# 1) Bloque NUEVO (aditivo) — dominio propio del front-door del Copiloto (mismo puerto que mp.*: UN
+#    solo proceso `uc-copiloto-web` sirve /chat,/reply,/me,/auth/signup,/healthz Y /mp/* — create_web_app
+#    monta ambos en la misma app, ver apps/copiloto/web.py). `mp.*` queda vigente para no romper las
+#    URLs YA registradas en MercadoPago (MP_WEBHOOK_BASE/MP_REDIRECT_URI apuntan a mp.*).
+copiloto.178-105-191-1.sslip.io {
+    reverse_proxy 127.0.0.1:8099
+}
+
+# 2) Bloque EXISTENTE `mp.*` — deploy.sh le agrega la línea `rewrite /callback /mp/callback` (si no
+#    está ya) para reconciliar sin cambiar MP_REDIRECT_URI ni re-registrar la app en MercadoPago:
+#    MP_REDIRECT_URI quedó registrado como ".../callback" pero `create_mp_app` (mp_web.py) sirve
+#    `/mp/callback`. El rewrite hace que ambos coincidan sin tocar el contrato externo.
+mp.178-105-191-1.sslip.io {
+    rewrite /callback /mp/callback
+    reverse_proxy 127.0.0.1:8099
+}
+
+# Bloques preexistentes que deploy.sh NUNCA toca (178-105-191-1.sslip.io->8088, hermes.*->9119
+# basic_auth, temporal.*->8080 basic_auth): fuera de scope, verificados intactos por el smoke [7/7].
