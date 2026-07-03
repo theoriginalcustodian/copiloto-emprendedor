@@ -13,9 +13,11 @@ _SCHEMA = "uc_factory"
 _TABLE = f'{_SCHEMA}.copiloto_web_replies'
 
 
-def make_pg_reply_sink(conn_factory: Callable, cliente_id: str) -> Callable[[str, str, list | None], None]:
-    """Devuelve un reply_sink(channel_ref, text, choices) que inserta una fila. conn_factory() -> conexion psycopg2."""
-    def _sink(session_id: str, text: str, choices: list | None) -> None:
+def make_pg_reply_sink(conn_factory: Callable) -> Callable[[str, str, str, list | None], None]:
+    """Devuelve un reply_sink(cliente_id, session_id, text, choices) que inserta una fila. `cliente_id` llega
+    POR LLAMADA (per-request), no horneado en el closure -- un solo worker puede servir N tenants sin fugas.
+    conn_factory() -> conexion psycopg2."""
+    def _sink(cliente_id: str, session_id: str, text: str, choices: list | None) -> None:
         conn = conn_factory()
         with conn.cursor() as cur:
             cur.execute(

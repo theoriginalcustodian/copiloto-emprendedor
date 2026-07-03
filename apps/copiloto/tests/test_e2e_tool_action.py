@@ -78,7 +78,7 @@ async def test_e2e_tool_action_gmail_send():
 
     reset_registry()
     gw = ComposioGateway(services.merged_policy())
-    sink = make_pg_reply_sink(conn_factory, cliente_id)
+    sink = make_pg_reply_sink(conn_factory)
     register_channel("web", WebChannelAdapter(reply_sink=sink))
     register_domain("emprendedor", system_prompt="(scripted)", llm_provider=_ScriptedLlm(),
                     dispatcher=make_dispatcher(gw, composio_user_id=composio_user,

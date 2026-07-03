@@ -87,7 +87,7 @@ async def test_e2e_agenda_evento():
 
     reset_registry()
     gateway = ComposioGateway(CALENDAR_POLICY)
-    sink = make_pg_reply_sink(conn_factory, cliente_id)
+    sink = make_pg_reply_sink(conn_factory)
     register_channel("web", WebChannelAdapter(reply_sink=sink))
     register_domain("emprendedor", system_prompt="(scripted)", llm_provider=_ScriptedLlm(),
                     dispatcher=make_dispatcher(gateway, composio_user_id=composio_user,
