@@ -45,6 +45,17 @@ class MpCredentialStore:
                 "refresh_token": self._crypto.decrypt(rt_enc),
                 "expires_at": expires_at, "public_key": public_key}
 
+    def first_seller_user_id(self) -> str | None:
+        """El seller MÁS RECIENTE conectado por ESTE tenant (resuelve el seller sin env var manual: MVP
+        single-seller-por-tenant, ver context_factory.py). None si el tenant todavía no conectó MP."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT seller_user_id FROM {_TABLE} WHERE cliente_id=%s "
+                f"ORDER BY updated_at DESC LIMIT 1", (self._cid,))
+            row = cur.fetchone()
+        return row[0] if row else None
+
     def update_tokens(self, seller_user_id: str, *, access_token: str,
                       refresh_token: str, expires_at: int) -> None:
         conn = self._conn_factory()

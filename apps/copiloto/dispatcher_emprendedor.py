@@ -53,16 +53,28 @@ def _dig(obj, path):
     return cur
 
 
-def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callable[[], str],
-                    tz: str = DEFAULT_TZ, mp_gateway=None, mp_cred_store=None,
+def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str], tz: str = DEFAULT_TZ,
+                    composio_user_id: str | None = None, mp_gateway=None, mp_cred_store=None,
                     mp_seller_user_id: str | None = None, mp_webhook_base: str | None = None,
                     cliente_id: str | None = None) -> Callable[[Intent, dict, object], DispatchResult]:
+    """Multitenant real: los recursos por-tenant (composio_user_id, mp_*, cliente_id) se LEEN de `ctx`
+    (un `TenantCtx` armado por `context_factory(conv)` desde `conv["cliente_id"]`, per-request — cero fuga
+    entre tenants, ver `context_factory.py`). Los kwargs `composio_user_id`/`mp_*`/`cliente_id` de abajo son
+    un FALLBACK legacy (closure horneado, single-tenant) usado SOLO cuando `ctx is None`.
 
-    def _execute_pending(pending: dict) -> DispatchResult:
+    TODO(Task 8 del plan — worker_b refactor, mismo sprint): hoy `dispatch_intent` arma `ctx=None` porque
+    `worker_b.build_registrations` (fuera del ownership de este task) todavía no registra un
+    `context_factory` en `register_domain` — composition root single-tenant heredado. Este fallback
+    preserva el comportamiento actual sin tocar `worker_b.py`/`test_worker_wiring.py`. Cuando Task 8 cablee
+    el `context_factory` real, `ctx` nunca vuelve a ser None en producción y este fallback + sus kwargs
+    quedan muertos → Task 8 los borra ahí. Deuda GESTIONADA: visible (este comentario), con dueño (Task 8)
+    y condición de pago explícita — no invisible, no impaga."""
+
+    def _execute_pending(pending: dict, *, comp_uid, mpgw, mpcred, mpseller, mpwebhook, cid) -> DispatchResult:
         """Ejecuta el write pendiente con confirmed=True (doble candado). Fail-closed: sin successful=True NO
         declaramos éxito. Común a Calendar y a todo servicio nuevo.
 
-        MercadoPago (pending['provider']=='mercadopago') se rutea al mp_gateway ANTES de tocar el
+        MercadoPago (pending['provider']=='mercadopago') se rutea al mpgw ANTES de tocar el
         ComposioGateway — es un boundary distinto (2º proveedor de writes del Copiloto).
 
         Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
@@ -72,13 +84,13 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
         Sheets): ejecuta un read (resolve['slug']), extrae un valor por resolve['path'] y lo inyecta en
         arguments[resolve['into']] ANTES del write. Fail-closed: si no se resuelve, NO escribimos."""
         if pending.get("provider") == "mercadopago":
-            creds = mp_cred_store.get(mp_seller_user_id)
+            creds = mpcred.get(mpseller)
             if not creds:
                 return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
                                       done=False, state_patch={"pending": None})
             ext_ref = f"copiloto-{secrets.token_hex(4)}"
-            notif = f"{mp_webhook_base}/mp/webhook?cid={cliente_id}&seller={mp_seller_user_id}"
-            link = mp_gateway.create_payment_link(
+            notif = f"{mpwebhook}/mp/webhook?cid={cid}&seller={mpseller}"
+            link = mpgw.create_payment_link(
                 creds["access_token"], amount=pending["amount"],
                 external_reference=ext_ref, notification_url=notif, title=pending.get("concept", "Cobro"))
             return DispatchResult(
@@ -87,28 +99,28 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
         arguments = dict(pending["arguments"])
         resolve = pending.get("resolve")
         if resolve:
-            rr = gateway.execute(resolve["slug"], user_id=composio_user_id,
+            rr = gateway.execute(resolve["slug"], user_id=comp_uid,
                                  arguments=resolve["arguments"], confirmed=False)
             val = _dig(rr, resolve["path"])
             if val is None:
                 return DispatchResult(reply_text="Uy, no pude ubicar la hoja de la planilla. Probemos de nuevo.",
                                       done=False, state_patch={"pending": None})
             arguments[resolve["into"]] = val
-        res = gateway.execute(pending["slug"], user_id=composio_user_id,
+        res = gateway.execute(pending["slug"], user_id=comp_uid,
                               arguments=arguments, confirmed=True)
         ok = bool(res.get("successful", False))
         then = pending.get("then")
         if ok and then:
             data = res.get("data") if isinstance(res.get("data"), dict) else {}
-            cid = data.get(then["id_key"])
-            if cid is None:
+            cid_step2 = data.get(then["id_key"])
+            if cid_step2 is None:
                 m = re.search(rf'["\']{re.escape(then["id_key"])}["\']\s*:\s*["\']?([\w-]+)', str(res))
-                cid = m.group(1) if m else None
-            if cid is None:
+                cid_step2 = m.group(1) if m else None
+            if cid_step2 is None:
                 return DispatchResult(reply_text="Uy, no pude completar el segundo paso. Probemos de nuevo.",
                                       done=False, state_patch={"pending": None})
-            res2 = gateway.execute(then["slug"], user_id=composio_user_id,
-                                   arguments={**then.get("arguments", {}), then["id_arg"]: cid}, confirmed=True)
+            res2 = gateway.execute(then["slug"], user_id=comp_uid,
+                                   arguments={**then.get("arguments", {}), then["id_arg"]: cid_step2}, confirmed=True)
             ok = bool(res2.get("successful", False))
         txt = pending.get("ok_text", "Listo ✅") if ok else "Uy, no pude hacerlo. Probemos de nuevo."
         return DispatchResult(reply_text=txt, done=ok, state_patch={"pending": None})
@@ -116,6 +128,13 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
     def dispatch(intent: Intent, state: dict, ctx: object | None) -> DispatchResult:
         action = intent.action
         ent = intent.entities or {}
+        # ── recursos por-tenant: de ctx (multitenant real) si vino; si no, fallback legacy (ver TODO arriba) ──
+        comp_uid = ctx.composio_user_id if ctx is not None else composio_user_id
+        mpgw = ctx.mp_gateway if ctx is not None else mp_gateway
+        mpcred = ctx.mp_cred_store if ctx is not None else mp_cred_store
+        mpseller = ctx.mp_seller_user_id if ctx is not None else mp_seller_user_id
+        mpwebhook = ctx.mp_webhook_base if ctx is not None else mp_webhook_base
+        cid = ctx.cliente_id if ctx is not None else cliente_id
 
         # ── confirmación / cancelación de una acción pendiente (genérico, todo servicio) ─────────────────
         if action in ("callback", "confirm_pending"):
@@ -128,7 +147,8 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
             if said_cancel:
                 return DispatchResult(reply_text="Listo, lo cancelé. ¿Algo más?", done=True, state_patch={"pending": None})
             if said_confirm:
-                return _execute_pending(pending)
+                return _execute_pending(pending, comp_uid=comp_uid, mpgw=mpgw, mpcred=mpcred,
+                                        mpseller=mpseller, mpwebhook=mpwebhook, cid=cid)
             return DispatchResult(reply_text="¿Confirmás o cancelás?", choices=list(_CONFIRM_CHOICES))
 
         # ── Calendar: verbo 'book' (path probado E2E #97, INTACTO) ───────────────────────────────────────
@@ -148,7 +168,7 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
 
         # ── MercadoPago: cobrar por chat (confirm-gate → mp_gateway) ─────────────────────────────────────
         if action == "mp_charge":
-            if mp_gateway is None or mp_cred_store is None:
+            if mpgw is None or mpcred is None:
                 return DispatchResult(reply_text="El cobro por MercadoPago todavía no está disponible en tu cuenta.")
             amount = ent.get("amount")
             if not amount:
@@ -176,7 +196,7 @@ def make_dispatcher(gateway, *, composio_user_id: str, now_iso_provider: Callabl
                 return DispatchResult(reply_text=out.reply_text, choices=list(_CONFIRM_CHOICES),
                                       state_patch={"pending": pending})
             if isinstance(out, Read):
-                res = gateway.execute(out.slug, user_id=composio_user_id, arguments=out.arguments, confirmed=False)
+                res = gateway.execute(out.slug, user_id=comp_uid, arguments=out.arguments, confirmed=False)
                 return DispatchResult(reply_text=out.summarize(res))
             return DispatchResult(reply_text=intent.reply_es or "No pude procesar eso.")
 
