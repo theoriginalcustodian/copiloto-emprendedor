@@ -25,7 +25,7 @@ ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/con
 sys.path.insert(0, str(ARCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from backend.agent.inbound_router import route_inbound
@@ -34,8 +34,19 @@ from mp_credential_store import MpCredentialStore
 from onboarding import signup_and_provision
 from reply_store import read_replies as _read_replies
 
+import services
+from calendar_policy import CALENDAR_POLICY
+
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
+
+
+def _composio_valid_toolkits() -> frozenset[str]:
+    """Toolkits Composio soportados por ESTE Copiloto, DERIVADOS de la policy real (misma unión que
+    `worker_b.py` arma para el `ComposioGateway`: `{**CALENDAR_POLICY, **services.merged_policy()}`)
+    — no una lista literal aparte que pueda driftear. Sumar un servicio nuevo en `services/*.py`
+    (discovery por archivo, ver `services/__init__.py`) lo agrega acá sin tocar este módulo."""
+    return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 
 class ChatIn(BaseModel):
@@ -50,13 +61,18 @@ class SignupIn(BaseModel):
 
 
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
-                   mp_app: FastAPI, gotrue,
+                   mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    read_replies_fn: Callable[[str, str, int], list] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
-    `conn_factory`). El `crypto` de `/me` se construye acá (lee `MP_FERNET_KEY` del env, mismo patrón
-    que `mp_web.py`/`context_factory.py`) — `/me` no necesita descifrar nada, solo saber si el
-    tenant tiene un seller MercadoPago guardado."""
+    `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `MP_FERNET_KEY` del
+    env, mismo patrón que `mp_web.py`/`context_factory.py`).
+
+    `mp_gateway` (`MercadoPagoGateway`, Task 7 spec §7): arma la URL de conexión OAuth per-tenant en
+    `/mp/connect` (mismo patrón que `mp_connect.py` CLI, `state = crypto.encrypt(cliente_id)`).
+    `composio_gateway` (`ComposioGateway`): habilita `/composio/connect?service=<toolkit>` (onboarding
+    per-tenant, `user_id=cliente_id`) y alimenta `composio_connected` en `/me`. Ambos inyectados desde
+    el composition root (Task 11) — cero hardcoding, testeables con fakes."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
     crypto = FernetCrypto()
@@ -88,7 +104,30 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     @app.get("/me")
     def me(cliente_id: str = Depends(require_tenant)) -> dict:
         seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-        return {"cliente_id": cliente_id, "mp_connected": seller is not None}
+        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                              if (c["status"] or "").upper() == "ACTIVE"]
+        return {"cliente_id": cliente_id, "mp_connected": seller is not None,
+                "composio_connected": composio_connected}
+
+    # --- Connect flows per-tenant (Task 7, spec §7) -----------------------------
+    # `def` (no `async def`): ambas rutas hacen I/O bloqueante sync (crypto + HTTP del gateway real)
+    # -> threadpool, mismo criterio que /reply,/me,/auth/signup.
+
+    @app.get("/mp/connect")
+    def mp_connect(cliente_id: str = Depends(require_tenant)) -> dict:
+        """URL de conexión OAuth de MercadoPago para ESTE tenant (mismo patrón que `mp_connect.py`
+        CLI): el `state` cifra el `cliente_id` del token -> `/mp/callback` lo descifra y ata las
+        credenciales a ESE tenant, nunca a otro (spec §7)."""
+        return {"url": mp_gateway.connect_url(crypto.encrypt(cliente_id))}
+
+    @app.get("/composio/connect")
+    def composio_connect(service: str = "", cliente_id: str = Depends(require_tenant)) -> dict:
+        """URL de conexión de un toolkit Composio para ESTE tenant (`user_id=cliente_id`, spec §7).
+        `service` se valida contra los toolkits DERIVADOS de la policy real (`_composio_valid_toolkits`)
+        -- nunca se reenvía un toolkit arbitrario al gateway (fail-closed ante slugs inventados)."""
+        if service not in _composio_valid_toolkits():
+            raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
+        return {"url": composio_gateway.authorize(user_id=cliente_id, toolkit=service)}
 
     # --- SIN auth (spec §5.3) ---------------------------------------------------
 

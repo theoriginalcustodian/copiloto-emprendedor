@@ -158,6 +158,19 @@ class _FakeMpGateway:
         return {"id": pid, "status": "approved", "transaction_amount": 1.0,
                 "external_reference": "e", "payer": {"email": "a@b.com"}}
 
+    def connect_url(self, state):
+        return f"https://mp.example/auth?state={state}"
+
+
+class _FakeComposioGateway:
+    """Fake mínimo (Task 7 vive en test_connect_endpoints.py) — acá solo alcanza para no romper
+    /me, que ahora siempre lista las conexiones del tenant."""
+    def list_connections(self, user_id):
+        return []
+
+    def authorize(self, user_id, toolkit):
+        return f"https://composio.example/connect?user={user_id}&toolkit={toolkit}"
+
 
 class _NoopCredStore:
     def get(self, seller):
@@ -185,7 +198,8 @@ def _mp_fernet_key_env(monkeypatch):
     monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
 
 
-def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None):
+def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None,
+              mp_gateway=None, composio_gateway=None):
     db = db or _FakeTenantsDB()
     app = web_module.create_web_app(
         temporal_client=_FakeTemporal(),
@@ -194,6 +208,8 @@ def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None,
         require_tenant=require_tenant,
         mp_app=_build_mp_app(),
         gotrue=gotrue or _FakeGoTrue({}),
+        mp_gateway=mp_gateway or _FakeMpGateway(),
+        composio_gateway=composio_gateway or _FakeComposioGateway(),
         read_replies_fn=read_replies_fn,
     )
     return app, db
@@ -323,13 +339,13 @@ def test_me_with_token_reports_mp_connected_true():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
     r = TestClient(app).get("/me")
     assert r.status_code == 200
-    assert r.json() == {"cliente_id": "cid-A", "mp_connected": True}
+    assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": []}
 
 
 def test_me_without_mp_connection_reports_false():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     r = TestClient(app).get("/me")
-    assert r.json() == {"cliente_id": "cid-B", "mp_connected": False}
+    assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": []}
 
 
 def test_me_two_tenants_do_not_leak_mp_state():
@@ -377,5 +393,5 @@ def test_sync_routes_still_respond_correctly(monkeypatch):
                                                                    "choices": None, "created_at": "t"}])
     client = TestClient(app)
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
-    assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True}
+    assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": []}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw"}).json()["auth_user_id"] == "auth-user-X"
