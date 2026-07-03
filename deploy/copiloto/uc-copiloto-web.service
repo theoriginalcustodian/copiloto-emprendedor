@@ -1,0 +1,21 @@
+[Unit]
+Description=Copiloto del Emprendedor - front-door web (FastAPI+Temporal, multitenant)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/uc-repos/copiloto/apps/copiloto
+Environment=PYTHONPATH=/opt/uc-repos/copiloto/deploy/skeleton_kit/archetypes/conversational_agent/reference:/opt/uc-repos/copiloto/deploy/worker
+EnvironmentFile=/etc/unreal-copilot/copiloto.env
+EnvironmentFile=/etc/unreal-copilot/fusion-pg.env
+EnvironmentFile=/etc/unreal-copilot/fusion-supabase.env
+ExecStart=/opt/uc-copiloto-venv/bin/python -m serve
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
