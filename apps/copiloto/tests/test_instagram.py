@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.instagram import ACCOUNT_SLUG, MEDIA_SLUG, CREATE_MEDIA_SLUG, PUBLISH_SLUG, build
 
@@ -30,12 +31,12 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 def test_account_es_lectura_directa():
     gw = _GatewaySpy(rets=[{"successful": True, "data": {"username": "acme", "id": "9"}}])
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "instagram", "op": "account"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "instagram", "op": "account"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == ACCOUNT_SLUG and gw.calls[0]["confirmed"] is False
     assert "acme" in r.reply_text
 
@@ -43,7 +44,7 @@ def test_account_es_lectura_directa():
 def test_publish_propone_con_chain():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "instagram", "op": "publish",
-                  "ig_user_id": "9", "image_url": "https://x/y.jpg", "caption": "hola"}), {}, None)
+                  "ig_user_id": "9", "image_url": "https://x/y.jpg", "caption": "hola"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []                                              # HITL: no publica todavía
     p = r.state_patch["pending"]
     assert p["slug"] == CREATE_MEDIA_SLUG
@@ -57,7 +58,7 @@ def test_confirm_ejecuta_chain_2pasos():
     pending = {"slug": CREATE_MEDIA_SLUG, "arguments": {"ig_user_id": "9", "image_url": "u", "caption": "c"},
                "then": {"slug": PUBLISH_SLUG, "id_key": "id", "id_arg": "creation_id", "arguments": {"ig_user_id": "9"}},
                "ok_text": "Listo, lo publiqué en Instagram ✅"}
-    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, None)
+    r = _disp(gw)(Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
     assert len(gw.calls) == 2
     assert gw.calls[0]["slug"] == CREATE_MEDIA_SLUG and gw.calls[0]["confirmed"] is True
     assert gw.calls[1]["slug"] == PUBLISH_SLUG and gw.calls[1]["arguments"]["creation_id"] == "cid_123"
@@ -66,7 +67,7 @@ def test_confirm_ejecuta_chain_2pasos():
 
 def test_publish_sin_image_url_pide_mas():
     gw = _GatewaySpy()
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "instagram", "op": "publish", "ig_user_id": "9"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "instagram", "op": "publish", "ig_user_id": "9"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == [] and not r.state_patch.get("pending")          # falta image_url -> no propone
 
 

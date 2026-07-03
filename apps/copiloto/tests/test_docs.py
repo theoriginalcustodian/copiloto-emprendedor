@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.docs import CREATE_SLUG, READ_SLUG, build
 
@@ -27,13 +28,13 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 def test_create_doc_propone():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "docs", "op": "create_doc",
-                  "title": "T", "content": "# hola"}), {}, None)
+                  "title": "T", "content": "# hola"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []
     p = r.state_patch["pending"]
     assert p["slug"] == CREATE_SLUG and p["arguments"] == {"title": "T", "markdown_text": "# hola"}
@@ -41,7 +42,7 @@ def test_create_doc_propone():
 
 def test_read_doc_es_lectura_directa():
     gw = _GatewaySpy(ret={"successful": True, "data": {"plaintext": "hola"}})
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "docs", "op": "read_doc", "document_id": "d1"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "docs", "op": "read_doc", "document_id": "d1"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == READ_SLUG and gw.calls[0]["confirmed"] is False
     assert "hola" in r.reply_text
 

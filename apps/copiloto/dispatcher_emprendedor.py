@@ -53,22 +53,14 @@ def _dig(obj, path):
     return cur
 
 
-def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str], tz: str = DEFAULT_TZ,
-                    composio_user_id: str | None = None, mp_gateway=None, mp_cred_store=None,
-                    mp_seller_user_id: str | None = None, mp_webhook_base: str | None = None,
-                    cliente_id: str | None = None) -> Callable[[Intent, dict, object], DispatchResult]:
-    """Multitenant real: los recursos por-tenant (composio_user_id, mp_*, cliente_id) se LEEN de `ctx`
-    (un `TenantCtx` armado por `context_factory(conv)` desde `conv["cliente_id"]`, per-request — cero fuga
-    entre tenants, ver `context_factory.py`). Los kwargs `composio_user_id`/`mp_*`/`cliente_id` de abajo son
-    un FALLBACK legacy (closure horneado, single-tenant) usado SOLO cuando `ctx is None`.
-
-    TODO(Task 8 del plan — worker_b refactor, mismo sprint): hoy `dispatch_intent` arma `ctx=None` porque
-    `worker_b.build_registrations` (fuera del ownership de este task) todavía no registra un
-    `context_factory` en `register_domain` — composition root single-tenant heredado. Este fallback
-    preserva el comportamiento actual sin tocar `worker_b.py`/`test_worker_wiring.py`. Cuando Task 8 cablee
-    el `context_factory` real, `ctx` nunca vuelve a ser None en producción y este fallback + sus kwargs
-    quedan muertos → Task 8 los borra ahí. Deuda GESTIONADA: visible (este comentario), con dueño (Task 8)
-    y condición de pago explícita — no invisible, no impaga."""
+def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
+                    tz: str = DEFAULT_TZ) -> Callable[[Intent, dict, object], DispatchResult]:
+    """Multitenant-only (Task 8b): los recursos por-tenant (composio_user_id, mp_*, cliente_id) se LEEN
+    SIEMPRE de `ctx` (un `TenantCtx` armado por `context_factory(conv)` desde `conv["cliente_id"]`,
+    per-request — cero fuga entre tenants, ver `context_factory.py`). Sin fallback single-tenant: `ctx`
+    es obligatorio, `worker_b.build_worker_config` (Task 8) ya registra el `context_factory` real, así que
+    en producción `ctx` nunca es `None`. Si un caller no lo pasa, `dispatch` falla claro (`ValueError`) en
+    vez de degradar en silencio a un tenant fantasma."""
 
     def _execute_pending(pending: dict, *, comp_uid, mpgw, mpcred, mpseller, mpwebhook, cid) -> DispatchResult:
         """Ejecuta el write pendiente con confirmed=True (doble candado). Fail-closed: sin successful=True NO
@@ -126,15 +118,18 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str], tz: str = D
         return DispatchResult(reply_text=txt, done=ok, state_patch={"pending": None})
 
     def dispatch(intent: Intent, state: dict, ctx: object | None) -> DispatchResult:
+        if ctx is None:
+            raise ValueError("dispatch requiere ctx (context_factory) — dispatcher multitenant-only, sin "
+                             "fallback single-tenant; verificá que el composition root registre context_factory")
         action = intent.action
         ent = intent.entities or {}
-        # ── recursos por-tenant: de ctx (multitenant real) si vino; si no, fallback legacy (ver TODO arriba) ──
-        comp_uid = ctx.composio_user_id if ctx is not None else composio_user_id
-        mpgw = ctx.mp_gateway if ctx is not None else mp_gateway
-        mpcred = ctx.mp_cred_store if ctx is not None else mp_cred_store
-        mpseller = ctx.mp_seller_user_id if ctx is not None else mp_seller_user_id
-        mpwebhook = ctx.mp_webhook_base if ctx is not None else mp_webhook_base
-        cid = ctx.cliente_id if ctx is not None else cliente_id
+        # ── recursos por-tenant: SIEMPRE de ctx (multitenant real, cero closure horneado) ───────────────────
+        comp_uid = ctx.composio_user_id
+        mpgw = ctx.mp_gateway
+        mpcred = ctx.mp_cred_store
+        mpseller = ctx.mp_seller_user_id
+        mpwebhook = ctx.mp_webhook_base
+        cid = ctx.cliente_id
 
         # ── confirmación / cancelación de una acción pendiente (genérico, todo servicio) ─────────────────
         if action in ("callback", "confirm_pending"):

@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
+from _ctx_helper import make_ctx as _ctx
 import dispatcher_emprendedor as de
 from services.sheets import APPEND_SLUG, UPDATE_SLUG, READ_SLUG, SHEET_NAMES_SLUG, SHEETS_VERSION
 
@@ -32,7 +33,7 @@ class _GatewaySpy:
 
 
 def _disp(gw):
-    return de.make_dispatcher(gw, composio_user_id="u1", now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    return de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
 
 
 # ── unit: ruteo + casing + resolución de pestaña ─────────────────────────────
@@ -40,7 +41,7 @@ def test_append_sin_pestania_resuelve_primera():
     """append sin sheet_name propone APPEND (camelCase) + resolve que ubica la 1ra hoja en el arg `range`."""
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "append_row",
-                  "spreadsheet_id": "sid1", "values": ["a", "b"]}), {}, None)
+                  "spreadsheet_id": "sid1", "values": ["a", "b"]}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []                       # no ejecuta: propone
     p = r.state_patch["pending"]
     assert p["slug"] == APPEND_SLUG
@@ -55,7 +56,7 @@ def test_append_sin_pestania_resuelve_primera():
 def test_append_con_pestania_no_resuelve():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "append_row",
-                  "spreadsheet_id": "sid1", "values": ["a"], "sheet_name": "Ventas"}), {}, None)
+                  "spreadsheet_id": "sid1", "values": ["a"], "sheet_name": "Ventas"}), {}, _ctx(composio_user_id="u1"))
     p = r.state_patch["pending"]
     assert p["arguments"]["range"] == "Ventas" and p.get("resolve") is None
 
@@ -64,7 +65,7 @@ def test_update_range_targetea_celda_y_resuelve_pestania():
     """update sin sheet_name propone BATCH_UPDATE (snake_case) con la celda destino + resolve en `sheet_name`."""
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "update_range",
-                  "spreadsheet_id": "sid1", "cell": "B3", "values": ["x"]}), {}, None)
+                  "spreadsheet_id": "sid1", "cell": "B3", "values": ["x"]}), {}, _ctx(composio_user_id="u1"))
     p = r.state_patch["pending"]
     assert p["slug"] == UPDATE_SLUG
     args = p["arguments"]
@@ -76,7 +77,7 @@ def test_update_range_targetea_celda_y_resuelve_pestania():
 def test_update_range_default_a1_y_pestania_explicita():
     gw = _GatewaySpy()
     r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "update_range",
-                  "spreadsheet_id": "sid1", "values": ["x"], "sheet_name": "Datos"}), {}, None)
+                  "spreadsheet_id": "sid1", "values": ["x"], "sheet_name": "Datos"}), {}, _ctx(composio_user_id="u1"))
     p = r.state_patch["pending"]
     assert p["arguments"]["first_cell_location"] == "A1"       # default cuando no se da celda
     assert p["arguments"]["sheet_name"] == "Datos" and p.get("resolve") is None
@@ -84,7 +85,7 @@ def test_update_range_default_a1_y_pestania_explicita():
 
 def test_read_range_es_lectura_directa():
     gw = _GatewaySpy(ret={"successful": True, "data": {"valueRanges": []}})
-    r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "read_range", "spreadsheet_id": "sid1"}), {}, None)
+    r = _disp(gw)(Intent(action="tool_action", entities={"service": "sheets", "op": "read_range", "spreadsheet_id": "sid1"}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls[0]["slug"] == READ_SLUG and gw.calls[0]["confirmed"] is False
     assert r.reply_text
 
@@ -94,9 +95,9 @@ def test_confirm_ejecuta_resolve_antes_del_write():
     gw = _GatewaySpy(ret={"successful": True, "data": {"sheet_names": ["Hoja 1"]}})
     disp = _disp(gw)
     prop = disp(Intent(action="tool_action", entities={"service": "sheets", "op": "append_row",
-                "spreadsheet_id": "sid1", "values": ["a"]}), {}, None)
+                "spreadsheet_id": "sid1", "values": ["a"]}), {}, _ctx(composio_user_id="u1"))
     pending = prop.state_patch["pending"]
-    r = disp(Intent(action="confirm_pending", entities={}), {"pending": pending}, None)
+    r = disp(Intent(action="confirm_pending", entities={}), {"pending": pending}, _ctx(composio_user_id="u1"))
     assert r.done is True
     # 1er call = resolve (read GET_SHEET_NAMES, confirmed=False); 2do = append con range inyectado (confirmed=True)
     assert gw.calls[0]["slug"] == SHEET_NAMES_SLUG and gw.calls[0]["confirmed"] is False
@@ -114,7 +115,7 @@ def test_append_no_pisa_y_update_puntual_real():
     import services
     user = os.environ["COPILOTO_COMPOSIO_USER_ID"]
     gw = ComposioGateway(services.merged_policy())
-    disp = de.make_dispatcher(gw, composio_user_id=user, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
+    disp = de.make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00")
     raw = Composio()
     rid = uuid.uuid4().hex[:8]
 
@@ -128,9 +129,9 @@ def test_append_no_pisa_y_update_puntual_real():
     def _agent(op, ent):
         """Simula el flujo del agente: propone (tool_action) y confirma (confirm_pending). SIN sheet_name
         -> ejercita el resolve real de la 1ra pestaña. Falla si el write no cerró done=True."""
-        prop = disp(Intent(action="tool_action", entities={"service": "sheets", "op": op, "spreadsheet_id": sid, **ent}), {}, None)
+        prop = disp(Intent(action="tool_action", entities={"service": "sheets", "op": op, "spreadsheet_id": sid, **ent}), {}, _ctx(composio_user_id=user))
         pending = prop.state_patch["pending"]
-        r = disp(Intent(action="confirm_pending", entities={}), {"pending": pending}, None)
+        r = disp(Intent(action="confirm_pending", entities={}), {"pending": pending}, _ctx(composio_user_id=user))
         assert r.done is True, f"{op} no cerró OK: {r.reply_text}"
 
     def _read(rng):

@@ -27,6 +27,7 @@ from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.composio_gateway import ComposioGateway
 
 import services
+from _ctx_helper import make_ctx as _ctx
 from dispatcher_emprendedor import make_dispatcher
 from reply_store import make_pg_reply_sink, read_replies
 from services.gmail import FETCH_SLUG
@@ -81,8 +82,9 @@ async def test_e2e_tool_action_gmail_send():
     sink = make_pg_reply_sink(conn_factory)
     register_channel("web", WebChannelAdapter(reply_sink=sink))
     register_domain("emprendedor", system_prompt="(scripted)", llm_provider=_ScriptedLlm(),
-                    dispatcher=make_dispatcher(gw, composio_user_id=composio_user,
-                                               now_iso_provider=lambda: "2026-07-02T10:00:00-03:00"))
+                    dispatcher=make_dispatcher(gw, now_iso_provider=lambda: "2026-07-02T10:00:00-03:00"),
+                    context_factory=lambda conv: _ctx(composio_user_id=composio_user,
+                                                      cliente_id=conv.get("cliente_id", cliente_id)))
     router_adapter = WebChannelAdapter(reply_sink=sink)
 
     client = await Client.connect(os.environ.get("TEMPORAL_TARGET", "127.0.0.1:7233"),

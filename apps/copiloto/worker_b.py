@@ -59,27 +59,6 @@ def build_llm() -> LlmProvider:
                        quantizations=())
 
 
-def build_registrations(*, gateway, reply_sink: Callable[[str, str, list | None], None],
-                        composio_user_id: str, now_iso_provider: Callable[[], str],
-                        mp_gateway=None, mp_cred_store=None, mp_seller_user_id: str | None = None,
-                        mp_webhook_base: str | None = None, cliente_id: str | None = None) -> None:
-    """LEGACY (composition root single-tenant heredado, previo a Task 8). `main()` ya NO la llama —
-    reemplazada por `build_worker_config` (multitenant real, ctx per-request). Se mantiene SIN TOCAR porque
-    `tests/test_worker_wiring.py` la ejercita directo; ambas (esta función + el fallback gemelo de
-    `dispatcher_emprendedor.make_dispatcher`) son deuda GESTIONADA — visible acá, dueño y condición de pago
-    explícitos: Task 8b las borra juntas (mismo sprint, plan 2026-07-03) cuando se retire ese test."""
-    from system_prompt import SYSTEM_PROMPT
-    # system prompt = base del dominio + fragmentos autodescubiertos de cada servicio (cero edición central)
-    system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
-    register_domain("emprendedor", system_prompt=system_prompt, llm_provider=build_llm(),
-                    dispatcher=make_dispatcher(gateway, composio_user_id=composio_user_id,
-                                               now_iso_provider=now_iso_provider,
-                                               mp_gateway=mp_gateway, mp_cred_store=mp_cred_store,
-                                               mp_seller_user_id=mp_seller_user_id,
-                                               mp_webhook_base=mp_webhook_base, cliente_id=cliente_id))
-    register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
-
-
 def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     """Composition root PURO y multitenant real (Task 8): construye los recursos COMPARTIDOS una sola vez
     (crypto, mp_gateway, composio gateway) y arma el `context_factory` que resuelve TODO lo per-tenant
@@ -87,8 +66,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     cliente_id/composio_user_id/seller de env (elimina `COPILOTO_CLIENTE_ID`/`COPILOTO_COMPOSIO_USER_ID`/
     `MP_SELLER_USER_ID`; `MP_WEBHOOK_BASE` sí sale de `env` por ser infra, no identidad de tenant).
 
-    Registra el dominio 'emprendedor' con `context_factory` no-None (ctx SIEMPRE presente en prod — el
-    fallback legacy de `dispatcher_emprendedor.make_dispatcher` queda muerto) y el canal 'web'. Cablea
+    Registra el dominio 'emprendedor' con `context_factory` no-None (ctx SIEMPRE presente en prod;
+    `dispatcher_emprendedor.make_dispatcher` es multitenant-only, sin fallback) y el canal 'web'. Cablea
     `set_refresh_deps` ANTES de devolver, para que `MpRefreshWorkflow`/`refresh_credential` puedan correr en
     cuanto el `Worker` arranque a pollear.
 
