@@ -59,7 +59,13 @@ def make_require_tenant(*, secret: str, conn_factory: Callable) -> Callable:
 
     Devuelve `cliente_id: str` inyectable vía `Depends(...)`.
     `HTTPException(401)` si el header falta o el token es inválido/expirado/aud incorrecto.
-    `HTTPException(403)` si el token es válido pero no hay fila de tenant (sin onboarding)."""
+    `HTTPException(403)` si el token es válido pero no hay fila de tenant (sin onboarding).
+
+    Fail-closed en el arranque: si el secreto falta o está vacío, aborta AL CONSTRUIR (el
+    servicio muere al bootear) en vez de aceptar tokens forjados con clave vacía en runtime —
+    PyJWT verifica HMAC contra `""` sin quejarse, así que un secret vacío es un fail-open."""
+    if not secret or not isinstance(secret, str):
+        raise ValueError("SUPABASE_JWT_SECRET missing/empty")
 
     def require_tenant(request: Request) -> str:
         authorization = request.headers.get("Authorization", "")
