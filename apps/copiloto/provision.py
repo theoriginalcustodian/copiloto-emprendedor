@@ -10,9 +10,9 @@ Pliega en UN script (paga la deuda M2 documentada en mp_indexes.sql — "provisi
   2. `uc_factory.tenants` — registry `auth_user_id -> cliente_id` (spec §4). DDL BESPOKE, a propósito
      fuera del mecanismo genérico: su PK es `auth_user_id` (no `id bigserial`) y `cliente_id` es
      UNIQUE + DEFAULT gen_random_uuid() (no un simple filtro de partición NOT NULL). El mecanismo
-     genérico no soporta esa forma, así que `tenants` se EXCLUYE explícitamente del pase estándar
-     (`_STANDARD_ONLY`) aunque también aparece documentado en uc_tables.json (mismo formato de columnas,
-     visibilidad del modelo de datos) — ver nota de concern en el reporte de la Task 1.
+     genérico no soporta esa forma, así que `tenants` NO vive en uc_tables.json (evita el landmine de
+     que `seed.py` la cree con el schema genérico equivocado sobre una DB fresca) y su DDL bespoke acá
+     es la ÚNICA fuente de verdad. El filtro `!= TENANTS_TABLE` del pase estándar queda como defensa.
 
   3. Los índices únicos de `mp_indexes.sql` (M2): sin ellos, `MpCredentialStore`/`MpPaymentStore`
      fallan en runtime con "no unique or exclusion constraint matching ON CONFLICT". Se pliegan acá
