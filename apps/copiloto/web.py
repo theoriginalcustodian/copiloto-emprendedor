@@ -73,28 +73,35 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
 
+    # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
+    # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
+    # `def` en su threadpool anyio -> el I/O no bloquea el event loop, así N requests multitenant no
+    # se serializan (regla de oro "cero fricción para escalar"). `/chat` SÍ es `async def` porque
+    # genuinamente hace `await route_inbound(...)` (I/O async del cliente Temporal).
+
     @app.get("/reply")
-    async def reply(session_id: str, after_id: int = 0, cliente_id: str = Depends(require_tenant)) -> dict:
+    def reply(session_id: str, after_id: int = 0, cliente_id: str = Depends(require_tenant)) -> dict:
         rows = read_replies_fn(cliente_id, session_id, after_id)
         next_id = rows[-1]["id"] if rows else after_id
         return {"replies": rows, "next_id": next_id}
 
     @app.get("/me")
-    async def me(cliente_id: str = Depends(require_tenant)) -> dict:
+    def me(cliente_id: str = Depends(require_tenant)) -> dict:
         seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
         return {"cliente_id": cliente_id, "mp_connected": seller is not None}
 
     # --- SIN auth (spec §5.3) ---------------------------------------------------
 
     @app.post("/auth/signup")
-    async def signup(body: SignupIn) -> dict:
+    def signup(body: SignupIn) -> dict:
         # Admin-mediado (disable_signup:true en fusion): crea el user + la fila `tenants` + el
         # claim (Task 3). Sin `require_tenant` -- todavía no hay tenant al momento del signup.
+        # `def` (no async): httpx sync + psycopg2 -> threadpool, no bloquea el loop.
         return signup_and_provision(email=body.email, password=body.password, gotrue=gotrue,
                                     conn_factory=conn_factory)
 
     @app.get("/healthz")
-    async def healthz() -> dict:
+    def healthz() -> dict:
         return {"status": "ok"}
 
     # `/mp/callback` y `/mp/webhook` ya construidos en `mp_app` (create_mp_app) con su propia

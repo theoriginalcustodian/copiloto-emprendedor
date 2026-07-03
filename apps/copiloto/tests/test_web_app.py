@@ -16,6 +16,7 @@ Boundary bajo test (regla dura, spec §5.3): /chat,/reply,/me EXIGEN require_ten
 /mp/callback,/mp/webhook,/auth/signup,/healthz NO."""
 from __future__ import annotations
 
+import inspect
 import sys
 from pathlib import Path
 
@@ -339,3 +340,42 @@ def test_me_two_tenants_do_not_leak_mp_state():
     app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
     assert TestClient(app_a).get("/me").json()["mp_connected"] is True
     assert TestClient(app_b).get("/me").json()["mp_connected"] is False
+
+
+# --- Escala: las rutas de I/O BLOQUEANTE son `def` (threadpool), no `async def` --------
+# Fix de escala (regla de oro "cero fricción para escalar"): psycopg2/httpx sync en una ruta
+# `async def` bloquean el event loop y SERIALIZAN los requests multitenant. FastAPI corre las rutas
+# `def` en su threadpool anyio -> no bloquean. Test estructural (guard de regresión) + funcional.
+
+def _route_endpoint(app, path: str, method: str):
+    """El callable original registrado para (path, method) en la app FastAPI."""
+    method = method.upper()
+    for route in app.routes:
+        if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
+            return route.endpoint
+    raise AssertionError(f"ruta no encontrada: {method} {path}")
+
+
+def test_blocking_io_routes_are_sync_def_not_coroutine():
+    """/reply, /me, /auth/signup NO deben ser coroutines (correrían en el loop y lo bloquearían con
+    su I/O sync). /chat SÍ es coroutine (await route_inbound, genuinamente async)."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    for path, method in (("/reply", "GET"), ("/me", "GET"), ("/auth/signup", "POST")):
+        ep = _route_endpoint(app, path, method)
+        assert not inspect.iscoroutinefunction(ep), f"{method} {path} debe ser `def` (threadpool), no `async def`"
+    assert inspect.iscoroutinefunction(_route_endpoint(app, "/chat", "POST")), "/chat debe seguir siendo async"
+
+
+def test_sync_routes_still_respond_correctly(monkeypatch):
+    """Las 3 rutas convertidas a `def` responden IGUAL vía TestClient (paridad funcional tras el fix)."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    db = _FakeTenantsDB()
+    db.mp_sellers["cid-A"] = "seller-146"
+    gotrue = _FakeGoTrue({"x@test.com": "auth-user-X"})
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db, gotrue=gotrue,
+                        read_replies_fn=lambda cid, sess, after: [{"id": 7, "reply_text": "ok",
+                                                                   "choices": None, "created_at": "t"}])
+    client = TestClient(app)
+    assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
+    assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True}
+    assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw"}).json()["auth_user_id"] == "auth-user-X"
