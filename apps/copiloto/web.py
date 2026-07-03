@@ -27,9 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
+from temporalio.common import WorkflowIDConflictPolicy
 
 from backend.agent.inbound_router import route_inbound
 from clients.agent.providers.crypto import FernetCrypto
+from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 from mp_credential_store import MpCredentialStore
 from onboarding import signup_and_provision
 from reply_store import read_replies as _read_replies
@@ -39,6 +41,35 @@ from calendar_policy import CALENDAR_POLICY
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
+
+# MercadoPago refresh (Task 9): el token OAuth del vendedor dura 180 días REALES (contrato MP, no un valor
+# desacoplado -- M1 dejó `expires_at` absoluto a partir de ese vencimiento). El intervalo de refresh se ancla
+# a ese vencimiento CON COLCHÓN (150d < 180d) para que el token nunca llegue a expirar entre ciclos, incluso si
+# un ciclo se demora. MAX_REFRESH_CYCLES acota el history del workflow antes del `continue_as_new` (loop
+# indefinido sin inflar el history, ver `mp_refresh_workflow.py`).
+REFRESH_INTERVAL_SECONDS = float(os.environ.get("MP_REFRESH_INTERVAL_SECONDS", 150 * 24 * 3600))
+MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
+
+
+def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
+                       refresh_interval_seconds: float = REFRESH_INTERVAL_SECONDS,
+                       max_cycles: int = MAX_REFRESH_CYCLES) -> Callable:
+    """Fábrica de `start_refresh` (hook de `create_mp_app`, Task 9): arranca el `MpRefreshWorkflow` durable
+    para UN (cliente_id, seller_user_id) al conectar MercadoPago. `id` determinístico por ese par +
+    `id_conflict_policy=USE_EXISTING` -> IDEMPOTENTE (reconectar/re-callback del MISMO seller reusa el loop ya
+    corriendo, nunca arranca uno duplicado; spec §Task 9, patrón start-or-signal de `inbound_router.py`).
+    `temporal_client` inyectado desde el composition root (Task 11) -- cero hardcoding, testeable con un fake."""
+
+    async def start_refresh(cliente_id: str, seller_user_id: str) -> None:
+        await temporal_client.start_workflow(
+            MpRefreshWorkflow.run,
+            args=[cliente_id, seller_user_id, refresh_interval_seconds, max_cycles],
+            id=f"mp-refresh-{cliente_id}-{seller_user_id}",
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+
+    return start_refresh
 
 
 def _composio_valid_toolkits() -> frozenset[str]:
