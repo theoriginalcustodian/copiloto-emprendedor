@@ -94,9 +94,12 @@ REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
 systemctl daemon-reload
-systemctl enable --now "$WEB_UNIT"
-systemctl enable --now "$WORKER_UNIT"
-echo "--- systemctl is-active (post enable --now) ---"
+systemctl enable "$WEB_UNIT" "$WORKER_UNIT"
+# restart (NO solo enable --now): en un REDEPLOY los servicios YA corren, y `enable --now` no reinicia
+# un servicio activo -> el código nuevo NO se cargaría. `restart` arranca si está parado y reinicia si
+# está activo -> un redeploy siempre carga el código sincronizado. (Breve downtime por reinicio; OK para deploy.)
+systemctl restart "$WEB_UNIT" "$WORKER_UNIT"
+echo "--- systemctl is-active (post restart) ---"
 systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
 REMOTE_UNITS
