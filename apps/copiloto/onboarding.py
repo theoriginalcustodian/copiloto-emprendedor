@@ -174,6 +174,25 @@ class GoTrueAdmin:
         resp.raise_for_status()
         return resp.json()
 
+    def refresh_grant(self, refresh_token: str) -> dict:
+        """POST /auth/v1/token?grant_type=refresh_token — renueva el access token usando el refresh
+        token, sin re-login. GoTrue tiene rotación ON: la respuesta trae un refresh_token NUEVO (el
+        caller DEBE persistirlo). Mismo patrón/headers que `password_grant` (el gateway exige `apikey`
+        en /auth/v1; este endpoint tampoco recibe JWT del usuario). Ante refresh inválido/expirado/
+        reusado GoTrue responde 400/401 -> InvalidCredentials (la ruta lo mapea a 401), nunca un
+        httpx.HTTPStatusError crudo. [ASSUMED_PENDING_VERIFY @ go-live] el status EXACTO (400 vs 401)
+        de GoTrue ante refresh inválido se confirma en el smoke vivo; se cubren ambos."""
+        resp = self._client.post(
+            f"{self._base_url}/auth/v1/token",
+            headers=self._headers(),
+            params={"grant_type": "refresh_token"},
+            json={"refresh_token": refresh_token},
+        )
+        if resp.status_code in _INVALID_GRANT_STATUSES:
+            raise InvalidCredentials(f"refresh grant failed: {resp.status_code}")
+        resp.raise_for_status()
+        return resp.json()
+
 
 def signup_and_provision(*, email: str, password: str, gotrue, conn_factory: Callable) -> dict:
     """Signup admin-mediado completo (spec §5.1): crea el user en GoTrue, da de alta el tenant

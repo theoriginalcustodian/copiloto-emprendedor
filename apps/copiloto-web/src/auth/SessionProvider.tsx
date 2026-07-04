@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
-import { clearToken, getToken, setToken } from './session';
+import { clearToken, getToken, setRefreshToken, setToken } from './session';
 import {
   SessionContext,
   type LoginResult,
@@ -62,6 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         const response = await api.login(email, password);
         setToken(response.access_token);
+        setRefreshToken(response.refresh_token);
       } catch (err) {
         if (err instanceof UnauthorizedError) return { ok: false, error: 'credenciales' };
         return { ok: false, error: 'red' };
