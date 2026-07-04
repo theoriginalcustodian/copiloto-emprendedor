@@ -17,12 +17,19 @@ const WELCOME_TEXT =
  * SOLO presentación, reusándolo tal cual. Sin AppShell/TabBar (Task 9) ni Cuenta (Task 21) todavía
  * construidos, esta es HOY la única pantalla autenticada — ver nota de `onLogout` en
  * `ChatHeader.tsx`.
+ *
+ * `handleSend` reenvía el 2do argumento de `Composer.onSend` (la `key` del modo activo, leída por
+ * `Composer` desde `useMode()` — Feature addendum 2026-07-03) a `useChat().send(text, { mode })`,
+ * que ya soportaba `opts.mode` desde Task 8. Sin endpoint nuevo (spec §5).
  */
 export function ChatScreen() {
   const { messages, sendStatus, send } = useChat();
   const { logout } = useSession();
 
-  const handleSend = useCallback((text: string) => void send(text), [send]);
+  const handleSend = useCallback(
+    (text: string, mode: string | null) => void send(text, { mode }),
+    [send],
+  );
   const handleChoice = useCallback(
     (value: string) => void send(value, { kind: 'callback' }),
     [send],

@@ -5,6 +5,7 @@ import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { AppShell } from './AppShell';
+import { ModeProvider } from './modeStore';
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -23,7 +24,12 @@ function renderAppShell() {
   return render(
     <ThemeProvider>
       <SessionProvider>
-        <AppShell />
+        {/* ModeProvider (Feature addendum 2026-07-03): `ChatScreen` -> `Composer` y `AppsScreen`
+            leen `useMode()` — sin este wrapper el render tira "useMode debe usarse dentro de
+            <ModeProvider>" (mismo criterio que `SessionProvider` acá arriba). */}
+        <ModeProvider>
+          <AppShell />
+        </ModeProvider>
       </SessionProvider>
     </ThemeProvider>,
   );

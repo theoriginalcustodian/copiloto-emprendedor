@@ -20,6 +20,16 @@ const DEFAULT_TAB: TabKey = 'chat';
  * resuelve su propio `onLogout` internamente vía `useSession()` (ver ChatScreen.tsx) — no hace
  * falta pasarle nada acá; cuando Cuenta (Task 21) tenga su propio "Cerrar sesión", ese botón se
  * retira de `ChatHeader` (nota ya dejada en ChatHeader.tsx, no se toca en este task).
+ *
+ * `AppsScreen` (Feature addendum 2026-07-03, "modos por app") no conoce el estado de tabs — su
+ * botón "+" solo pide `onGoToConnections`, que acá es simplemente cambiar `activeTab` (mismo
+ * mecanismo de navegación por estado local que el resto del shell, cero acoplamiento nuevo).
+ *
+ * Nota de scope (deuda visible, no bloqueante): el mock (EXTRACT §2.3) describe un badge-dot en el
+ * ícono del tab "Apps" cuando hay un modo activo (`hasActiveMode`). Queda deliberadamente FUERA de
+ * este pase — requeriría tocar `TabBar.tsx` (fuera de mi ownership en esta feature) para exponer
+ * un dato por tab; el spec de esta feature lo marca explícitamente como "(opcional)". Candidato:
+ * sumar un prop `badge?: boolean` por `TabDefinition` en `TabBar.tsx` cuando se retome.
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
@@ -28,7 +38,7 @@ export function AppShell() {
     <div className="app-frame app-shell" data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
         {activeTab === 'chat' && <ChatScreen />}
-        {activeTab === 'apps' && <AppsScreen />}
+        {activeTab === 'apps' && <AppsScreen onGoToConnections={() => setActiveTab('connections')} />}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>

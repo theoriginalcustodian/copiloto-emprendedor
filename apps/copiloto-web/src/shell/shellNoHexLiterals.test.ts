@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 // eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), no un módulo real (mismo patrón que modules/chat/chatNoHexLiterals.test.ts).
 import appShellSource from './AppShell.tsx?raw';
+import modeStoreSource from './modeStore.tsx?raw';
 import shellCss from './shell.css?raw';
 import tabBarSource from './TabBar.tsx?raw';
 import accountScreenSource from '../modules/account/AccountScreen.tsx?raw';
@@ -19,6 +20,7 @@ const HEX_COLOR_RE = /#[0-9a-fA-F]{3,8}\b/g;
 const SOURCES: Record<string, string> = {
   'AppShell.tsx': appShellSource,
   'TabBar.tsx': tabBarSource,
+  'modeStore.tsx': modeStoreSource,
   'shell.css': shellCss,
   'modules/apps/AppsScreen.tsx': appsScreenSource,
   'modules/connections/ConnectionsScreen.tsx': connectionsScreenSource,

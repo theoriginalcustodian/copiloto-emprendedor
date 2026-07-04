@@ -3,6 +3,7 @@ import { SessionProvider } from './auth/SessionProvider';
 import { LoginScreen } from './auth/LoginScreen';
 import { useSession } from './auth/useSession';
 import { AppShell } from './shell/AppShell';
+import { ModeProvider } from './shell/modeStore';
 
 /**
  * Router raíz por estado de sesión (Task 7/22): 'checking' -> splash; 'authed' -> AppShell (shell
@@ -35,7 +36,12 @@ export function App() {
   return (
     <ThemeProvider>
       <SessionProvider>
-        <AppRouter />
+        {/* ModeProvider (Feature addendum 2026-07-03, "modos por app"): estado GLOBAL compartido
+            entre `AppsScreen` (setea el modo) y `Composer` (lo lee) — vive acá, un nivel arriba
+            de `AppShell`, mismo criterio que `SessionProvider`. */}
+        <ModeProvider>
+          <AppRouter />
+        </ModeProvider>
       </SessionProvider>
     </ThemeProvider>
   );

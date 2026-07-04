@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from '../../auth/SessionProvider';
 import '../../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../../design-system/ThemeProvider';
+import { ModeProvider } from '../../shell/modeStore';
 import { ChatScreen } from './ChatScreen';
 
 function mockMatchMedia() {
@@ -23,7 +24,11 @@ function renderChatScreen() {
   return render(
     <ThemeProvider>
       <SessionProvider>
-        <ChatScreen />
+        {/* ModeProvider (Feature addendum 2026-07-03): `Composer` lee `useMode()` para el
+            placeholder/chip de modo — sin este wrapper el render tira. */}
+        <ModeProvider>
+          <ChatScreen />
+        </ModeProvider>
       </SessionProvider>
     </ThemeProvider>,
   );

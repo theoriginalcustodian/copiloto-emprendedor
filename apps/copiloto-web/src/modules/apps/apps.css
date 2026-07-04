@@ -1,0 +1,96 @@
+/*
+ * Estilos del módulo Apps (Feature addendum 2026-07-03 — "modos por app") — theme-aware vía CSS
+ * vars de themes.css, cero color literal (mismo criterio que chat.css/connections.css/shell.css).
+ * Mismo layout base que `connections-screen`/`placeholder-screen` (flex:1, min-height:0,
+ * overflow-y:auto) para encajar en `.app-shell__content` sin refactor de shell.css.
+ */
+
+/* ---------- Screen ---------- */
+.apps-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.apps-screen__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.apps-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.apps-screen__subtitle {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.apps-screen__loading {
+  display: flex;
+  gap: 10px;
+}
+
+.apps-screen__error,
+.apps-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+/* ---------- Barra de modos (spec §2/§6) ---------- */
+.apps-screen__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  /* Scrollbar oculta pero scrolleable (mobile-first, EXTRACT no muestra scrollbar en ningún
+     contenedor horizontal) — sin token de color, solo comportamiento. */
+  scrollbar-width: none;
+}
+
+.apps-screen__bar::-webkit-scrollbar {
+  display: none;
+}
+
+.apps-screen__add {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* ---------- ModeButton (ModeButton.tsx) ---------- */
+.mode-bar__button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.mode-bar__icon {
+  font-size: 15px;
+  line-height: 1;
+}
