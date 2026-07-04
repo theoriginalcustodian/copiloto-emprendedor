@@ -1,0 +1,86 @@
+/*
+ * Fuentes self-hosted (offline / CSP-safe — sin CDN en runtime).
+ * Los .woff2 los baja `deploy/copiloto/fetch-fonts.sh` (idempotente) a ./fonts/*.woff2.
+ * Este archivo NO se ejecuta en el sandbox de scaffold: el fetch corre en el VPS antes del
+ * primer build de producción. Ver nota en el report del Task 3 (P0-A) — @font-face con
+ * `font-display: swap` + font-stack de sistema como fallback: la app renderiza igual si los
+ * woff2 todavía no están presentes (fallback visualmente cercano, nunca texto invisible/roto).
+ *
+ * EXTRACT §1.1 — roles verbatim:
+ *   Display (headings, nombres, montos, marca)  -> Clash Display   600/700
+ *   Body / UI (chat, botones, labels de fila)   -> General Sans    400/500/600
+ *   Mono / data (timestamps, labels, badges)    -> JetBrains Mono  400/500/700
+ */
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('./fonts/ClashDisplay-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('./fonts/ClashDisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('./fonts/GeneralSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('./fonts/GeneralSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('./fonts/GeneralSans-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Font-stack tokens — fallback del sistema si el woff2 todavía no bajó (P0-A: fetch-fonts.sh
+   pendiente de correr en VPS) o mientras carga (swap). Consumir SIEMPRE vía estos tokens, nunca
+   nombrando la familia directo en un componente. */
+:root {
+  --font-display: 'Clash Display', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'General Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+}

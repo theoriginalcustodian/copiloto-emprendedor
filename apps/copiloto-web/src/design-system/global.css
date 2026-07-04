@@ -1,0 +1,68 @@
+/*
+ * Reset + frame mobile-first (Global Constraints del plan: "Layout base 384-ancho; en
+ * desktop-web se centra (mobile centrado)"). El detalle de shell/tab-bar/header vive en
+ * src/shell/ (Task 9) — esto es solo el frame + reset que todo lo demás se apoya encima.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Frame de la app: 384px de ancho de referencia (mockup), fluido por debajo de eso, centrado
+   en viewports más anchos (desktop-web). El fondo con capas (--bg-layer) se pinta detrás del
+   frame para que ocupe todo el viewport, no solo el frame angosto. */
+.app-frame {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 384px;
+  margin: 0 auto;
+  isolation: isolate;
+}
+
+.app-frame::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-layer);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

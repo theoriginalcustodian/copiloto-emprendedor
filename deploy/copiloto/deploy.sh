@@ -36,9 +36,27 @@ WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
 WORKER_UNIT="uc-copiloto-worker.service"
 
-echo "==> [1/7] sync worktree -> ${HOST}:${REMOTE} (clean, idempotente: rm -rf + tar, sin stale files)"
-tar -C "$LOCAL" -czf - apps/copiloto "$REF" "$WORKER" deploy/copiloto \
-  | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps '$REMOTE'/deploy && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+echo "==> [1/7] sync worktree -> ${HOST}:${REMOTE} (clean; preserva apps/copiloto-web/{node_modules,dist} entre deploys)"
+# rm QUIRÚRGICO: solo `apps/copiloto` (backend) + `deploy`, NUNCA todo `apps/` -> no borra el frontend
+# `apps/copiloto-web` (fix de la colisión histórica deploy.sh <-> sync-web.sh). Del frontend se limpia
+# solo el source (preservando node_modules+dist para no reinstalar/reconstruir de cero cada deploy).
+tar -C "$LOCAL" \
+    --exclude='apps/copiloto-web/node_modules' --exclude='apps/copiloto-web/dist' --exclude='apps/copiloto-web/.vite' \
+    -czf - apps/copiloto apps/copiloto-web "$REF" "$WORKER" deploy/copiloto \
+  | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+
+echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build) -> dist servido mismo-origen por _mount_spa (web.py)"
+ssh "$HOST" bash -s -- "$REMOTE" <<'REMOTE_WEB'
+set -euo pipefail
+REMOTE="$1"
+cd "$REMOTE/apps/copiloto-web"
+# fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
+bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
+npm install --no-audit --no-fund --loglevel=error
+npm run build
+test -f dist/index.html
+echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
+REMOTE_WEB
 
 echo "==> [2/7] SUPABASE_JWT_SECRET server-side (VPS -> ${FUSION_ALIAS}), idempotente, sin imprimir el valor"
 ssh "$HOST" bash -s -- "$ENVDIR" "$FUSION_ALIAS" <<'REMOTE_JWT'
@@ -176,6 +194,8 @@ systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
 echo "--- curl /healthz (127.0.0.1:$WEB_PORT) ---"
 curl -sf "http://127.0.0.1:${WEB_PORT}/healthz"; echo
+echo "--- curl / (SPA index servido mismo-origen por _mount_spa) ---"
+curl -sf "http://127.0.0.1:${WEB_PORT}/" | head -c 200; echo
 echo "--- caddy validate (post-reload sanity) ---"
 caddy validate --config /etc/caddy/Caddyfile
 echo "--- vhosts preexistentes siguen respondiendo (status code informativo, hermes/temporal usan basic_auth -> 401 esperado) ---"

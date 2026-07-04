@@ -1,0 +1,422 @@
+/*
+ * Tokens de los 4 temas del Copiloto del Emprendedor — verbatim del `Component.themes` en
+ * `Copiloto App.dc.html`, transcriptos en
+ * docs/copiloto-emprendedor/APP Copiloto Movil/DESIGN-SYSTEM-EXTRACT.md §1.3.
+ *
+ * NO editar valores a mano sin volver a la fuente (EXTRACT §1.3) — son verbatim por diseño,
+ * para trazabilidad 1:1 con el mockup. Los nombres de variable son los reales del código
+ * original (útil para el porteo, no una convención nuestra).
+ *
+ * `:root` (sin `data-theme`) trae el default `ai` como fallback antes de que ThemeProvider
+ * monte y setee el atributo — evita FOUC a un tema sin estilar.
+ */
+
+:root {
+  --bg: #020308;
+  --bg-layer: radial-gradient(46% 36% at 50% 42%, rgba(72, 130, 255, 0.36), transparent 62%),
+    radial-gradient(40% 30% at 14% 14%, rgba(96, 146, 255, 0.18), transparent 60%),
+    radial-gradient(46% 36% at 88% 86%, rgba(255, 142, 80, 0.15), transparent 60%),
+    radial-gradient(42% 36% at 86% 18%, rgba(150, 110, 255, 0.16), transparent 60%),
+    radial-gradient(130% 92% at 50% 45%, transparent 54%, rgba(0, 0, 0, 0.58));
+  --text: #f2f5ff;
+  --mono: #8fa0c8;
+  --status-fg: #eaf0ff;
+  --heading: #f5f8ff;
+  --label: #8fa0c8;
+  --concept: #9fb0d8;
+  --name-fg: #f5f8ff;
+  --core-size: 18px;
+  --core: radial-gradient(circle at 35% 30%, #cfe6ff, #3b82f6 58%, #2563eb);
+  --core-glow: 0 0 22px 5px rgba(77, 140, 255, 0.9);
+  --halo: radial-gradient(circle, rgba(90, 150, 255, 0.6), transparent 70%);
+  --presence-wrap-bg: transparent;
+  --presence-wrap-shadow: none;
+  --chip-fg: #9bc0ff;
+  --chip-bg: rgba(77, 140, 255, 0.12);
+  --chip-border: 1px solid rgba(120, 160, 255, 0.4);
+  --avatar-bg: rgba(40, 50, 80, 0.5);
+  --avatar-border: 1px solid rgba(130, 160, 255, 0.35);
+  --avatar-shadow: 0 0 16px rgba(77, 140, 255, 0.28);
+  --avatar-fg: #eaf0ff;
+  --bubble-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.4), rgba(14, 18, 34, 0.46));
+  --bubble-border: 1px solid rgba(150, 184, 255, 0.5);
+  --bubble-shadow: inset 0 1.5px 0 rgba(216, 230, 255, 0.7), 0 0 30px -6px rgba(74, 120, 255, 0.4),
+    0 22px 44px -20px rgba(0, 0, 0, 0.82);
+  --bubble-blur: blur(18px);
+  --bubble-fg: #dce4fa;
+  --user-bg: linear-gradient(140deg, rgba(96, 156, 255, 0.38), rgba(60, 100, 240, 0.3));
+  --user-border: 1px solid rgba(140, 175, 255, 0.55);
+  --user-fg: #edf2ff;
+  --card-bg: linear-gradient(150deg, rgba(48, 60, 100, 0.42), rgba(12, 16, 32, 0.5));
+  --card-border: 1px solid rgba(158, 192, 255, 0.58);
+  --card-shadow: inset 0 1.5px 0 rgba(226, 238, 255, 0.85), inset 0 0 26px rgba(90, 150, 255, 0.16),
+    inset 0 -20px 34px -16px rgba(255, 150, 90, 0.3), 0 0 44px -2px rgba(74, 120, 255, 0.5),
+    0 44px 80px -26px rgba(0, 0, 0, 0.92);
+  --card-blur: blur(24px);
+  --amount-size: 46px;
+  --amount-fg: #ffffff;
+  --amount-sign: #5aa0ff;
+  --badge-fg: #ffc98a;
+  --badge-bg: rgba(255, 170, 80, 0.14);
+  --badge-border: 1px solid rgba(255, 170, 80, 0.42);
+  --btn-bg: linear-gradient(120deg, #4a93ff, #2a5fe0);
+  --btn-fg: #ffffff;
+  --btn-shadow: 0 12px 30px -8px rgba(77, 140, 255, 0.7);
+  --cancel-fg: #a9b6d8;
+  --cancel-bg: rgba(255, 255, 255, 0.04);
+  --cancel-border: 1px solid rgba(130, 150, 200, 0.26);
+  --cancel-shadow: none;
+  --send-bg: linear-gradient(140deg, #4a93ff, #2a5fe0);
+  --send-fg: #ffffff;
+  --input-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.42), rgba(14, 18, 34, 0.48));
+  --input-border: 1px solid rgba(156, 190, 255, 0.54);
+  --input-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.72), 0 0 38px -6px rgba(74, 120, 255, 0.52),
+    0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  --input-blur: blur(18px);
+  --input-fg: #8fa0c8;
+  --tab-active: #eaf0ff;
+  --tab-inactive: #5e6b8c;
+  --tab-border: 1px solid rgba(130, 160, 255, 0.14);
+  --nav-bg: rgba(18, 24, 46, 0.52);
+  --nav-border: rgba(130, 160, 255, 0.3);
+  --tile-bg: linear-gradient(150deg, rgba(46, 58, 96, 0.4), rgba(12, 16, 30, 0.48));
+  --tile-border: 1px solid rgba(156, 190, 255, 0.54);
+  --tile-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.75), inset 0 -16px 26px -14px rgba(255, 150, 90, 0.24),
+    0 0 36px -4px rgba(74, 120, 255, 0.46), 0 34px 60px -24px rgba(0, 0, 0, 0.88);
+  --tile-blur: blur(20px);
+  --ok-fg: #34e5a0;
+  --ok-bg: rgba(52, 229, 160, 0.14);
+  --ok-border: 1px solid rgba(52, 229, 160, 0.42);
+  --danger-fg: #ff8fa0;
+  --danger-bg: rgba(255, 90, 120, 0.14);
+  --danger-border: 1px solid rgba(255, 110, 130, 0.46);
+  --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
+  --danger-btn-fg: #2e0810;
+  --row-border: 1px solid rgba(130, 160, 255, 0.12);
+
+  /* Colores de marca hardcodeados — iguales en los 4 temas, fuera del sistema de tokens
+     (un ícono de marca -Mercado Pago/Gmail/Calendar/HubSpot/Drive/Instagram- no se retematiza). */
+  --brand-mercadopago: linear-gradient(150deg, #00b7ea, #009ee3);
+  --brand-google-blue: #4285f4;
+  --brand-gmail-red: #ea4335;
+  --brand-hubspot-orange: #ff7a59;
+  --brand-instagram: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af);
+  --brand-drive-green: #0f9d58;
+  --brand-drive-yellow: #ffcd40;
+  --brand-drive-blue: #4285f4;
+}
+
+/* aurora — Aurora Glass (violeta sobre fondo oscuro, vidrio esmerilado) */
+:root[data-theme='aurora'] {
+  --bg: #0d0a20;
+  --bg-layer: radial-gradient(120% 60% at 20% -5%, rgba(124, 92, 255, 0.55), transparent 60%),
+    radial-gradient(90% 50% at 100% 8%, rgba(199, 74, 255, 0.4), transparent 55%),
+    radial-gradient(80% 40% at 50% 108%, rgba(74, 120, 255, 0.35), transparent 60%);
+  --text: #f4f1ff;
+  --mono: #9f90d8;
+  --status-fg: #edebff;
+  --heading: #f4f1ff;
+  --label: #8e7fc4;
+  --concept: #a99ad8;
+  --name-fg: #f4f1ff;
+  --core-size: 20px;
+  --core: linear-gradient(150deg, #c6a5ff, #7c5cff);
+  --core-glow: 0 0 18px 3px rgba(140, 100, 255, 0.85);
+  --halo: radial-gradient(circle, rgba(160, 120, 255, 0.6), transparent 70%);
+  --presence-wrap-bg: transparent;
+  --presence-wrap-shadow: none;
+  --chip-fg: #b9a9ff;
+  --chip-bg: transparent;
+  --chip-border: 1px solid rgba(185, 169, 255, 0.35);
+  --avatar-bg: rgba(255, 255, 255, 0.1);
+  --avatar-border: 1px solid rgba(255, 255, 255, 0.16);
+  --avatar-shadow: none;
+  --avatar-fg: #edebff;
+  --bubble-bg: rgba(255, 255, 255, 0.08);
+  --bubble-border: 1px solid rgba(255, 255, 255, 0.1);
+  --bubble-shadow: none;
+  --bubble-blur: blur(14px);
+  --bubble-fg: #e8e4fb;
+  --user-bg: linear-gradient(140deg, rgba(160, 120, 255, 0.35), rgba(124, 92, 255, 0.22));
+  --user-border: 1px solid rgba(160, 120, 255, 0.4);
+  --user-fg: #f1ecff;
+  --card-bg: linear-gradient(165deg, rgba(38, 28, 74, 0.92), rgba(22, 16, 46, 0.96));
+  --card-border: 1px solid rgba(199, 165, 255, 0.28);
+  --card-shadow: 0 24px 50px -18px rgba(90, 50, 190, 0.7);
+  --card-blur: blur(20px);
+  --amount-size: 44px;
+  --amount-fg: #fff;
+  --amount-sign: #b9a9ff;
+  --badge-fg: #ffc98a;
+  --badge-bg: rgba(255, 180, 90, 0.14);
+  --badge-border: 1px solid rgba(255, 180, 90, 0.3);
+  --btn-bg: linear-gradient(120deg, #c6a5ff, #8c6bff);
+  --btn-fg: #1a0e3d;
+  --btn-shadow: 0 12px 26px -8px rgba(140, 100, 255, 0.75);
+  --cancel-fg: #c9beea;
+  --cancel-bg: transparent;
+  --cancel-border: 1px solid rgba(255, 255, 255, 0.14);
+  --cancel-shadow: none;
+  --send-bg: linear-gradient(140deg, #c6a5ff, #7c5cff);
+  --send-fg: #20114a;
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --input-border: 1px solid rgba(255, 255, 255, 0.14);
+  --input-shadow: none;
+  --input-blur: blur(14px);
+  --input-fg: #8e7fc4;
+  --tab-active: #edebff;
+  --tab-inactive: #786ba6;
+  --tab-border: 1px solid rgba(255, 255, 255, 0.06);
+  --nav-bg: rgba(28, 20, 54, 0.55);
+  --nav-border: rgba(200, 180, 255, 0.2);
+  --tile-bg: rgba(255, 255, 255, 0.06);
+  --tile-border: 1px solid rgba(255, 255, 255, 0.1);
+  --tile-shadow: none;
+  --tile-blur: blur(12px);
+  --ok-fg: #8ce8b4;
+  --ok-bg: rgba(90, 220, 150, 0.16);
+  --ok-border: 1px solid rgba(90, 220, 150, 0.32);
+  --danger-fg: #ff9aaa;
+  --danger-bg: rgba(255, 90, 120, 0.14);
+  --danger-border: 1px solid rgba(255, 90, 120, 0.32);
+  --danger-btn-bg: linear-gradient(120deg, #ff9aaa, #ff6b85);
+  --danger-btn-fg: #3a0a14;
+  --row-border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* daylight — Soft Daylight (neomorfismo lavanda, claro) */
+:root[data-theme='daylight'] {
+  --bg: #e7e7f1;
+  --bg-layer: none;
+  --text: #2a2a3e;
+  --mono: #8888a0;
+  --status-fg: #41415a;
+  --heading: #2a2a3e;
+  --label: #9a9ab4;
+  --concept: #7a7a92;
+  --name-fg: #2a2a3e;
+  --core-size: 16px;
+  --core: linear-gradient(150deg, #8b82ff, #5b4ae0);
+  --core-glow: 0 0 14px 2px rgba(99, 91, 255, 0.6);
+  --halo: radial-gradient(circle, rgba(99, 91, 255, 0.35), transparent 70%);
+  --presence-wrap-bg: #e7e7f1;
+  --presence-wrap-shadow: 6px 6px 12px #c6c6d6, -6px -6px 12px #ffffff;
+  --chip-fg: #6b62c4;
+  --chip-bg: #dedeec;
+  --chip-border: none;
+  --avatar-bg: #e7e7f1;
+  --avatar-border: none;
+  --avatar-shadow: 5px 5px 10px #c6c6d6, -5px -5px 10px #ffffff;
+  --avatar-fg: #5b4ae0;
+  --bubble-bg: #e7e7f1;
+  --bubble-border: none;
+  --bubble-shadow: inset 3px 3px 7px #cacad9, inset -3px -3px 7px #ffffff;
+  --bubble-blur: none;
+  --bubble-fg: #4a4a62;
+  --user-bg: linear-gradient(140deg, #6b5bff, #5b4ae0);
+  --user-border: none;
+  --user-fg: #fff;
+  --card-bg: #e7e7f1;
+  --card-border: none;
+  --card-shadow: 9px 9px 22px #c4c4d6, -9px -9px 22px #ffffff;
+  --card-blur: none;
+  --amount-size: 44px;
+  --amount-fg: #2a2a3e;
+  --amount-sign: #8b82ff;
+  --badge-fg: #c77a2e;
+  --badge-bg: #f2e4d2;
+  --badge-border: none;
+  --btn-bg: linear-gradient(120deg, #6b5bff, #5b4ae0);
+  --btn-fg: #fff;
+  --btn-shadow: 0 12px 24px -8px rgba(91, 74, 224, 0.6);
+  --cancel-fg: #6a6a82;
+  --cancel-bg: #e7e7f1;
+  --cancel-border: none;
+  --cancel-shadow: 4px 4px 9px #c9c9d8, -4px -4px 9px #ffffff;
+  --send-bg: linear-gradient(140deg, #6b5bff, #5b4ae0);
+  --send-fg: #fff;
+  --input-bg: #e7e7f1;
+  --input-border: none;
+  --input-shadow: inset 3px 3px 7px #cacad9, inset -3px -3px 7px #ffffff;
+  --input-blur: none;
+  --input-fg: #9494ac;
+  --tab-active: #5b4ae0;
+  --tab-inactive: #9a9ab4;
+  --tab-border: none;
+  --nav-bg: rgba(238, 238, 247, 0.6);
+  --nav-border: rgba(255, 255, 255, 0.75);
+  --tile-bg: #e7e7f1;
+  --tile-border: none;
+  --tile-shadow: 6px 6px 14px #c7c7d6, -6px -6px 14px #ffffff;
+  --tile-blur: none;
+  --ok-fg: #2e9e68;
+  --ok-bg: #d8eee1;
+  --ok-border: none;
+  --danger-fg: #c7455a;
+  --danger-bg: #f3d9de;
+  --danger-border: none;
+  --danger-btn-bg: linear-gradient(120deg, #e4667a, #c7455a);
+  --danger-btn-fg: #fff;
+  --row-border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* refined — Refined Dark (editorial, negro neutro, acento aqua) */
+:root[data-theme='refined'] {
+  --bg: #0b0c0f;
+  --bg-layer: radial-gradient(90% 40% at 50% -8%, rgba(74, 216, 255, 0.1), transparent 60%);
+  --text: #f5f6f8;
+  --mono: #6e7480;
+  --status-fg: #edeef2;
+  --heading: #f5f6f8;
+  --label: #5d636e;
+  --concept: #8b909b;
+  --name-fg: #f5f6f8;
+  --core-size: 14px;
+  --core: #5ee0ff;
+  --core-glow: 0 0 16px 3px rgba(74, 216, 255, 0.9);
+  --halo: radial-gradient(circle, rgba(74, 216, 255, 0.5), transparent 70%);
+  --presence-wrap-bg: transparent;
+  --presence-wrap-shadow: none;
+  --chip-fg: #79e4ff;
+  --chip-bg: transparent;
+  --chip-border: 1px solid rgba(94, 224, 255, 0.3);
+  --avatar-bg: #17191e;
+  --avatar-border: 1px solid rgba(255, 255, 255, 0.08);
+  --avatar-shadow: none;
+  --avatar-fg: #edeef2;
+  --bubble-bg: transparent;
+  --bubble-border: none;
+  --bubble-shadow: none;
+  --bubble-blur: none;
+  --bubble-fg: #c3c7cf;
+  --user-bg: rgba(94, 224, 255, 0.12);
+  --user-border: 1px solid rgba(94, 224, 255, 0.22);
+  --user-fg: #ddf6ff;
+  --card-bg: #131519;
+  --card-border: 1px solid rgba(255, 255, 255, 0.07);
+  --card-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.8);
+  --card-blur: none;
+  --amount-size: 50px;
+  --amount-fg: #fff;
+  --amount-sign: #5d636e;
+  --badge-fg: #e0a45e;
+  --badge-bg: transparent;
+  --badge-border: 1px solid rgba(224, 164, 94, 0.3);
+  --btn-bg: #5ee0ff;
+  --btn-fg: #04252e;
+  --btn-shadow: 0 10px 28px -8px rgba(94, 224, 255, 0.5);
+  --cancel-fg: #9aa0ab;
+  --cancel-bg: transparent;
+  --cancel-border: 1px solid rgba(255, 255, 255, 0.1);
+  --cancel-shadow: none;
+  --send-bg: #5ee0ff;
+  --send-fg: #04252e;
+  --input-bg: #131519;
+  --input-border: 1px solid rgba(255, 255, 255, 0.08);
+  --input-shadow: none;
+  --input-blur: none;
+  --input-fg: #6e7480;
+  --tab-active: #f5f6f8;
+  --tab-inactive: #5d636e;
+  --tab-border: 1px solid rgba(255, 255, 255, 0.05);
+  --nav-bg: rgba(16, 18, 23, 0.6);
+  --nav-border: rgba(255, 255, 255, 0.09);
+  --tile-bg: #131519;
+  --tile-border: 1px solid rgba(255, 255, 255, 0.06);
+  --tile-shadow: none;
+  --tile-blur: none;
+  --ok-fg: #5ee0a0;
+  --ok-bg: transparent;
+  --ok-border: 1px solid rgba(94, 224, 160, 0.3);
+  --danger-fg: #ff8090;
+  --danger-bg: transparent;
+  --danger-border: 1px solid rgba(255, 110, 130, 0.32);
+  --danger-btn-bg: #ff8090;
+  --danger-btn-fg: #2e0810;
+  --row-border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ai — Tema AI (default; azul profundo + glow multicolor + "edge highlight" tipo vidrio) */
+:root[data-theme='ai'] {
+  --bg: #020308;
+  --bg-layer: radial-gradient(46% 36% at 50% 42%, rgba(72, 130, 255, 0.36), transparent 62%),
+    radial-gradient(40% 30% at 14% 14%, rgba(96, 146, 255, 0.18), transparent 60%),
+    radial-gradient(46% 36% at 88% 86%, rgba(255, 142, 80, 0.15), transparent 60%),
+    radial-gradient(42% 36% at 86% 18%, rgba(150, 110, 255, 0.16), transparent 60%),
+    radial-gradient(130% 92% at 50% 45%, transparent 54%, rgba(0, 0, 0, 0.58));
+  --text: #f2f5ff;
+  --mono: #8fa0c8;
+  --status-fg: #eaf0ff;
+  --heading: #f5f8ff;
+  --label: #8fa0c8;
+  --concept: #9fb0d8;
+  --name-fg: #f5f8ff;
+  --core-size: 18px;
+  --core: radial-gradient(circle at 35% 30%, #cfe6ff, #3b82f6 58%, #2563eb);
+  --core-glow: 0 0 22px 5px rgba(77, 140, 255, 0.9);
+  --halo: radial-gradient(circle, rgba(90, 150, 255, 0.6), transparent 70%);
+  --presence-wrap-bg: transparent;
+  --presence-wrap-shadow: none;
+  --chip-fg: #9bc0ff;
+  --chip-bg: rgba(77, 140, 255, 0.12);
+  --chip-border: 1px solid rgba(120, 160, 255, 0.4);
+  --avatar-bg: rgba(40, 50, 80, 0.5);
+  --avatar-border: 1px solid rgba(130, 160, 255, 0.35);
+  --avatar-shadow: 0 0 16px rgba(77, 140, 255, 0.28);
+  --avatar-fg: #eaf0ff;
+  --bubble-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.4), rgba(14, 18, 34, 0.46));
+  --bubble-border: 1px solid rgba(150, 184, 255, 0.5);
+  --bubble-shadow: inset 0 1.5px 0 rgba(216, 230, 255, 0.7), 0 0 30px -6px rgba(74, 120, 255, 0.4),
+    0 22px 44px -20px rgba(0, 0, 0, 0.82);
+  --bubble-blur: blur(18px);
+  --bubble-fg: #dce4fa;
+  --user-bg: linear-gradient(140deg, rgba(96, 156, 255, 0.38), rgba(60, 100, 240, 0.3));
+  --user-border: 1px solid rgba(140, 175, 255, 0.55);
+  --user-fg: #edf2ff;
+  --card-bg: linear-gradient(150deg, rgba(48, 60, 100, 0.42), rgba(12, 16, 32, 0.5));
+  --card-border: 1px solid rgba(158, 192, 255, 0.58);
+  --card-shadow: inset 0 1.5px 0 rgba(226, 238, 255, 0.85), inset 0 0 26px rgba(90, 150, 255, 0.16),
+    inset 0 -20px 34px -16px rgba(255, 150, 90, 0.3), 0 0 44px -2px rgba(74, 120, 255, 0.5),
+    0 44px 80px -26px rgba(0, 0, 0, 0.92);
+  --card-blur: blur(24px);
+  --amount-size: 46px;
+  --amount-fg: #ffffff;
+  --amount-sign: #5aa0ff;
+  --badge-fg: #ffc98a;
+  --badge-bg: rgba(255, 170, 80, 0.14);
+  --badge-border: 1px solid rgba(255, 170, 80, 0.42);
+  --btn-bg: linear-gradient(120deg, #4a93ff, #2a5fe0);
+  --btn-fg: #ffffff;
+  --btn-shadow: 0 12px 30px -8px rgba(77, 140, 255, 0.7);
+  --cancel-fg: #a9b6d8;
+  --cancel-bg: rgba(255, 255, 255, 0.04);
+  --cancel-border: 1px solid rgba(130, 150, 200, 0.26);
+  --cancel-shadow: none;
+  --send-bg: linear-gradient(140deg, #4a93ff, #2a5fe0);
+  --send-fg: #ffffff;
+  --input-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.42), rgba(14, 18, 34, 0.48));
+  --input-border: 1px solid rgba(156, 190, 255, 0.54);
+  --input-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.72), 0 0 38px -6px rgba(74, 120, 255, 0.52),
+    0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  --input-blur: blur(18px);
+  --input-fg: #8fa0c8;
+  --tab-active: #eaf0ff;
+  --tab-inactive: #5e6b8c;
+  --tab-border: 1px solid rgba(130, 160, 255, 0.14);
+  --nav-bg: rgba(18, 24, 46, 0.52);
+  --nav-border: rgba(130, 160, 255, 0.3);
+  --tile-bg: linear-gradient(150deg, rgba(46, 58, 96, 0.4), rgba(12, 16, 30, 0.48));
+  --tile-border: 1px solid rgba(156, 190, 255, 0.54);
+  --tile-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.75), inset 0 -16px 26px -14px rgba(255, 150, 90, 0.24),
+    0 0 36px -4px rgba(74, 120, 255, 0.46), 0 34px 60px -24px rgba(0, 0, 0, 0.88);
+  --tile-blur: blur(20px);
+  --ok-fg: #34e5a0;
+  --ok-bg: rgba(52, 229, 160, 0.14);
+  --ok-border: 1px solid rgba(52, 229, 160, 0.42);
+  --danger-fg: #ff8fa0;
+  --danger-bg: rgba(255, 90, 120, 0.14);
+  --danger-border: 1px solid rgba(255, 110, 130, 0.46);
+  --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
+  --danger-btn-fg: #2e0810;
+  --row-border: 1px solid rgba(130, 160, 255, 0.12);
+}
