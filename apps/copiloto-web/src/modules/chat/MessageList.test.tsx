@@ -66,3 +66,53 @@ describe('MessageList', () => {
     expect(onChoice).toHaveBeenCalledWith('juan_gomez');
   });
 });
+
+/**
+ * Blindaje del hide-on-scroll (regresión 2026-07-04, la 3ª sobre el mismo mecanismo). El chrome
+ * (tab-bar + composer) se ocultaba solo apenas se mostraba: mostrarlo anima el `padding-bottom` del
+ * ancestro del scroller -> lo achica -> el navegador emite un scroll que el usuario NO hizo ->
+ * disparaba hide. Fix de raíz: sólo cuenta como hide-on-scroll un scroll con el DEDO APOYADO; el
+ * scroll inducido por layout ocurre siempre con el dedo levantado, así que ya no puede ocultar.
+ * Estos tests fijan ese contrato por construcción (no dependen de timings ni del navegador real).
+ */
+function setScrollTop(el: Element, value: number) {
+  Object.defineProperty(el, 'scrollTop', { value, configurable: true, writable: true });
+}
+
+describe('MessageList — hide-on-scroll sólo con el dedo apoyado', () => {
+  it('scroll SIN dedo apoyado (inducido por layout) NO oculta el chrome', () => {
+    const onHideChange = vi.fn();
+    render(<MessageList messages={[]} onChoice={vi.fn()} onHideChange={onHideChange} />);
+    const list = screen.getByTestId('message-list');
+
+    setScrollTop(list, 40); // salto hacia abajo (delta 40, lejos del tope) pero sin pointerdown
+    fireEvent.scroll(list);
+
+    expect(onHideChange).not.toHaveBeenCalled();
+  });
+
+  it('scroll hacia abajo CON el dedo apoyado oculta el chrome', () => {
+    const onHideChange = vi.fn();
+    render(<MessageList messages={[]} onChoice={vi.fn()} onHideChange={onHideChange} />);
+    const list = screen.getByTestId('message-list');
+
+    fireEvent.pointerDown(list);
+    setScrollTop(list, 40);
+    fireEvent.scroll(list);
+
+    expect(onHideChange).toHaveBeenCalledWith(true);
+  });
+
+  it('tras SOLTAR el dedo, un scroll posterior (inercia/resize) ya no oculta', () => {
+    const onHideChange = vi.fn();
+    render(<MessageList messages={[]} onChoice={vi.fn()} onHideChange={onHideChange} />);
+    const list = screen.getByTestId('message-list');
+
+    fireEvent.pointerDown(list);
+    fireEvent.pointerUp(document); // el dedo se levanta (el listener vive en document)
+    setScrollTop(list, 80);
+    fireEvent.scroll(list);
+
+    expect(onHideChange).not.toHaveBeenCalled();
+  });
+});

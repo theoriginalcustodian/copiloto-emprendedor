@@ -47,6 +47,9 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
+  // ¿El dedo está APOYADO sobre el scroller ahora mismo? Sólo un scroll con el dedo apoyado cuenta
+  // como gesto real del usuario (ver handleScroll). Se levanta en pointerdown y se baja al soltar.
+  const pointerDownRef = useRef(false);
 
   useEffect(() => {
     // `scrollIntoView` no existe en jsdom (entorno de test) — guard defensivo, no solo optional
@@ -54,17 +57,34 @@ export function MessageList({
     bottomRef.current?.scrollIntoView?.({ block: 'end' });
   }, [messages.length]);
 
+  function handlePointerDown() {
+    pointerDownRef.current = true;
+    // El pointerup/cancel suele caer FUERA del scroller (el dedo se levanta en cualquier lado), así
+    // que se escucha en document, no en el div. Auto-desregistra al soltar.
+    const release = () => {
+      pointerDownRef.current = false;
+      document.removeEventListener('pointerup', release);
+      document.removeEventListener('pointercancel', release);
+    };
+    document.addEventListener('pointerup', release);
+    document.addEventListener('pointercancel', release);
+  }
+
   function handleScroll() {
     const el = scrollRef.current;
     if (!el || !onHideChange) return;
     const current = el.scrollTop;
     const delta = current - lastScrollTopRef.current;
-    lastScrollTopRef.current = current;
-    // SOLO-OCULTAR: un scroll genuino hacia abajo, lejos del tope, oculta el chrome. NO se muestra
-    // desde el scroll (el reveal es el tap en el centro). Mostrar desde el scroll causaba un loop:
-    // al ocultarse, el composer se desliza -> cambia el alto del scroller -> dispara un scroll ->
-    // volvía a mostrar -> se deslizaba... (oscilación "subiendo y bajando"), y dejaba al composer
-    // trabado arriba.
+    lastScrollTopRef.current = current; // baseline SIEMPRE al día, aunque ignoremos este scroll.
+    // RAÍZ del loop "mostrar chrome -> resize -> scroll -> ocultar": al mostrar el chrome, el
+    // clearance de la tab-bar (padding-bottom animado del ancestro `.app-shell__content`) achica el
+    // alto de este scroller y el navegador emite un scroll que NO hizo el usuario. Ese scroll
+    // inducido por layout ocurre SIEMPRE con el dedo levantado. Por eso el hide-on-scroll sólo
+    // cuenta con el dedo APOYADO: no reaccionamos al eco de nuestra propia acción. Es por
+    // construcción (no depende de timings de transición): ningún cambio de chrome pasa con el dedo
+    // abajo (el tap togglea en `onClick`, ya con el dedo arriba; el cambio de tab es un botón; el
+    // idle no toca la pantalla).
+    if (!pointerDownRef.current) return;
     if (delta > 6 && current > 26) {
       onHideChange(true);
     }
@@ -86,6 +106,7 @@ export function MessageList({
       data-testid="message-list"
       ref={scrollRef}
       onScroll={handleScroll}
+      onPointerDown={handlePointerDown}
       onClick={handleSurfaceClick}
     >
       {messages.length === 0 && emptyHint && <p className="chat-messages__empty">{emptyHint}</p>}
