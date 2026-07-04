@@ -93,6 +93,10 @@
   --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(130, 160, 255, 0.12);
+  /* Fondo del ítem de rail ACTIVO en el shell de escritorio (DESIGN-SYSTEM-EXTRACT-WEB.md §2.2) —
+     nuevo token, sin equivalente mobile (el rail no existe ahí). Base = mismo valor que el tema
+     `ai` (default), igual criterio que el resto de este bloque `:root` sin `data-theme`. */
+  --nav-active: rgba(96, 156, 255, 0.18);
 
   /* Colores de marca hardcodeados — iguales en los 4 temas, fuera del sistema de tokens
      (un ícono de marca -Mercado Pago/Gmail/Calendar/HubSpot/Drive/Instagram- no se retematiza). */
@@ -104,6 +108,15 @@
   --brand-drive-green: #0f9d58;
   --brand-drive-yellow: #ffcd40;
   --brand-drive-blue: #4285f4;
+
+  /* Swatches del selector de "Skin" en el rail de escritorio (EXTRACT §2.4) — colores de
+     IDENTIDAD de cada tema, fijos entre los 4 temas por diseño (mismo criterio que --brand-* de
+     arriba): el rail muestra los 4 de una sola vez como preview, así que no pueden ser
+     theme-aware (no hay "el" valor reactivo de un tema que no es el activo). */
+  --skin-preview-aurora: linear-gradient(150deg, #c6a5ff, #7c5cff);
+  --skin-preview-daylight: linear-gradient(150deg, #e7e7f1, #8b82ff);
+  --skin-preview-refined: linear-gradient(150deg, #1b2440, #5ee0ff);
+  --skin-preview-ai: linear-gradient(150deg, #4a93ff, #2a5fe0);
 }
 
 /* aurora — Aurora Glass (violeta sobre fondo oscuro, vidrio esmerilado) */
@@ -182,6 +195,7 @@
   --danger-btn-bg: linear-gradient(120deg, #ff9aaa, #ff6b85);
   --danger-btn-fg: #3a0a14;
   --row-border: 1px solid rgba(255, 255, 255, 0.07);
+  --nav-active: rgba(255, 255, 255, 0.09);
 }
 
 /* daylight — Soft Daylight (neomorfismo lavanda, claro) */
@@ -258,6 +272,7 @@
   --danger-btn-bg: linear-gradient(120deg, #e4667a, #c7455a);
   --danger-btn-fg: #fff;
   --row-border: 1px solid rgba(0, 0, 0, 0.06);
+  --nav-active: rgba(91, 74, 224, 0.12);
 }
 
 /* refined — Refined Dark (editorial, negro neutro, acento aqua) */
@@ -334,6 +349,7 @@
   --danger-btn-bg: #ff8090;
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(255, 255, 255, 0.05);
+  --nav-active: rgba(94, 224, 255, 0.1);
 }
 
 /* ai — Tema AI (default; azul profundo + glow multicolor + "edge highlight" tipo vidrio) */
@@ -419,4 +435,5 @@
   --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(130, 160, 255, 0.12);
+  --nav-active: rgba(96, 156, 255, 0.18);
 }

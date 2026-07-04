@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # deploy/copiloto/fetch-fonts.sh — baja los .woff2 self-hosted del cliente PWA (Task 2, plan
-# 2026-07-03-copiloto-cliente-web.md). Self-hosted = offline/CSP-safe: la app NUNCA pega a un
-# CDN de fuentes en runtime; esto corre en build-time (VPS, orquestado por sync-web.sh) o a mano
-# en un dev-box con red.
+# 2026-07-03-copiloto-cliente-web.md) + del shell de ESCRITORIO (DESIGN-SYSTEM-EXTRACT-WEB.md,
+# 2026-07-04). Self-hosted = offline/CSP-safe: la app NUNCA pega a un CDN de fuentes en runtime;
+# esto corre en build-time (VPS, orquestado por sync-web.sh) o a mano en un dev-box con red.
 #
-# Fuentes (EXTRACT §1.1 — verificado contra el markup real, NO Space Grotesk/Manrope como asumía
-# el brief original):
-#   Clash Display  600,700     -> Fontshare API (CSS con @font-face -> parseamos el primer url() woff2)
-#   General Sans   400,500,600 -> Fontshare API (idem)
-#   JetBrains Mono 400,500,700 -> mirror jsdelivr/fontsource (archivo woff2 directo, sin parseo)
+# Fuentes (verificado contra el markup real de cada mock — mobile y desktop usan DOS combos
+# tipográficos distintos por diseño, no por error, ver EXTRACT-WEB §1.1/§6):
+#   Clash Display  600,700     -> Fontshare API      (mobile · @font-face -> parseamos el primer url() woff2)
+#   General Sans   400,500,600 -> Fontshare API      (mobile · idem)
+#   Space Grotesk  500,600,700 -> Google Fonts CSS2   (desktop · idem, subset "latin")
+#   Manrope        400,500,600 -> Google Fonts CSS2   (desktop · idem, subset "latin")
+#   JetBrains Mono 400,500,700 -> mirror jsdelivr/fontsource (compartido, archivo woff2 directo, sin parseo)
 #
 # IDEMPOTENTE: si el archivo destino YA existe y pesa más que UC_FONT_MIN_BYTES (real woff2 ronda
 # los 15-40KB; un stub/placeholder committeado al repo pesa unos pocos bytes) NO vuelve a bajarlo.
@@ -20,6 +22,7 @@
 #   UC_FONTS_DIR        destino de los .woff2                (default: <repo>/apps/copiloto-web/src/design-system/fonts)
 #   UC_FONT_MIN_BYTES    umbral placeholder-vs-real, bytes    (default: 2048)
 #   UC_FONTSHARE_API     base de la API CSS de Fontshare      (default: https://api.fontshare.com/v2/css)
+#   UC_GOOGLE_FONTS_API  base de la API CSS2 de Google Fonts  (default: https://fonts.googleapis.com/css2)
 #   UC_JETBRAINS_MIRROR  base del mirror woff2 de JetBrains Mono (default: https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest)
 set -euo pipefail
 
@@ -27,6 +30,7 @@ LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FONTS_DIR="${UC_FONTS_DIR:-$LOCAL/apps/copiloto-web/src/design-system/fonts}"
 MIN_BYTES="${UC_FONT_MIN_BYTES:-2048}"
 FONTSHARE_API="${UC_FONTSHARE_API:-https://api.fontshare.com/v2/css}"
+GOOGLE_FONTS_API="${UC_GOOGLE_FONTS_API:-https://fonts.googleapis.com/css2}"
 JETBRAINS_MIRROR="${UC_JETBRAINS_MIRROR:-https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest}"
 
 mkdir -p "$FONTS_DIR"
@@ -86,6 +90,49 @@ for block in re.findall(r"@font-face\s*\{([^}]*)\}", css):
     fam = re.search(r"font-family:\s*[\x27\"]([^\x27\"]+)[\x27\"]", block)
     weight = re.search(r"font-weight:\s*([0-9]+)", block)
     url = re.search(r"url\((?:\x27|\")(//[^)\x27\"]+\.woff2)(?:\x27|\")\)", block)
+    if fam and weight and url:
+        print(f"{fam.group(1)}\t{weight.group(1)}\t{url.group(1)}")
+')
+
+# --- Google Fonts (Space Grotesk + Manrope): shell de ESCRITORIO (EXTRACT-WEB §1.1) --------------
+# A diferencia de Clash Display/General Sans (Fontshare, mobile) estas 2 son Google Fonts reales
+# (confirmado contra el markup del mock: `fonts.googleapis.com/css2?family=Manrope...&family=
+# Space+Grotesk...`, no Fontshare) -> API css2, nos quedamos con el subset "latin" (mismo criterio
+# que JetBrains Mono: 1 subset, la app no necesita cirílico/vietnamita/etc). Google solo sirve
+# woff2 con un User-Agent "moderno" en el request -- sin esto, cae a .woff/.ttf más viejo.
+echo "==> Google Fonts: space-grotesk@500,600,700 + manrope@400,500,600 (subset latin)"
+GOOGLE_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+GOOGLE_FONTS_CSS="$(curl -fsSL -A "$GOOGLE_UA" "${GOOGLE_FONTS_API}?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap")"
+
+declare -A GOOGLE_MAP=(
+  ["space grotesk|500"]="SpaceGrotesk-Medium.woff2"
+  ["space grotesk|600"]="SpaceGrotesk-Semibold.woff2"
+  ["space grotesk|700"]="SpaceGrotesk-Bold.woff2"
+  ["manrope|400"]="Manrope-Regular.woff2"
+  ["manrope|500"]="Manrope-Medium.woff2"
+  ["manrope|600"]="Manrope-Semibold.woff2"
+)
+
+while IFS=$'\t' read -r family weight url; do
+  [ -z "$family" ] && continue
+  key="$(printf '%s' "$family" | tr '[:upper:]' '[:lower:]')|$weight"
+  filename="${GOOGLE_MAP[$key]:-}"
+  if [ -z "$filename" ]; then
+    echo "  ! bloque Google Fonts sin mapeo conocido: family='$family' weight='$weight' (ignorado)" >&2
+    continue
+  fi
+  download_url "$url" "$FONTS_DIR/$filename"
+done < <(printf '%s' "$GOOGLE_FONTS_CSS" | python3 -c '
+import re, sys
+css = sys.stdin.read()
+for block in re.findall(r"@font-face\s*\{([^}]*)\}", css):
+    # Google Fonts CSS2 devuelve un @font-face por SUBSET (cyrillic/vietnamese/latin-ext/latin/...)
+    # -- nos quedamos solo con "latin" (firma: unicode-range arranca con U+0000-00FF).
+    if "U+0000-00FF" not in block:
+        continue
+    fam = re.search(r"font-family:\s*[\x27\"]([^\x27\"]+)[\x27\"]", block)
+    weight = re.search(r"font-weight:\s*([0-9]+)", block)
+    url = re.search(r"url\((https://[^)\x27\"]+\.woff2)\)", block)
     if fam and weight and url:
         print(f"{fam.group(1)}\t{weight.group(1)}\t{url.group(1)}")
 ')

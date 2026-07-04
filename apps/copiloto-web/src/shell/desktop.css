@@ -1,0 +1,336 @@
+/*
+ * Estilos del shell de escritorio (Rail auto-hide + columna de contenido a pantalla completa) —
+ * DESIGN-SYSTEM-EXTRACT-WEB.md §3.1-3.2/§5.1. Theme-aware vía CSS vars de themes.css (incluidos
+ * `--nav-active` y `--skin-preview-*`, agregados ahí — ver themes.css), cero color literal salvo
+ * la MISMA excepción ya documentada en el repo para el borde de swatch "inactivo": un gris fijo
+ * sin token (mismo criterio que el scrim de `.recording-overlay` en chat.css o el de
+ * `.uc-sheet-scrim` en primitives.css — un valor constante entre los 4 temas, no reactivo).
+ *
+ * Tipografía: NO se decide acá. `[data-shell="desktop"]` (seteado por `DesktopShell`) resuelve
+ * `--font-display`/`--font-body` a Space Grotesk/Manrope en `fonts-web.css` — este archivo solo
+ * consume esos tokens como el resto del design-system.
+ */
+
+.desktop-shell {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.desktop-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-layer);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---------- Rail (EXTRACT §3.1) ---------- */
+
+/* Zona 1: spacer fijo en el flujo flex, reserva el ancho colapsado del rail. */
+.rail-spacer {
+  width: 72px;
+  flex: none;
+}
+
+/* Zona 2: el rail real, superpuesto sobre el spacer — auto-hide por ancho (72px↔244px). */
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 72px;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 16px 18px;
+  background: var(--nav-bg);
+  border-right: 1px solid var(--nav-border);
+  backdrop-filter: blur(30px) saturate(1.5);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rail--open {
+  width: 244px;
+}
+
+.rail__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--tab-inactive);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.rail__item:hover {
+  color: var(--tab-active);
+}
+
+.rail__item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.rail__item--active {
+  background: var(--nav-active);
+  border-left-color: var(--amount-sign);
+  color: var(--tab-active);
+  font-weight: 600;
+}
+
+.rail__icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.rail__icon {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.rail__dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amount-sign);
+}
+
+.rail__label {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail--open .rail__label {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__mode-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chip-fg);
+  background: var(--chip-bg);
+  border: var(--chip-border);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__mode-badge {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+/* ---------- Selector de skin (EXTRACT §2.4) ---------- */
+.rail__skin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rail__skin-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__skin-label {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__skin-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rail__swatch {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  /* Excepción documentada (ver banner del archivo): gris fijo, no theme-aware. */
+  border: 2px solid rgba(128, 128, 128, 0.25);
+  cursor: pointer;
+  padding: 0;
+}
+
+.rail__swatch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.rail__swatch--active {
+  border: 3px solid var(--core);
+}
+
+.rail__swatch--aurora {
+  background: var(--skin-preview-aurora);
+}
+
+.rail__swatch--daylight {
+  background: var(--skin-preview-daylight);
+}
+
+.rail__swatch--refined {
+  background: var(--skin-preview-refined);
+}
+
+.rail__swatch--ai {
+  background: var(--skin-preview-ai);
+}
+
+/* ---------- Bloque de usuario ---------- */
+.rail__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rail__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  color: var(--avatar-fg);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rail__user-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__user-text {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__user-name {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Columna de contenido (zona 3, EXTRACT §3.1) ---------- */
+.desktop-shell__content {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Reset del `.app-frame` mobile (global.css, max-width:384px) dentro del shell de escritorio —
+   MISMO patrón que `.app-shell__content .app-frame` en shell.css (mobile): pisa el frame angosto
+   sin tocar ChatScreen.tsx. Acá además no hay límite de ancho fijo: cada pantalla centra su propio
+   max-width más abajo (§3.2). */
+.desktop-shell__content .app-frame {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.desktop-shell__content .app-frame::before {
+  content: none;
+}
+
+/* ---------- Anchos de columna por pantalla (EXTRACT §3.2) ----------
+ * Ajuste responsive MÍNIMO: centra/acota el ancho desde el descendiente del shell, SIN tocar el
+ * CSS propio de cada módulo (chat.css/connections.css/account.css/apps.css quedan intactos —
+ * mobile no se toca). */
+.desktop-shell__content .chat-messages {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
+.desktop-shell__content .composer {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.desktop-shell__content .connections-screen,
+.desktop-shell__content .account-screen,
+.desktop-shell__content .apps-screen {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 36px 40px;
+}
+
+.desktop-shell__content .account-screen,
+.desktop-shell__content .apps-screen {
+  max-width: 640px;
+}
+
+.desktop-shell__content .connections-screen__grid {
+  grid-template-columns: repeat(3, 1fr);
+}

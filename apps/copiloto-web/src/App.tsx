@@ -2,13 +2,14 @@ import { ThemeProvider } from './design-system/ThemeProvider';
 import { SessionProvider } from './auth/SessionProvider';
 import { LoginScreen } from './auth/LoginScreen';
 import { useSession } from './auth/useSession';
-import { AppShell } from './shell/AppShell';
+import { ResponsiveShell } from './shell/ResponsiveShell';
 import { ModeProvider } from './shell/modeStore';
 
 /**
- * Router raíz por estado de sesión (Task 7/22): 'checking' -> splash; 'authed' -> AppShell (shell
- * mobile con tab-bar Chat·Apps·Conexiones·Cuenta, Task 9 — antes montaba `ChatScreen` directo,
- * ahora el Chat es uno de los 4 tabs que el shell orquesta); cualquier otro estado
+ * Router raíz por estado de sesión (Task 7/22, + cliente web/desktop 2026-07-04): 'checking' ->
+ * splash; 'authed' -> `ResponsiveShell` (UN shell que bifurca por breakpoint: `<900px` -> AppShell
+ * mobile con tab-bar Chat·Apps·Conexiones·Cuenta, Task 9; `>=900px` -> DesktopShell con rail
+ * lateral, mismas 4 pantallas de módulo — ver `shell/ResponsiveShell.tsx`); cualquier otro estado
  * ('anon' | 'no-habilitada') -> LoginScreen (diseño final, Task 22 — reemplaza el LoginSkeleton
  * funcional-básico; ya sabe mostrar el aviso de cuenta no-habilitada leyendo la sesión compartida
  * — ver auth/LoginScreen.tsx).
@@ -28,7 +29,7 @@ function AppRouter() {
     );
   }
 
-  if (status === 'authed') return <AppShell />;
+  if (status === 'authed') return <ResponsiveShell />;
   return <LoginScreen />;
 }
 

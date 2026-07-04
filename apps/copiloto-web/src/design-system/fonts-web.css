@@ -1,0 +1,73 @@
+/*
+ * Fuentes self-hosted del shell de ESCRITORIO (Space Grotesk + Manrope) — DESIGN-SYSTEM-
+ * EXTRACT-WEB.md §1.1 (CONFIRMADO: Space Grotesk + Manrope, NO Clash Display + General Sans; ese
+ * combo es el de mobile, ver fonts.css). Mismo criterio que fonts.css: `.woff2` los baja
+ * `deploy/copiloto/fetch-fonts.sh` (idempotente) a `./fonts/*.woff2`; `font-display:swap` +
+ * fallback de sistema para que la app renderice igual si el woff2 real todavía no bajó.
+ *
+ * `--font-mono` (JetBrains Mono) es el ÚNICO font-token verdaderamente compartido entre mobile y
+ * desktop (EXTRACT §6) — no se toca acá, sigue viniendo de fonts.css.
+ *
+ * Roles verbatim (EXTRACT §1.1):
+ *   Display (H1, nombre HITL, montos, marca)  -> Space Grotesk  500/600/700
+ *   Body / UI (chat, botones, inputs, labels) -> Manrope        400/500/600
+ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./fonts/SpaceGrotesk-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./fonts/SpaceGrotesk-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./fonts/SpaceGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('./fonts/Manrope-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('./fonts/Manrope-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('./fonts/Manrope-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * Override de tipografía por SHELL, no por CSS var global fija (EXTRACT §6, recomendación #2):
+ * `[data-shell="desktop"]` lo setea `DesktopShell.tsx` en su nodo raíz. Todo lo demás
+ * (`--font-mono`, escala de tamaño/tracking, tokens de color) sigue 100% compartido — este es el
+ * ÚNICO eje real de divergencia tipográfica entre mobile y desktop, aislado acá a una sola regla.
+ */
+[data-shell='desktop'] {
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
