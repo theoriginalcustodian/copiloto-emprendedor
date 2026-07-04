@@ -15,7 +15,7 @@ import { THEMES } from './ThemeProvider';
  */
 function firePointerEvent(
   target: Element | Document,
-  type: 'pointerdown' | 'pointermove',
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
   clientY: number,
 ) {
   const event = new Event(type, { bubbles: true, cancelable: true });
@@ -82,8 +82,11 @@ describe('BottomSheet', () => {
         <p data-testid="sheet-body">contenido</p>
       </BottomSheet>,
     );
+    // El cierre se dispara al SOLTAR (pointerup) si el arrastre pasó el umbral — el sheet sigue el
+    // dedo durante el pointermove y recién decide en el release.
     firePointerEvent(screen.getByTestId('sheet-body'), 'pointerdown', 100);
     firePointerEvent(document, 'pointermove', 200);
+    firePointerEvent(document, 'pointerup', 200);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -96,6 +99,7 @@ describe('BottomSheet', () => {
     );
     firePointerEvent(screen.getByRole('button', { name: 'Acción' }), 'pointerdown', 100);
     firePointerEvent(document, 'pointermove', 300);
+    firePointerEvent(document, 'pointerup', 300);
     expect(onClose).not.toHaveBeenCalled();
   });
 

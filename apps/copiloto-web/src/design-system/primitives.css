@@ -318,6 +318,13 @@
   /* Cuerpo scrolleable: sin esto, un drag hacia abajo en el tope del scroll interno encadena al
    * pull-to-refresh del navegador (además del guard JS de drag-to-dismiss de BottomSheet.tsx). */
   overscroll-behavior: contain;
+  /* Drag-to-dismiss (BottomSheet.tsx): en un touch device el navegador se queda con el gesto
+   * vertical y los `pointermove` no llegan al JS -> el swipe-down no cerraba. `touch-action: none`
+   * cede el gesto al handler. DEUDA GESTIONADA: esto inhabilita el scroll táctil del `overflow-y`
+   * de arriba. Hoy OK — el único uso en producción es el sheet "Tus apps" (contenido corto, nunca
+   * scrollea). Si un sheet futuro necesita contenido alto scrolleable, mover el scroll a un wrapper
+   * interno con `touch-action: pan-y` y dejar el drag sólo en el marco/handle. (owner: cliente-web) */
+  touch-action: none;
 }
 
 .uc-sheet-root--open .uc-sheet {

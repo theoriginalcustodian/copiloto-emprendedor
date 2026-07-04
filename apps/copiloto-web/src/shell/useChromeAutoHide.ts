@@ -14,50 +14,34 @@ const DEFAULT_IDLE_MS = 4000;
  *  - **tap en el área de chat** (`toggle`): alterna mostrar/ocultar (el shell lo cablea al
  *    `MessageList`; evita el swipe-desde-el-borde que chocaría con el gesto nativo del OS).
  *  - **scroll del chat / cambio de tab** (`setHidden`): el `MessageList`/`AppShell` fuerzan el valor.
- * Al MOSTRAR por cualquier vía se re-arma el timer de inactividad; al OCULTAR se cancela.
  *
- * `setHidden`/`toggle` son estables (útil para pasarlos a hijos sin re-render). `hidden` se lee del
- * estado; un ref espejo (`hiddenRef`) permite que `toggle` calcule el próximo valor sin depender de
- * una closure vieja.
+ * El timer de inactividad es **declarativo**: una función pura de `hidden`. Mientras el chrome está
+ * VISIBLE (`hidden=false`) SIEMPRE hay un timeout pendiente que lo oculta tras `idleMs` → el composer
+ * vuelve a bajar solo pase lo que pase (imposible que quede trabado arriba — el bug reportado). Al
+ * ocultarse no hay timer. Cualquier vía que vuelva a mostrar el chrome (tap, scroll, cambio de tab,
+ * cierre del sheet) re-dispara este efecto y re-arma el auto-hide. `setHidden`/`toggle` son estables
+ * (para pasarlos a hijos sin re-render); `hiddenRef` es el espejo síncrono que usa `toggle`.
  */
 export function useChromeAutoHide(idleMs: number = DEFAULT_IDLE_MS) {
   const [hidden, setHiddenState] = useState(false);
   const hiddenRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+  const apply = useCallback((next: boolean) => {
+    hiddenRef.current = next;
+    setHiddenState(next);
   }, []);
-
-  const armIdle = useCallback(() => {
-    clearTimer();
-    timerRef.current = setTimeout(() => {
-      hiddenRef.current = true;
-      setHiddenState(true);
-    }, idleMs);
-  }, [clearTimer, idleMs]);
-
-  const apply = useCallback(
-    (next: boolean) => {
-      hiddenRef.current = next;
-      setHiddenState(next);
-      if (next) clearTimer();
-      else armIdle();
-    },
-    [armIdle, clearTimer],
-  );
 
   const setHidden = useCallback((next: boolean) => apply(next), [apply]);
   const toggle = useCallback(() => apply(!hiddenRef.current), [apply]);
 
-  // Arranca VISIBLE (descubrible) y programa el primer auto-hide por inactividad.
   useEffect(() => {
-    armIdle();
-    return clearTimer;
-  }, [armIdle, clearTimer]);
+    if (hidden) return;
+    const id = setTimeout(() => {
+      hiddenRef.current = true;
+      setHiddenState(true);
+    }, idleMs);
+    return () => clearTimeout(id);
+  }, [hidden, idleMs]);
 
   return { hidden, setHidden, toggle };
 }

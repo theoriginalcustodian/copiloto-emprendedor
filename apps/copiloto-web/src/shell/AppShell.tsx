@@ -80,7 +80,11 @@ export function AppShell() {
   const backDepth = (appsSheetOpen ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
   useBackGuard(backDepth, handleBack);
 
-  const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
+  // El auto-hide del chrome (barra + composer al borde) es SÓLO del Chat: en Conexiones/Cuenta no hay
+  // área de chat para togglear, así que ocultar la barra ahí dejaría al usuario trabado sin forma de
+  // traerla de vuelta (pedido del operador 2026-07-04). Fuera del Chat la barra queda SIEMPRE visible.
+  const chromeHidden = activeTab === 'chat' && tabHidden;
+  const shellClasses = ['app-frame', 'app-shell', chromeHidden ? 'app-shell--tab-hidden' : '']
     .filter(Boolean)
     .join(' ');
 
@@ -93,7 +97,7 @@ export function AppShell() {
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
-      <TabBar active={activeTab} onChange={changeTab} hidden={tabHidden} />
+      <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </BottomSheet>
