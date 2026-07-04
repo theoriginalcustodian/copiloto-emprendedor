@@ -1,3 +1,18 @@
-// Placeholder — transporte de la API (client/auth/me/catalog/chat/reply, mock+real) llega en
-// FASE 1 (Task 7). Cada recurso mantiene firma idéntica entre mock y real.
-export {};
+/**
+ * Barrel del transporte de la API (Task 7). `api` es la única superficie que el resto de la app
+ * debería importar — real por default, mock si `VITE_API_MOCK=1` (dev local sin backend).
+ */
+import { login } from './auth';
+import { catalog } from './catalog';
+import { sendChat } from './chat';
+import { me } from './me';
+import { mockApi } from './mock';
+import { getReply } from './reply';
+import type { CopilotApi } from './types';
+
+const realApi: CopilotApi = { login, me, catalog, sendChat, getReply };
+
+export const api: CopilotApi = import.meta.env.VITE_API_MOCK === '1' ? mockApi : realApi;
+
+export { ApiError, ForbiddenError, UnauthorizedError } from './client';
+export * from './types';
