@@ -11,6 +11,8 @@ import disambiguationChipsSource from './DisambiguationChips.tsx?raw';
 import hitlCardSource from './HitlCard.tsx?raw';
 import hitlMappingSource from './hitlMapping.ts?raw';
 import messageListSource from './MessageList.tsx?raw';
+import micButtonSource from './MicButton.tsx?raw';
+import recordingOverlaySource from './RecordingOverlay.tsx?raw';
 
 /**
  * Gate "cero color literal" (Global Constraint del plan: "Ningún componente usa color literal —
@@ -33,6 +35,8 @@ const SOURCES: Record<string, string> = {
   'HitlCard.tsx': hitlCardSource,
   'hitlMapping.ts': hitlMappingSource,
   'MessageList.tsx': messageListSource,
+  'MicButton.tsx': micButtonSource,
+  'RecordingOverlay.tsx': recordingOverlaySource,
   'chat.css': chatCss,
 };
 

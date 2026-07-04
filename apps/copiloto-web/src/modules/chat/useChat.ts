@@ -60,6 +60,8 @@ export interface UseChatResult {
   messages: ChatMessage[];
   sendStatus: SendStatus;
   send: (text: string, opts?: SendOptions) => Promise<void>;
+  /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función. */
+  sendAudio: (blob: Blob) => Promise<void>;
 }
 
 export function useChat(): UseChatResult {
@@ -113,6 +115,24 @@ export function useChat(): UseChatResult {
     }
   }, [stopPolling]);
 
+  /**
+   * Arranca el ciclo de espera de la respuesta durable (intervalo de polling + timeout de
+   * rendición) — extraído de `send` para que `sendAudio` (Task 19) lo reuse tal cual, en vez de
+   * duplicar las mismas 3 líneas de timers.
+   */
+  const startWaitingForReply = useCallback(() => {
+    setSendStatus('waiting');
+    pollTimerRef.current = setInterval(() => {
+      void poll();
+    }, POLL_INTERVAL_MS);
+    waitTimeoutRef.current = setTimeout(() => {
+      stopPolling();
+      setSendStatus((current) => (current === 'waiting' ? 'timeout' : current));
+    }, WAIT_TIMEOUT_MS);
+
+    void poll(); // primer intento inmediato — no esperar un intervalo completo para el 1er check.
+  }, [poll, stopPolling]);
+
   const send = useCallback(
     async (text: string, opts?: SendOptions) => {
       const trimmed = text.trim();
@@ -135,19 +155,39 @@ export function useChat(): UseChatResult {
         return;
       }
 
-      setSendStatus('waiting');
-      pollTimerRef.current = setInterval(() => {
-        void poll();
-      }, POLL_INTERVAL_MS);
-      waitTimeoutRef.current = setTimeout(() => {
-        stopPolling();
-        setSendStatus((current) => (current === 'waiting' ? 'timeout' : current));
-      }, WAIT_TIMEOUT_MS);
-
-      void poll(); // primer intento inmediato — no esperar un intervalo completo para el 1er check.
+      startWaitingForReply();
     },
-    [poll, stopPolling],
+    [startWaitingForReply, stopPolling],
   );
 
-  return { messages, sendStatus, send };
+  /**
+   * Sube una nota de voz grabada (Task 19, FASE 4). A diferencia de `send`, el mensaje de usuario
+   * NO se puede mostrar de forma optimista (todavía no sabemos qué dijo) — se agrega recién con el
+   * `transcript` que devuelve el backend tras transcribir (STT, Task 18); el POST YA disparó el
+   * dispatch server-side (mismo pipeline que `/chat`), así que después solo queda pollear /reply
+   * igual que `send`.
+   */
+  const sendAudio = useCallback(
+    async (blob: Blob) => {
+      stopPolling();
+      setSendStatus('sending');
+
+      let transcript: string;
+      try {
+        const response = await api.sendAudio(sessionIdRef.current, blob);
+        transcript = response.transcript;
+      } catch {
+        setSendStatus('error');
+        return;
+      }
+
+      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript };
+      setMessages((prev) => [...prev, userMessage]);
+
+      startWaitingForReply();
+    },
+    [startWaitingForReply, stopPolling],
+  );
+
+  return { messages, sendStatus, send, sendAudio };
 }

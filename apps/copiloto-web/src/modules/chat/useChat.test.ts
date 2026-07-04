@@ -10,6 +10,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
       me: vi.fn(),
       catalog: vi.fn(),
       sendChat: vi.fn(),
+      sendAudio: vi.fn(),
       getReply: vi.fn(),
     },
   };
@@ -25,6 +26,7 @@ describe('useChat', () => {
     vi.useFakeTimers();
     window.localStorage.clear();
     vi.mocked(api.sendChat).mockReset();
+    vi.mocked(api.sendAudio).mockReset();
     vi.mocked(api.getReply).mockReset();
   });
 
@@ -97,5 +99,59 @@ describe('useChat', () => {
 
     expect(result.current.sendStatus).toBe('error');
     expect(api.getReply).not.toHaveBeenCalled();
+  });
+
+  describe('sendAudio (Task 19)', () => {
+    it('sube el blob, agrega el transcript como msg de usuario (recién con la respuesta) y pollea /reply', async () => {
+      vi.mocked(api.sendAudio).mockResolvedValueOnce({
+        wf_id: 'wf-audio-1',
+        accepted: true,
+        transcript: 'Mandale un mail a Juan',
+      });
+      vi.mocked(api.getReply)
+        .mockResolvedValueOnce({ replies: [], next_id: 0 })
+        .mockResolvedValueOnce({ replies: [{ id: 1, text: 'Dale, se lo mando.' }], next_id: 1 });
+
+      const { result } = renderHook(() => useChat());
+      const blob = new Blob(['fake-audio-bytes'], { type: 'audio/webm' });
+
+      await act(async () => {
+        await result.current.sendAudio(blob);
+      });
+
+      expect(api.sendAudio).toHaveBeenCalledWith(expect.any(String), blob);
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.messages[0]).toMatchObject({ role: 'user', text: 'Mandale un mail a Juan' });
+      expect(result.current.sendStatus).toBe('waiting');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(api.getReply).toHaveBeenCalledTimes(1);
+      expect(result.current.messages).toHaveLength(1); // todavía sin respuesta del agente
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+      });
+      expect(api.getReply).toHaveBeenCalledTimes(2);
+      expect(result.current.messages).toHaveLength(2);
+      expect(result.current.messages[1]).toMatchObject({ role: 'assistant', text: 'Dale, se lo mando.' });
+      expect(result.current.sendStatus).toBe('idle');
+    });
+
+    it('si sendAudio falla (ej. STT/red), marca sendStatus=error y no arranca el polling ni agrega mensaje', async () => {
+      vi.mocked(api.sendAudio).mockRejectedValueOnce(new Error('network down'));
+
+      const { result } = renderHook(() => useChat());
+      const blob = new Blob(['x'], { type: 'audio/webm' });
+
+      await act(async () => {
+        await result.current.sendAudio(blob);
+      });
+
+      expect(result.current.sendStatus).toBe('error');
+      expect(result.current.messages).toHaveLength(0);
+      expect(api.getReply).not.toHaveBeenCalled();
+    });
   });
 });

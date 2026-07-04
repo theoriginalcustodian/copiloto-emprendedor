@@ -1,11 +1,13 @@
 /*
- * Estilos del módulo Chat (Tasks 10/12/13/14/15) — theme-aware vía CSS vars de themes.css, cero
- * color literal salvo 2 excepciones documentadas (mismo criterio que primitives.css §scrim):
+ * Estilos del módulo Chat (Tasks 10/12/13/14/15/19) — theme-aware vía CSS vars de themes.css, cero
+ * color literal salvo 3 excepciones documentadas (mismo criterio que primitives.css §scrim):
  *   1) `.hitl-card__preview` usa `--brand-instagram` (color de marca fijo entre los 4 temas,
  *      igual que los brand-* de Conexiones — EXTRACT §1.3 "colores de marca hardcodeados").
  *   2) `.hitl-card__preview-title/caption` usan la keyword `white` (no hex) porque el fondo fijo
  *      del preview (gradiente Instagram) no varía con el tema — un texto theme-aware (--text)
  *      perdería contraste en temas claros. Acotado a ESTE elemento, no un patrón general.
+ *   3) `.recording-overlay` usa `rgba(3,4,10,.74)` (scrim fijo, verbatim EXTRACT §2.10) — mismo
+ *      criterio que el scrim de BottomSheet en primitives.css.
  */
 
 /* ---------- Screen ---------- */
@@ -375,8 +377,22 @@
   border: none;
   color: var(--input-fg);
   font-size: 16px;
+  cursor: pointer;
+  /* El gesto de grabar (Task 19) es un press-and-drag vertical sobre este botón — sin esto el
+     browser lo interpreta como scroll del chat por debajo y el gesto queda roto. */
+  touch-action: none;
+}
+
+.composer__mic:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.composer__mic-error {
+  margin: 0 4px 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--danger-fg);
 }
 
 .composer__input {
@@ -430,6 +446,89 @@
 
 .composer__send:focus-visible,
 .composer__mic:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ---------- Recording overlay (Task 19, EXTRACT §2.10 "estado grabando") ----------
+ * Excepción documentada (mismo criterio que primitives.css §BottomSheet scrim): scrim fijo entre
+ * los 4 temas, verbatim EXTRACT §2.10 (`rgba(3,4,10,.74)` + blur 7px). */
+.recording-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 24px;
+  background: rgba(3, 4, 10, 0.74);
+  backdrop-filter: blur(7px);
+}
+
+.recording-overlay__waveform {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 48px;
+}
+
+.recording-overlay__wave-bar {
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--send-bg);
+  animation: wavePulse 1.1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.recording-overlay__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recording-overlay__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger-btn-bg);
+  animation: recdot 1.1s ease-in-out infinite;
+}
+
+.recording-overlay__timer {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--text);
+}
+
+.recording-overlay__hint {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  text-align: center;
+  margin: 0;
+}
+
+.recording-overlay__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.recording-overlay__send {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--send-bg);
+  color: var(--send-fg);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.recording-overlay__send:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }

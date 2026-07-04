@@ -7,6 +7,7 @@ import type {
   LoginResponse,
   MeResponse,
   ReplyResponse,
+  SendAudioResponse,
 } from './types';
 
 /**
@@ -110,6 +111,23 @@ export const mockApi: CopilotApi = {
 
     await delay(undefined, 80);
     return { wf_id: wfId, accepted: true };
+  },
+
+  async sendAudio(sessionId: string): Promise<SendAudioResponse> {
+    // Fake transcript — el dev local sin backend no transcribe de verdad, solo simula el shape
+    // de respuesta y el mismo pipeline de reply asíncrono que `sendChat` (Task 19, FASE 4).
+    const transcript = '(mock) esto es lo que dijiste por audio';
+    const wfId = `mock-wf-audio-${Date.now()}`;
+    const replyId = ++replyIdSeq;
+    const queue = repliesBySession.get(sessionId) ?? [];
+    repliesBySession.set(sessionId, queue);
+
+    setTimeout(() => {
+      queue.push({ id: replyId, text: mockReplyText(transcript) });
+    }, MOCK_REPLY_DELAY_MS);
+
+    await delay(undefined, 80);
+    return { wf_id: wfId, accepted: true, transcript };
   },
 
   async getReply(sessionId: string, afterId: number): Promise<ReplyResponse> {

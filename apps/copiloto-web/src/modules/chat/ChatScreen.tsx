@@ -21,9 +21,13 @@ const WELCOME_TEXT =
  * `handleSend` reenvía el 2do argumento de `Composer.onSend` (la `key` del modo activo, leída por
  * `Composer` desde `useMode()` — Feature addendum 2026-07-03) a `useChat().send(text, { mode })`,
  * que ya soportaba `opts.mode` desde Task 8. Sin endpoint nuevo (spec §5).
+ *
+ * `handleSendAudio` (Task 19, FASE 4) reenvía el blob grabado por `Composer`/`MicButton` a
+ * `useChat().sendAudio(blob)` — mismo criterio de wiring que `handleSend`, es la única instancia
+ * de `useChat()` (el estado de mensajes/polling vive acá, no se puede duplicar en `Composer`).
  */
 export function ChatScreen() {
-  const { messages, sendStatus, send } = useChat();
+  const { messages, sendStatus, send, sendAudio } = useChat();
   const { logout } = useSession();
 
   const handleSend = useCallback(
@@ -34,13 +38,14 @@ export function ChatScreen() {
     (value: string) => void send(value, { kind: 'callback' }),
     [send],
   );
+  const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
       <StatusBar />
       <ChatHeader onLogout={logout} />
       <MessageList messages={messages} onChoice={handleChoice} emptyHint={WELCOME_TEXT} />
-      <Composer sendStatus={sendStatus} onSend={handleSend} />
+      <Composer sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
     </div>
   );
 }

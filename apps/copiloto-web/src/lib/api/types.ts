@@ -85,6 +85,22 @@ export interface ChatResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /chat/audio
+// ---------------------------------------------------------------------------
+
+/**
+ * Respuesta de subir una nota de voz grabada en el browser para transcribir (Task 19, FASE 4). El
+ * backend transcribe (Groq Whisper, Task 18) y el MISMO request dispara el pipeline de dispatch
+ * normal server-side (igual que `POST /chat`) — el cliente solo necesita mostrar `transcript` como
+ * mensaje de usuario y arrancar el mismo polling de `/reply` (ver `useChat.sendAudio`).
+ */
+export interface SendAudioResponse {
+  wf_id: string;
+  accepted: boolean;
+  transcript: string;
+}
+
+// ---------------------------------------------------------------------------
 // GET /reply
 // ---------------------------------------------------------------------------
 
@@ -132,5 +148,7 @@ export interface CopilotApi {
   /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */
   connect(connectPath: string): Promise<ConnectResponse>;
   sendChat(payload: ChatRequest): Promise<ChatResponse>;
+  /** Sube una nota de voz (multipart) para transcribir — ver `SendAudioResponse`. */
+  sendAudio(sessionId: string, blob: Blob): Promise<SendAudioResponse>;
   getReply(sessionId: string, afterId: number): Promise<ReplyResponse>;
 }

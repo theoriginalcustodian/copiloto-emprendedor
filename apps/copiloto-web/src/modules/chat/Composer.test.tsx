@@ -18,11 +18,17 @@ function ModeSetter({ mode }: { mode: ActiveMode }) {
   return null;
 }
 
-function renderComposer(props: ComposerProps, initialMode?: ActiveMode) {
+/**
+ * `onSendAudio` (Task 19) tiene un default `vi.fn()` acá para no tener que tocar cada `it(...)`
+ * existente que llamaba `renderComposer({sendStatus, onSend})` antes de que el mic real existiera
+ * — los tests de `MicButton`/`onSendAudio` en sí viven en `MicButton.test.tsx`.
+ */
+function renderComposer(props: Partial<ComposerProps> = {}, initialMode?: ActiveMode) {
+  const merged: ComposerProps = { sendStatus: 'idle', onSend: vi.fn(), onSendAudio: vi.fn(), ...props };
   return render(
     <ModeProvider>
       {initialMode && <ModeSetter mode={initialMode} />}
-      <Composer {...props} />
+      <Composer {...merged} />
     </ModeProvider>,
   );
 }
@@ -121,6 +127,19 @@ describe('Composer', () => {
       fireEvent.keyDown(textarea, { key: 'Enter' });
 
       expect(onSend).toHaveBeenCalledWith('Cobrale $5.000 a Juan', 'gmail');
+    });
+  });
+
+  describe('mic (Task 19)', () => {
+    it('ya no muestra el mic deshabilitado "próximamente" — hay un MicButton real y habilitado', () => {
+      renderComposer();
+      expect(screen.queryByLabelText('Grabar audio (próximamente)')).not.toBeInTheDocument();
+      expect(screen.getByTestId('mic-button')).toBeEnabled();
+    });
+
+    it('deshabilita el mic mientras sendStatus=sending (mismo criterio que el textarea)', () => {
+      renderComposer({ sendStatus: 'sending' });
+      expect(screen.getByTestId('mic-button')).toBeDisabled();
     });
   });
 });

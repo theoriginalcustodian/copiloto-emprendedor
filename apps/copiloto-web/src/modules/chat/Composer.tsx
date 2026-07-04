@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react';
 
 import { useMode } from '../../shell/modeStore';
+import { MicButton } from './MicButton';
 import type { SendStatus } from './useChat';
 import './chat.css';
 
@@ -14,6 +15,8 @@ export interface ComposerProps {
    * `ChatRequest`).
    */
   onSend: (text: string, mode: string | null) => void;
+  /** Blob grabado por `MicButton` (Task 19) — el caller lo reenvía a `useChat().sendAudio(blob)`. */
+  onSendAudio: (blob: Blob) => void;
 }
 
 function StatusHint({ sendStatus }: { sendStatus: SendStatus }) {
@@ -75,8 +78,12 @@ const DEFAULT_PLACEHOLDER = 'Escribí tu mensaje…';
  * adapta ("Modo Mail: mandá un mail a…") y aparece un chip "Modo Mail ✕" pegado arriba del input.
  * FOCO BLANDO (spec §1): la adaptación es puramente visual — `canSend`/`submit` NUNCA validan
  * contra el modo, cualquier texto se envía igual (nunca se bloquea "fuera del modo").
+ *
+ * Mic (Task 19, FASE 4): `MicButton` reemplaza el slot deshabilitado — se deshabilita mientras
+ * `sendStatus==='sending'`, mismo criterio que el textarea, para no superponer un envío de texto
+ * con uno de audio.
  */
-export function Composer({ sendStatus, onSend }: ComposerProps) {
+export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const { mode, clearMode } = useMode();
   const canSend = draft.trim() !== '' && sendStatus !== 'sending';
@@ -123,14 +130,7 @@ export function Composer({ sendStatus, onSend }: ComposerProps) {
           submit();
         }}
       >
-        <button
-          type="button"
-          className="composer__mic"
-          disabled
-          aria-label="Grabar audio (próximamente)"
-        >
-          🎙
-        </button>
+        <MicButton onSendAudio={onSendAudio} disabled={sendStatus === 'sending'} />
         <textarea
           className="composer__input"
           value={draft}
