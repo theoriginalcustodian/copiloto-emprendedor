@@ -66,3 +66,41 @@ def test_confirm_sin_pending_clarifica():
     r = _disp(gw)(Intent(action="confirm_pending", entities={}), {}, _ctx(composio_user_id="u1"))
     assert gw.calls == []
     assert r.done is False and r.reply_text                # pide contexto, no rompe
+
+
+# ── Robustez (bug 2026-07-04): un fallo de tool NUNCA se propaga como excepción (colgaría el workflow) ──
+from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired  # noqa: E402
+
+
+class _GatewayRaises:
+    def __init__(self, exc): self._exc = exc
+    def execute(self, slug, *, user_id, arguments, confirmed): raise self._exc
+
+
+def test_tool_no_conectada_no_crashea_y_pide_conectar():
+    # ConnectionRequired (cuenta no conectada) → mensaje accionable con el nombre humano del toolkit; NO se
+    # propaga (si subiera, dispatch_intent reintentaría ∞ y colgaría el turno). done=False → la charla sigue;
+    # pending limpio → no se re-dispara la acción fallida.
+    pending = {"slug": "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN", "arguments": {"title": "Presupuesto"}}
+    r = _disp(_GatewayRaises(ConnectionRequired("googledocs")))(
+        Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
+    assert "Google Docs" in r.reply_text and "conect" in r.reply_text.lower()
+    assert r.done is False
+    assert r.state_patch["pending"] is None
+
+
+def test_fallo_de_servicio_no_crashea_mensaje_generico():
+    # Un ComposioExecutionError genérico (servicio caído) tampoco tumba el turno → mensaje genérico, done=False.
+    pending = {"slug": "GMAIL_SEND_EMAIL", "arguments": {}}
+    r = _disp(_GatewayRaises(ComposioExecutionError("boom")))(
+        Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
+    assert r.reply_text and r.done is False
+    assert r.state_patch["pending"] is None
+
+
+def test_ctx_none_sigue_fallando_fuerte():
+    # El ctx None es un error de PROGRAMACIÓN (composition root mal armado), NO de negocio → debe seguir
+    # levantando ValueError, el wrapper de robustez NO debe enmascararlo.
+    import pytest
+    with pytest.raises(ValueError):
+        _disp(_GatewaySpy())(Intent(action="book", entities={}), {}, None)

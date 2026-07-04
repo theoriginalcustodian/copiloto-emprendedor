@@ -46,6 +46,26 @@ class ComposioExecutionError(Exception):
     """Envuelve un fallo del SDK con contexto (sin secretos)."""
 
 
+class ConnectionRequired(ComposioExecutionError):
+    """La cuenta del toolkit NO está conectada para el user (Composio 400 / slug ActionExecute_
+    ConnectedAccountNotFound / code 1810). Error PERMANENTE, NO reintentable: el user debe conectar el
+    servicio. Subclase de ComposioExecutionError para que el manejo genérico la siga atrapando; el dispatcher
+    la DISTINGUE para dar un mensaje accionable ('conectá X'). NUNCA debe propagarse como excepción de activity
+    → Temporal la reintentaría ∞ y colgaría el turno ('Pensando…' eterno, bug 2026-07-04)."""
+
+    def __init__(self, toolkit: str):
+        self.toolkit = toolkit
+        super().__init__(f"toolkit {toolkit!r} no conectado para el user (ConnectedAccountNotFound)")
+
+
+def _is_connection_missing(err: Exception) -> bool:
+    """True si el fallo del SDK es 'cuenta no conectada' (Composio 400, slug ActionExecute_
+    ConnectedAccountNotFound). Se inspecciona el texto — el gateway es agnóstico del SDK (no importa
+    composio_client) y así resiste cambios de la clase de excepción concreta."""
+    s = str(err)
+    return "ConnectedAccountNotFound" in s or "No connected account found" in s
+
+
 class ComposioGateway:
     def __init__(self, policy, *, api_key_env: str = "COMPOSIO_API_KEY",
                  denylist=DEFAULT_DENYLIST, client_factory=None):
@@ -97,6 +117,8 @@ class ComposioGateway:
         except (ComposioPolicyError, ComposioExecutionError):
             raise
         except Exception as e:
+            if _is_connection_missing(e):
+                raise ConnectionRequired(toolkit) from e   # permanente: el user debe conectar el toolkit
             raise ComposioExecutionError(
                 f"execute {slug} (toolkit={toolkit}, user_id={user_id}) falló: {type(e).__name__}"
             ) from e
