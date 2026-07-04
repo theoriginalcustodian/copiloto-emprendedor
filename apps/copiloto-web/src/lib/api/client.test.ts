@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { setToken } from '../../auth/session';
+import { getRefreshToken, getToken, setRefreshToken, setToken } from '../../auth/session';
 import { ApiError, ForbiddenError, UnauthorizedError, apiClient } from './client';
 
 function mockResponse(status: number, body: unknown): Response {
@@ -46,36 +46,76 @@ describe('apiClient', () => {
     expect(headers.Authorization).toBeUndefined();
   });
 
-  it('401 persistente (el reintento también da 401) → UnauthorizedError y limpia el token', async () => {
-    setToken('tok-expirado');
-    // Ahora el client reintenta 1 vez ante un 401 con sesión: hacen falta DOS 401 para que se rinda.
+  it('401 → refresca (200) y reintenta → resuelve; persiste tokens nuevos', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
     fetchMock
-      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }))
-      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }));
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' })) // request original
+      .mockResolvedValueOnce(
+        mockResponse(200, { access_token: 'tok-nuevo', refresh_token: 'rt-nuevo' }),
+      ) // POST /auth/refresh
+      .mockResolvedValueOnce(mockResponse(200, { ok: true })); // reintento de la request original
+
+    await expect(apiClient.get('/me')).resolves.toEqual({ ok: true });
+
+    expect(getToken()).toBe('tok-nuevo');
+    expect(getRefreshToken()).toBe('rt-nuevo');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const refreshCallUrl = fetchMock.mock.calls[1]?.[0] as string;
+    expect(refreshCallUrl).toContain('/auth/refresh');
+  });
+
+  it('401 y el refresh también da 401 → UnauthorizedError + limpia AMBOS tokens', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' })) // request original
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'refresh token invalido' })); // POST /auth/refresh
 
     await expect(apiClient.get('/me')).rejects.toBeInstanceOf(UnauthorizedError);
-    expect(window.localStorage.getItem('copiloto-token')).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    expect(getToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
   });
 
-  it('401 transitorio (el reintento da 200) → resuelve, NO limpia el token, reintenta 1 vez', async () => {
-    // Reproduce el bug "No pudimos cargar tus apps": blip de auth (401) que se recupera solo (200).
-    setToken('tok-valido');
-    fetchMock
-      .mockResolvedValueOnce(mockResponse(401, { detail: 'blip' }))
-      .mockResolvedValueOnce(mockResponse(200, { services: [] }));
+  it('401 SIN refresh token (sesión legacy) → NO llama /auth/refresh, limpia token, UnauthorizedError', async () => {
+    setToken('tok-viejo'); // sin refresh token persistido
+    fetchMock.mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }));
 
-    await expect(apiClient.get('/catalog')).resolves.toEqual({ services: [] });
-    expect(window.localStorage.getItem('copiloto-token')).toBe('tok-valido');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(apiClient.get('/me')).rejects.toBeInstanceOf(UnauthorizedError);
+
+    expect(getToken()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('401 SIN sesión (sin Bearer) NO reintenta — un solo intento', async () => {
-    // Sin token no hay sesión que rescatar: el 401 es definitivo, reintentar sería inútil.
+  it('401 SIN Bearer (sin sesión) → 1 fetch, no interceptor', async () => {
+    // Sin token no hay sesión que rescatar: el 401 es definitivo, no dispara el refresh flow.
     fetchMock.mockResolvedValueOnce(mockResponse(401, { detail: 'no auth' }));
 
     await expect(apiClient.get('/me')).rejects.toBeInstanceOf(UnauthorizedError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('single-flight: dos requests 401 concurrentes → UN solo /auth/refresh', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
+    let refreshCalls = 0;
+    fetchMock.mockImplementation((url: unknown) => {
+      if (typeof url === 'string' && url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        return Promise.resolve(
+          mockResponse(200, { access_token: 'tok-nuevo', refresh_token: 'rt-nuevo' }),
+        );
+      }
+      // Todas las requests que NO son el refresh (la original y su reintento) dan 401 siempre —
+      // simplifica el mock; lo que importa es que /auth/refresh se dispare UNA sola vez.
+      return Promise.resolve(mockResponse(401, { detail: 'expirado' }));
+    });
+
+    const results = await Promise.allSettled([apiClient.get('/me'), apiClient.get('/catalog')]);
+
+    expect(refreshCalls).toBe(1);
+    expect(results.every((r) => r.status === 'rejected')).toBe(true);
   });
 
   it('mapea 403 a ForbiddenError sin tocar el token', async () => {

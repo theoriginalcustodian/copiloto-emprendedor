@@ -167,6 +167,10 @@ class LoginIn(BaseModel):
     password: str
 
 
+class RefreshIn(BaseModel):
+    refresh_token: str
+
+
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
@@ -315,6 +319,16 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.password_grant(body.email, body.password)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="credenciales inválidas")
+
+    @app.post("/auth/refresh")
+    def refresh(body: RefreshIn) -> dict:
+        """Renueva el token sin re-login (sesión persistente hasta que el usuario cierre sesión). SIN
+        auth: el refresh_token ES la credencial. `def` (httpx sync -> threadpool, mismo criterio que
+        /auth/login). Nunca loguea el token."""
+        try:
+            return gotrue.refresh_grant(body.refresh_token)
+        except InvalidCredentials:
+            raise HTTPException(status_code=401, detail="sesión expirada")
 
     @app.get("/healthz")
     def healthz() -> dict:

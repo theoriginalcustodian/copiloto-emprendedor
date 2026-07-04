@@ -1,4 +1,4 @@
-import { clearToken, getToken } from '../../auth/session';
+import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from '../../auth/session';
 
 /** Vacío = mismo-origen (la SPA se sirve desde el dominio del backend); ver vite-env.d.ts. */
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
@@ -39,12 +39,38 @@ interface RequestOptions {
   auth?: boolean;
 }
 
-/** Espera antes del reintento único ante un 401 (ver `request`). Da margen a que se recupere un
- * blip transitorio del servicio de auth sin desloguear al usuario. */
-const RETRY_401_DELAY_MS = 500;
+// Single-flight: si varias requests dan 401 a la vez, un SOLO refresh corre (GoTrue ROTA el
+// refresh en cada uso -> dos refresh concurrentes = el 2º falla por token ya rotado = logout
+// espurio). Los 401 concurrentes esperan la MISMA promesa.
+let refreshInFlight: Promise<boolean> | null = null;
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false; // sesión legacy sin refresh token -> no se puede renovar
+  try {
+    // fetch CRUDO (no via `request`) para no recursar el interceptor de 401.
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { access_token: string; refresh_token: string };
+    setToken(data.access_token);
+    setRefreshToken(data.refresh_token); // GoTrue ROTA -> persistir el nuevo
+    return true;
+  } catch {
+    return false; // error de red/parseo -> tratar como refresh fallido
+  }
 }
 
 async function readErrorDetail(res: Response): Promise<string | undefined> {
@@ -80,14 +106,17 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
 
   let res = await fetch(`${API_BASE}${path}`, init);
 
-  // Reintento ÚNICO ante 401 en una request con sesión: un 401 transitorio (blip del auth-service,
-  // no expiración real del token) no debe desloguear ni dejar la pantalla en error — el síntoma
-  // "No pudimos cargar tus apps" era exactamente esto (401 rodeado de 200 en los logs). Si el token
-  // está de verdad muerto, el reintento vuelve a 401 y ahí sí se limpia abajo. NO cubre la
-  // expiración real del token (eso necesita refresh-token flow, follow-up de backend).
+  // Refresh-on-401: si una request CON sesión da 401 (token vencido), renovamos en silencio y
+  // reintentamos con el token nuevo. El usuario nunca ve un logout por expiración. Si el refresh
+  // falla de verdad (refresh token muerto), `res` sigue 401 y cae al manejo de 401 de abajo
+  // (clearToken + throw) = logout real. NO cubre auth-service caído (refresh también fallaría).
   if (res.status === 401 && sentBearer) {
-    await sleep(RETRY_401_DELAY_MS);
-    res = await fetch(`${API_BASE}${path}`, init);
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      const fresh = getToken();
+      if (fresh) headers.Authorization = `Bearer ${fresh}`;
+      res = await fetch(`${API_BASE}${path}`, init);
+    }
   }
 
   if (res.ok) {
