@@ -169,3 +169,21 @@ def test_chat_audio_transport_error_returns_502(monkeypatch):
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_flaky_transcribe)
     r = _post_audio(app)
     assert r.status_code == 502
+
+
+# --- 413: audio demasiado grande (cap de RAM del front-door compartido, review HIGH-1) ------
+
+def test_chat_audio_oversized_returns_413(monkeypatch):
+    """Un upload mayor al cap se rechaza con 413 ANTES de transcribir -> no OOM-ea el front-door
+    compartido por todas las tenants. Bajamos el cap a 5 bytes para el test."""
+    monkeypatch.setattr(web_module, "MAX_AUDIO_BYTES", 5)
+    called = {"n": 0}
+
+    def _t(audio_bytes: bytes, content_type: str) -> str:
+        called["n"] += 1
+        return "no debería llegar acá"
+
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
+    r = _post_audio(app, audio_bytes=b"esto-supera-los-cinco-bytes")
+    assert r.status_code == 413
+    assert called["n"] == 0   # rechazó antes de transcribir

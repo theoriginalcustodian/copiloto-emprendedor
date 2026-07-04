@@ -56,6 +56,11 @@ DOMAIN = "emprendedor"
 REFRESH_INTERVAL_SECONDS = float(os.environ.get("MP_REFRESH_INTERVAL_SECONDS", 150 * 24 * 3600))
 MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 
+# Cap de tamaño del audio de /chat/audio (review HIGH-1): el front-door es COMPARTIDO por TODAS las
+# tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
+# real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
+MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
+
 
 def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
                        refresh_interval_seconds: float = REFRESH_INTERVAL_SECONDS,
@@ -199,7 +204,14 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
         para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
         rutas `def`)."""
+        # Cap ANTES de cargar en RAM (review HIGH-1): rechazá por el Content-Length del multipart
+        # (lo setea el browser) para no OOM-ear el front-door compartido; backstop tras leer por si
+        # el `size` no viene en la parte.
+        if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
         audio_bytes = await audio.read()
+        if len(audio_bytes) > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
         content_type = audio.content_type or "audio/ogg"
         try:
             transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
