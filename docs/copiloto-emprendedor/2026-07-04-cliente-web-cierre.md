@@ -92,3 +92,23 @@ Verificado sólido: aislamiento cross-tenant en las rutas nuevas (`/catalog`, `/
 - **Apps = pantalla vs bottom-sheet**: el diseño abre "Tus apps" como bottom-sheet sobre el chat; hoy es pantalla propia (tab). Convertirlo cambia la navegación → **decisión del operador**, no se tocó unilateralmente.
 - **Tenant desechable** `vgate@uc.local` creado para el gate visual → limpiar en el cleanup pre-prod (junto con `e2e-web-cliente@uc.local`).
 - `googledocs`/`googlesheets` caen a marca-letra (no están entre los 6 íconos de marca del diseño) — degradación correcta, no bug.
+
+## 🎯 Fidelidad pixel-perfect a AMBOS diseños + fix raíz del service worker (2026-07-04, commit `15680ef`)
+
+> **Causa raíz de "no veo mis cambios / mockup viejo / mic a la izquierda / composer desaparecido":** el **service worker** (`workbox-precache-v2`) servía un build viejo/partido en el navegador del operador. Verificado empíricamente: la captura del operador mostraba el placeholder `"Escribí tu mensaje…"` que **no existía en el JS servido por el servidor** (curl: 0 ocurrencias). El deploy SÍ funcionaba; el navegador ejecutaba código cacheado. Fix de raíz: `cleanupOutdatedCaches` + `skipWaiting` + `clientsClaim` (vite.config) + `Cache-Control: no-cache` en el app-shell y el `sw.js` (`web.py::_mount_spa`) → un redeploy llega al navegador sin limpieza manual. Verificado vivo: `/sw.js` responde `no-cache` y contiene `cleanupOutdatedCaches/skipWaiting/clientsClaim`.
+
+**Diseños fuente:** el operador tenía DOS diseños distintos — `Copiloto App.dc.html` (móvil) y `Copiloto Web.dc.html` (desktop). El desktop **nunca se había implementado contra su diseño real** (se asumió el móvil). Se mapearon **52 desviaciones desktop + 28 móvil** (2 agentes de auditoría, file:line de ambos lados) y se implementaron a rajatabla en 3 frentes con ownership de archivos exclusiva.
+
+**Implementado y verificado (gate visual Playwright, 8 pantallas, sin caché):**
+- **Desktop chat:** header de sesión (`SESIÓN ACTIVA · sess_ / ＋ Nueva conversación`, nuevo `DesktopChatHeader` + `useChat.startNewSession/sessionId`), sin status-bar de teléfono, composer mic a la derecha + hint "Enter para enviar · mantené 🎙 para hablar".
+- **Apps overlay:** modal centrado 440px en desktop (`AppsModal`), bottom-sheet sobre el chat en móvil (reusa `BottomSheet`) — antes era pantalla-tab en ambos.
+- **Rail (desktop):** contador `3/6` de conexiones, badge de modo con tokens `--badge-*` (ámbar), spacing/radios/ícono 21px, bloque usuario 2 líneas, agrupación inferior.
+- **Cuenta:** header 2-bloques, filas Plan/Idioma, toggle (`--send-bg` + knob blanco), "Cerrar sesión" como fila (no botón), sin fila de contraseña ni headers de sección, selector de tema oculto en desktop (vive en el Rail) y conservado en móvil.
+- **Conexiones:** botón "Conectar" hug-content + radio 9px; avatar oculto en desktop (el diseño desktop no lo tiene; el móvil sí).
+- **Móvil chat:** marcador `SESIÓN ACTIVA · HOY`, badge-dot en el tab Apps, PresenceOrb del header hereda `--core-size` del tema. Motion `waveSlide -140px` / `wavePulse .5` verbatim.
+
+**Verificación:** 395 tests (vitest) + `tsc --noEmit` + `vite build` de producción, todo verde. Gate visual de las 8 pantallas contra los `.dc.html`.
+
+**Deuda nueva (visible, [REQUIRES_BACKEND_CONTRACT] — NO falseada):** los estados HITL que dependen de datos estructurados del backend NO se implementaron con datos inventados: (a) card AGENDA con columnas CUÁNDO/DÓNDE reales, (b) card COBRO estado "ejecutado" + link de pago copiable, (c) pill "Juan te pagó $X" post-webhook, (d) preview WYSIWYG de PUBLICAR poblado. Requieren que el agente conversacional emita esos campos estructurados. El layout/props están listos donde aplica; el mapeo `hitlMapping.ts` es texto-libre hoy. Es el follow-up #1 de esta capa.
+
+**Nota operativa:** para que el navegador del operador (que aún tiene el SW viejo) tome el build nuevo: una recarga con el SW nuevo ya se auto-limpia; si persiste, un hard-refresh (Ctrl+Shift+R) o DevTools → Application → Unregister service worker lo fuerza una sola vez.
