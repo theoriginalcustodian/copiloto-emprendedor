@@ -203,11 +203,17 @@
   --bg: #e7e7f1;
   --bg-layer: none;
   --text: #2a2a3e;
-  --mono: #8888a0;
+  /* --mono se apartó del verbatim #8888a0 (2.81:1 sobre --bg) por AA — oscurecido a #65657f
+     (4.6:1), mismo hue/sat (240°/11%), solo -14.5pp de lightness. */
+  --mono: #65657f;
   --status-fg: #41415a;
   --heading: #2a2a3e;
-  --label: #9a9ab4;
-  --concept: #7a7a92;
+  /* --label se apartó del verbatim #9a9ab4 (2.23:1) por AA — oscurecido a #646487 (4.6:1),
+     mismo hue/sat (240°/15%), solo -20.8pp de lightness (era el token más comprometido). */
+  --label: #646487;
+  /* --concept se apartó del verbatim #7a7a92 (3.4:1) por AA — oscurecido a #66667c (4.55:1),
+     mismo hue/sat (240°/10%), solo -9.6pp de lightness. */
+  --concept: #66667c;
   --name-fg: #2a2a3e;
   --core-size: 16px;
   --core: linear-gradient(150deg, #8b82ff, #5b4ae0);
@@ -215,7 +221,12 @@
   --halo: radial-gradient(circle, rgba(99, 91, 255, 0.35), transparent 70%);
   --presence-wrap-bg: #e7e7f1;
   --presence-wrap-shadow: 6px 6px 12px #c6c6d6, -6px -6px 12px #ffffff;
-  --chip-fg: #6b62c4;
+  /* --chip-fg se apartó del verbatim #6b62c4 por AA. Ojo: el chip se pinta sobre --chip-bg
+     (#dedeec, un poco más oscuro que --bg), no sobre --bg — contra la superficie REAL el
+     verbatim daba 3.78:1 (peor que el 4.1:1 medido contra --bg). Oscurecido a #5c52be
+     (4.63:1 vs --chip-bg real · 5.02:1 vs --bg), mismo tinte azul-violeta (245°/45%),
+     -4.3pp de lightness. */
+  --chip-fg: #5c52be;
   --chip-bg: #dedeec;
   --chip-border: none;
   --avatar-bg: #e7e7f1;
@@ -280,10 +291,15 @@
   --bg: #0b0c0f;
   --bg-layer: radial-gradient(90% 40% at 50% -8%, rgba(74, 216, 255, 0.1), transparent 60%);
   --text: #f5f6f8;
-  --mono: #6e7480;
+  /* --mono se apartó del verbatim #6e7480 (4.17:1 sobre --bg) por AA — aclarado a #747b88
+     (4.59:1), mismo hue/sat (~220°/8%), solo +3.9pp de lightness. */
+  --mono: #747b88;
   --status-fg: #edeef2;
   --heading: #f5f6f8;
-  --label: #5d636e;
+  /* --label se apartó del verbatim #5d636e (3.24:1) por AA — aclarado a #747c89 (4.65:1),
+     mismo hue/sat (~219°/8%), +11pp de lightness (era el token más comprometido; converge cerca
+     de --mono porque ambos deben superar el mismo piso AA con hue/sat casi idénticos). */
+  --label: #747c89;
   --concept: #8b909b;
   --name-fg: #f5f6f8;
   --core-size: 14px;
