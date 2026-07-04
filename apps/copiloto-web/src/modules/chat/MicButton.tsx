@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import { RecordingOverlay } from './RecordingOverlay';
 import './chat.css';
@@ -198,17 +199,32 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         aria-label="Mantené presionado para grabar audio"
         data-testid="mic-button"
       >
-        🎙
+        {/* Ícono mic — SVG verbatim del diseño (Copiloto App.dc.html:187), currentColor hereda
+            `--input-fg` del botón. */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
+          <path
+            d="M6 11a6 6 0 0 0 12 0M12 17v4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
 
-      {recording && (
-        <RecordingOverlay
-          elapsedMs={elapsedMs}
-          locked={locked}
-          onCancel={() => finishRecording(false)}
-          onSend={() => finishRecording(true)}
-        />
-      )}
+      {/* Overlay por PORTAL a <body>: escapa el containing-block que crea el `backdrop-filter` del
+          `.composer__row` (sin esto, `position:fixed` queda atrapado en la cajita del composer y el
+          overlay se ve como una ventanita chica — causa raíz del bug reportado). */}
+      {recording &&
+        createPortal(
+          <RecordingOverlay
+            elapsedMs={elapsedMs}
+            locked={locked}
+            onCancel={() => finishRecording(false)}
+            onSend={() => finishRecording(true)}
+          />,
+          document.body,
+        )}
 
       {permissionError && (
         <p className="composer__mic-error" role="alert">

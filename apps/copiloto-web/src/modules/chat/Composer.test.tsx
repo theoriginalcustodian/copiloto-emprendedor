@@ -37,7 +37,7 @@ describe('Composer', () => {
   it('Enter envía el mensaje y limpia el input (sin modo activo -> mode=null)', () => {
     const onSend = vi.fn();
     renderComposer({ sendStatus: 'idle', onSend });
-    const textarea = screen.getByPlaceholderText('Escribí tu mensaje…');
+    const textarea = screen.getByPlaceholderText('Escribile a tu copiloto…');
     fireEvent.change(textarea, { target: { value: 'Hola' } });
     fireEvent.keyDown(textarea, { key: 'Enter' });
     expect(onSend).toHaveBeenCalledWith('Hola', null);
@@ -47,7 +47,7 @@ describe('Composer', () => {
   it('Shift+Enter NO envía', () => {
     const onSend = vi.fn();
     renderComposer({ sendStatus: 'idle', onSend });
-    const textarea = screen.getByPlaceholderText('Escribí tu mensaje…');
+    const textarea = screen.getByPlaceholderText('Escribile a tu copiloto…');
     fireEvent.change(textarea, { target: { value: 'Hola' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
     expect(onSend).not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe('Composer', () => {
     renderComposer({ sendStatus: 'idle', onSend });
     expect(screen.getByRole('button', { name: 'Enviar mensaje' })).toBeDisabled();
 
-    const textarea = screen.getByPlaceholderText('Escribí tu mensaje…');
+    const textarea = screen.getByPlaceholderText('Escribile a tu copiloto…');
     fireEvent.change(textarea, { target: { value: '   ' } });
     fireEvent.keyDown(textarea, { key: 'Enter' });
     expect(onSend).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('Composer', () => {
 
   it('deshabilita el input mientras sendStatus=sending', () => {
     renderComposer({ sendStatus: 'sending', onSend: vi.fn() });
-    expect(screen.getByPlaceholderText('Escribí tu mensaje…')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Escribile a tu copiloto…')).toBeDisabled();
   });
 
   describe('modo activo (Feature addendum 2026-07-03)', () => {
@@ -114,7 +114,7 @@ describe('Composer', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Salir del modo' }));
 
       expect(screen.queryByTestId('active-mode-chip')).not.toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Escribí tu mensaje…')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Escribile a tu copiloto…')).toBeInTheDocument();
     });
 
     it('foco blando: con modo activo, cualquier texto se envía igual (nunca bloquea)', () => {

@@ -1,10 +1,6 @@
-import { Button, PresenceOrb } from '../../design-system';
+import { PresenceOrb } from '../../design-system';
 import { useSession } from '../../auth/useSession';
 import './chat.css';
-
-export interface ChatHeaderProps {
-  onLogout?: () => void;
-}
 
 /**
  * Header de marca del Chat (Task 10, EXTRACT §2.2 — "restaurado", decisión congelada del plan:
@@ -14,13 +10,11 @@ export interface ChatHeaderProps {
  * porque ese primitivo fuerza `text-transform:uppercase`, que rompería este subtítulo) + avatar
  * inicial.
  *
- * `onLogout` es un affordance TEMPORAL fuera del EXTRACT: el diseño real no pone "Cerrar sesión"
- * en este header (vive en Cuenta, Task 21, todavía no construida). Sin AppShell/TabBar (Task 9)
- * ni Cuenta, `ChatScreen` es HOY la única pantalla autenticada — sin esto no habría forma de
- * salir de la sesión. Documentado en el report para que el parent decida si lo retira cuando
- * Cuenta exista.
+ * Sin botón "Salir": el diseño NO pone "Cerrar sesión" en este header — el logout vive en Cuenta
+ * (AccountScreen). El affordance temporal que existía acá (cuando Chat era la única pantalla
+ * autenticada) se retiró al existir el tab Cuenta.
  */
-export function ChatHeader({ onLogout }: ChatHeaderProps) {
+export function ChatHeader() {
   const { me } = useSession();
   const initial = (me?.cliente_id?.trim()?.[0] ?? '?').toUpperCase();
 
@@ -39,16 +33,6 @@ export function ChatHeader({ onLogout }: ChatHeaderProps) {
         </div>
       </div>
       <div className="chat-header__meta">
-        {onLogout && (
-          <Button
-            variant="ghost"
-            className="chat-header__logout"
-            onClick={onLogout}
-            aria-label="Cerrar sesión"
-          >
-            Salir
-          </Button>
-        )}
         <span className="chat-header__avatar" aria-hidden="true">
           {initial}
         </span>

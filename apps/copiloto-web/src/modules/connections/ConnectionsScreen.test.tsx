@@ -17,10 +17,24 @@ vi.mock('../../lib/api', async (importOriginal) => {
 });
 
 import '../../design-system/themes.css';
+import { SessionProvider } from '../../auth/SessionProvider';
 import { THEMES } from '../../design-system/ThemeProvider';
 import type { CatalogService } from '../../lib/api';
 import { api } from '../../lib/api';
 import { ConnectionsScreen } from './ConnectionsScreen';
+
+/**
+ * `ConnectionsScreen` consume `useSession()` (avatar del header, fiel al diseño) — necesita el
+ * `<SessionProvider>` real (mismo criterio que `AccountScreen.test.tsx`: providers reales, solo
+ * `lib/api` mockeado). Sin token persistido, la sesión resuelve a "anon" sin llamar `api.me()`.
+ */
+function renderConnectionsScreen() {
+  return render(
+    <SessionProvider>
+      <ConnectionsScreen />
+    </SessionProvider>,
+  );
+}
 
 function makeService(overrides: Partial<CatalogService>): CatalogService {
   return {
@@ -75,7 +89,7 @@ describe('ConnectionsScreen', () => {
   it('loading -> ready: muestra skeleton y después la grilla con los servicios', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
 
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
 
     expect(screen.getByTestId('connections-loading')).toBeInTheDocument();
 
@@ -83,20 +97,32 @@ describe('ConnectionsScreen', () => {
 
     expect(screen.getByTestId('service-card-gmail')).toBeInTheDocument();
     expect(screen.getByTestId('service-card-mercadopago')).toBeInTheDocument();
-    expect(screen.getByText('1 conectados · 2 disponibles')).toBeInTheDocument();
+    // gmail=connected, mercadopago=disconnected -> "1 activas · 1 disponibles" (contador derivado
+    // de los datos reales, ver diseño §3.3: "N activas · M disponibles").
+    expect(screen.getByText('1 activas · 1 disponibles')).toBeInTheDocument();
   });
 
-  it('agrupa los servicios por category con su label es-AR', async () => {
+  it('grid PLANO: NO agrupa por category (sin headers) y respeta el orden del catálogo', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
 
-    await waitFor(() => expect(screen.getByText('Comunicación')).toBeInTheDocument());
-    expect(screen.getByText('Pagos')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('service-card-gmail')).toBeInTheDocument());
+
+    // El diseño (líneas 312-370) es un grid 2 columnas SIN agrupar por categoría — no hay más
+    // headers de sección tipo "Comunicación"/"Pagos".
+    expect(screen.queryByText('Comunicación')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pagos')).not.toBeInTheDocument();
+
+    // Las 2 cards viven en el MISMO contenedor grid, en el orden que entrega el catálogo.
+    const grid = screen.getByTestId('service-card-gmail').parentElement;
+    expect(grid).toBe(screen.getByTestId('service-card-mercadopago').parentElement);
+    const cardKeys = Array.from(grid?.children ?? []).map((el) => el.getAttribute('data-testid'));
+    expect(cardKeys).toEqual(['service-card-gmail', 'service-card-mercadopago']);
   });
 
   it('con >8 servicios aparece el buscador y se ven todos', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: NINE_SERVICES });
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
 
     await waitFor(() => expect(screen.getByLabelText('Buscar servicio')).toBeInTheDocument());
     for (const service of NINE_SERVICES) {
@@ -109,7 +135,7 @@ describe('ConnectionsScreen', () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
     vi.mocked(api.connect).mockResolvedValueOnce({ url: 'https://mp.example/oauth/abc' });
 
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
     await waitFor(() => expect(screen.getByTestId('service-card-mercadopago')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Conectar' }));
@@ -120,7 +146,7 @@ describe('ConnectionsScreen', () => {
 
   it('catalog que falla muestra error con botón Reintentar', async () => {
     vi.mocked(api.catalog).mockRejectedValueOnce(new Error('down'));
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
 
     await waitFor(() => expect(screen.getByTestId('connections-error')).toBeInTheDocument());
 
@@ -133,7 +159,7 @@ describe('ConnectionsScreen', () => {
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', async (theme) => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
     document.documentElement.setAttribute('data-theme', theme);
-    render(<ConnectionsScreen />);
+    renderConnectionsScreen();
     await waitFor(() => expect(screen.getByTestId('connections-screen')).toBeInTheDocument());
   });
 });

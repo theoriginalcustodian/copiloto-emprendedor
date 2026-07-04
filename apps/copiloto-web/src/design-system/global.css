@@ -10,6 +10,22 @@
   box-sizing: border-box;
 }
 
+/* Colores FIJOS del overlay de grabación (theme-independiente: siempre sobre el scrim oscuro
+   rgba(3,4,10,.74)) — verbatim del waveform SVG + dot + hint del diseño (Copiloto App.dc.html
+   :277-299). Viven acá (no en un módulo) a propósito: así el gate "cero hex en componentes"
+   (chatNoHexLiterals) sigue pasando y estos valores de marca no se retematizan por tema. */
+:root {
+  --wave-stop-0: #4ad8ff;
+  --wave-stop-1: #5aa0ff;
+  --wave-stop-2: #8b5cff;
+  --wave-stop-3: #e24a8f;
+  --rec-dot: #ff5a6e;
+  --rec-timer: #ffffff;
+  --rec-hint: #aebbda;
+  --rec-cancel-fg: #d6def2;
+  --rec-cancel-border: rgba(255, 255, 255, 0.22);
+}
+
 html,
 body,
 #root {

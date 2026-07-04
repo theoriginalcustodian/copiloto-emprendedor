@@ -1,4 +1,5 @@
-import { Badge, Button, MonoLabel } from '../../design-system';
+import { Badge, Button, MonoLabel, Surface } from '../../design-system';
+import { ServiceIcon } from '../../design-system/serviceIcons';
 import type { CatalogService } from '../../lib/api';
 import './connections.css';
 
@@ -34,34 +35,35 @@ function deriveState(service: CatalogService): ServiceCardState {
   return service.connected ? 'connected' : 'disconnected';
 }
 
-function initial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
-}
-
 /**
- * Tarjeta de servicio del grid de Conexiones (Task 20, EXTRACT §2.8/§3.3): ícono/inicial +
- * `work_label` (principal, grande — copy de trabajo, ej. "Cobrar") + `display_name` (secundario,
- * ej. "Mercado Pago") + `description` + indicador de estado. 3 estados posibles (ver `deriveState`
- * arriba sobre por qué solo 2 están activos hoy).
+ * Tarjeta de servicio del grid de Conexiones (Task 20, EXTRACT §2.8/§3.3 — fiel al diseño
+ * `Copiloto App.dc.html` líneas 334-368): ícono de MARCA (`ServiceIcon`, compartido con
+ * `modules/apps`; degrada a marca-letra si la key no tiene ícono mapeado) + `work_label`
+ * (principal, grande — copy de trabajo, ej. "Cobrar") + `display_name` (secundario, ej. "Mercado
+ * Pago") + indicador de estado al pie. SIN descripción — el diseño la deja afuera, la card es
+ * compacta. 3 estados posibles (ver `deriveState` arriba sobre por qué solo 2 están activos hoy).
+ *
+ * La superficie (fondo/borde/sombra/blur/radio) reusa `<Surface variant="tile" blur>`
+ * (design-system, EXTRACT §2.8 "grid de Conexiones" es uno de los 2 consumidores documentados de
+ * `--tile-*`) en vez de duplicar esos tokens acá — los 2 estados que PISAN ese token base
+ * (`--reconnect` borde de alerta, `--disconnected` opacidad) viven en `connections.css`.
  */
 export function ServiceCard({ service, onConnect, connecting = false, state }: ServiceCardProps) {
   const resolvedState = state ?? deriveState(service);
 
   return (
-    <div
+    <Surface
+      variant="tile"
+      blur
       className={['service-card', `service-card--${resolvedState}`].join(' ')}
       data-testid={`service-card-${service.key}`}
       data-state={resolvedState}
     >
-      <span className="service-card__icon" aria-hidden="true">
-        {initial(service.display_name)}
-      </span>
+      <ServiceIcon serviceKey={service.key} name={service.display_name} size={38} radius={11} />
 
       <div className="service-card__body">
         <p className="service-card__work-label">{service.work_label}</p>
         <p className="service-card__name">{service.display_name}</p>
-        {service.description && <p className="service-card__description">{service.description}</p>}
       </div>
 
       <div className="service-card__footer">
@@ -85,6 +87,6 @@ export function ServiceCard({ service, onConnect, connecting = false, state }: S
           </Button>
         )}
       </div>
-    </div>
+    </Surface>
   );
 }

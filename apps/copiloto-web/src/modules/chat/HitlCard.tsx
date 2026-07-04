@@ -1,4 +1,5 @@
 import { Badge, Button, MonoLabel, Surface, type BadgeVariant } from '../../design-system';
+import { ServiceIcon } from '../../design-system/serviceIcons';
 import './chat.css';
 
 export type HitlVariant = 'cobro' | 'agenda' | 'publicar';
@@ -25,7 +26,8 @@ export interface HitlCardProps {
 }
 
 interface VariantConfig {
-  icon: string;
+  /** `key` de servicio para el ícono de marca (EXTRACT §2.6: MP/Calendar/Instagram en caja 30×30). */
+  serviceKey: string;
   headerLabel: string;
   badge?: { variant: BadgeVariant; text: string };
   fieldLabel?: string;
@@ -35,24 +37,24 @@ interface VariantConfig {
 
 /**
  * Config FIJA por variante (EXTRACT §2.6, tabla de las 3 variantes de riesgo) — no la decide
- * quien llama al componente, es intrínseca a la variante: badge/label/border-de-alerta son
- * siempre los mismos para "cobro"/"agenda"/"publicar".
+ * quien llama al componente, es intrínseca a la variante: ícono de marca/badge/label/border-de-alerta
+ * son siempre los mismos para "cobro"/"agenda"/"publicar".
  */
 const VARIANT_CONFIG: Record<HitlVariant, VariantConfig> = {
   cobro: {
-    icon: '💳',
+    serviceKey: 'mercadopago',
     headerLabel: 'COBRO',
     badge: { variant: 'warning', text: 'REVISAR' },
     fieldLabel: 'PARA',
   },
   agenda: {
-    icon: '📅',
+    serviceKey: 'googlecalendar',
     headerLabel: 'AGENDA',
     fieldLabel: 'CON',
     note: 'Los turnos duran 60 min.',
   },
   publicar: {
-    icon: '📣',
+    serviceKey: 'instagram',
     headerLabel: 'PUBLICAR',
     badge: { variant: 'danger', text: 'IRREVERSIBLE' },
     dangerBorder: true,
@@ -90,10 +92,10 @@ export function HitlCard({
         style={config.dangerBorder ? { border: 'var(--danger-border)' } : undefined}
       >
         <div className="hitl-card__header">
-          <span className="hitl-card__icon" aria-hidden="true">
-            {config.icon}
-          </span>
-          <MonoLabel className="hitl-card__header-label">{config.headerLabel}</MonoLabel>
+          <div className="hitl-card__header-brand">
+            <ServiceIcon serviceKey={config.serviceKey} name={config.headerLabel} size={30} radius={9} />
+            <MonoLabel className="hitl-card__header-label">{config.headerLabel}</MonoLabel>
+          </div>
           {config.badge && <Badge variant={config.badge.variant}>{config.badge.text}</Badge>}
         </div>
 
@@ -127,6 +129,15 @@ export function HitlCard({
 
         {variant === 'publicar' && (
           <p className="hitl-card__warning" role="alert">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
             No se puede deshacer · queda público
           </p>
         )}

@@ -84,12 +84,6 @@
   flex-shrink: 0;
 }
 
-.chat-header__logout {
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 11px;
-}
-
 .chat-header__avatar {
   display: inline-flex;
   align-items: center;
@@ -196,16 +190,16 @@
 .hitl-card__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.hitl-card__icon {
-  font-size: 16px;
-  line-height: 1;
-}
-
-.hitl-card__header-label {
-  flex: 1;
+/* Grupo izquierdo del header: ícono de marca (ServiceIcon 30×30) + label mono; el badge queda a la
+   derecha por el space-between del header — verbatim diseño (Copiloto App.dc.html:86-92). */
+.hitl-card__header-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
 .hitl-card__field {
@@ -280,11 +274,15 @@
 .hitl-card__warning {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-family: var(--font-body);
   font-size: 12.5px;
   color: var(--danger-fg);
   margin: 0;
+}
+
+.hitl-card__warning svg {
+  flex-shrink: 0;
 }
 
 .hitl-card__actions {
@@ -358,9 +356,9 @@
 
 .composer__row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
-  padding: 6px 6px 6px 14px;
+  padding: 8px 8px 8px 18px;
   border-radius: 20px;
   background: var(--input-bg);
   border: var(--input-border);
@@ -368,16 +366,19 @@
   backdrop-filter: var(--input-blur);
 }
 
+/* Mic 38×38 radio 14px (cuadrado redondeado, NO círculo) — verbatim diseño (Copiloto App.dc.html:186). */
 .composer__mic {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
   background: transparent;
   border: none;
   color: var(--input-fg);
-  font-size: 16px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   /* El gesto de grabar (Task 19) es un press-and-drag vertical sobre este botón — sin esto el
      browser lo interpreta como scroll del chat por debajo y el gesto queda roto. */
   touch-action: none;
@@ -417,15 +418,16 @@
   opacity: 0.6;
 }
 
+/* Enviar 38×38 radio 14px con glow del botón (--btn-shadow) — verbatim diseño (Copiloto App.dc.html:189). */
 .composer__send {
   flex-shrink: 0;
   width: 38px;
   height: 38px;
-  border-radius: 50%;
+  border-radius: 14px;
   border: none;
   background: var(--send-bg);
   color: var(--send-fg);
-  font-size: 16px;
+  box-shadow: var(--btn-shadow);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -456,65 +458,94 @@
 .recording-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  /* Por encima de tab-bar (30) y sheet (60/61) — coincide con el z-index del overlay del diseño (70).
+     Se monta por PORTAL a <body> (MicButton) para que `fixed` cubra el viewport real y no quede
+     atrapado por el `backdrop-filter` del `.composer__row` (containing-block trap). */
+  z-index: 70;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  padding: 24px;
+  gap: 26px;
+  padding: 0 24px;
   background: rgba(3, 4, 10, 0.74);
   backdrop-filter: blur(7px);
 }
 
+/* Ventana de recorte 280×96 con el SVG de 420×96 corriendo por dentro (waveSlide) — verbatim
+   diseño (Copiloto App.dc.html:275-289). */
 .recording-overlay__waveform {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 48px;
+  width: 280px;
+  height: 96px;
+  overflow: hidden;
 }
 
-.recording-overlay__wave-bar {
-  width: 4px;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--send-bg);
-  animation: wavePulse 1.1s ease-in-out infinite;
+.recording-overlay__wave-svg {
+  display: block;
+}
+
+.recording-overlay__wave-pulse {
+  transform-box: fill-box;
   transform-origin: center;
+  animation: wavePulse 1.6s ease-in-out infinite;
+}
+
+.recording-overlay__wave-slide {
+  animation: waveSlide 2.2s linear infinite;
 }
 
 .recording-overlay__meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .recording-overlay__dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--danger-btn-bg);
+  background: var(--rec-dot);
   animation: recdot 1.1s ease-in-out infinite;
 }
 
 .recording-overlay__timer {
   font-family: var(--font-mono);
   font-size: 16px;
-  color: var(--text);
+  letter-spacing: 0.05em;
+  color: var(--rec-timer);
 }
 
 .recording-overlay__hint {
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--label);
+  color: var(--rec-hint);
   text-align: center;
   margin: 0;
+}
+
+.recording-overlay__hint-arrow {
+  color: var(--rec-timer);
 }
 
 .recording-overlay__actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
+}
+
+/* Cancelar: outline sobre el scrim oscuro (fijo entre temas, como el scrim) — verbatim diseño línea 299. */
+.recording-overlay__cancel {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--rec-cancel-border);
+  color: var(--rec-cancel-fg);
+  border-radius: 13px;
+  padding: 12px 17px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .recording-overlay__send {
@@ -524,10 +555,14 @@
   border: none;
   background: var(--send-bg);
   color: var(--send-fg);
-  font-size: 20px;
+  box-shadow: var(--btn-shadow);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.recording-overlay__cancel:focus-visible,
 .recording-overlay__send:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;

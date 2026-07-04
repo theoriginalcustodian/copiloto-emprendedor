@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
@@ -33,16 +33,27 @@ const DEFAULT_TAB: TabKey = 'chat';
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
+  // Hide-on-scroll (EXTRACT §2.3): solo el Chat lo dispara; cambiar de tab siempre re-muestra la barra.
+  const [tabHidden, setTabHidden] = useState(false);
+
+  const changeTab = useCallback((key: TabKey) => {
+    setTabHidden(false);
+    setActiveTab(key);
+  }, []);
+
+  const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <div className="app-frame app-shell" data-testid="app-shell">
+    <div className={shellClasses} data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
-        {activeTab === 'chat' && <ChatScreen />}
-        {activeTab === 'apps' && <AppsScreen onGoToConnections={() => setActiveTab('connections')} />}
+        {activeTab === 'chat' && <ChatScreen onHideChange={setTabHidden} />}
+        {activeTab === 'apps' && <AppsScreen onGoToConnections={() => changeTab('connections')} />}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
-      <TabBar active={activeTab} onChange={setActiveTab} />
+      <TabBar active={activeTab} onChange={changeTab} hidden={tabHidden} />
     </div>
   );
 }

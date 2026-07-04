@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useSession } from '../auth/useSession';
 import { useTheme, type Theme } from '../design-system/ThemeProvider';
 import { useMode } from './modeStore';
+import { NAV_ICONS } from './navIcons';
 import { TABS, type TabKey } from './TabBar';
 import './desktop.css';
 
@@ -82,7 +83,7 @@ export function Rail({ active, onChange }: RailProps) {
                 onClick={() => onChange(tab.key)}
               >
                 <span className="rail__icon-wrap" aria-hidden="true">
-                  <span className="rail__icon">{tab.icon}</span>
+                  <span className="rail__icon">{NAV_ICONS[tab.key]()}</span>
                   {showModeBadge && <span className="rail__dot" data-testid="rail-mode-dot" />}
                 </span>
                 <span className="rail__label">{tab.label}</span>

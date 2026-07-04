@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 
 import { StatusBar } from '../../design-system';
-import { useSession } from '../../auth/useSession';
 import { ChatHeader } from './ChatHeader';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -26,9 +25,14 @@ const WELCOME_TEXT =
  * `useChat().sendAudio(blob)` — mismo criterio de wiring que `handleSend`, es la única instancia
  * de `useChat()` (el estado de mensajes/polling vive acá, no se puede duplicar en `Composer`).
  */
-export function ChatScreen() {
+export interface ChatScreenProps {
+  /** Hide-on-scroll (EXTRACT §2.3): el shell lo usa para ocultar la tab-bar al scrollear el chat.
+   * Opcional — el ChatScreen corre standalone (sin shell) sin él. */
+  onHideChange?: (hidden: boolean) => void;
+}
+
+export function ChatScreen({ onHideChange }: ChatScreenProps = {}) {
   const { messages, sendStatus, send, sendAudio } = useChat();
-  const { logout } = useSession();
 
   const handleSend = useCallback(
     (text: string, mode: string | null) => void send(text, { mode }),
@@ -43,8 +47,13 @@ export function ChatScreen() {
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
       <StatusBar />
-      <ChatHeader onLogout={logout} />
-      <MessageList messages={messages} onChoice={handleChoice} emptyHint={WELCOME_TEXT} />
+      <ChatHeader />
+      <MessageList
+        messages={messages}
+        onChoice={handleChoice}
+        emptyHint={WELCOME_TEXT}
+        onHideChange={onHideChange}
+      />
       <Composer sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
     </div>
   );

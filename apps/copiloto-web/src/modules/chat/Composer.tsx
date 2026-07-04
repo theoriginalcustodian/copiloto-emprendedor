@@ -66,7 +66,7 @@ const CATEGORY_HINT: Record<string, string> = {
   publicacion: 'preparé un posteo para…',
 };
 const DEFAULT_HINT = 'contame qué necesitás…';
-const DEFAULT_PLACEHOLDER = 'Escribí tu mensaje…';
+const DEFAULT_PLACEHOLDER = 'Escribile a tu copiloto…';
 
 /**
  * Composer de texto (Task 15, EXTRACT §2.10 — solo la parte texto-only; el mic/voz es Task 19,
@@ -130,7 +130,6 @@ export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
           submit();
         }}
       >
-        <MicButton onSendAudio={onSendAudio} disabled={sendStatus === 'sending'} />
         <textarea
           className="composer__input"
           value={draft}
@@ -140,13 +139,24 @@ export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
           rows={1}
           disabled={sendStatus === 'sending'}
         />
+        <MicButton onSendAudio={onSendAudio} disabled={sendStatus === 'sending'} />
         <button
           type="submit"
           className="composer__send"
           disabled={!canSend}
           aria-label="Enviar mensaje"
         >
-          ↑
+          {/* Flecha "enviar" — SVG verbatim del diseño (Copiloto App.dc.html:190), currentColor
+              hereda `--send-fg` del botón (EXTRACT §2.10). */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 19V5M5 12l7-7 7 7"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </form>
     </div>

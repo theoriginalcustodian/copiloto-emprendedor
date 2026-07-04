@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
-import { Button, MonoLabel, Skeleton } from '../../design-system';
+import { useSession } from '../../auth/useSession';
+import { Button, Skeleton } from '../../design-system';
 import type { CatalogService } from '../../lib/api';
 import { ServiceCard } from './ServiceCard';
 import { useConnections } from './useConnections';
@@ -10,26 +11,6 @@ import './connections.css';
 const SEARCH_THRESHOLD = 8;
 
 const SKELETON_ROWS = 4;
-
-/**
- * Categorías conocidas -> label es-AR legible. NO es una whitelist cerrada: `categoryLabel`
- * degrada con gracia a cualquier categoría nueva que el backend agregue (capitaliza el string
- * crudo) — sumar un servicio con categoría nueva no rompe ni requiere tocar este componente.
- */
-const CATEGORY_LABELS: Record<string, string> = {
-  pagos: 'Pagos',
-  comunicacion: 'Comunicación',
-  agenda: 'Agenda',
-  archivos: 'Archivos',
-  clientes: 'Clientes',
-  publicacion: 'Publicación',
-};
-
-function categoryLabel(category: string): string {
-  const known = CATEGORY_LABELS[category];
-  if (known) return known;
-  return category.replace(/[_-]+/g, ' ').replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
-}
 
 function matchesQuery(service: CatalogService, query: string): boolean {
   const q = query.toLowerCase();
@@ -41,25 +22,30 @@ function matchesQuery(service: CatalogService, query: string): boolean {
 }
 
 /**
- * Módulo Conexiones (Task 20, EXTRACT §2.8/§3.3) — grid data-driven desde `/catalog`+`/me`
- * (vía `useConnections`), agrupado por `category`. Toda la LÓGICA (fetch, agrupado, connect,
- * refresh-al-volver-de-foco) vive en el hook; acá solo presentación + el flujo de abrir el OAuth.
+ * Inicial del avatar del header — mismo patrón que `AccountScreen` (`/me` hoy solo trae
+ * `cliente_id`, no nombre/email, ver `lib/api/types.ts`): degrada a "?" sin sesión resuelta.
+ */
+function initial(clienteId: string | undefined): string {
+  return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
+}
+
+/**
+ * Módulo Conexiones (Task 20, EXTRACT §2.8/§3.3) — grid PLANO de 2 columnas, SIN agrupar por
+ * categoría (fiel al diseño, `Copiloto App.dc.html` líneas 312-370): las cards van en el orden que
+ * entrega `/catalog` vía `useConnections`. Toda la LÓGICA (fetch, connect, refresh-al-volver-de-
+ * foco) vive en el hook; acá solo presentación + el flujo de abrir el OAuth.
  */
 export function ConnectionsScreen() {
-  const { status, groups, connectedCount, totalCount, connect, refresh } = useConnections();
+  const { status, services, connectedCount, totalCount, connect, refresh } = useConnections();
+  const { me } = useSession();
   const [query, setQuery] = useState('');
   const [connectingKey, setConnectingKey] = useState<string | null>(null);
 
-  const filteredGroups = useMemo(() => {
+  const filteredServices = useMemo(() => {
     const trimmed = query.trim();
-    if (!trimmed) return groups;
-    return groups
-      .map((group) => ({
-        category: group.category,
-        services: group.services.filter((service) => matchesQuery(service, trimmed)),
-      }))
-      .filter((group) => group.services.length > 0);
-  }, [groups, query]);
+    if (!trimmed) return services;
+    return services.filter((service) => matchesQuery(service, trimmed));
+  }, [services, query]);
 
   const handleConnect = async (service: CatalogService) => {
     setConnectingKey(service.key);
@@ -76,12 +62,17 @@ export function ConnectionsScreen() {
   return (
     <div className="connections-screen" data-testid="connections-screen">
       <header className="connections-screen__header">
-        <h1 className="connections-screen__title">Conexiones</h1>
-        {status === 'ready' && (
-          <p className="connections-screen__count">
-            {connectedCount} conectados · {totalCount} disponibles
-          </p>
-        )}
+        <div className="connections-screen__heading">
+          <h1 className="connections-screen__title">Conexiones</h1>
+          {status === 'ready' && (
+            <p className="connections-screen__count">
+              {connectedCount} activas · {totalCount - connectedCount} disponibles
+            </p>
+          )}
+        </div>
+        <span className="connections-screen__avatar" aria-hidden="true">
+          {initial(me?.cliente_id)}
+        </span>
       </header>
 
       {status === 'loading' && (
@@ -116,29 +107,18 @@ export function ConnectionsScreen() {
 
           {totalCount === 0 ? (
             <p className="connections-screen__empty">Todavía no hay servicios disponibles.</p>
+          ) : filteredServices.length === 0 ? (
+            <p className="connections-screen__empty">Ninguna app coincide con &quot;{query}&quot;.</p>
           ) : (
-            <div className="connections-screen__list">
-              {filteredGroups.map((group) => (
-                <section key={group.category} className="connections-screen__group">
-                  <MonoLabel className="connections-screen__group-label">
-                    {categoryLabel(group.category)}
-                  </MonoLabel>
-                  <div className="connections-screen__grid">
-                    {group.services.map((service) => (
-                      <ServiceCard
-                        key={service.key}
-                        service={service}
-                        onConnect={(s) => void handleConnect(s)}
-                        connecting={connectingKey === service.key}
-                      />
-                    ))}
-                  </div>
-                </section>
+            <div className="connections-screen__grid">
+              {filteredServices.map((service) => (
+                <ServiceCard
+                  key={service.key}
+                  service={service}
+                  onConnect={(s) => void handleConnect(s)}
+                  connecting={connectingKey === service.key}
+                />
               ))}
-
-              {filteredGroups.length === 0 && (
-                <p className="connections-screen__empty">Ninguna app coincide con &quot;{query}&quot;.</p>
-              )}
             </div>
           )}
         </>

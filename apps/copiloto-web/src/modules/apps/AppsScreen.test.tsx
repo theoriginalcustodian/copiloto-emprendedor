@@ -84,6 +84,42 @@ describe('AppsScreen', () => {
     vi.restoreAllMocks();
   });
 
+  it('título y subtítulo son fieles al diseño ("Tus apps")', async () => {
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: [GMAIL] });
+
+    renderAppsScreen();
+    await waitFor(() => expect(screen.getByTestId('mode-bar')).toBeInTheDocument());
+
+    expect(screen.getByRole('heading', { name: 'Tus apps' })).toBeInTheDocument();
+    expect(screen.getByText('Elegí un modo para enfocar al copiloto')).toBeInTheDocument();
+  });
+
+  it('sin modo activo NO muestra la píldora "Salir del modo"', async () => {
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: [GMAIL] });
+
+    renderAppsScreen();
+    await waitFor(() => expect(screen.getByTestId('mode-bar')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('apps-exit-mode')).not.toBeInTheDocument();
+  });
+
+  it('con modo activo, "Salir del modo" vuelve a modo general (spec §3.3)', async () => {
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: [GMAIL] });
+
+    renderAppsScreen();
+    await waitFor(() => expect(screen.getByTestId('mode-button-gmail')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('mode-button-gmail'));
+    expect(screen.getByTestId('mode-probe')).toHaveTextContent('gmail:Mail:comunicacion');
+
+    const exitButton = screen.getByTestId('apps-exit-mode');
+    expect(exitButton).toHaveTextContent('Salir del modo');
+
+    fireEvent.click(exitButton);
+    expect(screen.getByTestId('mode-probe')).toHaveTextContent('none');
+    expect(screen.queryByTestId('apps-exit-mode')).not.toBeInTheDocument();
+  });
+
   it('lista SOLO los servicios conectados (data-driven de /catalog)', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({
       services: [GMAIL, CALENDAR, DRIVE_DISCONNECTED],

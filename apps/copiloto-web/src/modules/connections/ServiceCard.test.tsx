@@ -18,6 +18,19 @@ const BASE_SERVICE: CatalogService = {
 };
 
 describe('ServiceCard', () => {
+  it('usa el ícono de marca real (ServiceIcon) para una key mapeada, no la marca-letra', () => {
+    render(<ServiceCard service={BASE_SERVICE} onConnect={vi.fn()} />);
+    const card = screen.getByTestId('service-card-gmail');
+    // gmail está mapeado en `design-system/serviceIcons.tsx` -> renderiza un <svg>, no un span
+    // con la inicial (fiel al diseño, líneas 335-365 del mock).
+    expect(card.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('NO muestra descripción (el diseño no la tiene — card compacta)', () => {
+    render(<ServiceCard service={BASE_SERVICE} onConnect={vi.fn()} />);
+    expect(screen.queryByText(BASE_SERVICE.description)).not.toBeInTheDocument();
+  });
+
   it('estado conectado: muestra dot verde + "CONECTADO", sin botón conectar', () => {
     render(<ServiceCard service={BASE_SERVICE} onConnect={vi.fn()} />);
     expect(screen.getByTestId('service-card-gmail')).toHaveAttribute('data-state', 'connected');

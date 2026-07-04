@@ -11,7 +11,7 @@
  *
  * Tokens sin equivalente exacto en el EXTRACT, resueltos al más cercano (anotado en el report):
  * - Badge variante "neutral"  -> --chip-* (no hay --badge-neutral-* en el EXTRACT)
- * - Toast (no tiene sección propia en el EXTRACT) -> reusa --card-* + acentos --ok-*/--danger-*
+ * - Toast (no tiene sección propia en el EXTRACT) -> reusa --card-* + acentos --ok / --danger
  */
 
 /* ---------- Button ---------- */
