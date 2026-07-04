@@ -243,6 +243,35 @@ def test_provider_warm_hits_user_graph_of_this_cliente():
     assert seen["path"].endswith(f"/users/copiloto-{cid}/warm")
 
 
+def test_remember_drops_empty_content_keeps_the_rest():
+    """Un mensaje con content vacío se DROPEA — NO tira el batch entero (add_messages valida todo-o-nada).
+    Sin este filtro, un turno degenerado ('' o solo-espacios) perdería ~10 interacciones de memoria."""
+    sent = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/messages"):
+            sent["messages"] = _json(req)["messages"]
+        return httpx.Response(201, json={})
+
+    _provider(handler).remember(str(uuid.uuid4()), "web", [
+        {"role": "user", "content": "hola"},
+        {"role": "assistant", "content": "   "},        # vacío → se dropea, no rompe el batch
+        {"role": "user", "content": "todo bien"}])
+    assert [m["content"] for m in sent["messages"]] == ["hola", "todo bien"]
+
+
+def test_remember_all_empty_is_noop():
+    """Si TODOS los mensajes son vacíos → cero I/O (no crear user/thread para nada)."""
+    calls = {"n": 0}
+
+    def handler(_req):
+        calls["n"] += 1
+        return httpx.Response(201, json={})
+
+    _provider(handler).remember(str(uuid.uuid4()), "web", [{"role": "user", "content": "  "}])
+    assert calls["n"] == 0
+
+
 def _json(req: httpx.Request):
     import json
     return json.loads(req.content.decode()) if req.content else None

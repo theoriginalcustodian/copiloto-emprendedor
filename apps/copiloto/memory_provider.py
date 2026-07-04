@@ -94,17 +94,20 @@ class MemoryProvider:
 
     # ── WRITE (batcheado por el caller; flush al cerrar la sesión) ────────────────────────────────────────
     def remember(self, cliente_id: str, thread_ref: str, messages: list[dict]) -> None:
-        """Persiste los mensajes (turno o batch de ~5-10) en el user graph. Lazy-create user→thread (orden
-        obligatorio: el server da 404 al crear thread si el user no existe). Best-effort: falla → no-op logueado
-        (no perder un turno del agente por una caída de la memoria)."""
-        if not messages:
+        """Persiste los mensajes (turno o batch) en el user graph. Lazy-create user→thread (orden obligatorio:
+        el server da 404 al crear thread si el user no existe). Best-effort: falla → no-op logueado (no perder
+        el turno del agente por una caída de la memoria). Filtra mensajes con content vacío/no-str ANTES de
+        enviar: `add_messages` valida todo-o-nada, así un solo mensaje inválido (ej. un turno degenerado) NO
+        debe descartar el batch entero de ~10 interacciones."""
+        clean = [m for m in messages if isinstance(m.get("content"), str) and m["content"].strip()]
+        if not clean:
             return
         user_id = self._user_id(cliente_id)
         thread_id = self._thread_id(cliente_id, thread_ref)
         try:
             self._client.ensure_user(user_id)
             self._client.ensure_thread(thread_id, user_id)
-            self._client.add_messages(thread_id, messages)
+            self._client.add_messages(thread_id, clean)
         except (GraphityMemoryError, ValueError) as exc:
             _log.warning("remember degradado (memoria no persistida): cliente=%s err=%s", cliente_id, exc)
 

@@ -25,10 +25,13 @@ class TenantCtx:
     mp_cred_store: MpCredentialStore
     mp_seller_user_id: str | None
     mp_webhook_base: str | None
+    memory_provider: object | None = None    # boundary de memoria (compartido, stateless); tools futuras
+                                             # (BI/catálogo, group graphs) lo usan vía ctx.memory_provider
 
 
 def make_context_factory(*, conn_factory: Callable, crypto, mp_gateway=None,
-                         mp_webhook_base: str | None = None) -> Callable[[dict], TenantCtx]:
+                         mp_webhook_base: str | None = None,
+                         memory_provider=None) -> Callable[[dict], TenantCtx]:
     """Devuelve `context_factory(conv) -> TenantCtx`. `conv` es el payload del activity `dispatch_intent`
     (trae `cliente_id` per-request). `composio_user_id = str(cliente_id)` (decisión cerrada del design §2.3:
     la entity de Composio se identifica por el cliente_id del tenant). El seller de MercadoPago del tenant se
@@ -43,6 +46,7 @@ def make_context_factory(*, conn_factory: Callable, crypto, mp_gateway=None,
             mp_cred_store=cred_store,
             mp_seller_user_id=cred_store.first_seller_user_id(),
             mp_webhook_base=mp_webhook_base,
+            memory_provider=memory_provider,
         )
     return context_factory
 

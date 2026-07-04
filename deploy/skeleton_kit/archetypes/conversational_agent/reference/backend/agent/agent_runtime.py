@@ -20,9 +20,13 @@ _STAFF_NOTIFIER = {"fn": None}
 _STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del dominio); la usa la activity transcribe_voice
 
 
-def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None) -> None:
+def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None,
+                    memory_provider=None) -> None:
+    """`memory_provider` (opcional): boundary de memoria de largo plazo (recall/remember/warm). None = el
+    dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él."""
     _DOMAINS[name] = {"system_prompt": system_prompt, "llm_provider": llm_provider,
-                      "dispatcher": dispatcher, "context_factory": context_factory}
+                      "dispatcher": dispatcher, "context_factory": context_factory,
+                      "memory_provider": memory_provider}
 
 
 def get_domain(name: str) -> dict:
