@@ -26,14 +26,17 @@ sys.path.insert(0, str(ARCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
 
 from backend.agent.inbound_router import route_inbound
+from catalog import build_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 from mp_credential_store import MpCredentialStore
-from onboarding import signup_and_provision
+from onboarding import InvalidCredentials, signup_and_provision
 from reply_store import read_replies as _read_replies
 
 import services
@@ -80,6 +83,40 @@ def _composio_valid_toolkits() -> frozenset[str]:
     return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 
+def _spa_static_dir() -> Path:
+    """Dir del build del cliente PWA (Vite `dist`), servido mismo-origen por el front-door (sin CORS).
+    Parametrizable (`COPILOTO_WEB_STATIC_DIR`, cero hardcoding); default relativo al repo
+    (`apps/copiloto-web/dist`, que produce `deploy/copiloto/sync-web.sh` en el VPS)."""
+    env = os.environ.get("COPILOTO_WEB_STATIC_DIR")
+    return Path(env) if env else Path(__file__).resolve().parents[2] / "apps/copiloto-web/dist"
+
+
+def _mount_spa(app: FastAPI, static_dir: Path | None = None) -> bool:
+    """Monta la PWA build mismo-origen SOLO si ya existe (`index.html`). Import-safe: sin build, el
+    front-door queda API-only (no rompe -- el spike de serving lo activa cuando el build llega).
+
+    Se llama DESPUÉS de todas las rutas de API + el router de MP: las rutas explícitas se registran
+    primero -> Starlette las matchea primero; el catch-all GET solo atrapa lo NO matcheado (las rutas
+    de cliente de la SPA, ej. /login, /conexiones) y devuelve `index.html` (routing client-side).
+    Los assets reales (js/css bajo /assets, más manifest/iconos/sw en la raíz) se sirven tal cual."""
+    d = static_dir or _spa_static_dir()
+    index = d / "index.html"
+    if not index.is_file():
+        return False
+    assets = d / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str) -> FileResponse:
+        candidate = d / full_path
+        if full_path and candidate.is_file() and candidate.resolve().is_relative_to(d.resolve()):
+            return FileResponse(str(candidate))
+        return FileResponse(str(index))  # fallback SPA (client-side routing)
+
+    return True
+
+
 class ChatIn(BaseModel):
     session_id: str
     text: str
@@ -87,6 +124,11 @@ class ChatIn(BaseModel):
 
 
 class SignupIn(BaseModel):
+    email: str
+    password: str
+
+
+class LoginIn(BaseModel):
     email: str
     password: str
 
@@ -140,6 +182,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         return {"cliente_id": cliente_id, "mp_connected": seller is not None,
                 "composio_connected": composio_connected}
 
+    @app.get("/catalog")
+    def catalog(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Catálogo de servicios de ESTE tenant (Task 6, handoff §7.7): mismo cálculo mp_connected/
+        composio_connected que `/me`, pero con la metadata de presentación (`catalog.build_catalog`,
+        capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
+        SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
+        literal que pueda driftear de `/composio/connect`."""
+        seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                              if (c["status"] or "").upper() == "ACTIVE"]
+        return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
+                                          mp_connected=seller is not None,
+                                          composio_connected=composio_connected)}
+
     # --- Connect flows per-tenant (Task 7, spec §7) -----------------------------
     # `def` (no `async def`): ambas rutas hacen I/O bloqueante sync (crypto + HTTP del gateway real)
     # -> threadpool, mismo criterio que /reply,/me,/auth/signup.
@@ -170,6 +226,18 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         return signup_and_provision(email=body.email, password=body.password, gotrue=gotrue,
                                     conn_factory=conn_factory)
 
+    @app.post("/auth/login")
+    def login(body: LoginIn) -> dict:
+        """Proxy de login mismo-origen (Task 6): el frontend NUNCA habla directo con GoTrue (sin
+        CORS, sin anon key en el browser) -- manda email/password acá y este endpoint hace el
+        password-grant server-side (`GoTrueAdmin.password_grant`) y reenvía el token tal cual.
+        `def` (no async): password_grant es I/O bloqueante sync (httpx.Client) -> threadpool, mismo
+        criterio que /auth/signup. Nunca loguea password ni token (regla dura de secretos)."""
+        try:
+            return gotrue.password_grant(body.email, body.password)
+        except InvalidCredentials:
+            raise HTTPException(status_code=401, detail="credenciales inválidas")
+
     @app.get("/healthz")
     def healthz() -> dict:
         return {"status": "ok"}
@@ -178,5 +246,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # barrera (state cifrado / x-signature). `include_router` copia sus rutas absolutas al front-door
     # SIN heredar `require_tenant` -- MercadoPago no manda JWT del tenant en sus llamadas.
     app.include_router(mp_app.router)
+
+    # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
+    # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).
+    _mount_spa(app)
 
     return app
