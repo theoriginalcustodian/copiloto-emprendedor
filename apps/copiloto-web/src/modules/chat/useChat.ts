@@ -122,6 +122,12 @@ export interface UseChatResult {
   send: (text: string, opts?: SendOptions) => Promise<void>;
   /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función. */
   sendAudio: (blob: Blob) => Promise<void>;
+  /** `session_id` activo (para mostrar un fragmento en el header de escritorio, ej. `sess_9f2a`). */
+  sessionId: string;
+  /** Arranca una conversación nueva: genera un `session_id` fresco, lo persiste, descarta el
+   * historial viejo y vacía los mensajes. Lo consume el botón "Nueva conversación" del header
+   * de escritorio (`Copiloto Web.dc.html:98-101`); el shell mobile no lo usa. */
+  startNewSession: () => void;
 }
 
 export function useChat(): UseChatResult {
@@ -138,6 +144,10 @@ export function useChat(): UseChatResult {
 
   const [messages, setMessages] = useState<ChatMessage[]>(persistedMessages);
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
+  // `sessionId` es estado (no solo el ref) para que el header de escritorio re-renderice al
+  // arrancar una conversación nueva; el ref sigue siendo la fuente de verdad de los callbacks
+  // de polling (identidad estable), y `startNewSession` mantiene ambos en sync.
+  const [sessionId, setSessionId] = useState<string>(sessionIdRef.current);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -268,5 +278,25 @@ export function useChat(): UseChatResult {
     [startWaitingForReply, stopPolling],
   );
 
-  return { messages, sendStatus, send, sendAudio };
+  const startNewSession = useCallback(() => {
+    stopPolling();
+    const previous = sessionIdRef.current;
+    const created = generateId();
+    sessionIdRef.current = created;
+    nextIdRef.current = 0;
+    seenIdsRef.current = new Set();
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, created);
+        window.localStorage.removeItem(messagesStorageKey(previous));
+      } catch {
+        // best-effort — si localStorage falla, igual reseteamos el estado en memoria.
+      }
+    }
+    setMessages([]);
+    setSessionId(created);
+    setSendStatus('idle');
+  }, [stopPolling]);
+
+  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession };
 }

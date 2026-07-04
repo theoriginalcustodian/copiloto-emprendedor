@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { StatusBar } from '../../design-system';
 import { ChatHeader } from './ChatHeader';
+import { DesktopChatHeader } from './DesktopChatHeader';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { useChat } from './useChat';
@@ -29,10 +30,18 @@ export interface ChatScreenProps {
   /** Hide-on-scroll (EXTRACT §2.3): el shell lo usa para ocultar la tab-bar al scrollear el chat.
    * Opcional — el ChatScreen corre standalone (sin shell) sin él. */
   onHideChange?: (hidden: boolean) => void;
+  /**
+   * `'desktop'` monta el header de sesión (`DesktopChatHeader`: "SESIÓN ACTIVA · sess_… / Nueva
+   * conversación", verbatim `Copiloto Web.dc.html:94-102`) + el hint del composer, y OMITE el
+   * `StatusBar` de teléfono y el header de marca mobile (`ChatHeader`) — ninguno existe en el diseño
+   * de escritorio. `'mobile'` (default) deja el chrome de teléfono intacto. Lo setea `DesktopShell`.
+   */
+  variant?: 'mobile' | 'desktop';
 }
 
-export function ChatScreen({ onHideChange }: ChatScreenProps = {}) {
-  const { messages, sendStatus, send, sendAudio } = useChat();
+export function ChatScreen({ onHideChange, variant = 'mobile' }: ChatScreenProps = {}) {
+  const { messages, sendStatus, send, sendAudio, sessionId, startNewSession } = useChat();
+  const isDesktop = variant === 'desktop';
 
   const handleSend = useCallback(
     (text: string, mode: string | null) => void send(text, { mode }),
@@ -46,15 +55,27 @@ export function ChatScreen({ onHideChange }: ChatScreenProps = {}) {
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
-      <StatusBar />
-      <ChatHeader />
+      {isDesktop ? (
+        <DesktopChatHeader sessionId={sessionId} onNewConversation={startNewSession} />
+      ) : (
+        <>
+          <StatusBar />
+          <ChatHeader />
+        </>
+      )}
       <MessageList
         messages={messages}
         onChoice={handleChoice}
         emptyHint={WELCOME_TEXT}
         onHideChange={onHideChange}
+        sessionMarker={isDesktop ? undefined : 'SESIÓN ACTIVA · HOY'}
       />
-      <Composer sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
+      <Composer
+        sendStatus={sendStatus}
+        onSend={handleSend}
+        onSendAudio={handleSendAudio}
+        showHint={isDesktop}
+      />
     </div>
   );
 }

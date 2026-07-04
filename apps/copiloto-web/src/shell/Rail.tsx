@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { useSession } from '../auth/useSession';
 import { useTheme, type Theme } from '../design-system/ThemeProvider';
+import { useConnections } from '../modules/connections/useConnections';
 import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import { TABS, type TabKey } from './TabBar';
@@ -52,6 +53,7 @@ export function Rail({ active, onChange }: RailProps) {
   const { theme, setTheme, themes } = useTheme();
   const { me } = useSession();
   const { mode } = useMode();
+  const { connectedCount, totalCount } = useConnections();
 
   return (
     <>
@@ -72,6 +74,10 @@ export function Rail({ active, onChange }: RailProps) {
             // `Composer`/`AppsScreen`; el mobile `TabBar.tsx` lo dejó deliberadamente fuera de su
             // pase (ver docstring ahí), pero acá es un componente NUEVO sin ese deuda previa.
             const showModeBadge = tab.key === 'apps' && mode !== null;
+            // Contador "3/6" (dc.html:58) — mismo `useConnections()` que `ConnectionsScreen`,
+            // solo en el ítem "Conexiones", visible con el rail abierto (mismo fade que el resto
+            // del texto del ítem).
+            const showConnectionsCount = tab.key === 'connections';
             return (
               <button
                 key={tab.key}
@@ -92,43 +98,66 @@ export function Rail({ active, onChange }: RailProps) {
                     {mode?.label}
                   </span>
                 )}
+                {showConnectionsCount && (
+                  // `aria-hidden` (mismo criterio que `rail__icon-wrap`/dot): puramente visual, no
+                  // debe alterar el accessible name del botón ("Conexiones" a secas para
+                  // lectores de pantalla/tests de rol — el conteo es un refuerzo visual).
+                  <span
+                    className="rail__connections-count"
+                    aria-hidden="true"
+                    data-testid="rail-connections-count"
+                  >
+                    {connectedCount}/{totalCount}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Selector de skin (EXTRACT §2.4) — real UI de producto dentro del rail, no chrome de
-            documentación: los 4 temas son elegibles en vivo acá, mismo `ThemeProvider`/`localStorage`
-            compartido con `AccountScreen` (Cuenta sigue teniendo su propio selector, mobile). */}
-        <div className="rail__skin">
-          <span className="rail__skin-label">Skin</span>
-          <div className="rail__skin-swatches" role="group" aria-label="Selector de tema">
-            {themes.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={[
-                  'rail__swatch',
-                  `rail__swatch--${t}`,
-                  t === theme ? 'rail__swatch--active' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                title={THEME_SWATCH_TITLE[t]}
-                aria-pressed={t === theme}
-                data-testid={`rail-swatch-${t}`}
-                onClick={() => setTheme(t)}
-              />
-            ))}
+        {/* Bloque inferior (dc.html:66-84): Skin + Usuario agrupados como UNA unidad pegada al
+            fondo (`margin-top:auto` acá, no `justify-content:space-between` de 3 grupos — ese
+            reparto separaba Skin de Usuario más de lo que el diseño pretende, ver gap #12). */}
+        <div className="rail__bottom">
+          {/* Selector de skin (EXTRACT §2.4) — real UI de producto dentro del rail, no chrome de
+              documentación: los 4 temas son elegibles en vivo acá, mismo `ThemeProvider`/`localStorage`
+              compartido con `AccountScreen` (Cuenta sigue teniendo su propio selector, mobile). */}
+          <div className="rail__skin">
+            <span className="rail__skin-label">Skin</span>
+            <div className="rail__skin-swatches" role="group" aria-label="Selector de tema">
+              {themes.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={[
+                    'rail__swatch',
+                    `rail__swatch--${t}`,
+                    t === theme ? 'rail__swatch--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  title={THEME_SWATCH_TITLE[t]}
+                  aria-pressed={t === theme}
+                  data-testid={`rail-swatch-${t}`}
+                  onClick={() => setTheme(t)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="rail__user" data-testid="rail-user">
-          <span className="rail__avatar" aria-hidden="true">
-            {initial(me?.cliente_id)}
-          </span>
-          <div className="rail__user-text">
-            <span className="rail__user-name">{accountLabel(me?.cliente_id)}</span>
+          <div className="rail__user" data-testid="rail-user">
+            <span className="rail__avatar" aria-hidden="true">
+              {initial(me?.cliente_id)}
+            </span>
+            <div className="rail__user-text">
+              <span className="rail__user-name">{accountLabel(me?.cliente_id)}</span>
+              {/* 2da línea (dc.html:82, "email") — PLACEHOLDER deliberado: `/me` hoy no trae
+                  nombre/email real (mismo límite documentado en `AccountScreen.tsx:17-25`), así que
+                  no se inventa un email falso. Se mantiene la estructura de 2 líneas del diseño con
+                  una etiqueta honesta de estado; migrar a email real es 1 línea el día que `/me` lo
+                  exponga. */}
+              <span className="rail__user-email">Sesión activa</span>
+            </div>
           </div>
         </div>
       </nav>

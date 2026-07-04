@@ -38,7 +38,8 @@
 @keyframes wavePulse {
   0%,
   100% {
-    transform: scaleY(0.4);
+    /* scaleY(.5) verbatim — Copiloto App.dc.html:24 / Copiloto Web.dc.html:22 (antes 0.4). */
+    transform: scaleY(0.5);
   }
   50% {
     transform: scaleY(1);
@@ -50,7 +51,9 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    /* -140px fijo verbatim — Copiloto App.dc.html:23 / Copiloto Web.dc.html:21 (antes -50% = -210px
+       para el SVG de 420px, más rápido de lo que marca el diseño). */
+    transform: translateX(-140px);
   }
 }
 

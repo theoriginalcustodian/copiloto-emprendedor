@@ -11,7 +11,14 @@ import './primitives.css';
 export interface BottomSheetProps {
   open: boolean;
   onClose: () => void;
+  /** Título visible: renderiza un `<h2 className="uc-sheet__title">` propio Y lo usa como
+   * accessible name del dialog. Omitir cuando el contenido (`children`) YA aporta su propio
+   * encabezado visible (ej. `AppsScreen`, que renderiza "Tus apps"+subtítulo) — en ese caso usar
+   * `ariaLabel` en su lugar para no duplicar el heading. */
   title?: string;
+  /** Accessible name del dialog cuando NO se pasa `title` (contenido con header propio). Se
+   * ignora si `title` está presente. */
+  ariaLabel?: string;
   children: ReactNode;
   className?: string;
 }
@@ -32,7 +39,14 @@ const DRAG_DISMISS_THRESHOLD_PX = 60;
  * desmonta condicionalmente. Cuando `open=false`, `aria-hidden` + `pointer-events:none` lo
  * sacan del árbol de accesibilidad y de la interacción.
  */
-export function BottomSheet({ open, onClose, title, children, className }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  ariaLabel,
+  children,
+  className,
+}: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -98,7 +112,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
         className={['uc-sheet', className].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={title ?? ariaLabel}
         tabIndex={-1}
         onKeyDown={handleTabTrap}
       >

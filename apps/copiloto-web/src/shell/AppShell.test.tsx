@@ -49,11 +49,23 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('navegar a Apps muestra AppsScreen y desmonta ChatScreen', () => {
+  it('tocar "Apps" abre el bottom-sheet SOBRE el Chat (no navega, gap #1 del audit mobile)', () => {
     renderAppShell();
     fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
     expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-    expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
+    // Chat sigue montado detrás del sheet — Apps es un overlay, no una pantalla de tab.
+    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+  });
+
+  it('cierra el sheet de Apps al click en el scrim', () => {
+    renderAppShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
+    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('bottom-sheet-scrim'));
+    expect(screen.getByTestId('bottom-sheet-scrim').parentElement).not.toHaveClass(
+      'uc-sheet-root--open',
+    );
   });
 
   it('navegar a Conexiones muestra ConnectionsScreen', () => {

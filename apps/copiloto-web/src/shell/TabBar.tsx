@@ -1,3 +1,4 @@
+import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import './shell.css';
 
@@ -37,6 +38,7 @@ export interface TabBarProps {
  * baja acá + al composer (shift en espejo).
  */
 export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
+  const { mode } = useMode();
   const navClasses = ['tab-bar', hidden ? 'tab-bar--hidden' : ''].filter(Boolean).join(' ');
   return (
     <nav className={navClasses} data-testid="tab-bar" aria-label="Navegación principal">
@@ -46,6 +48,10 @@ export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
           .filter(Boolean)
           .join(' ');
         const Icon = NAV_ICONS[tab.key];
+        // Badge-dot sobre "Apps" con modo activo (dc.html:202-205, gap #18) — deuda ya
+        // documentada en el diseño previo, se cierra acá con el mismo dato (`useMode()`) que ya
+        // usa el `Rail` de escritorio.
+        const showModeBadge = tab.key === 'apps' && mode !== null;
         return (
           <button
             key={tab.key}
@@ -55,7 +61,14 @@ export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
             onClick={() => onChange(tab.key)}
           >
             <span className="tab-bar__icon" aria-hidden="true">
-              {Icon()}
+              {showModeBadge ? (
+                <span className="tab-bar__icon-wrap">
+                  {Icon()}
+                  <span className="tab-bar__dot" data-testid="tab-bar-mode-dot" />
+                </span>
+              ) : (
+                Icon()
+              )}
             </span>
             <span className="tab-bar__label">{tab.label}</span>
           </button>

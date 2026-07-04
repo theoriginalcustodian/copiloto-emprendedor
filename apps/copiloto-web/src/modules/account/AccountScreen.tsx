@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button, MonoLabel, PresenceOrb, Surface } from '../../design-system';
+import { MonoLabel, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
 import { useTheme, type Theme } from '../../design-system/ThemeProvider';
 import './account.css';
@@ -26,6 +26,17 @@ function accountLabel(clienteId: string | undefined): string {
 
 function initial(clienteId: string | undefined): string {
   return (clienteId?.trim()?.[0] ?? '?').toUpperCase();
+}
+
+/** Chevron de fila (mismo patrón que `modules/apps/AppsScreen.tsx` `ChevronIcon`, verbatim
+ * diseño `Copiloto App.dc.html:425` etc. — `path d="M9 6l6 6-6 6"`). Color por defecto `--label`,
+ * override a `--danger-fg` en la fila de "Cerrar sesión" (diseño línea 444). */
+function ChevronIcon({ color = 'var(--label)' }: { color?: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 /**
@@ -55,6 +66,10 @@ function NotificationsToggle() {
 /**
  * Módulo Cuenta (Task 21, EXTRACT §2.9/§2.12/§3.4) — perfil + selector de 4 temas + card de
  * durabilidad + preferencias + logout. Reemplaza el placeholder de Task 9.
+ *
+ * Header a 2 bloques (diseño `Copiloto App.dc.html:409-418` / `Copiloto Web.dc.html:330-337`,
+ * mobile y desktop coinciden en estructura): H1 "Cuenta" solo arriba, fila identidad
+ * (avatar+nombre+email) debajo — NO una sola fila horizontal con el H1 al lado del avatar.
  */
 export function AccountScreen() {
   const { me, logout } = useSession();
@@ -63,12 +78,15 @@ export function AccountScreen() {
   return (
     <div className="account-screen" data-testid="account-screen">
       <header className="account-screen__header">
-        <span className="account-screen__avatar" aria-hidden="true">
-          {initial(me?.cliente_id)}
-        </span>
-        <div>
-          <h1 className="account-screen__title">Cuenta</h1>
-          <p className="account-screen__subtitle">{accountLabel(me?.cliente_id)}</p>
+        <h1 className="account-screen__title">Cuenta</h1>
+        <div className="account-screen__identity">
+          <span className="account-screen__avatar" aria-hidden="true">
+            {initial(me?.cliente_id)}
+          </span>
+          {/* TODO backend: nombre/email real desde /me (hoy `MeResponse` solo trae `cliente_id`,
+              ver lib/api/types.ts). Usamos el mismo fallback derivado de `cliente_id` en la
+              posición de "nombre" del diseño; no fabricamos un email inexistente. */}
+          <p className="account-screen__name">{accountLabel(me?.cliente_id)}</p>
         </div>
       </header>
 
@@ -95,50 +113,56 @@ export function AccountScreen() {
         </div>
       </section>
 
+      <div className="account-screen__list">
+        {/* TODO backend: plan real desde /me (hoy no hay campo de plan/suscripción en
+            `MeResponse`) — fila estática hasta que el backend lo exponga. */}
+        <div className="account-screen__row">
+          <span className="account-screen__row-label">Plan</span>
+          <span className="account-screen__row-value">
+            Profesional
+            <ChevronIcon />
+          </span>
+        </div>
+        <div className="account-screen__row">
+          <span className="account-screen__row-label">Idioma</span>
+          <span className="account-screen__row-value">
+            Español (AR)
+            <ChevronIcon />
+          </span>
+        </div>
+        <div className="account-screen__row">
+          <span className="account-screen__row-label">Notificaciones</span>
+          <NotificationsToggle />
+        </div>
+      </div>
+
+      <div className="account-screen__list">
+        <div className="account-screen__row">
+          <span className="account-screen__row-label">Privacidad del historial</span>
+          <ChevronIcon />
+        </div>
+        <button type="button" className="account-screen__row" onClick={logout}>
+          <span className="account-screen__row-label account-screen__row-label--danger">
+            Cerrar sesión
+          </span>
+          <ChevronIcon color="var(--danger-fg)" />
+        </button>
+      </div>
+
       <Surface
         variant="bubble"
         blur
         className="account-screen__durability"
         data-testid="account-durability-card"
       >
-        <PresenceOrb size={20} />
+        <PresenceOrb size={14} />
         <div className="account-screen__durability-text">
           <p className="account-screen__durability-title">Tu copiloto sigue activo</p>
           <p className="account-screen__durability-copy">
-            Aunque cierres la app, nada se pierde. Retoma donde quedaron.
+            Aunque cierres la app, nada se pierde. Retomá donde quedaron.
           </p>
         </div>
       </Surface>
-
-      <section className="account-screen__section">
-        <MonoLabel>Preferencias</MonoLabel>
-        <div className="account-screen__list">
-          <div className="account-screen__row">
-            <span className="account-screen__row-label">Notificaciones</span>
-            <NotificationsToggle />
-          </div>
-        </div>
-      </section>
-
-      <section className="account-screen__section">
-        <MonoLabel>Privacidad y seguridad</MonoLabel>
-        <div className="account-screen__list">
-          <div className="account-screen__row account-screen__row--stacked">
-            <span className="account-screen__row-label">Privacidad del historial</span>
-            <span className="account-screen__row-hint">Próximamente</span>
-          </div>
-          <div className="account-screen__row account-screen__row--stacked">
-            <span className="account-screen__row-label">¿Olvidaste tu contraseña?</span>
-            <span className="account-screen__row-hint">
-              Escribinos para recuperarla — todavía no hay reset automático por email.
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <Button variant="danger" className="account-screen__logout" onClick={logout}>
-        Cerrar sesión
-      </Button>
     </div>
   );
 }

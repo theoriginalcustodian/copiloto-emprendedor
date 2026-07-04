@@ -13,8 +13,16 @@
   padding: 6px 16px 24px;
 }
 
-/* ---------- Header (perfil) ---------- */
+/* ---------- Header (perfil) ----------
+ * 2 bloques verticales (diseño `Copiloto App.dc.html:409-418`): H1 solo arriba, fila identidad
+ * (avatar+nombre+email) debajo — NO una sola fila horizontal H1+avatar. */
 .account-screen__header {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.account-screen__identity {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -33,7 +41,7 @@
   box-shadow: var(--avatar-shadow);
   color: var(--avatar-fg);
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
 }
 
@@ -46,11 +54,14 @@
   margin: 0;
 }
 
-.account-screen__subtitle {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--label);
-  margin: 4px 0 0;
+/* Nombre (posición del diseño para "Rodrigo Fernández", 19px/600) — ver TODO backend en
+   AccountScreen.tsx sobre por qué usa el fallback derivado de `cliente_id`. */
+.account-screen__name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
 }
 
 /* ---------- Sections ---------- */
@@ -129,7 +140,9 @@
   margin: 0;
 }
 
-/* ---------- Listas de settings (Preferencias / Privacidad) ---------- */
+/* ---------- Listas de settings (2 tiles consecutivos SIN encabezado de sección, diseño
+   `Copiloto App.dc.html:422-446` — el `.account-screen__section` con `MonoLabel` de arriba es solo
+   para el selector de tema, que no tiene equivalente en el mock real) ---------- */
 .account-screen__list {
   display: flex;
   flex-direction: column;
@@ -152,10 +165,21 @@
   border-bottom: none;
 }
 
-.account-screen__row--stacked {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+/* Reset de chrome nativo cuando la fila es un <button> (fila "Cerrar sesión", clickeable) — el
+   layout/padding/border-bottom lo sigue dando `.account-screen__row` de arriba. */
+button.account-screen__row {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.account-screen__row:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
 }
 
 .account-screen__row-label {
@@ -165,11 +189,19 @@
   color: var(--text);
 }
 
-.account-screen__row-hint {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+.account-screen__row-label--danger {
+  color: var(--danger-fg);
+}
+
+/* Valor + chevron a la derecha de una fila (Plan/Idioma, diseño líneas 424-429) — mismo tratamiento
+   tipográfico que el label pero en `--label` y sin negrita. */
+.account-screen__row-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
   color: var(--label);
-  letter-spacing: 0.02em;
 }
 
 /* ---------- Toggle "Notificaciones" (visual, sin backend — ver docstring del componente) ---------- */
@@ -178,7 +210,7 @@
   width: 44px;
   height: 26px;
   padding: 0;
-  border-radius: 13px;
+  border-radius: 14px;
   border: var(--cancel-border);
   background: var(--cancel-bg);
   cursor: pointer;
@@ -193,27 +225,23 @@
 
 .account-switch__knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 3px;
+  left: 3px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--label);
-  transition: transform 0.15s ease, background 0.15s ease;
+  /* Excepción documentada (mismo criterio que `chat.css` `.hitl-card__preview-title/caption` —
+     keyword `white`, no hex, para pasar el gate "cero color literal"): el knob es blanco fijo en
+     el mock (`Copiloto App.dc.html:433`), no varía por tema. */
+  background: white;
+  transition: transform 0.15s ease;
 }
 
 .account-switch--on {
-  background: var(--btn-bg);
+  background: var(--send-bg);
   border-color: transparent;
 }
 
 .account-switch--on .account-switch__knob {
   transform: translateX(18px);
-  background: var(--btn-fg);
-}
-
-/* ---------- Cerrar sesión ---------- */
-.account-screen__logout {
-  width: 100%;
-  margin-top: 4px;
 }

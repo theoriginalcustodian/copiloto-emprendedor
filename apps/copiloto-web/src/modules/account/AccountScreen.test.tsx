@@ -89,6 +89,21 @@ describe('AccountScreen', () => {
     expect(screen.getByText('Tu copiloto sigue activo')).toBeInTheDocument();
   });
 
+  it('muestra las filas "Plan" e "Idioma" (fiel al diseño, valores estáticos hasta que /me los exponga)', () => {
+    renderAccountScreen();
+    expect(screen.getByText('Plan')).toBeInTheDocument();
+    expect(screen.getByText('Profesional')).toBeInTheDocument();
+    expect(screen.getByText('Idioma')).toBeInTheDocument();
+    expect(screen.getByText('Español (AR)')).toBeInTheDocument();
+  });
+
+  it('"Privacidad del historial" es una fila simple (sin hint "Próximamente") y no hay fila de recuperar contraseña', () => {
+    renderAccountScreen();
+    expect(screen.getByText('Privacidad del historial')).toBeInTheDocument();
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument();
+    expect(screen.queryByText('¿Olvidaste tu contraseña?')).not.toBeInTheDocument();
+  });
+
   it('el toggle de notificaciones cambia de estado (visual, sin backend)', () => {
     renderAccountScreen();
     const toggle = screen.getByRole('switch', { name: 'Notificaciones' });

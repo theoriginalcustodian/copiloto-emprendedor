@@ -21,7 +21,9 @@ export function ChatHeader() {
   return (
     <header className="chat-header" data-testid="chat-header">
       <div className="chat-header__brand">
-        <PresenceOrb size={20} />
+        {/* Sin `size`: el núcleo hereda `--core-size` del tema activo (14–20px según tema) —
+            verbatim Copiloto - Direcciones.dc.html (Aurora 20 / Daylight 16 / Refined 14). */}
+        <PresenceOrb />
         <div className="chat-header__text">
           <div className="chat-header__title-row">
             <span className="chat-header__title">Copiloto</span>

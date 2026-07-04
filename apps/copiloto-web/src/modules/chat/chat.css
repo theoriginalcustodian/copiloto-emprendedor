@@ -100,6 +100,63 @@
   font-weight: 600;
 }
 
+/* ---------- Header de ESCRITORIO (DesktopChatHeader, verbatim Copiloto Web.dc.html:94-102) ----------
+ * Barra de 52px con estado de sesión + botón "Nueva conversación". Reemplaza al header de marca
+ * mobile en el shell desktop. */
+.desktop-chat-header {
+  flex: none;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: var(--row-border);
+}
+
+.desktop-chat-header__session {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--label);
+  white-space: nowrap;
+}
+
+.desktop-chat-header__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ok-fg);
+}
+
+.desktop-chat-header__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tab-inactive);
+  background: transparent;
+  border: var(--cancel-border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.desktop-chat-header__new:hover {
+  color: var(--tab-active);
+}
+
+.desktop-chat-header__new:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 /* ---------- Messages (Task 12) ---------- */
 .chat-messages {
   flex: 1;
@@ -116,6 +173,17 @@
   font-size: 13px;
   line-height: 1.55;
   padding: 24px 4px;
+}
+
+/* Marcador de sesión al tope del scroll (verbatim Copiloto App.dc.html:64). */
+.chat-messages__session-marker {
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--label);
+  opacity: 0.8;
+  padding: 2px 0;
 }
 
 .chat-message-group {
@@ -302,19 +370,21 @@
 }
 
 /* ---------- Chip de modo activo (Feature addendum 2026-07-03, spec §6/§8) ---------- */
+/* Tokens de badge (ámbar de "revisar"), font-mono 11px, radio 10px — verbatim diseño
+   (Copiloto Web.dc.html:257-258). Antes usaba los tokens de user/body, color equivocado. */
 .composer__mode-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   align-self: flex-start;
   margin: 0 4px 8px;
-  padding: 6px 8px 6px 12px;
-  border-radius: 12px;
-  background: var(--user-bg);
-  border: var(--user-border);
-  color: var(--user-fg);
-  font-family: var(--font-body);
-  font-size: 12.5px;
+  padding: 6px 8px 6px 11px;
+  border-radius: 10px;
+  background: var(--badge-bg);
+  border: var(--badge-border);
+  color: var(--badge-fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -450,6 +520,16 @@
 .composer__mic:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+/* Hint bajo el composer (verbatim Copiloto Web.dc.html:271) — sólo escritorio (showHint). */
+.composer__hint {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--label);
+  margin: 9px 0 0;
 }
 
 /* ---------- Recording overlay (Task 19, EXTRACT §2.10 "estado grabando") ----------

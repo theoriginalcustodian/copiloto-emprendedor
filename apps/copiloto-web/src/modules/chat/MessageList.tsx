@@ -15,6 +15,11 @@ export interface MessageListProps {
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
    * scrollea normal. Thresholds del diseño: 6px de delta, 26px del tope. */
   onHideChange?: (hidden: boolean) => void;
+  /** Marcador mono al tope del scroll (verbatim `Copiloto App.dc.html:64` — "SESIÓN ACTIVA · HOY").
+   * Sólo el shell mobile lo pasa; en escritorio la sesión vive en `DesktopChatHeader`, así que va
+   * `undefined`. Se muestra únicamente cuando ya hay mensajes (si el chat está vacío manda el
+   * `emptyHint`). */
+  sessionMarker?: string;
 }
 
 /**
@@ -28,7 +33,13 @@ export interface MessageListProps {
  *  - asistente sin `choices` -> burbuja simple.
  * Auto-scroll al último mensaje en cada cambio.
  */
-export function MessageList({ messages, onChoice, emptyHint, onHideChange }: MessageListProps) {
+export function MessageList({
+  messages,
+  onChoice,
+  emptyHint,
+  onHideChange,
+  sessionMarker,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -60,6 +71,10 @@ export function MessageList({ messages, onChoice, emptyHint, onHideChange }: Mes
   return (
     <div className="chat-messages" data-testid="message-list" ref={scrollRef} onScroll={handleScroll}>
       {messages.length === 0 && emptyHint && <p className="chat-messages__empty">{emptyHint}</p>}
+
+      {sessionMarker && messages.length > 0 && (
+        <div className="chat-messages__session-marker">{sessionMarker}</div>
+      )}
 
       {messages.map((message) => {
         if (message.role === 'user') {

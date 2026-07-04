@@ -38,11 +38,30 @@ describe('DesktopShell', () => {
     expect(screen.getByTestId('desktop-shell')).toHaveAttribute('data-shell', 'desktop');
   });
 
-  it('navegar a Apps monta AppsScreen y desmonta ChatScreen', () => {
+  it('tocar "Apps" abre el modal centrado SOBRE el Chat (no navega, gap #1 del audit desktop)', () => {
     renderDesktopShell();
     fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
     expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-    expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
+    // Chat sigue montado detrás del modal — Apps es un overlay, no una pantalla de tab.
+    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('cierra el modal de Apps al click en el botón X', () => {
+    renderDesktopShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
+    expect(screen.getByTestId('apps-modal-root')).toHaveClass('apps-modal-root--open');
+
+    fireEvent.click(screen.getByTestId('apps-modal-close'));
+    expect(screen.getByTestId('apps-modal-root')).not.toHaveClass('apps-modal-root--open');
+  });
+
+  it('cierra el modal de Apps al click en el scrim', () => {
+    renderDesktopShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
+
+    fireEvent.click(screen.getByTestId('apps-modal-scrim'));
+    expect(screen.getByTestId('apps-modal-root')).not.toHaveClass('apps-modal-root--open');
   });
 
   it('navegar a Conexiones monta ConnectionsScreen', () => {

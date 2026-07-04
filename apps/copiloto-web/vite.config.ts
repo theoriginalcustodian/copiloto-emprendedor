@@ -9,6 +9,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Un redeploy DEBE llegar al navegador sin que el usuario limpie nada a mano:
+      // - cleanupOutdatedCaches purga el precache viejo (evita el estado "partido": index nuevo +
+      //   chunk viejo -> UI rota, ej. composer que no renderiza);
+      // - skipWaiting + clientsClaim: el SW nuevo toma control YA (no espera a cerrar todas las
+      //   pestañas), así la 2da carga tras un deploy ya sirve el build fresco.
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+      },
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Copiloto del Emprendedor',

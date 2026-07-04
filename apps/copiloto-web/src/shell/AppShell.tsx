@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import { BottomSheet } from '../design-system';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
@@ -21,24 +22,44 @@ const DEFAULT_TAB: TabKey = 'chat';
  * falta pasarle nada acá; cuando Cuenta (Task 21) tenga su propio "Cerrar sesión", ese botón se
  * retira de `ChatHeader` (nota ya dejada en ChatHeader.tsx, no se toca en este task).
  *
- * `AppsScreen` (Feature addendum 2026-07-03, "modos por app") no conoce el estado de tabs — su
- * botón "+" solo pide `onGoToConnections`, que acá es simplemente cambiar `activeTab` (mismo
- * mecanismo de navegación por estado local que el resto del shell, cero acoplamiento nuevo).
+ * "Apps" (gap estructural #1/#17 del audit mobile, `Copiloto App.dc.html:218-270`) NO es una
+ * pantalla de tab: es un BOTTOM-SHEET que se desliza sobre lo que sea que esté activo detrás (por
+ * default, Chat). `activeTab` nunca vale `'apps'` — tocar el tab abre `appsSheetOpen` en vez de
+ * navegar, así que Chat/Conexiones/Cuenta siguen montados debajo sin interrumpirse. Cierra por
+ * click en el scrim, tecla Escape, o arrastrando el handle (`BottomSheet`, sin botón X — el mock
+ * mobile no lo tiene, a diferencia del modal de escritorio).
  *
- * Nota de scope (deuda visible, no bloqueante): el mock (EXTRACT §2.3) describe un badge-dot en el
- * ícono del tab "Apps" cuando hay un modo activo (`hasActiveMode`). Queda deliberadamente FUERA de
- * este pase — requeriría tocar `TabBar.tsx` (fuera de mi ownership en esta feature) para exponer
- * un dato por tab; el spec de esta feature lo marca explícitamente como "(opcional)". Candidato:
- * sumar un prop `badge?: boolean` por `TabDefinition` en `TabBar.tsx` cuando se retome.
+ * `AppsScreen` no conoce el estado de tabs — su botón "+" solo pide `onGoToConnections`, que acá
+ * cierra el sheet y cambia `activeTab` (mismo mecanismo de navegación por estado local que el
+ * resto del shell, cero acoplamiento nuevo).
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
   // Hide-on-scroll (EXTRACT §2.3): solo el Chat lo dispara; cambiar de tab siempre re-muestra la barra.
   const [tabHidden, setTabHidden] = useState(false);
+  const [appsSheetOpen, setAppsSheetOpen] = useState(false);
+  // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin
+  // este gate, `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del
+  // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
+  // resetea, así el cierre sigue animando con el contenido ya cargado.
+  const [appsEverOpened, setAppsEverOpened] = useState(false);
 
   const changeTab = useCallback((key: TabKey) => {
+    if (key === 'apps') {
+      setAppsSheetOpen(true);
+      setAppsEverOpened(true);
+      return;
+    }
     setTabHidden(false);
     setActiveTab(key);
+  }, []);
+
+  const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
+
+  const goToConnectionsFromApps = useCallback(() => {
+    setAppsSheetOpen(false);
+    setTabHidden(false);
+    setActiveTab('connections');
   }, []);
 
   const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
@@ -49,11 +70,13 @@ export function AppShell() {
     <div className={shellClasses} data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
         {activeTab === 'chat' && <ChatScreen onHideChange={setTabHidden} />}
-        {activeTab === 'apps' && <AppsScreen onGoToConnections={() => changeTab('connections')} />}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={tabHidden} />
+      <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
+        {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
+      </BottomSheet>
     </div>
   );
 }

@@ -115,12 +115,20 @@ def _mount_spa(app: FastAPI, static_dir: Path | None = None) -> bool:
     if assets.is_dir():
         app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
 
+    # El "app shell" + los archivos del service worker se sirven SIEMPRE con no-cache: así el navegador
+    # revalida el SW y el index en cada carga y un redeploy llega sin caché stale. Los assets con hash
+    # de contenido (/assets/*, servidos por StaticFiles arriba) no necesitan esto -- su nombre cambia
+    # con el contenido, el navegador puede cachearlos fuerte sin riesgo de servir algo viejo.
+    no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+    shell_files = {"index.html", "sw.js", "registerSW.js", "manifest.webmanifest"}
+
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str) -> FileResponse:
         candidate = d / full_path
         if full_path and candidate.is_file() and candidate.resolve().is_relative_to(d.resolve()):
-            return FileResponse(str(candidate))
-        return FileResponse(str(index))  # fallback SPA (client-side routing)
+            is_shell = candidate.name in shell_files or candidate.name.startswith("workbox-")
+            return FileResponse(str(candidate), headers=no_cache if is_shell else None)
+        return FileResponse(str(index), headers=no_cache)  # fallback SPA (client-side routing)
 
     return True
 
