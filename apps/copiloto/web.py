@@ -64,6 +64,13 @@ MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 # real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
 MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
 
+# Un copiloto es UNA conversación siempre viva, no una charla que se cierra a cada rato: la sesión es
+# efectivamente PERMANENTE. El history de Temporal lo acota el continue-as-new del ConversationWorkflow (se
+# renueva sin resetear el buffer), NO el idle-timeout. Éste queda LARGO (7 días) solo como reap de sesiones
+# ABANDONADAS — invisible al uso activo. Parametrizable (cero hardcoding). El workflow usa su default (30 min)
+# si esta key no viaja, así que apps tipo bot-de-turnos no se ven afectadas.
+COPILOTO_IDLE_TIMEOUT_S = int(os.environ.get("COPILOTO_IDLE_TIMEOUT_SECONDS", 7 * 24 * 3600))
+
 
 def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
                        refresh_interval_seconds: float = REFRESH_INTERVAL_SECONDS,
@@ -213,7 +220,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     async def chat(msg: ChatIn, cliente_id: str = Depends(require_tenant)) -> dict:
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
-            task_queue=AGENT_B_TASK_QUEUE, extra_config={"memory": True},
+            task_queue=AGENT_B_TASK_QUEUE,
+            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S},
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
 
@@ -250,7 +258,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=422, detail="no se entendió el audio")
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
-            task_queue=AGENT_B_TASK_QUEUE, extra_config={"memory": True},
+            task_queue=AGENT_B_TASK_QUEUE,
+            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S},
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
 
