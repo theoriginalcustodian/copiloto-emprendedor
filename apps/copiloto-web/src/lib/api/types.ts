@@ -138,6 +138,20 @@ export interface ReplyResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /warm
+// ---------------------------------------------------------------------------
+
+/**
+ * Respuesta de precalentar la memoria de largo plazo del tenant (grafo del emprendedor). El front lo
+ * dispara al abrir la app / volver a la pestaña de chat, ANTES del 1er mensaje, para que el grafo llegue
+ * caliente (perceived latency). Best-effort: `warmed:false` si el backend no tiene memoria configurada o
+ * Graphity falló — nunca es un error para el usuario, solo se pierde la optimización de latencia.
+ */
+export interface WarmResponse {
+  warmed: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Superficie común real|mock (index.ts elige la implementación)
 // ---------------------------------------------------------------------------
 
@@ -151,4 +165,6 @@ export interface CopilotApi {
   /** Sube una nota de voz (multipart) para transcribir — ver `SendAudioResponse`. */
   sendAudio(sessionId: string, blob: Blob): Promise<SendAudioResponse>;
   getReply(sessionId: string, afterId: number): Promise<ReplyResponse>;
+  /** Precalienta la memoria de largo plazo del tenant (best-effort) — ver `WarmResponse`. */
+  warm(): Promise<WarmResponse>;
 }

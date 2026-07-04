@@ -20,7 +20,7 @@ APP = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP))
 
 from graphity_memory_client import GraphityMemoryClient, GraphityMemoryError, _validate_message  # noqa: E402
-from memory_provider import MemoryProvider, _wrap_context  # noqa: E402
+from memory_provider import MemoryProvider, build_memory_provider, _wrap_context  # noqa: E402
 
 
 def _client(handler, **kw) -> GraphityMemoryClient:
@@ -326,3 +326,20 @@ def test_search_user_facts_ignores_edges_without_fact():
 def _json(req: httpx.Request):
     import json
     return json.loads(req.content.decode()) if req.content else None
+
+
+# ─────────────────────── build_memory_provider (factory única worker + front-door) ───────────────────────
+
+def test_build_memory_provider_none_sin_graphity_env():
+    """Sin GRAPHITY_BASE_URL/API_KEY → None (memoria OFF explícito). Cubre env vacío y parciales."""
+    assert build_memory_provider({}) is None
+    assert build_memory_provider({"GRAPHITY_BASE_URL": "http://g.test"}) is None   # falta la key
+    assert build_memory_provider({"GRAPHITY_API_KEY": "gphy_x"}) is None           # falta la url
+
+
+def test_build_memory_provider_construye_con_graphity_env():
+    """Con ambos presentes → un MemoryProvider real (no toca red al construir: puro/idempotente)."""
+    provider = build_memory_provider({"GRAPHITY_BASE_URL": "http://g.test", "GRAPHITY_API_KEY": "gphy_x"})
+    assert isinstance(provider, MemoryProvider)
+    # El warm queda cableado al user graph namespaced (mismo derivador no-adivinable que recall/remember).
+    assert provider._user_id("cid-1") == "copiloto-cid-1"

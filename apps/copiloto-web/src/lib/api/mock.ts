@@ -8,6 +8,7 @@ import type {
   MeResponse,
   ReplyResponse,
   SendAudioResponse,
+  WarmResponse,
 } from './types';
 
 /**
@@ -136,5 +137,11 @@ export const mockApi: CopilotApi = {
     const nextId = replies.length > 0 ? replies[replies.length - 1]!.id : afterId;
     await delay(undefined, 100);
     return { replies, next_id: nextId };
+  },
+
+  async warm(): Promise<WarmResponse> {
+    // Dev local sin backend: no hay grafo que precalentar, solo simula el shape "warmed" del real.
+    await delay(undefined, 50);
+    return { warmed: true };
   },
 };

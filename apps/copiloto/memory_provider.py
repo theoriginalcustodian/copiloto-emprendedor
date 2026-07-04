@@ -28,6 +28,7 @@ DEGRADACIÓN ELEGANTE (invariante): Graphity es best-effort. Una caída/timeout 
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 
 from graphity_memory_client import GraphityMemoryClient, GraphityMemoryError
 
@@ -128,6 +129,24 @@ class MemoryProvider:
             _log.warning("forget degradado (no borrado): cliente=%s err=%s", cliente_id, exc)
 
 
+def build_memory_provider(env: Mapping[str, str]) -> MemoryProvider | None:
+    """Construye el MemoryProvider desde `GRAPHITY_BASE_URL`/`GRAPHITY_API_KEY` del `env`, o `None` si
+    faltan (memoria OFF explícito — el caller decide qué significa: recall/remember no-op en el worker,
+    `/warm` no-op en el front-door). FUENTE ÚNICA de construcción compartida por el worker (worker_b, que
+    ejecuta recall/remember en el loop) y el front-door (serve, que precalienta el grafo en `/warm`) — así
+    el gate GRAPHITY_* no se duplica en dos módulos y no puede driftear.
+
+    `max_attempts=1` (fast-fail): el retry lo gobierna el caller (Temporal en el worker via `retry_policy`;
+    best-effort en el front-door), NUNCA el cliente — un cliente con retry propio haría que un intento supere
+    el timeout del workflow bajo Graphity lento (cascada de timeouts). NO loguea: cada caller emite su propio
+    mensaje de estado (contexto distinto). Idempotente/puro: no toca red al construir."""
+    base_url = env.get("GRAPHITY_BASE_URL")
+    api_key = env.get("GRAPHITY_API_KEY")
+    if not (base_url and api_key):
+        return None
+    return MemoryProvider(GraphityMemoryClient(base_url=base_url, api_key=api_key, max_attempts=1))
+
+
 def _wrap_context(raw: str) -> str:
     """Envuelve el Context Block como dato de referencia delimitado (anti prompt-injection). "" si no hay
     memoria sustantiva (no inyectar un bloque vacío). Neutraliza el delimitador en el contenido."""
@@ -137,4 +156,4 @@ def _wrap_context(raw: str) -> str:
     return _MEM_HEADER + safe.strip() + _MEM_FOOTER
 
 
-__all__ = ["MemoryProvider", "GraphityMemoryClient", "GraphityMemoryError"]
+__all__ = ["MemoryProvider", "GraphityMemoryClient", "GraphityMemoryError", "build_memory_provider"]

@@ -201,7 +201,7 @@ def _mp_fernet_key_env(monkeypatch):
 
 
 def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None,
-              mp_gateway=None, composio_gateway=None):
+              mp_gateway=None, composio_gateway=None, warm_fn=None):
     db = db or _FakeTenantsDB()
     app = web_module.create_web_app(
         temporal_client=_FakeTemporal(),
@@ -213,6 +213,7 @@ def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None,
         mp_gateway=mp_gateway or _FakeMpGateway(),
         composio_gateway=composio_gateway or _FakeComposioGateway(),
         read_replies_fn=read_replies_fn,
+        warm_fn=warm_fn,
     )
     return app, db
 
@@ -242,6 +243,48 @@ def test_chat_with_different_token_routes_with_that_tenant(monkeypatch):
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     r = TestClient(app).post("/chat", json={"session_id": "s1", "text": "hola"})
     assert r.json()["wf_id"] == "conv-web-cid-B-s1"
+
+
+# --- /warm (perceived latency; best-effort) ------------------------------------
+
+def test_warm_without_token_returns_401():
+    app, _ = _build_app(require_tenant=_require_tenant_401(), warm_fn=lambda cid: True)
+    r = TestClient(app).post("/warm")
+    assert r.status_code == 401
+
+
+def test_warm_with_token_calls_warm_fn_with_cliente_id_from_token():
+    calls = []
+
+    def _warm_fn(cliente_id):
+        calls.append(cliente_id)
+        return True
+
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), warm_fn=_warm_fn)
+    r = TestClient(app).post("/warm")
+    assert r.status_code == 200
+    assert r.json() == {"warmed": True}
+    assert calls == ["cid-A"]                        # cliente_id del token, NUNCA hardcoded (multitenant)
+
+
+def test_warm_without_warm_fn_is_noop():
+    """Sin memoria configurada (`warm_fn=None`, default) -> `/warm` responde warmed:false, no 500."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/warm")
+    assert r.status_code == 200
+    assert r.json() == {"warmed": False}
+
+
+def test_warm_swallows_backend_failure_never_500():
+    """Graphity caído/lento -> `warm_fn` levanta -> `/warm` degrada a warmed:false (best-effort), NUNCA 500:
+    el warm es latencia, no correctitud (mismo invariante que recall/remember)."""
+    def _warm_fn(cliente_id):
+        raise RuntimeError("graphity down")
+
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), warm_fn=_warm_fn)
+    r = TestClient(app).post("/warm")
+    assert r.status_code == 200
+    assert r.json() == {"warmed": False}
 
 
 # --- /reply ----------------------------------------------------------------------
