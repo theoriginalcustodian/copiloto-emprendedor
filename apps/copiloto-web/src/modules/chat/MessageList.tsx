@@ -59,17 +59,15 @@ export function MessageList({
     if (!el || !onHideChange) return;
     const current = el.scrollTop;
     const delta = current - lastScrollTopRef.current;
-    // Cerca del tope (26px, EXTRACT §2.3) o cerca del fondo (incluye el auto-scroll al último
-    // mensaje) => siempre mostrar; scroll hacia abajo por el historial => ocultar; hacia arriba => mostrar.
-    const atBottom = el.scrollHeight - current - el.clientHeight < 8;
-    if (current < 26 || atBottom) {
-      onHideChange(false);
-    } else if (delta > 6) {
-      onHideChange(true);
-    } else if (delta < -6) {
-      onHideChange(false);
-    }
     lastScrollTopRef.current = current;
+    // SOLO-OCULTAR: un scroll genuino hacia abajo, lejos del tope, oculta el chrome. NO se muestra
+    // desde el scroll (el reveal es el tap en el centro). Mostrar desde el scroll causaba un loop:
+    // al ocultarse, el composer se desliza -> cambia el alto del scroller -> dispara un scroll ->
+    // volvía a mostrar -> se deslizaba... (oscilación "subiendo y bajando"), y dejaba al composer
+    // trabado arriba.
+    if (delta > 6 && current > 26) {
+      onHideChange(true);
+    }
   }
 
   function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
