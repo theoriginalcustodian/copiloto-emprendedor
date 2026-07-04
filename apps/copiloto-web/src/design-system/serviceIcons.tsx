@@ -9,8 +9,8 @@ import type { CSSProperties, ReactNode } from 'react';
  * Vive en `design-system/` A PROPÓSITO: los colores de marca son hex fijos (fieles a cada marca, no
  * theme-aware — un logo no se retematiza) y este directorio NO está bajo el gate "cero hex en
  * componentes" (que sí cubre `modules/*` y `shell`). Mapea por la `key` REAL del catálogo
- * (`catalog.py`: `mercadopago`, `gmail`, `googlecalendar`, `hubspot`, `googledrive`, `instagram`);
- * las keys sin ícono de marca (googledocs/googlesheets/otros) degradan a marca-letra, nunca rompen.
+ * (`catalog.py`: `mercadopago`, `gmail`, `googlecalendar`, `hubspot`, `googledrive`, `googledocs`,
+ * `googlesheets`, `instagram`); las keys sin ícono de marca degradan a marca-letra, nunca rompen.
  */
 
 interface Brand {
@@ -74,6 +74,31 @@ const BRANDS: Record<string, Brand> = {
         <path d="M9 3l-7 12 3.5 6L15.5 9z" fill="#0f9d58" />
         <path d="M22 15L15 3H9l7 12z" fill="#ffcd40" />
         <path d="M2 15l3.5 6h13L22 15z" fill="#4285f4" />
+      </svg>
+    ),
+  },
+  googledocs: {
+    bg: '#fff',
+    bordered: true,
+    icon: (
+      <svg width="60%" height="60%" viewBox="0 0 24 24">
+        <path d="M13 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-6-6z" fill="#4285F4" />
+        <path d="M13 2v6h6l-6-6z" fill="#A1C2FA" />
+        <rect x="8" y="12" width="8" height="1.3" rx="0.65" fill="#fff" />
+        <rect x="8" y="15" width="8" height="1.3" rx="0.65" fill="#fff" />
+        <rect x="8" y="18" width="5" height="1.3" rx="0.65" fill="#fff" />
+      </svg>
+    ),
+  },
+  googlesheets: {
+    bg: '#fff',
+    bordered: true,
+    icon: (
+      <svg width="60%" height="60%" viewBox="0 0 24 24">
+        <path d="M13 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-6-6z" fill="#0F9D58" />
+        <path d="M13 2v6h6l-6-6z" fill="#87D3AB" />
+        <path d="M8 12.5h8v6H8z" fill="none" stroke="#fff" strokeWidth="1.1" />
+        <path d="M8 15.5h8M11.3 12.5v6" stroke="#fff" strokeWidth="1.1" />
       </svg>
     ),
   },

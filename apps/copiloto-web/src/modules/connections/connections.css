@@ -141,18 +141,13 @@
   gap: 2px;
 }
 
-.service-card__work-label {
+/* Nombre real del servicio = único label de la card (pedido operador 2026-07-04: sin el `work_label`
+   amigable ni subtítulo). Estilo prominente, antes lo llevaba `.service-card__work-label`. */
+.service-card__name {
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
-  margin: 0;
-}
-
-.service-card__name {
-  font-family: var(--font-body);
-  font-size: 11.5px;
-  color: var(--label);
   margin: 0;
 }
 

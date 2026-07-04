@@ -38,10 +38,11 @@ function deriveState(service: CatalogService): ServiceCardState {
 /**
  * Tarjeta de servicio del grid de Conexiones (Task 20, EXTRACT §2.8/§3.3 — fiel al diseño
  * `Copiloto App.dc.html` líneas 334-368): ícono de MARCA (`ServiceIcon`, compartido con
- * `modules/apps`; degrada a marca-letra si la key no tiene ícono mapeado) + `work_label`
- * (principal, grande — copy de trabajo, ej. "Cobrar") + `display_name` (secundario, ej. "Mercado
- * Pago") + indicador de estado al pie. SIN descripción — el diseño la deja afuera, la card es
- * compacta. 3 estados posibles (ver `deriveState` arriba sobre por qué solo 2 están activos hoy).
+ * `modules/apps`; degrada a marca-letra si la key no tiene ícono mapeado) + `display_name` (el
+ * nombre REAL del servicio, ej. "Mercado Pago" / "Google Docs" — pedido operador 2026-07-04: solo el
+ * nombre real, sin el `work_label` amigable ("Cobrar"/"Archivos") ni subtítulo) + indicador de estado
+ * al pie. SIN descripción — el diseño la deja afuera, la card es compacta. 3 estados posibles (ver
+ * `deriveState` arriba sobre por qué solo 2 están activos hoy).
  *
  * La superficie (fondo/borde/sombra/blur/radio) reusa `<Surface variant="tile" blur>`
  * (design-system, EXTRACT §2.8 "grid de Conexiones" es uno de los 2 consumidores documentados de
@@ -62,7 +63,6 @@ export function ServiceCard({ service, onConnect, connecting = false, state }: S
       <ServiceIcon serviceKey={service.key} name={service.display_name} size={38} radius={11} />
 
       <div className="service-card__body">
-        <p className="service-card__work-label">{service.work_label}</p>
         <p className="service-card__name">{service.display_name}</p>
       </div>
 
