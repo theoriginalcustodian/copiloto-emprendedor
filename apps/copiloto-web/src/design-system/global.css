@@ -86,3 +86,40 @@ button {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---------- Scrollbars glass, theme-aware ----------
+ * Reemplaza la barra nativa del navegador (que desentonaba con el glass) por una fina y translúcida
+ * que respeta la paleta de cada tema vía los tokens `--scrollbar-*` de themes.css. Global a
+ * propósito: todo contenedor scrolleable (chat, "Tus apps", conexiones, cuenta, sheet móvil) hereda
+ * el mismo tratamiento. Track transparente = deja ver el fondo del panel. */
+html {
+  /* Firefox: propiedades HEREDADAS → aplican a todo descendiente scrolleable sin repetirlas. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  /* borde transparente + clip a padding-box = el thumb no toca los bordes del canal (look flotante). */
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

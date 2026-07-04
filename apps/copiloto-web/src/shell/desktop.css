@@ -355,15 +355,22 @@
  * mobile no se toca). */
 .desktop-shell__content .chat-messages {
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  padding-top: 32px;
+  max-width: none;
+  margin: 0;
+  /* Columna de texto ANCHA y simétrica (pedido operador 2026-07-04, 2ª iter): el scroller ocupa TODO
+     el ancho para que la barra de desplazamiento quede pegada al borde derecho de la ventana; el
+     contenido (mensajes) se centra con gutters simétricos ~7% (las líneas celestes del pedido). */
+  padding: 32px 0 16px;
+  padding-inline: max(24px, 7%);
 }
 
 .desktop-shell__content .composer {
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
+  /* Mismo gutter que los mensajes -> el input queda alineado con la columna de texto. */
+  padding: 8px 0 22px;
+  padding-inline: max(24px, 7%);
 }
 
 .desktop-shell__content .connections-screen,
@@ -401,6 +408,19 @@
   width: 40px;
   height: 40px;
   border-radius: 13px;
+}
+
+/* Entrada de texto de escritorio más grande (pedido operador 2026-07-04): más font, más alto y más
+   padding que la base mobile (chat.css). Override SOLO en desktop — mobile intacto. */
+.desktop-shell__content .composer__row {
+  padding: 10px 10px 10px 20px;
+  border-radius: 22px;
+}
+
+.desktop-shell__content .composer__input {
+  font-size: 15.5px;
+  padding: 10px 0;
+  max-height: 148px;
 }
 
 /* #20-21 — card HITL en escritorio: padding/radio (dc.html:128). Base mobile (chat.css/

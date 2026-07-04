@@ -117,6 +117,11 @@
   --skin-preview-daylight: linear-gradient(150deg, #e7e7f1, #8b82ff);
   --skin-preview-refined: linear-gradient(150deg, #1b2440, #5ee0ff);
   --skin-preview-ai: linear-gradient(150deg, #4a93ff, #2a5fe0);
+
+  /* Scrollbar glass, theme-aware (consumido por la regla global en global.css): thumb translúcido
+     con el tinte de la paleta, track transparente. Fallback `:root` = mismo valor que el tema `ai`. */
+  --scrollbar-thumb: rgba(156, 190, 255, 0.24);
+  --scrollbar-thumb-hover: rgba(156, 190, 255, 0.44);
 }
 
 /* aurora — Aurora Glass (violeta sobre fondo oscuro, vidrio esmerilado) */
@@ -196,6 +201,8 @@
   --danger-btn-fg: #3a0a14;
   --row-border: 1px solid rgba(255, 255, 255, 0.07);
   --nav-active: rgba(255, 255, 255, 0.09);
+  --scrollbar-thumb: rgba(199, 165, 255, 0.26);
+  --scrollbar-thumb-hover: rgba(199, 165, 255, 0.46);
 }
 
 /* daylight — Soft Daylight (neomorfismo lavanda, claro) */
@@ -284,6 +291,10 @@
   --danger-btn-fg: #fff;
   --row-border: 1px solid rgba(0, 0, 0, 0.06);
   --nav-active: rgba(91, 74, 224, 0.12);
+  /* daylight es tema CLARO (--bg #e7e7f1): thumb violeta (--user acento) para que se vea sobre el
+     fondo lavanda, no un translúcido claro que quedaría invisible. */
+  --scrollbar-thumb: rgba(91, 74, 224, 0.3);
+  --scrollbar-thumb-hover: rgba(91, 74, 224, 0.52);
 }
 
 /* refined — Refined Dark (editorial, negro neutro, acento aqua) */
@@ -366,6 +377,9 @@
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(255, 255, 255, 0.05);
   --nav-active: rgba(94, 224, 255, 0.1);
+  /* refined es neutro: thumb gris frío en reposo, tinte aqua (--core) al hover. */
+  --scrollbar-thumb: rgba(160, 172, 190, 0.26);
+  --scrollbar-thumb-hover: rgba(94, 224, 255, 0.44);
 }
 
 /* ai — Tema AI (default; azul profundo + glow multicolor + "edge highlight" tipo vidrio) */
@@ -452,4 +466,6 @@
   --danger-btn-fg: #2e0810;
   --row-border: 1px solid rgba(130, 160, 255, 0.12);
   --nav-active: rgba(96, 156, 255, 0.18);
+  --scrollbar-thumb: rgba(156, 190, 255, 0.24);
+  --scrollbar-thumb-hover: rgba(156, 190, 255, 0.44);
 }

@@ -17,12 +17,6 @@ export interface ComposerProps {
   onSend: (text: string, mode: string | null) => void;
   /** Blob grabado por `MicButton` (Task 19) — el caller lo reenvía a `useChat().sendAudio(blob)`. */
   onSendAudio: (blob: Blob) => void;
-  /**
-   * Muestra el hint "Enter para enviar · mantené 🎙 para hablar" bajo el composer (verbatim
-   * `Copiloto Web.dc.html:271`). SOLO el diseño de ESCRITORIO lo incluye — el diseño mobile
-   * (`Copiloto App.dc.html`) no tiene ese texto, por eso el default es `false`.
-   */
-  showHint?: boolean;
 }
 
 function StatusHint({ sendStatus }: { sendStatus: SendStatus }) {
@@ -89,7 +83,7 @@ const DEFAULT_PLACEHOLDER = 'Escribile a tu copiloto…';
  * `sendStatus==='sending'`, mismo criterio que el textarea, para no superponer un envío de texto
  * con uno de audio.
  */
-export function Composer({ sendStatus, onSend, onSendAudio, showHint = false }: ComposerProps) {
+export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const { mode, clearMode } = useMode();
   const canSend = draft.trim() !== '' && sendStatus !== 'sending';
@@ -165,10 +159,6 @@ export function Composer({ sendStatus, onSend, onSendAudio, showHint = false }: 
           </svg>
         </button>
       </form>
-
-      {showHint && (
-        <p className="composer__hint">Enter para enviar · mantené 🎙 para hablar</p>
-      )}
     </div>
   );
 }

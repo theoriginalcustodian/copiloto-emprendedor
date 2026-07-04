@@ -100,63 +100,6 @@
   font-weight: 600;
 }
 
-/* ---------- Header de ESCRITORIO (DesktopChatHeader, verbatim Copiloto Web.dc.html:94-102) ----------
- * Barra de 52px con estado de sesión + botón "Nueva conversación". Reemplaza al header de marca
- * mobile en el shell desktop. */
-.desktop-chat-header {
-  flex: none;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  border-bottom: var(--row-border);
-}
-
-.desktop-chat-header__session {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--label);
-  white-space: nowrap;
-}
-
-.desktop-chat-header__dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--ok-fg);
-}
-
-.desktop-chat-header__new {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--tab-inactive);
-  background: transparent;
-  border: var(--cancel-border);
-  border-radius: 10px;
-  padding: 7px 12px;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-.desktop-chat-header__new:hover {
-  color: var(--tab-active);
-}
-
-.desktop-chat-header__new:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
 /* ---------- Messages (Task 12) ---------- */
 .chat-messages {
   flex: 1;
@@ -529,16 +472,6 @@
 .composer__mic:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
-}
-
-/* Hint bajo el composer (verbatim Copiloto Web.dc.html:271) — sólo escritorio (showHint). */
-.composer__hint {
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  color: var(--label);
-  margin: 9px 0 0;
 }
 
 /* ---------- Recording overlay (Task 19, EXTRACT §2.10 "estado grabando") ----------
