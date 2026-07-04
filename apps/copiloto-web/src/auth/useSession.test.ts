@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Partial mock: reusa las clases de error reales (UnauthorizedError/ForbiddenError) — así el
-// `instanceof` que hace useSession.ts contra el MISMO módulo mockeado sigue funcionando, solo se
+// `instanceof` que hace SessionProvider contra el MISMO módulo mockeado sigue funcionando, solo se
 // reemplaza `api` por fns espiables.
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>();
@@ -20,9 +20,13 @@ vi.mock('../lib/api', async (importOriginal) => {
 
 import { api, ForbiddenError, UnauthorizedError } from '../lib/api';
 import { setToken } from './session';
+import { SessionProvider } from './SessionProvider';
 import { useSession } from './useSession';
 
-describe('useSession', () => {
+// La sesión es compartida vía contexto: el hook se consume SIEMPRE dentro de <SessionProvider>.
+const wrapper = SessionProvider;
+
+describe('useSession (vía SessionProvider)', () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.mocked(api.login).mockReset();
@@ -30,7 +34,7 @@ describe('useSession', () => {
   });
 
   it('sin token persistido -> anon', async () => {
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
   });
 
@@ -38,7 +42,7 @@ describe('useSession', () => {
     setToken('tok-valido');
     vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [] });
 
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
 
     await waitFor(() => expect(result.current.status).toBe('authed'));
     expect(result.current.me?.cliente_id).toBe('c1');
@@ -54,7 +58,7 @@ describe('useSession', () => {
     });
     vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [] });
 
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
 
     let loginResult: Awaited<ReturnType<typeof result.current.login>> | undefined;
@@ -69,7 +73,7 @@ describe('useSession', () => {
   it('login con 401 -> error de credenciales, status queda anon', async () => {
     vi.mocked(api.login).mockRejectedValueOnce(new UnauthorizedError('bad creds'));
 
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
 
     let loginResult: Awaited<ReturnType<typeof result.current.login>> | undefined;
@@ -91,7 +95,7 @@ describe('useSession', () => {
     });
     vi.mocked(api.me).mockRejectedValueOnce(new ForbiddenError('sin tenant'));
 
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anon'));
 
     let loginResult: Awaited<ReturnType<typeof result.current.login>> | undefined;
@@ -107,7 +111,7 @@ describe('useSession', () => {
     setToken('tok-valido');
     vi.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'c1', mp_connected: false, composio_connected: [] });
 
-    const { result } = renderHook(() => useSession());
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('authed'));
 
     act(() => {

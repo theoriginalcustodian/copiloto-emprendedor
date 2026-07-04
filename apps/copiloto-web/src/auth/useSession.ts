@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react';
 
-import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
-import { clearToken, getToken, setToken } from './session';
+import type { MeResponse } from '../lib/api';
 
 /**
- * Estado de sesión de la app (Task 6). Reusable por ambos shells (mobile/desktop) — la lógica
- * vive acá, nunca en un componente de layout.
+ * Contrato + acceso a la sesión COMPARTIDA (single source of truth, Task 6/7). El ESTADO vive en
+ * `<SessionProvider>` (SessionProvider.tsx); acá solo el contexto y el hook consumidor, para que
+ * `App`, `LoginSkeleton`, `ChatSkeleton` y ambos shells (mobile/desktop) lean la MISMA sesión.
  *
- * - 'checking'     -> validando token persistido contra /me (splash inicial).
- * - 'anon'         -> sin token, o token inválido/expirado (401) -> mostrar LoginSkeleton.
- * - 'authed'       -> token válido + tenant habilitado -> mostrar ChatSkeleton.
- * - 'no-habilitada'-> token válido pero sin tenant (403) -> LoginSkeleton con aviso (no un 5to
- *                     componente: la pantalla de login ya cubre este caso, ver LoginSkeleton).
+ * - 'checking'      -> validando token persistido contra /me (splash inicial).
+ * - 'anon'          -> sin token, o token inválido/expirado (401) -> mostrar LoginSkeleton.
+ * - 'authed'        -> token válido + tenant habilitado -> mostrar ChatSkeleton.
+ * - 'no-habilitada' -> token válido pero sin tenant (403) -> LoginSkeleton con aviso.
  */
 export type SessionStatus = 'checking' | 'anon' | 'authed' | 'no-habilitada';
 
@@ -29,67 +28,11 @@ export interface UseSessionResult {
   logout: () => void;
 }
 
-type MeOutcome = 'ok' | 'forbidden' | 'failed';
+export const SessionContext = createContext<UseSessionResult | null>(null);
 
+/** Consume la sesión compartida. Debe usarse dentro de `<SessionProvider>`. */
 export function useSession(): UseSessionResult {
-  const [status, setStatus] = useState<SessionStatus>('checking');
-  const [me, setMe] = useState<MeResponse | undefined>(undefined);
-
-  // Valida el token actual contra /me y deja el estado consistente con el resultado. Se reusa
-  // tanto en el chequeo de montaje como después de un login exitoso.
-  const fetchMe = useCallback(async (): Promise<MeOutcome> => {
-    try {
-      const meResponse = await api.me();
-      setMe(meResponse);
-      setStatus('authed');
-      return 'ok';
-    } catch (err) {
-      if (err instanceof ForbiddenError) {
-        setStatus('no-habilitada');
-        return 'forbidden';
-      }
-      // 401 (client.ts ya limpió el token) u otro error (red/servidor): degradar a anónimo.
-      clearToken();
-      setMe(undefined);
-      setStatus('anon');
-      return 'failed';
-    }
-  }, []);
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setStatus('anon');
-      return;
-    }
-    void fetchMe();
-  }, [fetchMe]);
-
-  const login = useCallback(
-    async (email: string, password: string): Promise<LoginResult> => {
-      try {
-        const response = await api.login(email, password);
-        setToken(response.access_token);
-      } catch (err) {
-        if (err instanceof UnauthorizedError) {
-          return { ok: false, error: 'credenciales' };
-        }
-        return { ok: false, error: 'red' };
-      }
-
-      const outcome = await fetchMe();
-      if (outcome === 'ok') return { ok: true };
-      if (outcome === 'forbidden') return { ok: false, error: 'no-habilitada' };
-      return { ok: false, error: 'red' };
-    },
-    [fetchMe],
-  );
-
-  const logout = useCallback(() => {
-    clearToken();
-    setMe(undefined);
-    setStatus('anon');
-  }, []);
-
-  return { status, me, login, logout };
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error('useSession debe usarse dentro de <SessionProvider>');
+  return ctx;
 }

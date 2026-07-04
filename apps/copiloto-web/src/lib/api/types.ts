@@ -80,6 +80,23 @@ export interface ReplyChoice {
   value: string;
 }
 
+/**
+ * Shape CRUDO que devuelve el backend (`reply_store`, confirmado vivo contra /reply): el texto viene
+ * en `reply_text` (NO `text`) y trae `created_at`. `reply.ts` lo normaliza al shape interno.
+ */
+export interface RawReplyItem {
+  id: number;
+  reply_text: string;
+  choices?: ReplyChoice[] | null;
+  created_at?: string;
+}
+
+export interface RawReplyResponse {
+  replies: RawReplyItem[];
+  next_id: number;
+}
+
+/** Shape INTERNO normalizado que consumen `useChat` y el mock (`reply.ts` mapea `reply_text` -> `text`). */
 export interface ReplyMessage {
   id: number;
   text: string;
