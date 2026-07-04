@@ -1,3 +1,3 @@
-// Barrel del módulo Cuenta. Placeholder (Task 9) — perfil, selector de tema, logout llega en
-// FASE 5 (Task 21).
+// Barrel del módulo Cuenta (Task 21): perfil, selector de 4 temas, card de durabilidad,
+// preferencias, logout.
 export { AccountScreen } from './AccountScreen';

@@ -1,6 +1,7 @@
-// Barrel del módulo de auth (Task 6/7): sesión persistida + provider/hook de estado + pantalla de login.
+// Barrel del módulo de auth (Task 6/7/22): sesión persistida + provider/hook de estado + pantalla
+// de login (diseño final, Task 22 — reemplaza el LoginSkeleton funcional-básico).
 export { clearToken, getToken, setToken } from './session';
-export { LoginSkeleton } from './LoginSkeleton';
+export { LoginScreen } from './LoginScreen';
 export { SessionProvider } from './SessionProvider';
 export {
   useSession,
