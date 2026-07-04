@@ -80,17 +80,26 @@ class MemoryProvider:
         return self._client.warm_session(self._user_id(cliente_id))
 
     # ── READ (por turno) ─────────────────────────────────────────────────────────────────────────────────
-    def recall(self, cliente_id: str, thread_ref: str) -> str:
-        """Context Block (FACTS+ENTITIES) del emprendedor, envuelto como dato de referencia, para el system
-        prompt. Best-effort: cualquier falla de Graphity → "" (el turno sigue sin memoria de largo plazo)."""
-        thread_id = self._thread_id(cliente_id, thread_ref)
+    def recall(self, cliente_id: str, thread_ref: str, query: str) -> str:
+        """Facts relevantes del user graph del emprendedor para el mensaje ACTUAL (`query`), envueltos como dato
+        de referencia para el system prompt. Best-effort: cualquier falla de Graphity → "" (el turno sigue sin
+        memoria de largo plazo).
+
+        Usa graph-search sobre el user graph (`search_user_facts`), NO el thread-context: éste es RAG sobre los
+        mensajes DEL THREAD y devolvía vacío en una charla NUEVA sin mensajes (bug 2026-07-04, spike-verificado)
+        → la memoria cross-sesión no funcionaba. El graph-search usa el mensaje del turno como query y trae los
+        facts del grafo del emprendedor aunque el thread sea nuevo. `thread_ref` se conserva para logging/futuro
+        (combinar thread-context + graph-search); el recall de largo plazo ya no depende de él."""
+        if not query or not query.strip():
+            return ""
         try:
-            raw = self._client.get_user_context(
-                thread_id, facts_limit=self._facts_limit, message_count=self._message_count)
+            facts = self._client.search_user_facts(self._user_id(cliente_id), query, limit=self._facts_limit)
         except (GraphityMemoryError, ValueError) as exc:
             _log.warning("recall degradado (sin memoria este turno): cliente=%s err=%s", cliente_id, exc)
             return ""
-        return _wrap_context(raw)
+        if not facts:
+            return ""
+        return _wrap_context("# FACTS\n" + "\n".join(f"- {f}" for f in facts))
 
     # ── WRITE (batcheado por el caller; flush al cerrar la sesión) ────────────────────────────────────────
     def remember(self, cliente_id: str, thread_ref: str, messages: list[dict]) -> None:

@@ -26,7 +26,10 @@ async def call_llm(payload: dict) -> dict:
     mem = dom.get("memory_provider")
     if mem is not None and payload.get("cliente_id"):
         try:
-            ctx = await asyncio.to_thread(mem.recall, payload["cliente_id"], payload.get("thread_ref", ""))
+            # el mensaje ACTUAL del turno es el query del recall (graph-search sobre el user graph): así trae
+            # los facts relevantes aunque sea una charla nueva. Sin `user` no hay con qué buscar → recall "".
+            ctx = await asyncio.to_thread(
+                mem.recall, payload["cliente_id"], payload.get("thread_ref", ""), payload.get("user", ""))
             if ctx:
                 system = system + "\n\n" + ctx
         except Exception as exc:  # noqa: BLE001 — memoria best-effort: nunca romper el turno
