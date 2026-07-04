@@ -5,12 +5,13 @@
 import { login } from './auth';
 import { catalog } from './catalog';
 import { sendChat } from './chat';
+import { getConnect } from './connect';
 import { me } from './me';
 import { mockApi } from './mock';
 import { getReply } from './reply';
 import type { CopilotApi } from './types';
 
-const realApi: CopilotApi = { login, me, catalog, sendChat, getReply };
+const realApi: CopilotApi = { login, me, catalog, connect: getConnect, sendChat, getReply };
 
 export const api: CopilotApi = import.meta.env.VITE_API_MOCK === '1' ? mockApi : realApi;
 

@@ -2,6 +2,7 @@ import type {
   CatalogResponse,
   ChatRequest,
   ChatResponse,
+  ConnectResponse,
   CopilotApi,
   LoginResponse,
   MeResponse,
@@ -86,6 +87,13 @@ export const mockApi: CopilotApi = {
         },
       ],
     };
+  },
+
+  async connect(connectPath: string): Promise<ConnectResponse> {
+    await delay(undefined);
+    // URL fake pero reconocible (no navega a nada real) — sirve para dev local sin backend;
+    // trae el connectPath para que sea obvio en devtools/consola qué servicio se estaba probando.
+    return { url: `https://mock-oauth.example.com/authorize?connect_path=${encodeURIComponent(connectPath)}` };
   },
 
   async sendChat(payload: ChatRequest): Promise<ChatResponse> {

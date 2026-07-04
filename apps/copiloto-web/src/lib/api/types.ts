@@ -54,6 +54,19 @@ export interface CatalogResponse {
 }
 
 // ---------------------------------------------------------------------------
+// GET /mp/connect | GET /composio/connect?service=<key>
+// ---------------------------------------------------------------------------
+
+/**
+ * Respuesta de CUALQUIER flujo de connect (Mercado Pago o Composio) — mismo shape para los dos,
+ * es lo que hace que `getConnect`/`useConnections.connect` sean data-driven: reciben el
+ * `connect_path` que ya trae cada `CatalogService` y no bifurcan por proveedor.
+ */
+export interface ConnectResponse {
+  url: string;
+}
+
+// ---------------------------------------------------------------------------
 // POST /chat
 // ---------------------------------------------------------------------------
 
@@ -116,6 +129,8 @@ export interface CopilotApi {
   login(email: string, password: string): Promise<LoginResponse>;
   me(): Promise<MeResponse>;
   catalog(): Promise<CatalogResponse>;
+  /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */
+  connect(connectPath: string): Promise<ConnectResponse>;
   sendChat(payload: ChatRequest): Promise<ChatResponse>;
   getReply(sessionId: string, afterId: number): Promise<ReplyResponse>;
 }
