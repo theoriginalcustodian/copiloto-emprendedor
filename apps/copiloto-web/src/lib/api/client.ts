@@ -39,6 +39,14 @@ interface RequestOptions {
   auth?: boolean;
 }
 
+/** Espera antes del reintento único ante un 401 (ver `request`). Da margen a que se recupere un
+ * blip transitorio del servicio de auth sin desloguear al usuario. */
+const RETRY_401_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function readErrorDetail(res: Response): Promise<string | undefined> {
   try {
     const data: unknown = await res.json();
@@ -61,11 +69,26 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const init: RequestInit = {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  };
+  // Sólo reintentamos un 401 si REALMENTE mandamos un Bearer (hay sesión). Sin token, un 401 es
+  // definitivo (no logueado) y reintentar sería inútil.
+  const sentBearer = auth && headers.Authorization !== undefined;
+
+  let res = await fetch(`${API_BASE}${path}`, init);
+
+  // Reintento ÚNICO ante 401 en una request con sesión: un 401 transitorio (blip del auth-service,
+  // no expiración real del token) no debe desloguear ni dejar la pantalla en error — el síntoma
+  // "No pudimos cargar tus apps" era exactamente esto (401 rodeado de 200 en los logs). Si el token
+  // está de verdad muerto, el reintento vuelve a 401 y ahí sí se limpia abajo. NO cubre la
+  // expiración real del token (eso necesita refresh-token flow, follow-up de backend).
+  if (res.status === 401 && sentBearer) {
+    await sleep(RETRY_401_DELAY_MS);
+    res = await fetch(`${API_BASE}${path}`, init);
+  }
 
   if (res.ok) {
     if (res.status === 204) return undefined as T;
