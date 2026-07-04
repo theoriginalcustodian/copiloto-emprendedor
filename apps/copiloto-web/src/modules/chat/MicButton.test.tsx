@@ -53,6 +53,18 @@ function mockStream(): MediaStream {
   return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
 }
 
+/**
+ * `MicButton` usa `Date.now()` (no fake timers) para decidir hold-time (`MIN_HOLD_MS`, 350ms) en
+ * `handlePointerUp`. Mockear `Date.now()` deja el cálculo determinístico sin esperar wall-clock
+ * real: `advance(ms)` simula que pasó ese tiempo entre pointerdown y pointerup. Se restaura con
+ * `vi.restoreAllMocks()` del `afterEach` global (no hace falta un `afterEach` propio).
+ */
+function mockClock() {
+  let current = 0;
+  vi.spyOn(Date, 'now').mockImplementation(() => current);
+  return { advance: (ms: number) => { current += ms; } };
+}
+
 describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
   let getUserMedia: ReturnType<typeof vi.fn>;
 
@@ -81,13 +93,15 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
     expect(screen.getByTestId('recording-overlay')).toBeInTheDocument();
   });
 
-  it('soltar SIN deslizar (unlocked) envía el blob grabado — contrato resuelto de EXTRACT §5 #8', async () => {
+  it('soltar SIN deslizar tras mantener ≥350ms (unlocked) envía el blob grabado — contrato resuelto de EXTRACT §5 #8', async () => {
     const onSendAudio = vi.fn();
+    const clock = mockClock();
     render(<MicButton onSendAudio={onSendAudio} />);
 
     await act(async () => {
       fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
     });
+    clock.advance(400); // supera MIN_HOLD_MS (350ms) -> soltar cuenta como intención de grabar
     await act(async () => {
       fireEvent.pointerUp(document);
     });
@@ -95,6 +109,55 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
     expect(onSendAudio).toHaveBeenCalledTimes(1);
     expect(onSendAudio.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
     expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+  });
+
+  it('tap corto (held < 350ms) NO envía y muestra el hint "Mantené presionado para grabar"', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+    });
+    clock.advance(50); // tap corto: muy por debajo de MIN_HOLD_MS (350ms)
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+
+    expect(onSendAudio).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+    expect(await screen.findByText('Mantené presionado para grabar')).toBeInTheDocument();
+  });
+
+  it('release antes de que el recorder esté listo (race defecto 1): no deja overlay huérfano ni envía', async () => {
+    const onSendAudio = vi.fn();
+    const stopTrackSpy = vi.fn();
+    let resolveGetUserMedia!: (stream: MediaStream) => void;
+    getUserMedia.mockImplementationOnce(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          resolveGetUserMedia = resolve;
+        }),
+    );
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+    });
+    // getUserMedia todavía no resolvió -> mediaRecorderRef sigue null en este punto.
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+
+    // El permiso resuelve DESPUÉS de que el gesto ya terminó -> no debe arrancar nada.
+    await act(async () => {
+      resolveGetUserMedia({ getTracks: () => [{ stop: stopTrackSpy }] } as unknown as MediaStream);
+    });
+
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+    expect(onSendAudio).not.toHaveBeenCalled();
+    expect(stopTrackSpy).toHaveBeenCalledTimes(1); // el stream tardío se libera, no queda colgado
   });
 
   it('deslizar >46px hacia arriba fija (locked): el pointerup solo ya NO envía', async () => {

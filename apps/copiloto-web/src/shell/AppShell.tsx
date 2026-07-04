@@ -6,6 +6,8 @@ import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
+import { useBackGuard } from './useBackGuard';
+import { useChromeAutoHide } from './useChromeAutoHide';
 import './shell.css';
 
 const DEFAULT_TAB: TabKey = 'chat';
@@ -35,8 +37,11 @@ const DEFAULT_TAB: TabKey = 'chat';
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
-  // Hide-on-scroll (EXTRACT §2.3): solo el Chat lo dispara; cambiar de tab siempre re-muestra la barra.
-  const [tabHidden, setTabHidden] = useState(false);
+  // Show/hide del chrome (tab-bar + composer al borde): lo disparan el hide-on-scroll del chat (dedo
+  // apoyado) y el tap en el área de chat (toggle). SIN auto-ocultado por inactividad — escondía la
+  // barra sola y forzaba un doble-tap para abrir Apps (ver useChromeAutoHide). `hidden` baja a la
+  // TabBar (translateY) y al content (padding-bottom -> 0, ver shell.css). Cambiar de tab la re-muestra.
+  const { hidden: tabHidden, setHidden: setTabHidden, toggle: toggleChrome } = useChromeAutoHide();
   const [appsSheetOpen, setAppsSheetOpen] = useState(false);
   // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin
   // este gate, `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del
@@ -52,7 +57,7 @@ export function AppShell() {
     }
     setTabHidden(false);
     setActiveTab(key);
-  }, []);
+  }, [setTabHidden]);
 
   const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
 
@@ -60,20 +65,40 @@ export function AppShell() {
     setAppsSheetOpen(false);
     setTabHidden(false);
     setActiveTab('connections');
-  }, []);
+  }, [setTabHidden]);
 
-  const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
+  // Botón "atrás" del navegador/OS (2026-07-04): pelar los overlays abiertos (sheet primero, luego
+  // un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas capas hay abiertas.
+  const handleBack = useCallback(() => {
+    if (appsSheetOpen) {
+      setAppsSheetOpen(false);
+      return;
+    }
+    if (activeTab !== DEFAULT_TAB) {
+      setActiveTab(DEFAULT_TAB);
+    }
+  }, [appsSheetOpen, activeTab]);
+  const backDepth = (appsSheetOpen ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
+  useBackGuard(backDepth, handleBack);
+
+  // El auto-hide del chrome (barra + composer al borde) es SÓLO del Chat: en Conexiones/Cuenta no hay
+  // área de chat para togglear, así que ocultar la barra ahí dejaría al usuario trabado sin forma de
+  // traerla de vuelta (pedido del operador 2026-07-04). Fuera del Chat la barra queda SIEMPRE visible.
+  const chromeHidden = activeTab === 'chat' && tabHidden;
+  const shellClasses = ['app-frame', 'app-shell', chromeHidden ? 'app-shell--tab-hidden' : '']
     .filter(Boolean)
     .join(' ');
 
   return (
     <div className={shellClasses} data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
-        {activeTab === 'chat' && <ChatScreen onHideChange={setTabHidden} />}
+        {activeTab === 'chat' && (
+          <ChatScreen onHideChange={setTabHidden} onSurfaceTap={toggleChrome} />
+        )}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
-      <TabBar active={activeTab} onChange={changeTab} hidden={tabHidden} />
+      <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </BottomSheet>

@@ -466,6 +466,15 @@
   color: var(--danger-fg);
 }
 
+/* Hint transitorio de tap-corto ("Mantené presionado para grabar") — mismo layout que
+   .composer__mic-error, color neutro (--label) en vez de --danger-fg (no es un error). */
+.composer__mic-hint {
+  margin: 0 4px 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
 .composer__input {
   flex: 1;
   resize: none;

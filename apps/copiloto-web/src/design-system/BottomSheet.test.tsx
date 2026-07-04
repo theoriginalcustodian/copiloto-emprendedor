@@ -5,6 +5,24 @@ import './themes.css';
 import { BottomSheet } from './BottomSheet';
 import { THEMES } from './ThemeProvider';
 
+/**
+ * jsdom NO implementa `PointerEvent` (verificado: `typeof window.PointerEvent === 'undefined'`)
+ * — `fireEvent.pointerDown`/`fireEvent.pointerMove` de testing-library caen a `window.Event`
+ * (event-map.js mapea `EventType: 'PointerEvent'`, ausente -> fallback a `Event`), que ignora
+ * `clientY` del init dict (el constructor de `Event` solo lee bubbles/cancelable/composed).
+ * Workaround: construir el Event a mano y adjuntar `clientY` con `Object.defineProperty` antes
+ * de dispararlo — necesario para ejercitar el drag-to-dismiss (que lee `event.clientY`).
+ */
+function firePointerEvent(
+  target: Element | Document,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientY: number,
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clientY', { value: clientY, configurable: true });
+  fireEvent(target, event);
+}
+
 describe('BottomSheet', () => {
   it('renderiza con role="dialog" y el título como accessible name', () => {
     render(
@@ -55,6 +73,34 @@ describe('BottomSheet', () => {
     );
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('arrastra el CUERPO del sheet (no el handle) hacia abajo por encima del umbral ⇒ cierra', () => {
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open onClose={onClose} title="Tus apps">
+        <p data-testid="sheet-body">contenido</p>
+      </BottomSheet>,
+    );
+    // El cierre se dispara al SOLTAR (pointerup) si el arrastre pasó el umbral — el sheet sigue el
+    // dedo durante el pointermove y recién decide en el release.
+    firePointerEvent(screen.getByTestId('sheet-body'), 'pointerdown', 100);
+    firePointerEvent(document, 'pointermove', 200);
+    firePointerEvent(document, 'pointerup', 200);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('pointerdown sobre un hijo interactivo (botón) + movimiento ⇒ NO cierra (guard)', () => {
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open onClose={onClose} title="Tus apps">
+        <button type="button">Acción</button>
+      </BottomSheet>,
+    );
+    firePointerEvent(screen.getByRole('button', { name: 'Acción' }), 'pointerdown', 100);
+    firePointerEvent(document, 'pointermove', 300);
+    firePointerEvent(document, 'pointerup', 300);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('atrapa el foco al abrir (mueve el foco dentro del sheet)', () => {
