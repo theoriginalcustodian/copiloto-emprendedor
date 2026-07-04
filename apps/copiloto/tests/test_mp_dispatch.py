@@ -37,6 +37,7 @@ def test_mp_charge_proposes_then_confirm_returns_link():
     # 1) el usuario pide cobrar → propuesta (HITL), NO ejecuta todavía
     r1 = d(Intent(action="mp_charge", entities={"amount": 150, "concept": "Sesión"}, reply_es=""), {}, ctx)
     assert r1.choices and r1.state_patch["pending"]["provider"] == "mercadopago"
+    assert r1.card == {"service": "mercadopago", "label": "Mercado Pago"}   # cartel con la app real, no "AGENDA"
     # 2) confirma → crea el link y lo devuelve (mp_gateway/mp_cred_store/seller/webhook_base salen de ctx)
     r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
            {"pending": r1.state_patch["pending"]}, ctx)

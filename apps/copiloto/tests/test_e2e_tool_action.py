@@ -110,6 +110,9 @@ async def test_e2e_tool_action_gmail_send():
             await _wait_until(lambda: any("confirmás" in r["reply_text"].lower() for r in _replies()),
                               "propuesta de enviar mail")
             assert "confirm" in str(_replies()[-1]["choices"]).lower()
+            hitl = next(r for r in _replies() if "confirmás" in r["reply_text"].lower())
+            assert hitl["card"] == {"service": "gmail", "label": "Gmail"}   # cartel HITL con la app real (no "AGENDA"),
+            #                                                                 path completo dispatcher→sink→DB→read
 
             await _route("confirm", kind="callback")
 

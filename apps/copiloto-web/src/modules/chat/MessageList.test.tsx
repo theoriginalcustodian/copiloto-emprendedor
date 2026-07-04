@@ -42,17 +42,18 @@ describe('MessageList', () => {
     expect(screen.queryByTestId(/hitl-card-/)).not.toBeInTheDocument();
   });
 
-  it('choices confirmar/cancelar -> SOLO HitlCard (sin burbuja duplicada)', () => {
+  it('choices confirmar/cancelar -> SOLO HitlCard (sin burbuja duplicada), con la app real del `card`', () => {
     const messages: ChatMessage[] = [
       {
         id: 'a1',
         role: 'assistant',
-        text: 'Preparé el cobro a **Juan Pérez** por $15.000.',
+        text: 'Voy a generar un link de cobro de MercadoPago por $15.000. ¿Confirmás?',
         choices: CONFIRM_CANCEL,
+        card: { service: 'mercadopago', label: 'Mercado Pago' },
       },
     ];
     render(<MessageList messages={messages} onChoice={vi.fn()} />);
-    expect(screen.getByTestId('hitl-card-cobro')).toBeInTheDocument();
+    expect(screen.getByTestId('hitl-card-mercadopago')).toBeInTheDocument();
     expect(screen.queryByTestId('disambiguation-chips')).not.toBeInTheDocument();
   });
 

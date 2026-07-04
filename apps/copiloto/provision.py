@@ -68,6 +68,18 @@ def _provision_tenants(conn) -> None:
     print(f"OK {SCHEMA}.{TENANTS_TABLE} (auth_user_id PK, cliente_id UNIQUE, RLS+policy+grants)", flush=True)
 
 
+def _ensure_reply_card_column(conn) -> None:
+    """Migración aditiva de `copiloto_web_replies.card jsonb` (metadata de presentación del reply, ej HITL
+    {'service','label'} → el frontend muestra el ícono+nombre de la app real). Va SEPARADA del pase estándar:
+    `provision_tables` hace CREATE TABLE IF NOT EXISTS (no ALTER) y su guard anti-colisión ABORTA si una columna
+    declarada falta en la tabla viva. Corre ANTES del pase estándar → sobre DB existente agrega la columna (el
+    guard pasa); sobre DB fresca `IF EXISTS` la vuelve no-op y el CREATE TABLE ya la incluye (declarada en
+    uc_tables.json). `ADD COLUMN IF NOT EXISTS` → idempotente, corrible N veces."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_web_replies ADD COLUMN IF NOT EXISTS card jsonb;")
+    print(f"OK {SCHEMA}.copiloto_web_replies.card (columna aditiva jsonb, idempotente)", flush=True)
+
+
 def _apply_mp_indexes(conn) -> None:
     """Pliega mp_indexes.sql (paga M2): índices únicos que el ON CONFLICT de los stores MP exige.
     Ambas sentencias usan IF NOT EXISTS → idempotente. Un solo execute (sin params) corre las 2 DDL."""
@@ -82,6 +94,8 @@ def provision(conn) -> dict:
     `conn` con autocommit=True (cada DDL es su propia transacción, igual que provision_tables.py)."""
     manifest = json.load(open(UC_TABLES_JSON, encoding="utf-8"))
     standard_spec = {k: v for k, v in manifest.items() if k != TENANTS_TABLE}
+    _ensure_reply_card_column(conn)   # ANTES del pase estándar: su guard anti-colisión aborta si `card` (ya
+    #                                   declarada en uc_tables.json) falta en la tabla viva. Ver la función.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _apply_mp_indexes(conn)

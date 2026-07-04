@@ -258,7 +258,7 @@ class ConversationWorkflow:
                 await workflow.execute_activity(
                     "send_channel_message",
                     {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
-                     "text": reply, "choices": result.choices},
+                     "text": reply, "choices": result.choices, "card": result.card},
                     start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
 
             # Memoria de largo plazo: persistir en BATCH (~20 msgs ≈ 10 turnos) para no saturar la extracción

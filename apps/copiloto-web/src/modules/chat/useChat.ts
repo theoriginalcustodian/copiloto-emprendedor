@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { api, type ChatMessageKind, type ReplyChoice } from '../../lib/api';
+import { api, type ChatMessageKind, type HitlCardMeta, type ReplyChoice } from '../../lib/api';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -133,6 +133,8 @@ export interface ChatMessage {
   role: ChatRole;
   text: string;
   choices?: ReplyChoice[];
+  /** Metadata de presentación del reply HITL (qué app real) — la usa `hitlMapping`/`HitlCard`. */
+  card?: HitlCardMeta;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -207,7 +209,8 @@ export function useChat(): UseChatResult {
       for (const reply of response.replies) {
         if (seenIdsRef.current.has(reply.id)) continue; // dedupe defensivo además del cursor next_id
         seenIdsRef.current.add(reply.id);
-        additions.push({ id: `assistant-${reply.id}`, role: 'assistant', text: reply.text, choices: reply.choices });
+        additions.push({ id: `assistant-${reply.id}`, role: 'assistant', text: reply.text,
+                         choices: reply.choices, card: reply.card });
       }
       if (additions.length > 0) {
         setMessages((prev) => [...prev, ...additions]);

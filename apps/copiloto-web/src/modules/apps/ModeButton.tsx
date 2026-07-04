@@ -32,11 +32,13 @@ function CheckIcon() {
 }
 
 /**
- * Fila de modo del listado de Apps (diseño `Copiloto App.dc.html` líneas 236-258, verbatim) —
- * ícono de MARCA real (`ServiceIcon`, compartido con Conexiones) + `work_label` (acción, ej.
- * "Cobrar") + `display_name` (servicio, ej. "Mercado Pago") + badge "RECONECTAR" si aplica +
- * check circular cuando el modo está activo. Es un `<button>` real (foco/teclado/click), mismo
- * criterio que el `Chip` que reemplaza acá (necesitaba layout de fila completa, no de chip).
+ * Fila de modo del listado de Apps (diseño `Copiloto App.dc.html` líneas 236-258) — ícono de MARCA
+ * real (`ServiceIcon`, compartido con Conexiones) + `display_name` (el nombre REAL del servicio,
+ * ej. "Mercado Pago") + badge "RECONECTAR" si aplica + check circular cuando el modo está activo.
+ * Pedido operador 2026-07-04 (mismo criterio que `ServiceCard` en Conexiones): SOLO el nombre real,
+ * sin el `work_label` amigable ("Cobrar"/"Mail") ni subtítulo — el `work_label` sigue vivo en el
+ * modeStore y alimenta el chip "Modo Mail" del Composer (la acción). Es un `<button>` real
+ * (foco/teclado/click), mismo criterio que el `Chip` que reemplaza acá (layout de fila completa).
  */
 export function ModeButton({ service, active, onToggle, testId }: ModeButtonProps) {
   const reconnect = needsReconnect(service);
@@ -51,13 +53,8 @@ export function ModeButton({ service, active, onToggle, testId }: ModeButtonProp
     >
       <ServiceIcon serviceKey={service.key} name={service.display_name} size={42} radius={12} />
 
-      <span className="mode-row__body">
-        <span className="mode-row__label">{service.work_label}</span>
-        <span className="mode-row__meta">
-          <span className="mode-row__name">{service.display_name}</span>
-          {reconnect && <Badge variant="warning">RECONECTAR</Badge>}
-        </span>
-      </span>
+      <span className="mode-row__name">{service.display_name}</span>
+      {reconnect && <Badge variant="warning">RECONECTAR</Badge>}
 
       {active && (
         <span className="mode-row__check" aria-hidden="true">

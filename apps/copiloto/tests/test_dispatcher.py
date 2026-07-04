@@ -27,6 +27,7 @@ def test_book_propone_y_no_ejecuta():
     assert r.state_patch["pending"]["slug"] == de.CREATE_EVENT_SLUG
     assert "summary" in r.state_patch["pending"]["arguments"]
     assert {c["value"] for c in r.choices} == {"confirm", "cancel"}
+    assert r.card == {"service": "googlecalendar", "label": "Google Calendar"}   # el frontend muestra la app real
     assert r.done is False
 
 

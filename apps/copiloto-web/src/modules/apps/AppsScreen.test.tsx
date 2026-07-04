@@ -134,6 +134,17 @@ describe('AppsScreen', () => {
     expect(screen.queryByTestId('mode-button-drive')).not.toBeInTheDocument();
   });
 
+  it('la fila muestra SOLO el nombre real (display_name), NO el work_label amigable (pedido operador 2026-07-04)', async () => {
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: [CALENDAR] });
+
+    renderAppsScreen();
+    await waitFor(() => expect(screen.getByTestId('mode-button-google-calendar')).toBeInTheDocument());
+
+    const row = screen.getByTestId('mode-button-google-calendar');
+    expect(row).toHaveTextContent('Google Calendar'); // display_name (real)
+    expect(row).not.toHaveTextContent('Agenda'); // work_label (amigable) — ya no se muestra
+  });
+
   it('tocar un botón de modo setea `mode` (key/label/category del servicio)', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: [GMAIL, CALENDAR] });
 

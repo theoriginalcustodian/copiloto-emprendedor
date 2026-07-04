@@ -24,14 +24,17 @@ def test_normalize_rejects_empty():
     assert a.normalize_inbound({"text": "x"}) is None        # sin session_id
 
 
-def test_send_invokes_sink_with_cliente_id_and_choices():
+def test_send_invokes_sink_with_cliente_id_choices_and_card():
     seen = []
-    a = WebChannelAdapter(reply_sink=lambda cid, ref, text, choices: seen.append((cid, ref, text, choices)))
-    out = a.send("s1", "listo", [{"label": "Confirmar", "value": "confirm"}], cliente_id="cid-A")
+    a = WebChannelAdapter(
+        reply_sink=lambda cid, ref, text, choices, card: seen.append((cid, ref, text, choices, card)))
+    out = a.send("s1", "listo", [{"label": "Confirmar", "value": "confirm"}], cliente_id="cid-A",
+                 card={"service": "gmail", "label": "Gmail"})
     assert out == {"sent": True}
-    assert seen == [("cid-A", "s1", "listo", [{"label": "Confirmar", "value": "confirm"}])]
+    assert seen == [("cid-A", "s1", "listo", [{"label": "Confirmar", "value": "confirm"}],
+                     {"service": "gmail", "label": "Gmail"})]
 
 
-def test_send_accepts_no_choices_and_no_cliente_id():       # cliente_id es keyword-only opcional (backward-compat)
-    a = WebChannelAdapter(reply_sink=lambda cid, ref, text, choices: None)
-    assert a.send("s1", "hola", None) == {"sent": True}
+def test_send_accepts_no_choices_no_cliente_id_no_card():    # todo keyword-only opcional (backward-compat)
+    a = WebChannelAdapter(reply_sink=lambda cid, ref, text, choices, card: None)
+    assert a.send("s1", "hola", None) == {"sent": True}      # sin card -> el sink recibe None

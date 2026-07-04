@@ -110,6 +110,19 @@ export interface ReplyChoice {
 }
 
 /**
+ * Metadata OPCIONAL de presentación de un reply HITL: QUÉ app real se va a usar en la acción a
+ * confirmar. La manda el backend (`DispatchResult.card`) para que la tarjeta muestre el ícono +
+ * nombre reales del servicio (Google Docs / Gmail / Mercado Pago / …) en vez de adivinarlos del
+ * texto. Ausente/null en replies que no son confirmaciones.
+ */
+export interface HitlCardMeta {
+  /** key del catálogo: googledocs/googlesheets/googledrive/gmail/googlecalendar/mercadopago/instagram/hubspot. */
+  service: string;
+  /** Nombre humano de la app ("Google Docs", "Mercado Pago", …). */
+  label: string;
+}
+
+/**
  * Shape CRUDO que devuelve el backend (`reply_store`, confirmado vivo contra /reply): el texto viene
  * en `reply_text` (NO `text`) y trae `created_at`. `reply.ts` lo normaliza al shape interno.
  */
@@ -117,6 +130,7 @@ export interface RawReplyItem {
   id: number;
   reply_text: string;
   choices?: ReplyChoice[] | null;
+  card?: HitlCardMeta | null;
   created_at?: string;
 }
 
@@ -130,6 +144,7 @@ export interface ReplyMessage {
   id: number;
   text: string;
   choices?: ReplyChoice[];
+  card?: HitlCardMeta;
 }
 
 export interface ReplyResponse {

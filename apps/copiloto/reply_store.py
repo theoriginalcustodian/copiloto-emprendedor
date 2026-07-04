@@ -13,31 +13,37 @@ _SCHEMA = "uc_factory"
 _TABLE = f'{_SCHEMA}.copiloto_web_replies'
 
 
-def make_pg_reply_sink(conn_factory: Callable) -> Callable[[str, str, str, list | None], None]:
-    """Devuelve un reply_sink(cliente_id, session_id, text, choices) que inserta una fila. `cliente_id` llega
-    POR LLAMADA (per-request), no horneado en el closure -- un solo worker puede servir N tenants sin fugas.
+def make_pg_reply_sink(conn_factory: Callable) -> Callable[[str, str, str, list | None, dict | None], None]:
+    """Devuelve un reply_sink(cliente_id, session_id, text, choices, card=None) que inserta una fila. `cliente_id`
+    llega POR LLAMADA (per-request), no horneado en el closure -- un solo worker puede servir N tenants sin fugas.
+    `card` = metadata OPCIONAL de presentacion del reply (ej HITL {'service','label'}); None/{} -> NULL en la fila.
     conn_factory() -> conexion psycopg2."""
-    def _sink(cliente_id: str, session_id: str, text: str, choices: list | None) -> None:
+    def _sink(cliente_id: str, session_id: str, text: str, choices: list | None,
+              card: dict | None = None) -> None:
         conn = conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f'INSERT INTO {_TABLE} (cliente_id, session_id, reply_text, choices) VALUES (%s, %s, %s, %s)',
-                (cliente_id, session_id, text, json.dumps(choices) if choices else None))
+                f'INSERT INTO {_TABLE} (cliente_id, session_id, reply_text, choices, card) '
+                f'VALUES (%s, %s, %s, %s, %s)',
+                (cliente_id, session_id, text, json.dumps(choices) if choices else None,
+                 json.dumps(card) if card else None))
     return _sink
 
 
 def read_replies(conn_factory: Callable, cliente_id: str, session_id: str, after_id: int) -> list[dict]:
-    """Replies de (cliente_id, session_id) con id > after_id, en orden. Cada dict: {id, reply_text, choices, created_at}."""
+    """Replies de (cliente_id, session_id) con id > after_id, en orden. Cada dict:
+    {id, reply_text, choices, card, created_at}. `card` = metadata de presentacion (ej HITL {'service','label'}) o None."""
     conn = conn_factory()
     with conn.cursor() as cur:
         cur.execute(
-            f'SELECT id, reply_text, choices, created_at FROM {_TABLE} '
+            f'SELECT id, reply_text, choices, card, created_at FROM {_TABLE} '
             f'WHERE cliente_id = %s AND session_id = %s AND id > %s ORDER BY id',
             (cliente_id, session_id, after_id))
         rows = cur.fetchall()
     out = []
-    for rid, text, choices, created in rows:
+    for rid, text, choices, card, created in rows:
         out.append({"id": rid, "reply_text": text,
                     "choices": (json.loads(choices) if isinstance(choices, str) else choices),
+                    "card": (json.loads(card) if isinstance(card, str) else card),
                     "created_at": str(created)})
     return out

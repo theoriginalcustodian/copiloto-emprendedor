@@ -55,7 +55,7 @@ async def send_channel_message(payload: dict) -> dict:
     no lo necesitan (Telegram) lo ignoran -- ver ChannelAdapter.send."""
     adapter = get_channel(payload["channel"])
     res = await asyncio.to_thread(adapter.send, payload["channel_ref"], payload["text"], payload.get("choices"),
-                                  cliente_id=payload.get("cliente_id"))
+                                  cliente_id=payload.get("cliente_id"), card=payload.get("card"))
     return res if isinstance(res, dict) else {"sent": True}
 
 

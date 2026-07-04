@@ -2,22 +2,27 @@ import { Badge, Button, MonoLabel, Surface, type BadgeVariant } from '../../desi
 import { ServiceIcon } from '../../design-system/serviceIcons';
 import './chat.css';
 
-export type HitlVariant = 'cobro' | 'agenda' | 'publicar';
-
 export interface HitlPreview {
   title: string;
   caption: string;
 }
 
 export interface HitlCardProps {
-  variant: HitlVariant;
-  /** Nombre de la persona (Clash 22px) — ausente en `publicar` (no hay destinatario). */
+  /** key del servicio (googledocs/gmail/mercadopago/…) → ícono de marca real. '' = neutro (marca-letra). */
+  service: string;
+  /** Nombre real de la app en el header (ej "Google Docs" / "Mercado Pago"). */
+  label: string;
+  /** Nombre de la persona / destinatario (opcional, aislado de **negrita**). */
   name?: string;
-  /** Monto aislado (solo `cobro`), SIN el signo `$` (se renderiza aparte con su propio token). */
+  /** Monto aislado (solo cobros MP), SIN el signo `$` (se renderiza aparte con su propio token). */
   amount?: string;
-  /** Cuerpo descriptivo (concepto/contexto de la acción). */
+  /** Cuerpo descriptivo: el texto del reply (qué se va a hacer). */
   concept: string;
-  /** Preview WYSIWYG del post (solo `publicar`, EXTRACT §2.6 "único caso de vista previa"). */
+  /** Badge de riesgo opcional (REVISAR para cobros, IRREVERSIBLE para publicar). */
+  badge?: { variant: BadgeVariant; text: string };
+  /** Borde de alerta + advertencia (acciones irreversibles, ej publicar en Instagram). */
+  dangerBorder?: boolean;
+  /** Preview WYSIWYG (solo publicar, EXTRACT §2.6 "único caso de vista previa"). */
   preview?: HitlPreview;
   confirmLabel: string;
   cancelLabel: string;
@@ -25,88 +30,54 @@ export interface HitlCardProps {
   onCancel: () => void;
 }
 
-interface VariantConfig {
-  /** `key` de servicio para el ícono de marca (EXTRACT §2.6: MP/Calendar/Instagram en caja 30×30). */
-  serviceKey: string;
-  headerLabel: string;
-  badge?: { variant: BadgeVariant; text: string };
-  fieldLabel?: string;
-  note?: string;
-  dangerBorder?: boolean;
-}
-
 /**
- * Config FIJA por variante (EXTRACT §2.6, tabla de las 3 variantes de riesgo) — no la decide
- * quien llama al componente, es intrínseca a la variante: ícono de marca/badge/label/border-de-alerta
- * son siempre los mismos para "cobro"/"agenda"/"publicar".
- */
-const VARIANT_CONFIG: Record<HitlVariant, VariantConfig> = {
-  cobro: {
-    serviceKey: 'mercadopago',
-    headerLabel: 'COBRO',
-    badge: { variant: 'warning', text: 'REVISAR' },
-    fieldLabel: 'PARA',
-  },
-  agenda: {
-    serviceKey: 'googlecalendar',
-    headerLabel: 'AGENDA',
-    fieldLabel: 'CON',
-    note: 'Los turnos duran 60 min.',
-  },
-  publicar: {
-    serviceKey: 'instagram',
-    headerLabel: 'PUBLICAR',
-    badge: { variant: 'danger', text: 'IRREVERSIBLE' },
-    dangerBorder: true,
-  },
-};
-
-/**
- * Tarjeta HITL canónica (Task 13, EXTRACT §2.6) — mismo layout, 3 variantes de riesgo. Recibe
- * datos YA resueltos (nombre/monto/concept/labels) — no `choices` crudo. El mapeo desde un
- * `ChatMessage` real (heurística sobre `choices`/`text`, ver ASUNCIÓN en el report) vive en
- * `hitlMapping.ts`, para mantener este componente puramente presentacional y testeable con props
- * explícitas.
+ * Tarjeta HITL de confirmación (Task 13, EXTRACT §2.6). La IDENTIDAD (ícono + nombre en el header)
+ * sale del SERVICIO REAL que manda el backend (`card.service`/`card.label`) — Google Docs, Gmail,
+ * Mercado Pago, Google Sheets, etc. — NO de adivinar el texto (el diseño viejo mostraba "AGENDA"
+ * siempre). Las affordances de riesgo (badge, monto, borde de alerta) las decide `hitlMapping` según
+ * el servicio. Recibe datos YA resueltos (nombre/monto/labels): es puramente presentacional. SIN nota
+ * de contexto y SIN descripción — la card es compacta.
  */
 export function HitlCard({
-  variant,
+  service,
+  label,
   name,
   amount,
   concept,
+  badge,
+  dangerBorder,
   preview,
   confirmLabel,
   cancelLabel,
   onConfirm,
   onCancel,
 }: HitlCardProps) {
-  const config = VARIANT_CONFIG[variant];
-
   return (
-    <div className="chat-row chat-row--assistant" data-testid={`hitl-card-${variant}`}>
+    <div className="chat-row chat-row--assistant" data-testid={`hitl-card-${service || 'plain'}`}>
       <Surface
         variant="card"
         blur
         className="hitl-card"
         role="group"
-        aria-label={`Confirmación de ${config.headerLabel.toLowerCase()}`}
-        style={config.dangerBorder ? { border: 'var(--danger-border)' } : undefined}
+        aria-label={`Confirmación · ${label}`}
+        style={dangerBorder ? { border: 'var(--danger-border)' } : undefined}
       >
         <div className="hitl-card__header">
           <div className="hitl-card__header-brand">
-            <ServiceIcon serviceKey={config.serviceKey} name={config.headerLabel} size={30} radius={9} />
-            <MonoLabel className="hitl-card__header-label">{config.headerLabel}</MonoLabel>
+            <ServiceIcon serviceKey={service} name={label} size={30} radius={9} />
+            <MonoLabel className="hitl-card__header-label">{label}</MonoLabel>
           </div>
-          {config.badge && <Badge variant={config.badge.variant}>{config.badge.text}</Badge>}
+          {badge && <Badge variant={badge.variant}>{badge.text}</Badge>}
         </div>
 
-        {name && config.fieldLabel && (
+        {name && (
           <div className="hitl-card__field">
-            <MonoLabel>{config.fieldLabel}</MonoLabel>
+            <MonoLabel>PARA</MonoLabel>
             <p className="hitl-card__name">{name}</p>
           </div>
         )}
 
-        {variant === 'cobro' && amount && (
+        {amount && (
           <div className="hitl-card__field">
             <MonoLabel>MONTO</MonoLabel>
             <p className="hitl-card__amount">
@@ -118,8 +89,6 @@ export function HitlCard({
 
         <p className="hitl-card__concept">{concept}</p>
 
-        {config.note && <p className="hitl-card__note">{config.note}</p>}
-
         {preview && (
           <div className="hitl-card__preview" data-testid="hitl-preview">
             <p className="hitl-card__preview-title">{preview.title}</p>
@@ -127,7 +96,7 @@ export function HitlCard({
           </div>
         )}
 
-        {variant === 'publicar' && (
+        {dangerBorder && (
           <p className="hitl-card__warning" role="alert">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path

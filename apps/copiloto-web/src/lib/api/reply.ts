@@ -16,6 +16,7 @@ export async function getReply(sessionId: string, afterId: number): Promise<Repl
       id: r.id,
       text: r.reply_text,
       choices: r.choices ?? undefined,
+      card: r.card ?? undefined,
     })),
     next_id: raw.next_id,
   };

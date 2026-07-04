@@ -19,7 +19,7 @@ CHANNEL = "web"
 class WebChannelAdapter:
     name = CHANNEL
 
-    def __init__(self, *, reply_sink: Callable[[str, str, str, list | None], None]):
+    def __init__(self, *, reply_sink: Callable[[str, str, str, list | None, dict | None], None]):
         self._reply_sink = reply_sink
 
     def normalize_inbound(self, raw: dict) -> NormalizedMessage | None:
@@ -32,6 +32,7 @@ class WebChannelAdapter:
             kind = "text"
         return NormalizedMessage(channel=CHANNEL, channel_ref=str(session_id), text=text, kind=kind)
 
-    def send(self, channel_ref: str, text: str, choices: list | None = None, *, cliente_id: str | None = None) -> dict:
-        self._reply_sink(cliente_id, channel_ref, text, choices or None)
+    def send(self, channel_ref: str, text: str, choices: list | None = None, *,
+             cliente_id: str | None = None, card: dict | None = None) -> dict:
+        self._reply_sink(cliente_id, channel_ref, text, choices or None, card or None)
         return {"sent": True}

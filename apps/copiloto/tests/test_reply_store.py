@@ -11,13 +11,13 @@ class _FakeCursor:
     def execute(self, sql, params=None):
         s = sql.strip().upper()
         if s.startswith("INSERT"):
-            cid, sess, text, choices = params
+            cid, sess, text, choices, card = params
             self.store.append({"id": len(self.store) + 1, "cliente_id": cid, "session_id": sess,
                                "reply_text": text, "choices": json.loads(choices) if choices else None,
-                               "created_at": "t"})
+                               "card": json.loads(card) if card else None, "created_at": "t"})
         elif s.startswith("SELECT"):
             cid, sess, after = params
-            self._rows = [(r["id"], r["reply_text"], r["choices"], r["created_at"])
+            self._rows = [(r["id"], r["reply_text"], r["choices"], r["card"], r["created_at"])
                           for r in self.store
                           if r["cliente_id"] == cid and r["session_id"] == sess and r["id"] > after]
     def fetchall(self): return self._rows
@@ -61,3 +61,18 @@ def test_sink_isolates_cross_tenant_same_session_id():
     rows_b = reply_store.read_replies(cf, cid_b, "s1", after_id=0)
     assert [r["reply_text"] for r in rows_a] == ["reply de A"]
     assert [r["reply_text"] for r in rows_b] == ["reply de B"]
+
+
+def test_card_roundtrips_and_defaults_none():
+    """El `card` (metadata de presentación del reply HITL) se persiste y vuelve en read_replies; omitirlo -> None."""
+    store = []
+    conn = _FakeConn(store)
+    cf = lambda: conn
+    cid = "00000000-0000-4000-8000-0000000000aa"
+    sink = reply_store.make_pg_reply_sink(cf)
+    sink(cid, "s1", "confirmá el doc", [{"label": "Confirmar", "value": "confirm"}],
+         {"service": "googledocs", "label": "Google Docs"})
+    sink(cid, "s1", "sin card", None)                        # card omitido -> None
+    rows = reply_store.read_replies(cf, cid, "s1", after_id=0)
+    assert rows[0]["card"] == {"service": "googledocs", "label": "Google Docs"}
+    assert rows[1]["card"] is None

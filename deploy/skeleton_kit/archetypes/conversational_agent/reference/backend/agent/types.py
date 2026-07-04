@@ -81,6 +81,9 @@ class DispatchResult:
     state_patch: dict = field(default_factory=dict)  # parche al estado de conversacion (ej. {'pending_slot': ...})
     choices: list = field(default_factory=list)  # opciones discretas a ofrecer [{label, value}]; cada canal las
     #                                              renderiza (Telegram=inline keyboard, WhatsApp=buttons, voz=lista)
+    card: dict = field(default_factory=dict)  # metadata OPCIONAL de presentacion del reply: los canales ricos
+    #                                           (web) la renderizan, los texto-only (Telegram/voz) la ignoran.
+    #                                           Ej HITL: {'service': 'googledocs', 'label': 'Google Docs'}.
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -94,4 +97,5 @@ class DispatchResult:
             escalate_reason=d.get("escalate_reason", ""),
             state_patch=d.get("state_patch") or {},
             choices=d.get("choices") or [],
+            card=d.get("card") or {},
         )

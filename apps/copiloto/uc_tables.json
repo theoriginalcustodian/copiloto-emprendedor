@@ -3,6 +3,7 @@
     "session_id text NOT NULL",
     "reply_text text NOT NULL",
     "choices jsonb",
+    "card jsonb",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_metering": [

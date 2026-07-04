@@ -34,12 +34,19 @@ _CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cance
 _TOOLKIT_NAMES = {
     "googledocs": "Google Docs", "googledrive": "Google Drive", "gmail": "Gmail",
     "googlecalendar": "Google Calendar", "googlesheets": "Google Sheets",
-    "hubspot": "HubSpot", "instagram": "Instagram",
+    "hubspot": "HubSpot", "instagram": "Instagram", "mercadopago": "Mercado Pago",
 }
 
 
 def _friendly_toolkit(toolkit: str) -> str:
     return _TOOLKIT_NAMES.get((toolkit or "").lower(), toolkit or "ese servicio")
+
+
+def _service_card(service: str) -> dict:
+    """Card de presentación del reply HITL: QUÉ app real se va a usar. El frontend la usa para mostrar el ícono
+    + el nombre real del servicio en el cartel de confirmación (en vez de adivinar del texto → "AGENDA" siempre).
+    `service` = key del catálogo (googledocs/gmail/mercadopago/...); `label` = nombre humano (_TOOLKIT_NAMES)."""
+    return {"service": (service or "").lower(), "label": _friendly_toolkit(service)}
 
 
 def _plus_minutes(date_iso: str, hhmm: str, minutes: int) -> str:
@@ -168,7 +175,8 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
             pending = {"slug": CREATE_EVENT_SLUG, "arguments": arguments, "ok_text": "Listo, lo agendé ✅"}
             return DispatchResult(
                 reply_text=f"Voy a agendar «{title}» para el {date} a las {hhmm} hs. ¿Confirmás?",
-                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending})
+                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending},
+                card=_service_card("googlecalendar"))
 
         # ── MercadoPago: cobrar por chat (confirm-gate → mp_gateway) ─────────────────────────────────────
         if action == "mp_charge":
@@ -181,7 +189,8 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
             pending = {"provider": "mercadopago", "amount": amount, "concept": concept}
             return DispatchResult(
                 reply_text=f"Voy a generar un link de cobro de MercadoPago por ${amount} ({concept}). ¿Confirmás?",
-                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending})
+                choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending},
+                card=_service_card("mercadopago"))
 
         # ── servicios nuevos: action='tool_action' + entities{service, op, ...} → módulo plug-in ─────────
         if action == "tool_action":
@@ -197,8 +206,11 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
                     pending["then"] = out.then
                 if out.resolve:
                     pending["resolve"] = out.resolve
+                # `mod.TOOLKIT` (key REAL del catálogo: googledocs/gmail/…), NO `ent["service"]` (el nombre
+                # corto que produce el LLM, ej "docs") — así el card trae la key que el frontend mapea a
+                # ícono + nombre real (verificado E2E: "docs" daba una tarjeta sin ícono).
                 return DispatchResult(reply_text=out.reply_text, choices=list(_CONFIRM_CHOICES),
-                                      state_patch={"pending": pending})
+                                      state_patch={"pending": pending}, card=_service_card(mod.TOOLKIT))
             if isinstance(out, Read):
                 res = gateway.execute(out.slug, user_id=comp_uid, arguments=out.arguments, confirmed=False)
                 return DispatchResult(reply_text=out.summarize(res))
