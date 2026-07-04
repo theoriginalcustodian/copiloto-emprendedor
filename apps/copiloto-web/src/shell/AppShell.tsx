@@ -37,9 +37,10 @@ const DEFAULT_TAB: TabKey = 'chat';
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
-  // Auto-hide del chrome (tab-bar + composer al borde): lo disparan el scroll del chat, la
-  // inactividad, y el tap en el área de chat (toggle). `hidden` baja a la TabBar (translateY) y al
-  // content (padding-bottom -> 0, ver shell.css). Cambiar de tab siempre re-muestra la barra.
+  // Show/hide del chrome (tab-bar + composer al borde): lo disparan el hide-on-scroll del chat (dedo
+  // apoyado) y el tap en el área de chat (toggle). SIN auto-ocultado por inactividad — escondía la
+  // barra sola y forzaba un doble-tap para abrir Apps (ver useChromeAutoHide). `hidden` baja a la
+  // TabBar (translateY) y al content (padding-bottom -> 0, ver shell.css). Cambiar de tab la re-muestra.
   const { hidden: tabHidden, setHidden: setTabHidden, toggle: toggleChrome } = useChromeAutoHide();
   const [appsSheetOpen, setAppsSheetOpen] = useState(false);
   // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin

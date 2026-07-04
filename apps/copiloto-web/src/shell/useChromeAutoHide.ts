@@ -1,56 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-/** Inactividad (ms) tras la cual el chrome se auto-oculta. */
-const DEFAULT_IDLE_MS = 4000;
+import { useCallback, useState } from 'react';
 
 /**
- * Auto-hide del "chrome" del shell mobile: la tab-bar flotante y —en espejo— el composer, que al
+ * Show/hide del "chrome" del shell mobile: la tab-bar flotante y —en espejo— el composer, que al
  * ocultarse la barra se desliza al borde inferior (ver shell.css `.app-shell--tab-hidden`).
- * Interfaz limpia por defecto; los controles de abajo aparecen sólo cuando hacen falta.
+ * Interfaz limpia cuando hace falta, controles a un tap de distancia.
  *
- * `hidden` converge desde: inactividad (timer), tap en el área de chat (`toggle`), y scroll/cambio
- * de tab (`setHidden`). Al mostrar se re-arma el timer de inactividad; al ocultar se cancela. El
- * mostrar viene SÓLO de tap/cambio de tab: el scroll únicamente OCULTA (ver MessageList) — mostrar
- * desde el scroll creaba un loop con el deslizamiento del composer.
+ * `hidden` cambia SÓLO por acción del usuario: tap en el área de chat (`toggle`), hide-on-scroll con
+ * el dedo apoyado (`setHidden`, ver MessageList) y cambio de tab (`setHidden(false)`). NO hay
+ * auto-ocultado por inactividad: escondía la barra sin que el usuario hiciera nada y, como queda con
+ * `pointer-events:none` fuera de pantalla, el primer toque sobre un botón de abajo (ej. "Apps") lo
+ * comía la superficie del chat como "tap para revelar" -> obligaba a un doble-tap (bug 2026-07-04,
+ * "solo la primera vez"). Sin idle-hide la barra queda visible salvo que el usuario scrollee, así que
+ * los botones de abajo responden al primer toque.
  */
-export function useChromeAutoHide(idleMs: number = DEFAULT_IDLE_MS) {
-  const [hidden, setHiddenState] = useState(false);
-  const hiddenRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const armIdle = useCallback(() => {
-    clearTimer();
-    timerRef.current = setTimeout(() => {
-      hiddenRef.current = true;
-      setHiddenState(true);
-    }, idleMs);
-  }, [clearTimer, idleMs]);
-
-  const apply = useCallback(
-    (next: boolean) => {
-      hiddenRef.current = next;
-      setHiddenState(next);
-      if (next) clearTimer();
-      else armIdle();
-    },
-    [armIdle, clearTimer],
-  );
-
-  const setHidden = useCallback((next: boolean) => apply(next), [apply]);
-  const toggle = useCallback(() => apply(!hiddenRef.current), [apply]);
-
-  // Arranca visible y programa el primer auto-hide por inactividad.
-  useEffect(() => {
-    armIdle();
-    return clearTimer;
-  }, [armIdle, clearTimer]);
+export function useChromeAutoHide() {
+  const [hidden, setHidden] = useState(false);
+  // `setHidden` (dispatch de useState) es estable; `toggle` usa updater funcional para no capturar un
+  // `hidden` viejo. No hace falta ref ni timer.
+  const toggle = useCallback(() => setHidden((prev) => !prev), []);
 
   return { hidden, setHidden, toggle };
 }

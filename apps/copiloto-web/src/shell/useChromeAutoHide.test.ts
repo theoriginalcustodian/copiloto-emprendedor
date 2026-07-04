@@ -1,54 +1,50 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { useChromeAutoHide } from './useChromeAutoHide';
 
 describe('useChromeAutoHide', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it('arranca visible y se auto-oculta tras la inactividad', () => {
-    const { result } = renderHook(() => useChromeAutoHide(1000));
+  it('arranca visible', () => {
+    const { result } = renderHook(() => useChromeAutoHide());
     expect(result.current.hidden).toBe(false);
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(result.current.hidden).toBe(true);
   });
 
-  it('toggle alterna el estado y re-arma el auto-hide al mostrar', () => {
-    const { result } = renderHook(() => useChromeAutoHide(1000));
+  it('NO se auto-oculta por inactividad — sigue visible por más que pase el tiempo', () => {
+    // Blindaje del fix 2026-07-04: el idle-hide obligaba a un doble-tap para abrir "Apps" (el 1er
+    // toque sólo revelaba la barra oculta). Ya no hay timer: sin acción del usuario, no se esconde.
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useChromeAutoHide());
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(result.current.hidden).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('toggle alterna el estado', () => {
+    const { result } = renderHook(() => useChromeAutoHide());
     act(() => {
-      vi.advanceTimersByTime(1000);
+      result.current.toggle();
     });
     expect(result.current.hidden).toBe(true);
-
     act(() => {
       result.current.toggle();
     });
     expect(result.current.hidden).toBe(false);
-
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(result.current.hidden).toBe(true);
   });
 
-  it('setHidden(true) oculta y cancela el timer; setHidden(false) muestra y lo re-arma', () => {
-    const { result } = renderHook(() => useChromeAutoHide(1000));
+  it('setHidden fija el estado explícitamente (hide-on-scroll / cambio de tab)', () => {
+    const { result } = renderHook(() => useChromeAutoHide());
     act(() => {
       result.current.setHidden(true);
     });
     expect(result.current.hidden).toBe(true);
-
     act(() => {
       result.current.setHidden(false);
     });
     expect(result.current.hidden).toBe(false);
-
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(result.current.hidden).toBe(true);
   });
 });
