@@ -46,12 +46,36 @@ describe('apiClient', () => {
     expect(headers.Authorization).toBeUndefined();
   });
 
-  it('mapea 401 a UnauthorizedError y limpia el token propio', async () => {
+  it('401 persistente (el reintento también da 401) → UnauthorizedError y limpia el token', async () => {
     setToken('tok-expirado');
-    fetchMock.mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }));
+    // Ahora el client reintenta 1 vez ante un 401 con sesión: hacen falta DOS 401 para que se rinda.
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }))
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }));
 
     await expect(apiClient.get('/me')).rejects.toBeInstanceOf(UnauthorizedError);
     expect(window.localStorage.getItem('copiloto-token')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('401 transitorio (el reintento da 200) → resuelve, NO limpia el token, reintenta 1 vez', async () => {
+    // Reproduce el bug "No pudimos cargar tus apps": blip de auth (401) que se recupera solo (200).
+    setToken('tok-valido');
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'blip' }))
+      .mockResolvedValueOnce(mockResponse(200, { services: [] }));
+
+    await expect(apiClient.get('/catalog')).resolves.toEqual({ services: [] });
+    expect(window.localStorage.getItem('copiloto-token')).toBe('tok-valido');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('401 SIN sesión (sin Bearer) NO reintenta — un solo intento', async () => {
+    // Sin token no hay sesión que rescatar: el 401 es definitivo, reintentar sería inútil.
+    fetchMock.mockResolvedValueOnce(mockResponse(401, { detail: 'no auth' }));
+
+    await expect(apiClient.get('/me')).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('mapea 403 a ForbiddenError sin tocar el token', async () => {
