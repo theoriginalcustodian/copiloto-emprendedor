@@ -17,11 +17,25 @@ from backend.agent.types import DispatchResult, Intent
 
 @activity.defn
 async def call_llm(payload: dict) -> dict:
-    """payload = {domain, user, history}. Devuelve {'parsed': dict|None, 'raw', 'model', 'failed_over'}."""
+    """payload = {domain, user, history, cliente_id?, thread_ref?}. Devuelve {'parsed': dict|None, 'raw', ...}.
+    Si el dominio tiene memory_provider, antepone al system prompt el Context Block de recall (memoria de largo
+    plazo del interlocutor). Best-effort: recall ya degrada a "" ante fallos; el try/except es defensa extra."""
     dom = get_domain(payload["domain"])
     provider = dom["llm_provider"]
+    system = dom["system_prompt"]
+    mem = dom.get("memory_provider")
+    if mem is not None and payload.get("cliente_id"):
+        try:
+            # el mensaje ACTUAL del turno es el query del recall (graph-search sobre el user graph): así trae
+            # los facts relevantes aunque sea una charla nueva. Sin `user` no hay con qué buscar → recall "".
+            ctx = await asyncio.to_thread(
+                mem.recall, payload["cliente_id"], payload.get("thread_ref", ""), payload.get("user", ""))
+            if ctx:
+                system = system + "\n\n" + ctx
+        except Exception as exc:  # noqa: BLE001 — memoria best-effort: nunca romper el turno
+            activity.logger.warning(f"[call_llm] recall degradado: {exc}")
     return await asyncio.to_thread(
-        provider.complete, dom["system_prompt"], payload["user"], history=payload.get("history"))
+        provider.complete, system, payload["user"], history=payload.get("history"))
 
 
 @activity.defn
@@ -77,3 +91,35 @@ async def transcribe_voice(payload: dict) -> dict:
     except Exception as exc:  # noqa: BLE001 -- un fallo de STT NO debe romper el hilo: el motor pide texto
         activity.logger.warning(f"[transcribe_voice] fallo STT: {exc}")
         return {"text": "", "error": str(exc)}
+
+
+@activity.defn
+async def warm_memory(payload: dict) -> dict:
+    """payload = {domain, cliente_id}. Precalienta el grafo de memoria del interlocutor al ABRIR la sesión.
+    No-op si el dominio no tiene memory_provider. Best-effort: NUNCA propaga (un warm fallido no bloquea la
+    conversación). El I/O (HTTP a Graphity, cliente SYNC) va en thread (no bloquea el event loop del worker)."""
+    mem = get_domain(payload["domain"]).get("memory_provider")
+    if mem is None:
+        return {"warmed": False}
+    try:
+        warmed = await asyncio.to_thread(mem.warm, payload["cliente_id"])
+        return {"warmed": bool(warmed)}
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning(f"[warm_memory] fallo: {exc}")
+        return {"warmed": False, "error": str(exc)}
+
+
+@activity.defn
+async def remember_memory(payload: dict) -> dict:
+    """payload = {domain, cliente_id, thread_ref, messages}. Persiste el batch de mensajes en la memoria de
+    largo plazo. No-op si el dominio no tiene memory_provider. Best-effort: NUNCA propaga. El I/O va en thread."""
+    mem = get_domain(payload["domain"]).get("memory_provider")
+    if mem is None:
+        return {"remembered": False}
+    try:
+        await asyncio.to_thread(mem.remember, payload["cliente_id"], payload.get("thread_ref", ""),
+                                payload.get("messages") or [])
+        return {"remembered": True}
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning(f"[remember_memory] fallo: {exc}")
+        return {"remembered": False, "error": str(exc)}

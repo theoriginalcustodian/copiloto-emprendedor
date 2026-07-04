@@ -19,16 +19,21 @@ def workflow_id_for(channel: str, cliente_id: str, channel_ref: str) -> str:
 
 
 async def route_inbound(client, *, adapter, cliente_id: str, domain: str, task_queue: str,
-                        raw_update: dict) -> str | None:
+                        raw_update: dict, extra_config: dict | None = None) -> str | None:
     """Normaliza un update del canal y lo rutea (start-or-signal). Devuelve el workflow_id, o None si el
-    update no es procesable (p.ej. un update sin mensaje de texto)."""
+    update no es procesable (p.ej. un update sin mensaje de texto).
+
+    `extra_config` (opcional): flags que se mergean al config de arranque del workflow (ej. {'memory': True}
+    para activar la memoria de largo plazo). AGNÓSTICO: la plantilla no hardcodea nombres de dominio; la app
+    decide qué flags pasar. Sólo aplica al ARRANCAR el workflow (USE_EXISTING no re-configura uno vivo)."""
     msg = adapter.normalize_inbound(raw_update)
     if msg is None:
         return None
     wf_id = workflow_id_for(msg.channel, cliente_id, msg.channel_ref)
     await client.start_workflow(
         ConversationWorkflow.run,
-        {"cliente_id": cliente_id, "channel": msg.channel, "channel_ref": msg.channel_ref, "domain": domain},
+        {"cliente_id": cliente_id, "channel": msg.channel, "channel_ref": msg.channel_ref,
+         "domain": domain, **(extra_config or {})},
         id=wf_id, task_queue=task_queue,
         id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
         start_signal="receive_message", start_signal_args=[msg.to_dict()])

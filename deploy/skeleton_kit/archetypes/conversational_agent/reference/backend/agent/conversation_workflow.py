@@ -22,6 +22,8 @@ import asyncio
 from datetime import timedelta
 
 from temporalio import workflow
+from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
 with workflow.unsafe.imports_passed_through():
     from backend.agent.types import DispatchResult
@@ -30,6 +32,18 @@ MAX_TURNS = 40                              # cota anti-history (cada turno = 1 
 IDLE_TIMEOUT = timedelta(minutes=30)        # sin actividad -> cerrar la conversacion (durable)
 STAFF_TIMEOUT = timedelta(hours=4)          # espera de decision humana (HITL) antes de seguir
 ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> margen amplio
+# Activities del loop (STT/LLM/dispatch/envío/HITL): retry ACOTADO. Sin retry_policy usan el DEFAULT de
+# Temporal = reintentos ILIMITADOS → un fallo PERMANENTE (ej. una tool de Composio que se propaga como
+# excepción) reintenta ∞ y cuelga el turno ('Pensando…' eterno, bug 2026-07-04). 5 intentos absorben blips
+# transitorios reales; un error permanente falla en tiempo ACOTADO en vez de colgar. Es la red de seguridad:
+# la raíz del caso Composio ya se ataja en el dispatcher (no propaga ConnectionRequired). Best-effort de
+# memoria usa su propio _MEMORY_RETRY (max=1), NO este.
+LOOP_RETRY = RetryPolicy(maximum_attempts=5)
+# Memoria best-effort: cubre el worst-case de UN intento del cliente Graphity (max_attempts=1: warm ~15s,
+# remember ensure_user+ensure_thread+add_messages ~55s). retry SIEMPRE max=1 → un timeout NO dispara los
+# reintentos ILIMITADOS del default de Temporal (footgun que colgaría run()/el loop bajo Graphity LENTO).
+MEMORY_TIMEOUT = timedelta(seconds=75)
+_MEMORY_RETRY = RetryPolicy(maximum_attempts=1)   # sin reintentos: memoria best-effort, jamás debe colgar el turno
 
 
 @workflow.defn
@@ -45,6 +59,7 @@ class ConversationWorkflow:
         self._staff_decision: dict | None = None
         self._closed: bool = False
         self._awaiting_staff: bool = False
+        self._remembered_upto: int = 0        # cursor de memoria: hasta dónde se persistió self._history en Graphity
 
     # ── signals / query ───────────────────────────────────────────────────────────────────────────
     @workflow.signal
@@ -78,6 +93,18 @@ class ConversationWorkflow:
         channel_ref = config["channel_ref"]
         cliente_id = config["cliente_id"]
 
+        # Memoria de largo plazo (opt-in por app vía config['memory']): precalentar el grafo del interlocutor
+        # al ABRIR la sesión (1 sola vez — un signal a un workflow vivo NO re-invoca run()). Best-effort (la
+        # activity nunca propaga). Gate config['memory'] => apps sin memoria NO emiten esta command NUEVA
+        # (replay-safe para sesiones en vuelo: su config no trae la key -> secuencia de Commands intacta).
+        if config.get("memory"):
+            try:
+                await workflow.execute_activity(
+                    "warm_memory", {"domain": domain, "cliente_id": cliente_id},
+                    start_to_close_timeout=MEMORY_TIMEOUT, retry_policy=_MEMORY_RETRY)
+            except ActivityError:
+                pass   # best-effort: un warm lento/caído (timeout, sin reintentos) NO deja mudo al agente
+
         for _turn in range(MAX_TURNS):
             try:
                 await workflow.wait_condition(lambda: self._pending() or self._closed, timeout=IDLE_TIMEOUT)
@@ -96,14 +123,14 @@ class ConversationWorkflow:
             if kind == "needs_stt":
                 stt = await workflow.execute_activity(
                     "transcribe_voice", {"channel": channel, "file_id": user_text},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 transcript = ((stt or {}).get("text") or "").strip()
                 if not transcript:
                     await workflow.execute_activity(
                         "send_channel_message",
                         {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
                          "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
-                        start_to_close_timeout=ACTIVITY_TIMEOUT)
+                        start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                     continue
                 user_text = transcript                  # de acá en más es texto normal (lo clasifica el LLM)
                 kind = "text"
@@ -118,8 +145,9 @@ class ConversationWorkflow:
                           "confidence": 1.0, "reply_es": ""}
             else:
                 llm = await workflow.execute_activity(
-                    "call_llm", {"domain": domain, "user": user_text, "history": prior},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    "call_llm", {"domain": domain, "user": user_text, "history": prior[-20:],
+                                 "cliente_id": cliente_id, "thread_ref": channel_ref},
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 intent = llm.get("parsed") or {
                     "action": "clarify", "entities": {},
                     "reply_es": "Disculpá, no te entendí bien. ¿Me lo podés repetir?"}
@@ -130,7 +158,7 @@ class ConversationWorkflow:
                 {"domain": domain, "intent": intent, "state": self._state,
                  "conv": {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
                           "user": user_text}},
-                start_to_close_timeout=ACTIVITY_TIMEOUT)
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
             result = DispatchResult.from_dict(disp)
             if result.state_patch:
                 self._state.update(result.state_patch)
@@ -142,7 +170,7 @@ class ConversationWorkflow:
                     "notify_staff",
                     {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
                      "reason": result.escalate_reason, "summary": user_text, "reply_to_patient": reply},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 self._awaiting_staff = True
                 try:
                     await workflow.wait_condition(lambda: self._staff_decision is not None, timeout=STAFF_TIMEOUT)
@@ -160,10 +188,36 @@ class ConversationWorkflow:
                     "send_channel_message",
                     {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
                      "text": reply, "choices": result.choices},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+
+            # Memoria de largo plazo: persistir en BATCH (~20 msgs ≈ 10 turnos) para no saturar la extracción
+            # LLM server-side de Graphity (cada add_messages dispara una extracción). Gate config['memory'].
+            if config.get("memory") and len(self._history) - self._remembered_upto >= 20:
+                try:
+                    await workflow.execute_activity(
+                        "remember_memory",
+                        {"domain": domain, "cliente_id": cliente_id, "thread_ref": channel_ref,
+                         "messages": self._history[self._remembered_upto:]},
+                        start_to_close_timeout=MEMORY_TIMEOUT, retry_policy=_MEMORY_RETRY)
+                    self._remembered_upto = len(self._history)   # cursor avanza SOLO si persistió
+                except ActivityError:
+                    pass   # best-effort: remember lento/caído NO cuelga el loop; el cursor NO avanza →
+                           # el remanente se reintenta en el próximo batch/flush (no se pierden mensajes)
 
             if result.done:
                 self._closed = True
                 break
 
+        # Flush final: persistir el remanente al cerrar la sesión (cubre las 4 salidas del loop: idle-timeout,
+        # closed, done, MAX_TURNS agotado). Sin esto, el último batch (<20 msgs) se perdería. Gate config['memory'].
+        if config.get("memory") and self._remembered_upto < len(self._history):
+            try:
+                await workflow.execute_activity(
+                    "remember_memory",
+                    {"domain": domain, "cliente_id": cliente_id, "thread_ref": channel_ref,
+                     "messages": self._history[self._remembered_upto:]},
+                    start_to_close_timeout=MEMORY_TIMEOUT, retry_policy=_MEMORY_RETRY)
+                self._remembered_upto = len(self._history)
+            except ActivityError:
+                pass   # best-effort: si el flush final falla, se pierde el último batch (aceptable) — NO cuelga
         return {"closed": self._closed, "turns": self._cursor, "state": self._state}

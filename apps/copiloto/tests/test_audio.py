@@ -33,7 +33,9 @@ class _FakeTemporal:
     """Standin: `route_inbound` se monkeypatchea; este objeto solo viaja como 1er posicional."""
 
 
-async def _fake_route_inbound(client, *, adapter, cliente_id, domain, task_queue, raw_update):
+async def _fake_route_inbound(client, *, adapter, cliente_id, domain, task_queue, raw_update, extra_config=None):
+    # extra_config: la app pasa {"memory": True} (opt-in de memoria). El fake lo acepta para no romper el
+    # contrato de route_inbound; el ruteo del wf_id no depende de él.
     msg = adapter.normalize_inbound(raw_update)
     if msg is None:
         return None

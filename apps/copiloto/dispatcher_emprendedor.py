@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from backend.agent.types import DispatchResult, Intent
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime
+from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired
 
 from calendar_policy import CREATE_EVENT_SLUG
 import services
@@ -28,6 +29,17 @@ from services.base import Proposal, Read
 
 _DEFAULT_DURATION_MIN = 60   # duración default del evento agendado (el dominio aún no pide duración explícita)
 _CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cancelar", "value": "cancel"}]
+
+# Nombres humanos de los toolkits para el mensaje de "conectá X" (el slug técnico no le dice nada al user).
+_TOOLKIT_NAMES = {
+    "googledocs": "Google Docs", "googledrive": "Google Drive", "gmail": "Gmail",
+    "googlecalendar": "Google Calendar", "googlesheets": "Google Sheets",
+    "hubspot": "HubSpot", "instagram": "Instagram",
+}
+
+
+def _friendly_toolkit(toolkit: str) -> str:
+    return _TOOLKIT_NAMES.get((toolkit or "").lower(), toolkit or "ese servicio")
 
 
 def _plus_minutes(date_iso: str, hhmm: str, minutes: int) -> str:
@@ -117,10 +129,7 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
         txt = pending.get("ok_text", "Listo ✅") if ok else "Uy, no pude hacerlo. Probemos de nuevo."
         return DispatchResult(reply_text=txt, done=ok, state_patch={"pending": None})
 
-    def dispatch(intent: Intent, state: dict, ctx: object | None) -> DispatchResult:
-        if ctx is None:
-            raise ValueError("dispatch requiere ctx (context_factory) — dispatcher multitenant-only, sin "
-                             "fallback single-tenant; verificá que el composition root registre context_factory")
+    def _run(intent: Intent, state: dict, ctx: object) -> DispatchResult:
         action = intent.action
         ent = intent.entities or {}
         # ── recursos por-tenant: SIEMPRE de ctx (multitenant real, cero closure horneado) ───────────────────
@@ -197,6 +206,29 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
 
         # ── cualquier otra cosa ──────────────────────────────────────────────────────────────────────────
         return DispatchResult(reply_text=intent.reply_es or "Contame qué necesitás y te ayudo.")
+
+    def dispatch(intent: Intent, state: dict, ctx: object | None) -> DispatchResult:
+        """Wrapper de robustez (bug 2026-07-04): un fallo de una tool externa (Composio) NUNCA debe propagarse
+        como excepción del activity `dispatch_intent` → Temporal la reintentaría ∞ y colgaría el turno
+        ('Pensando…' eterno). ConnectionRequired (cuenta no conectada) y ComposioExecutionError (fallo del
+        servicio) se traducen a un DispatchResult de negocio (done=False → la charla sigue; pending limpio →
+        no se re-dispara). El ctx None (error de programación, NO de negocio) queda FUERA del try → falla
+        fuerte como antes, no lo enmascara este handler."""
+        if ctx is None:
+            raise ValueError("dispatch requiere ctx (context_factory) — dispatcher multitenant-only, sin "
+                             "fallback single-tenant; verificá que el composition root registre context_factory")
+        try:
+            return _run(intent, state, ctx)
+        except ConnectionRequired as e:
+            return DispatchResult(
+                reply_text=f"Para eso necesito que conectes {_friendly_toolkit(e.toolkit)} primero. "
+                           "Andá a Conexiones, conectalo y volvé a pedírmelo 👌",
+                done=False, state_patch={"pending": None})
+        except ComposioExecutionError:
+            return DispatchResult(
+                reply_text="Uy, no pude completar esa acción con el servicio ahora mismo. "
+                           "Probemos de nuevo en un ratito.",
+                done=False, state_patch={"pending": None})
 
     return dispatch
 

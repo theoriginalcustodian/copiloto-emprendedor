@@ -44,6 +44,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 import services
 from auth import make_require_tenant
 from calendar_policy import CALENDAR_POLICY
+from memory_provider import build_memory_provider
 from mp_credential_store import MpCredentialStore
 from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
@@ -101,10 +102,19 @@ async def _serve() -> None:
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
 
+    # Warm de la memoria (perceived latency): el front-door precalienta el grafo del emprendedor en
+    # `POST /warm` (el front lo dispara al abrir la app / volver al chat, ANTES del 1er mensaje). Se
+    # construye desde los MISMOS GRAPHITY_* que el worker (`build_memory_provider`, fuente única) → None si
+    # faltan → `/warm` no-op. Best-effort: el warm nunca tumba el turno (es latencia, no correctitud).
+    memory_provider = build_memory_provider(os.environ)
+    print("copiloto web warm: " + ("ON (Graphity)" if memory_provider is not None
+                                    else "OFF (sin GRAPHITY_BASE_URL/API_KEY)"), flush=True)
+
     app = create_web_app(
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, mp_app=mp_app, gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
+        warm_fn=(memory_provider.warm if memory_provider is not None else None),
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción
         # (`_default_transcribe`/GroqSTT, lazy sobre `GROQ_API_KEY`); menos invasivo que construirlo
         # acá y no duplica el criterio "cuál transcriber usa /chat/audio" en dos módulos.

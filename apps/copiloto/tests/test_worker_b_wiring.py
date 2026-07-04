@@ -80,3 +80,30 @@ def test_build_worker_config_lee_mp_webhook_base_de_env_no_de_cliente_id():
     assert ctx.mp_webhook_base == "https://copiloto.example"
     assert ctx.cliente_id == "C-Z"
     assert ctx.composio_user_id == "C-Z"                        # per-request, nunca hardcodeado de env
+
+
+def test_build_worker_config_registra_memory_provider_con_graphity_env():
+    """Con GRAPHITY_* en el env: el dominio 'emprendedor' y el TenantCtx llevan el MemoryProvider, y las 2
+    activities de memoria SIEMPRE se registran (evita el HANG si el workflow emite la command sin worker)."""
+    reset_registry()
+    from backend.agent.agent_activities import remember_memory, warm_memory  # noqa: PLC0415
+
+    cfg = worker_b.build_worker_config(
+        {"GRAPHITY_BASE_URL": "http://graphity.test", "GRAPHITY_API_KEY": "gphy_test"},
+        _fake_conn_factory())
+
+    assert get_domain("emprendedor")["memory_provider"] is not None
+    assert warm_memory in cfg["activities"] and remember_memory in cfg["activities"]
+    assert cfg["context_factory"]({"cliente_id": "C-M"}).memory_provider is not None
+
+
+def test_build_worker_config_sin_graphity_env_deja_memoria_off_sin_crashear():
+    """Sin GRAPHITY_*: memory_provider = None (OFF EXPLÍCITO, el worker arranca igual); las activities de
+    memoria siguen registradas (no-op) → el test de wiring corre sin Graphity."""
+    reset_registry()
+    from backend.agent.agent_activities import remember_memory, warm_memory  # noqa: PLC0415
+
+    cfg = worker_b.build_worker_config({}, _fake_conn_factory())
+
+    assert get_domain("emprendedor")["memory_provider"] is None
+    assert warm_memory in cfg["activities"] and remember_memory in cfg["activities"]
