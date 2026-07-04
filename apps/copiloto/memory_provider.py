@@ -72,6 +72,13 @@ class MemoryProvider:
         (mismo derivador no-adivinable), sin refactor. Aún NO consumido por recall/remember (solo el chat)."""
         return f"{namespace}-{function}-{cliente_id}"
 
+    # ── WARM (al abrir la sesión de chat) ────────────────────────────────────────────────────────────────
+    def warm(self, cliente_id: str) -> bool:
+        """Precalienta el user graph del emprendedor (page-cache Neo4j + índices HNSW) al ABRIR la sesión.
+        Best-effort: disparar en paralelo al primer turno — aunque falle/tarde, el recall degrada elegante
+        (es latencia, NO correctitud). El enfriamiento es LRU del page-cache del server, no un timer."""
+        return self._client.warm_session(self._user_id(cliente_id))
+
     # ── READ (por turno) ─────────────────────────────────────────────────────────────────────────────────
     def recall(self, cliente_id: str, thread_ref: str) -> str:
         """Context Block (FACTS+ENTITIES) del emprendedor, envuelto como dato de referencia, para el system

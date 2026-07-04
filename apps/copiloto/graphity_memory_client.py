@@ -32,6 +32,7 @@ _IDEMPOTENT_OK = frozenset({200, 201, 409})   # 409 = el recurso ya existe → l
 _RETRYABLE = frozenset({429, 502, 503, 504})  # backoff (client-integration §3); 401/404/4xx NO se reintentan
 _READ_TIMEOUT_S = 10.0                          # reads ~10s (client-integration §latencias)
 _WRITE_TIMEOUT_S = 35.0                         # ingest ≥35s (add_messages dispara extracción LLM server-side)
+_WARM_TIMEOUT_S = 15.0                          # warm cold ~8s peor caso (spike graphity-memory-connectivity)
 
 
 class GraphityMemoryError(RuntimeError):
@@ -120,6 +121,17 @@ class GraphityMemoryClient:
         if resp.status_code != 200:
             raise GraphityMemoryError(f"get_user_context {thread_id} → HTTP {resp.status_code}")
         return (resp.json() or {}).get("context", "") or ""
+
+    def warm_session(self, user_id: str) -> bool:
+        """Precarga el page-cache de Neo4j del user graph del emprendedor (índices HNSW) — GET
+        /users/{id}/warm. Llamar al ABRIR la sesión de chat para bajar la latencia del 1er recall.
+        BEST-EFFORT: devuelve `warmed` (True/False), NUNCA lanza — un warm que falla no debe bloquear
+        el inicio de sesión (el enfriamiento es LRU del page-cache, no un timer; ver server graph.py)."""
+        try:
+            resp = self._request("GET", f"/users/{user_id}/warm", timeout=_WARM_TIMEOUT_S)
+        except GraphityMemoryError:
+            return False
+        return resp.status_code == 200 and bool((resp.json() or {}).get("warmed", False))
 
     def delete_user(self, user_id: str) -> None:
         """RTBF / GDPR: borra el user + cascade (threads/messages) + su namespace en Neo4j (server DELETE

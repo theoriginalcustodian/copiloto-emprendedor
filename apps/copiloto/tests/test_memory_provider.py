@@ -215,6 +215,34 @@ def test_function_graph_id_naming_contract():
     assert MemoryProvider.function_graph_id(cid, "catalogo", namespace="clinica") == f"clinica-catalogo-{cid}"
 
 
+def test_warm_session_returns_warmed_true():
+    """warm_session pega GET /users/{id}/warm y devuelve el flag warmed del server."""
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET" and req.url.path.endswith("/warm")
+        return httpx.Response(200, json={"group_id": "g", "warmed": True, "duration_ms": 120})
+    assert _client(handler).warm_session("copiloto-x") is True
+
+
+def test_warm_session_degrades_to_false_when_down():
+    """Best-effort: Graphity caído → False (NO lanza — un warm fallido no bloquea el inicio de sesión)."""
+    def handler(_req):
+        raise httpx.ConnectError("down")
+    assert _client(handler).warm_session("copiloto-x") is False
+
+
+def test_provider_warm_hits_user_graph_of_this_cliente():
+    """provider.warm precalienta el user graph del cliente_id (endpoint /users/copiloto-{cid}/warm)."""
+    seen = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["path"] = req.url.path
+        return httpx.Response(200, json={"warmed": True})
+
+    cid = str(uuid.uuid4())
+    assert _provider(handler).warm(cid) is True
+    assert seen["path"].endswith(f"/users/copiloto-{cid}/warm")
+
+
 def _json(req: httpx.Request):
     import json
     return json.loads(req.content.decode()) if req.content else None
