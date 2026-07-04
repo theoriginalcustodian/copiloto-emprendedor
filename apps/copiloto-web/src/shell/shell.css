@@ -1,0 +1,142 @@
+/*
+ * Estilos del shell mobile (Task 9) — theme-aware vía CSS vars de themes.css, cero color literal.
+ *
+ * ---------- Por qué el layout NO es "tab-bar overlay sobre el contenido" (como en el EXTRACT) ----------
+ * El EXTRACT (§2.3) describe la tab-bar como `position:absolute` flotando SOBRE el chat, con blur,
+ * dentro de un frame de teléfono de tamaño FIJO (384x812). Acá el frame es responsive (real
+ * viewport, `.app-frame` de global.css usa `min-height:100dvh`, un PISO, no una altura fija) y
+ * `ChatScreen` (fuera de mi ownership) se autodeclara `className="app-frame chat-screen"` con su
+ * propio `min-height:100dvh` — pensado para correr standalone como pantalla única de la app (así
+ * vivía antes de este Task, ver App.tsx).
+ *
+ * Anidar esa pantalla dentro de un shell con una tab-bar en `position:absolute/fixed` reabre un
+ * problema conocido de flexbox: sin una altura DEFINIDA (no un mínimo) en toda la cadena de
+ * ancestros, `flex:1 + overflow-y:auto` no acota nada y en vez de scrollear el contenedor interno
+ * scrollea la página entera — hoy eso ya pasa en `ChatScreen` standalone (compensado por el
+ * navegador, pero sin scroll interno real). En vez de pelear con overlay + padding-bottom a mano
+ * para no tapar el composer, la tab-bar queda EN EL FLUJO (hijo flex fijo debajo del contenido) y
+ * el shell fuerza una altura definida (`height:100dvh`, no `min-height`) que se propaga hacia
+ * abajo con el patrón clásico `flex:1; min-height:0` — esto además hace que el scroll de mensajes
+ * de ChatScreen quede contenido de verdad (efecto colateral correcto, no buscado).
+ * El look "píldora flotante" (radio 26px, blur, márgenes a los costados) se conserva por estilo,
+ * no por estar fuera del flujo. Hide-on-scroll queda fuera de esta task por la misma razón: no hay
+ * overlay que ocultar (documentado en el report, ver TabBar.tsx).
+ */
+
+.app-frame.app-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-shell__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Pisa el `.app-frame` autoaplicado por una pantalla anidada (hoy solo ChatScreen) SIN tocar su
+   propio CSS — mayor especificidad por descendiente + 2 clases (`.app-shell__content .app-frame`),
+   gana siempre, no depende de orden de import. */
+.app-shell__content .app-frame {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.app-shell__content .app-frame::before {
+  /* El fondo `--bg-layer` ya lo pinta el `.app-frame` externo (`.app-shell`) — evita duplicarlo. */
+  content: none;
+}
+
+/* ---------- TabBar (EXTRACT §2.3) ---------- */
+.tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin: 0 16px 18px;
+  padding: 8px 6px;
+  border-radius: 26px;
+  background: var(--nav-bg);
+  border: 1px solid var(--nav-border);
+  backdrop-filter: blur(30px) saturate(1.5);
+}
+
+.tab-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: var(--tab-inactive);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tab-bar__item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.tab-bar__item--active {
+  color: var(--tab-active);
+}
+
+.tab-bar__icon {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.tab-bar__label {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: inherit;
+}
+
+.tab-bar__item--active .tab-bar__label {
+  font-weight: 600;
+}
+
+/* ---------- Placeholder screens (Apps/Conexiones/Cuenta hasta Tasks 17/20/21) ---------- */
+.placeholder-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.placeholder-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.placeholder-screen__hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--label);
+  margin: 0;
+}
