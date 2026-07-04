@@ -7,9 +7,19 @@ import { api, type ChatMessageKind, type ReplyChoice } from '../../lib/api';
  * shells (mobile/desktop). Maneja: session_id persistido, historial de mensajes, envío, y el
  * polling que absorbe la naturaleza DURABLE del agente (el backend procesa en background vía
  * Temporal — la respuesta no llega en el POST /chat, llega después vía GET /reply).
+ *
+ * **Durabilidad real (fix de review adversarial):** el hook se remontaba LIMPIO (`messages=[]`,
+ * cursor 0) cada vez que se montaba `ChatScreen`, y el polling solo arrancaba en un `send`. Eso
+ * hacía que Chat→Apps→Chat (o cruzar el breakpoint mobile/desktop) mostrara un chat VACÍO, y una
+ * respuesta durable que llegó mientras no se miraba no aparecía hasta el próximo envío —
+ * contradice el pitch "podés cerrar la app, te sigo respondiendo". Fix: `messages` se persiste en
+ * `localStorage` keyed por `session_id`, se rehidrata al montar, y al montar se dispara UN poll
+ * (reusando `poll()` tal cual, sin duplicar cursor/dedupe) con `after_id` = el mayor id de
+ * assistant ya visto entre los mensajes rehidratados.
  */
 
 const SESSION_STORAGE_KEY = 'copiloto-chat-session-id';
+const MESSAGES_STORAGE_PREFIX = 'copiloto-chat-msgs';
 const POLL_INTERVAL_MS = 1500;
 /** Cuánto esperar por una respuesta antes de rendirse y avisar al usuario (agente durable = lento). */
 const WAIT_TIMEOUT_MS = 60_000;
@@ -40,6 +50,56 @@ function readOrCreateSessionId(): string {
   }
 }
 
+function messagesStorageKey(sessionId: string): string {
+  return `${MESSAGES_STORAGE_PREFIX}:${sessionId}`;
+}
+
+/** Rehidrata los mensajes persistidos de este `session_id` — best-effort (localStorage puede
+ * fallar en modo privado/cuota llena, o traer basura si otro código escribió la key) y NUNCA debe
+ * romper el mount: cualquier problema degrada a "sin historial", igual que `getToken` en
+ * `auth/session.ts`. */
+function loadPersistedMessages(sessionId: string): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(messagesStorageKey(sessionId));
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistMessages(sessionId: string, messages: ChatMessage[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(messagesStorageKey(sessionId), JSON.stringify(messages));
+  } catch {
+    // Persistencia best-effort — no romper el chat si localStorage falla.
+  }
+}
+
+/** IDs de `reply` (numéricos) ya vistos, derivados del formato `assistant-<id>` con el que `poll()`
+ * arma el `id` del `ChatMessage` de abajo — es el único lugar que conoce ese formato. */
+function parseAssistantReplyId(messageId: string): number | null {
+  const match = /^assistant-(\d+)$/.exec(messageId);
+  return match ? Number(match[1]) : null;
+}
+
+function collectSeenReplyIds(messages: ChatMessage[]): number[] {
+  return messages.reduce<number[]>((ids, message) => {
+    const parsed = parseAssistantReplyId(message.id);
+    if (parsed !== null) ids.push(parsed);
+    return ids;
+  }, []);
+}
+
+/** `after_id` de arranque tras rehidratar: el mayor id de `assistant` ya visto, o 0 si no hay
+ * historial (sesión nueva o solo hay mensajes de `user` todavía sin respuesta). */
+function highestSeenReplyId(messages: ChatMessage[]): number {
+  return collectSeenReplyIds(messages).reduce((max, id) => Math.max(max, id), 0);
+}
+
 export type ChatRole = 'user' | 'assistant';
 
 export interface ChatMessage {
@@ -66,13 +126,17 @@ export interface UseChatResult {
 
 export function useChat(): UseChatResult {
   const sessionIdRef = useRef<string>(readOrCreateSessionId());
-  const nextIdRef = useRef<number>(0);
-  const seenIdsRef = useRef<Set<number>>(new Set());
+  // Rehidratación (fix de review): mensajes persistidos de este `session_id`, leídos una vez para
+  // sembrar el estado inicial — mismo criterio "eager pero idempotente" que `readOrCreateSessionId`
+  // arriba (barato: solo corre de nuevo en re-renders, el valor post-primer-render no se usa).
+  const persistedMessages = loadPersistedMessages(sessionIdRef.current);
+  const nextIdRef = useRef<number>(highestSeenReplyId(persistedMessages));
+  const seenIdsRef = useRef<Set<number>>(new Set(collectSeenReplyIds(persistedMessages)));
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingRef = useRef(false);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(persistedMessages);
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
 
   const stopPolling = useCallback(() => {
@@ -88,6 +152,12 @@ export function useChat(): UseChatResult {
 
   // Cleanup al desmontar — nunca dejar timers corriendo contra un componente ya fuera de pantalla.
   useEffect(() => stopPolling, [stopPolling]);
+
+  // Persistencia (fix de review): cada cambio de `messages` (rehidratación inicial incluida, sin
+  // efecto porque es un round-trip idéntico) se guarda bajo el `session_id` activo.
+  useEffect(() => {
+    persistMessages(sessionIdRef.current, messages);
+  }, [messages]);
 
   const poll = useCallback(async () => {
     if (pollingRef.current) return;
@@ -114,6 +184,15 @@ export function useChat(): UseChatResult {
       pollingRef.current = false;
     }
   }, [stopPolling]);
+
+  // Poll-on-mount (fix de review — durabilidad real): reusa `poll()` tal cual (mismo cursor
+  // `nextIdRef`, mismo dedupe `seenIdsRef` — ya sembrados arriba desde los mensajes rehidratados)
+  // para traer, apenas se monta el componente, cualquier respuesta que haya llegado mientras
+  // estaba desmontado (Chat→Apps→Chat, cruzar el breakpoint mobile/desktop). `poll` es estable
+  // (depende solo de `stopPolling`, sin deps) así que esto corre una única vez al montar.
+  useEffect(() => {
+    void poll();
+  }, [poll]);
 
   /**
    * Arranca el ciclo de espera de la respuesta durable (intervalo de polling + timeout de

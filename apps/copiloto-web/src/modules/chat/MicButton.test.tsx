@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '../../design-system/themes.css';
@@ -190,5 +191,87 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
 
     expect(getUserMedia).not.toHaveBeenCalled();
     expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Finding de review adversarial: `MicButton` no tenía NINGÚN cleanup de desmontaje. Fijar la
+   * grabación (hands-free) y después navegar a otro tab (o cruzar el breakpoint 900px) desmonta
+   * `ChatScreen`→`Composer`→`MicButton` sin liberar el track del mic (problema de privacidad — el
+   * indicador de grabación del browser queda prendido) ni el timer (`setInterval` vivo). `Host`
+   * monta/desmonta `MicButton` de verdad (no basta con desmontar `render()` — necesitamos togglear
+   * el árbol para ejercitar el cleanup del `useEffect`, no el de `afterEach`/`cleanup()` de RTL).
+   */
+  describe('cleanup de desmontaje (finding de review adversarial)', () => {
+    function Host() {
+      const [mounted, setMounted] = useState(true);
+      return (
+        <>
+          {mounted && <MicButton onSendAudio={vi.fn()} />}
+          <button type="button" onClick={() => setMounted(false)}>
+            desmontar
+          </button>
+        </>
+      );
+    }
+
+    it('desmontar mientras está fijado (hands-free): libera el track del mic, para el MediaRecorder, limpia el timer y quita los listeners de document', async () => {
+      const stopTrackSpy = vi.fn();
+      getUserMedia.mockResolvedValueOnce({ getTracks: () => [{ stop: stopTrackSpy }] } as unknown as MediaStream);
+      const recorderStopSpy = vi.spyOn(MockMediaRecorder.prototype, 'stop');
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
+
+      render(<Host />);
+
+      await act(async () => {
+        fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+      });
+      await act(async () => {
+        fireEvent.pointerMove(document, { clientY: 200 }); // fija (hands-free) — sin pointerup
+      });
+      expect(screen.getByTestId('recording-overlay')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('desmontar'));
+      });
+
+      expect(stopTrackSpy).toHaveBeenCalledTimes(1); // el mic se libera -> apaga el indicador del browser
+      expect(recorderStopSpy).toHaveBeenCalledTimes(1); // el MediaRecorder se detiene
+      expect(clearIntervalSpy).toHaveBeenCalled(); // el timer (100ms) del overlay se limpia
+      // los listeners globales del gesto (pointermove/pointerup) no quedan colgados apuntando a
+      // closures de un componente ya desmontado.
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('pointerup', expect.any(Function));
+    });
+
+    it('desmontar grabando SIN fijar (antes del pointerup): igual libera el mic y para el MediaRecorder', async () => {
+      const stopTrackSpy = vi.fn();
+      getUserMedia.mockResolvedValueOnce({ getTracks: () => [{ stop: stopTrackSpy }] } as unknown as MediaStream);
+      const recorderStopSpy = vi.spyOn(MockMediaRecorder.prototype, 'stop');
+
+      render(<Host />);
+
+      await act(async () => {
+        fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+      });
+      expect(screen.getByTestId('recording-overlay')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('desmontar'));
+      });
+
+      expect(stopTrackSpy).toHaveBeenCalledTimes(1);
+      expect(recorderStopSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('desmontar sin haber empezado a grabar: no crashea ni llama stop de nada', async () => {
+      render(<Host />);
+
+      await expect(
+        act(async () => {
+          fireEvent.click(screen.getByText('desmontar'));
+        }),
+      ).resolves.not.toThrow();
+    });
   });
 });

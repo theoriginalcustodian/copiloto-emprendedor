@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { RecordingOverlay } from './RecordingOverlay';
 import './chat.css';
@@ -55,6 +55,9 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   const pendingSendRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
+  // Cleanup de los listeners de `document` del gesto en curso (si hay uno colgado) — lo llenan
+  // `handlePointerDown`/`handlePointerUp` de abajo; lo lee el `useEffect` de desmontaje.
+  const gestureCleanupRef = useRef<(() => void) | null>(null);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -146,9 +149,13 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         setLocked(true);
       }
     }
-    function handlePointerUp() {
+    function detachGestureListeners() {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
+      gestureCleanupRef.current = null;
+    }
+    function handlePointerUp() {
+      detachGestureListeners();
       if (!lockedRef.current) {
         finishRecording(true); // soltó sin fijar -> envía (contrato del gesto)
       }
@@ -156,7 +163,30 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     }
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
+    // Si el componente se desmonta a mitad de gesto (antes del pointerup), el useEffect de abajo
+    // usa esto para no dejar los listeners de `document` colgados apuntando a closures obsoletas.
+    gestureCleanupRef.current = detachGestureListeners;
   }
+
+  // Cleanup de desmontaje (finding de review adversarial): sin esto, fijar la grabación
+  // (hands-free) y navegar a otro tab/cruzar el breakpoint 900px desmonta `MicButton` SIN liberar
+  // el mic (el track nunca recibe `.stop()` -> el indicador de grabación del browser queda
+  // encendido, problema de privacidad) ni el timer del overlay (setInterval vivo -> setState sobre
+  // un componente ya desmontado). Se anula `onstop` ANTES de parar el `MediaRecorder`: el desmontaje
+  // no es un "enviar" ni un "cancelar" del usuario, así que no debe disparar `onSendAudio` ni
+  // pisar estado de un componente que ya no está.
+  useEffect(() => {
+    return () => {
+      gestureCleanupRef.current?.();
+      stopTimer();
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        recorder.stop();
+      }
+      releaseStream();
+    };
+  }, [releaseStream, stopTimer]);
 
   return (
     <>
