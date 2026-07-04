@@ -25,7 +25,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from backend.agent.agent_activities import call_llm, dispatch_intent, notify_staff, send_channel_message
+from backend.agent.agent_activities import (
+    call_llm, dispatch_intent, notify_staff, remember_memory, send_channel_message, warm_memory)
 from backend.agent.agent_runtime import register_channel, register_domain
 from backend.agent.conversation_workflow import ConversationWorkflow
 from clients.agent.channels.web import WebChannelAdapter
@@ -41,12 +42,15 @@ from calendar_policy import CALENDAR_POLICY
 from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
 from mp_credential_store import MpCredentialStore
+from memory_provider import GraphityMemoryClient, MemoryProvider
 from reply_store import make_pg_reply_sink
 from system_prompt import SYSTEM_PROMPT
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
-_ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff]
+# warm_memory/remember_memory SIEMPRE registradas (aunque memory_provider sea None → no-op): si el workflow
+# emitiera la command y el worker no sirviera la activity, el turno colgaría hasta el timeout (no falla rápido).
+_ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff, warm_memory, remember_memory]
 
 
 def _now_iso() -> str:
@@ -79,14 +83,29 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # policy = Calendar (verbo 'book') + policies mínimas de los módulos de servicio (discovery)
     gateway = ComposioGateway({**CALENDAR_POLICY, **services.merged_policy()})
 
+    # Memoria de largo plazo (Graphity): se construye desde el `env` PARAM (no os.environ) → testeable con
+    # env={} (queda None = sin memoria, el wiring test no necesita Graphity). En prod, copiloto.env aporta
+    # GRAPHITY_BASE_URL/API_KEY. Si faltan → OFF EXPLÍCITO (se loguea; no un cliente mudo silencioso).
+    memory_provider = None
+    if env.get("GRAPHITY_BASE_URL") and env.get("GRAPHITY_API_KEY"):
+        # max_attempts=1 (fast-fail): el retry lo gobierna Temporal (workflow), NO el cliente. Un cliente con
+        # retry propio (default 4) haría que un intento supere el MEMORY_TIMEOUT del workflow bajo Graphity
+        # lento → cascada de timeouts. En el hot-path del agente la memoria es best-effort: fallar rápido.
+        memory_provider = MemoryProvider(GraphityMemoryClient(
+            base_url=env["GRAPHITY_BASE_URL"], api_key=env["GRAPHITY_API_KEY"], max_attempts=1))
+        print("AGENT_B memoria: ON (Graphity)", flush=True)
+    else:
+        print("AGENT_B memoria: OFF (faltan GRAPHITY_BASE_URL/API_KEY en el env)", flush=True)
+
     ctx_factory = make_context_factory(conn_factory=conn_factory, crypto=crypto, mp_gateway=mp_gateway,
-                                       mp_webhook_base=env.get("MP_WEBHOOK_BASE"))
+                                       mp_webhook_base=env.get("MP_WEBHOOK_BASE"),
+                                       memory_provider=memory_provider)
     reply_sink = make_pg_reply_sink(conn_factory)
 
     system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
     register_domain("emprendedor", system_prompt=system_prompt, llm_provider=build_llm(),
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso),
-                    context_factory=ctx_factory)
+                    context_factory=ctx_factory, memory_provider=memory_provider)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))
