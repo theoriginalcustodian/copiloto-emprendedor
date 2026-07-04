@@ -12,6 +12,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
       sendChat: vi.fn(),
       sendAudio: vi.fn(),
       getReply: vi.fn(),
+      warm: vi.fn(),
     },
   };
 });
@@ -20,6 +21,7 @@ import { api } from '../../lib/api';
 import { useChat } from './useChat';
 
 const POLL_INTERVAL_MS = 1500;
+const WARM_THROTTLE_MS = 5 * 60_000;
 
 describe('useChat', () => {
   beforeEach(() => {
@@ -28,6 +30,8 @@ describe('useChat', () => {
     vi.mocked(api.sendChat).mockReset();
     vi.mocked(api.sendAudio).mockReset();
     vi.mocked(api.getReply).mockReset();
+    vi.mocked(api.warm).mockReset();
+    vi.mocked(api.warm).mockResolvedValue({ warmed: true });
   });
 
   afterEach(() => {
@@ -261,6 +265,83 @@ describe('useChat', () => {
       const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
       expect(stored).toHaveLength(1);
       expect(stored).toMatchObject([{ role: 'user', text: 'Hola de nuevo' }]);
+    });
+  });
+
+  describe('warm de memoria (perceived latency)', () => {
+    // Session id único por test → el throttle a nivel de módulo (lastWarmAtBySession) no filtra entre
+    // tests: cada uno arranca sin entrada previa y el 1er warm siempre dispara.
+    let warmSeq = 0;
+    function freshSession(): string {
+      const sid = `warm-sess-${++warmSeq}`;
+      window.localStorage.setItem('copiloto-chat-session-id', sid);
+      return sid;
+    }
+
+    beforeEach(() => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 }); // poll-on-mount inocuo
+    });
+
+    it('al montar (entrar al chat / abrir la app) precalienta la memoria una vez', async () => {
+      freshSession();
+      renderHook(() => useChat());
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(api.warm).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-warmea al volver la pestaña a visible una vez pasado el throttle', async () => {
+      freshSession();
+      renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(api.warm).toHaveBeenCalledTimes(1); // warm del montaje
+
+      // Pasa el throttle y la pestaña vuelve a visible (jsdom: visibilityState='visible' por default).
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(WARM_THROTTLE_MS + 1);
+        document.dispatchEvent(new Event('visibilitychange'));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(api.warm).toHaveBeenCalledTimes(2);
+    });
+
+    it('no re-warmea en un remonte inmediato (throttle absorbe cruzar el breakpoint mobile/desktop)', async () => {
+      freshSession();
+      const { unmount } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(api.warm).toHaveBeenCalledTimes(1);
+
+      // Remonte inmediato con la MISMA sesión, sin avanzar el reloj → throttle bloquea el 2do warm.
+      unmount();
+      renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      expect(api.warm).toHaveBeenCalledTimes(1);
+    });
+
+    it('un fallo del warm no rompe el chat (best-effort, fire-and-forget)', async () => {
+      freshSession();
+      vi.mocked(api.warm).mockRejectedValueOnce(new Error('graphity down'));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      // El warm falló pero el hook sigue operativo: el estado inicial es sano y se puede seguir.
+      expect(api.warm).toHaveBeenCalledTimes(1);
+      expect(result.current.sendStatus).toBe('idle');
+      expect(result.current.messages).toHaveLength(0);
     });
   });
 });

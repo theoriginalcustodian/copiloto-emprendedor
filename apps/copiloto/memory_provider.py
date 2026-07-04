@@ -28,6 +28,7 @@ DEGRADACIÓN ELEGANTE (invariante): Graphity es best-effort. Una caída/timeout 
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 
 from graphity_memory_client import GraphityMemoryClient, GraphityMemoryError
 
@@ -80,17 +81,26 @@ class MemoryProvider:
         return self._client.warm_session(self._user_id(cliente_id))
 
     # ── READ (por turno) ─────────────────────────────────────────────────────────────────────────────────
-    def recall(self, cliente_id: str, thread_ref: str) -> str:
-        """Context Block (FACTS+ENTITIES) del emprendedor, envuelto como dato de referencia, para el system
-        prompt. Best-effort: cualquier falla de Graphity → "" (el turno sigue sin memoria de largo plazo)."""
-        thread_id = self._thread_id(cliente_id, thread_ref)
+    def recall(self, cliente_id: str, thread_ref: str, query: str) -> str:
+        """Facts relevantes del user graph del emprendedor para el mensaje ACTUAL (`query`), envueltos como dato
+        de referencia para el system prompt. Best-effort: cualquier falla de Graphity → "" (el turno sigue sin
+        memoria de largo plazo).
+
+        Usa graph-search sobre el user graph (`search_user_facts`), NO el thread-context: éste es RAG sobre los
+        mensajes DEL THREAD y devolvía vacío en una charla NUEVA sin mensajes (bug 2026-07-04, spike-verificado)
+        → la memoria cross-sesión no funcionaba. El graph-search usa el mensaje del turno como query y trae los
+        facts del grafo del emprendedor aunque el thread sea nuevo. `thread_ref` se conserva para logging/futuro
+        (combinar thread-context + graph-search); el recall de largo plazo ya no depende de él."""
+        if not query or not query.strip():
+            return ""
         try:
-            raw = self._client.get_user_context(
-                thread_id, facts_limit=self._facts_limit, message_count=self._message_count)
+            facts = self._client.search_user_facts(self._user_id(cliente_id), query, limit=self._facts_limit)
         except (GraphityMemoryError, ValueError) as exc:
             _log.warning("recall degradado (sin memoria este turno): cliente=%s err=%s", cliente_id, exc)
             return ""
-        return _wrap_context(raw)
+        if not facts:
+            return ""
+        return _wrap_context("# FACTS\n" + "\n".join(f"- {f}" for f in facts))
 
     # ── WRITE (batcheado por el caller; flush al cerrar la sesión) ────────────────────────────────────────
     def remember(self, cliente_id: str, thread_ref: str, messages: list[dict]) -> None:
@@ -119,6 +129,24 @@ class MemoryProvider:
             _log.warning("forget degradado (no borrado): cliente=%s err=%s", cliente_id, exc)
 
 
+def build_memory_provider(env: Mapping[str, str]) -> MemoryProvider | None:
+    """Construye el MemoryProvider desde `GRAPHITY_BASE_URL`/`GRAPHITY_API_KEY` del `env`, o `None` si
+    faltan (memoria OFF explícito — el caller decide qué significa: recall/remember no-op en el worker,
+    `/warm` no-op en el front-door). FUENTE ÚNICA de construcción compartida por el worker (worker_b, que
+    ejecuta recall/remember en el loop) y el front-door (serve, que precalienta el grafo en `/warm`) — así
+    el gate GRAPHITY_* no se duplica en dos módulos y no puede driftear.
+
+    `max_attempts=1` (fast-fail): el retry lo gobierna el caller (Temporal en el worker via `retry_policy`;
+    best-effort en el front-door), NUNCA el cliente — un cliente con retry propio haría que un intento supere
+    el timeout del workflow bajo Graphity lento (cascada de timeouts). NO loguea: cada caller emite su propio
+    mensaje de estado (contexto distinto). Idempotente/puro: no toca red al construir."""
+    base_url = env.get("GRAPHITY_BASE_URL")
+    api_key = env.get("GRAPHITY_API_KEY")
+    if not (base_url and api_key):
+        return None
+    return MemoryProvider(GraphityMemoryClient(base_url=base_url, api_key=api_key, max_attempts=1))
+
+
 def _wrap_context(raw: str) -> str:
     """Envuelve el Context Block como dato de referencia delimitado (anti prompt-injection). "" si no hay
     memoria sustantiva (no inyectar un bloque vacío). Neutraliza el delimitador en el contenido."""
@@ -128,4 +156,4 @@ def _wrap_context(raw: str) -> str:
     return _MEM_HEADER + safe.strip() + _MEM_FOOTER
 
 
-__all__ = ["MemoryProvider", "GraphityMemoryClient", "GraphityMemoryError"]
+__all__ = ["MemoryProvider", "GraphityMemoryClient", "GraphityMemoryError", "build_memory_provider"]

@@ -17,6 +17,7 @@ tenants sin fugas. Todas las deps (`require_tenant`, `conn_factory`, `gotrue`, `
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 from pathlib import Path
@@ -47,6 +48,8 @@ from calendar_policy import CALENDAR_POLICY
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
+
+_log = logging.getLogger("copiloto.web")
 
 # MercadoPago refresh (Task 9): el token OAuth del vendedor dura 180 días REALES (contrato MP, no un valor
 # desacoplado -- M1 dejó `expires_at` absoluto a partir de ese vencimiento). El intervalo de refresh se ancla
@@ -170,7 +173,8 @@ class LoginIn(BaseModel):
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
-                   transcribe: Callable[[bytes, str], str] | None = None) -> FastAPI:
+                   transcribe: Callable[[bytes, str], str] | None = None,
+                   warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
     `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `MP_FERNET_KEY` del
@@ -185,7 +189,13 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     `transcribe(audio_bytes, content_type) -> str` (voz-backend): STT de `/chat/audio`. Si no se
     inyecta, usa `_default_transcribe` (GroqSTT real, construido LAZY -- import-safe aunque
     `GROQ_API_KEY` no esté seteado; solo revienta si `/chat/audio` recibe un request real sin key,
-    y ahí la ruta lo traduce a 503). Los tests inyectan un fake."""
+    y ahí la ruta lo traduce a 503). Los tests inyectan un fake.
+
+    `warm_fn(cliente_id) -> bool` (opt-in, perceived latency): precalienta la memoria de largo plazo del
+    tenant en `POST /warm` (el front lo dispara al abrir la app / volver a la pestaña de chat, ANTES del 1er
+    mensaje → el grafo llega caliente y el 1er turno no paga el cache-miss). `None` (default) → `/warm` es
+    no-op (`{"warmed": false}`): apps sin memoria no cambian. En prod lo inyecta `serve.py` desde los MISMOS
+    `GRAPHITY_*` que el worker (via `build_memory_provider`). Best-effort: nunca 500."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
     transcribe = transcribe or _default_transcribe
@@ -259,6 +269,24 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"cliente_id": cliente_id, "mp_connected": seller is not None,
                 "composio_connected": composio_connected}
+
+    @app.post("/warm")
+    def warm(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Precalienta la memoria de largo plazo (grafo del emprendedor: page-cache Neo4j + índices HNSW)
+        al ABRIR la app / volver a la pestaña de chat -- el front lo dispara ANTES de que el usuario tipee,
+        así el 1er mensaje no paga el cache-miss del grafo (perceived latency; el enfriamiento es LRU del
+        page-cache, no un timer). Best-effort: sin memoria configurada (`warm_fn=None`) o ante CUALQUIER
+        fallo/timeout de Graphity devuelve `{"warmed": false}`, NUNCA 500 (es latencia, no correctitud —
+        mismo invariante que recall/remember). `def` (no `async`): el warm es I/O bloqueante sync (httpx del
+        cliente Graphity) → threadpool anyio, mismo criterio que /reply,/me. `cliente_id` del token, jamás
+        de un valor horneado (multitenant real)."""
+        if warm_fn is None:
+            return {"warmed": False}
+        try:
+            return {"warmed": bool(warm_fn(cliente_id))}
+        except Exception as e:  # noqa: BLE001 -- warm best-effort: jamás romper el front-door por la memoria
+            _log.warning("warm degradado (grafo no precalentado): cliente=%s err=%s", cliente_id, e)
+            return {"warmed": False}
 
     @app.get("/catalog")
     def catalog(cliente_id: str = Depends(require_tenant)) -> dict:

@@ -42,7 +42,7 @@ from calendar_policy import CALENDAR_POLICY
 from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
 from mp_credential_store import MpCredentialStore
-from memory_provider import GraphityMemoryClient, MemoryProvider
+from memory_provider import build_memory_provider
 from reply_store import make_pg_reply_sink
 from system_prompt import SYSTEM_PROMPT
 
@@ -86,16 +86,9 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # Memoria de largo plazo (Graphity): se construye desde el `env` PARAM (no os.environ) → testeable con
     # env={} (queda None = sin memoria, el wiring test no necesita Graphity). En prod, copiloto.env aporta
     # GRAPHITY_BASE_URL/API_KEY. Si faltan → OFF EXPLÍCITO (se loguea; no un cliente mudo silencioso).
-    memory_provider = None
-    if env.get("GRAPHITY_BASE_URL") and env.get("GRAPHITY_API_KEY"):
-        # max_attempts=1 (fast-fail): el retry lo gobierna Temporal (workflow), NO el cliente. Un cliente con
-        # retry propio (default 4) haría que un intento supere el MEMORY_TIMEOUT del workflow bajo Graphity
-        # lento → cascada de timeouts. En el hot-path del agente la memoria es best-effort: fallar rápido.
-        memory_provider = MemoryProvider(GraphityMemoryClient(
-            base_url=env["GRAPHITY_BASE_URL"], api_key=env["GRAPHITY_API_KEY"], max_attempts=1))
-        print("AGENT_B memoria: ON (Graphity)", flush=True)
-    else:
-        print("AGENT_B memoria: OFF (faltan GRAPHITY_BASE_URL/API_KEY en el env)", flush=True)
+    memory_provider = build_memory_provider(env)   # fuente única de construcción (compartida con serve.py/`/warm`)
+    print("AGENT_B memoria: ON (Graphity)" if memory_provider is not None
+          else "AGENT_B memoria: OFF (faltan GRAPHITY_BASE_URL/API_KEY en el env)", flush=True)
 
     ctx_factory = make_context_factory(conn_factory=conn_factory, crypto=crypto, mp_gateway=mp_gateway,
                                        mp_webhook_base=env.get("MP_WEBHOOK_BASE"),

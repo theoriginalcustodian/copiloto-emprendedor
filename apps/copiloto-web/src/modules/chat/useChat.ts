@@ -23,6 +23,32 @@ const MESSAGES_STORAGE_PREFIX = 'copiloto-chat-msgs';
 const POLL_INTERVAL_MS = 1500;
 /** Cuánto esperar por una respuesta antes de rendirse y avisar al usuario (agente durable = lento). */
 const WAIT_TIMEOUT_MS = 60_000;
+/** No re-warmear la memoria si ya se warmeó esta sesión hace menos que esto. El enfriamiento del grafo
+ * en el server es LRU del page-cache (no un timer) → re-warmear a los segundos no aporta; este throttle
+ * evita martillar Graphity en remounts rápidos (cruzar el breakpoint mobile/desktop) o flicks de pestaña. */
+const WARM_THROTTLE_MS = 5 * 60_000;
+
+/** Última vez (ms) que se disparó el warm por session_id. A NIVEL DE MÓDULO a propósito: sobrevive a los
+ * remounts de `useChat` (un `useRef` se reinicia al remontar) — sin esto, cruzar el breakpoint o volver a
+ * la pestaña de chat re-warmearía en cada remonte. */
+const lastWarmAtBySession = new Map<string, number>();
+
+/** Precalienta la memoria de largo plazo (best-effort, fire-and-forget). NUNCA toca el estado del chat ni
+ * propaga: un fallo (Graphity caído/lento, sin token, sin `fetch` en jsdom, o `api.warm` ausente en un
+ * mock viejo) se traga en silencio — es latencia, no correctitud. Throttle por sesión (WARM_THROTTLE_MS). */
+function warmMemory(sessionId: string): void {
+  const now = Date.now();
+  const last = lastWarmAtBySession.get(sessionId);
+  if (last !== undefined && now - last < WARM_THROTTLE_MS) return;
+  lastWarmAtBySession.set(sessionId, now); // optimista: marcá ANTES de la llamada para no reintentar en ráfaga
+  void (async () => {
+    try {
+      await api.warm();
+    } catch {
+      // best-effort — ignorar cualquier fallo del warm
+    }
+  })();
+}
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -203,6 +229,22 @@ export function useChat(): UseChatResult {
   useEffect(() => {
     void poll();
   }, [poll]);
+
+  // Warm de la memoria dirigido por el ciclo de vida del front (perceived latency): precalentar el grafo
+  // del emprendedor al ENTRAR al chat (este efecto corre al montar — abrir la app en chat, o volver
+  // Apps→Chat que remonta `useChat`) y al volver la pestaña a VISIBLE tras estar oculta. Así el grafo
+  // está caliente cuando el usuario empieza a tipear, en vez de que el 1er mensaje pague el cache-miss.
+  // El warm apunta al grafo del TENANT (no a la sesión) → no depende de `session_id`, corre una vez al
+  // montar (`[]`) + en cada visibilitychange. El throttle de `warmMemory` absorbe los disparos redundantes.
+  useEffect(() => {
+    warmMemory(sessionIdRef.current);
+    if (typeof document === 'undefined') return undefined;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') warmMemory(sessionIdRef.current);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   /**
    * Arranca el ciclo de espera de la respuesta durable (intervalo de polling + timeout de

@@ -54,12 +54,18 @@ def two_emprendedores(provider):
     provider.forget(b)
 
 
+# El recall es graph-search por query (el mensaje del turno): un query descriptivo trae el fact del negocio del
+# grafo de ESE emprendedor. El aislamiento NO depende del query (es por user_id/grafo separado), sí el control
+# positivo. Este test además cubre el caso cross-sesión: busca por query, no por el thread donde se escribió.
+_QUERY = "el nombre de mi local y que vende"
+
+
 def _wait_recall_contains(provider: MemoryProvider, cid: str, thread_ref: str, needle: str) -> str:
     """Poll del recall hasta que el fact propio aparezca (confirma que la extracción ingirió) o timeout."""
     deadline = time.monotonic() + _INGEST_TIMEOUT_S
     ctx = ""
     while time.monotonic() < deadline:
-        ctx = provider.recall(cid, thread_ref)
+        ctx = provider.recall(cid, thread_ref, _QUERY)
         if needle.lower() in ctx.lower():
             return ctx
         time.sleep(_POLL_S)

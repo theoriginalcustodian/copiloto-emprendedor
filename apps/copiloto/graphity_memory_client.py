@@ -122,6 +122,30 @@ class GraphityMemoryClient:
             raise GraphityMemoryError(f"get_user_context {thread_id} → HTTP {resp.status_code}")
         return (resp.json() or {}).get("context", "") or ""
 
+    def search_user_facts(self, user_id: str, query: str, *, limit: int = 15) -> list[str]:
+        """Busca en el USER GRAPH (cross-thread) los facts relevantes al `query` (RAG sobre el grafo del
+        emprendedor). A DIFERENCIA de `get_user_context` — que hace RAG sobre los mensajes DEL THREAD y por eso
+        devuelve vacío en una charla nueva sin mensajes (bug 2026-07-04) — esto usa el mensaje ACTUAL del turno
+        como query y funciona cross-sesión. POST /graph/search scope=edges (facts). Devuelve la lista de
+        strings `fact`; [] si no hay match (o 404). Shape verificado contra el server (spike): la respuesta trae
+        `edges:[{fact, ...}]`."""
+        if not query or not query.strip():
+            return []
+        resp = self._request("POST", "/graph/search",
+                             json={"user_id": user_id, "query": query, "scope": "edges", "limit": limit},
+                             timeout=_READ_TIMEOUT_S)
+        if resp.status_code == 404:
+            return []
+        if resp.status_code != 200:
+            raise GraphityMemoryError(f"search_user_facts {user_id} → HTTP {resp.status_code}")
+        edges = (resp.json() or {}).get("edges") or []
+        facts: list[str] = []
+        for e in edges:
+            fact = e.get("fact") if isinstance(e, dict) else None
+            if isinstance(fact, str) and fact.strip():
+                facts.append(fact.strip())
+        return facts
+
     def warm_session(self, user_id: str) -> bool:
         """Precarga el page-cache de Neo4j del user graph del emprendedor (índices HNSW) — GET
         /users/{id}/warm. Llamar al ABRIR la sesión de chat para bajar la latencia del 1er recall.

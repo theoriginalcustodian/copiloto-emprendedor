@@ -32,6 +32,13 @@ MAX_TURNS = 40                              # cota anti-history (cada turno = 1 
 IDLE_TIMEOUT = timedelta(minutes=30)        # sin actividad -> cerrar la conversacion (durable)
 STAFF_TIMEOUT = timedelta(hours=4)          # espera de decision humana (HITL) antes de seguir
 ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> margen amplio
+# Activities del loop (STT/LLM/dispatch/envío/HITL): retry ACOTADO. Sin retry_policy usan el DEFAULT de
+# Temporal = reintentos ILIMITADOS → un fallo PERMANENTE (ej. una tool de Composio que se propaga como
+# excepción) reintenta ∞ y cuelga el turno ('Pensando…' eterno, bug 2026-07-04). 5 intentos absorben blips
+# transitorios reales; un error permanente falla en tiempo ACOTADO en vez de colgar. Es la red de seguridad:
+# la raíz del caso Composio ya se ataja en el dispatcher (no propaga ConnectionRequired). Best-effort de
+# memoria usa su propio _MEMORY_RETRY (max=1), NO este.
+LOOP_RETRY = RetryPolicy(maximum_attempts=5)
 # Memoria best-effort: cubre el worst-case de UN intento del cliente Graphity (max_attempts=1: warm ~15s,
 # remember ensure_user+ensure_thread+add_messages ~55s). retry SIEMPRE max=1 → un timeout NO dispara los
 # reintentos ILIMITADOS del default de Temporal (footgun que colgaría run()/el loop bajo Graphity LENTO).
@@ -116,14 +123,14 @@ class ConversationWorkflow:
             if kind == "needs_stt":
                 stt = await workflow.execute_activity(
                     "transcribe_voice", {"channel": channel, "file_id": user_text},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 transcript = ((stt or {}).get("text") or "").strip()
                 if not transcript:
                     await workflow.execute_activity(
                         "send_channel_message",
                         {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
                          "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
-                        start_to_close_timeout=ACTIVITY_TIMEOUT)
+                        start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                     continue
                 user_text = transcript                  # de acá en más es texto normal (lo clasifica el LLM)
                 kind = "text"
@@ -140,7 +147,7 @@ class ConversationWorkflow:
                 llm = await workflow.execute_activity(
                     "call_llm", {"domain": domain, "user": user_text, "history": prior[-20:],
                                  "cliente_id": cliente_id, "thread_ref": channel_ref},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 intent = llm.get("parsed") or {
                     "action": "clarify", "entities": {},
                     "reply_es": "Disculpá, no te entendí bien. ¿Me lo podés repetir?"}
@@ -151,7 +158,7 @@ class ConversationWorkflow:
                 {"domain": domain, "intent": intent, "state": self._state,
                  "conv": {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
                           "user": user_text}},
-                start_to_close_timeout=ACTIVITY_TIMEOUT)
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
             result = DispatchResult.from_dict(disp)
             if result.state_patch:
                 self._state.update(result.state_patch)
@@ -163,7 +170,7 @@ class ConversationWorkflow:
                     "notify_staff",
                     {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
                      "reason": result.escalate_reason, "summary": user_text, "reply_to_patient": reply},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 self._awaiting_staff = True
                 try:
                     await workflow.wait_condition(lambda: self._staff_decision is not None, timeout=STAFF_TIMEOUT)
@@ -181,7 +188,7 @@ class ConversationWorkflow:
                     "send_channel_message",
                     {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
                      "text": reply, "choices": result.choices},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT)
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
 
             # Memoria de largo plazo: persistir en BATCH (~20 msgs ≈ 10 turnos) para no saturar la extracción
             # LLM server-side de Graphity (cada add_messages dispara una extracción). Gate config['memory'].
