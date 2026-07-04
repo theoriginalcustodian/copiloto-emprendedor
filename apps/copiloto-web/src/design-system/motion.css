@@ -1,0 +1,131 @@
+/*
+ * Keyframes de motion — EXTRACT §1.6, portados 1:1 (ring / core / wavePulse / waveSlide /
+ * recdot / breathe) + `shimmer` (nuevo, agregado del design-system genérico para Skeleton;
+ * no está en el EXTRACT).
+ *
+ * Reduced motion: la regla global en design-system/global.css ya fuerza
+ * `animation-duration ~ 0` + `animation-iteration-count: 1` bajo
+ * `prefers-reduced-motion: reduce` para TODA animación CSS (incluidas las de acá) — cubre
+ * shimmer/wavePulse/waveSlide/recdot/breathe sin lógica JS adicional en esos componentes.
+ *
+ * PresenceOrb es la ÚNICA excepción: además de heredar esa regla CSS, chequea `matchMedia` en
+ * JS (ver PresenceOrb.tsx) porque jsdom (entorno de test) no evalúa `@media
+ * (prefers-reduced-motion)` contra la preferencia del SO — sin el chequeo en JS, "no anima"
+ * no sería verificable por test (requisito explícito del Kit).
+ */
+
+@keyframes ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes core {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes wavePulse {
+  0%,
+  100% {
+    /* scaleY(.5) verbatim — Copiloto App.dc.html:24 / Copiloto Web.dc.html:22 (antes 0.4). */
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes waveSlide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* -140px fijo verbatim — Copiloto App.dc.html:23 / Copiloto Web.dc.html:21 (antes -50% = -210px
+       para el SVG de 420px, más rápido de lo que marca el diseño). */
+    transform: translateX(-140px);
+  }
+}
+
+@keyframes recdot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes breathe {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Presence orb — anillo(s) `--halo` + núcleo `--core` (EXTRACT §2.1/§2.9). El wrapper usa
+   `--presence-wrap-bg`/`--presence-wrap-shadow` (transparente en 3 de los 4 temas; neumórfico
+   en `daylight`). Tamaño del núcleo parametrizado por `--core-size` (o el prop `size` de
+   PresenceOrb, que sobreescribe la var inline). */
+.presence-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--core-size) * 2.6);
+  height: calc(var(--core-size) * 2.6);
+  background: var(--presence-wrap-bg);
+  box-shadow: var(--presence-wrap-shadow);
+  border-radius: 50%;
+}
+
+.presence-orb__halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--halo);
+  animation: ring 3.4s ease-out infinite;
+}
+
+.presence-orb__halo--static {
+  animation: none;
+  opacity: 0.55;
+}
+
+.presence-orb__core {
+  position: relative;
+  width: var(--core-size);
+  height: var(--core-size);
+  border-radius: 50%;
+  background: var(--core);
+  box-shadow: var(--core-glow);
+  animation: core 2.6s ease-in-out infinite;
+}
+
+.presence-orb__core--static {
+  animation: none;
+}

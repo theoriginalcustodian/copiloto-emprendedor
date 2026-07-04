@@ -1,0 +1,84 @@
+/*
+ * Reset + frame mobile-first (Global Constraints del plan: "Layout base 384-ancho; en
+ * desktop-web se centra (mobile centrado)"). El detalle de shell/tab-bar/header vive en
+ * src/shell/ (Task 9) — esto es solo el frame + reset que todo lo demás se apoya encima.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Colores FIJOS del overlay de grabación (theme-independiente: siempre sobre el scrim oscuro
+   rgba(3,4,10,.74)) — verbatim del waveform SVG + dot + hint del diseño (Copiloto App.dc.html
+   :277-299). Viven acá (no en un módulo) a propósito: así el gate "cero hex en componentes"
+   (chatNoHexLiterals) sigue pasando y estos valores de marca no se retematizan por tema. */
+:root {
+  --wave-stop-0: #4ad8ff;
+  --wave-stop-1: #5aa0ff;
+  --wave-stop-2: #8b5cff;
+  --wave-stop-3: #e24a8f;
+  --rec-dot: #ff5a6e;
+  --rec-timer: #ffffff;
+  --rec-hint: #aebbda;
+  --rec-cancel-fg: #d6def2;
+  --rec-cancel-border: rgba(255, 255, 255, 0.22);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Frame de la app: 384px de ancho de referencia (mockup), fluido por debajo de eso, centrado
+   en viewports más anchos (desktop-web). El fondo con capas (--bg-layer) se pinta detrás del
+   frame para que ocupe todo el viewport, no solo el frame angosto. */
+.app-frame {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 384px;
+  margin: 0 auto;
+  isolation: isolate;
+}
+
+.app-frame::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-layer);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -48,6 +48,13 @@ _HTTP_TIMEOUT_SECONDS = 30.0
 
 
 _EMAIL_EXISTS_STATUS = 422  # GoTrue devuelve 422 al crear un user con email ya registrado
+_INVALID_GRANT_STATUSES = (400, 401)  # GoTrue devuelve 400 (invalid_grant) o 401 ante login inválido
+
+
+class InvalidCredentials(Exception):
+    """Email/password inválidos en el password-grant de GoTrue (Task 6, `password_grant`). La ruta
+    HTTP (`POST /auth/login`, web.py) la traduce a 401 sin filtrar el detalle del error de GoTrue
+    al cliente."""
 
 
 class GoTrueAdmin:
@@ -137,6 +144,35 @@ class GoTrueAdmin:
             json={"app_metadata": {"cliente_id": cliente_id}},
         )
         resp.raise_for_status()
+
+    def password_grant(self, email: str, password: str) -> dict:
+        """POST /auth/v1/token?grant_type=password — login real vía GoTrue self-host (Task 6, spec
+        login proxy). Devuelve el JSON completo del token (`access_token`, `token_type`,
+        `expires_in`, `refresh_token`, `user`) tal cual lo emite GoTrue -- el front-door lo reenvía
+        sin tocarlo (`POST /auth/login`, web.py) para que el frontend lo use como Bearer.
+
+        Mismos headers que las rutas admin (`_headers()`): el gateway (Kong) exige `apikey` en TODA
+        ruta bajo `/auth/v1`, y este endpoint NO recibe el JWT del usuario (todavía no existe) --
+        solo el `service_role_key` que la clase ya tiene. [Nota de diseño, no bloqueante: un `anon
+        key` dedicado sería más semántico para un endpoint público de login, pero el `service_role_key`
+        es equivalente en permisos server-side (nunca llega al browser) -- no bloquea Task 6.]
+
+        Ante credenciales inválidas, GoTrue responde 400 (`invalid_grant`) o 401 -- se traduce a
+        `InvalidCredentials` en vez de dejar que `raise_for_status()` tire un `httpx.HTTPStatusError`
+        genérico, así el caller (la ruta `/auth/login`) puede mapearlo a un 401 propio sin acoplarse
+        al shape de excepción de httpx. [ASSUMED_PENDING_VERIFY @ go-live] El status code EXACTO
+        (400 vs 401) de GoTrue v2.186.0 ante credenciales inválidas no se re-verificó contra fusion
+        en esta sesión -- se cubren ambos; se confirma en el go-live smoke (Task 12)."""
+        resp = self._client.post(
+            f"{self._base_url}/auth/v1/token",
+            headers=self._headers(),
+            params={"grant_type": "password"},
+            json={"email": email, "password": password},
+        )
+        if resp.status_code in _INVALID_GRANT_STATUSES:
+            raise InvalidCredentials(f"password grant failed: {resp.status_code}")
+        resp.raise_for_status()
+        return resp.json()
 
 
 def signup_and_provision(*, email: str, password: str, gotrue, conn_factory: Callable) -> dict:

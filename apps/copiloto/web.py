@@ -16,6 +16,7 @@ tenants sin fugas. Todas las deps (`require_tenant`, `conn_factory`, `gotrue`, `
 `temporal_client`) se inyectan desde el composition root -> testeable sin Temporal/DB/GoTrue reales."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -25,15 +26,20 @@ ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/con
 sys.path.insert(0, str(ARCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
 
 from backend.agent.inbound_router import route_inbound
+from catalog import build_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
+from clients.agent.providers.stt import GroqSTT
 from mp_credential_store import MpCredentialStore
-from onboarding import signup_and_provision
+from onboarding import InvalidCredentials, signup_and_provision
 from reply_store import read_replies as _read_replies
 
 import services
@@ -49,6 +55,11 @@ DOMAIN = "emprendedor"
 # indefinido sin inflar el history, ver `mp_refresh_workflow.py`).
 REFRESH_INTERVAL_SECONDS = float(os.environ.get("MP_REFRESH_INTERVAL_SECONDS", 150 * 24 * 3600))
 MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
+
+# Cap de tamaño del audio de /chat/audio (review HIGH-1): el front-door es COMPARTIDO por TODAS las
+# tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
+# real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
+MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
 
 
 def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
@@ -80,10 +91,70 @@ def _composio_valid_toolkits() -> frozenset[str]:
     return frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
 
 
+def _spa_static_dir() -> Path:
+    """Dir del build del cliente PWA (Vite `dist`), servido mismo-origen por el front-door (sin CORS).
+    Parametrizable (`COPILOTO_WEB_STATIC_DIR`, cero hardcoding); default relativo al repo
+    (`apps/copiloto-web/dist`, que produce `deploy/copiloto/sync-web.sh` en el VPS)."""
+    env = os.environ.get("COPILOTO_WEB_STATIC_DIR")
+    return Path(env) if env else Path(__file__).resolve().parents[2] / "apps/copiloto-web/dist"
+
+
+def _mount_spa(app: FastAPI, static_dir: Path | None = None) -> bool:
+    """Monta la PWA build mismo-origen SOLO si ya existe (`index.html`). Import-safe: sin build, el
+    front-door queda API-only (no rompe -- el spike de serving lo activa cuando el build llega).
+
+    Se llama DESPUÉS de todas las rutas de API + el router de MP: las rutas explícitas se registran
+    primero -> Starlette las matchea primero; el catch-all GET solo atrapa lo NO matcheado (las rutas
+    de cliente de la SPA, ej. /login, /conexiones) y devuelve `index.html` (routing client-side).
+    Los assets reales (js/css bajo /assets, más manifest/iconos/sw en la raíz) se sirven tal cual."""
+    d = static_dir or _spa_static_dir()
+    index = d / "index.html"
+    if not index.is_file():
+        return False
+    assets = d / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
+
+    # El "app shell" + los archivos del service worker se sirven SIEMPRE con no-cache: así el navegador
+    # revalida el SW y el index en cada carga y un redeploy llega sin caché stale. Los assets con hash
+    # de contenido (/assets/*, servidos por StaticFiles arriba) no necesitan esto -- su nombre cambia
+    # con el contenido, el navegador puede cachearlos fuerte sin riesgo de servir algo viejo.
+    no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+    shell_files = {"index.html", "sw.js", "registerSW.js", "manifest.webmanifest"}
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str) -> FileResponse:
+        candidate = d / full_path
+        if full_path and candidate.is_file() and candidate.resolve().is_relative_to(d.resolve()):
+            is_shell = candidate.name in shell_files or candidate.name.startswith("workbox-")
+            return FileResponse(str(candidate), headers=no_cache if is_shell else None)
+        return FileResponse(str(index), headers=no_cache)  # fallback SPA (client-side routing)
+
+    return True
+
+
 class ChatIn(BaseModel):
     session_id: str
     text: str
     kind: str = "text"
+
+
+def _filename_for_content_type(content_type: str) -> str:
+    """Deriva el filename (`audio.<ext>`) del Content-Type MIME real que sube el browser
+    (`audio/webm`, `audio/ogg`, `audio/mp4`, ...) -- Groq valida el formato por la EXTENSIÓN del
+    filename del multipart, no por el Content-Type (ver docstring de `GroqSTT`, spike S4/Motor C)."""
+    subtype = (content_type or "audio/ogg").split(";")[0].split("/")[-1] or "ogg"
+    return f"audio.{subtype}"
+
+
+def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
+    """Transcriber por default de `/chat/audio` (voz-backend): `GroqSTT` real. Se construye ACÁ
+    DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
+    la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
+    `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
+    sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
+    return GroqSTT().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
+                                content_type=content_type or "audio/ogg")
 
 
 class SignupIn(BaseModel):
@@ -91,9 +162,15 @@ class SignupIn(BaseModel):
     password: str
 
 
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
-                   read_replies_fn: Callable[[str, str, int], list] | None = None) -> FastAPI:
+                   read_replies_fn: Callable[[str, str, int], list] | None = None,
+                   transcribe: Callable[[bytes, str], str] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
     `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `MP_FERNET_KEY` del
@@ -103,9 +180,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     `/mp/connect` (mismo patrón que `mp_connect.py` CLI, `state = crypto.encrypt(cliente_id)`).
     `composio_gateway` (`ComposioGateway`): habilita `/composio/connect?service=<toolkit>` (onboarding
     per-tenant, `user_id=cliente_id`) y alimenta `composio_connected` en `/me`. Ambos inyectados desde
-    el composition root (Task 11) — cero hardcoding, testeables con fakes."""
+    el composition root (Task 11) — cero hardcoding, testeables con fakes.
+
+    `transcribe(audio_bytes, content_type) -> str` (voz-backend): STT de `/chat/audio`. Si no se
+    inyecta, usa `_default_transcribe` (GroqSTT real, construido LAZY -- import-safe aunque
+    `GROQ_API_KEY` no esté seteado; solo revienta si `/chat/audio` recibe un request real sin key,
+    y ahí la ruta lo traduce a 503). Los tests inyectan un fake."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
+    transcribe = transcribe or _default_transcribe
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
@@ -119,6 +202,43 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             task_queue=AGENT_B_TASK_QUEUE,
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
+
+    @app.post("/chat/audio")
+    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
+                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
+        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
+        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
+        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
+        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
+        rutas `def`)."""
+        # Cap ANTES de cargar en RAM (review HIGH-1): rechazá por el Content-Length del multipart
+        # (lo setea el browser) para no OOM-ear el front-door compartido; backstop tras leer por si
+        # el `size` no viene en la parte.
+        if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        audio_bytes = await audio.read()
+        if len(audio_bytes) > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        content_type = audio.content_type or "audio/ogg"
+        try:
+            transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
+        except RuntimeError as e:
+            # GroqSTT levanta RuntimeError explícito si falta GROQ_API_KEY (ver stt.py) -- 503 (no
+            # configurado), NO 500: el resto del front-door (texto por /chat) sigue andando igual.
+            raise HTTPException(status_code=503, detail="voz no configurada") from e
+        except _STT_API_ERRORS as e:
+            raise HTTPException(status_code=502, detail="error del servicio de transcripción") from e
+        transcript = (transcript or "").strip()
+        if not transcript:
+            # Vacío O solo-espacios (el STT no captó nada útil) -> 422; nunca despachamos un
+            # mensaje en blanco al agente.
+            raise HTTPException(status_code=422, detail="no se entendió el audio")
+        wf_id = await route_inbound(
+            temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
+            task_queue=AGENT_B_TASK_QUEUE,
+            raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
+        return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
 
     # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
     # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
@@ -139,6 +259,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"cliente_id": cliente_id, "mp_connected": seller is not None,
                 "composio_connected": composio_connected}
+
+    @app.get("/catalog")
+    def catalog(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Catálogo de servicios de ESTE tenant (Task 6, handoff §7.7): mismo cálculo mp_connected/
+        composio_connected que `/me`, pero con la metadata de presentación (`catalog.build_catalog`,
+        capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
+        SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
+        literal que pueda driftear de `/composio/connect`."""
+        seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                              if (c["status"] or "").upper() == "ACTIVE"]
+        return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
+                                          mp_connected=seller is not None,
+                                          composio_connected=composio_connected)}
 
     # --- Connect flows per-tenant (Task 7, spec §7) -----------------------------
     # `def` (no `async def`): ambas rutas hacen I/O bloqueante sync (crypto + HTTP del gateway real)
@@ -170,6 +304,18 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         return signup_and_provision(email=body.email, password=body.password, gotrue=gotrue,
                                     conn_factory=conn_factory)
 
+    @app.post("/auth/login")
+    def login(body: LoginIn) -> dict:
+        """Proxy de login mismo-origen (Task 6): el frontend NUNCA habla directo con GoTrue (sin
+        CORS, sin anon key en el browser) -- manda email/password acá y este endpoint hace el
+        password-grant server-side (`GoTrueAdmin.password_grant`) y reenvía el token tal cual.
+        `def` (no async): password_grant es I/O bloqueante sync (httpx.Client) -> threadpool, mismo
+        criterio que /auth/signup. Nunca loguea password ni token (regla dura de secretos)."""
+        try:
+            return gotrue.password_grant(body.email, body.password)
+        except InvalidCredentials:
+            raise HTTPException(status_code=401, detail="credenciales inválidas")
+
     @app.get("/healthz")
     def healthz() -> dict:
         return {"status": "ok"}
@@ -178,5 +324,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # barrera (state cifrado / x-signature). `include_router` copia sus rutas absolutas al front-door
     # SIN heredar `require_tenant` -- MercadoPago no manda JWT del tenant en sus llamadas.
     app.include_router(mp_app.router)
+
+    # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
+    # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).
+    _mount_spa(app)
 
     return app

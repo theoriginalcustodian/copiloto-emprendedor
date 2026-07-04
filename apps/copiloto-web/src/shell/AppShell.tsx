@@ -1,0 +1,82 @@
+import { useCallback, useState } from 'react';
+
+import { BottomSheet } from '../design-system';
+import { ChatScreen } from '../modules/chat';
+import { AppsScreen } from '../modules/apps';
+import { ConnectionsScreen } from '../modules/connections';
+import { AccountScreen } from '../modules/account';
+import { TabBar, type TabKey } from './TabBar';
+import './shell.css';
+
+const DEFAULT_TAB: TabKey = 'chat';
+
+/**
+ * Shell mobile (Task 9, EXTRACT §2.3/§4): contenedor de navegación con tab-bar flotante que
+ * envuelve las 4 pantallas de módulo. Navega por ESTADO LOCAL (`useState`), NO react-router: los
+ * tabs no tienen URL propia y el callback OAuth (Conexiones, Task 20) vuelve a la raíz de la app,
+ * no a una ruta de tab — agregar react-router acá sería complejidad sin necesidad real todavía.
+ *
+ * Monta la pantalla del tab activo dentro de `.app-shell__content` + la `TabBar` fija debajo (ver
+ * shell.css para por qué "debajo en el flujo" y no "overlay" como el mock). `ChatScreen` ya
+ * resuelve su propio `onLogout` internamente vía `useSession()` (ver ChatScreen.tsx) — no hace
+ * falta pasarle nada acá; cuando Cuenta (Task 21) tenga su propio "Cerrar sesión", ese botón se
+ * retira de `ChatHeader` (nota ya dejada en ChatHeader.tsx, no se toca en este task).
+ *
+ * "Apps" (gap estructural #1/#17 del audit mobile, `Copiloto App.dc.html:218-270`) NO es una
+ * pantalla de tab: es un BOTTOM-SHEET que se desliza sobre lo que sea que esté activo detrás (por
+ * default, Chat). `activeTab` nunca vale `'apps'` — tocar el tab abre `appsSheetOpen` en vez de
+ * navegar, así que Chat/Conexiones/Cuenta siguen montados debajo sin interrumpirse. Cierra por
+ * click en el scrim, tecla Escape, o arrastrando el handle (`BottomSheet`, sin botón X — el mock
+ * mobile no lo tiene, a diferencia del modal de escritorio).
+ *
+ * `AppsScreen` no conoce el estado de tabs — su botón "+" solo pide `onGoToConnections`, que acá
+ * cierra el sheet y cambia `activeTab` (mismo mecanismo de navegación por estado local que el
+ * resto del shell, cero acoplamiento nuevo).
+ */
+export function AppShell() {
+  const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
+  // Hide-on-scroll (EXTRACT §2.3): solo el Chat lo dispara; cambiar de tab siempre re-muestra la barra.
+  const [tabHidden, setTabHidden] = useState(false);
+  const [appsSheetOpen, setAppsSheetOpen] = useState(false);
+  // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin
+  // este gate, `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del
+  // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
+  // resetea, así el cierre sigue animando con el contenido ya cargado.
+  const [appsEverOpened, setAppsEverOpened] = useState(false);
+
+  const changeTab = useCallback((key: TabKey) => {
+    if (key === 'apps') {
+      setAppsSheetOpen(true);
+      setAppsEverOpened(true);
+      return;
+    }
+    setTabHidden(false);
+    setActiveTab(key);
+  }, []);
+
+  const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
+
+  const goToConnectionsFromApps = useCallback(() => {
+    setAppsSheetOpen(false);
+    setTabHidden(false);
+    setActiveTab('connections');
+  }, []);
+
+  const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className={shellClasses} data-testid="app-shell">
+      <div className="app-shell__content" data-testid="app-shell-content">
+        {activeTab === 'chat' && <ChatScreen onHideChange={setTabHidden} />}
+        {activeTab === 'connections' && <ConnectionsScreen />}
+        {activeTab === 'account' && <AccountScreen />}
+      </div>
+      <TabBar active={activeTab} onChange={changeTab} hidden={tabHidden} />
+      <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
+        {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
+      </BottomSheet>
+    </div>
+  );
+}

@@ -1,0 +1,139 @@
+/*
+ * Estilos de LoginScreen (Task 22) — theme-aware vía CSS vars de themes.css, cero color literal
+ * (mismo criterio que chat.css/connections.css/account.css).
+ */
+
+.login-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-screen__inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px 20px;
+}
+
+/* ---------- Marca ---------- */
+.login-screen__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.login-screen__brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-screen__brand-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.login-screen__tagline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+  margin: 0;
+}
+
+/* ---------- Card del form ---------- */
+.login-screen__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-screen__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.login-screen__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.login-screen__input {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  outline: none;
+}
+
+.login-screen__input::placeholder {
+  color: var(--input-fg);
+}
+
+.login-screen__input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.login-screen__input:disabled {
+  opacity: 0.6;
+}
+
+.login-screen__submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ---------- Alertas de estado ---------- */
+.login-screen__alert {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin: 14px 0 0;
+}
+
+.login-screen__alert--danger {
+  color: var(--danger-fg);
+}
+
+.login-screen__alert--warning {
+  color: var(--badge-fg);
+}
+
+/* ---------- Links de derivación admin-mediada ---------- */
+.login-screen__links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.login-screen__link-row {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+  text-align: center;
+}
+
+.login-screen__link-hint {
+  color: var(--concept);
+  font-weight: 500;
+}

@@ -1,0 +1,191 @@
+/*
+ * Estilos del módulo Conexiones (Task 20, EXTRACT §2.8/§3.3) — theme-aware vía CSS vars de
+ * themes.css, cero color literal (mismo criterio que chat.css/shell.css/primitives.css).
+ */
+
+/* ---------- Screen ---------- */
+.connections-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+/* Header (EXTRACT §3.3, diseño líneas 324-330): H1 + contador a la izquierda, avatar circular a
+   la derecha, alineados al pie (`align-items:flex-end`) — mismo patrón de header simple que
+   `AccountScreen`. */
+.connections-screen__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.connections-screen__heading {
+  display: flex;
+  flex-direction: column;
+}
+
+.connections-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.connections-screen__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--mono);
+  margin: 5px 0 0;
+}
+
+.connections-screen__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  box-shadow: var(--avatar-shadow);
+  color: var(--avatar-fg);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.connections-screen__search {
+  border-radius: 14px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  outline: none;
+}
+
+.connections-screen__search::placeholder {
+  color: var(--input-fg);
+}
+
+.connections-screen__search:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.connections-screen__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Grid PLANO (diseño línea 332): 2 columnas, SIN agrupar por categoría — `desktop.css` (fuera de
+   mi ownership) sube esto a 3 columnas en escritorio via `.connections-screen__grid`. */
+.connections-screen__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.connections-screen__error,
+.connections-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+/* ---------- ServiceCard (EXTRACT §2.8, diseño líneas 334-368) ----------
+ * El fondo/borde/sombra/blur/radio (20px) vienen de `<Surface variant="tile" blur>`
+ * (design-system/primitives.css, clase `uc-surface--tile`) — el EXTRACT documenta el grid de
+ * Conexiones como uno de los 2 consumidores de `--tile-*`, así que la card reusa el token en vez
+ * de duplicarlo acá. Acá solo el layout interno + los 2 estados que PISAN esa base. */
+.service-card {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 15px 14px;
+  transition: opacity 0.15s ease;
+}
+
+/* Selector compuesto (2 clases) a propósito: gana por especificidad sobre `.uc-surface--tile`
+   sin depender del orden de imports CSS entre `primitives.css` y este archivo. */
+.service-card.service-card--disconnected {
+  opacity: 0.82;
+}
+
+.service-card.service-card--reconnect {
+  /* El estado de alerta tiñe el borde COMPLETO de la card (EXTRACT §2.8, mismo patrón que la HITL
+     irreversible) — pisa el --tile-border de la Surface. */
+  border: var(--danger-border);
+}
+
+.service-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.service-card__work-label {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.service-card__name {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.service-card__footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+}
+
+.service-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.service-card__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok-fg);
+  flex-shrink: 0;
+}
+
+.service-card__status-label {
+  color: var(--ok-fg);
+}
+
+/* Hug-content (diseño `Copiloto App.dc.html:361`: botón sin `width` dentro de una columna flex,
+   NO se estira a lo ancho de la tile). */
+.service-card__connect {
+  align-self: flex-start;
+  min-height: 0;
+  padding: 7px;
+  border-radius: 9px;
+  font-size: 12.5px;
+}

@@ -1,0 +1,219 @@
+/*
+ * Estilos del módulo Apps (Feature addendum 2026-07-03 — "modos por app"; layout de fila portado
+ * 1:1 del bloque "apps sheet" de `Copiloto App.dc.html` líneas 218-268) — theme-aware vía CSS
+ * vars de themes.css, cero color literal (mismo criterio que chat.css/connections.css/shell.css).
+ * Mismo layout base que `connections-screen`/`placeholder-screen` (flex:1, min-height:0,
+ * overflow-y:auto) para encajar en `.app-shell__content` sin refactor de shell.css.
+ */
+
+/* ---------- Screen ---------- */
+.apps-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.apps-screen__header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.apps-screen__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.apps-screen__subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--label);
+  margin: 0;
+}
+
+.apps-screen__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apps-screen__error,
+.apps-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+/* ---------- Listado de modos (diseño líneas 226-268) ---------- */
+.apps-screen__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* "Salir del modo" (diseño línea 228, verbatim) */
+.apps-screen__exit {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: var(--cancel-border);
+  border-radius: 11px;
+  padding: 8px 13px;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.apps-screen__exit:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ---------- ModeButton (ModeButton.tsx) — fila (diseño líneas 236-258) ---------- */
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px;
+  border-radius: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.mode-row:hover {
+  background: var(--tile-bg);
+}
+
+.mode-row:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.mode-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mode-row__label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15.5px;
+  color: var(--text);
+}
+
+.mode-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--label);
+}
+
+.mode-row__name {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+.mode-row__check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--send-bg);
+  color: var(--send-fg);
+  box-shadow: var(--btn-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ---------- Divisor (diseño línea 260) ---------- */
+.apps-screen__divider {
+  height: 1px;
+  background: var(--row-border);
+  margin: 8px 4px;
+}
+
+/* ---------- "Conectar más" (diseño líneas 262-266) ---------- */
+.apps-screen__connect-more {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px;
+  border-radius: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  width: 100%;
+}
+
+.apps-screen__connect-more:hover {
+  background: var(--tile-bg);
+}
+
+.apps-screen__connect-more:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.apps-screen__connect-more-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px dashed var(--label);
+  color: var(--label);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.apps-screen__connect-more-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.apps-screen__connect-more-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.apps-screen__connect-more-subtitle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}

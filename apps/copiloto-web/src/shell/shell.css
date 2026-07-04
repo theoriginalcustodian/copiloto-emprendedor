@@ -1,0 +1,190 @@
+/*
+ * Estilos del shell mobile (Task 9) — theme-aware vía CSS vars de themes.css, cero color literal.
+ *
+ * ---------- Por qué el layout NO es "tab-bar overlay sobre el contenido" (como en el EXTRACT) ----------
+ * El EXTRACT (§2.3) describe la tab-bar como `position:absolute` flotando SOBRE el chat, con blur,
+ * dentro de un frame de teléfono de tamaño FIJO (384x812). Acá el frame es responsive (real
+ * viewport, `.app-frame` de global.css usa `min-height:100dvh`, un PISO, no una altura fija) y
+ * `ChatScreen` (fuera de mi ownership) se autodeclara `className="app-frame chat-screen"` con su
+ * propio `min-height:100dvh` — pensado para correr standalone como pantalla única de la app (así
+ * vivía antes de este Task, ver App.tsx).
+ *
+ * Anidar esa pantalla dentro de un shell con una tab-bar en `position:absolute/fixed` reabre un
+ * problema conocido de flexbox: sin una altura DEFINIDA (no un mínimo) en toda la cadena de
+ * ancestros, `flex:1 + overflow-y:auto` no acota nada y en vez de scrollear el contenedor interno
+ * scrollea la página entera — hoy eso ya pasa en `ChatScreen` standalone (compensado por el
+ * navegador, pero sin scroll interno real). En vez de pelear con overlay + padding-bottom a mano
+ * para no tapar el composer, la tab-bar queda EN EL FLUJO (hijo flex fijo debajo del contenido) y
+ * el shell fuerza una altura definida (`height:100dvh`, no `min-height`) que se propaga hacia
+ * abajo con el patrón clásico `flex:1; min-height:0` — esto además hace que el scroll de mensajes
+ * de ChatScreen quede contenido de verdad (efecto colateral correcto, no buscado).
+ * La tab-bar es un OVERLAY absoluto al fondo (como el diseño, EXTRACT §2.3) y el contenido lleva
+ * `padding-bottom` para no quedar tapado; así el hide-on-scroll (ocultarla al scrollear el chat)
+ * es un simple `translateY`, y el padding animándose a 0 desliza el composer hacia abajo (mirror
+ * del `composerShift` del diseño). El scroll interno del chat sigue acotado por la cadena de
+ * alturas definidas (`height:100dvh` + `flex:1; min-height:0`), no depende de que la barra esté
+ * en el flujo.
+ */
+
+.app-frame.app-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-shell__content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Clearance para la tab-bar flotante (overlay) — el contenido (incluido el composer del chat)
+     queda por encima de la píldora. Al ocultarse la barra (hide-on-scroll) el padding va a 0 y el
+     contenido se desliza hacia abajo (mirror del `composerShift` del diseño, EXTRACT §2.3). */
+  padding-bottom: 86px;
+  transition: padding-bottom 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-shell--tab-hidden .app-shell__content {
+  padding-bottom: 0;
+}
+
+/* Pisa el `.app-frame` autoaplicado por una pantalla anidada (hoy solo ChatScreen) SIN tocar su
+   propio CSS — mayor especificidad por descendiente + 2 clases (`.app-shell__content .app-frame`),
+   gana siempre, no depende de orden de import. */
+.app-shell__content .app-frame {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.app-shell__content .app-frame::before {
+  /* El fondo `--bg-layer` ya lo pinta el `.app-frame` externo (`.app-shell`) — evita duplicarlo. */
+  content: none;
+}
+
+/* ---------- TabBar (EXTRACT §2.3) ---------- */
+.tab-bar {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 18px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 11px 6px;
+  border-radius: 26px;
+  background: var(--nav-bg);
+  border: 1px solid var(--nav-border);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  box-shadow:
+    0 14px 34px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition:
+    transform 0.36s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
+}
+
+/* Hide-on-scroll (EXTRACT §2.3): desliza la píldora fuera de vista al scrollear el chat hacia abajo. */
+.tab-bar--hidden {
+  transform: translateY(calc(100% + 18px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tab-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: var(--tab-inactive);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tab-bar__item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.tab-bar__item--active {
+  color: var(--tab-active);
+}
+
+.tab-bar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+/* Badge-dot del tab "Apps" con modo activo (dc.html:202-205, gap #18). */
+.tab-bar__icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tab-bar__dot {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amount-sign);
+  box-shadow: 0 0 6px var(--amount-sign);
+}
+
+.tab-bar__label {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: inherit;
+}
+
+.tab-bar__item--active .tab-bar__label {
+  font-weight: 600;
+}
+
+/* ---------- Placeholder screens (Apps/Conexiones/Cuenta hasta Tasks 17/20/21) ---------- */
+.placeholder-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.placeholder-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.placeholder-screen__hint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--label);
+  margin: 0;
+}

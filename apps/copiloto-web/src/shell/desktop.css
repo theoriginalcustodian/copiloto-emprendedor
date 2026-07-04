@@ -1,0 +1,518 @@
+/*
+ * Estilos del shell de escritorio (Rail auto-hide + columna de contenido a pantalla completa) —
+ * DESIGN-SYSTEM-EXTRACT-WEB.md §3.1-3.2/§5.1. Theme-aware vía CSS vars de themes.css (incluidos
+ * `--nav-active` y `--skin-preview-*`, agregados ahí — ver themes.css), cero color literal salvo
+ * la MISMA excepción ya documentada en el repo para el borde de swatch "inactivo": un gris fijo
+ * sin token (mismo criterio que el scrim de `.recording-overlay` en chat.css o el de
+ * `.uc-sheet-scrim` en primitives.css — un valor constante entre los 4 temas, no reactivo).
+ *
+ * Tipografía: NO se decide acá. `[data-shell="desktop"]` (seteado por `DesktopShell`) resuelve
+ * `--font-display`/`--font-body` a Space Grotesk/Manrope en `fonts-web.css` — este archivo solo
+ * consume esos tokens como el resto del design-system.
+ */
+
+.desktop-shell {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.desktop-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-layer);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ---------- Rail (EXTRACT §3.1) ---------- */
+
+/* Zona 1: spacer fijo en el flujo flex, reserva el ancho colapsado del rail. */
+.rail-spacer {
+  width: 72px;
+  flex: none;
+}
+
+/* Zona 2: el rail real, superpuesto sobre el spacer — auto-hide por ancho (72px↔244px). */
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 72px;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  /* Sin `justify-content:space-between`/gap acá (gap #12 del audit): el bloque inferior
+     (`.rail__bottom`, Skin+Usuario) se ancla al fondo con su propio `margin-top:auto`, no
+     repartiendo el sobrante entre 3 grupos — así Skin y Usuario quedan pegados como el diseño. */
+  padding: 22px 16px 18px;
+  background: var(--nav-bg);
+  border-right: 1px solid var(--nav-border);
+  backdrop-filter: blur(30px) saturate(1.5);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rail--open {
+  width: 244px;
+}
+
+.rail__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--tab-inactive);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.rail__item:hover {
+  color: var(--tab-active);
+}
+
+.rail__item:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.rail__item--active {
+  background: var(--nav-active);
+  border-left-color: var(--amount-sign);
+  color: var(--tab-active);
+  font-weight: 600;
+}
+
+.rail__icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  flex-shrink: 0;
+}
+
+.rail__icon {
+  font-size: 19px;
+  line-height: 1;
+}
+
+/* Íconos de nav a 21px reales (dc.html:44,49,56,61) — `navIcons.tsx` es SHARED con la `TabBar`
+   mobile (24px ahí, no se toca), así que el tamaño de escritorio se resuelve acá vía CSS. */
+.rail__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.rail__dot {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amount-sign);
+  box-shadow: 0 0 6px var(--amount-sign);
+}
+
+.rail__label {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail--open .rail__label {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__mode-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Tokens de BADGE (ámbar), no de chip (dc.html:53) — gap #7: antes usaba `--chip-*`, se veía del
+     color equivocado (celeste) en vez del ámbar de warning que marca el diseño. */
+  color: var(--badge-fg);
+  background: var(--badge-bg);
+  border: var(--badge-border);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__mode-badge {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+/* Contador "3/6" del ítem Conexiones (dc.html:58) — mismo fade que label/badge. */
+.rail__connections-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--label);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__connections-count {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+/* ---------- Bloque inferior: Skin + Usuario (dc.html:66-84, gap #12) ----------
+ * `margin-top:auto` acá (no en `.rail__skin`) empuja el bloque COMPLETO al fondo, pegado como una
+ * sola unidad — reemplaza el `justify-content:space-between` de 3 grupos que separaba de más. */
+.rail__bottom {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Selector de skin (EXTRACT §2.4) ---------- */
+.rail__skin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rail__skin-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__skin-label {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__skin-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rail__swatch {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  /* Excepción documentada (ver banner del archivo): gris fijo, no theme-aware. */
+  border: 2px solid rgba(128, 128, 128, 0.25);
+  cursor: pointer;
+  padding: 0;
+}
+
+.rail__swatch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.rail__swatch--active {
+  border: 3px solid var(--core);
+}
+
+.rail__swatch--aurora {
+  background: var(--skin-preview-aurora);
+}
+
+.rail__swatch--daylight {
+  background: var(--skin-preview-daylight);
+}
+
+.rail__swatch--refined {
+  background: var(--skin-preview-refined);
+}
+
+.rail__swatch--ai {
+  background: var(--skin-preview-ai);
+}
+
+/* ---------- Bloque de usuario (dc.html:78, gap #11/#12) ---------- */
+.rail__user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: var(--row-border);
+}
+
+.rail__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  color: var(--avatar-fg);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rail__user-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.rail--open .rail__user-text {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.08s;
+}
+
+.rail__user-name {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2da línea del bloque de usuario (dc.html:82, "email") — ver placeholder documentado en Rail.tsx. */
+.rail__user-email {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--label);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Columna de contenido (zona 3, EXTRACT §3.1) ---------- */
+.desktop-shell__content {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Reset del `.app-frame` mobile (global.css, max-width:384px) dentro del shell de escritorio —
+   MISMO patrón que `.app-shell__content .app-frame` en shell.css (mobile): pisa el frame angosto
+   sin tocar ChatScreen.tsx. Acá además no hay límite de ancho fijo: cada pantalla centra su propio
+   max-width más abajo (§3.2). */
+.desktop-shell__content .app-frame {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.desktop-shell__content .app-frame::before {
+  content: none;
+}
+
+/* ---------- Anchos de columna por pantalla (EXTRACT §3.2) ----------
+ * Ajuste responsive MÍNIMO: centra/acota el ancho desde el descendiente del shell, SIN tocar el
+ * CSS propio de cada módulo (chat.css/connections.css/account.css/apps.css quedan intactos —
+ * mobile no se toca). */
+.desktop-shell__content .chat-messages {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding-top: 32px;
+}
+
+.desktop-shell__content .composer {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.desktop-shell__content .connections-screen,
+.desktop-shell__content .account-screen {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 36px 40px;
+}
+
+.desktop-shell__content .account-screen {
+  max-width: 640px;
+}
+
+.desktop-shell__content .connections-screen__grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ---------- Overrides puntuales de fidelidad (audit gap-desktop.md) ----------
+ * `AppsScreen` queda FUERA de este bloque a propósito: vive dentro de `AppsModal` (montado fuera
+ * de `.desktop-shell__content`, ver `AppsModal.tsx`/`DesktopShell.tsx`), así que usa su CSS base
+ * (~440px) sin el override de columna de 900/640px de arriba. */
+
+/* #17 — el `StatusBar` de teléfono (reloj+batería) no existe en el diseño desktop. `ChatScreen`
+   con `variant="desktop"` ya lo omite en el markup (ver ChatScreen.tsx) — esta regla es defensa en
+   profundidad (cero riesgo, cubre cualquier otro punto de montaje futuro que no seteé el variant). */
+.desktop-shell__content .uc-status-bar {
+  display: none;
+}
+
+/* #31-32 — botones mic/enviar del composer, tamaño/radio de escritorio (dc.html:264,267). Base
+   mobile (38×38 r14, chat.css) intacta — override SOLO acá. */
+.desktop-shell__content .composer__mic,
+.desktop-shell__content .composer__send {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+}
+
+/* #20-21 — card HITL en escritorio: padding/radio (dc.html:128). Base mobile (chat.css/
+   primitives.css) intacta. */
+.desktop-shell__content .hitl-card {
+  padding: 20px 22px 18px;
+}
+
+.desktop-shell__content .hitl-card,
+.desktop-shell__content .uc-surface--card {
+  border-radius: 22px;
+}
+
+/* #47 — avatar de Cuenta en escritorio (dc.html:332, 62×62/24px). Base mobile (account.css,
+   58×58/22px) intacta. */
+.desktop-shell__content .account-screen__avatar {
+  width: 62px;
+  height: 62px;
+  font-size: 24px;
+}
+
+/* #51 — en escritorio el selector de skin vive en el Rail (arriba); la sección "Elegí el tema"
+   propia de `AccountScreen` (heredada de mobile, que no tiene Rail) queda duplicada y no existe en
+   `Copiloto Web.dc.html` (330-337 no la lista). Se oculta por atributo (`aria-label="Tema"`, el
+   único `account-screen__section` que lo tiene, ver AccountScreen.tsx) — cero cambio al módulo. */
+.desktop-shell__content .account-screen__section[aria-label='Tema'] {
+  display: none;
+}
+
+/* #37 — el header de Conexiones en escritorio NO tiene avatar (dc.html:280-282: solo h1 + subtítulo).
+   El avatar SÍ existe en el diseño mobile (App.dc.html:324-330), por eso la base lo mantiene y acá se
+   oculta SOLO en desktop — mismo patrón que los overrides de arriba. */
+.desktop-shell__content .connections-screen__avatar {
+  display: none;
+}
+
+/* ---------- Modal "Tus apps" (desktop-only, `Copiloto Web.dc.html:363-402` verbatim) ----------
+ * Envuelve `AppsScreen` (montado por `AppsModal.tsx`) sin duplicar su header — el título/subtítulo
+ * ya los renderiza `AppsScreen`, acá solo se agrega scrim + panel + botón X. Mismo patrón "root
+ * fijo + scrim + panel" que `.uc-sheet-root` de `design-system/primitives.css` (BottomSheet
+ * mobile), pero centrado (`scale`+`translate(-50%,-50%)`) en vez de `translateY` desde abajo —
+ * la animación es distinta, por eso es un componente propio y no una reutilización directa. */
+.apps-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.apps-modal-root--open {
+  pointer-events: auto;
+}
+
+.apps-modal-scrim {
+  position: absolute;
+  inset: 0;
+  /* Excepción documentada (mismo criterio que `.uc-sheet-scrim` en primitives.css): scrim fijo,
+     no theme-aware, constante entre los 4 temas en el mock. */
+  background: rgba(3, 4, 10, 0.55);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.apps-modal-root--open .apps-modal-scrim {
+  opacity: 1;
+}
+
+.apps-modal-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 440px;
+  max-width: calc(100% - 48px);
+  max-height: 82%;
+  transform: translate(-50%, -50%) scale(0.96);
+  opacity: 0;
+  transition:
+    transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.3s ease;
+  border-radius: 24px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7);
+  backdrop-filter: var(--card-blur);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.apps-modal-root--open .apps-modal-panel {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.apps-modal-close {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  width: 32px;
+  height: 32px;
+  border: var(--cancel-border);
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apps-modal-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
