@@ -2,12 +2,13 @@ import { ThemeProvider } from './design-system/ThemeProvider';
 import { SessionProvider } from './auth/SessionProvider';
 import { LoginSkeleton } from './auth/LoginSkeleton';
 import { useSession } from './auth/useSession';
-import { ChatSkeleton } from './modules/chat/ChatSkeleton';
+import { ChatScreen } from './modules/chat/ChatScreen';
 
 /**
- * Router raíz por estado de sesión (Task 7): 'checking' -> splash; 'authed' -> ChatSkeleton;
- * cualquier otro estado ('anon' | 'no-habilitada') -> LoginSkeleton (que ya sabe mostrar el aviso
- * de cuenta no-habilitada leyendo la sesión compartida — ver auth/LoginSkeleton.tsx).
+ * Router raíz por estado de sesión (Task 7): 'checking' -> splash; 'authed' -> ChatScreen (diseño
+ * final del Chat, Tasks 9-15); cualquier otro estado ('anon' | 'no-habilitada') -> LoginSkeleton
+ * (que ya sabe mostrar el aviso de cuenta no-habilitada leyendo la sesión compartida — ver
+ * auth/LoginSkeleton.tsx).
  */
 function AppRouter() {
   const { status } = useSession();
@@ -24,7 +25,7 @@ function AppRouter() {
     );
   }
 
-  if (status === 'authed') return <ChatSkeleton />;
+  if (status === 'authed') return <ChatScreen />;
   return <LoginSkeleton />;
 }
 

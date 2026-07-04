@@ -1,0 +1,393 @@
+/*
+ * Estilos del módulo Chat (Tasks 10/12/13/14/15) — theme-aware vía CSS vars de themes.css, cero
+ * color literal salvo 2 excepciones documentadas (mismo criterio que primitives.css §scrim):
+ *   1) `.hitl-card__preview` usa `--brand-instagram` (color de marca fijo entre los 4 temas,
+ *      igual que los brand-* de Conexiones — EXTRACT §1.3 "colores de marca hardcodeados").
+ *   2) `.hitl-card__preview-title/caption` usan la keyword `white` (no hex) porque el fondo fijo
+ *      del preview (gradiente Instagram) no varía con el tema — un texto theme-aware (--text)
+ *      perdería contraste en temas claros. Acotado a ESTE elemento, no un patrón general.
+ */
+
+/* ---------- Screen ---------- */
+.chat-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* ---------- Header (Task 10, EXTRACT §2.2) ---------- */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px 14px;
+}
+
+.chat-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chat-header__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-header__title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  white-space: nowrap;
+}
+
+.chat-header__lang-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--chip-fg);
+  background: var(--chip-bg);
+  border: var(--chip-border);
+}
+
+.chat-header__status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--label);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chat-header__logout {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.chat-header__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  box-shadow: var(--avatar-shadow);
+  color: var(--avatar-fg);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ---------- Messages (Task 12) ---------- */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 16px;
+}
+
+.chat-messages__empty {
+  font-family: var(--font-mono);
+  color: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 24px 4px;
+}
+
+.chat-message-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Bubbles (EXTRACT §2.5) ---------- */
+.chat-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-row--user {
+  align-items: flex-end;
+}
+
+.chat-row--assistant {
+  align-items: flex-start;
+}
+
+.chat-bubble {
+  padding: 12px 14px;
+}
+
+.chat-bubble__text {
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.48;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.chat-bubble--user {
+  max-width: 82%;
+  background: var(--user-bg);
+  border: var(--user-border);
+  color: var(--user-fg);
+  border-radius: 20px 20px 6px 20px;
+}
+
+.chat-bubble--assistant {
+  max-width: 88%;
+  border-radius: 20px 20px 20px 6px;
+}
+
+.chat-bubble__receipt {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ok-fg);
+}
+
+/* ---------- Chips de desambiguación (Task 14, EXTRACT §2.7) ---------- */
+.disambiguation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+/* ---------- HITL card (Task 13, EXTRACT §2.6) ---------- */
+.hitl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 92%;
+  padding: 22px 20px 18px;
+}
+
+.hitl-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hitl-card__icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.hitl-card__header-label {
+  flex: 1;
+}
+
+.hitl-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hitl-card__name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--name-fg);
+  margin: 0;
+}
+
+.hitl-card__amount {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: var(--amount-size);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--amount-fg);
+  margin: 0;
+}
+
+.hitl-card__amount-sign {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--amount-sign);
+}
+
+.hitl-card__concept {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--concept);
+  margin: 0;
+}
+
+.hitl-card__note {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.hitl-card__preview {
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--brand-instagram);
+}
+
+.hitl-card__preview-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 4px;
+}
+
+.hitl-card__preview-caption {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: white;
+  opacity: 0.92;
+  margin: 0;
+}
+
+.hitl-card__warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.hitl-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hitl-card__actions .uc-btn {
+  width: 100%;
+}
+
+/* ---------- Composer (Task 15, EXTRACT §2.10 texto-only) ---------- */
+.composer {
+  padding: 8px 16px 18px;
+}
+
+.composer__status {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mono);
+  margin: 0 4px 8px;
+}
+
+.composer__status--alert {
+  color: var(--danger-fg);
+}
+
+.composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 20px;
+  background: var(--input-bg);
+  border: var(--input-border);
+  box-shadow: var(--input-shadow);
+  backdrop-filter: var(--input-blur);
+}
+
+.composer__mic {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--input-fg);
+  font-size: 16px;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.composer__input {
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.4;
+  padding: 8px 0;
+  max-height: 96px;
+  outline: none;
+}
+
+.composer__input::placeholder {
+  color: var(--input-fg);
+}
+
+.composer__input:disabled {
+  opacity: 0.6;
+}
+
+.composer__send {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--send-bg);
+  color: var(--send-fg);
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.composer__send:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.composer__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.composer__send:focus-visible,
+.composer__mic:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
