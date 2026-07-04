@@ -39,6 +39,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* El chat mobile ya no lleva header (StatusBar/ChatHeader quitados, 2026-07-04): el contenido
+     arranca al tope, así que despejá el notch / status-bar del OS en PWA instalada. */
+  padding-top: env(safe-area-inset-top, 0px);
   /* Clearance para la tab-bar flotante (overlay) — el contenido (incluido el composer del chat)
      queda por encima de la píldora. Al ocultarse la barra (hide-on-scroll) el padding va a 0 y el
      contenido se desliza hacia abajo (mirror del `composerShift` del diseño, EXTRACT §2.3). */

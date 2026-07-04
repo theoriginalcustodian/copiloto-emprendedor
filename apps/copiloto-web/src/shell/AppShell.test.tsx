@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider } from '../auth/SessionProvider';
@@ -85,6 +85,31 @@ describe('AppShell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cuenta' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+  });
+
+  it('el botón atrás cierra el sheet de Apps en vez de salir de la app', () => {
+    renderAppShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
+    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    });
+    expect(screen.getByTestId('bottom-sheet-scrim').parentElement).not.toHaveClass(
+      'uc-sheet-root--open',
+    );
+  });
+
+  it('el botón atrás desde otro tab vuelve a Chat en vez de salir', () => {
+    renderAppShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Conexiones' }));
+    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    });
+    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
   });
 
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {

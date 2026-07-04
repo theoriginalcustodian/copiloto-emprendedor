@@ -30,6 +30,10 @@ html,
 body,
 #root {
   height: 100%;
+  /* PWA: sin esto, un drag hacia abajo en cualquier punto (incluido un BottomSheet) puede
+   * disparar el pull-to-refresh nativo del navegador. Complementa `overscroll-behavior: contain`
+   * de `.uc-sheet`/`.uc-sheet-root` en primitives.css. */
+  overscroll-behavior-y: none;
 }
 
 body {

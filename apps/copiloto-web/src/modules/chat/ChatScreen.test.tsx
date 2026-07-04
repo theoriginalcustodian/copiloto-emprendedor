@@ -40,10 +40,13 @@ describe('ChatScreen', () => {
     window.localStorage.clear();
   });
 
-  it('renderiza header, lista de mensajes (bienvenida) y composer', () => {
+  it('en móvil renderiza SIN header (ni StatusBar ni marca), sólo mensajes + composer', () => {
     renderChatScreen();
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
-    expect(screen.getByTestId('chat-header')).toBeInTheDocument();
+    // El móvil ya no lleva header (pedido operador 2026-07-04): ni el mock de hora/batería
+    // (StatusBar) ni la marca "Copiloto"/ES-AR/contador (ChatHeader).
+    expect(screen.queryByTestId('status-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chat-header')).not.toBeInTheDocument();
     expect(screen.getByTestId('message-list')).toBeInTheDocument();
     expect(screen.getByTestId('composer')).toBeInTheDocument();
     expect(screen.getByText(/Antes de tocar nada/)).toBeInTheDocument();

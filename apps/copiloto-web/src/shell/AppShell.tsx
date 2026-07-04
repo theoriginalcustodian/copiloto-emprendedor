@@ -6,6 +6,8 @@ import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
+import { useBackGuard } from './useBackGuard';
+import { useChromeAutoHide } from './useChromeAutoHide';
 import './shell.css';
 
 const DEFAULT_TAB: TabKey = 'chat';
@@ -35,8 +37,10 @@ const DEFAULT_TAB: TabKey = 'chat';
  */
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
-  // Hide-on-scroll (EXTRACT §2.3): solo el Chat lo dispara; cambiar de tab siempre re-muestra la barra.
-  const [tabHidden, setTabHidden] = useState(false);
+  // Auto-hide del chrome (tab-bar + composer al borde): lo disparan el scroll del chat, la
+  // inactividad, y el tap en el área de chat (toggle). `hidden` baja a la TabBar (translateY) y al
+  // content (padding-bottom -> 0, ver shell.css). Cambiar de tab siempre re-muestra la barra.
+  const { hidden: tabHidden, setHidden: setTabHidden, toggle: toggleChrome } = useChromeAutoHide();
   const [appsSheetOpen, setAppsSheetOpen] = useState(false);
   // `BottomSheet` queda SIEMPRE montado (necesario para animar el cierre, ver su docstring) — sin
   // este gate, `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del
@@ -52,7 +56,7 @@ export function AppShell() {
     }
     setTabHidden(false);
     setActiveTab(key);
-  }, []);
+  }, [setTabHidden]);
 
   const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
 
@@ -60,7 +64,21 @@ export function AppShell() {
     setAppsSheetOpen(false);
     setTabHidden(false);
     setActiveTab('connections');
-  }, []);
+  }, [setTabHidden]);
+
+  // Botón "atrás" del navegador/OS (2026-07-04): pelar los overlays abiertos (sheet primero, luego
+  // un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas capas hay abiertas.
+  const handleBack = useCallback(() => {
+    if (appsSheetOpen) {
+      setAppsSheetOpen(false);
+      return;
+    }
+    if (activeTab !== DEFAULT_TAB) {
+      setActiveTab(DEFAULT_TAB);
+    }
+  }, [appsSheetOpen, activeTab]);
+  const backDepth = (appsSheetOpen ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
+  useBackGuard(backDepth, handleBack);
 
   const shellClasses = ['app-frame', 'app-shell', tabHidden ? 'app-shell--tab-hidden' : '']
     .filter(Boolean)
@@ -69,7 +87,9 @@ export function AppShell() {
   return (
     <div className={shellClasses} data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
-        {activeTab === 'chat' && <ChatScreen onHideChange={setTabHidden} />}
+        {activeTab === 'chat' && (
+          <ChatScreen onHideChange={setTabHidden} onSurfaceTap={toggleChrome} />
+        )}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>

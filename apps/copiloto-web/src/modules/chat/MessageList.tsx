@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
@@ -15,6 +15,9 @@ export interface MessageListProps {
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
    * scrollea normal. Thresholds del diseño: 6px de delta, 26px del tope. */
   onHideChange?: (hidden: boolean) => void;
+  /** Tap en el área de mensajes que NO cae sobre un control (botón/chip/HITL/textarea/link): el
+   * shell lo usa para togglear el chrome (tab-bar + composer). Opcional. */
+  onSurfaceTap?: () => void;
   /** Marcador mono al tope del scroll (verbatim `Copiloto App.dc.html:64` — "SESIÓN ACTIVA · HOY").
    * Sólo el shell mobile lo pasa; en escritorio la sesión vive en `DesktopChatHeader`, así que va
    * `undefined`. Se muestra únicamente cuando ya hay mensajes (si el chat está vacío manda el
@@ -38,6 +41,7 @@ export function MessageList({
   onChoice,
   emptyHint,
   onHideChange,
+  onSurfaceTap,
   sessionMarker,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -68,8 +72,24 @@ export function MessageList({
     lastScrollTopRef.current = current;
   }
 
+  function handleSurfaceClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!onSurfaceTap) return;
+    // Sólo un tap "vacío" sobre el área de lectura togglea el chrome — ignorá taps sobre controles
+    // (chips de desambiguación, botones de la tarjeta HITL, links) para no robarles el click.
+    if ((event.target as HTMLElement).closest('button, a, textarea, input, [role="button"]')) {
+      return;
+    }
+    onSurfaceTap();
+  }
+
   return (
-    <div className="chat-messages" data-testid="message-list" ref={scrollRef} onScroll={handleScroll}>
+    <div
+      className="chat-messages"
+      data-testid="message-list"
+      ref={scrollRef}
+      onScroll={handleScroll}
+      onClick={handleSurfaceClick}
+    >
       {messages.length === 0 && emptyHint && <p className="chat-messages__empty">{emptyHint}</p>}
 
       {sessionMarker && messages.length > 0 && (

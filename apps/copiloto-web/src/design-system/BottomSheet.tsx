@@ -26,8 +26,12 @@ export interface BottomSheetProps {
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/** Umbral de arrastre hacia abajo (px) sobre el handle que dispara el cierre por gesto. */
+/** Umbral de arrastre hacia abajo (px) sobre el sheet que dispara el cierre por gesto. */
 const DRAG_DISMISS_THRESHOLD_PX = 60;
+
+/** Guard del drag-to-dismiss: si el pointerdown arranca sobre uno de estos, NO se inicia el
+ * tracking de arrastre (dejamos que el elemento interactivo maneje su propio gesto/click). */
+const INTERACTIVE_SELECTOR = 'button, a, textarea, input, select, [role="button"]';
 
 /**
  * Scrim + sheet (EXTRACT §2.11): radio superior 26px, `--card-bg`, `translateY(0|120%)`,
@@ -88,7 +92,13 @@ export function BottomSheet({
     }
   }
 
-  function handleHandlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+  /** Drag-to-dismiss: enganchado en `.uc-sheet` (todo el cuerpo), no solo el handle — el
+   * pointerdown del handle burbujea hasta acá, así que sigue funcionando sin un handler propio.
+   * Guard: si arranca sobre un elemento interactivo (botón/link/input/etc.) no inicia el
+   * tracking, para no robarle el gesto a un tap/click legítimo dentro del sheet. */
+  function handleSheetPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest(INTERACTIVE_SELECTOR)) return;
     const startY = event.clientY;
     function handlePointerMove(moveEvent: PointerEvent) {
       if (moveEvent.clientY - startY > DRAG_DISMISS_THRESHOLD_PX) {
@@ -115,12 +125,9 @@ export function BottomSheet({
         aria-label={title ?? ariaLabel}
         tabIndex={-1}
         onKeyDown={handleTabTrap}
+        onPointerDown={handleSheetPointerDown}
       >
-        <div
-          className="uc-sheet__handle"
-          aria-hidden="true"
-          onPointerDown={handleHandlePointerDown}
-        />
+        <div className="uc-sheet__handle" aria-hidden="true" />
         {title ? <h2 className="uc-sheet__title">{title}</h2> : null}
         {children}
       </div>

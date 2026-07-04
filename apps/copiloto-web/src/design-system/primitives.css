@@ -279,6 +279,9 @@
   inset: 0;
   z-index: 50;
   pointer-events: none;
+  /* Frena la propagación del gesto de arrastre hacia el pull-to-refresh nativo del navegador
+   * mientras el sheet está abierto (ver también `.uc-sheet` abajo). */
+  overscroll-behavior: contain;
 }
 
 .uc-sheet-root--open {
@@ -312,6 +315,9 @@
   padding: 12px 20px 24px;
   transform: translateY(120%);
   transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+  /* Cuerpo scrolleable: sin esto, un drag hacia abajo en el tope del scroll interno encadena al
+   * pull-to-refresh del navegador (además del guard JS de drag-to-dismiss de BottomSheet.tsx). */
+  overscroll-behavior: contain;
 }
 
 .uc-sheet-root--open .uc-sheet {

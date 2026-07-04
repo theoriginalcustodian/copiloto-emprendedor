@@ -14,6 +14,12 @@ export interface MicButtonProps {
 /** Umbral de arrastre hacia arriba (px) que "fija" la grabación — EXTRACT §2.10 (verbatim: >46px). */
 const LOCK_THRESHOLD_PX = 46;
 const TIMER_TICK_MS = 100;
+/** Umbral mínimo de "mantener presionado" (ms) para que soltar sin fijar cuente como intención de
+ * grabar y envíe — hardening tap-corto: antes CUALQUIER pointerdown+pointerup (por más breve que
+ * fuera) arrancaba a grabar y enviaba, incluso un toque accidental. */
+const MIN_HOLD_MS = 350;
+/** Duración del hint transitorio "Mantené presionado para grabar" tras descartar un tap corto. */
+const HOLD_HINT_MS = 1600;
 
 /** Candidatos de mimeType en orden de preferencia — Chrome soporta webm/opus, Safari mp4/aac
  * (EXTRACT §2.10 nota de implementación: "usá el mimeType soportado"). */
@@ -35,15 +41,24 @@ function pickSupportedMimeType(): string | undefined {
  *     soltar, siempre envía salvo que el usuario toque "Cancelar" explícito estando fijado).
  *   - deslizar hacia arriba >46px = **fija** (manos libres): aparecen los botones explícitos
  *     Cancelar / Enviar del overlay, el pointerup ya no hace nada por sí solo.
+ *   - soltar antes de mantener `MIN_HOLD_MS` (350ms) sin fijar = **descarta** (tap corto, sin
+ *     intención de grabar) y muestra un hint transitorio — no envía.
  *
  * `touch-action:none` en el botón (chat.css) evita que el gesto de grabar también scrollee el
  * chat por debajo (requisito explícito del task).
+ *
+ * Guard de race (hardening): `startRecording` es async (espera `getUserMedia`); si el `pointerup`
+ * llega ANTES de que resuelva, `gestureActiveRef` ya está en `false` cuando el permiso finalmente
+ * resuelve — el stream recién obtenido se libera de inmediato y NUNCA se arranca el recorder ni el
+ * overlay. Sin este guard queda un overlay "unlocked" huérfano (sin botones, sin listeners de
+ * gesto ya desenganchados) que el usuario no puede cerrar.
  */
 export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [holdHint, setHoldHint] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -59,6 +74,13 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   // Cleanup de los listeners de `document` del gesto en curso (si hay uno colgado) — lo llenan
   // `handlePointerDown`/`handlePointerUp` de abajo; lo lee el `useEffect` de desmontaje.
   const gestureCleanupRef = useRef<(() => void) | null>(null);
+  // `true` mientras el dedo está apoyado (entre pointerdown y pointerup del gesto actual) — lo lee
+  // `startRecording` tras el `await getUserMedia` para detectar si el gesto ya terminó (race).
+  const gestureActiveRef = useRef(false);
+  // Timestamp (`Date.now()`) del pointerdown — con esto `handlePointerUp` calcula cuánto se
+  // mantuvo presionado para decidir tap-corto (descarta) vs hold real (envía).
+  const pointerDownAtRef = useRef(0);
+  const holdHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -83,6 +105,19 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     releaseStream();
   }, [releaseStream, stopTimer]);
 
+  /** Prende el hint transitorio "Mantené presionado para grabar" (tap corto descartado) y lo apaga
+   * solo ~1600ms después; reinicia el timeout si se dispara de nuevo antes de apagarse. */
+  const showHoldHint = useCallback(() => {
+    setHoldHint(true);
+    if (holdHintTimeoutRef.current !== null) {
+      clearTimeout(holdHintTimeoutRef.current);
+    }
+    holdHintTimeoutRef.current = setTimeout(() => {
+      setHoldHint(false);
+      holdHintTimeoutRef.current = null;
+    }, HOLD_HINT_MS);
+  }, []);
+
   /** Para la grabación; `shouldSend` decide si `onstop` (más abajo) despacha el blob o lo descarta. */
   const finishRecording = useCallback((shouldSend: boolean) => {
     pendingSendRef.current = shouldSend;
@@ -103,6 +138,14 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch {
         setPermissionError('No pudimos acceder al micrófono. Revisá los permisos del navegador.');
+        return;
+      }
+
+      // Guard de race (defecto 1): el `pointerup` puede llegar ANTES de que `getUserMedia`
+      // resuelva. Si el gesto ya terminó, no arrancamos el recorder ni el overlay — liberamos el
+      // stream recién obtenido para no dejar encendido el indicador de grabación del browser.
+      if (!gestureActiveRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
         return;
       }
 
@@ -141,6 +184,11 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     if (disabled) return;
     event.preventDefault();
+    // Sincrónico y ANTES de `startRecording` (que es async): marca el gesto como activo y guarda
+    // el instante de inicio, para que tanto el guard de race como el cálculo de hold-time en
+    // `handlePointerUp` tengan el dato aunque `getUserMedia` todavía no haya resuelto.
+    gestureActiveRef.current = true;
+    pointerDownAtRef.current = Date.now();
     void startRecording(event.clientY);
 
     function handlePointerMove(moveEvent: PointerEvent) {
@@ -157,10 +205,17 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     }
     function handlePointerUp() {
       detachGestureListeners();
-      if (!lockedRef.current) {
-        finishRecording(true); // soltó sin fijar -> envía (contrato del gesto)
+      gestureActiveRef.current = false;
+      if (lockedRef.current) {
+        return; // fijado: no hace nada acá — espera Cancelar/Enviar explícitos del overlay.
       }
-      // fijado: no hace nada acá — espera Cancelar/Enviar explícitos del overlay.
+      const heldMs = Date.now() - pointerDownAtRef.current;
+      if (heldMs < MIN_HOLD_MS) {
+        finishRecording(false); // tap corto: sin intención de grabar -> descarta, no envía
+        showHoldHint();
+      } else {
+        finishRecording(true); // soltó sin fijar tras mantener -> envía (contrato del gesto)
+      }
     }
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
@@ -180,6 +235,10 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     return () => {
       gestureCleanupRef.current?.();
       stopTimer();
+      if (holdHintTimeoutRef.current !== null) {
+        clearTimeout(holdHintTimeoutRef.current);
+        holdHintTimeoutRef.current = null;
+      }
       const recorder = mediaRecorderRef.current;
       if (recorder && recorder.state !== 'inactive') {
         recorder.onstop = null;
@@ -229,6 +288,12 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
       {permissionError && (
         <p className="composer__mic-error" role="alert">
           {permissionError}
+        </p>
+      )}
+
+      {holdHint && (
+        <p className="composer__mic-hint" role="status">
+          Mantené presionado para grabar
         </p>
       )}
     </>
