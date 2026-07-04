@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 
-import { DesktopChatHeader } from './DesktopChatHeader';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { useChat } from './useChat';
@@ -16,8 +15,9 @@ const WELCOME_TEXT =
  * Chrome del MÓVIL (pedido del operador 2026-07-04): el móvil NO lleva header — ni el `StatusBar`
  * mock (hora/batería; ya la pinta el OS) ni el header de marca `ChatHeader` ("Copiloto" · ES-AR ·
  * "en línea · durable" · avatar/contador). La interfaz arranca lo más limpia posible: directo con
- * los mensajes + el composer. El logout vive en Cuenta (AccountScreen). El header de ESCRITORIO
- * (`DesktopChatHeader`, otro diseño) sí se mantiene.
+ * los mensajes + el composer. El logout vive en Cuenta (AccountScreen). El ESCRITORIO también
+ * arranca sin header (pedido operador 2026-07-04): solo el chat, sin la barra de sesión ni el botón
+ * "Nueva conversación".
  *
  * `handleSend` reenvía la `key` del modo activo (leída por `Composer` desde `useMode()`) a
  * `useChat().send(text, { mode })`. `handleSendAudio` reenvía el blob grabado por `Composer`/
@@ -32,9 +32,9 @@ export interface ChatScreenProps {
    * (tab-bar + composer). Sólo el shell mobile lo pasa. */
   onSurfaceTap?: () => void;
   /**
-   * `'desktop'` monta el header de sesión (`DesktopChatHeader`: "SESIÓN ACTIVA · sess_… / Nueva
-   * conversación", verbatim `Copiloto Web.dc.html:94-102`) + el hint del composer. `'mobile'`
-   * (default) NO monta ningún header (ver arriba). Lo setea `DesktopShell`.
+   * `'desktop'` aplica ajustes de escritorio (sin `onSurfaceTap` ni marker de sesión); NINGÚN
+   * variant monta header ni hint del composer (pedido operador 2026-07-04: solo el chat). Lo setea
+   * `DesktopShell`.
    */
   variant?: 'mobile' | 'desktop';
 }
@@ -44,7 +44,7 @@ export function ChatScreen({
   onSurfaceTap,
   variant = 'mobile',
 }: ChatScreenProps = {}) {
-  const { messages, sendStatus, send, sendAudio, sessionId, startNewSession } = useChat();
+  const { messages, sendStatus, send, sendAudio } = useChat();
   const isDesktop = variant === 'desktop';
 
   const handleSend = useCallback(
@@ -59,9 +59,6 @@ export function ChatScreen({
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
-      {isDesktop && (
-        <DesktopChatHeader sessionId={sessionId} onNewConversation={startNewSession} />
-      )}
       <MessageList
         messages={messages}
         onChoice={handleChoice}
@@ -74,7 +71,6 @@ export function ChatScreen({
         sendStatus={sendStatus}
         onSend={handleSend}
         onSendAudio={handleSendAudio}
-        showHint={isDesktop}
       />
     </div>
   );
