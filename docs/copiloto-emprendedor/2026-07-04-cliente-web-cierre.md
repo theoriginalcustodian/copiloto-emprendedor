@@ -66,3 +66,29 @@ Verificado sólido: aislamiento cross-tenant en las rutas nuevas (`/catalog`, `/
 
 - **Un solo path:** `bash deploy/copiloto/deploy.sh` (desde la PC) → sincroniza worktree → VPS, buildea el frontend (fetch-fonts + npm + vite), sourcea JWT + GROQ server-side, reinicia `uc-copiloto-web`. Idempotente.
 - La PWA se sirve **mismo-origen** por el front-door FastAPI (`_mount_spa`) → sin CORS.
+
+## 🩹 Corrección de fidelidad móvil (2026-07-04, commit `190847d`)
+
+> **Honestidad:** este cierre había declarado el móvil "E2E-validado" cuando en realidad **nunca se corrió un gate visual en viewport de celu contra los screenshots del diseño** — se gateó *función* (login/chat/voz-dispatch), no *fidelidad*. El operador reportó los defectos y se corrigieron de raíz + **se verificó con Playwright a 390px sobre el VPS** (la disciplina que faltaba). Causa raíz común: íconos como emoji (el glifo `▦` de Apps renderizaba más chico) y el overlay de grabación atrapado por el `backdrop-filter` del composer (containing-block trap de `position:fixed`).
+
+**Defectos reportados — arreglados + verificados en vivo:**
+- **Mic** a la izquierda → a la **derecha** del composer (`[texto][mic][enviar]`), SVG del diseño.
+- **Tab-bar** con emoji (Apps más chico) → **4 íconos SVG** del diseño (`navIcons`), mismo tamaño.
+- **Voz** (ventanita, sin waveform/cancelar) → **overlay full-screen por PORTAL a `<body>`** + waveform SVG real (gradiente + 6 curvas) + timer + hint + locked.
+- **Skins**: el switcher **funciona** (verificado ai→daylight→aurora en vivo, persiste). El "no cambian" del operador fue **service-worker cacheado** (build viejo) — no había bug de código. Fix operativo: cerrar/reabrir la PWA tras redeploy limpia el SW.
+- **Hide-on-scroll** (EXTRACT §2.3): estaba omitido a propósito → **implementado** (tab-bar overlay desliza + clearance del contenido animado = mirror del composer).
+- **Placeholder** "Escribí tu mensaje…" → "Escribile a tu copiloto…".
+
+**Barrido de fidelidad (subagentes con ownership exclusiva):**
+- **Conexiones**: lista 1-col agrupada por categoría con marcas-letra → **grilla 2-col con íconos de marca** (`ServiceIcon`) + cards compactas.
+- **Apps**: "Apps" + genérico → "Tus apps" + íconos de marca + "Salir del modo" + "Conectar más".
+- **HITL card**: íconos emoji → íconos de marca (MP/Calendar/Instagram) + ícono de alerta en irreversible.
+- **Chat header**: botón "Salir" redundante **removido** (resuelve deuda #4 de arriba; logout vive en Cuenta).
+- Nuevos sets SVG compartidos `design-system/{serviceIcons,navIcons}.tsx` (verbatim del diseño, fuera del gate no-hex).
+
+**Verificación:** build + **374 tests** verdes (49 files, +5 de la wave) · gate visual Playwright 390px en ai/daylight/aurora + Conexiones + Apps.
+
+**Deuda nueva (visible):**
+- **Apps = pantalla vs bottom-sheet**: el diseño abre "Tus apps" como bottom-sheet sobre el chat; hoy es pantalla propia (tab). Convertirlo cambia la navegación → **decisión del operador**, no se tocó unilateralmente.
+- **Tenant desechable** `vgate@uc.local` creado para el gate visual → limpiar en el cleanup pre-prod (junto con `e2e-web-cliente@uc.local`).
+- `googledocs`/`googlesheets` caen a marca-letra (no están entre los 6 íconos de marca del diseño) — degradación correcta, no bug.
