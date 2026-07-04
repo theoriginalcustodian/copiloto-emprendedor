@@ -105,6 +105,9 @@ async def _serve() -> None:
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, mp_app=mp_app, gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
+        # `transcribe` sin inyectar -- `create_web_app` usa su default de producción
+        # (`_default_transcribe`/GroqSTT, lazy sobre `GROQ_API_KEY`); menos invasivo que construirlo
+        # acá y no duplica el criterio "cuál transcriber usa /chat/audio" en dos módulos.
     )
 
     server = uvicorn.Server(uvicorn.Config(app, host=WEB_HOST, port=WEB_PORT, log_level="info"))

@@ -92,7 +92,39 @@ fi
 REMOTE_JWT
 
 echo "==> [3/7] pin de deps (idempotente: pip no reinstala si ya satisface el rango)"
-ssh "$HOST" "'$VENV/bin/pip' install -q 'PyJWT>=2.8.0' 'fastapi>=0.110' 'uvicorn>=0.29' 'httpx>=0.27' 'pydantic>=2'"
+# python-multipart: dep de FastAPI para Form(...)/File(...) (/chat/audio, voz-backend) -- sin ella
+# FastAPI levanta RuntimeError al arrancar ("Form data requires python-multipart to be installed").
+ssh "$HOST" "'$VENV/bin/pip' install -q 'PyJWT>=2.8.0' 'fastapi>=0.110' 'uvicorn>=0.29' 'httpx>=0.27' 'pydantic>=2' 'python-multipart>=0.0.9'"
+
+echo "==> [3.5/7] GROQ_API_KEY server-side (clinic-agent.env -> copiloto.env), idempotente, sin imprimir el valor"
+# La voz de /chat/audio (voz-backend) reusa la MISMA key que ya usa el agente de agenda (clinic-
+# management) para su STT -- vive server-side en ${ENVDIR}/clinic-agent.env (nunca en este repo ni
+# en el chat). Copiarla a copiloto.env es la fuente de verdad de ESTE servicio -- si mañana rota,
+# rotar en clinic-agent.env y re-correr este deploy la propaga, sin duplicar el secreto a mano.
+ssh "$HOST" bash -s -- "$ENVDIR" <<'REMOTE_GROQ'
+set -euo pipefail
+ENVDIR="$1"
+SRC="$ENVDIR/clinic-agent.env"
+DST="$ENVDIR/copiloto.env"
+[ -f "$DST" ] || { echo "FALTA $DST" >&2; exit 1; }
+if [ ! -f "$SRC" ]; then
+  echo "AVISO: no existe $SRC -- /chat/audio quedará SIN configurar (503 'voz no configurada'), el resto del front-door sigue OK" >&2
+else
+  SECRET="$(grep '^GROQ_API_KEY=' "$SRC" | head -1 | cut -d= -f2-)"
+  if [ -z "$SECRET" ]; then
+    echo "AVISO: $SRC no tiene GROQ_API_KEY -- /chat/audio quedará SIN configurar (503), el resto del front-door sigue OK" >&2
+  else
+    if grep -q '^GROQ_API_KEY=' "$DST"; then
+      sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=${SECRET}|" "$DST"
+    else
+      printf 'GROQ_API_KEY=%s\n' "$SECRET" >> "$DST"
+    fi
+    unset SECRET
+    chmod 600 "$DST"
+    echo "GROQ_API_KEY: OK (presente en $DST, valor NO impreso)"
+  fi
+fi
+REMOTE_GROQ
 
 echo "==> [4/7] provision.py (idempotente: CREATE ... IF NOT EXISTS / DROP+CREATE policy / GRANT repetible)"
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_PROVISION'

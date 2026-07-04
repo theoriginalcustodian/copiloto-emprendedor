@@ -16,6 +16,7 @@ tenants sin fugas. Todas las deps (`require_tenant`, `conn_factory`, `gotrue`, `
 `temporal_client`) se inyectan desde el composition root -> testeable sin Temporal/DB/GoTrue reales."""
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -25,7 +26,7 @@ ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/con
 sys.path.insert(0, str(ARCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -35,6 +36,8 @@ from backend.agent.inbound_router import route_inbound
 from catalog import build_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
+from clients.agent.providers.stt import GroqSTT
 from mp_credential_store import MpCredentialStore
 from onboarding import InvalidCredentials, signup_and_provision
 from reply_store import read_replies as _read_replies
@@ -123,6 +126,24 @@ class ChatIn(BaseModel):
     kind: str = "text"
 
 
+def _filename_for_content_type(content_type: str) -> str:
+    """Deriva el filename (`audio.<ext>`) del Content-Type MIME real que sube el browser
+    (`audio/webm`, `audio/ogg`, `audio/mp4`, ...) -- Groq valida el formato por la EXTENSIÓN del
+    filename del multipart, no por el Content-Type (ver docstring de `GroqSTT`, spike S4/Motor C)."""
+    subtype = (content_type or "audio/ogg").split(";")[0].split("/")[-1] or "ogg"
+    return f"audio.{subtype}"
+
+
+def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
+    """Transcriber por default de `/chat/audio` (voz-backend): `GroqSTT` real. Se construye ACÁ
+    DENTRO -- recién se instancia/usa cuando `/chat/audio` recibe un request real, nunca al armar
+    la app (import-safety, mismo criterio que `serve.py`). Si falta `GROQ_API_KEY` en el env,
+    `GroqSTT.transcribe` levanta `RuntimeError` explícito (ver stt.py); la ruta lo traduce a 503
+    sin romper el resto del front-door (texto por `/chat` sigue andando igual)."""
+    return GroqSTT().transcribe(audio_bytes, filename=_filename_for_content_type(content_type),
+                                content_type=content_type or "audio/ogg")
+
+
 class SignupIn(BaseModel):
     email: str
     password: str
@@ -135,7 +156,8 @@ class LoginIn(BaseModel):
 
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
-                   read_replies_fn: Callable[[str, str, int], list] | None = None) -> FastAPI:
+                   read_replies_fn: Callable[[str, str, int], list] | None = None,
+                   transcribe: Callable[[bytes, str], str] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
     `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `MP_FERNET_KEY` del
@@ -145,9 +167,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     `/mp/connect` (mismo patrón que `mp_connect.py` CLI, `state = crypto.encrypt(cliente_id)`).
     `composio_gateway` (`ComposioGateway`): habilita `/composio/connect?service=<toolkit>` (onboarding
     per-tenant, `user_id=cliente_id`) y alimenta `composio_connected` en `/me`. Ambos inyectados desde
-    el composition root (Task 11) — cero hardcoding, testeables con fakes."""
+    el composition root (Task 11) — cero hardcoding, testeables con fakes.
+
+    `transcribe(audio_bytes, content_type) -> str` (voz-backend): STT de `/chat/audio`. Si no se
+    inyecta, usa `_default_transcribe` (GroqSTT real, construido LAZY -- import-safe aunque
+    `GROQ_API_KEY` no esté seteado; solo revienta si `/chat/audio` recibe un request real sin key,
+    y ahí la ruta lo traduce a 503). Los tests inyectan un fake."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
+    transcribe = transcribe or _default_transcribe
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
@@ -161,6 +189,36 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             task_queue=AGENT_B_TASK_QUEUE,
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
+
+    @app.post("/chat/audio")
+    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
+                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
+        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
+        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
+        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
+        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
+        rutas `def`)."""
+        audio_bytes = await audio.read()
+        content_type = audio.content_type or "audio/ogg"
+        try:
+            transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
+        except RuntimeError as e:
+            # GroqSTT levanta RuntimeError explícito si falta GROQ_API_KEY (ver stt.py) -- 503 (no
+            # configurado), NO 500: el resto del front-door (texto por /chat) sigue andando igual.
+            raise HTTPException(status_code=503, detail="voz no configurada") from e
+        except _STT_API_ERRORS as e:
+            raise HTTPException(status_code=502, detail="error del servicio de transcripción") from e
+        transcript = (transcript or "").strip()
+        if not transcript:
+            # Vacío O solo-espacios (el STT no captó nada útil) -> 422; nunca despachamos un
+            # mensaje en blanco al agente.
+            raise HTTPException(status_code=422, detail="no se entendió el audio")
+        wf_id = await route_inbound(
+            temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
+            task_queue=AGENT_B_TASK_QUEUE,
+            raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
+        return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
 
     # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
     # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
