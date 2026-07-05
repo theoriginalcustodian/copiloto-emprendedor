@@ -59,3 +59,26 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
         query = entities.get("query") or "is:unread"
         return Read(slug=FETCH_SLUG, arguments={"query": query, "max_results": 5}, summarize=_summarize_fetch)
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
+TOOLS = {"gmail_send": "send", "gmail_fetch": "fetch"}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "gmail_send",
+        "description": "Envía un correo por Gmail. Devuelve un borrador enlazable para revisar antes de enviar.",
+        "parameters": {"type": "object", "properties": {
+            "to": {"type": "string", "description": "email destino"},
+            "subject": {"type": "string", "description": "asunto"},
+            "body": {"type": "string", "description": "cuerpo del mail (podés incluir un link de pago)"}},
+            "required": ["to", "body"]}}},
+    {"type": "function", "function": {
+        "name": "gmail_fetch",
+        "description": "Busca/lee mails recientes por query de Gmail (ej 'is:unread', 'from:juan').",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "búsqueda estilo Gmail"}},
+            "required": []}}},
+]
+
+WRITE_OPS = frozenset({"send"})
