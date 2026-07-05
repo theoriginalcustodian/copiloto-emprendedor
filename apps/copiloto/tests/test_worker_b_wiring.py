@@ -125,6 +125,12 @@ def test_wiring_registers_react_domain_and_activities():
     assert callable(d["dispatcher"])                          # fallback dispatch/tests legacy sigue vivo
     assert any(s["function"]["name"] == "mp_charge" for s in d["tool_schemas"])
 
+    # react NO concatena los PROMPT_FRAGMENT (formato dispatch action/entities): en tool-calling son ruido,
+    # los TOOL_SCHEMAS ya describen cada tool (auditoría 2026-07-05). El prompt del domain es EXACTAMENTE el react.
+    from system_prompt import SYSTEM_PROMPT_REACT  # noqa: PLC0415
+    assert d["system_prompt"] == SYSTEM_PROMPT_REACT
+    assert 'action="tool_action"' not in d["system_prompt"]
+
     names = {getattr(a, "__name__", "") for a in cfg["activities"]}
     assert {"call_llm_tools", "execute_tool", "recall_memory"} <= names
     assert call_llm_tools in cfg["activities"] and execute_tool in cfg["activities"]
