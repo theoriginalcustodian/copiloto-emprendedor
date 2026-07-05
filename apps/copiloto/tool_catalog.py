@@ -14,6 +14,7 @@ excepción de negocio (retry ∞ del workflow), ver `agente-loop-tool-failure-re
 from __future__ import annotations
 
 import re
+import secrets
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -101,11 +102,11 @@ def _artifact_for(name: str, res: dict, arguments: dict) -> "Artifact | None":
         url = f"https://mail.google.com/mail/u/0/#all/{mid}" if mid else "https://mail.google.com/mail/u/0/"
         return Artifact(kind="email_draft", data={"url": url, "to": arguments.get("to"),
                                                   "subject": arguments.get("subject")})
-    if name == "docs_create":
+    if name == "docs_create_doc":
         url = data.get("documentUrl") or data.get("webViewLink") or (
             f"https://docs.google.com/document/d/{data.get('documentId')}" if data.get("documentId") else None)
         return Artifact(kind="doc", data={"url": url}) if url else None
-    if name == "sheets_create" or name.startswith("sheets_"):
+    if name.startswith("sheets_"):
         sid = data.get("spreadsheetId") or data.get("spreadsheet_id")
         url = data.get("spreadsheetUrl") or (f"https://docs.google.com/spreadsheets/d/{sid}" if sid else None)
         return Artifact(kind="sheet", data={"url": url}) if url else None
@@ -189,8 +190,41 @@ def _run_calendar_book(name, arguments, ctx, confirmed, idem_key, gateway, now_i
 
 
 def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, mp_dedup_factory):
-    """STUB: Task 8 lo reemplaza (dedup store `uc_factory.mp_link_dedup` + artifact `payment_link`)."""
-    raise NotImplementedError("mp_charge se completa en Task 8 (dedup store)")
+    """Genera un link de cobro MercadoPago. Dedup app-side (spike C, Task 7): MP /checkout/preferences NO
+    deduplica, así que un retry at-least-once de Temporal con el mismo `idem_key` cachea (SELECT) antes de
+    volver a llamar a la gateway (POST) — nunca un 2do link para el mismo paso del workflow."""
+    amount = arguments.get("amount")
+    concept = arguments.get("concept") or "Cobro"
+    if ctx.mp_gateway is None or ctx.mp_cred_store is None:
+        return ToolResult(tool_call_id=idem_key, status="error",
+                          observation={"error": "MercadoPago no esta disponible en tu cuenta"})
+    if not amount:
+        return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "falta el monto"})
+    if not confirmed:
+        return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
+                          observation={"preview": f"generar link de cobro por ${amount} ({concept})"})
+    creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
+    if not creds:
+        return ToolResult(tool_call_id=idem_key, status="error",
+                          observation={"error": "conecta tu cuenta de MercadoPago primero"})
+    dedup = mp_dedup_factory(ctx.cliente_id) if mp_dedup_factory else None
+    if dedup:                                             # spike C: MP no deduplica -> dedup app-side
+        cached = dedup.get(idem_key)
+        if cached:
+            return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                              observation={"result": "link de cobro listo", "init_point": cached["init_point"]},
+                              artifact=Artifact(kind="payment_link",
+                                                data={"url": cached["init_point"], "amount": amount, "concept": concept}))
+    ext_ref = f"copiloto-{secrets.token_hex(4)}"
+    notif = f"{ctx.mp_webhook_base}/mp/webhook?cid={ctx.cliente_id}&seller={ctx.mp_seller_user_id}"
+    link = ctx.mp_gateway.create_payment_link(creds["access_token"], amount=amount,
+                                              external_reference=ext_ref, notification_url=notif, title=concept)
+    if dedup:
+        dedup.save(idem_key, preference_id=link.get("id"), init_point=link["init_point"], external_reference=ext_ref)
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": "link de cobro listo", "init_point": link["init_point"]},
+                      artifact=Artifact(kind="payment_link",
+                                        data={"url": link["init_point"], "amount": amount, "concept": concept}))
 
 
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
