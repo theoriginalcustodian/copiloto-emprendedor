@@ -13,6 +13,16 @@
   padding: 6px 16px 24px;
 }
 
+/* Los hijos directos NO deben comprimirse: `.account-screen` es el contenedor scrolleable
+ * (overflow-y:auto). Sin esto, cuando el contenido supera el alto del viewport el navegador ACHICA
+ * los tiles (flex-shrink:1 por defecto) para que "entre" en vez de scrollear, y como
+ * `.account-screen__list` tiene overflow:hidden la última fila queda RECORTADA — bug reportado en la
+ * fila "Notificaciones" (verificado con Playwright a viewport bajo: el tile medía 82px con 150px de
+ * contenido). Con flex-shrink:0 el contenedor scrollea y cada tile conserva su alto natural. */
+.account-screen > * {
+  flex-shrink: 0;
+}
+
 /* ---------- Header (perfil) ----------
  * 2 bloques verticales (diseño `Copiloto App.dc.html:409-418`): H1 solo arriba, fila identidad
  * (avatar+nombre+email) debajo — NO una sola fila horizontal H1+avatar. */
