@@ -300,9 +300,160 @@ class ConversationWorkflow:
 
         return result.done
 
-    # ── modo 'react': loop tool-calling con gate cross-turn (STUB — Task 12 lo implementa de verdad) ──
+    # ── modo 'react': loop tool-calling con gate cross-turn (Task 12, el corazón) ────────────────────
+    REACT_MAX_STEPS = 8   # hard-cap del loop dentro de un turno (guardrail terminación §5.5)
+
     async def _run_react_turn(self, config: dict, msg: dict, domain: str, channel: str,
                               channel_ref: str, cliente_id: str) -> bool:
-        """STUB de Task 11: delega al turno dispatch (placeholder mientras Task 12 implementa el loop ReAct
-        real). Existe solo para que `run()` pueda bifurcar por `engine_mode` sin romper import/tipo."""
-        return await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
+        """Loop ReAct de UN turno. El scratchpad (messages) es durable en self._state['react']. Un write abre
+        el gate cross-turn: parquea + card + sale; el callback confirm/cancel reingresa por este mismo método.
+        `turn_ix` = índice de turno GLOBAL y monótono (sobrevive continue-as-new) → base del idem_key único."""
+        kind = msg.get("kind", "text")
+        user_text = msg.get("text", "")
+        parked = self._state.get("react")
+        conv = {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref}
+
+        # ── reingreso de confirmación (callback determinístico, SIN LLM) ──────────────────────────
+        if parked and kind == "callback":
+            self._state.pop("react", None)
+            messages = list(parked["messages"])
+            pend = parked["pending"]                 # {tool_call, turn_ix, step}
+            idem = self._react_idem_key(pend["turn_ix"], pend["step"])   # MISMA key que el gate (B1)
+            if user_text == "confirm":
+                tr = await workflow.execute_activity(
+                    "execute_tool",
+                    {"domain": domain, "name": pend["tool_call"]["name"], "arguments": pend["tool_call"]["arguments"],
+                     "conv": conv, "confirmed": True, "idem_key": idem},
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+                messages.append(_assistant_tool_call_msg(pend["tool_call"]))
+                messages.append(_tool_result_msg(pend["tool_call"]["id"], tr["observation"]))
+                return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
+                                              messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
+                                              last_artifact=tr.get("artifact"))
+            # cancel -> CORTE DETERMINÍSTICO (spike B): 1 llamada tool_choice='none', solo texto.
+            messages.append(_assistant_tool_call_msg(pend["tool_call"]))
+            messages.append(_tool_result_msg(pend["tool_call"]["id"], {"status": "cancelled_by_user"}))
+            closing = await workflow.execute_activity(
+                "call_llm_tools",
+                {"domain": domain, "messages": messages, "tool_choice": "none",
+                 "system_extra": self._state.get("react_mem_ctx", "")},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            await self._react_finish(channel, channel_ref, cliente_id,
+                                     closing.get("content") or "Listo, lo cancelé.", None)
+            return False
+
+        # ── turno de TEXTO con un gate abierto = supersede (major #5): el pending viejo se descarta ────
+        #    (nunca sobrevive a un turno nuevo → una card stale ya no puede re-disparar el write abandonado).
+        if parked and kind != "callback":
+            self._state.pop("react", None)   # cancel implícito; la card vieja queda inerte (spike B S4: replanifica)
+
+        # ── turno normal: recall de memoria 1×/turno (major #3), luego arranca el scratchpad ──────────
+        turn_ix = self._turns_before + self._cursor            # global y monótono (base del idem_key, B1)
+        await self._react_recall(config, domain, cliente_id, channel_ref, user_text)
+        self._history.append({"role": "user", "content": user_text})   # memoria/CAN (major #4)
+        messages = [{"role": "user", "content": user_text}]
+        return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
+                                      messages, start_turn_ix=turn_ix, start_step=0, last_artifact=None)
+
+    def _react_idem_key(self, turn_ix: int, step: int) -> str:
+        """idem_key único por (sesión, turno, paso) y ESTABLE para el retry at-least-once del MISMO activity
+        (B1). workflow_id es constante en la sesión; turn_ix es global/monótono (sobrevive CAN) → dos cobros
+        en turnos distintos NUNCA colisionan; el retry del mismo cobro reusa la misma key → dedup correcto."""
+        return f"{workflow.info().workflow_id}-{turn_ix}-{step}"
+
+    async def _react_recall(self, config: dict, domain: str, cliente_id: str, channel_ref: str,
+                            user_text: str) -> None:
+        """Recall de memoria de largo plazo 1×/TURNO (no por iteración → preserva el prefijo de prompt-cache,
+        gate-blocker #3). Best-effort (max=1, jamás cuelga). Persiste el Context Block en self._state para que
+        sobreviva la pausa del gate y el continue-as-new. Gate config['memory']."""
+        if not config.get("memory"):
+            self._state["react_mem_ctx"] = ""
+            return
+        try:
+            out = await workflow.execute_activity(
+                "recall_memory",
+                {"domain": domain, "cliente_id": cliente_id, "thread_ref": channel_ref, "query": user_text},
+                start_to_close_timeout=MEMORY_TIMEOUT, retry_policy=_MEMORY_RETRY)
+            self._state["react_mem_ctx"] = (out or {}).get("context", "") or ""
+        except ActivityError:
+            self._state["react_mem_ctx"] = self._state.get("react_mem_ctx", "")   # best-effort: no romper el turno
+
+    async def _react_loop(self, config: dict, domain: str, conv: dict, channel: str, channel_ref: str,
+                          cliente_id: str, messages: list, *, start_turn_ix: int, start_step: int,
+                          last_artifact) -> bool:
+        step = start_step
+        last_sig = None                                          # detección de no-progreso (major #7)
+        while step < self.REACT_MAX_STEPS:
+            resp = await workflow.execute_activity(
+                "call_llm_tools",
+                {"domain": domain, "messages": messages, "tool_choice": "auto",
+                 "system_extra": self._state.get("react_mem_ctx", "")},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            tool_calls = resp.get("tool_calls") or []
+            if not tool_calls:                                   # el modelo cerró con texto
+                await self._react_finish(channel, channel_ref, cliente_id,
+                                         resp.get("content") or "Listo.", last_artifact)
+                return False
+            tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
+            sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
+            if sig == last_sig:
+                await self._react_finish(channel, channel_ref, cliente_id,
+                                         "Me quedé trabado repitiendo lo mismo, ¿lo intentamos de otra forma?", None)
+                return False
+            last_sig = sig
+            tr = await workflow.execute_activity(
+                "execute_tool",
+                {"domain": domain, "name": tc["name"], "arguments": tc["arguments"], "conv": conv,
+                 "confirmed": False, "idem_key": self._react_idem_key(start_turn_ix, step)},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            if tr.get("status") == "needs_confirmation":         # GATE: parquear + card + salir del turno
+                self._state["react"] = {"messages": messages,
+                                        "pending": {"tool_call": tc, "turn_ix": start_turn_ix, "step": step}}
+                preview = (tr.get("observation") or {}).get("preview") or "¿Confirmás esta acción?"
+                await self._react_send(channel, channel_ref, cliente_id, preview,
+                                       tr.get("artifact"), choices=_CONFIRM_CHOICES)  # NO apendea history (no terminal)
+                return False                                     # el confirm/cancel reingresa por _run_react_turn
+            messages.append(_assistant_tool_call_msg(tc))
+            messages.append(_tool_result_msg(tc["id"], tr.get("observation") or {}))
+            if tr.get("artifact"):
+                last_artifact = tr["artifact"]
+            step += 1
+        # tope de pasos: cerrar con texto de fallo (guardrail, jamás loop silencioso)
+        await self._react_finish(channel, channel_ref, cliente_id,
+                                 "Se me hizo largo esto, ¿lo intentamos de nuevo por partes?", None)
+        return False
+
+    async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact) -> None:
+        """Cierre TERMINAL del turno (texto final, no la card del gate): apendea a self._history para memoria/CAN
+        (major #4) y despacha por el canal con el artifact clicable."""
+        self._history.append({"role": "assistant", "content": text})
+        await self._react_send(channel, channel_ref, cliente_id, text, artifact)
+
+    async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
+                          choices=None) -> None:
+        card = dict(artifact) if artifact and artifact.get("kind") != "pending" else {}
+        await workflow.execute_activity(
+            "send_channel_message",
+            {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+             "text": text, "choices": choices or [], "card": card},
+            start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+
+
+# ── helpers module-level (fuera de la clase, deterministas, sin I/O) ─────────────────────────────────
+_CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cancelar", "value": "cancel"}]
+
+
+def _assistant_tool_call_msg(tc: dict) -> dict:
+    """Mensaje 'assistant' con el tool_call, en el shape que la API espera para reinyectar el scratchpad."""
+    return {"role": "assistant", "content": None, "tool_calls": [
+        {"id": tc["id"], "type": "function",
+         "function": {"name": tc["name"], "arguments": json.dumps(tc["arguments"])}}]}
+
+
+def _tool_result_msg(tool_call_id: str, observation: dict) -> dict:
+    return {"role": "tool", "tool_call_id": tool_call_id, "content": json.dumps(observation, ensure_ascii=False)}
+
+
+def _tool_signature(tc: dict) -> str:
+    """Firma canónica de un tool-call (nombre + args ordenados) para la detección de no-progreso. Determinista."""
+    return tc.get("name", "") + "|" + json.dumps(tc.get("arguments") or {}, sort_keys=True, ensure_ascii=False)
