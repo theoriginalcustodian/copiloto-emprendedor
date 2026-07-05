@@ -29,6 +29,7 @@ camino normal (no se toca).
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import timedelta
 
 from temporalio import workflow
@@ -186,83 +187,14 @@ class ConversationWorkflow:
 
             msg = self._inbox[self._cursor]
             self._cursor += 1
-            user_text = msg.get("text", "")
-            kind = msg.get("kind", "text")
-
-            # Nota de voz: transcribir ANTES de seguir (el `text` traía el file_id, no el contenido). El STT va
-            # en una activity (I/O). Si no se pudo transcribir -> pedir texto, sin romper el hilo ni el history.
-            if kind == "needs_stt":
-                stt = await workflow.execute_activity(
-                    "transcribe_voice", {"channel": channel, "file_id": user_text},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-                transcript = ((stt or {}).get("text") or "").strip()
-                if not transcript:
-                    await workflow.execute_activity(
-                        "send_channel_message",
-                        {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
-                         "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
-                        start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-                    continue
-                user_text = transcript                  # de acá en más es texto normal (lo clasifica el LLM)
-                kind = "text"
-
-            prior = list(self._history)                 # contexto ANTES de este mensaje (resuelve confirmaciones cortas)
-            self._history.append({"role": "user", "content": user_text})
-
-            # 1) intent. Un botón (kind='callback') es una decisión DETERMINÍSTICA: el value ya es conocido ->
-            #    NO se llama al LLM (puro, replay-safe). Texto/voz -> el LLM lo clasifica.
-            if kind == "callback":
-                intent = {"action": "callback", "entities": {"value": user_text},
-                          "confidence": 1.0, "reply_es": ""}
+            if config.get("engine_mode") == "react":
+                done = await self._run_react_turn(config, msg, domain, channel, channel_ref, cliente_id)
             else:
-                llm = await workflow.execute_activity(
-                    "call_llm", {"domain": domain, "user": user_text, "history": prior[-20:],
-                                 "cliente_id": cliente_id, "thread_ref": channel_ref},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-                intent = llm.get("parsed") or {
-                    "action": "clarify", "entities": {},
-                    "reply_es": "Disculpá, no te entendí bien. ¿Me lo podés repetir?"}
-
-            # 2) dispatcher del dominio -> DispatchResult (ejecuta las tools de dominio: resolve/slots/book/...)
-            disp = await workflow.execute_activity(
-                "dispatch_intent",
-                {"domain": domain, "intent": intent, "state": self._state,
-                 "conv": {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
-                          "user": user_text}},
-                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-            result = DispatchResult.from_dict(disp)
-            if result.state_patch:
-                self._state.update(result.state_patch)
-            reply = result.reply_text
-
-            # 3) HITL: escalar a staff y esperar su decision (event-driven, durable)
-            if result.escalate:
-                await workflow.execute_activity(
-                    "notify_staff",
-                    {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
-                     "reason": result.escalate_reason, "summary": user_text, "reply_to_patient": reply},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-                self._awaiting_staff = True
-                try:
-                    await workflow.wait_condition(lambda: self._staff_decision is not None, timeout=STAFF_TIMEOUT)
-                except asyncio.TimeoutError:
-                    pass
-                self._awaiting_staff = False
-                if self._staff_decision:
-                    reply = self._staff_decision.get("reply") or reply
-                    self._staff_decision = None
-
-            # 4) responder por el canal (con choices si el dominio ofrece opciones discretas; vacío tras HITL)
-            if reply:
-                self._history.append({"role": "assistant", "content": reply})
-                await workflow.execute_activity(
-                    "send_channel_message",
-                    {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
-                     "text": reply, "choices": result.choices, "card": result.card},
-                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+                done = await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
 
             # Memoria de largo plazo: persistir en BATCH (~20 msgs ≈ 10 turnos) para no saturar la extracción
             # LLM server-side de Graphity (cada add_messages dispara una extracción). Gate config['memory'].
+            # Común a AMBOS modos (dispatch/react): ambos apendean a self._history dentro de su _run_*_turn.
             if config.get("memory") and len(self._history) - self._remembered_upto >= 20:
                 try:
                     await workflow.execute_activity(
@@ -275,7 +207,7 @@ class ConversationWorkflow:
                     pass   # best-effort: remember lento/caído NO cuelga el loop; el cursor NO avanza →
                            # el remanente se reintenta en el próximo batch/flush (no se pierden mensajes)
 
-            if result.done:
+            if done:
                 self._closed = True
                 break
 
@@ -283,3 +215,94 @@ class ConversationWorkflow:
         # config['memory'] dentro de _flush_memory. Sin esto, el último batch (<20 msgs) se perdería.
         await self._flush_memory(config, domain, cliente_id, channel_ref)
         return {"closed": self._closed, "turns": self._turns_before + self._cursor, "state": self._state}
+
+    # ── modo 'dispatch': intent-based, el motor ORIGINAL (byte-identical) ────────────────────────────
+    async def _run_dispatch_turn(self, config: dict, msg: dict, domain: str, channel: str,
+                                 channel_ref: str, cliente_id: str) -> bool:
+        """Turno del motor INTENT-BASED (modo 'dispatch', default): STT si hace falta -> call_llm (clasifica
+        intent) -> dispatch_intent (dominio) -> HITL si escala -> responder por el canal. Devuelve `done`
+        (True -> cerrar la sesión). Es EXACTAMENTE el cuerpo de turno que vivía en `run()` antes de la
+        bifurcación por engine_mode (Task 11) — cero cambio de comportamiento, solo extraído a método."""
+        user_text = msg.get("text", "")
+        kind = msg.get("kind", "text")
+
+        # Nota de voz: transcribir ANTES de seguir (el `text` traía el file_id, no el contenido). El STT va
+        # en una activity (I/O). Si no se pudo transcribir -> pedir texto, sin romper el hilo ni el history.
+        if kind == "needs_stt":
+            stt = await workflow.execute_activity(
+                "transcribe_voice", {"channel": channel, "file_id": user_text},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            transcript = ((stt or {}).get("text") or "").strip()
+            if not transcript:
+                await workflow.execute_activity(
+                    "send_channel_message",
+                    {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+                     "text": "Uy, no pude escuchar bien tu audio 🙉. ¿Me lo escribís?", "choices": []},
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+                return False
+            user_text = transcript                  # de acá en más es texto normal (lo clasifica el LLM)
+            kind = "text"
+
+        prior = list(self._history)                 # contexto ANTES de este mensaje (resuelve confirmaciones cortas)
+        self._history.append({"role": "user", "content": user_text})
+
+        # 1) intent. Un botón (kind='callback') es una decisión DETERMINÍSTICA: el value ya es conocido ->
+        #    NO se llama al LLM (puro, replay-safe). Texto/voz -> el LLM lo clasifica.
+        if kind == "callback":
+            intent = {"action": "callback", "entities": {"value": user_text},
+                      "confidence": 1.0, "reply_es": ""}
+        else:
+            llm = await workflow.execute_activity(
+                "call_llm", {"domain": domain, "user": user_text, "history": prior[-20:],
+                             "cliente_id": cliente_id, "thread_ref": channel_ref},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            intent = llm.get("parsed") or {
+                "action": "clarify", "entities": {},
+                "reply_es": "Disculpá, no te entendí bien. ¿Me lo podés repetir?"}
+
+        # 2) dispatcher del dominio -> DispatchResult (ejecuta las tools de dominio: resolve/slots/book/...)
+        disp = await workflow.execute_activity(
+            "dispatch_intent",
+            {"domain": domain, "intent": intent, "state": self._state,
+             "conv": {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
+                      "user": user_text}},
+            start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+        result = DispatchResult.from_dict(disp)
+        if result.state_patch:
+            self._state.update(result.state_patch)
+        reply = result.reply_text
+
+        # 3) HITL: escalar a staff y esperar su decision (event-driven, durable)
+        if result.escalate:
+            await workflow.execute_activity(
+                "notify_staff",
+                {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref,
+                 "reason": result.escalate_reason, "summary": user_text, "reply_to_patient": reply},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            self._awaiting_staff = True
+            try:
+                await workflow.wait_condition(lambda: self._staff_decision is not None, timeout=STAFF_TIMEOUT)
+            except asyncio.TimeoutError:
+                pass
+            self._awaiting_staff = False
+            if self._staff_decision:
+                reply = self._staff_decision.get("reply") or reply
+                self._staff_decision = None
+
+        # 4) responder por el canal (con choices si el dominio ofrece opciones discretas; vacío tras HITL)
+        if reply:
+            self._history.append({"role": "assistant", "content": reply})
+            await workflow.execute_activity(
+                "send_channel_message",
+                {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+                 "text": reply, "choices": result.choices, "card": result.card},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+
+        return result.done
+
+    # ── modo 'react': loop tool-calling con gate cross-turn (STUB — Task 12 lo implementa de verdad) ──
+    async def _run_react_turn(self, config: dict, msg: dict, domain: str, channel: str,
+                              channel_ref: str, cliente_id: str) -> bool:
+        """STUB de Task 11: delega al turno dispatch (placeholder mientras Task 12 implementa el loop ReAct
+        real). Existe solo para que `run()` pueda bifurcar por `engine_mode` sin romper import/tipo."""
+        return await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
