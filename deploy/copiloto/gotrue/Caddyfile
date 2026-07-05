@@ -1,0 +1,17 @@
+# deploy/copiloto/gotrue/Caddyfile — proxy DROP-IN de la GoTrue dedicada.
+# Mapea /auth/v1/* -> GoTrue (que sirve /token, /admin/users, /health, /authorize...
+# en la raíz). Con esto `SUPABASE_URL=http://127.0.0.1:$COPILOTO_AUTH_PORT` es un
+# reemplazo transparente de la URL de fusion: el GoTrueAdmin del copiloto pega en
+# `{SUPABASE_URL}/auth/v1/...` sin ningún cambio de código.
+{
+	admin off
+	auto_https off
+}
+
+:{$COPILOTO_AUTH_PORT} {
+	handle_path /auth/v1/* {
+		reverse_proxy auth:9999
+	}
+	# health del propio proxy (no toca GoTrue) — para el gate del deploy
+	respond /healthz 200
+}

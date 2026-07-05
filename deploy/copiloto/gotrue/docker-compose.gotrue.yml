@@ -1,0 +1,108 @@
+# =============================================================================
+# deploy/copiloto/gotrue/docker-compose.gotrue.yml
+# GoTrue DEDICADA del copiloto (Opción C — aislada de fusion). Validado por el
+# spike `spikes/copiloto-dedicated-gotrue/` (VERDICT GREEN, 2026-07-05).
+#
+# Piezas: GoTrue v2.186.0 (misma que fusion → contrato de token idéntico) +
+# Postgres vanilla (schema `auth`, auto-migrado por GoTrue) + Caddy proxy que
+# mapea /auth/v1/* → GoTrue (hace la instancia DROP-IN para `SUPABASE_URL`, sin
+# tocar el código del copiloto que pega en `{SUPABASE_URL}/auth/v1/...`).
+#
+# CERO HARDCODING: todo sale del env_file (`copiloto-gotrue.env`, server-side,
+# escrito por deploy-gotrue.sh, chmod 600, NUNCA en el repo). Clonar para otro
+# tenant/región = otro env_file + otro COMPOSE_PROJECT_NAME, cero edición de este archivo.
+#
+# Frontera de seguridad: el proxy publica SOLO en loopback (127.0.0.1). El acceso
+# público (solo necesario para el redirect de Google OAuth, Fase 5) lo agrega el
+# Caddy host-level como vhost aparte — este stack nunca escucha en 0.0.0.0.
+# =============================================================================
+name: ${COMPOSE_PROJECT_NAME:-copiloto-auth}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${GOTRUE_PG_PASSWORD:?set in copiloto-gotrue.env}
+      POSTGRES_DB: ${GOTRUE_PG_DB:-postgres}
+    volumes:
+      - gotrue_pgdata:/var/lib/postgresql/data
+      - ./init-auth-schema.sql:/docker-entrypoint-initdb.d/00-auth-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${GOTRUE_PG_DB:-postgres} -t 5"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [authnet]
+
+  auth:
+    image: supabase/gotrue:${GOTRUE_TAG:-v2.186.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: "postgres://postgres:${GOTRUE_PG_PASSWORD}@db:5432/${GOTRUE_PG_DB:-postgres}?search_path=auth&sslmode=disable"
+      GOTRUE_DB_NAMESPACE: auth
+      # API_EXTERNAL_URL va SIN prefijo GOTRUE_ (excepción del compose oficial;
+      # el spike lo cazó: sin esta var GoTrue muere con "required key API_EXTERNAL_URL").
+      API_EXTERNAL_URL: ${COPILOTO_SUPABASE_URL:?}
+      GOTRUE_SITE_URL: ${GOTRUE_SITE_URL:?}
+      GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST:-}
+      GOTRUE_JWT_SECRET: ${COPILOTO_JWT_SECRET:?set in copiloto-gotrue.env}
+      GOTRUE_JWT_ISSUER: ${COPILOTO_JWT_ISSUER:?}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${GOTRUE_JWT_EXP:-3600}
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      # Sin SMTP: autoconfirm ON (el alta la media el backend por admin API; el
+      # reset de password se cubre por OTP-WhatsApp — deuda diferida con TODO).
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      # Self-signup bloqueado (paridad con fusion): alta = admin API del backend.
+      GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP:-true}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: "true"
+      GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: "10"
+      # --- Google OAuth (Fase 5) — SLOT: OFF hasta que el operador cargue las creds ---
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOTRUE_EXTERNAL_GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOTRUE_EXTERNAL_GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:-}
+    # Healthcheck (review B9): sin esto, en un reboot del VPS / restart fuera de deploy-gotrue.sh el
+    # proxy arrancaba antes de que GoTrue escuche → 502 transitorios en el login. La imagen trae
+    # BusyBox wget (verificado v1.37) → forma `-q -O /dev/null` (las long-options GNU no las soporta).
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9999/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [authnet]
+
+  proxy:
+    image: caddy:${CADDY_TAG:-2}
+    restart: unless-stopped
+    # forma larga (review B9): esperar a que GoTrue esté HEALTHY (no solo que el container exista),
+    # así el proxy nunca sirve 502 durante la ventana de arranque de GoTrue.
+    depends_on:
+      auth:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${COPILOTO_AUTH_PORT:-9997}:${COPILOTO_AUTH_PORT:-9997}"
+    environment:
+      COPILOTO_AUTH_PORT: ${COPILOTO_AUTH_PORT:-9997}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [authnet]
+
+volumes:
+  gotrue_pgdata:
+    name: ${COMPOSE_PROJECT_NAME:-copiloto-auth}_pgdata
+
+networks:
+  authnet:
+    name: ${COMPOSE_PROJECT_NAME:-copiloto-auth}_net

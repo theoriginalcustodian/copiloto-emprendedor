@@ -14,7 +14,6 @@
 #   UC_DEPLOY_PATH        path estable del código en el VPS   (default: /opt/uc-repos/copiloto)
 #   UC_ENV_DIR            dir de EnvironmentFile del VPS      (default: /etc/unreal-copilot)
 #   UC_VENV               venv Python del VPS                 (default: /opt/uc-copiloto-venv)
-#   UC_FUSION_SSH_ALIAS   alias SSH (en el VPS) hacia fusion   (default: fusion)
 #   COPILOTO_WEB_PORT     puerto donde escucha uvicorn         (default: 8099)
 #   UC_BASE_DOMAIN        dominio base (sslip.io del VPS)      (default: 178-105-191-1.sslip.io)
 #   UC_COPILOTO_SUBDOMAIN subdominio nuevo del front-door      (default: copiloto)
@@ -26,7 +25,6 @@ HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
 ENVDIR="${UC_ENV_DIR:-/etc/unreal-copilot}"
 VENV="${UC_VENV:-/opt/uc-copiloto-venv}"
-FUSION_ALIAS="${UC_FUSION_SSH_ALIAS:-fusion}"
 WEB_PORT="${COPILOTO_WEB_PORT:-8099}"
 BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
 COPILOTO_SUBDOMAIN="${UC_COPILOTO_SUBDOMAIN:-copiloto}"
@@ -58,38 +56,22 @@ test -f dist/index.html
 echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
 REMOTE_WEB
 
-echo "==> [2/7] SUPABASE_JWT_SECRET server-side (VPS -> ${FUSION_ALIAS}), idempotente, sin imprimir el valor"
-ssh "$HOST" bash -s -- "$ENVDIR" "$FUSION_ALIAS" <<'REMOTE_JWT'
+echo "==> [2/7] auth: repoint a la GoTrue DEDICADA — SOLO si el cutover ya se completó (marker); self-healing"
+# Gate de seguridad (review A2): repointear apenas existe copiloto-gotrue.env puede apuntar el copiloto
+# a una GoTrue VACÍA (deploy-gotrue.sh corrido pero migrate-and-cutover.sh no, o un DR fresco) → caída
+# total de auth por un deploy que no pretendía tocar auth. El repoint procede SOLO si migrate-and-cutover.sh
+# dejó el marker `.gotrue-cutover-done`; si falta, se SALTEA (aviso) y el deploy continúa (auth intacta).
+# El repoint en sí lo hace repoint-env.sh (FUENTE ÚNICA, compartida con migrate-and-cutover.sh → sin drift).
+ssh "$HOST" bash -s -- "$ENVDIR" "$REMOTE" <<'REMOTE_AUTH'
 set -euo pipefail
-ENVDIR="$1"; FUSION_ALIAS="$2"
-ENVFILE="$ENVDIR/copiloto.env"
-[ -f "$ENVFILE" ] || { echo "FALTA $ENVFILE" >&2; exit 1; }
-# `-n` (stdin de /dev/null) es OBLIGATORIO acá: este script YA está corriendo dentro de un `bash -s`
-# alimentado por un heredoc sobre el canal SSH exterior. Un ssh anidado SIN `-n` hereda ese mismo fd 0
-# y, por default (sin -n), reenvía su stdin al comando remoto -> compite por los bytes restantes del
-# heredoc exterior y los descarta en silencio (el resto del script queda sin ejecutar, exit 0, CERO
-# output -- reproducido empíricamente: sin `-n` esta línea en adelante nunca corría). `-n` aísla el
-# stdin del ssh anidado del heredoc exterior -- el fix canónico para "ssh dentro de un script leído
-# por stdin" (mismo gotcha que `ssh` dentro de un `while read` sin `-n`/`</dev/null`).
-SECRET="$(ssh -n -o BatchMode=yes "root@${FUSION_ALIAS}" "grep '^JWT_SECRET=' /opt/supabase/source/docker/.env | head -1 | cut -d= -f2-")"
-if [ -z "$SECRET" ]; then
-  echo "FALTA JWT_SECRET en ${FUSION_ALIAS}:/opt/supabase/source/docker/.env" >&2
-  exit 1
-fi
-if grep -q '^SUPABASE_JWT_SECRET=' "$ENVFILE"; then
-  sed -i "s|^SUPABASE_JWT_SECRET=.*|SUPABASE_JWT_SECRET=${SECRET}|" "$ENVFILE"
+ENVDIR="$1"; REMOTE="$2"
+if [ ! -f "$ENVDIR/.gotrue-cutover-done" ]; then
+  echo "AVISO [2/7]: falta $ENVDIR/.gotrue-cutover-done -> cutover a GoTrue dedicada NO completado; NO se repointea auth."
+  echo "  Completá el cutover con deploy/copiloto/gotrue/migrate-and-cutover.sh. El resto del deploy continúa."
 else
-  printf 'SUPABASE_JWT_SECRET=%s\n' "$SECRET" >> "$ENVFILE"
+  UC_ENV_DIR="$ENVDIR" bash "$REMOTE/deploy/copiloto/gotrue/repoint-env.sh"
 fi
-unset SECRET
-chmod 600 "$ENVFILE"
-if grep -q '^SUPABASE_JWT_SECRET=' "$ENVFILE"; then
-  echo "SUPABASE_JWT_SECRET: OK (presente en $ENVFILE, valor NO impreso)"
-else
-  echo "SUPABASE_JWT_SECRET: FALLO al escribir $ENVFILE" >&2
-  exit 1
-fi
-REMOTE_JWT
+REMOTE_AUTH
 
 echo "==> [3/7] pin de deps (idempotente: pip no reinstala si ya satisface el rango)"
 # python-multipart: dep de FastAPI para Form(...)/File(...) (/chat/audio, voz-backend) -- sin ella

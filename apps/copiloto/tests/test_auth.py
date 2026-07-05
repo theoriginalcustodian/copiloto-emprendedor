@@ -93,9 +93,11 @@ def test_resolve_cliente_id_not_found():
 
 # --- make_require_tenant (FastAPI TestClient + conn_factory fake) -----------
 
-def _build_app(registry: dict) -> FastAPI:
+def _build_app(registry: dict, issuer: str | None = None) -> FastAPI:
     app = FastAPI()
-    require_tenant = make_require_tenant(secret=SECRET, conn_factory=_fake_conn_factory(registry))
+    require_tenant = make_require_tenant(
+        secret=SECRET, conn_factory=_fake_conn_factory(registry), issuer=issuer
+    )
 
     @app.get("/whoami")
     def whoami(cliente_id: str = Depends(require_tenant)):
@@ -183,3 +185,94 @@ def test_make_require_tenant_empty_secret_raises():
     aceptar tokens forjados con clave vacía; PyJWT verifica HMAC contra "" sin quejarse)."""
     with pytest.raises(ValueError):
         make_require_tenant(secret="", conn_factory=_fake_conn_factory({}))
+
+
+# --- H2: adversarial — verificación de `iss` (GoTrue DEDICADA cierra el SSO-by-accident) -----
+# Regla dura del proyecto: control sin test adversarial = no verificado. Con la GoTrue propia
+# (issuer propio), un token firmado con el MISMO secreto pero emitido por OTRA app de la infra
+# compartida (otro `iss`) DEBE ser rechazado. `issuer=None` = comportamiento legacy (sin verificar).
+
+ISSUER = "https://copiloto-auth.local/auth/v1"
+
+
+def test_issuer_valid_passes():
+    """Token con `iss` propio + decode con ese issuer → válido."""
+    d = decode_supabase_jwt(_tok({"iss": ISSUER}), secret=SECRET, issuer=ISSUER)
+    assert d["iss"] == ISSUER
+
+
+def test_issuer_mismatch_raises():
+    """Token de OTRO emisor (mismo secreto, firma válida) → InvalidToken (cierra el SSO-by-accident)."""
+    with pytest.raises(InvalidToken):
+        decode_supabase_jwt(_tok({"iss": "https://fusion.other/auth/v1"}), secret=SECRET, issuer=ISSUER)
+
+
+def test_issuer_required_but_missing_raises():
+    """Se exige issuer pero el token NO trae `iss` → InvalidToken (MissingRequiredClaim)."""
+    with pytest.raises(InvalidToken):
+        decode_supabase_jwt(_tok({}), secret=SECRET, issuer=ISSUER)
+
+
+def test_issuer_none_skips_verification():
+    """`issuer=None` (legacy / pre-cutover) → no se verifica `iss`, aunque el token traiga uno ajeno.
+    Garantiza que deployar este cambio ANTES del cutover no rompe nada."""
+    d = decode_supabase_jwt(_tok({"iss": "https://cualquiera/auth/v1"}), secret=SECRET, issuer=None)
+    assert d["sub"] == "u-1"
+
+
+def test_require_tenant_wrong_issuer_returns_401():
+    """HTTP boundary: require_tenant con issuer propio + token de otro emisor → 401, aunque el
+    `sub` tenga tenant y la firma sea válida (el token ajeno NO entra al copiloto)."""
+    client = TestClient(_build_app({"u-1": "cid-abc"}, issuer=ISSUER))
+    tok = _tok({"iss": "https://fusion.other/auth/v1"})
+    resp = client.get("/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 401
+
+
+def test_require_tenant_correct_issuer_returns_cliente_id():
+    """require_tenant con issuer propio + token del emisor propio + tenant → 200."""
+    client = TestClient(_build_app({"u-1": "cid-abc"}, issuer=ISSUER))
+    resp = client.get("/whoami", headers={"Authorization": f"Bearer {_tok({'iss': ISSUER})}"})
+    assert resp.status_code == 200
+    assert resp.json()["cliente_id"] == "cid-abc"
+
+
+# --- make_require_claims (first-login OAuth: valida token pero NO exige tenant) ---------------
+
+def _claims_app(issuer: str | None = None) -> FastAPI:
+    from auth import make_require_claims
+    app = FastAPI()
+    require_claims = make_require_claims(secret=SECRET, issuer=issuer)
+
+    @app.get("/claims")
+    def _c(claims: dict = Depends(require_claims)):
+        return {"sub": claims["sub"], "email": claims.get("email")}
+
+    return app
+
+
+def test_require_claims_valid_returns_claims_without_tenant_check():
+    """Token válido → devuelve claims SIN exigir tenant (a diferencia de require_tenant, no da 403
+    aunque no haya fila de tenant — es justo el caso del first-login OAuth)."""
+    resp = TestClient(_claims_app()).get(
+        "/claims", headers={"Authorization": f"Bearer {_tok({'email': 'a@b.com'})}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"sub": "u-1", "email": "a@b.com"}
+
+
+def test_require_claims_invalid_token_401():
+    assert TestClient(_claims_app()).get(
+        "/claims", headers={"Authorization": "Bearer garbage"}).status_code == 401
+
+
+def test_require_claims_wrong_issuer_401():
+    """Con issuer propio, un token de otro emisor → 401 (mismo gate iss que require_tenant)."""
+    tok = _tok({"iss": "https://fusion.other/auth/v1", "email": "a@b.com"})
+    assert TestClient(_claims_app(issuer=ISSUER)).get(
+        "/claims", headers={"Authorization": f"Bearer {tok}"}).status_code == 401
+
+
+def test_make_require_claims_empty_secret_raises():
+    from auth import make_require_claims
+    with pytest.raises(ValueError):
+        make_require_claims(secret="")
