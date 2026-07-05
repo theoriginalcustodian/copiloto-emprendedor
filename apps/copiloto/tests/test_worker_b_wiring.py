@@ -107,3 +107,25 @@ def test_build_worker_config_sin_graphity_env_deja_memoria_off_sin_crashear():
 
     assert get_domain("emprendedor")["memory_provider"] is None
     assert warm_memory in cfg["activities"] and remember_memory in cfg["activities"]
+
+
+def test_wiring_registers_react_domain_and_activities():
+    """Task 14: el dominio 'emprendedor' corre en engine_mode='react' con tool_executor + tool_schemas reales
+    (mp_charge incluido), y el worker sirve las 3 activities del motor ReAct además de las de dispatch legacy
+    (dispatch queda registrado como fallback -- byte-identical, ver tests de arriba -- pero el workflow usa
+    el executor cuando engine_mode='react')."""
+    reset_registry()
+    from backend.agent.agent_activities import call_llm_tools, execute_tool, recall_memory  # noqa: PLC0415
+
+    cfg = worker_b.build_worker_config({}, _fake_conn_factory())
+
+    d = get_domain("emprendedor")
+    assert d["engine_mode"] == "react"
+    assert d["tool_executor"] is not None
+    assert callable(d["dispatcher"])                          # fallback dispatch/tests legacy sigue vivo
+    assert any(s["function"]["name"] == "mp_charge" for s in d["tool_schemas"])
+
+    names = {getattr(a, "__name__", "") for a in cfg["activities"]}
+    assert {"call_llm_tools", "execute_tool", "recall_memory"} <= names
+    assert call_llm_tools in cfg["activities"] and execute_tool in cfg["activities"]
+    assert recall_memory in cfg["activities"]

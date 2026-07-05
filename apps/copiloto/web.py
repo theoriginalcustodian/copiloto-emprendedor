@@ -221,7 +221,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
             task_queue=AGENT_B_TASK_QUEUE,
-            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S},
+            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S, "engine_mode": "react"},
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
 
@@ -259,7 +259,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
             task_queue=AGENT_B_TASK_QUEUE,
-            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S},
+            extra_config={"memory": True, "idle_timeout_seconds": COPILOTO_IDLE_TIMEOUT_S, "engine_mode": "react"},
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
 
