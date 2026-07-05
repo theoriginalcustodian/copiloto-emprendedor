@@ -96,8 +96,11 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     reply_sink = make_pg_reply_sink(conn_factory)
 
     system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
-    register_domain("emprendedor", system_prompt=system_prompt, llm_provider=build_llm(),
-                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso),
+    # Un solo LlmProvider: clasificador del turno (register_domain) Y summarizer de la acción
+    # 'consultar_actividad' (dispatcher) — mismo modelo/credencial, stateless, sin duplicar construcción.
+    llm = build_llm()
+    register_domain("emprendedor", system_prompt=system_prompt, llm_provider=llm,
+                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
