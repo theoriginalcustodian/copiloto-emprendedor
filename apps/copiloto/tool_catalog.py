@@ -30,6 +30,19 @@ from clients.agent.providers.composio_gateway import ComposioExecutionError, Con
 from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa: E402
 
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+# reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
+from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
+
+
+def _obs_service(toolkit: str) -> dict:
+    """Metadata de servicio para la `observation` del gate `needs_confirmation` (FIX HIGH, review final): el
+    frontend keyea el badge de riesgo (Mercado Pago/Instagram) y el monto por `card.service` (`hitlMapping.ts`
+    lee `message.card.service`); sin esto TODO gate del motor react degradaba a una card genérica sin ícono ni
+    riesgo. Mismo shape que `dispatcher_emprendedor._service_card` (reusa `_TOOLKIT_NAMES` vía `_friendly_toolkit`
+    para que dispatch/react muestren el mismo nombre humano) — no se importa `_service_card` en sí porque esa
+    devuelve `{service, label}` sin el resto de la observation (`preview`), que este helper preserva al fusionarse."""
+    return {"service": (toolkit or "").lower(), "label": _friendly_toolkit(toolkit)}
+
 
 # ── tools de 1ra clase (gateways propios, no vía módulo de servicio) ─────────────────────────────
 CALENDAR_BOOK_SCHEMA = {"type": "function", "function": {
@@ -179,7 +192,8 @@ def _run_calendar_book(name, arguments, ctx, confirmed, idem_key, gateway, now_i
                           observation={"error": "faltó fecha/hora del evento"})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
-                          observation={"preview": f"agendar «{arguments.get('title')}» {date} {hhmm}"})
+                          observation={"preview": f"agendar «{arguments.get('title')}» {date} {hhmm}",
+                                       **_obs_service("googlecalendar")})
     end = (datetime.fromisoformat(f"{date}T{hhmm}:00") + timedelta(minutes=60)).strftime("%Y-%m-%dT%H:%M:%S")
     args = {"summary": arguments.get("title") or "Reunión", "start_datetime": f"{date}T{hhmm}:00",
             "end_datetime": end, "timezone": DEFAULT_TZ}
@@ -203,7 +217,8 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
         return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "falta el monto"})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
-                          observation={"preview": f"generar link de cobro por ${amount} ({concept})"})
+                          observation={"preview": f"generar link de cobro por ${amount} ({concept})",
+                                       **_obs_service("mercadopago")})
     creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
     if not creds:
         return ToolResult(tool_call_id=idem_key, status="error",
@@ -220,6 +235,13 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
     notif = f"{ctx.mp_webhook_base}/mp/webhook?cid={ctx.cliente_id}&seller={ctx.mp_seller_user_id}"
     link = ctx.mp_gateway.create_payment_link(creds["access_token"], amount=amount,
                                               external_reference=ext_ref, notification_url=notif, title=concept)
+    # FIX MEDIUM (money path, review final): un 200/201 sin `init_point` (dict "raro" de la gateway) NO puede
+    # llegar al dedup.save -- la columna es NOT NULL, así que guardar None dispararía IntegrityError y el
+    # retry at-least-once de Temporal reintentaría el POST completo (2do link real creado para el mismo turno).
+    # Cortamos ANTES del save: error de negocio como observación, nunca excepción.
+    if not link.get("init_point"):
+        return ToolResult(tool_call_id=idem_key, status="error",
+                          observation={"error": "el cobro no devolvió un link válido; probá de nuevo"})
     if dedup:
         dedup.save(idem_key, preference_id=link.get("id"), init_point=link["init_point"], external_reference=ext_ref)
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
@@ -264,7 +286,7 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
             if isinstance(out, Proposal):
                 if not confirmed:
                     return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
-                                      observation={"preview": out.reply_text},
+                                      observation={"preview": out.reply_text, **_obs_service(mod.TOOLKIT)},
                                       artifact=Artifact(kind="pending", data={"reply_text": out.reply_text}))
                 ok, res = _execute_proposal(gateway, ctx.composio_user_id, out)   # then/resolve (B2)
                 return ToolResult(tool_call_id=idem_key, is_write=True, status="ok" if ok else "error",
@@ -282,5 +304,14 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
             # (el contrato del executor promete "nunca excepción → retry ∞"; alinea con la regla dura PR #114).
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "no pude generar el cobro ahora; probá de nuevo en un rato"})
+        except Exception:
+            # FIX LOW (review final, contrato "nunca excepción → observación"): cualquier excepción NO prevista
+            # (bug de un módulo de servicio, KeyError de un shape inesperado de Composio, etc.) NO debe propagar
+            # -- un raise acá dispararía los 5 retries de LOOP_RETRY contra la MISMA excepción determinística
+            # (no la arregla reintentar) y, sin try/except en el workflow que la contenga, tumbaría la sesión
+            # entera (regla dura PR #114). `ctx is None` queda AFUERA de este try a propósito: es error de
+            # PROGRAMACIÓN (context_factory mal cableado), debe fallar fuerte, no degradar silencioso.
+            return ToolResult(tool_call_id=idem_key, status="error",
+                              observation={"error": "no pude completar la acción; probá de nuevo"})
 
     return tool_executor

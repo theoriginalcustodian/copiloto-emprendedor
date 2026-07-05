@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pytest
 from temporalio import activity
+from temporalio.client import WorkflowFailureError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -408,3 +409,113 @@ async def test_react_needs_stt_empty_transcript_sends_fallback_without_breaking(
             await h.result()
     assert calls["llm"] == 0                                          # nunca llegó a call_llm_tools
     assert "no pude escuchar" in calls["sent"][-1]["text"].lower()
+
+
+# ═══════════════════════════════ Fixes review FINAL (retry LLM · card service · callback stale) ═══════════════
+
+@pytest.mark.asyncio
+async def test_react_llm_non_retryable_error_fails_in_one_attempt():
+    """FIX HIGH (bug 'codificar la esperanza'): un error `NonRetryableError` (401/insufficient_quota) de la API
+    LLM debe fallar la activity `call_llm_tools` en UN solo intento -- Temporal matchea `non_retryable_error_types`
+    por el NOMBRE de la clase de la excepción (str), cableado en `LOOP_RETRY`. Sin el fix, la activity quemaría
+    los 5 reintentos de `LOOP_RETRY` contra la MISMA credencial rota antes de fallar igual (nada lo arregla
+    reintentando). El workflow FALLA (nadie captura `ActivityError` en el loop react hoy) pero rápido, no tras 5
+    intentos con backoff."""
+    from clients.agent.providers.llm import NonRetryableError
+
+    attempts = {"n": 0}
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        attempts["n"] += 1
+        raise NonRetryableError("401 invalid_api_key simulado")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="r10", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r10", task_queue="r10")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "hola", "kind": "text"})
+            with pytest.raises(WorkflowFailureError):
+                await h.result()
+    assert attempts["n"] == 1   # non-retryable: UN solo intento, NO quema los 5 de LOOP_RETRY
+
+
+def test_loop_retry_has_non_retryable_llm_error_configured():
+    """Verificación directa (sin cluster) de que `LOOP_RETRY` trae cableado el tipo no-retryable -- si alguien
+    lo saca sin querer (regresión), este test falla sin necesitar levantar un WorkflowEnvironment."""
+    from backend.agent.conversation_workflow import LOOP_RETRY
+    assert LOOP_RETRY.non_retryable_error_types == ["NonRetryableError"]
+
+
+@pytest.mark.asyncio
+async def test_react_gate_card_carries_service_and_label():
+    """FIX HIGH (bug de UX en cobros): la card del gate `needs_confirmation` debe llevar `service`/`label` --
+    el frontend (`hitlMapping.ts`) keyea el badge de riesgo (Mercado Pago "REVISAR") y el monto por
+    `card.service`; sin este fix TODO gate react mandaba `card={}` (needs_confirmation nunca trae artifact
+    real, o trae kind='pending' que `_react_send` filtra) y el badge degradaba a genérico."""
+    def exec_fn(p):
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="needs_confirmation",
+                          observation={"preview": "generar link de cobro por $5000",
+                                       "service": "mercadopago", "label": "Mercado Pago"}).to_dict()
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        w, calls = _script_worker(env, "r12", llm_script=[_tc("mp_charge", {"amount": 5000})], exec_fn=exec_fn)
+        async with w:
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r12", task_queue="r12")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 5000", "kind": "text"})
+            await env.sleep(2)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    card = calls["sent"][-1]["card"]
+    assert card == {"kind": "confirm", "service": "mercadopago", "label": "Mercado Pago"}
+
+
+@pytest.mark.asyncio
+async def test_react_stale_callback_without_parked_gate_does_not_reach_llm():
+    """FIX LOW (review final): un callback (kind='callback') que llega SIN gate parqueado (ya resuelto -- doble
+    click tardío sobre una card vieja) NO debe caer al turno normal ni mandar el token crudo (ej 'confirm:1:0')
+    al LLM como si fuera texto de usuario -- corta limpio, sin invocar call_llm_tools ni tocar el estado."""
+    calls = {"llm": 0, "sent": []}
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        calls["llm"] += 1
+        return _TEXT("no debería llamarse jamás")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        calls["sent"].append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="r13", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r13", task_queue="r13")
+            # callback SIN gate abierto (state['react'] nunca se seteó) -- doble-click tardío / card stale
+            await h.signal(ConversationWorkflow.receive_message, {"text": "confirm:0:0", "kind": "callback"})
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    assert calls["llm"] == 0                      # NUNCA llegó al LLM con el token crudo
+    assert calls["sent"], "no respondió nada al callback stale"

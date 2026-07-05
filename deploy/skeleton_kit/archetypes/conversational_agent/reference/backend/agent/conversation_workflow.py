@@ -54,7 +54,12 @@ ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> ma
 # transitorios reales; un error permanente falla en tiempo ACOTADO en vez de colgar. Es la red de seguridad:
 # la raíz del caso Composio ya se ataja en el dispatcher (no propaga ConnectionRequired). Best-effort de
 # memoria usa su propio _MEMORY_RETRY (max=1), NO este.
-LOOP_RETRY = RetryPolicy(maximum_attempts=5)
+# `non_retryable_error_types` (FIX HIGH, review final): un 401/insufficient_quota de la API LLM
+# (`clients.agent.providers.llm.NonRetryableError`) NO se arregla reintentando (credencial/cupo inválidos) →
+# Temporal matchea por el NOMBRE de la clase de la excepción (str), no por el objeto — sin esto la activity
+# quemaba los 5 intentos completos contra una API rota antes de fallar igual (mismo resultado final, tiempo
+# desperdiciado + 5x requests ruidosos a una cuenta ya sabida rota).
+LOOP_RETRY = RetryPolicy(maximum_attempts=5, non_retryable_error_types=["NonRetryableError"])
 # Memoria best-effort: cubre el worst-case de UN intento del cliente Graphity (max_attempts=1: warm ~15s,
 # remember ensure_user+ensure_thread+add_messages ~55s). retry SIEMPRE max=1 → un timeout NO dispara los
 # reintentos ILIMITADOS del default de Temporal (footgun que colgaría run()/el loop bajo Graphity LENTO).
@@ -334,6 +339,15 @@ class ConversationWorkflow:
         parked = self._state.get("react")
         conv = {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref}
 
+        # ── callback STALE sin gate parqueado (FIX LOW, review final): el gate que lo emitió ya se resolvió
+        #    (doble-click tardío sobre una card vieja, o un callback mal-dirigido). El `user_text` acá es el
+        #    TOKEN interno del gate (ej 'confirm:1:0'), NUNCA texto real del interlocutor -- dejarlo caer al
+        #    turno normal lo mandaría al LLM como si fuera un mensaje de usuario (fuga del mecanismo interno
+        #    del gate al scratchpad). Corte determinístico, sin LLM, sin tocar el estado.
+        if kind == "callback" and not parked:
+            await self._react_send(channel, channel_ref, cliente_id, "Listo 👍", None)
+            return False
+
         # ── reingreso de confirmación (callback determinístico, SIN LLM) ──────────────────────────
         if parked and kind == "callback":
             pend = parked["pending"]                 # {tool_call, turn_ix, step}
@@ -440,9 +454,17 @@ class ConversationWorkflow:
             if tr.get("status") == "needs_confirmation":         # GATE: parquear + card + salir del turno
                 self._state["react"] = {"messages": messages,
                                         "pending": {"tool_call": tc, "turn_ix": start_turn_ix, "step": step}}
-                preview = (tr.get("observation") or {}).get("preview") or "¿Confirmás esta acción?"
+                obs = tr.get("observation") or {}
+                preview = obs.get("preview") or "¿Confirmás esta acción?"
+                # FIX HIGH (review final): la card debe llevar el `service` — el frontend keyea el badge de
+                # riesgo (Mercado Pago/Instagram) y el monto por `card.service` (`hitlMapping.ts`); sin esto
+                # TODO gate react degradaba a card vacía. El motor (capa PLANTILLA, domain-blind) NO conoce
+                # nombres de toolkit: solo re-empaqueta lo que el executor de dominio ya puso en `observation`
+                # (mismo patrón que `DispatchResult.card` en el modo dispatch, cero conocimiento nuevo acá).
+                card = {"kind": "confirm", "service": obs.get("service", ""), "label": obs.get("label", "")}
                 await self._react_send(channel, channel_ref, cliente_id, preview, tr.get("artifact"),
-                                       choices=_confirm_choices(start_turn_ix, step))  # token por gate (HIGH)
+                                       choices=_confirm_choices(start_turn_ix, step),  # token por gate (HIGH)
+                                       card=card)
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
             messages.append(_assistant_tool_call_msg(tc))
             messages.append(_tool_result_msg(tc["id"], tr.get("observation") or {}))
@@ -461,8 +483,12 @@ class ConversationWorkflow:
         await self._react_send(channel, channel_ref, cliente_id, text, artifact)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
-                          choices=None) -> None:
-        card = dict(artifact) if artifact and artifact.get("kind") != "pending" else {}
+                          choices=None, card=None) -> None:
+        # `card` explícito (FIX HIGH gate needs_confirmation) tiene prioridad; sin él, se deriva del artifact
+        # como antes (cierre terminal con artifact real, ej payment_link/email_draft — 'pending' se filtra:
+        # nunca es una card presentable, solo el marcador interno del executor).
+        if card is None:
+            card = dict(artifact) if artifact and artifact.get("kind") != "pending" else {}
         await workflow.execute_activity(
             "send_channel_message",
             {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,

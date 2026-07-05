@@ -1,6 +1,8 @@
 """make_tool_executor (Task 6): ejecuta UNA tool -> ToolResult, con gate write/read + artifact + then/resolve.
 
 Los tests de `mp_charge` (dedup + artifact payment_link, Task 8) están al final de este archivo."""
+import pytest
+
 import tool_catalog
 from backend.agent.types import ToolResult
 
@@ -154,3 +156,80 @@ def test_mp_charge_gateway_error_returns_error_not_exception():
     tr = ex("mp_charge", {"amount": 5000}, _mp_ctx(_BoomMpGw()), confirmed=True, idem_key="run1-0")
     assert tr.status == "error"                            # no excepción propagada
     assert "cobro" in tr.observation["error"].lower() or "no pude" in tr.observation["error"].lower()
+
+
+def test_mp_charge_missing_init_point_errors_before_dedup_save():
+    """FIX MEDIUM (money path, review final): si `create_payment_link` devuelve un dict SIN `init_point`
+    (200/201 "raro" de la gateway), el guard corta ANTES de `dedup.save` -- guardar None violaría el NOT NULL
+    de la tabla (IntegrityError -> el retry at-least-once de Temporal reintentaría el POST completo, creando
+    un 2do link real para el mismo turno). status='error', nunca excepción, y dedup.save NUNCA se invoca."""
+    class _NoInitPointMpGw:
+        def create_payment_link(self, *a, **k):
+            return {"id": "prefX"}   # sin init_point
+
+    save_calls = []
+
+    def _spy_dedup_factory():
+        class _S:
+            def __init__(self, cid): pass
+            def get(self, k): return None
+            def save(self, k, **kw): save_calls.append((k, kw))
+        return lambda cid: _S(cid)
+
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t",
+                                         mp_dedup_factory=_spy_dedup_factory())
+    tr = ex("mp_charge", {"amount": 5000}, _mp_ctx(_NoInitPointMpGw()), confirmed=True, idem_key="run1-0")
+    assert tr.status == "error"
+    assert not save_calls                                   # dedup.save NUNCA se llamó (guard cortó antes)
+
+
+def test_mp_charge_needs_confirmation_observation_has_service():
+    """FIX HIGH (card del gate, review final): la observation de `needs_confirmation` debe traer
+    `service`/`label` (mercadopago/Mercado Pago) -- el workflow arma la card del gate a partir de esto; sin
+    el fix el frontend no puede mostrar el badge de riesgo "REVISAR" ni el ícono correcto."""
+    gw = _FakeMpGw()
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    tr = ex("mp_charge", {"amount": 5000}, _mp_ctx(gw), confirmed=False, idem_key="run1-0")
+    assert tr.status == "needs_confirmation"
+    assert tr.observation["service"] == "mercadopago"
+    assert tr.observation["label"] == "Mercado Pago"
+
+
+def test_calendar_book_needs_confirmation_observation_has_service():
+    """Mismo fix aplicado a calendar_book (2da tool de 1ra clase): `service='googlecalendar'`."""
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("calendar_book", {"title": "Reunión", "date_raw": "mañana", "time_raw": "15"},
+           _Ctx(), confirmed=False, idem_key="run1-1")
+    assert tr.status == "needs_confirmation"
+    assert tr.observation["service"] == "googlecalendar"
+
+
+def test_service_proposal_needs_confirmation_observation_has_service():
+    """Mismo fix aplicado al path de servicio plug-in (Proposal): `service` = `mod.TOOLKIT` real."""
+    tr = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")(
+        "gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-2")
+    assert tr.status == "needs_confirmation"
+    assert tr.observation["service"] == "gmail"
+
+
+def test_unexpected_exception_in_executor_returns_error_not_propagates():
+    """FIX LOW (contrato 'nunca excepción -> observación', regla dura PR #114): cualquier excepción NO
+    prevista (no ConnectionRequired/ComposioExecutionError/MercadoPagoError, ej un KeyError de un shape
+    inesperado) debe degradar a status='error', NUNCA propagar -- de lo contrario dispararía los 5 retries
+    de LOOP_RETRY contra la MISMA excepción determinística y, sin try/except en el workflow, tumbaría la
+    sesión entera."""
+    class _BoomGateway:
+        def execute(self, *a, **k):
+            raise KeyError("shape inesperado de Composio")
+
+    ex = tool_catalog.make_tool_executor(_BoomGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "subject": "s", "body": "hola"}, _Ctx(), confirmed=True, idem_key="run1-3")
+    assert tr.status == "error"
+
+
+def test_ctx_none_still_raises_outside_the_catch_all():
+    """El catch-all del FIX LOW NO debe absorber el error de PROGRAMACIÓN `ctx is None` (context_factory mal
+    cableado) -- ese debe seguir fallando FUERTE (ValueError), no degradar silencioso a una ToolResult."""
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t")
+    with pytest.raises(ValueError):
+        ex("gmail_send", {"to": "a@b.com"}, None, confirmed=False, idem_key="run1-4")
