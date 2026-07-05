@@ -40,7 +40,7 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
 from mp_credential_store import MpCredentialStore
-from onboarding import InvalidCredentials, signup_and_provision
+from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 
 import services
@@ -190,6 +190,7 @@ class RefreshIn(BaseModel):
 
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
+                   require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
                    warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
@@ -375,6 +376,32 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.refresh_grant(body.refresh_token)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="sesión expirada")
+
+    # --- first-login OAuth externo (Google): self-provisioning del tenant (Fase 5) --------------
+    # Requiere token VÁLIDO (mismo gate + iss propio que require_tenant) pero NO fila de tenant: el
+    # user ya existe en GoTrue (alta self-service del proveedor) y este endpoint da de alta su tenant.
+    # Se registra SOLO si el composition root inyecta `require_claims` (serve.py siempre lo hace).
+    if require_claims is not None:
+        @app.post("/auth/oauth/ensure-tenant")
+        def oauth_ensure_tenant(claims: dict = Depends(require_claims)) -> dict:
+            """El frontend lo llama UNA vez tras el redirect de Google (antes de usar el resto de la
+            API). Provisiona el tenant (idempotente) SOLO si el login es de un proveedor OAuth EXTERNO
+            — nunca 'email'/'phone', cuyo alta es admin-mediada (evita self-signup por la puerta de
+            atrás). Devuelve {cliente_id}. 403 si el provider no es OAuth externo; 400 si falta email."""
+            app_md = claims.get("app_metadata") or {}
+            provider = app_md.get("provider", "")
+            providers = app_md.get("providers") or []
+            is_oauth = provider not in ("", "email", "phone") or any(
+                p not in ("email", "phone") for p in providers)
+            if not is_oauth:
+                raise HTTPException(status_code=403,
+                                    detail="self-provisioning solo para login con proveedor OAuth externo")
+            email = claims.get("email")
+            if not email:
+                raise HTTPException(status_code=400, detail="el token no trae email")
+            result = provision_oauth_tenant(auth_user_id=claims["sub"], email=email,
+                                            gotrue=gotrue, conn_factory=conn_factory)
+            return {"cliente_id": result["cliente_id"]}
 
     @app.get("/healthz")
     def healthz() -> dict:

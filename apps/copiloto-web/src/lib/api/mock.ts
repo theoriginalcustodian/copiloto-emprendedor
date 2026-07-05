@@ -6,6 +6,7 @@ import type {
   CopilotApi,
   LoginResponse,
   MeResponse,
+  OauthEnsureResponse,
   ReplyResponse,
   SendAudioResponse,
   WarmResponse,
@@ -50,6 +51,11 @@ export const mockApi: CopilotApi = {
       refresh_token: 'mock-refresh-token',
       user: { email },
     };
+  },
+
+  async ensureOauthTenant(): Promise<OauthEnsureResponse> {
+    await delay(undefined);
+    return { cliente_id: 'mock-cliente-1' };
   },
 
   async me(): Promise<MeResponse> {

@@ -14,6 +14,11 @@ SYSTEM_PROMPT = (
     "- Si CANCELA: action=\"confirm_pending\" y entities={\"value\": \"cancel\"}.\n"
     "- Si el usuario pide COBRAR / generar un link de pago / mandar un link de MercadoPago: "
     "action=\"mp_charge\" con entities={\"amount\": <número en pesos>, \"concept\": \"<qué cobra>\"}.\n"
+    "- Si el usuario pregunta por su ACTIVIDAD / qué hizo / un resumen de un PERÍODO (ej: '¿qué hice ayer?', "
+    "'resumime la semana', '¿qué pasó este mes?', '¿cuánto facturé del 1 al 5 de julio?'): "
+    "action=\"consultar_actividad\" con entities={\"range_raw\": <el período TAL CUAL lo dijo, ej 'esta semana' "
+    "o 'del 1 al 5 de julio'>, \"question\": <la pregunta puntual del usuario, para enfocar el resumen>}. "
+    "NO resuelvas vos las fechas: pasá el período crudo en range_raw.\n"
     "- Para cualquier otra consulta: action=\"ask_info\".\n"
     "reply_es es un texto breve y amable en español rioplatense para mostrarle al usuario."
 )

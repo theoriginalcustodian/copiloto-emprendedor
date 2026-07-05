@@ -14,6 +14,7 @@ Shapes verificados contra el server real (`Graphity/src/graphity_memory/api/v2/{
   POST /api/v2/threads                    {thread_id, user_id}            → 201 · 409 si existe · **404 si el user no existe**
   POST /api/v2/threads/{id}/messages      {messages:[{role, content, name?}]}  (síncrono por default)
   GET  /api/v2/threads/{id}/context?facts_limit=&message_count=           → {context: str} · 404 si el thread no existe
+  POST /api/v2/graph/episodes/user/{uid}  {lastn<=500}   → {episodes:[{content, valid_at, created_at, role, ...}]}
 Auth: `X-API-Key: gphy_…` (el tenant se infiere de la key; NUNCA mandar X-Internal-Token — lo inyecta Caddy).
 """
 from __future__ import annotations
@@ -21,6 +22,7 @@ from __future__ import annotations
 import os
 import random
 import time
+from datetime import datetime, timezone
 from typing import Callable
 
 import httpx
@@ -146,6 +148,49 @@ class GraphityMemoryClient:
                 facts.append(fact.strip())
         return facts
 
+    def list_episodes_in_range(self, user_id: str, since: datetime, until: datetime, *,
+                               max_fetch: int = 500) -> list[dict]:
+        """Episodios del user graph cuyo `valid_at` (cuándo PASÓ el evento; fallback `created_at`) cae en
+        [since, until]. Fuente EXHAUSTIVA para "qué hice en tal período" — a diferencia de `search_user_facts`
+        (semántico top-K, incompleto), trae TODO el rango, cross-sesión (un user graph unifica los threads).
+
+        El server NO filtra por fecha en el listado (spike 2026-07-04: `lastn`→`created_at DESC`, `uuid_cursor`
+        →uuid ASC, sin date-filter) → se traen los `lastn`≤500 más recientes y se filtra client-side por
+        `valid_at`. **Se filtra por `valid_at`, NO `created_at`**: `created_at` es la fecha de INGESTA (≈ahora
+        para todo), `valid_at` es cuándo ocurrió (spike-verificado). En charla real ≈ coinciden; si algún día se
+        ingieren eventos pasados, `valid_at` sigue siendo el correcto.
+
+        LÍMITE CONOCIDO (deuda visible, memoria `copiloto-recall-temporal`): si el user supera `max_fetch`
+        episodios, se traen los más recientes; un rango más viejo que ese corte puede quedar incompleto. En
+        early-days no se toca; la extensión es paginar por `uuid_cursor` (sin orden fecha → traer todo y filtrar).
+
+        Devuelve `[{valid_at, role, content}]` ASCENDENTE por fecha; `[]` si no hay o ante 404."""
+        lastn = max(1, min(int(max_fetch), 500))
+        resp = self._request("POST", f"/graph/episodes/user/{user_id}",
+                             json={"lastn": lastn}, timeout=_READ_TIMEOUT_S)
+        if resp.status_code == 404:
+            return []
+        if resp.status_code != 200:
+            raise GraphityMemoryError(f"list_episodes_in_range {user_id} → HTTP {resp.status_code}")
+        episodes = (resp.json() or {}).get("episodes") or []
+        rows: list[tuple[datetime, dict]] = []
+        for e in episodes:
+            if not isinstance(e, dict):
+                continue
+            stamp = e.get("valid_at") or e.get("created_at")
+            when = _parse_iso(stamp)
+            content = e.get("content")
+            if when is None or not (since <= when <= until):
+                continue
+            if not isinstance(content, str) or not content.strip():
+                continue
+            rows.append((when, {"valid_at": stamp, "role": e.get("role"), "content": content.strip()}))
+        # Orden cronológico por el datetime PARSEADO, no por el string crudo (2ª pasada 2026-07-04): con
+        # formatos mixtos el string engaña — '…T12:00:00+03:00' (=09:00Z) ordena lexicográficamente DESPUÉS
+        # de '…T10:00:00' (=10:00Z). El aware normalizado sí tiene orden total.
+        rows.sort(key=lambda r: r[0])
+        return [r[1] for r in rows]
+
     def warm_session(self, user_id: str) -> bool:
         """Precarga el page-cache de Neo4j del user graph del emprendedor (índices HNSW) — GET
         /users/{id}/warm. Llamar al ABRIR la sesión de chat para bajar la latencia del 1er recall.
@@ -163,6 +208,24 @@ class GraphityMemoryClient:
         resp = self._request("DELETE", f"/users/{user_id}", timeout=_READ_TIMEOUT_S)
         if resp.status_code not in (200, 204, 404):
             raise GraphityMemoryError(f"delete_user {user_id} → HTTP {resp.status_code}")
+
+
+def _parse_iso(value) -> datetime | None:
+    """Parsea un timestamp ISO del server a datetime AWARE (UTC); None si no se puede. Usado por el filtro de
+    rango — comparar contra `since`/`until` que llegan aware UTC del resolver.
+
+    CLAVE (review adversarial 2026-07-04): el server serializa muchos timestamps SIN offset ('2026-07-14T10:00:00'
+    — el copiloto persiste reference_time con `datetime.now(tz=UTC).replace(tzinfo=None)`, que sale naive). Sin
+    normalizar, `datetime.fromisoformat` devolvería un naive y `since <= naive <= until` (aware) lanzaría
+    TypeError (offset-naive vs offset-aware) que colgaba el turno. Los timestamps naive del server SON UTC-valued
+    → se les fija UTC. Un timestamp con offset se respeta tal cual."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
 def _validate_message(m: dict) -> dict:

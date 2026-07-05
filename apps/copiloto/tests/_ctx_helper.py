@@ -16,12 +16,13 @@ from context_factory import TenantCtx  # noqa: E402
 
 def make_ctx(*, composio_user_id: str = "u1", mp_gateway=None, mp_cred_store=None,
              mp_seller_user_id: str | None = None, mp_webhook_base: str | None = None,
-             cliente_id: str = "cli-test") -> TenantCtx:
+             cliente_id: str = "cli-test", memory_provider=None) -> TenantCtx:
     """TenantCtx real: los servicios non-MP solo necesitan `composio_user_id`; mp_* quedan None salvo que
-    el test los ejercite explícitamente (ver test_mp_dispatch.py para el caso MercadoPago)."""
+    el test los ejercite explícitamente (ver test_mp_dispatch.py para el caso MercadoPago). `memory_provider`
+    solo lo ejercita la acción `consultar_actividad` (ver test_recall_temporal.py)."""
     return TenantCtx(cliente_id=cliente_id, composio_user_id=composio_user_id, mp_gateway=mp_gateway,
                      mp_cred_store=mp_cred_store, mp_seller_user_id=mp_seller_user_id,
-                     mp_webhook_base=mp_webhook_base)
+                     mp_webhook_base=mp_webhook_base, memory_provider=memory_provider)
 
 
 __all__ = ["make_ctx"]

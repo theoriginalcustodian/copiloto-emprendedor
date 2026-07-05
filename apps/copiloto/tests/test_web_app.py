@@ -66,6 +66,14 @@ def _require_tenant_401():
     return _dep
 
 
+def _require_claims_fixed(claims: dict):
+    """Dependencia FastAPI fake para `/auth/oauth/ensure-tenant`: devuelve claims fijos (simula un
+    token válido ya decodificado — el decode+iss real se cubre en test_auth.py)."""
+    def _dep() -> dict:
+        return claims
+    return _dep
+
+
 class _FakeTenantsDB:
     """In-memory de `uc_factory.tenants` + `uc_factory.mp_credentials` + `uc_factory.copiloto_web_replies`
     — sin DB real."""
@@ -106,13 +114,13 @@ class _FakeCursor:
             seller = self._db.mp_sellers.get(cliente_id)
             self._result = (seller,) if seller else None
         elif s.startswith("INSERT INTO UC_FACTORY.COPILOTO_WEB_REPLIES"):
-            cliente_id, session_id, reply_text, choices = params
+            cliente_id, session_id, reply_text, choices, card = params
             row = {"id": len(self._db.replies) + 1, "cliente_id": cliente_id, "session_id": session_id,
-                   "reply_text": reply_text, "choices": choices, "created_at": "t"}
+                   "reply_text": reply_text, "choices": choices, "card": card, "created_at": "t"}
             self._db.replies.append(row)
-        elif s.startswith("SELECT ID, REPLY_TEXT, CHOICES, CREATED_AT FROM UC_FACTORY.COPILOTO_WEB_REPLIES"):
+        elif s.startswith("SELECT ID, REPLY_TEXT, CHOICES, CARD, CREATED_AT FROM UC_FACTORY.COPILOTO_WEB_REPLIES"):
             cliente_id, session_id, after_id = params
-            self._rows = [(r["id"], r["reply_text"], r["choices"], r["created_at"])
+            self._rows = [(r["id"], r["reply_text"], r["choices"], r.get("card"), r["created_at"])
                          for r in self._db.replies
                          if r["cliente_id"] == cliente_id and r["session_id"] == session_id and r["id"] > after_id]
         else:
@@ -201,13 +209,14 @@ def _mp_fernet_key_env(monkeypatch):
 
 
 def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None,
-              mp_gateway=None, composio_gateway=None, warm_fn=None):
+              mp_gateway=None, composio_gateway=None, warm_fn=None, require_claims=None):
     db = db or _FakeTenantsDB()
     app = web_module.create_web_app(
         temporal_client=_FakeTemporal(),
         adapter=WebChannelAdapter(reply_sink=lambda *a: None),
         conn_factory=_fake_conn_factory(db),
         require_tenant=require_tenant,
+        require_claims=require_claims,
         mp_app=_build_mp_app(),
         gotrue=gotrue or _FakeGoTrue({}),
         mp_gateway=mp_gateway or _FakeMpGateway(),
@@ -440,3 +449,63 @@ def test_sync_routes_still_respond_correctly(monkeypatch):
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": []}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw"}).json()["auth_user_id"] == "auth-user-X"
+
+
+# --- /auth/oauth/ensure-tenant (Fase 5: first-login Google, self-provisioning del tenant) ------
+
+def _google_claims(sub: str = "g-sub-1", email: str = "new@gmail.com") -> dict:
+    return {"sub": sub, "email": email, "aud": "authenticated",
+            "app_metadata": {"provider": "google", "providers": ["google"]}}
+
+
+def test_oauth_ensure_tenant_google_provisions_and_returns_cliente_id():
+    """Token de Google (provider != email) sin tenant → provisiona la fila y devuelve cliente_id."""
+    db = _FakeTenantsDB()
+    gotrue = _FakeGoTrue({})
+    claims = _google_claims(sub="g-sub-1", email="new@gmail.com")
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db, gotrue=gotrue,
+                        require_claims=_require_claims_fixed(claims))
+    resp = TestClient(app).post("/auth/oauth/ensure-tenant")
+    assert resp.status_code == 200
+    cid = resp.json()["cliente_id"]
+    assert db.tenants["g-sub-1"]["cliente_id"] == cid          # fila creada
+    assert db.tenants["g-sub-1"]["email"] == "new@gmail.com"
+    assert gotrue.claims["g-sub-1"] == cid                     # claim de paridad seteado
+
+
+def test_oauth_ensure_tenant_idempotent():
+    """2ª llamada con el mismo sub → mismo cliente_id, sin duplicar la fila."""
+    db = _FakeTenantsDB()
+    claims = _google_claims(sub="g-sub-2", email="dup@gmail.com")
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db, gotrue=_FakeGoTrue({}),
+                        require_claims=_require_claims_fixed(claims))
+    client = TestClient(app)
+    cid1 = client.post("/auth/oauth/ensure-tenant").json()["cliente_id"]
+    cid2 = client.post("/auth/oauth/ensure-tenant").json()["cliente_id"]
+    assert cid1 == cid2
+    assert len(db.tenants) == 1
+
+
+def test_oauth_ensure_tenant_email_provider_forbidden():
+    """Token de provider 'email' (alta admin-mediada) → 403 (no self-signup por la puerta de atrás)."""
+    claims = {"sub": "e-sub", "email": "e@x.com", "aud": "authenticated",
+              "app_metadata": {"provider": "email", "providers": ["email"]}}
+    app, _ = _build_app(require_tenant=_require_tenant_401(),
+                        require_claims=_require_claims_fixed(claims))
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 403
+
+
+def test_oauth_ensure_tenant_missing_email_400():
+    """Token OAuth sin email → 400."""
+    claims = {"sub": "g-sub-3", "aud": "authenticated",
+              "app_metadata": {"provider": "google", "providers": ["google"]}}
+    app, _ = _build_app(require_tenant=_require_tenant_401(),
+                        require_claims=_require_claims_fixed(claims))
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 400
+
+
+def test_oauth_ensure_tenant_endpoint_absent_without_require_claims():
+    """Sin require_claims inyectado, el endpoint POST NO se registra → no hay provisioning sin gate.
+    (405, no 404: el catch-all GET del SPA mount matchea el path pero no el método POST.)"""
+    app, _ = _build_app(require_tenant=_require_tenant_401())  # require_claims=None por default
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code in (404, 405)

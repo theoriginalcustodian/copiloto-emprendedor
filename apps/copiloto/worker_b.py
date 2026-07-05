@@ -101,16 +101,23 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     reply_sink = make_pg_reply_sink(conn_factory)
 
     # Motor ReAct (Task 14): tool_executor real (Composio + MP + calendar) con dedup app-side de links de
-    # cobro (spike C) atado al `cliente_id` per-request (nunca de env). `dispatcher=` se sigue registrando
-    # como fallback dispatch/tests legacy, pero con engine_mode="react" el workflow usa el tool_executor.
+    # cobro (spike C) atado al `cliente_id` per-request (nunca de env). El `dispatcher=` se sigue registrando
+    # como fallback dispatch/tests legacy; en engine_mode="react" el workflow usa el tool_executor.
+    # `llm` COMPARTIDO: clasificador del turno (register_domain) Y summarizer de la acción 'consultar_actividad'
+    # (dispatcher, recall temporal #125) — mismo modelo/credencial, stateless, sin duplicar construcción.
+    # ⚠️ Deuda visible (merge motor-react × recall-temporal): en engine_mode=react 'consultar_actividad' vive
+    # SOLO en el dispatcher (modo dispatch), aún NO en el tool_catalog → el recall temporal POR FECHA ("qué hice
+    # ayer") no está disponible en react. Follow-up: portarla como tool. El recall semántico (MemoryProvider)
+    # sí opera en ambos modos.
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
     tool_executor = tool_catalog.make_tool_executor(
         gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory)
     system_prompt_react = SYSTEM_PROMPT_REACT + "\n" + services.prompt_fragments()
-    register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=build_llm(),
-                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso),
+    llm = build_llm()
+    register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
+                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,
                     engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
                     tool_executor=tool_executor)

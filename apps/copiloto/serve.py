@@ -42,7 +42,7 @@ from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 
 import services
-from auth import make_require_tenant
+from auth import make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
 from mp_credential_store import MpCredentialStore
@@ -89,7 +89,24 @@ async def _serve() -> None:
     # módulos de servicio por discovery -- cero drift entre lo que el worker ejecuta y lo que el
     # front-door ofrece conectar (_composio_valid_toolkits en web.py deriva de la MISMA unión).
     composio_gateway = ComposioGateway({**CALENDAR_POLICY, **services.merged_policy()})
-    require_tenant = make_require_tenant(secret=os.environ["SUPABASE_JWT_SECRET"], conn_factory=conn_factory)
+    # `COPILOTO_JWT_ISSUER` (opcional): presente cuando el copiloto corre contra su GoTrue DEDICADA
+    # → require_tenant valida además el `iss` propio (cierra el SSO-by-accident de la infra compartida).
+    # Ausente (legacy / pre-cutover) → sin verificación de iss, comportamiento idéntico al de fusion.
+    # iss-enforcement FAIL-CLOSED (review M4): con la GoTrue DEDICADA, `COPILOTO_DEDICATED_GOTRUE=true`
+    # (lo setea repoint-env.sh en el cutover). Con el flag en true, la AUSENCIA de COPILOTO_JWT_ISSUER
+    # aborta el arranque en vez de desactivar el control en silencio por env-drift. Sin el flag (rollback
+    # a fusion, que no valida iss), el issuer es opcional → no rompe el rollback.
+    issuer = os.environ.get("COPILOTO_JWT_ISSUER")
+    if os.environ.get("COPILOTO_DEDICATED_GOTRUE", "").strip().lower() in ("1", "true", "yes") and not issuer:
+        raise RuntimeError(
+            "COPILOTO_DEDICATED_GOTRUE=true pero COPILOTO_JWT_ISSUER falta/vacío: el iss-enforcement "
+            "quedaría desactivado en silencio (SSO-by-accident reabierto). Fail-closed: seteá el issuer "
+            "(o quitá el flag para volver a fusion).")
+    require_tenant = make_require_tenant(
+        secret=os.environ["SUPABASE_JWT_SECRET"], conn_factory=conn_factory, issuer=issuer)
+    # Mismo secreto+issuer, SIN exigir tenant: para el first-login OAuth (Google) donde el user ya
+    # existe en GoTrue pero aún no tiene fila de tenant (POST /auth/oauth/ensure-tenant).
+    require_claims = make_require_claims(secret=os.environ["SUPABASE_JWT_SECRET"], issuer=issuer)
     gotrue = GoTrueAdmin.from_env()
 
     mp_app = create_mp_app(
@@ -112,7 +129,7 @@ async def _serve() -> None:
 
     app = create_web_app(
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
-        require_tenant=require_tenant, mp_app=mp_app, gotrue=gotrue,
+        require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app, gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción

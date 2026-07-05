@@ -21,6 +21,7 @@ ACTIONS = (
     "callback",   # el interlocutor tocó un botón (inline keyboard); el valor va en entities['value'] — sin LLM
     "tool_action",  # agente multi-servicio: ejecutar una tool de un servicio; entities={service, op, ...} (ver dispatcher del dominio)
     "mp_charge",  # capacidad de 1ra clase con gateway PROPIO (cobro MercadoPago), como 'book' con Calendar; entities={amount, concept}
+    "consultar_actividad",  # consultar la actividad de un rango de fecha libre (recall temporal); entities={range_raw, question}
 )
 
 # Acciones que SIEMPRE escalan a un humano (HITL), sea cual sea el dominio.
@@ -66,8 +67,16 @@ class Intent:
             conf = float(d.get("confidence", 0.0))
         except (TypeError, ValueError):
             conf = 0.0
-        return Intent(action=action, entities=d.get("entities") or {},
-                      confidence=conf, reply_es=d.get("reply_es") or "")
+        # entities/reply_es defensivos (2ª pasada adversarial 2026-07-04): el LLM puede emitir entities NO-dict
+        # (string/lista) o reply_es no-string — degradar acá, en el boundary, evita un AttributeError en el
+        # `ent.get()` de CUALQUIER dispatcher de dominio (misma clase de fallo que range_raw no-string).
+        entities = d.get("entities")
+        if not isinstance(entities, dict):
+            entities = {}
+        reply_es = d.get("reply_es")
+        if not isinstance(reply_es, str):
+            reply_es = ""
+        return Intent(action=action, entities=entities, confidence=conf, reply_es=reply_es)
 
 
 @dataclass

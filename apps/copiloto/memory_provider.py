@@ -4,9 +4,10 @@ Boundary del agente hacia la memoria semántica (análogo a `ComposioGateway`/`M
 copiloto no habla HTTP ni conoce user_id/thread_id de Graphity — solo `recall`/`remember`/`forget`).
 
 Contrato estable (primer ladrillo sólido):
-    recall(cliente_id, thread_ref)            -> str   # Context Block listo para el system prompt (por turno)
-    remember(cliente_id, thread_ref, messages)-> None  # persiste el turno/batch (el CALLER decide el batching)
-    forget(cliente_id)                        -> None  # RTBF/GDPR
+    recall(cliente_id, thread_ref, query)     -> str        # Context Block semántico para el system prompt (por turno)
+    recall_range(cliente_id, since, until)    -> list[dict]  # actividad EXHAUSTIVA de un rango de fecha libre
+    remember(cliente_id, thread_ref, messages)-> None        # persiste el turno/batch (el CALLER decide el batching)
+    forget(cliente_id)                        -> None        # RTBF/GDPR
 
 MODELO DE GRAFOS (decisión del operador, 2026-07-04) — un tenant = varios grafos, este ladrillo cubre el 1º:
   • **Grafo general + chat = el user graph** de Graphity. El `user` (= el agente del emprendedor) escribe ahí
@@ -101,6 +102,24 @@ class MemoryProvider:
         if not facts:
             return ""
         return _wrap_context("# FACTS\n" + "\n".join(f"- {f}" for f in facts))
+
+    def recall_range(self, cliente_id: str, since, until) -> list[dict]:
+        """Actividad del emprendedor en `[since, until]` (rango de fecha LIBRE), CRUDA y cronológica, para que
+        el caller la resuma/analice (`activity_summary`). Fuente EXHAUSTIVA (no semántico top-K): responde
+        "qué hice ayer / esta semana / este mes / entre el 1 y el 5". `since`/`until` son datetime AWARE (UTC),
+        resueltos determinísticamente por `datetime_resolver.resolve_date_range` en el dispatcher.
+
+        Best-effort (invariante del ladrillo): cualquier falla de Graphity → `[]` (el agente responde 'no
+        encontré actividad' en vez de colgar el turno). Devuelve `[{valid_at, role, content}]` ascendente."""
+        try:
+            return self._client.list_episodes_in_range(self._user_id(cliente_id), since, until)
+        except Exception as exc:  # noqa: BLE001 — best-effort: la invariante promete que CUALQUIER falla degrada
+            # Catch-all deliberado (review adversarial 2026-07-04): el except angosto (GraphityMemoryError/
+            # ValueError) dejaba escapar TypeError/AttributeError inesperados → colgaban el turno bajo LOOP_RETRY
+            # y tumbaban el workflow durable. La raíz del TypeError naive/aware ya se ataja en _parse_iso; esto
+            # es la red de seguridad final (el contrato del ladrillo: "una caída NUNCA tumba el turno" → []).
+            _log.warning("recall_range degradado (sin actividad este turno): cliente=%s err=%s", cliente_id, exc)
+            return []
 
     # ── WRITE (batcheado por el caller; flush al cerrar la sesión) ────────────────────────────────────────
     def remember(self, cliente_id: str, thread_ref: str, messages: list[dict]) -> None:

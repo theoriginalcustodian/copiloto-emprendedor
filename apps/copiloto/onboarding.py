@@ -194,19 +194,13 @@ class GoTrueAdmin:
         return resp.json()
 
 
-def signup_and_provision(*, email: str, password: str, gotrue, conn_factory: Callable) -> dict:
-    """Signup admin-mediado completo (spec §5.1): crea el user en GoTrue, da de alta el tenant
-    (idempotente por `auth_user_id`, ver diseño en el docstring del módulo) y propaga el claim.
-    `gotrue` es cualquier objeto con `admin_create_user`/`admin_set_claim` (el `GoTrueAdmin` real
-    o un fake de test).
-
-    Devuelve `{cliente_id, auth_user_id, email}`. Una 2ª llamada con el mismo `auth_user_id`
-    (mismo email vía el mismo `gotrue`) NO duplica la fila y devuelve el `cliente_id` YA
-    existente (nunca uno nuevo)."""
-    user = gotrue.admin_create_user(email, password)
-    auth_user_id = user["id"]
+def _provision_tenant_row(*, auth_user_id: str, email: str, conn_factory: Callable) -> str:
+    """INSERT idempotente de la fila de tenant (una sentencia atómica `ON CONFLICT (auth_user_id) DO
+    NOTHING`, ver diseño en el docstring del módulo) y devuelve el `cliente_id` REAL: el recién
+    insertado, o —si ya existía— el existente releído con `resolve_cliente_id` (nunca el candidato
+    descartado). Compartido por el alta admin-mediada (email) y el first-login OAuth (Google): la
+    ÚNICA diferencia entre ambos caminos es si el user se crea en GoTrue (email) o ya existe (OAuth)."""
     candidate_cliente_id = str(uuid.uuid4())
-
     conn = conn_factory()
     with conn.cursor() as cur:
         cur.execute(
@@ -215,14 +209,28 @@ def signup_and_provision(*, email: str, password: str, gotrue, conn_factory: Cal
             (auth_user_id, candidate_cliente_id, email, candidate_cliente_id),
         )
         row = cur.fetchone()
+    return row[0] if row is not None else resolve_cliente_id(conn_factory, auth_user_id)
 
-    if row is not None:
-        cliente_id = row[0]
-    else:
-        # ON CONFLICT DO NOTHING => ya existía la fila: releer el cliente_id REAL (Task 2),
-        # nunca el candidato recién generado (que se descartó).
-        cliente_id = resolve_cliente_id(conn_factory, auth_user_id)
 
+def signup_and_provision(*, email: str, password: str, gotrue, conn_factory: Callable) -> dict:
+    """Signup admin-mediado completo (spec §5.1): crea el user en GoTrue, da de alta el tenant
+    (idempotente por `auth_user_id`) y propaga el claim. `gotrue` es cualquier objeto con
+    `admin_create_user`/`admin_set_claim` (el `GoTrueAdmin` real o un fake de test).
+
+    Devuelve `{cliente_id, auth_user_id, email}`. Una 2ª llamada con el mismo `auth_user_id`
+    (mismo email vía el mismo `gotrue`) NO duplica la fila y devuelve el `cliente_id` YA existente."""
+    user = gotrue.admin_create_user(email, password)
+    auth_user_id = user["id"]
+    cliente_id = _provision_tenant_row(auth_user_id=auth_user_id, email=email, conn_factory=conn_factory)
     gotrue.admin_set_claim(auth_user_id, cliente_id)
+    return {"cliente_id": cliente_id, "auth_user_id": auth_user_id, "email": email}
 
+
+def provision_oauth_tenant(*, auth_user_id: str, email: str, gotrue, conn_factory: Callable) -> dict:
+    """First-login de un proveedor OAuth externo (Google): el user YA existe en GoTrue (alta
+    self-service del proveedor, NO admin-mediada) → solo falta la fila de tenant. Da de alta el
+    tenant (idempotente por `auth_user_id`) y propaga el claim. NO llama a `admin_create_user`
+    (esa es la única diferencia con `signup_and_provision`). Idempotente: 2ª llamada = mismo tenant."""
+    cliente_id = _provision_tenant_row(auth_user_id=auth_user_id, email=email, conn_factory=conn_factory)
+    gotrue.admin_set_claim(auth_user_id, cliente_id)
     return {"cliente_id": cliente_id, "auth_user_id": auth_user_id, "email": email}

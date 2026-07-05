@@ -20,9 +20,10 @@ sys.path.insert(0, str(ARCH))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from backend.agent.types import DispatchResult, Intent
-from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime
+from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired
 
+from activity_summary import summarize_activity
 from calendar_policy import CREATE_EVENT_SLUG
 import services
 from services.base import Proposal, Read
@@ -73,7 +74,7 @@ def _dig(obj, path):
 
 
 def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
-                    tz: str = DEFAULT_TZ) -> Callable[[Intent, dict, object], DispatchResult]:
+                    tz: str = DEFAULT_TZ, llm=None) -> Callable[[Intent, dict, object], DispatchResult]:
     """Multitenant-only (Task 8b): los recursos por-tenant (composio_user_id, mp_*, cliente_id) se LEEN
     SIEMPRE de `ctx` (un `TenantCtx` armado por `context_factory(conv)` desde `conv["cliente_id"]`,
     per-request — cero fuga entre tenants, ver `context_factory.py`). Sin fallback single-tenant: `ctx`
@@ -191,6 +192,28 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
                 reply_text=f"Voy a generar un link de cobro de MercadoPago por ${amount} ({concept}). ¿Confirmás?",
                 choices=list(_CONFIRM_CHOICES), state_patch={"pending": pending},
                 card=_service_card("mercadopago"))
+
+        # ── consultar la ACTIVIDAD de un rango de fecha libre (memoria de largo plazo → resumen LLM) ──────
+        # El LLM emite range_raw CRUDO ('esta semana'); el dispatcher lo resuelve determinísticamente
+        # (resolve_date_range con now_iso_provider) y trae la actividad EXHAUSTIVA del rango (recall_range, no
+        # semántico top-K), luego la resume/analiza con el LLM (map-reduce adaptativo). Todo I/O acá corre
+        # dentro de la activity dispatch_intent (fuera del sandbox del workflow) → replay-safe.
+        if action == "consultar_actividad":
+            mem = getattr(ctx, "memory_provider", None)
+            if mem is None or llm is None:
+                return DispatchResult(reply_text="Todavía no puedo consultarte la actividad pasada. Probemos en un rato.")
+            rng = resolve_date_range(ent.get("range_raw"), now_iso=now_iso_provider(), tz=tz)
+            if not rng:
+                return DispatchResult(reply_text="¿De qué período querés que te cuente? Por ejemplo: hoy, ayer, "
+                                                 "esta semana, el mes pasado, o 'del 1 al 5 de julio'.")
+            episodes = mem.recall_range(cid, datetime.fromisoformat(rng["since"]),
+                                        datetime.fromisoformat(rng["until"]))
+            if not episodes:
+                return DispatchResult(reply_text=f"No encontré actividad registrada en {rng['label']}. "
+                                                 "Puede que todavía no haya quedado guardada.")
+            summary = summarize_activity(episodes, question=ent.get("question") or intent.reply_es or "",
+                                         label=rng["label"], llm=llm)
+            return DispatchResult(reply_text=summary or f"No pude armar el resumen de {rng['label']} ahora mismo.")
 
         # ── servicios nuevos: action='tool_action' + entities{service, op, ...} → módulo plug-in ─────────
         if action == "tool_action":
