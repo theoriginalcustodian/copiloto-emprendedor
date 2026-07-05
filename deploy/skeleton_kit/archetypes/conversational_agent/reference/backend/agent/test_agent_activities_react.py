@@ -1,0 +1,76 @@
+"""Test de las activities GENERICAS del motor ReAct (Task 9): `call_llm_tools`, `execute_tool`, `recall_memory`.
+Puro (fakes por el registry, sin Temporal Worker real) -> corre en PC o VPS. Los errores de negocio del
+executor NUNCA se propagan como excepcion (leccion PR #114: retry ilimitado cuelga el turno)."""
+from __future__ import annotations
+
+import asyncio
+
+from backend.agent import agent_activities as A
+from backend.agent.agent_runtime import register_domain, reset_registry
+
+
+class _Prov:
+    def complete_tools(self, system, messages, tools, *, tool_choice="auto", parallel_tool_calls=False):
+        return {"tool_calls": [{"id": "c1", "name": "gmail_fetch", "arguments": {}}],
+                "content": None, "finish_reason": "tool_calls", "model": "m", "failed_over": False}
+
+
+def _reg(tool_executor=None, memory_provider=None):
+    reset_registry()
+    register_domain("d", system_prompt="SYS", llm_provider=_Prov(), dispatcher=lambda *a: None,
+                    tool_schemas=[{"type": "function", "function": {"name": "gmail_fetch"}}],
+                    tool_executor=tool_executor, context_factory=lambda conv: object(), engine_mode="react",
+                    memory_provider=memory_provider)
+
+
+def test_call_llm_tools_uses_registry_schemas():
+    _reg()
+    out = asyncio.run(A.call_llm_tools({"domain": "d", "messages": [{"role": "user", "content": "hola"}],
+                                        "tool_choice": "auto"}))
+    assert out["tool_calls"][0]["name"] == "gmail_fetch"
+
+
+def test_execute_tool_calls_domain_executor():
+    seen = {}
+    def _ex(name, arguments, ctx, *, confirmed, idem_key):
+        seen.update(name=name, confirmed=confirmed, idem_key=idem_key)
+        from backend.agent.types import ToolResult
+        return ToolResult(tool_call_id=idem_key, observation={"ok": True})
+    _reg(tool_executor=_ex)
+    out = asyncio.run(A.execute_tool({"domain": "d", "name": "gmail_send", "arguments": {"to": "a@b"},
+                                      "conv": {"cliente_id": "42"}, "confirmed": True, "idem_key": "r-1"}))
+    assert seen == {"name": "gmail_send", "confirmed": True, "idem_key": "r-1"}
+    assert out["observation"]["ok"] is True
+
+
+def test_execute_tool_without_executor_returns_error_not_exception():
+    """Dominio sin tool_executor (ej registrado en modo dispatch legacy) -> observacion de error, nunca excepcion."""
+    _reg(tool_executor=None)
+    out = asyncio.run(A.execute_tool({"domain": "d", "name": "gmail_send", "arguments": {},
+                                      "conv": {}, "confirmed": False, "idem_key": "r-2"}))
+    assert out["status"] == "error"
+    assert out["tool_call_id"] == "r-2"
+
+
+def test_recall_memory_no_provider_is_noop():
+    _reg(memory_provider=None)
+    out = asyncio.run(A.recall_memory({"domain": "d", "cliente_id": "42", "thread_ref": "t", "query": "hola"}))
+    assert out == {"context": ""}
+
+
+def test_recall_memory_uses_provider_recall():
+    class _Mem:
+        def recall(self, cliente_id, thread_ref, query):
+            return f"ctx:{cliente_id}:{thread_ref}:{query}"
+    _reg(memory_provider=_Mem())
+    out = asyncio.run(A.recall_memory({"domain": "d", "cliente_id": "42", "thread_ref": "t", "query": "hola"}))
+    assert out == {"context": "ctx:42:t:hola"}
+
+
+def test_recall_memory_degrades_on_exception():
+    class _Mem:
+        def recall(self, cliente_id, thread_ref, query):
+            raise RuntimeError("graphity caido")
+    _reg(memory_provider=_Mem())
+    out = asyncio.run(A.recall_memory({"domain": "d", "cliente_id": "42", "thread_ref": "t", "query": "hola"}))
+    assert out == {"context": ""}

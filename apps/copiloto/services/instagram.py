@@ -74,3 +74,39 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
             reply_text=f"Voy a publicar una foto en Instagram (@{ig}). ¿Confirmás? (recordá: no se puede borrar por API)",
             ok_text="Listo, lo publiqué en Instagram ✅")
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ─────────────────────────────────
+# `publish` es un patrón de 2 pasos (create media -> publish) resuelto vía Proposal.then: se expone como
+# UNA sola tool `instagram_publish` — el 2do paso lo maneja el executor, invisible al LLM.
+TOOLS = {
+    "instagram_account": "account",
+    "instagram_media": "media",
+    "instagram_publish": "publish",
+}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "instagram_account",
+        "description": "Consulta datos de la cuenta de Instagram Business conectada (username, followers, posts).",
+        "parameters": {"type": "object", "properties": {}, "required": []}}},
+    {"type": "function", "function": {
+        "name": "instagram_media",
+        "description": "Lista las últimas publicaciones de la cuenta de Instagram Business.",
+        "parameters": {"type": "object", "properties": {
+            "ig_user_id": {"type": "string", "description": "id de la cuenta de Instagram Business"}},
+            "required": ["ig_user_id"]}}},
+    {"type": "function", "function": {
+        "name": "instagram_publish",
+        "description": (
+            "Publica una foto en Instagram (2 pasos internos: crea el contenedor y lo publica). "
+            "IRREVERSIBLE — la API no tiene delete-post."
+        ),
+        "parameters": {"type": "object", "properties": {
+            "ig_user_id": {"type": "string", "description": "id de la cuenta de Instagram Business"},
+            "image_url": {"type": "string", "description": "URL pública de la imagen a publicar"},
+            "caption": {"type": "string", "description": "texto de la publicación (opcional)"}},
+            "required": ["ig_user_id", "image_url"]}}},
+]
+
+WRITE_OPS = frozenset({"publish"})

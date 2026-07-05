@@ -3,12 +3,23 @@
 Cada servicio Composio (gmail, googlesheets, ...) vive en `services/<svc>.py` y expone:
   TOOLKIT: str                                  # slug del toolkit Composio (ej 'gmail')
   POLICY: ToolkitPolicy                         # allowlist MÍNIMA (defensa tool-overload nivel 1)
-  PROMPT_FRAGMENT: str                          # instrucciones para el LLM (qué ops emitir)
+  PROMPT_FRAGMENT: str                          # instrucciones para el LLM (qué ops emitir) — dispatcher legacy
   build(op, entities, *, now_iso) -> Proposal | Read | None
+  TOOL_SCHEMAS: list[dict]                      # function-schemas OpenAI (uno por op) para el motor ReAct (tool-calling)
+  TOOLS: dict[str, str]                         # tool_name canónico ('<service>_<op>') -> op que consume build()
+  WRITE_OPS: frozenset[str]                     # ops de ESCRITURA del build() de este módulo (ej {"send"}); un op
+  #                                                read-only NO va acá. Requerido — sin él, tool_catalog.WRITE_TOOLS
+  #                                                no puede distinguir write de read para este módulo (fail-fast).
 
 El core (dispatcher_emprendedor) hace el confirm-gate + ejecuta contra el ComposioGateway; el módulo SOLO
 arma el call. Agregar un servicio = agregar UN archivo acá (discovery automático en __init__). Cero edición
 central → fan-out sin colisión + gating por toolkit. `nombre de archivo` = nombre de servicio que emite el LLM.
+
+Los `tool_name` de TOOLS/TOOL_SCHEMAS son `<service>_<op>` (ej `gmail_send`); cada uno mapea a UN `op` que el
+`build(op, entities)` de ESE módulo acepta. Los `properties` de cada schema deben ser los mismos keys que
+`build()` lee de `entities` (copiarlos del código real de `build`, no inventar). Un servicio con el patrón
+`then` de 2 pasos (ej instagram create→publish) se expone como UNA sola tool: el `then` lo resuelve el
+executor, invisible al LLM.
 """
 from __future__ import annotations
 

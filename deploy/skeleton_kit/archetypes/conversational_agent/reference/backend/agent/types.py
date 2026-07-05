@@ -108,3 +108,61 @@ class DispatchResult:
             choices=d.get("choices") or [],
             card=d.get("card") or {},
         )
+
+
+@dataclass
+class ToolCall:
+    """Un tool-call que el LLM emitió (tool-calling nativo). `arguments` ya parseado del JSON del modelo."""
+    id: str                # tool_call_id de la API (para casar el tool-result)
+    name: str              # nombre canónico de la tool (ej 'gmail_send', 'mp_charge', 'calendar_book')
+    arguments: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(d: dict) -> "ToolCall":
+        return ToolCall(id=d["id"], name=d["name"], arguments=d.get("arguments") or {})
+
+
+@dataclass
+class Artifact:
+    """Artefacto clicable que produce una tool. `kind` decide el render; `data.url` redirige a la fuente."""
+    kind: str              # 'payment_link'|'email_draft'|'doc'|'file'|'sheet'|'calendar_event'
+    data: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(d: dict | None) -> "Artifact | None":
+        if not d:
+            return None
+        return Artifact(kind=d["kind"], data=d.get("data") or {})
+
+
+@dataclass
+class ToolResult:
+    """Resultado de ejecutar una tool. `observation` = proyección DESTILADA que ve el LLM (no el payload crudo).
+    `status`: 'ok' | 'error' | 'rejected' | 'needs_confirmation' (write no confirmado → el workflow abre el gate).
+    `tool_call_id` guarda el **idem_key** del write (ref de trazabilidad/dedup) — NO el id de la API: el scratchpad
+    se casa con el `tc["id"]` real en el workflow (`_assistant_tool_call_msg`), no con este campo."""
+    tool_call_id: str
+    observation: dict = field(default_factory=dict)
+    artifact: "Artifact | None" = None
+    is_write: bool = False
+    status: str = "ok"
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["artifact"] = self.artifact.to_dict() if self.artifact else None
+        return d
+
+    @staticmethod
+    def from_dict(d: dict) -> "ToolResult":
+        return ToolResult(
+            tool_call_id=d["tool_call_id"],
+            observation=d.get("observation") or {},
+            artifact=Artifact.from_dict(d.get("artifact")),
+            is_write=bool(d.get("is_write", False)),
+            status=d.get("status", "ok"))

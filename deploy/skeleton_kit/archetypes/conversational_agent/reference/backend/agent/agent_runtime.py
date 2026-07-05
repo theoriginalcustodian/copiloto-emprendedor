@@ -21,12 +21,18 @@ _STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del do
 
 
 def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None,
-                    memory_provider=None) -> None:
+                    memory_provider=None, engine_mode: str = "dispatch",
+                    tool_schemas=None, tool_executor=None) -> None:
     """`memory_provider` (opcional): boundary de memoria de largo plazo (recall/remember/warm). None = el
-    dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él."""
+    dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él.
+
+    `engine_mode`: 'dispatch' (default, intent->1 accion, byte-identical) | 'react' (loop tool-calling).
+    En 'react' el dominio DEBE pasar `tool_schemas` (catalogo OpenAI function-calling) y `tool_executor`
+    (name, arguments, ctx, *, confirmed, idem_key) -> ToolResult. En 'dispatch' se ignoran (None)."""
     _DOMAINS[name] = {"system_prompt": system_prompt, "llm_provider": llm_provider,
                       "dispatcher": dispatcher, "context_factory": context_factory,
-                      "memory_provider": memory_provider}
+                      "memory_provider": memory_provider, "engine_mode": engine_mode,
+                      "tool_schemas": tool_schemas, "tool_executor": tool_executor}
 
 
 def get_domain(name: str) -> dict:

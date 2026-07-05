@@ -57,3 +57,28 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
         query = entities.get("query") or entities.get("email") or ""
         return Read(slug=SEARCH_SLUG, arguments={"query": query, "limit": 5}, summarize=_summarize_search)
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
+TOOLS = {"hubspot_create_contact": "create_contact", "hubspot_search_contact": "search_contact"}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "hubspot_create_contact",
+        "description": "Crea un contacto en el CRM de HubSpot.",
+        "parameters": {"type": "object", "properties": {
+            "email": {"type": "string", "description": "email del contacto"},
+            "firstname": {"type": "string", "description": "nombre"},
+            "lastname": {"type": "string", "description": "apellido"},
+            "company": {"type": "string", "description": "empresa (opcional)"},
+            "phone": {"type": "string", "description": "teléfono (opcional)"}},
+            "required": ["email"]}}},
+    {"type": "function", "function": {
+        "name": "hubspot_search_contact",
+        "description": "Busca un contacto en el CRM de HubSpot por email o nombre.",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "email o nombre a buscar"}},
+            "required": []}}},
+]
+
+WRITE_OPS = frozenset({"create_contact"})

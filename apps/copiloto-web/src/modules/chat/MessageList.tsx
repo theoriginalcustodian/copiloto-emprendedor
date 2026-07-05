@@ -33,7 +33,8 @@ export interface MessageListProps {
  *    una burbuja Y una card).
  *  - asistente con `choices` de opciones múltiples -> burbuja + chips de desambiguación debajo
  *    (EXTRACT §2.5 "burbuja de texto + fila de chips").
- *  - asistente sin `choices` -> burbuja simple.
+ *  - asistente sin `choices` -> burbuja simple; si además trae `card` con un artefacto terminal
+ *    (`kind` != 'confirm', Task 17), la burbuja monta `ArtifactView` debajo (link/share button).
  * Auto-scroll al último mensaje en cada cambio.
  */
 export function MessageList({
@@ -129,7 +130,7 @@ export function MessageList({
 
         return (
           <div key={message.id} className="chat-message-group">
-            <Bubble role="assistant" text={message.text} />
+            <Bubble role="assistant" text={message.text} card={message.card} />
             {kind === 'choices' && message.choices && (
               <DisambiguationChips choices={message.choices} onSelect={onChoice} />
             )}

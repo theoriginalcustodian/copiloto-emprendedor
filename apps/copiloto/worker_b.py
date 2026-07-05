@@ -26,7 +26,8 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from backend.agent.agent_activities import (
-    call_llm, dispatch_intent, notify_staff, remember_memory, send_channel_message, warm_memory)
+    call_llm, call_llm_tools, dispatch_intent, execute_tool, notify_staff, recall_memory,
+    remember_memory, send_channel_message, warm_memory)
 from backend.agent.agent_runtime import register_channel, register_domain
 from backend.agent.conversation_workflow import ConversationWorkflow
 from clients.agent.channels.web import WebChannelAdapter
@@ -38,19 +39,23 @@ from clients.agent.providers.mp_refresh_activities import refresh_credential, se
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
+import tool_catalog
 from calendar_policy import CALENDAR_POLICY
 from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
 from mp_credential_store import MpCredentialStore
+from mp_dedup_store import MpLinkDedupStore
 from memory_provider import build_memory_provider
 from reply_store import make_pg_reply_sink
-from system_prompt import SYSTEM_PROMPT
+from system_prompt import SYSTEM_PROMPT_REACT
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
 # warm_memory/remember_memory SIEMPRE registradas (aunque memory_provider sea None → no-op): si el workflow
 # emitiera la command y el worker no sirviera la activity, el turno colgaría hasta el timeout (no falla rápido).
-_ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff, warm_memory, remember_memory]
+# call_llm_tools/execute_tool/recall_memory: las 3 activities del motor ReAct (engine_mode="react", Task 14).
+_ACTIVITIES = [call_llm, dispatch_intent, send_channel_message, notify_staff, warm_memory, remember_memory,
+              call_llm_tools, execute_tool, recall_memory]
 
 
 def _now_iso() -> str:
@@ -95,13 +100,27 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
                                        memory_provider=memory_provider)
     reply_sink = make_pg_reply_sink(conn_factory)
 
-    system_prompt = SYSTEM_PROMPT + "\n" + services.prompt_fragments()
-    # Un solo LlmProvider: clasificador del turno (register_domain) Y summarizer de la acción
-    # 'consultar_actividad' (dispatcher) — mismo modelo/credencial, stateless, sin duplicar construcción.
+    # Motor ReAct (Task 14): tool_executor real (Composio + MP + calendar) con dedup app-side de links de
+    # cobro (spike C) atado al `cliente_id` per-request (nunca de env). El `dispatcher=` se sigue registrando
+    # como fallback dispatch/tests legacy; en engine_mode="react" el workflow usa el tool_executor.
+    # `llm` COMPARTIDO: clasificador del turno (register_domain) Y summarizer de la acción 'consultar_actividad'
+    # (dispatcher, recall temporal #125) — mismo modelo/credencial, stateless, sin duplicar construcción.
+    # ⚠️ Deuda visible (merge motor-react × recall-temporal): en engine_mode=react 'consultar_actividad' vive
+    # SOLO en el dispatcher (modo dispatch), aún NO en el tool_catalog → el recall temporal POR FECHA ("qué hice
+    # ayer") no está disponible en react. Follow-up: portarla como tool. El recall semántico (MemoryProvider)
+    # sí opera en ambos modos.
+    def _mp_dedup_factory(cliente_id: str):
+        return MpLinkDedupStore(conn_factory, cliente_id)
+
+    tool_executor = tool_catalog.make_tool_executor(
+        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory)
+    system_prompt_react = SYSTEM_PROMPT_REACT + "\n" + services.prompt_fragments()
     llm = build_llm()
-    register_domain("emprendedor", system_prompt=system_prompt, llm_provider=llm,
+    register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
-                    context_factory=ctx_factory, memory_provider=memory_provider)
+                    context_factory=ctx_factory, memory_provider=memory_provider,
+                    engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
+                    tool_executor=tool_executor)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))

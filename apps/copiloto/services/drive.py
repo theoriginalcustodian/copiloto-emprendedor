@@ -49,3 +49,25 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
         q = f"name contains '{name}'" if name else "trashed = false"
         return Read(slug=FIND_SLUG, arguments={"q": q}, summarize=_summarize_find)
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
+TOOLS = {"drive_create_file": "create_file", "drive_find": "find"}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "drive_create_file",
+        "description": "Crea un archivo de texto en Google Drive. Devuelve un link clicable al archivo.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string", "description": "nombre del archivo"},
+            "content": {"type": "string", "description": "contenido de texto del archivo"}},
+            "required": ["name"]}}},
+    {"type": "function", "function": {
+        "name": "drive_find",
+        "description": "Busca archivos en Google Drive por nombre.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string", "description": "nombre (o parte) a buscar"}},
+            "required": []}}},
+]
+
+WRITE_OPS = frozenset({"create_file"})

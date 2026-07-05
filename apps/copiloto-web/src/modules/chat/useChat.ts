@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { api, type ChatMessageKind, type HitlCardMeta, type ReplyChoice } from '../../lib/api';
+import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -133,8 +133,9 @@ export interface ChatMessage {
   role: ChatRole;
   text: string;
   choices?: ReplyChoice[];
-  /** Metadata de presentación del reply HITL (qué app real) — la usa `hitlMapping`/`HitlCard`. */
-  card?: HitlCardMeta;
+  /** Metadata de presentación del reply (gate HITL o artefacto terminal, Task 17) — la usa
+   * `hitlMapping`/`HitlCard` (kind='confirm') o `Bubble`/`ArtifactView` (otros kinds). */
+  card?: ReplyCard;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';

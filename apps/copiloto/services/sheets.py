@@ -104,3 +104,40 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
         rng = entities.get("range") or "A1:Z50"
         return Read(slug=READ_SLUG, arguments={"spreadsheet_id": sid, "ranges": [rng]}, summarize=_summarize_read)
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
+TOOLS = {
+    "sheets_append_row": "append_row",
+    "sheets_update_range": "update_range",
+    "sheets_read_range": "read_range",
+}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "sheets_append_row",
+        "description": "Agrega una fila al FINAL de una planilla de Google Sheets (append, no pisa lo existente).",
+        "parameters": {"type": "object", "properties": {
+            "spreadsheet_id": {"type": "string", "description": "id de la planilla"},
+            "values": {"type": "array", "items": {"type": "string"}, "description": "celdas de la fila a agregar"},
+            "sheet_name": {"type": "string", "description": "pestaña destino (opcional, default la 1ra hoja real)"}},
+            "required": ["spreadsheet_id", "values"]}}},
+    {"type": "function", "function": {
+        "name": "sheets_update_range",
+        "description": "Sobreescribe datos en una planilla de Google Sheets a partir de una celda puntual (notación A1).",
+        "parameters": {"type": "object", "properties": {
+            "spreadsheet_id": {"type": "string", "description": "id de la planilla"},
+            "cell": {"type": "string", "description": "celda destino en notación A1, ej 'B3'"},
+            "values": {"type": "array", "items": {"type": "string"}, "description": "celdas a escribir desde `cell`"},
+            "sheet_name": {"type": "string", "description": "pestaña destino (opcional, default la 1ra hoja real)"}},
+            "required": ["spreadsheet_id", "cell", "values"]}}},
+    {"type": "function", "function": {
+        "name": "sheets_read_range",
+        "description": "Lee un rango de celdas de una planilla de Google Sheets.",
+        "parameters": {"type": "object", "properties": {
+            "spreadsheet_id": {"type": "string", "description": "id de la planilla"},
+            "range": {"type": "string", "description": "rango en notación A1, ej 'A1:D20' (opcional)"}},
+            "required": ["spreadsheet_id"]}}},
+]
+
+WRITE_OPS = frozenset({"append_row", "update_range"})
