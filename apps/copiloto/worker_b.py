@@ -112,10 +112,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
-    tool_executor = tool_catalog.make_tool_executor(
-        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory)
     system_prompt_react = SYSTEM_PROMPT_REACT + "\n" + services.prompt_fragments()
     llm = build_llm()
+    tool_executor = tool_catalog.make_tool_executor(
+        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,

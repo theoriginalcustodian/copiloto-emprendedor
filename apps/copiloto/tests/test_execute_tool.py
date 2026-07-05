@@ -233,3 +233,58 @@ def test_ctx_none_still_raises_outside_the_catch_all():
     ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t")
     with pytest.raises(ValueError):
         ex("gmail_send", {"to": "a@b.com"}, None, confirmed=False, idem_key="run1-4")
+
+
+# ═══════════ consultar_actividad (recall temporal por rango, 1ra clase READ → sin gate) ═══════════
+class _Mem:
+    def __init__(self, episodes):
+        self._eps = episodes
+
+    def recall_range(self, cliente_id, since, until):
+        return self._eps
+
+
+class _CtxMem(_Ctx):
+    def __init__(self, episodes):
+        self.memory_provider = _Mem(episodes)
+
+
+def test_consultar_actividad_es_read_sin_gate(monkeypatch):
+    """consultar_actividad es READ puro: resuelve el rango + recall_range + summarize_activity → observación,
+    is_write=False, SIN abrir gate HITL (aunque confirmed=False)."""
+    monkeypatch.setattr(tool_catalog, "summarize_activity",
+                        lambda episodes, **k: "Hoy agendaste 1 reunión y cobraste $5000.")
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-05T12:00:00", llm=object())
+    tr = ex("consultar_actividad", {"range_raw": "hoy"}, _CtxMem([{"content": "x"}]), confirmed=False, idem_key="run1-0")
+    assert tr.is_write is False
+    assert tr.status == "ok"
+    assert "agendaste" in tr.observation["result"]
+
+
+def test_consultar_actividad_no_esta_en_write_tools():
+    """Contrato: NO va en WRITE_TOOLS (read → sin gate) y rutea al destino 'activity'."""
+    assert "consultar_actividad" not in tool_catalog.WRITE_TOOLS
+    assert tool_catalog.TOOL_INDEX["consultar_actividad"] == ("activity",)
+
+
+def test_consultar_actividad_sin_episodios_no_llama_al_llm(monkeypatch):
+    called = []
+    monkeypatch.setattr(tool_catalog, "summarize_activity", lambda *a, **k: called.append(1) or "x")
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-05T12:00:00", llm=object())
+    tr = ex("consultar_actividad", {"range_raw": "hoy"}, _CtxMem([]), confirmed=False, idem_key="k")
+    assert tr.status == "ok" and tr.is_write is False
+    assert "No encontré actividad" in tr.observation["result"]
+    assert called == []          # sin episodios NO invoca al LLM (ahorro)
+
+
+def test_consultar_actividad_rango_invalido_es_error(monkeypatch):
+    monkeypatch.setattr(tool_catalog, "resolve_date_range", lambda *a, **k: None)
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", llm=object())
+    tr = ex("consultar_actividad", {"range_raw": "??"}, _CtxMem([{"content": "x"}]), confirmed=False, idem_key="k")
+    assert tr.status == "error" and "período" in tr.observation["error"]
+
+
+def test_consultar_actividad_sin_llm_degrada_sin_crashear():
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", llm=None)
+    tr = ex("consultar_actividad", {"range_raw": "hoy"}, _CtxMem([{"content": "x"}]), confirmed=False, idem_key="k")
+    assert tr.status == "error" and tr.is_write is False
