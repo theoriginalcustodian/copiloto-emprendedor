@@ -94,6 +94,58 @@ async def transcribe_voice(payload: dict) -> dict:
 
 
 @activity.defn
+async def call_llm_tools(payload: dict) -> dict:
+    """payload = {domain, messages, tool_choice?, system_extra?}. Tool-calling nativo para el motor ReAct.
+    Antepone el Context Block de memoria (si el dominio tiene memory_provider) al system via system_extra
+    (lo arma el workflow 1x/turno). Devuelve {'tool_calls','content','finish_reason','model','failed_over'}."""
+    dom = get_domain(payload["domain"])
+    provider = dom["llm_provider"]
+    system = dom["system_prompt"]
+    extra = payload.get("system_extra")
+    if extra:
+        system = system + "\n\n" + extra
+    tools = dom.get("tool_schemas") or []
+    return await asyncio.to_thread(
+        provider.complete_tools, system, payload.get("messages") or [], tools,
+        tool_choice=payload.get("tool_choice", "auto"))
+
+
+@activity.defn
+async def execute_tool(payload: dict) -> dict:
+    """payload = {domain, name, arguments, conv, confirmed, idem_key}. Ejecuta UNA tool del dominio via su
+    tool_executor. Devuelve ToolResult dict. Los errores de negocio ya vienen como status='error' del executor
+    -- NUNCA se propagan (retry ilimitado colgaria el turno, leccion PR #114)."""
+    dom = get_domain(payload["domain"])
+    executor = dom.get("tool_executor")
+    if executor is None:
+        return {"tool_call_id": payload.get("idem_key", ""), "status": "error",
+                "observation": {"error": "dominio sin tool_executor"}, "artifact": None, "is_write": False}
+    ctx = dom["context_factory"](payload["conv"]) if dom["context_factory"] else None
+    result = await asyncio.to_thread(
+        executor, payload["name"], payload.get("arguments") or {}, ctx,
+        confirmed=bool(payload.get("confirmed", False)), idem_key=payload["idem_key"])
+    return result.to_dict() if hasattr(result, "to_dict") else result
+
+
+@activity.defn
+async def recall_memory(payload: dict) -> dict:
+    """payload = {domain, cliente_id, thread_ref, query}. Recall de memoria de largo plazo para el motor ReAct
+    (lado INPUT; el motor lo invoca 1x/turno). Devuelve {'context': <Context Block o "">}. No-op si el dominio
+    no tiene memory_provider. Best-effort: NUNCA propaga (una caida/lentitud de la memoria no cuelga el turno).
+    Reusa el mismo `recall` que call_llm usa en modo dispatch (memory_provider.recall)."""
+    mem = get_domain(payload["domain"]).get("memory_provider")
+    if mem is None:
+        return {"context": ""}
+    try:
+        ctx = await asyncio.to_thread(mem.recall, payload["cliente_id"], payload.get("thread_ref", ""),
+                                      payload.get("query", ""))
+        return {"context": ctx or ""}
+    except Exception as exc:  # noqa: BLE001 — memoria best-effort: nunca romper el turno
+        activity.logger.warning(f"[recall_memory] degradado: {exc}")
+        return {"context": ""}
+
+
+@activity.defn
 async def warm_memory(payload: dict) -> dict:
     """payload = {domain, cliente_id}. Precalienta el grafo de memoria del interlocutor al ABRIR la sesión.
     No-op si el dominio no tiene memory_provider. Best-effort: NUNCA propaga (un warm fallido no bloquea la
