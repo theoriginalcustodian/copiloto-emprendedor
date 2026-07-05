@@ -9,11 +9,22 @@ import { sendChat } from './chat';
 import { getConnect } from './connect';
 import { me } from './me';
 import { mockApi } from './mock';
+import { ensureOauthTenant } from './oauth';
 import { getReply } from './reply';
 import type { CopilotApi } from './types';
 import { warm } from './warm';
 
-const realApi: CopilotApi = { login, me, catalog, connect: getConnect, sendChat, sendAudio, getReply, warm };
+const realApi: CopilotApi = {
+  login,
+  ensureOauthTenant,
+  me,
+  catalog,
+  connect: getConnect,
+  sendChat,
+  sendAudio,
+  getReply,
+  warm,
+};
 
 export const api: CopilotApi = import.meta.env.VITE_API_MOCK === '1' ? mockApi : realApi;
 

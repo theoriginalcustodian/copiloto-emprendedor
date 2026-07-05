@@ -20,11 +20,16 @@
 # Parametrizable (cero hardcoding -- mismo estilo/defaults que deploy.sh):
 #   UC_DEPLOY_HOST   alias SSH del VPS destino        (default: unreal-copilot)
 #   UC_DEPLOY_PATH   path estable del código en el VPS (default: /opt/uc-repos/copiloto)
+#   UC_BASE_DOMAIN   dominio base (sslip.io del VPS)  (default: 178-105-191-1.sslip.io)
+#   UC_AUTH_URL      base pública del vhost de auth para el botón Google (VITE_AUTH_URL en el build)
+#                    (default: https://auth.${UC_BASE_DOMAIN}). Vacío ("") ⇒ botón Google OCULTO.
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
+BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
+AUTH_URL="${UC_AUTH_URL-https://auth.${BASE_DOMAIN}}"   # nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
 WEB_SUBDIR="apps/copiloto-web"
 
 echo "==> [1/3] sync ${WEB_SUBDIR} + deploy/copiloto/fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
@@ -37,13 +42,15 @@ tar -C "$LOCAL" \
 echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si ya está)"
 ssh "$HOST" "bash '$REMOTE/deploy/copiloto/fetch-fonts.sh'"
 
-echo "==> [3/3] npm install (NO ci -- sin lockfile pre-generado asumido) + build"
-ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" <<'REMOTE_BUILD'
+echo "==> [3/3] npm install (NO ci -- sin lockfile pre-generado asumido) + build (VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>})"
+ssh "$HOST" bash -s -- "$REMOTE/$WEB_SUBDIR" "$AUTH_URL" <<'REMOTE_BUILD'
 set -euo pipefail
-WEB_DIR="$1"
+WEB_DIR="$1"; AUTH_URL="$2"
 cd "$WEB_DIR"
 npm install
-npm run build
+# Vite hornea las VITE_* del entorno al bundle. VITE_AUTH_URL habilita el botón "Entrar con Google"
+# (vacío ⇒ botón oculto). Cero hardcoding: sale del parámetro, derivado de UC_BASE_DOMAIN.
+VITE_AUTH_URL="$AUTH_URL" npm run build
 echo "--- dist/ generado en: ---"
 realpath "$WEB_DIR/dist"
 REMOTE_BUILD

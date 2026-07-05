@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 
 import { Button, PresenceOrb, Surface } from '../design-system';
 import './login.css';
+import { googleAuthUrl } from './oauth';
 import { useSession } from './useSession';
 
 /**
@@ -18,6 +19,10 @@ export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
+
+  // Botón "Entrar con Google": solo si el build trae `VITE_AUTH_URL` (vhost público de auth). En dev/mock
+  // o builds sin Google, `googleAuthUrl()` devuelve null → no se renderiza (feature-flag por build).
+  const googleUrl = googleAuthUrl();
 
   // El aviso de "no habilitada" puede venir de un submit propio o de detectarlo al montar (token
   // viejo + /me 403) — lo que haya pasado más recientemente gana (mismo criterio que LoginSkeleton).
@@ -108,6 +113,17 @@ export function LoginScreen() {
             <p role="alert" className="login-screen__alert login-screen__alert--danger">
               No pudimos conectarnos. Probá de nuevo en un toque.
             </p>
+          )}
+
+          {googleUrl && (
+            <>
+              <div className="login-screen__divider" role="separator">
+                <span>o</span>
+              </div>
+              <a href={googleUrl} className="login-screen__google" data-testid="login-google">
+                Entrar con Google
+              </a>
+            </>
           )}
         </Surface>
 

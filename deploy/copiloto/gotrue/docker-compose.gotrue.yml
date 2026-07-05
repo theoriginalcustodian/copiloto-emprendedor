@@ -48,7 +48,12 @@ services:
       GOTRUE_DB_NAMESPACE: auth
       # API_EXTERNAL_URL va SIN prefijo GOTRUE_ (excepción del compose oficial;
       # el spike lo cazó: sin esta var GoTrue muere con "required key API_EXTERNAL_URL").
-      API_EXTERNAL_URL: ${COPILOTO_SUPABASE_URL:?}
+      # DECOPLADO del loopback: el backend pega en COPILOTO_SUPABASE_URL (127.0.0.1) para email/pass +
+      # admin API, pero el flujo OAuth del browser (Google) necesita que GoTrue conozca su URL PÚBLICA
+      # (vhost host-level). Default = loopback (backward-compat, Google OFF); al activar Google,
+      # COPILOTO_API_EXTERNAL_URL se setea al vhost público. NO afecta el `iss` del token (fijado por
+      # GOTRUE_JWT_ISSUER), así que el iss-enforcement del copiloto sigue intacto.
+      API_EXTERNAL_URL: ${COPILOTO_API_EXTERNAL_URL:-${COPILOTO_SUPABASE_URL:?}}
       GOTRUE_SITE_URL: ${GOTRUE_SITE_URL:?}
       GOTRUE_URI_ALLOW_LIST: ${GOTRUE_URI_ALLOW_LIST:-}
       GOTRUE_JWT_SECRET: ${COPILOTO_JWT_SECRET:?set in copiloto-gotrue.env}

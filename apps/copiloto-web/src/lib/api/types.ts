@@ -170,8 +170,15 @@ export interface WarmResponse {
 // Superficie común real|mock (index.ts elige la implementación)
 // ---------------------------------------------------------------------------
 
+/** Respuesta de `POST /auth/oauth/ensure-tenant` (first-login OAuth). Solo `cliente_id` es de interés. */
+export interface OauthEnsureResponse {
+  cliente_id: string;
+}
+
 export interface CopilotApi {
   login(email: string, password: string): Promise<LoginResponse>;
+  /** First-login OAuth (Google): provisiona el tenant. Idempotente en el backend. */
+  ensureOauthTenant(): Promise<OauthEnsureResponse>;
   me(): Promise<MeResponse>;
   catalog(): Promise<CatalogResponse>;
   /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */

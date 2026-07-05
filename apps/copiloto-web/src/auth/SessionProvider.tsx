@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
+import { consumeOauthCallback } from './oauth';
 import { clearToken, getToken, setRefreshToken, setToken } from './session';
 import {
   SessionContext,
@@ -49,6 +50,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // 1) ¿Volvemos de un callback OAuth (Google)? GoTrue deja los tokens en el fragment de la URL.
+    const oauth = consumeOauthCallback();
+    if (oauth) {
+      setToken(oauth.access_token);
+      if (oauth.refresh_token) setRefreshToken(oauth.refresh_token);
+      void (async () => {
+        // First-login OAuth: provisiona el tenant (idempotente en el backend). Si ya existía o el
+        // endpoint no aplica, `fetchMe` resuelve igual el estado (authed / no-habilitada / anon) —
+        // nunca bloquea el login por un fallo de provisioning parcial.
+        try {
+          await api.ensureOauthTenant();
+        } catch {
+          /* idempotente / ya provisionado: el estado final lo decide fetchMe */
+        }
+        await fetchMe();
+      })();
+      return;
+    }
+
+    // 2) Sesión normal: validar el token persistido contra /me.
     const token = getToken();
     if (!token) {
       setStatus('anon');
