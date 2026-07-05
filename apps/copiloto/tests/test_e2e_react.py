@@ -10,7 +10,7 @@ MercadoPago ya validadas E2E aparte: memoria `composio-gateway-ladrillo` /
 `mercadopago-gateway-impl-followup`).
 
 Fidelidad con prod (worker_b.build_worker_config): mismo `LlmProvider` (worker_b.build_llm()),
-mismo system prompt (`SYSTEM_PROMPT_REACT + services.prompt_fragments()`), mismo catálogo de tools
+mismo system prompt (`SYSTEM_PROMPT_REACT`, react NO concatena fragments), mismo catálogo de tools
 (`tool_catalog.build_tool_catalog()`, catálogo COMPLETO — no recortado) — solo el tool_executor y
 el context_factory son fakes de este test.
 
@@ -50,7 +50,6 @@ from backend.agent.agent_runtime import register_domain, reset_registry  # noqa:
 from backend.agent.conversation_workflow import ConversationWorkflow  # noqa: E402
 from backend.agent.types import Artifact, ToolResult  # noqa: E402
 
-import services  # noqa: E402
 import tool_catalog  # noqa: E402
 import worker_b  # noqa: E402 -- reusa build_llm() REAL (== prod, gpt-4o-mini)
 from system_prompt import SYSTEM_PROMPT_REACT  # noqa: E402
@@ -120,7 +119,7 @@ def _register_domain(name: str) -> tuple[list, list, list]:
     sent_links: list[str] = []
     sent_mails: list[dict] = []
     unexpected: list[dict] = []
-    system_prompt = SYSTEM_PROMPT_REACT + "\n" + services.prompt_fragments()   # == worker_b.py:111
+    system_prompt = SYSTEM_PROMPT_REACT   # == worker_b: react NO concatena fragments (los TOOL_SCHEMAS describen las tools)
     register_domain(name, system_prompt=system_prompt, llm_provider=worker_b.build_llm(),
                     dispatcher=lambda *a, **k: None, context_factory=None, engine_mode="react",
                     tool_schemas=tool_catalog.build_tool_catalog(),   # == worker_b.py:115 (catálogo completo)

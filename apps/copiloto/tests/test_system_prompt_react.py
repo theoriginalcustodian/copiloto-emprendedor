@@ -19,3 +19,12 @@ def test_react_prompt_instructs_chaining_and_no_json():
     low = SYSTEM_PROMPT_REACT.lower()
     assert "json" not in low                     # tool-calling nativo, no JSON-mode
     assert "encaden" in low or "varias" in low    # instruye tareas concatenadas
+
+
+def test_react_prompt_has_scope_and_ask_guards():
+    """Guardas de comportamiento (afinado 2026-07-05): (a) hacer SOLO lo pedido (anti sobre-actuación),
+    (b) pedir el dato faltante en vez de inventarlo. NO son lenguaje de gate → no rompen el tool-calling
+    (el test de arriba sigue garantizando que no filtra confirm/pendiente/aprob/botón)."""
+    low = SYSTEM_PROMPT_REACT.lower()
+    assert "solo lo que" in low                   # (a) anti sobre-actuación
+    assert "falta un dato" in low and "pedí" in low   # (b) pedir el dato faltante, no inventar

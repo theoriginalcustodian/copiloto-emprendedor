@@ -111,7 +111,16 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
-    system_prompt_react = SYSTEM_PROMPT_REACT + "\n" + services.prompt_fragments()
+    # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
+    # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
+    # (name + description + parameters) ya describen cada tool (auditoría 2026-07-05: 0 matiz de negocio único
+    # fuera del schema). Los fragments siguen siendo la fuente del formato action/entities del modo DISPATCH.
+    # ⚠️ Deuda gestionada (pre-existente desde el motor react #134, NO la introduce este cambio): el domain
+    # registra UN solo system_prompt (el react); `call_llm` (dispatch) y `call_llm_tools` (react) leen el MISMO
+    # `dom["system_prompt"]`. Por eso un rollback a engine_mode=dispatch correría el dispatcher con el prompt
+    # react → dispatch fallback DEGRADADO (ya lo estaba). Pago (si se necesita rollback funcional): que este
+    # composition root arme prompt+engine_mode por `COPILOTO_ENGINE_MODE`. Owner: operador. Ver frentes-abiertos.
+    system_prompt_react = SYSTEM_PROMPT_REACT
     llm = build_llm()
     tool_executor = tool_catalog.make_tool_executor(
         gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm)
