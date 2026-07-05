@@ -137,6 +137,12 @@ def _TEXT(t):
     return {"tool_calls": [], "content": t, "finish_reason": "stop"}
 
 
+def _choice_value(sent_payload: dict, label: str) -> str:
+    """Extrae el `value` (con el token del gate embebido, ej 'confirm:1:0') de las choices de un envío. Simula
+    lo que hace el frontend real: reenvía el `value` de la card tal cual, nunca un literal "confirm"/"cancel"."""
+    return next(c["value"] for c in sent_payload["choices"] if c["label"] == label)
+
+
 @pytest.mark.asyncio
 async def test_react_chains_read_then_final():
     """gmail_fetch (read) -> observación -> el modelo cierra con texto. 1 turno, sin gate."""
@@ -199,7 +205,9 @@ async def test_react_confirm_chains_with_real_link():
                                                 id="r3", task_queue="r3")
             await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 5000 y mandá mail", "kind": "text"})
             await env.sleep(1)
-            await h.signal(ConversationWorkflow.receive_message, {"text": "confirm", "kind": "callback"})
+            # el value real (con el token del gate embebido, HIGH) — NUNCA un literal "confirm" plano
+            confirm_value = _choice_value(calls["sent"][-1], "Confirmar")
+            await h.signal(ConversationWorkflow.receive_message, {"text": confirm_value, "kind": "callback"})
             await env.sleep(1)
             await h.signal(ConversationWorkflow.close)
             await h.result()
@@ -208,6 +216,9 @@ async def test_react_confirm_chains_with_real_link():
     gmail = [c for c in calls["exec"] if c["name"] == "gmail_send"]
     assert confirmed_charge and gmail
     assert "https://mpago.la/REAL" in gmail[0]["arguments"]["body"]
+    # B1 (regresión): el confirm reusa EXACTAMENTE la idem_key del probe (confirmed=False) que abrió el gate
+    probe = [c for c in calls["exec"] if c["name"] == "mp_charge" and c["confirmed"] is False][0]
+    assert confirmed_charge[0]["idem_key"] == probe["idem_key"]
 
 
 @pytest.mark.asyncio
@@ -226,9 +237,174 @@ async def test_react_reject_does_not_chain():
             await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 5000", "kind": "text"})
             await env.sleep(1)
             n_exec_before = len(calls["exec"])
-            await h.signal(ConversationWorkflow.receive_message, {"text": "cancel", "kind": "callback"})
+            cancel_value = _choice_value(calls["sent"][-1], "Cancelar")   # value real, con el token del gate
+            await h.signal(ConversationWorkflow.receive_message, {"text": cancel_value, "kind": "callback"})
             await env.sleep(1)
             await h.signal(ConversationWorkflow.close)
             await h.result()
     assert len(calls["exec"]) == n_exec_before          # tras el cancel NO se ejecutó ningún write más (corte)
     assert "no generé" in calls["sent"][-1]["text"].lower()
+
+
+# ═══════════════════════════ Fixes review U6 (HIGH token-por-gate · needs_stt · B1) ═══════════════════════════
+
+@pytest.mark.asyncio
+async def test_react_stale_confirm_token_does_not_execute_next_gate():
+    """HIGH (bug de dinero): un confirm STALE del gate1 (ya consumido) NO puede aprobar el gate2 que lo sucedió
+    tras encadenar. Doble-click / card vieja / callback mal-dirigido -> no-op fail-closed; el pending vigente
+    (gate2) sigue intacto hasta que llega SU propio token."""
+    def exec_fn(p):
+        if p["confirmed"]:
+            return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="ok",
+                              observation={"result": "hecho"}).to_dict()
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="needs_confirmation",
+                          observation={"preview": "confirmás?"}).to_dict()
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        w, calls = _script_worker(env, "r6", llm_script=[
+            _tc("mp_charge", {"amount": 1000}),                       # abre gate1
+            _tc("gmail_send", {"to": "a@b.com", "body": "x"}),        # tras confirm1, encadena -> abre gate2
+            _TEXT("Listo, mandado."),                                 # tras confirm2, cierra
+        ], exec_fn=exec_fn)
+        async with w:
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r6", task_queue="r6")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá y mandá mail", "kind": "text"})
+            await env.sleep(1)
+            tok1 = _choice_value(calls["sent"][-1], "Confirmar")            # token del gate1 (mp_charge)
+            await h.signal(ConversationWorkflow.receive_message, {"text": tok1, "kind": "callback"})
+            await env.sleep(1)
+            tok2 = _choice_value(calls["sent"][-1], "Confirmar")            # token del gate2 (gmail_send)
+            assert tok2 != tok1                                            # cada gate tiene SU propio token
+            n_exec_before_stale = len(calls["exec"])
+            # confirm STALE: reenviamos tok1 (ya consumido, del gate1) sobre el gate2 ABIERTO
+            await h.signal(ConversationWorkflow.receive_message, {"text": tok1, "kind": "callback"})
+            await env.sleep(1)
+            assert len(calls["exec"]) == n_exec_before_stale             # el stale NO ejecutó el 2º write
+            st = await h.query(ConversationWorkflow.state)
+            assert st["conversation_state"].get("react")                 # gate2 SIGUE parqueado, no se consumió
+            # el confirm CORRECTO (tok2) sí ejecuta
+            await h.signal(ConversationWorkflow.receive_message, {"text": tok2, "kind": "callback"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    confirmed = [c for c in calls["exec"] if c["confirmed"]]
+    assert len(confirmed) == 2   # mp_charge Y gmail_send terminan ejecutados, cada uno con SU propio confirm
+
+
+@pytest.mark.asyncio
+async def test_react_two_charges_different_turns_different_idem_keys():
+    """B1 (regresión, bug de dinero): dos cobros en TURNOS DISTINTOS nunca colisionan de idem_key aunque
+    ambos arranquen en step=0 (el step se resetea por turno; turn_ix es global y monótono)."""
+    def exec_fn(p):
+        st = "ok" if p["confirmed"] else "needs_confirmation"
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status=st,
+                          observation={"preview": "cobro", "init_point": "https://mpago.la/X"}).to_dict()
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        w, calls = _script_worker(env, "r7", llm_script=[
+            _tc("mp_charge", {"amount": 1000}),      # turno 1: abre gate
+            _TEXT("Listo, cobrado."),                 # tras confirm 1: cierra
+            _tc("mp_charge", {"amount": 2000}),      # turno 2: abre gate (mismo step=0, turn_ix distinto)
+            _TEXT("Listo, cobrado de nuevo."),        # tras confirm 2: cierra
+        ], exec_fn=exec_fn)
+        async with w:
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r7", task_queue="r7")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 1000", "kind": "text"})
+            await env.sleep(1)
+            tok1 = _choice_value(calls["sent"][-1], "Confirmar")
+            await h.signal(ConversationWorkflow.receive_message, {"text": tok1, "kind": "callback"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 2000 de nuevo", "kind": "text"})
+            await env.sleep(1)
+            tok2 = _choice_value(calls["sent"][-1], "Confirmar")
+            await h.signal(ConversationWorkflow.receive_message, {"text": tok2, "kind": "callback"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    confirmed = [c for c in calls["exec"] if c["name"] == "mp_charge" and c["confirmed"]]
+    assert len(confirmed) == 2
+    assert confirmed[0]["idem_key"] != confirmed[1]["idem_key"]   # NO colisión B1 entre turnos distintos
+
+
+@pytest.mark.asyncio
+async def test_react_needs_stt_with_transcript_processes_as_text():
+    """MEDIUM: un mensaje `needs_stt` en el path react se transcribe (activity `transcribe_voice`) y sigue
+    como texto normal — antes de este fix el file_id crudo se mandaba al LLM como si fuera texto de usuario."""
+    calls = {"exec": [], "sent": [], "llm": 0, "stt": []}
+
+    @activity.defn(name="transcribe_voice")
+    async def ftt(p):
+        calls["stt"].append(p)
+        return {"text": "tengo mails sin leer?"}
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        calls["llm"] += 1
+        assert p["messages"][0]["content"] == "tengo mails sin leer?"   # el LLM ve el TRANSCRIPT, no el file_id
+        return _TEXT("Sí, tenés 2 sin leer.")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        calls["exec"].append(p)
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        calls["sent"].append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="r8", workflows=[ConversationWorkflow],
+                          activities=[ftt, flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r8", task_queue="r8")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "file123", "kind": "needs_stt"})
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    assert len(calls["stt"]) == 1 and calls["stt"][0]["file_id"] == "file123"
+    assert calls["llm"] == 1 and len(calls["exec"]) == 0
+    assert calls["sent"][-1]["text"] == "Sí, tenés 2 sin leer."
+
+
+@pytest.mark.asyncio
+async def test_react_needs_stt_empty_transcript_sends_fallback_without_breaking():
+    """MEDIUM: `needs_stt` con transcript vacío manda el mensaje de fallback y CORTA el turno sin llamar al
+    LLM ni tocar ningún gate — no rompe el hilo (mismo criterio que el path dispatch)."""
+    calls = {"llm": 0, "sent": []}
+
+    @activity.defn(name="transcribe_voice")
+    async def ftt(p):
+        return {"text": "   "}   # vacío tras strip()
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        calls["llm"] += 1
+        return _TEXT("no debería llamarse jamás")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        calls["sent"].append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="r9", workflows=[ConversationWorkflow],
+                          activities=[ftt, flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="r9", task_queue="r9")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "file999", "kind": "needs_stt"})
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+    assert calls["llm"] == 0                                          # nunca llegó a call_llm_tools
+    assert "no pude escuchar" in calls["sent"][-1]["text"].lower()

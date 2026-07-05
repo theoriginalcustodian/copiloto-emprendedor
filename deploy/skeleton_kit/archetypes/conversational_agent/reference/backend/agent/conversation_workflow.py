@@ -310,23 +310,54 @@ class ConversationWorkflow:
         `turn_ix` = índice de turno GLOBAL y monótono (sobrevive continue-as-new) → base del idem_key único."""
         kind = msg.get("kind", "text")
         user_text = msg.get("text", "")
+
+        # Nota de voz (turno normal, NUNCA la reentrada callback — needs_stt jamás llega con kind='callback'):
+        # transcribir ANTES de seguir (el `text` traía el file_id, no el contenido). Gap MEDIUM del review: sin
+        # este bloque el motor mandaba el file_id crudo al LLM como si fuera texto del usuario. Si no se pudo
+        # transcribir -> pedir texto y cortar el turno, sin tocar ningún gate abierto (lo supersede la rama de
+        # abajo una vez `kind` pasa a 'text' — mismo criterio que un mensaje de texto nuevo).
+        if kind == "needs_stt":
+            stt = await workflow.execute_activity(
+                "transcribe_voice", {"channel": channel, "file_id": user_text},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+            transcript = ((stt or {}).get("text") or "").strip()
+            if not transcript:
+                await workflow.execute_activity(
+                    "send_channel_message",
+                    {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+                     "text": "Uy, no pude escuchar tu audio 🙉. ¿Me lo escribís?", "choices": []},
+                    start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+                return False
+            user_text = transcript              # de acá en más es texto normal (lo procesa el loop react)
+            kind = "text"
+
         parked = self._state.get("react")
         conv = {"cliente_id": cliente_id, "channel": channel, "channel_ref": channel_ref}
 
         # ── reingreso de confirmación (callback determinístico, SIN LLM) ──────────────────────────
         if parked and kind == "callback":
+            pend = parked["pending"]                 # {tool_call, turn_ix, step}
+            # HIGH (bug de dinero): el value trae `action:token` con token=f'{turn_ix}:{step}' del gate que lo
+            # emitió (ver _react_loop). Un doble-click, una card vieja, o un confirm que llega tras encadenar al
+            # SIGUIENTE gate ya NO matchea el pending vigente -> no-op fail-closed: el pending NO se toca, la
+            # card correcta (la del gate VIGENTE) sigue siendo la única que puede resolverlo.
+            expected_token = f'{pend["turn_ix"]}:{pend["step"]}'
+            action, _, token = user_text.partition(":")
+            if token != expected_token:
+                return False
             self._state.pop("react", None)
             messages = list(parked["messages"])
-            pend = parked["pending"]                 # {tool_call, turn_ix, step}
             idem = self._react_idem_key(pend["turn_ix"], pend["step"])   # MISMA key que el gate (B1)
-            if user_text == "confirm":
+            if action == "confirm":
                 tr = await workflow.execute_activity(
                     "execute_tool",
                     {"domain": domain, "name": pend["tool_call"]["name"], "arguments": pend["tool_call"]["arguments"],
                      "conv": conv, "confirmed": True, "idem_key": idem},
                     start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
                 messages.append(_assistant_tool_call_msg(pend["tool_call"]))
-                messages.append(_tool_result_msg(pend["tool_call"]["id"], tr["observation"]))
+                # minor (defensa): indexado directo `tr["observation"]` -> KeyError = no-determinismo que
+                # cuelga la corrida; `.get(...) or {}` es la misma defensa que ya usa el resto del loop.
+                messages.append(_tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {}))
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"))
@@ -410,8 +441,8 @@ class ConversationWorkflow:
                 self._state["react"] = {"messages": messages,
                                         "pending": {"tool_call": tc, "turn_ix": start_turn_ix, "step": step}}
                 preview = (tr.get("observation") or {}).get("preview") or "¿Confirmás esta acción?"
-                await self._react_send(channel, channel_ref, cliente_id, preview,
-                                       tr.get("artifact"), choices=_CONFIRM_CHOICES)  # NO apendea history (no terminal)
+                await self._react_send(channel, channel_ref, cliente_id, preview, tr.get("artifact"),
+                                       choices=_confirm_choices(start_turn_ix, step))  # token por gate (HIGH)
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
             messages.append(_assistant_tool_call_msg(tc))
             messages.append(_tool_result_msg(tc["id"], tr.get("observation") or {}))
@@ -440,7 +471,12 @@ class ConversationWorkflow:
 
 
 # ── helpers module-level (fuera de la clase, deterministas, sin I/O) ─────────────────────────────────
-_CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cancelar", "value": "cancel"}]
+def _confirm_choices(turn_ix: int, step: int) -> list[dict]:
+    """Choices Confirmar/Cancelar con el token del gate (`turn_ix:step`) embebido en el `value` (HIGH, bug de
+    dinero): ata el callback al gate ESPECÍFICO que lo emitió. Sin esto, un doble-click, una card vieja, o un
+    confirm que llega tarde tras encadenar al siguiente gate podía aprobar un write que el usuario nunca vio."""
+    token = f"{turn_ix}:{step}"
+    return [{"label": "Confirmar", "value": f"confirm:{token}"}, {"label": "Cancelar", "value": f"cancel:{token}"}]
 
 
 def _assistant_tool_call_msg(tc: dict) -> dict:
