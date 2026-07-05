@@ -27,6 +27,7 @@ sys.path.insert(0, str(_REF))
 from backend.agent.types import Artifact, ToolResult  # noqa: E402
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime  # noqa: E402
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired  # noqa: E402
+from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa: E402
 
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
 
@@ -276,5 +277,10 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
         except ComposioExecutionError:
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "el servicio falló; reintentá en un rato"})
+        except MercadoPagoError:
+            # cobro MP falló (HTTP != 201, etc.): error de NEGOCIO como observación, nunca excepción propagada
+            # (el contrato del executor promete "nunca excepción → retry ∞"; alinea con la regla dura PR #114).
+            return ToolResult(tool_call_id=idem_key, status="error",
+                              observation={"error": "no pude generar el cobro ahora; probá de nuevo en un rato"})
 
     return tool_executor

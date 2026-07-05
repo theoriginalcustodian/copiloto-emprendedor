@@ -139,3 +139,18 @@ def test_mp_charge_retry_same_idemkey_dedups():
     tr2 = ex("mp_charge", {"amount": 5000}, ctx, confirmed=True, idem_key="run1-0")   # retry at-least-once
     assert gw.calls == 1                                   # NO creo un 2do link
     assert tr2.artifact.data["url"] == "https://mpago.la/1"
+
+
+def test_mp_charge_gateway_error_returns_error_not_exception():
+    """Un fallo del cobro MP (MercadoPagoError) se traduce a status='error' como OBSERVACIÓN, nunca se propaga
+    como excepción (contrato del executor 'nunca excepción → retry ∞', regla dura PR #114)."""
+    from clients.agent.providers.mercadopago_gateway import MercadoPagoError
+
+    class _BoomMpGw:
+        def create_payment_link(self, *a, **k):
+            raise MercadoPagoError("POST /checkout/preferences → HTTP 500")
+
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    tr = ex("mp_charge", {"amount": 5000}, _mp_ctx(_BoomMpGw()), confirmed=True, idem_key="run1-0")
+    assert tr.status == "error"                            # no excepción propagada
+    assert "cobro" in tr.observation["error"].lower() or "no pude" in tr.observation["error"].lower()
