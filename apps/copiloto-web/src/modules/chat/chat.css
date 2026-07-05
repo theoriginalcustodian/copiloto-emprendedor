@@ -181,6 +181,60 @@
   color: var(--ok-fg);
 }
 
+/* ---------- Artifact view (Task 17, artefactos clicables) ----------
+ * `.artifact` sirve DOS roles según el tag: en un `<a>` standalone (doc/sheet/file/email_draft) es
+ * un chip clicable propio; en un `<div>` (payment/calendar) es el contenedor flex que agrupa
+ * Button+link o span+link. Mismos tokens que el resto del chat — cero hex, theme-aware en los 4
+ * temas (gate visual multi-tema, memoria `gate-visual-multi-tema-tokens`). */
+.artifact {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+}
+
+a.artifact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--chip-bg);
+  border: var(--chip-border);
+  color: var(--chip-fg);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+a.artifact:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.artifact--payment,
+.artifact--calendar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.artifact--payment a,
+.artifact--calendar a {
+  color: var(--chip-fg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  text-decoration: underline;
+}
+
+.artifact--calendar span {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--name-fg);
+}
+
 /* ---------- Chips de desambiguación (Task 14, EXTRACT §2.7) ---------- */
 .disambiguation-chips {
   display: flex;

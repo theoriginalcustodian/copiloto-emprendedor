@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), no un módulo real; no hay @types/node en el proyecto así que evitamos fs/path.
+import artifactViewSource from './ArtifactView.tsx?raw';
 import bubbleSource from './Bubble.tsx?raw';
 import chatCss from './chat.css?raw';
 import chatHeaderSource from './ChatHeader.tsx?raw';
@@ -27,6 +28,7 @@ import recordingOverlaySource from './RecordingOverlay.tsx?raw';
 const HEX_COLOR_RE = /#[0-9a-fA-F]{3,8}\b/g;
 
 const SOURCES: Record<string, string> = {
+  'ArtifactView.tsx': artifactViewSource,
   'Bubble.tsx': bubbleSource,
   'ChatHeader.tsx': chatHeaderSource,
   'ChatScreen.tsx': chatScreenSource,

@@ -41,4 +41,36 @@ describe('getReply — normaliza el shape crudo del backend', () => {
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('session_id=abc'));
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('after_id=12'));
   });
+
+  it('propaga kind/data del card (artefacto terminal, Task 17) sin alterar el shape', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+      replies: [
+        {
+          id: 9,
+          reply_text: 'Listo, generé el link de cobro.',
+          choices: null,
+          card: { kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 15000 } },
+          created_at: 'x',
+        },
+      ],
+      next_id: 9,
+    });
+
+    const res = await getReply('sid', 8);
+
+    expect(res.replies[0].card).toEqual({ kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 15000 } });
+  });
+
+  it('preserva el card legacy sin `kind` (gate HITL previo a la unificación)', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+      replies: [
+        { id: 3, reply_text: '¿Confirmás?', choices: null, card: { service: 'mercadopago', label: 'Mercado Pago' }, created_at: 'x' },
+      ],
+      next_id: 3,
+    });
+
+    const res = await getReply('sid', 2);
+
+    expect(res.replies[0].card).toEqual({ service: 'mercadopago', label: 'Mercado Pago' });
+  });
 });
