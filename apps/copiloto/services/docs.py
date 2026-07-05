@@ -48,3 +48,25 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
             return None
         return Read(slug=READ_SLUG, arguments={"document_id": doc_id}, summarize=_summarize_read)
     return None
+
+
+# ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
+TOOLS = {"docs_create_doc": "create_doc", "docs_read_doc": "read_doc"}
+
+TOOL_SCHEMAS = [
+    {"type": "function", "function": {
+        "name": "docs_create_doc",
+        "description": "Crea un Google Doc a partir de markdown. Devuelve un link clicable al documento.",
+        "parameters": {"type": "object", "properties": {
+            "title": {"type": "string", "description": "título del documento"},
+            "content": {"type": "string", "description": "contenido en markdown"}},
+            "required": ["title"]}}},
+    {"type": "function", "function": {
+        "name": "docs_read_doc",
+        "description": "Lee el texto plano de un Google Doc existente.",
+        "parameters": {"type": "object", "properties": {
+            "document_id": {"type": "string", "description": "id del documento a leer"}},
+            "required": ["document_id"]}}},
+]
+
+WRITE_OPS = frozenset({"create_doc"})
