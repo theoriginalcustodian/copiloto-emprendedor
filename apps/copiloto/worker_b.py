@@ -103,12 +103,11 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # Motor ReAct (Task 14): tool_executor real (Composio + MP + calendar) con dedup app-side de links de
     # cobro (spike C) atado al `cliente_id` per-request (nunca de env). El `dispatcher=` se sigue registrando
     # como fallback dispatch/tests legacy; en engine_mode="react" el workflow usa el tool_executor.
-    # `llm` COMPARTIDO: clasificador del turno (register_domain) Y summarizer de la acción 'consultar_actividad'
-    # (dispatcher, recall temporal #125) — mismo modelo/credencial, stateless, sin duplicar construcción.
-    # ⚠️ Deuda visible (merge motor-react × recall-temporal): en engine_mode=react 'consultar_actividad' vive
-    # SOLO en el dispatcher (modo dispatch), aún NO en el tool_catalog → el recall temporal POR FECHA ("qué hice
-    # ayer") no está disponible en react. Follow-up: portarla como tool. El recall semántico (MemoryProvider)
-    # sí opera en ambos modos.
+    # `llm` COMPARTIDO: clasificador del turno (register_domain), summarizer de 'consultar_actividad' en el
+    # dispatcher (recall temporal #125) Y de la MISMA tool en el motor react (tool_executor, PR #137) — mismo
+    # modelo/credencial, stateless, sin duplicar construcción. En engine_mode=react 'consultar_actividad' es una
+    # tool de 1ra clase READ del tool_catalog (sin gate); en dispatch es una acción del dispatcher. El recall
+    # semántico (MemoryProvider) opera en ambos modos por separado (parte del loop, no una tool).
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
