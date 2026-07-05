@@ -92,7 +92,7 @@ VPS de dev completo: **2.1 GB usados de 7.6 GB** (con Hermes + WhatsApp + fábri
 | **TOTAL** | | | **~88 €/mes** (+backups ~€18) | ≈ **$115 USD** |
 
 ### 4.3 Cuando Temporal sea el cuello (escala alta)
-Mover **Temporal + su Postgres** a un nodo **dedicado** (vCPU dedicada = sin *noisy neighbor*): **CCX23** (4 dedic / 16 GB, €101,49) o **Temporal Cloud** (gestionado). Es el moat y lo latencia-sensible → primero en aislar.
+Mover **Temporal + su Postgres** a un **nodo dedicado self-hosted** (vCPU dedicada = sin *noisy neighbor*): **CCX23** (4 dedic / 16 GB, €101,49). **Siempre self-host — nunca Temporal Cloud** (política del proyecto). Se provisiona con el **blueprint de plataforma Temporal ya existente** (`Agencia_IA_HyC/Temporal/`: auto-setup + multi-tenant + backups, VPS `arca-temporal`); el copiloto además ya corre su cluster Temporal self-host aislado (`deploy/docker-compose.agentic.yml`). Es el moat y lo latencia-sensible → primero en aislar.
 
 ### 4.4 Tabla de equivalencias (si se elige otra línea/DC)
 
@@ -153,7 +153,7 @@ Antes de comprometer tiers, **medir**: script que simule N usuarios concurrentes
 | Eje | Cómo escala |
 |---|---|
 | **App/worker** | Horizontal: más réplicas del worker (stateless) apuntando al mismo Temporal. Barato. |
-| **Temporal** | Vertical → nodo dedicado (CCX) → Temporal Cloud. Task Queue **Fairness** para que un tenant grande no *starve* a los chicos (multi-tenant). |
+| **Temporal** | Vertical → **nodo dedicado self-hosted** (CCX, blueprint `Agencia_IA_HyC/Temporal/`). **Nunca Temporal Cloud.** Task Queue **Fairness** para que un tenant grande no *starve* a los chicos (multi-tenant). |
 | **fusion (Postgres)** | Vertical → read-replicas → connection pooler (PgBouncer/Supavisor) para muchas conexiones. |
 | **Graphity (Neo4j)** | Vertical (RAM: heap + page-cache tuneados). Sharding solo si el grafo explota. |
 
@@ -164,7 +164,7 @@ Antes de comprometer tiers, **medir**: script que simule N usuarios concurrentes
 1. **F0 — Load test en dev** → número real de capacidad (§8). *(De-risk: valida el sizing antes de gastar.)*
 2. **F1 — Provisionar 3 nodos + red privada + firewall** (idempotente, IaC/scripts; blueprints `supabase-self-host-blueprint` + Graphity + `fleet-platform`).
 3. **F2 — Migrar fusion (datos) + Graphity (memoria)** a sus nodos (§6.1, §6.3) con restore probado.
-4. **F3 — Desplegar nodo App** (Temporal + web + worker + GoTrue) + repuntes a IPs privadas (§6.2).
+4. **F3 — Desplegar nodo App** (Temporal self-host vía `deploy/docker-compose.agentic.yml` / blueprint `Agencia_IA_HyC/Temporal/` + web + worker + GoTrue) + repuntes a IPs privadas (§6.2).
 5. **F4 — Cutover** (DNS + smoke E2E completo) + baja controlada del dev-as-prod.
 6. **F5 — Backups/DR + observabilidad** verificados (restore real, alertas).
 
@@ -176,7 +176,7 @@ Antes de comprometer tiers, **medir**: script que simule N usuarios concurrentes
 
 1. **¿Clon fusion completo (stack Supabase) o solo Postgres?** El Copiloto usa la DB directo (`DATABASE_URL`) y la auth ya es la GoTrue dedicada → podría alcanzar **solo Postgres** (más barato/liviano) en vez del stack Supabase completo. *Recomendación: confirmar qué features de Supabase se usan; si es solo la DB, nodo fusion = Postgres puro (CX33 8 GB alcanza).*
 2. **Ubicación:** ¿Helsinki (hel1, línea CX barata) o Nuremberg (nbg1, CPX/CAX)? Afecta latencia al usuario final (LatAm) — todas son EU; la latencia la domina el LLM externo, no el DC.
-3. **Temporal Cloud vs self-host** cuando escale (§4.3): gestionado (menos ops, más caro) vs nodo propio.
+3. **Temporal: ¿co-locado en el nodo App o nodo dedicado?** Ambos **self-host** (nunca Cloud — política del proyecto). Arrancar co-locado (más barato) y aislar a un nodo Temporal dedicado vía el blueprint `Agencia_IA_HyC/Temporal/` cuando el load test lo pida.
 
 ---
 
