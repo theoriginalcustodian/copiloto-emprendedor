@@ -25,10 +25,11 @@ from services.base import Proposal, Read
 _REF = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
 sys.path.insert(0, str(_REF))
 from backend.agent.types import Artifact, ToolResult  # noqa: E402
-from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime  # noqa: E402
+from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range  # noqa: E402
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired  # noqa: E402
 from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa: E402
 
+from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
@@ -60,6 +61,16 @@ MP_CHARGE_SCHEMA = {"type": "function", "function": {
         "amount": {"type": "number", "description": "monto en pesos"},
         "concept": {"type": "string", "description": "qué se cobra"}},
         "required": ["amount"]}}}
+
+CONSULTAR_ACTIVIDAD_SCHEMA = {"type": "function", "function": {
+    "name": "consultar_actividad",
+    "description": "Consulta y resume la actividad PASADA del usuario en un período (hoy, ayer, esta semana, un "
+                   "mes, o un rango de fechas). Usala cuando pregunta qué hizo, qué pasó, o pide un resumen de su "
+                   "actividad. Es de SOLO LECTURA (no requiere confirmación).",
+    "parameters": {"type": "object", "properties": {
+        "range_raw": {"type": "string", "description": "período en lenguaje natural, ej 'hoy', 'esta semana', 'del 1 al 5 de julio'"},
+        "question": {"type": "string", "description": "la pregunta puntual del usuario, si la hay (opcional)"}},
+        "required": ["range_raw"]}}}
 
 _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 
@@ -95,13 +106,15 @@ def _required_of(tool_name: str) -> list:
 
 
 def build_tool_catalog() -> list[dict]:
-    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA]
+    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
 
 
-TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": ("mp",)}
+# consultar_actividad NO va en WRITE_TOOLS a propósito: es read puro (recall + resumen) → sin gate HITL.
+TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": ("mp",),
+              "consultar_actividad": ("activity",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -250,9 +263,33 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
                                         data={"url": link["init_point"], "amount": amount, "concept": concept}))
 
 
-def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
+def _run_consultar_actividad(arguments, ctx, idem_key, now_iso_provider, llm):
+    """Recall temporal por rango de fecha (READ puro → sin gate). Reusa la MISMA lógica del dispatcher
+    (`dispatcher_emprendedor` consultar_actividad): resuelve el período natural determinísticamente, trae la
+    actividad EXHAUSTIVA del rango (recall_range, no semántico top-K) y la resume/analiza con el LLM. Cero
+    lógica nueva. Devuelve el resumen como `observation.result` → el loop react lo incorpora a la respuesta."""
+    mem = getattr(ctx, "memory_provider", None)
+    if mem is None or llm is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar la actividad pasada ahora mismo"})
+    rng = resolve_date_range(arguments.get("range_raw"), now_iso=now_iso_provider(), tz=DEFAULT_TZ)
+    if not rng:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "especificá un período: hoy, ayer, esta semana, o 'del 1 al 5 de julio'"})
+    episodes = mem.recall_range(ctx.cliente_id, datetime.fromisoformat(rng["since"]),
+                                datetime.fromisoformat(rng["until"]))
+    if not episodes:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": f"No encontré actividad registrada en {rng['label']}."})
+    summary = summarize_activity(episodes, question=arguments.get("question") or "", label=rng["label"], llm=llm)
+    return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                      observation={"result": summary or f"No pude armar el resumen de {rng['label']} ahora."})
+
+
+def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
-    needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞)."""
+    needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
+    `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad."""
 
     def tool_executor(name, arguments, ctx, *, confirmed, idem_key):
         if ctx is None:
@@ -272,6 +309,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None):
             if kind == "calendar":
                 return _run_calendar_book(name, arguments, ctx, confirmed, idem_key,
                                           gateway, now_iso_provider)
+            # ── 1ra clase: consultar_actividad (recall temporal por rango, READ → sin gate) ────────
+            if kind == "activity":
+                return _run_consultar_actividad(arguments, ctx, idem_key, now_iso_provider, llm)
 
             # ── servicio (Composio vía módulo plug-in) ────────────────────────────────────────────
             _, mod, op = entry
