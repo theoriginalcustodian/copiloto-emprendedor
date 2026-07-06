@@ -20,16 +20,16 @@
 # Parametrizable (cero hardcoding -- mismo estilo/defaults que deploy.sh):
 #   UC_DEPLOY_HOST   alias SSH del VPS destino        (default: unreal-copilot)
 #   UC_DEPLOY_PATH   path estable del código en el VPS (default: /opt/uc-repos/copiloto)
-#   UC_BASE_DOMAIN   dominio base (sslip.io del VPS)  (default: 178-105-191-1.sslip.io)
-#   UC_AUTH_URL      base pública del vhost de auth para el botón Google (VITE_AUTH_URL en el build)
-#                    (default: https://auth.${UC_BASE_DOMAIN}). Vacío ("") ⇒ botón Google OCULTO.
+#   UC_AUTH_URL      base pública de auth para el botón Google (VITE_AUTH_URL en el build).
+#                    (default: https://copilotoemprendedor.duckdns.org — dominio propio; evita el bloqueo
+#                    de *.sslip.io en resolvers de terceros. El OAuth de auth vive en el MISMO dominio
+#                    del chat, no en un subdominio auth.*). Vacío ("") ⇒ botón Google OCULTO.
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
-BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
-AUTH_URL="${UC_AUTH_URL-https://auth.${BASE_DOMAIN}}"   # nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
+AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # default = dominio propio duckdns (no *.sslip.io, que redes de terceros bloquean). nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
 WEB_SUBDIR="apps/copiloto-web"
 
 echo "==> [1/3] sync ${WEB_SUBDIR} + deploy/copiloto/fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
@@ -49,7 +49,7 @@ WEB_DIR="$1"; AUTH_URL="$2"
 cd "$WEB_DIR"
 npm install
 # Vite hornea las VITE_* del entorno al bundle. VITE_AUTH_URL habilita el botón "Entrar con Google"
-# (vacío ⇒ botón oculto). Cero hardcoding: sale del parámetro, derivado de UC_BASE_DOMAIN.
+# (vacío ⇒ botón oculto). Cero hardcoding: sale del parámetro UC_AUTH_URL (default dominio propio duckdns).
 VITE_AUTH_URL="$AUTH_URL" npm run build
 echo "--- dist/ generado en: ---"
 realpath "$WEB_DIR/dist"
