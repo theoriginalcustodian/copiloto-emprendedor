@@ -29,19 +29,19 @@ WEB_PORT="${COPILOTO_WEB_PORT:-8099}"
 BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
 COPILOTO_SUBDOMAIN="${UC_COPILOTO_SUBDOMAIN:-copiloto}"
 MP_SUBDOMAIN="${UC_MP_SUBDOMAIN:-mp}"
-REF="deploy/skeleton_kit/archetypes/conversational_agent/reference"
+MOTOR="motor"                                     # motor VENDORIZADO en el repo (Fase 2 graduación; antes: deploy/skeleton_kit/.../reference)
 WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
 WORKER_UNIT="uc-copiloto-worker.service"
 
 echo "==> [1/7] sync worktree -> ${HOST}:${REMOTE} (clean; preserva apps/copiloto-web/{node_modules,dist} entre deploys)"
-# rm QUIRÚRGICO: solo `apps/copiloto` (backend) + `deploy`, NUNCA todo `apps/` -> no borra el frontend
+# rm QUIRÚRGICO: `apps/copiloto` (backend) + `deploy` + `motor` (vendorizado), NUNCA todo `apps/` -> no borra el frontend
 # `apps/copiloto-web` (fix de la colisión histórica deploy.sh <-> sync-web.sh). Del frontend se limpia
 # solo el source (preservando node_modules+dist para no reinstalar/reconstruir de cero cada deploy).
 tar -C "$LOCAL" \
     --exclude='apps/copiloto-web/node_modules' --exclude='apps/copiloto-web/dist' --exclude='apps/copiloto-web/.vite' \
-    -czf - apps/copiloto apps/copiloto-web "$REF" "$WORKER" deploy/copiloto \
-  | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+    -czf - apps/copiloto apps/copiloto-web "$MOTOR" "$WORKER" deploy/copiloto \
+  | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
 
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build) -> dist servido mismo-origen por _mount_spa (web.py)"
 ssh "$HOST" bash -s -- "$REMOTE" <<'REMOTE_WEB'
