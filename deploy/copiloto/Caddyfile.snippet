@@ -25,5 +25,21 @@ mp.178-105-191-1.sslip.io {
     reverse_proxy 127.0.0.1:8099
 }
 
+# 3) Bloque NUEVO (aditivo, 2026-07-06) — DOMINIO PROPIO `copilotoemprendedor.duckdns.org`.
+#    Motivo: los `*.sslip.io` los bloquean resolvers DNS de terceros (ISP/control parental/móviles)
+#    → un usuario externo veía ERR_NAME_NOT_RESOLVED. Este dominio propio lo evita. Los vhosts sslip
+#    de arriba SIGUEN VIGENTES (no romper callbacks MP ni URLs ya registradas) — todo es aditivo.
+#    A diferencia del sslip, /auth/v1/authorize* y /auth/v1/callback* van DIRECTO a la GoTrue dedicada
+#    (9997): este dominio es el `GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI` del login con Google.
+#    ⚠️ DEUDA GESTIONADA (Fase 2 · owner: graduación a repo propio): hoy este bloque se aplicó A MANO
+#    al /etc/caddy/Caddyfile; falta cablearlo en deploy.sh (nuevo param UC_EXTRA_DOMAIN) al redefinir
+#    el deploy del repo graduado. Lección: tras editar el Caddyfile, `chmod 644` (queda 600 root si se
+#    mueve un mktemp) y `caddy validate --adapter caddyfile`. Ver memoria `copiloto-dominio-duckdns`.
+copilotoemprendedor.duckdns.org {
+    handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }
+    handle /auth/v1/callback*  { reverse_proxy 127.0.0.1:9997 }
+    handle                     { reverse_proxy 127.0.0.1:8099 }
+}
+
 # Bloques preexistentes que deploy.sh NUNCA toca (178-105-191-1.sslip.io->8088, hermes.*->9119
 # basic_auth, temporal.*->8080 basic_auth): fuera de scope, verificados intactos por el smoke [7/7].

@@ -5,8 +5,8 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "deploy/worker"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"))
+from _paths import ensure_paths
+ensure_paths()
 
 import json
 import psycopg2

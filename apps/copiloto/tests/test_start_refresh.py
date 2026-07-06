@@ -11,10 +11,6 @@ from pathlib import Path
 
 import pytest
 
-APP = Path(__file__).resolve().parents[1]
-ARCH = APP.parents[1] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(APP))
 
 from temporalio.common import WorkflowIDConflictPolicy  # noqa: E402
 

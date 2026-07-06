@@ -9,8 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_REF = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(_REF))
+from _paths import ensure_paths
+ensure_paths()
 from clients.agent.providers.composio_gateway import ToolkitPolicy  # noqa: E402
 
 from services.base import Proposal, Read  # noqa: E402

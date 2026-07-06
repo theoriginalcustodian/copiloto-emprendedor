@@ -2,8 +2,6 @@ import os, sys, uuid
 from pathlib import Path
 import pytest
 
-APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP))
 from mp_payment_store import MpPaymentStore  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not os.environ.get("DATABASE_URL"), reason="requiere Postgres del VPS")

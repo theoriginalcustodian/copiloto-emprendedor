@@ -5,8 +5,8 @@ version: pineada por-toolkit (el SDK rechaza 'latest'); googlecalendar != gmail.
 import sys
 from pathlib import Path
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
+from _paths import ensure_paths
+ensure_paths()
 
 from clients.agent.providers.composio_gateway import ToolkitPolicy
 

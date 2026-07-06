@@ -9,9 +9,6 @@ import time
 import uuid
 from pathlib import Path
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
@@ -65,7 +62,6 @@ def test_fetch_es_lectura_directa_sin_confirmar():
                     reason="real: requiere COMPOSIO_API_KEY + COPILOTO_COMPOSIO_USER_ID (correr en el VPS)")
 def test_send_real_y_readback():
     """E2E REAL: el módulo Gmail arma el call, el gateway lo ejecuta contra la cuenta, y el mail aparece."""
-    sys.path.insert(0, str(ARCH / "clients/agent/providers"))
     from composio_gateway import ComposioGateway
     import services
     user = os.environ["COPILOTO_COMPOSIO_USER_ID"]

@@ -6,8 +6,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
+from _paths import ensure_paths
+ensure_paths()
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 

@@ -13,10 +13,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-APP = Path(__file__).resolve().parents[1]
-ARCH = APP.parents[1] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(APP))
 
 import pytest
 from fastapi import FastAPI, HTTPException

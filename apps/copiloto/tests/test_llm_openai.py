@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 
 # arquetipo importable
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
 
 from clients.agent.providers.llm import LlmProvider
 

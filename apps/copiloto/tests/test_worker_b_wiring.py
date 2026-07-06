@@ -8,9 +8,6 @@ from pathlib import Path
 
 import pytest
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.agent.agent_runtime import get_channel, get_domain, reset_registry  # noqa: E402
 from clients.agent.providers import mp_refresh_activities  # noqa: E402

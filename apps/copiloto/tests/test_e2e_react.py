@@ -40,10 +40,6 @@ from temporalio import activity
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(APP))
 
 from backend.agent.agent_activities import call_llm_tools, execute_tool, recall_memory  # noqa: E402
 from backend.agent.agent_runtime import register_domain, reset_registry  # noqa: E402

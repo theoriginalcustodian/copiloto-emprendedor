@@ -19,10 +19,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-APP = Path(__file__).resolve().parents[1]
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(APP))
-sys.path.insert(0, str(ARCH))
 
 from backend.agent.types import Intent  # noqa: E402
 from clients.agent.datetime_resolver import resolve_date_range  # noqa: E402

@@ -2,8 +2,6 @@ import sys
 from pathlib import Path
 import pytest
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
 from clients.agent.providers.crypto import FernetCrypto  # noqa: E402
 
 

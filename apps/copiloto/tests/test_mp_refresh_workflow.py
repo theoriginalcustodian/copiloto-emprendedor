@@ -5,8 +5,6 @@ from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
 from clients.agent.providers.mp_refresh_activities import refresh_credential, set_refresh_deps  # noqa: E402
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow  # noqa: E402
 

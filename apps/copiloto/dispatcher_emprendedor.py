@@ -15,9 +15,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_paths
+ensure_paths()
 
 from backend.agent.types import DispatchResult, Intent
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range

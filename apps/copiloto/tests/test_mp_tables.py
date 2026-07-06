@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP.parents[1] / "deploy/worker"))  # provision_tables
 from provision_tables import _coldef  # noqa: E402
 
 

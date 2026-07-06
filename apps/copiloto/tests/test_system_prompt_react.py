@@ -4,7 +4,6 @@ tool-calling nativo (0/3 empírico, ver plan). El gate vive en el sistema (execu
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from system_prompt import SYSTEM_PROMPT_REACT  # noqa: E402
 

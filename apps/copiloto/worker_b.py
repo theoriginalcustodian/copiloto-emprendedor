@@ -18,9 +18,8 @@ import sys
 from pathlib import Path
 from typing import Callable, Mapping
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_paths
+ensure_paths()
 
 from temporalio.client import Client
 from temporalio.worker import Worker

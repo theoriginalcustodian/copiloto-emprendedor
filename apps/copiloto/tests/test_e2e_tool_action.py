@@ -10,9 +10,6 @@ import sys
 import uuid
 from pathlib import Path
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import psycopg2
 import pytest

@@ -8,8 +8,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP))
 
 from context_factory import TenantCtx  # noqa: E402
 

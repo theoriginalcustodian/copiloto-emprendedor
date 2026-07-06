@@ -2,8 +2,6 @@ import sys, time, hmac, hashlib
 from pathlib import Path
 import pytest
 
-ARCH = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
 from clients.agent.providers.mercadopago_gateway import (  # noqa: E402
     MercadoPagoGateway, MercadoPagoAuthError, TOKEN_URL, API)
 

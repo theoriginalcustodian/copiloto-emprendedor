@@ -2,11 +2,12 @@
 (discovery) + las 2 tools de 1ra clase (calendar_book, mp_charge), el índice tool_name→destino y el set de
 writes (para el gate). Fuente única: sumar un servicio en services/*.py lo agrega acá sin editar este módulo.
 
-El sys.path.insert del ARCH ref va ACÁ (no en cada módulo de servicio): `TOOL_INDEX`/`WRITE_TOOLS` se computan
-a nivel de módulo (import time) y disparan `services.modules()` -> discovery -> import de CADA services/<x>.py,
-que a su vez importa `clients.agent.providers.composio_gateway` desde el ARCH ref. Sin este insert ANTES de esa
-discovery, `import tool_catalog` en aislamiento (sin otro test que ya lo haya insertado antes) haría fallar el
-import de cada módulo de servicio dentro del try/except silencioso de `services._discover()` -> catálogo vacío.
+El `ensure_paths()` del motor va ACÁ arriba de todo (no en cada módulo de servicio): `TOOL_INDEX`/`WRITE_TOOLS`
+se computan a nivel de módulo (import time) y disparan `services.modules()` -> discovery -> import de CADA
+services/<x>.py, que a su vez importa `clients.agent.providers.composio_gateway` del motor. Sin `ensure_paths()`
+ANTES de esa discovery, `import tool_catalog` en aislamiento (sin conftest/entrypoint que ya lo haya corrido)
+haría fallar el import de cada servicio dentro del try/except silencioso de `services._discover()` -> catálogo
+vacío. El mount único vive en `_paths.py` (Fase 1 — boundary del motor); acá solo se dispara temprano.
 
 También expone `make_tool_executor` (Task 6): dado un nombre de tool + argumentos, ejecuta la acción real
 (read directo · write con confirm-gate · then/resolve de 2 pasos) y devuelve un `ToolResult` — nunca una
@@ -19,11 +20,11 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import services
-from services.base import Proposal, Read
+from _paths import ensure_paths
+ensure_paths()
 
-_REF = Path(__file__).resolve().parents[2] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(_REF))
+import services  # noqa: E402  — dispara discovery; el motor ya está en el path por ensure_paths()
+from services.base import Proposal, Read  # noqa: E402
 from backend.agent.types import Artifact, ToolResult  # noqa: E402
 from clients.agent.datetime_resolver import DEFAULT_TZ, resolve_datetime, resolve_date_range  # noqa: E402
 from clients.agent.providers.composio_gateway import ComposioExecutionError, ConnectionRequired  # noqa: E402

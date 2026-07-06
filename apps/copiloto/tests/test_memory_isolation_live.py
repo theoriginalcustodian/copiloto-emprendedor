@@ -19,8 +19,6 @@ from pathlib import Path
 
 import pytest
 
-APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP))
 
 from graphity_memory_client import GraphityMemoryClient  # noqa: E402
 from memory_provider import MemoryProvider  # noqa: E402

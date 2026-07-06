@@ -7,9 +7,6 @@ import time
 import uuid
 from pathlib import Path
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.agent.types import Intent
@@ -61,7 +58,6 @@ def test_find_es_lectura_directa():
 @pytest.mark.skipif(not (os.environ.get("COMPOSIO_API_KEY") and os.environ.get("COPILOTO_COMPOSIO_USER_ID")),
                     reason="real: requiere COMPOSIO_API_KEY + COPILOTO_COMPOSIO_USER_ID (VPS)")
 def test_create_real_y_readback():
-    sys.path.insert(0, str(ARCH / "clients/agent/providers"))
     from composio_gateway import ComposioGateway
     import services
     user = os.environ["COPILOTO_COMPOSIO_USER_ID"]

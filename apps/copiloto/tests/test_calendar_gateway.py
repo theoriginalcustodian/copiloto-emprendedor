@@ -4,9 +4,6 @@ from pathlib import Path
 
 import pytest
 
-ARCH = Path(__file__).resolve().parents[3] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # apps/copiloto → importa calendar_policy
 
 from clients.agent.providers import composio_gateway as cg
 import calendar_policy as cp

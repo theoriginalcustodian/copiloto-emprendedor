@@ -16,8 +16,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-APP = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(APP))
 
 from graphity_memory_client import GraphityMemoryClient, GraphityMemoryError, _validate_message  # noqa: E402
 from memory_provider import MemoryProvider, build_memory_provider, _wrap_context  # noqa: E402

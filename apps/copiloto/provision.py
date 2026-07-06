@@ -33,7 +33,8 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 WORKER_DIR = APP_DIR.parents[1] / "deploy" / "worker"
-sys.path.insert(0, str(WORKER_DIR))
+from _paths import ensure_paths
+ensure_paths()
 from provision_tables import provision as _provision_standard  # noqa: E402  (mecanismo genérico, reuso)
 
 SCHEMA = "uc_factory"

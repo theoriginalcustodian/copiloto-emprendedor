@@ -1,9 +1,6 @@
 import sys
 from pathlib import Path
 
-APP = Path(__file__).resolve().parents[1]
-ARCH = APP.parents[1] / "deploy/skeleton_kit/archetypes/conversational_agent/reference"
-sys.path.insert(0, str(ARCH)); sys.path.insert(0, str(APP))
 from backend.agent.types import Intent  # noqa: E402
 from context_factory import TenantCtx  # noqa: E402
 from dispatcher_emprendedor import make_dispatcher  # noqa: E402
