@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Secretos — nunca al repo (los .template SÍ se versionan)
+.env
+.env.*
+!.env*.template
+
+# Frontend
+node_modules/
+apps/copiloto-web/dist/
+*.tsbuildinfo
+.vite/
+
+# Assets pesados (diseño / spike de voz) → almacenamiento externo, ver docs/ASSETS-EXTERNAL.md
+*.zip
+es-ar-listen/
+**/APP Copiloto Movil/
+**/Web copiloto/
+
+# OS / editor
+.DS_Store
+Thumbs.db

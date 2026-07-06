@@ -22,8 +22,9 @@ from pathlib import Path
 APP = Path(__file__).resolve().parent            # apps/copiloto (raíz del código del copiloto)
 _REPO = APP.parents[1]                           # raíz del repo (apps/copiloto -> apps -> repo)
 
-# Motor: env override (Fase 2 lo apunta a la copia vendorizada) o default in-repo.
-_DEFAULT_MOTOR_REF = _REPO / "deploy" / "skeleton_kit" / "archetypes" / "conversational_agent" / "reference"
+# Motor: env override o el motor VENDORIZADO en el repo (Fase 2 graduación — copia propia del arquetipo).
+# El sync-con-drift-check (scripts/sync-motor.sh) lo mantiene alineado con la fábrica hasta el fork duro.
+_DEFAULT_MOTOR_REF = _REPO / "motor"
 MOTOR_REF = Path(os.environ.get("UC_MOTOR_REF_PATH") or _DEFAULT_MOTOR_REF)
 
 WORKER = _REPO / "deploy" / "worker"             # provision_tables.py (infra-fábrica)

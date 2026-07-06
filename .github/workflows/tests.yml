@@ -1,0 +1,41 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: install deps
+        run: pip install -r requirements.txt
+      - name: collect (valida imports/mount del motor) + unit subset
+        working-directory: apps/copiloto
+        run: |
+          python -m pytest tests --co -q
+          python -m pytest \
+            tests/test_dispatcher.py tests/test_mp_tables.py tests/test_context_factory.py \
+            tests/test_catalog.py tests/test_mp_crypto.py tests/test_system_prompt_react.py \
+            tests/test_service_schemas.py tests/test_web_adapter.py tests/test_selection_qa.py \
+            tests/test_reply_store.py tests/test_mp_credential_store.py -q
+        # Nota: los tests E2E/live (Composio/MP/Graphity reales) se saltan sin credenciales;
+        # se ejercitan en el VPS al deployar. Este CI protege imports + mount + lógica pura.
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: build (valida frontend standalone)
+        working-directory: apps/copiloto-web
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
