@@ -3,6 +3,7 @@
 > **Repo:** `copiloto-emprendedor` (privado). **Owner:** David Lin / Agencia HyC.
 > **Idioma:** instrucciones y comentarios en español; código, scripts e identificadores en inglés.
 > **Origen:** graduado de `unreal-copilot` el 2026-07-06 vía `git filter-repo` (historia/blame preservada). El copiloto era la app-estrella del arquetipo `conversational_agent` de la fábrica; se extrajo a repo propio para separación comercial/producto.
+> **Arranque de sesión → [`HANDOFF.md`](HANDOFF.md)** (init cero-fricción: seed de memoria, accesos, flujos de trabajo).
 
 ---
 
@@ -44,12 +45,15 @@ El motor es una **copia vendorizada** del arquetipo `conversational_agent` de `u
 6. **Spike-first** ante supuestos críticos no validados; **no codificar la esperanza** (evidencia ejecutable, no autoevaluación).
 7. **Multitenant real:** ningún `cliente_id`/`composio_user_id`/seller sale de env — todo per-request vía `context_factory` (`TenantCtx`). Aislamiento cross-emprendedor verificado con test adversarial.
 
-## 4. Deploy (Fase 2.5 — PENDIENTE de redefinir)
+## 4. Deploy y cutover (Fase 2.5)
 
-El deploy heredado apuntaba a `/opt/uc-repos/copiloto` en el VPS `unreal-copilot` (scp-seeded). **Al operar desde este repo hay que redefinir:** `UC_DEPLOY_PATH`, systemd units `uc-copiloto-{web,worker}`, docker-compose project `copiloto-auth`, y cablear el vhost `copilotoemprendedor.duckdns.org` en `deploy/copiloto/deploy.sh` (param `UC_EXTRA_DOMAIN`). Runtime hoy: Caddy + GoTrue dedicada + Postgres (fusion) + Temporal + Graphity — ver `deploy/copiloto/` y los docs.
+El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquesta el VPS por SSH) ya está **reconciliado al layout graduado**: el path del motor pasó de `deploy/skeleton_kit/.../reference` a `motor/` en `deploy.sh`, ambos units `uc-copiloto-{web,worker}.service` (PYTHONPATH), `sync-test-backend.sh` y `gotrue/deploy-gotrue.sh`. Mount verificado en el VPS (spike: **333 colección VERDE** con `motor/`).
+
+**Cutover HECHO (2026-07-06):** el servicio vivo corre desde ESTE repo (layout `motor/`, PYTHONPATH del proceso verificado, `reference` viejo eliminado); smoke E2E **10/10 BETA-READY** post-switch. **Una sola instancia**, mismo dominio/DB/usuarios. Backup del origen previo en `/opt/uc-repos/copiloto.bak-pre-graduacion-*` (borrar tras confirmar estabilidad). Runbook en [`HANDOFF.md`](HANDOFF.md) §5.3. Runtime: Caddy (`copilotoemprendedor.duckdns.org` → :8099) + GoTrue dedicada (`copiloto-auth`) + Postgres (fusion) + Temporal (`127.0.0.1:7233`) + Graphity. Fase 3 (infra 3 nodos dedicados) = diferida.
 
 ## 5. Referencias
 
+- **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md` + 113 entradas); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
 - Plan de graduación (Fase 0/1/2): `docs/copiloto-emprendedor/2026-07-06-graduacion-plan-fase0-fase1.md`.
 - Dominio propio + auth Google: `docs/copiloto-emprendedor/` + config en `deploy/copiloto/`.
 - Assets de diseño/voz (fuera del repo): `docs/ASSETS-EXTERNAL.md`.

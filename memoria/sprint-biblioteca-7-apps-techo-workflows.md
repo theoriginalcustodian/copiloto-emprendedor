@@ -1,0 +1,22 @@
+---
+name: sprint-biblioteca-7-apps-techo-workflows
+description: Sprint biblioteca 7 apps E2E (7/7 merged) + el techo de workflows Temporal descubierto/mitigado + catálogo de 24 errores con remediación de raíz
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 12059cb1-332d-4821-a3ba-e04ea45ababe
+---
+
+Sprint 2026-06-24 (rama `feat/biblioteca-apps-priorizada`, `/goal` cumplido): la fábrica construyó por flujo C **7 microservicios** de biblioteca, E2E con frontend básico, oleadas de 2, todos **PR #1 MERGED**: booking · helpdesk · subscription · inventory · appointment · onboarding (heal=0) · audit. Knowledge Base **diferida**. Biblioteca base de microservicios → **completa** (17 apps mergeadas).
+
+**🧱 EL TECHO (hallazgo central de la fábrica).** El músculo no-frontier (DeepSeek + Claude fallback) **no rellena workflows Temporal de máquina-de-estados compleja**. **Causa raíz precisada por evidencia** (trayectorias reales extraídas de la historia de los `IterativeCodeWorkflow` en Temporal — **refina la conclusión previa "predicate OR", que era parcial**): es un **límite de capacidad del músculo** ante un workflow que exige en UNA pasada código *largo* + *que respete las primitivas de Temporal* + *sintácticamente válido*, con **2 modos de fallo**: **Modo A — TIMEOUT** (inventory, subscription): escribe `asyncio.sleep` (no `workflow.sleep`) → no time-skippeable → cuelga 75s/iter; el docstring decía "no asyncio.sleep" y el músculo lo ignoró (la instrucción no alcanza con modelo no-frontier). **Modo B — SyntaxError** (appointment, subscription): la lógica compleja crece a 3-6.5k chars → Python roto (`'(' was never closed`, `:` faltante, triple-quote sin cerrar). **Evidencia A/B:** booking (3 signals) y onboarding (2 signals) SÍ convergieron → NO es el nº de signals (refuta "predicate OR" como causa general). Al simplificar a básico (~30 líneas) el músculo lo genera correcto en 1-2 iters (inventory básico convergió en L1 `passed=true` directo). **Decisión operador:** simplificar workflows + completar las 7 → los 3 reducidos a BÁSICO (se perdió: appointment reschedule, subscription grace, inventory discontinue/edge-latch). **Raíz pendiente = R1 — workflow templates pre-rellenados** (arquetipos Temporal ricos parametrizables que el generador instancia): **elude ambos modos** (el músculo nunca escribe la máquina de estados → ni asyncio.sleep ni sintaxis rota); follow-up #1, mayor ROI porque sube el kit, no depende del músculo.
+
+**3 gaps del flujo C autónomo destapados por el spike de Booking** (las apps previas los resolvían con el operador en el loop): rellenabilidad (regla 11: units ≤~5 métodos) · provisión de tablas (`ensure_tables.py` idempotente, convención RLS de fusion) · schema binding (`ClientOptions(schema="uc_factory")`, PGRST205).
+
+**2 bugs de orquestación:** zombie por merge manual (SeniorWorkflow huérfano esperando signal `decide` → *el merge-gate es la única puerta de merge*) · **`--blind` frágil** (atendedor del merge-gate en el mismo proceso que el long-poll `h.result()` → un blip `http2 error` lo mata → merge-gate sin firmar) → resuelto con **atendedor robusto standalone** (`merge_gate_attender.py`: ssh cortos + reconexión ante RPCError + `setsid`), raíz = R4.
+
+**EL HILO CONDUCTOR (lo más importante para mejorar la fábrica):** los fixes del sprint viven en `scratchpad/` (`deploy_and_build.sh`, `ensure_tables.py`, `merge_gate_attender.py`, `gen-verify-all.js`) → **la fábrica todavía NO es autónoma para una app nueva de cero; depende de que el operador opere el scratchpad**. La raíz transversal = **absorber esos pasos al `SeniorWorkflow`** (R2 provision_tables · R3 deploy del skeleton · R4 atendedor robusto · R5 un solo generador = `/generar-plano`). Un parche en scratchpad que funciona = *codificar la esperanza a nivel de proceso* (espera que el próximo dev recuerde correr el script).
+
+**Docs:** catálogo de errores+raíz `docs/2026-06-24-catalogo-errores-fabrica-remediacion-raiz.md` (24 fallos: 14 ✅ raíz / 8 🔶 parche-scratchpad / 2 🔴 abierto; **plan de remediación R1–R6 por ROI sobre la autonomía**) · reporte `docs/Implementaciones terminadas/2026-06-24-sprint-biblioteca-7-apps_reporte.md` · `docs/ROADMAP-apps.md` evidencia.
+
+[[frente1-biblioteca-completa]] [[costo-incertidumbre-precision-ratchet]] [[apps-lifecycle-hitl-autonomo]] [[no-codificar-la-esperanza-principio-raiz]] [[composicion-cierre-m1-mixto]]
