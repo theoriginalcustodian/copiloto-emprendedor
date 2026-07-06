@@ -28,8 +28,8 @@ sí; frontend-pesado-como-producto, no.
 | Frente | Estado |
 |---|---|
 | **Graduación Fase 0+1+2** | ✅ Hecha. Repo propio `github.com/theoriginalcustodian/copiloto-emprendedor` (privado), 123 commits con historia preservada (filter-repo). Motor vendorizado en `motor/`. CI verde. |
-| **Copiloto vivo (prod-beta)** | ✅ Desplegado en el VPS, multitenant real, smoke E2E 10/10 (BETA-READY). Corre **desde `/opt/uc-repos/copiloto`** (scp-seeded desde la fábrica, **no** desde este repo todavía). |
-| **Fase 2.5 — cutover del deploy** | 🟡 **Preparado y verificado** (path del motor reconciliado `reference→motor` en deploy/units/scripts; spike de mount **333 colección VERDE** en el VPS). **Falta el switch final** del servicio vivo a este repo (runbook en §5.3). |
+| **Copiloto vivo (prod-beta)** | ✅ Desplegado en el VPS, multitenant real, smoke E2E 10/10 (BETA-READY). Corre desde `/opt/uc-repos/copiloto`, **deployado desde ESTE repo** (cutover hecho 2026-07-06). |
+| **Fase 2.5 — cutover del deploy** | ✅ **Hecho (2026-07-06).** El servicio vivo corre desde este repo (layout `motor/`; PYTHONPATH del proceso verificado en `/proc/PID/environ`; `reference` viejo eliminado). Smoke E2E **10/10 BETA-READY** post-switch. Backup del origen previo: `/opt/uc-repos/copiloto.bak-pre-graduacion-20260706T141252Z`. |
 | **Fase 3 — infra 3 nodos dedicados** | ⏳ Diferida (hoy comparte VPS con la fábrica). Ver `memoria/copiloto-arquitectura-prod-3-nodos.md`. |
 
 **Deudas abiertas relevantes:** secretos a rotar pre-prod (`memoria/deuda-secretos-rotar.md`) · passwords temporales de GoTrue · `dispatcher_emprendedor` divergente del genérico R1 (deuda visible, registrada).
@@ -140,9 +140,9 @@ Parametrizable sin editar (cero hardcoding): `UC_DEPLOY_HOST`, `UC_DEPLOY_PATH`,
 `COPILOTO_WEB_PORT`, `UC_BASE_DOMAIN`, `UC_AUTH_URL`. Secretos viven server-side en `/etc/unreal-copilot/*.env`,
 nunca bajan a la PC ni al repo.
 
-### 5.3 Cutover del servicio vivo a ESTE repo (Fase 2.5 — runbook)
-Hoy el copiloto vivo corre desde `/opt/uc-repos/copiloto` (scp-seeded desde la fábrica). Para que corra desde
-este repo graduado (una sola instancia, mismo dominio/DB/usuarios — solo cambia el origen del código):
+### 5.3 Cutover del servicio vivo a ESTE repo (Fase 2.5 — ✅ EJECUTADO 2026-07-06, 10/10 verde)
+Ya ejecutado: el copiloto vivo corre desde este repo graduado. El runbook queda documentado como referencia
+(re-deploy o repetir en otra instancia; una sola instancia, mismo dominio/DB/usuarios — solo cambia el origen):
 ```bash
 # 0) backup del vivo (rollback instantáneo)
 ssh unreal-copilot "cp -a /opt/uc-repos/copiloto /opt/uc-repos/copiloto.bak-pre-graduacion-$(date +%Y%m%dT%H%M%SZ)"
@@ -202,8 +202,8 @@ documentar el fork duro y retirar el sync.
 
 ## 9. Qué sigue
 
-1. **Cerrar Fase 2.5** — ejecutar el cutover (§5.3) y confirmar el vivo corriendo desde este repo (smoke 10/10).
-   Después, retirar el `/opt/uc-repos/copiloto` scp-seeded y actualizar este HANDOFF a "vivo desde el repo nuevo".
+1. **Fase 2.5 — ✅ hecha.** El vivo corre desde este repo (smoke 10/10 post-switch). Pendiente menor: tras
+   confirmar estabilidad unos días, borrar el backup `/opt/uc-repos/copiloto.bak-pre-graduacion-*` del VPS.
 2. **Fase 3** — infra de prod en 3 nodos dedicados (app+temporal / clon fusion / clon graphity) + load test.
    `memoria/copiloto-arquitectura-prod-3-nodos.md`.
 3. **Producto** — retomar los frentes vivos del roadmap (voz, automatizaciones recurrentes, trazabilidad/BI).

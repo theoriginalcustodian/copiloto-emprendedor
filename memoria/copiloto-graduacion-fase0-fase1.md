@@ -1,6 +1,6 @@
 ---
 name: copiloto-graduacion-fase0-fase1
-description: Graduación del Copiloto a repo propio — Fase 0 (consolidar) + Fase 1 (boundary del motor) HECHAS 2026-07-06; falta merge de 2 PRs + Fase 2 (extracción)
+description: Graduación del Copiloto a repo propio — Fase 0 (consolidar) + Fase 1 (boundary del motor) HECHAS; cutover VIVO desde el repo (2026-07-06), memoria migrada + HANDOFF (Fase 0/1/2/2.5 completas)
 metadata: 
   node_type: memory
   type: project
@@ -21,4 +21,4 @@ metadata:
 
 **Fase 2 HECHA (2026-07-06):** repo **`github.com/theoriginalcustodian/copiloto-emprendedor`** (PRIVADO) creado vía `git filter-repo` (**123 commits, historia/blame preservada**). Motor **vendorizado en `motor/`** (`_paths.py` default → `motor/`; `scripts/sync-motor.sh check|sync` mantiene alineado con la fábrica). Scaffolding: CLAUDE.md + README + .gitignore + `requirements.txt` (pin del venv prod) + CI (.github). Gate verde en el VPS con el layout nuevo (333 colección + 37 unit). Checkout local: **`../copiloto-emprendedor`**. Los 68MB de assets → `../_copiloto-assets-fase2/` (externos, gitignored).
 
-**Fase 2.5 SIGUIENTE (deploy):** redefinir deploy en el repo nuevo — `UC_DEPLOY_PATH`, systemd units `uc-copiloto-{web,worker}`, docker-compose `copiloto-auth`, cablear vhost duckdns (`UC_EXTRA_DOMAIN`) — y **cutover del VPS** de `/opt/uc-repos/copiloto` (scp-seeded desde la fábrica) al repo nuevo. Luego Fase 3 = infra 3-nodos. [[copiloto-deploy-multitenant-vivo]] [[copiloto-dominio-duckdns]] [[factory-identidad-automatizacion-ia]]
+**Fase 2.5 HECHA (2026-07-06 — CUTOVER VIVO):** (a) deploy reconciliado al layout `motor/` — `reference→motor` en `deploy.sh`, ambos units (PYTHONPATH), `sync-test-backend.sh`, `gotrue/deploy-gotrue.sh` (grep-first, 5 archivos); spike de mount en el VPS = **333 colección VERDE**. (b) **Cutover ejecutado**: el copiloto vivo corre desde el repo graduado — `deploy/copiloto/deploy.sh` corrido DESDE `../copiloto-emprendedor` sobre `/opt/uc-repos/copiloto`; PYTHONPATH del proceso vivo = `.../motor` (verificado en `/proc/PID/environ`); `deploy/skeleton_kit/.../reference` viejo BORRADO; **smoke E2E 10/10 BETA-READY** post-switch (signup·login·/me·/catalog·/warm·chat·ReAct·connect gmail/mp·refresh). Backup del origen previo: `/opt/uc-repos/copiloto.bak-pre-graduacion-20260706T141252Z` (157M; borrar tras estabilidad). (c) **Memoria migrada** al repo (`memoria/` 113+checkpoints, versionada) + `scripts/seed-memory.sh` (siembra al slug de Claude Code) + `HANDOFF.md` (init cero-fricción). Todo en **PR #1** del repo nuevo. **Falta: Fase 3 = infra 3-nodos.** [[copiloto-deploy-multitenant-vivo]] [[copiloto-dominio-duckdns]] [[factory-identidad-automatizacion-ia]]

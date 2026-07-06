@@ -49,7 +49,7 @@ El motor es una **copia vendorizada** del arquetipo `conversational_agent` de `u
 
 El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquesta el VPS por SSH) ya está **reconciliado al layout graduado**: el path del motor pasó de `deploy/skeleton_kit/.../reference` a `motor/` en `deploy.sh`, ambos units `uc-copiloto-{web,worker}.service` (PYTHONPATH), `sync-test-backend.sh` y `gotrue/deploy-gotrue.sh`. Mount verificado en el VPS (spike: **333 colección VERDE** con `motor/`).
 
-**Único pendiente = el cutover del servicio vivo:** hoy el copiloto corre desde `/opt/uc-repos/copiloto` (scp-seeded desde la fábrica); falta el switch para que corra desde este repo — **una sola instancia**, mismo dominio/DB/usuarios, solo cambia el origen del código. **Runbook con backup + rollback en [`HANDOFF.md`](HANDOFF.md) §5.3.** Runtime: Caddy (`copilotoemprendedor.duckdns.org` → :8099) + GoTrue dedicada (`copiloto-auth`) + Postgres (fusion) + Temporal (`127.0.0.1:7233`) + Graphity. Fase 3 (infra 3 nodos dedicados) = diferida.
+**Cutover HECHO (2026-07-06):** el servicio vivo corre desde ESTE repo (layout `motor/`, PYTHONPATH del proceso verificado, `reference` viejo eliminado); smoke E2E **10/10 BETA-READY** post-switch. **Una sola instancia**, mismo dominio/DB/usuarios. Backup del origen previo en `/opt/uc-repos/copiloto.bak-pre-graduacion-*` (borrar tras confirmar estabilidad). Runbook en [`HANDOFF.md`](HANDOFF.md) §5.3. Runtime: Caddy (`copilotoemprendedor.duckdns.org` → :8099) + GoTrue dedicada (`copiloto-auth`) + Postgres (fusion) + Temporal (`127.0.0.1:7233`) + Graphity. Fase 3 (infra 3 nodos dedicados) = diferida.
 
 ## 5. Referencias
 
