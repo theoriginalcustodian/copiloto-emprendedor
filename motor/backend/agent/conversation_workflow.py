@@ -45,6 +45,7 @@ with workflow.unsafe.imports_passed_through():
 # lo acota continue-as-new, no el idle-timeout.
 IDLE_TIMEOUT_DEFAULT_S = 30 * 60
 CARRY_TAIL = 40                             # mensajes recientes que arrastra el continue-as-new (contexto del LLM)
+HISTORY_TAIL = 20                           # mensajes del buffer de corto plazo que el turno react inyecta al prompt (<= CARRY_TAIL)
 MAX_TURNS_PER_RUN = 200                     # backstop de continue-as-new si is_continue_as_new_suggested no dispara
 STAFF_TIMEOUT = timedelta(hours=4)          # espera de decision humana (HITL) antes de seguir
 ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> margen amplio
@@ -396,7 +397,14 @@ class ConversationWorkflow:
         turn_ix = self._turns_before + self._cursor            # global y monótono (base del idem_key, B1)
         await self._react_recall(config, domain, cliente_id, channel_ref, user_text)
         self._history.append({"role": "user", "content": user_text})   # memoria/CAN (major #4)
-        messages = [{"role": "user", "content": user_text}]
+        # Scratchpad del turno arranca con el BUFFER DE CORTO PLAZO reciente, NO solo el mensaje actual: sin esto
+        # el LLM react no veía el turno anterior → perdía referencias cortas ('dame los últimos 100' tras 'revisá
+        # gmail' → '¿a qué te referís?'). `self._history` ya incluye el user actual (recién apendeado) y queda al
+        # final; los previos (user/assistant en texto plano — NUNCA el scratchpad interno de tool_calls) dan la
+        # continuidad conversacional. Análogo al `prior[-20:]` que el modo dispatch pasa a call_llm. Acotado a
+        # HISTORY_TAIL (no crece sin cota) y replay-safe (no cambia el Command sequence: mismo call_llm_tools,
+        # payload más rico). El continue-as-new arrastra CARRY_TAIL≥HISTORY_TAIL → el contexto sobrevive la renovación.
+        messages = list(self._history[-HISTORY_TAIL:])
         return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                       messages, start_turn_ix=turn_ix, start_step=0, last_artifact=None)
 
