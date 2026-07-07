@@ -1,22 +1,21 @@
 # Memoria — Copiloto del Emprendedor
 
-> **Repo graduado de `unreal-copilot` (la fábrica) el 2026-07-06.** Esta memoria se migró COMPLETA desde la
-> fábrica, así que mezcla dos capas: lo **primario de este producto** (entradas `copiloto-*`, `agente-*`,
-> `mercadopago-*`, `graphity-*`) y contexto **heredado de la fábrica** (`kaggle-*`, `hermes-*`, `deepseek`,
-> `clinica-*`, `la casa`, generador R1/R5) que se conserva como referencia histórica del origen. Al retomar
-> el copiloto, priorizá las entradas del producto; la doctrina universal (`no-codificar-la-esperanza`,
-> `spike-first`, `cero-deuda-*`, etc.) además vive en el `CLAUDE.md` global y carga en toda sesión.
+> **Repo graduado de `unreal-copilot` (la fábrica) el 2026-07-06.** La memoria se migró completa y el
+> **2026-07-07 se purgaron 53 entradas heredadas de la fábrica** (voz, `clinica-*`, `kaggle-*`, `hermes-*`,
+> `deepseek`, generador R1/R5, loop senior/SP, biblioteca de sprints, harness de fábrica) que NO aplican a
+> este producto — su fuente de verdad vive en el repo de la fábrica. Lo que queda acá: **producto del
+> copiloto** (`copiloto-*`, `mercadopago-*`, `graphity-*`, motor conversacional), **doctrina universal**
+> (que además vive en el `CLAUDE.md` global y carga en toda sesión) y **referencia** de Claude Code.
 > **Arranque del repo:** ver `HANDOFF.md` en la raíz.
 >
-> Fábrica de origen: VPS `unreal-copilot` (178.105.191.1, CX33 8GB).
 > **Estructura:** doctrina · lecciones · estado activo · referencia. Hitos cerrados → [HISTORIA.md](HISTORIA.md) (NO se carga; buscable). **Una línea por entrada — el detalle vive en el topic file.**
 
 ## 🚦 Estado vivo (puntero — NO se espeja acá)
 
-"¿Qué sigue?" → `docs/ROADMAP.md` · frentes abiertos → `docs/ESTADO-FRENTES-ABIERTOS.md` ([[frentes-abiertos-tablero]]) · detalle → `CLAUDE.md §5` · arquitectura → `docs/ARCHITECTURE.md`.
+**Arranque / "¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) (raíz) · detalle de estado → `CLAUDE.md §4-5`. ⚠️ Este repo **aún no tiene** `docs/ROADMAP.md` ni tablero de frentes (no migraron de la fábrica — gap a reconstruir).
 
-- **Cuellos:** (a) plantilla frontend (obj#2) bloqueada en **Spike S1** (¿el cage corre Next.js?); (b) **verificación adversarial independiente** = cuello de CALIDAD (Fugu).
-- **Mecanismo:** sólido hasta compuestos de **20 units** (heal=0). [[clinica-medica-2do-sistema-compuesto]]
+- **Vivo (prod-beta):** copiloto desplegado multitenant, smoke E2E 10/10. [[copiloto-deploy-multitenant-vivo]]
+- **Frente activo:** facturación electrónica AFIP (feature nuevo, greenfield, gate = spike). [[copiloto-facturacion-afip]]
 - **Identidad:** automatización/agentes-IA DURABLES (moat = Temporal), no frontend-pesado. [[factory-identidad-automatizacion-ia]]
 
 ## 📐 Doctrina operativa (aplica siempre)
@@ -48,25 +47,12 @@
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. **LEER al endurecer un agente LLM.** Barrido adversarial 3 lentes → batch por tests.
 - [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. **LEER al tocar el loop/tools.** `execute_activity` con `retry_policy` acotada + error de negocio NO se propaga.
 - [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. **LEER al tocar el ciclo-de-vida del agente.** Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
-- [🎙️ Voz Fase 2 — nota Telegram (Groq Whisper STT)](agente-voz-stt-groq.md) — `project`. Nota → whisper-large-v3 → texto. Lecciones: filename `.ogg`, User-Agent vs 403.
-- [🎙️ Stack DEFINITIVO voz — Pipecat+Telnyx+Deepgram/Groq+Temporal (self-hosted)](agente-voz-stack-definitivo-selfhosted.md) — `project`. **LEER PRIMERO al retomar voz.** Vapi descartado (fee 2,6×); solo INBOUND. Doc `docs/Follow up/2026-07-06-*`. [[agente-voz-economia-pricing]]
-- [🎤 Voz spike S3 (Fase 3.1, PR #99) — full-duplex es-AR](agente-voz-vivo-spike-s3.md) — `project`. Voxtral+ElevenLabs+SYS v3. **Stack redefinido 2026-07-06 → FALLBACK**; vivo=[[agente-voz-stack-definitivo-selfhosted]].
-- [💰 Economía voz — stack Deepgram self-hosted](agente-voz-economia-pricing.md) — `project`. **LEER antes de pricing.** ~$0.029/min (~$1.74/h) vs ~$0.075 Vapi; márgenes 79-83% flat $349.
 - [💵 Copiloto — economía/COGS (~$1-12/usuario/mes)](copiloto-economia-cogs.md) — `project`. **LEER antes de tiers/pricing.** LLM ~95% del costo; palancas = prompt caching + tool gating.
 - [🧰 Tool overload — orden de defensas](tool-overload-routing-agente.md) — `project`. **LEER al rutear tools multi-servicio.** Degrada ~20-30 tools. Driver = precisión.
 - [🔌 Composio en la fábrica — ladrillo + runbook](composio-gateway-ladrillo.md) — `project`. **LEER al usar Composio / agregar servicio.** Boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
 - [🔌 Copiloto — 7 servicios Composio plug-in (PR #104)](copiloto-servicios-composio-plugin.md) — `project`. **LEER al agregar servicio.** Módulo-plug-in + confirm-gate HITL.
 - [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — `project`. **LEER antes de pagos/BI.** OAuth Auth-Code (token 180d), webhook HMAC, SDK ≥3.3.0. ✅ SPIKE E2E.
-- [📚 Sprint biblioteca 7 apps + TECHO de workflows + catálogo 24 errores](sprint-biblioteca-7-apps-techo-workflows.md) — `project`. **LEER al planear hardening.** Músculo no rellena workflows complejos → R1.
-- [🏭 Gap B — router del conversational_agent → fixed-mount R1](gap-b-router-fixed-mount-r1.md) — `project`. Router al motor (`make_dispatcher`) **MERGED #103**. Pendiente separado: fix fábrica-gate (dep-assembly del motor).
 - [💳 Billing — J27 colisión de tablas → namespacing](billing-system-sistema-compuesto.md) — `project`. **Afecta TODA app nueva.** + guard en provision_tables. Arquetipo `recurring_charge`.
-- [🏥 Clínica médica — 2do sistema compuesto (20 units)](clinica-medica-2do-sistema-compuesto.md) — `project`. Plantilla clínica; Documed = adapter A-1. QA cazó `add_movement` no-atómico.
-- [🛡️ Clínica — hardening 3 frentes + K34 (seam adversarial)](clinica-hardening-3-frentes.md) — `project`. Fugu cazó 7 findings PHI. RPC atómicos + audit keyed-hash. PR #3. [[fugu-revisor-integracion]]
-- [🧭 R5 — /generar-plano único generador (7 arquetipos)](r5-generar-plano-unico-generador.md) — `project`. **`uc_tables.json` (NO schema.sql)**. [[r1-workflow-templates-fixed-mount]]
-- [🧩 R1 — workflow templates fixed-mount + 7 arquetipos](r1-workflow-templates-fixed-mount.md) — `project`. Workflow rico FIJO (gate-only) + store rellenable; AST en read_skeleton.
-- [🎯 Costo ∝ incertidumbre residual — precisión = ratchet](costo-incertidumbre-precision-ratchet.md) — `project`. Contrato exacto → flash iter-0; difuso → iters/heal.
-- [Macro-loop — diseño CANDIDATO + deuda del micro-loop](macro-loop-diseno-candidato.md) — `project`. Deuda: reward hacking, ACT_RETRY ilimitado.
-- [Loop Engineering — ancla conceptual](loop-engineering-framing.md) — `reference`. gate=checker · Temporal=estado durable.
 
 ## 🏭 Estado / decisiones activas
 
@@ -86,29 +72,17 @@
 - [💳 MercadoPagoGateway — 2º boundary de pagos E2E VIVO (PR #110)](mercadopago-gateway-impl-followup.md) — `project`. **LEER al retomar pagos/BI.** ✅ E2E VIVO (probado 2026-07-04). Pendiente: homologación MP (externa). [[mercadopago-integracion-research]]
 - [🧾 Facturación AFIP — feature NUEVO, greenfield, EN PAUSA (scope fijado)](copiloto-facturacion-afip.md) — `project`. **LEER PRIMERO al retomar facturación.** Emitir+PDF/QR+card [Guardar]/[Compartir]; Drive/mail=punteros. Gate=spike `afip.py`+PDF/QR (necesita credenciales). Handoff en `docs/copiloto-emprendedor/2026-07-06-HANDOFF-facturacion-afip-copiloto.md`.
 - [🧭 IDENTIDAD = automatización/agentes-IA durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — `project`. Moat = orquestación DURABLE. Fit = agentes + frontend FINO + HITL.
-- [🎨 Frontend clinic a mano (Next.js, E2E 24/24)](frontend-clinic-plantilla-base.md) — `project`. **Obj#2: cosechar plantilla.** mock→real vía `lib/api`; `data-testid`=puente con el gate. **Spike S1: ¿el cage corre Next?**
 - [Plataforma Agéntica — accesos/infra](plataforma-agentica-estado.md) — `project`. **LEER PRIMERO.** VPS Hetzner 133209712, 178.105.191.1. Temporal `127.0.0.1:7233`. [[deuda-secretos-rotar]]
-- [🛰️ Hermes = solo observabilidad/reporte](hermes-rol-observabilidad-reporte.md) — `project`. NUNCA dispara. SP8 intake = TBD, NO Hermes.
-- [🐡 Fugu = revisor de integración (no músculo)](fugu-revisor-integracion.md) — `project`. Revisor FINAL independiente, advisory, security-first. → skill `dupla-fugu-opus`.
-- [Variante DeepSeek ADITIVA (no reemplazo)](variante-deepseek-aditiva.md) — `project`. Kaggle+DeepSeek coexisten. LLM = activity PURA.
-- [🖥️ Fábrica local containerizada (réplica PC personal)](fabrica-local-containerizada.md) — `project`. Réplica del operador para SUS proyectos (NO la fábrica = el VPS).
-- [🖥️ Migración cockpit Claude Code → VPS (preparada)](migracion-cockpit-vps-preparada.md) — `project`. 8 scripts idempotentes en `~/.claude/migracion-vps/`. NADA migrado aún.
 - [🔄 /sync-memoria — memoria PC⇄VPS](sync-memoria-claude-code.md) — `project`. Auto-detecta proyecto+setup; bidireccional, idempotente.
-- [📱 Canal WhatsApp de Hermes — OPERATIVO](canal-whatsapp-hermes.md) — `project`. Evolution API (Baileys) en VPS, `HermesWP`. Bot `wa-sender` con gate Telegram.
 - [🔌 MCP Composio — Gmail (scope user)](composio-mcp-gmail-acceso-completo.md) — `project`. Auth Bearer. Riesgo lethal trifecta. NO heredar a agentes autónomos.
-- [✅ Claude headless 401 en el VPS — RESUELTO](claude-headless-401-vps.md) — `project`. Token Max OAuth deslogueado → 401. Fix = re-login Max.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — `project`. Keys que pasaron por chat. Diferido a pre-prod. grep-first + restart al rotar.
 
 ## 📚 Referencia
 
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — `reference`. Worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
-- [🚀 Desplegar código de la fábrica al VPS (scp + restart)](deploy-factory-code-vps.md) — `reference`. `/opt/unreal-copilot` NO es git checkout: deploy = `scp` + `systemctl restart`.
 - [Capacidades de `claude -p` headless](claude-code-headless-capabilities.md) — `reference`. `--effort`, `/goal`, sub-agentes. Sesión aislada.
 - [Consultar el agente de OTRO repo vía claude -p](consultar-otro-repo-headless.md) — `reference`. `--output-format json` con cwd=repo target. Stateless.
 - [⭐ `/goal` mecanismo interno](goal-mecanismo-interno-reference.md) — `reference`. Stop hook `prompt`; evalúa con Haiku. Temporal da la durabilidad que /goal no tiene.
-- [📊 Economía del flujo C — baseline](flujo-c-economia-baseline.md) — `reference`. Trial Tracker: $0.0139 + ~4.4 min, heal=0. n=1.
-- [Precios tokens DeepSeek (OpenRouter)](precios-tokens-deepseek-openrouter.md) — `reference`. Flash $0.09/$0.18/1M; Pro $0.435/$0.87.
-- [🧠 Reasoning models — max_tokens bajo → content vacío](reasoning-model-max-tokens-content-vacio.md) — `reference`. Fix: `OPENROUTER_MAX_TOKENS=16000`. NO apagar reasoning.
 - [BOM rompe el "set model" del plugin Claude Code](bom-rompe-settings-plugin-claude-code.md) — `reference`. BOM en `settings.json` → error; reescribir sin BOM.
 - [🔁 PWA service worker sirve build viejo](pwa-sw-staleness-gotcha.md) — `reference`. Deploy correcto ≠ el navegador lo tiene. Fix: `cleanupOutdatedCaches`+`no-cache`. [[deploy-factory-code-vps]]
 
