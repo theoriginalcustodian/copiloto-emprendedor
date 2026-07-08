@@ -519,3 +519,59 @@ async def test_react_stale_callback_without_parked_gate_does_not_reach_llm():
             await h.result()
     assert calls["llm"] == 0                      # NUNCA llegó al LLM con el token crudo
     assert calls["sent"], "no respondió nada al callback stale"
+
+
+# ═══════════════════════════ Regresión: memoria de CORTO plazo entre turnos (bug 2026-07-07) ═══════════════════
+
+@pytest.mark.asyncio
+async def test_react_second_turn_sees_prior_turn_history():
+    """REGRESIÓN memoria de corto plazo: en 'react' el 2º turno de TEXTO normal (sin gate de por medio) DEBE
+    ver el turno anterior. Síntoma real (operador): 'revisá gmail, últimos 100' -> responde; luego 'dame los
+    últimos 100' -> 'no entiendo, ¿a qué te referís? (¿actividades, Instagram, correos?)'. Causa raíz: cada
+    turno react arrancaba el scratchpad con SOLO el mensaje actual (`messages=[user]`), sin inyectar el buffer
+    `self._history` — a diferencia de `dispatch`, que pasa `prior[-20:]`. El buffer existía (state durable del
+    workflow, persistente por sesión) pero react NO lo consumía para el prompt del LLM. Fix: el turno normal
+    arranca `messages = self._history[-HISTORY_TAIL:]` (incluye los turnos previos + el actual al final).
+
+    El `recall_memory` (memoria LARGA de Graphity) devuelve vacío a propósito: así el ÚNICO contexto posible
+    del 2º turno es el buffer de corto plazo — si el LLM lo ve, es porque el buffer se inyectó (no la memoria
+    larga, que además ni tendría el turno inmediato: remember persiste en batch de >=20 msgs)."""
+    seen_messages: list[list[dict]] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        seen_messages.append(list(p["messages"]))
+        return {"tool_calls": [], "content": "listo, ahí va"}   # cada turno cierra con texto (sin tools)
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}   # memoria LARGA vacía -> el único contexto posible es el buffer CORTO
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rhist", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rhist", task_queue="rhist")
+            await h.signal(ConversationWorkflow.receive_message,
+                           {"text": "revisá gmail, últimos 100", "kind": "text"})
+            await env.sleep(1)                       # deja completar el turno 1 (scratchpad + reply -> history)
+            await h.signal(ConversationWorkflow.receive_message,
+                           {"text": "dame los últimos 100", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(seen_messages) == 2, "esperaba 1 llamada a call_llm_tools por turno"
+    turn2 = [m.get("content") for m in seen_messages[1]]
+    # el 2º turno DEBE traer el contexto del 1º (mensaje del usuario + respuesta del asistente), no solo el actual
+    assert "revisá gmail, últimos 100" in turn2, f"amnesia: el 2º turno no vio el mensaje del 1º -> {turn2}"
+    assert "listo, ahí va" in turn2, "el 2º turno no vio la respuesta del asistente del 1º turno"
+    assert seen_messages[1][-1]["content"] == "dame los últimos 100"   # el mensaje actual va al final del scratchpad
