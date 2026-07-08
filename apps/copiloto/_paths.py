@@ -23,7 +23,8 @@ APP = Path(__file__).resolve().parent            # apps/copiloto (raíz del cód
 _REPO = APP.parents[1]                           # raíz del repo (apps/copiloto -> apps -> repo)
 
 # Motor: env override o el motor VENDORIZADO en el repo (Fase 2 graduación — copia propia del arquetipo).
-# El sync-con-drift-check (scripts/sync-motor.sh) lo mantiene alineado con la fábrica hasta el fork duro.
+# FORK DURO desde 2026-07-07: el copiloto evoluciona el motor por su cuenta; ya NO se sincroniza con la
+# fábrica (scripts/sync-motor.sh retirado). El boundary del mount (abajo) NO cambia: el motor sigue en motor/.
 _DEFAULT_MOTOR_REF = _REPO / "motor"
 MOTOR_REF = Path(os.environ.get("UC_MOTOR_REF_PATH") or _DEFAULT_MOTOR_REF)
 

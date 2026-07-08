@@ -10,7 +10,7 @@ Agente conversacional **durable** para emprendedores: web PWA + integraciones (C
 | `apps/copiloto-web/` | Frontend PWA (Vite + React + TS), autocontenido |
 | `motor/` | Motor vendorizado (ConversationWorkflow ReAct + gateways + canales) — ver `CLAUDE.md §2` |
 | `deploy/` | Scripts de deploy + `provision_tables.py` |
-| `scripts/sync-motor.sh` | Sync-con-drift-check del motor vs la fábrica |
+| `scripts/sync-motor.sh` | RETIRADO — motor en fork duro (2026-07-07); ya no se sincroniza con la fábrica |
 | `docs/` | Diseño, economía, decisiones |
 
 ## Desarrollo
@@ -22,4 +22,4 @@ Agente conversacional **durable** para emprendedores: web PWA + integraciones (C
 
 ## Estado
 
-Graduación **Fase 2 (extracción)** hecha. **Fase 2.5 (redefinir deploy + cutover del VPS)** pendiente — ver `CLAUDE.md §4`.
+Graduación completa (Fase 0/1/2/2.5) — desplegado vivo en el VPS (ver `HANDOFF.md §1`, `CLAUDE.md §4`). Motor en **fork duro** desde 2026-07-07 (`CLAUDE.md §2`). Falta Fase 3 (infra 3-nodos).

@@ -25,7 +25,7 @@ copiloto-emprendedor/
 ├── deploy/copiloto/        # scripts de deploy (deploy.sh, sync-web.sh, GoTrue, Caddy snippet)
 ├── deploy/worker/          # provision_tables.py (infra de tablas, RLS + policy)
 ├── docs/copiloto-emprendedor/
-├── scripts/sync-motor.sh   # sync-con-drift-check del motor vs la fábrica
+├── scripts/sync-motor.sh   # RETIRADO (fork duro 2026-07-07) — el motor ya no se sincroniza con la fábrica
 └── requirements.txt        # deps python pinneadas (del venv de prod)
 ```
 
@@ -33,7 +33,7 @@ copiloto-emprendedor/
 
 `apps/copiloto/**` importa el motor con `from backend.agent... / from clients.agent...`. El path se resuelve en **un solo lugar**: `apps/copiloto/_paths.py` → `MOTOR_REF` = `UC_MOTOR_REF_PATH` (env) o el default `motor/`. `conftest.py` corre `ensure_paths()` una vez por sesión de pytest. **NUNCA volver a esparcir `sys.path.insert` por los módulos** (se colapsaron 92 a este mecanismo en la Fase 1 de graduación).
 
-El motor es una **copia vendorizada** del arquetipo `conversational_agent` de `unreal-copilot`. Hasta el fork duro se mantiene alineado con `scripts/sync-motor.sh` (`check` reporta drift, `sync` actualiza). Decisión: vendorizar-con-sync (patrón `fleet-platform`).
+El motor **nació** como copia vendorizada del arquetipo `conversational_agent` de `unreal-copilot`. **FORK DURO declarado el 2026-07-07** (`fix(motor-react)` — el copiloto arregló el buffer de corto plazo del motor react, cambio inexistente en la fábrica): el copiloto **evoluciona el motor por su cuenta** y ya NO se sincroniza. `scripts/sync-motor.sh` quedó **retirado** (fail-closed) — re-sincronizar pisaría la divergencia. Un fix del motor se hace **acá**; si alguna vez hay que realinear algo puntual con la fábrica, es a mano con diff dirigido, nunca rsync ciego.
 
 ## 3. Reglas no negociables
 

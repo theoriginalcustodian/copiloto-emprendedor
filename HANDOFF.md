@@ -160,17 +160,17 @@ ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/depl
 
 ---
 
-## 6. El motor vendorizado (boundary con la fábrica)
+## 6. El motor (fork duro desde 2026-07-07)
 
-`motor/` es una **copia** del arquetipo `conversational_agent/reference/` de la fábrica `unreal-copilot`. Se
-mantiene alineado con `sync-motor.sh` hasta el **fork duro** (cuando el copiloto evolucione el motor por su cuenta):
-```bash
-./scripts/sync-motor.sh check    # reporta drift vs la fábrica (dry-run) — necesita UC_FABRICA_PATH
-./scripts/sync-motor.sh sync     # trae cambios de la fábrica → motor/ (revisá el git diff y commiteá)
-```
-Regla: mientras el motor sea compartido, un fix del **motor** se hace en la fábrica y se sincroniza acá; un fix de
-la **capa producto** (apps/copiloto, deploy) se hace acá. Cuando el copiloto diverja el motor deliberadamente,
-documentar el fork duro y retirar el sync.
+`motor/` **nació** como copia vendorizada del arquetipo `conversational_agent/reference/` de la fábrica
+`unreal-copilot` (patrón vendorizar-con-sync). El **2026-07-07 se declaró el FORK DURO**: el primer cambio
+divergente fue `fix(motor-react)` — el copiloto arregló el bug del buffer de corto plazo del motor react (el
+turno react no inyectaba `self._history` al prompt → amnesia entre turnos), fix que NO existe en la fábrica.
+
+Desde entonces el copiloto **evoluciona el motor por su cuenta**: todo fix del motor se hace **acá**.
+`scripts/sync-motor.sh` quedó **retirado** (fail-closed) — un `rsync --delete` desde la fábrica pisaría la
+divergencia. Si algún día se quiere traer algo puntual de la fábrica, es a mano con un diff dirigido y revisado,
+nunca un sync ciego.
 
 ---
 

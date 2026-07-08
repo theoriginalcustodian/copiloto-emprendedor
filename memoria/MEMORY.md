@@ -47,6 +47,7 @@
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. **LEER al endurecer un agente LLM.** Barrido adversarial 3 lentes → batch por tests.
 - [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. **LEER al tocar el loop/tools.** `execute_activity` con `retry_policy` acotada + error de negocio NO se propaga.
 - [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. **LEER al tocar el ciclo-de-vida del agente.** Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
+- [🧠⏱️ Motor react — buffer de corto plazo + FORK DURO del motor (2026-07-07)](motor-fork-duro-fix-buffer-corto.md) — `project`. **LEER al tocar el motor.** react no inyectaba `self._history` al prompt → amnesia entre turnos (fix: paridad con dispatch, `history[-20:]`). Motor forkeado de la fábrica; `sync-motor.sh` retirado.
 - [💵 Copiloto — economía/COGS (~$1-12/usuario/mes)](copiloto-economia-cogs.md) — `project`. **LEER antes de tiers/pricing.** LLM ~95% del costo; palancas = prompt caching + tool gating.
 - [🧰 Tool overload — orden de defensas](tool-overload-routing-agente.md) — `project`. **LEER al rutear tools multi-servicio.** Degrada ~20-30 tools. Driver = precisión.
 - [🔌 Composio en la fábrica — ladrillo + runbook](composio-gateway-ladrillo.md) — `project`. **LEER al usar Composio / agregar servicio.** Boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
