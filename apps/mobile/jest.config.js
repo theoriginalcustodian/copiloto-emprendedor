@@ -27,9 +27,25 @@ const mapaReact = {
   '^react/jsx-dev-runtime$': path.join(react, 'jsx-dev-runtime'),
 };
 
-// Paquetes que se publican en ESM y que jest tiene que transformar igual.
+/**
+ * Paquetes publicados en ESM que jest tiene que transformar igual.
+ *
+ * 🔴 `standard-navigation` está en esta lista por un motivo concreto: `expo-router` lo arrastra, y
+ * el primer test que importe algo que a su vez importe `router` revienta con
+ * `SyntaxError: Cannot use import statement outside a module`. El error no menciona a expo-router
+ * por ningún lado, así que se lee como un problema del archivo que lo disparó.
+ *
+ * Al portar esta config desde documed transcribí la lista y **omití `standard-navigation` y
+ * `@sentry/react-native`**. La consecuencia: un agente que trabajaba en `modules/ajustes` se topó
+ * con el error, lo diagnosticó bien, y lo rodeó con `jest.mock('expo-router')` en 5 archivos de
+ * test — un workaround correcto para él (la config estaba fuera de su ownership) pero que existía
+ * sólo por mi error de transcripción. Restaurada la lista, esos 5 mocks se pueden retirar.
+ *
+ * La lección para el próximo que la toque: esta lista NO es decorativa ni "un patrón largo que
+ * copiás". Cada entrada es un paquete que rompió el build de tests alguna vez.
+ */
 const transformIgnorePatterns = [
-  'node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|native-base|react-native-svg|@copiloto/core))',
+  'node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|standard-navigation|@copiloto/core))',
 ];
 
 module.exports = {
