@@ -11,8 +11,8 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 import { router } from 'expo-router';
 
-import { ThemeProvider } from '../src/theme/ThemeProvider';
-import PantallaPrincipal from './index';
+import { ThemeProvider } from '../theme/ThemeProvider';
+import { PantallaPrincipal } from './PantallaPrincipal';
 
 async function envolver() {
   return render(
@@ -22,7 +22,7 @@ async function envolver() {
   );
 }
 
-describe('PantallaPrincipal (app/index.tsx) — el shell real', () => {
+describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real', () => {
   beforeEach(() => {
     jest.mocked(router.push).mockClear();
   });
