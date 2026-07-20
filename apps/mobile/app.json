@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Copiloto",
+    "slug": "copiloto-emprendedor",
+    "scheme": "copiloto",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "app.copiloto.emprendedor",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "owner": "341lin",
+    "plugins": [
+      "expo-router",
+      "expo-audio",
+      "expo-sharing",
+      "expo-splash-screen",
+      "expo-font",
+      "expo-navigation-bar"
+    ]
+  }
+}
