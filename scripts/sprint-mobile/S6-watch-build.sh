@@ -17,13 +17,21 @@ set -euo pipefail
 BUILD_ID="${1:-}"
 INTERVALO="${2:-60}"
 MAX_MIN="${MAX_ESPERA_MIN:-60}"
-EVID="${EVIDENCIA_DIR:-_evidencia}"
-
 log() { printf '[S6 %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 fail() { printf '[S6] ERROR: %s\n' "$*" >&2; exit 1; }
 
+# 🔴 `EVID` se resuelve a ABSOLUTO antes del `cd`, y no es un detalle de estilo.
+# La versión anterior lo dejaba relativo (`_evidencia`): el `mkdir` lo creaba en el cwd de
+# invocación y, tras el `cd` a `apps/mobile`, el `>` de la línea final apuntaba a
+# `apps/mobile/_evidencia/` — que no existe. Resultado: el build terminó BIEN, el vigía imprimió
+# la URL del APK en su log... y murió con "No such file or directory" al persistirla, dejando el
+# task en `failed`. El peor sabor de fallo: éxito reportado como fracaso, con el dato valioso
+# visible sólo en el log de un proceso que ya terminó mal.
+RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
+EVID="${EVIDENCIA_DIR:-$RAIZ/_evidencia}"
 mkdir -p "$EVID"
-cd "$(dirname "$0")/../../apps/mobile"
+
+cd "$RAIZ/apps/mobile"
 
 consultar() {
   npx --yes eas-cli@latest build:list --platform android --limit 5 --json --non-interactive 2>/dev/null \
