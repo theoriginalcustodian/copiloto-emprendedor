@@ -1,0 +1,181 @@
+import { useEffect, useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { mapearGate, type ChatMessage, type Gate } from '@copiloto/core';
+
+import { CristalVidrio } from '../../theme/glass/CristalVidrio';
+import { pressableStyle } from '../../theme/glass/presion';
+import { Marca } from '../../theme/Marca';
+import { useTema } from '../../theme/ThemeProvider';
+import { Burbuja } from './Burbuja';
+
+const TEXTO_VACIO =
+  'Contame qué necesitás: mandar un mail, buscar algo en tus archivos, revisar tus métricas, o cobrar con MercadoPago. Antes de ejecutar algo importante, siempre te lo muestro para que lo confirmes.';
+
+export interface ListaMensajesProps {
+  messages: ChatMessage[];
+  /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
+   * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
+   * gate de este sprint lo usa todavía. */
+  onChoice: (value: string, opts?: { payload?: Record<string, unknown> | null }) => void;
+}
+
+interface TarjetaConfirmacionProps {
+  gate: Gate;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/**
+ * Tarjeta del gate de confirmación genérico (`mapearGate`, `@copiloto/core/chat`) — cualquier reply
+ * cuyos `choices` sean exactamente el par confirmar/cancelar (ej. "vas a mandar este mail a Juan,
+ * ¿confirmás?"). Fork ADAPTADO del `TarjetaRevisionClinica` de DocuMed
+ * (`_staging/documed/apps/mobile/src/modules/chat/ListaMensajes.tsx`) — no un port literal:
+ *
+ * 🔴 **El origen la hacía un textarea EDITABLE** (el médico corregía el markdown de una nota clínica
+ * antes de firmarla). Acá no hay nada de negocio que el usuario deba re-escribir a mano: la
+ * confirmación de negocio real de este producto (ver `apps/copiloto-web/src/modules/chat/
+ * HitlCard.tsx`, ya en producción) es de SOLO LECTURA — el usuario lee lo que el copiloto va a hacer
+ * y aprieta Confirmar o Cancelar, nunca edita el texto. Portar el textarea tal cual habría sido
+ * clonar una UX pensada para "corregir un borrador clínico" a un dominio donde no existe ese borrador
+ * -- jerga sin equivalente natural, justo lo que la consigna de terminología pide evitar. Por eso acá
+ * `gate.markdown` se muestra como texto plano, no editable.
+ */
+function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionProps) {
+  const tema = useTema();
+
+  // Mismo nivel de vidrio que el gate de DocuMed ("informe"): flota DENTRO de la conversación, con su
+  // propio ocluyente -- sin esto el chat de atrás se leería A TRAVÉS de la superficie donde el
+  // usuario confirma lo que se va a ejecutar.
+  return (
+    <CristalVidrio nivel="informe" testID="tarjeta-confirmacion" style={styles.tarjetaGate}>
+      <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
+        <View style={styles.encabezadoGate}>
+          <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }} />
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700' }}>
+            Confirmá antes de continuar
+          </Text>
+        </View>
+        <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: Math.round(tema.tipo.base * 1.4) }}>
+          {gate.markdown}
+        </Text>
+        <View style={[styles.accionesGate, { gap: tema.espacio.sm }]}>
+          <Pressable
+            testID="tarjeta-confirmacion-confirmar"
+            onPress={onConfirm}
+            style={pressableStyle([
+              styles.botonGate,
+              { backgroundColor: tema.color.acento, borderRadius: tema.radio.md },
+            ])}
+          >
+            <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.base, fontWeight: '700' }}>
+              {gate.confirmLabel}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="tarjeta-confirmacion-cancelar"
+            onPress={onCancel}
+            style={pressableStyle([
+              styles.botonGate,
+              { backgroundColor: tema.color.superficieAlta, borderRadius: tema.radio.md },
+            ])}
+          >
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '600' }}>
+              {gate.cancelLabel}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </CristalVidrio>
+  );
+}
+
+/**
+ * Lista de mensajes — fork mobile de `ListaMensajes.tsx` de DocuMed. Por mensaje decide qué
+ * renderizar:
+ *  - usuario -> `Burbuja` simple.
+ *  - asistente cuyo `choices` es el par confirmar/cancelar (`mapearGate`, `@copiloto/core/chat`) ->
+ *    `TarjetaConfirmacion`, NUNCA `Burbuja` — es el único HITL de este sprint.
+ *  - asistente sin gate -> `Burbuja` de texto plano.
+ *
+ * Un `choices` que NO sea el par confirmar/cancelar (desambiguación multi-opción) no tiene UI
+ * dedicada en este hito — mismo alcance que el origen; se ve el texto de la burbuja igual, sin chips.
+ *
+ * Auto-scroll al último mensaje en cada cambio (best-effort: `scrollToEnd` puede no existir bajo el
+ * test-renderer).
+ */
+export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
+  const tema = useTema();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd?.({ animated: true });
+  }, [messages.length]);
+
+  return (
+    <ScrollView
+      testID="lista-mensajes"
+      ref={scrollRef}
+      contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: tema.espacio.sm }]}
+    >
+      {messages.length === 0 && (
+        <View testID="chat-vacio" style={styles.vacio}>
+          <Marca size={64} tono="superficie" />
+          <Text
+            style={{
+              color: tema.color.texto,
+              fontSize: tema.tipo.titulo,
+              fontWeight: '700',
+              textAlign: 'center',
+              marginTop: tema.espacio.md,
+            }}
+          >
+            ¿En qué te ayudo?
+          </Text>
+          <Text
+            style={{
+              color: tema.color.textoTenue,
+              fontSize: tema.tipo.base,
+              lineHeight: Math.round(tema.tipo.base * 1.5),
+              textAlign: 'center',
+              marginTop: tema.espacio.sm,
+            }}
+          >
+            {TEXTO_VACIO}
+          </Text>
+        </View>
+      )}
+
+      {messages.map((mensaje) => {
+        if (mensaje.role === 'user') {
+          return <Burbuja key={mensaje.id} role="user" text={mensaje.text} />;
+        }
+
+        const gate = mapearGate(mensaje);
+        if (gate) {
+          return (
+            <TarjetaConfirmacion
+              key={mensaje.id}
+              gate={gate}
+              onConfirm={() => onChoice(gate.confirmValue)}
+              onCancel={() => onChoice(gate.cancelValue)}
+            />
+          );
+        }
+
+        return <Burbuja key={mensaje.id} role="assistant" text={mensaje.text} />;
+      })}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  contenido: { flexGrow: 1 },
+  vacio: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  // El borde/sombra/radio los pone `CristalVidrio` (nivel informe); acá sólo el ancho del cristal.
+  tarjetaGate: { alignSelf: 'stretch' },
+  contenidoGate: { alignSelf: 'stretch' },
+  encabezadoGate: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  accionesGate: { flexDirection: 'row' },
+  botonGate: { flex: 1, height: 48, alignItems: 'center', justifyContent: 'center' },
+});
