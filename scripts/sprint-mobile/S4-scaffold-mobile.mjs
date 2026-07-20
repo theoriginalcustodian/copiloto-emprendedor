@@ -216,6 +216,37 @@ config.resolver.disableHierarchicalLookup = true;
 module.exports = config;
 `);
 
+/**
+ * 🔴 CONTROL DE SALIDA — que la config no referencie archivos que nadie creó.
+ *
+ * Este chequeo existe porque el fallo ya ocurrió: S4 generó un `app.json` con
+ * `icon: './assets/icon.png'`, los assets quedaron clasificados `adaptar` y sin dueño asignado, y
+ * nadie los copió. El síntoma llegó **40 minutos después**, como un `UNKNOWN_ERROR` de EAS en la
+ * fase de prebuild — a un ciclo de build de distancia de la causa.
+ *
+ * Fue el tercer hueco de la misma clase en el sprint (`jest.setup.js`, `src/adapters/`, `assets/`):
+ * generar config que apunta a archivos, sin que ningún paso garantice que existan. El fix de raíz
+ * no es copiar los assets — es que un scaffold que promete un archivo lo verifique antes de irse.
+ */
+const referenciados = [];
+const app = JSON.parse(readFileSync('apps/mobile/app.json', 'utf8')).expo;
+const recolectar = (v) => {
+  if (typeof v === 'string' && v.startsWith('./') && /\.(png|jpg|jpeg|ttf|otf)$/i.test(v)) referenciados.push(v);
+  else if (Array.isArray(v)) v.forEach(recolectar);
+  else if (v && typeof v === 'object') Object.values(v).forEach(recolectar);
+};
+recolectar(app);
+
+const faltantes = referenciados.filter((r) => !existsSync(join('apps/mobile', r)));
+if (faltantes.length) {
+  console.error('\n[S4] ❌ app.json referencia archivos que NO existen:');
+  faltantes.forEach((f) => console.error(`       ${f}`));
+  console.error('[S4]    El prebuild de EAS va a fallar con "UNKNOWN_ERROR" 40 min después.');
+  console.error('[S4]    Copiá los assets ANTES de lanzar el build.');
+  process.exit(1);
+}
+console.log(`[S4] ✓ los ${referenciados.length} assets referenciados por app.json existen`);
+
 console.log(`[S4] OK — ${escritos} escritos, ${saltados} preservados`);
 console.log(`[S4] deps runtime: ${Object.keys(deps).length} · dev: ${Object.keys(devDeps).length}`);
 for (const [d, motivo] of Object.entries(NATIVAS_ANTICIPADAS)) console.log(`[S4]   anticipada: ${d} — ${motivo}`);
