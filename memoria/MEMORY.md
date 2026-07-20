@@ -15,7 +15,8 @@
 **Arranque / "¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) (raíz) · detalle de estado → `CLAUDE.md §4-5`. ⚠️ Este repo **aún no tiene** `docs/ROADMAP.md` ni tablero de frentes (no migraron de la fábrica — gap a reconstruir).
 
 - **Vivo (prod-beta):** copiloto desplegado multitenant, smoke E2E 10/10. [[copiloto-deploy-multitenant-vivo]]
-- **Frente activo:** facturación electrónica AFIP (feature nuevo, greenfield, gate = spike). [[copiloto-facturacion-afip]]
+- **🔥 Frente EN CURSO:** sprint **mobile-first** — app nativa Expo con la cáscara glass de documed. [[copiloto-mobile-first-cascara-glass]] · handoff en `docs/copiloto-emprendedor/2026-07-20-HANDOFF-sprint-mobile-first.md`
+- **Frente pausado:** facturación electrónica AFIP (greenfield, gate = spike). [[copiloto-facturacion-afip]]
 - **Identidad:** automatización/agentes-IA DURABLES (moat = Temporal), no frontend-pesado. [[factory-identidad-automatizacion-ia]]
 
 ## 📐 Doctrina operativa (aplica siempre)
@@ -23,6 +24,7 @@
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. **NUNCA montar en local — rechazado 2×.**
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. Reglas 6/7/8/9. [[spike-first-central-proyecto]]
 - [Spike-first es central](spike-first-central-proyecto.md) — `feedback`. Cimiento no verificado se amplifica a escala.
+- [🕳️ Un vacío del PROPIO instrumento no es hallazgo — correr el control](vacio-no-es-hallazgo-correr-el-control.md) — `feedback`. Un `0` de código propio se siente verificado. Hornear el control en el script.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — `feedback`. Deliberada+visible OK; impaga/invisible prohibida.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — `feedback`. Test *¿puede volver?* → si no es "no por construcción", no terminó.
@@ -47,7 +49,6 @@
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. **LEER al endurecer un agente LLM.** Barrido adversarial 3 lentes → batch por tests.
 - [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. **LEER al tocar el loop/tools.** `execute_activity` con `retry_policy` acotada + error de negocio NO se propaga.
 - [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. **LEER al tocar el ciclo-de-vida del agente.** Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
-- [🧠⏱️ Motor react — buffer de corto plazo + FORK DURO del motor (2026-07-07)](motor-fork-duro-fix-buffer-corto.md) — `project`. **LEER al tocar el motor.** react no inyectaba `self._history` al prompt → amnesia entre turnos (fix: paridad con dispatch, `history[-20:]`). Motor forkeado de la fábrica; `sync-motor.sh` retirado.
 - [💵 Copiloto — economía/COGS (~$1-12/usuario/mes)](copiloto-economia-cogs.md) — `project`. **LEER antes de tiers/pricing.** LLM ~95% del costo; palancas = prompt caching + tool gating.
 - [🧰 Tool overload — orden de defensas](tool-overload-routing-agente.md) — `project`. **LEER al rutear tools multi-servicio.** Degrada ~20-30 tools. Driver = precisión.
 - [🔌 Composio en la fábrica — ladrillo + runbook](composio-gateway-ladrillo.md) — `project`. **LEER al usar Composio / agregar servicio.** Boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
