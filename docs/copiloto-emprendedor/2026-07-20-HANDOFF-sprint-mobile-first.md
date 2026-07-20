@@ -68,6 +68,44 @@ autónomo llega al instrumento y para ahí.
 
 ---
 
+## 4.bis — F5: el terreno ya está relevado (recon del 2026-07-20)
+
+Recon read-only del backend vivo, hecho mientras compilaba el build. Todo con evidencia en el código,
+no inferido por el nombre de los endpoints.
+
+**🔴 `POST /chat` NO devuelve la respuesta del agente.** Es fire-and-forget: arranca (o señaliza) un
+`ConversationWorkflow` de Temporal y responde `{wf_id, accepted}` al instante —
+`apps/copiloto/web.py:226-234` → `motor/backend/agent/inbound_router.py:21-40`. La respuesta del
+agente se persiste server-side y se lee **polleando** `GET /reply?session_id=&after_id=<cursor>`
+(`web.py:281-285`). No hay SSE ni WebSocket en todo `apps/copiloto` (grep con control positivo:
+0 matches). El cliente móvil tiene que replicar el patrón de la PWA: enviar, y luego pollear cada
+**1500 ms** con timeout de **60 s** (`apps/copiloto-web/src/modules/chat/useChat.ts:23,25`).
+
+Quien implemente F5 esperando un request/response síncrono va a escribir el cliente equivocado.
+
+**El fallback de auth existe y es real.** `POST /auth/signup` · `/auth/login` · `/auth/refresh`
+(`web.py:349-377`) son HTTP puro, JSON in/out, **sin navegador y sin cookies** (0 matches de
+`cookie` en el árbol). El login devuelve `{access_token, token_type, expires_in, refresh_token, user}`
+y las requests siguientes van con `Authorization: Bearer <token>` (`apps/copiloto/auth.py:70-73`).
+⚠️ **GoTrue rota el refresh token en cada uso** — hay que persistir el nuevo en cada respuesta.
+
+**Google OAuth nativo está sin implementar, no sólo sin probar.** El flujo de la PWA extrae el token
+del *fragment* de la URL (`apps/copiloto-web/src/auth/oauth.ts:20-55`): patrón navegador puro. En
+nativo exige Custom Tabs + deep link, y `expo-auth-session`/`expo-web-browser` no están instaladas.
+El fallback email/password no es una concesión: es el camino verificado.
+
+**Ya mitigado sin saberlo:** `src/adapters/almacen.ts:19-61` implementa el puerto de tokens sobre
+`AsyncStorage` con las **mismas keys** que la PWA. Y `packages/core` ya tiene el contrato de red
+completo (`login`, `sendChat`, `getReply`, el reducer de polling). Lo que falta en F5 es el
+**wiring**, no el cliente: `src/adapters/plataforma.ts` no lo importa ningún punto de arranque.
+
+**Bloqueante silencioso resuelto:** `EXPO_PUBLIC_API_BASE` no estaba en ningún lado, y su default es
+`''`. La PWA sobrevive con eso porque es mismo-origen; un cliente nativo no tiene origen, así que
+`fetch('/chat')` saldría con un path relativo inválido y el error aparecería lejos de su causa. Queda
+`apps/mobile/.env.template` documentándolo y un `.env` local.
+
+---
+
 ## 5. Decisiones cerradas (no re-abrir)
 
 | # | Decisión |
@@ -126,7 +164,7 @@ ningún skin llamado `documed` — esa era una paleta vieja ya descartada.
 | Qué | Dónde | Condición de pago |
 |---|---|---|
 | `shell.test.tsx` en `describe.skip` | `src/shell/shell.test.tsx` | F5, cuando `modules/chat` esté portado |
-| 5 `jest.mock('expo-router')` por archivo | `modules/ajustes/*`, `modules/recientes/*` | Retirables ya: el fix de `transformIgnorePatterns` los hace innecesarios |
+| ~~5 `jest.mock('expo-router')`~~ | — | ✅ **PAGADA** (`8ef02bc`): retirados, 119 tests verdes con `expo-router` real |
 | Assets = ícono por defecto de Expo | `apps/mobile/assets/` | Marca propia del copiloto, sin fecha |
 | `medicalWhite` como nombre de skin | `src/theme/tokens.ts` | Decisión del operador; renombrarlo toca `NombreSkin` y tests |
 | `cliente_id` ambiguo (tenant vs cliente del CRM) | `packages/core/src/api/types.ts` | Cuando se diseñe el CRM (D7) |
