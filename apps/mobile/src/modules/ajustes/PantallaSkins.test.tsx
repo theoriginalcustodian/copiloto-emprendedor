@@ -3,14 +3,6 @@ import { StyleSheet } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
-/** `MarcoGlass` sólo usa `router.back()` (gesto/"Volver" de cierre). Sin este mock, el import real de
- * `expo-router` arrastra `standard-navigation` (ESM sin transformar bajo Jest) y la suite entera
- * falla al cargar -- mismo precedente que `_staging/documed/apps/mobile/src/rutas/
- * proximamente.test.tsx`. */
-jest.mock('expo-router', () => ({
-  router: { back: jest.fn() },
-}));
-
 /** En memoria -- aísla estos tests de `AsyncStorage` real: lo que se prueba acá es que
  * `PantallaSkins` DISPARA la persistencia (vía `useSkin`/`ThemeProvider`, ya testeado en
  * `temaSinHex.test.ts`/`shell.test.tsx`), no la implementación de `almacenClave` en sí. */

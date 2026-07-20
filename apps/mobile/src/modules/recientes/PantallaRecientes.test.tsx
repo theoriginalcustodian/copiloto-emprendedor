@@ -2,14 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
-/** `MarcoGlass` sólo usa `router.back()` (gesto/"Volver" de cierre). Sin este mock, el import real de
- * `expo-router` arrastra `standard-navigation` (ESM sin transformar bajo Jest) y la suite entera
- * falla al cargar -- mismo precedente que `_staging/documed/apps/mobile/src/rutas/
- * proximamente.test.tsx`. */
-jest.mock('expo-router', () => ({
-  router: { back: jest.fn() },
-}));
-
 /** Partial mock de `@copiloto/core`: sólo se reemplaza `listarActividad` -- reusa el resto del
  * módulo REAL. */
 jest.mock('@copiloto/core', () => {
