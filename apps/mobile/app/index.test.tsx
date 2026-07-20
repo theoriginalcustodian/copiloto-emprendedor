@@ -51,7 +51,28 @@ describe('PantallaPrincipal (app/index.tsx) — el shell real', () => {
 
     expect(screen.getByTestId('capa-funcion-ajustes')).toBeTruthy();
     expect(screen.getByTestId('capa-funcion-titulo').props.children).toBe('Ajustes');
-    expect(screen.getByTestId('capa-funcion-contenido-pendiente')).toBeTruthy();
+    // Antes acá se esperaba `capa-funcion-contenido-pendiente`, el placeholder que hubo mientras
+    // los módulos se portaban en paralelo. La integración lo reemplazó por la pantalla real, así
+    // que el test pasa a verificar eso — que es lo que de verdad importa: que la capa monte el
+    // contenido de ESA función y no el de otra.
+    expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
+  });
+
+  /**
+   * 🔴 Cada tile monta SU pantalla. Sin esto, un error en el mapa `CONTENIDO_POR_FUNCION` —dos keys
+   * apuntando al mismo componente, por ejemplo— pasaría desapercibido: la capa abre, el encabezado
+   * dice el nombre correcto, y adentro hay otra cosa. Se vería bien y estaría mal.
+   */
+  it.each([
+    ['apps', 'pantalla-apps'],
+    ['recientes', 'pantalla-recientes'],
+    ['redes', 'pantalla-redes'],
+    ['metricas', 'pantalla-metricas'],
+    ['facturacion', 'pantalla-facturacion'],
+  ])('la función %s monta su propia pantalla', async (funcion, testIdPantalla) => {
+    await envolver();
+    await fireEvent.press(screen.getByTestId(`tile-${funcion}`));
+    expect(screen.getByTestId(testIdPantalla)).toBeTruthy();
   });
 
   it('sólo una función abierta a la vez: tocar otra reemplaza la capa anterior', async () => {

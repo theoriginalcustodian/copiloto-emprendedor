@@ -3,10 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * `PantallaMetricas` — Métricas. Pantalla cascarón para ver ventas, cobros y actividad
- * del negocio, resumidos por el copiloto.
+ * `PantallaMetricas` — cascarón de Métricas.
  *
- * Diseño: título + descripción de una línea + marca visual de "próximamente".
+ * 🔴 Sin fondo ni título propios: se monta dentro de `CapaFuncion`, que ya aporta el vidrio y el
+ * encabezado. Un fondo acá dejaría opaco el vidrio; un título, duplicado. La capa aporta el chrome,
+ * la pantalla aporta el contenido.
  */
 export function PantallaMetricas() {
   const tema = useTema();
@@ -14,44 +15,21 @@ export function PantallaMetricas() {
   return (
     <View
       testID="pantalla-metricas"
-      style={[
-        styles.contenedor,
-        {
-          backgroundColor: tema.color.fondo,
-          padding: tema.espacio.lg,
-          gap: tema.espacio.md,
-        },
-      ]}
+      style={[styles.contenedor, { padding: tema.espacio.lg, gap: tema.espacio.sm }]}
     >
       <Text
-        style={[
-          styles.titulo,
-          {
-            color: tema.color.texto,
-            fontSize: tema.tipo.titulo,
-          },
-        ]}
-      >
-        Métricas
-      </Text>
-      <Text
         testID="metricas-descripcion"
-        style={{
-          color: tema.color.textoTenue,
-          fontSize: tema.tipo.base,
-        }}
+        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}
       >
         Ventas, cobros y actividad del negocio, resumidos por el copiloto.
+      </Text>
+      <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.mono, fontSize: 11, letterSpacing: 1.2 }}>
+        PRÓXIMAMENTE
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-  },
-  titulo: {
-    fontWeight: '700',
-  },
+  contenedor: { flex: 1 },
 });

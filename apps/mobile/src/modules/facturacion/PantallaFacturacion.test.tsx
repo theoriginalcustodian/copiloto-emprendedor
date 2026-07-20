@@ -11,16 +11,24 @@ async function envolver() {
   );
 }
 
-describe('PantallaFacturacion (Cascarón D3)', () => {
-  it('renderiza el título de la pantalla', async () => {
+describe('PantallaFacturacion', () => {
+  it('renderiza su descripción', async () => {
     await envolver();
-    expect(screen.getByText('Facturación')).toBeTruthy();
+    expect(screen.getByTestId('facturacion-descripcion')).toBeTruthy();
   });
 
-  it('renderiza la descripción de facturación', async () => {
+  /** El porqué extendido está en `PantallaRedes.test.tsx`: la capa aporta el chrome, la pantalla el
+   *  contenido. Un `backgroundColor` acá deja opaco el vidrio y nadie se entera. */
+  it('no pinta fondo propio — el vidrio lo aporta CapaFuncion', async () => {
     await envolver();
-    expect(
-      screen.getByTestId('facturacion-descripcion'),
-    ).toBeTruthy();
+    const estilos = [screen.getByTestId('pantalla-facturacion').props.style].flat(Infinity);
+    for (const e of estilos) {
+      expect(e?.backgroundColor).toBeUndefined();
+    }
+  });
+
+  it('no repite el título — el encabezado lo aporta CapaFuncion', async () => {
+    await envolver();
+    expect(screen.queryByText('Facturación')).toBeNull();
   });
 });

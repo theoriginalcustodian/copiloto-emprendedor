@@ -15,6 +15,25 @@
  * `metro.config.js` desactiva la búsqueda jerárquica). Lo que se arregla es de dónde sale la ruta:
  * `require.resolve` pregunta dónde está de verdad, en vez de asumir dónde debería estar.
  */
+/**
+ * 🔴 **`render` de `@testing-library/react-native` es ASÍNCRONO acá. Hay que `await`-earlo.**
+ *
+ * Con RNTL 14 + React 19, `render()` devuelve una **promesa**. Verificado en este proyecto:
+ * `typeof r.then === 'function'`, y `Object.keys(r)` sale vacío hasta resolverla.
+ *
+ * Si olvidás el `await`, el test falla con:
+ *
+ *     `render` function has not been called
+ *
+ * que **no menciona el await por ningún lado** y se lee como si el componente no renderizara. Se
+ * pierde un rato largo buscando en el lugar equivocado — pasó en este sprint, reescribiendo tests
+ * que ya estaban bien.
+ *
+ * Patrón correcto:
+ *
+ *     async function envolver() { return render(<ThemeProvider><Pantalla /></ThemeProvider>); }
+ *     it('...', async () => { await envolver(); expect(screen.getByTestId('x')).toBeTruthy(); });
+ */
 const path = require('node:path');
 
 /** Ruta REAL de un paquete, sea que esté hoisteado a la raíz o instalado local. */
