@@ -43,14 +43,16 @@ const RAICES = ['src', 'app'].map((d) => path.join(RAIZ_APP, d));
  * Rutas relativas a `apps/mobile`, con separador `/`.
  */
 const PERMITIDOS: Record<string, string> = {
-  // El botón de voz tiene su PROPIA animación de presión: un latido `Animated.loop` 1 → 1.08 sobre
-  // el núcleo (`transform: [{ scale: pulso }]`, BotonVoz.tsx:167-171), que es la geometría portada
-  // del template. El `Pressable` es el PADRE de ese `Animated.View` y hoy no lleva `style` alguno,
-  // así que meterle `PRESS_SCALE` compondría dos escalas anidadas (0.95 × el pulso) y rompería la
-  // geometría del latido. Su acuse al dedo es el latido mismo + el cambio a estado "grabando":
-  // es press-and-hold (`onPressIn` arranca la grabación), no un tap.
-  'src/modules/captura/BotonVoz.tsx':
-    'animación de presión propia (Animated.loop); PRESS_SCALE compondría dos transforms',
+  // Vacía a propósito.
+  //
+  // documed permite acá `src/modules/captura/BotonVoz.tsx`, porque su botón de voz tiene animación
+  // de presión propia (un latido `Animated.loop` 1 → 1.08) y meterle `PRESS_SCALE` compondría dos
+  // escalas anidadas. Esa entrada NO se copia todavía: el archivo no existe en este repo (llega en
+  // F6, con el dictado corto). Anotarlo por adelantado dejaría una entrada huérfana desde el día 0,
+  // que es justo lo que el segundo test de este candado prohíbe — un permiso concedido a un archivo
+  // que nadie escribió todavía silencia al guard sin que nadie se entere.
+  //
+  // Cuando `BotonVoz` llegue en F6, si necesita el permiso, se agrega ahí con su motivo.
 };
 
 /** Todos los `.ts`/`.tsx` bajo las raíces, sin tests ni el canon (que cita los valores a propósito). */

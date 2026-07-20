@@ -18,6 +18,22 @@
  *      Un parser que sólo mire duración vería p95 sana y concluiría "no hay problema" —
  *      justo el falso negativo que dejaría pasar el bug al sprint entero.
  *
+ * # ⚠️ NO SIRVE para el tirón del glass de función — usar S7
+ *
+ * Advertencia agregada tras leer `coordinacion/2026-07-20_handoff_tiron-glass-funcion.md`, que
+ * documenta dos límites duros de `framestats` verificados en device:
+ *
+ *   1. **Se DRENA en cada lectura.** A la otra sesión le devolvió 2 frames en tres intentos
+ *      seguidos. Para un evento raro en la cola, eso es inservible.
+ *   2. **Los percentiles esconden este defecto.** Es un evento raro, no una saturación: la mediana
+ *      y el p95 salen sanos mientras el tirón está ahí. Peor todavía, midieron que el chat —el que
+ *      NO se traba— puntúa *peor* en frames janky (11,31% vs 4,46%) y mediana (31ms vs 27ms). El
+ *      que mide peor es el que se siente bien.
+ *
+ * Para el tirón va `S7-parse-medicion1.mjs`, que lee el volcado del propio worklet. Este script
+ * sigue sirviendo para jank sostenido y agregado (arranque, scroll, listas), donde los percentiles
+ * sí son la métrica correcta.
+ *
  * Uso: node S5-parse-framestats.mjs _evidencia/framestats-A.txt [--hz 60] [--json]
  */
 import { readFileSync } from 'node:fs';

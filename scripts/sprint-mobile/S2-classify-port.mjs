@@ -15,7 +15,7 @@
  * La decisión sale del número, no de la intuición.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, dirname, resolve, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 const STAGING = process.env.STAGING_DIR ?? '_staging/documed';
 const OUT = join(STAGING, 'manifest.json');
@@ -119,14 +119,37 @@ function categorizar(rel) {
   return { categoria: 'sin-clasificar', motivo: 'ninguna regla matcheó — revisar a mano' };
 }
 
+/**
+ * Resuelve un import relativo a path POSIX, a mano.
+ *
+ * 🔴 **No usar `path.resolve` acá.** En Windows devuelve `C:\packages\...`, y el `.slice(1)` que
+ * había antes sólo comía la letra de unidad: quedaba `:/packages/...`. Como ningún path del
+ * registro empieza con `:`, NINGÚN import matcheaba jamás — `importedBy` salía siempre vacío y el
+ * detector de fugas de dominio reportaba `0` de forma estructural, no porque no hubiera fugas.
+ *
+ * El costo del bug fue exactamente el que predice "un vacío es una pregunta, no un hallazgo": se
+ * leyó el `0` como buena noticia sin correr un control, y un agente encontró después a mano una
+ * fuga real (`api/index.ts` → `api/clinical.ts`) que este chequeo debía haber cazado. Por eso
+ * ahora hay un control explícito al final del script: si el grafo sale vacío, el script falla.
+ */
+function resolverPosix(dir, especificador) {
+  const partes = `${dir}/${especificador}`.split('/');
+  const pila = [];
+  for (const p of partes) {
+    if (p === '' || p === '.') continue;
+    if (p === '..') pila.pop();
+    else pila.push(p);
+  }
+  return pila.join('/');
+}
+
 /** Imports locales (relativos) — se resuelven a path del staging para cruzar con el manifest. */
 function importsLocales(src, rel) {
   const out = new Set();
   const re = /(?:from|import)\s+['"](\.[^'"]+)['"]/g;
   let m;
-  while ((m = re.exec(src))) {
-    out.add(resolve('/' + dirname(rel), m[1]).slice(1).split(sep).join('/'));
-  }
+  const dir = rel.split('/').slice(0, -1).join('/');
+  while ((m = re.exec(src))) out.add(resolverPosix(dir, m[1]));
   return [...out];
 }
 
@@ -265,6 +288,21 @@ for (const f of todos) {
       if (dep && dep.categoria === 'descartar') fugas.push({ de: f.path, a: dep.path });
     }
   }
+}
+
+/**
+ * 🔴 CONTROL DEL DETECTOR — sin esto, "0 fugas" es indistinguible de "no puedo buscar fugas".
+ *
+ * Si el grafo inverso quedó vacío, el resolvedor de imports está roto y TODO lo que dependa de él
+ * (fugas, `importedBy`) es un falso negativo garantizado. Es más honesto reventar acá que emitir
+ * un manifest que dice `0` y que alguien va a leer como buena noticia.
+ */
+const conImportedBy = todos.filter((f) => f.importedBy.length > 0).length;
+if (conImportedBy === 0) {
+  console.error('[S2] ERROR: el grafo inverso salió VACÍO — ningún archivo tiene importadores.');
+  console.error('[S2] En un árbol de 250 archivos eso es imposible: el resolvedor de imports está roto.');
+  console.error('[S2] Un "0 fugas" con este grafo sería un falso negativo, no un resultado.');
+  process.exit(1);
 }
 
 const ambiguosTotal = todos.reduce((a, f) => a + f.terminosAmbiguos, 0);

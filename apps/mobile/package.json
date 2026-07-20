@@ -51,49 +51,5 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit"
-  },
-  "jest": {
-    "projects": [
-      {
-        "displayName": "native",
-        "preset": "jest-expo",
-        "setupFiles": [
-          "<rootDir>/jest.setup.js"
-        ],
-        "moduleNameMapper": {
-          "^react$": "<rootDir>/node_modules/react",
-          "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime",
-          "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime"
-        },
-        "transformIgnorePatterns": [
-          "node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@copiloto/core|standard-navigation))"
-        ]
-      },
-      {
-        "displayName": "web",
-        "preset": "jest-expo/web",
-        "testMatch": [
-          "<rootDir>/src/**/*.test.web.ts"
-        ],
-        "moduleNameMapper": {
-          "^react$": "<rootDir>/node_modules/react",
-          "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime",
-          "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime"
-        },
-        "transformIgnorePatterns": [
-          "node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@copiloto/core|standard-navigation))"
-        ],
-        "transform": {
-          "\\.[jt]sx?$": [
-            "babel-jest",
-            {
-              "presets": [
-                "expo/internal/babel-preset"
-              ]
-            }
-          ]
-        }
-      }
-    ]
   }
 }
