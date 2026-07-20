@@ -1,9 +1,11 @@
 /**
- * Layout raíz — versión mínima del spike F2.
+ * Layout raíz — con sesión (F5).
  *
- * A propósito NO trae sesión, guard de auth, ni providers de dominio: este arranque existe para
- * medir el repliegue del vidrio, y cada provider de más es ruido en el hilo JS que contamina
- * justo la variable que vamos a medir. El layout completo llega en F5.
+ * 🔴 **`/spike` queda FUERA del guard, y no es un descuido.** El spike del repliegue mide el hilo
+ * de UI durante un arrastre; no toca el backend ni necesita identidad. Ponerlo detrás del login
+ * ataría una medición de rendimiento a que haya red y credenciales — y peor: en una sesión sin
+ * backend el instrumento quedaría inalcanzable justo cuando se lo necesita. La medición no depende
+ * de la sesión, así que la ruta tampoco.
  *
  * Lo que SÍ está, y por qué cada cosa (heredado de documed, donde cada una costó un bug):
  *   - `GestureHandlerRootView` en la raíz: sin él, el Pan del panel no recibe eventos en Android.
@@ -25,11 +27,16 @@ import {
   SpaceGrotesk_700Bold,
   useFonts,
 } from '@expo-google-fonts/space-grotesk';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Import por SIDE EFFECT y lo más arriba posible: registra `http` + `almacenTokens` ante
+// `@copiloto/core`. Sin esto, cualquier llamada al backend sale sin transporte configurado. Es la
+// única vez que se ejecuta en toda la app.
+import '../src/adapters/plataforma';
+import { PantallaLogin, SessionProvider, useSession } from '../src/modules/auth';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 function Splash() {
@@ -39,6 +46,25 @@ function Splash() {
       <ActivityIndicator color={tema.color.acento} />
     </View>
   );
+}
+
+/** Rutas alcanzables sin sesión. Ver el 🔴 del docstring de arriba: el spike es un instrumento de
+ *  medición, no una pantalla de producto. */
+const RUTAS_LIBRES = ['/spike'];
+
+/**
+ * Decide qué se ve según el estado de sesión. Tres estados, no dos: mientras `AsyncStorage` resuelve
+ * el token guardado el estado es `verificando`, y ahí NO se puede mostrar el login — quien ya tenía
+ * sesión vería la pantalla de login parpadear en cada arranque antes de entrar.
+ */
+function Guard({ children }: { children: React.ReactNode }) {
+  const { estado } = useSession();
+  const ruta = usePathname();
+
+  if (RUTAS_LIBRES.includes(ruta)) return <>{children}</>;
+  if (estado === 'verificando') return <Splash />;
+  if (estado === 'autenticado') return <>{children}</>;
+  return <PantallaLogin />;
 }
 
 export default function LayoutRaiz() {
@@ -55,15 +81,20 @@ export default function LayoutRaiz() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ThemeProvider>
-          {/* Una sola pantalla. Las variantes de la Medición 1 se montan como capa dentro de
-              `index.tsx`, sin router: la navegación NO es variable de este experimento — el defecto
-              que se investiga ocurre DURANTE el arrastre, no al cerrar. Hubo acá dos rutas
-              (`spike-a`/`spike-b`) para comparar mecanismos de cierre; se eliminaron cuando el
-              handoff de DocuMed refutó esa hipótesis. */}
+          {/* Las variantes de la Medición 1 se montan como capa dentro de `index.tsx`, sin router:
+              la navegación NO es variable de ese experimento — el defecto que se investiga ocurre
+              DURANTE el arrastre, no al cerrar. Hubo acá dos rutas (`spike-a`/`spike-b`) para
+              comparar mecanismos de cierre; se eliminaron cuando el handoff de DocuMed refutó esa
+              hipótesis. */}
           {fuentesListas ? (
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-            </Stack>
+            <SessionProvider>
+              <Guard>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="spike" />
+                </Stack>
+              </Guard>
+            </SessionProvider>
           ) : (
             <Splash />
           )}

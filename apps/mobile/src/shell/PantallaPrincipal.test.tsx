@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 // Jest (jest-expo) — describe/it/expect/jest son globales, no se importan de vitest.
 //
@@ -27,17 +27,27 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     jest.mocked(router.push).mockClear();
   });
 
-  it('monta el panel, el escritorio de 6 funciones y el placeholder de chat', async () => {
+  it('monta el panel, el escritorio de 6 funciones y el chat real', async () => {
     await envolver();
 
     expect(screen.getByTestId('panel-principal')).toBeTruthy();
     expect(screen.getByTestId('tile-facturacion')).toBeTruthy();
-    expect(screen.getByTestId('chat-placeholder')).toBeTruthy();
+    expect(screen.getByTestId('chat-view')).toBeTruthy();
   });
 
-  it('el placeholder de chat se ve intencional, no roto: explica que la conversación llega en otra fase', async () => {
+  /**
+   * 🔴 El placeholder que estos dos tests fijaban ya no existe: F5 lo reemplazó por `ChatView`. Se
+   * reescribieron en vez de borrarlos porque lo que importaba nunca fue el placeholder — era que la
+   * Capa 1 del panel monte ALGO de conversación. Un test que sólo comprobaba el texto provisorio
+   * habría muerto con él y habría dejado el hueco sin cubrir justo al integrar.
+   */
+  it('el chat vive en la Capa 1 del panel, dentro del cristal — no como pantalla aparte', async () => {
     await envolver();
-    expect(screen.getByText(/se cablea en la próxima fase/i)).toBeTruthy();
+
+    const panel = screen.getByTestId('panel-principal');
+    // `within` en vez de un getBy suelto: que `chat-view` exista en algún lado del árbol no prueba
+    // que esté DENTRO del panel, que es el contrato que se quiere fijar.
+    expect(within(panel).getByTestId('chat-view')).toBeTruthy();
   });
 
   // `await fireEvent.press(...)`: RNTL 14 necesita el await para que el `act()` interno flushee el

@@ -22,6 +22,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { PantallaAjustes } from '../modules/ajustes';
 import { PantallaApps } from '../modules/apps';
+import { ChatView } from '../modules/chat';
 import { CapaFuncion } from '../modules/escritorio/CapaFuncion';
 import { EscritorioFunciones, TILES, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { PantallaFacturacion } from '../modules/facturacion';
@@ -48,41 +49,6 @@ const CONTENIDO_POR_FUNCION: Record<FuncionKey, React.ComponentType> = {
   facturacion: PantallaFacturacion,
 };
 
-/** Placeholder intencional del chat (F5 lo reemplaza por `ChatView` real). Vive en Capa 1, dentro del
- *  cristal de conversación del panel — mismo lugar donde entra `ChatView`, así que este componente
- *  desaparece entero cuando F5 aterriza; no hay wiring adicional que deshacer. */
-function PlaceholderChat() {
-  const tema = useTema();
-  return (
-    <View style={styles.placeholderChat} testID="chat-placeholder">
-      <Text
-        style={{
-          color: tema.color.texto,
-          fontFamily: tema.fuente.uiSemibold,
-          fontSize: tema.tipo.grande,
-          textAlign: 'center',
-        }}
-      >
-        Copiloto del Emprendedor
-      </Text>
-      <Text
-        style={{
-          color: tema.color.textoTenue,
-          fontFamily: tema.fuente.ui,
-          fontSize: tema.tipo.base,
-          textAlign: 'center',
-          marginTop: 8,
-          lineHeight: 20,
-        }}
-      >
-        La conversación se cablea en la próxima fase del sprint. Deslizá hacia abajo para ver el
-        escritorio de funciones.
-      </Text>
-    </View>
-  );
-}
-
-
 const DEFINICION_POR_KEY = new Map(TILES.map((t) => [t.key, t]));
 
 export function PantallaPrincipal() {
@@ -99,7 +65,7 @@ export function PantallaPrincipal() {
         testID="panel-principal"
         fondo={<EscritorioFunciones onFuncion={alFuncion} onAbrirSpike={() => router.push('/spike')} />}
       >
-        <PlaceholderChat />
+        <ChatView />
       </PanelDeslizable>
 
       {/* La capa de función — mecanismo en `CapaFuncion.tsx`. Montar/desmontar acá (no un prop
