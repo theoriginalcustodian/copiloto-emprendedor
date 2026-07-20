@@ -1,6 +1,9 @@
 /**
  * Pantalla del spike F2 — **Medición 1** del tirón del glass de función.
  *
+ * Vive en `/spike`, NO en el inicio: la app que el operador prueba tiene que abrir en su shell
+ * real. Se llega desde el escritorio, en una tile discreta.
+ *
  * Diseño factorial 2×2 sobre las dos asimetrías que el handoff de DocuMed dejó vivas
  * (`coordinacion/2026-07-20_handoff_tiron-glass-funcion.md` §A1 y §A3):
  *
