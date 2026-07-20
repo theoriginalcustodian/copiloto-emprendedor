@@ -16,7 +16,11 @@ set -euo pipefail
 
 BUILD_ID="${1:-}"
 INTERVALO="${2:-60}"
-MAX_MIN="${MAX_ESPERA_MIN:-60}"
+# 120 y no 60: medido el 2026-07-20 en esta cuenta, un build de `development` tarda ~52 min de COLA
+# + ~24 de compilación = ~76 min de punta a punta. Con el default viejo de 60 el vigía moría por
+# timeout cuando el build todavía estaba sano — pasó, y a un minuto de que saliera de la cola.
+# Un vigía que corta antes que el proceso que vigila no vigila nada.
+MAX_MIN="${MAX_ESPERA_MIN:-120}"
 log() { printf '[S6 %s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 fail() { printf '[S6] ERROR: %s\n' "$*" >&2; exit 1; }
 

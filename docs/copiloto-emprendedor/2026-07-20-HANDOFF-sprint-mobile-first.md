@@ -24,8 +24,8 @@ Fuente pinneada: `documed@a6841474` (rama `feat/frontend-h6-anclaje`). **documed
 | **F2** — spike del repliegue | 🟡 | **Instrumento listo. La medición necesita dedo humano** (§4) |
 | **F3** — glass + shell | ✅ | 33 archivos, 5 skins, candados verdes |
 | **F4** — 6 funciones | ✅ | Escritorio + las 6 cableadas |
-| **F5** — chat E2E | ⬜ | No empezada. Riesgo: auth Google nativa |
-| **F6** — voz Groq | ⬜ | No empezada |
+| **F5** — chat E2E | 🟡 | **Código completo y verde en jest. SIN verificar en device** (§4.ter) |
+| **F6** — voz Groq | ⬜ | No empezada. **No adelantar hasta que F5 esté verificada en device** |
 | **F7** — índice de actividad | ⬜ | No empezada. Medir antes de construir |
 
 ---
@@ -103,6 +103,39 @@ completo (`login`, `sendChat`, `getReply`, el reducer de polling). Lo que falta 
 `''`. La PWA sobrevive con eso porque es mismo-origen; un cliente nativo no tiene origen, así que
 `fetch('/chat')` saldría con un path relativo inválido y el error aparecería lejos de su causa. Queda
 `apps/mobile/.env.template` documentándolo y un `.env` local.
+
+---
+
+## 4.ter — F5: qué está hecho y qué NO (leer antes de tocarla)
+
+Tres commits: `4fcae9e` (auth), `36823b4` (chat), `003e60e` (integración).
+**152 tests verdes y typecheck limpio — pero NADA de esto se ejecutó en un teléfono.**
+Es "implementado y verde en jest", no "funcionando". El chat E2E real contra el backend vivo
+sigue **sin probar**, y es lo que cierra la fase.
+
+Hecho: login email/password + `SessionProvider` con guard de 3 estados · `ChatView`/`Composer`/
+`Burbuja`/`ListaMensajes`/`useChat` con el polling durable · `plataforma.ts` importado por side
+effect en el layout raíz (**no lo importaba nadie**, así que el core nunca quedaba configurado).
+
+**Dos contratos que no se rompen:**
+- **`/spike` está FUERA del guard a propósito.** Mide el hilo de UI durante un arrastre: no toca el
+  backend ni necesita identidad. Detrás del login, el instrumento de F2 quedaría inalcanzable justo
+  en una sesión sin backend.
+- **El guard tiene 3 estados, no 2.** Mientras `AsyncStorage` resuelve el token el estado es
+  `verificando`; mostrar login ahí hace parpadear la pantalla de login en cada arranque a quien ya
+  tenía sesión.
+
+**Decisión de diseño tomada en el port, con evidencia:** el gate de confirmación de documed es un
+*textarea editable* (un médico corrige una nota antes de firmarla). Acá se porta como tarjeta de
+**sólo lectura**, que es como ya funciona en la PWA en producción (`HitlCard.tsx`).
+
+**🔴 Bloqueante para F1:** el guard ahora exige sesión, así que las capturas del escritorio de 6
+funciones necesitan **una credencial de prueba** — o la provee el operador, o se crea vía
+`/auth/signup` contra el backend vivo (toca datos reales: no se hizo solo).
+
+**🟡 Abierto, decisión del operador:** `packages/core` ya tiene el puerto `clientes` (D7,
+`pacientes`→Clientes), pero **no hay pantalla y no es ninguna de las 6 funciones cerradas**. Dónde
+entra —dentro de Apps, como séptima función, o junto al CRM más adelante— está sin decidir.
 
 ---
 
