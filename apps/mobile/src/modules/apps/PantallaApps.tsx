@@ -7,7 +7,7 @@ import { ActivityIndicator, AppState, Linking, StyleSheet, Text, View } from 're
 // hacia abajo"*.
 import { ScrollView } from 'react-native-gesture-handler';
 
-import { listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from '@copiloto/core';
+import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
@@ -55,6 +55,40 @@ const ICONO_POR_DEFECTO: NombreIconoGlass = 'folder';
 
 type EstadoCatalogo = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
+/**
+ * Qué pierde el usuario al desconectar, dicho con las capacidades REALES que declara el backend
+ * (`capabilities` del catálogo) en vez de un "¿estás seguro?" que no informa nada.
+ *
+ * Un servicio sin capacidades declaradas cae en una frase genérica — nunca en una lista vacía que
+ * insinúe que no se pierde nada.
+ */
+function loQueSePierde(s: ServicioCatalogo): string {
+  if (s.capacidades.length === 0) {
+    return `El copiloto va a dejar de poder usar ${s.nombre} hasta que lo vuelvas a conectar.`;
+  }
+  const lista = s.capacidades.map((c) => c.toLowerCase()).join(', ');
+  return `El copiloto va a dejar de poder ${lista} hasta que vuelvas a conectar ${s.nombre}.`;
+}
+
+/**
+ * 🔴 **Drive tiene una consecuencia que no está en sus `capabilities`: la facturación.** Si el
+ * emprendedor tiene activado "guardar mis facturas en Drive", desconectarlo deja ese ajuste prendido
+ * sobre una capacidad que ya no existe y las facturas dejan de archivarse.
+ *
+ * Se dice en CONDICIONAL ("si tenés activado…") a propósito: esta pantalla no conoce el perfil
+ * fiscal, y afirmar que el ajuste está prendido sin haberlo leído sería inventar un dato — el error
+ * que este repo viene cazando toda la semana. Consultarlo desde acá acoplaría Apps a Facturación por
+ * una línea de copy; el aviso honesto cuesta menos y no miente.
+ *
+ * El estado REAL ya se dice donde sí se conoce: Ajustes → Copia en tu Drive lo pinta con
+ * `drive_conectado`.
+ */
+const CONSECUENCIA_EXTRA: Record<string, string> = {
+  googledrive:
+    'Si tenés activado "guardar mis facturas en Drive", tus facturas nuevas van a dejar de archivarse ahí.',
+  mercadopago: 'Vas a dejar de poder generar links de cobro desde el chat.',
+};
+
 export function PantallaApps() {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoCatalogo>('cargando');
@@ -62,6 +96,9 @@ export function PantallaApps() {
   /** El servicio cuyo link se está pidiendo — para no dejar el botón mudo mientras viaja el request. */
   const [pidiendo, setPidiendo] = useState<string | null>(null);
   const [errorVinculo, setErrorVinculo] = useState<string | null>(null);
+  /** La `key` del servicio que el usuario pidió desconectar y todavía no confirmó. */
+  const [objetivoBaja, setObjetivoBaja] = useState<string | null>(null);
+  const [desconectando, setDesconectando] = useState(false);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -132,6 +169,30 @@ export function PantallaApps() {
     }
   }
 
+  /**
+   * 🔴 **Al terminar NO se pinta "desconectado": se re-consulta.** Que el `DELETE` devuelva ok dice
+   * que el pedido se aceptó, no que la conexión ya no exista — y si el backend fallara a medias, la
+   * pantalla estaría afirmando una baja que no ocurrió. Misma disciplina que en `Conectar`.
+   */
+  async function confirmarBaja(servicio: ServicioCatalogo) {
+    setDesconectando(true);
+    setErrorVinculo(null);
+    try {
+      const res = await desconectarServicio(servicio);
+      if (!vivo.current) return;
+      if (res.status === 'no_disponible') {
+        setErrorVinculo(`Desconectar ${servicio.nombre} todavía no está disponible.`);
+        return;
+      }
+      setObjetivoBaja(null);
+      await cargar(true);
+    } catch {
+      if (vivo.current) setErrorVinculo(`No pudimos desconectar ${servicio.nombre}. Probá de nuevo.`);
+    } finally {
+      if (vivo.current) setDesconectando(false);
+    }
+  }
+
   return (
     // Mismo ícono que el tile de entrada en `EscritorioFunciones` ('folder') — ver docstring de
     // `MarcoGlass`: entrar por un ícono y llegar a otro desorienta.
@@ -190,12 +251,76 @@ export function PantallaApps() {
                 </View>
 
                 {s.conectado ? (
-                  <Text
-                    testID={`app-${s.key}-conectada`}
-                    style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}
-                  >
-                    Conectada
-                  </Text>
+                  <View style={{ gap: tema.espacio.sm }}>
+                    <Text
+                      testID={`app-${s.key}-conectada`}
+                      style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}
+                    >
+                      Conectada
+                    </Text>
+
+                    {objetivoBaja !== s.key ? (
+                      <FilaBotones
+                        compacto
+                        testID={`app-${s.key}-baja-botones`}
+                        botones={[
+                          {
+                            etiqueta: 'Desconectar',
+                            onPress: () => { setObjetivoBaja(s.key); setErrorVinculo(null); },
+                            variante: 'peligro',
+                            testID: `app-${s.key}-desconectar`,
+                          },
+                        ]}
+                      />
+                    ) : (
+                      /* 🔴 La confirmación NOMBRA lo que se pierde, con las capacidades reales del
+                         backend. Un "¿estás seguro?" pelado no le da al usuario con qué decidir —
+                         mismo criterio que la anulación de comprobantes, que dice "esto emite una
+                         nota de crédito" en vez de "¿anular?". */
+                      <View
+                        testID={`app-${s.key}-confirmar-baja`}
+                        style={{
+                          backgroundColor: tema.color.superficieAlta,
+                          borderRadius: tema.radio.md,
+                          padding: tema.espacio.sm,
+                          gap: tema.espacio.sm,
+                        }}
+                      >
+                        <Text
+                          testID={`app-${s.key}-baja-aviso`}
+                          style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}
+                        >
+                          {loQueSePierde(s)}
+                        </Text>
+                        {CONSECUENCIA_EXTRA[s.key] != null && (
+                          <Text
+                            testID={`app-${s.key}-baja-consecuencia`}
+                            style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}
+                          >
+                            {CONSECUENCIA_EXTRA[s.key]}
+                          </Text>
+                        )}
+                        <FilaBotones
+                          testID={`app-${s.key}-baja-confirmar-botones`}
+                          botones={[
+                            {
+                              etiqueta: desconectando ? 'Desconectando…' : 'Sí, desconectar',
+                              onPress: () => void confirmarBaja(s),
+                              variante: 'peligro',
+                              deshabilitado: desconectando,
+                              testID: `app-${s.key}-baja-si`,
+                            },
+                            {
+                              etiqueta: 'No',
+                              onPress: () => setObjetivoBaja(null),
+                              deshabilitado: desconectando,
+                              testID: `app-${s.key}-baja-no`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    )}
+                  </View>
                 ) : (
                   <FilaBotones
                     compacto

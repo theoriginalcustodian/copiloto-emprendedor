@@ -2,11 +2,21 @@ import { apiClient } from './client';
 import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
 
-/** Un 404/501 es "esta capacidad no está en este deploy" — mismo criterio que `afip.ts`, y aplica
- *  por la misma razón: ninguna de estas dos rutas tiene segmento dinámico, así que un 404 sólo puede
- *  significar "la ruta no existe", nunca "el recurso que pediste no existe". */
+/**
+ * "Esta capacidad no está en este deploy" — mismo criterio que `afip.ts`, y aplica por la misma
+ * razón: ninguna de estas rutas tiene segmento dinámico, así que un 404 sólo puede significar "la
+ * ruta no existe", nunca "el recurso que pediste no existe".
+ *
+ * 🔴 **El 405 también, y no es teoría.** El front-door monta un catch-all `@app.get("/{full_path}")`
+ * para servir el SPA (`web.py:141`), así que una ruta no desplegada **matchea** ese handler y
+ * FastAPI responde `405 Method Not Allowed` a cualquier verbo que no sea GET — nunca 404. Medido
+ * contra el servicio vivo el 2026-07-21: `DELETE /composio/connection` y `DELETE /mp/connection`
+ * devuelven 405, con un `GET /catalog` → 200 en la misma corrida como control de que el cliente
+ * funcionaba. Sin esto, "el endpoint todavía no existe" le llegaría al usuario como *"no pudimos
+ * desconectar, probá de nuevo"* — invitándolo a reintentar algo que no puede funcionar.
+ */
 function noDesplegado(err: unknown): boolean {
-  return err instanceof ApiError && (err.status === 404 || err.status === 501);
+  return err instanceof ApiError && (err.status === 404 || err.status === 405 || err.status === 501);
 }
 
 /**
@@ -46,6 +56,14 @@ export interface ServicioCatalogo {
   conectado: boolean;
   /** El path que hay que pedir para obtener el link de vinculación. Del backend, sin reconstruir. */
   connectPath: string;
+  /**
+   * El path al que mandar el `DELETE` para desconectar. **Pedido al backend el 2026-07-21, todavía
+   * NO confirmado** — mientras no venga, `desconectarServicio` usa `PATH_DESCONEXION_ASUMIDO`.
+   *
+   * 🔴 Se pide como campo del catálogo por la MISMA razón que `connect_path` demostró servir: la
+   * regla "Composio va por un lado, MercadoPago por otro" tiene un solo dueño, y no es el cliente.
+   */
+  disconnectPath?: string;
 }
 
 interface ServicioCrudo {
@@ -58,6 +76,7 @@ interface ServicioCrudo {
   capabilities: string[];
   connected: boolean;
   connect_path: string;
+  disconnect_path?: string;
 }
 
 function normalizar(s: ServicioCrudo): ServicioCatalogo {
@@ -71,6 +90,7 @@ function normalizar(s: ServicioCrudo): ServicioCatalogo {
     capacidades: s.capabilities ?? [],
     conectado: s.connected,
     connectPath: s.connect_path,
+    disconnectPath: s.disconnect_path,
   };
 }
 
@@ -107,6 +127,48 @@ export async function pedirLinkDeVinculacion(connectPath: string): Promise<{ sta
   try {
     const raw = await apiClient.get<{ url: string }>(connectPath);
     return { status: 'ok', url: raw.url };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/**
+ * ⚠️ `[ASSUMED_PENDING_VERIFY]` — **el único supuesto de todo el flujo de desconexión.**
+ *
+ * El endpoint fue pedido al backend el 2026-07-21 (`coordinacion/2026-07-21_pedido_frontend-
+ * desconectar-apps.md`) y todavía no está confirmado. Se aísla acá, en UNA función, para que
+ * acordar otra forma sea cambiar esta línea y nada más: ni la UI, ni la confirmación, ni el manejo
+ * de errores, ni los tests dependen de la forma exacta del path.
+ *
+ * En cuanto el catálogo mande `disconnect_path`, este fallback deja de usarse solo — igual que
+ * `connect_path`, que ya existe y evitó tener que adivinar el caso de MercadoPago.
+ *
+ * 🔴 Toma el SLUG, nunca un `connection_id`. Mandar el id desde el cliente permitiría revocar la
+ * conexión de otro tenant probando ids (BOLA / OWASP API1:2023); resolver "qué conexión es" a partir
+ * del JWT es responsabilidad del backend y no puede delegarse a un parámetro del cliente.
+ */
+function PATH_DESCONEXION_ASUMIDO(servicio: ServicioCatalogo): string {
+  return servicio.kind === 'payments'
+    ? '/mp/connection'
+    : `/composio/connection?service=${encodeURIComponent(servicio.key)}`;
+}
+
+/**
+ * Desconecta un servicio ya vinculado. **Destructivo**: el copiloto pierde el acceso hasta que el
+ * usuario vuelva a autorizar.
+ *
+ * ⚠️ Devolver `ok` NO autoriza a pintar "desconectado". Quien llame tiene que RE-CONSULTAR el
+ * catálogo — la fuente de verdad es `conectado`, no el resultado de haber pedido la baja. Mismo
+ * criterio que `pedirLinkDeVinculacion`, y por el mismo motivo: la acción y el hecho son dos cosas.
+ */
+export async function desconectarServicio(
+  servicio: ServicioCatalogo,
+): Promise<{ status: 'ok' } | { status: 'no_disponible' }> {
+  const path = servicio.disconnectPath ?? PATH_DESCONEXION_ASUMIDO(servicio);
+  try {
+    await apiClient.del<unknown>(path);
+    return { status: 'ok' };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     throw err;

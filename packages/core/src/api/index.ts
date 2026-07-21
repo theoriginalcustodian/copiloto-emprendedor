@@ -60,7 +60,7 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
-export { listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
+export { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
 export type { ServicioCatalogo } from './catalogo';
 
 // `/actividad` — "Recientes": las entradas FIRMADAS del usuario, cross-cliente. Ver el docstring de

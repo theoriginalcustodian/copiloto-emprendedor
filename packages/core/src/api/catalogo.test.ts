@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
+import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from './catalogo';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -124,6 +124,92 @@ describe('catalogo.ts', () => {
       responder = () => respuesta(400, { detail: 'unsupported toolkit' });
 
       await expect(pedirLinkDeVinculacion('/composio/connect?service=inventado')).rejects.toThrow();
+    });
+  });
+
+  describe('desconectarServicio — DELETE', () => {
+    function servicio(over: Partial<ServicioCatalogo> = {}): ServicioCatalogo {
+      return {
+        key: 'googledrive',
+        nombre: 'Google Drive',
+        etiquetaTrabajo: 'Archivos',
+        categoria: 'Archivos',
+        kind: 'composio',
+        descripcion: '…',
+        capacidades: [],
+        conectado: true,
+        connectPath: '/composio/connect?service=googledrive',
+        ...over,
+      };
+    }
+
+    /**
+     * 🔴 **El `connection_id` NO viaja desde el cliente, y este test lo fija.**
+     *
+     * Mandar el id permitiría revocar la conexión de OTRO tenant probando ids (BOLA / OWASP
+     * API1:2023) — quién es la conexión tiene que resolverlo el backend desde el JWT. El slug no
+     * identifica nada ajeno, así que es lo único que puede viajar.
+     *
+     * Este repo ya pagó una vez que un guard cross-tenant se especificara y nunca se codificara
+     * (ADR-013 §3.3.4, ~2 meses en prod). Acá el control vive en el test, no en la intención.
+     */
+    it('manda el SLUG, nunca un connection_id', async () => {
+      responder = () => respuesta(200, { desconectado: true });
+
+      await desconectarServicio(servicio());
+
+      expect(peticiones[0]!.metodo).toBe('DELETE');
+      expect(peticiones[0]!.path).toContain('service=googledrive');
+      // Ni el path ni el cuerpo llevan un identificador de conexión.
+      expect(peticiones[0]!.path).not.toMatch(/ca_|connection_id|conn_/);
+      expect(peticiones[0]!.cuerpoJson).toBeUndefined();
+    });
+
+    /**
+     * El path asumido es el ÚNICO supuesto del flujo, y deja de usarse solo en cuanto el backend
+     * mande `disconnect_path` en el catálogo. Este test fija esa precedencia: si mañana acuerdan
+     * otra forma, el cliente la toma sin tocar una línea de UI.
+     */
+    it('prefiere el disconnectPath del backend sobre el path asumido', async () => {
+      responder = () => respuesta(200, { desconectado: true });
+
+      await desconectarServicio(servicio({ disconnectPath: '/otra/forma/que/acordemos' }));
+
+      expect(peticiones[0]!.path).toBe('/otra/forma/que/acordemos');
+    });
+
+    it('MercadoPago no sigue el patrón de Composio ni siquiera en el fallback', async () => {
+      responder = () => respuesta(200, { desconectado: true });
+
+      await desconectarServicio(servicio({ key: 'mercadopago', kind: 'payments' }));
+
+      expect(peticiones[0]!.path).toBe('/mp/connection');
+    });
+
+    it('404 -> no_disponible (el endpoint todavía no está desplegado)', async () => {
+      responder = () => respuesta(404, { detail: 'Not Found' });
+
+      expect(await desconectarServicio(servicio())).toEqual({ status: 'no_disponible' });
+    });
+
+    /**
+     * 🔴 **El 405 es el caso REAL de hoy, no una hipótesis.** El front-door monta un catch-all sólo
+     * GET para servir el SPA, así que una ruta no desplegada matchea ese handler y FastAPI contesta
+     * 405 a un DELETE — nunca 404. Medido contra el servicio vivo el 2026-07-21.
+     *
+     * Sin este mapeo, "todavía no existe el endpoint" le llegaría al usuario como "no pudimos
+     * desconectar, probá de nuevo": lo invita a reintentar algo que no puede funcionar.
+     */
+    it('405 -> no_disponible: es lo que devuelve HOY el catch-all del front-door', async () => {
+      responder = () => respuesta(405, { detail: 'Method Not Allowed' });
+
+      expect(await desconectarServicio(servicio())).toEqual({ status: 'no_disponible' });
+    });
+
+    it('un 500 se propaga: desconectar no puede fallar en silencio', async () => {
+      responder = () => respuesta(500, { detail: 'boom' });
+
+      await expect(desconectarServicio(servicio())).rejects.toThrow();
     });
   });
 });
