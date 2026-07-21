@@ -2,19 +2,38 @@
  * `Tile` — superficie de vidrio de la Capa 0 (escritorio de funciones). Un mosaico presionable.
  *
  * Diseño (ver [[reference-design-tokens-glass]] §Tiles/rows): `linear-gradient(160deg, s1, s2)` +
- * borde `bd` + `inset 0 1px 0 bd` (línea de luz superior) + radio 20. Tap: `transform .14s ease` +
- * `:active scale(.95)`. No lleva blur (va sobre el fondo sólido del escritorio, no sobre otra capa).
+ * borde `bd` + `inset 0 1px 0 bd` (línea de luz superior) + radio 20. No lleva blur (va sobre el
+ * fondo sólido del escritorio, no sobre otra capa).
  *
  * Cero-hex: color por `useTema().glass`. Para Medical White (tema claro), el gradiente `s1/s2` ya es
  * claro y el efecto lee como relieve suave; la neumorfia inset completa del diseño se aproxima con la
  * línea de luz superior (RN no tiene `box-shadow` inset múltiple).
  */
 import type { PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
+/**
+ * 🔴 **`Pressable` sale de Gesture Handler, NO de `react-native`.**
+ *
+ * Reportado por el operador: *"si lo apreto muy rápido no toma el primer tap… pero es random"*.
+ * Medido con un registrador de 3 capas, sobre 97 eventos capturados hubo exactamente UN grupo sin
+ * `OK`, y traía al culpable: el `ScrollView` del escritorio (responder system de React Native)
+ * interpreta el tap como un arrastre y se lo lleva. Es aleatorio porque depende de cuántos píxeles se
+ * movió el dedo, y aparece con taps RÁPIDOS porque un toque veloz arrastra unos píxeles al despegar.
+ *
+ * **Por qué no alcanza con cambiar sólo el `ScrollView`.** Mientras la presión la maneje el responder
+ * system de React Native y el scroll viva en RNGH, siguen siendo dos árbitros distintos decidiendo
+ * sobre el mismo dedo, y ninguno puede ceder a favor del otro. Con los dos en RNGH hay UNA arena: un
+ * toque quieto lo gana el tile, uno que se arrastra lo gana el scroll. La regla de Software Mansion
+ * pide las dos mitades —*"import ScrollView/FlatList from react-native-gesture-handler"* Y *"use
+ * RectButton/Touchable for tappable items inside scroll containers"*— y hacen falta las dos.
+ *
+ * La API es la misma que la de RN (mismo `style={({pressed}) => …}` — aunque acá ya no se usa, ver
+ * abajo), así que no cambia nada más.
+ */
+import { Pressable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../ThemeProvider';
-import { PRESS_SCALE } from './presion';
 import { sombraTile } from './relieve';
 
 export interface TileProps extends PropsWithChildren {
@@ -34,7 +53,7 @@ export function Tile({ onPress, style, testID, accessibilityLabel, children }: T
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={() => [
         styles.raiz,
         // SIN `backgroundColor`: el tile es de vidrio, o sea que deja ver el fondo del escritorio a
         // través del gradiente con alpha. El fondo sólido que había acá existía sólo para que Android
@@ -42,8 +61,12 @@ export function Tile({ onPress, style, testID, accessibilityLabel, children }: T
         // Ver `relieve.ts`.
         { borderColor: g.bd },
         sombraTile(g.sombra),
-        // El guard por `onPress` es a propósito: un tile decorativo no se hunde. Ver `presion.ts`.
-        pressed && onPress ? PRESS_SCALE : null,
+        // 🔴 **Sin hundido al presionar — pedido del operador:** *"el ícono tiene movimiento, se va
+        // hacia atrás como un botón presionado y cuando se vuelve a levantar ahí recién lanza el
+        // glass… vamos a quitarle ese movimiento, que sean fijos"*. El `scale(.95)` que había acá (en
+        // `pressed`) daba esa sensación de "esperar a que el botón vuelva". Por eso el callback ya no
+        // recibe `pressed`: la card es fija. El acuse del toque queda en manos de la navegación misma
+        // —el glass sube—, no de una animación de la card.
         style,
       ]}
     >

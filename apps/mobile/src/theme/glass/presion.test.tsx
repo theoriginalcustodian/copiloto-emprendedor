@@ -43,8 +43,14 @@ const RAICES = ['src', 'app'].map((d) => path.join(RAIZ_APP, d));
  * Rutas relativas a `apps/mobile`, con separador `/`.
  */
 const PERMITIDOS: Record<string, string> = {
-  // Vacía a propósito.
-  //
+  // El operador pidió que los tiles del escritorio NO se hundan al tocarlos: *"el ícono tiene
+  // movimiento, se va hacia atrás como un botón presionado… vamos a quitarle ese movimiento, que
+  // sean fijos"*. La card es fija a propósito, así que no importa el canon. No es el vector que el
+  // guard persigue (una COPIA divergente de los valores): es la AUSENCIA deliberada de feedback, con
+  // dueño y fecha. El acuse del toque lo da la navegación misma (el glass sube), no la card.
+  'src/theme/glass/Tile.tsx':
+    'sin feedback de presión por pedido del operador (2026-07-20): los tiles del escritorio son fijos',
+
   // documed permite acá `src/modules/captura/BotonVoz.tsx`, porque su botón de voz tiene animación
   // de presión propia (un latido `Animated.loop` 1 → 1.08) y meterle `PRESS_SCALE` compondría dos
   // escalas anidadas. Esa entrada NO se copia todavía: el archivo no existe en este repo (llega en

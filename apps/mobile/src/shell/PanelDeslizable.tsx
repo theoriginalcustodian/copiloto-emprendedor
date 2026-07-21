@@ -20,17 +20,16 @@
  * TOGGLE (abre/cierra), sin arrastrar.
  */
 import type { PropsWithChildren, ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
-  Extrapolation,
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -41,8 +40,8 @@ import { FondoIluminado } from '../theme/glass/FondoIluminado';
 /** Alto del handle deslizable = una "card": barra + hint + margen chico (pedido operador 2026-07-18).
  *  Es lo ÚNICO que queda en pantalla cuando el panel baja (la tira de "Subir conversación"), así que
  *  debe ser delgada, del tamaño de una card del historial — NO se le hornea el inset de la status bar
- *  (eso engrosaba la tira de abajo con espacio muerto). La clearance de la status bar en el estado
- *  ARRIBA la da un spacer superior que COLAPSA a 0 al bajar (ver `estiloSpacer`). */
+ *  (eso engrosaba la tira de abajo con espacio muerto). La clearance de la status bar la da un
+ *  spacer superior FIJO, y el recorrido se acorta en esa misma cantidad (ver `estiloSpacer`). */
 const ALTO_HANDLE = 56;
 /**
  * 🔴 **El alto se MIDE, no se pregunta.** Antes esto era
@@ -64,9 +63,40 @@ const ALTO_HANDLE = 56;
  * pantalla equivocada es el mismo error de siempre, disfrazado de constante.
  */
 const RECORRIDO_SIN_MEDIR = 0;
-/** Curva del diseño al soltar: `.42s cubic-bezier(.2,.8,.2,1)`. */
+/** Curva del diseño cuando el movimiento NO viene de un dedo: `.42s cubic-bezier(.2,.8,.2,1)`. */
 const CONFIG_SNAP = { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) };
+/**
+ * Curva para cuando el movimiento **viene de un dedo**: un resorte que ARRANCA con la velocidad que
+ * traía el gesto.
+ *
+ * 🔴 **Por qué no alcanza `withTiming` acá, que es la causa del defecto más difícil de esta sesión.**
+ * `withTiming` no acepta velocidad inicial: ignora por completo cómo venía el movimiento y reinicia
+ * con su propia curva, prácticamente desde cero. Si el dedo soltó el panel viajando a 3000 px/s, el
+ * panel **frena en seco** y vuelve a acelerar. Eso, en un instante, se percibe como un retroceso —
+ * el operador lo describió como *"amaga a volver, pero luego sigue"*.
+ *
+ * `dampingRatio: 1` es amortiguamiento crítico: llega al destino sin rebote, que en un panel importa
+ * (un overshoot lo haría pasarse del borde). `duration` mantiene los .42s del diseño, así que la
+ * sensación de tiempo no cambia — lo que cambia es que el arranque **empalma** con el dedo en vez de
+ * cortarlo. Ver `swmansion-rn-gestures/continuous-gestures.md` §"Fling with Decay".
+ */
+const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
 const UMBRAL_TAP = 5;
+/**
+ * Velocidad (px/s) a partir de la cual el gesto se considera un **flick**: un lanzamiento con
+ * intención de dirección, no un arrastre que se soltó donde quedó.
+ *
+ * 🔴 **Por qué existe.** El snap decidía el destino proyectando la posición 120 ms hacia adelante y
+ * comparándola contra la mitad del recorrido. Ese criterio le da todo el peso a la POSICIÓN y casi
+ * ninguno a la INTENCIÓN, y se rompe justo donde más se nota: un flick corto y rápido disparado
+ * cerca de un borde nunca llega a cruzar la mitad, por decidido que sea.
+ *
+ * El criterio canónico de cualquier bottom sheet separa las dos preguntas: si hubo flick, manda la
+ * DIRECCIÓN del flick; si no lo hubo, manda el borde más cercano. 500 px/s es el umbral habitual —
+ * bien por encima del arrastre lento (que ronda los 0-300) y bien por debajo de un flick real (que
+ * en las mediciones dio entre 1000 y 5500).
+ */
+const VELOCIDAD_FLICK = 500;
 
 export interface PanelDeslizableProps extends PropsWithChildren {
   /** Capa 0 — contenido de fondo (escritorio de funciones). */
@@ -112,14 +142,19 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
   // Se actualiza vía `runOnJS` en cada snap; el drag en sí sigue 100% en el hilo de UI (no re-renderiza).
   const [panelAbajo, setPanelAbajo] = useState(false);
 
-  const alternar = () => {
-    'worklet';
-    const max = recorrido.value;
-    if (max <= 0) return; // sin medir todavía: no inventamos un destino
-    const destino = panelY.value < max / 2 ? max : 0;
-    panelY.value = withTiming(destino, CONFIG_SNAP);
-    runOnJS(setPanelAbajo)(destino === max);
-  };
+  /**
+   * ⚠️ **NO agregar un writer de `panelY` atado al foco (`useFocusEffect`).** Se probó (2026-07-20)
+   * para arreglar un supuesto "panel clavado al volver de un glass", y CLAVÓ el chat principal: metía
+   * un tercer dueño que pisaba `panelY` en cada foco (o sea en cada apertura/cierre de glass), leyendo
+   * `recorrido`/`panelAbajo` que podían estar sin actualizar, y peleando con el gesto. El "clavado al
+   * volver" que decía arreglar no existía: `PanelDeslizable` NO se desmonta cuando se abre un glass
+   * (el glass se monta encima), así que `panelY` conserva su valor y el panel queda donde se dejó.
+   *
+   * 🔴 **Invariante: `panelY` tiene exactamente dos dueños — el gesto y `senalSubir`.** Cualquier
+   * tercer writer (foco, layout, un efecto de sincronización) reintroduce la carrera. Si vuelve a
+   * aparecer un desajuste real al navegar, se instrumenta y se busca la causa; NO se agrega otro
+   * writer sobre este shared value.
+   */
 
   // Sube el panel cuando llega la señal. Se ignora el primer render (`senalSubir` inicial): montar
   // la pantalla no es un pedido de subir, y el panel ya arranca arriba.
@@ -127,49 +162,118 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
   useEffect(() => {
     if (senalSubir === undefined || senalSubir === senalPrevia.current) return;
     senalPrevia.current = senalSubir;
-    panelY.value = withTiming(0, CONFIG_SNAP);
-    setPanelAbajo(false);
+    // Mismo criterio que el snap del gesto: el estado se actualiza cuando la animación TERMINA,
+    // para no commitear el árbol de React mientras el panel se está moviendo.
+    panelY.value = withTiming(0, CONFIG_SNAP, (finished) => {
+      if (finished) runOnJS(setPanelAbajo)(false);
+    });
   }, [senalSubir, panelY]);
 
-  const gesto = Gesture.Pan()
-    .onStart(() => {
-      inicio.value = panelY.value;
-    })
-    .onUpdate((e) => {
-      // `none` mientras arrastra: seguimos el dedo 1:1, con clamp a [0, MAX].
-      panelY.value = Math.min(Math.max(inicio.value + e.translationY, 0), recorrido.value);
-    })
-    .onEnd((e) => {
-      if (Math.abs(e.translationY) < UMBRAL_TAP) {
-        // Toque casi sin desplazamiento → toggle.
-        alternar();
-        return;
-      }
+  // 🔴 **El `useMemo` no es una optimización: Gesture Handler v2 lo exige.** Sin él se construye un
+  // objeto de gesto NUEVO en cada render y `GestureDetector` re-adjunta el recognizer, que pierde su
+  // estado. Si eso ocurre con el dedo apoyado, `translationY` vuelve a 0 mientras `inicio.value`
+  // sigue marcando dónde empezó el arrastre, así que `inicio + translationY` devuelve el panel a su
+  // punto de partida por un instante — el defecto se percibe como "el panel salta, se maximiza y
+  // sigue bajando".
+  //
+  // `alternar` vive DENTRO del memo a propósito: si quedara afuera se recrearía en cada render y,
+  // como dependencia, invalidaría el memo en cada render — o sea el `useMemo` no serviría de nada,
+  // que es la forma más común de "memoizar" sin memoizar. Sólo usa shared values y `setPanelAbajo`,
+  // todos estables, así que no necesita estar afuera.
+  //
+  // Las dependencias son todas shared values estables (`useSharedValue` devuelve el mismo objeto
+  // entre renders), así que el gesto se construye UNA sola vez.
+  const gesto = useMemo(() => {
+    const alternar = () => {
+      'worklet';
       const max = recorrido.value;
-      if (max <= 0) return;
-      // Snap al borde más cercano, sesgado por la velocidad del flick.
-      const proyeccion = panelY.value + e.velocityY * 0.12;
-      const destino = proyeccion > max / 2 ? max : 0;
-      panelY.value = withTiming(destino, CONFIG_SNAP);
-      runOnJS(setPanelAbajo)(destino === max);
-    });
+      if (max <= 0) return; // sin medir todavía: no inventamos un destino
+      const destino = panelY.value < max / 2 ? max : 0;
+      // 🔴 `setPanelAbajo` va en el CALLBACK de la animación, no al lado. Llamarlo acá al lado
+      // dispara un render de React en pleno snap, y un render es un commit del shadow tree: la vista
+      // se re-aplica desde el árbol de React, donde `styles.panel` no tiene transform — el panel
+      // salta arriba por un cuadro. `finished` es false si otra animación interrumpió a esta: ahí el
+      // estado lo fija quien interrumpió, y pisarlo dejaría el hint mintiendo sobre dónde está el
+      // panel.
+      panelY.value = withTiming(destino, CONFIG_SNAP, (finished) => {
+        if (finished) runOnJS(setPanelAbajo)(destino === max);
+      });
+    };
+
+    return Gesture.Pan()
+      // `onBegin` (al APOYAR el dedo), no `onStart` (al activarse el recognizer, ya pasado su umbral
+      // de desplazamiento): es el patrón que documenta Software Mansion. Con `onStart`, el primer
+      // `onUpdate` llega con un `translationY` que ya acumuló el umbral, y el panel arranca de un
+      // saltito en vez de seguir al dedo desde el primer píxel.
+      .onBegin(() => {
+        inicio.value = panelY.value;
+      })
+      .onUpdate((e) => {
+        // `none` mientras arrastra: seguimos el dedo 1:1, con clamp a [0, MAX].
+        panelY.value = Math.min(Math.max(inicio.value + e.translationY, 0), recorrido.value);
+      })
+      .onEnd((e) => {
+        // 🔴 **Un lanzamiento rápido NO es un toque, por poco que se haya desplazado.** El chequeo
+        // miraba sólo `translationY`, y un flick corto y veloz llega acá con el desplazamiento casi
+        // en cero: el dedo se levanta antes de que el gesto acumule recorrido. Un toque de verdad es
+        // quieto en AMBAS cosas: poco desplazamiento **y** poca velocidad.
+        if (Math.abs(e.translationY) < UMBRAL_TAP && Math.abs(e.velocityY) < VELOCIDAD_FLICK) {
+          // Toque casi sin desplazamiento Y sin impulso → toggle.
+          alternar();
+          return;
+        }
+        const max = recorrido.value;
+        if (max <= 0) return;
+        // Un flick decide por DIRECCIÓN; sin flick, gana el borde más cercano. Ver `VELOCIDAD_FLICK`:
+        // mezclar ambas cosas en una sola proyección hacía que un lanzamiento claro hacia abajo
+        // volviera arriba por no llegar a la mitad del recorrido.
+        const destino =
+          Math.abs(e.velocityY) > VELOCIDAD_FLICK
+            ? e.velocityY > 0
+              ? max
+              : 0
+            : panelY.value > max / 2
+              ? max
+              : 0;
+        panelY.value = withSpring(
+          destino,
+          { ...CONFIG_SNAP_GESTO, velocity: e.velocityY },
+          (finished) => {
+            if (finished) runOnJS(setPanelAbajo)(destino === max);
+          }
+        );
+      });
+  }, [panelY, inicio, recorrido]);
 
   const estiloPanel = useAnimatedStyle(() => ({ transform: [{ translateY: panelY.value }] }));
-  // Clearance de la status bar SÓLO cuando el panel está arriba: el spacer mide `insets.top` con el
-  // panel abierto y COLAPSA a 0 al bajar, así el handle cae debajo del reloj arriba pero la tira de
-  // abajo queda del tamaño de una card, sin espacio muerto. El vidrio de la conversación sigue full-
-  // bleed (tapa detrás de la status bar) — sólo el handle/hint respeta el inset.
-  const estiloSpacer = useAnimatedStyle(() => ({
-    // `Math.max(..., 1)`: con el recorrido todavía sin medir, `[0, 0]` como rango de entrada no es un
-    // rango — `interpolate` no tiene con qué dividir y devuelve NaN, que en un `height` deja el
-    // spacer roto justo en el primer frame.
-    height: interpolate(
-      panelY.value,
-      [0, Math.max(recorrido.value, 1)],
-      [insets.top, 0],
-      Extrapolation.CLAMP
-    ),
-  }));
+
+  /**
+   * Clearance de la status bar: el handle tiene que caer DEBAJO del reloj cuando el panel está
+   * arriba, y la tira de abajo tiene que medir exactamente una card (`ALTO_HANDLE`), sin espacio
+   * muerto.
+   *
+   * 🔴 **Antes esto se lograba ANIMANDO `height`** (de `insets.top` a 0 según `panelY`), y era la
+   * causa de un defecto que costó días: *«se desliza, salta, se maximiza un instante y sigue
+   * bajando»*.
+   *
+   * `height` es una propiedad de LAYOUT. Software Mansion lo marca como anti-patrón explícito
+   * (`references/animations/animations-performance.md` §"Prefer Non-Layout Properties"): animarla
+   * fuerza un layout pass por frame, y cada layout pass es un **commit del shadow tree**. En la New
+   * Architecture, un commit re-aplica la vista desde el árbol de React — y en el árbol de React
+   * `styles.panel` NO tiene transform, o sea `translateY: 0`, o sea **el panel arriba, tapando la
+   * pantalla**. Un cuadro, hasta que Reanimated lo vuelve a pisar. Es el mismo mecanismo que la
+   * documentación describe como *"flickering on the New Architecture"*.
+   *
+   * **La solución no necesita animar nada.** El spacer queda FIJO en `insets.top` y el recorrido se
+   * acorta en esa misma cantidad. La geometría final es idéntica:
+   *
+   *     handle_top (abajo) = panelY_max + insets.top = (alto - ALTO_HANDLE - insets.top) + insets.top
+   *                        = alto - ALTO_HANDLE          ← la tira mide exactamente una card ✓
+   *     handle_top (arriba) = 0 + insets.top             ← el handle cae debajo del reloj ✓
+   *
+   * Mismo resultado visual, cero propiedades de layout animadas, cero commits durante el arrastre.
+   */
+  const estiloSpacer = { height: insets.top };
 
   return (
     <View
@@ -178,7 +282,10 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
       // 🔴 La medida REAL de lo que el panel tiene que cubrir. Es la raíz de esta pantalla, así que
       // incluye lo que el edge-to-edge agrega y que `Dimensions.get('window')` no ve.
       onLayout={(e) => {
-        recorrido.value = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE, 0);
+        // Se resta también `insets.top` porque el spacer superior ya no colapsa: es fijo. Ver el
+        // comentario de `estiloSpacer` — la resta es lo que mantiene la tira de abajo del tamaño de
+        // una card ahora que el spacer no se anima.
+        recorrido.value = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
       }}
     >
       {/* Capas -1 y 0: lo que se ve, atenuado, a través del vidrio de la Capa 1. */}
@@ -193,7 +300,7 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
       {/* Capa 1 — conversación en cristal, deslizable. */}
       <Animated.View style={[styles.panel, estiloPanel]}>
         <CristalVidrio nivel="conversacion" style={styles.cristal}>
-          {/* Spacer de status bar (colapsa al bajar) — no intercepta toques. */}
+          {/* Spacer de status bar (fijo) — no intercepta toques. */}
           <Animated.View style={estiloSpacer} pointerEvents="none" />
           <GestureDetector gesture={gesto}>
             <View style={styles.zonaHandle} testID="panel-handle">
