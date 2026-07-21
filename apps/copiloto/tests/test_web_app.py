@@ -375,6 +375,71 @@ def test_signup_idempotent_same_email_returns_same_cliente_id():
     assert r1.json()["cliente_id"] == r2.json()["cliente_id"]
 
 
+# --- /actividad --------------------------------------------------------------------
+# Ver el docstring del handler en web.py para el POR QUÉ de 501: `ActividadItem` (packages/core/src/
+# api/actividad.ts) pide un modelo de "entradas firmadas por cliente-de-negocio" que NO existe en este
+# backend (verificado: grep del repo + único consumidor real de "actividad" es `consultar_actividad`,
+# que resume episodios de Graphity en lenguaje natural, sin cliente_nombre/tipo_operacion/entrada_id).
+# El cliente YA normaliza 501 a `{status:'no_disponible'}` — es el contrato, no un placeholder olvidado.
+
+def test_actividad_without_token_returns_401():
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).get("/actividad")
+    assert r.status_code == 401
+
+
+def test_actividad_with_token_returns_501_stub_not_fabricated_data():
+    """Con token válido: 501 explícito (stub deliberado), NUNCA 200 con datos inventados. El cliente
+    (`listarActividad`) trata 404 Y 501 igual (`no_disponible`) -- 501 es más preciso: la ruta SÍ
+    existe y está registrada, la implementación real es la que falta."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).get("/actividad", params={"q": "ana", "cursor": "cur-1", "limit": 5})
+    assert r.status_code == 501
+    # El detail no debe filtrar cliente_id ni ningún dato de negocio -- es un mensaje genérico de estado.
+    assert "cid-A" not in r.text
+
+
+def test_actividad_accepts_default_query_params_without_error():
+    """Sin q/cursor/limit (llamada mínima que hace `listarActividad()` sin args) -- misma respuesta 501,
+    no un 422 de validación por parámetros ausentes."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).get("/actividad")
+    assert r.status_code == 501
+
+
+def test_actividad_two_tenants_get_identical_stub_no_cross_tenant_leak():
+    """Adversarial (regla dura del proyecto -- control de aislamiento sin test hostil = no verificado):
+    tenant A y tenant B piden /actividad: NINGUNO ve NADA del otro. Hoy, sin fuente de datos real, la
+    única superficie de fuga posible es el cuerpo de la respuesta (el stub no lee del store) -- se
+    verifica que la respuesta es IDÉNTICA para ambos tenants (mismo status, mismo detail genérico) y
+    que ninguna contiene el cliente_id del otro. El día que la fuente real exista, este test se
+    reemplaza por uno con datos reales de A/B (ver TODO en el docstring del handler), pero el gate de
+    "cliente_id sale EXCLUSIVAMENTE de Depends(require_tenant)" ya lo cubre `test_actividad_route_binds_cliente_id_only_via_require_tenant_dependency`."""
+    app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
+    r_a = TestClient(app_a).get("/actividad")
+    r_b = TestClient(app_b).get("/actividad")
+    assert r_a.status_code == r_b.status_code == 501
+    assert r_a.json() == r_b.json()          # ningún tenant recibe un cuerpo distinto/con datos del otro
+    assert "cid-A" not in r_a.text and "cid-B" not in r_a.text
+    assert "cid-A" not in r_b.text and "cid-B" not in r_b.text
+
+
+def test_actividad_route_binds_cliente_id_only_via_require_tenant_dependency():
+    """Estructural (blindaje a futuro, regla 7): `cliente_id` del handler DEBE resolverse vía
+    `Depends(require_tenant)` -- nunca aceptar un `cliente_id`/`cid` por querystring que permitiría
+    pedir la actividad de OTRO tenant. Verifica la firma real del endpoint registrado, no una copia."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    ep = _route_endpoint(app, "/actividad", "GET")
+    sig = inspect.signature(ep)
+    assert "cliente_id" in sig.parameters
+    default = sig.parameters["cliente_id"].default
+    assert getattr(default, "dependency", None) is not None, (
+        "cliente_id debe venir de Depends(require_tenant), no de un default plano")
+    # Ningún parámetro alternativo (`cid`, `tenant_id`, etc.) que permita colarse por query.
+    assert not ({"cid", "tenant_id"} & set(sig.parameters))
+
+
 # --- /me ---------------------------------------------------------------------------
 
 def test_me_without_token_returns_401():
