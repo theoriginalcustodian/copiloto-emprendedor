@@ -101,7 +101,12 @@ def _default_presentation(toolkit: str) -> dict:
 
 def _entry(key: str, *, kind: str, connected: bool) -> dict:
     presentation = _PRESENTATION.get(key) or _default_presentation(key)
-    connect_path = "/mp/connect" if kind == "payments" else f"/composio/connect?service={key}"
+    es_pago = kind == "payments"
+    connect_path = "/mp/connect" if es_pago else f"/composio/connect?service={key}"
+    # `disconnect_path` viaja igual que `connect_path` y por la misma razón: la regla "MercadoPago va
+    # por un lado y Composio por otro" tiene UN dueño, y no es el cliente. Reconstruirla en la app
+    # desde la `key` se rompe justo en MP, que no es Composio. El cliente lo usa TAL CUAL.
+    disconnect_path = "/mp/connection" if es_pago else f"/composio/connection?service={key}"
     return {
         "key": key,
         "display_name": presentation["display_name"],
@@ -112,6 +117,7 @@ def _entry(key: str, *, kind: str, connected: bool) -> dict:
         "capabilities": list(presentation["capabilities"]),
         "connected": connected,
         "connect_path": connect_path,
+        "disconnect_path": disconnect_path,
     }
 
 

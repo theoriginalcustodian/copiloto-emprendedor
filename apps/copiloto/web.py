@@ -524,6 +524,53 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
         return {"url": composio_gateway.authorize(user_id=cliente_id, toolkit=service)}
 
+    @app.delete("/composio/connection")
+    def composio_disconnect(service: str = "", cliente_id: str = Depends(require_tenant)) -> dict:
+        """Desconecta un toolkit Composio de ESTE tenant (pedido del operador: "poder desconectar las
+        apps conectadas").
+
+        El `connection_id` NO viaja desde el cliente, ni siquiera como parámetro opcional: se
+        RESUELVE server-side desde el `cliente_id` del token. Aceptar un id del request sería un BOLA
+        de manual (OWASP API1:2023) -- cualquier tenant revocaría la conexión de otro probando ids.
+        El parámetro es el SLUG, que no identifica nada ajeno: dos tenants que mandan
+        `service=gmail` tocan cada uno lo suyo. La barrera no es una validación que se pueda olvidar,
+        es que el id ajeno nunca entra al proceso (test adversarial en test_connect_endpoints.py --
+        por la regla dura del repo, un control sin caso hostil ejercitado queda [UNVERIFIED]).
+
+        Revoca TODAS las conexiones de ese toolkit, no la primera. No es defensivo: el inventario
+        real del 2026-07-21 mostró un tenant con DOS conexiones `googledrive` a la vez (un reintento
+        de vinculación deja la anterior colgada). Revocar una sola dejaría la otra viva y
+        `/catalog` seguiría diciendo "conectado" después de que el usuario desconectó -- la acción
+        mentiría. Se revocan también las no-ACTIVE (EXPIRED/INITIATED): son justamente el residuo que
+        el usuario quiere sacarse de encima.
+
+        404 cuando el tenant no tiene ese toolkit: sin eso, "desconectar" algo que nunca estuvo
+        conectado respondería `desconectado: true` sobre un no-op silencioso."""
+        if service not in _composio_valid_toolkits():
+            raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
+        mias = [c for c in composio_gateway.list_connections(cliente_id)
+                if (c["toolkit"] or "").lower() == service.lower()]
+        if not mias:
+            raise HTTPException(status_code=404, detail=f"el tenant no tiene {service!r} conectado")
+        for c in mias:
+            composio_gateway.revoke(c["id"])
+        return {"desconectado": True, "revocadas": len(mias)}
+
+    @app.delete("/mp/connection")
+    def mp_disconnect(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Desconecta MercadoPago de ESTE tenant borrando sus credenciales cifradas.
+
+        Mismo criterio que `composio_disconnect`: no recibe identificador alguno del cliente, el
+        `cliente_id` sale del token y el store filtra por él. 404 si no había nada (rowcount 0), para
+        no responder "desconectado" sobre un no-op.
+
+        Alcance HONESTO, ver `MpCredentialStore.delete_all`: el copiloto pierde el acceso, pero el
+        token NO se revoca del lado de MercadoPago -- sigue vivo upstream hasta expirar."""
+        borradas = MpCredentialStore(conn_factory, cliente_id, crypto).delete_all()
+        if not borradas:
+            raise HTTPException(status_code=404, detail="el tenant no tiene MercadoPago conectado")
+        return {"desconectado": True, "revocadas": borradas}
+
     # --- SIN auth (spec §5.3) ---------------------------------------------------
 
     @app.post("/auth/signup")
