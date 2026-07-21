@@ -23,6 +23,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from perfil_negocio_store import A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA, LIMITES
+from presupuesto_store import factura_id_de_presupuesto
 
 _log = logging.getLogger(__name__)
 
@@ -109,7 +110,8 @@ def create_presupuestos_app(
     perfil_negocio_store_factory: Callable,
     presupuesto_store_factory: Callable,
     afip_cred_store_factory: Callable | None = None,
-    iniciar_factura: Callable | None = None,
+    abrir_borrador: Callable | None = None,
+    consultar_factura: Callable | None = None,
     signal_factura: Callable | None = None,
     generar_doc: Callable | None = None,
 ) -> FastAPI:
@@ -221,9 +223,20 @@ def create_presupuestos_app(
         exacto que se le mostró al usuario) no se saltea ni se duplica: el cliente sigue por
         `GET /afip/facturas/{factura_id}` → `POST .../confirmar`, la pantalla que ya existe.
 
-        409 si ya se facturó de verdad. Se mira `facturado` (el comprobante con CAE), NO `factura_id`:
-        un borrador que el usuario canceló deja `factura_id` puesto, y bloquear por eso dejaría el
-        presupuesto imposible de facturar para siempre.
+        🔴 ES IDEMPOTENTE mientras el borrador siga vivo: dos llamadas devuelven el MISMO
+        `factura_id`, no dos borradores. Hasta el 2026-07-21 devolvía uno nuevo cada vez —200, sin
+        protestar— y el camino terminaba en dos facturas con CAE del mismo trabajo si el usuario
+        confirmaba las dos. El botón se toca más de una vez por caminos normales: volver del gate de
+        confirmación, un doble tap, dos dispositivos. (Reportado y medido por la sesión FRONTEND.)
+
+        La idempotencia NO se implementa con un `if ya_hay_borrador:` — eso deja una ventana entre
+        consultar y crear, justo donde caen los dos toques simultáneos. Se apoya en un `factura_id`
+        derivado del presupuesto (`factura_id_de_presupuesto`) y en que Temporal rechaza el segundo
+        arranque del mismo workflow_id: la decisión es del servidor y es atómica.
+
+        Códigos: 409 si ya se facturó de verdad (`facturado`, el comprobante con CAE — NO
+        `factura_id`, que un borrador cancelado deja puesto y bloquearía el presupuesto para siempre).
+        `borrador_nuevo: false` en la respuesta significa "te devuelvo el que ya tenías".
         """
         store = presupuesto_store_factory(cliente_id)
         presupuesto = await asyncio.to_thread(store.detalle, presupuesto_id)
@@ -233,30 +246,49 @@ def create_presupuestos_app(
             raise HTTPException(status_code=409, detail={
                 "mensaje": "el presupuesto ya fue facturado",
                 "factura_id": presupuesto.get("factura_id")})
-        if iniciar_factura is None or signal_factura is None:
+        if abrir_borrador is None or signal_factura is None:
             raise HTTPException(status_code=503, detail="la facturación no está disponible")
 
         cuit = await _maybe_async(_cuit_del_tenant, cliente_id)
         if not cuit:
             raise HTTPException(status_code=409, detail="falta el perfil fiscal (CUIT)")
 
-        factura_id = await _maybe_async(iniciar_factura, cliente_id, cuit)
-        # El receptor primero y los ítems después, en el mismo orden en que los carga la pantalla de
-        # factura. Las claves son EXACTAMENTE las que consume `FacturaWorkflow.agregar_item` /
-        # `cargar_cliente` — por eso `presupuesto_items` se nombró igual: la transferencia es directa
-        # y no hay traducción de campos que pueda driftear.
-        await _maybe_async(signal_factura, cliente_id, factura_id, "cargar_cliente", {
-            "nombre": presupuesto["receptor"]["nombre"],
-            "tipo_doc": presupuesto["receptor"]["doc_tipo"],
-            "nro_doc": presupuesto["receptor"]["doc_nro"],
-            "condicion_iva": presupuesto["receptor"]["condicion_iva"],
-            "domicilio": presupuesto["receptor"]["domicilio"],
-        })
-        for it in presupuesto.get("items", []):
-            await _maybe_async(signal_factura, cliente_id, factura_id, "agregar_item", {
-                "descripcion": it["descripcion"], "cantidad": it["cantidad"],
-                "precio_unitario": it["precio_unitario"], "codigo": it.get("codigo", "")})
+        factura_id = factura_id_de_presupuesto(presupuesto_id)
+
+        # Segunda red, para el hueco que `facturado` no ve: si el borrador anterior EMITIÓ pero su
+        # comprobante no llegó a `afip_comprobantes` (falló el guardado), `facturado` sigue en false y
+        # sin esto se abriría un borrador nuevo sobre una factura que AFIP ya tiene. La fuente más
+        # cercana al hecho es el propio workflow: si su resultado trae CAE, ya se emitió.
+        if consultar_factura is not None:
+            previo = await _maybe_async(consultar_factura, cliente_id, factura_id)
+            if previo and (previo.get("resultado") or {}).get("cae"):
+                await asyncio.to_thread(store.marcar_factura, presupuesto_id, factura_id)
+                raise HTTPException(status_code=409, detail={
+                    "mensaje": "el presupuesto ya fue facturado",
+                    "factura_id": factura_id})
+
+        nuevo = await _maybe_async(abrir_borrador, cliente_id, cuit, factura_id)
+        if nuevo:
+            # Los signals SÓLO en el borrador recién abierto. Re-enviarlos a uno que ya existe
+            # DUPLICARÍA sus ítems: `agregar_item` acumula, no reemplaza — y una factura con el doble
+            # de todo se ve perfectamente normal.
+            #
+            # El receptor primero y los ítems después, en el mismo orden en que los carga la pantalla
+            # de factura. Las claves son EXACTAMENTE las que consume `FacturaWorkflow.agregar_item` /
+            # `cargar_cliente` — por eso `presupuesto_items` se nombró igual: la transferencia es
+            # directa y no hay traducción de campos que pueda driftear.
+            await _maybe_async(signal_factura, cliente_id, factura_id, "cargar_cliente", {
+                "nombre": presupuesto["receptor"]["nombre"],
+                "tipo_doc": presupuesto["receptor"]["doc_tipo"],
+                "nro_doc": presupuesto["receptor"]["doc_nro"],
+                "condicion_iva": presupuesto["receptor"]["condicion_iva"],
+                "domicilio": presupuesto["receptor"]["domicilio"],
+            })
+            for it in presupuesto.get("items", []):
+                await _maybe_async(signal_factura, cliente_id, factura_id, "agregar_item", {
+                    "descripcion": it["descripcion"], "cantidad": it["cantidad"],
+                    "precio_unitario": it["precio_unitario"], "codigo": it.get("codigo", "")})
         await asyncio.to_thread(store.marcar_factura, presupuesto_id, factura_id)
-        return {"factura_id": factura_id}
+        return {"factura_id": factura_id, "borrador_nuevo": nuevo}
 
     return app

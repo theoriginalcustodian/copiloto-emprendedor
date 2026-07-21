@@ -44,6 +44,25 @@ def workflow_id_de_factura(cliente_id: str, factura_id: str) -> str:
     return f"factura-{cliente_id}-{factura_id}"
 
 
+def factura_id_de_presupuesto(presupuesto_id: int) -> str:
+    """El `factura_id` del borrador que nace de ESTE presupuesto — DETERMINÍSTICO, no un uuid.
+
+    🔴 Es lo que impide que "facturar" dos veces cree dos borradores del mismo trabajo, y de ahí dos
+    facturas con CAE (irreversibles salvo nota de crédito). Con el id derivado del presupuesto, el
+    segundo `start_workflow` choca contra el primero **en el servidor de Temporal**, que es atómico:
+    un `if ya_existe:` del lado de la app tendría una ventana entre la consulta y el arranque, y dos
+    toques simultáneos —dos dispositivos, un doble tap— caen justo ahí.
+
+    No abre un agujero multi-tenant aunque sea adivinable: el workflow real es
+    `factura-{cliente_id}-presu-N` y el prefijo lo pone SIEMPRE el token (`web._wf_id_factura`), así
+    que el tenant B pidiendo `presu-7` sólo alcanza su propio `presu-7`.
+
+    Y no bloquea el reintento: si el borrador anterior se cerró (cancelado, rechazado), el mismo id
+    vuelve a arrancar como run nuevo — verificado contra el Temporal real, no deducido.
+    """
+    return f"presu-{presupuesto_id}"
+
+
 # `facturado` cruza contra el comprobante REAL (el que tiene CAE), no contra el borrador. El link no
 # necesitó ninguna columna nueva ni tocar el workflow de facturación: `afip_comprobantes.workflow_id`
 # ya existía. Se arma en SQL el mismo id que construye `workflow_id_de_factura`.

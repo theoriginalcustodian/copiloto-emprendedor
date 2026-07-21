@@ -99,19 +99,41 @@ class _FakeCredStore:
 
 
 class _EspiaFactura:
-    """Registra las señales con las que se arma el borrador — es lo que permite afirmar QUÉ se
-    transfirió del presupuesto a la factura, no sólo que el endpoint devolvió 200."""
+    """Simula a Temporal lo justo para que los tests digan la verdad.
+
+    Registra las señales —es lo que permite afirmar QUÉ se transfirió del presupuesto a la factura,
+    no sólo que el endpoint devolvió 200— y **modela el rechazo del segundo arranque**: un doble
+    (cliente, factura_id) devuelve `False` en vez de abrir otro borrador, igual que
+    `WorkflowAlreadyStartedError` del servidor real. Un espía que aceptara siempre haría pasar el
+    test de idempotencia sin que la idempotencia exista.
+    """
 
     def __init__(self) -> None:
-        self.iniciadas: list[tuple] = []
+        self.aperturas: list[tuple] = []      # todos los intentos, hayan abierto o no
         self.senales: list[tuple] = []
+        self._corriendo: set[tuple] = set()
+        self._estados: dict[tuple, dict] = {}
 
-    def iniciar(self, cliente_id, cuit) -> str:
-        self.iniciadas.append((cliente_id, cuit))
-        return f"factura-nueva-{len(self.iniciadas)}"
+    def abrir(self, cliente_id, cuit, factura_id) -> bool:
+        self.aperturas.append((cliente_id, cuit, factura_id))
+        clave = (cliente_id, factura_id)
+        if clave in self._corriendo:
+            return False
+        self._corriendo.add(clave)
+        return True
+
+    def consultar(self, cliente_id, factura_id):
+        return self._estados.get((cliente_id, factura_id))
 
     def signal(self, cliente_id, factura_id, nombre, payload) -> None:
         self.senales.append((cliente_id, factura_id, nombre, payload))
+
+    # -- helpers para armar el escenario --
+    def cerrar(self, cliente_id, factura_id, resultado=None) -> None:
+        """El workflow terminó (cancelado, rechazado o emitido). Como en Temporal, el id vuelve a
+        quedar libre: es lo que permite reintentar un presupuesto cuyo borrador se canceló."""
+        self._corriendo.discard((cliente_id, factura_id))
+        self._estados[(cliente_id, factura_id)] = {"resultado": resultado, "terminado": True}
 
 
 def _app(*, cliente_id="cid-A", perfiles=None, presupuestos=None, cuit="20111111112",
@@ -124,7 +146,8 @@ def _app(*, cliente_id="cid-A", perfiles=None, presupuestos=None, cuit="20111111
         perfil_negocio_store_factory=lambda cid: _FakePerfilStore(perfiles, cid),
         presupuesto_store_factory=lambda cid: _FakePresupuestoStore(presupuestos, cid),
         afip_cred_store_factory=lambda cid: _FakeCredStore(cuit),
-        iniciar_factura=espia.iniciar, signal_factura=espia.signal, generar_doc=generar_doc)
+        abrir_borrador=espia.abrir, consultar_factura=espia.consultar,
+        signal_factura=espia.signal, generar_doc=generar_doc)
     return TestClient(app), espia, presupuestos, perfiles
 
 
@@ -302,7 +325,7 @@ def test_ADVERSARIAL_un_tenant_no_factura_el_presupuesto_de_otro():
     cli_a, *_ = _app(cliente_id="cid-A", presupuestos=presupuestos, espia=espia)
     r = cli_a.post(f"/presupuestos/{id_de_b}/facturar")
     assert r.status_code == 404
-    assert espia.iniciadas == [], "no se armó NINGÚN borrador con datos ajenos"
+    assert espia.aperturas == [], "no se armó NINGÚN borrador con datos ajenos"
 
 
 def test_CONTROL_el_test_adversarial_puede_fallar():
@@ -330,7 +353,8 @@ def test_facturar_arma_el_borrador_y_NO_emite():
     assert r.status_code == 200
     factura_id = r.json()["factura_id"]
 
-    assert espia.iniciadas == [("cid-A", "20111111112")]
+    assert espia.aperturas == [("cid-A", "20111111112", factura_id)]
+    assert r.json()["borrador_nuevo"] is True
     nombres = [s[2] for s in espia.senales]
     assert nombres == ["cargar_cliente", "agregar_item", "agregar_item"]
     assert "confirmar" not in nombres, "el botón NUNCA emite"
@@ -348,7 +372,7 @@ def test_facturar_arma_el_borrador_y_NO_emite():
 def test_facturar_presupuesto_inexistente_es_404():
     cli, espia, *_ = _app()
     assert cli.post("/presupuestos/999999/facturar").status_code == 404
-    assert espia.iniciadas == []
+    assert espia.aperturas == []
 
 
 def test_facturar_sin_perfil_fiscal_es_409():
@@ -356,7 +380,7 @@ def test_facturar_sin_perfil_fiscal_es_409():
     pid = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
     r = cli.post(f"/presupuestos/{pid}/facturar")
     assert r.status_code == 409
-    assert espia.iniciadas == []
+    assert espia.aperturas == []
 
 
 def test_facturar_dos_veces_un_presupuesto_YA_FACTURADO_es_409():
@@ -369,18 +393,89 @@ def test_facturar_dos_veces_un_presupuesto_YA_FACTURADO_es_409():
     presupuestos["cid-A"][pid]["facturado"] = True
     r = cli.post(f"/presupuestos/{pid}/facturar")
     assert r.status_code == 409
-    assert espia.iniciadas == []
+    assert espia.aperturas == []
 
 
 def test_facturar_un_borrador_CANCELADO_se_puede_reintentar():
-    """El complemento del anterior, y el que evita el bug: `factura_id` puesto pero `facturado` False
-    (el usuario canceló) DEBE dejar facturar de nuevo."""
+    """El complemento del anterior: `factura_id` puesto pero `facturado` False (el usuario canceló)
+    DEBE dejar facturar de nuevo. En Temporal el id queda libre al cerrarse el workflow; el fake lo
+    modela con `cerrar()`."""
     presupuestos: dict = {}
     cli, espia, _, _ = _app(presupuestos=presupuestos)
     pid = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
-    presupuestos["cid-A"][pid].update({"factura_id": "borrador-viejo", "facturado": False})
-    assert cli.post(f"/presupuestos/{pid}/facturar").status_code == 200
-    assert len(espia.iniciadas) == 1
+    cli.post(f"/presupuestos/{pid}/facturar")
+    espia.cerrar("cid-A", f"presu-{pid}", resultado=None)     # cancelado: sin CAE
+    r = cli.post(f"/presupuestos/{pid}/facturar")
+    assert r.status_code == 200
+    assert r.json()["borrador_nuevo"] is True, "tras cancelar tiene que abrirse un borrador NUEVO"
+    assert len(espia.aperturas) == 2
+
+
+# --- 🔴 idempotencia: el bug que medió FRONTEND el 2026-07-21 ------------------
+# Dos toques de "Facturar" devolvían 200 con OTRO `factura_id` cada vez. Cada llamada dejaba un
+# borrador vivo del mismo trabajo y ninguno protestaba; confirmando dos, el emprendedor emitía dos
+# facturas con CAE — irreversibles salvo nota de crédito.
+
+def test_facturar_DOS_VECES_devuelve_el_MISMO_borrador():
+    cli, espia, *_ = _app()
+    pid = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    r1 = cli.post(f"/presupuestos/{pid}/facturar")
+    r2 = cli.post(f"/presupuestos/{pid}/facturar")
+    assert r1.status_code == r2.status_code == 200
+    assert r1.json()["factura_id"] == r2.json()["factura_id"], "dos borradores del mismo trabajo"
+    assert r1.json()["borrador_nuevo"] is True and r2.json()["borrador_nuevo"] is False
+
+
+def test_el_SEGUNDO_toque_no_duplica_los_items_del_borrador():
+    """🔴 El modo de fallo que introduciría "reusar el borrador" hecho a medias.
+
+    Si el endpoint reusara el workflow existente pero igual le mandara los signals de carga, el
+    borrador terminaría con los ítems por duplicado — y una factura con el doble de todo se ve
+    perfectamente normal, así que nadie la frena antes del CAE."""
+    cli, espia, *_ = _app()
+    pid = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    cli.post(f"/presupuestos/{pid}/facturar")
+    senales_tras_el_primero = list(espia.senales)
+    cli.post(f"/presupuestos/{pid}/facturar")
+    assert espia.senales == senales_tras_el_primero, "el segundo toque volvió a cargar el borrador"
+
+
+def test_dos_presupuestos_DISTINTOS_tienen_borradores_distintos():
+    """El control del test anterior: si `factura_id` fuera constante, "no duplica" pasaría igual y
+    además todo presupuesto compartiría un único borrador. Este test lo cazaría."""
+    cli, espia, *_ = _app()
+    p1 = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    p2 = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    f1 = cli.post(f"/presupuestos/{p1}/facturar").json()["factura_id"]
+    f2 = cli.post(f"/presupuestos/{p2}/facturar").json()["factura_id"]
+    assert f1 != f2
+
+
+def test_si_el_borrador_anterior_YA_EMITIO_es_409_aunque_facturado_sea_false():
+    """El hueco que `facturado` no ve: el workflow emitió con CAE pero su comprobante no llegó a
+    `afip_comprobantes` (falló el guardado). Sin esta red se abriría un borrador nuevo sobre una
+    factura que AFIP **ya tiene** — la fuente más cercana al hecho es el propio workflow."""
+    cli, espia, *_ = _app()
+    pid = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    cli.post(f"/presupuestos/{pid}/facturar")
+    espia.cerrar("cid-A", f"presu-{pid}", resultado={"cae": "75123456789012"})
+    r = cli.post(f"/presupuestos/{pid}/facturar")
+    assert r.status_code == 409
+    assert len(espia.aperturas) == 1, "no se abrió un borrador sobre una factura ya emitida"
+
+
+def test_el_borrador_de_un_tenant_no_colisiona_con_el_del_otro():
+    """`presu-N` es adivinable, y es a propósito: el workflow real lleva el `cliente_id` del token
+    adelante. Dos tenants con el mismo número de presupuesto NO se pisan el borrador."""
+    espia = _EspiaFactura()
+    presupuestos: dict = {}
+    cli_a, *_ = _app(cliente_id="cid-A", espia=espia, presupuestos=presupuestos)
+    cli_b, *_ = _app(cliente_id="cid-B", espia=espia, presupuestos=presupuestos)
+    pa = cli_a.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    pb = cli_b.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+    assert cli_a.post(f"/presupuestos/{pa}/facturar").json()["borrador_nuevo"] is True
+    # mismo factura_id lógico, distinto tenant: tiene que abrir el SUYO, no reusar el de A
+    assert cli_b.post(f"/presupuestos/{pb}/facturar").json()["borrador_nuevo"] is True
 
 
 def test_facturar_sin_token_es_401():

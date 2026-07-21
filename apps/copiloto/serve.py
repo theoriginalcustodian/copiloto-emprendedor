@@ -49,7 +49,8 @@ from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
 from onboarding import GoTrueAdmin
 from reply_store import make_pg_reply_sink
-from web import (create_web_app, make_consultar_anulacion, make_consultar_factura,
+from web import (create_web_app, make_abrir_borrador_de_presupuesto, make_consultar_anulacion,
+                 make_consultar_factura,
                  make_consultar_onboarding, make_iniciar_anulacion, make_iniciar_factura,
                  make_signal_anulacion, make_signal_factura, make_start_onboarding,
                  make_start_refresh)
@@ -170,9 +171,12 @@ async def _serve() -> None:
         presupuesto_store_factory=lambda cid: PresupuestoStore(conn_factory, cid),
         # El CUIT del tenant sale de su credencial AFIP (única fuente), igual que en `/afip/estado`.
         afip_cred_store_factory=lambda cid: AfipCredentialStore(conn_factory, cid, crypto),
-        # Las MISMAS fábricas que usa `/afip/facturas`: el botón Facturar arma un borrador con el
-        # flujo que ya existe, y el gate de confirmación sigue siendo el único lugar donde se emite.
-        iniciar_factura=make_iniciar_factura(client),
+        # Mismo flujo que `/afip/facturas` —el gate de confirmación sigue siendo el único lugar donde
+        # se emite— pero el borrador se abre con `make_abrir_borrador_de_presupuesto`, no con
+        # `make_iniciar_factura`: acá el `factura_id` deriva del presupuesto para que tocar "Facturar"
+        # dos veces devuelva el MISMO borrador en vez de crear otro (ver el docstring del endpoint).
+        abrir_borrador=make_abrir_borrador_de_presupuesto(client),
+        consultar_factura=make_consultar_factura(client),
         signal_factura=make_signal_factura(client),
         generar_doc=_generar_doc_y_fila,
     )

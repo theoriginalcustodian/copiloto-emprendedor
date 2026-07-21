@@ -32,6 +32,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from backend.agent.inbound_router import route_inbound
 from catalog import build_catalog
@@ -220,6 +221,37 @@ def make_iniciar_factura(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEU
         return factura_id
 
     return iniciar_factura
+
+
+def make_abrir_borrador_de_presupuesto(temporal_client, *,
+                                       task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Abre el borrador de un presupuesto con `factura_id` DETERMINÍSTICO. `True` si lo abrió esta
+    llamada; `False` si ya había uno corriendo y hay que reusarlo.
+
+    Difiere de `make_iniciar_factura` en las dos cosas que importan acá: el id lo pone el llamador
+    (deriva del presupuesto) y la política de conflicto es **FAIL**, no USE_EXISTING. USE_EXISTING
+    devolvería un handle indistinguible de uno recién creado, y el endpoint volvería a mandarle los
+    signals de carga: el borrador terminaría con los ítems DUPLICADOS — un modo de fallo peor que el
+    que se está arreglando, porque una factura con el doble de todo parece normal.
+
+    El `WorkflowAlreadyStartedError` es la única señal atómica de "ya existía": la da el servidor al
+    rechazar el arranque, sin ventana entre consultar y crear.
+    """
+
+    async def abrir_borrador(cliente_id: str, cuit: str, factura_id: str) -> bool:
+        try:
+            await temporal_client.start_workflow(
+                "FacturaWorkflow",
+                args=[cliente_id, cuit, factura_id],
+                id=_wf_id_factura(cliente_id, factura_id),
+                task_queue=task_queue,
+                id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            )
+            return True
+        except WorkflowAlreadyStartedError:
+            return False
+
+    return abrir_borrador
 
 
 def make_consultar_factura(temporal_client) -> Callable:
