@@ -17,8 +17,8 @@ jest.mock('expo-router', () => {
 
 import { router } from 'expo-router';
 
-import { ThemeProvider } from '../src/theme/ThemeProvider';
-import PantallaAjustesRoute from './ajustes';
+import { ThemeProvider } from '../../theme/ThemeProvider';
+import PantallaAjustesRoute from '../../../app/ajustes';
 
 async function montar() {
   return render(
