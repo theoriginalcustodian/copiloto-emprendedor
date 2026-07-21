@@ -104,16 +104,33 @@ export default function LayoutRaiz() {
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <BarraNavegacionOculta />
         <ThemeProvider>
-          {/* Las variantes de la Medición 1 se montan como capa dentro de `index.tsx`, sin router:
-              la navegación NO es variable de ese experimento — el defecto que se investiga ocurre
-              DURANTE el arrastre, no al cerrar. Hubo acá dos rutas (`spike-a`/`spike-b`) para
-              comparar mecanismos de cierre; se eliminaron cuando el handoff de DocuMed refutó esa
-              hipótesis. */}
           {fuentesListas ? (
             <SessionProvider>
               <Guard>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" />
+                  {/* Las 6 funciones del escritorio, clonado 1:1 del array de `documed-front/apps/
+                      mobile/app/_layout.tsx`: `transparentModal` + `slide_from_bottom` deja VISIBLE
+                      la pantalla de atrás (el escritorio), y cada una trae su propio `MarcoGlass`
+                      (vidrio + handle + título + "Volver"). Reemplaza a `CapaFuncion` — la capa
+                      `absoluteFill` montada como sibling que este repo había inventado en su lugar,
+                      y que en device se comía los toques (ningún tile respondía, el vidrio no se
+                      arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
+                      `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
+                  {(['apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion'] as const).map(
+                    (glass) => (
+                      <Stack.Screen
+                        key={glass}
+                        name={glass}
+                        options={{
+                          headerShown: false,
+                          presentation: 'transparentModal',
+                          animation: 'slide_from_bottom',
+                          contentStyle: { backgroundColor: 'transparent' },
+                        }}
+                      />
+                    ),
+                  )}
                 </Stack>
               </Guard>
             </SessionProvider>

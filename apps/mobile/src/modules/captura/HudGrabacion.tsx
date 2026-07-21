@@ -1,22 +1,24 @@
 /**
- * `HudGrabacion` -- la superficie de una grabación viva. **Presentación pura**, sin máquina de
- * estados. Port 1:1 de la `HudGrabacion.tsx` de documed (origen en `modules/captura/`, compartida
- * ahí entre la grabación clínica y la del copiloto): acá vive sola en `modules/chat/` porque este
- * producto no tiene panel clínico -- el único consumidor es `GlassGrabacionCopiloto`.
+ * `HudGrabacion` — la superficie de una grabación viva. **Presentación pura**, sin máquina de estados.
+ *
+ * Existe porque hay DOS grabaciones en la app y el operador pidió que se vean igual (2026-07-19:
+ * *"el botón de micrófono debe desplegar el mismo glass… nada más que para el copiloto general… las
+ * funciones de detener, pausar, enviar, eliminar son todas las mismas"*):
+ *
+ *  - la **clínica** (`PantallaGrabacion`), sobre el grabador que segmenta a disco y sobrevive a que
+ *    el sistema mate la app — porque perder 40 minutos de consulta es perder algo irrepetible;
+ *  - la del **copiloto** (`GlassGrabacionCopiloto`), sobre el grabador liviano de `expo-audio` — un
+ *    comando de voz que se pierde se repite, y pagar la segmentación ahí sería sobreingeniería.
+ *
+ * Las dos máquinas siguen siendo distintas a propósito (ver `useVozComando`); lo que se comparte es
+ * **esto**: el layout, el cronómetro, la onda y los botones. Duplicar el layout para la segunda es
+ * exactamente cómo nació la divergencia entre los glass que hubo que corregir a mano en cada pantalla.
  *
  * 🔴 **Los botones viven a nivel de MÓDULO, no dentro del componente.** Mientras se graba, el HUD
  * re-renderiza ~10 veces por segundo (la onda dibuja el nivel real del micrófono). Un componente
- * declarado en el cuerpo se recrea con IDENTIDAD nueva en cada render -> React desmonta el
- * `Pressable` y monta otro, y el toque llega a una vista que ya no existe: "Pausar"/"Enviar" dejan de
- * responder. Medido en un Samsung real por el proyecto de origen. Declarados afuera, la identidad es
- * estable.
- *
- * `Pressable` sale de `react-native` (core), NO de `react-native-gesture-handler` -- a diferencia de
- * `Tile.tsx` (que sí necesita RNGH porque compite con el `ScrollView` del escritorio por el mismo
- * toque, ver su docstring). Estos botones viven dentro del vidrio `takeover` de `MarcoGlass`, sin
- * ningún `ScrollView` disputando el gesto -- mismo criterio que el botón "Volver" del propio
- * `MarcoGlass` y los botones de gate de `ListaMensajes`, ambos ya en este repo con `Pressable` de
- * `react-native`.
+ * declarado en el cuerpo se recrea con IDENTIDAD nueva en cada render → React desmonta el `Pressable`
+ * y monta otro, y el `touch up` llega a una vista que ya no existe: "Pausar"/"Detener" dejan de
+ * responder. Medido en un Samsung real. Declarados afuera, la identidad es estable.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PropsWithChildren, ReactNode } from 'react';
@@ -27,14 +29,7 @@ import Svg, { Path } from 'react-native-svg';
 import { pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 import { Onda } from './Onda';
-
-/** `123` s -> `"02:03"`. Pura: es lo único de este helper que un test afirma de verdad. */
-export function formatoMMSS(segundos: number): string {
-  const s = Math.max(0, Math.floor(segundos));
-  const mm = String(Math.floor(s / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
-}
+import { formatoMMSS } from './useCronometro';
 
 export function BotonPrimario({
   id,
@@ -47,9 +42,9 @@ export function BotonPrimario({
   texto: string;
   onPress: () => void;
   icono?: boolean;
-  /** Se apaga mientras hay una operación en vuelo que este botón podría re-disparar. `disabled` -- y
-   *  no ocultarlo: un control que desaparece bajo el dedo hace que el siguiente toque caiga en lo que
-   *  quedó abajo. */
+  /** Se apaga mientras hay una operación en vuelo que este botón podría re-disparar (ver `cerrando`
+   *  en `PantallaGrabacion`). `disabled` -- y no ocultarlo: un control que desaparece bajo el dedo
+   *  hace que el siguiente toque caiga en lo que quedó abajo. */
   disabled?: boolean;
 }) {
   const tema = useTema();
@@ -133,6 +128,8 @@ export function BotonDescartar({
         disabled && styles.apagado,
       ])}
     >
+      {/* El tacho del template (path 1:1). Reemplaza al emoji 🗑, que se dibuja distinto en cada
+          Android y en algunos aparece a color -- justo el elemento que NO puede parecer festivo. */}
       <IconoTacho color={tema.color.peligro} />
       <Text style={{ color: tema.color.peligro, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
         Descartar
@@ -141,7 +138,7 @@ export function BotonDescartar({
   );
 }
 
-/** El icono de "enviar" -- mismo path que `IconoAvion` de `Composer.tsx` (avioncito de papel). */
+/** El icono de "enviar" del template (el avioncito de papel), path 1:1 del prototipo. */
 function IconoEnviar({ color }: { color: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -150,6 +147,7 @@ function IconoEnviar({ color }: { color: string }) {
   );
 }
 
+/** El tacho del template (`DocuMed App.dc.html:151`), path 1:1. */
 function IconoTacho({ color }: { color: string }) {
   return (
     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
@@ -164,8 +162,8 @@ function IconoTacho({ color }: { color: string }) {
   );
 }
 
-/** El punto que late del encabezado. Opacidad plena grabando, tenue si no. `Animated` del core +
- *  `useNativeDriver` (opacity): late en el hilo de UI, sin tocar el de JS. */
+/** El punto que late del encabezado (`dm-blink` del template). Opacidad plena grabando, tenue si no.
+ *  `Animated` del core + `useNativeDriver` (opacity): late en el hilo de UI, sin tocar el de JS. */
 function PuntoLatido({ activo, color }: { activo: boolean; color: string }) {
   const op = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -186,17 +184,17 @@ function PuntoLatido({ activo, color }: { activo: boolean; color: string }) {
 }
 
 export interface HudGrabacionProps extends PropsWithChildren {
-  /** "Grabando…", "En pausa", "Grabación lista"… -- el estado, en el encabezado. */
+  /** "Grabando…", "En pausa", "Grabación lista"… — el estado, en el encabezado. */
   etiqueta: string;
   /** ¿Está capturando ahora? Sólo controla que el punto lata y que la onda se mueva. */
   activo: boolean;
   /** Segundos transcurridos, ya calculados por quien sea dueño del cronómetro. */
   segundos: number;
-  /** Subtítulo de contexto. */
+  /** Subtítulo de contexto. En la clínica es `Tipo — Paciente`; el copiloto no lleva paciente. */
   contexto?: string | null;
   /** Niveles de amplitud del micrófono para la onda. Vacío = onda en reposo. */
   niveles?: number[];
-  /** Avisos en vivo. Van sobre los controles. */
+  /** Avisos en vivo (se cortó, cambió de fuente…). Van sobre los controles. */
   avisos?: ReactNode;
   testID?: string;
 }
@@ -214,6 +212,7 @@ export function HudGrabacion({
   const tema = useTema();
   return (
     <View style={styles.contenedor} testID={testID}>
+      {/* Encabezado: punto que late + estado + cronómetro grande + contexto. */}
       <View style={styles.encabezado}>
         <View style={styles.etiquetaFila}>
           <PuntoLatido activo={activo} color={tema.color.acento} />
@@ -231,7 +230,8 @@ export function HudGrabacion({
         )}
       </View>
 
-      {/* La onda, en el centro. Dibuja el nivel REAL del micrófono; en reposo queda quieta. */}
+      {/* La onda, en el centro. `Onda` dibuja el nivel REAL del micrófono (mejor que una animación
+          decorativa); acá se agranda con `scale` para ocupar el HUD. En reposo queda quieta. */}
       <View style={styles.zonaOnda}>
         <View style={styles.ondaEscalada}>
           <Onda niveles={activo ? niveles : []} />
@@ -255,17 +255,26 @@ const styles = StyleSheet.create({
   cronometro: { fontSize: 40, marginTop: 12, letterSpacing: 0.5, fontVariant: ['tabular-nums'] },
   contexto: { fontSize: 12, marginTop: 6, letterSpacing: 0.3 },
   zonaOnda: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 22 },
-  // `alignSelf:'stretch'` le da a la onda el ancho de la zona -- ver el docstring de `Onda.tsx` sobre
-  // por qué desaparece en silencio sin esto.
+  // `alignSelf: 'stretch'` le da a la onda el ancho de la zona (pantalla menos el padding). Sin esto
+  // el `View` toma ancho "auto" -- el de su contenido -- y como las barras de la onda son `flex: 1`,
+  // el ancho del contenido depende del contenedor: la referencia circular colapsa a 0 y la onda
+  // desaparece sin error (pasó el 2026-07-20).
+  //
+  // Ya no hay `scaleX`: existía para agrandar una onda de 24 barras que se dimensionaba SOLA
+  // (120 dp de ancho intrínseco). Ahora la onda ocupa el ancho real, así que escalarla en X sólo
+  // la sacaría de la pantalla. `scaleY` se queda: la altura sí es la del componente (48 dp) y el HUD
+  // la quiere más alta.
   ondaEscalada: { alignSelf: 'stretch', transform: [{ scaleY: 2.6 }] },
   controles: { paddingHorizontal: 24, paddingBottom: 40, gap: 14 },
   botonBase: { flex: 1, minHeight: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   botonGhost: { borderWidth: 1 },
-  // Un control apagado tiene que LEERSE apagado: si el toque deja de responder y el botón se ve igual,
-  // el usuario concluye que la app se colgó -- justo lo contrario de lo que el apagado informa.
+  // Un control apagado tiene que LEERSE apagado: si el toque deja de responder y el botón se ve
+  // igual, el médico concluye que la app se colgó -- justo lo contrario de lo que el apagado informa.
   apagado: { opacity: 0.5 },
   botonFila: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   bordeSuperior: { position: 'absolute', top: 0, left: 24, right: 24, height: 1 },
+  // Píldora del template: `padding:10px 18px; min-height:44px; border-radius:999px`, con el ícono
+  // a la izquierda del texto. `minHeight:44` no es estético: es el mínimo táctil.
   descartar: {
     alignSelf: 'center',
     flexDirection: 'row',
@@ -279,7 +288,7 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Fila de dos controles lado a lado (Pausar/Enviar, Reanudar/Enviar…). */
+/** Fila de dos controles lado a lado (Pausar/Detener, Reanudar/Detener…). */
 export const filaControles = { flexDirection: 'row', alignItems: 'center', gap: 12 } as const;
 /** Texto de ayuda bajo los controles. */
 export const textoHint = { fontSize: 13, textAlign: 'center' } as const;

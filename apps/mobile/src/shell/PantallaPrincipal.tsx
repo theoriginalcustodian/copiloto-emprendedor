@@ -3,87 +3,50 @@
  * detrás (Capa 0) y la conversación adelante (Capa 1). Reemplaza el viejo `index.tsx` de exploración
  * del arranque del sprint mobile-first.
  *
- * `ChatView` (el chat real, `src/modules/chat`) ya está cableado en la Capa 1 del panel — llegó en F5.
- * Las 6 pantallas de función YA están cableadas en `CONTENIDO_POR_FUNCION`.
+ * `ChatView` (el chat real, `src/modules/chat`) está cableado en la Capa 1 del panel desde F5.
  *
- * Cómo abren/cierran las 6 funciones: `CapaFuncion` (`src/modules/escritorio/CapaFuncion.tsx`) — capa
- * dentro de esta misma pantalla, NO ruta de expo-router. Ver el docstring de ese archivo para el
- * porqué (handoff del tirón del glass de función).
+ * 🔴 **Cómo abren las 6 funciones, y por qué cambió (2026-07-21).** Hasta acá esta pantalla montaba
+ * `CapaFuncion` — una capa `Animated.View` `absoluteFill` como sibling DENTRO de esta misma pantalla,
+ * sin `router.push`. Era una invención propia de este repo, no algo que documed tuviera: la app
+ * canónica abre cada función como **ruta** de expo-router con `presentation: 'transparentModal'`, y
+ * cada pantalla trae su propio `MarcoGlass`. En device, `CapaFuncion` se comía los toques — ningún
+ * tile respondía, Apps no se podía abrir, el botón de grabación no reaccionaba, y el panel se
+ * replegaba una vez y dejaba de responder (`coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.
+ * md`). La causa: una capa absoluta montada por encima de todo el árbol, capturando los eventos que
+ * documed reparte entre rutas apiladas del stack de navegación.
  *
- * 🔴 **El contrato entre la capa y la pantalla, que se descubrió al integrar:** `CapaFuncion` aporta
- * el *chrome* (el vidrio, el ícono, el nombre, el Cerrar); cada pantalla aporta sólo su *contenido*.
- * Las pantallas nacieron como autónomas —con fondo opaco y título propios— y así montadas tapaban el
- * vidrio y duplicaban el nombre. Cada una tiene ahora un test que lo fija; si alguien vuelve a
- * ponerle `backgroundColor` a una pantalla de función, el glass desaparece y el test lo caza.
+ * La corrección es clonar el mecanismo real: `alFuncion` ya no guarda estado local ni monta una capa
+ * — navega. `CapaFuncion.tsx` se borró (junto con su test); el chrome de cada función (vidrio, handle,
+ * título, "Volver") ahora lo aporta `MarcoGlass`, uno por pantalla, igual que `PantallaAjustes` y
+ * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
-import { useState } from 'react';
+import { router } from 'expo-router';
 
-import { PantallaAjustes } from '../modules/ajustes';
-import { PantallaApps } from '../modules/apps';
 import { ChatView } from '../modules/chat';
-import { CapaFuncion } from '../modules/escritorio/CapaFuncion';
-import { EscritorioFunciones, TILES, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
-import { PantallaFacturacion } from '../modules/facturacion';
-import { PantallaMetricas } from '../modules/metricas';
-import { PantallaRecientes } from '../modules/recientes';
-import { PantallaRedes } from '../modules/redes';
+import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { PanelDeslizable } from './PanelDeslizable';
-import { useTema } from '../theme/ThemeProvider';
 
 /**
- * Qué contenido monta cada función. Es el ÚNICO punto de wiring: agregar una función es agregar su
- * tile en `EscritorioFunciones` y su entrada acá.
- *
- * `Record<FuncionKey, ...>` y no un objeto suelto a propósito: si mañana entra una `FuncionKey`
- * nueva y nadie le da contenido, no compila. La alternativa —un lookup que devuelve `undefined`—
- * fallaría en runtime, en el teléfono, con una capa vacía y sin pista de por qué.
+ * A qué ruta navega cada tile del escritorio — 1:1 con los archivos de `app/` (`apps.tsx`,
+ * `ajustes.tsx`, etc.). `Record<FuncionKey, string>` y no un `switch`/lookup suelto a propósito: si
+ * mañana entra una `FuncionKey` nueva sin su ruta, esto no compila — mismo criterio que tenía
+ * `CONTENIDO_POR_FUNCION` antes de esta convergencia.
  */
-const CONTENIDO_POR_FUNCION: Record<FuncionKey, React.ComponentType> = {
-  apps: PantallaApps,
-  ajustes: PantallaAjustes,
-  recientes: PantallaRecientes,
-  redes: PantallaRedes,
-  metricas: PantallaMetricas,
-  facturacion: PantallaFacturacion,
+const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
+  apps: '/apps',
+  ajustes: '/ajustes',
+  recientes: '/recientes',
+  redes: '/redes',
+  metricas: '/metricas',
+  facturacion: '/facturacion',
 };
 
-const DEFINICION_POR_KEY = new Map(TILES.map((t) => [t.key, t]));
-
 export function PantallaPrincipal() {
-  // La función cuya capa está abierta — `null` = ninguna. El escritorio es la única fuente de qué
-  // tile se tocó; esta pantalla sólo decide qué hacer con esa key (abrir la capa).
-  const [funcionActiva, setFuncionActiva] = useState<FuncionKey | null>(null);
-
-  const alFuncion = (key: FuncionKey) => setFuncionActiva(key);
-  const definicionActiva = funcionActiva ? DEFINICION_POR_KEY.get(funcionActiva) : undefined;
+  const alFuncion = (key: FuncionKey) => router.push(RUTA_POR_FUNCION[key]);
 
   return (
-    <>
-      <PanelDeslizable
-        testID="panel-principal"
-        fondo={<EscritorioFunciones onFuncion={alFuncion} />}
-      >
-        <ChatView />
-      </PanelDeslizable>
-
-      {/* La capa de función — mecanismo en `CapaFuncion.tsx`. Montar/desmontar acá (no un prop
-          `visible` interno) es lo que decide cuándo hay UNA función abierta: nunca dos a la vez, y
-          cerrar es simplemente sacarla del árbol. */}
-      {definicionActiva ? (
-        (() => {
-          const Contenido = CONTENIDO_POR_FUNCION[definicionActiva.key];
-          return (
-            <CapaFuncion
-              testID={`capa-funcion-${definicionActiva.key}`}
-              titulo={definicionActiva.label}
-              icono={definicionActiva.icono}
-              onCerrar={() => setFuncionActiva(null)}
-            >
-              <Contenido />
-            </CapaFuncion>
-          );
-        })()
-      ) : null}
-    </>
+    <PanelDeslizable testID="panel-principal" fondo={<EscritorioFunciones onFuncion={alFuncion} />}>
+      <ChatView />
+    </PanelDeslizable>
   );
 }

@@ -17,18 +17,20 @@ describe('PantallaMetricas', () => {
     expect(screen.getByTestId('metricas-descripcion')).toBeTruthy();
   });
 
-  /** El porqué extendido está en `PantallaRedes.test.tsx`: la capa aporta el chrome, la pantalla el
-   *  contenido. Un `backgroundColor` acá deja opaco el vidrio y nadie se entera. */
-  it('no pinta fondo propio — el vidrio lo aporta CapaFuncion', async () => {
+  /** El porqué extendido está en `PantallaRedes.test.tsx`: esta pantalla trae su propio `MarcoGlass`,
+   *  que ya aporta el vidrio. Un `backgroundColor` en `metricas-contenido` lo tapa y nadie se entera. */
+  it('no pinta fondo propio — el vidrio lo aporta MarcoGlass', async () => {
     await envolver();
-    const estilos = [screen.getByTestId('pantalla-metricas').props.style].flat(Infinity);
+    const estilos = [screen.getByTestId('metricas-contenido').props.style].flat(Infinity);
     for (const e of estilos) {
       expect(e?.backgroundColor).toBeUndefined();
     }
   });
 
-  it('no repite el título — el encabezado lo aporta CapaFuncion', async () => {
+  /** Invariante invertido con la convergencia a `MarcoGlass` (2026-07-21) — ver
+   *  `PantallaRedes.test.tsx`: el título ahora lo aporta esta misma pantalla, una sola vez. */
+  it('el título "Métricas" lo aporta el MarcoGlass propio, una sola vez', async () => {
     await envolver();
-    expect(screen.queryByText('Métricas')).toBeNull();
+    expect(screen.getAllByText('Métricas')).toHaveLength(1);
   });
 });

@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
-import { BotonDescartar, BotonGhost, BotonPrimario, HudGrabacion, filaControles } from './HudGrabacion';
+import { BotonDescartar, BotonGhost, BotonPrimario, HudGrabacion, filaControles } from '../captura/HudGrabacion';
 import type { FaseVoz } from './useVozComando';
 
 /**

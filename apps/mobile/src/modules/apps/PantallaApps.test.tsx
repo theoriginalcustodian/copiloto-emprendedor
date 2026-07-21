@@ -33,9 +33,16 @@ describe('PantallaApps', () => {
     }
   });
 
-  /** Ver `PantallaRedes.test.tsx`: la capa aporta el chrome, la pantalla el contenido. */
-  it('no repite el título — el encabezado lo aporta CapaFuncion', async () => {
+  /**
+   * 🔴 Invariante invertido con la convergencia a `MarcoGlass` (2026-07-21). Antes esta pantalla se
+   * montaba dentro de `CapaFuncion`, que aportaba el título — así que `PantallaApps` NO podía
+   * repetirlo. `CapaFuncion` se borró: ahora es esta misma pantalla la que trae su propio
+   * `MarcoGlass`, así que el título tiene que aparecer — pero UNA sola vez, nunca duplicado por el
+   * contenido propio.
+   */
+  it('el título "Apps" lo aporta el MarcoGlass propio, una sola vez', async () => {
     await envolver();
-    expect(screen.queryByText('Apps')).toBeNull();
+    expect(screen.getByTestId('glass-titulo').props.children).toBe('Apps');
+    expect(screen.getAllByText('Apps')).toHaveLength(1);
   });
 });
