@@ -23,7 +23,10 @@ _gateway_factory = None
 _cred_store_factory = None
 _handoff_factory = None
 
-ALIAS_CERT = "copiloto-emprendedor"
+# [VERIFICADO 2026-07-21 contra AFIP real] SIN guiones: AfipSDK rechaza el alta con
+# `{"alias":"El campo Alias del certificado solo puede contener letras y numeros"}`.
+# El valor anterior ("copiloto-emprendedor") habría fallado en la PRIMERA alta real de un usuario.
+ALIAS_CERT = "copilotoemprendedor"
 
 
 def set_onboarding_deps(gateway_factory, cred_store_factory, handoff_factory) -> None:
