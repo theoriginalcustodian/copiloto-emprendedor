@@ -219,3 +219,55 @@ def test_crear_factura_con_certificado_sigue_funcionando():
     assert r.status_code == 200
     assert r.json()["factura_id"] == "fact-1"
     assert iniciadas == [CUIT]
+
+
+# ---------------------------------------------------------------------------
+# El PDF no puede "desanular" una factura (detectado por el E2E HTTP, 2026-07-21)
+# ---------------------------------------------------------------------------
+
+
+class ComprobanteStoreEspia:
+    """Store en memoria con la MISMA semántica que el de Postgres para lo que importa acá:
+    `registrar` pisa el estado (upsert completo), `adjuntar_pdf` no lo toca."""
+
+    def __init__(self):
+        self.filas: dict[tuple, dict] = {}
+
+    def registrar(self, *, cuit, tipo_cbte, punto_venta, nro, estado="emitida", pdf_url=None,
+                  **resto):
+        clave = (cuit, tipo_cbte, punto_venta, nro)
+        fila = self.filas.setdefault(clave, {})
+        fila["estado"] = estado                       # el upsert PISA el estado
+        if pdf_url:
+            fila["pdf_url"] = pdf_url
+
+    def adjuntar_pdf(self, *, cuit, tipo_cbte, punto_venta, nro, pdf_url, pdf_expira_at=None):
+        self.filas.setdefault((cuit, tipo_cbte, punto_venta, nro), {})["pdf_url"] = pdf_url
+
+    def marcar_anulada(self, *, cuit, tipo_cbte, punto_venta, nro, nro_nota_credito):
+        fila = self.filas.setdefault((cuit, tipo_cbte, punto_venta, nro), {})
+        fila["estado"] = "anulada"
+        fila["cbte_asoc_nro"] = nro_nota_credito
+
+
+def test_adjuntar_el_pdf_no_pisa_el_estado_anulada():
+    """El PDF se genera DESPUÉS del CAE, y la anulación puede ocurrir en el medio.
+
+    Con `registrar()` —upsert completo con `estado` default "emitida"— la factura recién anulada
+    volvía sola a "emitida" al terminar su PDF. El usuario veía como válida una factura que ya tenía
+    su nota de crédito emitida en AFIP.
+    """
+    store = ComprobanteStoreEspia()
+    clave = ("20409378472", 11, 6, 1)
+    store.registrar(cuit=clave[0], tipo_cbte=clave[1], punto_venta=clave[2], nro=clave[3])
+
+    store.marcar_anulada(cuit=clave[0], tipo_cbte=clave[1], punto_venta=clave[2], nro=clave[3],
+                         nro_nota_credito=1)
+    assert store.filas[clave]["estado"] == "anulada"
+
+    # El PDF llega tarde, cuando la factura YA fue anulada.
+    store.adjuntar_pdf(cuit=clave[0], tipo_cbte=clave[1], punto_venta=clave[2], nro=clave[3],
+                       pdf_url="https://afip/pdf.pdf", pdf_expira_at=None)
+
+    assert store.filas[clave]["estado"] == "anulada", "el PDF desanuló la factura"
+    assert store.filas[clave]["pdf_url"] == "https://afip/pdf.pdf"

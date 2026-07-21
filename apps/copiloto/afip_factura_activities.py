@@ -127,10 +127,12 @@ def _generar_pdf_sync(cliente_id: str, cuit: str, template: str, params: dict,
     nombre = f"{cuit}_{tipo_cbte:03d}_{punto_venta:05d}_{nro:08d}"
     pdf = gateway.generar_pdf(template=template, params=params, nombre_archivo=nombre)
 
-    _comprobante_store_factory(cliente_id).registrar(
+    # `adjuntar_pdf` y NO `registrar`: esto es una actualización PARCIAL de un comprobante que ya
+    # existe. `registrar` es un upsert completo cuyo `estado` default es "emitida", así que pisaba el
+    # estado — y como el PDF se genera después del CAE, una factura anulada en el medio volvía sola a
+    # "emitida" al terminar su PDF.
+    _comprobante_store_factory(cliente_id).adjuntar_pdf(
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro,
-        cae=str(params.get("cae") or ""), cae_vto=None, fecha_emision=None,
-        doc_tipo=None, doc_nro=None, total=params.get("total_amount"),
         pdf_url=pdf.url, pdf_expira_at=pdf.expira_at)
     return {"url": pdf.url, "nombre": pdf.nombre,
             "expira_at": pdf.expira_at.isoformat() if pdf.expira_at else None}

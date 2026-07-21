@@ -50,6 +50,26 @@ class AfipComprobanteStore:
                  doc_tipo, doc_nro, total, estado, pdf_url, pdf_expira_at, idem_key,
                  workflow_id, cbte_asoc_nro))
 
+    def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
+                     pdf_url: str, pdf_expira_at: datetime | None) -> None:
+        """Adjunta el PDF a un comprobante YA registrado, sin tocar nada más.
+
+        Existe porque usar `registrar()` para esto corrompía el estado: es un upsert completo y su
+        `estado` tiene default "emitida", así que el `DO UPDATE` lo pisaba. El PDF se genera DESPUÉS
+        de que la factura tiene CAE, y la anulación puede ocurrir en el medio — con lo cual una
+        factura recién anulada volvía sola a "emitida" cuando terminaba de generarse su PDF.
+        Detectado por el E2E HTTP el 2026-07-21.
+
+        Una actualización parcial se escribe como UPDATE parcial. Un upsert "por reuso" es cómodo
+        hasta que pisa una columna que otro camino acaba de escribir.
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE {_TABLE} SET pdf_url=%s, pdf_expira_at=%s "
+                f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
+                (pdf_url, pdf_expira_at, self._cid, cuit, tipo_cbte, punto_venta, nro))
+
     def get(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int) -> dict | None:
         conn = self._conn_factory()
         with conn.cursor() as cur:
