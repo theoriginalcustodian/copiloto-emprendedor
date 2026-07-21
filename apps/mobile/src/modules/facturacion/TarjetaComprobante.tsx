@@ -74,9 +74,22 @@ export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturaci
       )}
 
       {sinPdf ? (
+        /**
+         * 🔴 **`textoTenue`, NO `peligro`. El color es parte del mensaje.**
+         *
+         * Este aviso salió en la PRIMERA emisión real desde el device (2026-07-21, factura N° 5, CAE
+         * 86290619793525): el texto decía "se emitió correctamente" y el color decía falla. Un párrafo
+         * rojo arriba de un CAE válido se lee como error aunque las palabras digan lo contrario —
+         * nadie lee un cartel rojo hasta el final.
+         *
+         * Y el costo de esa contradicción es el más caro de esta pantalla: el usuario concluye que no
+         * se emitió, vuelve a facturar, y **duplica un comprobante fiscal real**. Es exactamente lo
+         * que la sesión de backend confirmó haber vivido en producción y lo que este copy existe para
+         * evitar. Rojo queda reservado para lo que de verdad falló.
+         */
         <Text
           testID={`${testID}-sin-pdf`}
-          style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
         >
           Tu factura se emitió correctamente y el CAE de arriba es válido. El PDF no está disponible en
           este momento -- podés descargarlo más tarde desde el portal de AFIP con ese CAE.

@@ -202,6 +202,9 @@ export function SeccionMisComprobantes({ cuit, testID = 'facturacion-mis-comprob
                   </View>
                   {esAnulable(c) && !esteEsElObjetivo && (
                     <FilaBotones
+                      // Compacto: si el botón se estira, se come los datos del comprobante y queda un
+                      // "Anular" sin sujeto. Visto en device el 2026-07-21.
+                      compacto
                       testID={`${testID}-anular-${clave}-botones`}
                       botones={[
                         { etiqueta: 'Anular', onPress: () => pedirAnulacion(c), variante: 'peligro', testID: `${testID}-anular-${clave}` },

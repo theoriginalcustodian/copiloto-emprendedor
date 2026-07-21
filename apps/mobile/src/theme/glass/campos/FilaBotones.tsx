@@ -28,6 +28,19 @@ export interface BotonFila {
 
 export interface FilaBotonesProps {
   botones: BotonFila[];
+  /**
+   * Botones al ANCHO DE SU TEXTO en vez de repartirse la fila.
+   *
+   * 🔴 Existe por un defecto visto en device el 2026-07-21: en "Mis comprobantes" cada fila lleva los
+   * datos del comprobante a la izquierda y un botón "Anular" a la derecha, y con el `flexGrow: 1` del
+   * default el botón se estiraba y **expulsaba los textos de la fila** — quedaba un "Anular" flotando
+   * solo, sin decir sobre QUÉ comprobante actuaba. Un botón destructivo sin sujeto es peligroso, no
+   * feo.
+   *
+   * El default sigue siendo estirado porque es lo correcto para una fila de acciones a ancho completo
+   * (el gate HITL del resumen, los pasos del formulario), que es el uso mayoritario.
+   */
+  compacto?: boolean;
   testID?: string;
 }
 
@@ -43,10 +56,10 @@ function coloresDeVariante(variante: VarianteBoton, tema: Tokens): { fondo: stri
   }
 }
 
-export function FilaBotones({ botones, testID = 'fila-botones' }: FilaBotonesProps) {
+export function FilaBotones({ botones, compacto = false, testID = 'fila-botones' }: FilaBotonesProps) {
   const tema = useTema();
   return (
-    <View style={styles.fila} testID={testID}>
+    <View style={[styles.fila, compacto && styles.filaCompacta]} testID={testID}>
       {botones.map((boton, indice) => {
         const variante = boton.variante ?? 'secundario';
         const id = boton.testID ?? `${testID}-boton-${indice}`;
@@ -69,6 +82,7 @@ export function FilaBotones({ botones, testID = 'fila-botones' }: FilaBotonesPro
             }}
             style={pressableStyle([
               styles.boton,
+              compacto && styles.botonCompacto,
               { backgroundColor: colores.fondo, borderColor: colores.borde },
               deshabilitado && styles.apagado,
             ])}
@@ -85,6 +99,10 @@ export function FilaBotones({ botones, testID = 'fila-botones' }: FilaBotonesPro
 
 const styles = StyleSheet.create({
   fila: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  // `flexShrink: 1` en la fila compacta: dentro de una fila horizontal con texto, el botón cede
+  // ancho al texto en vez de empujarlo fuera.
+  filaCompacta: { flexShrink: 1, flexWrap: 'nowrap' },
+  botonCompacto: { flexGrow: 0, paddingHorizontal: 14 },
   boton: {
     flexGrow: 1,
     minHeight: 44,

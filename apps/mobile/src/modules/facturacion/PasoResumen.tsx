@@ -152,8 +152,13 @@ export function PasoResumen({
         <Row testID={`${testID}-cliente`}>
           <View style={styles.filaResumen}>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Cliente</Text>
+            {/* 🔴 Nombre y domicilio son OPCIONALES (ver `PasoCliente`: el backend no los exige, y
+                para consumidor final es lo normal no cargarlos). Sin este filtro, el resumen de una
+                venta a consumidor final mostraba un " · " suelto — visto en device el 2026-07-21.
+                Un separador huérfano parece un dato que no cargó, cuando en realidad no hacía falta. */}
             <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-              {cliente.nombre} · {cliente.domicilio}
+              {[cliente.nombre, cliente.domicilio].filter((v) => (v ?? '').trim() !== '').join(' · ') ||
+                'Consumidor final sin identificar'}
             </Text>
           </View>
         </Row>

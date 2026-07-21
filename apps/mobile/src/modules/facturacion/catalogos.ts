@@ -38,6 +38,14 @@ export const OPCIONES_CONDICION_IVA_RECEPTOR: OpcionSelect[] = [
 ];
 
 /** `ReceptorInput.tipoDoc` — códigos de `TipoDoc` (AFIP). */
+/**
+ * El código de "consumidor final" en el catálogo de AFIP. Vive nombrado y no como `'99'` suelto porque
+ * es el ÚNICO tipo de documento que cambia qué campos son obligatorios (`afip_rules.validar_receptor`:
+ * con 99 no se exige documento; con cualquier otro sí). Un `99` mágico en medio de una condición es
+ * justo el detalle que se pierde en un refactor.
+ */
+export const TIPO_DOC_CONSUMIDOR_FINAL = 99;
+
 export const OPCIONES_TIPO_DOC: OpcionSelect[] = [
   { valor: '80', etiqueta: 'CUIT' },
   { valor: '86', etiqueta: 'CUIL' },
