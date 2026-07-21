@@ -66,3 +66,55 @@ export type { ActividadItem, ActividadResult, ListarActividadParams } from './ac
 // Transporte de bajo nivel — necesario para que el adaptador de plataforma pueda montar su propio
 // wrapper de tests de integración (para que sus tests sigan mockeando `fetch` directo, no el puerto).
 export { apiClient, postMultipart } from './client';
+
+// `/afip/*` — facturación AFIP/ARCA (F5 perfil fiscal + alta ARCA, F6 emisión/comprobantes). Mismo
+// criterio que `/actividad`: superficie aparte, sin equivalente en `CopilotApi`/`mockApi`. Ver el
+// docstring de `afip.ts` para por qué `no_disponible` sólo cubre las rutas SIN segmento dinámico.
+export {
+  agregarItem,
+  anularComprobante,
+  cancelarFactura,
+  conectarArca,
+  confirmarAnulacion,
+  confirmarConTokenFresco,
+  confirmarFactura,
+  crearFactura,
+  estadoAfip,
+  estadoAnulacion,
+  estadoFactura,
+  ErrorValidacionFiscal,
+  esperarEstadoEstable,
+  guardarPerfil,
+  leerPerfil,
+  listarComprobantes,
+  quitarItem,
+  setCliente,
+  setDatosVenta,
+} from './afip';
+export type {
+  AnularComprobanteRequest,
+  Comprobante,
+  ConDisponibilidad,
+  ConectarArcaRequest,
+  ConectarArcaResponse,
+  CondicionIvaEmisor,
+  ConfirmarResultado,
+  DatosVentaInput,
+  EsperarEstadoEstableOpts,
+  EsperarEstadoEstableResultado,
+  EstadoAfip,
+  EstadoAnulacion,
+  EstadoComprobante,
+  EstadoFactura,
+  EstadoFacturaResp,
+  Faltante,
+  GuardarPerfilRequest,
+  ItemFactura,
+  NuevoItem,
+  OnboardingProgreso,
+  PasoAnulacion,
+  PasoOnboarding,
+  PerfilFiscal,
+  ReceptorInput,
+  ResultadoEmision,
+} from './afip';

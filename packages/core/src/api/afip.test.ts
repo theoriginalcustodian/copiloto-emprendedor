@@ -1,0 +1,584 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  anularComprobante,
+  cancelarFactura,
+  conectarArca,
+  confirmarConTokenFresco,
+  confirmarFactura,
+  crearFactura,
+  ErrorValidacionFiscal,
+  esperarEstadoEstable,
+  estadoAfip,
+  estadoAnulacion,
+  estadoFactura,
+  guardarPerfil,
+  leerPerfil,
+  listarComprobantes,
+} from './afip';
+import { configurarApi } from './config';
+import { ApiError } from './errors';
+import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
+import type { AlmacenTokens } from './tokens';
+
+/**
+ * Molde: `actividad.test.ts`/`clientes.test.ts` — `HttpPort` FAKE, sin `fetch` real (el paquete
+ * compila sin `lib.dom`). `secuencia(...)` cubre los tests que necesitan respuestas DISTINTAS en
+ * llamadas sucesivas al mismo path (`esperarEstadoEstable`, `confirmarConTokenFresco`).
+ */
+
+function respuesta(status: number, body: unknown): RespuestaHttp {
+  return { ok: status >= 200 && status < 300, status, json: async () => body };
+}
+
+function secuencia(...respuestas: RespuestaHttp[]): () => RespuestaHttp {
+  let i = 0;
+  return () => respuestas[Math.min(i++, respuestas.length - 1)]!;
+}
+
+function crearTokensFake(token: string | null = 'tok-123'): AlmacenTokens {
+  return {
+    async leerToken() {
+      return token;
+    },
+    async guardarToken() {},
+    async leerRefresh() {
+      return null;
+    },
+    async guardarRefresh() {},
+    async limpiar() {},
+  };
+}
+
+/** Estado crudo mínimo válido de `GET /afip/facturas/{id}` — los tests pisan sólo lo que les importa. */
+function estadoFacturaCruda(overrides: Record<string, unknown> = {}) {
+  return {
+    estado: 'borrador',
+    faltantes: [],
+    items: [],
+    total: '0.00',
+    token_confirmacion: null,
+    resultado: null,
+    pdf: null,
+    motivo: null,
+    terminado: false,
+    ...overrides,
+  };
+}
+
+describe('afip.ts', () => {
+  let peticiones: PeticionHttp[];
+  let responder: (p: PeticionHttp) => RespuestaHttp;
+
+  beforeEach(() => {
+    peticiones = [];
+    responder = () => respuesta(200, {});
+    const http: HttpPort = {
+      async enviar(p) {
+        peticiones.push(p);
+        return responder(p);
+      },
+    };
+    configurarApi({ http, tokens: crearTokensFake() });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('leerPerfil — GET /afip/perfil', () => {
+    it('normaliza el shape crudo a camelCase', async () => {
+      responder = () =>
+        respuesta(200, {
+          perfil: {
+            cuit: '20111222339',
+            razon_social: 'Ana Pérez',
+            domicilio_comercial: 'Calle Falsa 123',
+            condicion_iva: 'monotributo',
+            ingresos_brutos: 'CM',
+            inicio_actividades: '2020-01-01',
+            punto_venta: 1,
+          },
+        });
+
+      const result = await leerPerfil('20111222339');
+
+      expect(result).toEqual({
+        status: 'ok',
+        perfil: {
+          cuit: '20111222339',
+          razonSocial: 'Ana Pérez',
+          domicilioComercial: 'Calle Falsa 123',
+          condicionIva: 'monotributo',
+          ingresosBrutos: 'CM',
+          inicioActividades: '2020-01-01',
+          puntoVenta: 1,
+        },
+      });
+    });
+
+    it('perfil: null (200 real, no error) -> status ok con perfil null', async () => {
+      responder = () => respuesta(200, { perfil: null });
+
+      const result = await leerPerfil('20111222339');
+
+      expect(result).toEqual({ status: 'ok', perfil: null });
+    });
+
+    it('404 (app de AFIP sin montar) -> no_disponible', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+
+      expect(await leerPerfil('20111222339')).toEqual({ status: 'no_disponible' });
+    });
+
+    it('501 -> no_disponible, mismo criterio que 404', async () => {
+      responder = () => respuesta(501, { detail: 'not implemented' });
+
+      expect(await leerPerfil('20111222339')).toEqual({ status: 'no_disponible' });
+    });
+
+    it('otro status (403) SÍ se relanza', async () => {
+      responder = () => respuesta(403, { detail: 'forbidden' });
+
+      const err = (await leerPerfil('x').catch((e: unknown) => e)) as ApiError;
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.status).toBe(403);
+    });
+  });
+
+  describe('guardarPerfil — POST /afip/perfil', () => {
+    it('200 -> {status: ok, ok: true}', async () => {
+      responder = () => respuesta(200, { ok: true });
+
+      const result = await guardarPerfil({
+        cuit: '20111222339',
+        razonSocial: 'Ana Pérez',
+        domicilioComercial: 'Calle Falsa 123',
+        condicionIva: 'monotributo',
+        ingresosBrutos: 'CM',
+        inicioActividades: '2020-01-01',
+        puntoVenta: 1,
+      });
+
+      expect(result).toEqual({ status: 'ok', ok: true });
+      expect(peticiones[0]).toMatchObject({ metodo: 'POST', path: '/afip/perfil' });
+      const cuerpo = peticiones[0]!.cuerpoJson as Record<string, unknown>;
+      expect(cuerpo).toEqual({
+        cuit: '20111222339',
+        razon_social: 'Ana Pérez',
+        domicilio_comercial: 'Calle Falsa 123',
+        condicion_iva: 'monotributo',
+        ingresos_brutos: 'CM',
+        inicio_actividades: '2020-01-01',
+        punto_venta: 1,
+      });
+    });
+
+    it('422 con detail ARRAY (validar_perfil) -> ErrorValidacionFiscal con Faltante[]', async () => {
+      responder = () =>
+        respuesta(422, {
+          detail: [
+            { codigo: 'cuit_invalido', campo: 'cuit', mensaje: 'El CUIT no es válido.' },
+            { codigo: 'razon_social_vacio', campo: 'razon_social', mensaje: 'Falta completar razón social.' },
+          ],
+        });
+
+      const err = (await guardarPerfil({
+        cuit: 'x',
+        razonSocial: '',
+        domicilioComercial: '',
+        condicionIva: 'monotributo',
+        ingresosBrutos: '',
+        inicioActividades: '2020-01-01',
+        puntoVenta: 1,
+      }).catch((e: unknown) => e)) as ErrorValidacionFiscal;
+
+      expect(err).toBeInstanceOf(ErrorValidacionFiscal);
+      expect(err.status).toBe(422);
+      expect(err.faltantes).toEqual([
+        { codigo: 'cuit_invalido', campo: 'cuit', mensaje: 'El CUIT no es válido.' },
+        { codigo: 'razon_social_vacio', campo: 'razon_social', mensaje: 'Falta completar razón social.' },
+      ]);
+    });
+
+    it('422 con detail STRING ("condicion_iva inválida: X") -> ErrorValidacionFiscal con un Faltante de campo vacío', async () => {
+      responder = () => respuesta(422, { detail: 'condicion_iva inválida: marciano' });
+
+      const err = (await guardarPerfil({
+        cuit: '20111222339',
+        razonSocial: 'Ana',
+        domicilioComercial: 'x',
+        // @ts-expect-error -- valor deliberadamente inválido para forzar el 422 string del backend.
+        condicionIva: 'marciano',
+        ingresosBrutos: 'CM',
+        inicioActividades: '2020-01-01',
+        puntoVenta: 1,
+      }).catch((e: unknown) => e)) as ErrorValidacionFiscal;
+
+      expect(err).toBeInstanceOf(ErrorValidacionFiscal);
+      expect(err.faltantes).toEqual([{ codigo: '', campo: '', mensaje: 'condicion_iva inválida: marciano' }]);
+    });
+
+    it('404/501 -> no_disponible, no lanza', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+      expect(await guardarPerfil({
+        cuit: '1', razonSocial: '', domicilioComercial: '', condicionIva: 'monotributo',
+        ingresosBrutos: '', inicioActividades: '2020-01-01', puntoVenta: 1,
+      })).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('conectarArca — POST /afip/conectar', () => {
+    it('200 -> {status: ok, ok, workflowId, mensaje} SIN la clave fiscal en el resultado', async () => {
+      responder = () =>
+        respuesta(200, {
+          ok: true,
+          workflow_id: 'afip-onboarding-c1-20111222339',
+          mensaje: 'Estamos vinculando tu cuenta con ARCA.',
+        });
+
+      const result = await conectarArca({
+        cuit: '20111222339',
+        usuario: '20111222339',
+        claveFiscal: 'secreto-super-sensible',
+      });
+
+      expect(result).toEqual({
+        status: 'ok',
+        ok: true,
+        workflowId: 'afip-onboarding-c1-20111222339',
+        mensaje: 'Estamos vinculando tu cuenta con ARCA.',
+      });
+      // La clave NO puede aparecer en ningún valor del objeto devuelto.
+      expect(JSON.stringify(result)).not.toContain('secreto-super-sensible');
+
+      // La request SÍ la manda (es el único lugar donde debe viajar).
+      const cuerpo = peticiones[0]!.cuerpoJson as Record<string, unknown>;
+      expect(cuerpo.clave_fiscal).toBe('secreto-super-sensible');
+    });
+
+    it('manda ambiente sólo si el caller lo manda (el backend hoy lo ignora, ver docstring del tipo)', async () => {
+      responder = () => respuesta(200, { ok: true, workflow_id: 'wf1', mensaje: 'ok' });
+
+      await conectarArca({ cuit: '1', usuario: '1', claveFiscal: 'x' });
+      expect('ambiente' in (peticiones[0]!.cuerpoJson as Record<string, unknown>)).toBe(false);
+
+      peticiones.length = 0;
+      await conectarArca({ cuit: '1', usuario: '1', claveFiscal: 'x', ambiente: 'homologacion' });
+      expect((peticiones[0]!.cuerpoJson as Record<string, unknown>).ambiente).toBe('homologacion');
+    });
+
+    it('422 "CUIT inválido" (string) -> ErrorValidacionFiscal con un Faltante de campo vacío', async () => {
+      responder = () => respuesta(422, { detail: 'CUIT inválido' });
+
+      const err = (await conectarArca({ cuit: 'x', usuario: 'x', claveFiscal: 'x' }).catch(
+        (e: unknown) => e,
+      )) as ErrorValidacionFiscal;
+
+      expect(err).toBeInstanceOf(ErrorValidacionFiscal);
+      expect(err.faltantes).toEqual([{ codigo: '', campo: '', mensaje: 'CUIT inválido' }]);
+    });
+
+    it('404/501 -> no_disponible', async () => {
+      responder = () => respuesta(501, { detail: 'not implemented' });
+      expect(await conectarArca({ cuit: '1', usuario: '1', claveFiscal: 'x' })).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('estadoAfip — GET /afip/estado', () => {
+    it('normaliza conectado/perfil/onboarding a camelCase', async () => {
+      responder = () =>
+        respuesta(200, {
+          conectado: true,
+          ws_autorizados: ['wsfe'],
+          perfil_completo: true,
+          puede_facturar: true,
+          onboarding: { paso: 'habilitado', motivo: null, ws_autorizados: ['wsfe'], terminado: true, ok: true },
+        });
+
+      const result = await estadoAfip('20111222339');
+
+      expect(result).toEqual({
+        status: 'ok',
+        conectado: true,
+        wsAutorizados: ['wsfe'],
+        perfilCompleto: true,
+        puedeFacturar: true,
+        onboarding: { paso: 'habilitado', motivo: null, wsAutorizados: ['wsfe'], terminado: true, ok: true },
+      });
+    });
+
+    it('onboarding: null pasa tal cual', async () => {
+      responder = () =>
+        respuesta(200, {
+          conectado: false, ws_autorizados: [], perfil_completo: false, puede_facturar: false, onboarding: null,
+        });
+
+      const result = await estadoAfip('1');
+      expect(result).toMatchObject({ status: 'ok', onboarding: null });
+    });
+
+    it('404 -> no_disponible', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+      expect(await estadoAfip('1')).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('crearFactura — POST /afip/facturas', () => {
+    it('200 -> {status: ok, ok: true, facturaId}', async () => {
+      responder = () => respuesta(200, { ok: true, factura_id: 'f-1' });
+      expect(await crearFactura('1')).toEqual({ status: 'ok', ok: true, facturaId: 'f-1' });
+    });
+
+    it('503 ("facturación no disponible") -> no_disponible', async () => {
+      responder = () => respuesta(503, { detail: 'facturación no disponible' });
+      expect(await crearFactura('1')).toEqual({ status: 'no_disponible' });
+    });
+
+    it('404 -> no_disponible también', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+      expect(await crearFactura('1')).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('estadoFactura — GET /afip/facturas/{id} (id dinámico: NO usa no_disponible)', () => {
+    it('normaliza items/resultado/pdf a camelCase', async () => {
+      responder = () =>
+        respuesta(
+          200,
+          estadoFacturaCruda({
+            estado: 'entregada',
+            items: [{ descripcion: 'Consultoría', cantidad: '2', precio_unitario: '100.00', subtotal: '200.00' }],
+            total: '200.00',
+            resultado: { ok: true, duplicado: false, cae: '75304012345678', cae_vto: '2026-08-01', nro: 5, tipo_cbte: 11, punto_venta: 1 },
+            pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expira_at: '2026-07-22T00:00:00Z' },
+            terminado: true,
+          }),
+        );
+
+      const result = await estadoFactura('f-1');
+
+      expect(result).toEqual({
+        estado: 'entregada',
+        faltantes: [],
+        items: [{ descripcion: 'Consultoría', cantidad: '2', precioUnitario: '100.00', subtotal: '200.00' }],
+        total: '200.00',
+        tokenConfirmacion: null,
+        resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1 },
+        pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expiraAt: '2026-07-22T00:00:00Z' },
+        motivo: null,
+        terminado: true,
+      });
+    });
+
+    it('resultado sin cae_vto (rama "adoptado de AFIP") -> caeVto: null, no explota', async () => {
+      responder = () =>
+        respuesta(
+          200,
+          estadoFacturaCruda({
+            resultado: { ok: true, duplicado: true, cae: 'x', nro: 1, tipo_cbte: 11, punto_venta: 1 },
+          }),
+        );
+
+      const result = await estadoFactura('f-1');
+      expect(result.resultado?.caeVto).toBeNull();
+    });
+
+    it('404 ("factura no encontrada", id dinámico) -> ApiError, NO no_disponible', async () => {
+      responder = () => respuesta(404, { detail: 'factura no encontrada' });
+
+      const err = (await estadoFactura('ajena').catch((e: unknown) => e)) as ApiError;
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.status).toBe(404);
+    });
+  });
+
+  describe('confirmarFactura / cancelarFactura — signals', () => {
+    it('confirmarFactura manda el token en el body', async () => {
+      responder = () => respuesta(200, { ok: true });
+      await confirmarFactura('f-1', 'tok-abc');
+      expect(peticiones[0]).toMatchObject({ metodo: 'POST', path: '/afip/facturas/f-1/confirmar' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ token: 'tok-abc' });
+    });
+
+    it('cancelarFactura no manda body', async () => {
+      responder = () => respuesta(200, { ok: true });
+      await cancelarFactura('f-1');
+      expect(peticiones[0]).toMatchObject({ metodo: 'POST', path: '/afip/facturas/f-1/cancelar' });
+    });
+  });
+
+  describe('listarComprobantes — GET /afip/comprobantes', () => {
+    it('normaliza cada fila a camelCase', async () => {
+      responder = () =>
+        respuesta(200, {
+          comprobantes: [
+            {
+              cuit: '1', tipo_cbte: 11, punto_venta: 1, nro: 5, cae: 'x', cae_vto: '2026-08-01',
+              fecha_emision: '2026-07-21', total: '200.00', estado: 'emitida', pdf_url: 'https://x', cbte_asoc_nro: null,
+            },
+          ],
+        });
+
+      const result = await listarComprobantes('1');
+
+      expect(result).toEqual({
+        status: 'ok',
+        comprobantes: [
+          {
+            cuit: '1', tipoCbte: 11, puntoVenta: 1, nro: 5, cae: 'x', caeVto: '2026-08-01',
+            fechaEmision: '2026-07-21', total: '200.00', estado: 'emitida', pdfUrl: 'https://x', cbteAsocNro: null,
+          },
+        ],
+      });
+    });
+
+    it('manda cuit/limite como querystring, default limite=50', async () => {
+      responder = () => respuesta(200, { comprobantes: [] });
+      await listarComprobantes('20111222339');
+      expect(peticiones[0]!.path).toBe('/afip/comprobantes?cuit=20111222339&limite=50');
+    });
+
+    it('404 -> no_disponible', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+      expect(await listarComprobantes('1')).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('anularComprobante / estadoAnulacion', () => {
+    it('anularComprobante 200 -> {status: ok, ok: true, anulacionId}', async () => {
+      responder = () => respuesta(200, { ok: true, anulacion_id: 'a-1' });
+      const result = await anularComprobante({ cuit: '1', tipoCbte: 11, puntoVenta: 1, nro: 5 });
+      expect(result).toEqual({ status: 'ok', ok: true, anulacionId: 'a-1' });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ cuit: '1', tipo_cbte: 11, punto_venta: 1, nro: 5 });
+    });
+
+    it('anularComprobante 503 ("anulación no disponible") -> no_disponible', async () => {
+      responder = () => respuesta(503, { detail: 'anulación no disponible' });
+      expect(await anularComprobante({ cuit: '1', tipoCbte: 11, puntoVenta: 1, nro: 5 })).toEqual({ status: 'no_disponible' });
+    });
+
+    it('estadoAnulacion normaliza original + resultado', async () => {
+      responder = () =>
+        respuesta(200, {
+          paso: 'anulada',
+          original: {
+            cuit: '1', tipo_cbte: 11, punto_venta: 1, nro: 5, cae: 'x', cae_vto: '2026-08-01',
+            fecha_emision: '2026-07-21', total: '200.00', estado: 'anulada', pdf_url: null, cbte_asoc_nro: 6,
+          },
+          errores: [],
+          resultado: { ok: true, duplicado: false, cae: 'y', cae_vto: '2026-08-01', nro: 6, tipo_cbte: 13, punto_venta: 1 },
+          motivo: null,
+          terminado: true,
+        });
+
+      const result = await estadoAnulacion('a-1');
+
+      expect(result.paso).toBe('anulada');
+      expect(result.original?.cbteAsocNro).toBe(6);
+      expect(result.resultado).toEqual({ ok: true, duplicado: false, cae: 'y', caeVto: '2026-08-01', nro: 6, tipoCbte: 13, puntoVenta: 1 });
+    });
+
+    it('estadoAnulacion 404 ("anulación no encontrada", id dinámico) -> ApiError', async () => {
+      responder = () => respuesta(404, { detail: 'anulación no encontrada' });
+      const err = (await estadoAnulacion('ajena').catch((e: unknown) => e)) as ApiError;
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err.status).toBe(404);
+    });
+  });
+
+  describe('esperarEstadoEstable', () => {
+    it('converge cuando perfil_ausente desaparece en el 2º intento', async () => {
+      vi.useFakeTimers();
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ faltantes: [{ codigo: 'perfil_ausente', campo: 'perfil', mensaje: 'x' }] })),
+        respuesta(200, estadoFacturaCruda({ estado: 'borrador' })),
+      );
+
+      const promesa = esperarEstadoEstable('f-1');
+      await vi.advanceTimersByTimeAsync(50);
+      const resultado = await promesa;
+
+      expect(resultado.convergio).toBe(true);
+      expect(resultado.estado.faltantes).toEqual([]);
+      // 1 fetch inicial + 1 refetch tras el backoff de 50ms.
+      expect(peticiones).toHaveLength(2);
+    });
+
+    it('CORTA con convergio:false si perfil_ausente nunca desaparece (topeMs bajo para no tardar de verdad)', async () => {
+      vi.useFakeTimers();
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({ faltantes: [{ codigo: 'perfil_ausente', campo: 'perfil', mensaje: 'x' }] }));
+
+      const promesa = esperarEstadoEstable('f-1', { topeMs: 300 });
+      await vi.advanceTimersByTimeAsync(1000);
+      const resultado = await promesa;
+
+      expect(resultado.convergio).toBe(false);
+      expect(resultado.estado.faltantes[0]?.codigo).toBe('perfil_ausente');
+    });
+  });
+
+  describe('confirmarConTokenFresco', () => {
+    it('emite OK cuando el estado avanza más allá de esperando_confirmacion', async () => {
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok-fresco' })),
+        respuesta(200, { ok: true }),
+        respuesta(200, estadoFacturaCruda({ estado: 'emitiendo', token_confirmacion: null })),
+      );
+
+      const result = await confirmarConTokenFresco('f-1');
+
+      expect(result.emitida).toBe(true);
+      expect(result.estado?.estado).toBe('emitiendo');
+      // GET estado -> POST confirmar (con el token FRESCO) -> GET estado.
+      expect(peticiones).toHaveLength(3);
+      expect(peticiones[1]!.cuerpoJson).toEqual({ token: 'tok-fresco' });
+    });
+
+    it('detecta el no-op (sigue esperando_confirmacion) y devuelve el motivo, sin declarar éxito', async () => {
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok-viejo' })),
+        respuesta(200, { ok: true }),
+        respuesta(
+          200,
+          estadoFacturaCruda({
+            estado: 'esperando_confirmacion',
+            token_confirmacion: 'tok-nuevo',
+            motivo: 'la confirmación no corresponde a los datos actuales; revisá el resumen',
+          }),
+        ),
+      );
+
+      const result = await confirmarConTokenFresco('f-1');
+
+      expect(result.emitida).toBe(false);
+      expect(result.motivo).toBe('la confirmación no corresponde a los datos actuales; revisá el resumen');
+    });
+
+    it('token_confirmacion null -> NO llama al backend (ni confirmar ni un 2º estado)', async () => {
+      responder = () => respuesta(200, estadoFacturaCruda({ estado: 'borrador', token_confirmacion: null }));
+
+      const result = await confirmarConTokenFresco('f-1');
+
+      // `result.estado` es el shape YA NORMALIZADO (camelCase) que devuelve `estadoFactura`, no el
+      // crudo que manda el fake `HttpPort` — por eso no se compara contra `estadoFacturaCruda(...)`.
+      expect(result).toEqual({
+        emitida: false,
+        motivo: 'la factura no está lista para emitir',
+        estado: {
+          estado: 'borrador',
+          faltantes: [],
+          items: [],
+          total: '0.00',
+          tokenConfirmacion: null,
+          resultado: null,
+          pdf: null,
+          motivo: null,
+          terminado: false,
+        },
+      });
+      expect(peticiones).toHaveLength(1); // sólo el estadoFactura() inicial, nada más.
+    });
+  });
+});
