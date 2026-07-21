@@ -134,19 +134,17 @@ export async function pedirLinkDeVinculacion(connectPath: string): Promise<{ sta
 }
 
 /**
- * ⚠️ `[ASSUMED_PENDING_VERIFY]` — **el único supuesto de todo el flujo de desconexión.**
- *
- * El endpoint fue pedido al backend el 2026-07-21 (`coordinacion/2026-07-21_pedido_frontend-
- * desconectar-apps.md`) y todavía no está confirmado. Se aísla acá, en UNA función, para que
- * acordar otra forma sea cambiar esta línea y nada más: ni la UI, ni la confirmación, ni el manejo
- * de errores, ni los tests dependen de la forma exacta del path.
- *
- * En cuanto el catálogo mande `disconnect_path`, este fallback deja de usarse solo — igual que
- * `connect_path`, que ya existe y evitó tener que adivinar el caso de MercadoPago.
+ * Fallback del path de desconexión para un backend viejo que todavía no manda `disconnect_path` en
+ * el catálogo. **Ya NO es un supuesto:** el backend confirmó y desplegó exactamente esta forma el
+ * 2026-07-21 (`coordinacion/2026-07-21_listo_backend-desconexion-endpoints-vivos.md`), y el catálogo
+ * ya trae `disconnect_path`, que gana sobre esto. Se conserva sólo para el caso degradado
+ * —despliegue viejo del backend, campo ausente—, igual que el resto de la app tolera campos que un
+ * deploy anterior no manda.
  *
  * 🔴 Toma el SLUG, nunca un `connection_id`. Mandar el id desde el cliente permitiría revocar la
  * conexión de otro tenant probando ids (BOLA / OWASP API1:2023); resolver "qué conexión es" a partir
- * del JWT es responsabilidad del backend y no puede delegarse a un parámetro del cliente.
+ * del JWT es responsabilidad del backend y no puede delegarse a un parámetro del cliente. El backend
+ * lo confirmó con un test adversarial (tenant A no puede tocar el toolkit de B).
  */
 function PATH_DESCONEXION_ASUMIDO(servicio: ServicioCatalogo): string {
   return servicio.kind === 'payments'
@@ -161,6 +159,14 @@ function PATH_DESCONEXION_ASUMIDO(servicio: ServicioCatalogo): string {
  * ⚠️ Devolver `ok` NO autoriza a pintar "desconectado". Quien llame tiene que RE-CONSULTAR el
  * catálogo — la fuente de verdad es `conectado`, no el resultado de haber pedido la baja. Mismo
  * criterio que `pedirLinkDeVinculacion`, y por el mismo motivo: la acción y el hecho son dos cosas.
+ *
+ * 🔴 **El 404 es ÉXITO acá, no "no desplegado".** Verificado contra el servicio vivo el 2026-07-21:
+ * el backend devuelve `404 "el tenant no tiene X conectado"` cuando no había nada que revocar —el
+ * estado deseado (desconectado) ya se cumple—, y reserva el `400` para un slug inválido. La baja es
+ * idempotente. Distinto del `405` del catch-all del SPA, que sí es "el endpoint no existe en este
+ * deploy": por eso `no_disponible` mira 405/501, no 404. Sin esta distinción, desconectar algo que
+ * otro dispositivo ya desconectó le diría al usuario "todavía no está disponible" sobre una baja que
+ * de hecho está hecha.
  */
 export async function desconectarServicio(
   servicio: ServicioCatalogo,
@@ -170,7 +176,10 @@ export async function desconectarServicio(
     await apiClient.del<unknown>(path);
     return { status: 'ok' };
   } catch (err) {
-    if (noDesplegado(err)) return { status: 'no_disponible' };
+    // 404 = "no había nada conectado": la baja es idempotente, el estado deseado ya se cumple.
+    if (err instanceof ApiError && err.status === 404) return { status: 'ok' };
+    // 405/501 = el endpoint no existe en este deploy (catch-all del SPA). Ahí sí, no disponible.
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501)) return { status: 'no_disponible' };
     throw err;
   }
 }

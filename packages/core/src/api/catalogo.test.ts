@@ -186,24 +186,36 @@ describe('catalogo.ts', () => {
       expect(peticiones[0]!.path).toBe('/mp/connection');
     });
 
-    it('404 -> no_disponible (el endpoint todavía no está desplegado)', async () => {
-      responder = () => respuesta(404, { detail: 'Not Found' });
+    /**
+     * 🔴 **El 404 al desconectar es ÉXITO idempotente, NO "no desplegado".** Verificado contra el
+     * servicio vivo el 2026-07-21: el backend devuelve `404 "el tenant no tiene X conectado"` cuando
+     * no había nada que revocar. El estado deseado —desconectado— ya se cumple, así que forzar al
+     * usuario a "probá de nuevo" sobre una baja que de hecho está hecha sería mentirle. Pasa de
+     * verdad cuando otro dispositivo ya desconectó el servicio.
+     */
+    it('404 -> ok: no había nada conectado, la baja es idempotente', async () => {
+      responder = () => respuesta(404, { detail: "el tenant no tiene 'googledrive' conectado" });
+
+      expect(await desconectarServicio(servicio())).toEqual({ status: 'ok' });
+    });
+
+    /**
+     * 🔴 **El 405 sí es "el endpoint no existe en este deploy".** El front-door monta un catch-all
+     * sólo GET para servir el SPA, así que una ruta no desplegada matchea ese handler y FastAPI
+     * contesta 405 a un DELETE — nunca 404. Medido contra el servicio vivo. Es la distinción exacta
+     * que separa "ya está desconectado" (404, éxito) de "no puedo desconectar acá" (405).
+     */
+    it('405 -> no_disponible: el catch-all del front-door, endpoint no desplegado', async () => {
+      responder = () => respuesta(405, { detail: 'Method Not Allowed' });
 
       expect(await desconectarServicio(servicio())).toEqual({ status: 'no_disponible' });
     });
 
-    /**
-     * 🔴 **El 405 es el caso REAL de hoy, no una hipótesis.** El front-door monta un catch-all sólo
-     * GET para servir el SPA, así que una ruta no desplegada matchea ese handler y FastAPI contesta
-     * 405 a un DELETE — nunca 404. Medido contra el servicio vivo el 2026-07-21.
-     *
-     * Sin este mapeo, "todavía no existe el endpoint" le llegaría al usuario como "no pudimos
-     * desconectar, probá de nuevo": lo invita a reintentar algo que no puede funcionar.
-     */
-    it('405 -> no_disponible: es lo que devuelve HOY el catch-all del front-door', async () => {
-      responder = () => respuesta(405, { detail: 'Method Not Allowed' });
+    /** Un slug inválido es 400 y NO es ninguno de los dos: se propaga como error de verdad. */
+    it('400 (slug inválido) se propaga, no se disfraza de éxito ni de no-disponible', async () => {
+      responder = () => respuesta(400, { detail: 'service inválido o desconocido' });
 
-      expect(await desconectarServicio(servicio())).toEqual({ status: 'no_disponible' });
+      await expect(desconectarServicio(servicio())).rejects.toThrow();
     });
 
     it('un 500 se propaga: desconectar no puede fallar en silencio', async () => {
