@@ -29,7 +29,7 @@ class _FakePayStore:
 
 @pytest.fixture
 def ctx(monkeypatch):
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
     crypto = FernetCrypto()
     cred, pay = _FakeCredStore(), _FakePayStore()
     started = []

@@ -101,7 +101,7 @@ class _FakeComposioGateway:
 
 @pytest.fixture(autouse=True)
 def _mp_fernet_key_env(monkeypatch):
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
 
 def _build_app(*, require_tenant, mp_gateway=None, composio_gateway=None):
@@ -132,21 +132,21 @@ def test_mp_connect_without_token_returns_401():
 
 def test_mp_connect_with_token_state_decrypts_to_that_tenant(monkeypatch):
     key = FernetCrypto.generate_key()
-    monkeypatch.setenv("MP_FERNET_KEY", key)
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", key)
     gateway = _FakeMpGateway()
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), mp_gateway=gateway)
     r = TestClient(app).get("/mp/connect")
     assert r.status_code == 200
     state = _state_of(r.json()["url"])
-    assert FernetCrypto(key_env="MP_FERNET_KEY").decrypt(state) == "cid-A"
+    assert FernetCrypto(key_env="COPILOTO_FERNET_KEY").decrypt(state) == "cid-A"
     assert gateway.connect_url_calls == [state]
 
 
 def test_mp_connect_two_tenants_get_state_bound_to_their_own_cliente_id(monkeypatch):
     """El state NUNCA se comparte entre tenants -- ata SIEMPRE al cliente_id del token de ESE request."""
     key = FernetCrypto.generate_key()
-    monkeypatch.setenv("MP_FERNET_KEY", key)
-    crypto = FernetCrypto(key_env="MP_FERNET_KEY")
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", key)
+    crypto = FernetCrypto(key_env="COPILOTO_FERNET_KEY")
     app_a = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
     app_b = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     state_a = _state_of(TestClient(app_a).get("/mp/connect").json()["url"])

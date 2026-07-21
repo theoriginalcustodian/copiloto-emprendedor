@@ -146,10 +146,9 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # AFIP: mismas fábricas per-tenant, cableadas ANTES de que el worker empiece a pollear (igual que
     # set_refresh_deps). El gateway de onboarding se construye SIN cert: todavía no existe — el alta es
     # justamente lo que lo genera.
-    # ⚠️ DEUDA GESTIONADA: se reusa la key `MP_FERNET_KEY` para cifrar el certificado AFIP. Funciona y
-    # evita desplegar un secreto más, pero el nombre miente sobre su alcance. Pago: renombrar a una key
-    # de app (`COPILOTO_FERNET_KEY`) con doble lectura durante la transición. Propietario: operador.
-    # Condición: antes de habilitar producción de facturación.
+    # El mismo `crypto` cifra el certificado AFIP y los tokens de MercadoPago. La llave se llama
+    # `COPILOTO_FERNET_KEY` —no `MP_FERNET_KEY`— justamente para que su nombre no mienta sobre eso:
+    # deuda saldada el 2026-07-21 (ver `crypto.py`). Rotarla es no-destructivo vía COPILOTO_FERNET_KEYS.
     set_onboarding_deps(
         lambda cuit, ambiente="dev": AfipGateway(cuit=cuit, production=(ambiente == "prod")),
         lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),

@@ -67,7 +67,7 @@ class _FakeComposioGateway:
 def _mp_fernet_key_env(monkeypatch):
     """`create_web_app` construye un `FernetCrypto()` propio (para /me/mp-connect) sin importar si
     este archivo ejercita esas rutas -- mismo fixture que el resto de la suite de web.py."""
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
 
 def _build_app(*, require_tenant, transcribe=None):

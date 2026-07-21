@@ -58,7 +58,7 @@ from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecr
 from afip_web import create_afip_app
 
 # Todos con default -> el módulo importa sin reventar aunque el proceso no haya seteado nada
-# todavía (los env realmente OBLIGATORIOS -- DATABASE_URL, SUPABASE_JWT_SECRET, MP_FERNET_KEY,
+# todavía (los env realmente OBLIGATORIOS -- DATABASE_URL, SUPABASE_JWT_SECRET, COPILOTO_FERNET_KEY,
 # SUPABASE_URL, SERVICE_ROLE_KEY, MP_CLIENT_ID/SECRET/REDIRECT_URI -- se leen recién dentro de
 # `_serve()`, al arrancar el proceso real).
 TEMPORAL_TARGET = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
