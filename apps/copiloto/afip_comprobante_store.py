@@ -70,12 +70,23 @@ class AfipComprobanteStore:
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (pdf_url, pdf_expira_at, self._cid, cuit, tipo_cbte, punto_venta, nro))
 
+    def adjuntar_drive(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
+                       drive_file_id: str, drive_link: str | None) -> None:
+        """Adjunta la copia en Drive. UPDATE parcial por el mismo motivo que `adjuntar_pdf`: el
+        archivado ocurre después del CAE y una anulación puede pasar en el medio."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE {_TABLE} SET drive_file_id=%s, drive_link=%s "
+                f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
+                (drive_file_id, drive_link, self._cid, cuit, tipo_cbte, punto_venta, nro))
+
     def get(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int) -> dict | None:
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro))
             row = cur.fetchone()
@@ -91,7 +102,7 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND idem_key=%s", (self._cid, idem_key))
             row = cur.fetchone()
         return self._fila(row)
@@ -101,7 +112,7 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s ORDER BY created_at DESC LIMIT %s",
                 (self._cid, cuit, int(limite)))
             filas = cur.fetchall()
@@ -122,7 +133,7 @@ class AfipComprobanteStore:
         if not row:
             return None
         campos = ("cuit", "tipo_cbte", "punto_venta", "nro", "cae", "cae_vto", "fecha_emision",
-                  "total", "estado", "pdf_url", "cbte_asoc_nro")
+                  "total", "estado", "pdf_url", "cbte_asoc_nro", "drive_file_id", "drive_link")
         d = dict(zip(campos, row))
         # `total` viene como Decimal de psycopg2: a str para que sea serializable por Temporal sin
         # perder precisión (float rompería centavos).

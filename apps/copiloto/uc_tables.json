@@ -48,6 +48,7 @@
     "ingresos_brutos text NOT NULL",
     "inicio_actividades date NOT NULL",
     "punto_venta integer NOT NULL",
+    "guardar_en_drive boolean NOT NULL DEFAULT false",
     "updated_at timestamptz DEFAULT now()"
   ],
   "afip_secret_handoff": [
@@ -70,6 +71,8 @@
     "estado text NOT NULL DEFAULT 'emitida'",
     "pdf_url text",
     "pdf_expira_at timestamptz",
+    "drive_file_id text",
+    "drive_link text",
     "idem_key text",
     "workflow_id text",
     "cbte_asoc_nro bigint",

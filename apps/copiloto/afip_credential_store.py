@@ -200,14 +200,28 @@ class AfipPerfilStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, razon_social, domicilio_comercial, condicion_iva, ingresos_brutos, "
-                f"inicio_actividades, punto_venta FROM {_T_PERFIL} "
+                f"inicio_actividades, punto_venta, guardar_en_drive FROM {_T_PERFIL} "
                 f"WHERE cliente_id=%s AND cuit=%s", (self._cid, cuit))
             row = cur.fetchone()
         if not row:
             return None
         campos = ("cuit", "razon_social", "domicilio_comercial", "condicion_iva",
-                  "ingresos_brutos", "inicio_actividades", "punto_venta")
+                  "ingresos_brutos", "inicio_actividades", "punto_venta", "guardar_en_drive")
         return dict(zip(campos, row))
+
+    def set_guardar_en_drive(self, cuit: str, activado: bool) -> bool:
+        """Ajuste "guardar mis facturas en Drive". Devuelve False si no hay perfil para ese CUIT.
+
+        El booleano de retorno NO es decorativo: un UPDATE que no matchea ninguna fila es un no-op
+        silencioso, y el usuario vería el toggle prendido en su pantalla mientras la base no guardó
+        nada. Quien llama tiene que poder distinguir "guardado" de "no había nada que guardar".
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE {_T_PERFIL} SET guardar_en_drive=%s, updated_at=now() "
+                f"WHERE cliente_id=%s AND cuit=%s", (bool(activado), self._cid, cuit))
+            return cur.rowcount > 0
 
 
 class AfipSecretHandoff:

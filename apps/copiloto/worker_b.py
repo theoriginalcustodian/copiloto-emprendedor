@@ -43,8 +43,9 @@ from afip_anulacion_workflow import AnulacionWorkflow
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_factura_activities import (
-    buscar_comprobante, cargar_contexto_factura, emitir_comprobante, generar_pdf_comprobante,
-    listar_comprobantes, marcar_comprobante_anulado, set_factura_deps)
+    archivar_factura_en_drive, buscar_comprobante, cargar_contexto_factura, emitir_comprobante,
+    generar_pdf_comprobante, listar_comprobantes, marcar_comprobante_anulado, set_drive_deps,
+    set_factura_deps)
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
 from afip_onboarding_activities import (
@@ -166,13 +167,20 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
         lambda cliente_id: AfipComprobanteStore(conn_factory, cliente_id),
     )
 
+    # Archivado del PDF en el Drive del emprendedor: el MISMO gateway Composio que usa el agente, con
+    # los slugs de archivado declarados en la policy de `services/drive.py`. Reusarlo trae gratis el
+    # manejo de "el toolkit no está conectado" y la versión de policy; construir uno aparte duplicaría
+    # esa lógica y se desincronizaría.
+    set_drive_deps(gateway)
+
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, emitir_comprobante,
                                          generar_pdf_comprobante, buscar_comprobante,
-                                         listar_comprobantes, marcar_comprobante_anulado],
+                                         listar_comprobantes, marcar_comprobante_anulado,
+                                         archivar_factura_en_drive],
             "context_factory": ctx_factory}
 
 

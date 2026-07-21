@@ -50,6 +50,11 @@ class AmbienteBody(BaseModel):
     ambiente: Literal["dev", "prod"]
 
 
+class AjustesBody(BaseModel):
+    cuit: str = Field(min_length=11, max_length=11)
+    guardar_en_drive: bool
+
+
 class NuevaFacturaBody(BaseModel):
     cuit: str = Field(min_length=11, max_length=11)
 
@@ -115,6 +120,19 @@ def create_afip_app(
             condicion_iva=condicion.value, ingresos_brutos=body.ingresos_brutos,
             inicio_actividades=body.inicio_actividades, punto_venta=body.punto_venta)
         return {"ok": True}
+
+    @app.post("/afip/ajustes")
+    async def guardar_ajustes(body: AjustesBody, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Ajuste "guardar mis facturas en Drive".
+
+        409 si el CUIT no tiene perfil: sin fila que actualizar, el UPDATE sería un no-op silencioso y
+        el usuario se quedaría con el toggle prendido en pantalla y nada guardado en la base.
+        """
+        guardado = await asyncio.to_thread(
+            perfil_store_factory(cliente_id).set_guardar_en_drive, body.cuit, body.guardar_en_drive)
+        if not guardado:
+            raise HTTPException(409, detail="todavía no cargaste tus datos fiscales para ese CUIT")
+        return {"ok": True, "guardar_en_drive": body.guardar_en_drive}
 
     @app.post("/afip/conectar")
     async def conectar(body: ConectarBody, cliente_id: str = Depends(require_tenant)) -> dict:

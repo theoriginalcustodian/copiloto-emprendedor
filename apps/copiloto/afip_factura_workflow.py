@@ -45,12 +45,19 @@ with workflow.unsafe.imports_passed_through():
 
 TIMEOUT_EMISION = timedelta(minutes=3)
 TIMEOUT_CORTO = timedelta(seconds=60)
+# El archivado son 4 llamadas a Composio (buscar carpeta, crearla, subir, compartir) y la subida baja
+# el PDF desde AfipSDK server-side: más lento que una query, lejos de una emisión.
+TIMEOUT_ARCHIVADO = timedelta(minutes=2)
 
 # Reintentos acotados. Un rechazo de negocio llega como ApplicationError no-retryable desde la
 # activity, así que no entra en este contador.
 REINTENTO_EMISION = RetryPolicy(maximum_attempts=3,
                                 non_retryable_error_types=["RechazoAfip", "SinCertificado"])
 REINTENTO_LECTURA = RetryPolicy(maximum_attempts=3)
+# El archivado NO se reintenta desde acá: la activity ya absorbe sus propios errores y devuelve el
+# motivo. Un reintento sólo puede ocurrir si la activity murió DESPUÉS de subir el archivo, y volvería
+# a subirlo — dejándole al emprendedor dos copias de la misma factura en su Drive.
+SIN_REINTENTO_ARCHIVADO = RetryPolicy(maximum_attempts=1)
 
 TEMPLATE_POR_TIPO = {11: "invoice-c", 6: "invoice-b", 1: "invoice-a"}
 
@@ -68,6 +75,13 @@ class FacturaWorkflow:
         self._confirmado = False
         self._resultado: dict | None = None
         self._pdf: dict | None = None
+        self._drive: dict | None = None
+        # "El workflow no va a cambiar nada más", que NO es lo mismo que "el estado es terminal".
+        # Derivar `terminado` del estado fallaba en los dos bordes: la factura se marca ENTREGADA
+        # ANTES de archivarse en Drive (el cliente cortaba el polling y nunca veía el dato de Drive),
+        # y una factura sin PDF queda en EMITIDA — que no está en la lista de terminales, así que el
+        # cliente poleaba para siempre algo que el workflow ya había cerrado.
+        self._fin = False
         self._motivo: str | None = None
         # Código ESTABLE que acompaña a `motivo`. La frase es para leer; el código es para ramificar.
         # Mezclar ambos vocabularios en un solo campo —como estaba— obliga al cliente a comparar contra
@@ -88,10 +102,15 @@ class FacturaWorkflow:
             "token_confirmacion": self._token() if self._estado is EstadoFactura.ESPERANDO_CONFIRMACION else None,
             "resultado": self._resultado,
             "pdf": self._pdf,
+            # La UI decide el aviso de "el link vence en 24 h" mirando ESTO, no el ajuste del usuario:
+            # con el ajuste prendido y el archivado fallado, el aviso igual tiene que salir. El hecho
+            # manda sobre la intención.
+            "drive": self._drive,
             "motivo": self._motivo,
             "motivo_codigo": self._motivo_codigo,
-            "terminado": self._estado in (EstadoFactura.ENTREGADA, EstadoFactura.RECHAZADA,
-                                          EstadoFactura.CANCELADA),
+            # `_fin`, no el estado: ver el comentario de `__init__`. El cliente poletea hasta que esto
+            # sea True, así que tiene que significar "ya no falta nada", no "el estado suena final".
+            "terminado": self._fin,
         }
 
     # -- signals ------------------------------------------------------------
@@ -179,6 +198,7 @@ class FacturaWorkflow:
             self._estado = EstadoFactura.RECHAZADA
             self._motivo = "todavía no vinculaste tu cuenta de ARCA"
             self._motivo_codigo = "sin_certificado_afip"
+            self._fin = True
             return self.estado()
 
         self._perfil = self._perfil_desde(contexto.get("perfil"))
@@ -189,6 +209,7 @@ class FacturaWorkflow:
 
         if self._cancelado:
             self._estado = EstadoFactura.CANCELADA
+            self._fin = True
             return self.estado()
 
         self._estado = EstadoFactura.EMITIENDO
@@ -204,6 +225,7 @@ class FacturaWorkflow:
             self._estado = EstadoFactura.RECHAZADA
             self._motivo = str(exc)
             self._motivo_codigo = "rechazo_afip"
+            self._fin = True
             return self.estado()
 
         self._resultado = emision
@@ -230,6 +252,31 @@ class FacturaWorkflow:
                             f"el PDF no está disponible en este momento")
             self._motivo_codigo = "emitida_sin_pdf"
 
+        # Copia permanente en el Drive del emprendedor. La URL de AfipSDK muere a las 24 h, así que
+        # este es el único camino por el que la factura sigue existiendo para él la semana que viene.
+        #
+        # try PROPIO, fuera del que envuelve al PDF: compartirlo hacía que un timeout del archivado
+        # marcara la factura como "emitida_sin_pdf" — un mensaje falso sobre un PDF que sí se generó.
+        # Cada paso reporta su propia falla o no reporta nada.
+        #
+        # `maximum_attempts=1`: la activity ya absorbe sus errores y devuelve el motivo; un reintento
+        # sólo puede darse si murió DESPUÉS de subir, y subiría el archivo por segunda vez.
+        if self._pdf and self._pdf.get("url"):
+            try:
+                self._drive = await workflow.execute_activity(
+                    "archivar_factura_en_drive",
+                    args=[cliente_id, cuit, int(emision["tipo_cbte"]), int(emision["punto_venta"]),
+                          int(emision["nro"]), str(self._pdf.get("url"))],
+                    start_to_close_timeout=TIMEOUT_ARCHIVADO, retry_policy=SIN_REINTENTO_ARCHIVADO)
+            except Exception as exc:  # noqa: BLE001
+                self._drive = {"guardado": False, "motivo": f"archivado_interrumpido: {type(exc).__name__}"}
+        else:
+            # Sin PDF no hay nada que archivar, y decirlo explícitamente le permite a la UI mostrar el
+            # aviso de las 24 h con motivo en vez de dejar el campo en `null` (que se lee como
+            # "todavía procesando" y hace poletear de más).
+            self._drive = {"guardado": False, "motivo": "sin_pdf_para_archivar"}
+
+        self._fin = True
         return self.estado()
 
     # -- internos -----------------------------------------------------------

@@ -19,6 +19,7 @@ _gateway_factory = None
 _cred_store_factory = None
 _perfil_store_factory = None
 _comprobante_store_factory = None
+_composio_gateway = None
 
 
 def set_factura_deps(gateway_factory, cred_store_factory, perfil_store_factory,
@@ -29,6 +30,16 @@ def set_factura_deps(gateway_factory, cred_store_factory, perfil_store_factory,
     _cred_store_factory = cred_store_factory
     _perfil_store_factory = perfil_store_factory
     _comprobante_store_factory = comprobante_store_factory
+
+
+def set_drive_deps(composio_gateway) -> None:
+    """El gateway Composio para archivar el PDF en el Drive del emprendedor.
+
+    Aparte de `set_factura_deps` y no dentro: el archivado es opcional y no comparte nada con la
+    emisión. Un worker sin Composio cableado sigue emitiendo facturas — sólo no archiva.
+    """
+    global _composio_gateway
+    _composio_gateway = composio_gateway
 
 
 def _gateway_con_certificado(cliente_id: str, cuit: str):
@@ -144,6 +155,52 @@ async def generar_pdf_comprobante(cliente_id: str, cuit: str, template: str, par
     """Genera el PDF. ⚠️ La URL expira a las 24 h y NO la re-hosteamos: la UI debe avisarlo."""
     return await asyncio.to_thread(_generar_pdf_sync, cliente_id, cuit, template, params,
                                    nro, tipo_cbte, punto_venta)
+
+
+def _archivar_en_drive_sync(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
+                            nro: int, pdf_url: str) -> dict:
+    """Copia el PDF al Drive del emprendedor si él lo activó en Ajustes.
+
+    Falla BLANDO en todos sus caminos: la factura ya tiene CAE y existe en AFIP. Ni el ajuste apagado,
+    ni la falta de Composio, ni un error de Drive pueden convertir una emisión exitosa en un fallo.
+    Cada salida dice POR QUÉ no se archivó, para que la UI muestre el aviso de las 24 h con motivo en
+    vez de un silencio.
+    """
+    from afip_drive import archivar_pdf, nombre_de_archivo
+
+    perfil = _perfil_store_factory(cliente_id).get(cuit)
+    if not perfil or not perfil.get("guardar_en_drive"):
+        return {"guardado": False, "motivo": "desactivado"}
+    if _composio_gateway is None:
+        return {"guardado": False, "motivo": "composio_no_disponible"}
+
+    nombre = nombre_de_archivo(cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro)
+    # `composio_user_id == cliente_id` es la convención del proyecto (ver `context_factory`): un solo
+    # identificador de tenant en todo el sistema.
+    resultado = archivar_pdf(_composio_gateway, user_id=str(cliente_id), nombre=nombre,
+                             pdf_url=pdf_url)
+
+    if resultado.guardado:
+        _comprobante_store_factory(cliente_id).adjuntar_drive(
+            cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro,
+            drive_file_id=resultado.file_id, drive_link=resultado.link)
+    return resultado.como_dict()
+
+
+@activity.defn
+async def archivar_factura_en_drive(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
+                                    nro: int, pdf_url: str) -> dict:
+    """Archiva el PDF en el Drive del emprendedor. Nunca levanta: devuelve por qué no pudo.
+
+    Si esto lanzara, el reintento de la activity volvería a subir el archivo y el emprendedor
+    terminaría con copias duplicadas de la misma factura en su Drive.
+    """
+    try:
+        return await asyncio.to_thread(_archivar_en_drive_sync, cliente_id, cuit, tipo_cbte,
+                                       punto_venta, nro, pdf_url)
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning("archivado en Drive falló para %s-%s: %s", punto_venta, nro, exc)
+        return {"guardado": False, "motivo": f"error_drive: {type(exc).__name__}"}
 
 
 def _marcar_anulada_sync(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
