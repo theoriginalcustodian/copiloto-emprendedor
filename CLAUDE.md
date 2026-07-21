@@ -107,6 +107,36 @@ retención de audio, huérfanos): traer esa maquinaria es el error espejo.
 (regla 7) y el contrato `POST /chat` + polling `GET /reply`. Si algo de documed choca con eso,
 ganan las reglas de este repo.
 
+## 3.quater Tres sesiones paralelas — el buzón manda
+
+El repo se trabaja con **tres sesiones simultáneas**: **planificación**, **backend** y
+**frontend/app**. Las reglas vivas —quién es dueño de qué, git, estado compartido, tipos de mensaje,
+prompts de los crones— están en **`coordinacion/COORDINACION.md`**, y se leen **al arrancar la sesión
+y antes de cualquier commit**. Diseño y razonamiento:
+`docs/superpowers/specs/2026-07-21-formato-coordinacion-tres-sesiones-design.md`.
+
+⚠️ **`coordinacion/` NO es parte del repo** (`.gitignore`). Es una carpeta física única apuntada por
+los crones vía ruta absoluta. Si se versionara, `git worktree add` la duplicaría por worktree y el
+mensaje de una sesión no existiría para la otra. **No la vuelvas a versionar.**
+
+Lo que hay que saber sin abrir nada más:
+
+1. **La junta backend↔app tiene dueña: PLANIFICACIÓN.** Todo trabajo de capas `ambas` baja como
+   `contrato_` —endpoint, request, response, códigos, DoD binario por lado— **antes** de que ninguna
+   implemente. Si para avanzar tenés que inventar la forma de un endpoint, eso es codificar la
+   esperanza: emitís `pedido_` y marcás `[ASSUMED_PENDING_VERIFY]`.
+   *Por qué existe:* los cuatro incidentes del 2026-07-21 fueron la misma falla — cada lado verificó
+   su mitad y la costura no era de nadie.
+2. **El estado es la ubicación del archivo**, no un tablero: `abierto/` → `en-curso/` →
+   `cerrado/<fecha>/`. Quien toma un trabajo lo mueve; quien lo termina, también. Un tablero que hay
+   que acordarse de actualizar se desincroniza y **miente**; un `mv` no puede.
+3. **Nadie edita la carpeta de otra sesión. Se pide.** Y con checkout compartido: `git add` con rutas
+   explícitas, nunca `-A`; jamás `checkout` / `pull` / `stash` / `reset --hard`.
+
+**Memoria:** escribí las entradas nuevas en **`memoria/` del repo**, no sólo en el directorio de
+auto-memory del harness — divergen, y `scripts/seed-memory.sh` espeja con `--delete`. Ver
+`memoria/memoria-repo-vs-slug-drift.md` antes de correrlo.
+
 ---
 
 ## 4. Deploy y cutover (Fase 2.5)
