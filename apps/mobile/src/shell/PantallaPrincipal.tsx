@@ -1,9 +1,9 @@
 /**
  * Pantalla principal del copiloto — el shell real: `PanelDeslizable` con el escritorio de 6 funciones
- * detrás (Capa 0) y la conversación adelante (Capa 1). Reemplaza el `index.tsx` que `git mv` renombró
- * a `spike.tsx` al arrancar el sprint mobile-first — ver el docstring de ese archivo.
+ * detrás (Capa 0) y la conversación adelante (Capa 1). Reemplaza el viejo `index.tsx` de exploración
+ * del arranque del sprint mobile-first.
  *
- * `ChatView` real llega en F5 — hoy hay un placeholder intencional (ver `PlaceholderChat` abajo).
+ * `ChatView` (el chat real, `src/modules/chat`) ya está cableado en la Capa 1 del panel — llegó en F5.
  * Las 6 pantallas de función YA están cableadas en `CONTENIDO_POR_FUNCION`.
  *
  * Cómo abren/cierran las 6 funciones: `CapaFuncion` (`src/modules/escritorio/CapaFuncion.tsx`) — capa
@@ -17,8 +17,6 @@
  * ponerle `backgroundColor` a una pantalla de función, el glass desaparece y el test lo caza.
  */
 import { useState } from 'react';
-import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
 
 import { PantallaAjustes } from '../modules/ajustes';
 import { PantallaApps } from '../modules/apps';
@@ -63,7 +61,7 @@ export function PantallaPrincipal() {
     <>
       <PanelDeslizable
         testID="panel-principal"
-        fondo={<EscritorioFunciones onFuncion={alFuncion} onAbrirSpike={() => router.push('/spike')} />}
+        fondo={<EscritorioFunciones onFuncion={alFuncion} />}
       >
         <ChatView />
       </PanelDeslizable>
@@ -89,7 +87,3 @@ export function PantallaPrincipal() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  placeholderChat: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-});

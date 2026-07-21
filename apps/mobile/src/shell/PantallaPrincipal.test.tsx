@@ -2,14 +2,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 
 // Jest (jest-expo) — describe/it/expect/jest son globales, no se importan de vitest.
 //
-// Mock de `expo-router` a sólo `router.push` (jest.fn): esta pantalla no navega por rutas para abrir
-// funciones (son capas, ver `CapaFuncion.tsx`) — el único uso real de `expo-router` acá es el link
-// discreto al spike. Mismo criterio que `_staging/documed/apps/mobile/src/rutas/proximamente.test.tsx`:
-// mockear el hook/función puntual que se consume es más simple y más fiel que envolver con
-// `expo-router/testing-library` (reservado para pruebas de navegación real, ver `shell.test.tsx`).
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
-
-import { router } from 'expo-router';
+// Esta pantalla no navega por rutas para abrir funciones (son capas, ver `CapaFuncion.tsx`) — no
+// consume `expo-router`, así que no hace falta mockearlo acá.
 
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { PantallaPrincipal } from './PantallaPrincipal';
@@ -23,10 +17,6 @@ async function envolver() {
 }
 
 describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real', () => {
-  beforeEach(() => {
-    jest.mocked(router.push).mockClear();
-  });
-
   it('monta el panel, el escritorio de 6 funciones y el chat real', async () => {
     await envolver();
 
@@ -104,13 +94,5 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
 
     await fireEvent.press(screen.getByTestId('capa-funcion-cerrar'));
     expect(screen.queryByTestId('capa-funcion-recientes')).toBeNull();
-  });
-
-  it('el link discreto al spike navega a /spike', async () => {
-    await envolver();
-
-    await fireEvent.press(screen.getByTestId('escritorio-abrir-spike'));
-
-    expect(router.push).toHaveBeenCalledWith('/spike');
   });
 });

@@ -1,12 +1,6 @@
 /**
  * Layout raíz — con sesión (F5).
  *
- * 🔴 **`/spike` queda FUERA del guard, y no es un descuido.** El spike del repliegue mide el hilo
- * de UI durante un arrastre; no toca el backend ni necesita identidad. Ponerlo detrás del login
- * ataría una medición de rendimiento a que haya red y credenciales — y peor: en una sesión sin
- * backend el instrumento quedaría inalcanzable justo cuando se lo necesita. La medición no depende
- * de la sesión, así que la ruta tampoco.
- *
  * Lo que SÍ está, y por qué cada cosa (heredado de documed, donde cada una costó un bug):
  *   - `GestureHandlerRootView` en la raíz: sin él, el Pan del panel no recibe eventos en Android.
  *   - `SafeAreaProvider` con `initialMetrics`: sin `initialWindowMetrics` el primer render entrega
@@ -48,9 +42,8 @@ function Splash() {
   );
 }
 
-/** Rutas alcanzables sin sesión. Ver el 🔴 del docstring de arriba: el spike es un instrumento de
- *  medición, no una pantalla de producto. */
-const RUTAS_LIBRES = ['/spike'];
+/** Rutas alcanzables sin sesión. Hoy no hay ninguna: toda la app vive detrás del guard de sesión. */
+const RUTAS_LIBRES: string[] = [];
 
 /**
  * Decide qué se ve según el estado de sesión. Tres estados, no dos: mientras `AsyncStorage` resuelve
@@ -91,7 +84,6 @@ export default function LayoutRaiz() {
               <Guard>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" />
-                  <Stack.Screen name="spike" />
                 </Stack>
               </Guard>
             </SessionProvider>

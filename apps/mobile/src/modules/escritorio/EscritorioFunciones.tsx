@@ -2,7 +2,7 @@
  * `EscritorioFunciones` — Capa 0 (fondo) del panel deslizable: el "escritorio" detrás del panel de
  * chat, con el grid de las 6 funciones del copiloto y la lista de actividad reciente. Composición
  * pura de primitivos ya existentes (`Tile`/`Row`/`GlassIcon`/`useTema`) — sin lógica de navegación ni
- * de red acá (eso lo cablea la ruta, vía los callbacks `onFuncion`/`onAbrirReciente`/`onAbrirSpike`).
+ * de red acá (eso lo cablea la ruta, vía los callbacks `onFuncion`/`onAbrirReciente`).
  *
  * Adaptado desde el escritorio equivalente de DocuMed (fork hermano, `_staging/documed/apps/mobile/
  * src/modules/escritorio/EscritorioFunciones.tsx`), acotado a las 6 funciones del emprendedor en vez
@@ -17,7 +17,7 @@
  * de a lo sumo `FILAS_MAX_GRID` (2) a partir de `TILES` en tiempo de módulo — sumar una 7ª función es
  * agregar un item a `TILES`, sin tocar esta función ni el JSX que la consume.
  *
- * Layout: padding `64/22/20`, título + link discreto al spike, grid horizontal-scrolleable de `Tile`
+ * Layout: padding `64/22/20`, título, grid horizontal-scrolleable de `Tile`
  * (ancho fijo `ANCHO_TILE` por columna), header mono "ACTIVIDAD RECIENTE" y una lista de `Row`
  * scrolleable con `paddingBottom` generoso para no quedar tapada por el panel/handle que se superpone
  * encima (Capa 1+).
@@ -29,12 +29,11 @@
  * ventana, es el que importa).
  */
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
-import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
@@ -131,12 +130,6 @@ export interface EscritorioFuncionesProps {
   onFuncion?: (key: FuncionKey) => void;
   /** Tap sobre un item de "Actividad reciente" (índice dentro de `RECIENTES`). */
   onAbrirReciente?: (index: number) => void;
-  /**
-   * Link discreto al spike de medición del tirón (F2, `app/spike.tsx`). NO es una función real del
-   * escritorio — por eso vive en el header, aparte del grid: mezclarlo con las 6 funciones le
-   * prometería al emprendedor una 7ª función que no existe. Sin el callback, el link no se dibuja.
-   */
-  onAbrirSpike?: () => void;
 }
 
 /** Margen de tolerancia antes de considerar que "hay más contenido a la derecha". RN mide con floats;
@@ -145,7 +138,7 @@ export interface EscritorioFuncionesProps {
  *  exacto. */
 const UMBRAL_OVERFLOW_PX = 4;
 
-export function EscritorioFunciones({ onFuncion, onAbrirReciente, onAbrirSpike }: EscritorioFuncionesProps) {
+export function EscritorioFunciones({ onFuncion, onAbrirReciente }: EscritorioFuncionesProps) {
   const tema = useTema();
 
   // Ninguno de los dos anchos se pregunta con `Dimensions.get('window')`: se MIDEN, con el mismo
@@ -173,22 +166,6 @@ export function EscritorioFunciones({ onFuncion, onAbrirReciente, onAbrirSpike }
         >
           Funciones
         </Text>
-        {/* Discreto a propósito: mono, tenue, sin caja. Es el instrumento de medición, no una función
-            del producto — no puede competir visualmente con el título. */}
-        {onAbrirSpike ? (
-          <Pressable
-            testID="escritorio-abrir-spike"
-            onPress={onAbrirSpike}
-            hitSlop={10}
-            style={pressableStyle(undefined, PRESS_FADE)}
-          >
-            <Text
-              style={[styles.spikeLink, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-            >
-              SPIKE ›
-            </Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <View
@@ -303,7 +280,6 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1, paddingTop: 64, paddingBottom: 20 },
   headerFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   titulo: {},
-  spikeLink: { fontSize: 10, letterSpacing: 1.2, opacity: 0.6, textTransform: 'uppercase' },
   contenedorGrid: { marginBottom: 20 },
   contenidoGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   columnaGrid: { gap: 12 },

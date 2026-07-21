@@ -59,20 +59,6 @@ describe('EscritorioFunciones — el escritorio del copiloto (6 funciones)', () 
     expect(() => fireEvent.press(screen.getByTestId('tile-ajustes'))).not.toThrow();
   });
 
-  it('sin onAbrirSpike, no dibuja el link al spike', async () => {
-    await envolver();
-    expect(screen.queryByTestId('escritorio-abrir-spike')).toBeNull();
-  });
-
-  it('con onAbrirSpike, el link lo llama al tocarlo', async () => {
-    const onAbrirSpike = jest.fn();
-    await envolver({ onAbrirSpike });
-
-    fireEvent.press(screen.getByTestId('escritorio-abrir-spike'));
-
-    expect(onAbrirSpike).toHaveBeenCalledTimes(1);
-  });
-
   it('actividad reciente: renderiza filas y avisa el índice tocado', async () => {
     const onAbrirReciente = jest.fn();
     await envolver({ onAbrirReciente });
