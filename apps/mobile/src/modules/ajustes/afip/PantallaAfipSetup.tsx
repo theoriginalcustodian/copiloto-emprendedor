@@ -943,11 +943,27 @@ export function PantallaAfipSetup() {
               </Text>
             )}
 
-            {/* 🔴 Avisa, NO bloquea. La app no tiene forma de saber si Drive está conectado — no hay
-                contrato que lo diga — y deshabilitar el control por una sospecha sería inventar un
-                dato. Además el archivado nunca rompe la emisión: la factura sale igual. Cuando el
-                archivado falle de verdad, el comprobante lo dice con evidencia (`drive.motivo`). */}
-            {guardarEnDrive && (
+            {/* 🔴 **Avisa, NO bloquea — y desde el 2026-07-21 dice el HECHO, no una sospecha.**
+                `drive_conectado` (`GET /afip/estado`) tiene TRES valores y el `null` no se colapsa a
+                `false`: significa "el backend no pudo averiguarlo" (Composio no respondió). Tratarlo
+                como desconectado le diría "conectá tu Drive" a alguien que lo tiene hace meses —
+                la misma forma del bug del alta fallida, un rastro pisando el hecho. Con `null` (o
+                con un backend viejo que no manda el campo) se mantiene el condicional genérico.
+
+                Nunca deshabilita el toggle: el archivado no rompe la emisión, la factura sale igual
+                y el comprobante avisa con evidencia (`drive.motivo`) si quedó sin copia. */}
+            {guardarEnDrive && estadoGeneral?.driveConectado === true && (
+              <Text testID="afip-drive-conectado" style={{ color: tema.color.exito, fontSize: tema.tipo.chico }}>
+                Google Drive está conectado. Cada factura nueva va a quedar guardada ahí.
+              </Text>
+            )}
+            {guardarEnDrive && estadoGeneral?.driveConectado === false && (
+              <Text testID="afip-drive-desconectado" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
+                Google Drive no está conectado. Conectalo en Apps para que tus facturas se guarden —
+                mientras tanto se emiten igual, pero sin copia.
+              </Text>
+            )}
+            {guardarEnDrive && estadoGeneral?.driveConectado == null && (
               <Text testID="afip-drive-requiere-conexion" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
                 Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite
                 igual y te avisamos que quedó sin copia.

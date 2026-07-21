@@ -250,6 +250,21 @@ export interface EstadoAfip {
    * vinculado llevaría al usuario a tocar un switch que después falla.
    */
   ambientesVinculados?: AmbienteAfip[];
+  /**
+   * ¿El toolkit de Drive está vinculado y utilizable para este tenant? (desplegado 2026-07-21).
+   *
+   * 🔴 **Son TRES estados y el `null` NO se colapsa a `false`.** `true` = vinculado y ACTIVE.
+   * `false` = no hay conexión **o está EXPIRED** (existe pero no sirve para subir, así que prometer
+   * archivado sería mentir). `null` = **el backend no pudo averiguarlo** porque Composio no
+   * respondió.
+   *
+   * Tratar `null` como "desconectado" reproduce exactamente el bug del alta fallida: una caída
+   * ajena le diría *"conectá tu Drive"* a alguien que lo tiene conectado hace meses — el rastro de
+   * un intento pisando el hecho. Con `null` la pantalla no afirma nada sobre Drive.
+   *
+   * `undefined` = backend viejo que todavía no manda el campo; se trata igual que `null`.
+   */
+  driveConectado?: boolean | null;
 }
 
 /** Una fila de "Mis comprobantes" (`AfipComprobanteStore._fila`), normalizada. */
@@ -577,6 +592,8 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       cuit?: string;
       ambiente?: AmbienteAfip;
       ambientes_vinculados?: AmbienteAfip[];
+      /** Ver `EstadoAfip.driveConectado`: `null` significa "no se pudo averiguar", NO "desconectado". */
+      drive_conectado?: boolean | null;
     }>(`/afip/estado${query}`);
     return {
       status: 'ok',
@@ -587,6 +604,7 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       puedeFacturar: raw.puede_facturar,
       ambiente: raw.ambiente,
       ambientesVinculados: raw.ambientes_vinculados,
+      driveConectado: raw.drive_conectado,
       onboarding: raw.onboarding
         ? {
             paso: raw.onboarding.paso as PasoOnboarding,

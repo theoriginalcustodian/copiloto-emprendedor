@@ -160,6 +160,33 @@ describe('PantallaAfipSetup', () => {
 
       await waitFor(() => expect(screen.getByTestId('afip-drive-error')).toBeTruthy());
     });
+
+    /**
+     * 🔴 **`driveConectado` tiene TRES valores y cada uno dice algo distinto** (backend, 2026-07-21).
+     *
+     * El `null` —"no se pudo averiguar", Composio no respondió— NO se colapsa a `false`. Si se
+     * colapsara, una caída ajena le diría *"conectá tu Drive"* a alguien que lo tiene conectado
+     * hace meses: el rastro de una consulta fallida pisando el hecho, exactamente el bug que ya
+     * pagamos con el alta de ARCA. Con `null` se mantiene el condicional genérico, que no afirma
+     * nada sobre Drive.
+     *
+     * Los tres van en la misma tabla porque el riesgo real no es que un copy esté mal escrito: es
+     * que dos estados terminen pintando lo mismo. Sólo un caso que los distinga puede detectarlo.
+     */
+    it.each([
+      ['true → afirma que está conectado', true, 'afip-drive-conectado'],
+      ['false → dice que NO lo está', false, 'afip-drive-desconectado'],
+      ['null → no afirma nada (condicional genérico)', null, 'afip-drive-requiere-conexion'],
+      ['undefined (backend viejo) → igual que null', undefined, 'afip-drive-requiere-conexion'],
+    ])('drive_conectado %s', async (_caso, driveConectado, testIdEsperado) => {
+      jest.mocked(estadoAfip).mockResolvedValue(estadoOk({ driveConectado }));
+      await montarConPerfil(true);
+
+      await waitFor(() => expect(screen.getByTestId(testIdEsperado)).toBeTruthy());
+      for (const otro of ['afip-drive-conectado', 'afip-drive-desconectado', 'afip-drive-requiere-conexion']) {
+        if (otro !== testIdEsperado) expect(screen.queryByTestId(otro)).toBeNull();
+      }
+    });
   });
 
   // -----------------------------------------------------------------------------------------

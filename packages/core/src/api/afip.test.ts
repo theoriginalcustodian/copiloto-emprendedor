@@ -400,6 +400,36 @@ describe('afip.ts', () => {
       expect(ok.ambientesVinculados).toBeUndefined();
       expect(ok.cuit).toBeUndefined();
     });
+
+    /**
+     * 🔴 **`drive_conectado` tiene TRES valores y el `null` no es `false`.**
+     *
+     * `true` = vinculado y ACTIVE · `false` = sin conexión **o EXPIRED** · `null` = el backend no
+     * pudo averiguarlo (Composio no respondió). Colapsar `null` a `false` le diría *"conectá tu
+     * Drive"* a alguien que lo tiene conectado hace meses, cada vez que se cae un servicio ajeno —
+     * la misma forma del bug del alta fallida, un rastro pisando el hecho.
+     *
+     * El test recorre los tres en la MISMA tabla a propósito: un booleano que devuelve siempre lo
+     * mismo pasa cualquier prueba de humo, y sólo un caso que los distinga puede fallar si el
+     * mapeo colapsa dos de ellos.
+     */
+    it.each([
+      ['true', true, true],
+      ['false (incluye EXPIRED)', false, false],
+      ['null (no se pudo averiguar)', null, null],
+      ['ausente (backend viejo)', undefined, undefined],
+    ])('drive_conectado %s se propaga sin colapsarse', async (_caso, crudo, esperado) => {
+      responder = () =>
+        respuesta(200, {
+          conectado: true, ws_autorizados: ['wsfe'], perfil_completo: true, puede_facturar: true,
+          onboarding: null, drive_conectado: crudo,
+        });
+
+      const result = await estadoAfip('1');
+
+      const ok = result as Extract<typeof result, { status: 'ok' }>;
+      expect(ok.driveConectado).toBe(esperado);
+    });
   });
 
   describe('crearFactura — POST /afip/facturas', () => {
