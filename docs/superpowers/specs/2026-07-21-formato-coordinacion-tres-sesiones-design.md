@@ -257,9 +257,22 @@ Documentada en `COORDINACION.md` porque aplica a **todo** endpoint futuro: el fr
 - Una ruta no desplegada responde **405**, nunca 404, ante `POST`/`DELETE`/`PATCH`.
 - Un `GET` a una ruta inexistente devuelve **200 con el HTML del SPA**, no 404.
 
-Cualquier cliente o smoke-check que trate el 404 como «no desplegado» va a fallar; y un chequeo de
-«¿está vivo?» por GET diría que sí sobre una ruta que no existe. Todo `contrato_` debe mapear
-404/405/501 → «todavía no disponible».
+Un chequeo de «¿está vivo?» por GET diría que sí sobre una ruta que no existe.
+
+**Corregido el 2026-07-21**, tras el matiz de FRONTEND (medido) confirmado por BACKEND (autor de esos
+códigos). La primera formulación —*404/405/501 → «no disponible»*— era exacta para rutas no
+desplegadas y **rompía cuando el endpoint existe y define su propio 404**: en la desconexión de apps,
+`404` significa *«no había nada que revocar»*, o sea **éxito idempotente**. Mapearlo a «no disponible»
+le diría al usuario que la función no existe sobre una baja que de hecho está hecha.
+
+Formulación vigente: **`405`/`501` → no desplegado** · **`404` → lo define el endpoint** (tratarlo como
+«no desplegado» sólo en rutas GET sin segmento dinámico) · **`400`** → valor fuera de la policy. El
+control que distingue las ramas: **pedir algo inválido a propósito**; si el valor inventado da `400` y
+el recurso ausente da `404`, el endpoint está vivo y discrimina.
+
+**Consecuencia para el formato:** todo `contrato_` debe declarar qué significa cada código **en su
+endpoint**. La regla general no alcanza — y ésta es justamente la clase de detalle que, si no baja
+escrito, se descubre en device.
 
 ---
 
