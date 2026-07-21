@@ -37,6 +37,21 @@ class ConectarBody(BaseModel):
     clave_fiscal: str = Field(repr=False)  # `repr=False`: que no salga en un log de pydantic
 
 
+class NuevaFacturaBody(BaseModel):
+    cuit: str = Field(min_length=11, max_length=11)
+
+
+class ConfirmarBody(BaseModel):
+    token: str
+
+
+class AnularBody(BaseModel):
+    cuit: str = Field(min_length=11, max_length=11)
+    tipo_cbte: int
+    punto_venta: int
+    nro: int
+
+
 def create_afip_app(
     *,
     require_tenant: Callable,
@@ -45,6 +60,13 @@ def create_afip_app(
     handoff_factory: Callable,
     start_onboarding: Callable,
     consultar_onboarding: Callable | None = None,
+    comprobante_store_factory: Callable | None = None,
+    iniciar_factura: Callable | None = None,
+    consultar_factura: Callable | None = None,
+    signal_factura: Callable | None = None,
+    iniciar_anulacion: Callable | None = None,
+    consultar_anulacion: Callable | None = None,
+    signal_anulacion: Callable | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto AFIP")
 
@@ -96,6 +118,107 @@ def create_afip_app(
         workflow_id = await _maybe_async(start_onboarding, cliente_id, body.cuit, handle)
         return {"ok": True, "workflow_id": workflow_id,
                 "mensaje": "Estamos vinculando tu cuenta con ARCA. Puede demorar unos minutos."}
+
+    # -- facturación --------------------------------------------------------
+    # Superficie REST sobre la máquina de estados. Cada endpoint manda un signal o lee la query: el
+    # estado de la factura vive en el workflow, NO en el front. Si la app se cierra a mitad de la carga,
+    # al volver se lee `GET /afip/facturas/{id}` y se sigue donde estaba.
+
+    @app.post("/afip/facturas")
+    async def crear_factura(body: NuevaFacturaBody, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Abre un borrador. Devuelve el `id` con el que se opera de acá en adelante."""
+        if iniciar_factura is None:
+            raise HTTPException(503, detail="facturación no disponible")
+        factura_id = await _maybe_async(iniciar_factura, cliente_id, body.cuit)
+        return {"ok": True, "factura_id": factura_id}
+
+    @app.get("/afip/facturas/{factura_id}")
+    async def estado_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Estado consultable del borrador.
+
+        ⚠️ Para la UI: el primer estado tras crear la factura puede venir con `perfil_ausente` mientras
+        el workflow todavía está cargando el contexto. NO es un error — hay que reconsultar hasta que
+        converja (típicamente <1s).
+        """
+        estado = await _maybe_async(consultar_factura, cliente_id, factura_id)
+        if estado is None:
+            raise HTTPException(404, detail="factura no encontrada")
+        return estado
+
+    @app.post("/afip/facturas/{factura_id}/datos-venta")
+    async def set_datos_venta(factura_id: str, body: dict,
+                              cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_factura, cliente_id, factura_id, "cargar_datos_venta", body)
+        return {"ok": True}
+
+    @app.post("/afip/facturas/{factura_id}/items")
+    async def agregar_item(factura_id: str, body: dict,
+                           cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_factura, cliente_id, factura_id, "agregar_item", body)
+        return {"ok": True}
+
+    @app.delete("/afip/facturas/{factura_id}/items/{indice}")
+    async def quitar_item(factura_id: str, indice: int,
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_factura, cliente_id, factura_id, "quitar_item", indice)
+        return {"ok": True}
+
+    @app.post("/afip/facturas/{factura_id}/cliente")
+    async def set_cliente(factura_id: str, body: dict,
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_factura, cliente_id, factura_id, "cargar_cliente", body)
+        return {"ok": True}
+
+    @app.post("/afip/facturas/{factura_id}/confirmar")
+    async def confirmar_factura(factura_id: str, body: ConfirmarBody,
+                                cliente_id: str = Depends(require_tenant)) -> dict:
+        """Emite. El `token` sale de `token_confirmacion` del estado — el mismo que se mostró en el resumen.
+
+        Si el borrador cambió después de que la UI leyó el token, esto es un no-op con motivo: el
+        usuario tiene que volver a mirar el resumen. Es deliberado, no un bug.
+        """
+        await _maybe_async(signal_factura, cliente_id, factura_id, "confirmar", body.token)
+        return {"ok": True}
+
+    @app.post("/afip/facturas/{factura_id}/cancelar")
+    async def cancelar_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
+        return {"ok": True}
+
+    @app.get("/afip/comprobantes")
+    async def listar(cuit: str, limite: int = 50,
+                     cliente_id: str = Depends(require_tenant)) -> dict:
+        """"Mis facturas". ⚠️ `pdf_url` expira a las 24 h de emitida y NO se re-hostea."""
+        if comprobante_store_factory is None:
+            return {"comprobantes": []}
+        filas = await asyncio.to_thread(
+            comprobante_store_factory(cliente_id).listar, cuit=cuit, limite=min(int(limite), 200))
+        return {"comprobantes": filas}
+
+    @app.post("/afip/comprobantes/anular")
+    async def anular(body: AnularBody, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Emite la nota de crédito que neutraliza la factura.
+
+        No es un borrado: fiscalmente una factura autorizada no se elimina. La UI tiene que decirlo.
+        """
+        if iniciar_anulacion is None:
+            raise HTTPException(503, detail="anulación no disponible")
+        anulacion_id = await _maybe_async(
+            iniciar_anulacion, cliente_id, body.cuit, body.tipo_cbte, body.punto_venta, body.nro)
+        return {"ok": True, "anulacion_id": anulacion_id}
+
+    @app.get("/afip/anulaciones/{anulacion_id}")
+    async def estado_anulacion(anulacion_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
+        estado = await _maybe_async(consultar_anulacion, cliente_id, anulacion_id)
+        if estado is None:
+            raise HTTPException(404, detail="anulación no encontrada")
+        return estado
+
+    @app.post("/afip/anulaciones/{anulacion_id}/confirmar")
+    async def confirmar_anulacion(anulacion_id: str,
+                                  cliente_id: str = Depends(require_tenant)) -> dict:
+        await _maybe_async(signal_anulacion, cliente_id, anulacion_id, "confirmar", None)
+        return {"ok": True}
 
     @app.get("/afip/estado")
     async def estado(cuit: str, cliente_id: str = Depends(require_tenant)) -> dict:

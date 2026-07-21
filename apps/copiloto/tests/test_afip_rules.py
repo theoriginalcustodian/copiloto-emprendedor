@@ -546,6 +546,30 @@ def test_params_pdf_incluyen_los_campos_que_el_spike_descubrio_obligatorios():
         assert campo in params, f"falta {campo}: el template devuelve 400 sin él"
 
 
+def test_params_pdf_con_servicios_incluye_las_fechas_del_periodo():
+    """REGRESIÓN: el template rechaza el PDF de un servicio sin billing_from/to ni payment_due_date.
+
+    Costó una factura real en producción: el E2E de homologación usaba concepto 1 (productos), así que
+    el hueco no aparecía. La emisión salió bien, falló el PDF, y la factura quedó viva hasta anularla.
+    """
+    borrador = borrador_valido(
+        datos_venta=DatosVenta(
+            fecha=HOY, concepto=Concepto.SERVICIOS, condicion_venta="Contado",
+            fecha_servicio_desde=date(2026, 7, 1), fecha_servicio_hasta=date(2026, 7, 31),
+            fecha_vto_pago=date(2026, 8, 10)))
+    params = armar_params_pdf(perfil_monotributo(), borrador, numero=1, cae="1",
+                              cae_vto=HOY, fecha_emision=HOY)
+    assert params["billing_from"] == "01/07/2026"
+    assert params["billing_to"] == "31/07/2026"
+    assert params["payment_due_date"] == "10/08/2026"
+
+
+def test_params_pdf_con_productos_no_manda_fechas_de_periodo():
+    params = armar_params_pdf(perfil_monotributo(), borrador_valido(), numero=1, cae="1",
+                              cae_vto=HOY, fecha_emision=HOY)
+    assert "billing_from" not in params
+
+
 def test_params_pdf_condicion_receptor_es_string_legible():
     """El template pide la condición como texto, no como el id numérico."""
     params = armar_params_pdf(

@@ -20,6 +20,7 @@ import asyncio
 import logging
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Callable
 
@@ -137,6 +138,92 @@ def make_consultar_onboarding(temporal_client) -> Callable:
             return None
 
     return consultar_onboarding
+
+
+def _wf_id_factura(cliente_id: str, factura_id: str) -> str:
+    """El id que ve el front NO es el workflow_id: se reconstruye con el `cliente_id` autenticado.
+
+    Si el front pasara el workflow_id completo, un tenant podría operar la factura de otro con sólo
+    adivinar o filtrar el id. Acá el prefijo sale SIEMPRE del token, nunca del request.
+    """
+    return f"factura-{cliente_id}-{factura_id}"
+
+
+def _wf_id_anulacion(cliente_id: str, anulacion_id: str) -> str:
+    return f"anulacion-{cliente_id}-{anulacion_id}"
+
+
+def make_iniciar_factura(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Abre un borrador durable y devuelve su id público."""
+
+    async def iniciar_factura(cliente_id: str, cuit: str) -> str:
+        factura_id = uuid.uuid4().hex
+        await temporal_client.start_workflow(
+            "FacturaWorkflow",
+            args=[cliente_id, cuit, factura_id],
+            id=_wf_id_factura(cliente_id, factura_id),
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return factura_id
+
+    return iniciar_factura
+
+
+def make_consultar_factura(temporal_client) -> Callable:
+    async def consultar_factura(cliente_id: str, factura_id: str) -> dict | None:
+        try:
+            handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+            return await handle.query("estado")
+        except Exception:  # noqa: BLE001 — no existe, o no es de este tenant: 404 desde el endpoint
+            return None
+
+    return consultar_factura
+
+
+def make_signal_factura(temporal_client) -> Callable:
+    async def signal_factura(cliente_id: str, factura_id: str, nombre: str, payload) -> None:
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        await handle.signal(nombre, payload) if payload is not None else await handle.signal(nombre)
+
+    return signal_factura
+
+
+def make_iniciar_anulacion(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    async def iniciar_anulacion(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
+                                nro: int) -> str:
+        # id determinístico por comprobante: dos toques de "anular" sobre la misma factura se enganchan
+        # a la misma anulación en curso, no emiten dos notas de crédito.
+        anulacion_id = f"{cuit}-{tipo_cbte}-{punto_venta}-{nro}"
+        await temporal_client.start_workflow(
+            "AnulacionWorkflow",
+            args=[cliente_id, cuit, tipo_cbte, punto_venta, nro, f"nc-{anulacion_id}"],
+            id=_wf_id_anulacion(cliente_id, anulacion_id),
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return anulacion_id
+
+    return iniciar_anulacion
+
+
+def make_consultar_anulacion(temporal_client) -> Callable:
+    async def consultar_anulacion(cliente_id: str, anulacion_id: str) -> dict | None:
+        try:
+            handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+            return await handle.query("estado")
+        except Exception:  # noqa: BLE001
+            return None
+
+    return consultar_anulacion
+
+
+def make_signal_anulacion(temporal_client) -> Callable:
+    async def signal_anulacion(cliente_id: str, anulacion_id: str, nombre: str, payload) -> None:
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        await handle.signal(nombre)
+
+    return signal_anulacion
 
 
 def _composio_valid_toolkits() -> frozenset[str]:

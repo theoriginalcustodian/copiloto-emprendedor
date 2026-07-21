@@ -88,6 +88,7 @@ class AfipGateway:
         key: str | None = None,
         access_token: str | None = None,
         token_env: str = "AFIP_ACCESS_TOKEN",
+        production: bool = False,
         cliente_factory=None,
     ) -> None:
         token = access_token or os.environ.get(token_env)
@@ -97,13 +98,17 @@ class AfipGateway:
         self._token = token
         self._cert = cert
         self._key = key
+        # `production=False` (homologación) es el DEFAULT deliberado: si alguien olvida setearlo, se
+        # emite contra homologación —donde no pasa nada— y no contra AFIP real por accidente.
+        self._production = bool(production)
         self._cliente_factory = cliente_factory or self._construir_cliente
         self._cliente: ClienteAfip | None = None
 
     def _construir_cliente(self) -> ClienteAfip:
         from afip import Afip  # import diferido: la PC de desarrollo no tiene la lib instalada
 
-        opciones: dict[str, Any] = {"CUIT": int(self._cuit), "access_token": self._token}
+        opciones: dict[str, Any] = {"CUIT": int(self._cuit), "access_token": self._token,
+                                    "production": self._production}
         if self._cert and self._key:
             opciones["cert"] = self._cert
             opciones["key"] = self._key

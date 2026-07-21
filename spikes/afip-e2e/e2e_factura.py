@@ -103,7 +103,10 @@ async def main() -> int:
             id=f"factura-{cliente_id}-{idem}", task_queue=cola)
 
         await wf.signal(FacturaWorkflow.cargar_datos_venta,
-                        {"fecha": date.today().isoformat(), "concepto": 1,
+                        {"fecha": date.today().isoformat(), "concepto": 2,
+                         "fecha_servicio_desde": date.today().isoformat(),
+                         "fecha_servicio_hasta": date.today().isoformat(),
+                         "fecha_vto_pago": date.today().isoformat(),
                          "condicion_venta": "Contado"})
         await wf.signal(FacturaWorkflow.agregar_item,
                         {"descripcion": "Servicio de prueba E2E", "cantidad": "1",

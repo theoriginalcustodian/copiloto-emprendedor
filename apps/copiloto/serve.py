@@ -49,8 +49,11 @@ from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
 from onboarding import GoTrueAdmin
 from reply_store import make_pg_reply_sink
-from web import (create_web_app, make_consultar_onboarding, make_start_onboarding,
+from web import (create_web_app, make_consultar_anulacion, make_consultar_factura,
+                 make_consultar_onboarding, make_iniciar_anulacion, make_iniciar_factura,
+                 make_signal_anulacion, make_signal_factura, make_start_onboarding,
                  make_start_refresh)
+from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_web import create_afip_app
 
@@ -126,6 +129,13 @@ async def _serve() -> None:
         handoff_factory=lambda cid: AfipSecretHandoff(conn_factory, cid, crypto),
         start_onboarding=make_start_onboarding(client),
         consultar_onboarding=make_consultar_onboarding(client),
+        comprobante_store_factory=lambda cid: AfipComprobanteStore(conn_factory, cid),
+        iniciar_factura=make_iniciar_factura(client),
+        consultar_factura=make_consultar_factura(client),
+        signal_factura=make_signal_factura(client),
+        iniciar_anulacion=make_iniciar_anulacion(client),
+        consultar_anulacion=make_consultar_anulacion(client),
+        signal_anulacion=make_signal_anulacion(client),
     )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es

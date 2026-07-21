@@ -593,7 +593,22 @@ def armar_params_pdf(
     tipo = determinar_tipo_comprobante(perfil, borrador.receptor)
     totales = calcular_totales(borrador.items, tipo=tipo)
 
+    # [VERIFICADO 2026-07-21 contra AFIP producción] con concepto 2 o 3 el template EXIGE además
+    # `billing_from`, `billing_to` y `payment_due_date`:
+    #   {"template":"Para concepto de servicios (2 o 3) se requieren: billing_from, billing_to y
+    #    payment_due_date."}
+    # Costó una factura real: el E2E de homologación usaba concepto 1 (productos), así que el hueco
+    # no aparecía. La emisión salió bien y falló el PDF, dejando la factura viva hasta anularla.
+    extra_servicios: dict = {}
+    if borrador.datos_venta.concepto in (Concepto.SERVICIOS, Concepto.PRODUCTOS_Y_SERVICIOS):
+        extra_servicios = {
+            "billing_from": _ddmmyyyy(borrador.datos_venta.fecha_servicio_desde),
+            "billing_to": _ddmmyyyy(borrador.datos_venta.fecha_servicio_hasta),
+            "payment_due_date": _ddmmyyyy(borrador.datos_venta.fecha_vto_pago),
+        }
+
     return {
+        **extra_servicios,
         "voucher_number": numero,
         "sales_point": perfil.punto_venta,
         "issue_date": fecha_emision.strftime("%d/%m/%Y"),
@@ -649,6 +664,11 @@ _ETIQUETAS_RECEPTOR = {
     CondicionIVA.NO_CATEGORIZADO: "Sujeto No Categorizado",
     CondicionIVA.IVA_NO_ALCANZADO: "IVA No Alcanzado",
 }
+
+
+def _ddmmyyyy(valor: date | None) -> str | None:
+    """El template exige DD/MM/YYYY. `None` si no hay fecha (el validador ya exigió las de servicios)."""
+    return valor.strftime("%d/%m/%Y") if valor else None
 
 
 def _etiqueta_condicion_emisor(cond: CondicionEmisor) -> str:
