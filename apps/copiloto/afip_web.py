@@ -225,6 +225,14 @@ def create_afip_app(
         usuario tiene que volver a mirar el resumen. Es deliberado, no un bug.
         """
         await _maybe_async(signal_factura, cliente_id, factura_id, "confirmar", body.token)
+        # TODO(deuda gestionada · 2026-07-21 · propietario: operador · pagar antes de abrir la API a
+        # terceros): este `ok` —y el de los otros cinco endpoints de signal— significa "recibí tu
+        # pedido", NO "salió bien". Un signal puede ser un no-op y la respuesta es idéntica: medido,
+        # `confirmar` con un token inválido devuelve 200 {"ok": true} y no emite nada. El cliente sólo
+        # lo distingue poleando `motivo_codigo`. La app actual lo hace bien, pero el nombre miente y
+        # el próximo consumidor va a leerlo como "confirmado".
+        # Fix propuesto: `202 Accepted` + {"aceptado": true}. Requiere coordinar con el release del
+        # frontend, por eso no se cambió acá. Ver coordinacion/2026-07-21_respuesta_backend-*.md
         return {"ok": True}
 
     @app.post("/afip/facturas/{factura_id}/cancelar")
