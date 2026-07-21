@@ -10,9 +10,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
  * en su gesto de cierre. Sin este mock, ambos tocan el módulo real de expo-router fuera de un
  * `NavigationContainer` montado por el harness de test.
  */
-jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn() },
-}));
+jest.mock('expo-router', () => {
+  const { useEffect } = require('react');
+  return {
+    router: { push: jest.fn(), back: jest.fn() },
+    // Ejecuta el callback, no lo ignora: es lo que reabre la puerta de `empujarUnaVez`. Un
+    // `() => {}` acá dejaría el test verde con el CTA muerto, que es justo el defecto que se cazó
+    // en device.
+    useFocusEffect: (cb: () => void) => useEffect(cb, [cb]),
+  };
+});
 
 /** Partial mock de `../../adapters/almacen` -- mismo patrón que `PantallaSkins.test.tsx`/
  *  `ChatView.test.tsx`: reemplaza el ADAPTADOR, no `AsyncStorage` (que ya está mockeado globalmente en
@@ -81,6 +88,7 @@ import {
 
 import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
 import { PantallaFacturacion } from './PantallaFacturacion';
 
@@ -232,6 +240,34 @@ describe('PantallaFacturacion', () => {
   });
 
   it('el CTA de configurar navega a /ajustes-afip con empujarUnaVez', async () => {
+    jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false }));
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar-boton')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-cta-configurar-boton'));
+
+    expect(router.push).toHaveBeenCalledWith('/ajustes-afip');
+  });
+
+  /**
+   * 🔴 **El test de arriba pasaba verde CON el defecto, y por eso existe éste.**
+   *
+   * Verificado en device el 2026-07-21: en la app real el CTA no hacía nada. La causa es que
+   * `empujarUnaVez` cierra su puerta al lanzar y sólo la reabre la pantalla lanzadora al ganar foco —
+   * el escritorio la cerró al abrir `/facturacion`, así que desde adentro el `push` era un no-op
+   * silencioso. El test de arriba no lo veía porque monta la pantalla con la puerta ABIERTA (el flag
+   * de módulo arranca en `true`): nunca ejercitaba la condición real.
+   *
+   * Éste reproduce la secuencia de verdad — cerrar la puerta primero, como haría el escritorio — y
+   * verifica que Facturación la reabre por su cuenta al montar. El control que aisló la causa en
+   * device fue tocar "Volver" (que usa `router.back`, no la puerta): respondía, así que los toques
+   * llegaban y lo roto no era el botón.
+   */
+  it('el CTA funciona aunque el escritorio haya cerrado la puerta al lanzar esta pantalla', async () => {
+    // Simula exactamente lo que pasa en la app: el escritorio lanzó /facturacion y cerró la puerta.
+    empujarUnaVez('/facturacion');
+    jest.mocked(router.push).mockClear();
+
     jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false }));
 
     await montar();

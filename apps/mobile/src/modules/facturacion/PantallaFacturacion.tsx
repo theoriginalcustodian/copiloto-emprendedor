@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -21,7 +22,7 @@ import {
   type ReceptorInput,
 } from '@copiloto/core';
 
-import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
+import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -91,6 +92,29 @@ type EstadoGate =
  * copy -- porque, para el usuario, el resultado es el mismo ("todavía no configuraste tu facturación").
  */
 export function PantallaFacturacion() {
+
+  /**
+   * 🔴 **Esta pantalla también es LANZADORA, y sin esto su único CTA no hace nada.**
+   *
+   * `empujarUnaVez` mantiene la invariante "un solo glass a la vez" con una puerta que se cierra al
+   * lanzar y que sólo reabre la pantalla lanzadora al recuperar el foco. El escritorio cerró la puerta
+   * cuando lanzó `/facturacion`; si Facturación no la reabre, su botón "Configurar facturación" es un
+   * no-op silencioso: el toque llega, `empujarUnaVez` ve la puerta cerrada y vuelve sin navegar.
+   *
+   * **Verificado en device el 2026-07-21**, y el control fue lo que lo aisló: "Volver" (que usa
+   * `router.back`, no la puerta) SÍ respondía en la misma pantalla, así que los toques llegaban bien y
+   * lo roto no era el botón sino la puerta. Sin ese control, el sospechoso obvio habría sido el
+   * `Pressable` o el layout.
+   *
+   * La regla general, que vale para cualquier pantalla futura: **si una pantalla lanza otra, tiene que
+   * reabrir la puerta al ganar foco** — no alcanza con que lo haga el escritorio. Es exactamente lo
+   * que hace `app/ajustes.tsx`, que también es destino y lanzadora a la vez.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      reabrirNavegacion();
+    }, []),
+  );
   const tema = useTema();
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'resolviendo_cuit' });
   const [facturaId, setFacturaId] = useState<string | null>(null);
