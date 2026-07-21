@@ -18,8 +18,11 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// 3. Sin la búsqueda jerárquica, Metro no puede levantar una copia distinta de React desde un
-//    `node_modules` anidado. Dos Reacts en el bundle rompen los hooks con un error indescifrable.
-config.resolver.disableHierarchicalLookup = true;
+// 3. `disableHierarchicalLookup` se deja en el DEFAULT de expo/metro-config (false). Ponerlo en
+//    `true` —como estaba— rompía la resolución de un módulo del core init de RN con esta estructura
+//    de node_modules: el bundle petaba en `setUpDefaultReactNativeEnvironment` con
+//    "Cannot read property 'default' of undefined" + "Global was not installed", ANTES de correr una
+//    sola línea de la app. Lo diagnosticó `expo-doctor` ("disableHierarchicalLookup mismatch,
+//    expected false"). El default de Expo ya maneja bien el monorepo vía `nodeModulesPaths`.
 
 module.exports = config;
