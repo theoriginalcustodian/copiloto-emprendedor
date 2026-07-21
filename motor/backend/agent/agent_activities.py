@@ -93,15 +93,45 @@ async def transcribe_voice(payload: dict) -> dict:
         return {"text": "", "error": str(exc)}
 
 
+def componer_system_extra(bloque_estable: str, contexto_del_turno: str) -> str:
+    """Une el bloque ESTABLE del tenant (perfil) con el VARIABLE (memoria), en ESE orden.
+
+    El orden no es estético: el perfil cambia una vez por mes y la memoria cambia en cada turno. Con lo
+    estable primero, el prefijo del prompt se mantiene cacheable; invertido se invalida el prompt-cache
+    en cada turno. No rompe nada visible — sólo se nota en la factura del LLM. Es la misma razón por la
+    que el recall corre 1×/turno y no por iteración."""
+    partes = [p for p in (bloque_estable or "", contexto_del_turno or "") if p.strip()]
+    return "\n\n".join(partes)
+
+
 @activity.defn
 async def call_llm_tools(payload: dict) -> dict:
-    """payload = {domain, messages, tool_choice?, system_extra?}. Tool-calling nativo para el motor ReAct.
-    Antepone el Context Block de memoria (si el dominio tiene memory_provider) al system via system_extra
-    (lo arma el workflow 1x/turno). Devuelve {'tool_calls','content','finish_reason','model','failed_over'}."""
+    """payload = {domain, messages, tool_choice?, system_extra?, cliente_id?}. Tool-calling nativo ReAct.
+
+    Antepone al system: (1) el bloque ESTABLE del tenant vía `perfil_provider` del dominio, y (2) el
+    Context Block de memoria que arma el workflow 1×/turno (`system_extra`). En ese orden — ver
+    `componer_system_extra`.
+
+    Por qué el perfil se lee ACÁ y no en el workflow: la sesión es PERMANENTE (continue-as-new), y todo
+    lo que se guarde en `config` o en el estado del workflow SOBREVIVE al CAN — un perfil cacheado ahí
+    quedaría congelado para siempre y el usuario cambiaría sus ajustes sin efecto, sin error y sin log.
+    Leerlo en la activity además NO agrega un comando nuevo a la historia, así que no rompe el replay de
+    las sesiones en vuelo (que, siendo permanentes, son todas).
+
+    Devuelve {'tool_calls','content','finish_reason','model','failed_over'}."""
     dom = get_domain(payload["domain"])
     provider = dom["llm_provider"]
     system = dom["system_prompt"]
-    extra = payload.get("system_extra")
+    extra = payload.get("system_extra") or ""
+    perfil_provider = dom.get("perfil_provider")
+    cliente_id = payload.get("cliente_id")
+    if perfil_provider is not None and cliente_id:
+        try:
+            bloque = await asyncio.to_thread(perfil_provider, cliente_id)
+        except Exception as exc:  # noqa: BLE001 -- el perfil es contexto, no correctitud: nunca romper el turno
+            activity.logger.warning("perfil del negocio no disponible (cliente=%s): %s", cliente_id, exc)
+            bloque = ""
+        extra = componer_system_extra(bloque or "", extra)
     if extra:
         system = system + "\n\n" + extra
     tools = dom.get("tool_schemas") or []

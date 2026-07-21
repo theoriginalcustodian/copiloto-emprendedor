@@ -56,6 +56,15 @@ from web import (create_web_app, make_consultar_anulacion, make_consultar_factur
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_web import create_afip_app
+from perfil_negocio_store import PerfilNegocioStore
+from presupuesto_doc import generar_doc as generar_doc_presupuesto
+from presupuesto_doc import registrar_en_sheet
+from presupuesto_store import PresupuestoStore
+from presupuestos_web import create_presupuestos_app
+
+# Sheet de trazabilidad de presupuestos, por instancia. Vacío = no se registra la fila (el Doc y el
+# presupuesto se crean igual). Parametrizado y no hardcodeado: el id del spreadsheet es del usuario.
+PRESUPUESTOS_SHEET_ID = os.environ.get("COPILOTO_PRESUPUESTOS_SHEET_ID", "")
 
 # Todos con default -> el módulo importa sin reventar aunque el proceso no haya seteado nada
 # todavía (los env realmente OBLIGATORIOS -- DATABASE_URL, SUPABASE_JWT_SECRET, COPILOTO_FERNET_KEY,
@@ -141,6 +150,33 @@ async def _serve() -> None:
         composio_gateway=composio_gateway,
     )
 
+    # Presupuestos + perfil del negocio. `generar_doc` corre en threadpool desde el endpoint (habla con
+    # Google por HTTP sync) y NUNCA hace fallar la creación: el presupuesto vive en Postgres, el Doc y
+    # la fila del Sheet son proyecciones.
+    def _generar_doc_y_fila(cid: str, presupuesto: dict) -> dict:
+        perfil = PerfilNegocioStore(conn_factory, cid).get()
+        res = generar_doc_presupuesto(composio_gateway, user_id=str(cid), presupuesto=presupuesto,
+                                      perfil_negocio=perfil)
+        salida = res.como_dict()
+        if res.doc_id and PRESUPUESTOS_SHEET_ID:
+            salida["sheet_fila"] = registrar_en_sheet(
+                composio_gateway, user_id=str(cid), spreadsheet_id=PRESUPUESTOS_SHEET_ID,
+                presupuesto=presupuesto, doc_link=res.doc_link)
+        return salida
+
+    presupuestos_app = create_presupuestos_app(
+        require_tenant=require_tenant,
+        perfil_negocio_store_factory=lambda cid: PerfilNegocioStore(conn_factory, cid),
+        presupuesto_store_factory=lambda cid: PresupuestoStore(conn_factory, cid),
+        # El CUIT del tenant sale de su credencial AFIP (única fuente), igual que en `/afip/estado`.
+        afip_cred_store_factory=lambda cid: AfipCredentialStore(conn_factory, cid, crypto),
+        # Las MISMAS fábricas que usa `/afip/facturas`: el botón Facturar arma un borrador con el
+        # flujo que ya existe, y el gate de confirmación sigue siendo el único lugar donde se emite.
+        iniciar_factura=make_iniciar_factura(client),
+        signal_factura=make_signal_factura(client),
+        generar_doc=_generar_doc_y_fila,
+    )
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -156,7 +192,7 @@ async def _serve() -> None:
     app = create_web_app(
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
-        afip_app=afip_app, gotrue=gotrue,
+        afip_app=afip_app, presupuestos_app=presupuestos_app, gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción

@@ -382,7 +382,11 @@ class ConversationWorkflow:
             closing = await workflow.execute_activity(
                 "call_llm_tools",
                 {"domain": domain, "messages": messages, "tool_choice": "none",
-                 "system_extra": self._state.get("react_mem_ctx", "")},
+                 "system_extra": self._state.get("react_mem_ctx", ""),
+                 # `cliente_id` para que la activity cargue el perfil del negocio del tenant. Va en el
+                 # PAYLOAD y no como comando nuevo: agregar un execute_activity acá rompería el replay
+                 # de las sesiones en vuelo, que al ser permanentes son todas.
+                 "cliente_id": cliente_id},
                 start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
             await self._react_finish(channel, channel_ref, cliente_id,
                                      closing.get("content") or "Listo, lo cancelé.", None)
@@ -440,7 +444,11 @@ class ConversationWorkflow:
             resp = await workflow.execute_activity(
                 "call_llm_tools",
                 {"domain": domain, "messages": messages, "tool_choice": "auto",
-                 "system_extra": self._state.get("react_mem_ctx", "")},
+                 "system_extra": self._state.get("react_mem_ctx", ""),
+                 # `cliente_id` para que la activity cargue el perfil del negocio del tenant. Va en el
+                 # PAYLOAD y no como comando nuevo: agregar un execute_activity acá rompería el replay
+                 # de las sesiones en vuelo, que al ser permanentes son todas.
+                 "cliente_id": cliente_id},
                 start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
             tool_calls = resp.get("tool_calls") or []
             if not tool_calls:                                   # el modelo cerró con texto

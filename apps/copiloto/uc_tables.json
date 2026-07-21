@@ -57,6 +57,44 @@
     "expira_at timestamptz NOT NULL",
     "created_at timestamptz DEFAULT now()"
   ],
+  "copiloto_perfil_negocio": [
+    "que_vende text NOT NULL DEFAULT ''",
+    "a_quien text NOT NULL DEFAULT 'ambos'",
+    "nombre_comercial text NOT NULL DEFAULT ''",
+    "horario_atencion text NOT NULL DEFAULT ''",
+    "formalidad text NOT NULL DEFAULT 'cercano'",
+    "largo_respuesta text NOT NULL DEFAULT 'breve'",
+    "nombre_copiloto text NOT NULL DEFAULT ''",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_presupuestos": [
+    "numero bigint NOT NULL",
+    "fecha timestamptz DEFAULT now()",
+    "concepto text NOT NULL DEFAULT ''",
+    "receptor_nombre text NOT NULL DEFAULT ''",
+    "receptor_doc_tipo integer",
+    "receptor_doc_nro text",
+    "receptor_condicion_iva integer",
+    "receptor_domicilio text",
+    "receptor_contacto text",
+    "total numeric NOT NULL DEFAULT 0",
+    "moneda text NOT NULL DEFAULT 'ARS'",
+    "doc_id text",
+    "doc_link text",
+    "sheet_fila text",
+    "reemplaza_a bigint",
+    "factura_id text",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_presupuesto_items": [
+    "presupuesto_id bigint NOT NULL",
+    "orden integer NOT NULL DEFAULT 0",
+    "descripcion text NOT NULL DEFAULT ''",
+    "cantidad numeric NOT NULL DEFAULT 1",
+    "precio_unitario numeric NOT NULL DEFAULT 0",
+    "codigo text",
+    "created_at timestamptz DEFAULT now()"
+  ],
   "afip_comprobantes": [
     "cuit text NOT NULL",
     "tipo_cbte integer NOT NULL",

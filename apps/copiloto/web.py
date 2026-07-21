@@ -369,6 +369,7 @@ class RefreshIn(BaseModel):
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    afip_app: FastAPI | None = None,
+                   presupuestos_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -642,6 +643,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # su propia barrera `Depends(require_tenant)`.
     if afip_app is not None:
         app.include_router(afip_app.router)
+    # `/presupuestos/*` y `/perfil-negocio` (presupuestos + perfil del negocio y soul del copiloto).
+    # Mismo criterio que `afip_app`: opcional para no romper los tests que arman el front-door sin
+    # esto, y sus rutas ya traen su propia barrera `Depends(require_tenant)`.
+    if presupuestos_app is not None:
+        app.include_router(presupuestos_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).

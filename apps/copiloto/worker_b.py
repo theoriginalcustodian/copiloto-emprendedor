@@ -39,6 +39,8 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from perfil_negocio_prompt import bloque_de_contexto
+from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
@@ -77,6 +79,21 @@ def build_llm() -> LlmProvider:
     return LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
                        api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
                        quantizations=())
+
+
+def _perfil_provider(conn_factory: Callable) -> Callable:
+    """`(cliente_id) -> str` con el bloque de contexto del negocio, para el boundary `perfil_provider`.
+
+    Corre DENTRO de una activity (nunca en el workflow): toca la base, que es I/O no determinístico.
+    Devuelve `""` ante cualquier fallo — el perfil es contexto, no correctitud, y un problema de DB no
+    puede dejar al emprendedor sin poder chatear."""
+    def proveer(cliente_id: str) -> str:
+        try:
+            return bloque_de_contexto(PerfilNegocioStore(conn_factory, cliente_id).get())
+        except Exception:  # noqa: BLE001
+            return ""
+
+    return proveer
 
 
 def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
@@ -139,7 +156,14 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,
                     engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
-                    tool_executor=tool_executor)
+                    tool_executor=tool_executor,
+                    # Perfil del negocio + soul: el bloque ESTABLE que se antepone al system prompt en
+                    # cada llamada al LLM. Se lee por llamada y NO se cachea, a propósito: la sesión es
+                    # permanente vía continue-as-new, así que cualquier cosa cacheada del lado del
+                    # workflow quedaría congelada para siempre y los cambios de Ajustes no tendrían
+                    # efecto nunca. Un tenant sin perfil devuelve "" → el prompt queda byte a byte
+                    # igual que antes de que este frente existiera.
+                    perfil_provider=_perfil_provider(conn_factory))
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))
