@@ -111,16 +111,32 @@ registrado como deuda deliberada en `COORDINACION.md`, con su mitigación: ningu
 coordinacion/                          (gitignored · ruta absoluta fija · buzón canónico único)
 ├── COORDINACION.md                    reglas del juego — se lee al arrancar y antes de cada commit
 ├── PLAN.md                            backlog priorizado + contratos de junta · dueño: planificación
-├── abierto/                           lo pendiente. El estado ES un `ls` de acá.
+├── abierto/                           lo pendiente. PLANO SIEMPRE. El estado ES un `ls` de acá.
 │   └── 2026-07-21_contrato_desconexion-de-apps.md
-└── cerrado/                           archivo histórico
-    └── …
+└── cerrado/                           histórico, particionado por día
+    ├── 2026-07-20/
+    └── 2026-07-21/
 ```
+
+### 5.0 Por qué `abierto/` es plano y `cerrado/` es por día
+
+Son dos problemas distintos y merecen tratamiento distinto.
+
+`abierto/` es lo pendiente: por definición son pocos. Si algún día tuviera cientos de archivos, el
+problema no sería la carpeta sino que nadie está cerrando nada — y eso **tiene que verse**.
+Particionarlo por día lo escondería: habría que abrir siete carpetas para saber qué falta, y se
+pierde la propiedad que justifica todo el diseño (*el estado es un `ls`*). Efecto secundario
+deseable: un mensaje del martes que sigue en `abierto/` el viernes grita, sin ningún instrumento.
+
+`cerrado/` es donde están los miles de archivos, y ahí sí se parte por día. La fecha de archivo es
+**la del propio mensaje**, que ya viaja en el nombre (`2026-07-21_pedido_…`), así que al cerrar no hay
+nada que decidir: `2026-07-21_*` va a `cerrado/2026-07-21/`. Los crones sólo miran `abierto/`, de modo
+que el histórico crece sin costo de polling.
 
 ### 5.1 Estado por ubicación
 
-Un mensaje pendiente vive en `abierto/`. **Quien lo resuelve lo mueve a `cerrado/`.** Saber qué falta
-es `ls abierto/`.
+Un mensaje pendiente vive en `abierto/`. **Quien lo resuelve lo mueve a `cerrado/<fecha-del-mensaje>/`.**
+Saber qué falta es `ls abierto/`.
 
 **Por qué así y no un tablero:** un tablero que alguien debe acordarse de actualizar se desincroniza,
 y entonces **miente** — es exactamente el instrumento que confirma en vez de verificar. Un `mv` no
