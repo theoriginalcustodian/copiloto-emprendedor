@@ -42,6 +42,11 @@ export function PantallaApps() {
 
   return (
     <ScrollView
+      // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
+      // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
+      // que sobra se recorta (overflow:hidden del vidrio) sin poder desplazarse. Verificado en
+      // device: la lista de integraciones quedaba cortada en MercadoPago y el gesto no hacía nada.
+      style={styles.scroll}
       testID="pantalla-apps"
       contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.sm }]}
     >
@@ -72,6 +77,7 @@ export function PantallaApps() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   contenido: { flexGrow: 1 },
   fila: { flexDirection: 'row', alignItems: 'center' },
   textos: { flexShrink: 1 },

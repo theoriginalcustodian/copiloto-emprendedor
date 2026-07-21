@@ -30,7 +30,8 @@
  * mientras todo el resto de la app se cierra deslizando; el usuario lo reportó como roto, con razón.
  *
  * El gesto es el MISMO que `MarcoGlass` (mismo `onBegin`, mismo criterio flick-vs-arrastre, misma
- * física, ahora en constantes compartidas de `canonGlass`) y vive SÓLO en la zona del handle, no
+ * física — ver por qué esas constantes son locales y no compartidas) y vive SÓLO en la zona del
+ * handle, no
  * sobre todo el vidrio: si cubriera la pantalla entera competiría con el `ScrollView` del contenido
  * y las listas largas dejarían de desplazarse.
  *
@@ -62,17 +63,24 @@ import {
   ALTO_HANDLE,
   BARRA_HANDLE,
   CONFIG_SNAP,
-  CONFIG_SNAP_GESTO,
   NIVEL_CANONICO,
-  UMBRAL_CIERRE,
   UMBRAL_TAP,
-  VELOCIDAD_FLICK,
 } from '../../theme/glass/canonGlass';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
+
+// 🔴 Locales A PROPÓSITO, no duplicación por descuido. Se intentó centralizarlas en `canonGlass` y
+// la app reventó en device con `ReferenceError: Property 'VELOCIDAD_FLICK' doesn't exist`: estos
+// valores se leen DENTRO de un worklet de Reanimated, que corre en el runtime de UI y NO resuelve
+// bindings importados de otro módulo como sí lo hace el de JS. documed las tiene locales en cada
+// archivo por exactamente esta razón. Si algún día se comparten, tiene que ser con valores que el
+// plugin de Babel inlinee, no con un `import`.
+const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
+const VELOCIDAD_FLICK = 500;
+const UMBRAL_CIERRE = 140;
 
 export interface CapaFuncionProps extends PropsWithChildren {
   /** El nombre de la función, tal como figura en su tile de entrada. */

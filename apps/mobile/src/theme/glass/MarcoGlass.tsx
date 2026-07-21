@@ -45,16 +45,16 @@ import { CristalVidrio } from './CristalVidrio';
 import { GlassIcon } from './GlassIcon';
 import type { NombreIconoGlass } from './icons';
 import { PRESS_FADE, pressableStyle } from './presion';
-import {
-  ALTO_HANDLE,
-  BARRA_HANDLE,
-  CONFIG_SNAP,
-  CONFIG_SNAP_GESTO,
-  NIVEL_CANONICO,
-  UMBRAL_CIERRE,
-  UMBRAL_TAP,
-  VELOCIDAD_FLICK,
-} from './canonGlass';
+import { ALTO_HANDLE, BARRA_HANDLE, CONFIG_SNAP, NIVEL_CANONICO, UMBRAL_TAP } from './canonGlass';
+
+// 🔴 Locales A PROPÓSITO, no duplicación por descuido. Se intentó centralizarlas en
+// `canonGlass` y la app reventó en device con `ReferenceError: Property 'VELOCIDAD_FLICK'
+// doesn't exist`: se leen DENTRO de un worklet de Reanimated, que corre en el runtime de UI
+// y no resuelve bindings importados de otro módulo como lo hace el de JS. documed las tiene
+// locales en cada archivo por la misma razón.
+const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
+const VELOCIDAD_FLICK = 500;
+const UMBRAL_CIERRE = 140;
 
 /** Cuánto hay que arrastrar hacia abajo para que la función se cierre. */
 /**

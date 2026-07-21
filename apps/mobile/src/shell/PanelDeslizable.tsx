@@ -34,7 +34,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useTema } from '../theme/ThemeProvider';
-import { CONFIG_SNAP_GESTO, VELOCIDAD_FLICK } from '../theme/glass/canonGlass';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
 
@@ -81,6 +80,14 @@ const CONFIG_SNAP = { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) };
  * sensación de tiempo no cambia — lo que cambia es que el arranque **empalma** con el dedo en vez de
  * cortarlo. Ver `swmansion-rn-gestures/continuous-gestures.md` §"Fling with Decay".
  */
+// 🔴 Local A PROPÓSITO, no duplicación por descuido. Se intentó centralizarlas en
+// `canonGlass` y la app reventó en device con `ReferenceError: Property 'VELOCIDAD_FLICK'
+// doesn't exist`: estos valores se leen DENTRO de un worklet de Reanimated, que corre en el
+// runtime de UI y no resuelve bindings importados de otro módulo como lo haría el de JS.
+// documed las tiene locales en cada archivo por la misma razón. Si algún día se comparten,
+// tiene que ser con valores inlineados por el plugin de Babel, no con un import.
+const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
+const VELOCIDAD_FLICK = 500;
 const UMBRAL_TAP = 5;
 /**
  * Velocidad (px/s) a partir de la cual el gesto se considera un **flick**: un lanzamiento con

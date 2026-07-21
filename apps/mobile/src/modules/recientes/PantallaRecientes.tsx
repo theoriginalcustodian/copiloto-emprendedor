@@ -217,6 +217,11 @@ export function PantallaRecientes() {
 
         {estado === 'ok' && items.length > 0 && (
           <FlatList
+      // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
+      // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
+      // que sobra se recorta (overflow:hidden del vidrio) sin poder desplazarse. Verificado en
+      // device: la lista de integraciones quedaba cortada en MercadoPago y el gesto no hacía nada.
+      style={styles.scroll}
             testID="pantalla-recientes-lista"
             data={items}
             keyExtractor={(item) => item.entrada_id}
@@ -264,6 +269,7 @@ export function PantallaRecientes() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   contenedor: { flex: 1 },
   buscador: { borderWidth: 1 },
   aviso: { borderLeftWidth: 3 },

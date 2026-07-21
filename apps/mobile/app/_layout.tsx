@@ -21,7 +21,6 @@ import {
   SpaceGrotesk_700Bold,
   useFonts,
 } from '@expo-google-fonts/space-grotesk';
-import { NavigationBar } from 'expo-navigation-bar';
 import { Stack, usePathname } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -33,6 +32,35 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import '../src/adapters/plataforma';
 import { PantallaLogin, SessionProvider, useSession } from '../src/modules/auth';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
+
+/**
+ * `<NavigationBar hidden />` de `expo-navigation-bar` — oculta la barra de botones de Android
+ * (inmersivo), igual que la app canónica (`documed-front/apps/mobile/app/_layout.tsx`): la pantalla
+ * única de vidrio no debe compartir el borde inferior con una franja opaca del sistema. El
+ * componente es declarativo, se re-aplica solo en cada render, y en la era edge-to-edge el ocultado
+ * trae el comportamiento transient-por-swipe del sistema — un swipe desde el borde la revela un
+ * instante y se re-oculta sola, que es el auto-ocultado buscado.
+ *
+ * 🔴 **Se resuelve en runtime, no con un `import` directo, y eso NO es paranoia.** El módulo es
+ * NATIVO: existe sólo si el APK instalado se compiló con él. El APK actual del device es anterior a
+ * que `expo-navigation-bar` entrara al proyecto, así que el import estático tiraba
+ * `ReferenceError: Property 'NavigationBar' doesn't exist` **durante el render del layout raíz** —
+ * y con el layout raíz caído la app quedaba clavada en el splash, sin login ni chat. Un defecto
+ * cosmético tumbando la app entera.
+ *
+ * Con esto, la barra se oculta en cuanto haya un build que traiga el módulo, y mientras tanto la app
+ * funciona con la barra visible. Cuando se rehaga el APK, esto empieza a andar solo: nada que tocar.
+ */
+function BarraNavegacionOculta() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- ver el docstring: nativo opcional
+    const mod = require('expo-navigation-bar');
+    const Barra = mod?.NavigationBar;
+    return Barra ? <Barra hidden /> : null;
+  } catch {
+    return null; // el APK no trae el módulo nativo todavía
+  }
+}
 
 function Splash() {
   const tema = useTema();
@@ -74,18 +102,7 @@ export default function LayoutRaiz() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        {/* Oculta la barra de botones de Android (inmersivo). Portado TAL CUAL de la app canónica
-            (`documed-front/apps/mobile/app/_layout.tsx`): la pantalla única de vidrio no debe
-            compartir el borde inferior con la nav bar del sistema — con ella visible, el glass
-            termina contra una franja opaca que no es parte de la app.
-
-            El componente DECLARATIVO se re-aplica solo en cada render y es no-op en iOS/web (el
-            módulo nativo devuelve `null`). `expo-navigation-bar` v57 ya no expone
-            `setBehaviorAsync`: en la era edge-to-edge, ocultar usa el comportamiento
-            transient-por-swipe del sistema — un swipe desde el borde la revela un instante y se
-            **re-oculta sola**, que es exactamente el "auto-ocultarse" pedido. Requiere el módulo
-            nativo en el APK. */}
-        <NavigationBar hidden />
+        <BarraNavegacionOculta />
         <ThemeProvider>
           {/* Las variantes de la Medición 1 se montan como capa dentro de `index.tsx`, sin router:
               la navegación NO es variable de ese experimento — el defecto que se investiga ocurre
