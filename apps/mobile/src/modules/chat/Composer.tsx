@@ -72,9 +72,12 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
 
 /**
  * Composer de texto — fork mobile del `Composer.tsx` de DocuMed, sólo la parte texto: sin mic ni
- * botones de acción (esas se piden por lenguaje natural en el mensaje, o llegan por voz cuando F6
- * porte el grabador). Vacío/sólo-espacios no envía; `sendStatus==='sending'` bloquea un segundo
- * envío mientras el primero está en vuelo.
+ * botones de acción propios (esas se piden por lenguaje natural en el mensaje). El dictado por voz
+ * (F6) SÍ existe ya, pero no vive acá adentro: `BotonVoz` flota sobre `ListaMensajes` como overlay
+ * independiente (mismo layout que documed) porque el ciclo de vida de una grabación (HUD de
+ * `GlassGrabacionCopiloto`) no tiene nada que ver con el de un mensaje de texto -- ver `ChatView.tsx`.
+ * Vacío/sólo-espacios no envía; `sendStatus==='sending'` bloquea un segundo envío mientras el primero
+ * está en vuelo.
  */
 export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false }: ComposerProps) {
   const tema = useTema();

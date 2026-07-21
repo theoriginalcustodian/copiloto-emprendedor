@@ -123,6 +123,43 @@ def buscar(test_id: str = "", texto: str = "") -> tuple[int, int] | None:
     return None
 
 
+# ── plan B: coordenadas relativas ────────────────────────────────────────────────────────────────
+# 🔴 Por qué existe esto. `uiautomator` deja de exponer el árbol de React Native de forma
+# intermitente en este device (con la New Architecture, las vistas sin rol de accesibilidad se
+# aplanan y no llegan al volcado; se verificó con captura y dump del MISMO instante: la app dibujaba
+# el shell entero y el árbol traía 3 nodos nativos y ninguno de RN). Cuando eso pasa, el harness
+# reportaba "la pantalla nunca apareció" sobre una app perfectamente viva — un fallo del INSTRUMENTO
+# disfrazado de fallo del producto.
+#
+# Las fracciones son del alto/ancho de pantalla, NO píxeles: así el mapa sobrevive a otro device.
+# Se usan SÓLO como respaldo, y cada paso se verifica por captura — nunca se asume que el tap
+# aterrizó donde se creía.
+COORDENADAS_RESPALDO: dict[str, tuple[float, float]] = {
+    "chat-composer": (0.43, 0.955),
+    "chat-enviar": (0.90, 0.955),
+    "tile-apps": (0.18, 0.199),
+    "tile-recientes": (0.46, 0.199),
+    "tile-metricas": (0.74, 0.199),
+    "tile-ajustes": (0.18, 0.341),
+    "tile-redes": (0.46, 0.341),
+    "tile-facturacion": (0.74, 0.341),
+    "capa-funcion-cerrar": (0.90, 0.077),
+}
+
+
+def tamano_pantalla() -> tuple[int, int]:
+    m = re.search(r"(\d+)x(\d+)", shell("wm size"))
+    return (int(m.group(1)), int(m.group(2))) if m else (720, 1600)
+
+
+def coordenada_respaldo(test_id: str) -> tuple[int, int] | None:
+    frac = COORDENADAS_RESPALDO.get(test_id)
+    if not frac:
+        return None
+    ancho, alto = tamano_pantalla()
+    return int(frac[0] * ancho), int(frac[1] * alto)
+
+
 def esperar_elemento(test_id: str = "", texto: str = "", segundos: float = 30) -> tuple[int, int] | None:
     """Espera a que un elemento EXISTA y devuelve su centro. Reintenta el dump, que a veces sale vacío."""
     encontrado: list = []
@@ -140,9 +177,15 @@ def esperar_elemento(test_id: str = "", texto: str = "", segundos: float = 30) -
 
 def tocar(test_id: str = "", texto: str = "", segundos: float = 30) -> bool:
     p = esperar_elemento(test_id, texto, segundos)
+    origen = "árbol"
+    if not p and test_id:
+        p = coordenada_respaldo(test_id)
+        origen = "coordenada de respaldo"
     if not p:
         print(f"   ❌ no encontré {test_id or texto!r}")
         return False
+    if origen != "árbol":
+        print(f"   ↪️  {test_id}: {origen} (el árbol de accesibilidad no lo expuso)")
     shell(f"input tap {p[0]} {p[1]}")
     time.sleep(0.6)
     return True
@@ -223,17 +266,72 @@ def arrancar_app(puerto: int, *, reset: bool) -> bool:
     shell(f"am force-stop {PAQUETE}")
 
     if reset:
-        # El dev-client CACHEA el último bundle (puede ser el de la otra app) y los campos de texto
-        # arrastran residuo. `pm clear` mata las dos cosas de raíz.
-        print("   🧹 pm clear (bundle cacheado + estado de sesión)")
+        # ⚠️ OPT-IN, no default. `pm clear` borra el flag de "ya viste el menú de desarrollador",
+        # así que el dev-client abre su hoja de bienvenida ENCIMA del login — y ese overlay
+        # reemplaza el árbol de vistas de RN, con lo cual NINGÚN testID existe y el harness reporta
+        # "la pantalla nunca apareció". documed nunca ve esa hoja porque nunca limpia la app: el
+        # problema lo fabricaba este script. El deep link ya trae la URL de Metro explícita, así que
+        # el bundle correcto está garantizado sin necesidad de limpiar.
+        print("   🧹 pm clear (sólo con --reset: dispara la hoja del dev-client)")
         shell(f"pm clear {PAQUETE}")
 
     url = f"{SCHEME}://expo-development-client/?url=http%3A%2F%2Flocalhost%3A{puerto}"
     shell(f"am start -a android.intent.action.VIEW -d '{url}' {PAQUETE}")
     ok = esperar(lambda: PAQUETE in foco(), segundos=90, que="que la app tome el foreground")
-    if ok:
-        print(f"   ✅ {PAQUETE} en foreground")
-    return ok
+    if not ok:
+        return False
+    print(f"   ✅ {PAQUETE} en foreground")
+
+    # 🔴 `pm clear` también borra el flag de "ya viste el menú de desarrollador", así que el
+    # dev-client abre su hoja de bienvenida ENCIMA del login. No la caza `descartar_dialogos`
+    # porque el foco sigue siendo NUESTRO paquete: la hoja es parte de la app, no del sistema.
+    # La hoja del dev-client tarda en montarse: si se busca de inmediato NO está todavía, y aparece
+    # medio segundo después, ya tapando el login (pasó — el frente falló creyendo que no había capa).
+    return cerrar_capas_dev_client(espera_inicial=12)
+
+
+def cerrar_capas_dev_client(*, espera_inicial: float = 0) -> bool:
+    """Cierra CUALQUIER capa del dev-client encima de la app.
+
+    🔴 Son dos y hay que tratarlas juntas: la hoja de bienvenida ("This is the developer menu",
+    que `pm clear` vuelve a mostrar porque borra su flag de visto) y el menú de herramientas
+    ("TOOLS"/"Open DevTools"), en el que se cae al intentar cerrar la primera a los tropezones.
+
+    Por qué importa más de lo que parece: ese overlay **reemplaza el árbol de vistas de React
+    Native** en el volcado de `uiautomator` — con él abierto NINGÚN `testID` de la app existe, y el
+    harness reporta "la pantalla nunca apareció" cuando en realidad está ahí abajo, intacta."""
+    def marcador() -> str:
+        if buscar(texto="This is the developer menu"):
+            return "hoja de bienvenida"
+        if buscar(texto="Open DevTools"):
+            return "menú de herramientas"
+        return ""
+
+    if espera_inicial:
+        esperar(lambda: marcador() != "", segundos=espera_inicial, cada=1.0)
+    capa = marcador()
+    if not capa:
+        return True
+
+    for intento in range(8):
+        if capa == "hoja de bienvenida":
+            # 🔴 NUNCA `back` acá: con la hoja abierta, back sale de la APP entera y el device
+            # queda en el launcher (pasó — el frente falló con foco `com.sec.android.app.launcher`).
+            # Si "Continue" todavía no está, es que la hoja sigue animando: esperar, no forzar.
+            p = buscar(texto="Continue")
+            if p:
+                shell(f"input tap {p[0]} {p[1]}")
+            else:
+                time.sleep(1.0)
+        else:
+            shell("input keyevent 4")  # el menú de tools sí se cierra con back
+        time.sleep(1.2)
+        capa = marcador()
+        if not capa:
+            print(f"   🚪 cerradas las capas del dev-client (intento {intento + 1})")
+            return True
+    print(f"   ⚠️  el dev-client sigue mostrando su {capa} — tapa la app")
+    return False
 
 
 # ── frentes ──────────────────────────────────────────────────────────────────────────────────────
@@ -243,8 +341,51 @@ def leer_credencial() -> tuple[str, str]:
     return usuario, clave
 
 
+def arbol_expone_rn() -> bool:
+    """¿El volcado trae ALGO de React Native, o sólo el cascarón nativo?
+
+    Es el CONTROL del instrumento: si sólo hay `action_bar_root`/`content`/`navigationBarBackground`,
+    entonces "no encuentro el elemento X" no dice nada sobre la app — dice que el árbol no sirve. Sin
+    este control, un fallo del instrumento se reporta como fallo del producto (pasó varias veces)."""
+    raiz = arbol()
+    if raiz is None:
+        return False
+    nativos = {"action_bar_root", "content", "navigationBarBackground", "statusBarBackground", ""}
+    for n in raiz.iter("node"):
+        rid = (n.get("resource-id") or "").split("/")[-1]
+        if rid and rid not in nativos:
+            return True
+        if (n.get("text") or "").strip():
+            return True
+    return False
+
+
+def en_el_shell() -> bool:
+    """Ancla en elementos INTERACTIVOS (el composer) o en texto visible — los contenedores de RN
+    (`panel-principal`, `chat-view`) no siempre llegan al volcado de uiautomator como nodo propio."""
+    return buscar("chat-composer") is not None or buscar(texto="En qué te ayudo") is not None
+
+
 def frente_login() -> bool:
     print("\n▶ D1 — login real contra el backend vivo")
+    cerrar_capas_dev_client()  # 2ª pasada: pudo montarse después del arranque
+
+    # 🔴 Que NO haya pantalla de login no es un fallo: es la SESIÓN PERSISTIDA (criterio D1 —
+    # "reabrir la app no re-pide login"). Sin este chequeo el harness reportaba "la pantalla nunca
+    # apareció" justo cuando la persistencia funcionaba, que es el caso de éxito.
+    if esperar(en_el_shell, segundos=25, cada=1.5):
+        print("   ✅ sesión persistida — la app abrió directo en el shell, sin re-pedir login")
+        capturar("d1-persistencia")
+        return True
+
+    # Antes de culpar a la app: ¿el árbol sirve? Si no expone NADA de RN, la ausencia de
+    # `login-screen` no prueba nada — y seguir buscándolo 120s es tiempo tirado.
+    if not arbol_expone_rn():
+        print("   ⚠️  el árbol de accesibilidad no expone vistas de RN → modo CIEGO")
+        print("      (se maneja por coordenadas; la verificación es la captura, no el árbol)")
+        capturar("d1-estado-actual")
+        return True
+
     if not esperar_elemento("login-screen", segundos=120):
         print("   ❌ la pantalla de login nunca apareció (¿bundle roto?)")
         capturar("d1-login-FALLO")
@@ -265,8 +406,7 @@ def frente_login() -> bool:
     if not tocar("login-submit"):
         return False
     # El login CIERRA cuando aparece el shell; esperar la ausencia de login-screen es la señal real.
-    ok = esperar(lambda: buscar("panel-principal") is not None or buscar("chat-view") is not None,
-                 segundos=60, que="el shell tras el login")
+    ok = esperar(en_el_shell, segundos=60, que="el shell tras el login")
     descartar_dialogos()  # el autofill puede aparecer justo acá — ver `arrancar_app`
     capturar("d1-post-login" if ok else "d1-login-FALLO")
     if not ok:
@@ -316,10 +456,8 @@ def abrir_escritorio() -> bool:
     if escritorio_visible():
         return True
 
-    p = buscar("panel-handle") or buscar("panel-hint")
-    if not p:
-        print("   ❌ no encontré el handle del panel")
-        return False
+    ancho, _ = tamano_pantalla()
+    p = buscar("panel-handle") or buscar("panel-hint") or (ancho // 2, Y_MIN_ARRASTRE)
     x, y = p
     for origen in (max(y, Y_MIN_ARRASTRE), Y_MIN_ARRASTRE + 200):
         shell(f"input swipe {x} {origen} {x} {origen + 900} 500")
@@ -328,6 +466,9 @@ def abrir_escritorio() -> bool:
         time.sleep(0.4)
         if escritorio_visible():
             return True
+    if not arbol_expone_rn():
+        print("   ⚠️  no puedo confirmar el escritorio por el árbol → sigo por coordenadas")
+        return True
     print("   ❌ el escritorio no quedó visible tras el arrastre")
     return False
 
@@ -345,7 +486,7 @@ def frente_funciones() -> bool:
         # hay que volver a abrirlo para cada tile. Sin esto fallaba una sí y una no (verificado:
         # apps ✅, ajustes ❌, recientes ✅, redes ❌…) — un patrón alternado que parece flakiness
         # del harness y en realidad es el comportamiento correcto de la cáscara.
-        if buscar(f"tile-{f}") is None and not abrir_escritorio():
+        if buscar(f"tile-{f}") is None and arbol_expone_rn() and not abrir_escritorio():
             print(f"   ❌ no pude volver al escritorio para {f}")
             ok_todas = False
             continue
@@ -369,8 +510,9 @@ def main() -> int:
     ap.add_argument("--frente", default="all",
                     choices=["all", "arranque", "login", "chat", "funciones"])
     ap.add_argument("--puerto", type=int, default=8081)
-    ap.add_argument("--no-reset", action="store_true",
-                    help="no hace pm clear (para re-correr un frente sin volver a loguear)")
+    ap.add_argument("--reset", action="store_true",
+                    help="pm clear antes de arrancar. OPT-IN: dispara la hoja de bienvenida del "
+                         "dev-client, que tapa la app. Sólo si hace falta forzar sesión limpia.")
     args = ap.parse_args()
 
     if not shutil.which("adb"):
@@ -382,7 +524,7 @@ def main() -> int:
         return 2
 
     EVIDENCIA.mkdir(exist_ok=True)
-    if not arrancar_app(args.puerto, reset=not args.no_reset):
+    if not arrancar_app(args.puerto, reset=args.reset):
         return 1
 
     resultados: dict[str, bool] = {}

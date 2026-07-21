@@ -51,14 +51,13 @@ const PERMITIDOS: Record<string, string> = {
   'src/theme/glass/Tile.tsx':
     'sin feedback de presión por pedido del operador (2026-07-20): los tiles del escritorio son fijos',
 
-  // documed permite acá `src/modules/captura/BotonVoz.tsx`, porque su botón de voz tiene animación
-  // de presión propia (un latido `Animated.loop` 1 → 1.08) y meterle `PRESS_SCALE` compondría dos
-  // escalas anidadas. Esa entrada NO se copia todavía: el archivo no existe en este repo (llega en
-  // F6, con el dictado corto). Anotarlo por adelantado dejaría una entrada huérfana desde el día 0,
-  // que es justo lo que el segundo test de este candado prohíbe — un permiso concedido a un archivo
-  // que nadie escribió todavía silencia al guard sin que nadie se entere.
-  //
-  // Cuando `BotonVoz` llegue en F6, si necesita el permiso, se agrega ahí con su motivo.
+  // F6 (dictado corto) trajo `BotonVoz` — mismo motivo que documed anticipaba acá: su botón de voz
+  // tiene animación de presión PROPIA (un latido `Animated.loop` 1 → 1.08, ver `BotonVoz.tsx`) y
+  // meterle `PRESS_SCALE` compondría dos escalas anidadas sobre el mismo `Pressable`. No es una
+  // copia divergente de los valores canónicos (el vector que este guard persigue): es una decisión
+  // de diseño distinta, con su propio feedback ya implementado.
+  'src/modules/chat/BotonVoz.tsx':
+    'tiene su propio feedback de presión (latido Animated.loop) -- PRESS_SCALE compondría dos escalas',
 };
 
 /** Todos los `.ts`/`.tsx` bajo las raíces, sin tests ni el canon (que cita los valores a propósito). */

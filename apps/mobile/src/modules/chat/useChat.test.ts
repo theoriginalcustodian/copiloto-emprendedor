@@ -18,19 +18,29 @@ jest.mock('@copiloto/core', () => {
     apiReal: {
       ...actual.apiReal,
       sendChat: jest.fn(),
+      sendAudio: jest.fn(),
       getReply: jest.fn(),
     },
   };
 });
 
+/** `deleteAsync` -- el borrado de `enviarAudio` es best-effort, así que los tests lo espían para
+ *  verificar que se INTENTA, no para que el resultado del envío dependa de él. */
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { apiReal as api } from '@copiloto/core';
+import { deleteAsync } from 'expo-file-system/legacy';
 
 import { useChat } from './useChat';
 
 describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activo)', () => {
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendAudio).mockReset();
     jest.mocked(api.getReply).mockReset();
+    jest.mocked(deleteAsync).mockClear();
   });
 
   it('hidrata y termina con un EstadoChat de historial vacío tras el 1er poll', async () => {
@@ -177,6 +187,98 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
 
     expect(result.current.estado?.sendStatus).toBe('error');
     expect(result.current.estado?.motivoFallo).toBe('sesion_vencida');
+    unmount();
+  });
+});
+
+const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
+
+describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendAudio).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(deleteAsync).mockClear();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+  });
+
+  it('transcript OK: agrega el mensaje del usuario (no optimista, recién con el texto real) y arranca el polling', async () => {
+    jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a1', accepted: true, transcript: 'anotá esto' });
+
+    const { result, unmount } = await renderHook(() => useChat());
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.messages).toEqual([
+      expect.objectContaining({ role: 'user', text: 'anotá esto' }),
+    ]);
+    expect(result.current.estado?.sendStatus).toBe('waiting');
+    // `cliente_id` viaja SIEMPRE, vacío -- ver el docstring del módulo.
+    expect(api.sendAudio).toHaveBeenCalledWith(expect.any(String), ARCHIVO_VOZ, '');
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local tras un envío exitoso', async () => {
+    jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a2', accepted: true, transcript: 'listo' });
+
+    const { result, unmount } = await renderHook(() => useChat());
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local incluso si el upload falla -- el borrado no depende del éxito', async () => {
+    jest.mocked(api.sendAudio).mockRejectedValue(new Error('network down'));
+
+    const { result, unmount } = await renderHook(() => useChat());
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
+    expect(result.current.estado?.sendStatus).toBe('error');
+    expect(result.current.estado?.motivoFallo).toBe('red');
+    unmount();
+  });
+
+  it('transcript vacío (STT no entendió): el envío SALIÓ BIEN, motivo audio_no_entendido, sin mensaje fantasma', async () => {
+    jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a3', accepted: true, transcript: '   ' });
+
+    const { result, unmount } = await renderHook(() => useChat());
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.sendStatus).toBe('error');
+    expect(result.current.estado?.motivoFallo).toBe('audio_no_entendido');
+    expect(result.current.estado?.messages).toEqual([]);
+    unmount();
+  });
+
+  it('un 413 del servidor mapea a audio_muy_grande, no a un error genérico', async () => {
+    const { ApiError } = jest.requireActual('@copiloto/core');
+    jest.mocked(api.sendAudio).mockRejectedValue(new ApiError(413, 'payload too large'));
+
+    const { result, unmount } = await renderHook(() => useChat());
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.motivoFallo).toBe('audio_muy_grande');
     unmount();
   });
 });

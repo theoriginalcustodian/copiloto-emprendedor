@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -17,10 +18,69 @@ jest.mock('@copiloto/core', () => {
     apiReal: {
       ...actual.apiReal,
       sendChat: jest.fn(),
+      sendAudio: jest.fn(),
       getReply: jest.fn(),
     },
   };
 });
+
+/** `deleteAsync` (`useChat.enviarAudio`, CERO retención) -- sin esto, F6 haría explotar cualquier
+ *  test de este archivo apenas ChatView monta `useVozComando`/`useChat` en la misma sesión. */
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+/**
+ * Override LOCAL de `react-native-reanimated`: el mock GLOBAL (`jest.setup.js`) no exporta
+ * `SlideInDown`/`SlideOutDown` porque, hasta F6, nada en el árbol de `ChatView` los usaba.
+ * `GlassGrabacionCopiloto` sí (la entrada/salida del HUD de voz) -- sin este override, CUALQUIER test
+ * que abra el HUD revienta con "Cannot read properties of undefined (reading 'duration')". El resto
+ * de la superficie mockeada es idéntica a la global (documentado ahí mismo, "los tests que necesitan
+ * controlar X declaran su propio jest.mock").
+ */
+jest.mock('react-native-reanimated', () => {
+  const { View } = require('react-native');
+  const entradaSalida = { duration: () => ({}) };
+  return {
+    __esModule: true,
+    default: { View, createAnimatedComponent: (Comp: unknown) => Comp },
+    createAnimatedComponent: (Comp: unknown) => Comp,
+    useSharedValue: (inicial: unknown) => ({ value: inicial }),
+    useAnimatedStyle: () => ({}),
+    withTiming: (destino: unknown) => destino,
+    withSpring: (destino: unknown) => destino,
+    runOnJS: (fn: unknown) => fn,
+    Extrapolation: { CLAMP: 'clamp' },
+    interpolate: (x: unknown) => x,
+    Easing: { bezier: () => () => 0, out: (fn: unknown) => fn, ease: () => 0 },
+    SlideInDown: entradaSalida,
+    SlideOutDown: entradaSalida,
+  };
+});
+
+/**
+ * Override LOCAL de `expo-audio`: el mock GLOBAL le falta `getStatus`/`pause` (documentado en
+ * `jest.setup.js`) -- suficiente para que importar la lib no explote, insuficiente para ejercitar una
+ * grabación de verdad. `useVozComando.test.ts` ya prueba la máquina de fases a fondo con su propio
+ * mock; acá sólo hace falta lo mínimo para que tocar `BotonVoz` abra el HUD sin crashear.
+ */
+const mockGrabadorVoz = {
+  prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+  record: jest.fn(),
+  pause: jest.fn(),
+  stop: jest.fn().mockResolvedValue(undefined),
+  getStatus: jest.fn(() => ({ durationMillis: 0, metering: -60 })),
+  uri: null as string | null,
+};
+// Expuesto aparte (y no inline en el factory) para que el test de permiso denegado pueda pisarlo con
+// `mockResolvedValueOnce({granted:false})` sin tocar el resto de la suite.
+const mockRequestRecordingPermissionsAsync = jest.fn().mockResolvedValue({ granted: true });
+jest.mock('expo-audio', () => ({
+  RecordingPresets: { HIGH_QUALITY: {} },
+  useAudioRecorder: () => mockGrabadorVoz,
+  requestRecordingPermissionsAsync: (...args: unknown[]) => mockRequestRecordingPermissionsAsync(...args),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 import { apiReal as api } from '@copiloto/core';
 
@@ -35,9 +95,10 @@ async function renderChatView() {
   );
 }
 
-describe('ChatView (integración lista+composer+useChat -- cáscara de texto, sin voz ni cliente activo)', () => {
+describe('ChatView (integración lista+composer+useChat -- cáscara de texto, sin cliente activo)', () => {
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendAudio).mockReset();
     jest.mocked(api.getReply).mockReset();
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
   });
@@ -140,5 +201,55 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
     for (const e of estilos) {
       expect(e?.backgroundColor).toBeUndefined();
     }
+  });
+});
+
+describe('ChatView -- voz-comando (F6): BotonVoz + GlassGrabacionCopiloto', () => {
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendAudio).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    mockRequestRecordingPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
+    mockGrabadorVoz.uri = null;
+  });
+
+  it('tocar el botón de voz abre el HUD de grabación', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+
+    await waitFor(() => expect(screen.getByTestId('glass-grabacion-copiloto')).toBeTruthy());
+    expect(screen.getByTestId('hud-copiloto')).toBeTruthy();
+  });
+
+  it('Descartar cierra el HUD sin llamar a sendAudio -- es la única vía legítima de perder el audio', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('glass-grabacion-copiloto')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('copiloto-descartar'));
+
+    await waitFor(() => expect(screen.queryByTestId('glass-grabacion-copiloto')).toBeNull());
+    expect(api.sendAudio).not.toHaveBeenCalled();
+  });
+
+  it('permiso de micrófono denegado: aviso legible, sin crash ni HUD', async () => {
+    mockRequestRecordingPermissionsAsync.mockResolvedValueOnce({ granted: false });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(1));
+    expect(alertSpy.mock.calls[0]?.[0]).toBe('Sin acceso al micrófono');
+    expect(screen.queryByTestId('glass-grabacion-copiloto')).toBeNull();
+
+    alertSpy.mockRestore();
   });
 });

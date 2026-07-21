@@ -45,10 +45,18 @@ import { CristalVidrio } from './CristalVidrio';
 import { GlassIcon } from './GlassIcon';
 import type { NombreIconoGlass } from './icons';
 import { PRESS_FADE, pressableStyle } from './presion';
-import { ALTO_HANDLE, BARRA_HANDLE, CONFIG_SNAP, NIVEL_CANONICO, UMBRAL_TAP } from './canonGlass';
+import {
+  ALTO_HANDLE,
+  BARRA_HANDLE,
+  CONFIG_SNAP,
+  CONFIG_SNAP_GESTO,
+  NIVEL_CANONICO,
+  UMBRAL_CIERRE,
+  UMBRAL_TAP,
+  VELOCIDAD_FLICK,
+} from './canonGlass';
 
 /** Cuánto hay que arrastrar hacia abajo para que la función se cierre. */
-const UMBRAL_CIERRE = 140;
 /**
  * Velocidad (px/s) a partir de la cual el gesto es un **flick**: un lanzamiento con intención de
  * dirección, no un arrastre soltado donde quedó. Mismo umbral y misma razón que en
@@ -59,7 +67,6 @@ const UMBRAL_CIERRE = 140;
  * arriba** — el operador lo describió como *"amagan a volver pero luego siguen"*. Un lanzamiento
  * decidido hacia abajo tiene que cerrar, sin importar cuán poco se alcanzó a arrastrar.
  */
-const VELOCIDAD_FLICK = 500;
 /**
  * Curva para cuando el movimiento **viene de un dedo**: un resorte que ARRANCA con la velocidad que
  * traía el gesto.
@@ -75,7 +82,6 @@ const VELOCIDAD_FLICK = 500;
  * sensación de tiempo no cambia — lo que cambia es que el arranque **empalma** con el dedo en vez de
  * cortarlo. Ver `swmansion-rn-gestures/continuous-gestures.md` §"Fling with Decay".
  */
-const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
 
 export interface MarcoGlassProps extends PropsWithChildren {
   /** El nombre de la función, tal como figura en su ícono del escritorio. */

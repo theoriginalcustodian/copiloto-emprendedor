@@ -21,6 +21,7 @@ import {
   SpaceGrotesk_700Bold,
   useFonts,
 } from '@expo-google-fonts/space-grotesk';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Stack, usePathname } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -73,6 +74,18 @@ export default function LayoutRaiz() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        {/* Oculta la barra de botones de Android (inmersivo). Portado TAL CUAL de la app canónica
+            (`documed-front/apps/mobile/app/_layout.tsx`): la pantalla única de vidrio no debe
+            compartir el borde inferior con la nav bar del sistema — con ella visible, el glass
+            termina contra una franja opaca que no es parte de la app.
+
+            El componente DECLARATIVO se re-aplica solo en cada render y es no-op en iOS/web (el
+            módulo nativo devuelve `null`). `expo-navigation-bar` v57 ya no expone
+            `setBehaviorAsync`: en la era edge-to-edge, ocultar usa el comportamiento
+            transient-por-swipe del sistema — un swipe desde el borde la revela un instante y se
+            **re-oculta sola**, que es exactamente el "auto-ocultarse" pedido. Requiere el módulo
+            nativo en el APK. */}
+        <NavigationBar hidden />
         <ThemeProvider>
           {/* Las variantes de la Medición 1 se montan como capa dentro de `index.tsx`, sin router:
               la navegación NO es variable de ese experimento — el defecto que se investiga ocurre

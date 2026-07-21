@@ -38,3 +38,20 @@ export const CONFIG_SNAP = { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2,
 
 /** Desplazamiento por debajo del cual el gesto se lee como TOQUE (toggle) y no como arrastre. */
 export const UMBRAL_TAP = 5;
+
+/**
+ * Física del soltar, compartida por TODA superficie de vidrio arrastrable (el panel del chat, el
+ * marco de función, la capa de función).
+ *
+ * 🔴 Vivían duplicadas en `PanelDeslizable` y en `MarcoGlass` con los mismos valores, y al portar el
+ * gesto a `CapaFuncion` iban camino de una tercera copia. Tres definiciones del mismo número es
+ * cómo empiezan a divergir: alguien ajusta el flick del panel, el vidrio de función queda con otro
+ * tacto, y nadie relaciona una cosa con la otra. Un solo lugar.
+ */
+export const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
+
+/** Velocidad (px/s) a partir de la cual el gesto se lee como LANZAMIENTO y decide por dirección. */
+export const VELOCIDAD_FLICK = 500;
+
+/** Sin flick, cuánto hay que haber arrastrado hacia abajo para que el vidrio cierre en vez de volver. */
+export const UMBRAL_CIERRE = 140;

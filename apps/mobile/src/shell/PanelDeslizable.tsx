@@ -34,6 +34,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useTema } from '../theme/ThemeProvider';
+import { CONFIG_SNAP_GESTO, VELOCIDAD_FLICK } from '../theme/glass/canonGlass';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
 
@@ -80,7 +81,6 @@ const CONFIG_SNAP = { duration: 420, easing: Easing.bezier(0.2, 0.8, 0.2, 1) };
  * sensación de tiempo no cambia — lo que cambia es que el arranque **empalma** con el dedo en vez de
  * cortarlo. Ver `swmansion-rn-gestures/continuous-gestures.md` §"Fling with Decay".
  */
-const CONFIG_SNAP_GESTO = { duration: 420, dampingRatio: 1, overshootClamping: true };
 const UMBRAL_TAP = 5;
 /**
  * Velocidad (px/s) a partir de la cual el gesto se considera un **flick**: un lanzamiento con
@@ -96,7 +96,6 @@ const UMBRAL_TAP = 5;
  * bien por encima del arrastre lento (que ronda los 0-300) y bien por debajo de un flick real (que
  * en las mediciones dio entre 1000 y 5500).
  */
-const VELOCIDAD_FLICK = 500;
 
 export interface PanelDeslizableProps extends PropsWithChildren {
   /** Capa 0 — contenido de fondo (escritorio de funciones). */

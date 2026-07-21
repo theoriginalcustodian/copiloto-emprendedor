@@ -50,9 +50,18 @@ El motor **nació** como copia vendorizada del arquetipo `conversational_agent` 
 Instaladas globales en `~/.claude/skills/`, verificadas el 2026-07-20 (34 en total; las 14 de mobile
 son 3 `callstack-*` + 11 `swmansion-*`, 197 archivos). Sirven desde cualquier repo.
 
-**La regla que este workspace ya pagó cara:** si llevás **dos intentos fallidos** sobre gestos,
+**Instrucción directa del operador (2026-07-21): usar las skills para TODO lo que toque la app, no
+sólo cuando algo falla.** Se invocan **ANTES** de escribir código, no después de atascarse. La skill
+es la fuente canónica del dominio; razonar desde cero sobre gestos, animación o audio nativo
+reproduce errores que Software Mansion ya documentó.
+
+**Y la regla que este workspace ya pagó cara:** si llevás **dos intentos fallidos** sobre gestos,
 animación o rendimiento, el tercero **no es otro fix — es leer la skill del dominio**. Es el mismo
 gate que V-EXT, aplicado al frontend nativo: apilar un fix sobre un fix rara vez converge.
+
+*Caso real de esta sesión:* el `ScrollView` de Apps no scrolleaba; la skill `swmansion-rn-gestures`
+da el criterio de contenedores de scroll y composición Pan/scroll en un párrafo, y evitó dos
+iteraciones a ciegas sobre el gesto del panel — que no era la causa.
 
 | Cuándo | Skill |
 |---|---|
@@ -75,6 +84,30 @@ Ninguna skill de frontend sabe de eso; si una sugiere algo que choca con estas r
 ⚠️ Al instalar skills en Windows: `git clone` puede dejar carpetas **incompletas y silenciosas** por
 el `MAX_PATH` de 260 — exit 0, `SKILL.md` legible, y faltando la mitad de los archivos. Contar
 archivos contra el origen, no confiar en que la carpeta exista.
+
+## 3.ter documed-front es la app CANÓNICA de UI/UX — consultarla SIEMPRE primero
+
+`C:\Proyectos\Claude\Claude code\Agencia_IA_HyC\documed-front\apps\mobile`
+
+**Antes de implementar cualquier cosa de cáscara, gesto, animación, barra de sistema, scroll o
+card: abrir el archivo equivalente en documed y leerlo.** No es una sugerencia — es la instrucción
+repetida del operador: *"documed ya tiene todo implementado, no reinventes la rueda"*.
+
+Por qué rinde: documed pagó estos errores **en device** y dejó el porqué en sus docstrings. Cada vez
+que acá se implementó de cero algo que allá existía, se volvió a pagar el mismo peaje. Ejemplos ya
+cobrados: ocultar la barra de botones de Android es `<NavigationBar hidden />` de
+`expo-navigation-bar` (documed `app/_layout.tsx:213` — v57 ya no expone `setBehaviorAsync`, y el
+módulo nativo exige rebuild EAS); el doble render del encabezado se mata con
+`SafeAreaProvider initialMetrics={initialWindowMetrics}`. Nada de eso se deduce: está escrito allá.
+
+**Portar adaptando, no copiar ciego.** El copiloto no tiene el caso clínico (dictado largo,
+retención de audio, huérfanos): traer esa maquinaria es el error espejo.
+
+**Lo que documed NO cubre y manda igual:** Temporal durable (el moat), aislamiento multitenant
+(regla 7) y el contrato `POST /chat` + polling `GET /reply`. Si algo de documed choca con eso,
+ganan las reglas de este repo.
+
+---
 
 ## 4. Deploy y cutover (Fase 2.5)
 
