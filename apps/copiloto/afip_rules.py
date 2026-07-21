@@ -660,6 +660,112 @@ def _etiqueta_condicion_receptor(cond: CondicionIVA) -> str:
     return _ETIQUETAS_RECEPTOR.get(cond, "Consumidor Final")
 
 
+# ---------------------------------------------------------------------------
+# Notas de crédito (anulación). R9-R11.
+# ---------------------------------------------------------------------------
+
+_NOTA_CREDITO_DE = {
+    TipoComprobante.FACTURA_A: TipoComprobante.NOTA_CREDITO_A,
+    TipoComprobante.FACTURA_B: TipoComprobante.NOTA_CREDITO_B,
+    TipoComprobante.FACTURA_C: TipoComprobante.NOTA_CREDITO_C,
+}
+
+
+def tipo_nota_credito(tipo_factura: TipoComprobante | int) -> TipoComprobante:
+    """R9 — la NC hereda la letra de la factura que anula. Una C se anula con NC C (13), no con otra.
+
+    Fiscalmente **una factura emitida no se borra ni se cancela**: se neutraliza con una nota de
+    crédito, que es otro comprobante. Por eso "anular" en la UI tiene que decir qué hace de verdad.
+    """
+    tipo = TipoComprobante(int(tipo_factura))
+    if tipo not in _NOTA_CREDITO_DE:
+        raise ValueError(f"no hay nota de crédito definida para el comprobante tipo {tipo}")
+    return _NOTA_CREDITO_DE[tipo]
+
+
+def validar_anulacion(comprobante: dict | None, *, importe_nc=None) -> list[ErrorValidacion]:
+    """R10 — no se anula lo inexistente ni lo ya anulado. R11 — la NC no puede superar el original."""
+    if not comprobante:
+        return [ErrorValidacion("comprobante_inexistente", "comprobante",
+                                "No se encontró el comprobante que querés anular.")]
+
+    errores: list[ErrorValidacion] = []
+    estado = (comprobante.get("estado") or "").lower()
+    if estado == "anulada":
+        errores.append(ErrorValidacion(
+            "ya_anulada", "comprobante",
+            f"Esta factura ya fue anulada con la nota de crédito "
+            f"N° {comprobante.get('cbte_asoc_nro')}."))
+    if estado == "nota_credito":
+        errores.append(ErrorValidacion(
+            "es_nota_credito", "comprobante",
+            "No se puede anular una nota de crédito con otra nota de crédito."))
+    if not comprobante.get("cae"):
+        errores.append(ErrorValidacion(
+            "sin_cae", "comprobante",
+            "El comprobante no tiene CAE: no llegó a autorizarse en AFIP, no hay nada que anular."))
+
+    if importe_nc is not None and comprobante.get("total") is not None:
+        try:
+            if a_decimal(importe_nc, campo="importe_nc") > a_decimal(
+                    comprobante["total"], campo="total"):
+                errores.append(ErrorValidacion(
+                    "nc_supera_original", "importe",
+                    "La nota de crédito no puede superar el importe de la factura original."))
+        except ValueError:
+            errores.append(ErrorValidacion("importe_invalido", "importe", "Importe no numérico."))
+    return errores
+
+
+def armar_payload_nota_credito(original: dict, *, hoy: date, fecha: date | None = None) -> dict:
+    """Payload de la NC que anula `original` por su importe total.
+
+    ⚠️ Lo que convierte a este comprobante en una anulación —y no en una NC suelta— es `CbtesAsoc`:
+    ahí va el comprobante original. Sin esa asociación AFIP registra una nota de crédito huérfana.
+    """
+    errores = validar_anulacion(original)
+    if errores:
+        raise ValueError(f"no se puede anular: {[str(e) for e in errores]}")
+
+    tipo_original = TipoComprobante(int(original["tipo_cbte"]))
+    tipo_nc = tipo_nota_credito(tipo_original)
+    total = a_decimal(original["total"], campo="total")
+    fecha_nc = fecha or hoy
+
+    payload = {
+        "CantReg": 1,
+        "PtoVta": int(original["punto_venta"]),
+        "CbteTipo": int(tipo_nc),
+        "Concepto": int(Concepto.PRODUCTOS),
+        "DocTipo": int(original.get("doc_tipo") or TipoDoc.CONSUMIDOR_FINAL),
+        "DocNro": int(original.get("doc_nro") or 0),
+        "CbteFch": int(fecha_nc.strftime("%Y%m%d")),
+        "ImpTotal": float(total),
+        "ImpTotConc": 0,
+        "ImpNeto": float(total),
+        "ImpOpEx": 0,
+        "ImpIVA": 0,
+        "ImpTrib": 0,
+        "MonId": "PES",
+        "MonCotiz": 1,
+        # Misma regla R1 que en la emisión: sin documento, la condición es 5.
+        "CondicionIVAReceptorId": int(
+            CondicionIVA.CONSUMIDOR_FINAL
+            if int(original.get("doc_tipo") or 99) == int(TipoDoc.CONSUMIDOR_FINAL)
+            else CondicionIVA.RESPONSABLE_INSCRIPTO),
+        "CbtesAsoc": [{
+            "Tipo": int(tipo_original),
+            "PtoVta": int(original["punto_venta"]),
+            "Nro": int(original["nro"]),
+        }],
+    }
+    if tipo_nc is not TipoComprobante.NOTA_CREDITO_C:
+        raise NotImplementedError(
+            "Sólo está implementada la nota de crédito C (monotributo). Para A/B falta el desglose "
+            "de IVA — fallar acá es preferible a emitir una NC con importes mal discriminados.")
+    return payload
+
+
 def fecha_valida_para_afip(fecha: date, *, hoy: date) -> bool:
     """R4 expuesta como predicado, para que la UI pueda deshabilitar fechas antes de que el usuario tipee."""
     return abs((fecha - hoy).days) <= MARGEN_DIAS_FECHA_COMPROBANTE

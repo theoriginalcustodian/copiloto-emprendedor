@@ -39,7 +39,13 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
-from afip_credential_store import AfipCredentialStore, AfipSecretHandoff
+from afip_anulacion_workflow import AnulacionWorkflow
+from afip_comprobante_store import AfipComprobanteStore
+from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
+from afip_factura_activities import (
+    buscar_comprobante, cargar_contexto_factura, emitir_comprobante, generar_pdf_comprobante,
+    listar_comprobantes, marcar_comprobante_anulado, set_factura_deps)
+from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
 from afip_onboarding_activities import (
     dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
@@ -150,9 +156,22 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
         lambda cliente_id: AfipSecretHandoff(conn_factory, cliente_id, crypto),
     )
 
-    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow],
+    # Emisión/anulación: el gateway acá SÍ se construye con el certificado del tenant (a diferencia
+    # del de onboarding, que todavía no tiene ninguno).
+    set_factura_deps(
+        lambda cuit, cert, key: AfipGateway(cuit=cuit, cert=cert, key=key),
+        lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
+        lambda cliente_id: AfipPerfilStore(conn_factory, cliente_id),
+        lambda cliente_id: AfipComprobanteStore(conn_factory, cliente_id),
+    )
+
+    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
+                          FacturaWorkflow, AnulacionWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
-                                         verificar_habilitacion_afip, purgar_secretos_vencidos],
+                                         verificar_habilitacion_afip, purgar_secretos_vencidos,
+                                         cargar_contexto_factura, emitir_comprobante,
+                                         generar_pdf_comprobante, buscar_comprobante,
+                                         listar_comprobantes, marcar_comprobante_anulado],
             "context_factory": ctx_factory}
 
 
