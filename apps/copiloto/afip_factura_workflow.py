@@ -68,6 +68,11 @@ class FacturaWorkflow:
         self._resultado: dict | None = None
         self._pdf: dict | None = None
         self._motivo: str | None = None
+        # Código ESTABLE que acompaña a `motivo`. La frase es para leer; el código es para ramificar.
+        # Mezclar ambos vocabularios en un solo campo —como estaba— obliga al cliente a comparar contra
+        # texto en español: cualquier retoque de copy rompe su `if` sin que ningún test lo note.
+        # (Hallazgo de la sesión frontend, 2026-07-21.)
+        self._motivo_codigo: str | None = None
 
     # -- consultas ----------------------------------------------------------
 
@@ -83,6 +88,7 @@ class FacturaWorkflow:
             "resultado": self._resultado,
             "pdf": self._pdf,
             "motivo": self._motivo,
+            "motivo_codigo": self._motivo_codigo,
             "terminado": self._estado in (EstadoFactura.ENTREGADA, EstadoFactura.RECHAZADA,
                                           EstadoFactura.CANCELADA),
         }
@@ -102,6 +108,7 @@ class FacturaWorkflow:
             )
         except (KeyError, ValueError, TypeError) as exc:
             self._motivo = f"datos de venta inválidos: {exc}"
+            self._motivo_codigo = "datos_venta_invalidos"
         self._recalcular()
 
     @workflow.signal
@@ -115,6 +122,7 @@ class FacturaWorkflow:
             ))
         except (ValueError, TypeError) as exc:
             self._motivo = f"ítem inválido: {exc}"
+            self._motivo_codigo = "item_invalido"
         self._recalcular()
 
     @workflow.signal
@@ -135,6 +143,7 @@ class FacturaWorkflow:
             )
         except (ValueError, TypeError) as exc:
             self._motivo = f"datos del cliente inválidos: {exc}"
+            self._motivo_codigo = "cliente_invalido"
         self._recalcular()
 
     @workflow.signal
@@ -147,9 +156,11 @@ class FacturaWorkflow:
         """
         if not puede_emitir(self._estado):
             self._motivo = "todavía faltan datos para emitir"
+            self._motivo_codigo = "faltan_datos"
             return
         if token != self._token():
             self._motivo = "la confirmación no corresponde a los datos actuales; revisá el resumen"
+            self._motivo_codigo = "token_desactualizado"
             return
         self._confirmado = True
 
@@ -169,7 +180,8 @@ class FacturaWorkflow:
 
         if not contexto.get("tiene_certificado"):
             self._estado = EstadoFactura.RECHAZADA
-            self._motivo = "sin_certificado_afip"
+            self._motivo = "todavía no vinculaste tu cuenta de ARCA"
+            self._motivo_codigo = "sin_certificado_afip"
             return self.estado()
 
         self._perfil = self._perfil_desde(contexto.get("perfil"))
@@ -194,6 +206,7 @@ class FacturaWorkflow:
         except Exception as exc:  # noqa: BLE001 — un rechazo de AFIP es un final, no un error a propagar
             self._estado = EstadoFactura.RECHAZADA
             self._motivo = str(exc)
+            self._motivo_codigo = "rechazo_afip"
             return self.estado()
 
         self._resultado = emision
@@ -214,7 +227,11 @@ class FacturaWorkflow:
                 start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
             self._estado = EstadoFactura.ENTREGADA
         except Exception as exc:  # noqa: BLE001
-            self._motivo = f"la factura se emitió (CAE {emision.get('cae')}) pero falló el PDF: {exc}"
+            # ⚠️ El comprobante EXISTE y tiene CAE: esto es un éxito con advertencia, no un fallo. Si la
+            # UI lo mostrara como error, el usuario volvería a facturar y duplicaría un comprobante fiscal.
+            self._motivo = (f"tu factura se emitió (CAE {emision.get('cae')}); "
+                            f"el PDF no está disponible en este momento")
+            self._motivo_codigo = "emitida_sin_pdf"
 
         return self.estado()
 

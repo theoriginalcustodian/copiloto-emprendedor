@@ -48,6 +48,7 @@ class HandoffFake:
 class PerfilStoreFake:
     def __init__(self):
         self.datos = {}
+        self.activo = {}
 
     def save(self, cuit, **kw):
         self.datos[cuit] = {"cuit": cuit, **kw}
@@ -59,13 +60,23 @@ class PerfilStoreFake:
 class CredStoreFake:
     def __init__(self):
         self.datos = {}
+        self.activo = {}   # cuit -> ambiente activo (en el real lo garantiza un índice único parcial)
 
-    def save(self, cuit, *, cert, key, ambiente="dev", ws_autorizados=None):
-        self.datos[cuit] = {"cert": cert, "key": key, "ambiente": ambiente,
-                            "ws_autorizados": ws_autorizados or []}
+    def save(self, cuit, *, cert, key, ambiente="dev", ws_autorizados=None, activar=True):
+        self.datos[(cuit, ambiente)] = {"cert": cert, "key": key, "ambiente": ambiente,
+                                        "ws_autorizados": ws_autorizados or []}
+        if activar:
+            self.activo[cuit] = ambiente
 
-    def get(self, cuit):
-        return self.datos.get(cuit)
+    def get(self, cuit, ambiente=None):
+        amb = ambiente if ambiente is not None else self.activo.get(cuit)
+        return self.datos.get((cuit, amb)) if amb else None
+
+    def ambientes_vinculados(self, cuit):
+        return sorted(a for (c, a) in self.datos if c == cuit)
+
+    def primer_cuit(self):
+        return next((c for (c, _a) in self.datos), None)
 
 
 class GatewayFake:
@@ -95,7 +106,7 @@ class GatewayFake:
 @pytest.fixture
 def piezas():
     handoff, perfil, cred, gateway = HandoffFake(), PerfilStoreFake(), CredStoreFake(), GatewayFake()
-    acts.set_onboarding_deps(lambda cuit: gateway, lambda cid: cred, lambda cid: handoff)
+    acts.set_onboarding_deps(lambda cuit, ambiente="dev": gateway, lambda cid: cred, lambda cid: handoff)
     return handoff, perfil, cred, gateway
 
 
@@ -109,8 +120,8 @@ def cliente(piezas):
         perfil_store_factory=lambda cid: perfil,
         cred_store_factory=lambda cid: cred,
         handoff_factory=lambda cid: handoff,
-        start_onboarding=lambda cid, cuit, handle: (arranques.append((cid, cuit, handle)), "wf-1")[1],
-        consultar_onboarding=lambda cid, cuit: {"paso": "habilitado", "ok": True},
+        start_onboarding=lambda cid, cuit, handle, ambiente="dev": (arranques.append((cid, cuit, handle, ambiente)), "wf-1")[1],
+        consultar_onboarding=lambda cid, cuit, ambiente="dev": {"paso": "habilitado", "ok": True},
     )
     app = FastAPI()
     app.include_router(app_afip.router)
@@ -133,7 +144,7 @@ def test_la_clave_fiscal_no_viaja_al_workflow(cliente, piezas):
     assert r.status_code == 200
 
     assert len(arranques) == 1
-    cid, cuit, handle = arranques[0]
+    cid, cuit, handle, _ambiente = arranques[0]
     assert CLAVE not in str(arranques), "FUGA: la clave fiscal viajó como argumento del workflow"
     assert handle.startswith("handle-")
     assert cuit == CUIT and cid == TENANT
@@ -150,7 +161,7 @@ def test_la_clave_queda_en_el_claim_check_y_se_consume_una_vez(cliente, piezas):
     client, arranques = cliente
     client.post("/afip/conectar", json={"cuit": CUIT, "usuario": CUIT, "clave_fiscal": CLAVE})
 
-    _, _, handle = arranques[0]
+    _, _, handle, _ambiente = arranques[0]
     assert handoff.consume(handle).revelar() == CLAVE
     assert handoff.consume(handle) is None, "el claim-check no es one-shot"
 
@@ -234,7 +245,7 @@ def test_alta_guarda_el_certificado_cifrado_y_no_devuelve_secretos(piezas):
 
     res = acts._dar_de_alta_sync(TENANT, CUIT, handle)
 
-    assert res == {"ok": True, "motivo": None, "ws_autorizados": ["wsfe"]}
+    assert res == {"ok": True, "motivo": None, "ambiente": "dev", "ws_autorizados": ["wsfe"]}
     assert CLAVE not in str(res), "el retorno de la activity va al history: no puede traer la clave"
     assert "CERT" not in str(res) and "KEY" not in str(res), "el certificado tampoco va al history"
     assert cred.get(CUIT)["cert"] == "CERT"
@@ -307,11 +318,12 @@ async def test_el_history_del_workflow_no_contiene_la_clave_fiscal():
     handle_opaco = f"handle-{uuid.uuid4()}"
 
     @act_api.defn(name="dar_de_alta_afip")
-    async def alta_fake(cliente_id: str, cuit: str, handle: str) -> dict:
+    async def alta_fake(cliente_id: str, cuit: str, handle: str,
+                        ambiente: str = "dev") -> dict:
         return {"ok": True, "motivo": None, "ws_autorizados": ["wsfe"]}
 
     @act_api.defn(name="verificar_habilitacion_afip")
-    async def verif_fake(cliente_id: str, cuit: str) -> dict:
+    async def verif_fake(cliente_id: str, cuit: str, ambiente: str = "dev") -> dict:
         return {"habilitado": True, "motivo": None}
 
     cola = f"afip-test-{uuid.uuid4()}"
@@ -347,11 +359,12 @@ async def test_el_workflow_termina_en_fallido_si_el_alta_falla():
         pytest.skip(f"Temporal no accesible: {exc}")
 
     @act_api.defn(name="dar_de_alta_afip")
-    async def alta_fake(cliente_id: str, cuit: str, handle: str) -> dict:
+    async def alta_fake(cliente_id: str, cuit: str, handle: str,
+                        ambiente: str = "dev") -> dict:
         return {"ok": False, "motivo": "handle_invalido_o_vencido"}
 
     @act_api.defn(name="verificar_habilitacion_afip")
-    async def verif_fake(cliente_id: str, cuit: str) -> dict:
+    async def verif_fake(cliente_id: str, cuit: str, ambiente: str = "dev") -> dict:
         raise AssertionError("no se debe verificar si el alta falló")
 
     cola = f"afip-test-{uuid.uuid4()}"

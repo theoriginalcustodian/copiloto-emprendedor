@@ -151,15 +151,17 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # de app (`COPILOTO_FERNET_KEY`) con doble lectura durante la transición. Propietario: operador.
     # Condición: antes de habilitar producción de facturación.
     set_onboarding_deps(
-        lambda cuit: AfipGateway(cuit=cuit),
+        lambda cuit, ambiente="dev": AfipGateway(cuit=cuit, production=(ambiente == "prod")),
         lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
         lambda cliente_id: AfipSecretHandoff(conn_factory, cliente_id, crypto),
     )
 
     # Emisión/anulación: el gateway acá SÍ se construye con el certificado del tenant (a diferencia
-    # del de onboarding, que todavía no tiene ninguno).
+    # del de onboarding, que todavía no tiene ninguno) y en el AMBIENTE de esa credencial — un
+    # certificado de producción contra el endpoint de homologación no autentica.
     set_factura_deps(
-        lambda cuit, cert, key: AfipGateway(cuit=cuit, cert=cert, key=key),
+        lambda cuit, cert, key, ambiente="dev": AfipGateway(
+            cuit=cuit, cert=cert, key=key, production=(ambiente == "prod")),
         lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
         lambda cliente_id: AfipPerfilStore(conn_factory, cliente_id),
         lambda cliente_id: AfipComprobanteStore(conn_factory, cliente_id),

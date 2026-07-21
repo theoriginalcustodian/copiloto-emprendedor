@@ -32,13 +32,18 @@ def set_factura_deps(gateway_factory, cred_store_factory, perfil_store_factory,
 
 
 def _gateway_con_certificado(cliente_id: str, cuit: str):
-    """Construye el gateway con el certificado del tenant. Fail-closed si no lo tiene."""
+    """Construye el gateway con el certificado ACTIVO del tenant. Fail-closed si no lo tiene.
+
+    El ambiente sale de la credencial, NO de una constante: el certificado de producción sólo sirve
+    contra el endpoint de producción. Antes se construía siempre en homologación, así que un tenant
+    con credencial de producción emitía —o intentaba emitir— contra el ambiente equivocado.
+    """
     creds = _cred_store_factory(cliente_id).get(cuit)
     if not creds:
         raise ApplicationError(
             f"el tenant no tiene certificado AFIP para el CUIT {cuit}",
             type="SinCertificado", non_retryable=True)
-    return _gateway_factory(cuit, creds["cert"], creds["key"])
+    return _gateway_factory(cuit, creds["cert"], creds["key"], creds.get("ambiente", "dev"))
 
 
 def _cargar_contexto_sync(cliente_id: str, cuit: str) -> dict:

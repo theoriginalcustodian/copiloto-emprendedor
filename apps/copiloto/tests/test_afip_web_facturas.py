@@ -54,13 +54,20 @@ class ComprobanteStoreFake:
         return self._filas[:limite]
 
 
+class CredStoreConCertificado:
+    """El tenant de estos tests YA vinculó ARCA: acá se prueba el ciclo del borrador, no el alta."""
+
+    def get(self, cuit, ambiente=None):
+        return {"cert": "c", "key": "k", "ambiente": ambiente or "dev", "ws_autorizados": ["wsfe"]}
+
+
 def armar(tenant=TENANT_A, comprobantes=None):
     espia = Espia()
     store = ComprobanteStoreFake(comprobantes)
     afip = create_afip_app(
         require_tenant=lambda: tenant,
         perfil_store_factory=lambda cid: None,
-        cred_store_factory=lambda cid: None,
+        cred_store_factory=lambda cid: CredStoreConCertificado(),
         handoff_factory=lambda cid: None,
         start_onboarding=lambda *a: "wf",
         comprobante_store_factory=lambda cid: store,

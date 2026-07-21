@@ -41,6 +41,7 @@ class AfipOnboardingWorkflow:
         self._paso = "iniciado"
         self._motivo: str | None = None
         self._ws_autorizados: list[str] = []
+        self._ambiente = "dev"
 
     @workflow.query
     def progreso(self) -> dict:
@@ -48,17 +49,21 @@ class AfipOnboardingWorkflow:
         return {
             "paso": self._paso,
             "motivo": self._motivo,
+            "ambiente": self._ambiente,
             "ws_autorizados": list(self._ws_autorizados),
             "terminado": self._paso in ("habilitado", "fallido"),
             "ok": self._paso == "habilitado",
         }
 
     @workflow.run
-    async def run(self, cliente_id: str, cuit: str, handle: str) -> dict:
+    async def run(self, cliente_id: str, cuit: str, handle: str, ambiente: str = "dev") -> dict:
+        """`ambiente` con default para no romper el replay de las ejecuciones que arrancaron con 3
+        argumentos (el history las reproduce tal cual quedaron grabadas)."""
+        self._ambiente = ambiente
         self._paso = "dando_de_alta"
         alta = await workflow.execute_activity(
             "dar_de_alta_afip",
-            args=[cliente_id, cuit, handle],
+            args=[cliente_id, cuit, handle, ambiente],
             start_to_close_timeout=TIMEOUT_ALTA,
             retry_policy=SIN_REINTENTO,
         )
@@ -76,7 +81,7 @@ class AfipOnboardingWorkflow:
         self._paso = "verificando"
         verificacion = await workflow.execute_activity(
             "verificar_habilitacion_afip",
-            args=[cliente_id, cuit],
+            args=[cliente_id, cuit, ambiente],
             start_to_close_timeout=TIMEOUT_CORTO,
             retry_policy=REINTENTO_LECTURA,
         )

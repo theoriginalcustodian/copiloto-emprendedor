@@ -82,6 +82,23 @@ def _ensure_reply_card_column(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_web_replies.card (columna aditiva jsonb, idempotente)", flush=True)
 
 
+def _ensure_afip_activo_column(conn) -> None:
+    """Migración aditiva de `afip_credentials.activo boolean` (ambiente homologación ↔ producción).
+
+    Mismo criterio y misma razón que `_ensure_reply_card_column`: el pase estándar hace CREATE TABLE IF
+    NOT EXISTS —nunca ALTER— y su guard anti-colisión ABORTA si una columna declarada falta en la tabla
+    viva. Corre ANTES del pase estándar: sobre una DB existente agrega la columna y el guard pasa; sobre
+    una DB fresca `IF EXISTS` la vuelve no-op y el CREATE TABLE ya la trae.
+
+    `DEFAULT true` es el valor correcto para las filas que ya existían: eran la única credencial del
+    tenant, así que eran la activa.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.afip_credentials "
+                f"ADD COLUMN IF NOT EXISTS activo boolean NOT NULL DEFAULT true;")
+    print(f"OK {SCHEMA}.afip_credentials.activo (columna aditiva boolean, idempotente)", flush=True)
+
+
 def _apply_mp_indexes(conn) -> None:
     """Pliega mp_indexes.sql (paga M2): índices únicos que el ON CONFLICT de los stores MP exige.
     Ambas sentencias usan IF NOT EXISTS → idempotente. Un solo execute (sin params) corre las 2 DDL."""
@@ -108,6 +125,7 @@ def provision(conn) -> dict:
     standard_spec = {k: v for k, v in manifest.items() if k != TENANTS_TABLE}
     _ensure_reply_card_column(conn)   # ANTES del pase estándar: su guard anti-colisión aborta si `card` (ya
     #                                   declarada en uc_tables.json) falta en la tabla viva. Ver la función.
+    _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _apply_mp_indexes(conn)

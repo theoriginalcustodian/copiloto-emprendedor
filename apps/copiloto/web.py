@@ -103,16 +103,21 @@ def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
 def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
     """Fábrica de `start_onboarding` (hook de `create_afip_app`): arranca el alta ARCA durable.
 
-    `id` determinístico por (cliente_id, cuit) + `USE_EXISTING` → idempotente: si el usuario toca dos
-    veces "Conectar" mientras el RPA todavía corre, se engancha al alta en curso en vez de lanzar una
-    segunda. Mismo patrón que `make_start_refresh`.
+    `id` determinístico por (cliente_id, cuit, ambiente) + `USE_EXISTING` → idempotente: si el usuario
+    toca dos veces "Conectar" mientras el RPA todavía corre, se engancha al alta en curso en vez de
+    lanzar una segunda. Mismo patrón que `make_start_refresh`.
+
+    El AMBIENTE forma parte del id a propósito: son altas distintas (certificados distintos). Sin él,
+    vincular producción mientras un alta de homologación sigue viva se engancharía a esa —y el usuario
+    vería "conectado" sin tener credencial de producción.
     """
 
-    async def start_onboarding(cliente_id: str, cuit: str, handle: str) -> str:
-        wf_id = f"afip-onboarding-{cliente_id}-{cuit}"
+    async def start_onboarding(cliente_id: str, cuit: str, handle: str,
+                               ambiente: str = "dev") -> str:
+        wf_id = _wf_id_onboarding(cliente_id, cuit, ambiente)
         await temporal_client.start_workflow(
             "AfipOnboardingWorkflow",
-            args=[cliente_id, cuit, handle],
+            args=[cliente_id, cuit, handle, ambiente],
             id=wf_id,
             task_queue=task_queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
@@ -120,6 +125,13 @@ def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUE
         return wf_id
 
     return start_onboarding
+
+
+def _wf_id_onboarding(cliente_id: str, cuit: str, ambiente: str = "dev") -> str:
+    """Un alta por (tenant, CUIT, ambiente). `dev` conserva el id histórico —sin sufijo— para no
+    perder de vista las altas que ya corrieron antes de que el ambiente existiera."""
+    base = f"afip-onboarding-{cliente_id}-{cuit}"
+    return base if ambiente == "dev" else f"{base}-{ambiente}"
 
 
 def make_consultar_onboarding(temporal_client) -> Callable:
@@ -130,9 +142,11 @@ def make_consultar_onboarding(temporal_client) -> Callable:
     mensaje (benchmark Facturitas §7).
     """
 
-    async def consultar_onboarding(cliente_id: str, cuit: str) -> dict | None:
+    async def consultar_onboarding(cliente_id: str, cuit: str,
+                                   ambiente: str = "dev") -> dict | None:
         try:
-            handle = temporal_client.get_workflow_handle(f"afip-onboarding-{cliente_id}-{cuit}")
+            handle = temporal_client.get_workflow_handle(
+                _wf_id_onboarding(cliente_id, cuit, ambiente))
             return await handle.query("progreso")
         except Exception:  # noqa: BLE001 — nunca hubo alta, o ya expiró la retención: no es un error
             return None
