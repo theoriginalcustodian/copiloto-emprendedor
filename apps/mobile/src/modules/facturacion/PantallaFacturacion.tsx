@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import {
   agregarItem,
@@ -36,7 +36,7 @@ import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
 import { DetalleComprobante } from './DetalleComprobante';
-import { SeccionMisComprobantes } from './SeccionMisComprobantes';
+import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
@@ -123,6 +123,8 @@ export function PantallaFacturacion() {
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'resolviendo_cuit' });
   /** La fila cuyo detalle se está mirando. Vive ACÁ y no en la sección — ver el porqué en el render. */
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
+  const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
+  const [refrescandoLista, setRefrescandoLista] = useState(false);
   const [facturaId, setFacturaId] = useState<string | null>(null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
@@ -267,6 +269,39 @@ export function PantallaFacturacion() {
     };
   }, [facturaId, estadoFacturaActual?.estado, estadoFacturaActual?.terminado]);
 
+  /**
+   * 6. La factura recién emitida entra en "Mis comprobantes".
+   *
+   * 🔴 **La lista NO se enteraba de nada.** Se cargaba una sola vez al montar y no volvía a
+   * preguntar: emitir la factura de arriba dejaba la lista de abajo mostrando el mundo anterior, en
+   * la misma pantalla y a centímetros de distancia. Reportado por el operador el 2026-07-21 ("no
+   * tengo ninguna factura 18, solo veo hasta la 15"), y el control por HTTP confirmó que el backend
+   * sí las tenía: las 24 filas estaban, la 18 primera.
+   *
+   * Corta por `terminado` y no por `estado === 'emitida'`, por la misma razón que el poll de arriba:
+   * entre el CAE y el PDF hay una ventana, y releer en el medio trae el comprobante a medio hacer.
+   * `terminado` cubre además `rechazada`/`cancelada` — releer ahí no agrega un comprobante, pero
+   * tampoco molesta, y evita enumerar estados que el backend puede ampliar.
+   */
+  useEffect(() => {
+    if (estadoFacturaActual?.terminado !== true) return;
+    void refComprobantes.current?.recargar();
+  }, [estadoFacturaActual?.terminado, estadoFacturaActual?.estado]);
+
+  /**
+   * El tirón-para-actualizar. Es el ÚNICO camino que cubre lo que cambió **fuera** de esta app —otro
+   * dispositivo, la web, el agente por chat, un script— porque ahí no hay ninguna acción local que
+   * pudiera disparar un refresco. Ningún "recargar después de X" sirve cuando la app nunca hizo X.
+   */
+  const refrescarLista = useCallback(async () => {
+    setRefrescandoLista(true);
+    try {
+      await refComprobantes.current?.recargar();
+    } finally {
+      if (vivo.current) setRefrescandoLista(false);
+    }
+  }, []);
+
   /** Relectura simple, sin esperar nada. Para refrescos que NO siguen a un signal. */
   const actualizarEstado = useCallback(async () => {
     if (!facturaId) return;
@@ -363,6 +398,15 @@ export function PantallaFacturacion() {
         style={styles.scroll}
         testID="facturacion-lista"
         contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.lg }]}
+        refreshControl={
+          <RefreshControl
+            testID="facturacion-refresco"
+            refreshing={refrescandoLista}
+            onRefresh={refrescarLista}
+            tintColor={tema.color.acento}
+            colors={[tema.color.acento]}
+          />
+        }
       >
         {gate.tipo === 'resolviendo_cuit' || gate.tipo === 'verificando' ? (
           <ActivityIndicator testID="facturacion-cargando" color={tema.color.acento} />
@@ -415,7 +459,7 @@ export function PantallaFacturacion() {
         )}
 
         {cuitConocido && (
-          <SeccionMisComprobantes cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+          <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
         )}
       </ScrollFormulario>
 

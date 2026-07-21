@@ -21,9 +21,9 @@
  * dentro del `Pan` del vidrio, y mezclar un scroll de RN con gestos de RNGH deja dos árbitros
  * peleándose el mismo dedo (regla de "las dos mitades" de Software Mansion — `swmansion-rn-gestures`).
  */
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactElement } from 'react';
 import { createContext, useCallback, useContext, useRef } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { calcularDesplazamiento } from './revelarCampo';
@@ -60,6 +60,16 @@ const DEMORA_TECLADO_MS = 120;
 export interface ScrollFormularioProps extends PropsWithChildren {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /**
+   * El `RefreshControl` del tirón-para-actualizar, si la pantalla lo quiere. Va acá y no en un
+   * wrapper porque `ScrollView` sólo lo acepta como prop propia.
+   *
+   * 🔴 **No le disputa el dedo al tirón que cierra el vidrio.** El `Pan` de `MarcoGlass` está montado
+   * únicamente sobre la zona del handle (la barrita de arriba), no sobre el contenido — verificado en
+   * `MarcoGlass.tsx`. Si algún día ese gesto se extendiera a toda la pantalla, los dos arrastres
+   * hacia abajo pasarían a competir y habría que declarar la relación entre ambos explícitamente.
+   */
+  refreshControl?: ReactElement<RefreshControlProps>;
   testID?: string;
 }
 
@@ -67,6 +77,7 @@ export function ScrollFormulario({
   children,
   style,
   contentContainerStyle,
+  refreshControl,
   testID,
 }: ScrollFormularioProps) {
   const refScroll = useRef<ScrollView>(null);
@@ -113,6 +124,7 @@ export function ScrollFormulario({
           testID={testID}
           style={style}
           contentContainerStyle={contentContainerStyle}
+          refreshControl={refreshControl}
           keyboardShouldPersistTaps="handled"
           onScroll={(e) => {
             offsetActual.current = e.nativeEvent.contentOffset.y;

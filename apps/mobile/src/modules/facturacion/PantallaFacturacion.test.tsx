@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales. `render`/`fireEvent` de RNTL 14 son
 // ASYNC acá (devuelven Promise) -- hay que `await`-earlos, mismo criterio que
@@ -424,5 +424,57 @@ describe('PantallaFacturacion', () => {
     );
     expect(screen.getByText(/nota de crédito/i)).toBeTruthy();
     expect(anularComprobante).not.toHaveBeenCalled(); // todavía no tocó "Sí, anular".
+  });
+
+  /**
+   * 🔴 **El bug que reportó el operador el 2026-07-21: "no tengo ninguna factura 18, solo veo hasta
+   * la 15".** La lista se cargaba UNA vez al montar y no volvía a preguntar nunca. El control por
+   * HTTP contra la base mostró que el backend sí tenía las 24 filas, con la 18 primera: lo que
+   * estaba viejo era la pantalla, no el dato.
+   *
+   * El test miente si sólo cuenta llamadas — hay que ver el comprobante NUEVO en pantalla. Por eso
+   * la primera respuesta no lo trae y la segunda sí: sin recarga, la N° 18 no aparece jamás.
+   */
+  it('al terminar una emisión, "Mis comprobantes" vuelve a preguntar y muestra la factura nueva', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValue({
+      estado: estadoMock({ estado: 'entregada', terminado: true }),
+      convergio: true,
+    });
+    jest.mocked(listarComprobantes)
+      .mockResolvedValueOnce({ status: 'ok', comprobantes: [comprobanteMock({ nro: 15 })] })
+      .mockResolvedValue({ status: 'ok', comprobantes: [comprobanteMock({ nro: 18 }), comprobanteMock({ nro: 15 })] });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeTruthy());
+  });
+
+  /**
+   * 🔴 **El único camino para lo que cambió AFUERA.** Si la factura se emitió desde otro teléfono, la
+   * web, o el agente por chat, esta app no ejecutó ninguna acción que pudiera disparar un refresco —
+   * ningún "recargar después de X" alcanza, porque nunca hubo X. El tirón es lo que le devuelve al
+   * usuario la capacidad de preguntar.
+   *
+   * ⚠️ **Lo que este test NO prueba.** Dispara el `onRefresh` por la prop porque el `RefreshControl`
+   * no es un nodo del árbol —es una prop del `ScrollView`, así que no hay `testID` que consultar—, y
+   * porque jsdom no tiene gesto táctil. Verifica el CABLEADO (tirar vuelve a pedir y repinta), no que
+   * el arrastre funcione en el teléfono. Eso último sólo lo dice el device.
+   */
+  it('el tirón-para-actualizar vuelve a pedir la lista', async () => {
+    jest.mocked(listarComprobantes)
+      .mockResolvedValueOnce({ status: 'ok', comprobantes: [comprobanteMock({ nro: 15 })] })
+      .mockResolvedValue({ status: 'ok', comprobantes: [comprobanteMock({ nro: 18 }), comprobanteMock({ nro: 15 })] });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-15')).toBeTruthy());
+    expect(screen.queryByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeNull();
+
+    const refresco = screen.getByTestId('facturacion-lista').props.refreshControl;
+    expect(refresco.props.refreshing).toBe(false);
+    await act(async () => {
+      await refresco.props.onRefresh();
+    });
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeTruthy());
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
@@ -55,7 +55,17 @@ export interface SeccionMisComprobantesProps {
   testID?: string;
 }
 
-export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-comprobantes' }: SeccionMisComprobantesProps) {
+/**
+ * Lo que la PANTALLA puede pedirle a esta sección. Existe una sola operación y es la que faltaba:
+ * volver a preguntar.
+ */
+export interface SeccionMisComprobantesHandle {
+  /** Relee la lista contra el backend. Resuelve cuando la respuesta llegó (o falló). */
+  recargar: () => Promise<void>;
+}
+
+export const SeccionMisComprobantes = forwardRef<SeccionMisComprobantesHandle, SeccionMisComprobantesProps>(
+function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-comprobantes' }, ref) {
   const tema = useTema();
   const [estadoLista, setEstadoLista] = useState<EstadoLista>('cargando');
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
@@ -70,9 +80,15 @@ export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturaci
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
-  const cargar = useCallback(() => {
-    setEstadoLista('cargando');
-    listarComprobantes(cuit)
+  /**
+   * `silencioso` = no pasar por `cargando`. Una RE-carga (el tirón, o el refresco de después de
+   * emitir) ocurre sobre una lista que el usuario está mirando: mandarla al spinner la haría
+   * desaparecer y volver, un parpadeo que sugiere que algo se perdió. La carga inicial sí lo pasa,
+   * porque ahí no hay nada que preservar.
+   */
+  const cargar = useCallback((silencioso = false): Promise<void> => {
+    if (!silencioso) setEstadoLista('cargando');
+    return listarComprobantes(cuit)
       .then((res) => {
         if (!vivo.current) return;
         if (res.status === 'no_disponible') {
@@ -89,8 +105,10 @@ export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturaci
   }, [cuit]);
 
   useEffect(() => {
-    cargar();
+    void cargar();
   }, [cargar]);
+
+  useImperativeHandle(ref, () => ({ recargar: () => cargar(true) }), [cargar]);
 
   // Poll de la anulación en curso -- se detiene solo cuando la respuesta FRESCA (no un valor de estado
   // capturado por el closure, que quedaría stale dentro del `setInterval`) llega terminal o a
@@ -166,7 +184,7 @@ export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturaci
     setObjetivoAnulacion(null);
     setAnulacionId(null);
     setEstadoAnulacionActual(null);
-    cargar();
+    void cargar(true);
   }
 
   return (
@@ -323,7 +341,7 @@ export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturaci
         })}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   contenedor: {},
