@@ -99,6 +99,46 @@ def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
     return start_refresh
 
 
+def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Fábrica de `start_onboarding` (hook de `create_afip_app`): arranca el alta ARCA durable.
+
+    `id` determinístico por (cliente_id, cuit) + `USE_EXISTING` → idempotente: si el usuario toca dos
+    veces "Conectar" mientras el RPA todavía corre, se engancha al alta en curso en vez de lanzar una
+    segunda. Mismo patrón que `make_start_refresh`.
+    """
+
+    async def start_onboarding(cliente_id: str, cuit: str, handle: str) -> str:
+        wf_id = f"afip-onboarding-{cliente_id}-{cuit}"
+        await temporal_client.start_workflow(
+            "AfipOnboardingWorkflow",
+            args=[cliente_id, cuit, handle],
+            id=wf_id,
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return wf_id
+
+    return start_onboarding
+
+
+def make_consultar_onboarding(temporal_client) -> Callable:
+    """Fábrica de `consultar_onboarding`: lee el progreso REAL del alta por query del workflow.
+
+    Es lo que le permite a Ajustes mostrar en qué paso está en vez de un "aguardá un momento" fijo —
+    la diferencia concreta contra el competidor, que ante la pregunta del usuario repite el mismo
+    mensaje (benchmark Facturitas §7).
+    """
+
+    async def consultar_onboarding(cliente_id: str, cuit: str) -> dict | None:
+        try:
+            handle = temporal_client.get_workflow_handle(f"afip-onboarding-{cliente_id}-{cuit}")
+            return await handle.query("progreso")
+        except Exception:  # noqa: BLE001 — nunca hubo alta, o ya expiró la retención: no es un error
+            return None
+
+    return consultar_onboarding
+
+
 def _composio_valid_toolkits() -> frozenset[str]:
     """Toolkits Composio soportados por ESTE Copiloto, DERIVADOS de la policy real (misma unión que
     `worker_b.py` arma para el `ComposioGateway`: `{**CALENDAR_POLICY, **services.merged_policy()}`)
@@ -189,6 +229,7 @@ class RefreshIn(BaseModel):
 
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
+                   afip_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -410,6 +451,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # barrera (state cifrado / x-signature). `include_router` copia sus rutas absolutas al front-door
     # SIN heredar `require_tenant` -- MercadoPago no manda JWT del tenant en sus llamadas.
     app.include_router(mp_app.router)
+    # `/afip/*` (perfil fiscal + alta ARCA, pantalla de Ajustes). Opcional para no romper los tests que
+    # construyen el front-door sin AFIP; en producción `serve.py` siempre lo inyecta. Sus rutas ya traen
+    # su propia barrera `Depends(require_tenant)`.
+    if afip_app is not None:
+        app.include_router(afip_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).

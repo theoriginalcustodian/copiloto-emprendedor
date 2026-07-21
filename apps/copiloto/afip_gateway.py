@@ -55,6 +55,20 @@ class ClienteAfip(Protocol):
     ElectronicBilling: Any
 
 
+def _sin_clave(exc: Exception, clave: str) -> str:
+    """Devuelve el mensaje del error con la clave fiscal enmascarada.
+
+    No es paranoia de más: AfipSDK levanta `Exception(data.decode())` con el cuerpo crudo de la
+    respuesta HTTP, y el payload que envió incluye `password`. Si un 400 lo refleja, el traceback se
+    lleva la clave fiscal del emprendedor a los logs. Se enmascara ANTES de que el string exista, y el
+    `raise ... from None` corta el encadenamiento para que el original tampoco quede en el traceback.
+    """
+    mensaje = str(exc)
+    if clave and clave in mensaje:
+        mensaje = mensaje.replace(clave, "***")
+    return mensaje
+
+
 def _parse_fecha_iso(valor: str) -> date:
     """El WS mezcla formatos: `createNextVoucher` devuelve ISO y `getVoucherInfo` `yyyymmdd`."""
     valor = str(valor).strip()
@@ -137,6 +151,29 @@ class AfipGateway:
             return bool(self.info_comprobante(numero=numero, punto_venta=punto_venta, tipo_cbte=tipo_cbte))
         except ErrorAfip:
             return False
+
+    # -- onboarding (alta del emprendedor ante ARCA) ------------------------
+
+    def crear_certificado(self, *, usuario: str, clave: str, alias: str) -> dict:
+        """Genera el certificado digital vía el RPA de AfipSDK. Devuelve `{cert, key}` en PEM.
+
+        ⚠️ **Bloqueante y lento.** El SDK hace polling interno: hasta 24 intentos cada 5 s (~2 min) antes
+        de rendirse con "Waiting for too long". Quien llame a esto tiene que darle timeout de sobra.
+
+        ⚠️ `clave` es la clave fiscal. Entra por parámetro, se usa, y no se guarda en ningún lado —
+        tampoco en el atributo de la instancia.
+        """
+        try:
+            return self.cliente.createCert(usuario, clave, alias)
+        except Exception as exc:  # noqa: BLE001
+            raise ErrorAfip(f"falló la generación del certificado: {_sin_clave(exc, clave)}") from None
+
+    def autorizar_web_service(self, *, usuario: str, clave: str, alias: str, wsid: str = "wsfe") -> dict:
+        """Vincula el certificado con el web service (sin esto el certificado no puede facturar)."""
+        try:
+            return self.cliente.createWSAuth(usuario, clave, alias, wsid)
+        except Exception as exc:  # noqa: BLE001
+            raise ErrorAfip(f"falló la autorización de {wsid}: {_sin_clave(exc, clave)}") from None
 
     # -- escrituras ---------------------------------------------------------
 

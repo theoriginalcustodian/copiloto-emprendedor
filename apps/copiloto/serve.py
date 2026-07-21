@@ -49,7 +49,10 @@ from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
 from onboarding import GoTrueAdmin
 from reply_store import make_pg_reply_sink
-from web import create_web_app, make_start_refresh
+from web import (create_web_app, make_consultar_onboarding, make_start_onboarding,
+                 make_start_refresh)
+from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
+from afip_web import create_afip_app
 
 # Todos con default -> el módulo importa sin reventar aunque el proceso no haya seteado nada
 # todavía (los env realmente OBLIGATORIOS -- DATABASE_URL, SUPABASE_JWT_SECRET, MP_FERNET_KEY,
@@ -114,6 +117,17 @@ async def _serve() -> None:
         payment_store_factory=lambda cid: MpPaymentStore(conn_factory, cid),
         start_refresh=make_start_refresh(client),
     )
+    # AFIP (Ajustes): perfil fiscal + alta ARCA. El alta arranca el workflow durable y el estado se lee
+    # por query — la pantalla muestra progreso real durante los minutos que tarda el RPA de AfipSDK.
+    afip_app = create_afip_app(
+        require_tenant=require_tenant,
+        perfil_store_factory=lambda cid: AfipPerfilStore(conn_factory, cid),
+        cred_store_factory=lambda cid: AfipCredentialStore(conn_factory, cid, crypto),
+        handoff_factory=lambda cid: AfipSecretHandoff(conn_factory, cid, crypto),
+        start_onboarding=make_start_onboarding(client),
+        consultar_onboarding=make_consultar_onboarding(client),
+    )
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -128,7 +142,8 @@ async def _serve() -> None:
 
     app = create_web_app(
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
-        require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app, gotrue=gotrue,
+        require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
+        afip_app=afip_app, gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción

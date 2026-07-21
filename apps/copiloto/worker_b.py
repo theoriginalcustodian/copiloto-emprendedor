@@ -39,6 +39,11 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from afip_credential_store import AfipCredentialStore, AfipSecretHandoff
+from afip_gateway import AfipGateway
+from afip_onboarding_activities import (
+    dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
+from afip_onboarding_workflow import AfipOnboardingWorkflow
 from calendar_policy import CALENDAR_POLICY
 from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
@@ -132,8 +137,22 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))
 
-    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow],
-            "activities": _ACTIVITIES + [refresh_credential],
+    # AFIP: mismas fábricas per-tenant, cableadas ANTES de que el worker empiece a pollear (igual que
+    # set_refresh_deps). El gateway de onboarding se construye SIN cert: todavía no existe — el alta es
+    # justamente lo que lo genera.
+    # ⚠️ DEUDA GESTIONADA: se reusa la key `MP_FERNET_KEY` para cifrar el certificado AFIP. Funciona y
+    # evita desplegar un secreto más, pero el nombre miente sobre su alcance. Pago: renombrar a una key
+    # de app (`COPILOTO_FERNET_KEY`) con doble lectura durante la transición. Propietario: operador.
+    # Condición: antes de habilitar producción de facturación.
+    set_onboarding_deps(
+        lambda cuit: AfipGateway(cuit=cuit),
+        lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
+        lambda cliente_id: AfipSecretHandoff(conn_factory, cliente_id, crypto),
+    )
+
+    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow],
+            "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
+                                         verificar_habilitacion_afip, purgar_secretos_vencidos],
             "context_factory": ctx_factory}
 
 
