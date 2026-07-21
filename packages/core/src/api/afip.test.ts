@@ -6,6 +6,7 @@ import {
   conectarArca,
   confirmarConTokenFresco,
   confirmarFactura,
+  cambiarAmbiente,
   crearFactura,
   ErrorValidacionFiscal,
   esperarEstadoEstable,
@@ -15,6 +16,7 @@ import {
   guardarPerfil,
   leerPerfil,
   listarComprobantes,
+  SinCertificadoError,
 } from './afip';
 import { configurarApi } from './config';
 import { ApiError } from './errors';
@@ -322,6 +324,62 @@ describe('afip.ts', () => {
       responder = () => respuesta(404, { detail: 'not found' });
       expect(await estadoAfip('1')).toEqual({ status: 'no_disponible' });
     });
+
+    /**
+     * 🔴 **La regresión que este test impide, encontrada al construir la pantalla de Ajustes.**
+     *
+     * `estadoAfip` armaba un objeto literal con 5 claves fijas, así que `cuit`, `ambiente` y
+     * `ambientes_vinculados` —los tres que el backend está por sumar (pedidos §2 y §3)— se
+     * DESCARTABAN en silencio. El daño no se ve el día que se escribe: se ve el día que el backend
+     * los sube, la pantalla de Ajustes sigue en modo degradado, y el síntoma ("el selector de
+     * ambiente no anda") no apunta a este archivo por ningún lado.
+     *
+     * Es la clase de defecto que un test de "normaliza a camelCase" nunca caza: pasa verde porque lo
+     * que afirma —que las 5 claves conocidas se traducen— sigue siendo cierto.
+     */
+    it('propaga cuit/ambiente/ambientes_vinculados cuando el backend los manda', async () => {
+      responder = () =>
+        respuesta(200, {
+          cuit: '20111222339',
+          ambiente: 'dev',
+          ambientes_vinculados: ['dev', 'prod'],
+          conectado: true,
+          ws_autorizados: ['wsfe'],
+          perfil_completo: true,
+          puede_facturar: true,
+          onboarding: null,
+        });
+
+      const result = await estadoAfip();
+
+      expect(result).toMatchObject({
+        status: 'ok',
+        cuit: '20111222339',
+        ambiente: 'dev',
+        ambientesVinculados: ['dev', 'prod'],
+      });
+    });
+
+    /**
+     * El caso de HOY: el backend todavía no manda esos tres campos. Tienen que quedar `undefined`,
+     * NO con un default inventado — `undefined` significa "no sé" y la pantalla está obligada a
+     * decirlo. Un default `'dev'` acá haría que la UI afirme un ambiente que nadie verificó, que es
+     * exactamente el error caro de este flujo (emitir en producción creyendo que se está probando).
+     */
+    it('sin esos campos quedan undefined, sin inventar un default', async () => {
+      responder = () =>
+        respuesta(200, {
+          conectado: false, ws_autorizados: [], perfil_completo: false, puede_facturar: false, onboarding: null,
+        });
+
+      const result = await estadoAfip('1');
+
+      expect(result).toMatchObject({ status: 'ok' });
+      const ok = result as Extract<typeof result, { status: 'ok' }>;
+      expect(ok.ambiente).toBeUndefined();
+      expect(ok.ambientesVinculados).toBeUndefined();
+      expect(ok.cuit).toBeUndefined();
+    });
   });
 
   describe('crearFactura — POST /afip/facturas', () => {
@@ -367,6 +425,7 @@ describe('afip.ts', () => {
         resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1 },
         pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expiraAt: '2026-07-22T00:00:00Z' },
         motivo: null,
+        motivoCodigo: null,
         terminado: true,
       });
     });
@@ -575,10 +634,81 @@ describe('afip.ts', () => {
           resultado: null,
           pdf: null,
           motivo: null,
+          motivoCodigo: null,
           terminado: false,
         },
       });
       expect(peticiones).toHaveLength(1); // sólo el estadoFactura() inicial, nada más.
+    });
+  });
+  /**
+   * Contrato desplegado por backend el 2026-07-21, a pedido de esta capa. Los tres casos de abajo son
+   * los que cambian el COMPORTAMIENTO de la UI, no sólo su tipado.
+   */
+  describe('contrato nuevo — 409 sin certificado, cambio de ambiente y motivo_codigo', () => {
+    it('crearFactura sin certificado lanza SinCertificadoError, no un ApiError genérico', async () => {
+      responder = () =>
+        respuesta(409, { detail: 'Todavía no vinculaste tu cuenta de ARCA.' });
+
+      await expect(crearFactura('20111222339')).rejects.toBeInstanceOf(SinCertificadoError);
+    });
+
+    /**
+     * 🔴 El 409 NO puede colapsar a `no_disponible`. Son estados opuestos: `no_disponible` significa
+     * "el backend no tiene esta capacidad" (la app muestra "todavía no está disponible"), y el 409
+     * significa "vos no configuraste tu cuenta" (la app tiene que ofrecer el camino a Ajustes).
+     * Mezclarlos dejaría al usuario esperando algo que sólo él puede destrabar.
+     */
+    it('el 409 NO se confunde con no_disponible', async () => {
+      responder = () => respuesta(409, { detail: 'x' });
+      const err = await crearFactura('1').catch((e) => e);
+      expect(err).toBeInstanceOf(SinCertificadoError);
+      expect(err).not.toEqual({ status: 'no_disponible' });
+    });
+
+    it('cambiarAmbiente OK devuelve {ok:true}', async () => {
+      responder = () => respuesta(200, { ok: true });
+      expect(await cambiarAmbiente('20111222339', 'prod')).toEqual({ ok: true });
+    });
+
+    /**
+     * El 409 `ambiente_no_vinculado` NO es una falla que mostrar como error: es el caso donde la UI
+     * ofrece el alta para ESE ambiente. Por eso vuelve como valor y no como excepción — una excepción
+     * empujaría al caller a un `catch` genérico y de ahí a un cartel rojo, que es justo lo contrario
+     * de lo que el usuario necesita ver.
+     */
+    it('cambiarAmbiente a uno no vinculado vuelve como VALOR, no como excepción', async () => {
+      responder = () =>
+        respuesta(409, { detail: 'Todavía no vinculaste producción.' });
+
+      const r = await cambiarAmbiente('20111222339', 'prod');
+
+      expect(r).toEqual({
+        ok: false,
+        ambienteNoVinculado: 'prod',
+        mensaje: 'Todavía no vinculaste producción.',
+      });
+    });
+
+    it('motivo_codigo se propaga como motivoCodigo (es el que se usa para ramificar)', async () => {
+      responder = () =>
+        respuesta(200, {
+          estado: 'emitida',
+          faltantes: [],
+          items: [],
+          total: '1000.00',
+          token_confirmacion: null,
+          resultado: null,
+          pdf: null,
+          motivo: 'tu factura se emitió (CAE 123); el PDF no está disponible en este momento',
+          motivo_codigo: 'emitida_sin_pdf',
+          terminado: false,
+        });
+
+      const r = await estadoFactura('f-1');
+
+      expect(r.motivoCodigo).toBe('emitida_sin_pdf');
+      expect(r.motivo).toContain('CAE 123');
     });
   });
 });

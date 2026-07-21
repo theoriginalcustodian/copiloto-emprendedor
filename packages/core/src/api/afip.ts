@@ -117,6 +117,34 @@ export interface ResultadoEmision {
 }
 
 /** `GET /afip/facturas/{id}` — el shape completo que `FacturaWorkflow.estado()` devuelve, normalizado. */
+/**
+ * Los códigos ESTABLES de `motivo`, para ramificar. Los agregó el backend el 2026-07-21 a pedido de
+ * esta capa, porque `motivo` mezclaba dos vocabularios: siete frases en español listas para mostrar y
+ * un código de máquina (`sin_certificado_afip`). Mezclado, cada motivo nuevo del backend era una
+ * ramificación nueva que sólo se descubría en producción.
+ *
+ * 🔴 **`motivoCodigo` es para RAMIFICAR, `motivo` es para MOSTRAR.** No al revés: comparar contra la
+ * frase la ata al copy del backend, y el copy cambia.
+ *
+ * Los dos que más importan en la UI:
+ *   - `token_desactualizado` — la confirmación no correspondía a los datos actuales. NO es un error:
+ *     hay que volver a mostrar el resumen.
+ *   - `emitida_sin_pdf` — **hay CAE válido y el comprobante quedó registrado en AFIP.** Se muestra
+ *     como ÉXITO con advertencia. Confirmado por backend, que lo vivió en producción: si la UI dice
+ *     "falló", el usuario factura de nuevo y duplica un comprobante fiscal real.
+ *   - `rechazo_afip` — este SÍ es un rechazo fiscal de verdad.
+ */
+export type MotivoCodigo =
+  | 'datos_venta_invalidos'
+  | 'item_invalido'
+  | 'cliente_invalido'
+  | 'faltan_datos'
+  | 'token_desactualizado'
+  | 'sin_certificado_afip'
+  | 'rechazo_afip'
+  | 'emitida_sin_pdf'
+  | (string & {});
+
 export interface EstadoFacturaResp {
   estado: EstadoFactura;
   faltantes: Faltante[];
@@ -125,7 +153,10 @@ export interface EstadoFacturaResp {
   tokenConfirmacion: string | null;
   resultado: ResultadoEmision | null;
   pdf: { url: string; nombre: string; expiraAt: string | null } | null;
+  /** La frase redactada, para MOSTRAR. */
   motivo: string | null;
+  /** El código estable, para RAMIFICAR. Ver `MotivoCodigo`. */
+  motivoCodigo: MotivoCodigo | null;
   terminado: boolean;
 }
 
@@ -151,12 +182,44 @@ export interface OnboardingProgreso {
 }
 
 /** `GET /afip/estado` — lo que Ajustes pinta: si ya puede facturar y en qué paso del alta está. */
+/**
+ * Los dos ambientes de AFIP. **`'dev'`/`'prod'` y no `'homologacion'`/`'produccion'`**: son los
+ * valores literales que usa el backend (`AfipCredentialStore.save(ambiente="dev")`, y el
+ * `POST /afip/conectar {ambiente}` que confirmó la sesión de backend el 2026-07-21). Tiparlos con los
+ * nombres "lindos" fue un error real de la primera versión de este archivo: el lado de LECTURA nunca
+ * habría matcheado y el de ESCRITURA habría mandado un valor que el backend no reconoce — un defecto
+ * silencioso, porque pydantic ignora las claves que no entiende. El copy humano ("Homologación",
+ * "Producción") es cosa de la UI; acá viaja el valor del contrato.
+ */
+export type AmbienteAfip = 'dev' | 'prod';
+
 export interface EstadoAfip {
+  /**
+   * El CUIT del emprendedor, resuelto por el backend con `primer_cuit()` cuando la llamada va sin
+   * parámetro (desplegado el 2026-07-21).
+   *
+   * 🔴 **`null` es un valor legítimo, no un error**: es el estado inicial de un tenant que todavía no
+   * vinculó nada, y el backend lo devuelve con 200. La app cachea el CUIT localmente como
+   * OPTIMIZACIÓN, pero la fuente de verdad es esta — si viviera sólo en el cliente, cambiar de
+   * teléfono mostraría "cargá tus datos fiscales" sobre un perfil que existe.
+   */
+  cuit?: string | null;
   conectado: boolean;
   wsAutorizados: string[];
   perfilCompleto: boolean;
   puedeFacturar: boolean;
   onboarding: OnboardingProgreso | null;
+  /** ⚠️ Opcional hasta que el backend lo mande (pedido §3). El ambiente de la credencial vigente. */
+  ambiente?: AmbienteAfip;
+  /**
+   * ⚠️ Opcional hasta que el backend lo mande (pedido §3). Los ambientes que YA tienen credencial.
+   *
+   * 🔴 Es el dato que decide la UI del selector, y por eso no se puede inventar: un ambiente en esta
+   * lista es un toggle instantáneo; uno que no está exige el alta (con clave fiscal) para ESE
+   * ambiente. `undefined` significa "no sé", y la pantalla tiene que decirlo — asumir que está
+   * vinculado llevaría al usuario a tocar un switch que después falla.
+   */
+  ambientesVinculados?: AmbienteAfip[];
 }
 
 /** Una fila de "Mis comprobantes" (`AfipComprobanteStore._fila`), normalizada. */
@@ -212,13 +275,13 @@ export interface ConectarArcaRequest {
   /** 🔴 Sólo vive en el `cuerpoJson` de este POST. Ver el docstring del módulo. */
   claveFiscal: string;
   /**
-   * ⚠️ [ASSUMED_PENDING_VERIFY] `ConectarBody` en `afip_web.py` (verificado 2026-07-21) todavía NO
-   * declara este campo — pydantic ignora claves extra por default, así que viajar no rompe nada, pero
-   * el backend hoy lo IGNORA en silencio (no cambia el ambiente vigente). Pedido §3 del plan de UI de
-   * facturación AFIP sigue abierto; hasta que respondan, la pantalla de Ajustes tiene que mostrar el
-   * selector de ambiente en solo-lectura pese a que esta función acepte el campo.
+   * ⚠️ [ASSUMED_PENDING_VERIFY] `ConectarBody` en `afip_web.py` (verificado contra el backend vivo el
+   * 2026-07-21) todavía NO declara este campo — pydantic ignora claves extra por default, así que
+   * mandarlo no rompe nada, pero hoy el backend lo IGNORA en silencio y el alta queda en el default
+   * (`dev`). La sesión de backend confirmó que va a aceptarlo con estos mismos valores; hasta
+   * entonces, la pantalla de Ajustes muestra el selector en solo-lectura.
    */
-  ambiente?: 'homologacion' | 'produccion';
+  ambiente?: AmbienteAfip;
 }
 
 export interface ConectarArcaResponse {
@@ -456,13 +519,25 @@ export async function estadoAfip(cuit?: string): Promise<ConDisponibilidad<Estad
       perfil_completo: boolean;
       puede_facturar: boolean;
       onboarding: { paso: string; motivo: string | null; ws_autorizados: string[]; terminado: boolean; ok: boolean } | null;
+      // ⚠️ Los tres de abajo todavía NO los manda el backend (pedidos §2 y §3, verificado contra el
+      // servicio vivo el 2026-07-21). Se leen igual, opcionales: cuando los suba, esta función los
+      // propaga sola y la pantalla de Ajustes sale del modo degradado sin tocar una línea de UI.
+      // Sin esto, `estadoAfip` armaba un objeto literal con 5 claves fijas y los DESCARTABA en
+      // silencio — el selector de ambiente habría quedado degradado para siempre, incluso con el
+      // backend ya arreglado, y el síntoma ("no anda") no habría apuntado nunca acá.
+      cuit?: string;
+      ambiente?: AmbienteAfip;
+      ambientes_vinculados?: AmbienteAfip[];
     }>(`/afip/estado${query}`);
     return {
       status: 'ok',
+      cuit: raw.cuit,
       conectado: raw.conectado,
       wsAutorizados: raw.ws_autorizados,
       perfilCompleto: raw.perfil_completo,
       puedeFacturar: raw.puede_facturar,
+      ambiente: raw.ambiente,
+      ambientesVinculados: raw.ambientes_vinculados,
       onboarding: raw.onboarding
         ? {
             paso: raw.onboarding.paso as PasoOnboarding,
@@ -517,6 +592,7 @@ interface EstadoFacturaRaw {
   resultado: ResultadoEmisionRaw | null;
   pdf: { url: string; nombre: string; expira_at: string | null } | null;
   motivo: string | null;
+  motivo_codigo?: string | null;
   terminado: boolean;
 }
 
@@ -535,6 +611,7 @@ function normalizarEstadoFactura(raw: EstadoFacturaRaw): EstadoFacturaResp {
     resultado: raw.resultado ? normalizarResultadoEmision(raw.resultado) : null,
     pdf: raw.pdf ? { url: raw.pdf.url, nombre: raw.pdf.nombre, expiraAt: raw.pdf.expira_at } : null,
     motivo: raw.motivo,
+    motivoCodigo: raw.motivo_codigo ?? null,
     terminado: raw.terminado,
   };
 }
@@ -546,7 +623,56 @@ export async function crearFactura(cuit: string): Promise<ConDisponibilidad<{ ok
     const raw = await apiClient.post<{ ok: boolean; factura_id: string }>('/afip/facturas', { cuit });
     return { status: 'ok', ok: true, facturaId: raw.factura_id };
   } catch (err) {
+    if (err instanceof ApiError && err.status === 409) throw new SinCertificadoError(err.detail);
     if (esNoDisponible(err, true)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/**
+ * `POST /afip/facturas` devolvió 409: el tenant no tiene certificado de ARCA vinculado.
+ *
+ * 🔴 **La UI NUNCA debe mostrar esto como un rechazo fiscal.** Antes del 2026-07-21 este caso abría un
+ * workflow que nacía muerto (`{estado:"rechazada", terminado:true, motivo:"sin_certificado_afip"}` en el
+ * primer poll — medido contra el backend vivo), y un usuario nuevo leía **"rechazada"**, que en este
+ * dominio significa *"AFIP te rechazó la factura"* y no *"todavía no configuraste nada"*. A pedido de
+ * esta capa el backend lo convirtió en un 409 antes de abrir nada.
+ *
+ * El camino correcto sigue siendo NO llegar hasta acá: la pantalla chequea `puedeFacturar` de
+ * `estadoAfip` antes de crear el borrador. Este error es la red de atrás, no el mecanismo.
+ */
+export class SinCertificadoError extends ApiError {
+  constructor(detail?: string) {
+    super(409, detail ?? 'Todavía no vinculaste tu cuenta de ARCA.', detail);
+    this.name = 'SinCertificadoError';
+  }
+}
+
+/**
+ * `POST /afip/ambiente` — cambia el ambiente ACTIVO entre credenciales **ya vinculadas**.
+ *
+ * No es un re-alta: homologación y producción son WSAA distintos, así que el backend guarda una
+ * credencial POR ambiente y las dos conviven para el mismo CUIT. Cambiar entre las que ya existen es
+ * instantáneo.
+ *
+ * 🔴 El 409 `ambiente_no_vinculado` **no es un error a mostrar como falla**: es el caso donde la UI
+ * tiene que ofrecer el alta para ESE ambiente (una vez por ambiente, no una vez por cambio).
+ */
+export async function cambiarAmbiente(
+  cuit: string,
+  ambiente: AmbienteAfip,
+): Promise<{ ok: true } | { ok: false; ambienteNoVinculado: AmbienteAfip; mensaje: string }> {
+  try {
+    await apiClient.post<{ ok: boolean }>('/afip/ambiente', { cuit, ambiente });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      return {
+        ok: false,
+        ambienteNoVinculado: ambiente,
+        mensaje: err.detail ?? `Todavía no vinculaste tu cuenta de ARCA en ${ambiente === 'prod' ? 'producción' : 'homologación'}.`,
+      };
+    }
     throw err;
   }
 }
@@ -697,6 +823,10 @@ export async function estadoAnulacion(anulacionId: string): Promise<EstadoAnulac
     errores: raw.errores,
     resultado: raw.resultado ? normalizarResultadoEmision(raw.resultado) : null,
     motivo: raw.motivo,
+    // Sin `motivoCodigo`: el backend documentó `motivo_codigo` para `FacturaWorkflow.estado()`, NO
+    // para la anulación (`2026-07-21_respuesta2_backend-a-frontend-afip.md` §4). Agregarlo acá "por
+    // simetría" sería inventar un campo del contrato y dejar a la UI ramificando sobre `null`
+    // permanente, que es peor que no tenerlo: parece que funciona.
     terminado: raw.terminado,
   };
 }

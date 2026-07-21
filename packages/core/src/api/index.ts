@@ -73,6 +73,7 @@ export { apiClient, postMultipart } from './client';
 export {
   agregarItem,
   anularComprobante,
+  cambiarAmbiente,
   cancelarFactura,
   conectarArca,
   confirmarAnulacion,
@@ -90,8 +91,10 @@ export {
   quitarItem,
   setCliente,
   setDatosVenta,
+  SinCertificadoError,
 } from './afip';
 export type {
+  AmbienteAfip,
   AnularComprobanteRequest,
   Comprobante,
   ConDisponibilidad,
@@ -110,6 +113,7 @@ export type {
   Faltante,
   GuardarPerfilRequest,
   ItemFactura,
+  MotivoCodigo,
   NuevoItem,
   OnboardingProgreso,
   PasoAnulacion,
