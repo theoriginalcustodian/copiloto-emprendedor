@@ -117,7 +117,7 @@ export default function LayoutRaiz() {
                       y que en device se comía los toques (ningún tile respondía, el vidrio no se
                       arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
-                  {(['apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion'] as const).map(
+                  {(['apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion', 'ajustes-afip'] as const).map(
                     (glass) => (
                       <Stack.Screen
                         key={glass}

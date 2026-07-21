@@ -1,9 +1,137 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+// Jest (jest-expo) -- describe/it/expect/jest son globales. `render`/`fireEvent` de RNTL 14 son
+// ASYNC acá (devuelven Promise) -- hay que `await`-earlos, mismo criterio que
+// `PantallaPrincipal.test.tsx:66` y el resto de la suite.
+
+/**
+ * Mock de `expo-router` -- mismo criterio que `PantallaPrincipal.test.tsx`: el CTA de "Configurar
+ * facturación" navega vía `empujarUnaVez` (que llama `router.push`), y `MarcoGlass` usa `router.back`
+ * en su gesto de cierre. Sin este mock, ambos tocan el módulo real de expo-router fuera de un
+ * `NavigationContainer` montado por el harness de test.
+ */
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn(), back: jest.fn() },
+}));
+
+/** Partial mock de `../../adapters/almacen` -- mismo patrón que `PantallaSkins.test.tsx`/
+ *  `ChatView.test.tsx`: reemplaza el ADAPTADOR, no `AsyncStorage` (que ya está mockeado globalmente en
+ *  `jest.setup.js`), para poder controlar determinísticamente qué CUIT "encuentra" `cuitCache.ts`. */
+jest.mock('../../adapters/almacen', () => ({
+  almacenClave: {
+    leer: jest.fn(),
+    guardar: jest.fn(),
+    borrar: jest.fn(),
+  },
+}));
+
+/**
+ * Partial mock de `@copiloto/core`: se reemplazan las funciones de `/afip/*` que
+ * `PantallaFacturacion`/`SeccionMisComprobantes` llaman DIRECTO.
+ *
+ * 🔴 **`esperarEstadoEstable`/`confirmarConTokenFresco` se mockean DIRECTO, no compuestos desde
+ * `estadoFactura`/`confirmarFactura` mockeados.** Son funciones COMPUESTAS: `afip.ts` las define
+ * llamando a `estadoFactura`/`confirmarFactura` como referencias LOCALES al módulo, no a través del
+ * barrel de `@copiloto/core` -- así que reemplazar el export del barrel NO cambia a qué función llaman
+ * por dentro. Si se dejaran como `actual` (heredadas de `jest.requireActual`), terminarían pegándole a
+ * `apiClient.get`/`fetch` de verdad. Mockearlas directo evita ese hueco.
+ */
+jest.mock('@copiloto/core', () => {
+  const actual = jest.requireActual('@copiloto/core');
+  return {
+    ...actual,
+    estadoAfip: jest.fn(),
+    crearFactura: jest.fn(),
+    esperarEstadoEstable: jest.fn(),
+    estadoFactura: jest.fn(),
+    setDatosVenta: jest.fn(),
+    agregarItem: jest.fn(),
+    quitarItem: jest.fn(),
+    setCliente: jest.fn(),
+    confirmarConTokenFresco: jest.fn(),
+    cancelarFactura: jest.fn(),
+    listarComprobantes: jest.fn(),
+    anularComprobante: jest.fn(),
+    estadoAnulacion: jest.fn(),
+    confirmarAnulacion: jest.fn(),
+  };
+});
+
+import { router } from 'expo-router';
+
+import {
+  agregarItem,
+  anularComprobante,
+  cancelarFactura,
+  confirmarAnulacion,
+  confirmarConTokenFresco,
+  crearFactura,
+  estadoAfip,
+  estadoAnulacion,
+  estadoFactura,
+  esperarEstadoEstable,
+  listarComprobantes,
+  quitarItem,
+  setCliente,
+  setDatosVenta,
+  type Comprobante,
+  type EstadoAfip,
+  type EstadoFacturaResp,
+} from '@copiloto/core';
+
+import { almacenClave } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
+import { CLAVE_CUIT_AFIP } from '../afip/cuitCache';
 import { PantallaFacturacion } from './PantallaFacturacion';
 
-async function envolver() {
+const CUIT = '20111111112';
+
+function estadoMock(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
+  return {
+    estado: 'borrador',
+    faltantes: [],
+    items: [],
+    total: '0.00',
+    tokenConfirmacion: null,
+    resultado: null,
+    pdf: null,
+    motivo: null,
+    motivoCodigo: null,
+    terminado: false,
+    ...over,
+  };
+}
+
+function estadoAfipMock(over: Partial<EstadoAfip> = {}): { status: 'ok' } & EstadoAfip {
+  return {
+    status: 'ok',
+    conectado: true,
+    wsAutorizados: ['wsfe'],
+    perfilCompleto: true,
+    puedeFacturar: true,
+    onboarding: null,
+    ...over,
+  };
+}
+
+function comprobanteMock(over: Partial<Comprobante> = {}): Comprobante {
+  return {
+    cuit: CUIT,
+    tipoCbte: 11,
+    puntoVenta: 6,
+    nro: 8,
+    cae: '86294776469171',
+    caeVto: '2026-08-01',
+    fechaEmision: '2026-07-21T00:00:00Z',
+    total: '1000.00',
+    estado: 'emitida',
+    pdfUrl: null,
+    cbteAsocNro: null,
+    ...over,
+  };
+}
+
+async function montar() {
   return render(
     <ThemeProvider>
       <PantallaFacturacion />
@@ -12,25 +140,244 @@ async function envolver() {
 }
 
 describe('PantallaFacturacion', () => {
-  it('renderiza su descripción', async () => {
-    await envolver();
-    expect(screen.getByTestId('facturacion-descripcion')).toBeTruthy();
+  beforeEach(() => {
+    jest.mocked(almacenClave.leer).mockReset().mockResolvedValue(CUIT);
+    jest.mocked(almacenClave.guardar).mockReset().mockResolvedValue(undefined);
+    jest.mocked(almacenClave.borrar).mockReset().mockResolvedValue(undefined);
+
+    jest.mocked(estadoAfip).mockReset().mockResolvedValue(estadoAfipMock());
+    jest.mocked(crearFactura).mockReset().mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
+    jest.mocked(esperarEstadoEstable).mockReset().mockResolvedValue({ estado: estadoMock(), convergio: true });
+    jest.mocked(estadoFactura).mockReset().mockResolvedValue(estadoMock());
+    jest.mocked(setDatosVenta).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(agregarItem).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(quitarItem).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(setCliente).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(confirmarConTokenFresco).mockReset().mockResolvedValue({ emitida: true });
+    jest.mocked(cancelarFactura).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(listarComprobantes).mockReset().mockResolvedValue({ status: 'ok', comprobantes: [] });
+    jest.mocked(anularComprobante).mockReset().mockResolvedValue({ status: 'ok', ok: true, anulacionId: 'anulacion-1' });
+    jest.mocked(estadoAnulacion).mockReset().mockResolvedValue({
+      paso: 'esperando_confirmacion',
+      original: null,
+      errores: [],
+      resultado: null,
+      motivo: null,
+      terminado: false,
+    });
+    jest.mocked(confirmarAnulacion).mockReset().mockResolvedValue({ ok: true });
+
+    jest.mocked(router.push).mockClear();
   });
 
-  /** El porqué extendido está en `PantallaRedes.test.tsx`: esta pantalla trae su propio `MarcoGlass`,
-   *  que ya aporta el vidrio. Un `backgroundColor` en `facturacion-contenido` lo tapa y nadie se entera. */
-  it('no pinta fondo propio — el vidrio lo aporta MarcoGlass', async () => {
-    await envolver();
-    const estilos = [screen.getByTestId('facturacion-contenido').props.style].flat(Infinity);
-    for (const e of estilos) {
-      expect(e?.backgroundColor).toBeUndefined();
-    }
+  /**
+   * 🔴 **Sin caché local NO se corta: se le pregunta al backend.**
+   *
+   * Este test afirmaba lo contrario hasta el 2026-07-21, cuando la caché local era la única fuente
+   * posible del CUIT. Desde que el backend resuelve `primer_cuit()` en `GET /afip/estado` sin
+   * parámetro (pedido §2), cortar acá sería el defecto que ese pedido vino a arreglar: quien cambia de
+   * teléfono no tiene caché, y vería *"configurá tu facturación"* sobre un perfil que existe en la
+   * base — el peor error posible en esta pantalla, porque lo empuja a rehacer el alta.
+   */
+  it('sin CUIT cacheado -- igual le pregunta al backend, que lo resuelve solo', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValueOnce(null);
+    jest.mocked(estadoAfip).mockResolvedValueOnce({
+      status: 'ok',
+      cuit: '20111222339',
+      conectado: true,
+      wsAutorizados: ['wsfe'],
+      perfilCompleto: true,
+      puedeFacturar: true,
+      onboarding: null,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(estadoAfip).toHaveBeenCalledWith(undefined));
+    await waitFor(() => expect(crearFactura).toHaveBeenCalledWith('20111222339'));
   });
 
-  /** Invariante invertido con la convergencia a `MarcoGlass` (2026-07-21) — ver
-   *  `PantallaRedes.test.tsx`: el título ahora lo aporta esta misma pantalla, una sola vez. */
-  it('el título "Facturación" lo aporta el MarcoGlass propio, una sola vez', async () => {
-    await envolver();
-    expect(screen.getAllByText('Facturación')).toHaveLength(1);
+  /** Sin caché Y sin CUIT del backend sí es el estado inicial legítimo: el tenant no vinculó nada. */
+  it('sin CUIT en ningún lado -- muestra el CTA de configurar y no crea borrador', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValueOnce(null);
+    jest.mocked(estadoAfip).mockResolvedValueOnce({
+      status: 'ok',
+      cuit: null,
+      conectado: false,
+      wsAutorizados: [],
+      perfilCompleto: false,
+      puedeFacturar: false,
+      onboarding: null,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+    expect(crearFactura).not.toHaveBeenCalled();
+  });
+
+  it('lee el CUIT de la MISMA clave que usa cuitCache.ts (contrato compartido con F5)', async () => {
+    await montar();
+
+    await waitFor(() => expect(almacenClave.leer).toHaveBeenCalledWith(CLAVE_CUIT_AFIP));
+  });
+
+  it('puedeFacturar:false -- muestra el CTA de configurar y NUNCA llama a crearFactura', async () => {
+    jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false }));
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+    expect(crearFactura).not.toHaveBeenCalled();
+  });
+
+  it('el CTA de configurar navega a /ajustes-afip con empujarUnaVez', async () => {
+    jest.mocked(estadoAfip).mockResolvedValueOnce(estadoAfipMock({ puedeFacturar: false }));
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar-boton')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-cta-configurar-boton'));
+
+    expect(router.push).toHaveBeenCalledWith('/ajustes-afip');
+  });
+
+  it.each([
+    ['borrador', 'facturacion-paso-datos-venta'],
+    ['datos_venta_ok', 'facturacion-paso-items'],
+    ['items_ok', 'facturacion-paso-cliente'],
+    ['cliente_ok', 'facturacion-paso-cliente'],
+    ['esperando_confirmacion', 'facturacion-paso-resumen'],
+    ['emitida', 'facturacion-comprobante'],
+    ['entregada', 'facturacion-comprobante'],
+    ['cancelada', 'facturacion-cancelada'],
+  ] as const)('estado=%s -> renderiza %s', async (estado, testIdEsperado) => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({ estado, terminado: estado === 'emitida' || estado === 'entregada' || estado === 'cancelada' }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId(testIdEsperado)).toBeTruthy());
+  });
+
+  it('rechazada con un motivoCodigo fiscal real (no sin_certificado_afip) -> paso de rechazo, con el motivo', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({
+        estado: 'rechazada',
+        motivo: 'todavía faltan datos para emitir',
+        motivoCodigo: 'faltan_datos',
+        terminado: true,
+      }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-rechazada')).toBeTruthy());
+    expect(screen.getByText('todavía faltan datos para emitir')).toBeTruthy();
+  });
+
+  it('rechazada + motivoCodigo=sin_certificado_afip -- muestra el CTA de configurar, NUNCA "rechazo fiscal"', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({
+        estado: 'rechazada',
+        motivo: 'sin_certificado_afip',
+        motivoCodigo: 'sin_certificado_afip',
+        terminado: true,
+      }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-cta-configurar')).toBeTruthy());
+    expect(screen.queryByTestId('facturacion-rechazada')).toBeNull();
+  });
+
+  it('el resumen muestra los TRES botones: Confirmar, Cancelar, Editar y confirmar', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({ estado: 'esperando_confirmacion' }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-confirmar')).toBeTruthy());
+    expect(screen.getByTestId('facturacion-paso-resumen-cancelar')).toBeTruthy();
+    expect(screen.getByTestId('facturacion-paso-resumen-editar')).toBeTruthy();
+  });
+
+  it('confirmarConTokenFresco no-op -- re-muestra el resumen con el motivo, no avanza de pantalla', async () => {
+    const enResumen = estadoMock({ estado: 'esperando_confirmacion' });
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({ estado: enResumen, convergio: true });
+    jest.mocked(confirmarConTokenFresco).mockResolvedValueOnce({
+      emitida: false,
+      motivo: 'los datos cambiaron, revisá el resumen antes de confirmar',
+      estado: enResumen,
+    });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-confirmar')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('facturacion-paso-resumen-confirmar'));
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-aviso-no-op')).toBeTruthy());
+    expect(screen.getByText('los datos cambiaron, revisá el resumen antes de confirmar')).toBeTruthy();
+    // Sigue en el resumen -- un no-op no puede saltar a "emitiendo"/comprobante.
+    expect(screen.getByTestId('facturacion-paso-resumen')).toBeTruthy();
+  });
+
+  it('emitida SIN pdf se muestra como ÉXITO con el CAE visible -- la palabra "falló" nunca aparece', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({
+        estado: 'emitida',
+        terminado: true,
+        pdf: null,
+        motivo: 'la factura se emitió (CAE 86294776469171) pero falló el PDF: timeout',
+        motivoCodigo: 'emitida_sin_pdf',
+        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6 },
+      }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-comprobante-sin-pdf')).toBeTruthy());
+    expect(screen.getByTestId('facturacion-comprobante-cae')).toHaveTextContent('86294776469171', { exact: false });
+    // Ni en el aviso propio ni en ningún otro texto de la pantalla aparece "falló"/"falla".
+    expect(screen.queryByText(/fall[oó]/i)).toBeNull();
+  });
+
+  it('el aviso de 24 h está presente cuando el PDF SÍ está disponible', async () => {
+    jest.mocked(esperarEstadoEstable).mockResolvedValueOnce({
+      estado: estadoMock({
+        estado: 'emitida',
+        terminado: true,
+        pdf: { url: 'https://copiloto.example/facturas/f1.pdf', nombre: 'factura.pdf', expiraAt: '2026-07-22T00:00:00Z' },
+        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6 },
+      }),
+      convergio: true,
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-comprobante-aviso-24h')).toBeTruthy());
+    expect(screen.getByTestId('facturacion-comprobante-aviso-24h')).toHaveTextContent('24 horas', { exact: false });
+  });
+
+  it('la confirmación de anular un comprobante NOMBRA la nota de crédito, no dice que se borra', async () => {
+    jest.mocked(listarComprobantes).mockResolvedValueOnce({ status: 'ok', comprobantes: [comprobanteMock()] });
+
+    await montar();
+
+    const clave = '11-6-8'; // tipoCbte-puntoVenta-nro del `comprobanteMock()`.
+    await waitFor(() => expect(screen.getByTestId(`facturacion-mis-comprobantes-anular-${clave}`)).toBeTruthy());
+    await fireEvent.press(screen.getByTestId(`facturacion-mis-comprobantes-anular-${clave}`));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`facturacion-mis-comprobantes-anulacion-${clave}-aviso`)).toBeTruthy(),
+    );
+    expect(screen.getByText(/nota de crédito/i)).toBeTruthy();
+    expect(anularComprobante).not.toHaveBeenCalled(); // todavía no tocó "Sí, anular".
   });
 });
