@@ -117,7 +117,14 @@ export default function LayoutRaiz() {
                       y que en device se comía los toques (ningún tile respondía, el vidrio no se
                       arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
-                  {(['apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion', 'ajustes-afip'] as const).map(
+                  {([
+                    'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion',
+                    // Las sub-pantallas de Ajustes. Van con el MISMO tratamiento que las funciones
+                    // del escritorio (transparentModal + slide desde abajo) porque son glass igual:
+                    // se abren SOBRE Ajustes, que queda visible detrás.
+                    'ajustes-afip', 'ajustes-skins', 'ajustes-sistema', 'ajustes-cuenta',
+                    'ajustes-datos', 'ajustes-planes', 'ajustes-plan',
+                  ] as const).map(
                     (glass) => (
                       <Stack.Screen
                         key={glass}
