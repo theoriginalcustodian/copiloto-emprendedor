@@ -30,5 +30,48 @@
     "raw jsonb",
     "occurred_at timestamptz",
     "created_at timestamptz DEFAULT now()"
+  ],
+  "afip_credentials": [
+    "cuit text NOT NULL",
+    "cert_enc text NOT NULL",
+    "key_enc text NOT NULL",
+    "ambiente text NOT NULL DEFAULT 'dev'",
+    "ws_autorizados jsonb",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "afip_perfil": [
+    "cuit text NOT NULL",
+    "razon_social text NOT NULL",
+    "domicilio_comercial text NOT NULL",
+    "condicion_iva text NOT NULL",
+    "ingresos_brutos text NOT NULL",
+    "inicio_actividades date NOT NULL",
+    "punto_venta integer NOT NULL",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "afip_secret_handoff": [
+    "handle text NOT NULL",
+    "secreto_enc text NOT NULL",
+    "expira_at timestamptz NOT NULL",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "afip_comprobantes": [
+    "cuit text NOT NULL",
+    "tipo_cbte integer NOT NULL",
+    "punto_venta integer NOT NULL",
+    "nro bigint NOT NULL",
+    "cae text NOT NULL",
+    "cae_vto date",
+    "fecha_emision date",
+    "doc_tipo integer",
+    "doc_nro text",
+    "total numeric",
+    "estado text NOT NULL DEFAULT 'emitida'",
+    "pdf_url text",
+    "pdf_expira_at timestamptz",
+    "idem_key text",
+    "workflow_id text",
+    "cbte_asoc_nro bigint",
+    "created_at timestamptz DEFAULT now()"
   ]
 }

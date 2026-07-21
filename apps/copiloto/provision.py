@@ -41,6 +41,7 @@ SCHEMA = "uc_factory"
 TENANTS_TABLE = "tenants"
 UC_TABLES_JSON = APP_DIR / "uc_tables.json"
 MP_INDEXES_SQL = APP_DIR / "mp_indexes.sql"
+AFIP_INDEXES_SQL = APP_DIR / "afip_indexes.sql"
 
 
 def _provision_tenants(conn) -> None:
@@ -90,6 +91,16 @@ def _apply_mp_indexes(conn) -> None:
     print(f"OK índices MP aplicados desde {MP_INDEXES_SQL.name}", flush=True)
 
 
+def _apply_afip_indexes(conn) -> None:
+    """Pliega afip_indexes.sql: los únicos que exigen los ON CONFLICT de los stores AFIP + el dedup de
+    comprobantes. Mismo criterio que _apply_mp_indexes — se aplica ACÁ y no a mano, para no repetir la
+    deuda M2 (provisionar sin el SQL deja los upserts rotos en runtime)."""
+    sql = AFIP_INDEXES_SQL.read_text(encoding="utf-8")
+    cur = conn.cursor()
+    cur.execute(sql)
+    print(f"OK índices AFIP aplicados desde {AFIP_INDEXES_SQL.name}", flush=True)
+
+
 def provision(conn) -> dict:
     """Provisiona TODO lo que el Copiloto necesita en uc_factory (idempotente, corrible N veces).
     `conn` con autocommit=True (cada DDL es su propia transacción, igual que provision_tables.py)."""
@@ -100,7 +111,9 @@ def provision(conn) -> dict:
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _apply_mp_indexes(conn)
-    return {"standard_tables": standard_done, "tenants": TENANTS_TABLE, "mp_indexes_applied": True}
+    _apply_afip_indexes(conn)
+    return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,
+            "mp_indexes_applied": True, "afip_indexes_applied": True}
 
 
 def main() -> None:
