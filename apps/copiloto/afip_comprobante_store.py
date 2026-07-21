@@ -26,6 +26,7 @@ class AfipComprobanteStore:
     def registrar(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int, cae: str,
                   cae_vto: date | None, fecha_emision: date | None, doc_tipo: int | None,
                   doc_nro: str | None, total, estado: str = ESTADO_EMITIDA,
+                  receptor_nombre: str | None = None,
                   pdf_url: str | None = None, pdf_expira_at: datetime | None = None,
                   idem_key: str | None = None, workflow_id: str | None = None,
                   cbte_asoc_nro: int | None = None) -> None:
@@ -39,15 +40,15 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"INSERT INTO {_TABLE} (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, "
-                f"fecha_emision, doc_tipo, doc_nro, total, estado, pdf_url, pdf_expira_at, idem_key, "
-                f"workflow_id, cbte_asoc_nro) "
-                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                f"fecha_emision, doc_tipo, doc_nro, receptor_nombre, total, estado, pdf_url, "
+                f"pdf_expira_at, idem_key, workflow_id, cbte_asoc_nro) "
+                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                 f"ON CONFLICT (cliente_id, cuit, tipo_cbte, punto_venta, nro) DO UPDATE SET "
                 f"estado=EXCLUDED.estado, pdf_url=COALESCE(EXCLUDED.pdf_url, {_TABLE}.pdf_url), "
                 f"pdf_expira_at=COALESCE(EXCLUDED.pdf_expira_at, {_TABLE}.pdf_expira_at), "
                 f"cbte_asoc_nro=COALESCE(EXCLUDED.cbte_asoc_nro, {_TABLE}.cbte_asoc_nro)",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision,
-                 doc_tipo, doc_nro, total, estado, pdf_url, pdf_expira_at, idem_key,
+                 doc_tipo, doc_nro, receptor_nombre, total, estado, pdf_url, pdf_expira_at, idem_key,
                  workflow_id, cbte_asoc_nro))
 
     def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
@@ -86,7 +87,8 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
+                f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro))
             row = cur.fetchone()
@@ -102,7 +104,8 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
+                f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND idem_key=%s", (self._cid, idem_key))
             row = cur.fetchone()
         return self._fila(row)
@@ -112,7 +115,8 @@ class AfipComprobanteStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
-                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link FROM {_TABLE} "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
+                f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s ORDER BY created_at DESC LIMIT %s",
                 (self._cid, cuit, int(limite)))
             filas = cur.fetchall()
@@ -133,7 +137,8 @@ class AfipComprobanteStore:
         if not row:
             return None
         campos = ("cuit", "tipo_cbte", "punto_venta", "nro", "cae", "cae_vto", "fecha_emision",
-                  "total", "estado", "pdf_url", "cbte_asoc_nro", "drive_file_id", "drive_link")
+                  "total", "estado", "pdf_url", "cbte_asoc_nro", "drive_file_id", "drive_link",
+                  "doc_tipo", "doc_nro", "receptor_nombre")
         d = dict(zip(campos, row))
         # `total` viene como Decimal de psycopg2: a str para que sea serializable por Temporal sin
         # perder precisión (float rompería centavos).

@@ -72,7 +72,7 @@ async def cargar_contexto_factura(cliente_id: str, cuit: str) -> dict:
 
 
 def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
-                 workflow_id: str) -> dict:
+                 workflow_id: str, receptor_nombre: str = "") -> dict:
     """Emite en AFIP y registra el comprobante. Idempotente en dos capas.
 
     Capa 1 — la base: si `idem_key` ya tiene un comprobante registrado, se devuelve ese sin volver a
@@ -103,6 +103,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
                 cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=siguiente, cae=cae,
                 cae_vto=_fecha(info.get("FchVto")), fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
+                receptor_nombre=receptor_nombre or None,
                 total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
             return {"ok": True, "duplicado": True, "cae": cae, "nro": siguiente,
                     "tipo_cbte": tipo_cbte, "punto_venta": punto_venta}
@@ -119,6 +120,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=res.numero, cae=res.cae,
         cae_vto=res.cae_vto, fecha_emision=_fecha(payload.get("CbteFch")),
         doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
+        receptor_nombre=receptor_nombre or None,
         total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
 
     return {"ok": True, "duplicado": False, "cae": res.cae, "cae_vto": res.cae_vto.isoformat(),
@@ -128,8 +130,13 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
 
 @activity.defn
 async def emitir_comprobante(cliente_id: str, cuit: str, payload: dict, idem_key: str,
-                             workflow_id: str) -> dict:
-    return await asyncio.to_thread(_emitir_sync, cliente_id, cuit, payload, idem_key, workflow_id)
+                             workflow_id: str, receptor_nombre: str = "") -> dict:
+    """`receptor_nombre` con default para no romper el replay de las ejecuciones que arrancaron con 5
+    argumentos. Va aparte del payload porque el WSFE no lo pide: AFIP identifica al receptor por tipo
+    y número de documento, así que el nombre no viaja en el comprobante — pero es lo primero que una
+    persona busca al abrir una factura vieja."""
+    return await asyncio.to_thread(_emitir_sync, cliente_id, cuit, payload, idem_key, workflow_id,
+                                   receptor_nombre)
 
 
 def _generar_pdf_sync(cliente_id: str, cuit: str, template: str, params: dict,

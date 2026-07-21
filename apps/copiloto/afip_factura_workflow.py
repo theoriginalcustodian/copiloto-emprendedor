@@ -219,7 +219,11 @@ class FacturaWorkflow:
         try:
             emision = await workflow.execute_activity(
                 "emitir_comprobante",
-                args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id],
+                # El nombre del receptor viaja aparte del payload: el WSFE no lo pide, así que si no
+                # se pasa explícitamente no queda registrado en ningún lado y el detalle de una
+                # factura vieja no puede decir a quién se le facturó.
+                args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
+                      self._borrador.receptor.nombre if self._borrador.receptor else ""],
                 start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
         except Exception as exc:  # noqa: BLE001 — un rechazo de AFIP es un final, no un error a propagar
             self._estado = EstadoFactura.RECHAZADA

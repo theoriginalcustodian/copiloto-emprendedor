@@ -19,3 +19,9 @@ ALTER TABLE uc_factory.afip_comprobantes ADD COLUMN IF NOT EXISTS drive_link tex
 -- datos fiscales de alguien a una cuenta de Drive es una decisión del usuario, nunca un default.
 ALTER TABLE uc_factory.afip_perfil
   ADD COLUMN IF NOT EXISTS guardar_en_drive boolean NOT NULL DEFAULT false;
+
+-- 2026-07-21 — a quién se le facturó, para la pantalla de detalle.
+-- El WSFE no pide el nombre del receptor (le alcanza tipo+número de documento), así que nunca
+-- quedaba registrado: el detalle de una factura vieja podía mostrar "CUIT 20-...", jamás "Juan Pérez".
+-- Se guarda al emitir, tal como el usuario lo escribió.
+ALTER TABLE uc_factory.afip_comprobantes ADD COLUMN IF NOT EXISTS receptor_nombre text;
