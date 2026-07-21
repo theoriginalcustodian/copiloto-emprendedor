@@ -19,7 +19,8 @@ export type AjusteKey =
   | 'planesDisponibles'
   | 'planActual'
   | 'skins'
-  | 'cuenta';
+  | 'cuenta'
+  | 'facturacionAfip';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -41,14 +42,39 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'planActual', label: 'Plan actual', icono: 'chart' },
   { key: 'skins', label: 'Skins', icono: 'media' },
   { key: 'cuenta', label: 'Cuenta', icono: 'user' },
+  // Facturación AFIP (F5): perfil fiscal + vínculo con ARCA + ambiente. Mismo ícono que el tile de
+  // Facturación del escritorio (`doc_search`) a propósito -- es la configuración de ESA función, y
+  // entrar por un ícono para llegar a otro desorienta (ver el docstring de `MarcoGlass`).
+  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'doc_search' },
 ];
 
-/** 2 filas de 3 -- número fijo de tiles, `flexDirection:'row'` + `flex:1` da columnas exactas sin
- * cálculo porcentual de `flexWrap`. */
-const FILAS_TILES_AJUSTES: readonly (readonly DefinicionTileAjuste[])[] = [
-  TILES_AJUSTES.slice(0, 3),
-  TILES_AJUSTES.slice(3, 6),
-];
+/** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
+const COLUMNAS = 3;
+
+/**
+ * Agrupa los tiles en filas de `COLUMNAS`.
+ *
+ * 🔴 **Reemplaza a dos `slice` hardcodeados** (`slice(0,3)` / `slice(3,6)`), que asumían exactamente 6
+ * tiles: al sumar el séptimo (Facturación AFIP) el tile nuevo quedaba fuera de las dos filas y no se
+ * renderizaba — un ícono que desaparece en silencio, sin error, sólo porque el array creció. Con esto,
+ * agregar el octavo es agregar una línea a `TILES_AJUSTES` y nada más.
+ *
+ * La última fila se completa con `null` (ver `rellenar`): sin relleno, una fila de 1 tile con `flex:1`
+ * lo estira a todo el ancho y la grilla se ve rota.
+ */
+function agruparEnFilas(
+  tiles: readonly DefinicionTileAjuste[],
+): readonly (readonly (DefinicionTileAjuste | null)[])[] {
+  const filas: (DefinicionTileAjuste | null)[][] = [];
+  for (let i = 0; i < tiles.length; i += COLUMNAS) {
+    const fila: (DefinicionTileAjuste | null)[] = tiles.slice(i, i + COLUMNAS);
+    while (fila.length < COLUMNAS) fila.push(null); // huecos invisibles, para que no se estiren
+    filas.push(fila);
+  }
+  return filas;
+}
+
+const FILAS_TILES_AJUSTES = agruparEnFilas(TILES_AJUSTES);
 
 export interface PantallaAjustesProps {
   /** Un handler único para las 6 entradas del grid -- el tile tocado se identifica por `key`; el
@@ -71,7 +97,12 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
         <View style={styles.grid}>
           {FILAS_TILES_AJUSTES.map((fila, iFila) => (
             <View key={iFila} style={styles.filaGrid}>
-              {fila.map((t) => (
+              {fila.map((t, iCol) =>
+                // Hueco de relleno de la última fila: ocupa la columna para que los tiles reales
+                // conserven su ancho, pero no dibuja nada ni recibe toques.
+                t === null ? (
+                  <View key={`hueco-${iCol}`} style={styles.tile} pointerEvents="none" />
+                ) : (
                 <Tile
                   key={t.key}
                   testID={`ajuste-tile-${t.key}`}
@@ -93,7 +124,8 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
                     {t.label}
                   </Text>
                 </Tile>
-              ))}
+                ),
+              )}
             </View>
           ))}
         </View>

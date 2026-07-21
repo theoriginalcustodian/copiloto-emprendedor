@@ -23,10 +23,12 @@ export interface ArchivoSubida {
 }
 
 export interface PeticionHttp {
-  /** `PATCH` lo usa `actualizarCliente` (edición parcial del cliente). Los adaptadores pasan
-   * este valor tal cual a `fetch()` (`RequestInit.method`), sin ramificar por método — verificado
-   * contra `http.web.ts` (documed-web y mobile) y `http.native.ts` en el origen de este puerto. */
-  metodo: 'GET' | 'POST' | 'PATCH';
+  /** `PATCH` lo usa `actualizarCliente` (edición parcial del cliente); `DELETE`, `quitarItem` de
+   * facturación (`DELETE /afip/facturas/{id}/items/{indice}`). Los adaptadores pasan este valor tal
+   * cual a `fetch()` (`RequestInit.method`), sin ramificar por método — re-verificado el 2026-07-21
+   * contra `http.native.ts:55` y `http.web.ts:41`, así que sumar un método a esta unión no les pide
+   * ningún cambio. */
+  metodo: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   /** Path relativo, ej. `'/chat'`. El adaptador le antepone el `apiBase` de su plataforma. */
   path: string;
   headers: Record<string, string>;

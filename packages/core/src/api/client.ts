@@ -3,7 +3,7 @@ import { ApiError, ForbiddenError, UnauthorizedError } from './errors';
 import type { ArchivoSubida, PeticionHttp, RespuestaHttp } from './http';
 
 interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   /** Default true: inyecta `Authorization: Bearer <token>` si hay token persistido. */
   auth?: boolean;
@@ -129,6 +129,11 @@ export const apiClient = {
   },
   post<T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
     return request<T>(path, { ...opts, method: 'POST', body });
+  },
+  /** `DELETE` — hoy sólo lo usa `quitarItem` de facturación. Sin body: el recurso a borrar viaja en
+   * el path (`/afip/facturas/{id}/items/{indice}`), que es lo que el backend expone. */
+  del<T>(path: string, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return request<T>(path, { ...opts, method: 'DELETE' });
   },
 };
 

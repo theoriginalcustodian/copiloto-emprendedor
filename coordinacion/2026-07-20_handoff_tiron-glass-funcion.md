@@ -1,5 +1,14 @@
 # HANDOFF — el tirón al minimizar el glass de FUNCIÓN
 
+> ## ✅ ACTUALIZACIÓN 2026-07-20 — del lado de DocuMed, RESUELTO (ya no reproduce)
+> El operador confirmó en device que **ningún glass tira ya** (ni funciones ni chat). Se cerró por
+> **no-reproducción**, no por causa aislada (nunca se corrió el Perfetto). El candidato más probable de
+> haberlo matado es la limpieza de **commits del shadow tree** de la misma sesión (quitar el `height`
+> animado del spacer, `setPanelAbajo` en pleno snap, y los gestos sin `useMemo`) — ataca justo el
+> mecanismo de los frames raros. **Si en TU repo el síntoma NO aparece, puede que nunca lo tuvieras** o
+> que tus commits equivalentes ya lo cubran. Todo lo de abajo sigue sirviendo **sólo si lo reproducís
+> con el dedo**; si no lo reproducís, no lo persigas. El `adb swipe` NO cuenta como reproducción (§herramientas que no sirven).
+
 **De:** sesión de frontend de **DocuMed** (`Agencia_IA_HyC/documed-front`, branch `feat/frontend-h6-anclaje`)
 **Para:** quien esté investigando el mismo salto en `copiloto-emprendedor`
 **Fecha:** 2026-07-20

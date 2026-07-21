@@ -41,7 +41,7 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     expect(onAjuste).toHaveBeenCalledWith('cuenta');
   });
 
-  it('las 6 etiquetas visibles son las esperadas', async () => {
+  it('las 7 etiquetas visibles son las esperadas', async () => {
     await envolver();
     expect(screen.getByText('Datos personales')).toBeTruthy();
     expect(screen.getByText('Configuración del sistema')).toBeTruthy();
@@ -49,6 +49,22 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     expect(screen.getByText('Plan actual')).toBeTruthy();
     expect(screen.getByText('Skins')).toBeTruthy();
     expect(screen.getByText('Cuenta')).toBeTruthy();
+    expect(screen.getByText('Facturación AFIP')).toBeTruthy();
+  });
+
+  /**
+   * 🔴 **La regresión que este test impide.** La grilla armaba sus filas con dos `slice` fijos —
+   * `slice(0,3)` y `slice(3,6)`—, o sea asumía exactamente 6 tiles. Al sumar el séptimo, el tile
+   * nuevo caía FUERA de las dos filas y no se renderizaba: sin error, sin warning, sin nada. Un ícono
+   * que desaparece en silencio porque un array creció es de los defectos más difíciles de notar en
+   * una revisión de código, y trivial de cazar acá.
+   *
+   * Se afirma sobre el ÚLTIMO tile a propósito: es el único que el bug hacía desaparecer, y también
+   * el que lo volvería a sufrir si alguien reintroduce un límite fijo.
+   */
+  it('el último tile del array se renderiza — la grilla no asume un número fijo de tiles', async () => {
+    await envolver();
+    expect(screen.getByTestId('ajuste-tile-facturacionAfip')).toBeTruthy();
   });
 
   it('sin onAjuste, tocar un tile no crashea (prop opcional)', async () => {
