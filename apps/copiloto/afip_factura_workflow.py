@@ -38,6 +38,7 @@ with workflow.unsafe.imports_passed_through():
         calcular_totales,
         determinar_tipo_comprobante,
         puede_emitir,
+        receptor_desde_payload,
         siguiente_estado,
         validar_factura_completa,
     )
@@ -134,13 +135,9 @@ class FacturaWorkflow:
     @workflow.signal
     def cargar_cliente(self, payload: dict) -> None:
         try:
-            self._borrador.receptor = Receptor(
-                condicion_iva=CondicionIVA(int(payload.get("condicion_iva", 5))),
-                tipo_doc=TipoDoc(int(payload.get("tipo_doc", 99))),
-                nro_doc=str(payload.get("nro_doc", "0")),
-                nombre=str(payload.get("nombre", "Consumidor Final")),
-                domicilio=str(payload.get("domicilio", "-")),
-            )
+            # La normalización de los campos vacíos es una REGLA y vive en `afip_rules` — el
+            # workflow orquesta, no interpreta formularios. Ver `receptor_desde_payload`.
+            self._borrador.receptor = receptor_desde_payload(payload)
         except (ValueError, TypeError) as exc:
             self._motivo = f"datos del cliente inválidos: {exc}"
             self._motivo_codigo = "cliente_invalido"
