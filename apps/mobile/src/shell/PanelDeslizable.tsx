@@ -291,6 +291,11 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
         // Se resta también `insets.top` porque el spacer superior ya no colapsa: es fijo. Ver el
         // comentario de `estiloSpacer` — la resta es lo que mantiene la tira de abajo del tamaño de
         // una card ahora que el spacer no se anima.
+        // 🔴 Este `onLayout` es el ÚNICO escritor del techo del clamp del arrastre. Se instrumentó el
+        // 2026-07-21 sospechando que al volver de un glass volvía a medir 0 (lo que dejaría el panel
+        // clampeado a [0,0], o sea muerto): medido en device, NO ocurre — `recorrido` se fija en 819
+        // al montar y no vuelve a cambiar. La causa del "panel bloqueado" era otra, ver
+        // `PantallaPrincipal.alFuncion`. Queda escrito para que nadie vuelva a sospechar de acá.
         recorrido.value = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
       }}
     >

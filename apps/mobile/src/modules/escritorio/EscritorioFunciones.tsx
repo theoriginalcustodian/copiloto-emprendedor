@@ -29,7 +29,25 @@
  * ventana, es el que importa).
  */
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+/**
+ * 🔴 **`ScrollView` sale de Gesture Handler, NO de `react-native`, y no es preferencia de estilo.**
+ *
+ * Es la OTRA mitad del arreglo que `Tile.tsx` ya tiene hecho (ahí está el detalle medido). Reportado
+ * en documed: *"los botones tardan mucho en reaccionar… hay que hacer click muy profundo o mantener
+ * el dedo presionado; con un tap rápido no abren las funciones"*. La causa es tener DOS sistemas de
+ * toque en el mismo árbol: el `ScrollView` de RN usa el responder system de React Native, mientras la
+ * app entera cuelga de un `GestureHandlerRootView` con gestos de RNGH vivos (el panel deslizable, el
+ * marco de vidrio). El `ScrollView` de RN reclama el toque para decidir si es scroll y, al competir
+ * con RNGH, un tap corto queda sin dueño.
+ *
+ * Con los dos en RNGH hay UNA sola arena: un toque quieto lo gana el tile, uno que se arrastra lo gana
+ * el scroll. Software Mansion pide las dos mitades juntas —*"import ScrollView/FlatList from
+ * react-native-gesture-handler"* Y *"use RectButton/Touchable for tappable items inside scroll
+ * containers"*—; con una sola no alcanza. Clonado de
+ * `documed-front/apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx`.
+ */
+import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { GlassIcon } from '../../theme/glass/GlassIcon';

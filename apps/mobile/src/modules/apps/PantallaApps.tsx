@@ -1,4 +1,10 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+// 🔴 `ScrollView` de Gesture Handler, no de `react-native` — misma regla y misma razón que en
+// `EscritorioFunciones.tsx` (ver su docstring). Acá pesa todavía más: esta lista vive DENTRO del
+// `GestureDetector` de `MarcoGlass`, así que un `ScrollView` de RN compite por el mismo dedo con el
+// Pan que cierra el vidrio; el operador lo reportó como *"el glass de apps no se puede deslizar
+// hacia abajo"*.
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { GlassIcon } from '../../theme/glass/GlassIcon';

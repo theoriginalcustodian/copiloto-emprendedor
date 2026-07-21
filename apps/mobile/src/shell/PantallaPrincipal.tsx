@@ -20,10 +20,12 @@
  * título, "Volver") ahora lo aporta `MarcoGlass`, uno por pantalla, igual que `PantallaAjustes` y
  * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
-import { router } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
+import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
 import { PanelDeslizable } from './PanelDeslizable';
 
 /**
@@ -42,7 +44,24 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
 };
 
 export function PantallaPrincipal() {
-  const alFuncion = (key: FuncionKey) => router.push(RUTA_POR_FUNCION[key]);
+  // 🔴 El escritorio es la pantalla LANZADORA: cada vez que recupera el foco —al arrancar y al volver
+  // de cualquier glass— reabre la puerta de navegación. Es la mitad que hace cumplir "un solo glass
+  // hasta volver": al abrir uno, `empujarUnaVez` cierra la puerta; sólo este efecto la reabre. Clon
+  // de `documed-front/apps/mobile/app/(tabs)/index.tsx`. Ver `empujarUnaVez.ts`.
+  useFocusEffect(
+    useCallback(() => {
+      reabrirNavegacion();
+    }, [])
+  );
+
+  // 🔴 `empujarUnaVez` y NO `router.push` directo. Verificado en device el 2026-07-21: dos toques
+  // rápidos sobre un tile abren DOS glass apilados de la misma función, y un solo "Volver" cierra
+  // uno — el segundo queda arriba, transparente, dejando ver el escritorio detrás mientras se traga
+  // todos los toques. Se percibe exactamente como lo reportó el operador: *"cuando ingreso a apps y
+  // luego salgo, al volver a la pantalla principal se queda bloqueada y no responde"*. La causa no
+  // es el tile ni el gesto del panel (el instrumento mostró el `onBegin` llegando con `recorrido`
+  // bien medido): es que la navegación no tenía invariante de "uno a la vez".
+  const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
   return (
     <PanelDeslizable testID="panel-principal" fondo={<EscritorioFunciones onFuncion={alFuncion} />}>

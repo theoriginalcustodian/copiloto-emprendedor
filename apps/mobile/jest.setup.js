@@ -156,3 +156,22 @@ jest.mock('@expo-google-fonts/jetbrains-mono', () => ({
   JetBrainsMono_400Regular: 'JetBrainsMono_400Regular',
   JetBrainsMono_500Medium: 'JetBrainsMono_500Medium',
 }));
+
+/**
+ * `expo-router`: `useFocusEffect` necesita un contenedor de navegación real, y los tests del shell
+ * montan `PantallaPrincipal` SUELTA, fuera del árbol de rutas.
+ *
+ * 🔴 El mock **ejecuta el callback**, no lo ignora. Un `() => {}` haría pasar los tests sin ejercitar
+ * `reabrirNavegacion()` — que es justamente lo que este hook existe para correr: sin él la puerta de
+ * `empujarUnaVez` queda cerrada para siempre después del primer glass y NINGÚN tile vuelve a abrir
+ * nada. Un gate que no ejercita lo que dice cubrir es peor que no tenerlo: da verde igual cuando el
+ * fix se rompe.
+ *
+ * Se preserva el resto del módulo con `requireActual` — `router`, `useLocalSearchParams` y demás los
+ * usan otras pantallas, y pisarlos acá las rompería. Clonado de `documed-front/apps/mobile/jest.setup.js`.
+ */
+jest.mock('expo-router', () => {
+  const real = jest.requireActual('expo-router');
+  const { useEffect } = require('react');
+  return { ...real, useFocusEffect: (cb) => useEffect(cb, [cb]) };
+});

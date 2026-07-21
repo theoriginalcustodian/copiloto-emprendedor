@@ -4,12 +4,21 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 
 /**
  * Mock de `expo-router` — esta pantalla ya no monta capas propias (`CapaFuncion`, borrada
- * 2026-07-21): navega con `router.push`. Sólo se mockea `router`, no todo el módulo — nada más de
- * `expo-router` corre en este árbol (`PanelDeslizable`/`EscritorioFunciones`/`ChatView` no lo tocan).
+ * 2026-07-21): navega. Se mockean las DOS piezas que usa: `router.push` (lo que `empujarUnaVez`
+ * termina llamando) y `useFocusEffect`.
+ *
+ * 🔴 **`useFocusEffect` ejecuta el callback, no lo ignora.** Un `() => {}` haría pasar los tests sin
+ * ejercitar `reabrirNavegacion()`, que es justamente lo que este hook existe para correr: sin él la
+ * puerta de `empujarUnaVez` queda cerrada para siempre después del primer glass y ningún tile vuelve
+ * a abrir nada. Un gate que no ejercita lo que dice cubrir da verde igual cuando el fix se rompe.
  */
-jest.mock('expo-router', () => ({
-  router: { push: jest.fn() },
-}));
+jest.mock('expo-router', () => {
+  const { useEffect } = require('react');
+  return {
+    router: { push: jest.fn() },
+    useFocusEffect: (cb: () => void) => useEffect(cb, [cb]),
+  };
+});
 
 import { router } from 'expo-router';
 
@@ -73,10 +82,52 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     expect(router.push).toHaveBeenCalledTimes(1);
   });
 
-  it('tocar dos tiles distintos navega dos veces, cada una a su propia ruta', async () => {
+  /**
+   * 🔴 **La regresión que este test existe para impedir, medida en device el 2026-07-21.**
+   *
+   * Con `router.push` directo, dos toques rápidos sobre un tile abrían DOS glass apilados de la misma
+   * función. Un solo "Volver" cerraba uno y el otro quedaba arriba —`transparentModal`, o sea
+   * transparente— dejando ver el escritorio detrás mientras se tragaba todos los toques. El operador
+   * lo reportó como *"cuando ingreso a apps y luego salgo, al volver a la pantalla principal se queda
+   * bloqueada y no responde"*, y durante horas se buscó la causa en el gesto del panel: el
+   * instrumento descartó esa pista (el `onBegin` llegaba con `recorrido` bien medido).
+   *
+   * La invariante no es "no dos seguidos" sino "no otro MIENTRAS haya uno abierto" — por eso el lock
+   * es por FOCO y no por tiempo. Ver `empujarUnaVez.ts`, clonado de documed.
+   *
+   * Se prueba con DOS tiles distintos a propósito: un lock que sólo mirara la última ruta dejaría
+   * pasar este caso, que es el que apila dos glass DIFERENTES.
+   */
+  it('un solo glass a la vez: el segundo tile no navega hasta volver al escritorio', async () => {
     await envolver();
 
     await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    await fireEvent.press(screen.getByTestId('tile-metricas'));
+
+    expect(router.push).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith('/ajustes');
+  });
+
+  it('doble toque rápido sobre el MISMO tile abre un solo glass', async () => {
+    await envolver();
+
+    await fireEvent.press(screen.getByTestId('tile-apps'));
+    await fireEvent.press(screen.getByTestId('tile-apps'));
+
+    expect(router.push).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * La otra mitad de la invariante: la puerta tiene que REABRIRSE al recuperar el foco, o después del
+   * primer glass la app quedaría muda para siempre — un fix peor que el defecto. Remontar la pantalla
+   * dispara `useFocusEffect`, que es lo que ocurre al volver de un glass.
+   */
+  it('al recuperar el foco la puerta se reabre y el siguiente tile vuelve a navegar', async () => {
+    const { unmount } = await envolver();
+    await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    unmount();
+
+    await envolver();
     await fireEvent.press(screen.getByTestId('tile-metricas'));
 
     expect(router.push).toHaveBeenNthCalledWith(1, '/ajustes');
