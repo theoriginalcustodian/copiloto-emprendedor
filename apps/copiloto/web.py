@@ -127,6 +127,11 @@ def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUE
     return start_onboarding
 
 
+# Cuando el workflow murió sin dejar dicho por qué (timeout, terminate, o una excepción anterior al
+# try/except). Nombrar la interrupción es mejor que dejar al usuario esperando: puede reintentar.
+_MOTIVO_ALTA_INTERRUMPIDA = ("La vinculación con ARCA se interrumpió. Podés volver a intentarla.")
+
+
 def _wf_id_onboarding(cliente_id: str, cuit: str, ambiente: str = "dev") -> str:
     """Un alta por (tenant, CUIT, ambiente). `dev` conserva el id histórico —sin sufijo— para no
     perder de vista las altas que ya corrieron antes de que el ambiente existiera."""
@@ -144,12 +149,45 @@ def make_consultar_onboarding(temporal_client) -> Callable:
 
     async def consultar_onboarding(cliente_id: str, cuit: str,
                                    ambiente: str = "dev") -> dict | None:
+        handle = temporal_client.get_workflow_handle(
+            _wf_id_onboarding(cliente_id, cuit, ambiente))
+
+        # El STATUS primero, la query después. Es el orden que importa: el status es un hecho del
+        # servidor, mientras que la query ejecuta código —replaya el history— y puede fallar
+        # justamente en las ejecuciones rotas, que son las que hay que reportar. Preguntando al revés,
+        # un alta muerta se veía como "sin información" en vez de como un fallo.
         try:
-            handle = temporal_client.get_workflow_handle(
-                _wf_id_onboarding(cliente_id, cuit, ambiente))
-            return await handle.query("progreso")
-        except Exception:  # noqa: BLE001 — nunca hubo alta, o ya expiró la retención: no es un error
+            descripcion = await handle.describe()
+            vivo = descripcion.status is None or descripcion.status.name == "RUNNING"
+        except Exception:  # noqa: BLE001 — nunca hubo alta, o expiró la retención: no es un error
             return None
+
+        try:
+            progreso = await handle.query("progreso")
+        except Exception:  # noqa: BLE001
+            # La query puede fallar por un replay que el código actual ya no reproduce (cambió desde
+            # que esa ejecución corrió). Que no se pueda leer el detalle NO es razón para callar que
+            # el alta terminó: se reporta con lo que sí se sabe.
+            progreso = None
+
+        if progreso is None:
+            return ({"paso": "dando_de_alta", "terminado": False, "ok": False, "motivo": None,
+                     "ws_autorizados": []} if vivo else
+                    {"paso": "fallido", "terminado": True, "ok": False,
+                     "motivo": _MOTIVO_ALTA_INTERRUMPIDA, "ws_autorizados": []})
+
+        # Una ejecución MUERTA sigue respondiendo queries: devuelve el último estado del replay. Si el
+        # workflow murió por una excepción antes de marcarse como terminado, ese estado dice "en
+        # curso" para siempre y la app polea indefinidamente — le pasó al operador el 2026-07-21,
+        # cinco minutos frente a un alta muerta en cinco segundos.
+        #
+        # Por eso el estado NO se cree lo que el workflow dice de sí mismo cuando el status lo
+        # contradice. Cubre además timeout, terminate y cancel, que el try/except del workflow no
+        # puede atrapar: honesto por construcción, no por que cada camino de error se acuerde.
+        if not vivo and not progreso.get("terminado"):
+            progreso = {**progreso, "paso": "fallido", "terminado": True, "ok": False,
+                        "motivo": progreso.get("motivo") or _MOTIVO_ALTA_INTERRUMPIDA}
+        return progreso
 
     return consultar_onboarding
 
