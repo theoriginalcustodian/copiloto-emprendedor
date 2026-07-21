@@ -9,10 +9,13 @@
  * `CampoSecreto` es literalmente "este mismo campo con esas tres props fijas" -- separar el dibujo del
  * vidrio en dos componentes hubiera sido la duplicación que `EnvolturaCampo` existe para evitar.
  */
+import type { ReactNode } from 'react';
+import { useRef } from 'react';
 import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions, type TextInputProps } from 'react-native';
 
 import { useTema } from '../../ThemeProvider';
 import { EnvolturaCampo } from './EnvolturaCampo';
+import { useRevelarCampo } from './ScrollFormulario';
 
 export interface CampoTextoProps {
   etiqueta: string;
@@ -30,6 +33,8 @@ export interface CampoTextoProps {
   secureTextEntry?: boolean;
   autoCorrect?: boolean;
   textContentType?: TextInputProps['textContentType'];
+  /** Control pegado al borde derecho, DENTRO del vidrio del campo. Hoy: el ojo de `CampoSecreto`. */
+  accesorioDerecha?: ReactNode;
   testID?: string;
 }
 
@@ -46,16 +51,27 @@ export function CampoTexto({
   secureTextEntry,
   autoCorrect,
   textContentType,
+  accesorioDerecha,
   testID = 'campo-texto',
 }: CampoTextoProps) {
   const tema = useTema();
   const hayError = error != null && error !== '';
+  /**
+   * El nodo que se le pide revelar al scroll: el contenedor ENTERO (etiqueta + vidrio + error), no
+   * sólo el `TextInput`. Revelar únicamente el input dejaría su etiqueta tapada por el teclado, y en
+   * un formulario fiscal la etiqueta es la que dice qué se está escribiendo.
+   */
+  const refContenedor = useRef<View>(null);
+  const revelarCampo = useRevelarCampo();
+
   return (
-    <View style={styles.contenedor} testID={testID}>
+    // `collapsable={false}`: sin esto Android colapsa esta `View` fuera del árbol nativo y el ref no
+    // tiene nada que medir — el revelado se volvería un no-op silencioso. Ver `ScrollFormulario`.
+    <View ref={refContenedor} collapsable={false} style={styles.contenedor} testID={testID}>
       <Text style={[styles.etiqueta, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}>
         {etiqueta}
       </Text>
-      <EnvolturaCampo error={hayError} testID={`${testID}-vidrio`}>
+      <EnvolturaCampo error={hayError} testID={`${testID}-vidrio`} style={styles.vidrio}>
         <TextInput
           testID={`${testID}-input`}
           style={[
@@ -64,6 +80,7 @@ export function CampoTexto({
           ]}
           value={valor}
           onChangeText={onChange}
+          onFocus={() => revelarCampo(refContenedor.current)}
           placeholder={placeholder}
           placeholderTextColor={tema.color.textoTenue}
           multiline={multiline}
@@ -74,6 +91,7 @@ export function CampoTexto({
           autoCorrect={autoCorrect}
           textContentType={textContentType}
         />
+        {accesorioDerecha}
       </EnvolturaCampo>
       {hayError && (
         <Text
@@ -90,6 +108,9 @@ export function CampoTexto({
 const styles = StyleSheet.create({
   contenedor: { gap: 6 },
   etiqueta: { fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
-  input: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: 'transparent' },
+  // Fila para que el accesorio (el ojo) se apoye a la derecha DENTRO del vidrio. Sin `accesorioDerecha`
+  // el input es el único hijo y ocupa todo, así que la fila no cambia nada en los campos comunes.
+  vidrio: { flexDirection: 'row', alignItems: 'center' },
+  input: { flex: 1, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: 'transparent' },
   error: { fontSize: 11, letterSpacing: 0.2 },
 });

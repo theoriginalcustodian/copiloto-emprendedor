@@ -248,6 +248,55 @@ describe('PantallaAfipSetup', () => {
   });
 
   // -----------------------------------------------------------------------------------------
+  // El HECHO (hay credencial) gana sobre el RASTRO (cómo terminó el último intento).
+  // -----------------------------------------------------------------------------------------
+  it('un alta fallida NO tapa una vinculación que ya existe', async () => {
+    // El caso real (2026-07-21): el operador estaba vinculado desde hacía horas, intentó un re-alta,
+    // ARCA le rechazó la clave, y la pantalla pasó a mostrar SÓLO el error. Lo reportó como "me
+    // figura como si estuviera desconectado de ARCA" -- y encima lo empujaba a reintentar un alta
+    // que no necesitaba, gastando intentos contra el bloqueo de clave de ARCA.
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({
+        conectado: true,
+        ambiente: 'dev',
+        perfilCompleto: true,
+        puedeFacturar: true,
+        onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'se interrumpió' }),
+      }),
+    );
+
+    await montar();
+
+    // Manda el estado real...
+    expect(await screen.findByTestId('afip-arca-conectado')).toBeTruthy();
+    // ...y el fallo sigue estando, como nota secundaria: quien tipeó su clave merece saber que no
+    // prendió. Esconderlo sería el error espejo del que se está arreglando.
+    expect(screen.getByTestId('afip-arca-conectado-aviso-fallo')).toBeTruthy();
+    // Lo que NO puede pasar: que el bloque quede tomado por la vista de error.
+    expect(screen.queryByTestId('afip-arca-progreso-fallido')).toBeNull();
+  });
+
+  it('sin credencial, un alta fallida SÍ es el estado del bloque', async () => {
+    // El control del test anterior: si el `!conectado` estuviera de más, este caso -- el usuario que
+    // nunca se vinculó y cuyo primer intento falló -- se quedaría sin ver el error en ningún lado.
+    jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+    jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
+    jest.mocked(estadoAfip).mockResolvedValue(
+      estadoOk({
+        conectado: false,
+        onboarding: onboardingMock({ paso: 'fallido', terminado: true, motivo: 'se interrumpió' }),
+      }),
+    );
+
+    await montar();
+
+    expect(await screen.findByTestId('afip-arca-progreso-fallido')).toBeTruthy();
+    expect(screen.queryByTestId('afip-arca-conectado')).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------------------------
   // Corte honesto a los 10 minutos.
   // -----------------------------------------------------------------------------------------
   it('corta el polling a los 10 minutos y ofrece reintentar -- nunca un spinner infinito', async () => {

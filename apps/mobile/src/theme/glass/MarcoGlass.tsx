@@ -29,7 +29,7 @@
 import { router } from 'expo-router';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -202,7 +202,26 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
           {desnudo ? (
             children
           ) : (
-            <>
+            /**
+             * 🔴 `behavior="padding"` en AMBAS plataformas — no el `ios: padding / android: height`
+             * de manual. Sin esto el teclado TAPA los campos de abajo y no hay forma de llegar a
+             * ellos: el operador quedó sin poder ver lo que escribía en el alta de ARCA (2026-07-21).
+             *
+             * documed lo midió en ESTE MISMO teléfono (SM-A217M, ChatView.tsx:207): al enfocar un
+             * input, la ventana **no** se redimensiona ni se desplaza — el teclado se dibuja ENCIMA.
+             * Eso descarta `height` (que asume una ventana que sí achicó) y descarta confiar en
+             * `adjustResize`: una función vive dentro de un `transparentModal` a pantalla completa,
+             * que ocupa el alto entero pase lo que pase. Sin que el contenedor se achique, el
+             * `ScrollView` del hijo nunca desborda, así que **tampoco se vuelve scrolleable** — que
+             * es exactamente el segundo síntoma reportado ("no se puede scrollear para ver los campos").
+             *
+             * `padding` reserva abajo el alto del teclado → el área del contenido se achica → el
+             * scroll del hijo pasa a tener a dónde ir. Va acá, en el marco, y no en cada pantalla:
+             * toda función que tenga un formulario hereda el arreglo (facturación tiene cuatro pasos
+             * con campos). El `KeyboardAvoidingView` sin teclado abierto no agrega nada, así que las
+             * funciones sin inputs no cambian en nada.
+             */
+            <KeyboardAvoidingView behavior="padding" style={styles.contenido}>
               {/* Clearance de la status bar: el vidrio es full-bleed (tapa detrás del reloj), sólo el
                   contenido respeta el inset. Igual que el principal. */}
               <View style={{ height: insets.top }} pointerEvents="none" />
@@ -235,7 +254,7 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
               </View>
               {encabezadoExtra}
               {children}
-            </>
+            </KeyboardAvoidingView>
           )}
         </CristalVidrio>
       </Animated.View>
@@ -247,6 +266,8 @@ const styles = StyleSheet.create({
   raiz: { flex: 1 },
   panel: { flex: 1 },
   cristal: { flex: 1 },
+  // El `KeyboardAvoidingView` ocupa el vidrio entero: es el que se achica cuando entra el teclado.
+  contenido: { flex: 1 },
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center' },
   barraHandle: { ...BARRA_HANDLE },
   encabezado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

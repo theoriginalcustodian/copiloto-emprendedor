@@ -22,3 +22,14 @@ export type { CampoFechaProps } from './CampoFecha';
 
 export { FilaBotones } from './FilaBotones';
 export type { FilaBotonesProps, BotonFila, VarianteBoton } from './FilaBotones';
+
+export { IconoOjo } from './IconoOjo';
+export type { IconoOjoProps } from './IconoOjo';
+
+// El área de scroll de toda pantalla CON campos: revela el campo enfocado por encima del teclado.
+// La otra mitad del arreglo vive en `MarcoGlass` (`KeyboardAvoidingView`) -- ver su docstring.
+export { ScrollFormulario, useRevelarCampo } from './ScrollFormulario';
+export type { ScrollFormularioProps, NodoMedible } from './ScrollFormulario';
+
+export { calcularDesplazamiento, MARGEN_REVELADO } from './revelarCampo';
+export type { MedidasRevelado } from './revelarCampo';

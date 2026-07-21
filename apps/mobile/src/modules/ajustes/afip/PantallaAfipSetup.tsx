@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Pressable, ScrollView } from 'react-native-gesture-handler';
+import { Pressable } from 'react-native-gesture-handler';
 
 import {
   ErrorValidacionFiscal,
@@ -22,6 +22,7 @@ import {
   CampoSelect,
   CampoTexto,
   FilaBotones,
+  ScrollFormulario,
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
@@ -36,10 +37,16 @@ import { useTema } from '../../../theme/ThemeProvider';
  * que esta pantalla sabe del backend sale de `@copiloto/core` (`api/afip.ts`) -- ningún `fetch`, ningún
  * código HTTP, ninguna URL acá (regla del plan §2).
  *
- * **Tres bloques, un solo `ScrollView` de `react-native-gesture-handler`** -- no el de `react-native`:
- * esta pantalla vive DENTRO del `GestureDetector` de `MarcoGlass` (el Pan que cierra el vidrio), y un
- * `ScrollView` nativo compite por el mismo dedo (ver el docstring de `PantallaApps.tsx`, que documenta
- * el bug ya cazado en device: *"el glass de apps no se puede deslizar hacia abajo"*).
+ * **Tres bloques, un solo `ScrollFormulario`** -- que por dentro es el `ScrollView` de
+ * `react-native-gesture-handler`, no el de `react-native`: esta pantalla vive DENTRO del
+ * `GestureDetector` de `MarcoGlass` (el Pan que cierra el vidrio), y un `ScrollView` nativo compite
+ * por el mismo dedo (ver el docstring de `PantallaApps.tsx`, que documenta el bug ya cazado en
+ * device: *"el glass de apps no se puede deslizar hacia abajo"*).
+ *
+ * 🔴 `ScrollFormulario` y no un `ScrollView` pelado **porque el teclado tapaba los campos** y no había
+ * cómo llegar a ellos (reportado en device por el operador, 2026-07-21, justo al intentar el alta de
+ * ARCA: el campo de clave está cerca del fondo). Revela el campo que recibe el foco; la otra mitad
+ * —hacer que el área se achique cuando entra el teclado— vive en `MarcoGlass`.
  *
  * 🔴 **El CUIT es UN solo estado, compartido por los tres bloques.** El perfil fiscal, el alta ARCA y
  * el ambiente son todos atributos del MISMO CUIT -- no hay "un CUIT del perfil" y "otro CUIT de ARCA".
@@ -166,6 +173,10 @@ export function PantallaAfipSetup() {
   const [camposPerfil, setCamposPerfil] = useState<CamposPerfil>(CAMPOS_PERFIL_VACIOS);
   const [erroresPerfil, setErroresPerfil] = useState<Record<string, string>>({});
   const [estadoPerfil, setEstadoPerfil] = useState<EstadoOperacion>('idle');
+  /** Sube cada vez que el perfil llega del backend: es la `key` que resiembra los campos que sostienen
+   *  estado propio (`CampoFecha`). Un contador y no el propio valor -- si fuera el valor, el campo se
+   *  remontaría en medio del tipeo cada vez que la fecha queda incompleta y pasa por `''`. */
+  const [semillaPerfil, setSemillaPerfil] = useState(0);
 
   function actualizarCampoPerfil<K extends keyof CamposPerfil>(campo: K, valor: CamposPerfil[K]) {
     setCamposPerfil((prev) => ({ ...prev, [campo]: valor }));
@@ -188,6 +199,12 @@ export function PantallaAfipSetup() {
           inicioActividades: res.perfil.inicioActividades,
           puntoVenta: String(res.perfil.puntoVenta),
         });
+        // 🔴 Remonta `CampoFecha`. Es semi-controlado a propósito (sostiene sus 3 segmentos en estado
+        // local y los siembra UNA vez al montar), así que su propio docstring pide una `key` nueva
+        // para resembrarlo. Sin esto el campo se monta ANTES de que llegue el perfil y muestra
+        // DD/MM/AAAA vacío sobre una fecha que existe: si el usuario guarda, el perfil pierde su
+        // inicio de actividades sin que nadie haya tocado ese campo. Visto en device (2026-07-21).
+        setSemillaPerfil((n) => n + 1);
         setCuitBloqueado(true);
         setEstadoPerfil('ok');
       } else {
@@ -446,6 +463,13 @@ export function PantallaAfipSetup() {
 
   const onboardingActual = estadoGeneral?.onboarding ?? null;
 
+  /**
+   * 🔴 El HECHO de estar vinculado: sale de que exista la credencial, no de cómo terminó el último
+   * alta. Son cosas distintas y confundirlas fue un bug real -- un tenant vinculado por script nunca
+   * tuvo un onboarding `habilitado`, así que derivarlo del rastro lo mostraba como desconectado.
+   */
+  const conectado = estadoGeneral?.conectado === true;
+
   // -------------------------------------------------------------------------------------------
   // Bloque 3 -- Ambiente. `ambientesVinculados` es OPCIONAL en el contrato: `undefined` significa
   // "el backend todavía no lo manda", no "no hay ninguno vinculado". La diferencia es la que decide
@@ -458,7 +482,7 @@ export function PantallaAfipSetup() {
   // -------------------------------------------------------------------------------------------
   return (
     <MarcoGlass titulo="Facturación AFIP" icono="doc_search" testID="pantalla-afip-setup">
-      <ScrollView
+      <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"
         contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.xl }]}
@@ -534,6 +558,7 @@ export function PantallaAfipSetup() {
               error={erroresPerfil.ingresos_brutos}
             />
             <CampoFecha
+              key={`inicio-actividades-${semillaPerfil}`}
               testID="afip-perfil-inicio-actividades"
               etiqueta="Inicio de actividades"
               valor={camposPerfil.inicioActividades}
@@ -579,10 +604,18 @@ export function PantallaAfipSetup() {
           </View>
         </Seccion>
 
-        {/* ---------------------------- Bloque 2 -- Conectar con ARCA ------------------------ */}
+        {/* ---------------------------- Bloque 2 -- Conectar con ARCA ------------------------
+            🔴 **El HECHO gana sobre el RASTRO.** `conectado` sale de la credencial que existe en la
+            base; `onboarding.paso` es sólo cómo terminó el último intento. Antes el `fallido` se
+            evaluaba PRIMERO, así que a un usuario ya vinculado un re-alta fallido le tapaba el
+            estado entero y la pantalla se leía como "no estás conectado" -- el operador lo reportó
+            con esas palabras (2026-07-21) teniendo el certificado activo desde hacía dos horas.
+            Peor todavía: lo empuja a reintentar un alta que no necesita, y cada intento fallido
+            gasta uno de los que ARCA tolera antes de bloquear la clave.
+            El fallo no se esconde: baja a aviso secundario, que es su jerarquía real. */}
         <Seccion titulo="2. Conectar con ARCA" testID="afip-bloque-arca">
           <View style={{ gap: tema.espacio.md }}>
-            {poleando || pollTardando || onboardingActual?.paso === 'fallido' ? (
+            {poleando || pollTardando || (onboardingActual?.paso === 'fallido' && !conectado) ? (
               <View style={{ gap: tema.espacio.sm }} testID="afip-arca-progreso">
                 {pollTardando ? (
                   <>
@@ -632,9 +665,21 @@ export function PantallaAfipSetup() {
                   </>
                 )}
               </View>
-            ) : !mostrarFormularioArca && estadoGeneral?.conectado ? (
+            ) : !mostrarFormularioArca && conectado ? (
               <View style={{ gap: tema.espacio.sm }} testID="afip-arca-conectado">
-                <Text style={{ color: tema.color.exito }}>Tu cuenta ya está vinculada con ARCA.</Text>
+                <Text style={{ color: tema.color.exito }}>
+                  Tu cuenta ya está vinculada con ARCA
+                  {estadoGeneral?.ambiente ? ` en ${ETIQUETA_AMBIENTE[estadoGeneral.ambiente]}` : ''}.
+                </Text>
+                {/* El intento que falló se informa, pero como nota al pie: lo que el usuario necesita
+                    saber primero es que puede facturar. Sin esta línea el fallo desaparecería sin
+                    dejar rastro, y quien acaba de tipear su clave merece saber que no prendió. */}
+                {onboardingActual?.paso === 'fallido' && (
+                  <Text testID="afip-arca-conectado-aviso-fallo" style={{ color: tema.color.textoTenue }}>
+                    Tu último intento de vincular no se completó, pero la vinculación que ya tenías
+                    sigue funcionando.
+                  </Text>
+                )}
                 <FilaBotones
                   testID="afip-arca-conectado-botones"
                   botones={[
@@ -819,7 +864,7 @@ export function PantallaAfipSetup() {
             )}
           </View>
         </Seccion>
-      </ScrollView>
+      </ScrollFormulario>
     </MarcoGlass>
   );
 }

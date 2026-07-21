@@ -1,7 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 
 import {
   agregarItem,
@@ -24,7 +23,9 @@ import {
 
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { useTema } from '../../theme/ThemeProvider';
-import { FilaBotones } from '../../theme/glass/campos';
+// `ScrollFormulario` (y no un `ScrollView`) porque los cuatro pasos son formularios: revela el campo
+// que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
+import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { guardarCuitCacheado, leerCuitCacheado } from '../afip/cuitCache';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
@@ -331,7 +332,7 @@ export function PantallaFacturacion() {
 
   return (
     <MarcoGlass titulo="Facturación" icono="doc_search" testID="pantalla-facturacion">
-      <ScrollView
+      <ScrollFormulario
         style={styles.scroll}
         testID="facturacion-lista"
         contentContainerStyle={[styles.contenido, { padding: tema.espacio.lg, gap: tema.espacio.lg }]}
@@ -387,7 +388,7 @@ export function PantallaFacturacion() {
         )}
 
         {cuitConocido && <SeccionMisComprobantes cuit={cuitConocido} />}
-      </ScrollView>
+      </ScrollFormulario>
     </MarcoGlass>
   );
 }
