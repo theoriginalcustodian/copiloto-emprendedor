@@ -119,11 +119,12 @@ export default function LayoutRaiz() {
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
                   {([
                     'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion',
+                    'presupuestos',
                     // Las sub-pantallas de Ajustes. Van con el MISMO tratamiento que las funciones
                     // del escritorio (transparentModal + slide desde abajo) porque son glass igual:
                     // se abren SOBRE Ajustes, que queda visible detrás.
                     'ajustes-afip', 'ajustes-skins', 'ajustes-sistema', 'ajustes-cuenta',
-                    'ajustes-datos', 'ajustes-planes', 'ajustes-plan',
+                    'ajustes-datos', 'ajustes-planes', 'ajustes-plan', 'ajustes-negocio',
                   ] as const).map(
                     (glass) => (
                       <Stack.Screen

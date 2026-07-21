@@ -7,7 +7,9 @@ import { agruparEnColumnas, EscritorioFunciones, TILES, type FuncionKey } from '
 
 /** Las 6 keys esperadas, EXPLÍCITAS y no `TILES.length`: así agregar/sacar una función obliga a
  *  nombrarla acá, igual criterio que `GlassIcon.test.tsx` con el catálogo de íconos. */
-const KEYS_ESPERADAS: FuncionKey[] = ['apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion'];
+const KEYS_ESPERADAS: FuncionKey[] = [
+  'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion', 'presupuestos',
+];
 
 async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {
   return render(
@@ -34,8 +36,10 @@ describe('agruparEnColumnas — invariante genérico, sin acoplar al conteo de T
   });
 });
 
-describe('EscritorioFunciones — el escritorio del copiloto (6 funciones)', () => {
-  it('TILES tiene exactamente las 6 keys del emprendedor, en el orden del diseño', () => {
+describe('EscritorioFunciones — el escritorio del copiloto', () => {
+  // Sin número en el nombre: el conteo cambia cada vez que entra una función, y un título que dice
+  // "6 funciones" sobre siete es una mentira que nadie corrige porque el test pasa igual.
+  it('TILES tiene exactamente las keys del emprendedor, en el orden del diseño', () => {
     expect(TILES.map((t) => t.key)).toEqual(KEYS_ESPERADAS);
   });
 

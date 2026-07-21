@@ -20,7 +20,8 @@ export type AjusteKey =
   | 'planActual'
   | 'skins'
   | 'cuenta'
-  | 'facturacionAfip';
+  | 'facturacionAfip'
+  | 'perfilNegocio';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -46,6 +47,10 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   // Facturación del escritorio (`doc_search`) a propósito -- es la configuración de ESA función, y
   // entrar por un ícono para llegar a otro desorienta (ver el docstring de `MarcoGlass`).
   { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'doc_search' },
+  // Mi negocio: qué vende el emprendedor y cómo quiere que le hable el copiloto. `chat` porque la
+  // mitad de esa pantalla es literalmente cómo conversa el copiloto -- y porque `note` (lo primero
+  // que uno elegiría para un perfil) ya es "Datos personales" en este mismo grid.
+  { key: 'perfilNegocio', label: 'Mi negocio', icono: 'chat' },
 ];
 
 /** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */

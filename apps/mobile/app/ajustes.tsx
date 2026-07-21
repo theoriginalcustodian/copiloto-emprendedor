@@ -33,6 +33,7 @@ const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
   skins: '/ajustes-skins',
   cuenta: '/ajustes-cuenta',
   facturacionAfip: '/ajustes-afip',
+  perfilNegocio: '/ajustes-negocio',
 };
 
 export default function PantallaAjustesRoute() {

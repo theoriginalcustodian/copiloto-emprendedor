@@ -95,7 +95,26 @@ type EstadoGate =
  * CUIT cacheado, esta pantalla se comporta EXACTAMENTE como `puedeFacturar:false`: mismo CTA, mismo
  * copy -- porque, para el usuario, el resultado es el mismo ("todavía no configuraste tu facturación").
  */
-export function PantallaFacturacion() {
+export interface PantallaFacturacionProps {
+  /**
+   * Un borrador de factura YA creado, del que esta pantalla tiene que hacerse cargo en vez de crear
+   * uno nuevo.
+   *
+   * 🔴 **Es lo que hace que "Facturar" desde un presupuesto NO necesite una pantalla nueva.**
+   * `POST /presupuestos/{id}/facturar` arma el borrador con el receptor y los ítems del presupuesto y
+   * devuelve su id; el contrato es explícito en que **no emite** y en que hay que depositar al usuario
+   * en el gate de confirmación que ya existe — este. Emitir es un acto fiscal y ese gate es el único
+   * lugar donde se firma: duplicarlo sería tener dos implementaciones de la única cosa que no puede
+   * tener dos.
+   *
+   * Sin esto, el efecto de más abajo crearía un borrador VACÍO y el usuario perdería los ítems que ya
+   * había cargado en el presupuesto — silenciosamente, porque un borrador vacío se ve igual que el
+   * arranque normal de la pantalla.
+   */
+  facturaIdInicial?: string;
+}
+
+export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionProps = {}) {
 
   /**
    * 🔴 **Esta pantalla también es LANZADORA, y sin esto su único CTA no hace nada.**
@@ -125,7 +144,10 @@ export function PantallaFacturacion() {
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
   const [refrescandoLista, setRefrescandoLista] = useState(false);
-  const [facturaId, setFacturaId] = useState<string | null>(null);
+  // Sembrado con el borrador que llega de afuera, si lo hay: el efecto de creación (más abajo) sale
+  // temprano cuando `facturaId !== null`, así que esto es todo lo que hace falta para adoptarlo — el
+  // polling de estado se encarga de traer sus datos, igual que con un borrador propio.
+  const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
   const [reintentoBorrador, setReintentoBorrador] = useState(0);

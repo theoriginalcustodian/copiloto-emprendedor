@@ -34,8 +34,22 @@ export function reabrirNavegacion(): void {
   puertaAbierta = true;
 }
 
-export function empujarUnaVez(ruta: string): void {
+/**
+ * Un destino con parámetros, para las navegaciones que llevan un dato en la URL.
+ *
+ * Existe por "Facturar" desde un presupuesto: el backend devuelve el id del **borrador** ya armado y
+ * el contrato pide llevar al usuario a la pantalla de facturación **que ya existe** con ese id
+ * puesto, en vez de construir una pantalla nueva. Sin poder pasar el parámetro, la única forma de
+ * cumplir eso sería duplicar el gate de confirmación fiscal — el único lugar donde se firma la
+ * emisión, que no puede tener dos implementaciones.
+ */
+export interface DestinoConParams {
+  pathname: string;
+  params: Record<string, string>;
+}
+
+export function empujarUnaVez(destino: string | DestinoConParams): void {
   if (!puertaAbierta) return;
   puertaAbierta = false;
-  router.push(ruta as never);
+  router.push(destino as never);
 }

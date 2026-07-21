@@ -63,6 +63,36 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 export { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
 export type { ServicioCatalogo } from './catalogo';
 
+// `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`
+// NO es un error: es el estado normal del primer día. Ver el docstring de `perfilNegocio.ts`.
+export { guardarPerfilNegocio, leerPerfilNegocio, LIMITE_CAMPO_CORTO, LIMITE_QUE_VENDE } from './perfilNegocio';
+export type {
+  AQuienVende,
+  FormalidadCopiloto,
+  GuardarPerfilNegocioRequest,
+  LargoRespuesta,
+  PerfilNegocio,
+  ResultadoPerfilNegocio,
+} from './perfilNegocio';
+
+// `/presupuestos` — alta, listado, detalle y el atajo a facturar. Los montos viajan como STRING
+// (plata: el float pierde precisión) y el `total` lo calcula el backend. Ver `presupuestos.ts`.
+export {
+  crearPresupuesto,
+  facturarPresupuesto,
+  listarPresupuestos,
+  obtenerPresupuesto,
+} from './presupuestos';
+export type {
+  CrearPresupuestoRequest,
+  ItemPresupuesto,
+  ListarPresupuestosParams,
+  NuevoItemPresupuesto,
+  Presupuesto,
+  ReceptorPresupuesto,
+  ResultadoFacturar,
+} from './presupuestos';
+
 // `/actividad` — "Recientes": las entradas FIRMADAS del usuario, cross-cliente. Ver el docstring de
 // `actividad.ts` para el criterio de `no_disponible` (404/501, endpoint aún sin desplegar).
 export { listarActividad } from './actividad';

@@ -57,7 +57,14 @@ import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 
 /** Las 6 funciones del escritorio del copiloto (pedido del operador, sprint mobile-first 2026-07-20). */
-export type FuncionKey = 'apps' | 'ajustes' | 'recientes' | 'redes' | 'metricas' | 'facturacion';
+export type FuncionKey =
+  | 'apps'
+  | 'ajustes'
+  | 'recientes'
+  | 'redes'
+  | 'metricas'
+  | 'facturacion'
+  | 'presupuestos';
 
 export interface DefinicionTile {
   key: FuncionKey;
@@ -86,6 +93,11 @@ export const TILES: readonly DefinicionTile[] = [
   { key: 'redes', label: 'Redes Sociales', icono: 'chat' },
   { key: 'metricas', label: 'Métricas', icono: 'chart' },
   { key: 'facturacion', label: 'Facturación', icono: 'doc_search' },
+  // La 7ª función, y la primera que ejercita de verdad el grid que crece en columnas: con el layout
+  // 3×2 fijo del original este tile no se habría renderizado — habría desaparecido en silencio, sin
+  // error, sólo porque el array creció (es exactamente lo que pasó en el grid de Ajustes al sumar el
+  // séptimo). `note` = el documento que se redacta, y no colisiona con ningún otro de este grid.
+  { key: 'presupuestos', label: 'Presupuestos', icono: 'note' },
 ];
 
 /** Máximo de tiles apilados por columna — el resto de las funciones se alcanza con scroll horizontal,

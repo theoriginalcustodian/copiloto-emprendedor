@@ -41,6 +41,7 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   redes: '/redes',
   metricas: '/metricas',
   facturacion: '/facturacion',
+  presupuestos: '/presupuestos',
 };
 
 export function PantallaPrincipal() {

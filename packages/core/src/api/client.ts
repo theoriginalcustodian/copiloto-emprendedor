@@ -76,12 +76,14 @@ export async function mapearError(status: number, body: unknown, opts: { limpiar
 
   if (status === 401) {
     if (limpiarTokens) await config().tokens.limpiar();
-    throw new UnauthorizedError(detail);
+    throw new UnauthorizedError(detail, body);
   }
   if (status === 403) {
-    throw new ForbiddenError(detail);
+    throw new ForbiddenError(detail, body);
   }
-  throw new ApiError(status, detail ?? `Error HTTP ${status}`, detail);
+  // `body` (no sólo el `detail` string): hay endpoints cuyo mismo status tiene dos causas y sólo se
+  // distinguen por un campo que el backend adjunta. Ver el docstring de `ApiError.body`.
+  throw new ApiError(status, detail ?? `Error HTTP ${status}`, detail, body);
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {

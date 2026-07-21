@@ -4,27 +4,44 @@ import type { OpcionGenero, Cliente } from './types';
 export class ApiError extends Error {
   readonly status: number;
   readonly detail?: string;
+  /**
+   * El body ya parseado de la respuesta que falló, cuando era JSON (`undefined` si no lo era o vino
+   * vacío).
+   *
+   * 🔴 **Existe porque el `detail` string no alcanza para ramificar, y su ausencia ya costó una
+   * degradación.** Un mismo status puede tener dos causas distinguibles sólo por lo que el backend
+   * adjunta: `409` de `POST /presupuestos/{id}/facturar` es "ya fue facturado" **con `factura_id`**, o
+   * "falta el perfil fiscal" **sin él**. Discriminar por el texto del `detail` sería atarse a una
+   * redacción que el backend puede cambiar sin avisar; la presencia de un campo es estructura.
+   *
+   * Sin esto, el único camino era bajar a `http.enviar` crudo para leer el body uno mismo — que es
+   * exactamente lo que hizo `crearCliente` (`clientes.ts`) y por eso ese endpoint **no tiene
+   * refresh-on-401**: un token vencido justo ahí desloguea al usuario en vez de renovarse en
+   * silencio. Se expone acá para que nadie más pague ese precio.
+   */
+  readonly body?: unknown;
 
-  constructor(status: number, message: string, detail?: string) {
+  constructor(status: number, message: string, detail?: string, body?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.body = body;
   }
 }
 
 /** 401 — token ausente/inválido/expirado. El caller debe volver a login. */
 export class UnauthorizedError extends ApiError {
-  constructor(detail?: string) {
-    super(401, detail ?? 'No autorizado', detail);
+  constructor(detail?: string, body?: unknown) {
+    super(401, detail ?? 'No autorizado', detail, body);
     this.name = 'UnauthorizedError';
   }
 }
 
 /** 403 — token válido pero sin tenant habilitado. */
 export class ForbiddenError extends ApiError {
-  constructor(detail?: string) {
-    super(403, detail ?? 'Cuenta no habilitada', detail);
+  constructor(detail?: string, body?: unknown) {
+    super(403, detail ?? 'Cuenta no habilitada', detail, body);
     this.name = 'ForbiddenError';
   }
 }
