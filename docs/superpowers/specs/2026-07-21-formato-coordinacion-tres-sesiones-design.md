@@ -111,8 +111,9 @@ registrado como deuda deliberada en `COORDINACION.md`, con su mitigación: ningu
 coordinacion/                          (gitignored · ruta absoluta fija · buzón canónico único)
 ├── COORDINACION.md                    reglas del juego — se lee al arrancar y antes de cada commit
 ├── PLAN.md                            backlog priorizado + contratos de junta · dueño: planificación
-├── abierto/                           lo pendiente. PLANO SIEMPRE. El estado ES un `ls` de acá.
-│   └── 2026-07-21_contrato_desconexion-de-apps.md
+├── abierto/                           pendiente, nadie lo tomó. PLANO SIEMPRE.
+│   └── 2026-07-21_contrato_planificacion-a-backend_presupuestos.md
+├── en-curso/                          alguien está adentro trabajando  ← agregado, ver §15
 └── cerrado/                           histórico, particionado por día
     ├── 2026-07-20/
     └── 2026-07-21/
@@ -314,3 +315,69 @@ Binario, verificable:
 - Priorizar la Bandeja de `PLAN.md`.
 - Aislar las sesiones en worktrees (§4.3).
 - Cualquier script generador de tableros o métricas (§5.1).
+
+---
+
+## 15. Adenda — trabajos largos y enrutamiento de mensajes
+
+*Agregado el mismo día, tras dos huecos que el operador detectó y el diseño original no cubría.*
+
+### 15.1 El formato no sabía representar «trabajo largo»
+
+El diseño asumía, sin declararlo, que **cada mensaje es un evento discreto**: algo que empieza y
+termina entre dos poleos. Válido para trabajo de minutos. Con un trabajo de horas —Presupuestos es
+exactamente eso— fallan cuatro cosas: `abierto/` deja de distinguir *«nadie lo tomó»* de *«los dos
+están adentro»*; el silencio se vuelve indistinguible de la muerte; **la divergencia se descubre al
+final**; y el bloqueo mutuo es invisible.
+
+El tercero es el grave: es la misma falla de la costura que motivó todo el formato (§1.1), amplificada
+por la duración. Un incidente de ayer costó una reimplementación de minutos; a la octava hora cuesta
+días.
+
+**Solución, en orden de importancia:**
+
+1. **Punto de encuentro temprano, obligatorio en todo `contrato_` de capas `ambas`.** El momento
+   —primera hora, no última— en que las dos mitades se tocan aunque estén incompletas: típicamente el
+   endpoint devolviendo la forma final con datos vacíos. *El reporte es la red de seguridad; el corte
+   temprano es la solución.* Sólo agregar reporte deja el descubrimiento tardío intacto, con más
+   información sobre el desastre en curso.
+2. **Tercer estado `en-curso/`.** Coherente con «el estado es la ubicación», cero mecanismo nuevo.
+3. **`avance_` por hito, nunca por reloj.** Los hitos los declara el `contrato_` o el ítem del
+   `PLAN.md` — ambos nuestros, así que no hay que inventar nada. Uno cada media hora es ruido; uno por
+   hito es información.
+4. **Límite de silencio: 90 min** por defecto, sobreescribible por contrato. Lo vigila
+   **PLANIFICACIÓN**, no la sesión que trabaja: el sistema atascado no es quien mejor puede notar que
+   está atascado — mismo defecto que un test escrito por quien introdujo el bug.
+
+### 15.2 Cron de PLANIFICACIÓN
+
+Job `208b3d40`, `7,27,47 * * * *` (cada 20 min, minutos off-round). Lee mensajes dirigidos a
+planificación y detecta ítems de `en-curso/` fuera de su límite de silencio. **No produce salida
+cuando todo va bien** — el silencio es el reporte correcto.
+
+Restricciones del mecanismo, verificadas en el schema: los jobs sólo disparan con la sesión **ociosa**;
+viven **sólo en memoria** (mueren al cerrar); **expiran solos a los 7 días**. El operador los re-pide
+en cada arranque — por eso los tres prompts viven escritos en `COORDINACION.md` §4.ter y no en su
+memoria. *Es el mismo problema que `PLAN.md` resuelve para el trabajo, aplicado al arranque.*
+
+### 15.3 Destinatario en el nombre
+
+Defecto del diseño original: el campo era el **origen**, no el destinatario. Por eso una sesión sólo
+podía filtrar *sus propios* mensajes, nunca saber a quién iba dirigido algo.
+
+```
+2026-07-21_contrato_planificacion-a-backend_presupuestos.md
+```
+
+Destinatarios: `backend` · `frontend` · `planificacion` · `todos`. Cada cron lee dos globs:
+`*-a-<lo-suyo>_*` y `*-a-todos_*`.
+
+**Por qué existe `todos` y no se filtra duro** — y es el hallazgo que casi se pierde: el mismo día,
+FRONTEND leyó un intercambio que **no le estaba dirigido** y detectó que la invariante §3.bis estaba
+mal. Un filtro estricto habría matado esa corrección. El canal general preserva ese valor sin arrastrar
+el resto: cambios de invariantes / `COORDINACION.md` / `PLAN.md`, comportamiento del front-door, infra
+compartida, y todo `hallazgo_` con lección transferible.
+
+**Migración:** el histórico no se renombra. Los mensajes con nombre viejo que quedaran en `abierto/` no
+matchearían los globs nuevos, así que se consumen **antes** de repuntar los crones — el mismo problema
+de arranque que ya obligó a dejar una copia puente cuando se anunció la estructura nueva.
