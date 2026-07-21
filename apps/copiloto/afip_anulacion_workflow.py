@@ -100,5 +100,13 @@ class AnulacionWorkflow:
             args=[cliente_id, cuit, tipo_cbte, punto_venta, nro, int(nc["nro"])],
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
 
+        # ⚠️ DEUDA GESTIONADA (2026-07-21): la nota de crédito NO genera su PDF. Es un comprobante
+        # fiscal con CAE igual que la factura, así que quien anula debería poder descargarla — hoy no
+        # puede. Verificado sobre 6 anulaciones reales: ninguna tiene `pdf_url`.
+        # No es una regresión (nunca existió) y no bloquea el sprint, pero es un hueco visible desde
+        # la primera anulación de un usuario real.
+        # Pago: una `generar_pdf_comprobante` acá con el template de NC, replicando el criterio de
+        # `FacturaWorkflow` — el fallo del PDF NO puede tumbar la anulación, la NC ya tiene CAE.
+        # Propietario: operador. Condición: antes de habilitar producción.
         self._paso = "anulada"
         return self.estado()
