@@ -224,10 +224,26 @@ export function PantallaFacturacion() {
     if (pasoBackend !== 'resumen') setPasoEdicion(null);
   }, [pasoBackend]);
 
-  // 5. Mientras se está emitiendo (llamada real a AFIP, con latencia), repolear hasta terminar.
+  /**
+   * 5. Repoleo mientras AFIP trabaja.
+   *
+   * 🔴 **No corta en `emitida`: sigue hasta `terminado`.** El PDF se genera DESPUÉS del CAE, así que
+   * entre uno y otro hay una ventana de segundos en la que la factura ya tiene CAE y todavía no tiene
+   * comprobante imprimible. Cortar en `emitida` cae justo ahí.
+   *
+   * Medido en device el 2026-07-21 con la factura N° 7 (CAE 86290619845862): la app mostró *"el PDF no
+   * está disponible"* y el control contra `GET /afip/comprobantes`, un minuto después, devolvió
+   * `pdf_url` presente. O sea el PDF existía y la pantalla decía que no — mentira por leer temprano,
+   * no por un fallo del backend.
+   *
+   * `emitida` y `entregada` son estados distintos justamente por esto: `entregada` es el que ya tiene
+   * el PDF. `terminado` cubre además `rechazada`/`cancelada`, así que sirve de corte único sin
+   * enumerar estados — si mañana el backend agrega uno terminal, este loop no queda girando.
+   */
   useEffect(() => {
     if (!facturaId) return;
-    if (estadoFacturaActual?.estado !== 'emitiendo' || estadoFacturaActual.terminado) return;
+    const emitiendo = estadoFacturaActual?.estado === 'emitiendo' || estadoFacturaActual?.estado === 'emitida';
+    if (!emitiendo || estadoFacturaActual?.terminado === true) return;
     let detenido = false;
     const intervalo = setInterval(() => {
       consultarEstadoFactura(facturaId)
