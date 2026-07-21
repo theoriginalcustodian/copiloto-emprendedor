@@ -136,6 +136,9 @@ async def _serve() -> None:
         iniciar_anulacion=make_iniciar_anulacion(client),
         consultar_anulacion=make_consultar_anulacion(client),
         signal_anulacion=make_signal_anulacion(client),
+        # El MISMO gateway Composio del agente: sirve `drive_conectado` en `GET /afip/estado` para que
+        # Ajustes diga el HECHO ("Drive no está conectado") en vez de una advertencia preventiva.
+        composio_gateway=composio_gateway,
     )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es

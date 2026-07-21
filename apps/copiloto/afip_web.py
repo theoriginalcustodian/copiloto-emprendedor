@@ -85,8 +85,26 @@ def create_afip_app(
     iniciar_anulacion: Callable | None = None,
     consultar_anulacion: Callable | None = None,
     signal_anulacion: Callable | None = None,
+    composio_gateway=None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto AFIP")
+
+    async def _drive_conectado(cliente_id: str) -> bool | None:
+        """¿El tenant tiene Google Drive vinculado? `None` si no se pudo averiguar.
+
+        Nunca levanta: esto se sirve dentro de `GET /afip/estado`, que es la pantalla de Ajustes. Que
+        Composio no responda no puede dejar al usuario sin ver si puede facturar — el archivado en
+        Drive es una comodidad, el resto de esa respuesta no.
+        """
+        if composio_gateway is None:
+            return None
+        try:
+            # `composio_user_id == cliente_id` (convención del proyecto, ver `context_factory`).
+            estado = await asyncio.to_thread(
+                composio_gateway.connection_status, str(cliente_id), "googledrive")
+        except Exception:  # noqa: BLE001
+            return None
+        return str(estado or "").upper() == "ACTIVE"
 
     @app.get("/afip/perfil")
     async def leer_perfil(cuit: str, cliente_id: str = Depends(require_tenant)) -> dict:
@@ -290,9 +308,13 @@ def create_afip_app(
             cuit = await asyncio.to_thread(cred_store.primer_cuit)
         if cuit is None:
             # Tenant nuevo: todavía no vinculó nada. No es un error — es el estado inicial de Ajustes.
+            # `drive_conectado` va TAMBIÉN acá: esta rama devuelve un dict aparte, y omitir el campo
+            # lo dejaría `undefined` justo en la pantalla del usuario nuevo, que es donde el aviso de
+            # conectar Drive más hace falta. Dos returns con formas distintas es una trampa —
+            # cualquier campo nuevo hay que acordarse de ponerlo en los dos.
             return {"cuit": None, "conectado": False, "ws_autorizados": [], "ambiente": None,
                     "ambientes_vinculados": [], "perfil_completo": False, "puede_facturar": False,
-                    "onboarding": None}
+                    "onboarding": None, "drive_conectado": await _drive_conectado(cliente_id)}
 
         creds = await asyncio.to_thread(cred_store.get, cuit)
         vinculados = await asyncio.to_thread(cred_store.ambientes_vinculados, cuit)
@@ -310,6 +332,11 @@ def create_afip_app(
             "perfil_completo": bool(perfil),
             "puede_facturar": bool(creds) and bool(perfil),
             "onboarding": progreso,
+            # TRES estados, no dos: True / False / None. `None` es "no pude averiguarlo" (Composio no
+            # respondió o no está cableado) y NO es lo mismo que "no está conectado". Colapsarlos
+            # haría que una caída de Composio se muestre como "conectá tu Drive" sobre una cuenta que
+            # sí está vinculada — un rastro pisando el hecho, el error que ya pagamos con el alta.
+            "drive_conectado": await _drive_conectado(cliente_id),
         }
 
     @app.post("/afip/ambiente")
