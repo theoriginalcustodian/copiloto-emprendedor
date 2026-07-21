@@ -145,6 +145,24 @@ export type MotivoCodigo =
   | 'emitida_sin_pdf'
   | (string & {});
 
+/**
+ * Resultado del archivado en el Drive del emprendedor.
+ *
+ * 🔴 **`guardado` es el HECHO, no la intención.** Con el ajuste prendido y el archivado fallado
+ * (Drive sin conectar, por ejemplo) esto viene `guardado: false` y la factura sale igual. Colgar el
+ * aviso de las 24 h del ajuste en vez de este campo le haría creer al usuario que su factura está a
+ * salvo cuando no lo está — peor que no avisar nunca. Misma forma que el bug de `estado === 'emitida'`.
+ */
+export interface ArchivoDrive {
+  guardado: boolean;
+  fileId?: string | null;
+  /** `webContentLink`: descarga directa. No vence, a diferencia de `pdf.url`. */
+  link?: string | null;
+  compartido?: boolean;
+  /** Por qué no se guardó: `desactivado` · `error_drive: …` · `sin_pdf_para_archivar`. */
+  motivo?: string | null;
+}
+
 export interface EstadoFacturaResp {
   estado: EstadoFactura;
   faltantes: Faltante[];
@@ -153,10 +171,20 @@ export interface EstadoFacturaResp {
   tokenConfirmacion: string | null;
   resultado: ResultadoEmision | null;
   pdf: { url: string; nombre: string; expiraAt: string | null } | null;
+  /** `null` mientras el workflow todavía no llegó a la etapa de archivado. */
+  drive: ArchivoDrive | null;
   /** La frase redactada, para MOSTRAR. */
   motivo: string | null;
   /** El código estable, para RAMIFICAR. Ver `MotivoCodigo`. */
   motivoCodigo: MotivoCodigo | null;
+  /**
+   * 🔴 **Flag EXPLÍCITO del workflow ("no voy a escribir nada más"), no una lista de estados.**
+   * Cortar el polling por `estado` falla en los dos bordes y el backend ya los pagó: la factura se
+   * marca `entregada` ANTES de archivarse en Drive (cortar ahí deja `drive` en `null` para siempre
+   * sobre una factura que segundos después sí tenía copia), y una factura sin PDF queda en `emitida`,
+   * que no figuraba entre los terminales — el cliente poleaba eternamente un workflow ya cerrado.
+   * Cortar SIEMPRE por acá: garantiza que `pdf` y `drive` ya están.
+   */
   terminado: boolean;
 }
 
@@ -170,6 +198,8 @@ export interface PerfilFiscal {
   /** ISO `YYYY-MM-DD`. */
   inicioActividades: string;
   puntoVenta: number;
+  /** Archivar cada factura en el Drive del emprendedor. **Default `false`** — ver `normalizarPerfil`. */
+  guardarEnDrive: boolean;
 }
 
 /** Progreso del alta ante ARCA (`AfipOnboardingWorkflow.progreso()`), normalizado. */
@@ -232,9 +262,24 @@ export interface Comprobante {
   caeVto: string | null;
   fechaEmision: string | null;
   total: string;
+  /**
+   * ⚠️ **No es el mismo vocabulario que el estado del workflow.** Esto sale de la base
+   * (`emitida`/`anulada`/`nota_credito`); `entregada` es un estado del `FacturaWorkflow` y NUNCA
+   * aparece acá. Comparar una card del listado contra `'entregada'` no matchea jamás.
+   */
   estado: EstadoComprobante;
+  /** Link de AfipSDK. **Vence a las 24 h** y no se re-hostea. */
   pdfUrl: string | null;
   cbteAsocNro: number | null;
+  /** Copia permanente en el Drive del emprendedor. `driveLink` es el `webContentLink` (DESCARGA el
+   *  archivo); el `webViewLink` de Drive abre el visor y deja al usuario en una página en vez de con
+   *  su PDF — el backend manda el correcto, no sustituirlo por el que muestra la UI de Drive. */
+  driveFileId: string | null;
+  driveLink: string | null;
+  /** A quién se le facturó. `null` en comprobantes anteriores al 2026-07-21 — el dato no existía. */
+  receptorNombre: string | null;
+  docTipo: number | null;
+  docNro: string | null;
 }
 
 /** `GET /afip/anulaciones/{id}` — `AnulacionWorkflow.estado()`, normalizado. */
@@ -417,6 +462,7 @@ function normalizarPerfil(raw: {
   ingresos_brutos: string;
   inicio_actividades: string;
   punto_venta: number;
+  guardar_en_drive?: boolean;
 }): PerfilFiscal {
   return {
     cuit: raw.cuit,
@@ -426,6 +472,9 @@ function normalizarPerfil(raw: {
     ingresosBrutos: raw.ingresos_brutos,
     inicioActividades: raw.inicio_actividades,
     puntoVenta: raw.punto_venta,
+    // `?? false` y no `?? true`: subir los datos fiscales de alguien a una cuenta de Drive no puede
+    // pasar por defecto. Si el backend no manda la clave, el ajuste está APAGADO.
+    guardarEnDrive: raw.guardar_en_drive ?? false,
   };
 }
 
@@ -591,6 +640,13 @@ interface EstadoFacturaRaw {
   token_confirmacion: string | null;
   resultado: ResultadoEmisionRaw | null;
   pdf: { url: string; nombre: string; expira_at: string | null } | null;
+  drive?: {
+    guardado: boolean;
+    file_id?: string | null;
+    link?: string | null;
+    compartido?: boolean;
+    motivo?: string | null;
+  } | null;
   motivo: string | null;
   motivo_codigo?: string | null;
   terminado: boolean;
@@ -610,6 +666,18 @@ function normalizarEstadoFactura(raw: EstadoFacturaRaw): EstadoFacturaResp {
     tokenConfirmacion: raw.token_confirmacion,
     resultado: raw.resultado ? normalizarResultadoEmision(raw.resultado) : null,
     pdf: raw.pdf ? { url: raw.pdf.url, nombre: raw.pdf.nombre, expiraAt: raw.pdf.expira_at } : null,
+    // Se copia campo por campo y NO con un spread: si el backend agrega una clave, entra por acá
+    // deliberadamente. Al revés —armar el objeto y olvidarse de una clave— ya costó un bug mudo
+    // (`ambiente` y `ambientes_vinculados` descartados en `estadoAfip`, ver el docstring del módulo).
+    drive: raw.drive
+      ? {
+          guardado: raw.drive.guardado,
+          fileId: raw.drive.file_id ?? null,
+          link: raw.drive.link ?? null,
+          compartido: raw.drive.compartido ?? false,
+          motivo: raw.drive.motivo ?? null,
+        }
+      : null,
     motivo: raw.motivo,
     motivoCodigo: raw.motivo_codigo ?? null,
     terminado: raw.terminado,
@@ -671,6 +739,39 @@ export async function cambiarAmbiente(
         ok: false,
         ambienteNoVinculado: ambiente,
         mensaje: err.detail ?? `Todavía no vinculaste tu cuenta de ARCA en ${ambiente === 'prod' ? 'producción' : 'homologación'}.`,
+      };
+    }
+    throw err;
+  }
+}
+
+/**
+ * `POST /afip/ajustes` — prende/apaga el archivado de las facturas en el Drive del emprendedor.
+ *
+ * 🔴 **El 409 vuelve como VALOR, no como excepción**, y significa algo muy concreto: *ese CUIT
+ * todavía no tiene perfil fiscal*. Existe porque sin él el bug sería mudo — un `UPDATE` sobre cero
+ * filas "funciona" en SQL, así que el toggle quedaría prendido en pantalla y la base sin nada
+ * guardado. La UI tiene que traducirlo a "primero completá tus datos fiscales", nunca a un error
+ * genérico: es una instrucción, no una falla.
+ *
+ * Mismo criterio que `cambiarAmbiente`: un caso esperado del producto no se modela como excepción.
+ */
+export async function guardarAjustesAfip(
+  cuit: string,
+  guardarEnDrive: boolean,
+): Promise<{ ok: true; guardarEnDrive: boolean } | { ok: false; sinPerfil: true; mensaje: string }> {
+  try {
+    const raw = await apiClient.post<{ ok: boolean; guardar_en_drive: boolean }>('/afip/ajustes', {
+      cuit,
+      guardar_en_drive: guardarEnDrive,
+    });
+    return { ok: true, guardarEnDrive: raw.guardar_en_drive };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      return {
+        ok: false,
+        sinPerfil: true,
+        mensaje: err.detail ?? 'Todavía no cargaste tus datos fiscales para ese CUIT.',
       };
     }
     throw err;
@@ -756,6 +857,15 @@ interface ComprobanteRaw {
   estado: string;
   pdf_url: string | null;
   cbte_asoc_nro: number | null;
+  /** Copia permanente en el Drive del emprendedor. `null` si no se archivó (ajuste apagado, Drive sin
+   *  conectar, o la factura no tuvo PDF que guardar). */
+  drive_file_id: string | null;
+  drive_link: string | null;
+  /** A quién se le facturó. `null` en los comprobantes anteriores al 2026-07-21: el dato no existía
+   *  entonces, no es un error — la UI tiene que tolerar el vacío sin romper. */
+  receptor_nombre: string | null;
+  doc_tipo: number | null;
+  doc_nro: string | null;
 }
 
 function normalizarComprobante(raw: ComprobanteRaw): Comprobante {
@@ -771,6 +881,11 @@ function normalizarComprobante(raw: ComprobanteRaw): Comprobante {
     estado: raw.estado,
     pdfUrl: raw.pdf_url,
     cbteAsocNro: raw.cbte_asoc_nro,
+    driveFileId: raw.drive_file_id ?? null,
+    driveLink: raw.drive_link ?? null,
+    receptorNombre: raw.receptor_nombre ?? null,
+    docTipo: raw.doc_tipo ?? null,
+    docNro: raw.doc_nro ?? null,
   };
 }
 
@@ -894,6 +1009,66 @@ export async function esperarEstadoEstable(
   }
 
   return { estado, convergio: !tienePerfilAusente(estado) };
+}
+
+/**
+ * Firma de lo que un signal puede cambiar: el estado de la máquina, los ítems y el total. Se compara
+ * esto y no sólo `estado` porque hay signals que NO mueven el estado — agregar un segundo ítem deja
+ * `items_ok` igual pero cambia la lista. Sin mirar los ítems, esos casos esperarían el tope entero.
+ */
+function firmaDeEstado(e: EstadoFacturaResp): string {
+  return `${e.estado}|${e.items.length}|${e.total}|${e.faltantes.length}|${e.tokenConfirmacion ?? ''}`;
+}
+
+export interface EcoDelSignalResultado {
+  estado: EstadoFacturaResp;
+  /** `false` = se agotó el tope sin que nada cambiara. El caller decide qué hacer; nunca se lanza. */
+  cambio: boolean;
+}
+
+/**
+ * Espera el ECO de un signal: repolea hasta que el estado deje de ser el que era antes de mandarlo.
+ *
+ * 🔴 **Por qué hace falta, y por qué no alcanza con leer una vez.** `POST /afip/facturas/{id}/…` no
+ * ejecuta nada: manda un **signal** a Temporal y devuelve 200 al instante. El workflow lo procesa
+ * después — típicamente en decenas de ms, a veces más. Leer el estado inmediatamente después del POST
+ * es una carrera: si se pierde, se lee el estado ANTERIOR y, sin reintento, **la pantalla se queda
+ * congelada sobre un backend que sí avanzó.**
+ *
+ * Cazado en device el 2026-07-21: el usuario cargaba los datos de venta, tocaba "Continuar", el
+ * backend pasaba a `datos_venta_ok` (verificado por HTTP) y la pantalla seguía mostrando el paso 1.
+ * Sin error, sin spinner: sólo un botón que parecía no hacer nada. Peor todavía, es INTERMITENTE —
+ * cuando el signal se procesa rápido, funciona, y el bug parece no existir.
+ *
+ * Es la misma forma que `esperarEstadoEstable` (que espera otra cosa: que aparezca el perfil) y la
+ * misma que el bug del PDF que llega después del CAE: **un dato que se completa en dos tiempos, leído
+ * por alguien que asume uno solo.**
+ *
+ * **Corte honesto:** si a los `topeMs` (default 3000) nada cambió, devuelve el último estado leído
+ * con `cambio:false`. Un signal puede legítimamente no cambiar nada, así que esto no es un error —
+ * pero el caller se entera en vez de creer que sí pasó algo.
+ */
+export async function esperarEcoDelSignal(
+  facturaId: string,
+  estadoPrevio: EstadoFacturaResp | null,
+  opts: EsperarEstadoEstableOpts = {},
+): Promise<EcoDelSignalResultado> {
+  const { topeMs = 3000 } = opts;
+  const firmaPrevia = estadoPrevio ? firmaDeEstado(estadoPrevio) : null;
+  let transcurrido = 0;
+  let intento = 0;
+  let estado = await estadoFactura(facturaId);
+
+  // Sin estado previo no hay con qué comparar: la primera lectura ES el resultado.
+  while (firmaPrevia !== null && firmaDeEstado(estado) === firmaPrevia && transcurrido < topeMs) {
+    const espera = BACKOFF_MS[Math.min(intento, BACKOFF_MS.length - 1)]!;
+    await dormir(espera);
+    transcurrido += espera;
+    intento += 1;
+    estado = await estadoFactura(facturaId);
+  }
+
+  return { estado, cambio: firmaPrevia === null || firmaDeEstado(estado) !== firmaPrevia };
 }
 
 export interface ConfirmarResultado {

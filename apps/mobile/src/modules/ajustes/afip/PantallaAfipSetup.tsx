@@ -7,6 +7,7 @@ import {
   cambiarAmbiente,
   conectarArca,
   estadoAfip,
+  guardarAjustesAfip,
   guardarPerfil,
   leerPerfil,
   type AmbienteAfip,
@@ -118,6 +119,13 @@ const ETIQUETA_AMBIENTE: Record<AmbienteAfip, string> = {
   prod: 'Producción',
 };
 
+/** Chips en vez de un `Switch` nativo: misma razón que `CampoSelect` con el picker — una superficie
+ *  del sistema corta el vidrio en seco. Y un sí/no explícito se lee mejor que un interruptor mudo. */
+const OPCIONES_DRIVE: OpcionSelect[] = [
+  { valor: 'si', etiqueta: 'Sí, guardar' },
+  { valor: 'no', etiqueta: 'No' },
+];
+
 interface SeccionProps {
   titulo: string;
   testID: string;
@@ -178,6 +186,11 @@ export function PantallaAfipSetup() {
    *  remontaría en medio del tipeo cada vez que la fecha queda incompleta y pasa por `''`. */
   const [semillaPerfil, setSemillaPerfil] = useState(0);
 
+  // -- Bloque 4: copia en Drive. El valor vive en el perfil fiscal (`guardar_en_drive`).
+  const [guardarEnDrive, setGuardarEnDrive] = useState(false);
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false);
+  const [errorAjuste, setErrorAjuste] = useState<'sin_perfil' | 'error' | null>(null);
+
   function actualizarCampoPerfil<K extends keyof CamposPerfil>(campo: K, valor: CamposPerfil[K]) {
     setCamposPerfil((prev) => ({ ...prev, [campo]: valor }));
   }
@@ -205,6 +218,7 @@ export function PantallaAfipSetup() {
         // DD/MM/AAAA vacío sobre una fecha que existe: si el usuario guarda, el perfil pierde su
         // inicio de actividades sin que nadie haya tocado ese campo. Visto en device (2026-07-21).
         setSemillaPerfil((n) => n + 1);
+        setGuardarEnDrive(res.perfil.guardarEnDrive);
         setCuitBloqueado(true);
         setEstadoPerfil('ok');
       } else {
@@ -361,6 +375,30 @@ export function PantallaAfipSetup() {
       setErrorAmbiente('No pudimos cambiar el ambiente. Probá de nuevo.');
     } finally {
       setCambiandoAmbiente(null);
+    }
+  }
+
+  /**
+   * 🔴 **No hay actualización optimista.** El toggle se pinta con lo que el backend confirmó, no con
+   * lo que el usuario tocó: si el CUIT no tiene perfil, el 409 vuelve como valor y el control queda
+   * donde estaba. Adelantar el estado visual acá reproduciría exactamente el bug contra el que el
+   * backend puso ese 409 — el usuario viendo "Sí, guardar" sobre una base que no guardó nada.
+   */
+  async function cambiarGuardadoEnDrive(nuevo: boolean) {
+    if (guardandoAjuste || cuit.length !== 11) return;
+    setGuardandoAjuste(true);
+    setErrorAjuste(null);
+    try {
+      const res = await guardarAjustesAfip(cuit, nuevo);
+      if (res.ok) {
+        setGuardarEnDrive(res.guardarEnDrive);
+      } else {
+        setErrorAjuste('sin_perfil');
+      }
+    } catch {
+      setErrorAjuste('error');
+    } finally {
+      setGuardandoAjuste(false);
     }
   }
 
@@ -860,6 +898,59 @@ export function PantallaAfipSetup() {
             {errorAmbiente != null && (
               <Text testID="afip-ambiente-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
                 {errorAmbiente}
+              </Text>
+            )}
+          </View>
+        </Seccion>
+
+        {/* ------------------------- Bloque 4 -- Copia en Drive ---------------------------------
+            🔴 **El estado se toma de lo que CONFIRMÓ el backend, nunca del toque del usuario.** El
+            409 de `POST /afip/ajustes` existe porque un `UPDATE` sobre cero filas "funciona" en SQL:
+            si el CUIT no tiene perfil, pintar el toggle prendido dejaría al usuario creyendo que sus
+            facturas se archivan mientras la base no guardó nada. Por eso `guardarAjustesAfip`
+            devuelve el valor del servidor y ESE es el que se pinta. */}
+        <Seccion titulo="4. Copia en tu Drive" testID="afip-bloque-drive">
+          <View style={{ gap: tema.espacio.md }}>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+              Guardá una copia de cada factura en tu Google Drive. El link de AFIP vence a las 24
+              horas; el de tu Drive no.
+            </Text>
+
+            <CampoSelect
+              testID="afip-drive-toggle"
+              etiqueta="Guardar mis facturas en Drive"
+              opciones={OPCIONES_DRIVE}
+              valor={guardarEnDrive ? 'si' : 'no'}
+              onChange={(v) => void cambiarGuardadoEnDrive(v === 'si')}
+            />
+
+            {guardandoAjuste && (
+              <Text testID="afip-drive-guardando" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Guardando…
+              </Text>
+            )}
+
+            {/* El 409 es una INSTRUCCIÓN, no una falla: falta un paso que sólo el usuario puede dar. */}
+            {errorAjuste === 'sin_perfil' && (
+              <Text testID="afip-drive-sin-perfil" style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
+                Primero completá tus datos fiscales acá arriba y guardá el perfil. Después vas a poder
+                activar la copia en Drive.
+              </Text>
+            )}
+            {errorAjuste === 'error' && (
+              <Text testID="afip-drive-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                No pudimos guardar el ajuste. Probá de nuevo.
+              </Text>
+            )}
+
+            {/* 🔴 Avisa, NO bloquea. La app no tiene forma de saber si Drive está conectado — no hay
+                contrato que lo diga — y deshabilitar el control por una sospecha sería inventar un
+                dato. Además el archivado nunca rompe la emisión: la factura sale igual. Cuando el
+                archivado falle de verdad, el comprobante lo dice con evidencia (`drive.motivo`). */}
+            {guardarEnDrive && (
+              <Text testID="afip-drive-requiere-conexion" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Necesitás tener Google Drive conectado en Apps. Si no lo está, la factura se emite
+                igual y te avisamos que quedó sin copia.
               </Text>
             )}
           </View>

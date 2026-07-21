@@ -22,6 +22,7 @@ const ESTADO_LISTO: EstadoFacturaResp = {
   tokenConfirmacion: '1:1000.00:99:0',
   resultado: null,
   pdf: null,
+  drive: null,
   motivo: null,
   motivoCodigo: null,
   terminado: false,

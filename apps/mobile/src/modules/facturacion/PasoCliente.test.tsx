@@ -25,6 +25,7 @@ const ESTADO: EstadoFacturaResp = {
   tokenConfirmacion: null,
   resultado: null,
   pdf: null,
+  drive: null,
   motivo: null,
   motivoCodigo: null,
   terminado: false,

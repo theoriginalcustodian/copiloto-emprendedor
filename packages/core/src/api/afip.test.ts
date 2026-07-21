@@ -9,10 +9,12 @@ import {
   cambiarAmbiente,
   crearFactura,
   ErrorValidacionFiscal,
+  esperarEcoDelSignal,
   esperarEstadoEstable,
   estadoAfip,
   estadoAnulacion,
   estadoFactura,
+  guardarAjustesAfip,
   guardarPerfil,
   leerPerfil,
   listarComprobantes,
@@ -115,8 +117,26 @@ describe('afip.ts', () => {
           ingresosBrutos: 'CM',
           inicioActividades: '2020-01-01',
           puntoVenta: 1,
+          // Sin la clave en la respuesta el ajuste queda APAGADO: subir los datos fiscales de
+          // alguien a una cuenta de Drive no puede pasar por un default.
+          guardarEnDrive: false,
         },
       });
+    });
+
+    it('trae guardar_en_drive cuando el backend lo manda', async () => {
+      responder = () =>
+        respuesta(200, {
+          perfil: {
+            cuit: '20111222339', razon_social: 'Ana Pérez', domicilio_comercial: 'Calle Falsa 123',
+            condicion_iva: 'monotributo', ingresos_brutos: 'CM', inicio_actividades: '2020-01-01',
+            punto_venta: 1, guardar_en_drive: true,
+          },
+        });
+
+      const result = await leerPerfil('20111222339');
+
+      expect(result.status === 'ok' && result.perfil?.guardarEnDrive).toBe(true);
     });
 
     it('perfil: null (200 real, no error) -> status ok con perfil null', async () => {
@@ -424,9 +444,36 @@ describe('afip.ts', () => {
         tokenConfirmacion: null,
         resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1 },
         pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expiraAt: '2026-07-22T00:00:00Z' },
+        drive: null,
         motivo: null,
         motivoCodigo: null,
         terminado: true,
+      });
+    });
+
+    it('normaliza el archivado en Drive, guardado y fallado', async () => {
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'entregada', terminado: true,
+          drive: { guardado: true, file_id: '1tnAN', link: 'https://drive/uc?id=1tnAN', compartido: true },
+        }));
+
+      const ok = await estadoFactura('f-1');
+      expect(ok.drive).toEqual({
+        guardado: true, fileId: '1tnAN', link: 'https://drive/uc?id=1tnAN', compartido: true, motivo: null,
+      });
+
+      // El caso que importa para el copy: el ajuste estaba PRENDIDO y el archivado falló igual.
+      // `guardado: false` es el hecho — de acá cuelga el aviso de las 24 h, no del ajuste.
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'entregada', terminado: true,
+          drive: { guardado: false, motivo: 'error_drive: ConnectionRequired' },
+        }));
+
+      const fallo = await estadoFactura('f-1');
+      expect(fallo.drive).toEqual({
+        guardado: false, fileId: null, link: null, compartido: false, motivo: 'error_drive: ConnectionRequired',
       });
     });
 
@@ -487,8 +534,39 @@ describe('afip.ts', () => {
           {
             cuit: '1', tipoCbte: 11, puntoVenta: 1, nro: 5, cae: 'x', caeVto: '2026-08-01',
             fechaEmision: '2026-07-21', total: '200.00', estado: 'emitida', pdfUrl: 'https://x', cbteAsocNro: null,
+            driveFileId: null, driveLink: null, receptorNombre: null, docTipo: null, docNro: null,
           },
         ],
+      });
+    });
+
+    // 🔴 Regresión del bug que este módulo ya tuvo una vez: `estadoAfip` armaba un objeto literal y
+    // DESCARTABA `ambiente`/`ambientes_vinculados`, así que la pantalla habría quedado degradada
+    // para siempre incluso con el backend ya arreglado. Un campo que el normalizador se olvida no
+    // da error en ningún lado — sólo desaparece.
+    it('no descarta los campos de Drive ni los del receptor', async () => {
+      responder = () =>
+        respuesta(200, {
+          comprobantes: [
+            {
+              cuit: '1', tipo_cbte: 11, punto_venta: 1, nro: 15, cae: 'x', cae_vto: '2026-08-01',
+              fecha_emision: '2026-07-21', total: '200.00', estado: 'emitida', pdf_url: 'https://x',
+              cbte_asoc_nro: null,
+              drive_file_id: '1tnAN', drive_link: 'https://drive/uc?id=1tnAN&export=download',
+              receptor_nombre: 'Juan Pérez SRL', doc_tipo: 80, doc_nro: '20111111112',
+            },
+          ],
+        });
+
+      const result = await listarComprobantes('1');
+      const fila = result.status === 'ok' ? result.comprobantes[0]! : null;
+
+      expect(fila).toMatchObject({
+        driveFileId: '1tnAN',
+        driveLink: 'https://drive/uc?id=1tnAN&export=download',
+        receptorNombre: 'Juan Pérez SRL',
+        docTipo: 80,
+        docNro: '20111111112',
       });
     });
 
@@ -578,6 +656,87 @@ describe('afip.ts', () => {
     });
   });
 
+  /**
+   * 🔴 El bug que motivó esto, cazado en device el 2026-07-21: los `POST` de la factura mandan un
+   * SIGNAL a Temporal y devuelven 200 al instante. Leer el estado justo después es una carrera; al
+   * perderla, la pantalla se queda mostrando el paso anterior sobre un backend que ya avanzó. Sin
+   * error visible, y **intermitente** — cuando el signal se procesa rápido, parece funcionar.
+   */
+  describe('esperarEcoDelSignal', () => {
+    it('repolea hasta que el estado cambia, no se queda con la primera lectura', async () => {
+      vi.useFakeTimers();
+      const previo = await (async () => {
+        responder = () => respuesta(200, estadoFacturaCruda({ estado: 'borrador' }));
+        return estadoFactura('f-1');
+      })();
+      peticiones.length = 0;
+
+      // El backend todavía no procesó el signal en la 1ª lectura; en la 2ª sí.
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'borrador' })),
+        respuesta(200, estadoFacturaCruda({ estado: 'datos_venta_ok' })),
+      );
+
+      const promesa = esperarEcoDelSignal('f-1', previo);
+      await vi.advanceTimersByTimeAsync(50);
+      const resultado = await promesa;
+
+      expect(resultado.cambio).toBe(true);
+      expect(resultado.estado.estado).toBe('datos_venta_ok');
+      expect(peticiones).toHaveLength(2);
+    });
+
+    it('detecta un cambio que NO mueve el estado (segundo ítem: items_ok -> items_ok)', async () => {
+      vi.useFakeTimers();
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'items_ok',
+          items: [{ descripcion: 'a', cantidad: '1', precio_unitario: '10.00', subtotal: '10.00' }],
+          total: '10.00',
+        }));
+      const previo = await estadoFactura('f-1');
+      peticiones.length = 0;
+
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'items_ok',
+          items: [
+            { descripcion: 'a', cantidad: '1', precio_unitario: '10.00', subtotal: '10.00' },
+            { descripcion: 'b', cantidad: '1', precio_unitario: '5.00', subtotal: '5.00' },
+          ],
+          total: '15.00',
+        }));
+
+      const resultado = await esperarEcoDelSignal('f-1', previo);
+
+      // Mismo `estado`, pero la lista cambió: mirar sólo `estado` habría esperado el tope entero.
+      expect(resultado.cambio).toBe(true);
+      expect(peticiones).toHaveLength(1);
+    });
+
+    it('CORTA honesto con cambio:false si nada cambia — un signal puede no cambiar nada', async () => {
+      vi.useFakeTimers();
+      responder = () => respuesta(200, estadoFacturaCruda({ estado: 'borrador' }));
+      const previo = await estadoFactura('f-1');
+
+      const promesa = esperarEcoDelSignal('f-1', previo, { topeMs: 300 });
+      await vi.advanceTimersByTimeAsync(1000);
+      const resultado = await promesa;
+
+      expect(resultado.cambio).toBe(false);
+      expect(resultado.estado.estado).toBe('borrador');
+    });
+
+    it('sin estado previo la primera lectura ES el resultado, sin esperar', async () => {
+      responder = () => respuesta(200, estadoFacturaCruda({ estado: 'borrador' }));
+
+      const resultado = await esperarEcoDelSignal('f-1', null);
+
+      expect(resultado.cambio).toBe(true);
+      expect(peticiones).toHaveLength(1);
+    });
+  });
+
   describe('confirmarConTokenFresco', () => {
     it('emite OK cuando el estado avanza más allá de esperando_confirmacion', async () => {
       responder = secuencia(
@@ -633,12 +792,47 @@ describe('afip.ts', () => {
           tokenConfirmacion: null,
           resultado: null,
           pdf: null,
+          drive: null,
           motivo: null,
           motivoCodigo: null,
           terminado: false,
         },
       });
       expect(peticiones).toHaveLength(1); // sólo el estadoFactura() inicial, nada más.
+    });
+  });
+
+  describe('guardarAjustesAfip — POST /afip/ajustes', () => {
+    it('200 -> ok con el valor que confirmó el backend, no el que mandó la UI', async () => {
+      responder = () => respuesta(200, { ok: true, guardar_en_drive: true });
+
+      const result = await guardarAjustesAfip('20111222339', true);
+
+      expect(result).toEqual({ ok: true, guardarEnDrive: true });
+      expect(peticiones[0]!.cuerpoJson).toEqual({ cuit: '20111222339', guardar_en_drive: true });
+    });
+
+    /**
+     * 🔴 El 409 vuelve como VALOR. Es "ese CUIT no tiene perfil fiscal", no una falla: un `UPDATE`
+     * sobre cero filas "funciona" en SQL, así que sin este camino el toggle quedaría prendido en
+     * pantalla y la base sin nada guardado — el usuario creería tener sus facturas archivándose.
+     */
+    it('409 -> sinPerfil como valor, sin lanzar', async () => {
+      responder = () =>
+        respuesta(409, { detail: 'todavía no cargaste tus datos fiscales para ese CUIT' });
+
+      const result = await guardarAjustesAfip('20111222339', true);
+
+      expect(result).toEqual({
+        ok: false,
+        sinPerfil: true,
+        mensaje: 'todavía no cargaste tus datos fiscales para ese CUIT',
+      });
+    });
+
+    it('un error que NO es 409 sigue subiendo', async () => {
+      responder = () => respuesta(500, { detail: 'boom' });
+      await expect(guardarAjustesAfip('1', true)).rejects.toBeInstanceOf(ApiError);
     });
   });
   /**

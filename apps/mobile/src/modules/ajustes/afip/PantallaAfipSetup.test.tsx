@@ -25,6 +25,7 @@ jest.mock('@copiloto/core', () => {
     conectarArca: jest.fn(),
     estadoAfip: jest.fn(),
     cambiarAmbiente: jest.fn(),
+    guardarAjustesAfip: jest.fn(),
   };
 });
 
@@ -33,6 +34,7 @@ import {
   cambiarAmbiente,
   conectarArca,
   estadoAfip,
+  guardarAjustesAfip,
   guardarPerfil,
   leerPerfil,
   type EstadoAfip,
@@ -56,6 +58,7 @@ function perfilMock(over: Partial<PerfilFiscal> = {}): PerfilFiscal {
     ingresosBrutos: '123456',
     inicioActividades: '2020-01-15',
     puntoVenta: 3,
+    guardarEnDrive: false,
     ...over,
   };
 }
@@ -101,6 +104,62 @@ describe('PantallaAfipSetup', () => {
     jest.mocked(conectarArca).mockReset();
     jest.mocked(estadoAfip).mockReset().mockResolvedValue(estadoOk());
     jest.mocked(cambiarAmbiente).mockReset().mockResolvedValue({ ok: true });
+    jest.mocked(guardarAjustesAfip).mockReset().mockResolvedValue({ ok: true, guardarEnDrive: true });
+  });
+
+  // -----------------------------------------------------------------------------------------
+  // Bloque 4 — copia en Drive. El estado se toma del backend, nunca del toque del usuario.
+  // -----------------------------------------------------------------------------------------
+  describe('copia en Drive', () => {
+    async function montarConPerfil(guardarEnDrive: boolean) {
+      jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
+      jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock({ guardarEnDrive }) });
+      await montar();
+      await waitFor(() => expect(leerPerfil).toHaveBeenCalledWith(CUIT));
+    }
+
+    it('refleja el valor que vino en el perfil', async () => {
+      await montarConPerfil(true);
+      expect(screen.getByTestId('afip-drive-toggle')).toBeTruthy();
+      // Con el ajuste prendido se advierte que hace falta Drive conectado en Apps.
+      expect(screen.getByTestId('afip-drive-requiere-conexion')).toBeTruthy();
+    });
+
+    it('prenderlo manda el ajuste con el CUIT del perfil', async () => {
+      await montarConPerfil(false);
+
+      await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
+
+      await waitFor(() => expect(guardarAjustesAfip).toHaveBeenCalledWith(CUIT, true));
+    });
+
+    /**
+     * 🔴 El caso que justifica que no haya actualización optimista. Un `UPDATE` sobre cero filas
+     * "funciona" en SQL: si se pintara el toggle con lo que tocó el usuario, quedaría prendido en
+     * pantalla sobre una base que no guardó nada, y el emprendedor creería tener sus facturas
+     * archivándose. El 409 vuelve como VALOR justamente para poder distinguirlo.
+     */
+    it('el 409 no prende el toggle: explica que falta el perfil', async () => {
+      await montarConPerfil(false);
+      jest.mocked(guardarAjustesAfip).mockResolvedValueOnce({
+        ok: false, sinPerfil: true, mensaje: 'todavía no cargaste tus datos fiscales para ese CUIT',
+      });
+
+      await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-sin-perfil')).toBeTruthy());
+      // Y el aviso de "necesitás Drive conectado" NO aparece: el ajuste sigue apagado.
+      expect(screen.queryByTestId('afip-drive-requiere-conexion')).toBeNull();
+    });
+
+    it('un error de red se dice, no se traga', async () => {
+      await montarConPerfil(false);
+      jest.mocked(guardarAjustesAfip).mockRejectedValueOnce(new Error('red'));
+
+      await fireEvent.press(screen.getByTestId('afip-drive-toggle-opcion-si'));
+
+      await waitFor(() => expect(screen.getByTestId('afip-drive-error')).toBeTruthy());
+    });
   });
 
   // -----------------------------------------------------------------------------------------

@@ -8,12 +8,14 @@ import {
   confirmarConTokenFresco,
   crearFactura,
   estadoAfip,
+  esperarEcoDelSignal,
   esperarEstadoEstable,
   estadoFactura as consultarEstadoFactura,
   quitarItem,
   setCliente,
   setDatosVenta,
   type AmbienteAfip,
+  type Comprobante,
   type ConfirmarResultado,
   type DatosVentaInput,
   type EstadoFacturaResp,
@@ -33,6 +35,7 @@ import { PasoCliente } from './PasoCliente';
 import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
+import { DetalleComprobante } from './DetalleComprobante';
 import { SeccionMisComprobantes } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
 
@@ -118,6 +121,8 @@ export function PantallaFacturacion() {
   );
   const tema = useTema();
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'resolviendo_cuit' });
+  /** La fila cuyo detalle se está mirando. Vive ACÁ y no en la sección — ver el porqué en el render. */
+  const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const [facturaId, setFacturaId] = useState<string | null>(null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
   const [errorBorrador, setErrorBorrador] = useState(false);
@@ -262,48 +267,70 @@ export function PantallaFacturacion() {
     };
   }, [facturaId, estadoFacturaActual?.estado, estadoFacturaActual?.terminado]);
 
+  /** Relectura simple, sin esperar nada. Para refrescos que NO siguen a un signal. */
   const actualizarEstado = useCallback(async () => {
     if (!facturaId) return;
     const nuevo = await consultarEstadoFactura(facturaId);
     if (vivo.current) setEstadoFacturaActual(nuevo);
   }, [facturaId]);
 
+  /**
+   * 🔴 **Relectura DESPUÉS DE UN SIGNAL — no alcanza con leer una vez.** Los `POST` de esta pantalla
+   * no ejecutan nada: mandan un signal a Temporal y devuelven 200 al instante. Leer el estado
+   * inmediatamente es una carrera contra el workflow, y perderla deja la pantalla congelada sobre un
+   * backend que sí avanzó: el usuario toca "Continuar", no pasa nada, y no hay error que mirar.
+   *
+   * Cazado en device (2026-07-21): `POST /datos-venta` → 200, el backend en `datos_venta_ok`
+   * verificado por HTTP, y la pantalla seguía en el paso 1. **Intermitente**, que es lo peor: cuando
+   * el signal se procesa rápido parece andar. `esperarEcoDelSignal` repolea hasta que el estado
+   * cambie, con corte honesto.
+   */
+  const actualizarEstadoTrasSignal = useCallback(async (previo: EstadoFacturaResp | null) => {
+    if (!facturaId) return;
+    const { estado } = await esperarEcoDelSignal(facturaId, previo);
+    if (vivo.current) setEstadoFacturaActual(estado);
+  }, [facturaId]);
+
   const guardarDatosVenta = useCallback(
     async (datos: DatosVentaInput) => {
       if (!facturaId) return;
+      const previo = estadoFacturaActual;
       await setDatosVenta(facturaId, datos);
       if (vivo.current) setDatosVentaLocal(datos);
-      await actualizarEstado();
+      await actualizarEstadoTrasSignal(previo);
     },
-    [facturaId, actualizarEstado],
+    [facturaId, actualizarEstadoTrasSignal, estadoFacturaActual],
   );
 
   const agregarItemYActualizar = useCallback(
     async (item: NuevoItem) => {
       if (!facturaId) return;
+      const previo = estadoFacturaActual;
       await agregarItem(facturaId, item);
-      await actualizarEstado();
+      await actualizarEstadoTrasSignal(previo);
     },
-    [facturaId, actualizarEstado],
+    [facturaId, actualizarEstadoTrasSignal, estadoFacturaActual],
   );
 
   const quitarItemYActualizar = useCallback(
     async (indice: number) => {
       if (!facturaId) return;
+      const previo = estadoFacturaActual;
       await quitarItem(facturaId, indice);
-      await actualizarEstado();
+      await actualizarEstadoTrasSignal(previo);
     },
-    [facturaId, actualizarEstado],
+    [facturaId, actualizarEstadoTrasSignal, estadoFacturaActual],
   );
 
   const guardarClienteYActualizar = useCallback(
     async (receptor: ReceptorInput) => {
       if (!facturaId) return;
+      const previo = estadoFacturaActual;
       await setCliente(facturaId, receptor);
       if (vivo.current) setClienteLocal(receptor);
-      await actualizarEstado();
+      await actualizarEstadoTrasSignal(previo);
     },
-    [facturaId, actualizarEstado],
+    [facturaId, actualizarEstadoTrasSignal, estadoFacturaActual],
   );
 
   const confirmarYEmitir = useCallback(async (): Promise<ConfirmarResultado> => {
@@ -387,8 +414,21 @@ export function PantallaFacturacion() {
           />
         )}
 
-        {cuitConocido && <SeccionMisComprobantes cuit={cuitConocido} />}
+        {cuitConocido && (
+          <SeccionMisComprobantes cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+        )}
       </ScrollFormulario>
+
+      {/* 🔴 FUERA del `ScrollFormulario`, a propósito. Un overlay absoluto montado DENTRO del scroll
+          se posiciona contra el contenido —miles de píxeles con 20 comprobantes— y aparece centrado
+          lejos de la vista: existe, responde, y no se ve. Pasó exactamente eso en device
+          (2026-07-21) y el `onPress` llegaba. Acá el padre es el marco, que mide la pantalla. */}
+      {detalleComprobante != null && (
+        <DetalleComprobante
+          comprobante={detalleComprobante}
+          onCerrar={() => setDetalleComprobante(null)}
+        />
+      )}
     </MarcoGlass>
   );
 }

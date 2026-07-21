@@ -103,6 +103,7 @@ function estadoMock(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
     tokenConfirmacion: null,
     resultado: null,
     pdf: null,
+    drive: null,
     motivo: null,
     motivoCodigo: null,
     terminado: false,
@@ -135,6 +136,14 @@ function comprobanteMock(over: Partial<Comprobante> = {}): Comprobante {
     estado: 'emitida',
     pdfUrl: null,
     cbteAsocNro: null,
+    // Los comprobantes viejos vienen así del backend: el receptor y la copia en Drive no existían
+    // antes del 2026-07-21. El default los deja en `null` a propósito — es el caso que la UI tiene
+    // que tolerar, no la excepción.
+    driveFileId: null,
+    driveLink: null,
+    receptorNombre: null,
+    docTipo: null,
+    docNro: null,
     ...over,
   };
 }

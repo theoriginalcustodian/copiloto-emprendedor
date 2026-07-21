@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import {
   anularComprobante,
@@ -12,6 +13,7 @@ import {
 
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
+import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 
 const INTERVALO_POLL_ANULACION_MS = 1500;
@@ -41,10 +43,19 @@ function claveDe(c: Comprobante): string {
  */
 export interface SeccionMisComprobantesProps {
   cuit: string;
+  /**
+   * 🔴 **El detalle lo renderiza la PANTALLA, no esta sección, y no es un capricho de diseño.**
+   * Esta sección vive dentro del área scrolleable, así que un overlay `position:absolute` montado
+   * acá se posiciona contra el CONTENIDO del scroll —que con 20 comprobantes mide varios miles de
+   * píxeles— y queda centrado lejísimos de lo que el usuario está viendo. Se monta, existe, responde:
+   * simplemente está fuera de cuadro. Verificado en device (2026-07-21): el `onPress` llegaba
+   * —lo probé con un log— y en pantalla no pasaba nada.
+   */
+  onVerDetalle: (comprobante: Comprobante) => void;
   testID?: string;
 }
 
-export function SeccionMisComprobantes({ cuit, testID = 'facturacion-mis-comprobantes' }: SeccionMisComprobantesProps) {
+export function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-comprobantes' }: SeccionMisComprobantesProps) {
   const tema = useTema();
   const [estadoLista, setEstadoLista] = useState<EstadoLista>('cargando');
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
@@ -192,14 +203,34 @@ export function SeccionMisComprobantes({ cuit, testID = 'facturacion-mis-comprob
             <View key={clave} style={{ gap: tema.espacio.sm }}>
               <Row testID={`${testID}-fila-${clave}`}>
                 <View style={styles.filaComprobante}>
-                  <View style={styles.filaTextos}>
+                  {/* Los textos son el área tocable; el botón "Anular" queda FUERA de ella. Envolver
+                      la fila entera haría que un toque para anular abriera también el detalle —
+                      dos acciones distintas disputándose el mismo dedo. `Pressable` de RNGH y no de
+                      `react-native`: la lista vive dentro del scroll de gestos ("las dos mitades"). */}
+                  <Pressable
+                    testID={`${testID}-detalle-${clave}`}
+                    onPress={() => onVerDetalle(c)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver el detalle del comprobante N° ${c.nro}`}
+                    style={pressableStyle(styles.filaTextos)}
+                  >
                     <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
                       Tipo {c.tipoCbte} · N° {c.nro} · {c.total}
                     </Text>
                     <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
                       CAE {c.cae} · {c.estado}
                     </Text>
-                  </View>
+                    {/* Quién es el cliente estaba sólo en el detalle, y es lo primero que alguien
+                        busca al barrer su lista de facturas. Los comprobantes viejos no lo tienen. */}
+                    {c.receptorNombre != null && c.receptorNombre !== '' && (
+                      <Text
+                        testID={`${testID}-receptor-${clave}`}
+                        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+                      >
+                        {c.receptorNombre}
+                      </Text>
+                    )}
+                  </Pressable>
                   {esAnulable(c) && !esteEsElObjetivo && (
                     <FilaBotones
                       // Compacto: si el botón se estira, se come los datos del comprobante y queda un

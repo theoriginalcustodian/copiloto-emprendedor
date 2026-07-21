@@ -7,6 +7,7 @@ import { FilaBotones } from '../../theme/glass/campos';
 
 const AVISO_24H =
   'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de AFIP con el CAE.';
+const AVISO_EN_DRIVE = 'Guardada en tu Drive. Ese link no vence.';
 
 /**
  * Comprobante emitido -- `estado === 'emitida' | 'entregada'`. Tipo · punto de venta · número · CAE ·
@@ -34,14 +35,26 @@ export interface TarjetaComprobanteProps {
 export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturacion-comprobante' }: TarjetaComprobanteProps) {
   const tema = useTema();
   const resultado = estado.resultado;
-  const sinPdf = estado.pdf == null;
+
+  /**
+   * 🔴 **`guardado` es el HECHO; el ajuste "guardar en Drive" es la INTENCIÓN.** El aviso de las 24 h
+   * cuelga del hecho: con el ajuste prendido y el archivado fallado (Drive sin conectar, por ejemplo)
+   * la factura sale igual y su ÚNICO link es el de AFIP, que vence. Colgar el aviso del ajuste le
+   * haría creer al usuario que tiene una copia a salvo cuando no la tiene — peor que no avisar nunca.
+   * Es la misma forma del bug de `estado === 'emitida'` que costó una tarde: la intención no es el hecho.
+   */
+  const enDrive = estado.drive?.guardado === true && estado.drive.link != null;
+  // Drive primero: no vence. El de AfipSDK muere a las 24 h — ofrecerlo teniendo uno permanente sería
+  // darle al usuario el peor de los dos sin decírselo.
+  const link = enDrive ? (estado.drive?.link ?? null) : (estado.pdf?.url ?? null);
+  const sinLink = link == null;
 
   async function guardar() {
-    if (estado.pdf) await Linking.openURL(estado.pdf.url);
+    if (link) await Linking.openURL(link);
   }
 
   async function compartir() {
-    if (estado.pdf) await Share.share({ message: estado.pdf.url, url: estado.pdf.url });
+    if (link) await Share.share({ message: link, url: link });
   }
 
   return (
@@ -73,7 +86,7 @@ export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturaci
         </View>
       )}
 
-      {sinPdf ? (
+      {sinLink ? (
         /**
          * 🔴 **`textoTenue`, NO `peligro`. El color es parte del mensaje.**
          *
@@ -96,8 +109,11 @@ export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturaci
         </Text>
       ) : (
         <>
-          <Text testID={`${testID}-aviso-24h`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {AVISO_24H}
+          <Text
+            testID={enDrive ? `${testID}-aviso-drive` : `${testID}-aviso-24h`}
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+          >
+            {enDrive ? AVISO_EN_DRIVE : AVISO_24H}
           </Text>
           <FilaBotones
             testID={`${testID}-botones`}
