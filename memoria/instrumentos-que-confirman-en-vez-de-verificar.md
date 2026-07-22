@@ -68,3 +68,32 @@ prueba un camino que en producción no ocurre. Barato de verificar: leer la firm
 escribir el `raise`, o construir la excepción con los mismos argumentos que usa el código.
 
 [[no-codificar-la-esperanza-principio-raiz]] [[copiloto-facturacion-afip]]
+
+## Caso 9 (2026-07-22) — el control comparó dos archivos que no existían y dio el tilde verde
+
+Para probar que correr los tests contra la base nueva **no tocaba producción**, conté las filas antes
+y después y comparé:
+
+```bash
+diff prod_antes.json prod_despues.json && echo "✅ producción IDÉNTICA"
+```
+
+Los dos archivos **no existían** (el redirect no había escrito nada). `diff` no encontró diferencias
+entre dos nadas, devolvió 0, y el `&&` imprimió el tilde. **El control más importante de la sesión
+—el que planificación había pedido explícitamente— reportó verde sin haber medido nada.**
+
+Y no fue por descuido de un principiante: era el control de un riesgo que ya nos había costado 552
+filas huérfanas en producción, escrito por alguien que llevaba todo el día cazando exactamente esto.
+
+**Lo que lo hace tan traicionero:** un `diff` sin diferencias y un `diff` sin datos se ven **idénticos
+en pantalla**. La ausencia de salida es la señal de éxito Y la señal de que no había nada que comparar.
+
+**El arreglo, y es el patrón general:** el control tiene que **abortar ruidoso** ante su propia
+ausencia de insumos —archivo que falta, archivo vacío, cero tablas medidas— y **publicar cuánto
+midió** (`tablas medidas: antes=74 despues=74`) para que el número sea auditable en vez de creíble.
+Un "0 diferencias" sin un "sobre N cosas" al lado no dice nada.
+
+**Corolario que generaliza los 9 casos:** casi todos son la misma forma — *el instrumento no distingue
+entre «medí y no había nada» y «no medí»*. Exit code pipeado, 200 del SPA, espera laxa, muestreo
+contaminado, `tail -12` sobre una lista de 15, y ahora `diff` de dos vacíos. **Cuando un instrumento
+puede devolver el mismo resultado por éxito o por no-haber-corrido, no es un instrumento.**
