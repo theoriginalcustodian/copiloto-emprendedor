@@ -58,12 +58,20 @@ export interface SeccionCobroProps {
    * ofrecer «cobrar» sobre ellas contradice el documento.
    */
   cobrable: boolean;
+  /**
+   * Avisa que el cobro de este comprobante CAMBIÓ (se registró o se deshizo).
+   *
+   * 🔴 Existe porque *«Te deben»* vive en otra sección de la misma pantalla y **no tiene forma de
+   * enterarse**: marcar una factura cobrada sin esto la dejaría figurando como deuda hasta el próximo
+   * tirón-para-actualizar, y el emprendedor vería su acción sin efecto justo donde la esperaba.
+   */
+  onCambio?: () => void;
   testID?: string;
 }
 
 type Consulta = 'cargando' | 'ok' | 'sin_dato' | 'no_encontrado';
 
-export function SeccionCobro({ comprobanteId, cobrable, testID = 'cobro' }: SeccionCobroProps) {
+export function SeccionCobro({ comprobanteId, cobrable, onCambio, testID = 'cobro' }: SeccionCobroProps) {
   const tema = useTema();
   const [consulta, setConsulta] = useState<Consulta>('cargando');
   const [estado, setEstado] = useState<EstadoDeCobro | null>(null);
@@ -124,6 +132,7 @@ export function SeccionCobro({ comprobanteId, cobrable, testID = 'cobro' }: Secc
       if (res.status === 'ok') {
         claveGesto.current = null;
         await cargar();
+        onCambio?.();
         return;
       }
       if (res.status === 'rechazado') setError(res.motivo);
@@ -143,8 +152,10 @@ export function SeccionCobro({ comprobanteId, cobrable, testID = 'cobro' }: Secc
     try {
       const res = await borrarCobro(comprobanteId, cobroId);
       if (!vivo.current) return;
-      if (res.status === 'ok') await cargar();
-      else setError('No pudimos deshacer ese cobro.');
+      if (res.status === 'ok') {
+        await cargar();
+        onCambio?.();
+      } else setError('No pudimos deshacer ese cobro.');
     } catch {
       if (vivo.current) setError('No pudimos deshacer ese cobro.');
     } finally {

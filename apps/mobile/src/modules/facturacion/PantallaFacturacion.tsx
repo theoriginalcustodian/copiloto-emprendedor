@@ -37,6 +37,7 @@ import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
 import { DetalleComprobante } from './DetalleComprobante';
+import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
 import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
 
@@ -151,6 +152,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   /** La fila cuyo detalle se está mirando. Vive ACÁ y no en la sección — ver el porqué en el render. */
   const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
   const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
+  const refMeDeben = useRef<SeccionMeDebenHandle>(null);
   const [refrescandoLista, setRefrescandoLista] = useState(false);
   // Sembrado con el borrador que llega de afuera, si lo hay: el efecto de creación (más abajo) sale
   // temprano cuando `facturaId !== null`, así que esto es todo lo que hace falta para adoptarlo — el
@@ -378,7 +380,10 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   const refrescarLista = useCallback(async () => {
     setRefrescandoLista(true);
     try {
-      await refComprobantes.current?.recargar();
+      // Las dos secciones, no sólo el listado: el tirón es el ÚNICO camino que cubre lo que cambió
+      // AFUERA de esta app, y un cobro registrado desde el chat o desde otro dispositivo cambia
+      // justamente «Te deben». Refrescar una sola dejaría media pantalla vieja al lado de la fresca.
+      await Promise.all([refComprobantes.current?.recargar(), refMeDeben.current?.recargar()]);
     } finally {
       if (vivo.current) setRefrescandoLista(false);
     }
@@ -541,7 +546,14 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
         )}
 
         {cuitConocido && (
-          <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+          <>
+            {/* «Te deben» ANTES del listado completo: es la pregunta que se hace primero al abrir
+                Facturación. Sección de esta misma pantalla y no destino aparte — lo que se debe SON
+                las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
+                lugares está una factura concreta. */}
+            <SeccionMeDeben ref={refMeDeben} />
+            <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+          </>
         )}
       </ScrollFormulario>
 
@@ -553,6 +565,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
         <DetalleComprobante
           comprobante={detalleComprobante}
           onCerrar={() => setDetalleComprobante(null)}
+          onCobroCambiado={() => void refMeDeben.current?.recargar()}
         />
       )}
     </MarcoGlass>
