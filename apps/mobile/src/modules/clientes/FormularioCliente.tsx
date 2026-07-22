@@ -66,6 +66,16 @@ const OPCIONES_DOC: OpcionSelect[] = [
 export interface FormularioClienteProps {
   /** Si viene, es una edición: arranca con sus datos y manda sólo el diff. */
   edita?: Cliente | null;
+  /**
+   * Valores de arranque para un ALTA (no una edición): lo que el copiloto entendió de un dictado.
+   *
+   * 🔴 **Existe para que la card de voz reuse ESTE formulario y no uno propio.** Dos formularios
+   * divergen: el de voz se queda sin algún campo que el manual sí tiene, y el emprendedor no puede
+   * corregir justo ése. Mismo criterio que `FormularioGasto`.
+   *
+   * Su `origen` viaja al crear (`voz`), y por eso no se pisa acá.
+   */
+  iniciales?: DatosCliente | null;
   onGuardado: (cliente: Cliente) => void;
   /**
    * Choque por **documento**: es el mismo cliente y acá ya no hay nada que hacer — lo tipeado no
@@ -83,6 +93,7 @@ export interface FormularioClienteProps {
 
 export function FormularioCliente({
   edita = null,
+  iniciales = null,
   onGuardado,
   onDuplicado,
   onAbrirCliente,
@@ -90,13 +101,15 @@ export function FormularioCliente({
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
   const tema = useTema();
-  const [nombre, setNombre] = useState(edita?.nombre ?? '');
-  const [docTipo, setDocTipo] = useState(edita?.docTipo != null ? String(edita.docTipo) : '');
-  const [docNro, setDocNro] = useState(edita?.docNro ?? '');
-  const [domicilio, setDomicilio] = useState(edita?.domicilio ?? '');
-  const [email, setEmail] = useState(edita?.email ?? '');
-  const [telefono, setTelefono] = useState(edita?.telefono ?? '');
-  const [notas, setNotas] = useState(edita?.notas ?? '');
+  // `edita` manda si está; si no, los `iniciales` del dictado; si no, vacío.
+  const base = edita ?? iniciales;
+  const [nombre, setNombre] = useState(base?.nombre ?? '');
+  const [docTipo, setDocTipo] = useState(base?.docTipo != null ? String(base.docTipo) : '');
+  const [docNro, setDocNro] = useState(base?.docNro ?? '');
+  const [domicilio, setDomicilio] = useState(base?.domicilio ?? '');
+  const [email, setEmail] = useState(base?.email ?? '');
+  const [telefono, setTelefono] = useState(base?.telefono ?? '');
+  const [notas, setNotas] = useState(base?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Choque por NOMBRE sin resolver: se queda acá, con lo tipeado, hasta que el humano decida. */
@@ -118,6 +131,9 @@ export function FormularioCliente({
       email: limpio(email),
       telefono: limpio(telefono),
       notas: limpio(notas),
+      // Sólo al crear, y sólo si vino: en la edición el backend lo ignora y `cambiosDeCliente` no lo
+      // emite. Es lo que después responde "¿la cartera se armó sola o la cargaron?".
+      ...(edita == null && iniciales?.origen != null ? { origen: iniciales.origen } : {}),
     };
   }
 

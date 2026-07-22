@@ -200,6 +200,15 @@ export interface DatosCliente {
   email?: string | null;
   telefono?: string | null;
   notas?: string | null;
+  /**
+   * De dónde salió el alta. **Sólo se manda al CREAR** — ver `cambiosDeCliente`, que nunca lo emite.
+   *
+   * 🔴 El backend lo **ignora en la edición** a propósito: el origen dice cómo NACIÓ el cliente, y un
+   * campo de procedencia reescribible deja de responder la única pregunta para la que existe
+   * (*«¿la cartera se armó sola o la cargaron?»*). Que además lo descarte del lado de allá es la
+   * garantía; esto es para no mandárselo.
+   */
+  origen?: OrigenCliente;
 }
 
 /**
@@ -221,6 +230,8 @@ function aWire(datos: DatosCliente): Record<string, unknown> {
   if (datos.email !== undefined) wire.email = datos.email;
   if (datos.telefono !== undefined) wire.telefono = datos.telefono;
   if (datos.notas !== undefined) wire.notas = datos.notas;
+  // Sólo viaja si vino: en la edición nunca viene (`cambiosDeCliente` no lo emite).
+  if (datos.origen !== undefined) wire.origen = datos.origen;
   return wire;
 }
 
@@ -400,6 +411,7 @@ export function editarCliente(
  * Devuelve `{}` cuando no cambió nada — y ese caso vale la pena mirarlo antes de mandar el request.
  */
 export function cambiosDeCliente(original: Cliente, editado: DatosCliente): DatosCliente {
+  // ⚠️ `origen` NO entra en el diff, y no es un olvido: no es editable (ver `DatosCliente.origen`).
   const cambios: DatosCliente = {};
   if (editado.nombre !== undefined && editado.nombre !== original.nombre) cambios.nombre = editado.nombre;
   if (editado.docTipo !== undefined && editado.docTipo !== original.docTipo) cambios.docTipo = editado.docTipo;
