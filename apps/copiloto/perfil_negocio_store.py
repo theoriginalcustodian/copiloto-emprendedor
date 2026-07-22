@@ -24,14 +24,40 @@ A_QUIEN = ("empresas", "consumidor_final", "ambos")
 FORMALIDAD = ("formal", "cercano")
 LARGO_RESPUESTA = ("breve", "detallado")
 
+# ── el modo de ceremonia (contrato de modos §3) ──────────────────────────────────────────────────
+# Vive acá y no en la app **por dos razones distintas**, y la segunda es la que importa: si viviera
+# en el teléfono, cambiar de teléfono resetearía el modo (molesto) — pero además la app podría mandar
+# `automatico` sobre algo sensible, y el backend no tendría con qué contradecirla. El backend decide
+# y el backend impone; la app refleja.
+CONFIRMACION, AUTOMATICO = "confirmacion", "automatico"
+MODOS = (CONFIRMACION, AUTOMATICO)
+
+
+def modo_de(perfil: dict | None) -> str:
+    """El modo efectivo de un perfil. **Fail-closed: todo lo que no sea exactamente `automatico` es
+    confirmación.**
+
+    Está escrito como allowlist de UNO y no como «si dice confirmacion → confirmación», que es la
+    forma que parece equivalente y no lo es: con un perfil `None`, una columna que todavía no existe,
+    un typo (`automatic`) o basura, la segunda dejaría pasar el modo permisivo por omisión. Un
+    default permisivo por un error de lectura es la clase de bug que se descubre por un registro que
+    nadie autorizó — y para entonces ya se guardó.
+    """
+    if not isinstance(perfil, dict):
+        return CONFIRMACION
+    return AUTOMATICO if perfil.get("modo_ceremonia") == AUTOMATICO else CONFIRMACION
+
 # Campo -> largo máximo. `que_vende` es el único de formato libre largo: es la descripción del negocio.
 LIMITES = {"que_vende": 500, "nombre_comercial": 120, "horario_atencion": 120, "nombre_copiloto": 120}
 
 CAMPOS = ("que_vende", "a_quien", "nombre_comercial", "horario_atencion",
-          "formalidad", "largo_respuesta", "nombre_copiloto")
+          "formalidad", "largo_respuesta", "nombre_copiloto", "modo_ceremonia")
 
+# El default de `modo_ceremonia` es `confirmacion`, y para usuarios NUEVOS también: el que recién
+# llega no descubre el producto viendo cosas guardarse solas. Se cambia solo, cuando ya confía.
 _DEFAULTS = {"que_vende": "", "a_quien": "ambos", "nombre_comercial": "", "horario_atencion": "",
-             "formalidad": "cercano", "largo_respuesta": "breve", "nombre_copiloto": ""}
+             "formalidad": "cercano", "largo_respuesta": "breve", "nombre_copiloto": "",
+             "modo_ceremonia": CONFIRMACION}
 
 
 class PerfilNegocioStore:
