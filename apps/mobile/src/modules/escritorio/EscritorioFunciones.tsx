@@ -5,8 +5,9 @@
  * de red acá (eso lo cablea la ruta, vía los callbacks `onFuncion`/`onAbrirReciente`).
  *
  * Adaptado desde el escritorio equivalente de DocuMed (fork hermano, `_staging/documed/apps/mobile/
- * src/modules/escritorio/EscritorioFunciones.tsx`), acotado a las 6 funciones del emprendedor en vez
- * de las 9 clínicas de esa app — ver `TILES` abajo. El mecanismo de grid se conserva TAL CUAL: el
+ * src/modules/escritorio/EscritorioFunciones.tsx`), acotado a las funciones del emprendedor en vez
+ * de las 9 clínicas de esa app — ver `TILES` abajo, que además fija la REGLA DE ORDEN (frecuencia de
+ * uso esperada, nunca "al final por defecto"). El mecanismo de grid se conserva TAL CUAL: el
  * pedido del operador que lo generó allá ("preparate para más funciones, esto no puede ser 3×2 fijo")
  * aplica igual acá — `automatizaciones recurrentes` y `trazabilidad` ya están anotadas como candidatas
  * post-v1 en la memoria del proyecto, así que este escritorio va a crecer.
@@ -59,17 +60,16 @@ import { Row } from '../../theme/glass/Row';
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 
-/** Las 6 funciones del escritorio del copiloto (pedido del operador, sprint mobile-first 2026-07-20). */
+/** Las funciones del escritorio del copiloto. Ver `TILES` para la regla que fija su ORDEN. */
 export type FuncionKey =
-  | 'apps'
-  | 'ajustes'
-  | 'recientes'
-  | 'redes'
-  | 'metricas'
   | 'facturacion'
-  | 'presupuestos'
   | 'gastos'
-  | 'clientes';
+  | 'clientes'
+  | 'presupuestos'
+  | 'midia'
+  | 'inteligencia'
+  | 'contabilidad'
+  | 'ajustes';
 
 export interface DefinicionTile {
   key: FuncionKey;
@@ -78,36 +78,54 @@ export interface DefinicionTile {
 }
 
 /**
- * Los 6 tiles del escritorio, en el orden del diseño.
+ * Los 8 tiles del escritorio.
  *
- * 🔴 **`apps` no tiene ícono 1:1 en el catálogo.** El diseño pedía un glifo tipo "grid" y
- * `src/theme/glass/icons.ts` no lo tiene — los 10 nombres semánticos son `folder | note | doc_search |
- * mic | chat | clock | settings | chart | media | user`. `folder` es el más cercano disponible: una
- * carpeta que agrupa, igual que "Apps" agrupa las integraciones conectadas (Gmail, Drive, Sheets,
- * HubSpot, Instagram, Calendar vía Composio) — y no colisiona con ningún otro ícono de este grid. Si
- * el catálogo suma un glifo de grid dedicado más adelante, este es el único lugar a tocar.
+ * 🔴 **`TILES` se ordena por FRECUENCIA DE USO ESPERADA. Agregar una función obliga a decidir su
+ * posición: no existe "al final" como opción por omisión.**
  *
- * El resto sale directo del catálogo sin adaptar: `ajustes→settings`, `recientes→clock`,
- * `redes→chat` (charla = red social), `metricas→chart`, `facturacion→doc_search` (documento que se
- * busca/consulta, el mismo glifo que DocuMed usa para "ingestar documento").
+ * No es una preferencia de estilo — **el orden de este array decide qué se ve sin scrollear**, y hasta
+ * el 2026-07-22 ese orden lo había decidido el azar de la cronología: los seis del diseño original y
+ * después Presupuestos, Gastos y Clientes pegados al final a medida que se construían. El resultado
+ * medido: el emprendedor abría la app y veía **las cuatro funciones que menos usa**, con Facturación
+ * —la razón por la que instaló esto— fuera de pantalla y Ajustes en la segunda posición más visible.
+ *
+ * El invariante lo sostiene un test (`las primeras cuatro son las operativas`), no la buena memoria
+ * del próximo que agregue una función. Una regla escrita sin test se degrada igual que ésta.
+ *
+ * **Íconos: ninguno se repite DENTRO de este grid** — entrar por un glifo y llegar a otra función
+ * desorienta. El catálogo (`src/theme/glass/icons.ts`) tiene 11 nombres y alcanzó para los 8 sin
+ * agregar ninguno: `midia→clock` (el día y sus horas, el glifo quedó libre al salir Recientes) y
+ * `contabilidad→folder` (los libros; libre al mudarse Apps a Ajustes).
  */
 export const TILES: readonly DefinicionTile[] = [
-  { key: 'apps', label: 'Apps', icono: 'folder' },
-  { key: 'ajustes', label: 'Ajustes', icono: 'settings' },
-  { key: 'recientes', label: 'Recientes', icono: 'clock' },
-  { key: 'redes', label: 'Redes Sociales', icono: 'chat' },
-  { key: 'metricas', label: 'Métricas', icono: 'chart' },
+  // Las CUATRO OPERATIVAS — lo que el emprendedor hace todos los días, y lo único que tiene que
+  // verse sin scrollear. Ese es el criterio de aceptación real del orden, no el orden en sí.
   { key: 'facturacion', label: 'Facturación', icono: 'doc_search' },
-  // La 7ª función, y la primera que ejercita de verdad el grid que crece en columnas: con el layout
-  // 3×2 fijo del original este tile no se habría renderizado — habría desaparecido en silencio, sin
-  // error, sólo porque el array creció (es exactamente lo que pasó en el grid de Ajustes al sumar el
-  // séptimo). `note` = el documento que se redacta, y no colisiona con ningún otro de este grid.
-  { key: 'presupuestos', label: 'Presupuestos', icono: 'note' },
-  // La 8ª. `wallet` se AGREGÓ al catálogo para esta función en vez de reusar `chart`, que ya es
-  // Métricas: dos tiles con el mismo glifo en el mismo grid no se distinguen de un vistazo.
   { key: 'gastos', label: 'Gastos', icono: 'wallet' },
-  // La 9ª. `user` = la persona a la que le facturás; no colisiona con ningún otro de este grid.
   { key: 'clientes', label: 'Clientes', icono: 'user' },
+  { key: 'presupuestos', label: 'Presupuestos', icono: 'note' },
+  // Cascarón hasta que llegue su contrato (Kanban, hito 7 del sprint de Inteligencia de Negocio).
+  // Va a un `MarcoGlass` que dice qué va a ser, NUNCA a una pantalla en blanco: un tile que abre el
+  // vacío le enseña al emprendedor que hay funciones que no andan, y esa lección después se la
+  // aplica a las que sí andan.
+  { key: 'midia', label: 'Mi día', icono: 'clock' },
+  // Ex "Métricas". El módulo se REUSA —no se reescribe—, sólo cambia cómo se llama.
+  { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: 'chart' },
+  // Cascarón: su contrato ya está escrito y espera el cierre de Clientes.
+  { key: 'contabilidad', label: 'Contabilidad', icono: 'folder' },
+  // Último a propósito: se toca una vez por mes. Estaba segundo.
+  { key: 'ajustes', label: 'Ajustes', icono: 'settings' },
+];
+
+/**
+ * Las funciones OPERATIVAS, en orden. Es lo que el DoD del contrato exige que se vea sin scrollear, y
+ * lo que el test usa para frenar a quien meta una función nueva arriba sin pensarlo.
+ */
+export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
+  'facturacion',
+  'gastos',
+  'clientes',
+  'presupuestos',
 ];
 
 /** Máximo de tiles apilados por columna — el resto de las funciones se alcanza con scroll horizontal,

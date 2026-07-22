@@ -1,1 +1,0 @@
-export { PantallaRedes } from './PantallaRedes';

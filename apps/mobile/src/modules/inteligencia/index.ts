@@ -1,0 +1,1 @@
+export { PantallaInteligencia } from './PantallaInteligencia';

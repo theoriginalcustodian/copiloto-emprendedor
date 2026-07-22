@@ -38,15 +38,14 @@ import { PanelDeslizable } from './PanelDeslizable';
  * `CONTENIDO_POR_FUNCION` antes de esta convergencia.
  */
 const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
-  apps: '/apps',
-  ajustes: '/ajustes',
-  recientes: '/recientes',
-  redes: '/redes',
-  metricas: '/metricas',
   facturacion: '/facturacion',
-  presupuestos: '/presupuestos',
   gastos: '/gastos',
   clientes: '/clientes',
+  presupuestos: '/presupuestos',
+  midia: '/midia',
+  inteligencia: '/inteligencia',
+  contabilidad: '/contabilidad',
+  ajustes: '/ajustes',
 };
 
 export function PantallaPrincipal() {

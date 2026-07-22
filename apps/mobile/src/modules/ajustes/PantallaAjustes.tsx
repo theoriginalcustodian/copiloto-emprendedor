@@ -7,21 +7,17 @@ import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * Las 6 entradas de Ajustes -- port 1:1 del rediseño de vidrio (staging `documed/apps/mobile/src/
- * modules/ajustes/PantallaAjustes.tsx`, pedido del operador 2026-07-19: *"hay que incluir iconos
- * también de datos personales, configuración del sistema, planes disponibles y plan actual... también
- * mover los skins a un icono nuevo"*). El set de 6 ya era genérico en el origen (nada clínico) y no
- * necesitó vocabulario a adaptar.
+ * Las entradas de Ajustes. Nació como port 1:1 del rediseño de vidrio de documed y creció a 8; el
+ * 2026-07-22 volvió a 6 sacando andamiajes y fusionando los pares que se pisaban -- ver
+ * `TILES_AJUSTES` para el detalle de qué se fue a dónde.
  */
 export type AjusteKey =
-  | 'datosPersonales'
-  | 'configuracionSistema'
-  | 'planesDisponibles'
-  | 'planActual'
-  | 'skins'
-  | 'cuenta'
+  | 'perfilNegocio'
   | 'facturacionAfip'
-  | 'perfilNegocio';
+  | 'apps'
+  | 'miPlan'
+  | 'cuenta'
+  | 'apariencia';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -30,27 +26,41 @@ interface DefinicionTileAjuste {
 }
 
 /**
+ * Los 6 tiles de Ajustes, en orden de cuándo se necesitan.
+ *
+ * 🔴 **Quedó en 6 el 2026-07-22, y lo que se sacó importa más que lo que quedó.** De los 8 anteriores,
+ * **tres eran `PantallaAndamiaje`** —el placeholder vacío— y había **dos pares que se pisaban**:
+ * *Datos personales* vs *Cuenta*, y *Planes disponibles* vs *Plan actual*. Dos tiles para un solo
+ * concepto es exactamente lo que confunde a alguien que entró a configurar algo: no sabe cuál de los
+ * dos es el que busca, y entra a los dos.
+ *
+ * - *Datos personales* → **absorbido por «Mi cuenta»**.
+ * - *Planes disponibles* + *Plan actual* → **fusionados en «Mi plan»** (una sola ruta de andamiaje).
+ * - *Configuración del sistema* → su única fila (el lugar reservado de «No molestar») **se mudó a
+ *   «Mi cuenta»**; no justificaba un tile propio.
+ * - *Skins* → **«Apariencia»**, en castellano como el resto de la app.
+ * - **«Apps conectadas» llega del escritorio**: no es una función del negocio, es configuración de
+ *   conexiones que se tocan una vez. La pantalla no se reescribió — sólo cambió desde dónde se llega.
+ *
  * 🔴 Ningún ícono se repite DENTRO de este grid -- elegir mal acá es entrar a la pantalla equivocada.
- * El catálogo de glifos (`icons.ts`) tiene 10 nombres semánticos fijos y ninguno significa
- * literalmente "paleta de colores" -- para Skins se optó por `media` (ojo/preview) en vez de agregar
- * un ícono nuevo al catálogo compartido, que vive fuera del alcance de este módulo. La MUESTRA de
- * color real vive en la pantalla de destino (`PantallaSkins.tsx`), no en este tile.
+ * El catálogo de glifos (`icons.ts`) no tiene ninguno que signifique literalmente "paleta de colores"
+ * -- para Apariencia se mantiene `media` (ojo/preview) en vez de agregar un ícono nuevo al catálogo
+ * compartido. La MUESTRA de color real vive en la pantalla de destino (`PantallaSkins.tsx`).
  */
 const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
-  { key: 'datosPersonales', label: 'Datos personales', icono: 'note' },
-  { key: 'configuracionSistema', label: 'Configuración del sistema', icono: 'settings' },
-  { key: 'planesDisponibles', label: 'Planes disponibles', icono: 'folder' },
-  { key: 'planActual', label: 'Plan actual', icono: 'chart' },
-  { key: 'skins', label: 'Skins', icono: 'media' },
-  { key: 'cuenta', label: 'Cuenta', icono: 'user' },
-  // Facturación AFIP (F5): perfil fiscal + vínculo con ARCA + ambiente. Mismo ícono que el tile de
-  // Facturación del escritorio (`doc_search`) a propósito -- es la configuración de ESA función, y
-  // entrar por un ícono para llegar a otro desorienta (ver el docstring de `MarcoGlass`).
-  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'doc_search' },
-  // Mi negocio: qué vende el emprendedor y cómo quiere que le hable el copiloto. `chat` porque la
-  // mitad de esa pantalla es literalmente cómo conversa el copiloto -- y porque `note` (lo primero
-  // que uno elegiría para un perfil) ya es "Datos personales" en este mismo grid.
+  // Primero: es lo que hay que completar el día 1. `chat` porque la mitad de esa pantalla es
+  // literalmente cómo conversa el copiloto.
   { key: 'perfilNegocio', label: 'Mi negocio', icono: 'chat' },
+  // Perfil fiscal + vínculo con ARCA + ambiente. Mismo ícono que el tile de Facturación del
+  // escritorio (`doc_search`) a propósito -- es la configuración de ESA función, y entrar por un
+  // ícono para llegar a otro desorienta (ver el docstring de `MarcoGlass`).
+  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'doc_search' },
+  // `folder` = la carpeta que agrupa, igual que acá se agrupan las integraciones conectadas. Es el
+  // mismo glifo que traía en el escritorio: la pantalla es la misma, sólo cambió la puerta.
+  { key: 'apps', label: 'Apps conectadas', icono: 'folder' },
+  { key: 'miPlan', label: 'Mi plan', icono: 'chart' },
+  { key: 'cuenta', label: 'Mi cuenta', icono: 'user' },
+  { key: 'apariencia', label: 'Apariencia', icono: 'media' },
 ];
 
 /** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
@@ -82,16 +92,15 @@ function agruparEnFilas(
 const FILAS_TILES_AJUSTES = agruparEnFilas(TILES_AJUSTES);
 
 export interface PantallaAjustesProps {
-  /** Un handler único para las 6 entradas del grid -- el tile tocado se identifica por `key`; el
+  /** Un handler único para las entradas del grid -- el tile tocado se identifica por `key`; el
    * `router.push` real vive en la ruta que monta esta pantalla, no acá. */
   onAjuste?: (key: AjusteKey) => void;
 }
 
 /**
- * Pantalla Ajustes -- grilla de iconos con las 6 entradas. Los skins tienen su propia pantalla
- * (`PantallaSkins`, tile "Skins"); las 3 entradas sin fuente de datos real todavía (Datos personales,
- * Planes disponibles, Plan actual) se resuelven con `PantallaAndamiaje` -- esta pantalla sólo cablea
- * la navegación (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
+ * Pantalla Ajustes -- grilla de iconos con las 6 entradas. La única sin fuente de datos real todavía
+ * es "Mi plan", que se resuelve con `PantallaAndamiaje` y lo dice en pantalla. Esta pantalla sólo
+ * cablea la navegación (identifica QUÉ tile se tocó), nunca decide a dónde va cada una.
  */
 export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();

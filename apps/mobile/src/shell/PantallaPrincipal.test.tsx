@@ -67,11 +67,11 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    * cualquier efecto pendiente antes de la siguiente aserción — mismo criterio que `shell.test.tsx`.
    */
   it.each([
-    ['apps', '/apps'],
+    ['facturacion', '/facturacion'],
     ['ajustes', '/ajustes'],
-    ['recientes', '/recientes'],
-    ['redes', '/redes'],
-    ['metricas', '/metricas'],
+    ['midia', '/midia'],
+    ['inteligencia', '/inteligencia'],
+    ['contabilidad', '/contabilidad'],
     ['facturacion', '/facturacion'],
   ])('tocar el tile %s navega a %s — no monta ninguna capa propia', async (key, ruta) => {
     await envolver();
@@ -102,7 +102,7 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     await envolver();
 
     await fireEvent.press(screen.getByTestId('tile-ajustes'));
-    await fireEvent.press(screen.getByTestId('tile-metricas'));
+    await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
     expect(router.push).toHaveBeenCalledTimes(1);
     expect(router.push).toHaveBeenCalledWith('/ajustes');
@@ -111,8 +111,8 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
   it('doble toque rápido sobre el MISMO tile abre un solo glass', async () => {
     await envolver();
 
-    await fireEvent.press(screen.getByTestId('tile-apps'));
-    await fireEvent.press(screen.getByTestId('tile-apps'));
+    await fireEvent.press(screen.getByTestId('tile-facturacion'));
+    await fireEvent.press(screen.getByTestId('tile-facturacion'));
 
     expect(router.push).toHaveBeenCalledTimes(1);
   });
@@ -128,9 +128,9 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     unmount();
 
     await envolver();
-    await fireEvent.press(screen.getByTestId('tile-metricas'));
+    await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
     expect(router.push).toHaveBeenNthCalledWith(1, '/ajustes');
-    expect(router.push).toHaveBeenNthCalledWith(2, '/metricas');
+    expect(router.push).toHaveBeenNthCalledWith(2, '/inteligencia');
   });
 });

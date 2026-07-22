@@ -13,13 +13,15 @@ async function envolver(onAjuste?: (key: AjusteKey) => void) {
   );
 }
 
+/** Las 6 entradas EXPLÍCITAS y en orden, no `TILES_AJUSTES.length`: sacar o agregar una obliga a
+ *  nombrarla acá. Quedaron 6 tras absorber los andamiajes duplicados (2026-07-22). */
 const TILE_KEYS: AjusteKey[] = [
-  'datosPersonales',
-  'configuracionSistema',
-  'planesDisponibles',
-  'planActual',
-  'skins',
+  'perfilNegocio',
+  'facturacionAfip',
+  'apps',
+  'miPlan',
   'cuenta',
+  'apariencia',
 ];
 
 describe('PantallaAjustes (grilla de iconos)', () => {
@@ -34,22 +36,31 @@ describe('PantallaAjustes (grilla de iconos)', () => {
     const onAjuste = jest.fn();
     await envolver(onAjuste);
 
-    await fireEvent.press(screen.getByTestId('ajuste-tile-skins'));
-    expect(onAjuste).toHaveBeenCalledWith('skins');
+    await fireEvent.press(screen.getByTestId('ajuste-tile-apariencia'));
+    expect(onAjuste).toHaveBeenCalledWith('apariencia');
 
     await fireEvent.press(screen.getByTestId('ajuste-tile-cuenta'));
     expect(onAjuste).toHaveBeenCalledWith('cuenta');
   });
 
-  it('las 7 etiquetas visibles son las esperadas', async () => {
+  it('las 6 etiquetas visibles son las esperadas — en castellano y sin pares que se pisen', async () => {
     await envolver();
-    expect(screen.getByText('Datos personales')).toBeTruthy();
-    expect(screen.getByText('Configuración del sistema')).toBeTruthy();
-    expect(screen.getByText('Planes disponibles')).toBeTruthy();
-    expect(screen.getByText('Plan actual')).toBeTruthy();
-    expect(screen.getByText('Skins')).toBeTruthy();
-    expect(screen.getByText('Cuenta')).toBeTruthy();
+    expect(screen.getByText('Mi negocio')).toBeTruthy();
     expect(screen.getByText('Facturación AFIP')).toBeTruthy();
+    expect(screen.getByText('Apps conectadas')).toBeTruthy();
+    expect(screen.getByText('Mi plan')).toBeTruthy();
+    expect(screen.getByText('Mi cuenta')).toBeTruthy();
+    expect(screen.getByText('Apariencia')).toBeTruthy();
+  });
+
+  it('🔴 los pares que se pisaban ya no están', async () => {
+    // Dos tiles para un solo concepto es lo que confunde a quien entró a configurar algo: no sabe
+    // cuál de los dos es el que busca. `Datos personales` duplicaba `Cuenta` y las dos de plan se
+    // duplicaban entre sí — y las tres eran andamiaje vacío.
+    await envolver();
+    for (const viejo of ['Datos personales', 'Planes disponibles', 'Plan actual', 'Skins', 'Configuración del sistema']) {
+      expect(screen.queryByText(viejo)).toBeNull();
+    }
   });
 
   /**
@@ -69,7 +80,7 @@ describe('PantallaAjustes (grilla de iconos)', () => {
 
   it('sin onAjuste, tocar un tile no crashea (prop opcional)', async () => {
     await envolver();
-    await fireEvent.press(screen.getByTestId('ajuste-tile-planActual'));
+    await fireEvent.press(screen.getByTestId('ajuste-tile-miPlan'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
   });
 });
