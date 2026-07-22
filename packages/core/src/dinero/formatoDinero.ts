@@ -20,6 +20,34 @@
 const SEPARADOR_MILES = '.';
 const SEPARADOR_DECIMAL = ',';
 
+/**
+ * Lo que el emprendedor TIPEA → lo que el backend PARSEA. `"30000,50"` → `"30000.50"`.
+ *
+ * 🔴 **Es el camino inverso de `formatearImporte`, y sin él la app es inusable en Argentina.** El
+ * teclado numérico entrega **coma** en configuración regional argentina, y el backend hace
+ * `Decimal("30000,50")` → `InvalidOperation` → 400. O sea: el usuario escribe el importe como lo
+ * escribe todo el país y la app le dice que está mal.
+ *
+ * 🔴 **Normaliza, NO convierte.** Pasar por `Number` arreglaría el separador y de paso metería el
+ * float que todo el contrato evita: el string entra string y sale string.
+ *
+ * Vivía duplicado dentro de `FormularioPresupuesto`; está acá porque **toda** pantalla que reciba un
+ * importe tipeado lo necesita, y la que se olvide no falla en los tests —falla en el teléfono de
+ * alguien que escribió una coma—.
+ */
+export function normalizarDecimal(texto: string): string {
+  return texto.trim().replace(/\s/g, '').replace(',', '.');
+}
+
+/** `true` si el texto ya normalizado es un decimal positivo que el backend va a aceptar. */
+export function esDecimalPositivo(texto: string): boolean {
+  const n = normalizarDecimal(texto);
+  if (!/^\d+(\.\d+)?$/.test(n)) return false;
+  // `"0"`, `"0.00"` y `"0,0"` son numéricos pero el backend los rechaza con 400 (medido). Compararlo
+  // como string evita el `Number()` que este módulo entero existe para no hacer.
+  return /[1-9]/.test(n);
+}
+
 /** Agrupa de a tres desde la derecha: `1234567` → `1.234.567`. */
 function agruparMiles(entera: string): string {
   let salida = '';

@@ -93,6 +93,28 @@ export type {
   ResultadoFacturar,
 } from './presupuestos';
 
+// `/gastos` — lo que sale: alta, listado, detalle y el resumen del mes. Mismo criterio de plata que
+// presupuestos (STRING, nunca `Number`) y **la fecha la pone el backend en hora de Argentina**: ver
+// el docstring de `gastos.ts` por qué omitir `fecha` importa. Sin `PATCH`/`DELETE` en Fase 1.
+export {
+  CATEGORIAS_GASTO,
+  crearGasto,
+  esCategoriaValida,
+  ETIQUETA_CATEGORIA,
+  listarGastos,
+  obtenerGasto,
+  obtenerResumenGastos,
+} from './gastos';
+export type {
+  CategoriaGasto,
+  CategoriaResumen,
+  CrearGastoRequest,
+  Gasto,
+  ListarGastosParams,
+  OrigenGasto,
+  ResumenGastos,
+} from './gastos';
+
 // `/actividad` — "Recientes": las entradas FIRMADAS del usuario, cross-cliente. Ver el docstring de
 // `actividad.ts` para el criterio de `no_disponible` (404/501, endpoint aún sin desplegar).
 export { listarActividad } from './actividad';

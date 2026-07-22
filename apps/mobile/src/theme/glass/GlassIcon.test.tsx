@@ -7,13 +7,16 @@ import { GlassIcon } from './GlassIcon';
 
 const NOMBRES = Object.keys(CATALOGO_ICONOS) as (keyof typeof CATALOGO_ICONOS)[];
 
-describe('GlassIcon -- los 10 iconos glass', () => {
+describe('GlassIcon -- el catálogo de iconos glass', () => {
   // Lista EXPLÍCITA y no `NOMBRES.length`: así agregar un ícono obliga a nombrarlo acá, y no queda
   // un catálogo que crece solo. `user` entró cuando Pacientes (Clientes acá) pasó a tener su ícono de
   // entrada propio en el escritorio (2026-07-18).
-  it('el catálogo tiene exactamente los 10 nombres semánticos requeridos', () => {
+  it('el catálogo tiene exactamente los nombres semánticos requeridos', () => {
     expect(NOMBRES.sort()).toEqual(
-      ['chart', 'chat', 'clock', 'doc_search', 'folder', 'media', 'mic', 'note', 'settings', 'user'].sort()
+      ['chart', 'chat', 'clock', 'doc_search', 'folder', 'media', 'mic', 'note', 'settings', 'user',
+       // `wallet` entró con Gastos (2026-07-21). Se AGREGÓ en vez de reusar `chart` —que ya es
+       // Métricas—: dos tiles con el mismo glifo en el mismo grid no se distinguen de un vistazo.
+       'wallet'].sort()
     );
   });
 

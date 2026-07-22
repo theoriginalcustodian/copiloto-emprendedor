@@ -9,6 +9,7 @@ import { agruparEnColumnas, EscritorioFunciones, TILES, type FuncionKey } from '
  *  nombrarla acá, igual criterio que `GlassIcon.test.tsx` con el catálogo de íconos. */
 const KEYS_ESPERADAS: FuncionKey[] = [
   'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion', 'presupuestos',
+  'gastos',
 ];
 
 async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {

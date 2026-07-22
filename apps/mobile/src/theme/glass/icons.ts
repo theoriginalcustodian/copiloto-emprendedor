@@ -110,7 +110,13 @@ export type NombreIconoGlass =
   | 'settings'
   | 'chart'
   | 'media'
-  | 'user';
+  | 'user'
+  /**
+   * La billetera de "Gastos". **Se agregó en vez de reusar `chart`** (que ya es Métricas): dos tiles
+   * con el mismo glifo en el mismo grid no se distinguen de un vistazo, que es exactamente para lo
+   * que sirve un ícono. Cuando el catálogo cerrado no alcanza, la salida es ampliarlo, no repetir.
+   */
+  | 'wallet';
 
 /**
  * Tipado explícito (`Record<NombreIconoGlass, DefinicionIconoGlass>`), NO `as const satisfies` —
@@ -236,6 +242,26 @@ export const CATALOGO_ICONOS: Record<NombreIconoGlass, DefinicionIconoGlass> = {
     glifo: [
       { tipo: 'circulo', cx: 50, cy: 42, r: 10, color: 'blanco', relleno: true, opacidad: 0.9 },
       { tipo: 'path', d: 'M32,72 a18,16 0 0 1 36,0 z', color: 'blanco', relleno: true, opacidad: 0.9 },
+    ],
+  },
+  /**
+   * `wallet` — Gastos. Billetera cerrada con el broche a la derecha: la silueta se lee a 46px, que es
+   * el tamaño real del tile, sin depender del detalle interno.
+   *
+   * Paletas cálidas (`amber` / `yellowOrange`) a propósito, para que el tile de **lo que sale** no se
+   * confunda de un vistazo con los fríos de Presupuestos y Facturación, que son **lo que entra**.
+   */
+  wallet: {
+    shape: rr(20, 30, 60, 44, 10),
+    blobs: [
+      { cx: 38, cy: 44, r: 22, paleta: 'amber' },
+      { cx: 66, cy: 64, r: 20, paleta: 'yellowOrange' },
+    ],
+    glifo: [
+      // La solapa de cierre.
+      { tipo: 'linea', x1: 20, y1: 46, x2: 80, y2: 46, color: 'blanco', ancho: 4, opacidad: 0.9 },
+      // El broche.
+      { tipo: 'circulo', cx: 66, cy: 60, r: 6, color: 'blanco', relleno: true, opacidad: 0.92 },
     ],
   },
 };
