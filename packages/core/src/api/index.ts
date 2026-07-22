@@ -231,6 +231,13 @@ export type {
   ResultadoIngreso,
 } from './ingresos';
 /**
+ * `/capacidades` — lo que el copiloto sabe hacer HOY, para la pantalla de «cómo hablarle». Es una
+ * **proyección** de las tools vivas: una capacidad se publica sólo si su tool existe, así que la poda
+ * y el alta de tools actualizan la guía solas. **Sin lista de respaldo** — ver el docstring.
+ */
+export { leerCapacidades } from './capacidades';
+export type { CapacidadCopiloto, FechasQueEntiende, GuiaCapacidades } from './capacidades';
+/**
  * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
  * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
  * castellano. **Borrar es desactivar** (`desactivarConcepto`), y reactivar es

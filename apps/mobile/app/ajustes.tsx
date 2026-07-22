@@ -33,6 +33,7 @@ const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
   miPlan: '/ajustes-mi-plan',
   cuenta: '/ajustes-cuenta',
   apariencia: '/ajustes-skins',
+  comoHablarle: '/ajustes-como-hablarle',
 };
 
 export default function PantallaAjustesRoute() {
