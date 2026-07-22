@@ -45,13 +45,8 @@ export type { MotivoDuplicado } from './errors';
 // Contratos de request/response.
 export * from './types';
 
-// `/clientes` (adaptado del `/pacientes` de origen, decisión D7) — a diferencia del resto, NO forma
-// parte de `CopilotApi`/`mockApi`: es una superficie sin equivalente en el flujo mock heredado del
-// copiloto de emprendedores original.
-export { actualizarCliente, crearCliente, listarClientes, obtenerOpcionesCliente, obtenerCliente } from './clientes';
-
-// `/nota/formatos` — el catálogo de tipos de nota. Mismo criterio que `/clientes/opciones`:
-// superficie aparte, sin equivalente en `CopilotApi`/`mockApi`.
+// `/nota/formatos` — el catálogo de tipos de nota. Superficie aparte, sin equivalente en
+// `CopilotApi`/`mockApi`.
 export { obtenerFormatosNota } from './formatos';
 
 // La enmienda. `listarEntradasCorregibles` trae SÓLO la punta de cada cadena (lo filtra el

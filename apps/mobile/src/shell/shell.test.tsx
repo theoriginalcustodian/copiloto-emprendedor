@@ -15,9 +15,8 @@ import { Dimensions } from 'react-native';
  * valida para llegar al chat -- si no, `renderRouter()` cae en la pantalla de login (el guard hace
  * exactamente lo que debe) y `chat-composer` nunca aparece. Mismo patron que
  * `src/modules/auth/session.test.tsx`: se reusan las clases de error reales, solo se mockean
- * `login`/`me`. `obtenerCliente` se suma acá (Task 8): el composer ahora queda deshabilitado sin
- * paciente activo (`ChatView`), así que este test -- que ejercita el ESTADO LOCAL del composer, no la
- * selección de paciente -- necesita uno resuelto para poder tipear.
+ * `login`/`me`. (Acá también se mockeaba `obtenerCliente`, del vocabulario clínico de origen; se
+ * quitó el 2026-07-22 junto con el cliente HTTP muerto que lo servía — ver el comentario en el test.)
  */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
@@ -28,11 +27,10 @@ jest.mock('@copiloto/core', () => {
       login: jest.fn(),
       me: jest.fn(),
     },
-    obtenerCliente: jest.fn(),
   };
 });
 
-import { apiReal as api, obtenerCliente } from '@copiloto/core';
+import { apiReal as api } from '@copiloto/core';
 
 import { almacenClave, almacenTokens } from '../adapters/almacen';
 
@@ -81,7 +79,6 @@ describe.skip('shell responsive: un solo arbol de componentes', () => {
     await almacenClave.borrar('copiloto-cliente-id');
     jest.mocked(api.login).mockReset();
     jest.mocked(api.me).mockReset();
-    jest.mocked(obtenerCliente).mockReset();
   });
 
   // ⏱️ El timeout de 20 s va a nivel TEST, no sólo en los `waitFor` de adentro. Los `waitFor` ya
@@ -94,17 +91,13 @@ describe.skip('shell responsive: un solo arbol de componentes', () => {
   it('no remonta el contenido al cruzar el breakpoint de 900px', async () => {
     await almacenTokens.guardarToken('tok-shell-test');
     jest.mocked(api.me).mockResolvedValue({ cliente_id: 'cli-shell-test', email: 'usuario@copiloto.test' });
-    // Paciente activo persistido (Task 8) -- el composer queda deshabilitado sin uno, y este test
-    // ejercita el estado local del composer, no la selección de paciente en sí.
+    // 🔴 Acá había un `obtenerCliente` mockeado con un "paciente activo" (fecha_nacimiento, genero):
+    // vestigio de la app clínica, donde el composer se deshabilitaba sin paciente seleccionado. En el
+    // copiloto no existe esa selección, y el cliente HTTP que lo servía apuntaba a un backend que en
+    // este repo nunca existió — se borró el 2026-07-22. Que este test siga verde sin el mock ES la
+    // prueba de que era vestigial; si se pusiera rojo, querría decir que el composer sí dependía de
+    // algo y habría que mirarlo, no re-agregar el mock.
     await almacenClave.guardar('copiloto-cliente-id', CLIENTE_UUID);
-    jest.mocked(obtenerCliente).mockResolvedValue({
-      id: CLIENTE_UUID,
-      nombre: 'Cliente de prueba',
-      fecha_nacimiento: null,
-      estado: 'activo',
-      genero: null,
-      notas: null,
-    });
 
     renderRouter();
     jest.useRealTimers();
