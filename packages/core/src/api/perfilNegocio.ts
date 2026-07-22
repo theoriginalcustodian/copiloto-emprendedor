@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { ApiError } from './errors';
+import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
 import type { ConDisponibilidad } from './afip';
 
 /**
@@ -45,11 +45,35 @@ export interface PerfilNegocio {
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
+  /**
+   * 🔴 **Cuánta ceremonia pide el copiloto antes de guardar** — contrato de modos §3.
+   *
+   * Vive en el perfil del NEGOCIO y no en el teléfono a propósito: si viviera acá, cambiar de aparato
+   * resetearía el modo y —peor— la app podría mandar el modo permisivo por su cuenta. **El backend
+   * decide y el backend impone; esto sólo refleja.**
+   *
+   * ⚠️ **Fail-closed, igual que el backend:** cualquier cosa que no sea exactamente `automatico` se
+   * lee como `confirmacion`. Un valor desconocido, un campo ausente o un typo caen en el modo que
+   * pregunta — nunca en el que actúa solo. Un default permisivo por un error de lectura es la clase
+   * de bug que se descubre por un registro que nadie autorizó.
+   */
+  modoCeremonia: ModoCeremonia;
   /** ISO-8601 UTC. `''` si el backend no lo mandó (perfil recién creado por un deploy viejo). */
   actualizadoEn: string;
 }
 
+/**
+ * `confirmacion` = el copiloto muestra la card y espera. `automatico` = guarda y avisa.
+ *
+ * ⚠️ **Hay un PISO que el modo no puede apagar** (contrato §2): todo lo que sale del teléfono —tocar a
+ * un tercero, al fisco, o mover plata de verdad— confirma **siempre**, en los dos modos. Por eso la
+ * etiqueta es «Automático» y no «hace todo solo»: una etiqueta que promete no preguntar se siente rota
+ * la primera vez que pregunta.
+ */
+export type ModoCeremonia = 'confirmacion' | 'automatico';
+
 interface PerfilCrudo {
+  modo_ceremonia?: string;
   que_vende?: string;
   a_quien?: string;
   nombre_comercial?: string;
@@ -85,6 +109,11 @@ function normalizar(p: PerfilCrudo): PerfilNegocio {
     formalidad: enumODefault(p.formalidad, FORMALIDAD_VALIDOS, 'cercano'),
     largoRespuesta: enumODefault(p.largo_respuesta, LARGO_VALIDOS, 'breve'),
     nombreCopiloto: p.nombre_copiloto ?? '',
+    // 🔴 Fail-closed, y NO con `enumODefault`: acá el default no es "el más común" sino "el que no
+    // actúa solo". Que sea la misma línea que el backend (`modo_de`) es a propósito — si las dos
+    // capas leyeran distinto, el emprendedor vería «Automático» mientras el backend le sigue pidiendo
+    // confirmación: los dos correctos por separado, y el producto mintiendo.
+    modoCeremonia: p.modo_ceremonia === 'automatico' ? 'automatico' : 'confirmacion',
     actualizadoEn: p.actualizado_en ?? '',
   };
 }
@@ -167,6 +196,13 @@ export interface GuardarPerfilNegocioRequest {
   formalidad?: FormalidadCopiloto;
   largoRespuesta?: LargoRespuesta;
   nombreCopiloto?: string;
+  /**
+   * ⚠️ **Mandar `automatico` hoy devuelve `409` y NO guarda** — está en pausa hasta que se corrija el
+   * motor (el copiloto puede narrar acciones que no ejecutó, y sin card eso no se ve). El resultado lo
+   * dice con el motivo del backend; **no lo escondas del lado de la app**: si sólo estuviera gris en
+   * la UI, un `POST` alcanzaría para ponerse en el modo peligroso.
+   */
+  modoCeremonia?: ModoCeremonia;
 }
 
 /**
@@ -183,6 +219,7 @@ function aBodyCrudo(req: GuardarPerfilNegocioRequest): Record<string, string> {
   if (req.formalidad !== undefined) body.formalidad = req.formalidad;
   if (req.largoRespuesta !== undefined) body.largo_respuesta = req.largoRespuesta;
   if (req.nombreCopiloto !== undefined) body.nombre_copiloto = req.nombreCopiloto;
+  if (req.modoCeremonia !== undefined) body.modo_ceremonia = req.modoCeremonia;
   return body;
 }
 
@@ -198,16 +235,46 @@ export const LIMITE_CAMPO_CORTO = 120;
  * Lanza `ApiError` con status 400 si el body no valida (enum inválido, campo demasiado largo, body
  * vacío). El `detail` del backend viene en `.mensaje`.
  */
+export type ResultadoGuardarPerfil =
+  | ConDisponibilidad<{ perfil: PerfilNegocio }>
+  /**
+   * 🔴 **El modo pedido está en PAUSA.** No es un error de la app ni algo que reintentar: es una deuda
+   * gestionada del backend, con dueño y condición de pago. Trae `mensaje` —el texto que el emprendedor
+   * puede leer— y `modoVigente`, el que quedó.
+   *
+   * **Se pinta el `mensaje` que viene, nunca uno inventado acá:** el día que se levante la pausa, el
+   * texto cambia solo. Un copy propio seguiría diciendo «está en pausa» después de habilitado.
+   */
+  | { status: 'modo_no_disponible'; mensaje: string; modoVigente: ModoCeremonia };
+
+/**
+ * Guarda una parte del perfil. Devuelve el perfil **completo** ya actualizado — no hace falta
+ * re-hacer el GET.
+ */
 export async function guardarPerfilNegocio(
   req: GuardarPerfilNegocioRequest,
-): Promise<ConDisponibilidad<{ perfil: PerfilNegocio }>> {
+): Promise<ResultadoGuardarPerfil> {
   const body = aBodyCrudo(req);
   try {
     const raw = await apiClient.post<{ perfil: PerfilCrudo }>('/perfil-negocio', body);
     if (!esRespuestaDelEndpoint(raw, 'perfil')) return { status: 'no_disponible' };
     return { status: 'ok', perfil: normalizar(raw.perfil) };
   } catch (err) {
+    if (
+      err instanceof ApiError &&
+      err.status === 409 &&
+      codigoDeConflicto(err.body) === 'modo_automatico_no_disponible'
+    ) {
+      const vigente = (err.body as { detail?: { modo_vigente?: unknown } })?.detail?.modo_vigente;
+      return {
+        status: 'modo_no_disponible',
+        mensaje: mensajeDeConflicto(err.body) ?? 'Ese modo no está disponible por ahora.',
+        // Fail-closed también acá: si el backend no dijo cuál quedó, se asume el que pregunta.
+        modoVigente: vigente === 'automatico' ? 'automatico' : 'confirmacion',
+      };
+    }
     if (noDesplegado(err)) return { status: 'no_disponible' };
+    // 400 (enum inválido, campo largo, body vacío) SUBE: es accionable y el formulario lo muestra.
     throw err;
   }
 }

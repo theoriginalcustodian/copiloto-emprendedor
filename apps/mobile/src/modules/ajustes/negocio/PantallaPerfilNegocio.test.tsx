@@ -30,6 +30,9 @@ const PERFIL = {
   formalidad: 'cercano' as const,
   largoRespuesta: 'breve' as const,
   nombreCopiloto: 'Copi',
+  // El modo de ceremonia entró al perfil con el contrato de modos. `confirmacion` es el default y el
+  // fail-closed: cualquier otra cosa que llegue del wire se lee así.
+  modoCeremonia: 'confirmacion' as const,
   actualizadoEn: '2026-07-21T22:14:03.120Z',
 };
 

@@ -347,6 +347,35 @@ describe('presupuestos.ts', () => {
       });
     });
 
+    it('🔴 con `codigo`, cada caso se reconoce por lo que TRAE — no por lo que le falta', async () => {
+      // La forma nueva (2026-07-22): todo 409 del backend viaja con `codigo`. Es lo que retira la
+      // rama que se reconocía por descarte, la que convertía cualquier caso nuevo en «falta tu CUIT».
+      responder = () =>
+        respuesta(409, { detail: { codigo: 'presupuesto_ya_facturado', mensaje: 'ya fue facturado', factura_id: 'f-1' } });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'ya_facturado', facturaId: 'f-1' });
+
+      responder = () => respuesta(409, { detail: { codigo: 'falta_cuit', mensaje: 'falta el perfil fiscal (CUIT)' } });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+
+      responder = () =>
+        respuesta(409, { detail: { codigo: 'presupuesto_no_facturable', mensaje: 'está desestimado', estado: 'desestimado' } });
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'estado_incompatible',
+        estado: 'desestimado',
+        motivo: 'está desestimado',
+      });
+    });
+
+    it('🔴 un código DESCONOCIDO ya no se disfraza de «falta tu CUIT»… salvo que tampoco haya estructura', async () => {
+      // El caso que motiva todo esto. Con código nuevo y sin estructura conocida, hoy sigue cayendo en
+      // `falta_perfil_fiscal` — el fallback por descarte que se conserva para deploys viejos. Queda
+      // FIJADO acá para que se vea: el día que el fallback se pueda retirar, este test cambia a
+      // propósito y no por accidente.
+      responder = () => respuesta(409, { detail: { codigo: 'algo_que_no_existe_todavia', mensaje: 'otra cosa' } });
+
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+    });
+
     it('sigue discriminando aunque el backend reescriba el copy del detail', async () => {
       // El control de que la discriminación es ESTRUCTURAL: mismo texto en los dos 409, y aun así
       // cada uno cae donde corresponde. Con un `detail.includes('facturado')` este test sería rojo.

@@ -214,6 +214,16 @@ export function PantallaPerfilNegocio() {
         setEstadoGuardado('idle');
         return;
       }
+      // 🔴 `modo_no_disponible` (409): el modo pedido está en PAUSA del lado del backend. Esta
+      // pantalla todavía no ofrece cambiar el modo, así que hoy no puede llegar acá — pero la rama
+      // existe porque sin ella el `res.perfil` de abajo sería `undefined` y los campos se
+      // vaciarían solos. Se muestra el mensaje del backend, nunca uno propio: cuando se levante la
+      // pausa, el texto cambia solo.
+      if (res.status === 'modo_no_disponible') {
+        setErrorGuardado(res.mensaje);
+        setEstadoGuardado('error');
+        return;
+      }
       // El POST devuelve el perfil COMPLETO ya actualizado: se re-siembran los campos desde la
       // respuesta en vez de dar por hecho que quedó lo que había en pantalla. Si otro dispositivo
       // cambió la otra sección, este es el momento en que aparece.

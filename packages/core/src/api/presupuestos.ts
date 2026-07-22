@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { ApiError } from './errors';
+import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
 import type { ConDisponibilidad } from './afip';
 
 /**
@@ -524,6 +524,23 @@ export async function facturarPresupuesto(id: number): Promise<ResultadoFacturar
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     if (err instanceof ApiError && err.status === 409) {
+      // 🔴 **Primero el CÓDIGO, que es lo que el caso TRAE.** Desde el 2026-07-22 todo 409 del backend
+      // viaja con `codigo` (`errores_web.CODIGOS`), y eso es lo que retira de acá la rama que se
+      // reconocía por descarte — la que convertía cualquier caso nuevo en «falta tu CUIT».
+      const codigo = codigoDeConflicto(err.body);
+      if (codigo === 'presupuesto_ya_facturado') {
+        return { status: 'ya_facturado', facturaId: facturaIdDelBody(err.body) ?? null };
+      }
+      if (codigo === 'falta_cuit') return { status: 'falta_perfil_fiscal' };
+      if (codigo === 'presupuesto_no_facturable') {
+        return {
+          status: 'estado_incompatible',
+          estado: estadoDelBody(err.body) ?? null,
+          motivo: mensajeDeConflicto(err.body) ?? 'Ese presupuesto no se puede facturar como está.',
+        };
+      }
+      // ⚠️ Y si no vino código, la discriminación por ESTRUCTURA de abajo sigue viva: un deploy
+      // anterior al cambio no lo manda, y tirarla convertiría cada 409 en genérico tras un rollback.
       const facturaId = facturaIdDelBody(err.body);
       if (facturaId !== undefined) return { status: 'ya_facturado', facturaId };
       // 🔴 El TERCER 409, que apareció con los estados: el presupuesto está `desestimado`. Viene con
@@ -593,7 +610,11 @@ export async function cambiarEstadoPresupuesto(
       // el único dato que le sirve al emprendedor para saber qué hacer en su lugar.
       return {
         status: 'transicion_invalida',
-        motivo: err.detail ?? mensajeDelBody(err.body) ?? 'Ese cambio de estado no se puede hacer.',
+        motivo:
+          err.detail ??
+          mensajeDeConflicto(err.body) ??
+          mensajeDelBody(err.body) ??
+          'Ese cambio de estado no se puede hacer.',
       };
     }
     throw err;
