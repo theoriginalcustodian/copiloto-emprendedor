@@ -51,6 +51,8 @@ from afip_factura_activities import (
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
 from cliente_store import ClienteStore
+from cobro_store import CobroStore
+from presupuesto_store import PresupuestoStore
 from afip_onboarding_activities import (
     dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
 from afip_onboarding_workflow import AfipOnboardingWorkflow
@@ -148,6 +150,16 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _cliente_store_factory(cliente_id: str):
         return ClienteStore(conn_factory, cliente_id)
 
+    # Hito 3: las tools que anotan la plata que entra y mueven el estado de la cadena. Mismo criterio
+    # de aislamiento que la de clientes — el tenant se fija en el constructor, per-request, y jamás
+    # sale de env. Un store compartido entre turnos anotaría el ingreso de un emprendedor en la caja
+    # de otro, que es el peor fallo posible de este repo (regla 7).
+    def _cobro_store_factory(cliente_id: str):
+        return CobroStore(conn_factory, cliente_id)
+
+    def _presupuesto_store_factory(cliente_id: str):
+        return PresupuestoStore(conn_factory, cliente_id)
+
     # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
     # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
     # (name + description + parameters) ya describen cada tool (auditoría 2026-07-05: 0 matiz de negocio único
@@ -161,7 +173,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     llm = build_llm()
     tool_executor = tool_catalog.make_tool_executor(
         gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm,
-        cliente_store_factory=_cliente_store_factory)
+        cliente_store_factory=_cliente_store_factory, cobro_store_factory=_cobro_store_factory,
+        presupuesto_store_factory=_presupuesto_store_factory)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,
