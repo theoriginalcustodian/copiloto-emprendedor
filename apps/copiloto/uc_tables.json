@@ -95,6 +95,17 @@
     "codigo text",
     "created_at timestamptz DEFAULT now()"
   ],
+  "copiloto_gastos": [
+    "monto numeric NOT NULL DEFAULT 0",
+    "fecha date NOT NULL",
+    "categoria text NOT NULL DEFAULT 'otros'",
+    "proveedor text NOT NULL DEFAULT ''",
+    "medio_pago text NOT NULL DEFAULT ''",
+    "descripcion text NOT NULL DEFAULT ''",
+    "origen text NOT NULL DEFAULT 'manual'",
+    "monto_sugerido numeric",
+    "created_at timestamptz DEFAULT now()"
+  ],
   "afip_comprobantes": [
     "cuit text NOT NULL",
     "tipo_cbte integer NOT NULL",

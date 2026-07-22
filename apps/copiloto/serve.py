@@ -62,6 +62,8 @@ from presupuesto_doc import generar_doc as generar_doc_presupuesto
 from presupuesto_doc import registrar_en_sheet
 from presupuesto_store import PresupuestoStore
 from presupuestos_web import create_presupuestos_app
+from gastos_web import create_gastos_app
+from gasto_store import GastoStore
 
 # Sheet de trazabilidad de presupuestos, por instancia. Vacío = no se registra la fila (el Doc y el
 # presupuesto se crean igual). Parametrizado y no hardcodeado: el id del spreadsheet es del usuario.
@@ -181,6 +183,11 @@ async def _serve() -> None:
         generar_doc=_generar_doc_y_fila,
     )
 
+    gastos_app = create_gastos_app(
+        require_tenant=require_tenant,
+        gasto_store_factory=lambda cid: GastoStore(conn_factory, cid),
+    )
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -196,7 +203,8 @@ async def _serve() -> None:
     app = create_web_app(
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
-        afip_app=afip_app, presupuestos_app=presupuestos_app, gotrue=gotrue,
+        afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
+        gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción
