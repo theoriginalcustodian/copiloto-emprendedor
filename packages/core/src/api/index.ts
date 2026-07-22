@@ -39,8 +39,10 @@ export type { ArchivoSubida, HttpPort, PeticionHttp, RespuestaHttp } from './htt
 export type { AlmacenTokens } from './tokens';
 
 // Errores.
-export { ApiError, DuplicadoProbableError, ForbiddenError, GeneroInvalidoError, UnauthorizedError } from './errors';
-export type { MotivoDuplicado } from './errors';
+// ⚠️ `DuplicadoProbableError`, `GeneroInvalidoError` y `MotivoDuplicado` se exportaban acá y se
+// BORRARON el 2026-07-22: eran de la app clínica y describían un `409` de `POST /clientes` con otro
+// significado que el de este producto. Ver el epitafio en `errors.ts`.
+export { ApiError, ForbiddenError, UnauthorizedError } from './errors';
 
 // Contratos de request/response.
 export * from './types';
@@ -112,15 +114,19 @@ export type {
 
 // `/clientes` — la cartera, DERIVADA de lo ya emitido. ⚠️ Archivo NUEVO: el anterior (cliente HTTP
 // de la app clínica, apuntando a un backend que nunca existió acá) se borró en `8761d54`.
-// `crearCliente`/`actualizarCliente` NO están todavía: el `POST` da 405 (hito 3 sin desplegar), y
-// escribir un cliente contra una forma no medida es adivinarla.
-export { listarClientes, obtenerCliente } from './clientes';
+// `crearCliente`/`editarCliente` son el hito 7 y están escritos contra el contrato, NO medidos: el
+// `POST` daba 405 el 2026-07-22 (hito 3 de backend sin desplegar). Las dos suposiciones —la envoltura
+// de la respuesta y la clave del id en el 409— están aisladas y marcadas `[ASSUMED_PENDING_VERIFY]`
+// en `clientes.ts`. Se miden antes de declarar el hito cerrado.
+export { listarClientes, obtenerCliente, crearCliente, editarCliente, cambiosDeCliente } from './clientes';
 export type {
   Cliente,
+  DatosCliente,
   FichaCliente,
   ListarClientesParams,
   OperacionCliente,
   OrigenCliente,
+  ResultadoGuardarCliente,
 } from './clientes';
 
 // `/actividad` — lo que el emprendedor HIZO, cruzando las tablas de negocio (facturas, presupuestos,

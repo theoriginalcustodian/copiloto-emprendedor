@@ -36,6 +36,14 @@ type Estado = 'cargando' | 'ok' | 'no_encontrado' | 'no_disponible' | 'error';
 export interface FichaClienteProps {
   cliente: Cliente;
   onCerrar: () => void;
+  /**
+   * Editar desde acá, con los datos FRESCOS de la ficha y no con los del listado.
+   *
+   * 🔴 El listado puede estar viejo, y editar sobre él haría que el diff parcial calcule los cambios
+   * contra un original desactualizado: un campo que otro dispositivo ya cambió se "revertiría" sin
+   * que nadie lo pidiera, porque para este formulario sería un cambio legítimo del usuario.
+   */
+  onEditar?: (cliente: Cliente) => void;
 }
 
 function Seccion({ titulo, items, testID }: { titulo: string; items: OperacionCliente[]; testID: string }) {
@@ -68,7 +76,7 @@ function Seccion({ titulo, items, testID }: { titulo: string; items: OperacionCl
   );
 }
 
-export function FichaCliente({ cliente, onCerrar }: FichaClienteProps) {
+export function FichaCliente({ cliente, onCerrar, onEditar }: FichaClienteProps) {
   const tema = useTema();
   const [estado, setEstado] = useState<Estado>('cargando');
   const [ficha, setFicha] = useState<Ficha | null>(null);
@@ -159,7 +167,21 @@ export function FichaCliente({ cliente, onCerrar }: FichaClienteProps) {
 
         <FilaBotones
           testID="ficha-cliente-acciones"
-          botones={[{ etiqueta: 'Cerrar', onPress: onCerrar, testID: 'ficha-cliente-cerrar' }]}
+          botones={[
+            // Editar sólo cuando la ficha CARGÓ: con `datos` cayendo al cliente del listado, el diff
+            // parcial se calcularía contra un original incompleto.
+            ...(onEditar != null && estado === 'ok'
+              ? [
+                  {
+                    etiqueta: 'Editar',
+                    onPress: () => onEditar(datos),
+                    variante: 'primario' as const,
+                    testID: 'ficha-cliente-editar',
+                  },
+                ]
+              : []),
+            { etiqueta: 'Cerrar', onPress: onCerrar, testID: 'ficha-cliente-cerrar' },
+          ]}
         />
       </ScrollFormulario>
     </View>

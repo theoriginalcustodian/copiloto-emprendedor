@@ -132,6 +132,171 @@ export async function listarClientes(
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * Alta y edición — hito 7 del contrato (§6.bis). Precondición: el hito 3 de BACKEND.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Lo que se manda a dar de alta. **Sólo `nombre` es obligatorio** — §6.bis.2, y no es una comodidad:
+ * exigir el CUIT para poder guardar traba el caso más común (el cliente de mostrador del que sólo se
+ * sabe el nombre) **y esconde bugs de las dos capas**, porque el formulario nunca llega a mandar el
+ * body que el backend rechazaría.
+ *
+ * Las claves ausentes **no se mandan**. En la edición eso es la diferencia entre no tocar un campo y
+ * borrarlo.
+ */
+export interface DatosCliente {
+  nombre?: string;
+  /** 80=CUIT · 96=DNI · `null` para "sin documento". **Nunca 99** — ver el docstring del módulo. */
+  docTipo?: number | null;
+  docNro?: string | null;
+  condicionIva?: number | null;
+  domicilio?: string | null;
+  contacto?: string | null;
+  notas?: string | null;
+}
+
+/**
+ * Traduce a las claves del wire **omitiendo lo que no vino**.
+ *
+ * 🔴 **`undefined` (no tocar) y `null` (borrar) NO son lo mismo, y ésta es la función donde esa
+ * diferencia se conserva.** `POST /clientes/{cliente}` es parcial: mandar el objeto entero con los
+ * campos vacíos **borra** lo que había — incluido el domicilio que vino de las facturas de AFIP, que
+ * el emprendedor nunca tipeó y no sabe que puede perder. Un `for...in` sobre el formulario completo
+ * sería exactamente ese bug, y se ve idéntico a un guardado exitoso.
+ */
+function aWire(datos: DatosCliente): Record<string, unknown> {
+  const wire: Record<string, unknown> = {};
+  if (datos.nombre !== undefined) wire.nombre = datos.nombre;
+  if (datos.docTipo !== undefined) wire.doc_tipo = datos.docTipo;
+  if (datos.docNro !== undefined) wire.doc_nro = datos.docNro;
+  if (datos.condicionIva !== undefined) wire.condicion_iva = datos.condicionIva;
+  if (datos.domicilio !== undefined) wire.domicilio = datos.domicilio;
+  if (datos.contacto !== undefined) wire.contacto = datos.contacto;
+  if (datos.notas !== undefined) wire.notas = datos.notas;
+  return wire;
+}
+
+/**
+ * El cliente que devuelve un alta/edición, venga envuelto o pelado.
+ *
+ * 🔴 **`[ASSUMED_PENDING_VERIFY]` — la envoltura NO está medida**: el `POST` respondía `405` cuando
+ * se escribió esto. Y el sistema **no es consistente**: `POST /gastos` devuelve el objeto **pelado**,
+ * mientras `/presupuestos`, `/perfil` y `GET /clientes/{id}` lo **envuelven**. Adivinar una de las dos
+ * y equivocarse no da error: el normalizador leería `undefined` y el alta mostraría un cliente en
+ * blanco con id `NaN`, que se ve como un bug del backend.
+ *
+ * Por eso se aceptan las dos formas en vez de apostar a una. Cuando el hito 3 esté vivo se mide y
+ * **este comentario se reemplaza por el resultado**, no se borra sin más.
+ */
+function clienteDeLaRespuesta(raw: unknown): Cliente | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const envuelto = (raw as { cliente?: unknown }).cliente;
+  const candidato = (typeof envuelto === 'object' && envuelto !== null ? envuelto : raw) as ClienteCrudo;
+  // El control de que esto es un cliente y no otra cosa: sin `id` no hay a dónde navegar después.
+  return typeof candidato.id === 'number' ? normalizar(candidato) : null;
+}
+
+/**
+ * El id del cliente que YA tiene ese documento, sacado del body de un `409`.
+ *
+ * 🔴 **`[ASSUMED_PENDING_VERIFY]` — el nombre de la clave no está medido.** El contrato §3.4 dice
+ * *"con su id en el body"* y no cuál es la clave. Se prueban los deletreos que ya existen en esta API
+ * (`cliente_id` en el resto del sistema, `id`, y los dos anidados bajo `detail`, que es donde FastAPI
+ * pone los cuerpos de error).
+ *
+ * Si ninguno matchea devuelve `null`, y la UI **igual dice "ya lo tenés"** — sólo que sin el botón
+ * para abrirlo. Degradar el atajo es honesto; inventar un id llevaría a la ficha equivocada.
+ */
+function duenoDelDocumento(body: unknown): number | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const raiz = body as Record<string, unknown>;
+  const detalle =
+    typeof raiz.detail === 'object' && raiz.detail !== null
+      ? (raiz.detail as Record<string, unknown>)
+      : {};
+  for (const clave of ['cliente_id', 'id', 'duplicado_id']) {
+    for (const nivel of [raiz, detalle]) {
+      const v = nivel[clave];
+      if (typeof v === 'number') return v;
+      // Un id que viaja como string es un caso real en esta API — se acepta si es entero.
+      if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+    }
+  }
+  return null;
+}
+
+/**
+ * Resultado de guardar. **El `409` no es un error**: es el resultado útil de §6.bis.3 —el documento ya
+ * es de otro cliente— y la UI lo pinta como *"ya lo tenés en la cartera"*, no en rojo.
+ */
+export type ResultadoGuardarCliente =
+  | { status: 'ok'; cliente: Cliente }
+  | { status: 'no_disponible' }
+  | { status: 'duplicado'; duenoId: number | null };
+
+async function guardar(ruta: string, datos: DatosCliente): Promise<ResultadoGuardarCliente> {
+  try {
+    const raw = await apiClient.post<unknown>(ruta, aWire(datos));
+    const cliente = clienteDeLaRespuesta(raw);
+    // Un 200 con el HTML del SPA llega hasta acá como string: no es un cliente, y decirlo "no
+    // disponible" es más cierto que fabricar uno vacío.
+    return cliente != null ? { status: 'ok', cliente } : { status: 'no_disponible' };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 409) {
+      return { status: 'duplicado', duenoId: duenoDelDocumento(err.body) };
+    }
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    // 400/422 (falta el nombre, doc_tipo 99, un campo largo) sube: son accionables y el formulario
+    // los muestra tal cual los explica el backend.
+    throw err;
+  }
+}
+
+/**
+ * Alta a mano. **Se escribe nueva y NO copiando el `crearCliente` del archivo borrado** (§2.ter): aquél
+ * llamaba al `HttpPort` directo para poder leer el body del error y por eso **se salteaba el refresh de
+ * token** — un token vencido justo en el alta desloguea al emprendedor en el peor momento. Ese rodeo
+ * ya no hace falta: `ApiError.body` existe desde el 2026-07-21 para esto.
+ */
+export function crearCliente(datos: DatosCliente): Promise<ResultadoGuardarCliente> {
+  return guardar('/clientes', datos);
+}
+
+/**
+ * Edición parcial. **Pasar sólo lo que cambió** — ver `aWire`: lo que no se manda no se toca, y
+ * mandar todo borra lo que el usuario no tipeó nunca.
+ */
+export function editarCliente(id: number, cambios: DatosCliente): Promise<ResultadoGuardarCliente> {
+  return guardar(`/clientes/${id}`, cambios);
+}
+
+/**
+ * Qué cambió entre el cliente que se está editando y lo que quedó en el formulario. **El corazón de
+ * la edición parcial**: si esto devolviera todas las claves, guardar sin tocar nada reescribiría el
+ * cliente entero.
+ *
+ * Devuelve `{}` cuando no cambió nada — y ese caso vale la pena mirarlo antes de mandar el request.
+ */
+export function cambiosDeCliente(original: Cliente, editado: DatosCliente): DatosCliente {
+  const cambios: DatosCliente = {};
+  if (editado.nombre !== undefined && editado.nombre !== original.nombre) cambios.nombre = editado.nombre;
+  if (editado.docTipo !== undefined && editado.docTipo !== original.docTipo) cambios.docTipo = editado.docTipo;
+  if (editado.docNro !== undefined && editado.docNro !== original.docNro) cambios.docNro = editado.docNro;
+  if (editado.condicionIva !== undefined && editado.condicionIva !== original.condicionIva) {
+    cambios.condicionIva = editado.condicionIva;
+  }
+  if (editado.domicilio !== undefined && editado.domicilio !== original.domicilio) {
+    cambios.domicilio = editado.domicilio;
+  }
+  if (editado.contacto !== undefined && editado.contacto !== original.contacto) {
+    cambios.contacto = editado.contacto;
+  }
+  if (editado.notas !== undefined && editado.notas !== original.notas) cambios.notas = editado.notas;
+  return cambios;
+}
+
 /** Una operación del historial del cliente. Llega vacío hasta el hito 3 del backend. */
 export interface OperacionCliente {
   id: number;

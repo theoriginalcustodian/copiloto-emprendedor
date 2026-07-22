@@ -4,8 +4,9 @@ import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react
 import { listarClientes, obtenerCliente, type Cliente } from '@copiloto/core';
 
 import { FichaCliente } from './FichaCliente';
+import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
-import { CampoTexto, ScrollFormulario } from '../../theme/glass/campos';
+import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -22,10 +23,17 @@ import { useTema } from '../../theme/ThemeProvider';
  * "panaderia" pisaría el resultado bueno con uno viejo. El `debounce` no es sólo ahorro de red — es
  * lo que evita que la lista muestre el resultado de una búsqueda que el usuario ya abandonó.
  *
- * 🔴 **Sin alta todavía, y a propósito.** `POST /clientes` responde **405** (medido el 2026-07-22): el
- * alta es el hito 3 del backend y no está desplegada. Un botón "Nuevo cliente" que abre un formulario
- * y falla al guardar es peor que no tenerlo — y escribir el request contra una forma no medida sería
- * adivinarla. Entra cuando baje su `avance_`.
+ * 🔴 **El alta a mano NO es un extra del alta por voz: es el camino que funciona siempre.** Sin
+ * micrófono, sin señal, y sin que el LLM entienda un apellido. Por eso no espera al hito 5.
+ *
+ * 🔴 **La cartera vacía OFRECE el alta, no sólo informa que no hay nada.** El día 1 no hay facturas de
+ * las que derivar: un vacío que sólo informa deja la función nacida muerta — es el mecanismo exacto
+ * por el que se abandonó el Sheet de presupuestos.
+ *
+ * ⚠️ `POST /clientes` respondía **405 medido** cuando se escribió esto (hito 3 de backend sin
+ * desplegar). El formulario existe igual porque la forma la fija el contrato y las dos suposiciones
+ * del wire están aisladas en `clientes.ts`; si el `POST` no está, el alta degrada con un texto
+ * honesto en vez de un error. Lo que NO se puede es declarar esto cerrado sin medirlo.
  *
  * 🔴 **Tres disparadores de recarga**, como en Presupuestos y Gastos: al montar, al cambiar la
  * búsqueda, y el tirón — que es el único que cubre lo que cambió AFUERA (el backfill del backend
@@ -51,6 +59,9 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   const [busquedaAplicada, setBusquedaAplicada] = useState('');
   const [refrescando, setRefrescando] = useState(false);
   const [ficha, setFicha] = useState<Cliente | null>(null);
+  /** `null` = no hay formulario. `{edita: null}` = alta. `{edita: cliente}` = edición. */
+  const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
+  const [avisoDuplicado, setAvisoDuplicado] = useState<{ duenoId: number | null } | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -109,6 +120,37 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
     if (vivo.current) setRefrescando(false);
   }
 
+  /**
+   * Después de guardar, la cartera tiene que MOSTRARLO. Un listado que sólo carga al montar muestra
+   * dato viejo idéntico al fresco: el cliente recién creado no aparecería y el emprendedor lo daría
+   * de alta otra vez. Se recarga en silencio (sin el spinner de pantalla completa) porque la lista
+   * que ya está en pantalla sigue siendo válida mientras llega la nueva.
+   */
+  function alGuardar(cliente: Cliente) {
+    setFormulario(null);
+    setAvisoDuplicado(null);
+    void cargar(true);
+    // Se abre la ficha del que se acaba de tocar: cierra el bucle "¿se guardó?" con el dato, no con
+    // un cartel de éxito que hay que creer.
+    setFicha(cliente);
+  }
+
+  /**
+   * El documento ya es de otro cliente (§3.4). **No es un error**: se avisa y se ofrece abrir al
+   * dueño. Si el backend no mandó su id, el aviso se da igual — sin el botón. Inventar un id llevaría
+   * a la ficha equivocada, que es peor que un atajo de menos.
+   */
+  function alDuplicado(duenoId: number | null) {
+    setFormulario(null);
+    setAvisoDuplicado({ duenoId });
+  }
+
+  async function abrirDueno(id: number) {
+    setAvisoDuplicado(null);
+    const res = await obtenerCliente(id);
+    if (res.status === 'ok' && vivo.current) setFicha(res.ficha.cliente);
+  }
+
   const hayClientes = clientes.length > 0;
   const buscando = busquedaAplicada !== '';
 
@@ -153,28 +195,75 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
             />
           }
         >
-          <CampoTexto
-            etiqueta="Buscar"
-            valor={busqueda}
-            onChange={setBusqueda}
-            placeholder="Nombre del cliente"
-            autoCapitalize="none"
-            testID="clientes-buscar"
-          />
+          {/* El formulario REEMPLAZA a la lista mientras está abierto: compartir el scroll con veinte
+              cards deja los campos lejos del teclado, que acá se dibuja encima y no empuja nada. */}
+          {formulario != null ? (
+            <FormularioCliente
+              edita={formulario.edita}
+              onGuardado={alGuardar}
+              onDuplicado={alDuplicado}
+              onCancelar={() => setFormulario(null)}
+            />
+          ) : (
+            <>
+              <FilaBotones
+                testID="clientes-acciones"
+                botones={[
+                  {
+                    etiqueta: 'Nuevo cliente',
+                    onPress: () => { setAvisoDuplicado(null); setFormulario({ edita: null }); },
+                    variante: 'primario',
+                    testID: 'clientes-nuevo',
+                  },
+                ]}
+              />
 
-          {!hayClientes && (
-            <Text testID="clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-              {buscando
-                ? 'No encontramos ningún cliente con ese nombre.'
-                : 'Tu cartera se va a armar sola con lo que factures y presupuestes.'}
-            </Text>
+              {avisoDuplicado != null && (
+                <View style={{ gap: tema.espacio.sm }} testID="clientes-duplicado">
+                  {/* 🔴 En tenue, no en rojo: "ya lo tenés" es un resultado útil, no un fallo. */}
+                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+                    Ese documento ya es de un cliente que tenés en la cartera.
+                  </Text>
+                  {avisoDuplicado.duenoId != null && (
+                    <FilaBotones
+                      testID="clientes-duplicado-acciones"
+                      compacto
+                      botones={[
+                        {
+                          etiqueta: 'Abrir ese cliente',
+                          onPress: () => void abrirDueno(avisoDuplicado.duenoId as number),
+                          testID: 'clientes-duplicado-abrir',
+                        },
+                      ]}
+                    />
+                  )}
+                </View>
+              )}
+
+              <CampoTexto
+                etiqueta="Buscar"
+                valor={busqueda}
+                onChange={setBusqueda}
+                placeholder="Nombre del cliente"
+                autoCapitalize="none"
+                testID="clientes-buscar"
+              />
+
+              {!hayClientes && (
+                <Text testID="clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+                  {buscando
+                    ? 'No encontramos ningún cliente con ese nombre.'
+                    : 'Tu cartera se va a armar sola con lo que factures y presupuestes — y mientras tanto podés cargar el primero a mano.'}
+                </Text>
+              )}
+
+              {clientes.map((c) => (
+                <TarjetaCliente key={c.id} cliente={c} onPress={setFicha} />
+              ))}
+            </>
           )}
 
-          {clientes.map((c) => (
-            <TarjetaCliente key={c.id} cliente={c} onPress={setFicha} />
-          ))}
-
-          {hayClientes && total > clientes.length && (
+          {formulario == null && hayClientes && total > clientes.length && (
             <Text testID="clientes-total" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Mostrando {clientes.length} de {total} clientes.
             </Text>
@@ -183,7 +272,13 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
       )}
 
       {/* Fuera del scroll — ver el docstring de `FichaCliente`. */}
-      {ficha != null && <FichaCliente cliente={ficha} onCerrar={() => setFicha(null)} />}
+      {ficha != null && (
+        <FichaCliente
+          cliente={ficha}
+          onCerrar={() => setFicha(null)}
+          onEditar={(c) => { setFicha(null); setFormulario({ edita: c }); }}
+        />
+      )}
     </MarcoGlass>
   );
 }

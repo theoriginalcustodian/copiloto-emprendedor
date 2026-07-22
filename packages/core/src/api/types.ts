@@ -249,88 +249,22 @@ export interface ChatResponse {
 // CRM es trabajo futuro, no de este port).
 // ---------------------------------------------------------------------------
 
-/**
- * Cliente tal como lo ve el frontend. El shape hereda el del backend clínico de origen (todavía sin
- * confirmar contra un backend propio de `copiloto-emprendedor` — no inventar campos):
- *  - `GET /clientes` (lista/búsqueda) enmascara el DNI → `dni_parcial` (minimización en la ruta más
- *    ampliamente alcanzable). Sin `dni` crudo, sin `created_at`.
- *  - `POST /clientes` (201) y `GET /clientes/{id}` devuelven el `dni` CRUDO (recién tipeado, o para
- *    desambiguar homónimos) + `created_at`. Sin `dni_parcial`.
- *  - Los candidatos de un 409 (`duplicado_probable`) vienen del MISMO shape crudo que arriba.
- * `graph_key` NUNCA se declara acá a propósito (puntero interno al grafo que no debe llegar al
- * cliente de la API) — el backend lo hace `pop()` antes de responder; si algún día se colara igual,
- * TypeScript lo ignora por no estar en este tipo.
- */
-export interface Cliente {
-  id: string;
-  nombre: string;
-  /** ISO `YYYY-MM-DD`, o `null` si no se registró. */
-  fecha_nacimiento: string | null;
-  estado: string;
-  /** Enmascarado — sólo lo trae `GET /clientes` (lista/búsqueda). */
-  dni_parcial?: string | null;
-  /** Crudo — lo traen `POST /clientes` (201), `GET /clientes/{id}`, y los candidatos de un 409. */
-  dni?: string | null;
-}
-
-/**
- * El cliente con los campos que **sólo viajan en el detalle** (`GET`/`PATCH /clientes/{id}` y el
- * `POST` de alta). Es un tipo aparte de `Cliente` a propósito: `notas` es información sensible y el
- * backend la omite del listado (`GET /clientes`) deliberadamente. Si `notas` viviera en `Cliente`, una
- * vista de lista podría leerla sin darse cuenta de que ahí SIEMPRE es `undefined` — y "el campo está
- * vacío" es indistinguible de "nadie escribió nada". El tipo separado hace que el compilador lo impida
- * en vez de que lo descubra un humano.
- */
-export interface ClienteDetalle extends Cliente {
-  /** El `codigo` de una opción de `GET /clientes/opciones` — **nunca** un literal hardcodeado.
-   * `null` = no se cargó. */
-  genero: string | null;
-  /** Texto libre. No viene en el listado. */
-  notas: string | null;
-}
-
-/** Una opción del catálogo de género (`GET /clientes/opciones`). */
-export interface OpcionGenero {
-  codigo: string;
-  etiqueta: string;
-}
-
-/**
- * `GET /clientes/opciones` — el catálogo **vive en una tabla**, no en el schema, justamente para que
- * agregar una opción sea un `INSERT` y no un release en las tiendas.
- * 🔴 **Hardcodear los valores la vuelve a congelar y anula la decisión** — siempre consumir esto.
- */
-export interface OpcionesCliente {
-  generos: OpcionGenero[];
-}
-
-/**
- * `PATCH /clientes/{id}` — **parcial de verdad**: un campo AUSENTE no se toca; un campo en `null`
- * **SÍ se borra**.
+/*
+ * 🪦 **Acá vivían seis tipos de la app CLÍNICA — `Cliente`, `ClienteDetalle`, `OpcionGenero`,
+ * `OpcionesCliente`, `ActualizarClienteRequest`, `CrearClienteRequest`. Se borraron el 2026-07-22.**
  *
- * 🔴 Por eso hay que mandar **sólo lo que el usuario editó**, nunca el objeto entero: un `PATCH` con
- * `{genero: 'otro', notas: null}` cuando el usuario sólo tocó el género **borra las notas escritas a
- * mano**. `undefined` (omitido) y `null` (borrar) NO son lo mismo acá — es la única parte de la API
- * donde esa distinción tiene consecuencias destructivas.
+ * Sobrevivieron al borrado del cliente HTTP viejo (`8761d54`) porque aquella limpieza apuntó al
+ * archivo `clientes.ts` y estos vivían acá. **Nadie los usaba** salvo `errors.ts` — medido.
+ *
+ * 🔴 **Por qué no eran residuo inofensivo:** el `Cliente` de arriba y el `Cliente` de `clientes.ts`
+ * se exportaban los DOS desde el barril, y el explícito tapaba en silencio al del `export *`. Peor:
+ * `CrearClienteRequest` describía el body de `POST /clientes` con `fecha_nacimiento`, `dni`, `genero`
+ * y `forzar`. Quien fuera a implementar el alta iba a importar de `@copiloto/core` el tipo que se
+ * llama exactamente como lo que necesita — y escribir el request de OTRA aplicación, con el
+ * compilador conforme.
+ *
+ * La forma buena vive en `api/clientes.ts`, medida contra el servicio vivo. No revivir esto.
  */
-export interface ActualizarClienteRequest {
-  genero?: string | null;
-  notas?: string | null;
-}
-
-export interface CrearClienteRequest {
-  nombre: string;
-  /** ISO `YYYY-MM-DD` — mismo formato que acepta el `<input type="date">` nativo. */
-  fecha_nacimiento?: string | null;
-  dni?: string | null;
-  /** `codigo` de `GET /clientes/opciones`. Ver `ClienteDetalle.genero`. */
-  genero?: string | null;
-  notas?: string | null;
-  /** Reintenta pese al aviso de duplicado PROBABLE (similitud de nombre + misma fecha de
-   * nacimiento). NO bypasea un DNI ya existente en el tenant — eso lo sigue bloqueando el
-   * `UNIQUE (cliente_id, dni)` de la base (409 igual). */
-  forzar?: boolean;
-}
 
 // ---------------------------------------------------------------------------
 // GET /nota/formatos — el catálogo de plantillas es decisión del USUARIO, nunca del LLM
@@ -344,9 +278,9 @@ export interface FormatoNota {
 
 /**
  * `GET /nota/formatos` — el catálogo lo DERIVA el backend de sus plantillas de redacción (no de una
- * tabla, a diferencia de `OpcionesCliente.generos`: un formato es dato + plantilla, y su fuente de
- * verdad es la plantilla, no una tabla, para que no drifteen). Mismo shape de wire que
- * `OpcionesCliente` igual (envoltorio + `{codigo, etiqueta}`).
+ * tabla: un formato es dato + plantilla, y su fuente de verdad es la plantilla, para que no
+ * drifteen). El shape de wire es el mismo que el de cualquier catálogo del sistema: envoltorio +
+ * `{codigo, etiqueta}`.
  *
  * 🔴 Por qué existe esta ruta: en el proyecto de origen, un smoke e2e contra producción encontró que
  * el frontend nunca mandaba `tipo_nota` en `ChatRequest.contenido` — el LLM (que por diseño NO ve el
