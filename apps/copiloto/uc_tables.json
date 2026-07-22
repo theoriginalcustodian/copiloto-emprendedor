@@ -105,7 +105,10 @@
     "descripcion text NOT NULL DEFAULT ''",
     "origen text NOT NULL DEFAULT 'manual'",
     "monto_sugerido numeric",
-    "created_at timestamptz DEFAULT now()"
+    "created_at timestamptz DEFAULT now()",
+    "presupuesto_ref bigint",
+    "comprobante_ref bigint",
+    "cobro_ref bigint"
   ],
   "copiloto_clientes": [
     "nombre text NOT NULL DEFAULT ''",
@@ -144,11 +147,14 @@
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_cobros": [
-    "comprobante_id bigint NOT NULL",
+    "comprobante_id bigint",
     "monto numeric NOT NULL",
     "medio text NOT NULL DEFAULT ''",
     "fecha date NOT NULL",
     "idem_key text",
+    "origen text NOT NULL DEFAULT 'manual'",
+    "cliente_ref bigint",
+    "presupuesto_ref bigint",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_conceptos": [

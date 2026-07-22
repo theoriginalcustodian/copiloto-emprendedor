@@ -7,6 +7,7 @@ Mismo patrón que `presupuestos_web.py`: deps inyectadas, se testea entero sin D
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Callable
@@ -15,6 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from gasto_store import CATEGORIAS, LIMITES, ORIGENES
+from trabajo_store import TrabajoInexistente
 
 LIMITE_LISTADO_DEFAULT = 50
 LIMITE_LISTADO_MAX = 200
@@ -85,7 +87,16 @@ def _validar(body: NuevoGastoBody) -> dict:
             **campos}
 
 
-def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable) -> FastAPI:
+class ImputacionBody(BaseModel):
+    """A qué trabajo se imputa el gasto. **`eslabon: null` desimputa** — y desimputar tiene que ser
+    tan fácil como imputar: si corregir un error costara más que cometerlo, el emprendedor deja los
+    datos mal antes que pelearse con la pantalla."""
+    eslabon: str | None = None
+    ref: int | None = None
+
+
+def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable,
+                      trabajo_store_factory: Callable | None = None) -> FastAPI:
     app = FastAPI(title="Copiloto Gastos")
 
     import asyncio
@@ -131,5 +142,49 @@ def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable
         if gasto is None:
             raise HTTPException(status_code=404, detail="gasto no encontrado")
         return gasto
+
+    # --- imputación al trabajo (addendum del hito 3) ------------------------------
+
+    def _trabajos(cliente_id: str):
+        if trabajo_store_factory is None:
+            raise HTTPException(status_code=503, detail="la imputación no está disponible")
+        return trabajo_store_factory(cliente_id)
+
+    @app.put("/gastos/{gasto_id}/imputacion")
+    async def imputar(gasto_id: int, body: ImputacionBody,
+                      cliente_id: str = Depends(require_tenant)) -> dict:
+        """Imputa el gasto a un trabajo, o lo desimputa con `{"eslabon": null}`.
+
+        🔴 **Imputar NUNCA es obligatorio.** El gasto ya entró a la caja sin esto; lo que se gana es el
+        margen de ese trabajo. Si imputar se volviera un requisito, el emprendedor dejaría de cargar
+        gastos — y perderíamos el dato bueno por exigir el perfecto.
+
+        Códigos: 400 eslabón desconocido · 404 el gasto **o el trabajo** no son de este tenant.
+        """
+        try:
+            resultado = await asyncio.to_thread(
+                _trabajos(cliente_id).imputar, gasto_id, body.eslabon, body.ref)
+        except TrabajoInexistente:
+            raise HTTPException(status_code=404, detail="ese trabajo no existe") from None
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        if resultado is None:
+            raise HTTPException(status_code=404, detail="gasto no encontrado")
+        return {"imputacion": resultado}
+
+    @app.get("/trabajos/{eslabon}/{ref}/margen")
+    async def margen(eslabon: str, ref: int, cliente_id: str = Depends(require_tenant)) -> dict:
+        """*«¿Cuánto me dejó este trabajo?»* — desde cualquiera de los tres eslabones, mismo resultado.
+
+        ⚠️ Devuelve `gastos_imputados` **al lado del número, siempre**. Un trabajo con 2 de 5 gastos
+        imputados muestra un margen excelente y es falso: un margen incompleto se ve igual que uno
+        bueno, y sin el conteo la pantalla no tiene con qué avisar.
+        """
+        try:
+            return await asyncio.to_thread(_trabajos(cliente_id).margen, eslabon, ref)
+        except TrabajoInexistente:
+            raise HTTPException(status_code=404, detail="ese trabajo no existe") from None
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
 
     return app
