@@ -118,8 +118,8 @@ export default function LayoutRaiz() {
                       arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
                   {([
-                    // Las 8 funciones del escritorio, en el orden de `TILES`.
-                    'facturacion', 'gastos', 'clientes', 'presupuestos',
+                    // Las 9 funciones del escritorio, en el orden de `TILES`.
+                    'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes',
                     'midia', 'inteligencia', 'contabilidad', 'ajustes',
                     // `apps` ya no es tile del escritorio —se llega desde Ajustes—, pero la pantalla
                     // es la misma y sigue siendo glass: sólo cambió desde dónde se entra.

@@ -16,7 +16,11 @@ describe('GlassIcon -- el catálogo de iconos glass', () => {
       ['chart', 'chat', 'clock', 'doc_search', 'folder', 'media', 'mic', 'note', 'settings', 'user',
        // `wallet` entró con Gastos (2026-07-21). Se AGREGÓ en vez de reusar `chart` —que ya es
        // Métricas—: dos tiles con el mismo glifo en el mismo grid no se distinguen de un vistazo.
-       'wallet'].sort()
+       'wallet',
+       // `ingreso` entró con la función Ingresos (2026-07-22). También se AGREGÓ en vez de reusar:
+       // sólo quedaban `mic` —que no distingue nada, en esta app se dicta TODO— y `media`, que no
+       // significa plata. Paleta fría a propósito, para no confundirse con el ámbar de `wallet`.
+       'ingreso'].sort()
     );
   });
 

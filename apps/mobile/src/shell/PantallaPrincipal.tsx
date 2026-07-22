@@ -39,9 +39,10 @@ import { PanelDeslizable } from './PanelDeslizable';
  */
 const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   facturacion: '/facturacion',
+  ingresos: '/ingresos',
   gastos: '/gastos',
-  clientes: '/clientes',
   presupuestos: '/presupuestos',
+  clientes: '/clientes',
   midia: '/midia',
   inteligencia: '/inteligencia',
   contabilidad: '/contabilidad',

@@ -14,7 +14,7 @@ import {
 /** Las keys esperadas, EXPLÍCITAS y no `TILES.length`: así agregar/sacar una función obliga a
  *  nombrarla acá, igual criterio que `GlassIcon.test.tsx` con el catálogo de íconos. */
 const KEYS_ESPERADAS: FuncionKey[] = [
-  'facturacion', 'gastos', 'clientes', 'presupuestos',
+  'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes',
   'midia', 'inteligencia', 'contabilidad', 'ajustes',
 ];
 

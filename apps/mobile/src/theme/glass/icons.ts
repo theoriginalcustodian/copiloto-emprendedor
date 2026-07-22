@@ -116,7 +116,8 @@ export type NombreIconoGlass =
    * con el mismo glifo en el mismo grid no se distinguen de un vistazo, que es exactamente para lo
    * que sirve un ícono. Cuando el catálogo cerrado no alcanza, la salida es ampliarlo, no repetir.
    */
-  | 'wallet';
+  | 'wallet'
+  | 'ingreso';
 
 /**
  * Tipado explícito (`Record<NombreIconoGlass, DefinicionIconoGlass>`), NO `as const satisfies` —
@@ -262,6 +263,37 @@ export const CATALOGO_ICONOS: Record<NombreIconoGlass, DefinicionIconoGlass> = {
       { tipo: 'linea', x1: 20, y1: 46, x2: 80, y2: 46, color: 'blanco', ancho: 4, opacidad: 0.9 },
       // El broche.
       { tipo: 'circulo', cx: 66, cy: 60, r: 6, color: 'blanco', relleno: true, opacidad: 0.92 },
+    ],
+  },
+  /**
+   * `ingreso` — plata que ENTRA: una flecha que baja hacia una bandeja.
+   *
+   * 🔴 **Se agregó al catálogo en vez de reusar uno libre**, y la alternativa era mala de las dos
+   * formas: quedaban `mic` y `media`. `mic` no distingue nada —en esta app se dicta TODO, no sólo los
+   * ingresos— y `media` (ojo/preview) no significa plata. Un tile con un glifo que no dice lo que hace
+   * manda a la pantalla equivocada, que es el mismo costo que ya se pagó eligiendo mal en Ajustes.
+   *
+   * 🔴 **Paleta FRÍA a propósito.** `wallet` (Gastos) es ámbar/naranja; si Ingresos usara los mismos
+   * tonos, las dos funciones simétricas —la plata que sale y la que entra— se verían iguales de un
+   * vistazo, que es justo cuando se mira un grid.
+   *
+   * La flecha apunta hacia ABAJO, no hacia arriba: una flecha ascendente se lee como crecimiento y
+   * eso ya es `chart` (Inteligencia de Negocio) en este mismo grid.
+   */
+  ingreso: {
+    shape: rr(20, 26, 60, 52, 12),
+    blobs: [
+      { cx: 40, cy: 42, r: 22, paleta: 'cyanTeal' },
+      { cx: 64, cy: 62, r: 20, paleta: 'cyanBlue' },
+    ],
+    glifo: [
+      // El asta de la flecha.
+      { tipo: 'linea', x1: 50, y1: 36, x2: 50, y2: 59, color: 'blanco', ancho: 4, opacidad: 0.92 },
+      // Las dos alas de la punta.
+      { tipo: 'linea', x1: 40, y1: 49, x2: 50, y2: 60, color: 'blanco', ancho: 4, opacidad: 0.92 },
+      { tipo: 'linea', x1: 60, y1: 49, x2: 50, y2: 60, color: 'blanco', ancho: 4, opacidad: 0.92 },
+      // La bandeja donde cae.
+      { tipo: 'linea', x1: 30, y1: 68, x2: 70, y2: 68, color: 'blanco', ancho: 4, opacidad: 0.9 },
     ],
   },
 };
