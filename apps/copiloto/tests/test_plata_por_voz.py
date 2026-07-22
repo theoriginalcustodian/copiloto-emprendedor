@@ -497,17 +497,21 @@ def test_la_guia_NO_promete_una_tool_que_no_existe():
     EXISTE — la guía se escribió a la vez que el hito que la haría cierta, y esa simultaneidad es la
     que la hace fácil de no ver. Acá una capacidad se publica sólo si su tool está viva.
     """
+    # Contra el CATALOGO, no TOOL_INDEX: este test miraba la MISMA lista que el bug no movia,
+    # asi que estaba verde mientras la guia publicaba una tool podada. Lo cazo un control vivo.
+    ofrecidas = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
     vivas = tool_catalog.capacidades_vivas()
     for cap in vivas["capacidades"]:
-        assert cap["tool"] in tool_catalog.TOOL_INDEX, \
-            f"la guía promete «{cap['ejemplos'][0]}» y {cap['tool']} no existe"
+        assert cap["tool"] in ofrecidas, \
+            f"la guía promete «{cap['ejemplos'][0]}» y {cap['tool']} no esta en el catalogo del agente"
 
 
 def test_facturar_por_voz_NO_esta_en_la_guia_todavia():
     """El control del test de arriba: si `_CAPACIDADES` no tuviera ninguna entrada muerta, el filtro
     pasaría siempre sin filtrar nada. `emitir_factura` está declarada y todavía no existe — cuando
     el hito 9 la agregue, este test falla y se borra, que es exactamente lo que tiene que pasar."""
-    assert "emitir_factura" not in tool_catalog.TOOL_INDEX
+    ofrecidas = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
+    assert "emitir_factura" not in ofrecidas
     rotulos = [c["tool"] for c in tool_catalog.capacidades_vivas()["capacidades"]]
     assert "emitir_factura" not in rotulos
 

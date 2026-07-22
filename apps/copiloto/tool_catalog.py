@@ -257,17 +257,25 @@ _CAPACIDADES = (
 def capacidades_vivas() -> dict:
     """Lo que el copiloto puede hacer HOY, servido para la pantalla de ayuda.
 
-    Una capacidad cuya tool no está en `TOOL_INDEX` **no se publica**: prometer de más es peor que no
-    tener guía, porque enseña a decir algo que falla y quema la confianza en todo lo demás. Prometer
-    de menos es gratis — si el emprendedor dice algo que anda y no estaba en la lista, gana.
+    Una capacidad cuya tool no está en el **catálogo que se le arma al LLM** no se publica: prometer de
+    más es peor que no tener guía, porque enseña a decir algo que falla y quema la confianza en todo lo
+    demás. Prometer de menos es gratis — si el emprendedor dice algo que anda y no estaba, gana.
+
+    🔴 **El filtro es `build_tool_catalog()`, NO `TOOL_INDEX`, y la diferencia costó un bug.**
+    `TOOL_INDEX` mapea *toda* tool que el executor sabe ejecutar a su kind de artifact, e incluye las
+    que el catálogo NO le ofrece al agente (una consultiva podada sigue teniendo su `_run_*` y su
+    entrada de índice). Filtrar por ahí publicaba `consultar_cliente` en la pantalla de ayuda **después
+    de podarla del catálogo** (medido contra el vivo, 2026-07-22). La lista que hay que respetar es la
+    ÚNICA que el emprendedor puede efectivamente disparar: la que el LLM recibe.
 
     Las expresiones de fecha salen de `FECHAS_QUE_ENTIENDO`, que es la tabla **medida** contra el
     resolvedor vivo. Es la misma fuente que usan las `description` del LLM y el aviso al emprendedor:
     las tres no pueden divergir porque son la misma constante.
     """
+    ofrecidas = {s["function"]["name"] for s in build_tool_catalog()}
     return {
         "capacidades": [{"tool": tool, "rotulo": rotulo, "ejemplos": list(ejemplos)}
-                        for tool, rotulo, ejemplos in _CAPACIDADES if tool in TOOL_INDEX],
+                        for tool, rotulo, ejemplos in _CAPACIDADES if tool in ofrecidas],
         "fechas": {"entiendo": list(FECHAS_QUE_ENTIENDO),
                    "si_no_esta": "Para cualquier otro día, tocá la fecha en la tarjeta."},
     }
