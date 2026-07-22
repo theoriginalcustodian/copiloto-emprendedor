@@ -34,7 +34,7 @@ _CONFIRM_CHOICES = [{"label": "Confirmar", "value": "confirm"}, {"label": "Cance
 _TOOLKIT_NAMES = {
     "googledocs": "Google Docs", "googledrive": "Google Drive", "gmail": "Gmail",
     "googlecalendar": "Google Calendar", "googlesheets": "Google Sheets",
-    "hubspot": "HubSpot", "instagram": "Instagram", "mercadopago": "Mercado Pago",
+    "mercadopago": "Mercado Pago",
 }
 
 

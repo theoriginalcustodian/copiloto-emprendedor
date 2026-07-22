@@ -28,7 +28,9 @@ class _Ctx:
 
 def test_read_executes_directly():
     ex = tool_catalog.make_tool_executor(_FakeGateway({"data": {"messages": []}}), now_iso_provider=lambda: "2026-07-04T00:00:00")
-    tr = ex("gmail_fetch", {"query": "is:unread"}, _Ctx(), confirmed=False, idem_key="run1-0")
+    # El ejemplo era `gmail_fetch`, podada en el hito 2. Lo que se prueba NO es esa tool: es que una
+    # READ se ejecute sin pedir confirmación. `docs_read_doc` es la read que quedó, y sirve igual.
+    tr = ex("docs_read_doc", {"document_id": "doc-1"}, _Ctx(), confirmed=False, idem_key="run1-0")
     assert tr.is_write is False
     assert tr.status == "ok"
 

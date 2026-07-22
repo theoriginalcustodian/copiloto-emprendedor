@@ -13,9 +13,13 @@ from services import gmail
 
 
 def test_gmail_declares_schemas_and_tools():
-    assert gmail.TOOLS == {"gmail_send": "send", "gmail_fetch": "fetch"}
+    # Poda del hito 2: `gmail_fetch` se fue (leer correos se quitó por la auditoría de Google), así
+    # que gmail queda con UNA sola tool. El test se actualiza a proposito — fijaba el inventario, y el
+    # inventario cambió por decision de producto, no por un bug.
+    assert gmail.TOOLS == {"gmail_send": "send"}
     names = {s["function"]["name"] for s in gmail.TOOL_SCHEMAS}
-    assert names == {"gmail_send", "gmail_fetch"}
+    assert names == {"gmail_send"}
+    assert "gmail_fetch" not in names, "volvio a exponerse una tool podada"
     send = next(s for s in gmail.TOOL_SCHEMAS if s["function"]["name"] == "gmail_send")
     props = send["function"]["parameters"]["properties"]
     assert {"to", "subject", "body"} <= set(props)
