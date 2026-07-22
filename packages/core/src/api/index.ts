@@ -213,6 +213,19 @@ export type {
  */
 export { registrarCobro, borrarCobro, listarCobros, listarImpagos } from './cobros';
 /**
+ * `/ingresos` — TODO lo que entró (facturas cobradas, MercadoPago, y lo dictado), distinguible por
+ * `origen`. ⚠️ Se llamaba `POST /cobros` y **no hay alias**. Lo único obligatorio es el monto: la app
+ * no puede exigir más. El 409 de duplicado es una PREGUNTA con su candidato, no un error.
+ */
+export { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso } from './ingresos';
+export type {
+  FaltanteIngreso,
+  Ingreso,
+  OrigenIngreso,
+  RegistrarIngresoRequest,
+  ResultadoIngreso,
+} from './ingresos';
+/**
  * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
  * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
  * castellano. **Borrar es desactivar** (`desactivarConcepto`), y reactivar es
