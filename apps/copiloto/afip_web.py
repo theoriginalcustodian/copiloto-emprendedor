@@ -57,12 +57,26 @@ class IngresoBody(CobroBody):
 
 class CompletarIngresoBody(BaseModel):
     """La respuesta al aviso de *«no me dijiste de quién ni cómo te pagaron»*. Parcial de verdad:
-    completa el MISMO ingreso, no crea otro."""
+    completa el MISMO ingreso, no crea otro.
+
+    🔴 **`fecha` está y `monto` NO, y la asimetría es deliberada.** Los dos los pidió la card
+    `ingreso_anotado`, pero no cuestan lo mismo:
+
+    - **`fecha`** corrige un dato que el resolvedor pudo entender mal (*«el lunes»* → hoy). Sin este
+      campo **no había forma de arreglarla nunca**: contestar por chat manda la respuesta al mismo
+      resolvedor que ya falló. No mueve plata.
+    - **`monto`** sí la mueve, y hacia atrás: hoy completar sólo AGREGA lo que faltaba y por eso no
+      lleva rastro de quién cambió qué. Si el monto pasa a ser editable eso deja de ser cierto, y si
+      se registra o se pisa es una decisión de producto — pendiente de PLANIFICACIÓN. Agregarlo
+      "por las dudas" sería un campo que el body acepta, nadie usa, y alguien usa dentro de seis
+      semanas sin saber que se había decidido que no.
+    """
     cliente_nombre: str | None = None
     medio: str | None = None
     concepto: str | None = None
     cliente_ref: int | None = None
     presupuesto_ref: int | None = None
+    fecha: str | None = None
 
 
 class PerfilBody(BaseModel):
@@ -365,7 +379,14 @@ def create_afip_app(
         """Completa lo que faltó, **en el mismo ingreso**. Es la segunda mitad de «guarda igual, pero
         avisa»: el aviso no sirve de nada si contestar crea un registro nuevo."""
         cambios = body.model_dump(exclude_unset=True)
-        ingreso = await asyncio.to_thread(_cobros(cliente_id).completar, ingreso_id, cambios)
+        # El `except` es nuevo y llegó CON `fecha`: hasta que este body la aceptó, `completar` no
+        # podía levantar `CobroInvalido` —sólo tocaba texto— así que no hacía falta. Agregar el campo
+        # sin esto dejaba una fecha ilegible saliendo como **500**: un error del servidor por un dato
+        # del usuario, que además la app no sabe leer. Mismo 400 que las otras dos puertas.
+        try:
+            ingreso = await asyncio.to_thread(_cobros(cliente_id).completar, ingreso_id, cambios)
+        except CobroInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
         if ingreso is None:
             raise HTTPException(status_code=404, detail="ingreso no encontrado")
         return {"ingreso": ingreso}

@@ -407,3 +407,88 @@ def test_los_cobros_de_FACTURA_no_entran_en_la_cuenta(conn_factory, tenants):
     store = CobroStore(conn_factory, a)
     store.registrar(_comprobante(conn_factory, a, "500.00"), idem_key="nc-fact")
     assert store.completitud_dictada()["total_medido"] == 0
+
+
+# ── la fecha del ingreso se corrige DESPUÉS, en la card `ingreso_anotado` ──────────────────────
+
+@necesita_pg
+def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_factory, tenants):
+    """🔴 Sin esto, una fecha dictada mal NO se podia arreglar por ningun lado.
+
+    El ingreso se guarda de una (§2.bis: un ingreso que espera confirmacion reintroduce la caja que
+    miente), asi que cuando el resolvedor no entiende «el lunes» el registro YA existe con fecha de
+    hoy. Y contestar por chat no sirve: la respuesta vuelve **al mismo resolvedor que acaba de
+    fallar**. La unica salida es tocarla en la card — y para eso el PATCH tiene que aceptarla.
+
+    Lo midio FRONTEND leyendo el handler vivo en vez de su propio cliente, que es donde habria
+    confirmado lo que ya creia.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=40000, idem_key="fecha-uno")
+    hoy = ingreso["fecha"]
+
+    corregido = store.completar(ingreso["id"], {"fecha": "2026-07-20"})
+
+    assert corregido["fecha"] == "2026-07-20", "la fecha corregida no viajo al UPDATE"
+    assert hoy != "2026-07-20", "control: el alta ya habia puesto esa fecha, el test no probaria nada"
+
+
+@necesita_pg
+def test_corregir_la_fecha_NO_toca_el_monto_ni_lo_demas(conn_factory, tenants):
+    """Parcial de verdad: la clave ausente no se toca. Un PATCH de fecha que pisara el monto seria
+    peor que no tener el campo — moveria plata sin que nadie lo pidiera."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=40000, cliente_nombre="Panaderia", medio="efectivo",
+                                     concepto="torta", idem_key="fecha-dos")
+
+    corregido = store.completar(ingreso["id"], {"fecha": "2026-07-19"})
+
+    assert corregido["monto"] == ingreso["monto"]
+    assert corregido["cliente_nombre"] == "Panaderia"
+    assert corregido["medio"] == "efectivo"
+    assert corregido["concepto"] == "torta"
+
+
+@necesita_pg
+def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory, tenants):
+    """El `except` de la capa web llego CON este campo, y por eso hay test.
+
+    Hasta que el body acepto `fecha`, `completar` solo tocaba texto y no podia levantar
+    `CobroInvalido`. Agregar el campo sin el `except` dejaba una fecha ilegible saliendo como **500**:
+    un error del servidor por un dato del usuario, que ademas la app no sabe leer.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=1000, idem_key="fecha-tres")
+
+    with pytest.raises(CobroInvalido):
+        store.completar(ingreso["id"], {"fecha": "el lunes pasado"})
+
+
+@necesita_pg
+def test_el_monto_NO_se_puede_cambiar_por_ahora__y_es_una_DECISION(conn_factory, tenants):
+    """🔴 Este test fija una decision PENDIENTE, no una limitacion tecnica.
+
+    `monto` es el otro campo que la card `ingreso_anotado` pide, y es el que mas importa: la card
+    existe porque un «quince mil» que Whisper oyo «cincuenta mil» solo se detecta viendolo. Pero
+    cambiar el monto de un ingreso YA guardado mueve la caja hacia atras, y hoy `completar` solo
+    AGREGA lo que faltaba — por eso no lleva rastro de quien cambio que.
+
+    Si PLANIFICACION decide que la card corrige el monto, este test se actualiza **a proposito**, con
+    la decision de si el cambio se registra o se pisa. Lo que no puede pasar es que alguien agregue el
+    campo sin enterarse de que habia una decision pendiente.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=15000, idem_key="monto-uno")
+
+    resultado = store.completar(ingreso["id"], {"monto": 50000})
+
+    assert resultado is None, "`monto` entro a la allowlist sin que la decision de producto exista"
+    # Se mide el EFECTO en la base, no la respuesta: `completar` podria devolver None y haber escrito
+    # igual. Es la leccion de la doble factura — el `if` respondia bien y el efecto era doble.
+    ingresos = store.listar_ingresos(limite=50)["ingresos"]
+    de_nuevo = [k for k in ingresos if k["id"] == ingreso["id"]][0]
+    assert de_nuevo["monto"] == ingreso["monto"], "el monto cambio: la caja se movio sin decision"
