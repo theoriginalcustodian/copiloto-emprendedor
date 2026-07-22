@@ -74,39 +74,19 @@ interface ClienteCrudo {
   email?: string | null;
   telefono?: string | null;
   /**
-   * ⚠️ **TRANSITORIO — el campo viejo, para la ventana en que el hito 8 esté escrito y no desplegado.**
+   * 🧾 **Acá vivía `contacto`, el campo viejo, con un shim que lo repartía por el `@`.** Existió
+   * mientras el hito 8 estaba escrito y sin desplegar, porque su ausencia se veía **igual que un
+   * cliente sin teléfono** — un dato desapareciendo sin error.
    *
-   * Sin esto el síntoma sería **un campo vacío sin ningún error**, que se ve exactamente igual que un
-   * cliente que no tiene teléfono: un dato que desaparece sin avisar. Se reparte con la MISMA regla
-   * que usa el backend en su migración (`partir_contacto`), no con una heurística nueva.
-   *
-   * **Se borra** cuando el `avance_` del hito 8 confirme el deploy con su sonda. Propietario: FRONTEND.
+   * **Deuda pagada el 2026-07-22**, y no por confianza: se leyó el contrato. `_COLS` de
+   * `cliente_store.py` ya no incluye `contacto`, y las siete consultas del store se arman con
+   * `_COLS`, así que ningún endpoint puede emitirlo. La migración además aborta si alguna fila queda
+   * con `contacto` y sin ninguno de los dos campos nuevos. La columna quedó huérfana en la base
+   * (deuda declarada de backend), pero **no viaja por el wire**.
    */
-  contacto?: string | null;
   notas?: string | null;
   origen?: string;
   creado_en?: string;
-}
-
-/**
- * `email`/`telefono` del backend, o —mientras el hito 8 no esté desplegado— el `contacto` viejo
- * repartido con la regla del backend: **el token con `@` es el mail, todo lo demás es el teléfono.**
- * Sin `@`, todo es teléfono, que es el caso real (el emprendedor cargó una cosa **o** la otra).
- */
-function repartirContacto(c: ClienteCrudo): { email: string | null; telefono: string | null } {
-  const email = c.email ?? null;
-  const telefono = c.telefono ?? null;
-  if (email != null || telefono != null) return { email, telefono };
-
-  const viejo = (c.contacto ?? '').trim();
-  if (viejo === '') return { email: null, telefono: null };
-  const tokens = viejo.split(/\s+/);
-  const conArroba = tokens.filter((t) => t.includes('@'));
-  const resto = tokens.filter((t) => !t.includes('@'));
-  return {
-    email: conArroba.length > 0 ? conArroba.join(' ') : null,
-    telefono: resto.length > 0 ? resto.join(' ') : null,
-  };
 }
 
 function normalizar(c: ClienteCrudo): Cliente {
@@ -118,7 +98,8 @@ function normalizar(c: ClienteCrudo): Cliente {
     docNro: c.doc_nro ?? null,
     condicionIva: c.condicion_iva ?? null,
     domicilio: c.domicilio ?? null,
-    ...repartirContacto(c),
+    email: c.email ?? null,
+    telefono: c.telefono ?? null,
     notas: c.notas ?? null,
     origen: origen === 'manual' || origen === 'voz' ? origen : 'derivado',
     creadoEn: c.creado_en ?? '',

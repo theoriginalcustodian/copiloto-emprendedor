@@ -221,7 +221,7 @@ export function FormularioCliente({
         etiqueta="Nombre"
         valor={nombre}
         onChange={setNombre}
-        placeholder="Panadería Los Tilos"
+        placeholder="ej.: Panadería Los Tilos"
         maxLength={200}
       />
 
@@ -243,7 +243,7 @@ export function FormularioCliente({
           etiqueta="Número"
           valor={docNro}
           onChange={setDocNro}
-          placeholder="30712345678"
+          placeholder="ej.: 30712345678"
           keyboardType="number-pad"
         />
       )}
@@ -263,7 +263,7 @@ export function FormularioCliente({
         etiqueta="Domicilio"
         valor={domicilio}
         onChange={setDomicilio}
-        placeholder="Av. Mitre 1234"
+        placeholder="ej.: Av. Mitre 1234"
         maxLength={200}
       />
       {/* 🔴 DOS campos, no uno de texto libre — y el teclado por tipo no es un mimo: es la diferencia

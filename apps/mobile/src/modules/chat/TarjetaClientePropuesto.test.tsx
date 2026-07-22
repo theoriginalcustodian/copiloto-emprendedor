@@ -63,10 +63,10 @@ function clienteGuardado(nombre: string, id = 7): Cliente {
   };
 }
 
-async function montar(p = propuesta()) {
+async function montar(p = propuesta(), texto?: string) {
   return render(
     <ThemeProvider>
-      <TarjetaClientePropuesto propuesta={p} />
+      <TarjetaClientePropuesto propuesta={p} texto={texto} />
     </ThemeProvider>,
   );
 }
@@ -121,6 +121,26 @@ describe('TarjetaClientePropuesto', () => {
       expect.objectContaining({ nombre: 'Ferretería El Tornillo SRL', origen: 'voz' }),
       undefined,
     );
+  });
+
+  it('🔴 el texto del copiloto se MUESTRA — es donde vive la explicación del documento que no cierra', async () => {
+    // La card reemplaza a la burbuja, así que lo que no se pase acá no se ve nunca. Cuando el
+    // dictado dice «CUIT» y el número tiene 7 dígitos, el backend manda `doc_tipo: null` y explica
+    // la contradicción SÓLO en este texto: el formulario únicamente puede mostrar un campo vacío.
+    await montar(
+      propuesta({ doc_tipo: null, doc_nro: '3071234' }),
+      'Dijiste CUIT pero un CUIT tiene 11 dígitos y ese número tiene 7.',
+    );
+
+    expect(screen.getByTestId('cliente-propuesto-texto')).toHaveTextContent(
+      'Dijiste CUIT pero un CUIT tiene 11 dígitos y ese número tiene 7.',
+    );
+  });
+
+  it('sin texto no se pinta un hueco', async () => {
+    await montar(propuesta(), '   ');
+
+    expect(screen.queryByTestId('cliente-propuesto-texto')).toBeNull();
   });
 
   it('🔴 un número dictado SIN tipo se ve y se puede completar — no desaparece', async () => {

@@ -315,36 +315,19 @@ describe('clientes.ts', () => {
       expect(res.status === 'ok' && res.clientes[0]?.telefono).toBe('11-5555-4444');
     });
 
-    it('⚠️ transitorio: si el backend todavía manda `contacto`, se reparte por el `@`', async () => {
-      // Sin esto el sintoma seria un campo vacio SIN error — identico a un cliente que no tiene
-      // telefono. Un dato que desaparece sin avisar. Misma regla que la migracion del backend.
+    it('un cliente sin mail ni teléfono llega con los dos en `null`, no en `""`', async () => {
+      // 🧾 Acá vivían los dos tests del shim del `contacto` viejo, borrado el 2026-07-22 con su
+      // condición de pago cumplida (`_COLS` del store ya no lo incluye — leído, no inferido).
+      // Queda el caso que sí sobrevive: ausente ≠ vacío. El `""` es un dato afirmado y haría que la
+      // ficha pinte un campo en blanco como si el emprendedor lo hubiera borrado.
       responder = () => respuesta(200, {
-        clientes: [
-          clienteCrudo({ email: undefined, telefono: undefined, contacto: 'pan@mail.com' }),
-          clienteCrudo({ id: 13, email: undefined, telefono: undefined, contacto: '11-5555-4444' }),
-        ],
-        total: 2,
-      });
-
-      const res = await listarClientes();
-      if (res.status !== 'ok') throw new Error('esperaba ok');
-
-      expect(res.clientes[0]).toMatchObject({ email: 'pan@mail.com', telefono: null });
-      expect(res.clientes[1]).toMatchObject({ email: null, telefono: '11-5555-4444' });
-    });
-
-    it('el caso mixto no pierde ninguna de las dos mitades', async () => {
-      responder = () => respuesta(200, {
-        clientes: [clienteCrudo({ email: undefined, telefono: undefined, contacto: 'pan@mail.com 11-5555-4444' })],
+        clientes: [clienteCrudo({ email: undefined, telefono: undefined })],
         total: 1,
       });
 
       const res = await listarClientes();
 
-      expect(res.status === 'ok' && res.clientes[0]).toMatchObject({
-        email: 'pan@mail.com',
-        telefono: '11-5555-4444',
-      });
+      expect(res.status === 'ok' && res.clientes[0]).toMatchObject({ email: null, telefono: null });
     });
   });
 

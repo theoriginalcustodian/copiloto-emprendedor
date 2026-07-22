@@ -47,6 +47,20 @@ type Estado =
 
 export interface TarjetaClientePropuestoProps {
   propuesta: DatosCliente;
+  /**
+   * Lo que el copiloto dijo junto a la propuesta.
+   *
+   * 🔴 **Se muestra porque la card REEMPLAZA a la burbuja, así que si no viaja acá no se ve NUNCA.**
+   * Y ahí muere información que no está en ningún campo: cuando el dictado dice «CUIT» y el número
+   * tiene 7 dígitos, el backend manda `doc_tipo: null` y **explica la contradicción en este texto**
+   * (*«dijo CUIT pero un CUIT tiene 11 dígitos y ese número tiene 7»*). El formulario sólo puede
+   * mostrar un campo vacío; el porqué está únicamente acá.
+   *
+   * A veces será redundante con lo que el formulario ya muestra. Se acepta: el costo de una línea de
+   * más es una línea de más, y el de perderla es que el emprendedor no entienda por qué su documento
+   * quedó a medias.
+   */
+  texto?: string;
   testID?: string;
 }
 
@@ -57,6 +71,7 @@ function abrirFicha(id: number): void {
 
 export function TarjetaClientePropuesto({
   propuesta,
+  texto,
   testID = 'cliente-propuesto',
 }: TarjetaClientePropuestoProps) {
   const tema = useTema();
@@ -127,6 +142,18 @@ export function TarjetaClientePropuesto({
         >
           Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.
         </Text>
+
+        {/* El texto del copiloto, debajo del cartel y arriba del formulario — misma estructura que
+            `TarjetaGastoPropuesto` (aviso → lo dicho → formulario). Es donde aparece la explicación
+            de un documento que no cierra. */}
+        {texto != null && texto.trim() !== '' && (
+          <Text
+            testID={`${testID}-texto`}
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontStyle: 'italic' }}
+          >
+            {texto.trim()}
+          </Text>
+        )}
 
         <FormularioCliente
           iniciales={propuesta}

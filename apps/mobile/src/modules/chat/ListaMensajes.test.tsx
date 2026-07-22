@@ -113,7 +113,10 @@ describe('ListaMensajes', () => {
 
     expect(screen.getByTestId('cliente-propuesto')).toBeTruthy();
     expect(screen.getByTestId('cliente-propuesto-formulario')).toBeTruthy();
-    expect(screen.queryByText('Entendí este cliente.')).toBeNull();
+    // 🔴 Y el texto del copiloto VIAJA a la card. Este test afirmaba lo contrario —que el texto
+    // desaparecía— y con eso fijaba el bug: la card reemplaza a la burbuja, así que ahí muere la
+    // explicación del backend de un documento que no cierra, que no está en ningún campo.
+    expect(screen.getByTestId('cliente-propuesto-texto')).toHaveTextContent('Entendí este cliente.');
   });
 
   it('una `cliente_propuesto` SIN nombre no pinta un formulario vacío — cae en burbuja', async () => {

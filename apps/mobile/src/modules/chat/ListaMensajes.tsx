@@ -172,7 +172,15 @@ export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
         // corregir el nombre que el LLM entendió mal.
         const clientePropuesto = leerClientePropuesto(mensaje.card);
         if (clientePropuesto) {
-          return <TarjetaClientePropuesto key={mensaje.id} propuesta={clientePropuesto} />;
+          // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
+          // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
+          return (
+            <TarjetaClientePropuesto
+              key={mensaje.id}
+              propuesta={clientePropuesto}
+              texto={mensaje.text}
+            />
+          );
         }
 
         const gate = mapearGate(mensaje);
