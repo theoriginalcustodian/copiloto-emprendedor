@@ -82,6 +82,38 @@ def test_un_documento_con_forma_rara_VIAJA_igual_y_avisa():
     assert "confirme" in tr.observation["result"].lower()
 
 
+def test_dijo_CUIT_y_el_numero_no_puede_serlo__no_lo_guarda_como_DNI():
+    """🔴 El caso que salió de medir el vivo, no de imaginarlo.
+
+    «CUIT 30-71234» normaliza a `3071234`: **siete dígitos, un DNI perfectamente válido**. Antes el
+    derivador decía 96, la card se veía impecable y el cliente entraba con el tipo equivocado — sin
+    error, sin aviso, sin nada raro que mirar. La única señal de que algo estaba mal era la palabra
+    que la persona había usado, y no había dónde guardarla.
+    """
+    tr = _ex()("registrar_cliente", {"nombre": "X", "doc_nro": "30-71234", "tipo_doc": "CUIT"},
+               _Ctx(), confirmed=False, idem_key="k")
+    assert tr.artifact.data["doc_nro"] == "3071234"     # el número queda, para que lo corrija
+    assert tr.artifact.data["doc_tipo"] is None         # y NO se lo anota como DNI
+    assert "CUIT" in tr.observation["result"]
+    assert "11 dígitos" in tr.observation["result"]     # el aviso nombra la contradicción
+
+
+def test_si_lo_dicho_y_el_largo_coinciden__gana_lo_dicho_sin_re_derivar():
+    tr = _ex()("registrar_cliente", {"nombre": "X", "doc_nro": "30-71234567-8", "tipo_doc": "CUIT"},
+               _Ctx(), confirmed=False, idem_key="k")
+    assert tr.artifact.data["doc_tipo"] == 80
+    assert "OJO" not in tr.observation["result"]
+
+
+def test_si_no_dijo_el_tipo__se_sigue_derivando_del_largo():
+    """La derivación no se toca: exigir el tipo cada vez que viene un número trabaría al que dicta
+    sólo el CUIT. El chequeo nuevo aplica **sólo** cuando hay una palabra que pueda contradecirlo."""
+    tr = _ex()("registrar_cliente", {"nombre": "X", "doc_nro": "12345678"}, _Ctx(),
+               confirmed=False, idem_key="k")
+    assert tr.artifact.data["doc_tipo"] == 96
+    assert "OJO" not in tr.observation["result"]
+
+
 def test_sin_nombre_repregunta_en_vez_de_fallar():
     tr = _ex()("registrar_cliente", {"nombre": "   "}, _Ctx(), confirmed=False, idem_key="k")
     assert tr.status == "ok"       # no es un error: falta un dato

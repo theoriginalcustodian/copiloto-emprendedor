@@ -367,9 +367,51 @@ def test_CONTROL_un_documento_de_largo_imposible_es_400_no_un_tipo_inventado():
 
 
 def test_el_doc_tipo_explicito_le_gana_a_la_derivacion():
+    """El tipo declarado gana sobre el derivado — **mientras los dos puedan ser ciertos**.
+
+    Acá el número tiene 11 dígitos: el derivador diría CUIT (80) y el declarado es CUIL (86). Los dos
+    son posibles con ese largo, así que manda el que la persona eligió.
+
+    ⚠️ Este test decía otra cosa hasta el 2026-07-22: usaba `doc_nro="26123456"` —**ocho** dígitos—
+    declarado como CUIT, y afirmaba que entraba. O sea: **estaba fijando el bug**. No lo cazó porque
+    fue escrito desde la misma creencia que el código —«el explícito gana, punto»— y un test que
+    comparte la premisa del código la confirma en vez de verificarla. Lo destapó una sonda por HTTP
+    contra el vivo, desde afuera.
+    """
     cli, _ = _app()
-    r = cli.post("/clientes", json={"nombre": "A", "doc_nro": "26123456", "doc_tipo": DOC_CUIT})
-    assert r.json()["doc_tipo"] == DOC_CUIT
+    r = cli.post("/clientes", json={"nombre": "A", "doc_nro": "20261234567", "doc_tipo": 86})
+    assert r.status_code == 201 and r.json()["doc_tipo"] == 86
+
+
+@pytest.mark.parametrize("doc_tipo,doc_nro,esperado", [
+    (DOC_CUIT, "26123456", "un CUIT tiene 11 dígitos"),      # 8 dígitos declarados CUIT
+    (DOC_DNI, "30712345678", "un DNI tiene 7 o 8 dígitos"),  # 11 dígitos declarados DNI
+])
+def test_un_tipo_que_CONTRADICE_el_largo_es_400__no_entra_callado(doc_tipo, doc_nro, esperado):
+    """🔴 «CUIT» con 8 dígitos no es un dato incompleto: es un dato **imposible**.
+
+    Salió de medir el vivo: dictar *«CUIT 30-71234»* guardaba un DNI —los 7 dígitos que quedan son un
+    DNI válido— sin error ni aviso. El chequeo previo sólo miraba el caso en que NADIE dijo el tipo,
+    que es justamente el caso en el que nadie puede ser contradicho.
+
+    Medido antes de agregarlo: **0 filas existentes** incumplen esto en las tres tablas, así que no
+    traba ninguna edición que hoy funcione.
+    """
+    cli, bucket = _app()
+    r = cli.post("/clientes", json={"nombre": "A", "doc_nro": doc_nro, "doc_tipo": doc_tipo})
+    assert r.status_code == 400, r.text
+    assert esperado in r.json()["detail"]
+    assert cli.get("/clientes").json()["total"] == 0      # y no escribió nada
+
+
+def test_CONTROL_un_tipo_que_NO_conocemos_pasa_sin_chequear():
+    """El control del anterior: la postura es rechazar lo IMPOSIBLE, no lo desconocido. Sin este
+    test, endurecer `LARGOS_DE_DOC` hasta bloquear todo lo que no esté en la lista pasaría inadvertido
+    — y el día que entre un pasaporte, fallaría acá con una regla mía vieja en vez de en AFIP con el
+    error de AFIP."""
+    cli, _ = _app()
+    r = cli.post("/clientes", json={"nombre": "A", "doc_nro": "AB1234", "doc_tipo": 94})
+    assert r.status_code == 201
 
 
 # --- §3.2 por HTTP, no sólo en la función pura ---

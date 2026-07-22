@@ -99,6 +99,38 @@ def inferir_doc_tipo(doc_nro: str) -> int | None:
     return None
 
 
+# Cuántos dígitos tiene cada tipo de documento. Sólo los que conocemos: un tipo que no está acá
+# **pasa sin chequear**, a propósito. La postura es rechazar únicamente lo IMPOSIBLE, no lo
+# desconocido — si mañana entra un pasaporte, que falle en AFIP con el error de AFIP y no acá con una
+# regla mía que se quedó vieja.
+LARGOS_DE_DOC = {DOC_CUIT: (11,), 86: (11,), DOC_DNI: (7, 8)}     # 86 = CUIL (`afip_rules.TipoDoc`)
+
+
+def documento_incoherente(doc_tipo, doc_nro) -> str | None:
+    """El motivo por el que ese tipo y ese número **no pueden ser ambos ciertos**, o `None`.
+
+    🔴 Nació de un caso medido, no de una hipótesis: dictar *«CUIT 30-71234»* —un CUIT incompleto—
+    guardaba un **DNI**. Los 7 dígitos que quedan son un DNI perfectamente válido, así que
+    `inferir_doc_tipo` decía 96, la card se veía impecable y no fallaba nada. La persona dijo «CUIT»
+    y el sistema anotó otra cosa, **con total confianza y sin un solo síntoma**.
+
+    Por eso el chequeo es de LARGO y no de código: el largo es lo único que puede contradecir de
+    verdad a lo que la persona declaró. Y por eso sólo aplica cuando el tipo viene **explícito** —si
+    nadie lo dijo, derivarlo del largo no puede contradecir a nadie.
+    """
+    if doc_tipo is None:
+        return None
+    largos = LARGOS_DE_DOC.get(int(doc_tipo))
+    if largos is None:
+        return None
+    digitos = len(normalizar_documento(doc_nro))
+    if digitos == 0 or digitos in largos:
+        return None
+    nombre = {DOC_CUIT: "un CUIT", 86: "un CUIL", DOC_DNI: "un DNI"}[int(doc_tipo)]
+    cuantos = " o ".join(str(x) for x in largos)
+    return f"{nombre} tiene {cuantos} dígitos y ese número tiene {digitos}"
+
+
 def es_consumidor_final(doc_tipo) -> bool:
     """🔴 Contrato §3.2: un comprobante a consumidor final NO genera cliente.
 

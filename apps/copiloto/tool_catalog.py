@@ -40,8 +40,9 @@ from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # n
 # Mismo criterio para clientes. `LIMITES` colisiona con el de gastos y por eso viaja con alias: son dos
 # tablas con dos topes distintos, y el día que uno cambie, importar el que no es recortaría un nombre a
 # 200 caracteres porque así lo pide la columna de OTRA tabla.
-from cliente_store import (LIMITES as LIMITES_CLIENTE, es_consumidor_final,  # noqa: E402
-                          inferir_doc_tipo, normalizar_documento)
+from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
+                          documento_incoherente, es_consumidor_final, inferir_doc_tipo,
+                          normalizar_documento)
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 
@@ -108,6 +109,12 @@ REGISTRAR_CLIENTE_SCHEMA = {"type": "function", "function": {
         "nombre": {"type": "string", "description": "cómo se llama el cliente o su negocio"},
         "doc_nro": {"type": "string", "description": "CUIT o DNI, sólo si lo dictó; los dígitos tal "
                                                      "como los dijo"},
+        # 🔴 La PALABRA que usó, no el código. Si dijo «CUIT», eso es un dato y hay que conservarlo:
+        # sin este campo, «CUIT 30-71234» (incompleto) se guardaba como DNI —los 7 dígitos que quedan
+        # son un DNI válido— sin error ni aviso. Ver `documento_incoherente`.
+        "tipo_doc": {"type": "string", "enum": ["CUIT", "DNI"],
+                     "description": "si dijo la palabra «CUIT» o «DNI», ponela acá tal como la dijo. "
+                                    "Omitilo si sólo dictó el número"},
         "domicilio": {"type": "string", "description": "la dirección, si la dijo"},
         "email": {"type": "string", "description": "el mail, si lo dijo"},
         "telefono": {"type": "string", "description": "el teléfono, si lo dijo"},
@@ -450,6 +457,21 @@ def _run_registrar_cliente(arguments, ctx, idem_key):
     if es_consumidor_final(doc_tipo):
         doc_tipo, doc = None, ""      # §3.1: un cliente NUNCA es 99 (no debería llegar; barato igual)
 
+    # 🔴 Lo que la persona DIJO gana sobre lo que el largo sugiere — y cuando se contradicen, no gana
+    # ninguno: gana la pregunta.
+    #
+    # Caso medido en el vivo: *«Anotá un cliente, CUIT 30-71234»* (un CUIT a medias) quedaba
+    # normalizado en `3071234`, siete dígitos, que es un **DNI perfectamente válido**. El derivador
+    # decía 96, la card se veía impecable y el cliente entraba con el tipo equivocado. Ni error, ni
+    # aviso, ni nada raro que mirar: la única señal de que algo estaba mal era la palabra que la
+    # persona había usado, y yo no tenía dónde guardarla.
+    dicho = {"CUIT": DOC_CUIT, "DNI": DOC_DNI}.get(str(arguments.get("tipo_doc") or "").upper())
+    contradice = bool(doc) and dicho is not None and documento_incoherente(dicho, doc)
+    if contradice:
+        doc_tipo = None               # ninguno de los dos: que lo resuelva él, con el número a la vista
+    elif dicho is not None:
+        doc_tipo = dicho              # lo dijo y es posible → se respeta, no se re-deriva
+
     def recortar(clave: str) -> str:
         return str(arguments.get(clave) or "").strip()[:LIMITES_CLIENTE[clave]]
 
@@ -459,7 +481,14 @@ def _run_registrar_cliente(arguments, ctx, idem_key):
                "notas": recortar("notas") or None, "origen": "voz"}
 
     aviso = ""
-    if doc and doc_tipo is None:
+    if contradice:
+        # El aviso NOMBRA la contradicción en vez de decir «revisá el documento»: la persona dijo
+        # «CUIT», el número no puede serlo, y lo único que la saca del error es que alguien le diga
+        # exactamente eso. Un «revisalo» genérico se lee y se ignora — no tiene con qué chocar.
+        palabra = "CUIT" if dicho == DOC_CUIT else "DNI"
+        aviso = (f" OJO: dijo «{palabra}» pero {documento_incoherente(dicho, doc)}. Decíselo con esas "
+                 f"palabras y pedile el número completo; quedó en la tarjeta para que lo corrija.")
+    elif doc and doc_tipo is None:
         aviso = (f" OJO: dictó «{doc}» como documento y eso no tiene forma de CUIT (11 dígitos) ni "
                  f"de DNI (7 u 8). Pedile que lo confirme; puede corregirlo en la tarjeta.")
     return ToolResult(
