@@ -441,3 +441,44 @@ def test_sin_store_cableado_degrada_a_error_y_no_explota(tool, args):
     que no puede — nunca reventar el turno con un `AttributeError` sobre `None`."""
     res = _correr(tool, args)
     assert res.status == "error"
+
+
+# ── la fecha dictada: lo que NO se entiende se dice ──────────────────────────────────────────────
+#
+# Medido contra el vivo el 2026-07-22: `resolve_date_range` NO entiende «hace dos días» —el caso
+# textual del operador— ni «el lunes», que la description de `registrar_gasto` promete literalmente.
+# Antes de esto el gasto quedaba con fecha de HOY y nadie se enteraba: sin error, sin hueco, con el
+# número prolijo. Coherente y falso.
+
+def test_una_fecha_que_no_se_entiende_avisa_y_NO_falla():
+    store = _CobroFake()
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace dos días"}, cobro=store)
+    assert len(store.ingresos) == 1, "fallar el registro pierde el ingreso por un detalle corregible"
+    assert store.ingresos[0]["fecha"] == "2026-07-22", "cae a hoy, no a una fecha inventada"
+    assert "hace dos días" in res.observation["result"], \
+        "el aviso tiene que nombrar lo que la persona dijo: un «revisá la fecha» genérico se ignora"
+    assert "HOY" in res.observation["result"]
+
+
+def test_una_fecha_que_SI_se_entiende_no_avisa_nada():
+    """El control. Si el aviso saliera siempre, el copiloto preguntaría por la fecha en cada dictado
+    y en dos días el emprendedor dejaría de leerlo — justo cuando importa."""
+    store = _CobroFake()
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "ayer"}, cobro=store)
+    assert store.ingresos[0]["fecha"] == "2026-07-21"
+    assert "OJO" not in res.observation["result"]
+
+
+def test_sin_fecha_dictada_tampoco_avisa():
+    """No dictar fecha no es un fallo de comprensión: hoy es lo correcto, no una suposición."""
+    store = _CobroFake()
+    res = _correr("registrar_ingreso", {"monto": "5000"}, cobro=store)
+    assert "OJO" not in res.observation["result"]
+
+
+def test_la_factura_cobrada_tambien_avisa():
+    store = _CobroFake(impagas=list(_UNA_IMPAGA))
+    res = _correr("marcar_factura_cobrada", {"factura": "42", "fecha_raw": "el martes pasado"},
+                  cobro=store)
+    assert len(store.cobros_de_factura) == 1
+    assert "el martes pasado" in res.observation["result"]
