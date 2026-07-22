@@ -160,6 +160,29 @@ function esRespuestaDelEndpoint(raw: unknown, clave: string): boolean {
   return typeof raw === 'object' && raw !== null && clave in raw;
 }
 
+/**
+ * 🔴 **`POST /gastos` y `GET /gastos/{id}` devuelven el gasto PELADO, no `{gasto: …}`.**
+ *
+ * A diferencia de presupuestos (`{presupuesto: …}`) y perfil (`{perfil: …}`), que sí envuelven.
+ * Medido contra el vivo el 2026-07-22 en un barrido de los 8 endpoints: los únicos dos sin envoltura
+ * son estos.
+ *
+ * **Esto ya causó un bug en device y vale contarlo:** el cliente exigía `'gasto' in raw`, la
+ * condición era falsa, y `crearGasto` devolvía `no_disponible` **sobre un `201` exitoso**. La card
+ * guardaba el gasto y a la vez mostraba *«los gastos todavía no están disponibles»* — con lo cual el
+ * emprendedor volvía a tocar Guardar y **creaba un segundo gasto**. El efecto ocurría y el mensaje lo
+ * negaba.
+ *
+ * Lo más incómodo: **mi propia sonda ya había medido esta forma** (verificó las 9 claves del gasto
+ * sobre la respuesta cruda) y los tests unitarios pasaban — porque estaban escritos desde la MISMA
+ * creencia equivocada que el código. Un test que comparte el supuesto del código no lo verifica.
+ *
+ * Se valida por `monto` además de `id`: `id` solo aparece en cualquier objeto, `monto` es de acá.
+ */
+function esGastoPelado(raw: unknown): boolean {
+  return typeof raw === 'object' && raw !== null && 'id' in raw && 'monto' in raw;
+}
+
 export interface ListarGastosParams {
   /** Default 50 del lado del backend. */
   limit?: number;
@@ -199,9 +222,10 @@ export async function obtenerGasto(
   id: number,
 ): Promise<ConDisponibilidad<{ gasto: Gasto }> | { status: 'no_encontrado' }> {
   try {
-    const raw = await apiClient.get<{ gasto: GastoCrudo }>(`/gastos/${id}`);
-    if (!esRespuestaDelEndpoint(raw, 'gasto')) return { status: 'no_disponible' };
-    return { status: 'ok', gasto: normalizar(raw.gasto) };
+    const raw = await apiClient.get<GastoCrudo>(`/gastos/${id}`);
+    // Pelado, no `{gasto: …}` — ver `esGastoPelado`.
+    if (!esGastoPelado(raw)) return { status: 'no_disponible' };
+    return { status: 'ok', gasto: normalizar(raw) };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
@@ -259,9 +283,10 @@ export async function crearGasto(
   req: CrearGastoRequest,
 ): Promise<ConDisponibilidad<{ gasto: Gasto }>> {
   try {
-    const raw = await apiClient.post<{ gasto: GastoCrudo }>('/gastos', aBodyCrudo(req));
-    if (!esRespuestaDelEndpoint(raw, 'gasto')) return { status: 'no_disponible' };
-    return { status: 'ok', gasto: normalizar(raw.gasto) };
+    const raw = await apiClient.post<GastoCrudo>('/gastos', aBodyCrudo(req));
+    // Pelado, no `{gasto: …}` — ver `esGastoPelado`. Este era el bug de la card en device.
+    if (!esGastoPelado(raw)) return { status: 'no_disponible' };
+    return { status: 'ok', gasto: normalizar(raw) };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     throw err;

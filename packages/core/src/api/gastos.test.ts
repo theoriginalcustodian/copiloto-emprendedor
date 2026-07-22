@@ -42,7 +42,17 @@ function crearTokensFake(): AlmacenTokens {
   };
 }
 
-/** Forma EXACTA medida contra el vivo el 2026-07-21 (`scratchpad/sonda_gastos.py`, 28/28). */
+/**
+ * Forma EXACTA medida contra el vivo (`scratchpad/sonda_gastos.py`, 28/28).
+ *
+ * 🔴 **`POST /gastos` y `GET /gastos/{id}` devuelven esto PELADO, no `{gasto: …}`** — a diferencia de
+ * presupuestos y perfil, que envuelven. Los fixtures de abajo lo usan sin envolver a propósito.
+ *
+ * Estos tests estuvieron **verdes contra la forma equivocada**: el fixture envolvía porque el código
+ * envolvía, y los dos venían de la misma suposición (calcar el cliente de presupuestos). Un test
+ * escrito desde la misma creencia que el código no lo verifica — lo confirma. El bug salió en device:
+ * la card guardaba el gasto y a la vez decía que la función no estaba disponible.
+ */
 function gastoCrudo(over: Record<string, unknown> = {}) {
   return {
     id: 2,
@@ -170,7 +180,7 @@ describe('gastos.ts', () => {
     });
 
     it('devuelve el gasto normalizado', async () => {
-      responder = () => respuesta(200, { gasto: gastoCrudo() });
+      responder = () => respuesta(200, gastoCrudo());
 
       const res = await obtenerGasto(2);
 
@@ -181,12 +191,31 @@ describe('gastos.ts', () => {
   });
 
   describe('crearGasto', () => {
+    it('🔴 un 201 devuelve `ok` CON el gasto — se mira la respuesta, no sólo el request', async () => {
+      // Este test no existía, y por eso el bug llegó al teléfono: **todos los demás tests de
+      // `crearGasto` assertan sobre `peticiones[0].cuerpoJson`** —lo que se MANDA— o sobre ramas de
+      // error. Ninguno miraba qué hace el cliente con una respuesta exitosa.
+      //
+      // El resultado: `crearGasto` devolvía `no_disponible` sobre un `201` que había guardado bien,
+      // la card mostraba "los gastos todavía no están disponibles" y el emprendedor volvía a tocar
+      // Guardar — creando un segundo gasto. Verde en 19 tests, roto en device.
+      responder = () => respuesta(201, gastoCrudo());
+
+      const res = await crearGasto({ monto: '15000.50', origen: 'manual' });
+
+      expect(res.status).toBe('ok');
+      if (res.status !== 'ok') return;
+      expect(res.gasto.id).toBe(2);
+      expect(res.gasto.monto).toBe('15000.50');
+      expect(res.gasto.categoria).toBe('mercaderia');
+    });
+
     it('manda sólo monto y origen cuando no hay más datos — y NO manda `fecha`', async () => {
       // 🔴 Omitir `fecha` es lo que deja que el backend ponga HOY EN ARGENTINA. Mandar `null` o una
       // fecha calculada del lado del cliente reintroduce el bug de zona horaria: a las 21:30 de
       // Argentina, `new Date().toISOString()` ya es mañana, y los días 30/31 caen en el mes
       // siguiente — o sea, en el resumen, que es la recompensa de la función.
-      responder = () => respuesta(201, { gasto: gastoCrudo() });
+      responder = () => respuesta(201, gastoCrudo());
 
       await crearGasto({ monto: '15000.50', origen: 'manual' });
 
@@ -195,7 +224,7 @@ describe('gastos.ts', () => {
     });
 
     it('traduce a snake_case sólo las claves presentes', async () => {
-      responder = () => respuesta(201, { gasto: gastoCrudo() });
+      responder = () => respuesta(201, gastoCrudo());
 
       await crearGasto({
         monto: '900.00',
