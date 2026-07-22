@@ -26,7 +26,15 @@ VENV="${UC_VENV:-/opt/uc-copiloto-venv}"
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MOTOR="motor"                                     # motor VENDORIZADO en el repo (Fase 2); antes: deploy/skeleton_kit/.../reference
 
-if [ "$#" -gt 0 ]; then PYTEST_ARGS="$*"; else PYTEST_ARGS="tests -q"; fi
+# El default incluye `../../motor`: ahí viven 41 tests —el ConversationWorkflow ReAct, el dispatch, el
+# barrido adversarial— que hasta el 2026-07-22 NO SE CORRÍAN NUNCA. No estaban rotos (41 passed la
+# primera vez que se ejecutaron), pero nadie se habría enterado si se rompían, y es la columna del
+# producto: la orquestación durable es el moat.
+#
+# El motor es un FORK DURO vendorizado (CLAUDE.md §2): se evoluciona acá, así que sus tests son
+# nuestros y su rojo es nuestro problema. Con args explícitos manda lo que pida quien invoca — esto
+# sólo cambia el default, que es lo que corre cuando nadie eligió nada.
+if [ "$#" -gt 0 ]; then PYTEST_ARGS="$*"; else PYTEST_ARGS="tests ../../motor -q"; fi
 
 # Opt-in explícito: sólo viaja si la sesión la exportó a propósito.
 if [ -n "${UC_TEST_DATABASE_URL:-}" ]; then
