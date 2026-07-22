@@ -112,3 +112,53 @@ def test_la_consulta_del_guard_ENCUENTRA_la_columna_hoy(conn):
     # Mientras el paso 2 no se ejecute, `contacto` sigue ahí. Cuando se ejecute, este assert cae —
     # y ese día se borra junto con la migración, que es exactamente cuándo debe caer.
     assert halla_contacto, "`contacto` ya no está: retirá también la migración y este assert"
+
+
+# ---------------------------------------------------------------------------
+# El invariante de los `_ensure_*`, que hasta hoy vivía sólo en los docstrings
+# ---------------------------------------------------------------------------
+
+def test_toda_columna_de_un_ensure_esta_declarada_en_el_manifiesto():
+    """Cada `_ensure_*` supone que su columna TAMBIEN esta en `uc_tables.json`. Sin eso, base virgen rota.
+
+    El docstring de `_ensure_reply_card_column` lo dice textual: *«sobre una DB fresca `IF EXISTS` la
+    vuelve no-op y el CREATE TABLE ya la incluye (declarada en uc_tables.json)»*. Las dos mitades son
+    necesarias: el `ALTER` migra la base que YA existe, y el manifiesto construye la que NO existe.
+
+    🔴 **Nada verificaba la segunda mitad, y se rompio.** `_ensure_presupuesto_estado` agrego `estado`
+    y `estado_actualizado_en` sin declararlas. Sobre una base virgen: la tabla todavia no existe -> el
+    `ALTER IF EXISTS` es no-op **y no protesta** -> el pase estandar crea la tabla sin la columna ->
+    `inteligencia_migrations.sql` la referencia y muere. Medido: pasada 1 FALLA, pasada 2 OK.
+
+    Nadie lo vio en 2 meses porque **en produccion la tabla siempre existia**. El unico escenario que
+    lo expone es el que nunca se corrio: levantar la base desde cero (DR, staging, region nueva).
+
+    Este test lo hace imposible por construccion: agregar un `_ensure_*` sin declarar su columna
+    en el manifiesto **no compila el gate**.
+    """
+    import json
+    import re
+    from pathlib import Path
+
+    aqui = Path(__file__).resolve().parent.parent
+    manifiesto = json.loads((aqui / "uc_tables.json").read_text(encoding="utf-8"))
+    fuente = (aqui / "provision.py").read_text(encoding="utf-8")
+
+    patron = re.compile(r"ALTER TABLE IF EXISTS \{SCHEMA\}\.(\w+)[^;]*?"
+                        r"ADD COLUMN IF NOT EXISTS (\w+)", re.S)
+    agregadas = sorted(set(patron.findall(fuente)))
+
+    # Control del propio instrumento: si el regex deja de matchear (alguien cambia la forma del
+    # ALTER), la lista queda vacia y el test pasaria sin verificar NADA. Un cero aca no es
+    # "ningun ensure": es el barrido roto.
+    assert len(agregadas) >= 8, (
+        f"el barrido encontro solo {len(agregadas)} columnas de `_ensure_*` — el regex esta roto, "
+        f"no es que no haya. Revisar el patron contra la forma actual del ALTER en provision.py")
+
+    sin_declarar = [f"{tabla}.{col}" for tabla, col in agregadas
+                    if not any(c.split()[0] == col for c in manifiesto.get(tabla, []))]
+
+    assert not sin_declarar, (
+        f"estas columnas las agrega un `_ensure_*` pero NO estan en uc_tables.json: {sin_declarar}. "
+        f"Sobre una base virgen el `ALTER IF EXISTS` es no-op silencioso y la tabla nace sin ellas. "
+        f"Declaralas en el manifiesto con el MISMO tipo/default que usa el ensure.")
