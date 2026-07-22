@@ -239,9 +239,16 @@ _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 # ya nació con ese bug: prometía «facturale 80 mil a la panadería» y `emitir_factura` NO EXISTE.
 #
 # Acá cada capacidad declara su rótulo y sus ejemplos, **y sólo se publica si su tool está viva** en
-# `TOOL_INDEX`. Entonces la poda del hito 2 y el alta de `emitir_factura` (hito 9) actualizan la guía
-# **solas**, y el DoD «los ejemplos coinciden con lo que existe» pasa a ser cierto por construcción en
-# vez de algo que alguien tiene que acordarse de verificar. Verificar a mano funciona una vez.
+# el catálogo que se le arma al LLM (`build_tool_catalog()`, NO `TOOL_INDEX`). La distinción costó un
+# bug 2026-07-22: filtrar por `TOOL_INDEX` publicaba `consultar_cliente` en la guía DESPUÉS de podarla
+# del catálogo, porque una tool podada conserva su entrada de índice. Entonces la poda del hito 2 y el
+# alta de `emitir_factura` (hito 9) actualizan la guía **solas**, y el DoD «los ejemplos coinciden con
+# lo que existe» pasa a ser cierto por construcción — verificar a mano funciona una vez.
+#
+# `_CAPACIDADES` puede listar tools que HOY no están en el catálogo (`emitir_factura`, hito 9): el
+# filtro las excluye hasta que existan, y el día que se agreguen aparecen solas. Lo que NO puede es
+# listar algo que ya no va a volver — por eso `consultar_cliente` se sacó de acá cuando la poda la
+# retiró: dejarla sería prometer una fila muerta que el filtro esconde pero el próximo lector cree viva.
 _CAPACIDADES = (
     ("registrar_gasto", "Gastos", ("pagué 15 mil de mercadería", "gasté 3.000 en nafta ayer")),
     ("registrar_ingreso", "Ingresos", ("me pagaron 85 mil",
@@ -249,7 +256,9 @@ _CAPACIDADES = (
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
     ("marcar_presupuesto", "Presupuestos", ("me aprobaron el de la panadería",)),
     ("registrar_cliente", "Clientes", ("anotá un cliente, Panadería Los Tilos",)),
-    ("consultar_cliente", "Consultas", ("¿cuánto me compró la panadería?",)),
+    # `emitir_factura` queda declarada aunque todavía no exista (hito 9): es una capacidad FUTURA que
+    # aparecerá sola. Es el control vivo del guard `test_facturar_por_voz_NO_esta_en_la_guia_todavia`
+    # — sin una entrada así, el filtro pasaría siempre sin filtrar nada.
     ("emitir_factura", "Facturar", ("facturale 80 mil a la panadería",)),
 )
 
