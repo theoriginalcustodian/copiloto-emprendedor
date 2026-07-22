@@ -40,6 +40,12 @@ from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # n
 # Mismo criterio para clientes. `LIMITES` colisiona con el de gastos y por eso viaja con alias: son dos
 # tablas con dos topes distintos, y el día que uno cambie, importar el que no es recortaría un nombre a
 # 200 caracteres porque así lo pide la columna de OTRA tabla.
+# Las constantes de estado y de origen salen de los stores por el mismo motivo que las categorías de
+# gasto: el enum que ve el LLM y lo que la base acepta tienen que ser la MISMA lista. Un `"aprobado"`
+# literal acá y un rename allá se descubren en producción, cuando el copiloto marca y no pasa nada.
+from cobro_store import COBRADA, ORIGEN_MANUAL  # noqa: E402
+from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E402
+                               TransicionInvalida)
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
                           documento_incoherente, es_consumidor_final, inferir_doc_tipo,
                           normalizar_documento)
@@ -132,6 +138,65 @@ CONSULTAR_CLIENTE_SCHEMA = {"type": "function", "function": {
                                                     "emprendedor ('la panadería', 'Pérez')"}},
         "required": ["nombre"]}}}
 
+REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
+    "name": "registrar_ingreso",
+    "description": "Anota plata que ENTRÓ y que no viene de una factura puntual ('me pagaron 85 mil', "
+                   "'cobré 40 mil de la panadería', 'me transfirieron 12000 por el trabajo del "
+                   "sábado'). LA GUARDA de una vez. Lo ÚNICO obligatorio es el monto: no le pidas "
+                   "cliente, medio de pago ni concepto antes de anotar — se piden después. Si lo que "
+                   "cobró es una factura que ya emitió, usá `marcar_factura_cobrada` en vez de ésta.",
+    "parameters": {"type": "object", "properties": {
+        "monto": {"type": "string", "description": "el monto en pesos, sólo el número, ej '85000'"},
+        "cliente": {"type": "string", "description": "quién le pagó, si lo dijo"},
+        "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta… si lo dijo"},
+        "concepto": {"type": "string", "description": "por qué le pagaron, si lo dijo"},
+        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural ('ayer', 'el "
+                                                       "lunes'). Omitilo si no lo dijo: se asume hoy."},
+        "confirmar_duplicado": {"type": "boolean",
+                                "description": "sólo si ya te avisé de un ingreso parecido y él "
+                                               "confirmó que es OTRO cobro distinto"}},
+        "required": ["monto"]}}}
+
+COMPLETAR_INGRESO_SCHEMA = {"type": "function", "function": {
+    "name": "completar_ingreso",
+    "description": "Agrega los datos que faltaban a un ingreso que YA anotaste en este mismo turno "
+                   "('fue de la panadería', 'me pagaron en efectivo'). Completa EL MISMO ingreso, no "
+                   "crea otro. Usala SIEMPRE que él conteste el aviso de lo que faltó — nunca vuelvas "
+                   "a llamar `registrar_ingreso` para eso.",
+    "parameters": {"type": "object", "properties": {
+        "cliente": {"type": "string", "description": "de quién fue el cobro"},
+        "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta…"},
+        "concepto": {"type": "string", "description": "por qué le pagaron"},
+        "ingreso_id": {"type": "integer", "description": "el id, si lo tenés a mano; si no, omitilo y "
+                                                         "se completa el último que anotaste"}},
+        "required": []}}}
+
+MARCAR_FACTURA_COBRADA_SCHEMA = {"type": "function", "function": {
+    "name": "marcar_factura_cobrada",
+    "description": "Registra que le pagaron una factura que ya emitió ('me pagaron la factura de la "
+                   "panadería', 'cobré la 42'). La saca de «te deben». Si no aclara cuál y hay varias "
+                   "impagas, te devuelvo la lista para que le preguntes.",
+    "parameters": {"type": "object", "properties": {
+        "factura": {"type": "string", "description": "cómo la nombró: el número ('la 42') o el "
+                                                     "cliente ('la de la panadería')"},
+        "monto": {"type": "string", "description": "sólo si fue un pago PARCIAL; omitilo si le pagaron "
+                                                   "todo, que es lo normal"},
+        "medio_pago": {"type": "string", "description": "efectivo, transferencia… si lo dijo"},
+        "fecha_raw": {"type": "string", "description": "cuándo le pagaron, en lenguaje natural. "
+                                                       "Omitilo si no lo dijo: se asume hoy."}},
+        "required": []}}}
+
+MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
+    "name": "marcar_presupuesto",
+    "description": "Mueve el estado de un presupuesto cuando el emprendedor cuenta cómo salió ('me "
+                   "aprobaron el de la panadería', 'ese no va', 'lo rechazaron'). Usala apenas lo "
+                   "mencione: si no, todos quedan «pendientes» para siempre.",
+    "parameters": {"type": "object", "properties": {
+        "presupuesto": {"type": "string", "description": "cómo lo nombró: el número o el cliente"},
+        "estado": {"type": "string", "enum": [APROBADO, DESESTIMADO],
+                   "description": "'aprobado' si se lo aceptaron, 'desestimado' si no va"}},
+        "required": ["estado"]}}}
+
 # `registrar_gasto` NO está en WRITE_TOOLS, y no es un descuido: **no escribe nada**. Devuelve una
 # propuesta que la app pinta como card editable, y el `POST /gastos` lo dispara el emprendedor al tocar
 # Guardar. Meterla en WRITE_TOOLS la mandaría al confirm-gate de sí/no, que es justo el mecanismo que el
@@ -174,7 +239,9 @@ def _required_of(tool_name: str) -> list:
 
 def build_tool_catalog() -> list[dict]:
     schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA,
-               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA, CONSULTAR_CLIENTE_SCHEMA]
+               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA, CONSULTAR_CLIENTE_SCHEMA,
+               REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
+               MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
@@ -185,7 +252,16 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               "consultar_actividad": ("activity",), "registrar_gasto": ("gasto",),
               # Ninguna de las dos va en WRITE_TOOLS: `registrar_cliente` PROPONE (el POST lo dispara
               # el emprendedor al tocar Guardar) y `consultar_cliente` es read puro.
-              "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",)}
+              "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",),
+              # Las cuatro del hito 3 PERSISTEN (a diferencia de gasto y cliente, que proponen) y aun
+              # así NO van en WRITE_TOOLS. El confirm-gate es sí/no sobre los MISMOS argumentos: acá
+              # no protege de nada —el riesgo real no es "¿lo hago?" sino "¿a cuál?", y eso ya lo
+              # cubre `_elegir_uno`, que se niega a elegir— y sí agrega la fricción que el addendum
+              # §2 prohíbe explícitamente para anotar plata que entró. Todo esto es reversible:
+              # borrar el ingreso, deshacer el cobro, volver a mover el presupuesto.
+              "registrar_ingreso": ("ingreso",), "completar_ingreso": ("ingreso_completar",),
+              "marcar_factura_cobrada": ("factura_cobrada",),
+              "marcar_presupuesto": ("presupuesto_estado",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -570,8 +646,279 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
                      "cliente": ficha, "resumen": resumen})
 
 
+# ── hito 3: las cuatro tools que hacen que la plata se registre HABLANDO ─────────────────────────
+# Las tres funciones del hito 3 —ingresos, factura cobrada, estado del presupuesto— ya viven por
+# HTTP desde los PRs #14/#15/#16. Sin estas tools sólo existen para quien abre la pantalla y toca,
+# que es justamente lo que este producto existe para no pedirle.
+
+
+def _fecha_dictada(fecha_raw, now_iso_provider):
+    """La fecha que dictó, o hoy. Mismo criterio que `registrar_gasto`: el reloj es el INYECTADO,
+    nunca `datetime.now()` — así "hoy" y "ayer" se resuelven contra el mismo instante y el test no
+    queda verde por casualidad hasta que alguien lo corre cruzando la medianoche."""
+    fecha = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
+    if fecha_raw:
+        rng = resolve_date_range(fecha_raw, now_iso=now_iso_provider(), tz=DEFAULT_TZ)
+        if rng:
+            fecha = datetime.fromisoformat(rng["since"]).date()
+    return fecha
+
+
+# Lo que el backend llama `falta`, dicho como lo diría una persona. El LLM lee esto y lo repite; si
+# leyera las claves técnicas, el copiloto diría «faltó medio» — que no es español.
+_FALTA_HUMANA = {"cliente": "de quién", "medio": "cómo te pagaron", "concepto": "de qué era"}
+
+
+def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_store_factory):
+    """*«Me pagaron 85 mil»* → **queda guardado**, y recién después el copiloto dice qué faltó.
+
+    🔴 **Guarda primero y pregunta después — al revés que `registrar_gasto`, y la asimetría es
+    deliberada.** El addendum §2.bis lo fija con el diálogo textual del operador (*«Anotado, $85.000
+    de hoy. No me dijiste de quién ni cómo te pagaron — ¿lo agregamos?»*) y el DoD lo mide en dos
+    ítems: *se guarda* y *contestar completa el MISMO ingreso*. Un ingreso que espera confirmación
+    para existir reintroduce la caja que miente: el emprendedor dicta, no toca nada, y la plata que
+    entró no queda en ningún lado.
+
+    El monto mal transcripto —el riesgo que en gastos justifica la card previa— acá se cubre por
+    otro lado: el copiloto **dice el monto en voz alta** al confirmar (*«Anotado, $85.000»*), que es
+    donde se escucha el error, y `DELETE /ingresos/{id}` deshace sin costo. Que borrar sea barato es
+    lo que permite que guardar sea rápido.
+
+    ⚠️ El **duplicado** sí se pregunta ANTES, y por eso está de este lado del `registrar_suelto`:
+    un dato que falta se ve y se completa cuando aparezca; un ingreso de más infla la caja y no se
+    ve nunca.
+    """
+    if cobro_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo anotar ingresos ahora mismo"})
+    monto = _monto_dictado(arguments.get("monto"))
+    if monto is None:
+        # `ok` y no `error`: no falló nada, falta el único dato obligatorio. Con `error` el loop se
+        # disculpa; con esto puede preguntarlo y seguir. Mismo criterio que gasto y cliente.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Falta el monto. Preguntale cuánto fue, sin "
+                                                 "repetir el resto: lo demás ya lo tengo."})
+
+    store = cobro_store_factory(ctx.cliente_id)
+    cliente = str(arguments.get("cliente") or "").strip()[:120]
+    if not arguments.get("confirmar_duplicado"):
+        candidato = store.posible_duplicado(monto=monto, cliente_nombre=cliente)
+        if candidato:
+            # No guarda y NO es un error: es una pregunta. El LLM vuelve a llamar la tool con
+            # `confirmar_duplicado` si el emprendedor dice que son dos cobros distintos — él sabe
+            # mejor que el sistema si le pagaron dos veces lo mismo. Avisa, no prohíbe.
+            quien = f" de {candidato['cliente_nombre']}" if candidato.get("cliente_nombre") else ""
+            return ToolResult(
+                tool_call_id=idem_key, is_write=False, status="ok",
+                observation={"result": f"OJO, todavía NO lo anoté: el {candidato['fecha']} ya "
+                                       f"registré un ingreso de {_plata(candidato['monto'])}{quien}"
+                                       f" ({candidato['origen']}). Preguntale si es OTRO cobro o el "
+                                       f"MISMO. Si dice que es otro, volvé a llamar "
+                                       f"`registrar_ingreso` con confirmar_duplicado=true.",
+                             "candidato": candidato})
+
+    ingreso = store.registrar_suelto(
+        monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
+        fecha=_fecha_dictada(arguments.get("fecha_raw"), now_iso_provider),
+        cliente_nombre=cliente, concepto=str(arguments.get("concepto") or "").strip()[:500],
+        # El `tool_call_id` como clave de idempotencia: la activity es at-least-once y un reintento
+        # de Temporal con el mismo turno NO puede dejar dos ingresos. Lo garantiza el índice único
+        # parcial `copiloto_cobros_idem_uk`, no un `if` — ver [[idempotencia-con-un-if-tiene-ventana]].
+        idem_key=idem_key)
+
+    falta = [_FALTA_HUMANA[c] for c in (ingreso.get("falta") or []) if c in _FALTA_HUMANA]
+    aviso = (f" No te dijo {' ni '.join(falta)}: pedíselo en la MISMA línea, sin insistir. Si "
+             f"contesta, usá `completar_ingreso` — NO vuelvas a llamar `registrar_ingreso`, "
+             f"quedaría anotado dos veces.") if falta else ""
+    # `is_write=True` acá y no en los returns de arriba: es el HECHO (esta rama persistió, las otras
+    # no). El gate no se dispara por esto —depende de `WRITE_TOOLS`, donde la tool no está— así que
+    # el flag puede decir la verdad sin cambiar el comportamiento.
+    return ToolResult(
+        tool_call_id=idem_key, is_write=True, status="ok",
+        observation={"result": f"Anotado y GUARDADO: {_plata(ingreso['monto'])} del "
+                               f"{ingreso['fecha']}. Confirmáselo en una línea corta diciendo el "
+                               f"monto, para que pueda oír si entendí mal.{aviso}",
+                     "ingreso": ingreso},
+        artifact=Artifact(kind="ingreso_guardado", data=ingreso))
+
+
+def _run_completar_ingreso(arguments, ctx, idem_key, cobro_store_factory):
+    """La respuesta al aviso: *«fue de la panadería, en efectivo»* → completa **el mismo ingreso**.
+
+    🔴 **Sin `ingreso_id` completa el último dictado, y eso no es una comodidad: es lo que hace que
+    el turno funcione.** El id viaja en la observación del turno anterior, y el historial que siembra
+    el turno siguiente no garantiza conservarlo. Si esta tool dependiera de que el modelo lo recuerde,
+    fallaría justo en el caso que el DoD mide —contestar el aviso— y el fallo sería *crear otro
+    ingreso*, que es el daño exacto que la función viene a evitar.
+    """
+    if cobro_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo completar ingresos ahora mismo"})
+    datos = {}
+    for clave, campo in (("cliente", "cliente_nombre"), ("medio_pago", "medio"),
+                         ("concepto", "concepto")):
+        # `in arguments` y no `.get()`: la clave ausente NO se toca (parcial de verdad). Con `.get()`
+        # una respuesta que sólo aclara el medio borraría el cliente que ya estaba puesto.
+        if clave in arguments and str(arguments[clave] or "").strip():
+            datos[campo] = str(arguments[clave]).strip()
+    if not datos:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No entendí qué dato agregar. Preguntale de quién "
+                                                 "fue o cómo le pagaron."})
+
+    store = cobro_store_factory(ctx.cliente_id)
+    ingreso_id = arguments.get("ingreso_id")
+    if not ingreso_id:
+        dictados = [i for i in store.listar_ingresos(limite=20)["ingresos"]
+                    if i.get("origen") == ORIGEN_MANUAL]
+        if not dictados:
+            return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                              observation={"result": "No encontré un ingreso dictado reciente para "
+                                                     "completar. Preguntale a cuál se refiere."})
+        ingreso_id = dictados[0]["id"]
+
+    ingreso = store.completar(int(ingreso_id), datos)
+    if ingreso is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No pude completar ese ingreso. Puede que ya no "
+                                                 "esté; preguntale si lo quiere anotar de nuevo."})
+    falta = [_FALTA_HUMANA[c] for c in (ingreso.get("falta") or []) if c in _FALTA_HUMANA]
+    cola = f" Todavía falta {' y '.join(falta)}, pero NO se lo vuelvas a pedir." if falta else ""
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": f"Listo, lo agregué al MISMO ingreso de "
+                                             f"{_plata(ingreso['monto'])} (no creé otro). "
+                                             f"Confirmáselo en una línea.{cola}",
+                                   "ingreso": ingreso})
+
+
+def _elegir_uno(candidatos, etiqueta, como_se_llama):
+    """Uno solo, o la lista para que el agente pregunte. **Nunca elige por su cuenta.**
+
+    Mismo criterio que `consultar_cliente`, y por el mismo motivo: acá el error no se ve. Marcar
+    cobrada la factura equivocada o desestimar el presupuesto que no era se parece exactamente a
+    haber hecho lo correcto — no hay ningún síntoma que le avise al emprendedor.
+    """
+    if not candidatos:
+        return None, f"No encontré {etiqueta}. Preguntale a cuál se refiere."
+    if len(candidatos) > 1:
+        nombres = ", ".join(como_se_llama(c) for c in candidatos[:5])
+        cola = " (y hay más)" if len(candidatos) > 5 else ""
+        return None, (f"Hay varios que coinciden: {nombres}{cola}. Preguntale a cuál se refiere. "
+                      f"NO elijas vos.")
+    return candidatos[0], None
+
+
+def _coincide(texto: str, *campos) -> bool:
+    """¿El texto dictado aparece en alguno de los campos? Comparación laxa a propósito: el
+    emprendedor dice «la panadería» o «la 42», no el nombre legal ni `0001-00000042`."""
+    aguja = (texto or "").strip().lower()
+    if not aguja:
+        return False
+    return any(aguja in str(c or "").lower() for c in campos)
+
+
+def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobro_store_factory):
+    """*«Me pagaron la factura de la panadería»* → registra el cobro y la saca de «te deben»."""
+    if cobro_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo registrar cobros ahora mismo"})
+    store = cobro_store_factory(ctx.cliente_id)
+    impagas = store.impagos()["comprobantes"]
+    referencia = str(arguments.get("factura") or "").strip()
+    candidatos = ([c for c in impagas if _coincide(referencia, c["nro"], c["receptor_nombre"])]
+                  if referencia else impagas)
+
+    factura, problema = _elegir_uno(
+        candidatos, "ninguna factura impaga que coincida",
+        lambda c: f"«{c['nro']} de {c['receptor_nombre'] or 'sin nombre'} "
+                  f"por {_plata(c['saldo'])}»")
+    if problema:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": problema,
+                                       "candidatos": [{"nro": c["nro"], "saldo": c["saldo"],
+                                                       "receptor": c["receptor_nombre"]}
+                                                      for c in candidatos[:6]]})
+
+    monto = _monto_dictado(arguments.get("monto")) if arguments.get("monto") else None
+    cobro, resumen = store.registrar(
+        factura["id"], monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
+        fecha=_fecha_dictada(arguments.get("fecha_raw"), now_iso_provider),
+        idem_key=idem_key)          # at-least-once: el retry NO puede cobrar dos veces la factura
+    queda = ("" if resumen["estado"] == COBRADA
+             else f" Todavía le quedan {_plata(resumen['saldo'])} por pagar.")
+    return ToolResult(
+        tool_call_id=idem_key, is_write=True, status="ok",
+        observation={"result": f"Registré {_plata(cobro['monto'])} de la factura {factura['nro']}"
+                               f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda} "
+                               f"Confirmáselo en una línea corta.",
+                     "cobro": cobro, "resumen": resumen})
+
+
+def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory):
+    """*«Me aprobaron el presupuesto de la panadería»* / *«ese no va»* → mueve el estado.
+
+    El estado del presupuesto es lo único de la cadena que **nadie descubre solo**: la factura se
+    entera cuando se emite y el cobro cuando entra la plata, pero que un presupuesto se aprobó lo
+    sabe una persona y no lo sabe el sistema. Si sólo se puede marcar tocando la pantalla, en dos
+    semanas todos figuran «pendientes» y el aviso de *«3 presupuestos sin respuesta»* pasa a ser
+    ruido — un estado que nadie actualiza es una mentira que envejece.
+    """
+    if presupuesto_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo tocar los presupuestos ahora mismo"})
+    nuevo = str(arguments.get("estado") or "").strip().lower()
+    if nuevo not in (APROBADO, DESESTIMADO):
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No me quedó claro si se lo aprobaron o lo "
+                                                 "descartaron. Preguntáselo."})
+
+    store = presupuesto_store_factory(ctx.cliente_id)
+    referencia = str(arguments.get("presupuesto") or "").strip()
+    # Sólo los que TODAVÍA se pueden mover: si entraran los ya resueltos, «la panadería» podría
+    # resolverse al presupuesto que él aprobó el mes pasado y el copiloto respondería un 409 raro
+    # en vez de trabajar sobre el que está esperando respuesta.
+    abiertos = [p for p in store.listar(limit=100)
+                if p["estado"] in TRANSICIONES and nuevo in TRANSICIONES[p["estado"]]]
+    candidatos = ([p for p in abiertos if _coincide(referencia, p["numero"],
+                                                    p["receptor"]["nombre"], p["concepto"])]
+                  if referencia else abiertos)
+
+    presupuesto, problema = _elegir_uno(
+        candidatos, f"ningún presupuesto que se pueda marcar como {nuevo}",
+        lambda p: f"«{p['numero']} de {p['receptor']['nombre'] or 'sin nombre'} "
+                  f"por {_plata(p['total'])}»")
+    if problema:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": problema,
+                                       "candidatos": [{"numero": p["numero"], "total": p["total"],
+                                                       "receptor": p["receptor"]["nombre"]}
+                                                      for p in candidatos[:6]]})
+    try:
+        actualizado = store.cambiar_estado(presupuesto["id"], nuevo)
+    except TransicionInvalida:
+        # Se movió entre que lo listamos y lo escribimos (él desde el teléfono, el copiloto por voz).
+        # Error de NEGOCIO como observación, nunca excepción: una excepción acá dispara el retry del
+        # loop contra algo que reintentar no arregla. Ver `agente-loop-tool-failure-retry-infinito`.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": f"Ese presupuesto ya no está pendiente — alguien lo "
+                                                 f"movió recién. Decíselo y preguntá si igual quiere "
+                                                 f"marcarlo {nuevo}."})
+    if actualizado is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No pude encontrar ese presupuesto. Preguntale a "
+                                                 "cuál se refiere."})
+    verbo = "aprobado" if nuevo == APROBADO else "descartado"
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": f"Marqué el presupuesto {actualizado['numero']} de "
+                                             f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
+                                             f"({_plata(actualizado['total'])}) como {verbo}. "
+                                             f"Confirmáselo en una línea corta.",
+                                   "presupuesto": actualizado})
+
+
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None,
-                       cliente_store_factory=None):
+                       cliente_store_factory=None, cobro_store_factory=None,
+                       presupuesto_store_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad."""
@@ -605,6 +952,17 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                 return _run_registrar_cliente(arguments, ctx, idem_key)
             if kind == "cliente_consulta":
                 return _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory)
+            # ── 1ra clase: hito 3 — la plata se registra hablando (persisten; sin gate, ver TOOL_INDEX) ─
+            if kind == "ingreso":
+                return _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider,
+                                              cobro_store_factory)
+            if kind == "ingreso_completar":
+                return _run_completar_ingreso(arguments, ctx, idem_key, cobro_store_factory)
+            if kind == "factura_cobrada":
+                return _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider,
+                                                   cobro_store_factory)
+            if kind == "presupuesto_estado":
+                return _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
 
             # ── servicio (Composio vía módulo plug-in) ────────────────────────────────────────────
             _, mod, op = entry
