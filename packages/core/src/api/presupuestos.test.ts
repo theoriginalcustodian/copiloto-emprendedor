@@ -308,6 +308,29 @@ describe('presupuestos.ts', () => {
       expect(res).toEqual({ status: 'falta_perfil_fiscal' });
     });
 
+    it('🔴 la forma REAL del 409: `factura_id` viene bajo `detail`, no en la raíz', async () => {
+      // El control que faltaba. Los tres tests de arriba montan el body PLANO —la forma que yo
+      // supuse— y por eso pasaban con un lector que sólo miraba la raíz. Pero
+      // `HTTPException(409, detail={...})` de FastAPI serializa `{"detail": {...}}`
+      // (`presupuestos_web.py:264`, leído el 2026-07-22): contra el backend real el discriminador
+      // devolvía `undefined` SIEMPRE, y "este presupuesto ya se facturó" se mostraba como
+      // *«falta tu perfil fiscal»* — mandando al emprendedor a cargar un CUIT que ya tenía.
+      responder = () =>
+        respuesta(409, { detail: { mensaje: 'el presupuesto ya fue facturado', factura_id: 'afip-factura-vieja' } });
+
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'ya_facturado',
+        facturaId: 'afip-factura-vieja',
+      });
+    });
+
+    it('y el de falta-de-CUIT, que SÍ viene con detail string, sigue cayendo donde corresponde', async () => {
+      // El control negativo del test de arriba: si el lector empezara a ver `factura_id` en cualquier
+      // lado, este pasaría a "ya facturado" y nadie se enteraría.
+      responder = () => respuesta(409, { detail: 'falta el perfil fiscal (CUIT)' });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+    });
+
     it('sigue discriminando aunque el backend reescriba el copy del detail', async () => {
       // El control de que la discriminación es ESTRUCTURAL: mismo texto en los dos 409, y aun así
       // cada uno cae donde corresponde. Con un `detail.includes('facturado')` este test sería rojo.

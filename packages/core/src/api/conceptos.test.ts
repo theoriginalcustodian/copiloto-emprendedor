@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe('listarConceptos', () => {
-  it('trae el catálogo con activos e inactivos, sin filtrar nada', async () => {
+  it('por defecto NO pide los inactivos — el backend ya los filtra', async () => {
     responder = () =>
       respuesta(200, {
         conceptos: [
@@ -61,10 +61,19 @@ describe('listarConceptos', () => {
 
     const res = await listarConceptos();
 
+    expect(peticiones[0].path).not.toContain('incluir_inactivos');
     expect(res.status).toBe('ok');
-    // El inactivo TIENE que llegar: es lo que permite reactivarlo. Si el cliente lo escondiera, el
-    // emprendedor lo volvería a crear y se chocaría con un 409 sobre algo que no ve.
     if (res.status === 'ok') expect(res.conceptos.map((c) => c.activo)).toEqual([true, false]);
+  });
+
+  it('🔴 el ABM tiene que pedir los inactivos EXPLÍCITAMENTE', async () => {
+    // Sin esto, un concepto desactivado desaparece de la única pantalla desde la que se lo podría
+    // reactivar — y nadie lo nota, porque ver sólo los activos es exactamente lo que se espera.
+    responder = () => respuesta(200, { conceptos: [] });
+
+    await listarConceptos({ incluirInactivos: true });
+
+    expect(peticiones[0].path).toContain('incluir_inactivos=true');
   });
 
   it('🔴 un concepto SIN precio queda en `null`, nunca en "0"', async () => {

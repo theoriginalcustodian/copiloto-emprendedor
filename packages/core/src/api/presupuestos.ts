@@ -449,9 +449,41 @@ export type ResultadoFacturar =
  * que ya tiene. La presencia de un campo es estructura; el texto es copy.
  */
 function facturaIdDelBody(body: unknown): string | null | undefined {
-  if (typeof body !== 'object' || body === null || !('factura_id' in body)) return undefined;
-  const valor = (body as { factura_id?: unknown }).factura_id;
-  return typeof valor === 'string' ? valor : null;
+  if (typeof body !== 'object' || body === null) return undefined;
+  // 🔴 **Y bajo `detail`, que es donde REALMENTE viene.** `HTTPException(409, detail={...})` de
+  // FastAPI serializa `{"detail": {"mensaje": …, "factura_id": …}}`: en la raíz no hay ningún
+  // `factura_id`. Mirando sólo la raíz, este discriminador devolvía `undefined` **siempre**, y el
+  // "ya se facturó" se mostraba como *«falta tu perfil fiscal»* — mandando al emprendedor a Ajustes
+  // a cargar un CUIT que ya tenía, por una factura que ya existía. Verificado leyendo
+  // `presupuestos_web.py:264` el 2026-07-22; el test viejo montaba el body plano, así que confirmaba
+  // la misma creencia equivocada que el código en vez de verificarla.
+  const raiz = body as Record<string, unknown>;
+  const detalle = typeof raiz.detail === 'object' && raiz.detail !== null
+    ? (raiz.detail as Record<string, unknown>)
+    : {};
+  for (const nivel of [raiz, detalle]) {
+    if ('factura_id' in nivel) {
+      const valor = nivel.factura_id;
+      return typeof valor === 'string' ? valor : null;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * El texto que el backend puso en un `detail` que es OBJETO. `ApiError.detail` sólo se llena cuando el
+ * `detail` era string (`client.ts:59`), así que con un detalle estructurado queda `undefined` y el
+ * motivo real —el único dato que le dice al emprendedor qué hacer en su lugar— se perdía.
+ */
+function mensajeDelBody(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const detalle = (body as { detail?: unknown }).detail;
+  if (typeof detalle === 'string') return detalle;
+  if (typeof detalle === 'object' && detalle !== null) {
+    const m = (detalle as { mensaje?: unknown }).mensaje;
+    if (typeof m === 'string' && m.trim() !== '') return m;
+  }
+  return null;
 }
 
 /**
@@ -525,7 +557,10 @@ export async function cambiarEstadoPresupuesto(
     if (err instanceof ApiError && err.status === 409) {
       // El backend explica cuál de las dos transiciones prohibidas fue. Reescribirlo acá perdería
       // el único dato que le sirve al emprendedor para saber qué hacer en su lugar.
-      return { status: 'transicion_invalida', motivo: err.detail ?? 'Ese cambio de estado no se puede hacer.' };
+      return {
+        status: 'transicion_invalida',
+        motivo: err.detail ?? mensajeDelBody(err.body) ?? 'Ese cambio de estado no se puede hacer.',
+      };
     }
     throw err;
   }

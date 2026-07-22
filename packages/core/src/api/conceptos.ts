@@ -39,8 +39,14 @@ export interface Concepto {
    */
   precioReferencia: string | null;
   /**
-   * Si sigue ofreciéndose. El listado trae **también los desactivados** (por eso el campo existe: si
-   * el backend filtrara, sería constante `true` y no lo mandaría).
+   * Si sigue ofreciéndose.
+   *
+   * ⚠️ **Acá razoné mal y vale dejarlo escrito.** Deduje que el listado traía los desactivados *porque
+   * el campo existe* —si el backend filtrara, sería constante `true` y no lo mandaría—. Suena
+   * impecable y es falso: el endpoint filtra por defecto (`incluir_inactivos=False`) y manda el campo
+   * igual. La deducción no habría dado ningún error: el ABM habría mostrado sólo los activos, que es
+   * exactamente lo que se espera ver, y el concepto desactivado habría quedado **irrecuperable sin
+   * que nadie notara nada**. Lo cazó leer el endpoint, no razonar sobre él. Ver `ListarConceptosParams`.
    */
   activo: boolean;
 }
@@ -99,13 +105,31 @@ function esRespuestaDelEndpoint(raw: unknown, clave: string): boolean {
   return typeof raw === 'object' && raw !== null && clave in raw;
 }
 
+export interface ListarConceptosParams {
+  /**
+   * 🔴 **El backend filtra los desactivados POR DEFECTO** (`incluir_inactivos: bool = False`,
+   * `presupuestos_web.py`) — verificado leyendo el endpoint, no deducido del `dato_`, que sólo
+   * declaraba `GET /conceptos` a secas.
+   *
+   * Importa: el ABM de Ajustes **tiene** que pedir `true`, porque si no, un concepto desactivado
+   * desaparece de la única pantalla desde la que se podría reactivar. Y el armador de presupuestos
+   * tiene que dejarlo en `false`, porque ofrecer algo que el emprendedor retiró es peor que no
+   * ofrecerlo. Son dos consumidores con necesidades opuestas: por eso es parámetro y no una decisión
+   * tomada acá.
+   */
+  incluirInactivos?: boolean;
+}
+
 /**
- * El catálogo entero, **activos e inactivos**. Un emprendedor nuevo tiene `[]`, y `[]` no es un error:
- * es el estado normal del primer día.
+ * El catálogo. Un emprendedor nuevo tiene `[]`, y `[]` no es un error: es el estado normal del primer
+ * día.
  */
-export async function listarConceptos(): Promise<ConDisponibilidad<{ conceptos: Concepto[] }>> {
+export async function listarConceptos(
+  params: ListarConceptosParams = {},
+): Promise<ConDisponibilidad<{ conceptos: Concepto[] }>> {
+  const ruta = params.incluirInactivos === true ? '/conceptos?incluir_inactivos=true' : '/conceptos';
   try {
-    const raw = await apiClient.get<{ conceptos?: ConceptoRaw[] }>('/conceptos');
+    const raw = await apiClient.get<{ conceptos?: ConceptoRaw[] }>(ruta);
     if (!esRespuestaDelEndpoint(raw, 'conceptos')) return { status: 'no_disponible' };
     const filas = Array.isArray(raw.conceptos) ? raw.conceptos : [];
     return {
@@ -145,10 +169,10 @@ function aWire(datos: DatosConcepto): Record<string, unknown> {
 /**
  * El concepto de una respuesta, venga envuelto (`{concepto: {...}}`) o pelado.
  *
- * ⚠️ **No está medido cuál de las dos manda** — el `dato_` de backend declara el body del `GET` pero
- * no el del alta, y no se puede medir sin una sesión. `[ASSUMED_PENDING_VERIFY]`. Errar acá **no daría
- * error**: el normalizador leería `undefined` y la pantalla mostraría un concepto en blanco con id
- * `NaN`, que se lee como bug del backend. Tolerar las dos formas cuesta tres líneas.
+ * ✅ **VERIFICADO el 2026-07-22 leyendo `presupuestos_web.py`: manda la ENVUELTA.** `POST`, `PATCH` y
+ * `DELETE` devuelven `{"concepto": {...}}`. La tolerancia a la pelada se conserva porque cuesta tres
+ * líneas y errar acá **no daría error**: el normalizador leería `undefined` y la pantalla mostraría un
+ * concepto en blanco con id `NaN`, que se lee como bug del backend.
  */
 function conceptoDeLaRespuesta(raw: unknown): Concepto | null {
   if (typeof raw !== 'object' || raw === null) return null;
@@ -163,8 +187,10 @@ function conceptoDeLaRespuesta(raw: unknown): Concepto | null {
  * El `409` de nombre repetido trae **la ficha del que ya está** (mismo patrón que Clientes). `null` si
  * el body no trae nada reconocible: se avisa igual, sin el botón de abrirlo.
  *
- * `[ASSUMED_PENDING_VERIFY]` sobre dónde viene la ficha: se prueban raíz y `detail`, y como último
- * recurso un id suelto —que alcanza para navegar aunque no para nombrarlo—.
+ * ✅ **VERIFICADO el 2026-07-22:** viene bajo `detail` — `HTTPException(409, detail={"mensaje": …,
+ * "concepto": …})` serializa `{"detail": {…}}`, así que en la raíz no hay nada. El barrido de los dos
+ * niveles ya lo cubría; se deja porque es el mismo que salvó al lector de `factura_id`, donde mirar
+ * sólo la raíz sí costó un mensaje falso.
  */
 function duplicadoDelBody(body: unknown): Concepto | null {
   if (typeof body !== 'object' || body === null) return null;
