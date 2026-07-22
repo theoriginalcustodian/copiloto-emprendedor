@@ -212,6 +212,20 @@ export type {
  * todavía no estaban vivos y el cliente degrada a `no_disponible`.
  */
 export { registrarCobro, borrarCobro, listarImpagos } from './cobros';
+/**
+ * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
+ * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
+ * castellano. **Borrar es desactivar** (`desactivarConcepto`), y reactivar es
+ * `editarConcepto(id, {activo:true})`. Ruta verificada desplegada por HTTP el 2026-07-22.
+ */
+export {
+  cambiosDeConcepto,
+  crearConcepto,
+  desactivarConcepto,
+  editarConcepto,
+  listarConceptos,
+} from './conceptos';
+export type { Concepto, DatosConcepto, ResultadoGuardarConcepto } from './conceptos';
 export type {
   Cobro,
   ComprobanteImpago,

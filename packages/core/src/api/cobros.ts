@@ -140,6 +140,21 @@ function esNoDesplegado(err: unknown): boolean {
 }
 
 /**
+ * 🔴 **Un `GET` a una ruta no desplegada devuelve `200` con el HTML del SPA**, no un error: el
+ * front-door monta un catch-all que sirve el SPA. Así que la ausencia del endpoint **no llega como
+ * excepción** — llega como éxito con un cuerpo que no tiene la clave.
+ *
+ * ⚠️ **Esto faltaba acá, y era un bug mío.** Sin el chequeo, `listarImpagos` contra un deploy sin el
+ * endpoint devolvía `{status:'ok', comprobantes: [], totalAdeudado: null}` — o sea la pantalla
+ * «me deben» diciendo **«no te debe nadie»**. La afirmación más tranquilizadora posible, construida
+ * sobre la ausencia total del dato. `clientes.ts` ya tenía esta guarda; la copié sin ella porque el
+ * `POST` sí falla ruidoso y asumí que el `GET` también.
+ */
+function esRespuestaDelEndpoint(raw: unknown, clave: string): boolean {
+  return typeof raw === 'object' && raw !== null && clave in raw;
+}
+
+/**
  * `POST /afip/comprobantes/{id}/cobros` — registrar que **entró la plata** de esa factura.
  *
  * 🔴 **La respuesta trae el comprobante actualizado, y hay que usar ESE, no recalcular.** El saldo lo
@@ -240,6 +255,8 @@ export async function listarImpagos(): Promise<
     const raw = await apiClient.get<{ comprobantes?: ImpagoRaw[]; total_adeudado?: string | number | null }>(
       '/afip/comprobantes/impagos',
     );
+    // Antes que nada: que esto sea la respuesta del endpoint y no el SPA. Ver `esRespuestaDelEndpoint`.
+    if (!esRespuestaDelEndpoint(raw, 'comprobantes')) return { status: 'no_disponible' };
     const filas = Array.isArray(raw?.comprobantes) ? raw.comprobantes : [];
     return {
       status: 'ok',
@@ -262,6 +279,9 @@ export async function listarImpagos(): Promise<
     };
   } catch (err) {
     if (esNoDesplegado(err)) return { status: 'no_disponible' };
+    // Un 200 con el HTML del SPA explota en `res.json()`, no como `ApiError`: mismo caso de arriba
+    // llegando por la otra puerta.
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
     throw err;
   }
 }
