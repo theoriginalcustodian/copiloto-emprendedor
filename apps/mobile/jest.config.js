@@ -33,6 +33,21 @@
  *
  *     async function envolver() { return render(<ThemeProvider><Pantalla /></ThemeProvider>); }
  *     it('...', async () => { await envolver(); expect(screen.getByTestId('x')).toBeTruthy(); });
+ *
+ * 🔴 **Y `fireEvent` TAMBIÉN es asíncrono. También hay que `await`-earlo.** Es la misma regla y el
+ * mismo motivo, pero falla mucho peor: sin `await`, el `setState` del handler no se descargó todavía,
+ * así que el `fireEvent` SIGUIENTE lee el estado anterior. Un tipear-y-guardar manda el formulario
+ * **vacío**, y el test falla diciendo *«el componente no llamó al backend»* — que apunta al
+ * componente, no al test.
+ *
+ * Y el efecto se ACUMULA: en una suite larga los primeros casos pasan y a partir de cierto punto
+ * empiezan a fallar todos, cada uno agotando el timeout de `waitFor`. Se lee como contaminación entre
+ * tests o como un componente frágil, y no es ninguna de las dos. Medido en `SeccionCatalogo.test.tsx`
+ * el 2026-07-22: 8 pasaban y 4 fallaban; con `await` en cada `fireEvent`, 12/12 — sin tocar una línea
+ * del componente.
+ *
+ * El warning *«the current testing environment is not configured to support act(...)»* que sale en
+ * toda la suite es el síntoma de esto, no una molestia aparte.
  */
 const path = require('node:path');
 

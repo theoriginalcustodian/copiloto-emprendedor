@@ -14,7 +14,7 @@ import { empujarUnaVez, reabrirNavegacion } from '../src/navegacion/empujarUnaVe
  * un doble toque, ver su docstring) + `reabrirNavegacion()` en `useFocusEffect` para reabrir la
  * puerta al volver.
  *
- * 🔴 **Las 7 keys están cableadas, y el mapa es la razón.** Hasta el 2026-07-21 esto era un `if (key
+ * 🔴 **Todas las keys están cableadas, y el mapa es la razón.** Hasta el 2026-07-21 esto era un `if (key
  * === 'facturacionAfip')` suelto: las otras seis entradas del grid **no hacían absolutamente nada al
  * tocarlas**. El toque llegaba, `PantallaAjustes` emitía su `key`, y esta función la descartaba en
  * silencio — sin error, sin aviso, indistinguible de un gesto que no registra. El operador lo
@@ -26,14 +26,13 @@ import { empujarUnaVez, reabrirNavegacion } from '../src/navegacion/empujarUnaVe
  * un `Record<AjusteKey, …>` no puede.
  */
 const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
-  datosPersonales: '/ajustes-datos',
-  configuracionSistema: '/ajustes-sistema',
-  planesDisponibles: '/ajustes-planes',
-  planActual: '/ajustes-plan',
-  skins: '/ajustes-skins',
-  cuenta: '/ajustes-cuenta',
-  facturacionAfip: '/ajustes-afip',
   perfilNegocio: '/ajustes-negocio',
+  facturacionAfip: '/ajustes-afip',
+  // La MISMA pantalla que antes se abría desde el escritorio: sólo cambió la puerta.
+  apps: '/apps',
+  miPlan: '/ajustes-mi-plan',
+  cuenta: '/ajustes-cuenta',
+  apariencia: '/ajustes-skins',
 };
 
 export default function PantallaAjustesRoute() {

@@ -3,7 +3,9 @@ import { ApiError, ForbiddenError, UnauthorizedError } from './errors';
 import type { ArchivoSubida, PeticionHttp, RespuestaHttp } from './http';
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'DELETE';
+  /** Misma unión que `PeticionHttp['metodo']`: eran dos listas del mismo concepto y `PATCH` estaba
+   *  en una sola, así que agregar el método al cliente no compilaba aunque el puerto ya lo aceptara. */
+  method?: PeticionHttp['metodo'];
   body?: unknown;
   /** Default true: inyecta `Authorization: Bearer <token>` si hay token persistido. */
   auth?: boolean;
@@ -131,6 +133,18 @@ export const apiClient = {
   },
   post<T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
     return request<T>(path, { ...opts, method: 'POST', body });
+  },
+  /**
+   * `PATCH` — lo usa `cambiarEstadoPresupuesto` (hito 3). El `HttpPort` ya declaraba `'PATCH'` en su
+   * unión de métodos y los dos adaptadores lo pasan tal cual a `fetch()` sin ramificar, así que esto
+   * es sólo el atajo que faltaba del lado del cliente: no hubo que tocar ninguna plataforma.
+   *
+   * *(El comentario de `http.ts` decía que lo usaba `actualizarCliente`. Esa función ya no existe —
+   * la edición de cliente terminó siendo `POST /clientes/{id}` — así que hasta hoy no había ningún
+   * PATCH vivo en el repo.)*
+   */
+  patch<T>(path: string, body?: unknown, opts?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return request<T>(path, { ...opts, method: 'PATCH', body });
   },
   /** `DELETE` — hoy sólo lo usa `quitarItem` de facturación. Sin body: el recurso a borrar viaja en
    * el path (`/afip/facturas/{id}/items/{indice}`), que es lo que el backend expone. */

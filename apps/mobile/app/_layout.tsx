@@ -118,13 +118,22 @@ export default function LayoutRaiz() {
                       arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
                   {([
-                    'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion',
-                    'presupuestos', 'gastos', 'clientes',
+                    // Las 9 funciones del escritorio, en el orden de `TILES`.
+                    'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes',
+                    'midia', 'inteligencia', 'contabilidad', 'ajustes',
+                    // `apps` ya no es tile del escritorio —se llega desde Ajustes—, pero la pantalla
+                    // es la misma y sigue siendo glass: sólo cambió desde dónde se entra.
+                    'apps',
+                    // ⚠️ `recientes` NO tiene tile desde el 2026-07-22 (su lista ya vive abajo del
+                    // grid del escritorio), pero la pantalla se conserva porque aporta algo que esa
+                    // lista no tiene: PAGINADO (`cargarMas`/`onEndReached`). Hoy queda inalcanzable
+                    // y está reportado como tal — no se borró para no perder esa capacidad.
+                    'recientes',
                     // Las sub-pantallas de Ajustes. Van con el MISMO tratamiento que las funciones
                     // del escritorio (transparentModal + slide desde abajo) porque son glass igual:
                     // se abren SOBRE Ajustes, que queda visible detrás.
-                    'ajustes-afip', 'ajustes-skins', 'ajustes-sistema', 'ajustes-cuenta',
-                    'ajustes-datos', 'ajustes-planes', 'ajustes-plan', 'ajustes-negocio',
+                    'ajustes-afip', 'ajustes-skins', 'ajustes-cuenta',
+                    'ajustes-mi-plan', 'ajustes-negocio',
                   ] as const).map(
                     (glass) => (
                       <Stack.Screen

@@ -42,7 +42,10 @@ export type { AlmacenTokens } from './tokens';
 // ⚠️ `DuplicadoProbableError`, `GeneroInvalidoError` y `MotivoDuplicado` se exportaban acá y se
 // BORRARON el 2026-07-22: eran de la app clínica y describían un `409` de `POST /clientes` con otro
 // significado que el de este producto. Ver el epitafio en `errors.ts`.
-export { ApiError, ForbiddenError, UnauthorizedError } from './errors';
+export { ApiError, ForbiddenError, UnauthorizedError, codigoDeConflicto, mensajeDeConflicto } from './errors';
+// Todo `409` del backend trae `codigo` desde el 2026-07-22 (`errores_web.CODIGOS`). Es lo que permite
+// reconocer cada caso por algo que TRAE, en vez de por lo que le falta — ver el docstring allá.
+export type { CodigoConflicto } from './errors';
 
 // Contratos de request/response.
 export * from './types';
@@ -68,13 +71,16 @@ export type {
   FormalidadCopiloto,
   GuardarPerfilNegocioRequest,
   LargoRespuesta,
+  ModoCeremonia,
   PerfilNegocio,
+  ResultadoGuardarPerfil,
   ResultadoPerfilNegocio,
 } from './perfilNegocio';
 
 // `/presupuestos` — alta, listado, detalle y el atajo a facturar. Los montos viajan como STRING
 // (plata: el float pierde precisión) y el `total` lo calcula el backend. Ver `presupuestos.ts`.
 export {
+  cambiarEstadoPresupuesto,
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
@@ -82,6 +88,7 @@ export {
 } from './presupuestos';
 export type {
   CrearPresupuestoRequest,
+  EstadoPresupuesto,
   ItemPresupuesto,
   ListarPresupuestosParams,
   NuevoItemPresupuesto,
@@ -203,3 +210,45 @@ export type {
   ReceptorInput,
   ResultadoEmision,
 } from './afip';
+
+/**
+ * Cobros de comprobantes (hito 3 del sprint de Inteligencia de Negocio) — lo que permite responder
+ * *«¿quién me debe?»*. Forma declarada por backend ANTES de implementar; al exportarse, los endpoints
+ * todavía no estaban vivos y el cliente degrada a `no_disponible`.
+ */
+export { registrarCobro, borrarCobro, listarCobros, listarImpagos } from './cobros';
+/**
+ * `/ingresos` — TODO lo que entró (facturas cobradas, MercadoPago, y lo dictado), distinguible por
+ * `origen`. ⚠️ Se llamaba `POST /cobros` y **no hay alias**. Lo único obligatorio es el monto: la app
+ * no puede exigir más. El 409 de duplicado es una PREGUNTA con su candidato, no un error.
+ */
+export { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso } from './ingresos';
+export type {
+  FaltanteIngreso,
+  Ingreso,
+  OrigenIngreso,
+  RegistrarIngresoRequest,
+  ResultadoIngreso,
+} from './ingresos';
+/**
+ * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
+ * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
+ * castellano. **Borrar es desactivar** (`desactivarConcepto`), y reactivar es
+ * `editarConcepto(id, {activo:true})`. Ruta verificada desplegada por HTTP el 2026-07-22.
+ */
+export {
+  cambiosDeConcepto,
+  crearConcepto,
+  desactivarConcepto,
+  editarConcepto,
+  listarConceptos,
+} from './conceptos';
+export type { Concepto, DatosConcepto, ResultadoGuardarConcepto } from './conceptos';
+export type {
+  Cobro,
+  ComprobanteImpago,
+  EstadoCobro,
+  EstadoDeCobro,
+  RegistrarCobroRequest,
+  ResultadoCobro,
+} from './cobros';

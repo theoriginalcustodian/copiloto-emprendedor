@@ -57,6 +57,12 @@ function presupuesto(over: Partial<Presupuesto> = {}): Presupuesto {
     reemplazadoPor: null,
     facturaId: null,
     facturado: false,
+    // 🔴 `null`, no `'pendiente'`: el backend del hito 3 todavía no manda estos campos, y el fixture
+    // tiene que reflejar ESO. Poner 'pendiente' acá afirmaría un estado que nadie marcó — que es
+    // justo la mezcla que arruina la tasa de conversión (no-marcado ≠ rechazado).
+    estado: null,
+    estadoActualizadoEn: null,
+    sinRespuesta: null,
     ...over,
   };
 }

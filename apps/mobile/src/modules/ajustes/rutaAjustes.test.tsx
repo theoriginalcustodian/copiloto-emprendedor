@@ -42,16 +42,18 @@ describe('ruta /ajustes', () => {
    * ruta la descartaba en silencio. Sin error y sin aviso — indistinguible de un gesto que no
    * registra, que es justamente adonde apuntaba la sospecha.
    *
-   * El test recorre las SIETE. Con el código viejo, seis de estos siete casos fallan.
+   * El test recorre TODAS las entradas del grid, no una muestra: es el único lugar donde se verifica
+   * que cada tile llegue a alguna parte. Tras la reestructuración del 2026-07-22 son seis, y una de
+   * ellas —`apps`— apunta a una pantalla que NO es `ajustes-*`: llegó del escritorio y conserva su
+   * ruta, porque lo que cambió es la puerta, no la pantalla.
    */
   it.each([
-    ['datosPersonales', '/ajustes-datos'],
-    ['configuracionSistema', '/ajustes-sistema'],
-    ['planesDisponibles', '/ajustes-planes'],
-    ['planActual', '/ajustes-plan'],
-    ['skins', '/ajustes-skins'],
-    ['cuenta', '/ajustes-cuenta'],
+    ['perfilNegocio', '/ajustes-negocio'],
     ['facturacionAfip', '/ajustes-afip'],
+    ['apps', '/apps'],
+    ['miPlan', '/ajustes-mi-plan'],
+    ['cuenta', '/ajustes-cuenta'],
+    ['apariencia', '/ajustes-skins'],
   ])('el tile %s navega a %s', async (key, ruta) => {
     await montar();
 
@@ -69,7 +71,7 @@ describe('ruta /ajustes', () => {
   it('un doble toque no apila dos glass', async () => {
     await montar();
 
-    const tile = screen.getByTestId('ajuste-tile-skins');
+    const tile = screen.getByTestId('ajuste-tile-apariencia');
     await fireEvent.press(tile);
     await fireEvent.press(tile);
 

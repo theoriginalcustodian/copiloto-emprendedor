@@ -44,6 +44,61 @@ export class ForbiddenError extends ApiError {
   }
 }
 
+/**
+ * Los códigos de conflicto que el backend adjunta a **todo `409`** desde el 2026-07-22.
+ *
+ * 🔴 **Antes de esto, cada `409` se reconocía por su ESTRUCTURA — y uno se reconocía por no tener
+ * ninguna.** Eso funciona hasta que aparece un caso nuevo: el nuevo cae en la rama del que se
+ * identificaba por descarte y se muestra con **su** mensaje. No falla: acusa a otro. Ya pasó dos veces
+ * el mismo día en `POST /presupuestos/{id}/facturar` — «ya se facturó» salía como *«falta tu CUIT»*, y
+ * después «está desestimado» cayó en la misma rama. Ver [[discriminar-por-ausencia-de-estructura]].
+ *
+ * Ahora cada caso se reconoce **por algo que TRAE**. La lista está cerrada del lado del backend
+ * (`errores_web.CODIGOS`), que valida el código al construir el error: uno inventado revienta ahí, no
+ * en silencio acá.
+ */
+export type CodigoConflicto =
+  | 'presupuesto_ya_facturado'
+  | 'falta_cuit'
+  | 'presupuesto_no_facturable'
+  | 'transicion_invalida'
+  | 'concepto_duplicado'
+  | 'ingreso_duplicado_probable'
+  | 'documento_de_otro_cliente'
+  | 'sin_certificado_afip'
+  | 'ambiente_no_vinculado'
+  | 'sin_perfil_fiscal'
+  | 'modo_automatico_no_disponible';
+
+/**
+ * El `codigo` de un `409`, o `null` si el body no lo trae.
+ *
+ * ⚠️ **`null` NO significa "no es un conflicto conocido": significa que ESTE deploy todavía no manda
+ * el código.** Por eso los lectores que lo usan conservan su discriminación por estructura como
+ * fallback — si la tiraran, un rollback del backend convertiría cada 409 en genérico. El código es
+ * mejor camino, no el único.
+ */
+export function codigoDeConflicto(body: unknown): CodigoConflicto | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const detalle = (body as { detail?: unknown }).detail;
+  const nivel = typeof detalle === 'object' && detalle !== null ? (detalle as Record<string, unknown>) : (body as Record<string, unknown>);
+  const c = nivel.codigo;
+  return typeof c === 'string' && c !== '' ? (c as CodigoConflicto) : null;
+}
+
+/** El `mensaje` legible que acompaña al código. Es el texto que el emprendedor puede leer — el código
+ *  es para la app, no para la persona. */
+export function mensajeDeConflicto(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const detalle = (body as { detail?: unknown }).detail;
+  if (typeof detalle === 'string' && detalle.trim() !== '') return detalle;
+  if (typeof detalle === 'object' && detalle !== null) {
+    const m = (detalle as { mensaje?: unknown }).mensaje;
+    if (typeof m === 'string' && m.trim() !== '') return m;
+  }
+  return null;
+}
+
 /*
  * 🪦 **Acá vivían `MotivoDuplicado`, `DuplicadoProbableError` y `GeneroInvalidoError`, de la app
  * CLÍNICA. Borrados el 2026-07-22** junto con los tipos que consumían (`api/types.ts`).

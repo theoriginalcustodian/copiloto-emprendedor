@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
@@ -6,6 +6,8 @@ import {
   ApiError,
   crearPresupuesto,
   formatearImporte,
+  listarConceptos,
+  type Concepto,
   type NuevoItemPresupuesto,
   type Presupuesto,
 } from '@copiloto/core';
@@ -132,6 +134,61 @@ export function FormularioPresupuesto({
   );
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * El catálogo de lo que vende, para armar el presupuesto **eligiendo** en vez de tipear lo mismo
+   * cada vez (contrato §3).
+   *
+   * 🔴 **Es un ACELERADOR, no un requisito, y por eso su ausencia es invisible.** Si el catálogo está
+   * vacío, no está desplegado o falla, acá no se muestra nada: ni un error, ni un vacío explicado. El
+   * formulario tiene que seguir funcionando **exactamente igual** que antes — el backend acepta un
+   * presupuesto sin ítems del catálogo, y cualquier cosa que sugiera lo contrario sería validación de
+   * más disfrazada de ayuda. [[validacion-de-mas-en-la-ui-enmascara-bugs]]
+   *
+   * 🔴 **Pide los ACTIVOS (el default), al revés que el ABM de Ajustes.** Ofrecer un trabajo que el
+   * emprendedor retiró es peor que no ofrecerlo: lo pondría en un presupuesto que ya decidió no
+   * vender. Son dos consumidores del mismo endpoint con necesidades opuestas.
+   */
+  const [conceptos, setConceptos] = useState<readonly Concepto[]>([]);
+
+  useEffect(() => {
+    let vivo = true;
+    void listarConceptos()
+      .then((res) => {
+        if (vivo && res.status === 'ok') setConceptos(res.conceptos);
+      })
+      .catch(() => {
+        // Silencio deliberado: ver el docstring de `conceptos`.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  /**
+   * Meter un concepto del catálogo como ítem.
+   *
+   * Rellena la última fila si está vacía, y si no agrega una — para que tocar tres conceptos seguidos
+   * deje tres líneas y no pise la anterior.
+   *
+   * 🔴 **El precio entra como valor INICIAL y queda editable.** Es de *referencia*: el trabajo de hoy
+   * puede salir otro precio, y el presupuesto **congela el suyo** al emitirse. Bloquearlo obligaría a
+   * editar el catálogo para cotizar distinto una vez.
+   */
+  function agregarDelCatalogo(c: Concepto) {
+    const fila: FilaItem = {
+      descripcion: c.nombre,
+      cantidad: '1',
+      // Sin precio de referencia queda VACÍO, no en "0": un cero es un precio, y un presupuesto que
+      // sale en cero por un default es un documento que se manda mal sin que nadie lo note.
+      precioUnitario: c.precioReferencia ?? '',
+    };
+    setItems((prev) => {
+      const ultima = prev[prev.length - 1];
+      const ultimaVacia =
+        ultima != null && ultima.descripcion.trim() === '' && ultima.precioUnitario.trim() === '';
+      return ultimaVacia ? [...prev.slice(0, -1), fila] : [...prev, fila];
+    });
+  }
 
   function actualizarItem(indice: number, campo: keyof FilaItem, valor: string) {
     setItems((prev) => prev.map((it, i) => (i === indice ? { ...it, [campo]: valor } : it)));
@@ -252,6 +309,33 @@ export function FormularioPresupuesto({
         Ítems
       </Text>
 
+      {/* La tira del catálogo. NO se dibuja si no hay conceptos: un renglón que diga "no tenés nada
+          en tu lista" convertiría una función opcional en una carencia. */}
+      {conceptos.length > 0 && (
+        <View testID={`${testID}-catalogo`} style={styles.catalogo}>
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            De tu lista:
+          </Text>
+          <View style={styles.chips}>
+            {conceptos.map((c) => (
+              <Pressable
+                key={c.id}
+                testID={`${testID}-catalogo-${c.id}`}
+                onPress={() => agregarDelCatalogo(c)}
+                accessibilityRole="button"
+                accessibilityLabel={`Agregar ${c.nombre} al presupuesto`}
+                style={pressableStyle([styles.chip, { borderColor: tema.color.acento }], PRESS_FADE)}
+              >
+                <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}>
+                  {c.nombre}
+                  {c.precioReferencia != null ? ` · ${formatearImporte(c.precioReferencia)}` : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
       {items.map((it, i) => (
         <Row key={i} testID={`${testID}-item-${i}`}>
           <View style={styles.item}>
@@ -334,6 +418,9 @@ export function FormularioPresupuesto({
 }
 
 const styles = StyleSheet.create({
+  catalogo: { gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   item: { flex: 1, gap: 8 },
   filaNumeros: { flexDirection: 'row', gap: 8 },
   mitad: { flex: 1 },

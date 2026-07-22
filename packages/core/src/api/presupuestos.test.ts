@@ -5,6 +5,7 @@ import { ApiError } from './errors';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
 import {
+  cambiarEstadoPresupuesto,
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
@@ -307,6 +308,74 @@ describe('presupuestos.ts', () => {
       expect(res).toEqual({ status: 'falta_perfil_fiscal' });
     });
 
+    it('🔴 la forma REAL del 409: `factura_id` viene bajo `detail`, no en la raíz', async () => {
+      // El control que faltaba. Los tres tests de arriba montan el body PLANO —la forma que yo
+      // supuse— y por eso pasaban con un lector que sólo miraba la raíz. Pero
+      // `HTTPException(409, detail={...})` de FastAPI serializa `{"detail": {...}}`
+      // (`presupuestos_web.py:264`, leído el 2026-07-22): contra el backend real el discriminador
+      // devolvía `undefined` SIEMPRE, y "este presupuesto ya se facturó" se mostraba como
+      // *«falta tu perfil fiscal»* — mandando al emprendedor a cargar un CUIT que ya tenía.
+      responder = () =>
+        respuesta(409, { detail: { mensaje: 'el presupuesto ya fue facturado', factura_id: 'afip-factura-vieja' } });
+
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'ya_facturado',
+        facturaId: 'afip-factura-vieja',
+      });
+    });
+
+    it('y el de falta-de-CUIT, que SÍ viene con detail string, sigue cayendo donde corresponde', async () => {
+      // El control negativo del test de arriba: si el lector empezara a ver `factura_id` en cualquier
+      // lado, este pasaría a "ya facturado" y nadie se enteraría.
+      responder = () => respuesta(409, { detail: 'falta el perfil fiscal (CUIT)' });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+    });
+
+    it('🔴 el TERCER 409: el presupuesto está desestimado, y NO es «falta tu CUIT»', async () => {
+      // `presupuestos_web.py:319` — facturar implica aprobar, y `desestimado → aprobado` no existe.
+      // Viene con `estado` y sin `factura_id`, así que sin esta rama caía en `falta_perfil_fiscal`:
+      // al emprendedor que intenta facturar algo que dio por perdido se le decía «cargá tu CUIT».
+      responder = () =>
+        respuesta(409, {
+          detail: { mensaje: 'el presupuesto está desestimado: no se puede facturar sin revisarlo', estado: 'desestimado' },
+        });
+
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'estado_incompatible',
+        estado: 'desestimado',
+        motivo: 'el presupuesto está desestimado: no se puede facturar sin revisarlo',
+      });
+    });
+
+    it('🔴 con `codigo`, cada caso se reconoce por lo que TRAE — no por lo que le falta', async () => {
+      // La forma nueva (2026-07-22): todo 409 del backend viaja con `codigo`. Es lo que retira la
+      // rama que se reconocía por descarte, la que convertía cualquier caso nuevo en «falta tu CUIT».
+      responder = () =>
+        respuesta(409, { detail: { codigo: 'presupuesto_ya_facturado', mensaje: 'ya fue facturado', factura_id: 'f-1' } });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'ya_facturado', facturaId: 'f-1' });
+
+      responder = () => respuesta(409, { detail: { codigo: 'falta_cuit', mensaje: 'falta el perfil fiscal (CUIT)' } });
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+
+      responder = () =>
+        respuesta(409, { detail: { codigo: 'presupuesto_no_facturable', mensaje: 'está desestimado', estado: 'desestimado' } });
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'estado_incompatible',
+        estado: 'desestimado',
+        motivo: 'está desestimado',
+      });
+    });
+
+    it('🔴 un código DESCONOCIDO ya no se disfraza de «falta tu CUIT»… salvo que tampoco haya estructura', async () => {
+      // El caso que motiva todo esto. Con código nuevo y sin estructura conocida, hoy sigue cayendo en
+      // `falta_perfil_fiscal` — el fallback por descarte que se conserva para deploys viejos. Queda
+      // FIJADO acá para que se vea: el día que el fallback se pueda retirar, este test cambia a
+      // propósito y no por accidente.
+      responder = () => respuesta(409, { detail: { codigo: 'algo_que_no_existe_todavia', mensaje: 'otra cosa' } });
+
+      expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
+    });
+
     it('sigue discriminando aunque el backend reescriba el copy del detail', async () => {
       // El control de que la discriminación es ESTRUCTURAL: mismo texto en los dos 409, y aun así
       // cada uno cae donde corresponde. Con un `detail.includes('facturado')` este test sería rojo.
@@ -325,6 +394,99 @@ describe('presupuestos.ts', () => {
     it('un 405 es la ruta no desplegada', async () => {
       responder = () => respuesta(405, { detail: 'Method Not Allowed' });
       expect(await facturarPresupuesto(12)).toEqual({ status: 'no_disponible' });
+    });
+  });
+
+  describe('estado del presupuesto — hito 3', () => {
+    it('🔴 un `estado` AUSENTE queda en `null`, no en «pendiente»', async () => {
+      // El backend todavía no manda el campo. Caer a 'pendiente' afirmaría que nadie respondió
+      // todavía sobre presupuestos de los que NO SABEMOS nada — y ése es el número que después se
+      // divide para la tasa de conversión. El contrato separa ganado / perdido / no sé.
+      responder = () => respuesta(200, { presupuestos: [presupuestoCrudo()], total: 1 });
+
+      const res = await listarPresupuestos();
+
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+      expect(res.presupuestos[0]).toMatchObject({ estado: null, sinRespuesta: null, estadoActualizadoEn: null });
+    });
+
+    it('🔴 `sin_respuesta: false` explícito se conserva — no se colapsa con "no vino"', async () => {
+      responder = () => respuesta(200, {
+        presupuestos: [presupuestoCrudo({ estado: 'pendiente', sin_respuesta: false })],
+        total: 1,
+      });
+
+      const res = await listarPresupuestos();
+
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+      expect(res.presupuestos[0]).toMatchObject({ estado: 'pendiente', sinRespuesta: false });
+    });
+
+    it('🔴 un estado que NO es uno de los tres cae en `null`', async () => {
+      // Si el backend agrega un cuarto valor, pintarlo como pendiente diría "todavía no te
+      // contestaron" sobre algo que quizá ya se resolvió.
+      responder = () => respuesta(200, { presupuestos: [presupuestoCrudo({ estado: 'en_negociacion' })], total: 1 });
+
+      const res = await listarPresupuestos();
+
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+      expect(res.presupuestos[0]?.estado).toBeNull();
+    });
+
+    it('manda el estado y devuelve el presupuesto actualizado', async () => {
+      let cuerpo: unknown = null;
+      responder = (p) => {
+        cuerpo = p.cuerpoJson;
+        return respuesta(200, { presupuesto: presupuestoCrudo({ estado: 'desestimado', estado_actualizado_en: '2026-07-22T12:00:00Z' }) });
+      };
+
+      const res = await cambiarEstadoPresupuesto(12, 'desestimado');
+
+      expect(cuerpo).toEqual({ estado: 'desestimado' });
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+      expect(res.presupuesto.estado).toBe('desestimado');
+      expect(res.presupuesto.estadoActualizadoEn).toBe('2026-07-22T12:00:00Z');
+    });
+
+    it('acepta la respuesta PELADA además de la envuelta', async () => {
+      // Este sistema tiene las dos convenciones vivas y acertar de memoria ya falló una vez, sin
+      // ruido: el GET daba 200, el id llegaba, y la pantalla no mostraba nada.
+      responder = () => respuesta(200, presupuestoCrudo({ estado: 'aprobado' }));
+
+      const res = await cambiarEstadoPresupuesto(12, 'aprobado');
+
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+      expect(res.presupuesto.estado).toBe('aprobado');
+    });
+
+    it('🔴 el 409 de transición prohibida devuelve el motivo del backend, no un texto nuestro', async () => {
+      // `desestimado → aprobado` no vale: el contrato pide emitir uno nuevo. Y volver a `pendiente`
+      // borraría el hecho de que alguien ya respondió. El backend sabe cuál de las dos fue.
+      responder = () => respuesta(409, { detail: 'Un presupuesto desestimado no se revive: emití uno nuevo.' });
+
+      const res = await cambiarEstadoPresupuesto(12, 'aprobado');
+
+      expect(res).toEqual({
+        status: 'transicion_invalida',
+        motivo: 'Un presupuesto desestimado no se revive: emití uno nuevo.',
+      });
+    });
+
+    it('405 → `no_disponible`: el endpoint todavía no está desplegado', async () => {
+      responder = () => respuesta(405, { detail: 'Method Not Allowed' });
+      expect(await cambiarEstadoPresupuesto(12, 'desestimado')).toEqual({ status: 'no_disponible' });
+    });
+
+    it('404 → `no_encontrado` (no existe, o es de otro emprendedor)', async () => {
+      responder = () => respuesta(404, { detail: 'not found' });
+      expect(await cambiarEstadoPresupuesto(12, 'desestimado')).toEqual({ status: 'no_encontrado' });
+    });
+
+    it('🔴 el HTML del catch-all del SPA no se toma por un presupuesto', async () => {
+      // El control del propio parser: un 200 con HTML sobre una ruta inexistente daría "ok" con un
+      // objeto vacío si no se verificara que hay un `id`.
+      responder = () => respuesta(200, { detail: 'algo que no es un presupuesto' });
+      expect(await cambiarEstadoPresupuesto(12, 'desestimado')).toEqual({ status: 'no_disponible' });
     });
   });
 });

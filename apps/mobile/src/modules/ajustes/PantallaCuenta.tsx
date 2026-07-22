@@ -8,7 +8,12 @@ import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * "Cuenta" — quién sos en el copiloto, y la salida.
+ * "Mi cuenta" — quién sos en el copiloto, la salida, y los ajustes generales de la app.
+ *
+ * 🔴 **Absorbió dos tiles el 2026-07-22** (contrato de reestructuración de Ajustes): *Datos
+ * personales* —que era un andamiaje vacío duplicando este mismo concepto— y *Configuración del
+ * sistema*, cuyo contenido entero era **una fila inerte**: el lugar reservado de «No molestar». Un
+ * tile propio para una fila que no hace nada es de las cosas que enseñan que la app no anda.
  *
  * 🔴 **Muestra el email REAL de `GET /me`, no uno cacheado ni inventado.** Es el único dato de
  * identidad que el backend expone hoy (`MeResponse` = `cliente_id` + `email`), y es exactamente el
@@ -26,7 +31,7 @@ export function PantallaCuenta() {
   const [confirmando, setConfirmando] = useState(false);
 
   return (
-    <MarcoGlass titulo="Cuenta" icono="user" testID="pantalla-cuenta">
+    <MarcoGlass titulo="Mi cuenta" icono="user" testID="pantalla-cuenta">
       <View style={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}>
         <Row testID="cuenta-identidad">
           <View style={{ gap: 2 }}>
@@ -40,6 +45,23 @@ export function PantallaCuenta() {
               style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
             >
               {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
+            </Text>
+          </View>
+        </Row>
+
+        {/* 🔴 Llegó de "Configuración del sistema", y sigue SIN `onPress` a propósito. «No molestar»
+            muta un ajuste GLOBAL del teléfono y necesita un restaurador ante crash: si el copiloto lo
+            prende y la app se cae antes de apagarlo, el teléfono queda en silencio sin que nadie lo
+            haya decidido. Eso es MAYOR —muta estado FUERA del sandbox— y se resuelve en otra tarea.
+            Un toggle que no hace nada, o que sólo cambia visualmente, sería peor que esta fila: es un
+            dato inventado aplicado a una acción. */}
+        <Row testID="cuenta-no-molestar" accessibilityLabel="No molestar (pendiente)">
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+              No molestar
+            </Text>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
             </Text>
           </View>
         </Row>

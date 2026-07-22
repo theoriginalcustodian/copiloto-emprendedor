@@ -77,6 +77,9 @@ describe('perfilNegocio.ts', () => {
         formalidad: 'cercano',
         largoRespuesta: 'breve',
         nombreCopiloto: 'Copi',
+        // El modo entró al perfil con el contrato de modos. Va acá y no como test aparte: esta
+        // aserción es la que fija la FORMA completa, y una clave nueva tiene que romperla.
+        modoCeremonia: 'confirmacion',
         actualizadoEn: '2026-07-21T22:14:03.120Z',
       });
     });
@@ -169,6 +172,66 @@ describe('perfilNegocio.ts', () => {
         status: 400,
         detail: 'no mandaste ningún campo',
       });
+    });
+  });
+
+
+  describe('modo de ceremonia', () => {
+    it('🔴 fail-closed: cualquier cosa que no sea `automatico` se lee como confirmación', async () => {
+      // Un valor desconocido, un typo o un campo ausente caen en el modo que PREGUNTA. Un default
+      // permisivo por un error de lectura se descubre por un registro que nadie autorizó.
+      for (const crudo of ['automatic', 'AUTOMATICO', '', undefined, 'cualquier_cosa']) {
+        responder = () => respuesta(200, { perfil: { que_vende: 'x', modo_ceremonia: crudo } });
+        const res = await leerPerfilNegocio();
+        if (res.status === 'ok' && res.perfil) expect(res.perfil.modoCeremonia).toBe('confirmacion');
+        else throw new Error('esperaba perfil');
+      }
+    });
+
+    it('lee `automatico` cuando viene exactamente así', async () => {
+      responder = () => respuesta(200, { perfil: { que_vende: 'x', modo_ceremonia: 'automatico' } });
+
+      const res = await leerPerfilNegocio();
+
+      if (res.status === 'ok' && res.perfil) expect(res.perfil.modoCeremonia).toBe('automatico');
+      else throw new Error('esperaba perfil');
+    });
+
+    it('🔴 el 409 de modo en pausa NO es un error: trae el motivo del backend y el modo que quedó', async () => {
+      // Se pinta el `mensaje` que viene, nunca uno propio: el día que se levante la pausa el texto
+      // cambia solo, y un copy nuestro seguiría diciendo «está en pausa» después de habilitado.
+      responder = () =>
+        respuesta(409, {
+          detail: {
+            codigo: 'modo_automatico_no_disponible',
+            mensaje: 'El modo automático está en pausa: …',
+            modo_vigente: 'confirmacion',
+          },
+        });
+
+      const res = await guardarPerfilNegocio({ modoCeremonia: 'automatico' });
+
+      expect(res).toEqual({
+        status: 'modo_no_disponible',
+        mensaje: 'El modo automático está en pausa: …',
+        modoVigente: 'confirmacion',
+      });
+    });
+
+    it('🔴 el 400 del typo NO se confunde con la pausa — son dos cosas distintas', async () => {
+      // `automatic` es un valor que no existe (400); `automatico` es real y está en pausa (409).
+      // Colapsarlos diría que el modo automático no existe, y la app tendría que inventar el porqué.
+      responder = () => respuesta(400, { detail: 'modo_ceremonia tiene que ser uno de: confirmacion, automatico' });
+
+      await expect(guardarPerfilNegocio({ modoCeremonia: 'automatic' as never })).rejects.toThrow();
+    });
+
+    it('el modo viaja en el body sólo si se lo pide cambiar', async () => {
+      responder = () => respuesta(200, { perfil: { que_vende: 'x' } });
+
+      await guardarPerfilNegocio({ nombreComercial: 'Kiosco' });
+
+      expect(peticiones[0].cuerpoJson).toEqual({ nombre_comercial: 'Kiosco' });
     });
   });
 });

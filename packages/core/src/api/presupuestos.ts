@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { ApiError } from './errors';
+import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
 import type { ConDisponibilidad } from './afip';
 
 /**
@@ -102,7 +102,32 @@ export interface Presupuesto {
    * → badge: `facturado`. Link a la factura: `facturaId`.
    */
   facturado: boolean;
+  /**
+   * ¿Se lo tomaron? — hito 3, forma declarada por backend antes de implementar.
+   *
+   * 🔴 **`null` significa «el backend todavía no manda este campo», NO «pendiente».** Es la
+   * distinción que sostiene la pantalla entera: el contrato separa **ganado** (`aprobado`),
+   * **perdido** (`desestimado`) y **no sé** (`pendiente`), y *«el que cuenta los no-marcados como
+   * rechazos miente sobre la tasa de conversión»*. Si acá cayera a `'pendiente'` por defecto, antes
+   * del deploy **todos** los presupuestos se verían como pendientes de verdad — un dato afirmado
+   * sobre uno inexistente, y encima indistinguible del bueno.
+   */
+  estado: EstadoPresupuesto | null;
+  /** Cuándo se marcó el estado actual. `null` si nunca se tocó o si el backend no lo manda. */
+  estadoActualizadoEn: string | null;
+  /**
+   * 🔴 **Es un MATIZ de `pendiente`, no una cuarta categoría.** Lo deriva el backend (pendiente + más
+   * de 30 días, parametrizable) y no existe como estado guardado. Pintarlo como si fuera un estado
+   * propio volvería a mezclar «no sé» con «me dijeron que no».
+   *
+   * `null` = el backend no lo manda todavía. `false` sobre un presupuesto de hace un año sería una
+   * afirmación falsa.
+   */
+  sinRespuesta: boolean | null;
 }
+
+/** Los tres valores ESCRIBIBLES. `sin_respuesta` no está acá a propósito: es derivado. */
+export type EstadoPresupuesto = 'pendiente' | 'aprobado' | 'desestimado';
 
 interface ReceptorCrudo {
   nombre?: string;
@@ -138,6 +163,9 @@ interface PresupuestoCrudo {
   reemplazado_por?: number | null;
   factura_id?: string | null;
   facturado?: boolean;
+  estado?: string | null;
+  estado_actualizado_en?: string | null;
+  sin_respuesta?: boolean | null;
 }
 
 function normalizarReceptor(r: ReceptorCrudo | null | undefined): ReceptorPresupuesto {
@@ -184,7 +212,20 @@ function normalizar(p: PresupuestoCrudo): Presupuesto {
     reemplazadoPor: p.reemplazado_por ?? null,
     facturaId: p.factura_id ?? null,
     facturado: p.facturado === true,
+    // ⛔ Sin `?? 'pendiente'` — ver el docstring del campo. Un valor que no reconocemos también cae
+    // en `null`: si el backend agrega un cuarto estado, mostrarlo como pendiente sería peor que no
+    // mostrar nada.
+    estado: estadoValido(p.estado),
+    estadoActualizadoEn: p.estado_actualizado_en ?? null,
+    // ⛔ Sin `=== true`: eso colapsaría "no vino" a `false`, y `false` sobre un presupuesto de hace
+    // un año es una afirmación, no una ausencia.
+    sinRespuesta: typeof p.sin_respuesta === 'boolean' ? p.sin_respuesta : null,
   };
+}
+
+/** Sólo los tres del contrato. Cualquier otra cosa —o nada— es `null` = "no sé". */
+function estadoValido(v: unknown): EstadoPresupuesto | null {
+  return v === 'pendiente' || v === 'aprobado' || v === 'desestimado' ? v : null;
 }
 
 /**
@@ -396,11 +437,18 @@ export type ResultadoFacturar =
   | { status: 'ya_facturado'; facturaId: string | null }
   /** El tenant todavía no cargó su perfil fiscal (CUIT) — hay que mandarlo a Ajustes → Facturación. */
   | { status: 'falta_perfil_fiscal' }
+  /**
+   * 🔴 **El presupuesto está en un estado que no se puede facturar** — hoy, `desestimado`.
+   *
+   * Facturar IMPLICA aprobar (`presupuestos_web.py:318`), y `desestimado → aprobado` no existe: el
+   * camino es emitir un presupuesto nuevo. El backend **no lo revive en silencio** a propósito, y esta
+   * rama es lo que permite decírselo al emprendedor en vez de mandarlo a arreglar otra cosa.
+   */
+  | { status: 'estado_incompatible'; estado: string | null; motivo: string }
   | { status: 'no_disponible' };
 
 /**
- * Los dos 409 de este endpoint se distinguen por **la presencia de `factura_id` en el body**, no por
- * el texto del `detail`.
+ * Los **tres** 409 de este endpoint se distinguen por la ESTRUCTURA del `detail`, no por su texto.
  *
  * 🔴 Atarse a la redacción (`"el presupuesto ya fue facturado"`) sería depender de un string que el
  * backend puede reescribir sin que eso sea un cambio de contrato — y el día que lo haga, "ya
@@ -408,9 +456,50 @@ export type ResultadoFacturar =
  * que ya tiene. La presencia de un campo es estructura; el texto es copy.
  */
 function facturaIdDelBody(body: unknown): string | null | undefined {
-  if (typeof body !== 'object' || body === null || !('factura_id' in body)) return undefined;
-  const valor = (body as { factura_id?: unknown }).factura_id;
-  return typeof valor === 'string' ? valor : null;
+  if (typeof body !== 'object' || body === null) return undefined;
+  // 🔴 **Y bajo `detail`, que es donde REALMENTE viene.** `HTTPException(409, detail={...})` de
+  // FastAPI serializa `{"detail": {"mensaje": …, "factura_id": …}}`: en la raíz no hay ningún
+  // `factura_id`. Mirando sólo la raíz, este discriminador devolvía `undefined` **siempre**, y el
+  // "ya se facturó" se mostraba como *«falta tu perfil fiscal»* — mandando al emprendedor a Ajustes
+  // a cargar un CUIT que ya tenía, por una factura que ya existía. Verificado leyendo
+  // `presupuestos_web.py:264` el 2026-07-22; el test viejo montaba el body plano, así que confirmaba
+  // la misma creencia equivocada que el código en vez de verificarla.
+  const raiz = body as Record<string, unknown>;
+  const detalle = typeof raiz.detail === 'object' && raiz.detail !== null
+    ? (raiz.detail as Record<string, unknown>)
+    : {};
+  for (const nivel of [raiz, detalle]) {
+    if ('factura_id' in nivel) {
+      const valor = nivel.factura_id;
+      return typeof valor === 'string' ? valor : null;
+    }
+  }
+  return undefined;
+}
+
+/** El `estado` de un `detail` estructurado. `undefined` = el body no lo trae (no es este caso). */
+function estadoDelBody(body: unknown): string | null | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const detalle = (body as { detail?: unknown }).detail;
+  if (typeof detalle !== 'object' || detalle === null || !('estado' in detalle)) return undefined;
+  const v = (detalle as { estado?: unknown }).estado;
+  return typeof v === 'string' ? v : null;
+}
+
+/**
+ * El texto que el backend puso en un `detail` que es OBJETO. `ApiError.detail` sólo se llena cuando el
+ * `detail` era string (`client.ts:59`), así que con un detalle estructurado queda `undefined` y el
+ * motivo real —el único dato que le dice al emprendedor qué hacer en su lugar— se perdía.
+ */
+function mensajeDelBody(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const detalle = (body as { detail?: unknown }).detail;
+  if (typeof detalle === 'string') return detalle;
+  if (typeof detalle === 'object' && detalle !== null) {
+    const m = (detalle as { mensaje?: unknown }).mensaje;
+    if (typeof m === 'string' && m.trim() !== '') return m;
+  }
+  return null;
 }
 
 /**
@@ -435,9 +524,114 @@ export async function facturarPresupuesto(id: number): Promise<ResultadoFacturar
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     if (err instanceof ApiError && err.status === 409) {
+      // 🔴 **Primero el CÓDIGO, que es lo que el caso TRAE.** Desde el 2026-07-22 todo 409 del backend
+      // viaja con `codigo` (`errores_web.CODIGOS`), y eso es lo que retira de acá la rama que se
+      // reconocía por descarte — la que convertía cualquier caso nuevo en «falta tu CUIT».
+      const codigo = codigoDeConflicto(err.body);
+      if (codigo === 'presupuesto_ya_facturado') {
+        return { status: 'ya_facturado', facturaId: facturaIdDelBody(err.body) ?? null };
+      }
+      if (codigo === 'falta_cuit') return { status: 'falta_perfil_fiscal' };
+      if (codigo === 'presupuesto_no_facturable') {
+        return {
+          status: 'estado_incompatible',
+          estado: estadoDelBody(err.body) ?? null,
+          motivo: mensajeDeConflicto(err.body) ?? 'Ese presupuesto no se puede facturar como está.',
+        };
+      }
+      // ⚠️ Y si no vino código, la discriminación por ESTRUCTURA de abajo sigue viva: un deploy
+      // anterior al cambio no lo manda, y tirarla convertiría cada 409 en genérico tras un rollback.
       const facturaId = facturaIdDelBody(err.body);
-      return facturaId !== undefined ? { status: 'ya_facturado', facturaId } : { status: 'falta_perfil_fiscal' };
+      if (facturaId !== undefined) return { status: 'ya_facturado', facturaId };
+      // 🔴 El TERCER 409, que apareció con los estados: el presupuesto está `desestimado`. Viene con
+      // `{mensaje, estado}` y **sin** `factura_id`, así que antes de esta rama caía en
+      // `falta_perfil_fiscal` — o sea que intentar facturar un presupuesto que el emprendedor había
+      // dado por perdido le decía *«cargá tu CUIT»*. Verificado leyendo `presupuestos_web.py:319`.
+      const estado = estadoDelBody(err.body);
+      if (estado !== undefined) {
+        return {
+          status: 'estado_incompatible',
+          estado,
+          motivo: mensajeDelBody(err.body) ?? 'Ese presupuesto no se puede facturar como está.',
+        };
+      }
+      // ⚠️ Lo que queda es el `detail` STRING de "falta el perfil fiscal (CUIT)". Es el único 409 sin
+      // estructura hoy, y por eso el default cae acá — pero un cuarto 409 sin estructura aterrizaría
+      // en la misma rama y volvería a mandar al emprendedor a Ajustes por algo que no es. Es
+      // exactamente el fallo que este bloque acaba de arreglar dos veces; pedido a backend que todo
+      // 409 nuevo venga con un campo que lo identifique.
+      return { status: 'falta_perfil_fiscal' };
     }
     throw err;
   }
+}
+
+/**
+ * El resultado de marcar un presupuesto como ganado o perdido.
+ *
+ * `transicion_invalida` NO es un fallo de la app: el backend **protege información**. Volver a
+ * `pendiente` borraría el hecho de que alguien ya respondió, y revivir un `desestimado` haría
+ * desaparecer que lo rechazaron — el contrato pide emitir uno nuevo. La pantalla explica, no reintenta.
+ */
+export type ResultadoCambiarEstado =
+  | { status: 'ok'; presupuesto: Presupuesto }
+  | { status: 'no_disponible' }
+  | { status: 'no_encontrado' }
+  | { status: 'transicion_invalida'; motivo: string };
+
+/**
+ * `PATCH /presupuestos/{id}/estado` — *«No me lo tomaron»* y su opuesto.
+ *
+ * 🔴 **`aprobado` casi nunca se manda desde acá.** El contrato decidió que **no tiene botón propio**:
+ * lo implican *Facturar* y *Cobrar*. Facturar un `pendiente` lo pasa a `aprobado` **solo**. Ofrecer
+ * además un botón "Aprobar" crearía dos caminos para el mismo hecho y el emprendedor tendría que
+ * acordarse de usar los dos.
+ *
+ * 🔴 **Y lo que NO hay que hacer con la respuesta: derivar la tasa de conversión contando pendientes
+ * como perdidos.** Son tres categorías —ganado, perdido y **no sé**— y `sinRespuesta` es un matiz de
+ * la tercera, no una cuarta. Mezclarlas quema la pantalla de métricas para siempre, porque el número
+ * se ve razonable.
+ */
+export async function cambiarEstadoPresupuesto(
+  id: number,
+  estado: EstadoPresupuesto,
+): Promise<ResultadoCambiarEstado> {
+  try {
+    const raw = await apiClient.patch<unknown>(`/presupuestos/${id}/estado`, { estado });
+    const crudo = presupuestoDeLaRespuesta(raw);
+    // El control de que esto es un presupuesto y no el HTML del catch-all del SPA ni un `{detail}`.
+    if (crudo == null) return { status: 'no_disponible' };
+    return { status: 'ok', presupuesto: normalizar(crudo) };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
+    if (err instanceof ApiError && err.status === 409) {
+      // El backend explica cuál de las dos transiciones prohibidas fue. Reescribirlo acá perdería
+      // el único dato que le sirve al emprendedor para saber qué hacer en su lugar.
+      return {
+        status: 'transicion_invalida',
+        motivo:
+          err.detail ??
+          mensajeDeConflicto(err.body) ??
+          mensajeDelBody(err.body) ??
+          'Ese cambio de estado no se puede hacer.',
+      };
+    }
+    throw err;
+  }
+}
+
+/**
+ * El presupuesto de la respuesta del `PATCH`, venga **envuelto** o pelado.
+ *
+ * Tolera las dos formas por lo mismo que `comprobanteDeLaRespuesta` de AFIP: este sistema tiene las
+ * dos convenciones vivas —`POST /clientes` devuelve el recurso pelado, `GET /clientes/{id}` devuelve
+ * secciones— y acertar de memoria ya falló una vez, sin ruido: el `GET` daba 200, el id llegaba, y
+ * la pantalla simplemente no mostraba nada.
+ */
+function presupuestoDeLaRespuesta(raw: unknown): PresupuestoCrudo | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const envuelto = (raw as { presupuesto?: unknown }).presupuesto;
+  const candidato = (typeof envuelto === 'object' && envuelto !== null ? envuelto : raw) as PresupuestoCrudo;
+  return typeof candidato.id === 'number' ? candidato : null;
 }

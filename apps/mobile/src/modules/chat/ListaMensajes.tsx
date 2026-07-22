@@ -1,13 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { leerGastoPropuesto, mapearGate, type ChatMessage, type Gate } from '@copiloto/core';
+import {
+  leerClientePropuesto,
+  leerGastoPropuesto,
+  mapearGate,
+  type ChatMessage,
+  type Gate,
+} from '@copiloto/core';
 
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 
 const TEXTO_VACIO =
@@ -158,6 +165,22 @@ export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
         const propuesta = leerGastoPropuesto(mensaje.card);
         if (propuesta) {
           return <TarjetaGastoPropuesto key={mensaje.id} propuesta={propuesta} />;
+        }
+
+        // Mismo motivo que el gasto: `cliente_propuesto` no lleva `choices`, así que `mapearGate` la
+        // ignoraría y esto caería en `Burbuja` — se vería el texto del copiloto y ningún lugar donde
+        // corregir el nombre que el LLM entendió mal.
+        const clientePropuesto = leerClientePropuesto(mensaje.card);
+        if (clientePropuesto) {
+          // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
+          // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
+          return (
+            <TarjetaClientePropuesto
+              key={mensaje.id}
+              propuesta={clientePropuesto}
+              texto={mensaje.text}
+            />
+          );
         }
 
         const gate = mapearGate(mensaje);

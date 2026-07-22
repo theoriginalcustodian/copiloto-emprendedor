@@ -66,6 +66,16 @@ const OPCIONES_DOC: OpcionSelect[] = [
 export interface FormularioClienteProps {
   /** Si viene, es una edición: arranca con sus datos y manda sólo el diff. */
   edita?: Cliente | null;
+  /**
+   * Valores de arranque para un ALTA (no una edición): lo que el copiloto entendió de un dictado.
+   *
+   * 🔴 **Existe para que la card de voz reuse ESTE formulario y no uno propio.** Dos formularios
+   * divergen: el de voz se queda sin algún campo que el manual sí tiene, y el emprendedor no puede
+   * corregir justo ése. Mismo criterio que `FormularioGasto`.
+   *
+   * Su `origen` viaja al crear (`voz`), y por eso no se pisa acá.
+   */
+  iniciales?: DatosCliente | null;
   onGuardado: (cliente: Cliente) => void;
   /**
    * Choque por **documento**: es el mismo cliente y acá ya no hay nada que hacer — lo tipeado no
@@ -83,6 +93,7 @@ export interface FormularioClienteProps {
 
 export function FormularioCliente({
   edita = null,
+  iniciales = null,
   onGuardado,
   onDuplicado,
   onAbrirCliente,
@@ -90,13 +101,15 @@ export function FormularioCliente({
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
   const tema = useTema();
-  const [nombre, setNombre] = useState(edita?.nombre ?? '');
-  const [docTipo, setDocTipo] = useState(edita?.docTipo != null ? String(edita.docTipo) : '');
-  const [docNro, setDocNro] = useState(edita?.docNro ?? '');
-  const [domicilio, setDomicilio] = useState(edita?.domicilio ?? '');
-  const [email, setEmail] = useState(edita?.email ?? '');
-  const [telefono, setTelefono] = useState(edita?.telefono ?? '');
-  const [notas, setNotas] = useState(edita?.notas ?? '');
+  // `edita` manda si está; si no, los `iniciales` del dictado; si no, vacío.
+  const base = edita ?? iniciales;
+  const [nombre, setNombre] = useState(base?.nombre ?? '');
+  const [docTipo, setDocTipo] = useState(base?.docTipo != null ? String(base.docTipo) : '');
+  const [docNro, setDocNro] = useState(base?.docNro ?? '');
+  const [domicilio, setDomicilio] = useState(base?.domicilio ?? '');
+  const [email, setEmail] = useState(base?.email ?? '');
+  const [telefono, setTelefono] = useState(base?.telefono ?? '');
+  const [notas, setNotas] = useState(base?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Choque por NOMBRE sin resolver: se queda acá, con lo tipeado, hasta que el humano decida. */
@@ -118,6 +131,9 @@ export function FormularioCliente({
       email: limpio(email),
       telefono: limpio(telefono),
       notas: limpio(notas),
+      // Sólo al crear, y sólo si vino: en la edición el backend lo ignora y `cambiosDeCliente` no lo
+      // emite. Es lo que después responde "¿la cartera se armó sola o la cargaron?".
+      ...(edita == null && iniciales?.origen != null ? { origen: iniciales.origen } : {}),
     };
   }
 
@@ -205,7 +221,7 @@ export function FormularioCliente({
         etiqueta="Nombre"
         valor={nombre}
         onChange={setNombre}
-        placeholder="Panadería Los Tilos"
+        placeholder="ej.: Panadería Los Tilos"
         maxLength={200}
       />
 
@@ -216,15 +232,30 @@ export function FormularioCliente({
         valor={docTipo}
         onChange={setDocTipo}
       />
-      {docTipo !== '' && (
+      {/* 🔴 También se muestra SIN tipo, si hay un número cargado. Es el caso que llega dictado: el
+          backend manda `doc_nro` con `doc_tipo: null` **a propósito** cuando el dictado no da 11 ni
+          7-8 dígitos, para que el emprendedor lo corrija. Con la condición sólo por tipo, ese número
+          no se pintaba y `loTipeado` lo mandaba en `null`: el dato desaparecía de la pantalla Y del
+          body, sin que nada fallara. */}
+      {(docTipo !== '' || docNro.trim() !== '') && (
         <CampoTexto
           testID={`${testID}-doc-nro`}
           etiqueta="Número"
           valor={docNro}
           onChange={setDocNro}
-          placeholder="30712345678"
+          placeholder="ej.: 30712345678"
           keyboardType="number-pad"
         />
+      )}
+      {/* ⛔ Avisa, no bloquea — mismo criterio que el homónimo. Sin esto, elegir "Sin documento" con
+          un número escrito lo tira en silencio, que se ve igual que un guardado bueno. */}
+      {docTipo === '' && docNro.trim() !== '' && (
+        <Text
+          testID={`${testID}-doc-sin-tipo`}
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+        >
+          Elegí si ese número es DNI o CUIT — si no, no lo vamos a poder guardar.
+        </Text>
       )}
 
       <CampoTexto
@@ -232,7 +263,7 @@ export function FormularioCliente({
         etiqueta="Domicilio"
         valor={domicilio}
         onChange={setDomicilio}
-        placeholder="Av. Mitre 1234"
+        placeholder="ej.: Av. Mitre 1234"
         maxLength={200}
       />
       {/* 🔴 DOS campos, no uno de texto libre — y el teclado por tipo no es un mimo: es la diferencia

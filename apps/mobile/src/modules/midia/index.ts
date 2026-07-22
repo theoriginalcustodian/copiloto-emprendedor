@@ -1,0 +1,1 @@
+export { PantallaMiDia } from './PantallaMiDia';
