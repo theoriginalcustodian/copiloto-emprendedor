@@ -58,6 +58,7 @@
 - [🎭 El RASTRO del último intento pisa al HECHO](rastro-del-intento-pisa-al-hecho.md) — `project`. **LEER al pintar "¿está conectado/configurado?".** Un alta fallida mostraba como desconectada una credencial activa — y empujaba a reintentar, gastando intentos contra el bloqueo de ARCA.
 - [🔄 Un listado que NUNCA vuelve a preguntar](listado-que-nunca-vuelve-a-preguntar.md) — `project`. **LEER al poner un listado en pantalla.** Cargar al montar y nada más = dato viejo idéntico al fresco; el remonte lo disfraza de intermitente. 3 disparadores, y el tirón es el único que cubre lo que cambió AFUERA.
 - [⏱️ Dato en DOS tiempos, lector de UNO](dato-en-dos-tiempos-lector-de-un-tiempo.md) — `project`. **LEER al poletear un estado que se completa por partes.** Cortar en el 1er estado "listo" da un dato real pero prematuro; cortar por `terminado`. Escribir por partes toca sólo su campo.
+- [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — `project`. **LEER antes de hacer idempotente un botón que cuesta plata.** Facturar 2× creaba 2 borradores → 2 CAE. El `if` propio tiene carrera; `USE_EXISTING` duplica los ítems y se ve normal. Medir el EFECTO, no la respuesta.
 
 ## 🧠 Lecciones sistémicas vivas
 
