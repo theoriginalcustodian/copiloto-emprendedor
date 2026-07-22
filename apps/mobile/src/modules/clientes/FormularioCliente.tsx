@@ -38,9 +38,18 @@ import { useTema } from '../../theme/ThemeProvider';
  * vino de las facturas de AFIP, que el emprendedor nunca tipeó y no sabe que puede perder. Ese bug se
  * ve idéntico a un guardado exitoso.
  *
- * 🔴 **El `409` no se pinta en rojo.** Es el resultado útil: ese cliente ya existe. Se dice *"ya lo
- * tenés"* y se ofrece abrirlo. Tratarlo como fallo empujaría a reintentar un alta que nunca va a
- * entrar. El backend manda **la ficha entera del dueño**, no su id, justamente para poder nombrarlo.
+ * 🔴 **El `409` no se pinta en rojo, y tiene DOS caras que no se resuelven igual.**
+ *
+ * - `por: "documento"` → es **el mismo cliente**. No hay nada que decidir: *"ya lo tenés"* y se lo
+ *   lleva a su ficha. Lo maneja la pantalla, porque lo tipeado acá ya no sirve.
+ * - `por: "nombre"` → **es una pregunta, y sólo el emprendedor la puede responder.** Dos clientes
+ *   pueden llamarse igual de verdad (dos «Juan Pérez», dos «Kiosco»). Se queda **acá**, con lo
+ *   tipeado intacto, y se ofrecen las dos salidas: abrir al homónimo, o crearlo igual con `forzar`.
+ *
+ * **Tratarlos igual es peor que el error, porque parece que funcionó:** el emprendedor se va creyendo
+ * que cargó a su cliente cuando está mirando a otro. Y cerrar el formulario en el caso del nombre lo
+ * dejaría sin ninguna maniobra —le pedimos un CUIT que no tiene— justo después de haber escrito que
+ * exigir el documento traba el caso más común.
  *
  * El teclado ya está resuelto por la cáscara: este formulario vive dentro del `ScrollFormulario` de
  * `PantallaClientes` (revela el campo enfocado) + el `KeyboardAvoidingView` de `MarcoGlass`. Un
@@ -58,8 +67,16 @@ export interface FormularioClienteProps {
   /** Si viene, es una edición: arranca con sus datos y manda sólo el diff. */
   edita?: Cliente | null;
   onGuardado: (cliente: Cliente) => void;
-  /** Ese cliente ya existe. Trae la ficha del dueño y por qué chocó — ver `DuplicadoCliente`. */
+  /**
+   * Choque por **documento**: es el mismo cliente y acá ya no hay nada que hacer — lo tipeado no
+   * sirve. La pantalla avisa y ofrece abrirlo.
+   */
   onDuplicado: (duplicado: DuplicadoCliente) => void;
+  /**
+   * El emprendedor eligió **abrir al homónimo**. Va directo a su ficha: ya leyó el aviso y ya decidió,
+   * así que volver a mostrarle el mismo cartel con un botón sería un toque de más sobre algo resuelto.
+   */
+  onAbrirCliente: (cliente: Cliente) => void;
   onCancelar: () => void;
   testID?: string;
 }
@@ -68,6 +85,7 @@ export function FormularioCliente({
   edita = null,
   onGuardado,
   onDuplicado,
+  onAbrirCliente,
   onCancelar,
   testID = 'formulario-cliente',
 }: FormularioClienteProps) {
@@ -80,6 +98,8 @@ export function FormularioCliente({
   const [notas, setNotas] = useState(edita?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Choque por NOMBRE sin resolver: se queda acá, con lo tipeado, hasta que el humano decida. */
+  const [homonimo, setHomonimo] = useState<DuplicadoCliente | null>(null);
 
   /**
    * Lo tipeado, en la forma del contrato. Un campo vacío viaja como `null` ("no lo sé"), no como `""`:
@@ -99,18 +119,34 @@ export function FormularioCliente({
     };
   }
 
+  /**
+   * 🔴 **No afirma el motivo cuando no lo sabe.** Con `por: "nombre"` medido se puede decir *"se llama
+   * X"*; con un `por` ilegible, decirlo sería inventar la causa de algo que sí pasó — el mismo error
+   * que evitamos del otro lado al no hablar de documentos a quien no tipeó ninguno. Genérico y cierto
+   * le gana a específico y quizás falso.
+   */
+  function textoHomonimo(d: DuplicadoCliente): string {
+    const quien = d.dueno?.nombre;
+    const tieneNombre = quien != null && quien !== '';
+    if (d.por === 'nombre') {
+      return tieneNombre ? `Ya tenés un cliente que se llama ${quien}.` : 'Ya tenés un cliente con ese nombre.';
+    }
+    return tieneNombre ? `Ya tenés un cliente parecido: ${quien}.` : 'Ya tenés un cliente parecido en la cartera.';
+  }
+
   /** ⛔ Exactamente lo que exige el backend, ni un campo más. Ver el docstring del módulo. */
   const puedeGuardar = nombre.trim() !== '';
 
-  async function guardar() {
+  async function guardar(forzar = false) {
     setEnviando(true);
     setError(null);
     try {
       const datos = loTipeado();
+      const opciones = forzar ? { forzar: true } : undefined;
       const res =
         edita != null
-          ? await editarCliente(edita.id, cambiosDeCliente(edita, datos))
-          : await crearCliente(datos);
+          ? await editarCliente(edita.id, cambiosDeCliente(edita, datos), opciones)
+          : await crearCliente(datos, opciones);
 
       if (res.status === 'no_disponible') {
         setError(
@@ -121,9 +157,16 @@ export function FormularioCliente({
         return;
       }
       if (res.status === 'duplicado') {
+        // El choque por nombre NO sale de acá: es una pregunta, y cerrar el formulario le borraría al
+        // emprendedor lo que escribió sin darle ninguna salida.
+        if (res.duplicado.por !== 'documento') {
+          setHomonimo(res.duplicado);
+          return;
+        }
         onDuplicado(res.duplicado);
         return;
       }
+      setHomonimo(null);
       onGuardado(res.cliente);
     } catch (e) {
       // El `detail` del backend explica qué campo falló mejor que cualquier texto nuestro.
@@ -199,6 +242,43 @@ export function FormularioCliente({
         <Text testID={`${testID}-error`} style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
           {error}
         </Text>
+      )}
+
+      {/* 🔴 En tenue, no en rojo: no es un fallo, es una pregunta. Y las dos salidas están las dos —
+          si las únicas fueran "abrí el otro" o "cancelá", el emprendedor entró a cargar un cliente y
+          se va sin haber cargado nada, sin entender por qué. */}
+      {homonimo != null && (
+        <View style={{ gap: tema.espacio.sm }} testID={`${testID}-homonimo`}>
+          <Text
+            testID={`${testID}-homonimo-texto`}
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
+          >
+            {textoHomonimo(homonimo)}
+          </Text>
+          <FilaBotones
+            compacto
+            testID={`${testID}-homonimo-acciones`}
+            botones={[
+              {
+                // Reenvía EXACTAMENTE lo mismo, con la confirmación del humano. Nada se re-tipea.
+                etiqueta: 'Es otro, crearlo igual',
+                onPress: () => void guardar(true),
+                variante: 'primario',
+                deshabilitado: enviando,
+                testID: `${testID}-homonimo-forzar`,
+              },
+              ...(homonimo.dueno != null
+                ? [
+                    {
+                      etiqueta: 'Abrir ese',
+                      onPress: () => onAbrirCliente(homonimo.dueno as Cliente),
+                      testID: `${testID}-homonimo-abrir`,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </View>
       )}
 
       <FilaBotones

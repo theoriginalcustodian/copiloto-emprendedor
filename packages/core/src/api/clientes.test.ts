@@ -248,6 +248,25 @@ describe('clientes.ts', () => {
       });
     });
 
+    it('🔴 `forzar` sólo viaja cuando es true — no ensucia el body de cada alta', async () => {
+      responder = () => respuesta(201, clienteCrudo({ id: 40 }));
+
+      await crearCliente({ nombre: 'Juan Pérez' });
+      expect(peticiones[0]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez' });
+
+      await crearCliente({ nombre: 'Juan Pérez' }, { forzar: true });
+      expect(peticiones[1]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez', forzar: true });
+    });
+
+    it('editando, `forzar` no rompe la parcialidad: sólo el cambio + la confirmación', async () => {
+      // Renombrar "Kiosco 2" a "Kiosco" tiene el mismo callejón que el alta, y el backend lo cubrió.
+      responder = () => respuesta(200, clienteCrudo({ nombre: 'Kiosco' }));
+
+      await editarCliente(12, { nombre: 'Kiosco' }, { forzar: true });
+
+      expect(peticiones[0]?.cuerpoJson).toEqual({ nombre: 'Kiosco', forzar: true });
+    });
+
     it('un 405 es `no_disponible` — el hito 3 todavía no está desplegado', async () => {
       responder = () => respuesta(405, { detail: 'Method Not Allowed' });
 

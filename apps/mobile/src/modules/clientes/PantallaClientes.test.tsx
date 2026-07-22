@@ -242,8 +242,11 @@ describe('PantallaClientes', () => {
       await abrirAltaCon('Kiosco');
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
+      // El segundo argumento es `undefined`: `forzar` es una confirmacion del humano, nunca un
+      // default. Se asierta explicito para que agregarlo por comodidad rompa el test.
       expect(mockCrear).toHaveBeenCalledWith(
         expect.objectContaining({ nombre: 'Kiosco', docTipo: null, docNro: null }),
+        undefined,
       );
     });
 
@@ -287,26 +290,83 @@ describe('PantallaClientes', () => {
       expect(screen.getByTestId('clientes-duplicado-abrir')).toBeTruthy();
     });
 
-    it('un choque por NOMBRE no habla de documentos - el usuario no tipeo ninguno', async () => {
-      // `por: "nombre"` no estaba en la tabla del contrato: repetir un nombre normalizado sin
-      // documento tambien choca. Decir "ese documento ya es de X" mandaria a buscar algo que no puso.
+    it('🔴 el choque por NOMBRE se queda EN el formulario y ofrece las dos salidas', async () => {
+      // Dos clientes pueden llamarse igual de verdad. Cerrar el formulario le borraria lo tipeado y lo
+      // dejaria sin maniobra: le pediriamos un CUIT que no tiene, justo lo que §6.bis prohibe exigir.
       mockCrear.mockResolvedValue({
         status: 'duplicado',
-        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Panadería Los Tilos' }) },
+        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Juan Pérez' }) },
       });
 
       await montar();
-      await abrirAltaCon('Panadería Los Tilos');
+      await abrirAltaCon('Juan Pérez');
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
+      // El formulario NO se cerro, y lo tipeado sigue ahi.
+      expect(screen.getByTestId('formulario-cliente')).toBeTruthy();
+      expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBe('Juan Pérez');
+      expect(screen.getByTestId('formulario-cliente-homonimo-texto')).toHaveTextContent(
+        'Ya tenés un cliente que se llama Juan Pérez.',
+      );
+      // Las DOS salidas. Si solo estuviera "abrir el otro", entro a cargar un cliente y se va sin
+      // haber cargado nada.
+      expect(screen.getByTestId('formulario-cliente-homonimo-forzar')).toBeTruthy();
+      expect(screen.getByTestId('formulario-cliente-homonimo-abrir')).toBeTruthy();
+    });
+
+    it('🔴 "Es otro, crearlo igual" reenvia lo MISMO con forzar - nada se re-tipea', async () => {
+      mockCrear.mockResolvedValueOnce({
+        status: 'duplicado',
+        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Juan Pérez' }) },
+      });
+      mockCrear.mockResolvedValueOnce({
+        status: 'ok',
+        cliente: cliente({ id: 41, nombre: 'Juan Pérez' }),
+      });
+
+      await montar();
+      await abrirAltaCon('Juan Pérez');
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('formulario-cliente-homonimo-forzar'));
+      });
+
+      expect(mockCrear).toHaveBeenLastCalledWith(
+        expect.objectContaining({ nombre: 'Juan Pérez' }),
+        { forzar: true },
+      );
+      // Y el primer intento NO llevaba forzar: la confirmacion es del humano, no un default.
+      expect(mockCrear.mock.calls[0]?.[1]).toBeUndefined();
+    });
+
+    it('🔴 un choque por DOCUMENTO no ofrece "crearlo igual" - dos CUIT iguales son un tipeo', async () => {
+      // Es la distincion entera: mismo status, dos preguntas distintas. Ofrecer "crearlo igual" aca
+      // seria empujar a forzar algo que el backend ignora, y el alta nunca entraria.
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'documento', dueno: cliente({ id: 7, nombre: 'Ferretería El Tornillo' }) },
+      });
+
+      await montar();
+      await abrirAltaCon('Otro nombre');
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+
+      expect(screen.queryByTestId('formulario-cliente-homonimo')).toBeNull();
       expect(screen.getByTestId('clientes-duplicado-texto')).toHaveTextContent(
-        'Ya tenés un cliente con ese nombre: Panadería Los Tilos.',
+        'Ese documento ya es de Ferretería El Tornillo.',
       );
     });
 
-    it('un 409 SIN el id del dueno avisa igual, pero sin el boton de abrirlo', async () => {
-      // La clave del id en el body no esta medida. Degradar el atajo es honesto; inventar un id
-      // llevaria a la ficha de otro cliente.
+    it('🔴 un `por` que no reconozco cae en el camino de la PREGUNTA, no en el de documento', async () => {
+      // Decision declarada: ante un `por` ilegible las dos lecturas son posibles, y las consecuencias
+      // de errar NO son simetricas.
+      //   - Tratarlo como documento: cierro el formulario, le borro lo tipeado y lo mando a una ficha
+      //     ajena. Si era un choque de nombre, "parece que funciono" y se va creyendo que cargo a su
+      //     cliente mientras mira a otro.
+      //   - Tratarlo como nombre: conserva lo tipeado y ofrece las dos salidas. Si en realidad era un
+      //     documento repetido, "crearlo igual" vuelve a dar 409 (el backend ignora `forzar` ahi) y se
+      //     ve el aviso otra vez. Molesto, nunca enganoso.
+      // Ante la duda, el camino que no destruye datos ni afirma de mas.
       mockCrear.mockResolvedValue({
         status: 'duplicado',
         duplicado: { por: 'desconocido', dueno: null },
@@ -316,8 +376,14 @@ describe('PantallaClientes', () => {
       await abrirAltaCon('Repetido');
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
-      expect(screen.getByTestId('clientes-duplicado')).toBeTruthy();
-      expect(screen.queryByTestId('clientes-duplicado-abrir')).toBeNull();
+      expect(screen.getByTestId('formulario-cliente-homonimo')).toBeTruthy();
+      // Y no afirma el motivo que no midio: "parecido", no "con ese nombre".
+      expect(screen.getByTestId('formulario-cliente-homonimo-texto')).toHaveTextContent(
+        'Ya tenés un cliente parecido en la cartera.',
+      );
+      // Sin dueno no hay a donde abrir: se degrada el atajo, no el aviso.
+      expect(screen.queryByTestId('formulario-cliente-homonimo-abrir')).toBeNull();
+      expect(screen.getByTestId('formulario-cliente-homonimo-forzar')).toBeTruthy();
     });
 
     it('el alta no desplegada se dice, no explota', async () => {
@@ -349,7 +415,7 @@ describe('PantallaClientes', () => {
       });
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
-      expect(mockEditar).toHaveBeenCalledWith(12, { contacto: '11-5555-4444' });
+      expect(mockEditar).toHaveBeenCalledWith(12, { contacto: '11-5555-4444' }, undefined);
     });
 
     it('la ficha que NO cargo no ofrece editar - el diff seria contra datos incompletos', async () => {

@@ -209,6 +209,12 @@ function clienteDeLaRespuesta(raw: unknown): Cliente | null {
  * un documento que no puso y concluye que la app se equivocó.
  *
  * `desconocido` cubre un `por` que el backend agregue mañana: se avisa igual, en genérico.
+ *
+ * 🔴 **Los dos NO se resuelven igual, y ésa es la razón de que el campo exista.** `documento` es el
+ * mismo cliente: no hay nada que decidir, se lo lleva a su ficha. `nombre` **es una pregunta que sólo
+ * el emprendedor puede responder** —¿es otro Juan Pérez?— y necesita la salida de crearlo igual con
+ * `forzar`. Tratarlos igual es peor que el error: **parece que funcionó**, y el emprendedor se va
+ * creyendo que cargó a su cliente mientras mira a otro.
  */
 export type MotivoDuplicadoCliente = 'documento' | 'nombre' | 'desconocido';
 
@@ -277,9 +283,27 @@ export type ResultadoGuardarCliente =
   | { status: 'no_disponible' }
   | { status: 'duplicado'; duplicado: DuplicadoCliente };
 
-async function guardar(ruta: string, datos: DatosCliente): Promise<ResultadoGuardarCliente> {
+/**
+ * 🔴 **`forzar` aplica SÓLO al choque por NOMBRE, y el backend lo ignora contra un documento
+ * repetido.** Dos clientes pueden llamarse igual de verdad —dos «Juan Pérez», dos «Kiosco»—; dos CUIT
+ * iguales no son dos personas, son un error de tipeo. Por eso no es un campo del cliente: es una
+ * confirmación del humano, se saca del body antes del store y no se guarda.
+ *
+ * Sólo viaja cuando es `true`: mandar `forzar:false` en cada alta sería ruido en un body que además
+ * es parcial en la edición.
+ */
+export interface OpcionesGuardarCliente {
+  forzar?: boolean;
+}
+
+async function guardar(
+  ruta: string,
+  datos: DatosCliente,
+  opciones: OpcionesGuardarCliente = {},
+): Promise<ResultadoGuardarCliente> {
   try {
-    const raw = await apiClient.post<unknown>(ruta, aWire(datos));
+    const cuerpo = opciones.forzar === true ? { ...aWire(datos), forzar: true } : aWire(datos);
+    const raw = await apiClient.post<unknown>(ruta, cuerpo);
     const cliente = clienteDeLaRespuesta(raw);
     // Un 200 con el HTML del SPA llega hasta acá como string: no es un cliente, y decirlo "no
     // disponible" es más cierto que fabricar uno vacío.
@@ -302,16 +326,23 @@ async function guardar(ruta: string, datos: DatosCliente): Promise<ResultadoGuar
  * token** — un token vencido justo en el alta desloguea al emprendedor en el peor momento. Ese rodeo
  * ya no hace falta: `ApiError.body` existe desde el 2026-07-21 para esto.
  */
-export function crearCliente(datos: DatosCliente): Promise<ResultadoGuardarCliente> {
-  return guardar('/clientes', datos);
+export function crearCliente(
+  datos: DatosCliente,
+  opciones?: OpcionesGuardarCliente,
+): Promise<ResultadoGuardarCliente> {
+  return guardar('/clientes', datos, opciones);
 }
 
 /**
  * Edición parcial. **Pasar sólo lo que cambió** — ver `aWire`: lo que no se manda no se toca, y
  * mandar todo borra lo que el usuario no tipeó nunca.
  */
-export function editarCliente(id: number, cambios: DatosCliente): Promise<ResultadoGuardarCliente> {
-  return guardar(`/clientes/${id}`, cambios);
+export function editarCliente(
+  id: number,
+  cambios: DatosCliente,
+  opciones?: OpcionesGuardarCliente,
+): Promise<ResultadoGuardarCliente> {
+  return guardar(`/clientes/${id}`, cambios, opciones);
 }
 
 /**

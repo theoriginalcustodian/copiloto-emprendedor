@@ -126,6 +126,7 @@ export type {
   FichaCliente,
   ListarClientesParams,
   MotivoDuplicadoCliente,
+  OpcionesGuardarCliente,
   OperacionCliente,
   OrigenCliente,
   ResultadoGuardarCliente,

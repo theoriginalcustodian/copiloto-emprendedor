@@ -230,6 +230,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
               edita={formulario.edita}
               onGuardado={alGuardar}
               onDuplicado={alDuplicado}
+              onAbrirCliente={(c) => { setFormulario(null); setFicha(c); }}
               onCancelar={() => setFormulario(null)}
             />
           ) : (
