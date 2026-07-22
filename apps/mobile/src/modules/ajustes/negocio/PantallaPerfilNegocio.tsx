@@ -11,6 +11,7 @@ import {
   type FormalidadCopiloto,
   type GuardarPerfilNegocioRequest,
   type LargoRespuesta,
+  type ModoCeremonia,
   type PerfilNegocio,
 } from '@copiloto/core';
 
@@ -79,6 +80,9 @@ interface Campos {
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
+  /** 🔴 Sólo se LEE. No hay control para cambiarlo (decisión B) y por eso no entra en `aBodyCrudo`:
+   *  el modo lo decide el backend y esta pantalla lo refleja. */
+  modoCeremonia: ModoCeremonia;
 }
 
 /**
@@ -94,6 +98,10 @@ const CAMPOS_VACIOS: Campos = {
   formalidad: 'cercano',
   largoRespuesta: 'breve',
   nombreCopiloto: '',
+  // 🔴 Fail-closed también en el estado inicial: el tenant que todavía no configuró nada trabaja en
+  // el modo que PREGUNTA. Arrancar en `automatico` mostraría «Automático» durante el instante en que
+  // la pantalla carga — y en algo que decide si tus datos se guardan solos, ese instante importa.
+  modoCeremonia: 'confirmacion',
 };
 
 function aCampos(p: PerfilNegocio): Campos {
@@ -105,6 +113,7 @@ function aCampos(p: PerfilNegocio): Campos {
     formalidad: p.formalidad,
     largoRespuesta: p.largoRespuesta,
     nombreCopiloto: p.nombreCopiloto,
+    modoCeremonia: p.modoCeremonia,
   };
 }
 
@@ -322,6 +331,31 @@ export function PantallaPerfilNegocio() {
                 },
               ]}
             />
+          </Seccion>
+
+          {/* 🔴 **Cómo TRABAJA el copiloto — sólo el modo vigente, sin una segunda opción.**
+              Decisión B (`respuesta_..._va-B-la-opcion-nace-ofrecida-no-encendida`): el modo
+              automático **no se muestra gris**. Una puerta que no se puede abrir le enseña al
+              emprendedor que la app tiene cosas apagadas, y eso es caro en un producto que recién
+              conoce. Cuando exista de verdad, aparece como OFERTA, no como opción encendida.
+
+              ⚠️ Esto **no reemplaza** al candado: el backend rechaza `automatico` aunque acá ni se
+              ofrezca. Si el bloqueo viviera sólo en la UI, un `POST` alcanzaría para saltearlo.
+
+              Y es de sólo lectura a propósito: el contrato de modos §4 pide que se sepa **en qué modo
+              estás**, no que se puedan ver las dos opciones. */}
+          <Seccion titulo="Cómo trabaja tu copiloto" testID="perfil-negocio-seccion-modo">
+            <Text
+              testID="perfil-negocio-modo"
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+            >
+              {campos.modoCeremonia === 'automatico' ? 'Automático' : 'Pedir confirmación'}
+            </Text>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              {campos.modoCeremonia === 'automatico'
+                ? 'Anota lo que le dictás y te avisa después. Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
+                : 'Cuando le dictás algo, te muestra una tarjeta para que la revises antes de guardarla. Así ves qué entendió y lo corregís ahí mismo.'}
+            </Text>
           </Seccion>
 
           <Seccion titulo="Cómo te habla el copiloto" testID="perfil-negocio-seccion-personalidad">

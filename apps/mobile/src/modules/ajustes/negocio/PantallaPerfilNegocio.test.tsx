@@ -160,4 +160,36 @@ describe('PantallaPerfilNegocio', () => {
     // Dejarlo en pantalla mientras se edita diría que lo que se está viendo ya está a salvo.
     await waitFor(() => expect(screen.queryByTestId('perfil-negocio-guardado')).toBeNull());
   });
+
+  describe('cómo trabaja el copiloto', () => {
+    it('muestra el modo VIGENTE y ninguna segunda opción', async () => {
+      // Decisión B: el modo automático no se muestra gris. Una puerta que no se puede abrir le enseña
+      // al emprendedor que la app tiene cosas apagadas.
+      await montar();
+
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo')).toBeTruthy());
+      expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Pedir confirmación');
+      expect(screen.queryByText(/Automático/)).toBeNull();
+    });
+
+    it('🔴 no hay forma de cambiarlo desde acá — el modo lo decide el backend', async () => {
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-modo')).toBeTruthy());
+
+      // Ningún control dentro de la sección: es sólo lectura. Si mañana alguien agrega un select acá,
+      // este test lo frena — y el motivo no es de diseño: ocultar en la UI no reemplaza al 409, pero
+      // OFRECERLO sin que exista sí es una promesa falsa.
+      expect(screen.queryByTestId('perfil-negocio-modo-select')).toBeNull();
+    });
+
+    it('un perfil que llega en `automatico` lo dice, con su explicación', async () => {
+      mockLeer.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'automatico' } });
+
+      await montar();
+
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Automático'));
+      // Y la explicación NO promete que deja de preguntar todo: el piso sigue confirmando siempre.
+      expect(screen.getByText(/te lo sigue preguntando siempre/)).toBeTruthy();
+    });
+  });
 });
