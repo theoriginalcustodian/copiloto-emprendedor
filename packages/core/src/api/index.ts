@@ -231,6 +231,19 @@ export type {
   ResultadoIngreso,
 } from './ingresos';
 /**
+ * `/mi-dia/tablero` — el Kanban del día (presupuesto → facturado → por cobrar → cobrado). **[CONNECT]**
+ * — contra contrato §3.2, endpoint no publicado; degrada a `no_disponible`. Sólo LECTURA: la acción de
+ * mover una tarjeta dispara una tool que todavía no está contratada. Ver el docstring.
+ */
+export { IDS_COLUMNA, leerTablero } from './miDia';
+export type {
+  ColumnaTablero,
+  EstadoTarjeta,
+  IdColumna,
+  Tablero,
+  TarjetaTablero,
+} from './miDia';
+/**
  * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
  * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
  * `no_disponible` hasta el connect. Plata como string, `ausente ≠ cero`. Ver el docstring.
