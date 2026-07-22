@@ -39,8 +39,20 @@ export interface Cliente {
   /** Código de AFIP, o `null`. Los mismos que usa el WSFE — no hay catálogo paralelo. */
   condicionIva: number | null;
   domicilio: string | null;
-  /** Teléfono o mail, texto libre. */
-  contacto: string | null;
+  /**
+   * 🔴 **`email` y `telefono` son DOS campos, no un `contacto` de texto libre.**
+   *
+   * El destino los usa distinto: este producto ya manda el PDF por WhatsApp y va a mandar
+   * presupuestos por mail. Con un campo único, **cada envío tendría que adivinar qué guardó el
+   * emprendedor** — y adivinar en el momento de mandar es adivinar en el peor momento: o no se manda,
+   * o se manda a un destino que no existe. Dos campos convierten una pregunta que se repite en cada
+   * envío en un dato que se responde **una vez, al cargarlo**, por el único que lo sabe.
+   *
+   * Misma familia que `docTipo`/`docNro` separados: el que consume no puede deducir el tipo del valor
+   * sin heurística, y una heurística en el borde de salida falla callada.
+   */
+  email: string | null;
+  telefono: string | null;
   notas: string | null;
   origen: OrigenCliente;
   /**
@@ -59,10 +71,42 @@ interface ClienteCrudo {
   doc_nro?: string | null;
   condicion_iva?: number | null;
   domicilio?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  /**
+   * ⚠️ **TRANSITORIO — el campo viejo, para la ventana en que el hito 8 esté escrito y no desplegado.**
+   *
+   * Sin esto el síntoma sería **un campo vacío sin ningún error**, que se ve exactamente igual que un
+   * cliente que no tiene teléfono: un dato que desaparece sin avisar. Se reparte con la MISMA regla
+   * que usa el backend en su migración (`partir_contacto`), no con una heurística nueva.
+   *
+   * **Se borra** cuando el `avance_` del hito 8 confirme el deploy con su sonda. Propietario: FRONTEND.
+   */
   contacto?: string | null;
   notas?: string | null;
   origen?: string;
   creado_en?: string;
+}
+
+/**
+ * `email`/`telefono` del backend, o —mientras el hito 8 no esté desplegado— el `contacto` viejo
+ * repartido con la regla del backend: **el token con `@` es el mail, todo lo demás es el teléfono.**
+ * Sin `@`, todo es teléfono, que es el caso real (el emprendedor cargó una cosa **o** la otra).
+ */
+function repartirContacto(c: ClienteCrudo): { email: string | null; telefono: string | null } {
+  const email = c.email ?? null;
+  const telefono = c.telefono ?? null;
+  if (email != null || telefono != null) return { email, telefono };
+
+  const viejo = (c.contacto ?? '').trim();
+  if (viejo === '') return { email: null, telefono: null };
+  const tokens = viejo.split(/\s+/);
+  const conArroba = tokens.filter((t) => t.includes('@'));
+  const resto = tokens.filter((t) => !t.includes('@'));
+  return {
+    email: conArroba.length > 0 ? conArroba.join(' ') : null,
+    telefono: resto.length > 0 ? resto.join(' ') : null,
+  };
 }
 
 function normalizar(c: ClienteCrudo): Cliente {
@@ -74,7 +118,7 @@ function normalizar(c: ClienteCrudo): Cliente {
     docNro: c.doc_nro ?? null,
     condicionIva: c.condicion_iva ?? null,
     domicilio: c.domicilio ?? null,
-    contacto: c.contacto ?? null,
+    ...repartirContacto(c),
     notas: c.notas ?? null,
     origen: origen === 'manual' || origen === 'voz' ? origen : 'derivado',
     creadoEn: c.creado_en ?? '',
@@ -152,7 +196,9 @@ export interface DatosCliente {
   docNro?: string | null;
   condicionIva?: number | null;
   domicilio?: string | null;
-  contacto?: string | null;
+  /** ⛔ **Sin validación de formato.** Ver el docstring de `Cliente.email`. */
+  email?: string | null;
+  telefono?: string | null;
   notas?: string | null;
 }
 
@@ -172,7 +218,8 @@ function aWire(datos: DatosCliente): Record<string, unknown> {
   if (datos.docNro !== undefined) wire.doc_nro = datos.docNro;
   if (datos.condicionIva !== undefined) wire.condicion_iva = datos.condicionIva;
   if (datos.domicilio !== undefined) wire.domicilio = datos.domicilio;
-  if (datos.contacto !== undefined) wire.contacto = datos.contacto;
+  if (datos.email !== undefined) wire.email = datos.email;
+  if (datos.telefono !== undefined) wire.telefono = datos.telefono;
   if (datos.notas !== undefined) wire.notas = datos.notas;
   return wire;
 }
@@ -363,8 +410,12 @@ export function cambiosDeCliente(original: Cliente, editado: DatosCliente): Dato
   if (editado.domicilio !== undefined && editado.domicilio !== original.domicilio) {
     cambios.domicilio = editado.domicilio;
   }
-  if (editado.contacto !== undefined && editado.contacto !== original.contacto) {
-    cambios.contacto = editado.contacto;
+  // 🔴 DOS claves independientes. Llenar el mail y dejar el teléfono vacío tiene que mandar SÓLO
+  // `email`: si viajara `telefono: ""`, la edición parcial lo lee como "borralo" y se lleva puesto el
+  // que el backfill sacó de un presupuesto viejo — sin ningún error, y sin que nadie lo haya tipeado.
+  if (editado.email !== undefined && editado.email !== original.email) cambios.email = editado.email;
+  if (editado.telefono !== undefined && editado.telefono !== original.telefono) {
+    cambios.telefono = editado.telefono;
   }
   if (editado.notas !== undefined && editado.notas !== original.notas) cambios.notas = editado.notas;
   return cambios;

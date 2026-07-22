@@ -31,7 +31,8 @@ function cliente(over: Partial<Cliente> = {}): Cliente {
     docNro: '30712345678',
     condicionIva: 1,
     domicilio: null,
-    contacto: null,
+    email: null,
+    telefono: null,
     notas: null,
     origen: 'derivado',
     creadoEn: '2026-07-22T10:00:00+00:00',
@@ -73,7 +74,7 @@ describe('PantallaClientes', () => {
     // Un "sin CUIT" marcaría como incompleta a media cartera.
     mockListar.mockResolvedValue({
       status: 'ok',
-      clientes: [cliente({ docNro: null, docTipo: null, contacto: null })],
+      clientes: [cliente({ docNro: null, docTipo: null, telefono: null })],
       total: 1,
     });
 
@@ -342,7 +343,7 @@ describe('PantallaClientes', () => {
       await montar();
       await abrirAltaCon('Juan Pérez');
       await act(async () => {
-        fireEvent.changeText(screen.getByTestId('formulario-cliente-contacto-input'), '11-5555-4444');
+        fireEvent.changeText(screen.getByTestId('formulario-cliente-telefono-input'), '11-5555-4444');
       });
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
@@ -354,8 +355,8 @@ describe('PantallaClientes', () => {
         status: 'ok',
         total: 2,
         clientes: [
-          cliente({ id: 20, nombre: 'Juan Pérez', docNro: null, docTipo: null, contacto: '11-1111-1111' }),
-          cliente({ id: 23, nombre: 'Juan Pérez', docNro: null, docTipo: null, contacto: null, domicilio: 'Mitre 500' }),
+          cliente({ id: 20, nombre: 'Juan Pérez', docNro: null, docTipo: null, telefono: '11-1111-1111' }),
+          cliente({ id: 23, nombre: 'Juan Pérez', docNro: null, docTipo: null, telefono: null, domicilio: 'Mitre 500' }),
         ],
       });
 
@@ -448,10 +449,10 @@ describe('PantallaClientes', () => {
       expect(screen.getByTestId('formulario-cliente-error')).toBeTruthy();
     });
 
-    it('editar SOLO el contacto no manda el domicilio', async () => {
+    it('editar SOLO el telefono no manda el domicilio ni el mail', async () => {
       // El bug mas caro de esta pantalla: el objeto entero borra el domicilio que vino de las
       // facturas de AFIP - un dato que el emprendedor nunca tipeo y no sabe que puede perder.
-      const conDomicilio = cliente({ domicilio: 'Av. Mitre 1234', contacto: null });
+      const conDomicilio = cliente({ domicilio: 'Av. Mitre 1234', telefono: null });
       mockListar.mockResolvedValue({ status: 'ok', clientes: [conDomicilio], total: 1 });
       mockFicha.mockResolvedValue({ status: 'ok', ficha: ficha({ cliente: conDomicilio }) });
 
@@ -463,11 +464,34 @@ describe('PantallaClientes', () => {
       await waitFor(() => expect(screen.getByTestId('formulario-cliente')).toBeTruthy());
 
       await act(async () => {
-        fireEvent.changeText(screen.getByTestId('formulario-cliente-contacto-input'), '11-5555-4444');
+        fireEvent.changeText(screen.getByTestId('formulario-cliente-telefono-input'), '11-5555-4444');
       });
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
-      expect(mockEditar).toHaveBeenCalledWith(12, { contacto: '11-5555-4444' }, undefined);
+      expect(mockEditar).toHaveBeenCalledWith(12, { telefono: '11-5555-4444' }, undefined);
+    });
+
+    it('🔴 editar SOLO el mail no manda el telefono — el mismo bug con otra cara', async () => {
+      // El test del domicilio ya existia y NO cubre este: son dos claves nuevas que se llenan en el
+      // mismo formulario, y el telefono que se borraria es el que el backfill saco de un presupuesto
+      // viejo — nadie lo tipeo y nadie sabe que puede perderlo.
+      const conTelefono = cliente({ telefono: '11-5555-4444', email: null });
+      mockListar.mockResolvedValue({ status: 'ok', clientes: [conTelefono], total: 1 });
+      mockFicha.mockResolvedValue({ status: 'ok', ficha: ficha({ cliente: conTelefono }) });
+
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('cliente-12-nombre')).toBeTruthy());
+      await act(async () => { fireEvent.press(screen.getByTestId('cliente-12')); });
+      await waitFor(() => expect(screen.getByTestId('ficha-cliente-editar')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('ficha-cliente-editar'));
+      await waitFor(() => expect(screen.getByTestId('formulario-cliente')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('formulario-cliente-email-input'), 'pan@mail.com');
+      });
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+
+      expect(mockEditar).toHaveBeenCalledWith(12, { email: 'pan@mail.com' }, undefined);
     });
 
     it('la ficha que NO cargo no ofrece editar - el diff seria contra datos incompletos', async () => {

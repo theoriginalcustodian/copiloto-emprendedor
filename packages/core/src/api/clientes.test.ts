@@ -46,7 +46,8 @@ function clienteCrudo(over: Record<string, unknown> = {}) {
     doc_nro: '30712345678',
     condicion_iva: 1,
     domicilio: null,
-    contacto: null,
+    email: null,
+    telefono: null,
     notas: null,
     origen: 'derivado',
     creado_en: '2026-07-22T10:00:00+00:00',
@@ -286,6 +287,67 @@ describe('clientes.ts', () => {
     });
   });
 
+  describe('email y teléfono — DOS campos (hito 9)', () => {
+    it('🔴 llenar SÓLO el mail no manda `telefono` — mandarlo vacío lo BORRA', () => {
+      // Es el mismo bug del domicilio, con otra cara: dos claves que se llenan en el mismo formulario
+      // y que un `for...in` distraído barre juntas. El teléfono borrado sería el que el backfill sacó
+      // de un presupuesto viejo, que nadie tipeó y nadie sabe que puede perder.
+      const original = {
+        id: 12, nombre: 'Panadería', docTipo: null, docNro: null, condicionIva: null,
+        domicilio: null, email: null, telefono: '11-5555-4444', notas: null,
+        origen: 'derivado' as const, creadoEn: '',
+      };
+
+      expect(cambiosDeCliente(original, { email: 'pan@mail.com', telefono: '11-5555-4444' })).toEqual({
+        email: 'pan@mail.com',
+      });
+    });
+
+    it('lee `email`/`telefono` del backend', async () => {
+      responder = () => respuesta(200, {
+        clientes: [clienteCrudo({ email: 'pan@mail.com', telefono: '11-5555-4444' })],
+        total: 1,
+      });
+
+      const res = await listarClientes();
+
+      expect(res.status === 'ok' && res.clientes[0]?.email).toBe('pan@mail.com');
+      expect(res.status === 'ok' && res.clientes[0]?.telefono).toBe('11-5555-4444');
+    });
+
+    it('⚠️ transitorio: si el backend todavía manda `contacto`, se reparte por el `@`', async () => {
+      // Sin esto el sintoma seria un campo vacio SIN error — identico a un cliente que no tiene
+      // telefono. Un dato que desaparece sin avisar. Misma regla que la migracion del backend.
+      responder = () => respuesta(200, {
+        clientes: [
+          clienteCrudo({ email: undefined, telefono: undefined, contacto: 'pan@mail.com' }),
+          clienteCrudo({ id: 13, email: undefined, telefono: undefined, contacto: '11-5555-4444' }),
+        ],
+        total: 2,
+      });
+
+      const res = await listarClientes();
+      if (res.status !== 'ok') throw new Error('esperaba ok');
+
+      expect(res.clientes[0]).toMatchObject({ email: 'pan@mail.com', telefono: null });
+      expect(res.clientes[1]).toMatchObject({ email: null, telefono: '11-5555-4444' });
+    });
+
+    it('el caso mixto no pierde ninguna de las dos mitades', async () => {
+      responder = () => respuesta(200, {
+        clientes: [clienteCrudo({ email: undefined, telefono: undefined, contacto: 'pan@mail.com 11-5555-4444' })],
+        total: 1,
+      });
+
+      const res = await listarClientes();
+
+      expect(res.status === 'ok' && res.clientes[0]).toMatchObject({
+        email: 'pan@mail.com',
+        telefono: '11-5555-4444',
+      });
+    });
+  });
+
   describe('editarCliente y `cambiosDeCliente` — la edición parcial', () => {
     it('🔴 cambiar SÓLO el contacto no manda el domicilio', async () => {
       // El DoD del contrato, y el bug más caro de esta pantalla: mandar el objeto entero borra el
@@ -298,7 +360,8 @@ describe('clientes.ts', () => {
         docNro: '30712345678',
         condicionIva: 1,
         domicilio: 'Av. Mitre 1234',
-        contacto: null,
+        email: null,
+    telefono: null,
         notas: null,
         origen: 'derivado' as const,
         creadoEn: '2026-07-22T10:00:00+00:00',
@@ -310,17 +373,17 @@ describe('clientes.ts', () => {
         docNro: '30712345678',
         condicionIva: 1,
         domicilio: 'Av. Mitre 1234',
-        contacto: '11-5555-4444',
+        telefono: '11-5555-4444',
         notas: null,
       });
 
-      expect(cambios).toEqual({ contacto: '11-5555-4444' });
+      expect(cambios).toEqual({ telefono: '11-5555-4444' });
 
-      responder = () => respuesta(200, clienteCrudo({ contacto: '11-5555-4444' }));
+      responder = () => respuesta(200, clienteCrudo({ telefono: '11-5555-4444' }));
       await editarCliente(12, cambios);
 
       expect(peticiones[0]?.path).toBe('/clientes/12');
-      expect(peticiones[0]?.cuerpoJson).toEqual({ contacto: '11-5555-4444' });
+      expect(peticiones[0]?.cuerpoJson).toEqual({ telefono: '11-5555-4444' });
       expect(peticiones[0]?.cuerpoJson).not.toHaveProperty('domicilio');
     });
 
@@ -346,7 +409,7 @@ describe('clientes.ts', () => {
     it('sin cambios devuelve {} — guardar sin tocar nada no reescribe el cliente', async () => {
       const original = {
         id: 12, nombre: 'Panadería', docTipo: null, docNro: null, condicionIva: null,
-        domicilio: null, contacto: null, notas: null,
+        domicilio: null, email: null, telefono: null, notas: null,
         origen: 'derivado' as const, creadoEn: '',
       };
 
@@ -356,7 +419,7 @@ describe('clientes.ts', () => {
     it('🔴 poner `null` a un campo que tenía valor SÍ es un cambio — borrar es distinto de no tocar', async () => {
       const original = {
         id: 12, nombre: 'Panadería', docTipo: null, docNro: null, condicionIva: null,
-        domicilio: 'Av. Mitre 1234', contacto: null, notas: null,
+        domicilio: 'Av. Mitre 1234', email: null, telefono: null, notas: null,
         origen: 'derivado' as const, creadoEn: '',
       };
 

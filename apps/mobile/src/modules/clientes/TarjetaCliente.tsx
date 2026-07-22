@@ -13,7 +13,7 @@ import { useTema } from '../../theme/ThemeProvider';
  * documento es opcional—, así que un "sin CUIT" en rojo marcaría como incompleta a la mitad de las
  * fichas. Lo que falta se ve porque no está, no porque se lo señale.
  *
- * 🔴 **El subtítulo cae al PRIMER dato que identifique**: documento, contacto, domicilio o notas. No
+ * 🔴 **El subtítulo cae al PRIMER dato que identifique**: documento, teléfono, mail, domicilio o notas. No
  * es adorno — desde que existe `forzar` (el alta de un homónimo legítimo), la cartera puede tener dos
  * clientes con el mismo nombre, y sin esto quedan **dos filas idénticas**: el emprendedor no puede
  * elegir a cuál facturarle. Se muestra uno solo, el más identificatorio disponible, para no convertir
@@ -45,7 +45,7 @@ export function TarjetaCliente({ cliente, onPress }: TarjetaClienteProps) {
   // El primero que exista, en orden de cuánto identifica. `null` si el cliente no tiene ninguno —y
   // ahí la fila queda con el nombre solo, que es honesto: no hay nada más que mostrar.
   const subtitulo =
-    [doc, cliente.contacto, cliente.domicilio, cliente.notas]
+    [doc, cliente.telefono, cliente.email, cliente.domicilio, cliente.notas]
       .map((x) => (x != null && x.trim() !== '' ? x.trim() : null))
       .find((x) => x != null) ?? null;
 

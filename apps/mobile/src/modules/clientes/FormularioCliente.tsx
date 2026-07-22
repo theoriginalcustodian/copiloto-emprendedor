@@ -94,7 +94,8 @@ export function FormularioCliente({
   const [docTipo, setDocTipo] = useState(edita?.docTipo != null ? String(edita.docTipo) : '');
   const [docNro, setDocNro] = useState(edita?.docNro ?? '');
   const [domicilio, setDomicilio] = useState(edita?.domicilio ?? '');
-  const [contacto, setContacto] = useState(edita?.contacto ?? '');
+  const [email, setEmail] = useState(edita?.email ?? '');
+  const [telefono, setTelefono] = useState(edita?.telefono ?? '');
   const [notas, setNotas] = useState(edita?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +115,8 @@ export function FormularioCliente({
       // Sin tipo de documento no hay número: mandar uno suelto sería un dato que nadie puede leer.
       docNro: docTipo === '' ? null : limpio(docNro),
       domicilio: limpio(domicilio),
-      contacto: limpio(contacto),
+      email: limpio(email),
+      telefono: limpio(telefono),
       notas: limpio(notas),
     };
   }
@@ -145,7 +147,7 @@ export function FormularioCliente({
    */
   const quedaraIndistinguible =
     homonimo != null &&
-    [docNro, domicilio, contacto, notas].every((v) => v.trim() === '');
+    [docNro, domicilio, email, telefono, notas].every((v) => v.trim() === '');
 
   /** ⛔ Exactamente lo que exige el backend, ni un campo más. Ver el docstring del módulo. */
   const puedeGuardar = nombre.trim() !== '';
@@ -233,14 +235,29 @@ export function FormularioCliente({
         placeholder="Av. Mitre 1234"
         maxLength={200}
       />
+      {/* 🔴 DOS campos, no uno de texto libre — y el teclado por tipo no es un mimo: es la diferencia
+          entre cargar un teléfono en dos segundos o en diez. ⛔ Ninguno valida formato: el campo es
+          opcional, así que una validación sólo se dispara con quien empezó a escribir y se arrepintió
+          a medias. Un mail mal escrito se descubre MANDANDO, con el error real de vuelta. */}
       <CampoTexto
-        testID={`${testID}-contacto`}
-        etiqueta="Contacto (teléfono o mail)"
-        valor={contacto}
-        onChange={setContacto}
-        placeholder="11-5555-4444"
+        testID={`${testID}-email`}
+        etiqueta="Email"
+        valor={email}
+        onChange={setEmail}
+        placeholder="ej.: panaderia@gmail.com"
+        keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
         maxLength={120}
+      />
+      <CampoTexto
+        testID={`${testID}-telefono`}
+        etiqueta="Teléfono"
+        valor={telefono}
+        onChange={setTelefono}
+        placeholder="ej.: 11-5555-4444"
+        keyboardType="phone-pad"
+        maxLength={60}
       />
       <CampoTexto
         testID={`${testID}-notas`}

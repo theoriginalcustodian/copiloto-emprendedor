@@ -157,7 +157,7 @@ export function FichaCliente({ cliente, onCerrar, onEditar }: FichaClienteProps)
 
         {estado === 'ok' && ficha != null && (
           <>
-            {(datos.docNro != null || datos.domicilio != null || datos.contacto != null) && (
+            {(datos.docNro != null || datos.domicilio != null || datos.email != null || datos.telefono != null) && (
               <View style={{ gap: 2 }} testID="ficha-cliente-datos">
                 {datos.docNro != null && (
                   <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
@@ -167,8 +167,11 @@ export function FichaCliente({ cliente, onCerrar, onEditar }: FichaClienteProps)
                 {datos.domicilio != null && (
                   <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{datos.domicilio}</Text>
                 )}
-                {datos.contacto != null && (
-                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{datos.contacto}</Text>
+                {datos.telefono != null && (
+                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{datos.telefono}</Text>
+                )}
+                {datos.email != null && (
+                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{datos.email}</Text>
                 )}
               </View>
             )}
