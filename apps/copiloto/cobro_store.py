@@ -407,6 +407,24 @@ class CobroStore:
         if "fecha" in datos:
             sets.append("fecha = %s")
             valores.append(_fecha(datos["fecha"]))       # ilegible -> la excepción que la web hace 400
+        # `monto` es el campo POR EL QUE la card existe: un «quince mil» que Whisper oyó «cincuenta
+        # mil» sólo se detecta viéndolo, y mostrarlo sin poder tocarlo enseña que el número está bien.
+        # La alternativa —Deshacer y redictar— manda a reintentar por el camino que acaba de fallar.
+        #
+        # Va por el MISMO `_decimal` + la misma cota que el alta: si el monto entrara por acá con otra
+        # validación, habría dos definiciones de «monto válido» y la más laxa sería la verdadera.
+        #
+        # Sin rastro de auditoría, y es deliberado: un ingreso dictado es la libreta del emprendedor,
+        # no un comprobante (una factura con CAE no se edita, se anula). `created_at` no se toca, así
+        # que se conserva cuándo se anotó. ⚠️ La condición que lo daría vuelta: si algún día un
+        # tercero —contador, exportación firmada, integración bancaria— consume estos ingresos como
+        # DECLARACIÓN, editar plata pasa a necesitar rastro. Hoy no existe ese consumidor.
+        if "monto" in datos:
+            importe = _decimal(datos["monto"], "monto")
+            if importe <= 0:
+                raise CobroInvalido("el monto tiene que ser mayor a cero")
+            sets.append("monto = %s")
+            valores.append(importe)
         if not sets:
             return None
         with self._conn_factory() as conn, conn.cursor() as cur:

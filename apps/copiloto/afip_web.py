@@ -59,17 +59,22 @@ class CompletarIngresoBody(BaseModel):
     """La respuesta al aviso de *«no me dijiste de quién ni cómo te pagaron»*. Parcial de verdad:
     completa el MISMO ingreso, no crea otro.
 
-    🔴 **`fecha` está y `monto` NO, y la asimetría es deliberada.** Los dos los pidió la card
-    `ingreso_anotado`, pero no cuestan lo mismo:
+    🔴 **`fecha` y `monto` son los dos que pidió la card `ingreso_anotado`**, y los dos entran — el
+    `monto` recién después de que PLANIFICACIÓN lo decidiera (2026-07-22), no antes:
 
-    - **`fecha`** corrige un dato que el resolvedor pudo entender mal (*«el lunes»* → hoy). Sin este
-      campo **no había forma de arreglarla nunca**: contestar por chat manda la respuesta al mismo
-      resolvedor que ya falló. No mueve plata.
-    - **`monto`** sí la mueve, y hacia atrás: hoy completar sólo AGREGA lo que faltaba y por eso no
-      lleva rastro de quién cambió qué. Si el monto pasa a ser editable eso deja de ser cierto, y si
-      se registra o se pisa es una decisión de producto — pendiente de PLANIFICACIÓN. Agregarlo
-      "por las dudas" sería un campo que el body acepta, nadie usa, y alguien usa dentro de seis
-      semanas sin saber que se había decidido que no.
+    - **`fecha`** corrige lo que el resolvedor entendió mal (*«el lunes»* → hoy). Sin ella **no había
+      forma de arreglarla nunca**: contestar por chat manda la respuesta al mismo resolvedor que ya
+      falló.
+    - **`monto`** es el campo **por el que la card existe**: un *«quince mil»* que Whisper oyó
+      *«cincuenta mil»* sólo se detecta viéndolo, y una card que lo muestra sin dejar tocarlo **enseña
+      que el número está bien**. La alternativa —Deshacer y redictar— son dos pasos, y el segundo
+      vuelve a pasar por el reconocimiento que falló.
+
+    **Sin rastro de auditoría, y es deliberado:** un ingreso dictado es la libreta del emprendedor, no
+    un comprobante — una factura con CAE no se edita, se anula con nota de crédito. `created_at` no se
+    toca al editar, así que se conserva cuándo se anotó. ⚠️ **La condición que lo daría vuelta:** si
+    algún día un tercero —contador, exportación firmada, integración bancaria— consume estos ingresos
+    como **declaración**, editar plata pasa a necesitar rastro. Hoy no existe ese consumidor.
     """
     cliente_nombre: str | None = None
     medio: str | None = None
@@ -77,6 +82,7 @@ class CompletarIngresoBody(BaseModel):
     cliente_ref: int | None = None
     presupuesto_ref: int | None = None
     fecha: str | None = None
+    monto: str | float | int | None = None
 
 
 class PerfilBody(BaseModel):
