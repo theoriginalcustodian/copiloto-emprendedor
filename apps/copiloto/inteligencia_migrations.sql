@@ -51,3 +51,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS copiloto_conceptos_cliente_nombre_uk
 -- El listado de Ajustes → Mi negocio: los activos primero, alfabético.
 CREATE INDEX IF NOT EXISTS copiloto_conceptos_cliente_activo_ix
   ON uc_factory.copiloto_conceptos (cliente_id, activo, nombre_normalizado);
+
+-- ── IMPUTACIÓN DE GASTOS AL TRABAJO (addendum del hito 3) ────────────────────────────────────────
+
+-- 🔴 EXCLUYENTES, y garantizado por el MOTOR, no por el endpoint.
+--
+-- El addendum lo pide con test ("no se puede imputar a los dos a la vez"), pero un chequeo sólo en
+-- Python deja entrar cualquier otra vía: la tool del copiloto, un backfill, una corrección a mano.
+-- Y el síntoma no sería un error: sería el MISMO GASTO CONTADO DOS VECES en el margen, que se ve
+-- exactamente igual que un margen malo. Un check en la tabla no se puede esquivar.
+--
+-- `ADD CONSTRAINT` no tiene `IF NOT EXISTS` en Postgres, de ahí el bloque: sin él, el segundo deploy
+-- moriría con "constraint already exists" — y esto corre en CADA deploy.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'copiloto_gastos_un_solo_trabajo') THEN
+    ALTER TABLE uc_factory.copiloto_gastos
+      ADD CONSTRAINT copiloto_gastos_un_solo_trabajo CHECK (
+        (CASE WHEN presupuesto_ref IS NOT NULL THEN 1 ELSE 0 END)
+      + (CASE WHEN comprobante_ref IS NOT NULL THEN 1 ELSE 0 END)
+      + (CASE WHEN cobro_ref       IS NOT NULL THEN 1 ELSE 0 END) <= 1);
+  END IF;
+END $$;
+
+-- "Los gastos de este trabajo" es la consulta del margen, y va por cada eslabón.
+CREATE INDEX IF NOT EXISTS copiloto_gastos_cliente_presupuesto_ix
+  ON uc_factory.copiloto_gastos (cliente_id, presupuesto_ref) WHERE presupuesto_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS copiloto_gastos_cliente_comprobante_ix
+  ON uc_factory.copiloto_gastos (cliente_id, comprobante_ref) WHERE comprobante_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS copiloto_gastos_cliente_cobro_ix
+  ON uc_factory.copiloto_gastos (cliente_id, cobro_ref) WHERE cobro_ref IS NOT NULL;
+
+-- Los cobros sueltos (dictados, sin comprobante) que apuntan a un presupuesto: la otra mitad del
+-- margen cuando el trabajo nunca se facturó.
+CREATE INDEX IF NOT EXISTS copiloto_cobros_cliente_presupuesto_ix
+  ON uc_factory.copiloto_cobros (cliente_id, presupuesto_ref) WHERE presupuesto_ref IS NOT NULL;

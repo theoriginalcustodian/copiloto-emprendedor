@@ -242,6 +242,40 @@ def _ensure_presupuesto_estado(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_presupuestos.estado (+estado_actualizado_en, idempotente)", flush=True)
 
 
+def _ensure_imputacion_de_gastos(conn) -> None:
+    """El addendum del hito 3: **imputar gastos al trabajo**, y el cobro que se registra a mano.
+
+    Dos cambios que van juntos porque cierran el mismo círculo:
+
+    **1. Tres referencias EXCLUYENTES en `copiloto_gastos`** (presupuesto / comprobante / cobro). No
+    hay una entidad "trabajo": el trabajo **es la cadena** `presupuesto → factura → cobro`, cuyos
+    enlaces ya existían. El gasto se imputa al eslabón que el usuario indicó y la cadena se resuelve
+    al calcular — nunca se reescribe la referencia, o dos pantallas contarían distinto el mismo gasto.
+
+    **2. `copiloto_cobros.comprobante_id` deja de ser NOT NULL.** Hoy un cobro sólo existe si pasó por
+    MercadoPago: si le pagaron en efectivo, **no hay registro de ninguna clase** — y eso no es un
+    hueco de imputación, es que **la caja miente**. `origen` distingue lo que el sistema vio de lo que
+    alguien tipeó, porque no valen lo mismo como evidencia.
+
+    Corre ANTES del pase estándar: el guard anti-colisión aborta si una columna declarada en
+    `uc_tables.json` falta en la tabla viva.
+    """
+    cur = conn.cursor()
+    for col, tipo in (("presupuesto_ref", "bigint"), ("comprobante_ref", "bigint"),
+                      ("cobro_ref", "bigint")):
+        cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_gastos "
+                    f"ADD COLUMN IF NOT EXISTS {col} {tipo};")
+    for col, tipo in (("origen", "text NOT NULL DEFAULT 'manual'"), ("cliente_ref", "bigint"),
+                      ("presupuesto_ref", "bigint")):
+        cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_cobros "
+                    f"ADD COLUMN IF NOT EXISTS {col} {tipo};")
+    # `DROP NOT NULL` es idempotente en Postgres (no falla si ya está sin la restricción).
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_cobros "
+                f"ALTER COLUMN comprobante_id DROP NOT NULL;")
+    print(f"OK {SCHEMA}.copiloto_gastos.*_ref + copiloto_cobros.origen/cliente_ref "
+          f"(imputación al trabajo, idempotente)", flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -292,6 +326,7 @@ def provision(conn) -> dict:
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
+    _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     sql_aplicados = _apply_sql_files(conn)

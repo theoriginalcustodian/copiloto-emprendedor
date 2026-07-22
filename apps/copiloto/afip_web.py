@@ -35,6 +35,14 @@ class CobroBody(BaseModel):
     idem_key: str | None = None
 
 
+class CobroSueltoBody(CobroBody):
+    """El cobro dictado, sin comprobante. `monto` acá **sí** es obligatorio de hecho (no hay saldo del
+    cual deducirlo), y las dos referencias son opcionales: un cobro sin trabajo entra a la caja igual
+    — lo que se pierde es su margen, no el registro."""
+    cliente_ref: int | None = None
+    presupuesto_ref: int | None = None
+
+
 class PerfilBody(BaseModel):
     cuit: str = Field(min_length=11, max_length=11)
     razon_social: str
@@ -304,6 +312,28 @@ def create_afip_app(
         justo cuando hay muchas facturas, que es cuando el número importa.
         """
         return await asyncio.to_thread(_cobros(cliente_id).impagos)
+
+    @app.post("/cobros", status_code=201)
+    async def registrar_cobro_suelto(body: CobroSueltoBody,
+                                     cliente_id: str = Depends(require_tenant)) -> dict:
+        """Un cobro SIN factura: *«me pagaron 85 mil en efectivo por el trabajo de la panadería»*.
+
+        🔴 **Sin esto la caja miente.** Hasta acá un cobro sólo existía si había pasado por
+        MercadoPago: el efectivo y las transferencias no dejaban rastro de ninguna clase, así que
+        *«entró $840.000»* dejaba afuera lo que en este mercado puede ser la mitad de los ingresos.
+
+        La respuesta trae `origen: "manual"`. No es decorativo: un cobro que el sistema **vio** no es
+        la misma evidencia que uno que alguien **tipeó**, y la pantalla tiene que poder mostrarlo.
+        """
+        try:
+            cobro = await asyncio.to_thread(
+                lambda: _cobros(cliente_id).registrar_suelto(
+                    monto=body.monto, medio=body.medio or "", fecha=body.fecha,
+                    cliente_ref=body.cliente_ref, presupuesto_ref=body.presupuesto_ref,
+                    idem_key=body.idem_key))
+        except CobroInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        return {"cobro": cobro}
 
     @app.post("/afip/comprobantes/{comprobante_id}/cobros", status_code=201)
     async def registrar_cobro(comprobante_id: int, body: CobroBody,

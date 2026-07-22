@@ -59,6 +59,7 @@ from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecr
 from afip_web import create_afip_app
 from cobro_store import CobroStore
 from concepto_store import ConceptoStore
+from trabajo_store import TrabajoStore
 from perfil_negocio_store import PerfilNegocioStore
 from presupuesto_doc import generar_doc as generar_doc_presupuesto
 from presupuesto_doc import registrar_en_sheet
@@ -194,6 +195,7 @@ async def _serve() -> None:
     gastos_app = create_gastos_app(
         require_tenant=require_tenant,
         gasto_store_factory=lambda cid: GastoStore(conn_factory, cid),
+        trabajo_store_factory=lambda cid: TrabajoStore(conn_factory, cid),
     )
 
     clientes_app = create_clientes_app(

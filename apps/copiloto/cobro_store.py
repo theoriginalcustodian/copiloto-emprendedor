@@ -36,7 +36,8 @@ _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_cobros"
 _COMPROBANTES = f"{_SCHEMA}.afip_comprobantes"
 
-_COLS = ("id", "comprobante_id", "monto", "medio", "fecha", "idem_key", "created_at")
+_COLS = ("id", "comprobante_id", "monto", "medio", "fecha", "idem_key", "origen",
+         "cliente_ref", "presupuesto_ref", "created_at")
 
 # Estados de cobro. NINGUNO se guarda: los tres se derivan de `total` y de la suma de cobros. Una
 # columna de estado tendría que mantenerse en sincronía con las filas de cobro en cada alta y cada
@@ -208,6 +209,47 @@ class CobroStore:
             fila = cur.fetchone()
             return self._fila(fila), self._resumen(cur, comprobante_id)
 
+    def registrar_suelto(self, *, monto, medio: str = "", fecha=None, cliente_ref: int | None = None,
+                         presupuesto_ref: int | None = None, idem_key: str | None = None) -> dict:
+        """Un cobro SIN comprobante: *«me pagaron 85 mil en efectivo por el trabajo de la panadería»*.
+
+        🔴 **Esto no es una comodidad: es lo que hace que la caja no mienta.** Hasta acá un cobro sólo
+        existía si había pasado por MercadoPago — el efectivo y las transferencias no dejaban rastro
+        de ninguna clase. *«Entró $840.000»* contaba sólo lo facturado y lo cobrado por MP, dejando
+        afuera lo que en este mercado puede ser la mitad de los ingresos reales.
+
+        `origen='manual'` lo distingue de lo que el sistema **vio** (`mercadopago`). No valen lo mismo
+        como evidencia y la pantalla tiene que poder mostrarlos distinto: uno lo observó el sistema,
+        el otro lo tipeó alguien.
+        """
+        importe = _decimal(monto, "monto")
+        if importe <= 0:
+            raise CobroInvalido("el monto tiene que ser mayor a cero")
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            if idem_key:
+                cur.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} "
+                            f"WHERE cliente_id = %s AND idem_key = %s", (self._cliente_id, idem_key))
+                ya_estaba = cur.fetchone()
+                if ya_estaba is not None:
+                    return self._fila(ya_estaba)
+            try:
+                cur.execute(
+                    f"INSERT INTO {_TABLE} (cliente_id, monto, medio, fecha, idem_key, origen, "
+                    f"cliente_ref, presupuesto_ref) VALUES (%s,%s,%s,%s,%s,'manual',%s,%s) "
+                    f"RETURNING {', '.join(_COLS)}",
+                    (self._cliente_id, importe, (medio or "").strip()[:40], _fecha(fecha),
+                     idem_key or None, cliente_ref, presupuesto_ref))
+            except Exception as exc:
+                if getattr(exc, "pgcode", None) != "23505" or not idem_key:
+                    raise
+                conn.rollback()
+                with conn.cursor() as c2:
+                    c2.execute(f"SELECT {', '.join(_COLS)} FROM {_TABLE} "
+                               f"WHERE cliente_id = %s AND idem_key = %s",
+                               (self._cliente_id, idem_key))
+                    return self._fila(c2.fetchone())
+            return self._fila(cur.fetchone())
+
     def borrar(self, comprobante_id: int, cobro_id: int) -> dict | None:
         """Deshace un cobro. Alguien se equivoca, y sin esto la única salida sería tocar la base."""
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -225,6 +267,10 @@ class CobroStore:
         return {"id": k["id"], "comprobante_id": k["comprobante_id"],
                 "monto": dos_decimales(k["monto"]), "medio": k["medio"] or "",
                 "fecha": k["fecha"].isoformat() if k["fecha"] else None,
+                # `origen` viaja SIEMPRE: un cobro que el sistema VIO (mercadopago) no es la misma
+                # evidencia que uno que alguien TIPEÓ, y la pantalla tiene que poder distinguirlos.
+                "origen": k["origen"] or "manual",
+                "cliente_ref": k["cliente_ref"], "presupuesto_ref": k["presupuesto_ref"],
                 "created_at": k["created_at"].isoformat() if k["created_at"] else None}
 
 
