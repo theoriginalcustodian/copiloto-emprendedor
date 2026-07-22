@@ -121,7 +121,7 @@ type EstadoCarga = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type EstadoGuardado = 'idle' | 'enviando' | 'ok' | 'error';
 
 /** Qué sección se está guardando — para que el "Guardando…" aparezca en SU botón y no en los dos. */
-type Seccion = 'negocio' | 'personalidad';
+type Seccion = 'negocio' | 'personalidad' | 'modo';
 
 interface SeccionProps {
   titulo: string;
@@ -248,6 +248,40 @@ export function PantallaPerfilNegocio() {
     }
   }
 
+  /**
+   * 🔴 **Volver a pedir confirmación — el ÚNICO cambio de modo que la app dicta, y sólo en una
+   * dirección.** El `va-B` fijó que el automático **se ofrece, no se elige de una lista**: encenderlo
+   * es una oferta del copiloto (cuando ve que venís dictando completo), no un toggle de Ajustes.
+   * Apagarlo, en cambio, es *«volver es un toque»* — y ahora tiene endpoint real (`POST` con
+   * `modo_ceremonia: 'confirmacion'`, forma del `avance_backend_el-modo-de-ceremonia-ya-tiene-forma`).
+   * Por eso este botón aparece SÓLO en automático: no hay un «encender» simétrico que contradiga el va-B.
+   */
+  async function volverAConfirmacion() {
+    setSeccionEnCurso('modo');
+    setEstadoGuardado('enviando');
+    setErrorGuardado(null);
+    try {
+      const res = await guardarPerfilNegocio({ modoCeremonia: 'confirmacion' });
+      if (res.status === 'no_disponible') {
+        setEstadoCarga('no_disponible');
+        setEstadoGuardado('idle');
+        return;
+      }
+      if (res.status === 'modo_no_disponible') {
+        setErrorGuardado(res.mensaje);
+        setEstadoGuardado('error');
+        return;
+      }
+      setCampos(aCampos(res.perfil));
+      setEstadoGuardado('ok');
+    } catch (e) {
+      setErrorGuardado(e instanceof ApiError ? (e.detail ?? e.message) : null);
+      setEstadoGuardado('error');
+    } finally {
+      setSeccionEnCurso(null);
+    }
+  }
+
   const enviando = estadoGuardado === 'enviando';
 
   // `icono="chat"` y no `note`: `note` ya es "Datos personales" en el grid de Ajustes, y entrar por
@@ -356,6 +390,22 @@ export function PantallaPerfilNegocio() {
                 ? 'Anota lo que le dictás y te avisa después. Lo que sale de tu teléfono —facturar, mandar algo a un cliente, cobrar de verdad— te lo sigue preguntando siempre.'
                 : 'Cuando le dictás algo, te muestra una tarjeta para que la revises antes de guardarla. Así ves qué entendió y lo corregís ahí mismo.'}
             </Text>
+            {/* 🔴 Sólo en automático, y en UNA dirección: apagar. Encender es una oferta del copiloto
+                (va-B), no un toggle de acá — por eso no hay botón simétrico. */}
+            {campos.modoCeremonia === 'automatico' && (
+              <FilaBotones
+                testID="perfil-negocio-modo-acciones"
+                botones={[
+                  {
+                    etiqueta: seccionEnCurso === 'modo' && enviando ? 'Volviendo…' : 'Volver a pedir confirmación',
+                    onPress: () => void volverAConfirmacion(),
+                    variante: 'secundario',
+                    deshabilitado: enviando,
+                    testID: 'perfil-negocio-volver-confirmacion',
+                  },
+                ]}
+              />
+            )}
           </Seccion>
 
           <Seccion titulo="Cómo te habla el copiloto" testID="perfil-negocio-seccion-personalidad">

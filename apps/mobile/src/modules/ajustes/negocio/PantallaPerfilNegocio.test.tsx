@@ -172,14 +172,15 @@ describe('PantallaPerfilNegocio', () => {
       expect(screen.queryByText(/Automático/)).toBeNull();
     });
 
-    it('🔴 no hay forma de cambiarlo desde acá — el modo lo decide el backend', async () => {
+    it('🔴 en confirmación NO hay forma de ENCENDER el automático — eso lo ofrece el copiloto', async () => {
       await montar();
       await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-modo')).toBeTruthy());
 
-      // Ningún control dentro de la sección: es sólo lectura. Si mañana alguien agrega un select acá,
-      // este test lo frena — y el motivo no es de diseño: ocultar en la UI no reemplaza al 409, pero
-      // OFRECERLO sin que exista sí es una promesa falsa.
+      // El va-B: el automático se OFRECE, no se elige de una lista. Ni un select, ni un botón de
+      // encender. Si mañana alguien agrega un toggle libre acá, este test lo frena: ofrecer «encender»
+      // sin el mecanismo de oferta sería una promesa falsa.
       expect(screen.queryByTestId('perfil-negocio-modo-select')).toBeNull();
+      expect(screen.queryByTestId('perfil-negocio-volver-confirmacion')).toBeNull();
     });
 
     it('un perfil que llega en `automatico` lo dice, con su explicación', async () => {
@@ -190,6 +191,35 @@ describe('PantallaPerfilNegocio', () => {
       await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Automático'));
       // Y la explicación NO promete que deja de preguntar todo: el piso sigue confirmando siempre.
       expect(screen.getByText(/te lo sigue preguntando siempre/)).toBeTruthy();
+    });
+
+    it('🔴 en automático SÍ se puede VOLVER a confirmación — «volver es un toque»', async () => {
+      // La única dirección que la app dicta: apagar. Ahora tiene endpoint real (POST modo_ceremonia).
+      mockLeer.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'automatico' } });
+      mockGuardar.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'confirmacion' } });
+
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-volver-confirmacion')).toBeTruthy());
+
+      await fireEvent.press(screen.getByTestId('perfil-negocio-volver-confirmacion'));
+
+      await waitFor(() => expect(mockGuardar).toHaveBeenCalledWith({ modoCeremonia: 'confirmacion' }));
+      // Y la pantalla re-siembra desde la respuesta: pasa a mostrar «Pedir confirmación».
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-modo').props.children).toBe('Pedir confirmación'));
+    });
+
+    it('🔴 volver escribe SÓLO el modo — no arrastra el resto del perfil', async () => {
+      // El POST es parcial: mandar el perfil entero pisaría cambios que otra pantalla/dispositivo hizo.
+      mockLeer.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'automatico' } });
+      mockGuardar.mockResolvedValue({ status: 'ok', perfil: { ...PERFIL, modoCeremonia: 'confirmacion' } });
+
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('perfil-negocio-volver-confirmacion')).toBeTruthy());
+      await fireEvent.press(screen.getByTestId('perfil-negocio-volver-confirmacion'));
+
+      await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
+      const enviado = mockGuardar.mock.calls[0][0];
+      expect(Object.keys(enviado)).toEqual(['modoCeremonia']);
     });
   });
 });
