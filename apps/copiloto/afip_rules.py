@@ -39,6 +39,21 @@ class TipoComprobante(int, Enum):
     NOTA_CREDITO_C = 13
 
 
+# Los tres códigos de nota de crédito, **derivados del enum y no reescritos a mano**.
+#
+# 🔴 Existe porque la lista ya se escribió mal una vez. `actividad_store` la tenía hardcodeada como
+# `(12, 13)` — el 12 no está en el catálogo de AFIP— y la consecuencia era que una nota de crédito A
+# o B caía en la rama de facturas y se mostraba como **plata que ENTRA cuando en realidad salió**. No
+# se notó durante semanas porque el tenant de prueba sólo tenía notas C: los datos alcanzaban para
+# que se viera bien, no para que estuviera bien.
+#
+# Ahora hay UN lugar. Todo consumidor que necesite distinguir «me compraron» de «se lo devolví»
+# importa esto; una cuarta copia sería la que se desincronice.
+NOTAS_CREDITO = (TipoComprobante.NOTA_CREDITO_A.value,
+                 TipoComprobante.NOTA_CREDITO_B.value,
+                 TipoComprobante.NOTA_CREDITO_C.value)
+
+
 class TipoDoc(int, Enum):
     """Tipo de documento del RECEPTOR."""
 

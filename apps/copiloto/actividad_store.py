@@ -14,6 +14,8 @@ from __future__ import annotations
 import datetime
 from typing import Callable
 
+from afip_rules import NOTAS_CREDITO
+
 _SCHEMA = "uc_factory"
 
 # El id es `"<tipo>:<id>"` (texto) y el orden es `(fecha DESC, id DESC)` con ESE texto. Comparar ids
@@ -30,7 +32,12 @@ _SCHEMA = "uc_factory"
 #
 # No se notó porque este tenant sólo tiene notas C (13): los datos reales alcanzaban para que se viera
 # bien y no para que la rama estuviera bien. Un verde de datos poco representativos.
-_NOTAS_CREDITO = (3, 8, 13)
+#
+# 🔴 Ya no se escribe acá: se **importa** de `afip_rules.NOTAS_CREDITO`, que la deriva del enum. La
+# copia local era la que estaba mal, y el comentario de arriba —«salen de afip_rules, NO de memoria»—
+# describía una disciplina que el propio código no cumplía. Una constante duplicada con un comentario
+# que promete que no lo está es peor que la duplicación sola: desactiva la sospecha.
+_NOTAS_CREDITO = NOTAS_CREDITO
 
 # `tipo_cbte` es un código interno de AFIP y el emprendedor no lo conoce. El contrato §3 pide el título
 # "en el idioma del emprendedor" — la primera versión mostraba literalmente **«Factura 11»**, que es
