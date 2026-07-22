@@ -305,6 +305,25 @@ describe('clientes.ts', () => {
       expect(peticiones[0]?.cuerpoJson).not.toHaveProperty('domicilio');
     });
 
+    it('🔴 el 409 también sale EDITANDO — y es el caso que el contrato §3.4 nombra como el real', async () => {
+      // "Al editar un cliente sin documento y ponerle uno que ya existe": ése es el caso que la regla
+      // describe, y el que yo sólo había probado en el alta. Misma respuesta, mismo camino.
+      responder = () =>
+        respuesta(409, {
+          detail: 'ese documento ya es de Panadería Los Tilos',
+          por: 'documento',
+          cliente: clienteCrudo({ id: 3, nombre: 'Panadería Los Tilos' }),
+        });
+
+      const res = await editarCliente(12, { docTipo: 80, docNro: '30712345678' });
+
+      expect(res.status).toBe('duplicado');
+      if (res.status !== 'duplicado') return;
+      expect(res.duplicado.dueno?.nombre).toBe('Panadería Los Tilos');
+      // Y el request siguió siendo parcial: no arrastró el resto del cliente.
+      expect(peticiones[0]?.cuerpoJson).toEqual({ doc_tipo: 80, doc_nro: '30712345678' });
+    });
+
     it('sin cambios devuelve {} — guardar sin tocar nada no reescribe el cliente', async () => {
       const original = {
         id: 12, nombre: 'Panadería', docTipo: null, docNro: null, condicionIva: null,
