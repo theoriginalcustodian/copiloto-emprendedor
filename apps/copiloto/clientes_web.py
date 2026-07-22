@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from cliente_store import (DOC_CONSUMIDOR_FINAL, LIMITES, ORIGENES, ClienteDuplicado,
-                           inferir_doc_tipo, normalizar_documento)
+                           documento_incoherente, inferir_doc_tipo, normalizar_documento)
 
 LIMITE_LISTADO_DEFAULT = 50
 LIMITE_LISTADO_MAX = 200
@@ -69,6 +69,13 @@ def _validar(datos: dict, *, es_alta: bool) -> dict:
     if "doc_nro" in datos and datos["doc_nro"] is not None:
         doc = normalizar_documento(datos["doc_nro"])
         datos["doc_nro"] = doc
+        # 🔴 El tipo EXPLÍCITO y el largo del número tienen que poder ser ciertos a la vez. «CUIT» con
+        # 7 dígitos no es un dato incompleto: es un dato **imposible**, y hoy entraba — el 400 de abajo
+        # sólo mira el caso en que NADIE dijo el tipo. Medido antes de agregarlo: **0 filas existentes**
+        # lo incumplen en las tres tablas, así que no traba ninguna edición que hoy funcione.
+        motivo = documento_incoherente(datos.get("doc_tipo"), doc)
+        if motivo:
+            raise HTTPException(status_code=400, detail=motivo)
         if doc and datos.get("doc_tipo") is None:
             # El tipo derivado del largo (11 = CUIT, 7-8 = DNI). Si el número no tiene un largo de
             # documento argentino, es 400: eso ya no es derivar, sería inventar.
