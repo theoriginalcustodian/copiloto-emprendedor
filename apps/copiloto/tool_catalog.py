@@ -18,6 +18,7 @@ import re
 import secrets
 import sys
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from _paths import ensure_paths
@@ -32,6 +33,10 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+# La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
+# el LLM y lo que la base acepta tienen que ser la MISMA lista o el modelo propone `stock`, el `POST`
+# devuelve 400, y el emprendedor ve fallar algo que el copiloto le ofreció.
+from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # noqa: E402
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 
@@ -73,6 +78,29 @@ CONSULTAR_ACTIVIDAD_SCHEMA = {"type": "function", "function": {
         "question": {"type": "string", "description": "la pregunta puntual del usuario, si la hay (opcional)"}},
         "required": ["range_raw"]}}}
 
+REGISTRAR_GASTO_SCHEMA = {"type": "function", "function": {
+    "name": "registrar_gasto",
+    "description": "Anota un gasto que el emprendedor dictó ('pagué 15 mil de mercadería', 'gasté 3000 en "
+                   "nafta'). NO lo guarda: arma una propuesta para que él la revise y confirme. Usala "
+                   "siempre que mencione plata que SALIÓ. Si no dijo el monto, pedíselo antes de llamarla.",
+    "parameters": {"type": "object", "properties": {
+        "monto": {"type": "string", "description": "el monto en pesos, sólo el número, ej '15000'"},
+        "categoria": {"type": "string", "enum": list(CATEGORIAS),
+                      "description": "la categoría que mejor encaje; si ninguna, 'otros'"},
+        "proveedor": {"type": "string", "description": "a quién le pagó, si lo dijo"},
+        "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta… si lo dijo"},
+        "descripcion": {"type": "string", "description": "lo que dictó, tal cual, para que pueda contrastarlo"},
+        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural ('ayer', 'el lunes'). "
+                                                       "Omitilo si no lo dijo: se asume hoy."}},
+        "required": ["monto"]}}}
+
+# `registrar_gasto` NO está en WRITE_TOOLS, y no es un descuido: **no escribe nada**. Devuelve una
+# propuesta que la app pinta como card editable, y el `POST /gastos` lo dispara el emprendedor al tocar
+# Guardar. Meterla en WRITE_TOOLS la mandaría al confirm-gate de sí/no, que es justo el mecanismo que el
+# contrato §5 descarta: confirmar sí/no re-ejecuta los MISMOS argumentos, así que un "quince mil" que
+# Whisper transcribió como "cincuenta mil" sólo se puede aceptar o repetir el dictado entero. La card
+# editable existe para poder tocar el monto ahí mismo — y ése es el único punto donde el error se
+# detecta, porque después lo que se mira es el total, no el gasto.
 _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 
 
@@ -107,7 +135,8 @@ def _required_of(tool_name: str) -> list:
 
 
 def build_tool_catalog() -> list[dict]:
-    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA]
+    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA,
+               REGISTRAR_GASTO_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
@@ -115,7 +144,7 @@ def build_tool_catalog() -> list[dict]:
 
 # consultar_actividad NO va en WRITE_TOOLS a propósito: es read puro (recall + resumen) → sin gate HITL.
 TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": ("mp",),
-              "consultar_actividad": ("activity",)}
+              "consultar_actividad": ("activity",), "registrar_gasto": ("gasto",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -287,6 +316,75 @@ def _run_consultar_actividad(arguments, ctx, idem_key, now_iso_provider, llm):
                       observation={"result": summary or f"No pude armar el resumen de {rng['label']} ahora."})
 
 
+def _monto_dictado(bruto) -> "Decimal | None":
+    """El monto tal como sale de un dictado, o None si no hay número usable.
+
+    Whisper y el LLM devuelven cosas como `"15.000"`, `"$ 15000"`, `"15000,50"`. El punto es separador
+    de miles en Argentina y la coma es el decimal — al revés que en Python. Interpretar `"15.000"` como
+    quince pesos convierte un gasto de quince mil en uno de quince y **nadie lo nota**, porque lo que se
+    mira después es el total del mes.
+    """
+    if bruto is None:
+        return None
+    texto = re.sub(r"[^\d,.\-]", "", str(bruto))
+    if not texto:
+        return None
+    if "," in texto:                      # coma = decimal argentino; los puntos son miles
+        texto = texto.replace(".", "").replace(",", ".")
+    elif texto.count(".") == 1 and len(texto.split(".")[1]) != 2:
+        texto = texto.replace(".", "")    # un punto que NO deja 2 decimales es separador de miles
+    elif texto.count(".") > 1:
+        texto = texto.replace(".", "")
+    try:
+        monto = Decimal(texto)
+    except InvalidOperation:
+        return None
+    return monto if monto > 0 else None
+
+
+def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
+    """Propone un gasto dictado. NO persiste — ver el comentario de `_FIRST_CLASS_WRITES`.
+
+    Devuelve un `Artifact(kind='gasto_propuesto')` que el motor entrega tal cual como `card` del reply
+    (`conversation_workflow._react_send`: sin card explícita, la card ES el artifact). La app la pinta
+    editable y hace el `POST /gastos` con `origen: "voz"` cuando el emprendedor toca Guardar.
+    """
+    monto = _monto_dictado(arguments.get("monto"))
+    if monto is None:
+        # El contrato §5.3: falta el monto —y SÓLO el monto— se repregunta. Todo lo demás se asume y
+        # queda editable. Se devuelve `ok` y no `error` a propósito: no falló nada, falta un dato, y el
+        # loop react tiene que poder preguntarlo en vez de disculparse.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Falta el monto. Preguntale cuánto fue, sin repetir "
+                                                 "el resto: lo demás ya lo tengo."})
+
+    categoria = (arguments.get("categoria") or "").strip().lower()
+    if categoria not in CATEGORIAS:
+        categoria = "otros"               # el modelo inventó un rubro: cae en otros, no falla
+
+    fecha = hoy_del_negocio()
+    if arguments.get("fecha_raw"):
+        rng = resolve_date_range(arguments["fecha_raw"], now_iso=now_iso_provider(), tz=DEFAULT_TZ)
+        if rng:
+            fecha = datetime.fromisoformat(rng["since"]).date()
+
+    def recortar(clave: str) -> str:
+        return str(arguments.get(clave) or "").strip()[:LIMITES[clave]]
+
+    gasto = {"monto": dos_decimales(monto), "fecha": fecha.isoformat(), "categoria": categoria,
+             "proveedor": recortar("proveedor") or None, "medio_pago": recortar("medio_pago") or None,
+             "descripcion": recortar("descripcion") or None, "origen": "voz"}
+    return ToolResult(
+        tool_call_id=idem_key, is_write=False, status="ok",
+        # Lo que el LLM lee. Se le dice explícitamente que NO está guardado para que no cierre el turno
+        # con "listo, ya lo anoté" — el emprendedor leería eso, no tocaría Guardar, y el gasto se
+        # perdería creyendo los dos que estaba hecho.
+        observation={"result": f"Propuse el gasto (${gasto['monto']}, {categoria}) y se lo muestro en "
+                               f"una tarjeta para que la revise. TODAVÍA NO está guardado: decíselo en "
+                               f"una línea corta y pedile que confirme o corrija."},
+        artifact=Artifact(kind="gasto_propuesto", data=gasto))
+
+
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
@@ -313,6 +411,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             # ── 1ra clase: consultar_actividad (recall temporal por rango, READ → sin gate) ────────
             if kind == "activity":
                 return _run_consultar_actividad(arguments, ctx, idem_key, now_iso_provider, llm)
+            # ── 1ra clase: registrar_gasto (PROPONE, no persiste → sin gate; ver _FIRST_CLASS_WRITES) ─
+            if kind == "gasto":
+                return _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider)
 
             # ── servicio (Composio vía módulo plug-in) ────────────────────────────────────────────
             _, mod, op = entry
