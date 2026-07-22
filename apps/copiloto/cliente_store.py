@@ -88,27 +88,48 @@ def es_consumidor_final(doc_tipo) -> bool:
     return doc_tipo is not None and int(doc_tipo) == DOC_CONSUMIDOR_FINAL
 
 
+# Nombres que NO son un nombre: el `receptor_nombre` que el propio sistema pone cuando no hay a
+# quién nombrar. Se comparan normalizados (ver `normalizar_nombre`).
+_NO_SON_NOMBRE = frozenset({"consumidor final", "sin identificar", "s d", "n n"})
+
+
 def nombre_derivado(nombre: str, doc_tipo, doc_nro) -> str | None:
     """Con qué nombre entra a la cartera algo que ya se emitió — o `None` si **no genera cliente**.
 
-    Es una función pura y separada del store a propósito: acá viven las tres decisiones del backfill
-    que hay que poder leer y testear sin una base de datos delante.
+    Es una función pura y separada del store a propósito: acá viven las decisiones del backfill que
+    hay que poder leer y testear sin una base de datos delante.
 
-    1. 🔴 **`doc_tipo = 99` no genera cliente, tenga nombre o no.** El chequeo va PRIMERO, antes de
-       mirar el nombre, y no es teórico: medido contra los datos reales del operador, hay
-       comprobantes a consumidor final cuyo `receptor_nombre` dice literalmente *«Consumidor Final»*.
-       Con el chequeo después de la caída a nombre, esas ventas crearían un cliente llamado
-       «Consumidor Final» — el mismo registro fantasma que §3.2 existe para evitar, entrando por la
-       puerta del nombre en vez de la del documento. **23 de los 24 comprobantes reales son 99.**
-    2. Sin nombre y sin documento no hay cliente (§3.3 punto 3).
+    🔴 **Lo que decide NO es el código 99: es si hay un nombre usable.** Esto se corrigió después de
+    verlo en el teléfono, y el error de origen fue leer §3.2 más ancho de lo que dice. §3.2 habla de
+    *«un comprobante con `doc_tipo = 99`»* — una venta de mostrador a alguien que no se identificó—.
+    Yo lo apliqué a **todo**, incluidos los presupuestos, y ahí 99 significa otra cosa: el formulario
+    lo rotula *«Sin identificar»* y quiere decir **«todavía no le pedí el documento»**. El presupuesto
+    igual tiene nombre, y ese nombre es un cliente real.
+
+    **El bug medido:** cargué a mano desde el device un presupuesto para «Marta Sin Documento», corrí
+    el backfill, y salió `omitidos_consumidor_final: 24` con `creados: 0`. Marta nunca iba a entrar a
+    la cartera — contra lo que el propio §3.3 punto 2 manda: *«si no hay documento, la clave es el
+    nombre normalizado»*. El contrato se contradecía y yo lo resolví para el lado equivocado.
+
+    Las reglas, en orden:
+
+    1. **Sin nombre usable → no hay cliente.** Cubre los 20 comprobantes reales del operador con
+       `receptor_nombre` vacío, y —vía `_NO_SON_NOMBRE`— los 3 que dicen literalmente *«Consumidor
+       Final»*. Ese literal es el registro fantasma de §3.2 entrando **por la puerta del nombre** en
+       vez de la del documento, y sin esta lista pasaría: tiene nombre, así que la regla 3 lo
+       aceptaría. **23 de los 24 comprobantes reales son 99.**
+    2. Sin nombre y sin documento tampoco hay cliente (§3.3 punto 3).
     3. Con documento y sin nombre, el nombre ES el documento: `"CUIT 30712345678"`. Feo y honesto —
-       el emprendedor lo reconoce y lo edita. Un cliente sin nombre no se puede mostrar en una lista.
+       el emprendedor lo reconoce y lo edita. Un cliente sin nombre no se muestra en ninguna lista.
+
+    (Y el 99 nunca viaja al cliente: `doc_tipo` de un cliente **jamás** vale 99, §3.1. Eso lo hace
+    `_asegurar_derivado`, que lo convierte en «sin documento» y deja la clave por nombre.)
     """
+    limpio = (nombre or "").strip()
+    if limpio and normalizar_nombre(limpio) not in _NO_SON_NOMBRE:
+        return limpio
     if es_consumidor_final(doc_tipo):
         return None
-    limpio = (nombre or "").strip()
-    if limpio:
-        return limpio
     doc = normalizar_documento(doc_nro)
     if not doc:
         return None
@@ -319,6 +340,13 @@ class ClienteStore:
         if nombre is None:
             return None, False
         doc = normalizar_documento(doc_nro)
+        if es_consumidor_final(doc_tipo):
+            # §3.1: `doc_tipo` de un cliente NUNCA vale 99. Un presupuesto «Sin identificar» con
+            # nombre sí genera cliente (ver `nombre_derivado`), pero entra **sin documento** — la
+            # clave es el nombre normalizado, que es lo que §3.3 punto 2 manda para este caso. Si el
+            # 99 viajara al cliente, todos ellos compartirían clave `(99, '')` y colapsarían en el
+            # registro fantasma por la puerta de siempre.
+            doc_tipo, doc = None, ""
         try:
             return self.crear(nombre=nombre, doc_tipo=doc_tipo, doc_nro=doc,
                               condicion_iva=condicion_iva, domicilio=domicilio,
@@ -340,8 +368,12 @@ class ClienteStore:
         Devuelve el parte de lo que hizo — no un booleano: el número de duplicados es un dato que
         alguien pidió, y un backfill que no cuenta lo que tocó no se puede auditar dos días después.
         """
+        # `omitidos_sin_cliente`, no `omitidos_consumidor_final`: el nombre viejo decía la CAUSA que
+        # yo suponía en vez del hecho que el contador mide. Y estaba mal — omitía también los
+        # presupuestos «Sin identificar» CON nombre, que sí son clientes. Un contador que nombra una
+        # causa equivocada no informa: confirma.
         parte = {"presupuestos_vistos": 0, "comprobantes_vistos": 0, "creados": 0,
-                 "ya_estaban": 0, "omitidos_consumidor_final": 0, "presupuestos_vinculados": 0}
+                 "ya_estaban": 0, "omitidos_sin_cliente": 0, "presupuestos_vinculados": 0}
 
         with self._conn_factory() as conn, conn.cursor() as cur:
             cur.execute(f"SELECT id, receptor_nombre, receptor_doc_tipo, receptor_doc_nro, "
@@ -356,13 +388,11 @@ class ClienteStore:
 
         for presu_id, nombre, doc_tipo, doc_nro, cond, domicilio, contacto in presupuestos:
             parte["presupuestos_vistos"] += 1
-            if es_consumidor_final(doc_tipo):
-                parte["omitidos_consumidor_final"] += 1
-                continue
             ref, nuevo = self._asegurar_derivado(
                 nombre=nombre or "", doc_tipo=doc_tipo, doc_nro=doc_nro or "",
                 condicion_iva=cond, domicilio=domicilio or "", contacto=contacto or "")
             if ref is None:
+                parte["omitidos_sin_cliente"] += 1
                 continue
             parte["creados" if nuevo else "ya_estaban"] += 1
             # El vínculo de §5. `IS DISTINCT FROM` y no `IS NULL`: así re-correr el backfill no
@@ -377,12 +407,11 @@ class ClienteStore:
 
         for doc_tipo, doc_nro, nombre in comprobantes:
             parte["comprobantes_vistos"] += 1
-            if es_consumidor_final(doc_tipo):
-                parte["omitidos_consumidor_final"] += 1
-                continue
             ref, nuevo = self._asegurar_derivado(nombre=nombre or "", doc_tipo=doc_tipo,
                                                  doc_nro=doc_nro or "")
-            if ref is not None:
+            if ref is None:
+                parte["omitidos_sin_cliente"] += 1
+            else:
                 parte["creados" if nuevo else "ya_estaban"] += 1
 
         return parte

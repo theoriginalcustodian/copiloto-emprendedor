@@ -255,15 +255,28 @@ def test_CONTROL_la_normalizacion_NO_colapsa_nombres_distintos():
 # HITO 2 — las tres decisiones del backfill, sin base de datos
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
 
-def test_el_consumidor_final_no_entra_a_la_cartera_NI_CON_NOMBRE():
-    """🔴 El caso que los datos reales mostraron y el contrato no previó: hay comprobantes con
-    `doc_tipo = 99` cuyo `receptor_nombre` dice literalmente «Consumidor Final». Si el chequeo del 99
-    fuera DESPUÉS de la caída a nombre, esas ventas crearían un cliente llamado «Consumidor Final» —
-    el mismo registro fantasma de §3.2, entrando por la puerta del nombre en vez de la del documento.
-
-    Y no es un caso de laboratorio: **23 de los 24 comprobantes reales del operador son 99.**"""
+def test_el_consumidor_final_no_entra_a_la_cartera_NI_CON_SU_ETIQUETA():
+    """🔴 Los comprobantes reales del operador tienen `doc_tipo = 99` y un `receptor_nombre` que dice
+    literalmente «Consumidor Final». Ese literal es el registro fantasma de §3.2 entrando **por la
+    puerta del nombre** en vez de la del documento — tiene nombre, así que sin la lista de etiquetas
+    que no son nombre pasaría el filtro. **23 de los 24 comprobantes reales son 99.**"""
     assert nombre_derivado("Consumidor Final", DOC_CONSUMIDOR_FINAL, "") is None
+    assert nombre_derivado("CONSUMIDOR  FINAL", DOC_CONSUMIDOR_FINAL, "") is None
     assert nombre_derivado("", DOC_CONSUMIDOR_FINAL, "") is None
+
+
+def test_un_presupuesto_SIN_IDENTIFICAR_pero_CON_nombre_SI_es_cliente():
+    """🔴 El bug que cacé en el device, y el más caro de los tres del día.
+
+    El formulario de presupuestos rotula el 99 como «Sin identificar», y ahí no significa «venta de
+    mostrador» sino **«todavía no le pedí el documento»** — el presupuesto igual tiene nombre. Yo
+    apliqué §3.2 (que habla de COMPROBANTES) a todo, y el resultado medido fue: cargué «Marta Sin
+    Documento» a mano desde el teléfono, corrí el backfill, `omitidos: 24 · creados: 0`. Marta no iba
+    a entrar a la cartera nunca, contra lo que §3.3 punto 2 manda explícitamente.
+
+    Lo que decide no es el código: es si hay un nombre usable."""
+    assert nombre_derivado("Marta Sin Documento", DOC_CONSUMIDOR_FINAL, "") == "Marta Sin Documento"
+    assert nombre_derivado("Panadería Los Tilos", 99, "") == "Panadería Los Tilos"
 
 
 def test_sin_nombre_y_sin_documento_no_hay_cliente():
