@@ -60,3 +60,14 @@ metadata:
 
 ## 2026-06-16
 - **2026-06-16** · [Kaggle-Temporal: sistema multi-agente](kaggle-temporal-overlay-spike.md) — 2 LLMs soberanos Kaggle (qwen2.5-coder+deepseek-r1:14b), Ollama, túnel SSH. `autossh`→`ssh` fix. `IterativeCodeWorkflow` E2E. PR #2.
+
+## Movidos del índice el 2026-07-22 (auditoría de memoria)
+
+El topic file sigue existiendo y es buscable; sólo salió del índice que se carga en cada sesión.
+
+- [💳 Billing — J27 colisión de tablas → namespacing](billing-system-sistema-compuesto.md) — `project`. **Afecta TODA app nueva.** + guard en provision_tables. Arquetipo `recurring_charge`.
+- [🚀 Copiloto del Emprendedor — walking skeleton E2E (#97)](copiloto-emprendedor-roadmap.md) — `project`. **LEER al retomar.** Agente durable + Composio + BI; reusa `ConversationWorkflow`. Gaps A/B/C. [[factory-identidad-automatizacion-ia]]
+- [📱 Copiloto frontend móvil (PWA) — UX + retoma](copiloto-frontend-movil-ux-estado.md) — `project`. **LEER al retomar frontend móvil.** Deploy solo-frontend=`sync-web.sh` (NO deploy.sh). Sesión persistente vía refresh-token (PR #118). [[pwa-sw-staleness-gotcha]]
+- [Plataforma Agéntica — accesos/infra](plataforma-agentica-estado.md) — `project`. **LEER PRIMERO.** VPS Hetzner 133209712, 178.105.191.1. Temporal `127.0.0.1:7233`. [[deuda-secretos-rotar]]
+- [🏭 No pelear con la fábrica — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. **LEER cuando la fábrica renega.** Snapshot no stream · E2E verde YA.
+- [🔌 MCP Composio — Gmail (scope user)](composio-mcp-gmail-acceso-completo.md) — `project`. Auth Bearer. Riesgo lethal trifecta. NO heredar a agentes autónomos.
