@@ -38,8 +38,8 @@ def tenants(conn_factory):
     yield a, b
     conn = conn_factory()
     with conn.cursor() as cur:
-        for t in ("copiloto_cobros", "copiloto_gastos", "copiloto_presupuesto_items",
-                  "copiloto_presupuestos", "afip_comprobantes"):
+        for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_gastos",
+                  "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
             cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
     conn.close()
 
