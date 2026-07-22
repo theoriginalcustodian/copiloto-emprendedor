@@ -214,3 +214,100 @@ def test_ADVERSARIAL_A_no_imputa_un_gasto_a_un_trabajo_de_B(conn_factory, tenant
     # CONTROL: si A tampoco pudiera con lo SUYO, lo roto sería el test y no habría guard que probar
     propio, _ = _trabajo_completo(conn_factory, a, nro=806)
     assert trabajos_de_a.imputar(gasto_de_a["id"], "presupuesto", propio)["presupuesto_ref"] == propio
+
+
+# ── INGRESOS: la función propia (addendum del escritorio) ────────────────────────────────────────
+
+@necesita_pg
+def test_un_ingreso_SOLO_CON_MONTO_se_guarda__y_dice_que_falto(conn_factory, tenants):
+    """La especificación textual del operador: *«igual que si se lo dictara a la secretaria»*.
+
+    A una secretaria le decís «me pagaron 85 mil» y lo anota. No te pide la fecha, ni el medio, ni el
+    número de comprobante. Lo que sí hace es avisarte después de qué le falta — por eso `falta` sale
+    calculado del backend y no de la app: el aviso y el dato tienen que salir del mismo lugar o van a
+    divergir.
+    """
+    a, _ = tenants
+    ingreso = CobroStore(conn_factory, a).registrar_suelto(monto="85000")
+
+    assert ingreso["monto"] == "85000.00"
+    assert ingreso["fecha"] is not None                  # hoy, sin que nadie lo pida
+    assert set(ingreso["falta"]) == {"cliente", "medio", "concepto"}
+
+
+@necesita_pg
+def test_contestar_el_aviso_completa_el_MISMO_ingreso__no_crea_otro(conn_factory, tenants):
+    """DoD del addendum. Si contestar creara un registro nuevo, el aviso duplicaría la caja — que es
+    exactamente el daño que la función viene a evitar."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto="85000")
+
+    completo = store.completar(ingreso["id"], {"cliente_nombre": "Panadería", "medio": "efectivo"})
+
+    assert completo["id"] == ingreso["id"]
+    assert completo["falta"] == ["concepto"]             # lo que sigue faltando, y nada más
+    assert len(store.listar_ingresos()["ingresos"]) == 1
+
+
+@necesita_pg
+def test_el_duplicado_probable_se_DETECTA__y_no_bloquea(conn_factory, tenants):
+    """Un dato faltante se ve; un ingreso de más **no se ve nunca**. Por eso éste se pregunta antes.
+
+    Pero avisa y no prohíbe: dos cobros iguales del mismo cliente en la misma semana son un caso real,
+    y el emprendedor sabe mejor que el sistema cuál de los dos es.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    store.registrar_suelto(monto="85000", cliente_nombre="Panadería", medio="mercadopago")
+
+    candidato = store.posible_duplicado(monto="85000", cliente_nombre="panadería")
+    assert candidato is not None and candidato["monto"] == "85000.00"
+
+    # CONTROL: un monto distinto NO dispara la alarma — si saltara con todo, sería ruido y la app
+    # aprendería a ignorarlo, que es la peor forma de perder una advertencia.
+    assert store.posible_duplicado(monto="12000", cliente_nombre="Panadería") is None
+
+    # y el segundo cobro entra igual: el store nunca bloqueó, la decisión es del endpoint
+    store.registrar_suelto(monto="85000", cliente_nombre="Panadería", medio="efectivo")
+    assert len(store.listar_ingresos()["ingresos"]) == 2
+
+
+@necesita_pg
+def test_los_de_mercadopago_y_los_dictados_conviven_pero_se_DISTINGUEN(conn_factory, tenants):
+    """Si se mezclaran sin marca, en tres meses nadie sabría qué dato es duro y cuál es de memoria."""
+    a, _ = tenants
+    presupuesto, comprobante = _trabajo_completo(conn_factory, a, nro=810)
+    store = CobroStore(conn_factory, a)
+    store.registrar(comprobante, monto="100000.00")      # el de la factura
+    store.registrar_suelto(monto="85000", medio="efectivo")
+
+    ingresos = store.listar_ingresos()
+
+    assert ingresos["total"] == "185000.00"
+
+    # 🔴 Este assert nació MAL y lo dejo anotado porque es la lección: escribí
+    # `origenes == {"manual"}` y pasó — o sea que **afirmé como correcto que los dos ingresos fueran
+    # indistinguibles**, que es exactamente lo contrario de lo que el addendum pide. El test estaba
+    # verde y tapaba el bug: `registrar()` insertaba sin `origen` y tomaba el DEFAULT.
+    origenes = {i["origen"] for i in ingresos["ingresos"]}
+    assert origenes == {"factura", "manual"}, "el cobro de una factura NO se distingue del dictado"
+
+    # y sólo el dictado se puede borrar: borrar acá el rastro de un cobro que salió de una factura
+    # sería inventar que esa factura no se cobró
+    assert [i["borrable"] for i in ingresos["ingresos"]].count(True) == 1
+    # el de la factura trae su número: la pantalla puede decir «Factura B 810» sin otra consulta
+    assert any(i["comprobante_nro"] == 810 for i in ingresos["ingresos"])
+
+
+@necesita_pg
+def test_ADVERSARIAL_A_no_ve_ni_borra_los_ingresos_de_B(conn_factory, tenants):
+    a, b = tenants
+    de_b = CobroStore(conn_factory, b).registrar_suelto(monto="99000", cliente_nombre="Kiosco")
+    de_a = CobroStore(conn_factory, a)
+
+    assert de_a.listar_ingresos()["ingresos"] == []
+    assert de_a.borrar_ingreso(de_b["id"]) is False
+    assert de_a.completar(de_b["id"], {"medio": "hackeado"}) is None
+    # CONTROL: B sigue intacto — el intento de A no pudo ni siquiera ensuciarlo
+    assert CobroStore(conn_factory, b).listar_ingresos()["ingresos"][0]["medio"] == ""
