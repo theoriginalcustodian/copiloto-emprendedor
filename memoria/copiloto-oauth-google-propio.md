@@ -62,18 +62,24 @@ auditoría por una función que nadie usó»*.
 - Tipo de credencial: **Aplicación web**, aunque el cliente sea móvil: el intercambio del token lo
   hace el servidor de Composio.
 
-## 🔴 Deuda de código que hay que pagar ANTES de crear las configs
+## ✅ El código ya está listo y esperando (`3724ccd`, 2026-07-21)
 
-`motor/clients/agent/providers/composio_gateway.py:_auth_config_id` devuelve **la primera** auth
-config del toolkit. Con la nuestra y la de Composio conviviendo, elige una de las dos **sin criterio y
-sin error**: el síntoma sería "a veces conecta bien y a veces va al dashboard". Hay que preferir
-explícitamente la no-gestionada.
-**Propietario:** BACKEND. **Condición de pago:** antes de crear la primera auth config custom.
+`composio_gateway._auth_config` devuelve `(id, es_de_composio)` y **prefiere siempre la propia**;
+ante empate ordena por id. Antes devolvía *la primera* de la lista: con las dos conviviendo habría
+elegido sin criterio y sin error, y el síntoma —*"a veces conecta bien y a veces va al dashboard"*—
+llega como bug de la app y se busca en la pantalla equivocada. Un desempate arbitrario convierte un
+bug reproducible en uno intermitente.
 
-Y `authorize()` usa `connected_accounts.link` (el hospedado). Con config propia, `initiate` debería
-volver a estar disponible y llevar directo a Google — `[ASSUMED_PENDING_VERIFY]`: es lo que el mensaje
-de error implica por contraste y `telegram` (única `managed=False` de la cuenta) prueba que el tipo
-existe, pero no se confirma sin credenciales reales.
+Con eso, `authorize()` toma el camino según de quién sea la app: **config propia → `initiate`**
+(consentimiento de Google con nuestra marca); **config de Composio → su link hospedado**, el único que
+admite. El fallback loguea: una degradación silenciosa nos devolvería al dashboard sin que nadie sepa
+por qué, y el trámite parecería no haber servido.
+
+`[ASSUMED_PENDING_VERIFY]` que sobrevive: que con config propia `initiate` devuelva la URL de Google.
+Es lo que el mensaje de error implica por contraste y `telegram` (única `managed=False` de la cuenta)
+prueba que el tipo existe, pero **no se confirma sin credenciales reales**. Los tests fingen el SDK en
+lo que importa —`initiate` falla para las gestionadas, igual que el servidor— y un control diferencial
+restaurando "devolver la primera" hace fallar 4 de los 10, así que miden la preferencia y no otra cosa.
 
 ## El paso que no se saltea al tener las credenciales
 
