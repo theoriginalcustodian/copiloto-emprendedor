@@ -41,7 +41,7 @@ def set_onboarding_deps(gateway_factory, cred_store_factory, handoff_factory) ->
         gateway_factory, cred_store_factory, handoff_factory)
 
 
-def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str) -> dict:
+def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str, ambiente: str = "dev") -> dict:
     """Consume el secreto, genera el certificado, autoriza wsfe y guarda todo cifrado.
 
     Devuelve un dict SIN datos sensibles: ni la clave, ni el certificado, ni la key privada. El
@@ -59,7 +59,9 @@ def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str) -> dict:
         return {"ok": False, "motivo": "handle_invalido_o_vencido"}
 
     try:
-        gateway = _gateway_factory(cuit)
+        # El certificado se emite CONTRA UN AMBIENTE: el de homologación no sirve en producción ni al
+        # revés. Por eso el ambiente viaja hasta acá en vez de decidirse al facturar.
+        gateway = _gateway_factory(cuit, ambiente)
         cert_data = gateway.crear_certificado(
             usuario=cuit, clave=clave.revelar(), alias=ALIAS_CERT)
 
@@ -72,8 +74,8 @@ def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str) -> dict:
             usuario=cuit, clave=clave.revelar(), alias=ALIAS_CERT, wsid="wsfe")
 
         _cred_store_factory(cliente_id).save(
-            cuit, cert=cert, key=key, ambiente="dev", ws_autorizados=["wsfe"])
-        return {"ok": True, "motivo": None, "ws_autorizados": ["wsfe"]}
+            cuit, cert=cert, key=key, ambiente=ambiente, ws_autorizados=["wsfe"])
+        return {"ok": True, "motivo": None, "ambiente": ambiente, "ws_autorizados": ["wsfe"]}
     finally:
         # Defensa en profundidad: el `consume` ya borró la fila, pero si algo cambia en el futuro esto
         # garantiza que no quede un secreto vivo por un camino de excepción.
@@ -81,20 +83,24 @@ def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str) -> dict:
 
 
 @activity.defn
-async def dar_de_alta_afip(cliente_id: str, cuit: str, handle: str) -> dict:
-    """Alta completa ante ARCA. Larga (el RPA de AfipSDK puede tardar ~2 min por llamada)."""
-    return await asyncio.to_thread(_dar_de_alta_sync, cliente_id, cuit, handle)
+async def dar_de_alta_afip(cliente_id: str, cuit: str, handle: str, ambiente: str = "dev") -> dict:
+    """Alta completa ante ARCA. Larga (el RPA de AfipSDK puede tardar ~2 min por llamada).
+
+    `ambiente` con default: las ejecuciones que quedaron en el event history ANTES de que existiera el
+    parámetro se reproducen con 3 argumentos, y sin default el replay fallaría.
+    """
+    return await asyncio.to_thread(_dar_de_alta_sync, cliente_id, cuit, handle, ambiente)
 
 
-def _verificar_habilitacion_sync(cliente_id: str, cuit: str) -> dict:
+def _verificar_habilitacion_sync(cliente_id: str, cuit: str, ambiente: str = "dev") -> dict:
     """¿El tenant quedó realmente en condiciones de facturar? Se pregunta al sistema, no a la memoria."""
-    creds = _cred_store_factory(cliente_id).get(cuit)
+    creds = _cred_store_factory(cliente_id).get(cuit, ambiente)
     if not creds:
         return {"habilitado": False, "motivo": "sin_certificado"}
     if "wsfe" not in (creds.get("ws_autorizados") or []):
         return {"habilitado": False, "motivo": "wsfe_no_autorizado"}
     try:
-        estado = _gateway_factory(cuit).estado_servicio()
+        estado = _gateway_factory(cuit, ambiente).estado_servicio()
     except Exception as exc:  # noqa: BLE001
         return {"habilitado": False, "motivo": f"ws_inaccesible: {exc}"}
     ok = all(estado.get(k) == "OK" for k in ("AppServer", "DbServer", "AuthServer"))
@@ -102,8 +108,8 @@ def _verificar_habilitacion_sync(cliente_id: str, cuit: str) -> dict:
 
 
 @activity.defn
-async def verificar_habilitacion_afip(cliente_id: str, cuit: str) -> dict:
-    return await asyncio.to_thread(_verificar_habilitacion_sync, cliente_id, cuit)
+async def verificar_habilitacion_afip(cliente_id: str, cuit: str, ambiente: str = "dev") -> dict:
+    return await asyncio.to_thread(_verificar_habilitacion_sync, cliente_id, cuit, ambiente)
 
 
 def _purgar_secretos_sync(cliente_id: str) -> int:

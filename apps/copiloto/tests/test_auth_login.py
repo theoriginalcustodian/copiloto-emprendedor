@@ -108,7 +108,7 @@ def _require_tenant_401():
 
 @pytest.fixture(autouse=True)
 def _mp_fernet_key_env(monkeypatch):
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
 
 def _build_app(*, gotrue):

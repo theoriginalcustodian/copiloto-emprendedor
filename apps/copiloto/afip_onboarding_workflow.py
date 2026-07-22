@@ -34,6 +34,39 @@ REINTENTO_LECTURA = RetryPolicy(maximum_attempts=3)
 
 PASOS = ("iniciado", "dando_de_alta", "verificando", "habilitado", "fallido")
 
+# Lo que ARCA responde ↔ lo que el usuario necesita leer. El orden importa: se toma el primero que
+# matchea.
+_MOTIVOS_CONOCIDOS = (
+    ("clave o usuario incorrecto", "La clave fiscal o el usuario no son correctos. Revisalos y "
+                                   "probá de nuevo."),
+    ("usuario incorrecto", "El usuario de ARCA no es correcto."),
+    ("clave incorrecta", "La clave fiscal no es correcta."),
+    ("bloquead", "Tu clave fiscal está bloqueada en ARCA. Tenés que desbloquearla desde el sitio "
+                 "de AFIP antes de reintentar."),
+    ("handle_invalido_o_vencido", "La sesión de vinculación venció. Volvé a ingresar tu clave "
+                                  "fiscal."),
+    ("alias", "El certificado no se pudo crear por un problema de configuración nuestro. Ya estamos "
+              "al tanto."),
+    ("timeout", "ARCA tardó demasiado en responder. Probá de nuevo en unos minutos."),
+)
+
+_MOTIVO_GENERICO = ("No pudimos vincular tu cuenta con ARCA. Probá de nuevo; si sigue fallando, "
+                    "escribinos.")
+
+
+def _motivo_legible(exc: Exception) -> str:
+    """Traduce el fallo a algo que el usuario pueda accionar, SIN volcar el error crudo.
+
+    Dos razones para no exponer el texto original: (1) puede arrastrar el cuerpo HTTP de AfipSDK, que
+    en el peor caso refleja lo que se le mandó —incluida la clave—; (2) un stack trace en pantalla no
+    le dice a nadie qué hacer. El detalle completo queda en el log de la activity, que es donde sirve.
+    """
+    texto = str(exc).lower()
+    for patron, copy in _MOTIVOS_CONOCIDOS:
+        if patron in texto:
+            return copy
+    return _MOTIVO_GENERICO
+
 
 @workflow.defn
 class AfipOnboardingWorkflow:
@@ -41,6 +74,7 @@ class AfipOnboardingWorkflow:
         self._paso = "iniciado"
         self._motivo: str | None = None
         self._ws_autorizados: list[str] = []
+        self._ambiente = "dev"
 
     @workflow.query
     def progreso(self) -> dict:
@@ -48,20 +82,37 @@ class AfipOnboardingWorkflow:
         return {
             "paso": self._paso,
             "motivo": self._motivo,
+            "ambiente": self._ambiente,
             "ws_autorizados": list(self._ws_autorizados),
             "terminado": self._paso in ("habilitado", "fallido"),
             "ok": self._paso == "habilitado",
         }
 
     @workflow.run
-    async def run(self, cliente_id: str, cuit: str, handle: str) -> dict:
+    async def run(self, cliente_id: str, cuit: str, handle: str, ambiente: str = "dev") -> dict:
+        """`ambiente` con default para no romper el replay de las ejecuciones que arrancaron con 3
+        argumentos (el history las reproduce tal cual quedaron grabadas)."""
+        self._ambiente = ambiente
         self._paso = "dando_de_alta"
-        alta = await workflow.execute_activity(
-            "dar_de_alta_afip",
-            args=[cliente_id, cuit, handle],
-            start_to_close_timeout=TIMEOUT_ALTA,
-            retry_policy=SIN_REINTENTO,
-        )
+        try:
+            alta = await workflow.execute_activity(
+                "dar_de_alta_afip",
+                args=[cliente_id, cuit, handle, ambiente],
+                start_to_close_timeout=TIMEOUT_ALTA,
+                retry_policy=SIN_REINTENTO,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Una activity que LANZA (en vez de devolver {"ok": False}) mataba el workflow por
+            # ActivityError antes de llegar a la rama de abajo: el objeto quedaba congelado en
+            # "dando_de_alta" con `terminado: False`, y la query lo servía así PARA SIEMPRE. El
+            # 2026-07-21 el operador tipeó mal su clave fiscal y esperó cinco minutos frente a una
+            # pantalla que decía "puede demorar unos minutos" sobre un workflow muerto en 5 segundos.
+            #
+            # Un fallo del alta es un RESULTADO del negocio, no una excepción a propagar: acá termina
+            # el workflow, no revienta.
+            self._paso = "fallido"
+            self._motivo = _motivo_legible(exc)
+            return self.progreso()
 
         if not alta.get("ok"):
             self._paso = "fallido"
@@ -76,7 +127,7 @@ class AfipOnboardingWorkflow:
         self._paso = "verificando"
         verificacion = await workflow.execute_activity(
             "verificar_habilitacion_afip",
-            args=[cliente_id, cuit],
+            args=[cliente_id, cuit, ambiente],
             start_to_close_timeout=TIMEOUT_CORTO,
             retry_policy=REINTENTO_LECTURA,
         )

@@ -36,6 +36,7 @@
     "cert_enc text NOT NULL",
     "key_enc text NOT NULL",
     "ambiente text NOT NULL DEFAULT 'dev'",
+    "activo boolean NOT NULL DEFAULT true",
     "ws_autorizados jsonb",
     "updated_at timestamptz DEFAULT now()"
   ],
@@ -47,12 +48,62 @@
     "ingresos_brutos text NOT NULL",
     "inicio_actividades date NOT NULL",
     "punto_venta integer NOT NULL",
+    "guardar_en_drive boolean NOT NULL DEFAULT false",
     "updated_at timestamptz DEFAULT now()"
   ],
   "afip_secret_handoff": [
     "handle text NOT NULL",
     "secreto_enc text NOT NULL",
     "expira_at timestamptz NOT NULL",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_perfil_negocio": [
+    "que_vende text NOT NULL DEFAULT ''",
+    "a_quien text NOT NULL DEFAULT 'ambos'",
+    "nombre_comercial text NOT NULL DEFAULT ''",
+    "horario_atencion text NOT NULL DEFAULT ''",
+    "formalidad text NOT NULL DEFAULT 'cercano'",
+    "largo_respuesta text NOT NULL DEFAULT 'breve'",
+    "nombre_copiloto text NOT NULL DEFAULT ''",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_presupuestos": [
+    "numero bigint NOT NULL",
+    "fecha timestamptz DEFAULT now()",
+    "concepto text NOT NULL DEFAULT ''",
+    "receptor_nombre text NOT NULL DEFAULT ''",
+    "receptor_doc_tipo integer",
+    "receptor_doc_nro text",
+    "receptor_condicion_iva integer",
+    "receptor_domicilio text",
+    "receptor_contacto text",
+    "total numeric NOT NULL DEFAULT 0",
+    "moneda text NOT NULL DEFAULT 'ARS'",
+    "doc_id text",
+    "doc_link text",
+    "sheet_fila text",
+    "reemplaza_a bigint",
+    "factura_id text",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_presupuesto_items": [
+    "presupuesto_id bigint NOT NULL",
+    "orden integer NOT NULL DEFAULT 0",
+    "descripcion text NOT NULL DEFAULT ''",
+    "cantidad numeric NOT NULL DEFAULT 1",
+    "precio_unitario numeric NOT NULL DEFAULT 0",
+    "codigo text",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_gastos": [
+    "monto numeric NOT NULL DEFAULT 0",
+    "fecha date NOT NULL",
+    "categoria text NOT NULL DEFAULT 'otros'",
+    "proveedor text NOT NULL DEFAULT ''",
+    "medio_pago text NOT NULL DEFAULT ''",
+    "descripcion text NOT NULL DEFAULT ''",
+    "origen text NOT NULL DEFAULT 'manual'",
+    "monto_sugerido numeric",
     "created_at timestamptz DEFAULT now()"
   ],
   "afip_comprobantes": [
@@ -69,6 +120,8 @@
     "estado text NOT NULL DEFAULT 'emitida'",
     "pdf_url text",
     "pdf_expira_at timestamptz",
+    "drive_file_id text",
+    "drive_link text",
     "idem_key text",
     "workflow_id text",
     "cbte_asoc_nro bigint",

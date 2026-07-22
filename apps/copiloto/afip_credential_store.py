@@ -54,8 +54,20 @@ class ClaveFiscal(str):
         return str.__str__(self)
 
 
+AMBIENTES = ("dev", "prod")
+
+
 class AfipCredentialStore:
-    """Certificado + clave privada del emprendedor, cifrados con Fernet."""
+    """Certificado + clave privada del emprendedor, cifrados con Fernet.
+
+    **Una credencial por ambiente, una sola activa.** AFIP emite certificados distintos para
+    homologación y producción — no son dos configuraciones del mismo certificado, son dos
+    credenciales. Guardarlas juntas es lo que permite que el switch de ambiente sea un toggle y no un
+    re-alta con la clave fiscal cada vez.
+
+    Cuál está activa lo garantiza un índice único parcial, no este código: `activar()` puede correr
+    dos veces en paralelo y la base sigue teniendo exactamente una fila activa por (tenant, CUIT).
+    """
 
     def __init__(self, conn_factory: Callable, cliente_id: str, crypto) -> None:
         self._conn_factory = conn_factory
@@ -63,33 +75,87 @@ class AfipCredentialStore:
         self._crypto = crypto
 
     def save(self, cuit: str, *, cert: str, key: str, ambiente: str = "dev",
-             ws_autorizados: list[str] | None = None) -> None:
+             ws_autorizados: list[str] | None = None, activar: bool = True) -> None:
+        """Guarda (o pisa) la credencial DE ESE ambiente. Por defecto la deja activa: quien acaba de
+        vincular un ambiente quiere usarlo, y dejarlo inactivo en silencio sería una sorpresa."""
+        if ambiente not in AMBIENTES:
+            raise ValueError(f"ambiente inválido: {ambiente!r} (esperado {AMBIENTES})")
         conn = self._conn_factory()
         with conn.cursor() as cur:
+            if activar:
+                # Primero se apaga la otra: el índice único parcial rechazaría dos activas.
+                cur.execute(
+                    f"UPDATE {_T_CRED} SET activo=false "
+                    f"WHERE cliente_id=%s AND cuit=%s AND ambiente<>%s AND activo",
+                    (self._cid, cuit, ambiente))
             cur.execute(
                 f"INSERT INTO {_T_CRED} "
-                f"(cliente_id, cuit, cert_enc, key_enc, ambiente, ws_autorizados) "
-                f"VALUES (%s,%s,%s,%s,%s,%s) "
-                f"ON CONFLICT (cliente_id, cuit) DO UPDATE SET "
+                f"(cliente_id, cuit, cert_enc, key_enc, ambiente, activo, ws_autorizados) "
+                f"VALUES (%s,%s,%s,%s,%s,%s,%s) "
+                f"ON CONFLICT (cliente_id, cuit, ambiente) DO UPDATE SET "
                 f"cert_enc=EXCLUDED.cert_enc, key_enc=EXCLUDED.key_enc, "
-                f"ambiente=EXCLUDED.ambiente, ws_autorizados=EXCLUDED.ws_autorizados, updated_at=now()",
+                f"activo=EXCLUDED.activo, ws_autorizados=EXCLUDED.ws_autorizados, updated_at=now()",
                 # `ws_autorizados` es jsonb: el provisioner no admite arrays nativos (`text[]` no está en
                 # su allowlist de tipos), así que va serializado. Postgres castea el string a jsonb solo.
                 (self._cid, cuit, self._crypto.encrypt(cert), self._crypto.encrypt(key),
-                 ambiente, json.dumps(list(ws_autorizados or []))))
+                 ambiente, activar, json.dumps(list(ws_autorizados or []))))
 
-    def get(self, cuit: str) -> dict | None:
+    def get(self, cuit: str, ambiente: str | None = None) -> dict | None:
+        """La credencial ACTIVA (default) o la de un ambiente puntual.
+
+        El default es deliberado: la emisión nunca debe elegir ambiente por su cuenta — usa el que el
+        emprendedor dejó activo, y si no hay ninguno activo no factura.
+        """
         conn = self._conn_factory()
         with conn.cursor() as cur:
-            cur.execute(
-                f"SELECT cert_enc, key_enc, ambiente, ws_autorizados FROM {_T_CRED} "
-                f"WHERE cliente_id=%s AND cuit=%s", (self._cid, cuit))
+            if ambiente is None:
+                cur.execute(
+                    f"SELECT cert_enc, key_enc, ambiente, ws_autorizados FROM {_T_CRED} "
+                    f"WHERE cliente_id=%s AND cuit=%s AND activo", (self._cid, cuit))
+            else:
+                cur.execute(
+                    f"SELECT cert_enc, key_enc, ambiente, ws_autorizados FROM {_T_CRED} "
+                    f"WHERE cliente_id=%s AND cuit=%s AND ambiente=%s",
+                    (self._cid, cuit, ambiente))
             row = cur.fetchone()
         if not row:
             return None
-        cert_enc, key_enc, ambiente, ws = row
+        cert_enc, key_enc, amb, ws = row
         return {"cert": self._crypto.decrypt(cert_enc), "key": self._crypto.decrypt(key_enc),
-                "ambiente": ambiente, "ws_autorizados": list(ws or [])}
+                "ambiente": amb, "ws_autorizados": list(ws or [])}
+
+    def ambientes_vinculados(self, cuit: str) -> list[str]:
+        """Para qué ambientes ya hay certificado. La UI lo necesita para distinguir un toggle de un
+        alta: ofrecer "cambiar a producción" sin credencial de producción manda al usuario a un
+        callejón."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT ambiente FROM {_T_CRED} WHERE cliente_id=%s AND cuit=%s ORDER BY ambiente",
+                (self._cid, cuit))
+            return [r[0] for r in cur.fetchall()]
+
+    def activar(self, cuit: str, ambiente: str) -> bool:
+        """Cambia el ambiente activo. Devuelve False si no hay credencial para ese ambiente —el
+        llamador tiene que mandar al usuario a vincularlo, no fallar con un 500."""
+        if ambiente not in AMBIENTES:
+            raise ValueError(f"ambiente inválido: {ambiente!r} (esperado {AMBIENTES})")
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT 1 FROM {_T_CRED} WHERE cliente_id=%s AND cuit=%s AND ambiente=%s",
+                (self._cid, cuit, ambiente))
+            if cur.fetchone() is None:
+                return False
+            # Apagar ANTES de prender: al revés, el índice único parcial rechaza el segundo activo.
+            cur.execute(
+                f"UPDATE {_T_CRED} SET activo=false "
+                f"WHERE cliente_id=%s AND cuit=%s AND ambiente<>%s AND activo",
+                (self._cid, cuit, ambiente))
+            cur.execute(
+                f"UPDATE {_T_CRED} SET activo=true, updated_at=now() "
+                f"WHERE cliente_id=%s AND cuit=%s AND ambiente=%s", (self._cid, cuit, ambiente))
+        return True
 
     def primer_cuit(self) -> str | None:
         """El CUIT más recientemente vinculado por ESTE tenant (MVP: un CUIT por emprendedor)."""
@@ -134,14 +200,28 @@ class AfipPerfilStore:
         with conn.cursor() as cur:
             cur.execute(
                 f"SELECT cuit, razon_social, domicilio_comercial, condicion_iva, ingresos_brutos, "
-                f"inicio_actividades, punto_venta FROM {_T_PERFIL} "
+                f"inicio_actividades, punto_venta, guardar_en_drive FROM {_T_PERFIL} "
                 f"WHERE cliente_id=%s AND cuit=%s", (self._cid, cuit))
             row = cur.fetchone()
         if not row:
             return None
         campos = ("cuit", "razon_social", "domicilio_comercial", "condicion_iva",
-                  "ingresos_brutos", "inicio_actividades", "punto_venta")
+                  "ingresos_brutos", "inicio_actividades", "punto_venta", "guardar_en_drive")
         return dict(zip(campos, row))
+
+    def set_guardar_en_drive(self, cuit: str, activado: bool) -> bool:
+        """Ajuste "guardar mis facturas en Drive". Devuelve False si no hay perfil para ese CUIT.
+
+        El booleano de retorno NO es decorativo: un UPDATE que no matchea ninguna fila es un no-op
+        silencioso, y el usuario vería el toggle prendido en su pantalla mientras la base no guardó
+        nada. Quien llama tiene que poder distinguir "guardado" de "no había nada que guardar".
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE {_T_PERFIL} SET guardar_en_drive=%s, updated_at=now() "
+                f"WHERE cliente_id=%s AND cuit=%s", (bool(activado), self._cid, cuit))
+            return cur.rowcount > 0
 
 
 class AfipSecretHandoff:

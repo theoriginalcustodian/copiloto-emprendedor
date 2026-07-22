@@ -236,3 +236,79 @@ def test_la_clave_fiscal_no_se_filtra_en_un_dict_logueado():
     """El caso realista: alguien loguea el payload entero."""
     payload = {"cuit": "20409378472", "clave": ClaveFiscal("mi-clave-real")}
     assert "mi-clave-real" not in str(payload)
+
+
+# ---------------------------------------------------------------------------
+# Ambiente: dos credenciales por CUIT, una sola activa (pedido de frontend, 2026-07-21)
+# ---------------------------------------------------------------------------
+
+
+def test_dev_y_prod_conviven_para_el_mismo_cuit(conn_factory, tenant_a):
+    """El certificado de homologación y el de producción son credenciales DISTINTAS.
+
+    Antes el unique era (cliente_id, cuit): vincular producción pisaba el certificado de homologación,
+    y volver a probar exigía rehacer el alta con la clave fiscal — rompiendo la promesa de pedirla una
+    sola vez.
+    """
+    cuit = "20409378472"
+    store = AfipCredentialStore(conn_factory, tenant_a, CryptoFake())
+    store.save(cuit, cert="cert-dev", key="key-dev", ambiente="dev")
+    store.save(cuit, cert="cert-prod", key="key-prod", ambiente="prod")
+
+    assert store.ambientes_vinculados(cuit) == ["dev", "prod"]
+    assert store.get(cuit, "dev")["cert"] == "cert-dev"
+    assert store.get(cuit, "prod")["cert"] == "cert-prod"
+
+
+def test_solo_una_credencial_activa_a_la_vez(conn_factory, tenant_a, conn):
+    """El invariante lo garantiza la BASE (índice único parcial), no el código que hace el toggle."""
+    cuit = "20409378472"
+    store = AfipCredentialStore(conn_factory, tenant_a, CryptoFake())
+    store.save(cuit, cert="c1", key="k1", ambiente="dev")
+    store.save(cuit, cert="c2", key="k2", ambiente="prod")
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM uc_factory.afip_credentials "
+            "WHERE cliente_id=%s AND cuit=%s AND activo", (tenant_a, cuit))
+        assert cur.fetchone()[0] == 1
+
+
+def test_get_sin_ambiente_devuelve_la_activa(conn_factory, tenant_a):
+    """La emisión NO elige ambiente: usa el que el emprendedor dejó activo."""
+    cuit = "20409378472"
+    store = AfipCredentialStore(conn_factory, tenant_a, CryptoFake())
+    store.save(cuit, cert="c-dev", key="k", ambiente="dev")
+    store.save(cuit, cert="c-prod", key="k", ambiente="prod")   # activa la última guardada
+    assert store.get(cuit)["ambiente"] == "prod"
+
+    assert store.activar(cuit, "dev") is True
+    assert store.get(cuit)["ambiente"] == "dev"
+
+
+def test_activar_un_ambiente_sin_credencial_devuelve_false(conn_factory, tenant_a):
+    """No es una excepción: es un caso del producto. El endpoint lo traduce a 409 + camino al alta."""
+    cuit = "20409378472"
+    store = AfipCredentialStore(conn_factory, tenant_a, CryptoFake())
+    store.save(cuit, cert="c", key="k", ambiente="dev")
+    assert store.activar(cuit, "prod") is False
+    assert store.get(cuit)["ambiente"] == "dev", "un activar fallido no puede dejar al tenant sin activa"
+
+
+def test_ambiente_invalido_no_llega_a_la_base(conn_factory, tenant_a):
+    cuit = "20409378472"
+    for llamada in (lambda s: s.save(cuit, cert="c", key="k", ambiente="staging"),
+                    lambda s: s.activar(cuit, "staging")):
+        with pytest.raises(ValueError):
+            llamada(AfipCredentialStore(conn_factory, tenant_a, CryptoFake()))
+
+
+def test_adversarial_el_ambiente_no_permite_leer_la_credencial_de_otro_tenant(
+        conn_factory, tenant_a, tenant_b):
+    """El parámetro nuevo no puede abrir una puerta lateral al aislamiento."""
+    cuit = "20409378472"
+    AfipCredentialStore(conn_factory, tenant_a, CryptoFake()).save(
+        cuit, cert="cert-de-A", key="key-de-A", ambiente="prod")
+    store_b = AfipCredentialStore(conn_factory, tenant_b, CryptoFake())
+    assert store_b.get(cuit, "prod") is None
+    assert store_b.ambientes_vinculados(cuit) == []

@@ -29,6 +29,7 @@ from afip_rules import (
     TipoDoc,
     a_decimal,
     armar_params_pdf,
+    receptor_desde_payload,
     armar_payload_wsfe,
     calcular_totales,
     determinar_tipo_comprobante,
@@ -577,3 +578,65 @@ def test_params_pdf_condicion_receptor_es_string_legible():
     )
     assert params["receiver_iva_condition"] == "Consumidor Final"
     assert params["issuer_iva_condition"] == "Responsable Monotributo"
+
+
+def test_params_pdf_rellenan_al_receptor_no_identificado():
+    """Consumidor final sin datos: el WSFE lo AUTORIZA, pero el template del PDF exige los tres campos.
+
+    Sin el relleno, el caso más común del producto —venta mostrador— emite con CAE y se queda sin
+    comprobante imprimible: AfipSDK devuelve 400 con "El campo Nombre receptor es obligatorio".
+    Apareció en la primera emisión real desde el device (factura N° 5, 2026-07-21), justo cuando el
+    frontend sacó la validación de más que lo estaba tapando.
+    """
+    # El caso REAL: el formulario manda las claves con cadena vacía (el usuario dejó el campo en
+    # blanco), no las omite. El default de la dataclass no aplica ahí.
+    borrador = borrador_valido()
+    borrador.receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL,
+                                 nro_doc="", nombre="", domicilio="")
+
+    params = armar_params_pdf(
+        perfil_monotributo(), borrador, numero=5, cae="123", cae_vto=HOY, fecha_emision=HOY
+    )
+    assert params["receiver_name"] == "Consumidor Final"
+    assert params["receiver_address"] == "-"
+    assert params["receiver_document_number"] == "0"
+    # Ninguno puede quedar vacío: el template los rechaza los tres por igual.
+    for campo in ("receiver_name", "receiver_address", "receiver_document_number"):
+        assert params[campo], f"{campo} vacío → 400 del template"
+
+
+def test_params_pdf_respetan_los_datos_reales_del_receptor_cuando_existen():
+    """El relleno es para el hueco, no un pisado: si el usuario cargó los datos, van los suyos."""
+    borrador = borrador_valido()
+    borrador.receptor = Receptor(
+        condicion_iva=CondicionIVA.RESPONSABLE_INSCRIPTO, tipo_doc=TipoDoc.CUIT,
+        nro_doc=CUIT_RECEPTOR, nombre="ACME SA", domicilio="Corrientes 1234")
+
+    params = armar_params_pdf(
+        perfil_monotributo(), borrador, numero=6, cae="123", cae_vto=HOY, fecha_emision=HOY
+    )
+    assert params["receiver_name"] == "ACME SA"
+    assert params["receiver_address"] == "Corrientes 1234"
+    assert params["receiver_document_number"] == CUIT_RECEPTOR
+
+
+@pytest.mark.parametrize("vacio", ["", None])
+def test_receptor_desde_payload_normaliza_los_campos_vacios(vacio):
+    """`payload.get(k, default)` sólo cubre la clave AUSENTE, no la vacía.
+
+    Un formulario que manda `{"nombre": ""}` —el usuario dejó el campo en blanco en una venta a
+    consumidor final— pasaba de largo y el template del PDF respondía 400: factura con CAE y sin
+    comprobante imprimible. Con `null`, `str(None)` habría impreso "None" en la factura.
+    """
+    r = receptor_desde_payload({"condicion_iva": 5, "tipo_doc": 99,
+                                "nombre": vacio, "domicilio": vacio, "nro_doc": vacio})
+    assert r.nombre == "Consumidor Final"
+    assert r.domicilio == "-"
+    assert r.nro_doc == "0"
+
+
+def test_receptor_desde_payload_respeta_los_datos_cargados():
+    r = receptor_desde_payload({"condicion_iva": 1, "tipo_doc": 80, "nro_doc": CUIT_RECEPTOR,
+                                "nombre": "ACME SA", "domicilio": "Corrientes 1234"})
+    assert (r.nombre, r.domicilio, r.nro_doc) == ("ACME SA", "Corrientes 1234", CUIT_RECEPTOR)
+    assert r.condicion_iva is CondicionIVA.RESPONSABLE_INSCRIPTO

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import date
-from typing import Callable
+from typing import Callable, Literal
 
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -31,10 +31,28 @@ class PerfilBody(BaseModel):
     punto_venta: int = 1
 
 
+# Homologación es el default en TODA la superficie: si el ambiente se omite por un bug del cliente o
+# un campo que se perdió en un refactor, el peor caso es una factura de prueba sin efecto fiscal. Al
+# revés —default a producción— el peor caso es un comprobante fiscal real que el usuario no quiso.
+AMBIENTE_DEFAULT = "dev"
+_NOMBRE_AMBIENTE = {"dev": "homologación (pruebas)", "prod": "producción"}
+
+
 class ConectarBody(BaseModel):
     cuit: str = Field(min_length=11, max_length=11)
     usuario: str
     clave_fiscal: str = Field(repr=False)  # `repr=False`: que no salga en un log de pydantic
+    ambiente: Literal["dev", "prod"] = AMBIENTE_DEFAULT
+
+
+class AmbienteBody(BaseModel):
+    cuit: str = Field(min_length=11, max_length=11)
+    ambiente: Literal["dev", "prod"]
+
+
+class AjustesBody(BaseModel):
+    cuit: str = Field(min_length=11, max_length=11)
+    guardar_en_drive: bool
 
 
 class NuevaFacturaBody(BaseModel):
@@ -67,8 +85,26 @@ def create_afip_app(
     iniciar_anulacion: Callable | None = None,
     consultar_anulacion: Callable | None = None,
     signal_anulacion: Callable | None = None,
+    composio_gateway=None,
 ) -> FastAPI:
     app = FastAPI(title="Copiloto AFIP")
+
+    async def _drive_conectado(cliente_id: str) -> bool | None:
+        """¿El tenant tiene Google Drive vinculado? `None` si no se pudo averiguar.
+
+        Nunca levanta: esto se sirve dentro de `GET /afip/estado`, que es la pantalla de Ajustes. Que
+        Composio no responda no puede dejar al usuario sin ver si puede facturar — el archivado en
+        Drive es una comodidad, el resto de esa respuesta no.
+        """
+        if composio_gateway is None:
+            return None
+        try:
+            # `composio_user_id == cliente_id` (convención del proyecto, ver `context_factory`).
+            estado = await asyncio.to_thread(
+                composio_gateway.connection_status, str(cliente_id), "googledrive")
+        except Exception:  # noqa: BLE001
+            return None
+        return str(estado or "").upper() == "ACTIVE"
 
     @app.get("/afip/perfil")
     async def leer_perfil(cuit: str, cliente_id: str = Depends(require_tenant)) -> dict:
@@ -103,6 +139,19 @@ def create_afip_app(
             inicio_actividades=body.inicio_actividades, punto_venta=body.punto_venta)
         return {"ok": True}
 
+    @app.post("/afip/ajustes")
+    async def guardar_ajustes(body: AjustesBody, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Ajuste "guardar mis facturas en Drive".
+
+        409 si el CUIT no tiene perfil: sin fila que actualizar, el UPDATE sería un no-op silencioso y
+        el usuario se quedaría con el toggle prendido en pantalla y nada guardado en la base.
+        """
+        guardado = await asyncio.to_thread(
+            perfil_store_factory(cliente_id).set_guardar_en_drive, body.cuit, body.guardar_en_drive)
+        if not guardado:
+            raise HTTPException(409, detail="todavía no cargaste tus datos fiscales para ese CUIT")
+        return {"ok": True, "guardar_en_drive": body.guardar_en_drive}
+
     @app.post("/afip/conectar")
     async def conectar(body: ConectarBody, cliente_id: str = Depends(require_tenant)) -> dict:
         """Alta ante ARCA. Recibe la clave fiscal, la deja en el claim-check y arranca el workflow."""
@@ -115,9 +164,11 @@ def create_afip_app(
             handoff_factory(cliente_id).stash, ClaveFiscal(body.clave_fiscal))
 
         # A partir de acá la clave ya no se toca: al workflow sólo viaja el handle.
-        workflow_id = await _maybe_async(start_onboarding, cliente_id, body.cuit, handle)
-        return {"ok": True, "workflow_id": workflow_id,
-                "mensaje": "Estamos vinculando tu cuenta con ARCA. Puede demorar unos minutos."}
+        workflow_id = await _maybe_async(
+            start_onboarding, cliente_id, body.cuit, handle, body.ambiente)
+        return {"ok": True, "workflow_id": workflow_id, "ambiente": body.ambiente,
+                "mensaje": f"Estamos vinculando tu cuenta con ARCA en "
+                           f"{_NOMBRE_AMBIENTE[body.ambiente]}. Puede demorar unos minutos."}
 
     # -- facturación --------------------------------------------------------
     # Superficie REST sobre la máquina de estados. Cada endpoint manda un signal o lee la query: el
@@ -126,9 +177,23 @@ def create_afip_app(
 
     @app.post("/afip/facturas")
     async def crear_factura(body: NuevaFacturaBody, cliente_id: str = Depends(require_tenant)) -> dict:
-        """Abre un borrador. Devuelve el `id` con el que se opera de acá en adelante."""
+        """Abre un borrador. Devuelve el `id` con el que se opera de acá en adelante.
+
+        Sin certificado NO se abre nada: 409. Antes se arrancaba el workflow igual y éste moría en el
+        acto con `estado="rechazada"` — que en este dominio se lee como "AFIP rechazó tu factura" y no
+        como "todavía no vinculaste tu cuenta". Un usuario nuevo, que es el 100% de los usuarios el
+        primer día, veía un rechazo fiscal inventado y además quemaba un workflow por cada toque.
+        (Hallazgo de la sesión frontend, 2026-07-21.)
+        """
         if iniciar_factura is None:
             raise HTTPException(503, detail="facturación no disponible")
+
+        creds = await asyncio.to_thread(cred_store_factory(cliente_id).get, body.cuit)
+        if not creds:
+            raise HTTPException(409, detail={
+                "codigo": "sin_certificado_afip",
+                "mensaje": "Todavía no vinculaste tu cuenta de ARCA."})
+
         factura_id = await _maybe_async(iniciar_factura, cliente_id, body.cuit)
         return {"ok": True, "factura_id": factura_id}
 
@@ -178,6 +243,14 @@ def create_afip_app(
         usuario tiene que volver a mirar el resumen. Es deliberado, no un bug.
         """
         await _maybe_async(signal_factura, cliente_id, factura_id, "confirmar", body.token)
+        # TODO(deuda gestionada · 2026-07-21 · propietario: operador · pagar antes de abrir la API a
+        # terceros): este `ok` —y el de los otros cinco endpoints de signal— significa "recibí tu
+        # pedido", NO "salió bien". Un signal puede ser un no-op y la respuesta es idéntica: medido,
+        # `confirmar` con un token inválido devuelve 200 {"ok": true} y no emite nada. El cliente sólo
+        # lo distingue poleando `motivo_codigo`. La app actual lo hace bien, pero el nombre miente y
+        # el próximo consumidor va a leerlo como "confirmado".
+        # Fix propuesto: `202 Accepted` + {"aceptado": true}. Requiere coordinar con el release del
+        # frontend, por eso no se cambió acá. Ver coordinacion/2026-07-21_respuesta_backend-*.md
         return {"ok": True}
 
     @app.post("/afip/facturas/{factura_id}/cancelar")
@@ -221,21 +294,67 @@ def create_afip_app(
         return {"ok": True}
 
     @app.get("/afip/estado")
-    async def estado(cuit: str, cliente_id: str = Depends(require_tenant)) -> dict:
-        """Lo que la pantalla de Ajustes muestra: si ya puede facturar y, si está en curso, en qué paso."""
-        creds = await asyncio.to_thread(cred_store_factory(cliente_id).get, cuit)
+    async def estado(cuit: str | None = None, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Lo que la pantalla de Ajustes muestra: si ya puede facturar y, si está en curso, en qué paso.
+
+        `cuit` es OPCIONAL a propósito. Si no viene, se resuelve con el CUIT vinculado por este tenant
+        y se DEVUELVE en la respuesta. Sin esto, el CUIT sería estado derivado viviendo en el cliente:
+        el emprendedor cambia de teléfono, la app no lo encuentra en el almacenamiento local, y le
+        muestra "cargá tus datos fiscales" sobre un perfil que existe — empujándolo a rehacer un alta
+        que ya hizo. La app puede cachearlo igual; lo que no puede es ser la fuente de verdad.
+        """
+        cred_store = cred_store_factory(cliente_id)
+        if cuit is None:
+            cuit = await asyncio.to_thread(cred_store.primer_cuit)
+        if cuit is None:
+            # Tenant nuevo: todavía no vinculó nada. No es un error — es el estado inicial de Ajustes.
+            # `drive_conectado` va TAMBIÉN acá: esta rama devuelve un dict aparte, y omitir el campo
+            # lo dejaría `undefined` justo en la pantalla del usuario nuevo, que es donde el aviso de
+            # conectar Drive más hace falta. Dos returns con formas distintas es una trampa —
+            # cualquier campo nuevo hay que acordarse de ponerlo en los dos.
+            return {"cuit": None, "conectado": False, "ws_autorizados": [], "ambiente": None,
+                    "ambientes_vinculados": [], "perfil_completo": False, "puede_facturar": False,
+                    "onboarding": None, "drive_conectado": await _drive_conectado(cliente_id)}
+
+        creds = await asyncio.to_thread(cred_store.get, cuit)
+        vinculados = await asyncio.to_thread(cred_store.ambientes_vinculados, cuit)
         perfil = await asyncio.to_thread(perfil_store_factory(cliente_id).get, cuit)
         progreso = None
         if consultar_onboarding is not None:
             progreso = await _maybe_async(consultar_onboarding, cliente_id, cuit)
 
         return {
+            "cuit": cuit,
             "conectado": bool(creds),
             "ws_autorizados": (creds or {}).get("ws_autorizados") or [],
+            "ambiente": (creds or {}).get("ambiente"),
+            "ambientes_vinculados": vinculados,
             "perfil_completo": bool(perfil),
             "puede_facturar": bool(creds) and bool(perfil),
             "onboarding": progreso,
+            # TRES estados, no dos: True / False / None. `None` es "no pude averiguarlo" (Composio no
+            # respondió o no está cableado) y NO es lo mismo que "no está conectado". Colapsarlos
+            # haría que una caída de Composio se muestre como "conectá tu Drive" sobre una cuenta que
+            # sí está vinculada — un rastro pisando el hecho, el error que ya pagamos con el alta.
+            "drive_conectado": await _drive_conectado(cliente_id),
         }
+
+    @app.post("/afip/ambiente")
+    async def cambiar_ambiente(body: AmbienteBody,
+                               cliente_id: str = Depends(require_tenant)) -> dict:
+        """Toggle homologación ↔ producción entre ambientes YA vinculados.
+
+        Si el ambiente pedido no tiene certificado devuelve 409, no 500: es un caso esperado del
+        producto (el usuario todavía no vinculó ese ambiente), y la app tiene que ofrecerle el alta.
+        """
+        ok = await asyncio.to_thread(
+            cred_store_factory(cliente_id).activar, body.cuit, body.ambiente)
+        if not ok:
+            raise HTTPException(409, detail={
+                "codigo": "ambiente_no_vinculado",
+                "ambiente": body.ambiente,
+                "mensaje": f"Todavía no vinculaste tu cuenta de ARCA en {_NOMBRE_AMBIENTE[body.ambiente]}."})
+        return {"ok": True, "ambiente": body.ambiente}
 
     return app
 

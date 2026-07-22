@@ -3,9 +3,20 @@
 -- documentó exactamente ese error — provisionar sin aplicar el SQL deja los `ON CONFLICT` rotos en
 -- runtime con "no unique or exclusion constraint matching the ON CONFLICT".
 
--- Upserts de los stores: un certificado y un perfil por (tenant, CUIT).
-CREATE UNIQUE INDEX IF NOT EXISTS afip_credentials_tenant_cuit
-  ON uc_factory.afip_credentials (cliente_id, cuit);
+-- Un certificado por (tenant, CUIT, AMBIENTE). El ambiente forma parte de la clave porque AFIP emite
+-- certificados distintos para homologación y producción: no son dos configuraciones de lo mismo, son
+-- dos credenciales. Sin el ambiente en el unique, vincular producción PISABA el certificado de
+-- homologación y obligaba a rehacer el alta —con la clave fiscal— cada vez que el usuario cambia de
+-- ambiente, rompiendo la promesa de "la clave se pide una sola vez".
+DROP INDEX IF EXISTS uc_factory.afip_credentials_tenant_cuit;   -- unique viejo (cliente_id, cuit)
+CREATE UNIQUE INDEX IF NOT EXISTS afip_credentials_tenant_cuit_amb
+  ON uc_factory.afip_credentials (cliente_id, cuit, ambiente);
+
+-- ...pero sólo UNA puede estar activa a la vez: es la que usa la emisión. Único parcial = la base
+-- garantiza el invariante, no el código que hace el toggle.
+CREATE UNIQUE INDEX IF NOT EXISTS afip_credentials_una_activa
+  ON uc_factory.afip_credentials (cliente_id, cuit) WHERE activo;
+
 CREATE UNIQUE INDEX IF NOT EXISTS afip_perfil_tenant_cuit
   ON uc_factory.afip_perfil (cliente_id, cuit);
 

@@ -185,6 +185,27 @@ class Receptor:
     domicilio: str = "-"
 
 
+def receptor_desde_payload(payload: dict) -> Receptor:
+    """Arma el `Receptor` desde el payload del formulario, normalizando los campos vacíos.
+
+    Vive acá y no en el workflow porque es una REGLA, no orquestación: la fase 2 (el agente llenando
+    los mismos slots) tiene que normalizar igual, y una segunda copia divergiría.
+
+    El detalle que importa: `payload.get(k, default)` sólo cubre la clave AUSENTE. Un formulario que
+    manda `{"nombre": ""}` —el usuario dejó el campo en blanco en una venta a consumidor final, que
+    es el caso más común— pasaba de largo con la cadena vacía, y el template del PDF responde 400
+    ("El campo Nombre receptor es obligatorio"): factura con CAE y sin comprobante imprimible. Con
+    `null` era peor: `str(None)` habría impreso literalmente "None" en la factura.
+    """
+    return Receptor(
+        condicion_iva=CondicionIVA(int(payload.get("condicion_iva", 5))),
+        tipo_doc=TipoDoc(int(payload.get("tipo_doc", 99))),
+        nro_doc=str(payload.get("nro_doc") or "0"),
+        nombre=str(payload.get("nombre") or "Consumidor Final"),
+        domicilio=str(payload.get("domicilio") or "-"),
+    )
+
+
 @dataclass(frozen=True)
 class Totales:
     neto: Decimal
@@ -620,10 +641,18 @@ def armar_params_pdf(
         "issuer_iva_condition": _etiqueta_condicion_emisor(perfil.condicion_iva),
         "issuer_gross_income": perfil.ingresos_brutos,
         "issuer_activity_start_date": perfil.inicio_actividades.strftime("%d/%m/%Y"),
-        "receiver_name": borrador.receptor.nombre,
-        "receiver_address": borrador.receptor.domicilio,
+        # El WSFE acepta emitir a consumidor final sin identificar —sin nombre, domicilio ni
+        # documento— pero el TEMPLATE del PDF exige los tres igual. Sin este relleno, el caso más
+        # común del producto (venta mostrador) emite con CAE y se queda sin comprobante imprimible:
+        # 400 con "El campo Nombre receptor es obligatorio".
+        #
+        # Es la segunda vez que el template pide más que el web service (la primera fueron las fechas
+        # de servicio, que costaron una factura real). Lo que AFIP acepta AUTORIZAR y lo que acepta
+        # IMPRIMIR son dos contratos distintos, y sólo el primero está documentado como tal.
+        "receiver_name": borrador.receptor.nombre or "Consumidor Final",
+        "receiver_address": borrador.receptor.domicilio or "-",
         "receiver_document_type": int(borrador.receptor.tipo_doc),
-        "receiver_document_number": str(borrador.receptor.nro_doc),
+        "receiver_document_number": str(borrador.receptor.nro_doc or 0),
         "receiver_iva_condition": _etiqueta_condicion_receptor(
             normalizar_condicion_iva_receptor(borrador.receptor)
         ),
