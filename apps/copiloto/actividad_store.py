@@ -23,29 +23,48 @@ _SCHEMA = "uc_factory"
 #
 # La `fecha` de cada tipo es la de NEGOCIO (la que se muestra), no `created_at`: ordenar por una y
 # mostrar otra haría que la lista se vea desordenada, que es peor que cualquier ganancia de precisión.
+# 🔴 Los códigos de AFIP salen de `afip_rules.TipoComprobante`, NO de memoria. Las notas de crédito
+# son **3 (A), 8 (B) y 13 (C)** — la primera versión de esta query usó `IN (12, 13)`, y el 12 no existe
+# en el catálogo. Consecuencia: una nota de crédito A o B habría caído en la rama de facturas y se
+# habría mostrado con `signo: entra`, o sea **plata que ENTRA cuando en realidad salió**.
+#
+# No se notó porque este tenant sólo tiene notas C (13): los datos reales alcanzaban para que se viera
+# bien y no para que la rama estuviera bien. Un verde de datos poco representativos.
+_NOTAS_CREDITO = (3, 8, 13)
+
+# `tipo_cbte` es un código interno de AFIP y el emprendedor no lo conoce. El contrato §3 pide el título
+# "en el idioma del emprendedor" — la primera versión mostraba literalmente **«Factura 11»**, que es
+# como llamarle a una factura C por su número de fila en una tabla de la AFIP.
+_LETRA = "CASE tipo_cbte WHEN 1 THEN 'A' WHEN 6 THEN 'B' WHEN 11 THEN 'C' " \
+         "WHEN 3 THEN 'A' WHEN 8 THEN 'B' WHEN 13 THEN 'C' ELSE '' END"
+
+# El número completo (`0006-00000018`) no entra en el ancho de la fila y se trunca justo donde está lo
+# que distingue un comprobante de otro: seis «Nota de crédito 0006-0000…» idénticas en pantalla. Se
+# muestra el número SIN el padding, que es lo que el emprendedor lee en el papel igual.
+_NUMERO = "(punto_venta::text || '-' || nro::text)"
+
 _UNION = f"""
 SELECT (fecha_emision::timestamptz) AS fecha,
        ('factura:' || id::text)     AS item_id,
        'factura'                    AS tipo,
-       ('Factura ' || tipo_cbte::text || ' ' || lpad(punto_venta::text, 4, '0')
-        || '-' || lpad(nro::text, 8, '0'))              AS titulo,
+       ('Factura ' || ({_LETRA}) || ' ' || {_NUMERO})   AS titulo,
        coalesce(receptor_nombre, '')                    AS detalle,
        total::text                                      AS monto,
        'entra'                                          AS signo
   FROM {_SCHEMA}.afip_comprobantes
- WHERE cliente_id = %(cid)s AND tipo_cbte NOT IN (12, 13) AND cae IS NOT NULL
+ WHERE cliente_id = %(cid)s AND tipo_cbte NOT IN {_NOTAS_CREDITO} AND cae IS NOT NULL
 
 UNION ALL
 
 SELECT (fecha_emision::timestamptz),
        ('nota_credito:' || id::text),
        'nota_credito',
-       ('Nota de crédito ' || lpad(punto_venta::text, 4, '0') || '-' || lpad(nro::text, 8, '0')),
+       ('Nota de crédito ' || ({_LETRA}) || ' ' || {_NUMERO}),
        coalesce(receptor_nombre, ''),
        total::text,
        'sale'
   FROM {_SCHEMA}.afip_comprobantes
- WHERE cliente_id = %(cid)s AND tipo_cbte IN (12, 13) AND cae IS NOT NULL
+ WHERE cliente_id = %(cid)s AND tipo_cbte IN {_NOTAS_CREDITO} AND cae IS NOT NULL
 
 UNION ALL
 
