@@ -29,6 +29,21 @@ metadata:
 
 **La ceguera parcial dura más que la total, precisamente porque duele menos:** un instrumento que no reporta nada nunca se gana la confianza; uno que acierta en la mitad de los casos la gana entera, y la mitad muda no se descubre hasta que cuesta algo. **No alcanza con preguntar "¿este instrumento mira X?" — hay que preguntar "¿lo mira en TODOS sus caminos, o sólo en el que probé?".**
 
+**Undécimo — el autocontrol que cubre UNA parte y sella el TODO (2026-07-22).** Reescribí el vigía del
+buzón con un control de arranque horneado: cuatro nombres de archivo ficticios contra su filtro de
+destinatarios, exigiendo que dos pasen y dos no. **Dio 4/4 con el script completamente roto** — no
+emitía absolutamente nada. La ruta del repo tiene un espacio (`Claude code`) y `for f in $(listar)` la
+partía en dos, así que la enumeración devolvía basura y ningún archivo llegaba nunca al filtro.
+
+El control probaba **el filtro**; lo roto era **la enumeración**. Y el 4/4 no era falso: era cierto e
+irrelevante. **Un autocontrol sólo cubre lo que a uno se le ocurrió que podía fallar, y lo demás pasa
+con el sello puesto** — peor que sin control, porque ahora hay un número verde respaldándolo.
+
+Lo tapó un control de la otra mitad, escrito preguntándose *¿qué devolvería si la enumeración estuviera
+rota?*: **si hay decenas de `.md` en disco y la enumeración devuelve menos de 5 candidatos, abortar a
+los gritos** — cero no es silencio, es el instrumento roto. Es [[vacio-no-es-hallazgo-correr-el-control]]
+aplicado al propio instrumento.
+
 **La regla que sale de esto:** antes de creerle a un instrumento propio, preguntarse *¿qué devolvería si lo que mido estuviera roto?* Si la respuesta es "lo mismo", el instrumento no sirve. Hornear el control adentro: el smoke ahora sabe QUÉ esperar según haya credencial o no, en vez de dar por bueno cualquier 200.
 
 **Y el corolario del caso 7:** el control horneado también hay que verificarlo. Un control que nunca vio fallar el instrumento es fe, no evidencia. Cuando se pueda, preferir **control diferencial** (mismo instrumento, estado anterior vs actual) sobre control sintético — el diferencial no depende de que uno haya imaginado bien la forma del fallo.
