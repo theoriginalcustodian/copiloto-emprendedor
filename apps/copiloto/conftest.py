@@ -55,6 +55,8 @@ _TABLAS_CON_TENANT = {
     "afip_secret_handoff": "created_at",
     "afip_comprobantes": "created_at",
     "copiloto_metering": "created_at",
+    "copiloto_cobros": "created_at",
+    "copiloto_conceptos": "created_at",
 }
 
 

@@ -19,6 +19,20 @@ from pydantic import BaseModel, Field
 
 from afip_credential_store import ClaveFiscal
 from afip_rules import CondicionEmisor, PerfilFiscal, validar_cuit, validar_perfil
+from cobro_store import CobroInvalido
+
+
+class CobroBody(BaseModel):
+    """Todo opcional salvo la intención. `monto` ausente = **el saldo completo**, que es el caso
+    normal (el botón «Cobrada»); mandarlo habilita el parcial.
+
+    `idem_key` es un uuid **por gesto del usuario**, no por request: es lo único que le permite al
+    backend distinguir *«cobró dos veces»* de *«tocó dos veces»*. Ver el docstring del endpoint.
+    """
+    monto: str | float | int | None = None
+    medio: str | None = None
+    fecha: str | None = None
+    idem_key: str | None = None
 
 
 class PerfilBody(BaseModel):
@@ -79,6 +93,7 @@ def create_afip_app(
     start_onboarding: Callable,
     consultar_onboarding: Callable | None = None,
     comprobante_store_factory: Callable | None = None,
+    cobro_store_factory: Callable | None = None,
     iniciar_factura: Callable | None = None,
     consultar_factura: Callable | None = None,
     signal_factura: Callable | None = None,
@@ -267,6 +282,71 @@ def create_afip_app(
         filas = await asyncio.to_thread(
             comprobante_store_factory(cliente_id).listar, cuit=cuit, limite=min(int(limite), 200))
         return {"comprobantes": filas}
+
+    # ── COBROS ───────────────────────────────────────────────────────────────────────────────────
+    #
+    # ⚠️ `/afip/comprobantes/impagos` va ANTES de `/afip/comprobantes/{comprobante_id}`, y no es
+    # cosmética: FastAPI resuelve por orden de declaración, así que declarado después, "impagos"
+    # entraría por la ruta del `{comprobante_id}: int` y moriría con `422 int_parsing`. Es el mismo
+    # guard que ya está anotado abajo — acá es el caso REAL que ese comentario anticipaba.
+
+    def _cobros(cliente_id: str):
+        if cobro_store_factory is None:
+            raise HTTPException(status_code=503, detail="cobros no disponible")
+        return cobro_store_factory(cliente_id)
+
+    @app.get("/afip/comprobantes/impagos")
+    async def impagos(cliente_id: str = Depends(require_tenant)) -> dict:
+        """*«¿Quién me debe?»* — la pregunta que hasta el hito 3 no se podía contestar.
+
+        Trae las filas **y el total**: la pantalla no suma nada. Si sumara del lado del cliente, el
+        total sería correcto sólo si toda la deuda entró en la página pedida — y ese error aparece
+        justo cuando hay muchas facturas, que es cuando el número importa.
+        """
+        return await asyncio.to_thread(_cobros(cliente_id).impagos)
+
+    @app.post("/afip/comprobantes/{comprobante_id}/cobros", status_code=201)
+    async def registrar_cobro(comprobante_id: int, body: CobroBody,
+                              cliente_id: str = Depends(require_tenant)) -> dict:
+        """Registra un cobro (total o parcial). Sin `monto`, cobra **el saldo completo**.
+
+        🔴 **Mandá `idem_key`.** Con clave, repetir la request devuelve el mismo cobro y no crea otro
+        —lo garantiza un índice único, no un `if` que tendría carrera—. Sin clave no hay
+        deduplicación, **y es correcto**: dos cobros parciales del mismo monto son un caso real, y el
+        backend no puede distinguirlos de un doble toque. Esa distinción sólo la sabe quien hizo el
+        gesto. Ver [[idempotencia-con-un-if-tiene-ventana]] — el mismo mecanismo que costó dos CAE.
+
+        Códigos: 400 monto ≤ 0 o mayor al saldo · 404 el comprobante no es de este tenant.
+        """
+        try:
+            cobro, resumen = await asyncio.to_thread(
+                lambda: _cobros(cliente_id).registrar(
+                    comprobante_id, monto=body.monto, medio=body.medio or "",
+                    fecha=body.fecha, idem_key=body.idem_key))
+        except CobroInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        if cobro is None:
+            raise HTTPException(status_code=404, detail="comprobante no encontrado")
+        return {"cobro": cobro, "comprobante": resumen}
+
+    @app.delete("/afip/comprobantes/{comprobante_id}/cobros/{cobro_id}")
+    async def borrar_cobro(comprobante_id: int, cobro_id: int,
+                           cliente_id: str = Depends(require_tenant)) -> dict:
+        """Deshace un cobro mal cargado. Sin esto la única salida sería tocar la base a mano."""
+        resumen = await asyncio.to_thread(_cobros(cliente_id).borrar, comprobante_id, cobro_id)
+        if resumen is None:
+            raise HTTPException(status_code=404, detail="cobro no encontrado")
+        return {"comprobante": resumen}
+
+    @app.get("/afip/comprobantes/{comprobante_id}/cobros")
+    async def listar_cobros(comprobante_id: int,
+                            cliente_id: str = Depends(require_tenant)) -> dict:
+        store = _cobros(cliente_id)
+        resumen = await asyncio.to_thread(store.resumen, comprobante_id)
+        if resumen is None:
+            raise HTTPException(status_code=404, detail="comprobante no encontrado")
+        cobros = await asyncio.to_thread(store.listar, comprobante_id)
+        return {"cobros": cobros, "comprobante": resumen}
 
     # ⚠️ ORDEN: va DESPUÉS de `/afip/comprobantes`. Hoy no colisiona con `.../anular` porque aquél es
     # POST y éste GET, pero si alguien agrega un `GET /afip/comprobantes/loquesea` debajo de esta

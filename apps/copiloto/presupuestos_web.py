@@ -22,8 +22,9 @@ from typing import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA, LIMITES
-from presupuesto_store import factura_id_de_presupuesto
+from presupuesto_store import ESTADOS, TransicionInvalida, factura_id_de_presupuesto
 
 _log = logging.getLogger(__name__)
 
@@ -104,11 +105,28 @@ def _decimal_o_400(valor, campo: str) -> Decimal:
     return d
 
 
+class EstadoBody(BaseModel):
+    """El estado pedido. Se valida a mano contra `ESTADOS` para devolver 400 con el motivo en vez del
+    422 genérico de pydantic: la app necesita saber cuáles son los válidos, no que "no es un miembro
+    válido de la enumeración"."""
+    estado: str
+
+
+class ConceptoBody(BaseModel):
+    """Alta y edición del catálogo. Todos opcionales porque la edición es **parcial de verdad**: la
+    clave ausente no se toca, y `precio_referencia: null` explícito lo borra. Si el body declarara
+    valores por defecto, guardar el nombre borraría el precio."""
+    nombre: str | None = None
+    precio_referencia: str | float | int | None = None
+    activo: bool | None = None
+
+
 def create_presupuestos_app(
     *,
     require_tenant: Callable,
     perfil_negocio_store_factory: Callable,
     presupuesto_store_factory: Callable,
+    concepto_store_factory: Callable | None = None,
     afip_cred_store_factory: Callable | None = None,
     abrir_borrador: Callable | None = None,
     consultar_factura: Callable | None = None,
@@ -289,6 +307,106 @@ def create_presupuestos_app(
                     "descripcion": it["descripcion"], "cantidad": it["cantidad"],
                     "precio_unitario": it["precio_unitario"], "codigo": it.get("codigo", "")})
         await asyncio.to_thread(store.marcar_factura, presupuesto_id, factura_id)
+        # 🔴 Facturar IMPLICA aprobado (contrato §1): «Aprobado» no tiene botón propio a propósito —
+        # nadie marca un estado por marcarlo, así que sale gratis de una acción que el emprendedor iba
+        # a hacer igual. Es lo que hace que este estado se sostenga solo en vez de envejecer.
+        #
+        # Y si estaba `desestimado`, NO se revive en silencio: `cambiar_estado` levanta
+        # `TransicionInvalida`. Facturar algo que se declaró perdido es una contradicción que merece
+        # una decisión del emprendedor, no un arreglo automático.
+        try:
+            await asyncio.to_thread(store.cambiar_estado, presupuesto_id, "aprobado")
+        except TransicionInvalida as exc:
+            raise HTTPException(status_code=409, detail={
+                "mensaje": f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",
+                "estado": exc.desde}) from None
         return {"factura_id": factura_id, "borrador_nuevo": nuevo}
+
+    @app.patch("/presupuestos/{presupuesto_id}/estado")
+    async def cambiar_estado_presupuesto(presupuesto_id: int, body: EstadoBody,
+                                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """Marca el desenlace: `aprobado` o `desestimado`.
+
+        Códigos: 400 estado desconocido · 404 no es de este tenant · 409 la transición no existe
+        (`desestimado → aprobado` se resuelve emitiendo un presupuesto nuevo, y **volver a
+        `pendiente` no existe**: borraría información que alguien declaró).
+
+        Re-marcar el estado que ya tiene devuelve 200, no 409: repetir la misma orden no es un
+        conflicto, y la app puede reintentar sin miedo si se le cortó la red.
+        """
+        if body.estado not in ESTADOS:
+            raise HTTPException(status_code=400,
+                                detail=f"estado tiene que ser uno de: {', '.join(ESTADOS)}")
+        store = presupuesto_store_factory(cliente_id)
+        try:
+            presupuesto = await asyncio.to_thread(store.cambiar_estado, presupuesto_id, body.estado)
+        except TransicionInvalida as exc:
+            raise HTTPException(status_code=409, detail={
+                "mensaje": str(exc), "estado": exc.desde}) from None
+        if presupuesto is None:
+            raise HTTPException(status_code=404, detail="presupuesto no encontrado")
+        return {"presupuesto": presupuesto}
+
+    # --- catálogo de conceptos ----------------------------------------------------
+
+    def _conceptos(cliente_id: str):
+        if concepto_store_factory is None:
+            raise HTTPException(status_code=503, detail="el catálogo no está disponible")
+        return concepto_store_factory(cliente_id)
+
+    @app.get("/conceptos")
+    async def listar_conceptos(incluir_inactivos: bool = False,
+                               cliente_id: str = Depends(require_tenant)) -> dict:
+        """Sin conceptos → `200 {"conceptos": []}`. Una lista vacía es un resultado, no un 404."""
+        filas = await asyncio.to_thread(
+            lambda: _conceptos(cliente_id).listar(incluir_inactivos=incluir_inactivos))
+        return {"conceptos": filas}
+
+    @app.post("/conceptos", status_code=201)
+    async def crear_concepto(body: ConceptoBody, cliente_id: str = Depends(require_tenant)) -> dict:
+        store = _conceptos(cliente_id)
+        try:
+            concepto = await asyncio.to_thread(store.crear, body.nombre or "",
+                                               body.precio_referencia)
+        except ConceptoInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        except ConceptoDuplicado as exc:
+            # El 409 trae la ficha del que ya está — mismo patrón que Clientes: así la app puede
+            # ofrecer abrirlo en vez de dejar al emprendedor adivinando con qué chocó.
+            raise HTTPException(status_code=409, detail={
+                "mensaje": "ya tenés un concepto con ese nombre",
+                "concepto": exc.existente}) from None
+        return {"concepto": concepto}
+
+    @app.patch("/conceptos/{concepto_id}")
+    async def editar_concepto(concepto_id: int, body: ConceptoBody,
+                              cliente_id: str = Depends(require_tenant)) -> dict:
+        """Edición PARCIAL: sólo se toca lo que vino en el body.
+
+        `exclude_unset=True` no es un detalle: sin él, editar el nombre mandaría `precio_referencia:
+        None` y borraría el precio. La clave ausente y el `null` explícito son cosas distintas.
+        """
+        cambios = body.model_dump(exclude_unset=True)
+        store = _conceptos(cliente_id)
+        try:
+            concepto = await asyncio.to_thread(store.editar, concepto_id, cambios)
+        except ConceptoInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        except ConceptoDuplicado as exc:
+            raise HTTPException(status_code=409, detail={
+                "mensaje": "ya tenés un concepto con ese nombre",
+                "concepto": exc.existente}) from None
+        if concepto is None:
+            raise HTTPException(status_code=404, detail="concepto no encontrado")
+        return {"concepto": concepto}
+
+    @app.delete("/conceptos/{concepto_id}")
+    async def borrar_concepto(concepto_id: int, cliente_id: str = Depends(require_tenant)) -> dict:
+        """**Desactiva**, no borra. Un concepto borrado de verdad dejaría los presupuestos viejos
+        apuntando a la nada y le arrancaría al grafo la serie histórica de ese precio."""
+        concepto = await asyncio.to_thread(_conceptos(cliente_id).desactivar, concepto_id)
+        if concepto is None:
+            raise HTTPException(status_code=404, detail="concepto no encontrado")
+        return {"concepto": concepto}
 
     return app

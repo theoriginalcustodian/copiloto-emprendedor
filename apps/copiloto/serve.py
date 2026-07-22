@@ -57,6 +57,8 @@ from web import (create_web_app, make_abrir_borrador_de_presupuesto, make_consul
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_web import create_afip_app
+from cobro_store import CobroStore
+from concepto_store import ConceptoStore
 from perfil_negocio_store import PerfilNegocioStore
 from presupuesto_doc import generar_doc as generar_doc_presupuesto
 from presupuesto_doc import registrar_en_sheet
@@ -146,6 +148,7 @@ async def _serve() -> None:
         start_onboarding=make_start_onboarding(client),
         consultar_onboarding=make_consultar_onboarding(client),
         comprobante_store_factory=lambda cid: AfipComprobanteStore(conn_factory, cid),
+        cobro_store_factory=lambda cid: CobroStore(conn_factory, cid),
         iniciar_factura=make_iniciar_factura(client),
         consultar_factura=make_consultar_factura(client),
         signal_factura=make_signal_factura(client),
@@ -175,6 +178,7 @@ async def _serve() -> None:
         require_tenant=require_tenant,
         perfil_negocio_store_factory=lambda cid: PerfilNegocioStore(conn_factory, cid),
         presupuesto_store_factory=lambda cid: PresupuestoStore(conn_factory, cid),
+        concepto_store_factory=lambda cid: ConceptoStore(conn_factory, cid),
         # El CUIT del tenant sale de su credencial AFIP (única fuente), igual que en `/afip/estado`.
         afip_cred_store_factory=lambda cid: AfipCredentialStore(conn_factory, cid, crypto),
         # Mismo flujo que `/afip/facturas` —el gate de confirmación sigue siendo el único lugar donde

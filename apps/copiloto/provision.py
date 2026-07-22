@@ -212,6 +212,36 @@ def _ensure_clientes_email_telefono(conn) -> None:
           f"(pendientes={pendientes} migradas={migradas} huérfanas=0)", flush=True)
 
 
+def _ensure_presupuesto_estado(conn) -> None:
+    """`copiloto_presupuestos.estado text NOT NULL DEFAULT 'pendiente'` — el hueco 2 del hito 3.
+
+    Hoy el presupuesto sólo tiene derivados: `facturado` (existe un comprobante con CAE cuyo
+    `workflow_id` es su `factura_id`) y `reemplazado_por`. **Un presupuesto aceptado de palabra y
+    todavía no facturado es indistinguible de uno que el cliente rechazó** — y esa diferencia es
+    justamente la que el emprendedor quiere ver.
+
+    Tres valores escribibles y nada más: `pendiente` · `aprobado` · `desestimado`.
+
+    ⚠️ **`sin_respuesta` NO es un cuarto valor: se CALCULA** (`pendiente` + N días sin desenlace). Si
+    se guardara, habría que correr algo todas las noches para mantenerlo al día — y un estado que
+    depende de que alguien se acuerde de actualizarlo miente apenas nadie lo corre. Derivarlo del
+    tiempo no puede desincronizarse.
+
+    Y la razón por la que son TRES y no dos: **ganado / perdido / no sé.** Si los no-marcados contaran
+    como rechazos, la tasa de conversión diría que se pierde el 80% cuando en realidad no se sabe qué
+    pasó — y un número mal una sola vez hace que el emprendedor no vuelva a mirar la pantalla.
+
+    `DEFAULT 'pendiente'` es el valor correcto para las filas que ya existían: de ninguna se declaró
+    nunca un desenlace. Corre ANTES del pase estándar, por la misma razón que las otras `_ensure_*`.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_presupuestos "
+                f"ADD COLUMN IF NOT EXISTS estado text NOT NULL DEFAULT 'pendiente';")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_presupuestos "
+                f"ADD COLUMN IF NOT EXISTS estado_actualizado_en timestamptz;")
+    print(f"OK {SCHEMA}.copiloto_presupuestos.estado (+estado_actualizado_en, idempotente)", flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -261,6 +291,7 @@ def provision(conn) -> dict:
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
+    _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     sql_aplicados = _apply_sql_files(conn)

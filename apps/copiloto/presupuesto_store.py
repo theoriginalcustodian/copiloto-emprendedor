@@ -17,6 +17,7 @@ de `DATABASE_URL`, que BYPASSA la policy RLS.
 """
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 from typing import Callable
 
@@ -27,7 +28,39 @@ _COMPROBANTES = f"{_SCHEMA}.afip_comprobantes"
 
 _COLS = ("id", "numero", "fecha", "concepto", "receptor_nombre", "receptor_doc_tipo",
          "receptor_doc_nro", "receptor_condicion_iva", "receptor_domicilio", "receptor_contacto",
-         "total", "moneda", "doc_id", "doc_link", "sheet_fila", "reemplaza_a", "factura_id")
+         "total", "moneda", "doc_id", "doc_link", "sheet_fila", "reemplaza_a", "factura_id",
+         "estado", "estado_actualizado_en")
+
+# ── El estado del presupuesto (hueco 2 del hito 3) ───────────────────────────────────────────────
+#
+# TRES categorías, siempre: ganado / perdido / **no sé**. Si los no-marcados contaran como rechazos,
+# la tasa de conversión diría que se pierde el 80% de los presupuestos cuando en realidad no se sabe
+# qué pasó — y un número mal una sola vez hace que el emprendedor no vuelva a mirar la pantalla.
+PENDIENTE, APROBADO, DESESTIMADO = "pendiente", "aprobado", "desestimado"
+ESTADOS = (PENDIENTE, APROBADO, DESESTIMADO)
+
+# Transiciones válidas. Las dos que faltan son deliberadas:
+#   · `desestimado → aprobado` NO existe: se emite un presupuesto nuevo (contrato §2.2). Revivir uno
+#     rechazado dejaría el precio y el alcance viejos con un "sí" nuevo encima.
+#   · `→ pendiente` NO existe desde ningún lado: volver a "no sé" **borra información** que alguien
+#     declaró. Si se marcó por error, el camino es marcar lo correcto, no fingir que no se sabe.
+TRANSICIONES = {PENDIENTE: (APROBADO, DESESTIMADO),
+                APROBADO: (DESESTIMADO,),
+                DESESTIMADO: ()}
+
+# `sin_respuesta` es un MATIZ de "pendiente", no un cuarto estado, y **se calcula** — no se guarda.
+# Guardarlo obligaría a correr algo todas las noches para mantenerlo al día, y un estado que depende
+# de que alguien se acuerde de actualizarlo miente apenas nadie lo corre. Derivarlo del tiempo no
+# puede desincronizarse.
+DIAS_SIN_RESPUESTA = int(os.environ.get("COPILOTO_PRESUPUESTO_SIN_RESPUESTA_DIAS") or 30)
+
+
+class TransicionInvalida(Exception):
+    """El estado pedido no es alcanzable desde el actual. Lo traduce a 409 la capa web."""
+
+    def __init__(self, desde: str, hacia: str) -> None:
+        super().__init__(f"un presupuesto {desde} no puede pasar a {hacia}")
+        self.desde, self.hacia = desde, hacia
 
 def workflow_id_de_factura(cliente_id: str, factura_id: str) -> str:
     """El `workflow_id` que `afip_comprobantes` guarda para una factura.
@@ -75,12 +108,18 @@ _DERIVADOS = f"""
       WHERE r.cliente_id = p.cliente_id AND r.reemplaza_a = p.id
       ORDER BY r.id DESC LIMIT 1) AS reemplazado_por,
     (SELECT count(*) FROM {_ITEMS} i
-      WHERE i.cliente_id = p.cliente_id AND i.presupuesto_id = p.id) AS cantidad_items
+      WHERE i.cliente_id = p.cliente_id AND i.presupuesto_id = p.id) AS cantidad_items,
+    (p.estado = '{PENDIENTE}'
+     AND p.fecha < now() - interval '{DIAS_SIN_RESPUESTA} days') AS sin_respuesta
 """
+# El umbral va INTERPOLADO y no como parámetro a propósito: `_SELECT` lo usan media docena de queries
+# con placeholders POSICIONALES, y psycopg2 no deja mezclar `%s` con `%(nombre)s` en la misma
+# ejecución — sumarlo como parámetro obligaría a tocar todas. Es seguro porque `DIAS_SIN_RESPUESTA`
+# pasó por `int()` al leerse del entorno: no puede llevar comillas ni un `;`.
 
 _SELECT = (f"SELECT {', '.join('p.' + c for c in _COLS)}, {_DERIVADOS} FROM {_TABLE} p")
 
-_CAMPOS_SALIDA = _COLS + ("facturado", "reemplazado_por", "cantidad_items")
+_CAMPOS_SALIDA = _COLS + ("facturado", "reemplazado_por", "cantidad_items", "sin_respuesta")
 
 
 def dos_decimales(valor) -> str:
@@ -118,6 +157,11 @@ def _fila_a_dict(fila: tuple) -> dict:
         "factura_id": d["factura_id"],
         "facturado": bool(d["facturado"]),
         "cantidad_items": int(d["cantidad_items"] or 0),
+        "estado": d["estado"] or PENDIENTE,
+        "estado_actualizado_en": d["estado_actualizado_en"],
+        # `sin_respuesta` es un MATIZ de "pendiente", no una cuarta categoría: viaja aparte para que
+        # la app pueda destacarlo sin sacarlo del grupo "no sé".
+        "sin_respuesta": bool(d["sin_respuesta"]),
     }
 
 
@@ -198,6 +242,43 @@ class PresupuestoStore:
             cur.execute(f"UPDATE {_TABLE} SET factura_id=%s WHERE cliente_id=%s AND id=%s",
                         (factura_id, self._cid, presupuesto_id))
             return cur.rowcount > 0
+
+    def cambiar_estado(self, presupuesto_id: int, nuevo: str) -> dict | None:
+        """`pendiente → aprobado | desestimado`, con las transiciones prohibidas del contrato §2.2.
+
+        Devuelve el presupuesto actualizado, o `None` si no es de este tenant / no existe (la web lo
+        hace 404). Levanta `TransicionInvalida` (→ 409) si el salto no está permitido.
+
+        ⚠️ **El UPDATE lleva el estado actual en el `WHERE`.** No alcanza con leer, comparar en Python
+        y después escribir: entre la lectura y la escritura entra la otra request —el emprendedor
+        desestimando desde el teléfono mientras el copiloto aprueba por voz— y las dos verían
+        `pendiente`. Con el estado esperado en el `WHERE`, la segunda toca 0 filas y se entera.
+        """
+        if nuevo not in ESTADOS:
+            raise ValueError(f"estado desconocido: {nuevo!r}")
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT estado FROM {_TABLE} WHERE cliente_id=%s AND id=%s",
+                        (self._cid, presupuesto_id))
+            fila = cur.fetchone()
+            if fila is None:
+                return None
+            actual = fila[0] or PENDIENTE
+            if nuevo == actual:
+                return self.detalle(presupuesto_id)      # idempotente: re-marcar lo mismo no es error
+            if nuevo not in TRANSICIONES.get(actual, ()):
+                raise TransicionInvalida(actual, nuevo)
+            cur.execute(f"UPDATE {_TABLE} SET estado=%s, estado_actualizado_en=now() "
+                        f"WHERE cliente_id=%s AND id=%s AND estado=%s",
+                        (nuevo, self._cid, presupuesto_id, actual))
+            if cur.rowcount == 0:
+                # Alguien lo movió entre el SELECT y el UPDATE. Se relee y se decide con el valor real
+                # en vez de responder un éxito que no ocurrió.
+                cur.execute(f"SELECT estado FROM {_TABLE} WHERE cliente_id=%s AND id=%s",
+                            (self._cid, presupuesto_id))
+                otro = cur.fetchone()
+                raise TransicionInvalida((otro[0] if otro else actual), nuevo)
+        return self.detalle(presupuesto_id)
 
     # --- lectura -----------------------------------------------------------------
 
