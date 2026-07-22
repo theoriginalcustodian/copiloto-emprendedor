@@ -27,6 +27,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { pressableStyle } from '../../theme/glass/presion';
+import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
 import { Onda } from './Onda';
 import { formatoMMSS } from './useCronometro';
@@ -166,9 +167,19 @@ function IconoTacho({ color }: { color: string }) {
  *  `Animated` del core + `useNativeDriver` (opacity): late en el hilo de UI, sin tocar el de JS. */
 function PuntoLatido({ activo, color }: { activo: boolean; color: string }) {
   const op = useRef(new Animated.Value(1)).current;
+  const movimientoReducido = useMovimientoReducido();
   useEffect(() => {
     if (!activo) {
       op.setValue(0.4);
+      return;
+    }
+    // 🔴 Con movimiento reducido queda ENCENDIDO fijo, no apagado. Este punto sí dice algo —«estoy
+    // grabando»— y la diferencia es que **ese dato también está escrito al lado**, en `etiqueta`. Así
+    // que se puede dejar de parpadear sin perderlo, pero **no** se puede dejar en el estado tenue: eso
+    // sería mostrar «no grabando» mientras graba. La onda de al lado NO se toca: ahí el movimiento es
+    // el único portador de «te estoy escuchando». Ver `useMovimientoReducido`.
+    if (movimientoReducido) {
+      op.setValue(1);
       return;
     }
     const loop = Animated.loop(
@@ -179,7 +190,7 @@ function PuntoLatido({ activo, color }: { activo: boolean; color: string }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [activo, op]);
+  }, [activo, movimientoReducido, op]);
   return <Animated.View style={[styles.puntoLatido, { backgroundColor: color, opacity: op }]} />;
 }
 

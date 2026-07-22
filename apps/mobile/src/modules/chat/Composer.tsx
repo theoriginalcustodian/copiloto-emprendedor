@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { textoDeMotivo, type MotivoFallo, type SendStatus } from '@copiloto/core';
 
 import { pressableStyle } from '../../theme/glass/presion';
+import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
 
 /** Fork del composer de DocuMed (`_staging/documed/apps/mobile/src/modules/chat/Composer.tsx`): el
@@ -23,7 +24,15 @@ function IconoAvion({ color }: { color: string }) {
  *  se ve en el device. */
 function PuntoEstado({ color }: { color: string }) {
   const parpadeo = useRef(new Animated.Value(1)).current;
+  const movimientoReducido = useMovimientoReducido();
   useEffect(() => {
+    // 🔴 Quieto si el usuario pidió menos movimiento. **El estado no se pierde: lo lleva el COLOR**,
+    // que es el que distingue «pensando» de «listo». El parpadeo sólo lo hacía notar — y un punto que
+    // parpadea sin parar en la pantalla principal es justo lo que ese ajuste existe para apagar.
+    if (movimientoReducido) {
+      parpadeo.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(parpadeo, { toValue: 0.28, duration: 650, useNativeDriver: true }),
@@ -32,7 +41,7 @@ function PuntoEstado({ color }: { color: string }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [parpadeo]);
+  }, [movimientoReducido, parpadeo]);
   return <Animated.View style={[styles.punto, { backgroundColor: color, opacity: parpadeo }]} />;
 }
 

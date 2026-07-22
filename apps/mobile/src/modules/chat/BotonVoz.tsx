@@ -3,6 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
 
 export interface BotonVozProps {
@@ -47,11 +48,18 @@ export function BotonVoz({ onPress, disabled = false }: BotonVozProps) {
   const tema = useTema();
 
   const pulso = useRef(new Animated.Value(1)).current;
+  const movimientoReducido = useMovimientoReducido();
 
   useEffect(() => {
     // Late SIEMPRE que esté habilitado (el botón está "vivo" en reposo). Deshabilitado, no late: un
     // control apagado que igual palpita invita a tocarlo y después no hace nada.
-    if (disabled) {
+    //
+    // 🔴 **Y no late si el usuario pidió menos movimiento.** Es la animación más persistente de la
+    // app —está en la pantalla principal, en reposo, para siempre—, así que es exactamente la que ese
+    // ajuste existe para apagar. Apagarla no esconde nada: el botón sigue visible, del mismo tamaño y
+    // color, y su nombre accesible no cambia. Ver `useMovimientoReducido` para la línea completa
+    // (decora vs informa) y para el efecto lateral sobre el E2E.
+    if (disabled || movimientoReducido) {
       pulso.setValue(1);
       return;
     }
@@ -63,7 +71,7 @@ export function BotonVoz({ onPress, disabled = false }: BotonVozProps) {
     );
     loop.start();
     return () => loop.stop();
-  }, [disabled, pulso]);
+  }, [disabled, movimientoReducido, pulso]);
 
   const etiqueta = disabled ? 'Grabando -- el HUD de voz ya está abierto' : 'Tocá para dictarle al copiloto';
 
