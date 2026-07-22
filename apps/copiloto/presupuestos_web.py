@@ -23,9 +23,10 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
-from perfil_negocio_store import (A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA,
-                                  LIMITES, MODOS)
-from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
+from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
+                                  LARGO_RESPUESTA, LIMITES, MODOS)
+from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, MODO_AUTOMATICO_NO_DISPONIBLE,
+                         PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
 from presupuesto_store import ESTADOS, TransicionInvalida, factura_id_de_presupuesto
 
@@ -65,6 +66,11 @@ def _validar_perfil(body: PerfilBody) -> dict:
                               # el emprendedor vería «Automático» en la pantalla mientras el backend
                               # —que lee bien— sigue pidiendo confirmación: los dos correctos por
                               # separado, y el producto mintiendo.
+                              # El enum sigue aceptando LOS DOS: `automatic` (typo) es un valor que no
+                              # existe → 400, y `automatico` es un valor real que está en pausa → 409
+                              # con el motivo. Colapsarlos en un 400 «tiene que ser uno de:
+                              # confirmacion» le diría a la app que el modo automático no existe, y la
+                              # app tendría que inventar el porqué para mostrarlo.
                               ("modo_ceremonia", MODOS)):
         if campo in cambios and cambios[campo] not in permitidos:
             raise HTTPException(
@@ -75,6 +81,28 @@ def _validar_perfil(body: PerfilBody) -> dict:
             raise HTTPException(status_code=400,
                                 detail=f"{campo} no puede superar los {tope} caracteres")
     return cambios
+
+
+# 🔴 El modo automático se rechaza EN EL BACKEND, no se esconde en la app.
+#
+# El contrato de modos §3 dice «el backend decide y el backend impone; la app refleja». Si esto
+# quedara aceptable por HTTP y sólo gris en la UI, alcanzaría un `POST /perfil-negocio` para ponerse
+# en el modo que sabemos peligroso — y la restricción viviría en la capa que el propio contrato dice
+# que NO decide.
+#
+# Por qué está bloqueado: el copiloto narra acciones que no ejecutó a partir del tercer turno, y en
+# automático ese fallo es INVISIBLE (no falta ninguna card, el copiloto dice «listo», no hay nada que
+# mirar). En confirmación la card es el testigo. Deuda GESTIONADA, con dueño y condición de pago:
+# se retira cuando la corrección del motor esté viva. Ver `copiloto-narra-la-accion-sin-ejecutarla`.
+_POR_QUE_NO_AUTOMATICO = (
+    "El modo automático está en pausa: el copiloto todavía puede decir que hizo algo que no hizo, y "
+    "sin la tarjeta de confirmación eso no se ve. Se habilita cuando esté corregido.")
+
+
+def _modo_habilitado(cambios: dict) -> None:
+    if cambios.get("modo_ceremonia") == AUTOMATICO:
+        raise conflicto(MODO_AUTOMATICO_NO_DISPONIBLE, _POR_QUE_NO_AUTOMATICO,
+                        modo_vigente=CONFIRMACION)
 
 
 # --- presupuestos -----------------------------------------------------------------
@@ -180,6 +208,7 @@ def create_presupuestos_app(
     async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
         cambios = _validar_perfil(body)          # 400 ANTES de tocar la base: el control de "¿está
                                                  # desplegado?" manda `{}` y no debe escribir nada.
+        _modo_habilitado(cambios)                # 409 con el motivo, NO un 400 mudo (ver el guard)
         perfil = await asyncio.to_thread(perfil_negocio_store_factory(cliente_id).upsert, cambios)
         return {"perfil": perfil}
 

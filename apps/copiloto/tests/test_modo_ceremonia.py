@@ -58,3 +58,48 @@ def test_el_typo_no_se_corrige_solo():
     lado permisivo por la misma lógica generosa."""
     assert modo_de({"modo_ceremonia": "automatic"}) == CONFIRMACION
     assert modo_de({"modo_ceremonia": "automático"}) == CONFIRMACION
+
+
+# ── el bloqueo temporal del modo automático ──────────────────────────────────────────────────────
+#
+# Deuda GESTIONADA con dueño y condición de pago: se retira cuando la corrección del motor esté
+# viva. Está acá y no en la app porque el contrato de modos §3 dice «el backend decide y el backend
+# impone» — si sólo estuviera gris en la UI, un `POST` alcanzaría para ponerse en el modo peligroso.
+
+def test_el_modo_automatico_se_rechaza_con_MOTIVO():
+    from errores_web import MODO_AUTOMATICO_NO_DISPONIBLE
+    from presupuestos_web import _modo_habilitado
+    import pytest as _pytest
+    from fastapi import HTTPException
+
+    with _pytest.raises(HTTPException) as exc:
+        _modo_habilitado({"modo_ceremonia": AUTOMATICO})
+    assert exc.value.status_code == 409
+    assert exc.value.detail["codigo"] == MODO_AUTOMATICO_NO_DISPONIBLE
+    assert exc.value.detail["modo_vigente"] == CONFIRMACION
+    # El motivo viaja en el mensaje: un control gris sin explicación se lee como app rota, y el
+    # emprendedor no tiene forma de saber que es temporal.
+    assert "pausa" in exc.value.detail["mensaje"]
+
+
+def test_confirmacion_pasa_sin_problema():
+    """El control. Si el guard rechazara todo, el test de arriba pasaría igual y no probaría nada."""
+    from presupuestos_web import _modo_habilitado
+    _modo_habilitado({"modo_ceremonia": CONFIRMACION})     # no levanta
+    _modo_habilitado({"que_vende": "cortes"})              # sin el campo, tampoco
+
+
+def test_el_enum_distingue_NO_EXISTE_de_EN_PAUSA():
+    """🔴 `automatic` (typo) es un valor que no existe → 400. `automatico` existe y está en pausa →
+    409 con el motivo. Colapsarlos en un 400 «tiene que ser uno de: confirmacion» le diría a la app
+    que el modo automático no existe, y la app tendría que inventar el porqué para mostrarlo."""
+    from presupuestos_web import PerfilBody, _validar_perfil
+    from fastapi import HTTPException
+    import pytest as _pytest
+
+    # el valor REAL pasa la validación de enum (lo frena el guard, después)
+    assert _validar_perfil(PerfilBody(modo_ceremonia=AUTOMATICO)) == {"modo_ceremonia": AUTOMATICO}
+    # el typo muere antes, con 400
+    with _pytest.raises(HTTPException) as exc:
+        _validar_perfil(PerfilBody(modo_ceremonia="automatic"))
+    assert exc.value.status_code == 400
