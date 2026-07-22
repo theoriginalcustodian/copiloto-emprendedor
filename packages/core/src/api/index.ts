@@ -123,10 +123,12 @@ export type {
   OrigenCliente,
 } from './clientes';
 
-// `/actividad` — "Recientes": las entradas FIRMADAS del usuario, cross-cliente. Ver el docstring de
-// `actividad.ts` para el criterio de `no_disponible` (404/501, endpoint aún sin desplegar).
+// `/actividad` — lo que el emprendedor HIZO, cruzando las tablas de negocio (facturas, presupuestos,
+// gastos, clientes). ⚠️ Reescrito el 2026-07-22: el anterior modelaba "entradas firmadas" del proyecto
+// clínico. `signo`/`titulo`/`detalle` los arma el backend — la app no compone texto de negocio ni
+// deduce el color del tipo. El cursor es un token OPACO: se manda tal cual vía `URLSearchParams`.
 export { listarActividad } from './actividad';
-export type { ActividadItem, ActividadResult, ListarActividadParams } from './actividad';
+export type { ActividadItem, ActividadResult, ListarActividadParams, SignoActividad } from './actividad';
 
 // Transporte de bajo nivel — necesario para que el adaptador de plataforma pueda montar su propio
 // wrapper de tests de integración (para que sus tests sigan mockeando `fetch` directo, no el puerto).

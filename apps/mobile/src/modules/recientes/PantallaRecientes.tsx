@@ -1,278 +1,176 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { listarActividad, type ActividadItem } from '@copiloto/core';
 
+import { FilaActividad } from '../actividad/FilaActividad';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 
-/** Debounce de búsqueda (ms) -- evita 1 request por tecla. */
-const SEARCH_DEBOUNCE_MS = 300;
-
-/** Tamaño de página -- mismo default que el cliente (`listarActividad`, `packages/core`). */
-const LIMITE_PAGINA = 20;
-
 /**
- * Estado de la ÚLTIMA búsqueda/carga resuelta. Es DISTINTO de "cuántos items hay": una búsqueda puede
- * resolver en `'ok'` con 0 resultados (sin-resultados-para-esa-búsqueda), y eso no es lo mismo que el
- * endpoint todavía no exista (`'no_disponible'`) ni que algo se haya roto de verdad (`'error'`). Son
- * los 4 estados operativos (sumando vacío-de-verdad, que sale de `'ok'` + 0 items + sin query) y el
- * render de abajo los mantiene mutuamente excluyentes -- ninguno se disfraza de otro.
+ * "Recientes" — **toda** la actividad del emprendedor, con scroll infinito.
+ *
+ * ⚠️ **Reescrita entera el 2026-07-22.** La versión anterior consumía el contrato "entradas firmadas"
+ * del proyecto clínico (`entrada_id`, `cliente_nombre`, `tipo_operacion`, `extracto`) y tenía barra de
+ * búsqueda con debounce. Ese contrato no existía en este producto; el nuevo cruza las tablas de
+ * negocio (facturas, presupuestos, gastos, clientes).
+ *
+ * 🔴 **La paginación va por CURSOR, y el cursor es un token OPACO**: no se parsea, no se construye, no
+ * se recorta — se devuelve tal cual vino. Y no es offset por una razón concreta: entre que el usuario
+ * ve la página 1 y pide la 2, **el emprendedor puede haber cargado un gasto**; con offset todo se
+ * corre una posición y se **saltea o repite** un ítem sin que nadie lo note. Es una lista que se lee
+ * hacia abajo mientras crece por arriba — el caso donde offset siempre falla.
+ *
+ * 🔴 **Tres disparadores de recarga, y acá el tirón SÍ va** — a diferencia de la pantalla principal,
+ * que es la capa de fondo de un panel gestual y no puede tener un gesto vertical propio. El tirón es
+ * el único que cubre lo que cambió **afuera**: otro dispositivo, o el copiloto registrando por voz.
+ *
+ * 🔴 **La barra de búsqueda se sacó.** El contrato acepta `?q=` pero **hoy no filtra nada** (§11), y
+ * una barra que no filtra es peor que ninguna: el usuario escribe, ve la misma lista, y concluye que
+ * no hay resultados. Vuelve cuando el backend la implemente de verdad.
  */
+
 type Estado = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
-/**
- * Fecha + hora en formato local -- puede haber varias entradas de CLIENTES distintos el mismo día: sin
- * la hora, dos filas seguidas son indistinguibles. `created_at` ya viene con timezone del backend;
- * `Date` se usa sólo para FORMATEAR, nunca para decidir orden (eso lo garantiza el backend).
- */
-function formatFecha(iso: string): string {
-  const d = new Date(iso);
-  const fecha = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-  return `${fecha} ${hora}`;
-}
+/** Igual al default del backend; explícito para que el número viva en un solo lado visible. */
+const LIMITE_PAGINA = 20;
 
-/**
- * "Recientes" — la actividad de negocio que el emprendedor ya CONFIRMÓ, cross-cliente: exactamente
- * las entradas firmadas, en el orden que manda el backend (`created_at DESC` — esta pantalla NUNCA
- * reordena lo que recibe: reordenar acá sería duplicar una regla que sólo tiene que vivir en un lado).
- * Con barra de búsqueda por nombre de cliente / tipo de operación (con debounce) y paginación por
- * cursor. Ejemplos de lo que puede aparecer acá: "Presupuesto Acme SA · Documento", "Resumen de
- * ventas julio · Reporte", "Factura #1042 · Emitida".
- *
- * 🔴 El endpoint puede no estar desplegado todavía -- `listarActividad` normaliza ese caso (404/501) a
- * `{status:'no_disponible'}`, y ACÁ se muestra como un estado propio, nunca como una lista vacía: una
- * lista vacía en un registro de actividad dice "no hiciste nada", y esa sería una mentira por ausencia
- * del feature, no por ausencia real de actividad. La pantalla tiene que renderizar bien SIN backend
- * (dev-client sin sesión todavía): estado de carga, estado vacío con mensaje útil, y estado de error
- * que no sea una pantalla en blanco -- son justamente los 4 estados de `Estado`, arriba.
- *
- * Es de SÓLO LECTURA -- no hay ninguna acción que "termine" la pantalla: se cierra con el
- * gesto/"Volver" que ya trae `MarcoGlass`, nunca sola.
- */
 export function PantallaRecientes() {
   const tema = useTema();
-  const [query, setQuery] = useState('');
   const [items, setItems] = useState<ActividadItem[]>([]);
   const [estado, setEstado] = useState<Estado>('cargando');
-  const [truncado, setTruncado] = useState(false);
-  const [cursorSiguiente, setCursorSiguiente] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [cargandoMas, setCargandoMas] = useState(false);
-  // Identifica la búsqueda VIGENTE -- una respuesta (de la primera página o de "cargar más") que
-  // llega tarde, después de que el usuario ya tipeó otra cosa, NO puede pisar el estado de la búsqueda
-  // nueva. Hace falta también dentro de `cargarMas`, que no vive en el `useEffect` del debounce.
-  const consultaId = useRef(0);
-  // 🔴 Guard de UNMOUNT, separado de `consultaId`: un `cargarMas` en vuelo cuyo `miId` sigue
-  // coincidiendo (nadie tipeó nada nuevo) puede de todas formas resolver DESPUÉS de que la pantalla ya
-  // se cerró (el usuario tocó "Volver" a mitad del fetch) -- `consultaId.current` no cambia solo al
-  // desmontar, así que por sí solo no alcanza para detectar ese caso. Sin este guard, RN tira "no se
-  // puede actualizar el estado de un componente desmontado" y, en un escenario más raro, una página
-  // vieja podría terminar escribiendo sobre el estado de una instancia nueva de esta misma pantalla.
+  const [refrescando, setRefrescando] = useState(false);
+  /**
+   * Guard de UNMOUNT: una página en vuelo puede resolver **después** de que la pantalla se cerró (el
+   * usuario tocó "Volver" a mitad del fetch). Sin esto, RN avisa que se actualizó el estado de un
+   * componente desmontado y, en el caso raro, una página vieja escribe sobre una instancia nueva.
+   */
   const vivo = useRef(true);
-  useEffect(
-    () => () => {
-      vivo.current = false;
-    },
-    [],
-  );
+  useEffect(() => () => { vivo.current = false; }, []);
 
-  // Cada cambio de `query` dispara una búsqueda DESDE CERO (cursor null) tras el debounce -- una
-  // búsqueda nueva nunca es "página 2 de la anterior".
-  useEffect(() => {
-    const miId = ++consultaId.current;
-    setEstado('cargando');
-    const timer = setTimeout(() => {
-      listarActividad({ q: query, cursor: null, limit: LIMITE_PAGINA })
-        .then((res) => {
-          if (!vivo.current || miId !== consultaId.current) return;
-          if (res.status === 'no_disponible') {
-            setEstado('no_disponible');
-            setItems([]);
-            setCursorSiguiente(null);
-            setTruncado(false);
-            return;
-          }
-          setItems(res.items);
-          setCursorSiguiente(res.cursorSiguiente);
-          setTruncado(res.truncado);
-          setEstado('ok');
-        })
-        .catch(() => {
-          if (!vivo.current || miId !== consultaId.current) return;
-          setEstado('error');
-        });
-    }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const cargarMas = useCallback(() => {
-    // Sólo pedir más si la última página resolvió bien Y dijo que hay una siguiente -- sin esto, un
-    // `onEndReached` durante `'cargando'`/`'error'`/`'no_disponible'` pediría una página de un cursor
-    // que no corresponde a la búsqueda vigente.
-    if (estado !== 'ok' || cargandoMas || !cursorSiguiente) return;
-    const miId = consultaId.current;
-    setCargandoMas(true);
-    listarActividad({ q: query, cursor: cursorSiguiente, limit: LIMITE_PAGINA })
+  const cargarPrimera = useCallback((silencioso = false): Promise<void> => {
+    if (!silencioso) setEstado('cargando');
+    return listarActividad({ limit: LIMITE_PAGINA })
       .then((res) => {
-        if (!vivo.current || miId !== consultaId.current) return; // desmontada, o la búsqueda cambió mientras esta página viajaba
+        if (!vivo.current) return;
         if (res.status === 'no_disponible') {
-          // Degradación conservadora: si el endpoint deja de responder a mitad de scroll, se deja de
-          // pedir más -- el usuario se queda con lo que ya cargó, nunca con un error a mitad de lista.
-          setCursorSiguiente(null);
+          setEstado('no_disponible');
+          setItems([]);
+          setCursor(null);
           return;
         }
-        setItems((prev) => [...prev, ...res.items]);
-        setCursorSiguiente(res.cursorSiguiente);
-        setTruncado((prev) => prev || res.truncado);
+        setItems(res.items);
+        setCursor(res.cursor);
+        setEstado('ok');
       })
       .catch(() => {
-        // No rompe la pantalla -- el usuario conserva lo ya cargado; volver a bajar reintenta.
-      })
-      .finally(() => {
-        if (vivo.current && miId === consultaId.current) setCargandoMas(false);
+        if (vivo.current) setEstado('error');
       });
-  }, [estado, cargandoMas, cursorSiguiente, query]);
+  }, []);
 
-  const hayQuery = query.trim().length > 0;
+  useEffect(() => {
+    void cargarPrimera();
+  }, [cargarPrimera]);
+
+  async function tirarParaRefrescar() {
+    setRefrescando(true);
+    await cargarPrimera(true);
+    if (vivo.current) setRefrescando(false);
+  }
+
+  /**
+   * La página siguiente. **Se corta con `cursor === null`**, que es lo que el backend usa para decir
+   * "no hay más" — y viaja siempre. No se deduce del largo de la página: una página corta **no**
+   * significa el final.
+   */
+  function cargarMas() {
+    if (cursor == null || cargandoMas || estado !== 'ok') return;
+    setCargandoMas(true);
+    void listarActividad({ limit: LIMITE_PAGINA, cursor })
+      .then((res) => {
+        if (!vivo.current) return;
+        if (res.status === 'ok') {
+          // Se concatena y se pisa el cursor. Si el backend repitiera un id, se vería duplicado en
+          // pantalla — visible y reportable, que es mejor que deduplicar acá y esconder un bug de la
+          // paginación de la que depende toda la lista.
+          setItems((previos) => [...previos, ...res.items]);
+          setCursor(res.cursor);
+        }
+        setCargandoMas(false);
+      })
+      .catch(() => {
+        if (vivo.current) setCargandoMas(false);
+      });
+  }
 
   return (
     <MarcoGlass titulo="Recientes" icono="clock" testID="pantalla-recientes">
-      <View style={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}>
-        <TextInput
-          testID="pantalla-recientes-buscar"
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Buscar por cliente u operación…"
-          placeholderTextColor={tema.color.textoTenue}
-          style={[
-            styles.buscador,
-            {
-              color: tema.color.texto,
-              borderColor: tema.color.borde,
-              backgroundColor: tema.color.superficie,
-              borderRadius: tema.radio.md,
-              padding: tema.espacio.sm,
-              fontSize: tema.tipo.base,
-            },
-          ]}
-        />
+      {estado === 'cargando' && (
+        <View style={styles.centro}>
+          <ActivityIndicator testID="recientes-cargando" color={tema.color.acento} />
+        </View>
+      )}
 
-        {/* "sin límite implícito que oculte resultados; si se corta, la respuesta dice que se
-            cortó". Se ata a `estado==='ok'` para no mostrar un aviso de una búsqueda vieja mientras
-            la nueva todavía está `'cargando'`. */}
-        {estado === 'ok' && truncado && (
-          <View
-            testID="pantalla-recientes-truncado"
-            style={[
-              styles.aviso,
-              {
-                backgroundColor: tema.color.superficieAlta,
-                borderRadius: tema.radio.sm,
-                borderLeftColor: tema.color.peligro,
-                padding: tema.espacio.sm,
-              },
-            ]}
+      {estado === 'error' && (
+        <View style={styles.centro}>
+          <Text testID="recientes-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
+            No pudimos cargar tu actividad. Tirá hacia abajo para reintentar.
+          </Text>
+        </View>
+      )}
+
+      {estado === 'no_disponible' && (
+        <View style={styles.centro}>
+          <Text
+            testID="recientes-no-disponible"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
           >
-            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico }}>
-              Esta lista se cortó antes de llegar al final. Puede haber más actividad que todavía no se
-              muestra.
+            Tu actividad todavía no está disponible en tu copiloto.
+          </Text>
+        </View>
+      )}
+
+      {estado === 'ok' && (
+        <FlatList
+          testID="recientes-lista"
+          data={items}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <FilaActividad item={item} />}
+          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.sm, paddingBottom: 120 }}
+          onEndReached={cargarMas}
+          // 0.5 y no 0.1: en un teléfono lento, pedir recién al borde deja al usuario mirando el
+          // final de la lista mientras llega la página. Media pantalla antes es imperceptible.
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refrescando}
+              onRefresh={() => void tirarParaRefrescar()}
+              tintColor={tema.color.acento}
+              colors={[tema.color.acento]}
+              testID="recientes-refresh"
+            />
+          }
+          ListEmptyComponent={
+            <Text
+              testID="recientes-vacio"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
+            >
+              Todavía no hay movimientos. Lo que factures, presupuestes o gastes va a aparecer acá.
             </Text>
-          </View>
-        )}
-
-        {estado === 'cargando' && (
-          <ActivityIndicator testID="pantalla-recientes-cargando" color={tema.color.acento} />
-        )}
-
-        {estado === 'error' && (
-          <Text testID="pantalla-recientes-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.base }}>
-            No pudimos cargar la actividad. Probá de nuevo.
-          </Text>
-        )}
-
-        {estado === 'no_disponible' && (
-          <Text
-            testID="pantalla-recientes-no-disponible"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
-          >
-            La actividad todavía no está disponible.
-          </Text>
-        )}
-
-        {estado === 'ok' && items.length === 0 && !hayQuery && (
-          <Text testID="pantalla-recientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-            Todavía no hay actividad -- acá vas a ver los documentos, notas y acciones que confirmes.
-          </Text>
-        )}
-
-        {estado === 'ok' && items.length === 0 && hayQuery && (
-          <Text
-            testID="pantalla-recientes-sin-resultados"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
-          >
-            No encontramos actividad para esa búsqueda.
-          </Text>
-        )}
-
-        {estado === 'ok' && items.length > 0 && (
-          <FlatList
-      // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
-      // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo
-      // que sobra se recorta (overflow:hidden del vidrio) sin poder desplazarse. Verificado en
-      // device: la lista de integraciones quedaba cortada en MercadoPago y el gesto no hacía nada.
-      style={styles.scroll}
-            testID="pantalla-recientes-lista"
-            data={items}
-            keyExtractor={(item) => item.entrada_id}
-            onEndReachedThreshold={0.4}
-            onEndReached={cargarMas}
-            ListFooterComponent={
-              cargandoMas ? (
-                <ActivityIndicator testID="pantalla-recientes-cargando-mas" color={tema.color.acento} />
-              ) : null
-            }
-            renderItem={({ item }) => (
-              <View
-                testID={`reciente-row-${item.entrada_id}`}
-                style={[
-                  styles.fila,
-                  {
-                    borderColor: tema.color.borde,
-                    borderRadius: tema.radio.md,
-                    padding: tema.espacio.sm,
-                    marginBottom: tema.espacio.xs,
-                  },
-                ]}
-              >
-                <View style={styles.filaEncabezado}>
-                  <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '600' }}>
-                    {item.cliente_nombre}
-                  </Text>
-                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                    {formatFecha(item.created_at)}
-                  </Text>
-                </View>
-                <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico, fontWeight: '600' }}>
-                  {item.tipo_operacion}
-                </Text>
-                <Text numberOfLines={2} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                  {item.extracto}
-                </Text>
-              </View>
-            )}
-          />
-        )}
-      </View>
+          }
+          ListFooterComponent={
+            cargandoMas ? (
+              <ActivityIndicator testID="recientes-cargando-mas" color={tema.color.acento} />
+            ) : null
+          }
+        />
+      )}
     </MarcoGlass>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  contenedor: { flex: 1 },
-  buscador: { borderWidth: 1 },
-  aviso: { borderLeftWidth: 3 },
-  fila: { borderWidth: 1, gap: 2 },
-  filaEncabezado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 });

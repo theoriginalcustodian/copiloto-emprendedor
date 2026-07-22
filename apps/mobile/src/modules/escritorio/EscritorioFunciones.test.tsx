@@ -65,15 +65,12 @@ describe('EscritorioFunciones — el escritorio del copiloto', () => {
     expect(() => fireEvent.press(screen.getByTestId('tile-ajustes'))).not.toThrow();
   });
 
-  it('actividad reciente: renderiza filas y avisa el índice tocado', async () => {
-    const onAbrirReciente = jest.fn();
-    await envolver({ onAbrirReciente });
+  it('pinta la actividad que le pasan, sin inventar ninguna', async () => {
+    // El mock hardcodeado se borró: este componente RECIBE la actividad, no la consulta ni la
+    // fabrica. Sin items y sin estar cargando, dice que no hay movimientos — nunca datos ajenos.
+    await envolver({ actividad: [], cargandoActividad: false });
 
-    expect(screen.getByTestId('row-reciente-0')).toBeTruthy();
-    expect(screen.getByTestId('row-reciente-4')).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId('row-reciente-2'));
-    expect(onAbrirReciente).toHaveBeenCalledWith(2);
+    expect(screen.getByTestId('escritorio-actividad-vacia')).toBeTruthy();
   });
 
   it('vocabulario del emprendedor: nada de "paciente"/"clínico"/"consulta médica" en las etiquetas', async () => {

@@ -21,7 +21,9 @@
  * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
 import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
+
+import { listarActividad, type ActividadItem } from '@copiloto/core';
 
 import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
@@ -51,9 +53,46 @@ export function PantallaPrincipal() {
   // de cualquier glass— reabre la puerta de navegación. Es la mitad que hace cumplir "un solo glass
   // hasta volver": al abrir uno, `empujarUnaVez` cierra la puerta; sólo este efecto la reabre. Clon
   // de `documed-front/apps/mobile/app/(tabs)/index.tsx`. Ver `empujarUnaVez.ts`.
+  const [actividad, setActividad] = useState<readonly ActividadItem[]>([]);
+  const [cargandoActividad, setCargandoActividad] = useState(true);
+  const vivo = useRef(true);
+
+  /**
+   * 🔴 **La actividad se re-pide al RECUPERAR EL FOCO, no sólo al montar.** El escritorio es la
+   * pantalla a la que se vuelve después de CADA operación: el emprendedor carga un gasto, cierra el
+   * glass, y lo primero que ve es esta lista. Si sólo cargara al montar mostraría el estado de
+   * **antes** de lo que acaba de hacer — y el dato viejo se ve **idéntico** al fresco, así que no
+   * tiene forma de notar que le falta su propia operación. Es la lección de "Mis comprobantes", donde
+   * el operador vio hasta la factura N° 15 mientras la 18 ya existía.
+   *
+   * No hay tirón para refrescar acá y no es un olvido: esto es la **capa de fondo de un panel
+   * gestual**, no un scroll con `RefreshControl` — un gesto vertical propio competiría con el panel.
+   * El foco cubre el caso real; lo que cambia desde otro dispositivo se ve al volver.
+   *
+   * Tampoco hay polling: gastaría batería para un caso que el foco ya cubre casi siempre.
+   */
   useFocusEffect(
     useCallback(() => {
       reabrirNavegacion();
+      let cancelado = false;
+      void listarActividad({ limit: 20 })
+        .then((res) => {
+          if (cancelado || !vivo.current) return;
+          // `no_disponible` deja la lista vacía y el texto honesto. **Nunca un fallback con datos
+          // inventados**: convertiría cada caída del backend en una mentira silenciosa, que es
+          // exactamente lo que hacía el mock que se borró.
+          setActividad(res.status === 'ok' ? res.items : []);
+          setCargandoActividad(false);
+        })
+        .catch(() => {
+          if (!cancelado && vivo.current) {
+            setActividad([]);
+            setCargandoActividad(false);
+          }
+        });
+      return () => {
+        cancelado = true;
+      };
     }, [])
   );
 
@@ -67,7 +106,13 @@ export function PantallaPrincipal() {
   const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
   return (
-    <PanelDeslizable testID="panel-principal" fondo={<EscritorioFunciones onFuncion={alFuncion} />}>
+    <PanelDeslizable testID="panel-principal" fondo={
+        <EscritorioFunciones
+          onFuncion={alFuncion}
+          actividad={actividad}
+          cargandoActividad={cargandoActividad}
+        />
+      }>
       <ChatView />
     </PanelDeslizable>
   );

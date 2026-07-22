@@ -2,132 +2,149 @@ import { apiClient } from './client';
 import { ApiError } from './errors';
 
 /**
- * `/actividad` — "actividad reciente": la lista de acciones de negocio que el usuario ya CONFIRMÓ,
- * cross-cliente. No hay concepto nuevo que inventar acá — la actividad ES la tabla de entradas
- * firmadas (append-only) leída sin filtrar por cliente. Este archivo es el cliente de ESE endpoint,
- * nada más: no decide qué cuenta como actividad, eso ya lo decidió el schema del lado del backend.
+ * `/actividad` — lo que el emprendedor hizo, **cruzando las tablas de negocio**.
  *
- * 🔴 `cliente_id` (tenant) sale del JWT del lado del servidor — `listarActividad` no lo acepta como
- * parámetro ni lo manda nunca: no existe forma de pedirle desde acá "la actividad de otro tenant".
+ * Contrato: `coordinacion/abierto/2026-07-22_contrato_planificacion-a-todos_actividad-reciente-real.md`.
+ * Forma **medida contra el vivo por HTTP público** el 2026-07-22, incluido el viaje del cursor.
  *
- * 🔴 El endpoint puede no estar desplegado todavía (heredado del proyecto de origen, donde se pidió al
- * backend el mismo día que este archivo se escribió) — `listarActividad` normaliza el 404 (la ruta ni
- * existe todavía) Y el 501 (el backend la registró pero es un stub explícito) al MISMO resultado
- * `{status:'no_disponible'}`. El caller tiene que mostrar esto como un estado HONESTO ("todavía no
- * está disponible"), nunca como una lista vacía: una lista vacía en un registro de actividad dice "no
- * hiciste nada", y esa sería una mentira por ausencia del feature, no por ausencia real de actividad.
+ * ⚠️ **Este archivo se reescribió entero.** El anterior modelaba «entradas firmadas» del proyecto
+ * clínico (`entrada_id`, `cliente_nombre`, `tipo_operacion`, `extracto`) y no describía nada de este
+ * producto — mismo caso que `clientes.ts`. Si aparece en la historia, no es una versión anterior de
+ * esto: es otro contrato con el mismo nombre de archivo.
+ *
+ * 🔴 **El chat NO es actividad.** Los episodios de Graphity son conversación, no operaciones;
+ * mezclarlos taparía las cinco cosas que el emprendedor quiere ver. *«¿Qué hice ayer?»* tiene su
+ * propio camino y es otro: la tool `consultar_actividad` del motor, que devuelve un resumen en
+ * lenguaje natural.
+ *
+ * 🔴 **`signo`, `titulo` y `detalle` los arma el BACKEND.** La app no compone texto de negocio ni
+ * deduce el color del tipo: el día que entre un tipo nuevo, deducirlo pintaría mal **en silencio**, y
+ * el mismo ítem se vería distinto en la pantalla principal y en la función.
  */
 
-/**
- * Un ítem de actividad — una entrada FIRMADA (nada sin confirmar llega jamás a esa tabla, así
- * que no hace falta un flag `confirmado` acá: estar en la lista YA lo dice).
- */
+/** `entra` pinta el ingreso, `sale` el egreso, `neutro` lo que todavía no es plata. Lo decide el backend. */
+export type SignoActividad = 'entra' | 'sale' | 'neutro';
+
 export interface ActividadItem {
-  entrada_id: string;
-  /** El cliente al que pertenece esta entrada (equivalente al `paciente_id` del origen clínico). Ver
-   * la nota de deuda GESTIONADA en `types.ts` (`ChatRequest.cliente_id`) sobre la colisión de nombre
-   * con el `cliente_id` del tenant en `MeResponse` — acá no hay colisión de shape (interfaces
-   * distintas), sólo el mismo cuidado de lectura. */
-  cliente_id: string;
-  cliente_nombre: string;
   /**
-   * Qué acción generó esta entrada (ej. `'nota'`, `'consulta'`, `'documento'`). El backend lo declara
-   * y este cliente NO lo interpreta ni lo traduce — mismo criterio que `ReplyCard.kind` en `types.ts`:
-   * `string` abierto (no unión cerrada) para no romper ante un valor nuevo que el front todavía no
-   * reconozca.
+   * `"<tipo>:<id>"` — estable, único, y **dice de dónde salió**. Es lo que va a permitir rutear el tap
+   * sin una tabla de traducción (hito 5).
    */
-  tipo_operacion: string;
-  /** ISO-8601 con timezone. */
-  created_at: string;
+  id: string;
   /**
-   * ~140 caracteres del markdown en texto plano — mismo criterio que `EntradaCorregible.extracto`
-   * (`enmienda.ts`/`types.ts`): sin él, dos entradas del mismo tipo y fecha cercana son
-   * indistinguibles en la lista. Es texto de negocio que se MUESTRA, nunca se busca (ver `q` abajo).
+   * `factura | nota_credito | presupuesto | gasto | ingreso | cliente`.
+   *
+   * `string` abierto y no unión cerrada: un tipo nuevo del backend **no puede romper la lista**. Lo
+   * que el cliente no reconozca se muestra igual, con su título y su monto, porque el texto ya viene
+   * armado de allá.
    */
-  extracto: string;
+  tipo: string;
+  /** ISO-8601 con offset. */
+  fecha: string;
+  /** Qué fue, en el idioma del emprendedor (`"Factura B 0001-00000042"`). */
+  titulo: string;
+  /** A quién / de qué. `''` cuando no aplica. */
+  detalle: string;
+  /** String decimal, o `null` si el tipo no tiene monto (un cliente nuevo). **Nunca `Number()`.** */
+  monto: string | null;
+  signo: SignoActividad;
 }
 
-export interface ListarActividadParams {
-  /**
-   * Búsqueda por NOMBRE de cliente y TIPO DE OPERACIÓN — nunca sobre `extracto`. Es una decisión del
-   * operador, no una limitación técnica: buscar dentro del texto de negocio es indexar información
-   * sensible, un riesgo propio que merece su propia decisión. Vacío/ausente = sin filtro.
-   */
-  q?: string;
-  /**
-   * El cursor OPACO de la página anterior (`cursorSiguiente` de un `ActividadResult` previo).
-   * `null`/ausente = primera página. Este cliente nunca interpreta su forma — sólo lo transporta tal
-   * cual lo mandó el backend.
-   */
-  cursor?: string | null;
-  limit?: number;
+interface ItemCrudo {
+  id?: string;
+  tipo?: string;
+  fecha?: string;
+  titulo?: string;
+  detalle?: string;
+  monto?: string | null;
+  signo?: string;
 }
 
-/** Tope de página si el caller no especifica uno — mismo valor default que `listarClientes`. */
-const LIMITE_DEFAULT = 20;
-
-/**
- * El shape crudo que manda el backend (snake_case) — `listarActividad` lo normaliza a camelCase para
- * el resto del cliente (mismo criterio que `reply.ts` normalizando `RawReplyResponse`).
- */
-interface ActividadResponseRaw {
-  items: ActividadItem[];
-  cursor_siguiente: string | null;
-  /**
-   * 🔴 `true` = el backend cortó la enumeración SIN agotarla (sin `limit` implícito que oculte
-   * resultados; si se corta, la respuesta dice que se cortó). Mismo fail-closed que
-   * `PreviewEnmienda.completo` — el caller tiene que decirlo en pantalla, nunca dejar que una lista
-   * truncada se lea como si fuera la lista entera.
-   */
-  truncado: boolean;
+function normalizar(i: ItemCrudo, indice: number): ActividadItem {
+  const signo = i.signo;
+  return {
+    // `?? String(indice)`: sin id no se puede rutear, pero **sí** se puede mostrar. Dejarlo caer
+    // perdería la fila entera por un campo que sólo hace falta al tocarla.
+    id: i.id ?? `desconocido:${indice}`,
+    tipo: i.tipo ?? '',
+    fecha: i.fecha ?? '',
+    titulo: i.titulo ?? '',
+    detalle: i.detalle ?? '',
+    monto: i.monto ?? null,
+    // `neutro` por default: es el que NO pinta color. Si el backend manda un signo que no conozco,
+    // no mostrar color es honesto; inventar "entra" teñiría de verde algo que quizá salió.
+    signo: signo === 'entra' || signo === 'sale' ? signo : 'neutro',
+  };
 }
 
-/**
- * Resultado normalizado — un status explícito en vez de relanzar el 404/501 como excepción, porque
- * acá NO son errores del usuario ni algo que un reintento arregle — son el estado real de un endpoint
- * todavía no desplegado.
- */
 export type ActividadResult =
-  | { status: 'ok'; items: ActividadItem[]; cursorSiguiente: string | null; truncado: boolean }
+  | { status: 'ok'; items: ActividadItem[]; cursor: string | null }
   | { status: 'no_disponible' };
 
+export interface ListarActividadParams {
+  /** Default 20 del backend, máximo 100. Fuera de rango → 400 (medido). */
+  limit?: number;
+  /**
+   * El cursor **de la respuesta anterior**, tal cual vino.
+   *
+   * 🔴 **Es un token opaco: no se parsea, no se construye, no se recorta.** Se manda vía
+   * `URLSearchParams`, que lo codifica (`|`→`%7C`, `:`→`%3A`). Medido: así viaja intacto — y también
+   * sobrevive un cursor viejo con `+00:00`, porque `URLSearchParams` codifica el `+` como `%2B` en
+   * vez de dejarlo valer "espacio". Concatenarlo a mano en la URL es lo que rompe.
+   */
+  cursor?: string | null;
+}
+
 /**
- * GET /actividad?q=&cursor=&limit= — Bearer requerido. Ver el docstring del módulo para el criterio
- * de `no_disponible` (404/501) y por qué `q` nunca busca sobre `extracto`.
+ * 🔴 **Se valida por FORMA, no por status.**
+ *
+ * Una ruta no desplegada devuelve **`200` con el HTML del SPA** (catch-all `@app.get("/{full_path}")`
+ * en `apps/copiloto/web.py:141`), no un 404. Y para un endpoint de **sólo lectura** la sonda por verbo
+ * tampoco discrimina: `POST /actividad` y `POST /ruta-inventada` dan **405 los dos** (medido por
+ * backend). Lo único que distingue es el cuerpo: `{items, cursor}` vs `<!doctype html>`.
+ *
+ * Este archivo ya se llevó ese golpe una vez: mapeaba sólo 404/501 a `no_disponible` mientras su
+ * docstring afirmaba cubrir "la ruta no desplegada", y en producción el `200`+HTML explotaba en
+ * `res.json()` — la pantalla mostraba un ERROR donde debía decir "todavía no está disponible".
+ */
+function esRespuestaDelEndpoint(raw: unknown): boolean {
+  return typeof raw === 'object' && raw !== null && 'items' in raw;
+}
+
+/**
+ * La actividad, más nueva primero.
+ *
+ * Sin operaciones → `{ status: 'ok', items: [], cursor: null }`. **`[]` no es un error**: es el primer
+ * día del emprendedor, y mostrarle datos que no son suyos no se lee como "está vacío" sino como
+ * **"esta app no es mía"**.
+ *
+ * `cursor: null` en la respuesta significa **no hay más páginas**, y viaja siempre — un campo que
+ * aparece y desaparece obliga a defenderse de dos formas del mismo dato.
  */
 export async function listarActividad(params: ListarActividadParams = {}): Promise<ActividadResult> {
-  const { q = '', cursor = null, limit = LIMITE_DEFAULT } = params;
   const query = new URLSearchParams();
-  if (q) query.set('q', q);
-  if (cursor) query.set('cursor', cursor);
-  query.set('limit', String(limit));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.cursor != null && params.cursor !== '') query.set('cursor', params.cursor);
+  const qs = query.toString();
 
   try {
-    const body = await apiClient.get<ActividadResponseRaw>(`/actividad?${query.toString()}`);
-    // 🔴 **La ruta no desplegada NO da 404: da `200` con el HTML del SPA.** El front-door monta un
-    // catch-all `@app.get("/{full_path}")` (`apps/copiloto/web.py:141`), así que un GET a una ruta
-    // inexistente devuelve la página. Medido el 2026-07-22: `GET /actividad` → `200 <!doctype html>`
-    // en producción, porque el stub 501 vive en una rama sin mergear.
-    //
-    // Sin esta guarda, `res.json()` explota con `SyntaxError` —comprobado con una sonda, no deducido—
-    // y la pantalla muestra un ERROR donde debería decir "todavía no está disponible". El status por
-    // sí solo diría "desplegado y todo bien" sobre una ruta que no existe: por eso se valida la
-    // FORMA, no el código.
-    if (typeof body !== 'object' || body === null || !('items' in body)) {
-      return { status: 'no_disponible' };
-    }
-    return { status: 'ok', items: body.items, cursorSiguiente: body.cursor_siguiente, truncado: body.truncado };
+    const raw = await apiClient.get<{ items: ItemCrudo[]; cursor: string | null }>(
+      qs ? `/actividad?${qs}` : '/actividad',
+    );
+    if (!esRespuestaDelEndpoint(raw)) return { status: 'no_disponible' };
+    return {
+      status: 'ok',
+      items: (raw.items ?? []).map(normalizar),
+      cursor: raw.cursor ?? null,
+    };
   } catch (err) {
-    // 404 = la ruta ni existe todavía (deploy pendiente); 501 = el backend la registró pero la
-    // implementación es un stub explícito. Desde el cliente son indistinguibles EN LA PRÁCTICA ("no
-    // puedo mostrarte actividad todavía") y no hace falta que dejen de serlo: ninguna de las dos es
-    // un error del usuario ni algo que un reintento resuelva.
-    if (err instanceof ApiError && (err.status === 404 || err.status === 501)) {
+    // 501 = stub explícito; 405 = ruta sin este verbo. Ninguna es error del usuario ni la arregla un
+    // reintento.
+    if (err instanceof ApiError && (err.status === 501 || err.status === 405)) {
       return { status: 'no_disponible' };
     }
     // Un `200` con HTML explota en `res.json()`, no en `mapearError`: llega acá como error de parseo
-    // y NO como `ApiError`. Es el mismo caso de arriba visto desde el otro lado — la guarda de forma
-    // lo agarra cuando el body parsea a algo inesperado, esto cuando ni siquiera parsea.
+    // y NO como `ApiError`. Es el mismo caso que la guarda de forma, visto desde el otro lado.
     if (!(err instanceof ApiError)) return { status: 'no_disponible' };
     throw err;
   }

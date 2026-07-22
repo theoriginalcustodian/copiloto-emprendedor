@@ -50,6 +50,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import type { ActividadItem } from '@copiloto/core';
+
+import { FilaActividad } from '../actividad/FilaActividad';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Row } from '../../theme/glass/Row';
@@ -146,27 +149,28 @@ export function agruparEnColumnas<T>(
 
 const COLUMNAS_TILES = agruparEnColumnas(TILES, FILAS_MAX_GRID);
 
-interface ItemReciente {
-  titulo: string;
-  subtitulo: string;
-  icono: NombreIconoGlass;
-}
-
-/** Mock del diseño — "Actividad reciente" se conecta a datos reales en otra fase (F7, memoria/
- *  recall del copiloto vía `consultar_actividad`). */
-const RECIENTES: readonly ItemReciente[] = [
-  { titulo: 'Presupuesto Acme S.A.', subtitulo: 'Documento generado', icono: 'note' },
-  { titulo: 'Resumen de ventas', subtitulo: 'Métrica semanal', icono: 'chart' },
-  { titulo: 'Factura #1042', subtitulo: 'Factura emitida', icono: 'doc_search' },
-  { titulo: 'Publicación en Instagram', subtitulo: 'Red social', icono: 'chat' },
-  { titulo: 'Nota de voz — pedido a proveedor', subtitulo: 'Grabación', icono: 'mic' },
-];
 
 export interface EscritorioFuncionesProps {
   /** Un handler único para todas las funciones del grid — el tile tocado se identifica por `key`. */
   onFuncion?: (key: FuncionKey) => void;
-  /** Tap sobre un item de "Actividad reciente" (índice dentro de `RECIENTES`). */
-  onAbrirReciente?: (index: number) => void;
+  /**
+   * Las últimas operaciones REALES del emprendedor (20, las trae el shell).
+   *
+   * 🔴 **Antes acá había un array hardcodeado** —*"Presupuesto Acme S.A."*, *"Factura #1042"*,
+   * *"Publicación en Instagram"*— que se mostraba en la pantalla principal de producción.
+   * *(El nombre de esa constante no se escribe acá a propósito: el DoD del contrato pide
+   * `grep <nombre> apps/mobile/src/` → cero hits, y un comentario que lo mencione haría fallar el
+   * check por hablar de él. Está en el mensaje del commit que lo borró.)* El tenant del operador
+   * tenía 0 presupuestos y sus facturas iban del #1 al #18 — ninguna era la #1042. **Se borró y no se
+   * deja fallback:** datos falsos de respaldo convierten cada caída del backend en una mentira
+   * silenciosa, y un emprendedor nuevo que ve actividad ajena no concluye "está vacío" sino
+   * **"esta app no es mía"**.
+   *
+   * Este componente NO consulta: recibe. El fetch vive en el shell, que es quien tiene el foco.
+   */
+  actividad?: readonly ActividadItem[];
+  /** `true` mientras el shell trae la primera página — para no pintar el vacío antes de tiempo. */
+  cargandoActividad?: boolean;
 }
 
 /** Margen de tolerancia antes de considerar que "hay más contenido a la derecha". RN mide con floats;
@@ -175,7 +179,11 @@ export interface EscritorioFuncionesProps {
  *  exacto. */
 const UMBRAL_OVERFLOW_PX = 4;
 
-export function EscritorioFunciones({ onFuncion, onAbrirReciente }: EscritorioFuncionesProps) {
+export function EscritorioFunciones({
+  onFuncion,
+  actividad = [],
+  cargandoActividad = false,
+}: EscritorioFuncionesProps) {
   const tema = useTema();
 
   // Ninguno de los dos anchos se pregunta con `Dimensions.get('window')`: se MIDEN, con el mismo
@@ -284,29 +292,17 @@ export function EscritorioFunciones({ onFuncion, onAbrirReciente }: EscritorioFu
         ACTIVIDAD RECIENTE
       </Text>
 
-      <ScrollView contentContainerStyle={styles.listaReciente}>
-        {RECIENTES.map((item, i) => (
-          <Row key={i} testID={`row-reciente-${i}`} onPress={() => onAbrirReciente?.(i)} style={styles.row}>
-            <GlassIcon name={item.icono} size={34} />
-            <View style={styles.textoRow}>
-              <Text
-                style={[
-                  styles.tituloRow,
-                  { color: tema.color.texto, fontFamily: tema.fuente.uiMedium },
-                ]}
-              >
-                {item.titulo}
-              </Text>
-              {/* Subtítulo en MONO (template: `tipo · fecha` en JetBrains Mono), no en la fuente UI. */}
-              <Text
-                style={[styles.subtituloRow, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
-              >
-                {item.subtitulo}
-              </Text>
-            </View>
-            {/* Chevron del template (`›` 18px a la derecha de cada fila). */}
-            <Text style={{ color: tema.color.textoTenue, fontSize: 18 }}>›</Text>
-          </Row>
+      <ScrollView contentContainerStyle={styles.listaReciente} testID="escritorio-actividad">
+        {!cargandoActividad && actividad.length === 0 && (
+          <Text
+            testID="escritorio-actividad-vacia"
+            style={[styles.vacio, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
+          >
+            Todavía no hay movimientos. Lo que hagas va a aparecer acá.
+          </Text>
+        )}
+        {actividad.map((item) => (
+          <FilaActividad key={item.id} item={item} />
         ))}
       </ScrollView>
     </View>
@@ -340,8 +336,5 @@ const styles = StyleSheet.create({
   flechaSolapa: { fontSize: 15, lineHeight: 15, marginLeft: -1 },
   headerReciente: { fontSize: 10, letterSpacing: 1.4, marginBottom: 10, opacity: 0.6, textTransform: 'uppercase' },
   listaReciente: { gap: 8, paddingBottom: 180 },
-  row: { gap: 12, alignItems: 'center' },
-  textoRow: { flex: 1 },
-  tituloRow: { fontSize: 13 },
-  subtituloRow: { fontSize: 11, marginTop: 2 },
+  vacio: { fontSize: 11, opacity: 0.8 },
 });
