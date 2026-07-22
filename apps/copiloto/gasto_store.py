@@ -10,6 +10,8 @@ import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
+from evento_store import registrar_evento
+
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_gastos"
 
@@ -101,7 +103,17 @@ class GastoStore:
                 f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
                 (self._cliente_id, monto, fecha or hoy_del_negocio(), categoria,
                  proveedor or "", medio_pago or "", descripcion or "", origen, monto_sugerido))
-            return self._fila(cur.fetchone())
+            gasto = self._fila(cur.fetchone())
+            # `REGISTRO_GASTO` (Negocio→Gasto) y `PAGADO_A` (Gasto→Proveedor), §2.1. El `fact_template`
+            # de ambas interpola monto, categoría, proveedor y fecha, así que van en `datos` —lo que no
+            # esté acá no se puede leer después (trampa 6)—. `Gasto` es un EVENTO (§1.2): nunca se
+            # deduplica, su identidad la da el id de fila, que viaja como `entidad_id`.
+            registrar_evento(cur, self._cliente_id, entidad_tipo="gasto", entidad_id=gasto["id"],
+                             evento="creado", ocurrido_en=gasto["fecha"],
+                             datos={"monto": gasto["monto"], "categoria": gasto["categoria"],
+                                    "proveedor": gasto["proveedor"] or "",
+                                    "medio_pago": gasto["medio_pago"] or "", "origen": gasto["origen"]})
+            return gasto
 
     def listar(self, *, limit: int = 50) -> tuple[list[dict], int]:
         """`(pagina, total_del_tenant)`. El total es el conteo completo, NO el largo de la página:

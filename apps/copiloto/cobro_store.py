@@ -30,6 +30,7 @@ import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
+from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
@@ -216,8 +217,16 @@ class CobroStore:
                                (self._cliente_id, idem_key))
                     fila = c2.fetchone()
                     return self._fila(fila), self._resumen(c2, comprobante_id)
-            fila = cur.fetchone()
-            return self._fila(fila), self._resumen(cur, comprobante_id)
+            # 🔴 El log SÓLO acá — este es el único camino con un INSERT real. Los dos returns de
+            # arriba (idem_key ya visto, o 23505) devuelven un cobro que YA existía: re-loggearlos
+            # duplicaría el evento de un hecho que ocurrió una sola vez, y el grafo contaría dos cobros.
+            cobro = self._fila(cur.fetchone())
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="creado", ocurrido_en=dia,
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "comprobante_id": comprobante_id})
+            return cobro, self._resumen(cur, comprobante_id)
 
     def registrar_suelto(self, *, monto, medio: str = "", fecha=None, cliente_ref: int | None = None,
                          presupuesto_ref: int | None = None, idem_key: str | None = None,
@@ -269,7 +278,18 @@ class CobroStore:
                                f"WHERE cliente_id = %s AND idem_key = %s",
                                (self._cliente_id, idem_key))
                     return self._fila(c2.fetchone())
-            return self._fila(cur.fetchone())
+            # Log SÓLO en el INSERT real, por lo mismo que en `registrar`: el return del replay
+            # idempotente de arriba devuelve un cobro que ya existía y ya se loggeó.
+            cobro = self._fila(cur.fetchone())
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="creado", ocurrido_en=cobro["fecha"],
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "cliente_nombre": cobro["cliente_nombre"],
+                                    "concepto": cobro["concepto"],
+                                    "cliente_ref": cobro["cliente_ref"],
+                                    "presupuesto_ref": cobro["presupuesto_ref"]})
+            return cobro
 
     def completitud_dictada(self) -> dict:
         """Cuántos ingresos dictados **nacieron completos** y cuántos hubo que completar a mano.
@@ -432,7 +452,21 @@ class CobroStore:
                         f"WHERE cliente_id = %s AND id = %s RETURNING {', '.join(_COLS)}",
                         (*valores, self._cliente_id, ingreso_id))
             fila = cur.fetchone()
-            return self._fila(fila) if fila else None
+            if fila is None:
+                return None
+            cobro = self._fila(fila)
+            # 🔴 Corregir un ingreso ES un evento de negocio, aunque no sea un alta. El grafo se
+            # re-deriva del log (§3) y el DoD exige que re-derivar dé el estado ACTUAL (§5): si el
+            # dictado oyó «quince mil» por «cincuenta mil» y sólo loggeáramos el alta, el grafo
+            # respondería el monto equivocado para siempre. El derivador (§1.2) aplica el 'corregido'
+            # sobre el 'creado' del mismo `entidad_id`.
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="corregido", ocurrido_en=cobro["fecha"], valor_a=datos,
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "cliente_nombre": cobro["cliente_nombre"],
+                                    "concepto": cobro["concepto"]})
+            return cobro
 
     def borrar(self, comprobante_id: int, cobro_id: int) -> dict | None:
         """Deshace un cobro. Alguien se equivoca, y sin esto la única salida sería tocar la base."""

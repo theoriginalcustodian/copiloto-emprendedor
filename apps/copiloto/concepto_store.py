@@ -21,6 +21,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Callable
 
 from cliente_store import normalizar_nombre
+from evento_store import registrar_evento
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_conceptos"
@@ -111,7 +112,20 @@ class ConceptoStore:
                                (self._cliente_id, normalizado))
                     fila = c2.fetchone()
                 raise ConceptoDuplicado(self._fila(fila) if fila else {})
-            return self._fila(cur.fetchone())
+            row = cur.fetchone()
+            crow = dict(zip(_COLS, row))
+            # El nodo `Concepto` nace, y con él el primer punto de su serie de precios (arista de
+            # estado `PRECIO_DE`, §2.2). `valor_de=None` es «no había precio antes» — el arranque de la
+            # serie que después contesta *«¿cuánto cobraba antes por esto?»* (§9 Q5). `entidad_id` es el
+            # nombre normalizado, la clave natural del `Concepto` (§1.1), la misma con la que el
+            # servidor deduplica el nodo.
+            registrar_evento(cur, self._cliente_id, entidad_tipo="concepto",
+                             entidad_id=crow["nombre_normalizado"], evento="creado", campo="precio",
+                             valor_de=None,
+                             valor_a=(None if crow["precio_referencia"] is None
+                                      else str(crow["precio_referencia"])),
+                             datos={"nombre": crow["nombre"]})
+            return self._fila(row)
 
     def editar(self, concepto_id: int, datos: dict) -> dict | None:
         """Edición **parcial de verdad**: sólo se toca lo que viene en `datos`.
@@ -135,8 +149,22 @@ class ConceptoStore:
             valores.append(bool(datos["activo"]))
         if not sets:
             return self.obtener(concepto_id)
+        precio_venia = "precio_referencia" in datos
         sets.append("updated_at = now()")
         with self._conn_factory() as conn, conn.cursor() as cur:
+            # El precio ANTERIOR, para el de→a del log. Se lee sobre el mismo cursor justo antes del
+            # UPDATE; bajo autocommit son dos sentencias, no una transacción, así que hay una ventana
+            # teórica en que otra edición del MISMO concepto se cuele en el medio y el de→a registrado
+            # quede corrido un escalón. Es de baja concurrencia (un tenant editando su catálogo) y bajo
+            # impacto (un punto de la serie mal atribuido), del mismo orden que el resto del log
+            # best-effort (ver evento_store). Sólo se lee si el precio viene en la edición: un `editar`
+            # de nombre o `activo` (o el `desactivar`) no toca la serie de precios.
+            precio_previo = None
+            if precio_venia:
+                cur.execute(f"SELECT precio_referencia FROM {_TABLE} "
+                            f"WHERE cliente_id = %s AND id = %s", (self._cliente_id, concepto_id))
+                prev = cur.fetchone()
+                precio_previo = prev[0] if prev is not None else None
             try:
                 cur.execute(f"UPDATE {_TABLE} SET {', '.join(sets)} "
                             f"WHERE cliente_id = %s AND id = %s RETURNING {', '.join(_COLS)}",
@@ -152,7 +180,25 @@ class ConceptoStore:
                     fila = c2.fetchone()
                 raise ConceptoDuplicado(self._fila(fila) if fila else {})
             fila = cur.fetchone()
-            return self._fila(fila) if fila else None
+            if fila is None:
+                return None
+            crow = dict(zip(_COLS, fila))
+            # Cambio de precio → punto nuevo de la serie `PRECIO_DE`; el derivador invalida el
+            # anterior (§2.3/§7.1.bis). Se registra SÓLO si cambió de verdad: la comparación es entre
+            # `Decimal`/`None` normalizados por `_precio` —no entre representaciones—, así un mismo
+            # precio escrito distinto ("85000" vs "85000.00") no genera un evento fantasma que el
+            # derivador leería como una subida y bajada al mismo valor.
+            if precio_venia:
+                nuevo = _precio(datos["precio_referencia"])
+                anterior = None if precio_previo is None else _precio(precio_previo)
+                if nuevo != anterior:
+                    registrar_evento(cur, self._cliente_id, entidad_tipo="concepto",
+                                     entidad_id=crow["nombre_normalizado"], evento="precio_cambiado",
+                                     campo="precio",
+                                     valor_de=(None if anterior is None else str(anterior)),
+                                     valor_a=(None if nuevo is None else str(nuevo)),
+                                     datos={"nombre": crow["nombre"]})
+            return self._fila(fila)
 
     def desactivar(self, concepto_id: int) -> dict | None:
         """`DELETE` en la web **desactiva**, no borra.
