@@ -10,6 +10,7 @@ import { agruparEnColumnas, EscritorioFunciones, TILES, type FuncionKey } from '
 const KEYS_ESPERADAS: FuncionKey[] = [
   'apps', 'ajustes', 'recientes', 'redes', 'metricas', 'facturacion', 'presupuestos',
   'gastos',
+  'clientes',
 ];
 
 async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {

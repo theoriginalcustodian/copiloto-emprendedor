@@ -110,6 +110,19 @@ export type {
   ResumenGastos,
 } from './gastos';
 
+// `/clientes` — la cartera, DERIVADA de lo ya emitido. ⚠️ Archivo NUEVO: el anterior (cliente HTTP
+// de la app clínica, apuntando a un backend que nunca existió acá) se borró en `8761d54`.
+// `crearCliente`/`actualizarCliente` NO están todavía: el `POST` da 405 (hito 3 sin desplegar), y
+// escribir un cliente contra una forma no medida es adivinarla.
+export { listarClientes, obtenerCliente } from './clientes';
+export type {
+  Cliente,
+  FichaCliente,
+  ListarClientesParams,
+  OperacionCliente,
+  OrigenCliente,
+} from './clientes';
+
 // `/actividad` — "Recientes": las entradas FIRMADAS del usuario, cross-cliente. Ver el docstring de
 // `actividad.ts` para el criterio de `no_disponible` (404/501, endpoint aún sin desplegar).
 export { listarActividad } from './actividad';

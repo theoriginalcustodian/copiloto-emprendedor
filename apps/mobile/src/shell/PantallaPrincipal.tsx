@@ -43,6 +43,7 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   facturacion: '/facturacion',
   presupuestos: '/presupuestos',
   gastos: '/gastos',
+  clientes: '/clientes',
 };
 
 export function PantallaPrincipal() {

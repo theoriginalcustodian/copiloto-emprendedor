@@ -65,7 +65,8 @@ export type FuncionKey =
   | 'metricas'
   | 'facturacion'
   | 'presupuestos'
-  | 'gastos';
+  | 'gastos'
+  | 'clientes';
 
 export interface DefinicionTile {
   key: FuncionKey;
@@ -102,6 +103,8 @@ export const TILES: readonly DefinicionTile[] = [
   // La 8ª. `wallet` se AGREGÓ al catálogo para esta función en vez de reusar `chart`, que ya es
   // Métricas: dos tiles con el mismo glifo en el mismo grid no se distinguen de un vistazo.
   { key: 'gastos', label: 'Gastos', icono: 'wallet' },
+  // La 9ª. `user` = la persona a la que le facturás; no colisiona con ningún otro de este grid.
+  { key: 'clientes', label: 'Clientes', icono: 'user' },
 ];
 
 /** Máximo de tiles apilados por columna — el resto de las funciones se alcanza con scroll horizontal,
