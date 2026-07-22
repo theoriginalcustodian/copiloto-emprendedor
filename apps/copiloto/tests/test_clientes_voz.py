@@ -27,15 +27,19 @@ def _ex(**kw):
 
 # ── el catálogo ──────────────────────────────────────────────────────────────────────────────────
 
-def test_las_dos_tools_estan_en_el_catalogo_y_NINGUNA_pide_confirmacion():
-    """Si alguna entrara en WRITE_TOOLS caería en el confirm-gate de sí/no, que es justo el mecanismo
-    que el patrón de la card existe para evitar: confirmar sí/no re-ejecuta los MISMOS argumentos, y
-    un nombre que el dictado transcribió mal sólo se podría aceptar o repetir entero."""
+def test_registrar_cliente_esta_en_el_catalogo_y_NO_pide_confirmacion():
+    """Si entrara en WRITE_TOOLS caería en el confirm-gate de sí/no, que es justo el mecanismo que el
+    patrón de la card existe para evitar: confirmar sí/no re-ejecuta los MISMOS argumentos, y un
+    nombre que el dictado transcribió mal sólo se podría aceptar o repetir entero.
+
+    🔴 Antes este test también exigía `consultar_cliente`. **La poda del hito 2 la sacó** —«el copiloto
+    ejecuta, Inteligencia de Negocio explica»— y Clientes ya es una pantalla propia. Lo que el test
+    protege sigue intacto: que la tool que ESCRIBE no caiga en el confirm-gate.
+    """
     nombres = [s["function"]["name"] for s in tool_catalog.build_tool_catalog()]
     assert "registrar_cliente" in nombres
-    assert "consultar_cliente" in nombres
     assert "registrar_cliente" not in tool_catalog.WRITE_TOOLS
-    assert "consultar_cliente" not in tool_catalog.WRITE_TOOLS
+    assert "consultar_cliente" not in nombres, "volvio a exponerse una tool consultiva podada"
 
 
 def test_registrar_cliente_pide_SOLO_el_nombre():

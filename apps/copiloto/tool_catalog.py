@@ -304,8 +304,13 @@ def _required_of(tool_name: str) -> list:
 
 
 def build_tool_catalog() -> list[dict]:
-    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA,
-               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA, CONSULTAR_CLIENTE_SCHEMA,
+    # Poda del hito 2 — «el copiloto ejecuta, Inteligencia de Negocio explica»: las dos tools
+    # CONSULTIVAS se fueron. Actividad y Clientes ya son pantallas propias, y preguntárselas al agente
+    # gastaba una tool del presupuesto de routing para llegar peor a un dato que ya está a un toque.
+    # Los `_run_consultar_*` y sus schemas quedan definidos: no cuesta nada y el día que Inteligencia
+    # de Negocio necesite responder por chat, se re-enchufan acá sin reescribirlos.
+    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA,
+               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA]
     for mod in services.modules().values():
