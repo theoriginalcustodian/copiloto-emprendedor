@@ -362,7 +362,12 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
     if categoria not in CATEGORIAS:
         categoria = "otros"               # el modelo inventó un rubro: cae en otros, no falla
 
-    fecha = hoy_del_negocio()
+    # "Hoy" sale del reloj INYECTADO (`now_iso_provider`), no de `datetime.now()`. Dos razones y las
+    # dos costaron: (1) es el mismo reloj con el que se resuelve `fecha_raw` más abajo, así que "hoy" y
+    # "ayer" quedan consistentes entre sí; (2) con el reloj de pared el test era **verde por
+    # casualidad** — pasaba mientras el día real coincidiera con el instante del test, y rompió solo al
+    # cruzar la medianoche. Ver `guard-caza-algo-distinto-de-lo-que-vigilaba`.
+    fecha = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
     if arguments.get("fecha_raw"):
         rng = resolve_date_range(arguments["fecha_raw"], now_iso=now_iso_provider(), tz=DEFAULT_TZ)
         if rng:

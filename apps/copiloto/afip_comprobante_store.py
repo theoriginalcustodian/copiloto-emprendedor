@@ -114,13 +114,35 @@ class AfipComprobanteStore:
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
+                f"SELECT id, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
                 f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
                 f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s ORDER BY created_at DESC LIMIT %s",
                 (self._cid, cuit, int(limite)))
             filas = cur.fetchall()
-        return [self._fila(f) for f in filas if f]
+        return [self._fila(f, con_id=True) for f in filas if f]
+
+    def detalle_por_id(self, comprobante_id: int) -> dict | None:
+        """Un comprobante por su **id de fila**, que es el único identificador que la app puede usar
+        para direccionarlo.
+
+        Existe porque faltaba: el listado devolvía comprobantes **sin id**, así que la pantalla de
+        detalle sólo podía abrirse pasando el objeto entero, y nada que viniera de afuera —un ítem de
+        «actividad reciente», un link, una notificación— tenía cómo apuntar a una factura. Lo cazó
+        FRONTEND al cablear el tap: `"factura:42"` no ruteaba a ningún lado.
+
+        Ojo con el otro espacio de ids: `/afip/facturas/{factura_id}` toma el **id del workflow** de
+        emisión (`presu-12`, un uuid), que es otra cosa — ese sirve mientras se emite; éste, después.
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT id, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
+                f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
+                f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
+                f"WHERE cliente_id=%s AND id=%s", (self._cid, comprobante_id))
+            row = cur.fetchone()
+        return self._fila(row, con_id=True)
 
     def marcar_anulada(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                        nro_nota_credito: int) -> None:
@@ -133,12 +155,18 @@ class AfipComprobanteStore:
                 (ESTADO_ANULADA, nro_nota_credito, self._cid, cuit, tipo_cbte, punto_venta, nro))
 
     @staticmethod
-    def _fila(row) -> dict | None:
+    def _fila(row, *, con_id: bool = False) -> dict | None:
+        """`con_id` es opt-in a propósito: las consultas que alimentan las activities de Temporal
+        siguen devolviendo exactamente las mismas claves que antes. Agregar `id` a TODAS habría
+        cambiado el payload que viaja por el workflow —y el shape del payload es parte del historial
+        de ejecución—, para beneficiar sólo a las dos consultas que la app consume."""
         if not row:
             return None
         campos = ("cuit", "tipo_cbte", "punto_venta", "nro", "cae", "cae_vto", "fecha_emision",
                   "total", "estado", "pdf_url", "cbte_asoc_nro", "drive_file_id", "drive_link",
                   "doc_tipo", "doc_nro", "receptor_nombre")
+        if con_id:
+            campos = ("id",) + campos
         d = dict(zip(campos, row))
         # `total` viene como Decimal de psycopg2: a str para que sea serializable por Temporal sin
         # perder precisión (float rompería centavos).

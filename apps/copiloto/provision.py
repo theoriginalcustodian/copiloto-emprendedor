@@ -14,9 +14,10 @@ Pliega en UN script (paga la deuda M2 documentada en mp_indexes.sql — "provisi
      que `seed.py` la cree con el schema genérico equivocado sobre una DB fresca) y su DDL bespoke acá
      es la ÚNICA fuente de verdad. El filtro `!= TENANTS_TABLE` del pase estándar queda como defensa.
 
-  3. Los índices únicos de `mp_indexes.sql` (M2): sin ellos, `MpCredentialStore`/`MpPaymentStore`
-     fallan en runtime con "no unique or exclusion constraint matching ON CONFLICT". Se pliegan acá
-     para que UN solo comando deje todo listo.
+  3. **TODOS** los `.sql` de esta carpeta, por descubrimiento (`_apply_sql_files`): índices únicos
+     que los `ON CONFLICT` exigen, índices de listado, y migraciones aditivas. Sin ellos hay fallos
+     en runtime ("no unique or exclusion constraint matching ON CONFLICT") y, peor, deduplicaciones
+     que dejan de existir sin protestar. Se pliegan acá para que UN solo comando deje todo listo.
 
 Idempotente: corrible N veces sin side effects (CREATE TABLE/INDEX IF NOT EXISTS, ENABLE RLS repetible,
 policy con DROP+CREATE, GRANT repetible). Uso (VPS, venv con psycopg2, env fusion-pg.env cargado):
@@ -40,8 +41,7 @@ from provision_tables import provision as _provision_standard  # noqa: E402  (me
 SCHEMA = "uc_factory"
 TENANTS_TABLE = "tenants"
 UC_TABLES_JSON = APP_DIR / "uc_tables.json"
-MP_INDEXES_SQL = APP_DIR / "mp_indexes.sql"
-AFIP_INDEXES_SQL = APP_DIR / "afip_indexes.sql"
+# Los `.sql` NO se listan acá a propósito — se descubren con un glob. Ver `_apply_sql_files`.
 
 
 def _provision_tenants(conn) -> None:
@@ -99,23 +99,134 @@ def _ensure_afip_activo_column(conn) -> None:
     print(f"OK {SCHEMA}.afip_credentials.activo (columna aditiva boolean, idempotente)", flush=True)
 
 
-def _apply_mp_indexes(conn) -> None:
-    """Pliega mp_indexes.sql (paga M2): índices únicos que el ON CONFLICT de los stores MP exige.
-    Ambas sentencias usan IF NOT EXISTS → idempotente. Un solo execute (sin params) corre las 2 DDL."""
-    sql = MP_INDEXES_SQL.read_text(encoding="utf-8")
+def _ensure_presupuestos_cliente_ref_column(conn) -> None:
+    """Migración aditiva de `copiloto_presupuestos.cliente_ref bigint` (contrato clientes §5).
+
+    Mismo criterio y misma razón que las dos de arriba: corre ANTES del pase estándar porque su guard
+    anti-colisión aborta si una columna declarada en `uc_tables.json` falta en la tabla viva.
+
+    🔴 **Y lo que NO hace, que es el punto de la §5:** los seis campos `receptor_*` de esta tabla se
+    siguen escribiendo exactamente igual. `cliente_ref` es para NAVEGAR (la ficha del cliente muestra
+    sus presupuestos); la copia desnormalizada es el REGISTRO. **No son datos duplicados.** El
+    `receptor_domicilio` de una factura emitida no es una copia perezosa del domicilio del cliente:
+    es el domicilio que se declaró ante ARCA ese día, y si el cliente se muda, la factura de hace un
+    año no puede cambiar. Queda escrito acá —y no sólo en el contrato, que se archiva— porque el
+    próximo refactor va a ver seis campos repetidos y va a querer «normalizarlos»; ahí se perdería el
+    domicilio declarado de todas las facturas viejas.
+    """
     cur = conn.cursor()
-    cur.execute(sql)
-    print(f"OK índices MP aplicados desde {MP_INDEXES_SQL.name}", flush=True)
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_presupuestos "
+                f"ADD COLUMN IF NOT EXISTS cliente_ref bigint;")
+    print(f"OK {SCHEMA}.copiloto_presupuestos.cliente_ref (columna aditiva bigint, idempotente)",
+          flush=True)
 
 
-def _apply_afip_indexes(conn) -> None:
-    """Pliega afip_indexes.sql: los únicos que exigen los ON CONFLICT de los stores AFIP + el dedup de
-    comprobantes. Mismo criterio que _apply_mp_indexes — se aplica ACÁ y no a mano, para no repetir la
-    deuda M2 (provisionar sin el SQL deja los upserts rotos en runtime)."""
-    sql = AFIP_INDEXES_SQL.read_text(encoding="utf-8")
+def _ensure_clientes_homonimo_column(conn) -> None:
+    """Migración aditiva de `copiloto_clientes.homonimo integer NOT NULL DEFAULT 0`.
+
+    Es el discriminador que le da salida al humano sin aflojarle nada al backfill: entra en el índice
+    único por nombre, el backfill inserta siempre con `0` (así sigue colapsando los cinco presupuestos
+    de la misma panadería) y un alta que el emprendedor confirmó como *«es otro Juan Pérez»* entra con
+    `1`, `2`, `3`… Ver `clientes_migrations.sql`.
+
+    `DEFAULT 0` es el valor correcto para las filas que ya existían: eran la única con ese nombre.
+    Corre ANTES del pase estándar, por la misma razón que las otras `_ensure_*`.
+    """
     cur = conn.cursor()
-    cur.execute(sql)
-    print(f"OK índices AFIP aplicados desde {AFIP_INDEXES_SQL.name}", flush=True)
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
+                f"ADD COLUMN IF NOT EXISTS homonimo integer NOT NULL DEFAULT 0;")
+    print(f"OK {SCHEMA}.copiloto_clientes.homonimo (columna aditiva integer, idempotente)",
+          flush=True)
+
+
+def _ensure_clientes_email_telefono(conn) -> None:
+    """`copiloto_clientes.email` y `.telefono`, **y la migración del `contacto` que ya existía**.
+
+    Dos campos y no uno de texto libre porque **el destino los usa distinto**: el PDF de la factura
+    sale por WhatsApp y el presupuesto por mail. Con un campo único, cada envío tendría que adivinar
+    qué guardó el emprendedor — y adivinar justo al mandar es el peor momento: o no se manda, o se
+    manda a un destino que no existe.
+
+    **La migración es determinista** y usa la misma regla que `cliente_store.partir_contacto`: el
+    token con `@` va a `email`, el resto a `telefono`; sin `@`, todo a `telefono`. Se aplica **sólo
+    a las filas que todavía no se migraron** (`email = '' AND telefono = ''`), así que es idempotente
+    y no pisa lo que el emprendedor haya editado después.
+
+    ⚠️ **DEUDA DELIBERADA Y VISIBLE:** la columna `contacto` **no se borra acá**. Un `DROP COLUMN` es
+    irreversible y esto corre en cada deploy; quiero una corrida en producción con los dos campos
+    vivos antes de tirar el original. **Propietario: BACKEND. Condición de pago: el primer deploy
+    posterior a que FRONTEND cierre su hito 9** (los dos campos en alta, edición y ficha). Mientras
+    tanto `contacto` queda **huérfana**: nadie la lee ni la escribe — `_COLS` del store ya no la
+    incluye—, así que no puede divergir en silencio.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
+                f"ADD COLUMN IF NOT EXISTS email text NOT NULL DEFAULT '';")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
+                f"ADD COLUMN IF NOT EXISTS telefono text NOT NULL DEFAULT '';")
+
+    cur.execute(f"SELECT count(*) FROM {SCHEMA}.copiloto_clientes "
+                f"WHERE contacto <> '' AND email = '' AND telefono = ''")
+    pendientes = int(cur.fetchone()[0])
+    cur.execute(f"""
+        UPDATE {SCHEMA}.copiloto_clientes SET
+            email    = coalesce((SELECT t FROM regexp_split_to_table(contacto, '\\s+') AS t
+                                  WHERE t LIKE '%@%' LIMIT 1), ''),
+            telefono = coalesce((SELECT string_agg(t, ' ')
+                                   FROM regexp_split_to_table(contacto, '\\s+') AS t
+                                  WHERE t NOT LIKE '%@%'), '')
+         WHERE contacto <> '' AND email = '' AND telefono = ''
+    """)
+    migradas = cur.rowcount
+
+    # El control que la propia migración pide: si había filas con contacto y después NINGUNA tiene
+    # email ni telefono, la migración perdió datos. Se ve acá o no se ve nunca.
+    cur.execute(f"SELECT count(*) FROM {SCHEMA}.copiloto_clientes "
+                f"WHERE contacto <> '' AND email = '' AND telefono = ''")
+    huerfanas = int(cur.fetchone()[0])
+    if huerfanas:
+        raise RuntimeError(f"migración de contacto→email/telefono: {huerfanas} filas quedaron con "
+                           f"contacto y sin ninguno de los dos campos nuevos — se perdió el dato")
+    print(f"OK {SCHEMA}.copiloto_clientes.email/.telefono "
+          f"(pendientes={pendientes} migradas={migradas} huérfanas=0)", flush=True)
+
+
+def _apply_sql_files(conn) -> list[str]:
+    """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
+
+    Acá había dos funciones con dos nombres de archivo hardcodeados (`mp_indexes.sql` y
+    `afip_indexes.sql`). Para cuando lo encontré había **siete** `.sql` en la carpeta y **cinco no los
+    aplicaba nadie**: `gastos_migrations`, `presupuestos_migrations`, `clientes_migrations`,
+    `actividad_indexes` y `afip_migrations` estaban puestos a mano, uno por uno, desde una sesión.
+
+    **Por qué era grave y no cosmético.** En la base viva los índices están —los apliqué yo—, así que
+    nada fallaba ni iba a fallar: el agujero sólo aparece en una base **nueva** (otro entorno, un
+    restore, el día que este producto se instale en otro lado). Y ahí no aparece como un error. Sin
+    `copiloto_clientes_tenant_doc_ux`, el `except pgcode 23505` de `ClienteStore.crear` **nunca se
+    dispara**: el alta duplicada entra, devuelve `201`, y toda la deduplicación del contrato §3.3 deja
+    de existir en silencio. El instrumento no falla — confirma.
+
+    Por descubrimiento y no con una lista, para que el archivo número ocho no vuelva a quedarse
+    afuera: la lista hay que acordarse de actualizarla, el `glob` no.
+
+    **Van DESPUÉS del pase estándar** porque un `CREATE INDEX` necesita su tabla creada. Una columna
+    aditiva sobre una tabla que YA existe no se puede resolver acá —el guard anti-colisión aborta
+    antes—: para eso están los `_ensure_*_column`, que corren antes.
+
+    Idempotente: todas las sentencias son `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`.
+    """
+    aplicados = []
+    cur = conn.cursor()
+    for archivo in sorted(APP_DIR.glob("*.sql")):
+        cur.execute(archivo.read_text(encoding="utf-8"))
+        aplicados.append(archivo.name)
+        print(f"OK SQL aplicado: {archivo.name}", flush=True)
+    if not aplicados:
+        # Un vacío del propio instrumento no es un hallazgo: si el glob no encuentra nada, lo roto es
+        # la ruta, no el repo. Sin este grito, «0 archivos» se lee como «no había nada que aplicar».
+        raise RuntimeError(f"ningún .sql en {APP_DIR} — la ruta está mal, "
+                           f"no es que no haya migraciones")
+    return aplicados
 
 
 def provision(conn) -> dict:
@@ -126,12 +237,14 @@ def provision(conn) -> dict:
     _ensure_reply_card_column(conn)   # ANTES del pase estándar: su guard anti-colisión aborta si `card` (ya
     #                                   declarada en uc_tables.json) falta en la tabla viva. Ver la función.
     _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
+    _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
+    _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
+    _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
-    _apply_mp_indexes(conn)
-    _apply_afip_indexes(conn)
+    sql_aplicados = _apply_sql_files(conn)
     return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,
-            "mp_indexes_applied": True, "afip_indexes_applied": True}
+            "sql_aplicados": sql_aplicados}
 
 
 def main() -> None:

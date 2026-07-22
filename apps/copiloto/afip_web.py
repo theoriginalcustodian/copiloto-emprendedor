@@ -268,6 +268,33 @@ def create_afip_app(
             comprobante_store_factory(cliente_id).listar, cuit=cuit, limite=min(int(limite), 200))
         return {"comprobantes": filas}
 
+    # ⚠️ ORDEN: va DESPUÉS de `/afip/comprobantes`. Hoy no colisiona con `.../anular` porque aquél es
+    # POST y éste GET, pero si alguien agrega un `GET /afip/comprobantes/loquesea` debajo de esta
+    # línea, el texto va a caer acá y morir con `422 int_parsing`. Mismo guard que en `gastos_web.py`
+    # y `clientes_web.py` — el que agregue el primero es el que no va a saber.
+    @app.get("/afip/comprobantes/{comprobante_id}")
+    async def detalle_comprobante(comprobante_id: int,
+                                  cliente_id: str = Depends(require_tenant)) -> dict:
+        """El detalle de UN comprobante por su **id de fila** — el único identificador con el que la
+        app puede direccionarlo desde afuera (un ítem de «actividad reciente», un link, una
+        notificación).
+
+        Lo pidió FRONTEND al cablear el tap: `"factura:42"` no ruteaba a ningún lado porque el listado
+        devolvía comprobantes **sin id** y el detalle sólo se abría pasando el objeto entero.
+
+        Ojo con el otro espacio de ids: `/afip/facturas/{factura_id}` toma el **id del workflow** de
+        emisión (`presu-12`, un uuid). Ése sirve MIENTRAS se emite; éste, DESPUÉS.
+
+        **404 si es de otro tenant, no 403:** confirmar que ese id existe ya es filtrar información.
+        """
+        if comprobante_store_factory is None:
+            raise HTTPException(503, detail="comprobantes no disponible")
+        fila = await asyncio.to_thread(
+            comprobante_store_factory(cliente_id).detalle_por_id, comprobante_id)
+        if fila is None:
+            raise HTTPException(status_code=404, detail="comprobante no encontrado")
+        return fila
+
     @app.post("/afip/comprobantes/anular")
     async def anular(body: AnularBody, cliente_id: str = Depends(require_tenant)) -> dict:
         """Emite la nota de crédito que neutraliza la factura.

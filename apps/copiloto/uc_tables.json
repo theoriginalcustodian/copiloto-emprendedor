@@ -84,6 +84,7 @@
     "sheet_fila text",
     "reemplaza_a bigint",
     "factura_id text",
+    "cliente_ref bigint",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuesto_items": [
@@ -104,6 +105,21 @@
     "descripcion text NOT NULL DEFAULT ''",
     "origen text NOT NULL DEFAULT 'manual'",
     "monto_sugerido numeric",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_clientes": [
+    "nombre text NOT NULL DEFAULT ''",
+    "nombre_normalizado text NOT NULL DEFAULT ''",
+    "doc_tipo integer",
+    "doc_nro text",
+    "condicion_iva integer",
+    "domicilio text NOT NULL DEFAULT ''",
+    "contacto text NOT NULL DEFAULT ''",
+    "email text NOT NULL DEFAULT ''",
+    "telefono text NOT NULL DEFAULT ''",
+    "notas text NOT NULL DEFAULT ''",
+    "origen text NOT NULL DEFAULT 'manual'",
+    "homonimo integer NOT NULL DEFAULT 0",
     "created_at timestamptz DEFAULT now()"
   ],
   "afip_comprobantes": [
