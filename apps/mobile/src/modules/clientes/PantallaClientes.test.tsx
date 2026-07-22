@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 /** Partial mock: sólo la red. `formatearImporte` y las clases de error, REALES. */
 jest.mock('@copiloto/core', () => {
@@ -214,6 +214,25 @@ describe('PantallaClientes', () => {
 
       await waitFor(() => expect(screen.getByTestId('clientes-vacio')).toBeTruthy());
       expect(screen.getByTestId('clientes-nuevo')).toBeTruthy();
+    });
+
+    it('el formulario vive DENTRO del scroll — si no, el teclado le tapa los campos', async () => {
+      // 🔴 Guard estructural, no cosmetico. `CampoTexto` se revela por encima del teclado pidiendoselo
+      // al `ScrollFormulario` via contexto, y el default de ese contexto es **noop**: un campo fuera
+      // del scroll no falla ni avisa, simplemente deja de revelarse. En el glass eso no se degrada a
+      // "un poco peor" — el teclado se dibuja ENCIMA y ademas mata el scroll, asi que el campo queda
+      // inalcanzable. Es un bug que este repo ya pago y que el gate de jsdom no puede ver.
+      await montar();
+      await abrirAltaCon('Kiosco');
+
+      const scroll = screen.getByTestId('clientes-lista');
+      expect(within(scroll).getByTestId('formulario-cliente-nombre-input')).toBeTruthy();
+
+      // 🔴 El control, horneado: `glass-titulo` existe en la pantalla pero VIVE FUERA del scroll (lo
+      // pone `MarcoGlass`). Si `within` lo encontrara, no estaria acotando nada y la asercion de
+      // arriba pasaria con el formulario en cualquier lado — verde y sin significado.
+      expect(within(scroll).queryByTestId('glass-titulo')).toBeNull();
+      expect(screen.getByTestId('glass-titulo')).toBeTruthy();
     });
 
     it('con SOLO el nombre se puede guardar, y no viaja ningun documento', async () => {
