@@ -37,6 +37,11 @@ from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
 # el LLM y lo que la base acepta tienen que ser la MISMA lista o el modelo propone `stock`, el `POST`
 # devuelve 400, y el emprendedor ve fallar algo que el copiloto le ofreció.
 from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # noqa: E402
+# Mismo criterio para clientes. `LIMITES` colisiona con el de gastos y por eso viaja con alias: son dos
+# tablas con dos topes distintos, y el día que uno cambie, importar el que no es recortaría un nombre a
+# 200 caracteres porque así lo pide la columna de OTRA tabla.
+from cliente_store import (LIMITES as LIMITES_CLIENTE, es_consumidor_final,  # noqa: E402
+                          inferir_doc_tipo, normalizar_documento)
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 
@@ -94,6 +99,32 @@ REGISTRAR_GASTO_SCHEMA = {"type": "function", "function": {
                                                        "Omitilo si no lo dijo: se asume hoy."}},
         "required": ["monto"]}}}
 
+REGISTRAR_CLIENTE_SCHEMA = {"type": "function", "function": {
+    "name": "registrar_cliente",
+    "description": "Guarda un cliente nuevo que el emprendedor dictó ('anotá un cliente, Panadería "
+                   "Los Tilos, CUIT 30-71234567-8'). NO lo guarda: arma una propuesta para que él la "
+                   "revise y confirme. Con el NOMBRE solo alcanza — no le pidas el CUIT si no lo dijo.",
+    "parameters": {"type": "object", "properties": {
+        "nombre": {"type": "string", "description": "cómo se llama el cliente o su negocio"},
+        "doc_nro": {"type": "string", "description": "CUIT o DNI, sólo si lo dictó; los dígitos tal "
+                                                     "como los dijo"},
+        "domicilio": {"type": "string", "description": "la dirección, si la dijo"},
+        "email": {"type": "string", "description": "el mail, si lo dijo"},
+        "telefono": {"type": "string", "description": "el teléfono, si lo dijo"},
+        "notas": {"type": "string", "description": "cualquier otra cosa que haya dicho de este cliente"}},
+        "required": ["nombre"]}}}
+
+CONSULTAR_CLIENTE_SCHEMA = {"type": "function", "function": {
+    "name": "consultar_cliente",
+    "description": "Responde qué le compró un cliente: cuánto facturó, cuántos presupuestos tiene y "
+                   "cuáles fueron sus últimas operaciones. Usala cuando pregunte por UN cliente en "
+                   "particular ('¿cuánto me compró la panadería?', '¿qué le facturé a Pérez?'). "
+                   "Busca por nombre PARCIAL. Es de SOLO LECTURA.",
+    "parameters": {"type": "object", "properties": {
+        "nombre": {"type": "string", "description": "el nombre o parte del nombre, como lo dijo el "
+                                                    "emprendedor ('la panadería', 'Pérez')"}},
+        "required": ["nombre"]}}}
+
 # `registrar_gasto` NO está en WRITE_TOOLS, y no es un descuido: **no escribe nada**. Devuelve una
 # propuesta que la app pinta como card editable, y el `POST /gastos` lo dispara el emprendedor al tocar
 # Guardar. Meterla en WRITE_TOOLS la mandaría al confirm-gate de sí/no, que es justo el mecanismo que el
@@ -136,7 +167,7 @@ def _required_of(tool_name: str) -> list:
 
 def build_tool_catalog() -> list[dict]:
     schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA,
-               REGISTRAR_GASTO_SCHEMA]
+               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA, CONSULTAR_CLIENTE_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
@@ -144,7 +175,10 @@ def build_tool_catalog() -> list[dict]:
 
 # consultar_actividad NO va en WRITE_TOOLS a propósito: es read puro (recall + resumen) → sin gate HITL.
 TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": ("mp",),
-              "consultar_actividad": ("activity",), "registrar_gasto": ("gasto",)}
+              "consultar_actividad": ("activity",), "registrar_gasto": ("gasto",),
+              # Ninguna de las dos va en WRITE_TOOLS: `registrar_cliente` PROPONE (el POST lo dispara
+              # el emprendedor al tocar Guardar) y `consultar_cliente` es read puro.
+              "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -390,7 +424,125 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
         artifact=Artifact(kind="gasto_propuesto", data=gasto))
 
 
-def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None):
+def _run_registrar_cliente(arguments, ctx, idem_key):
+    """Propone un cliente dictado. NO persiste — mismo patrón exacto que `registrar_gasto`.
+
+    **Con el nombre solo alcanza, y eso es deliberado.** El contrato §7 lo dice y el DoD lo mide: si
+    esta tool exigiera el CUIT, el camino por voz sería más estricto que el formulario, y el
+    emprendedor que dicta *«anotá a la panadería de la esquina»* —el caso más común— no podría
+    guardarlo. Exigir de más en la puerta de entrada es el tapón que este repo tiene prohibido.
+
+    El documento **no se descarta si viene raro**: viaja igual, con `doc_tipo` en null y un aviso.
+    Whisper transcribe mal los números largos, y un CUIT dictado que no da 11 dígitos es justamente
+    el que hay que mostrarle para que lo corrija. Borrarlo en silencio haría desaparecer el error
+    junto con el dato, y el alta saldría "bien" con un cliente sin CUIT que él creyó haber cargado.
+    """
+    nombre = str(arguments.get("nombre") or "").strip()[:LIMITES_CLIENTE["nombre"]]
+    if not nombre:
+        # `ok` y no `error`: no falló nada, falta el único dato obligatorio. Con `error` el loop se
+        # disculpa; con esto puede preguntarlo y seguir.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Falta el nombre. Preguntale cómo se llama el "
+                                                 "cliente o su negocio."})
+
+    doc = normalizar_documento(arguments.get("doc_nro"))[:LIMITES_CLIENTE["doc_nro"]]
+    doc_tipo = inferir_doc_tipo(doc) if doc else None
+    if es_consumidor_final(doc_tipo):
+        doc_tipo, doc = None, ""      # §3.1: un cliente NUNCA es 99 (no debería llegar; barato igual)
+
+    def recortar(clave: str) -> str:
+        return str(arguments.get(clave) or "").strip()[:LIMITES_CLIENTE[clave]]
+
+    cliente = {"nombre": nombre, "doc_tipo": doc_tipo, "doc_nro": doc or None,
+               "condicion_iva": None, "domicilio": recortar("domicilio") or None,
+               "email": recortar("email") or None, "telefono": recortar("telefono") or None,
+               "notas": recortar("notas") or None, "origen": "voz"}
+
+    aviso = ""
+    if doc and doc_tipo is None:
+        aviso = (f" OJO: dictó «{doc}» como documento y eso no tiene forma de CUIT (11 dígitos) ni "
+                 f"de DNI (7 u 8). Pedile que lo confirme; puede corregirlo en la tarjeta.")
+    return ToolResult(
+        tool_call_id=idem_key, is_write=False, status="ok",
+        observation={"result": f"Propuse el cliente «{nombre}» y se lo muestro en una tarjeta para "
+                               f"que la revise. TODAVÍA NO está guardado: decíselo en una línea "
+                               f"corta y pedile que confirme o corrija.{aviso}"},
+        artifact=Artifact(kind="cliente_propuesto", data=cliente))
+
+
+def _plata(monto: str) -> str:
+    """`"123456.00"` → `"$123.456,00"`. Miles con punto y decimales con coma, que es como se escribe
+    la plata acá — y como el LLM la va a leer en voz alta."""
+    entero, _, decimales = str(monto).partition(".")
+    negativo = entero.startswith("-")
+    miles = f"{int(entero.lstrip('-') or 0):,}".replace(",", ".")
+    return f"{'-' if negativo else ''}${miles},{(decimales or '00')[:2]:0<2}"
+
+
+def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
+    """«¿Cuánto me compró la panadería?» — READ puro, sin gate. **Es la tool que justifica la función.**
+
+    🔴 **Si el nombre coincide con varios, NO elige: devuelve la lista para que el agente pregunte.**
+    Contestar el número del cliente equivocado es peor que preguntar, y es peor de una manera
+    particular: el emprendedor no tiene cómo notarlo. Un total plausible del cliente que no era se
+    parece exactamente a la respuesta correcta.
+    """
+    if cliente_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo consultar la cartera ahora mismo"})
+    nombre = str(arguments.get("nombre") or "").strip()
+    if not nombre:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Preguntale de qué cliente quiere saber."})
+
+    store = cliente_store_factory(ctx.cliente_id)
+    # 6 y no 5: con el tope justo en lo que se muestra, «hay 5» y «hay más de 5» se ven igual.
+    candidatos, _ = store.listar(q=nombre, limit=6)
+    if not candidatos:
+        return ToolResult(
+            tool_call_id=idem_key, is_write=False, status="ok",
+            observation={"result": f"No encontré ningún cliente que se llame «{nombre}». Puede ser "
+                                   f"que todavía no esté cargado, o que figure con otro nombre: "
+                                   f"preguntale cómo lo tiene anotado."})
+    if len(candidatos) > 1:
+        nombres = ", ".join(f"«{c['nombre']}»" for c in candidatos[:5])
+        cola = " (y hay más)" if len(candidatos) > 5 else ""
+        return ToolResult(
+            tool_call_id=idem_key, is_write=False, status="ok",
+            observation={"result": f"Hay varios que coinciden con «{nombre}»: {nombres}{cola}. "
+                                   f"Preguntale a cuál se refiere. NO elijas vos.",
+                         "candidatos": [{"id": c["id"], "nombre": c["nombre"]} for c in candidatos]})
+
+    resumen = store.resumen_operaciones(candidatos[0]["id"])
+    if resumen is None:      # se borró entre el listado y el detalle; no es un error del emprendedor
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": f"No pude leer la ficha de «{nombre}» ahora mismo."})
+
+    ficha = resumen["cliente"]
+    partes = []
+    if resumen["facturas_atribuibles"]:
+        partes.append(f"facturado {_plata(resumen['facturado'])} en {resumen['facturas']} "
+                      f"factura(s)")
+        if resumen["notas_credito"]:
+            partes.append(f"{resumen['notas_credito']} nota(s) de crédito YA DESCONTADAS del total")
+    else:
+        # 🔴 El punto de toda la tool. Sin documento no hay forma de atar las facturas a este cliente,
+        # y decir «0» sería afirmar que no compró. El LLM tiene que poder decir «no lo puedo saber».
+        partes.append("de facturas NO tengo cómo saberlo: este cliente no tiene CUIT/DNI cargado y "
+                      "las facturas se atan por documento. NO digas que no compró — decí que "
+                      "falta el documento y ofrecé cargarlo")
+    partes.append(f"{resumen['presupuestos']} presupuesto(s) por {_plata(resumen['presupuestado'])}")
+
+    ultimas = "; ".join(f"{o['fecha']} {o['detalle']} {_plata(o['monto'])}"
+                        for o in resumen["operaciones"]) or "sin operaciones registradas"
+    return ToolResult(
+        tool_call_id=idem_key, is_write=False, status="ok",
+        observation={"result": f"«{ficha['nombre']}»: {'; '.join(partes)}. Últimas: {ultimas}.",
+                     "cliente": ficha, "resumen": resumen})
+
+
+def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None,
+                       cliente_store_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad."""
@@ -419,6 +571,11 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             # ── 1ra clase: registrar_gasto (PROPONE, no persiste → sin gate; ver _FIRST_CLASS_WRITES) ─
             if kind == "gasto":
                 return _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider)
+            # ── 1ra clase: clientes por voz (PROPONE / READ puro → sin gate, hito 5) ──────────────
+            if kind == "cliente":
+                return _run_registrar_cliente(arguments, ctx, idem_key)
+            if kind == "cliente_consulta":
+                return _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory)
 
             # ── servicio (Composio vía módulo plug-in) ────────────────────────────────────────────
             _, mod, op = entry

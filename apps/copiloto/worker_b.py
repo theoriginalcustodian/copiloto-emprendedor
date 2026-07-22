@@ -50,6 +50,7 @@ from afip_factura_activities import (
     set_factura_deps)
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
+from cliente_store import ClienteStore
 from afip_onboarding_activities import (
     dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
 from afip_onboarding_workflow import AfipOnboardingWorkflow
@@ -139,6 +140,14 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
+    # `consultar_cliente` (hito 5) lee la cartera del tenant. La factory se INYECTA con el
+    # `cliente_id` per-request —igual que las de MP y AFIP— y nunca sale de env: el `ClienteStore`
+    # fija el tenant en el constructor y filtra con él en cada query, que es la barrera efectiva de
+    # aislamiento de este repo (regla 7). Un store construido una vez y compartido entre turnos
+    # respondería «cuánto me compró» con la cartera de otro emprendedor.
+    def _cliente_store_factory(cliente_id: str):
+        return ClienteStore(conn_factory, cliente_id)
+
     # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
     # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
     # (name + description + parameters) ya describen cada tool (auditoría 2026-07-05: 0 matiz de negocio único
@@ -151,7 +160,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     system_prompt_react = SYSTEM_PROMPT_REACT
     llm = build_llm()
     tool_executor = tool_catalog.make_tool_executor(
-        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm)
+        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm,
+        cliente_store_factory=_cliente_store_factory)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,

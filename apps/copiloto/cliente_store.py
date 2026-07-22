@@ -11,6 +11,8 @@ import re
 import unicodedata
 from typing import Callable
 
+from afip_rules import NOTAS_CREDITO
+
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_clientes"
 
@@ -454,6 +456,98 @@ class ClienteStore:
                 parte["creados" if nuevo else "ya_estaban"] += 1
 
         return parte
+
+    # ── hito 5: lo que este cliente compró (lo que consume `consultar_cliente`) ───────────────────
+
+    def resumen_operaciones(self, cliente: int, *, ultimas: int = 5) -> dict | None:
+        """Cuánto compró y qué fue lo último. `None` si el cliente no existe o es de otro tenant.
+
+        **Las dos fuentes se atan distinto, y eso decide la forma de la respuesta:**
+
+        - Los **presupuestos** se atan por `cliente_ref` (§5), que llena el backfill.
+        - Las **facturas** se atan por `(doc_tipo, doc_nro)` — `afip_comprobantes` no tiene
+          `cliente_ref` y no se lo agrega: es una tabla viva y probada, y §5 dice que no se
+          refactoriza.
+
+        🔴 **Por eso existe `facturas_atribuibles`.** Un cliente sin documento —el que entró por
+        nombre desde un presupuesto— **no tiene forma de ser atado a una factura**. Devolver `0` ahí
+        sería reportar «no te compró nada» cuando lo cierto es «no lo puedo saber». Es la misma
+        distinción que este repo ya paga cara en otro lado: un vacío del propio instrumento no es un
+        hallazgo. El que responde la pregunta es el LLM, y necesita poder decir *«de facturas no
+        tengo cómo saberlo porque no tiene CUIT cargado»* en vez de afirmar un cero.
+
+        🔴 **La nota de crédito RESTA.** «¿Cuánto me compró?» es plata neta: una venta anulada no es
+        una venta. Sumar los comprobantes sin mirar el tipo infla el total con lo que se devolvió, y
+        es exactamente el bug que ya apareció en la pantalla de actividad (una NC mostrada como plata
+        que entra). Los códigos salen de `afip_rules.NOTAS_CREDITO`, no de memoria.
+        """
+        ficha = self.detalle(cliente)
+        if ficha is None:
+            return None
+
+        doc = normalizar_documento(ficha.get("doc_nro"))
+        doc_tipo = ficha.get("doc_tipo")
+        atribuible = bool(doc) and doc_tipo is not None
+        resumen = {"cliente": ficha, "facturas_atribuibles": atribuible,
+                   "facturas": 0, "notas_credito": 0, "facturado": "0.00",
+                   "presupuestos": 0, "presupuestado": "0.00", "operaciones": []}
+
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT count(*), coalesce(sum(total), 0), max(fecha) "
+                        f"FROM {_SCHEMA}.copiloto_presupuestos "
+                        f"WHERE cliente_id = %s AND cliente_ref = %s", (self._cliente_id, cliente))
+            cuantos, suma, _ = cur.fetchone()
+            resumen["presupuestos"] = int(cuantos)
+            resumen["presupuestado"] = f"{suma:.2f}"
+
+            cur.execute(f"SELECT fecha, concepto, total FROM {_SCHEMA}.copiloto_presupuestos "
+                        f"WHERE cliente_id = %s AND cliente_ref = %s "
+                        f"ORDER BY fecha DESC, id DESC LIMIT %s",
+                        (self._cliente_id, cliente, ultimas))
+            operaciones = [{"fecha": f.isoformat() if f else None, "tipo": "presupuesto",
+                            "detalle": c or "presupuesto", "monto": f"{t:.2f}", "signo": "presupuesto"}
+                           for f, c, t in cur.fetchall()]
+
+            if atribuible:
+                # El documento se compara NORMALIZADO de los dos lados. Hoy `afip_comprobantes` lo
+                # guarda sólo con dígitos (medido: 24/24 filas), así que el `regexp_replace` no cambia
+                # nada — y está igual, porque si un día entra un CUIT con guiones por otra puerta, sin
+                # esto el join da **cero filas y ningún error**: el cliente aparecería sin facturas y
+                # nadie sabría por qué.
+                comunes = (self._cliente_id, doc_tipo, doc)
+                cur.execute(
+                    f"SELECT count(*) FILTER (WHERE tipo_cbte NOT IN %s), "
+                    f"       count(*) FILTER (WHERE tipo_cbte IN %s), "
+                    f"       coalesce(sum(total) FILTER (WHERE tipo_cbte NOT IN %s), 0) "
+                    f"     - coalesce(sum(total) FILTER (WHERE tipo_cbte IN %s), 0) "
+                    f"  FROM {_SCHEMA}.afip_comprobantes "
+                    f" WHERE cliente_id = %s AND cae IS NOT NULL AND doc_tipo = %s "
+                    f"   AND regexp_replace(coalesce(doc_nro, ''), '\\D', '', 'g') = %s",
+                    (NOTAS_CREDITO, NOTAS_CREDITO, NOTAS_CREDITO, NOTAS_CREDITO, *comunes))
+                facturas, notas, neto = cur.fetchone()
+                resumen["facturas"] = int(facturas)
+                resumen["notas_credito"] = int(notas)
+                resumen["facturado"] = f"{neto:.2f}"
+
+                cur.execute(
+                    f"SELECT fecha_emision, tipo_cbte, punto_venta, nro, total "
+                    f"  FROM {_SCHEMA}.afip_comprobantes "
+                    f" WHERE cliente_id = %s AND cae IS NOT NULL AND doc_tipo = %s "
+                    f"   AND regexp_replace(coalesce(doc_nro, ''), '\\D', '', 'g') = %s "
+                    f" ORDER BY fecha_emision DESC, id DESC LIMIT %s", (*comunes, ultimas))
+                for fecha, tipo_cbte, pv, nro, total in cur.fetchall():
+                    es_nc = int(tipo_cbte) in NOTAS_CREDITO
+                    operaciones.append({
+                        "fecha": fecha.isoformat() if fecha else None,
+                        "tipo": "nota_credito" if es_nc else "factura",
+                        "detalle": f"{'Nota de crédito' if es_nc else 'Factura'} {pv}-{nro}",
+                        "monto": f"{total:.2f}", "signo": "sale" if es_nc else "entra"})
+
+        # Las dos listas ya vienen ordenadas de su tabla; se mezclan y se corta. No hace falta cursor:
+        # son ≤ 2·`ultimas` items en memoria, no una lista paginada que crece por arriba.
+        operaciones.sort(key=lambda o: o["fecha"] or "", reverse=True)
+        resumen["operaciones"] = operaciones[:ultimas]
+        return resumen
 
     def duplicados_probables(self) -> list[dict]:
         """El `[ASSUMED_PENDING_VERIFY]` de §3.4: **cuántos duplicados reales genera esto**.
