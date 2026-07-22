@@ -88,6 +88,33 @@ def es_consumidor_final(doc_tipo) -> bool:
     return doc_tipo is not None and int(doc_tipo) == DOC_CONSUMIDOR_FINAL
 
 
+def nombre_derivado(nombre: str, doc_tipo, doc_nro) -> str | None:
+    """Con qué nombre entra a la cartera algo que ya se emitió — o `None` si **no genera cliente**.
+
+    Es una función pura y separada del store a propósito: acá viven las tres decisiones del backfill
+    que hay que poder leer y testear sin una base de datos delante.
+
+    1. 🔴 **`doc_tipo = 99` no genera cliente, tenga nombre o no.** El chequeo va PRIMERO, antes de
+       mirar el nombre, y no es teórico: medido contra los datos reales del operador, hay
+       comprobantes a consumidor final cuyo `receptor_nombre` dice literalmente *«Consumidor Final»*.
+       Con el chequeo después de la caída a nombre, esas ventas crearían un cliente llamado
+       «Consumidor Final» — el mismo registro fantasma que §3.2 existe para evitar, entrando por la
+       puerta del nombre en vez de la del documento. **23 de los 24 comprobantes reales son 99.**
+    2. Sin nombre y sin documento no hay cliente (§3.3 punto 3).
+    3. Con documento y sin nombre, el nombre ES el documento: `"CUIT 30712345678"`. Feo y honesto —
+       el emprendedor lo reconoce y lo edita. Un cliente sin nombre no se puede mostrar en una lista.
+    """
+    if es_consumidor_final(doc_tipo):
+        return None
+    limpio = (nombre or "").strip()
+    if limpio:
+        return limpio
+    doc = normalizar_documento(doc_nro)
+    if not doc:
+        return None
+    return f"{'CUIT' if int(doc_tipo or 0) == DOC_CUIT else 'DNI'} {doc}"
+
+
 class ClienteDuplicado(Exception):
     """La clave de deduplicación ya es de otro cliente. Trae la **ficha entera del dueño**, no sólo su
     id: el contrato §3.4 pide que la app diga *«ese documento ya es de Juan Pérez — ¿querés abrirlo?»*,
@@ -166,9 +193,16 @@ class ClienteStore:
             row = cur.fetchone()
         return (self._fila(row) if row else None), ("documento" if con_doc else "nombre")
 
+    def _siguiente_homonimo(self, normalizado: str) -> int:
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT coalesce(max(homonimo), 0) + 1 FROM {_TABLE} "
+                        f"WHERE cliente_id = %s AND nombre_normalizado = %s "
+                        f"AND (doc_nro IS NULL OR doc_nro = '')", (self._cliente_id, normalizado))
+            return int(cur.fetchone()[0])
+
     def crear(self, *, nombre: str, doc_tipo=None, doc_nro: str = "", condicion_iva=None,
               domicilio: str = "", contacto: str = "", notas: str = "",
-              origen: str = "manual") -> dict:
+              origen: str = "manual", forzar: bool = False) -> dict:
         """Alta. Si la clave ya existe, levanta `ClienteDuplicado` con la ficha del dueño.
 
         🔴 **El duplicado lo detecta el ÍNDICE, no un `SELECT` previo.** Un «busco y si no está, lo
@@ -177,28 +211,40 @@ class ClienteStore:
         repo ya pagó esa lección con **dos facturas con CAE del mismo trabajo**
         (`memoria/idempotencia-con-un-if-tiene-ventana.md`). Acá se inserta, se choca, y recién
         entonces se lee quién ganó — la atomicidad la pone Postgres, que es el único que puede.
+
+        `forzar=True` es *«sí, ya sé que hay otro con ese nombre, es OTRA persona»*, y **sólo aplica
+        al choque por NOMBRE**. Contra un choque por documento se ignora: dos CUIT iguales no son dos
+        personas, son un error de tipeo, y no existe el caso en el que forzarlo sea correcto. El
+        backfill nunca fuerza — su dedup por nombre es toda su razón de ser.
         """
         normalizado = normalizar_nombre(nombre)
         doc = normalizar_documento(doc_nro)
-        try:
-            with self._conn_factory() as conn, conn.cursor() as cur:
-                cur.execute(
-                    f"INSERT INTO {_TABLE} (cliente_id, nombre, nombre_normalizado, doc_tipo, "
-                    f"doc_nro, condicion_iva, domicilio, contacto, notas, origen) "
-                    f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
-                    (self._cliente_id, nombre, normalizado, doc_tipo, doc, condicion_iva,
-                     domicilio or "", contacto or "", notas or "", origen))
-                return self._fila(cur.fetchone())
-        except Exception as exc:
-            # `23505` es `unique_violation` en SQLSTATE. Se compara el CÓDIGO y no se importa
-            # `psycopg2.errors` para que este módulo siga importándose sin la librería instalada —
-            # los tests de la capa web corren con un store falso y no deberían necesitar la base.
-            if getattr(exc, "pgcode", None) != "23505":
-                raise
-            duenio, por = self._duenio_de_la_clave(doc_tipo, doc, normalizado)
-            raise ClienteDuplicado(duenio, por) from None
+        intentos = 3        # acotado: el reintento sólo cubre la carrera de dos altas forzadas a la
+        #                     vez sobre el mismo nombre. Si pasa 3 veces seguidas no es una carrera,
+        #                     y un loop infinito escondería el problema real.
+        homonimo = 0
+        for intento in range(intentos):
+            try:
+                with self._conn_factory() as conn, conn.cursor() as cur:
+                    cur.execute(
+                        f"INSERT INTO {_TABLE} (cliente_id, nombre, nombre_normalizado, doc_tipo, "
+                        f"doc_nro, condicion_iva, domicilio, contacto, notas, origen, homonimo) "
+                        f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
+                        (self._cliente_id, nombre, normalizado, doc_tipo, doc, condicion_iva,
+                         domicilio or "", contacto or "", notas or "", origen, homonimo))
+                    return self._fila(cur.fetchone())
+            except Exception as exc:
+                # `23505` es `unique_violation` en SQLSTATE. Se compara el CÓDIGO y no se importa
+                # `psycopg2.errors` para que este módulo siga importándose sin la librería instalada
+                # — los tests de la capa web corren con un store falso y no necesitan la base.
+                if getattr(exc, "pgcode", None) != "23505":
+                    raise
+                duenio, por = self._duenio_de_la_clave(doc_tipo, doc, normalizado)
+                if not (forzar and por == "nombre") or intento == intentos - 1:
+                    raise ClienteDuplicado(duenio, por) from None
+                homonimo = self._siguiente_homonimo(normalizado)
 
-    def editar(self, cliente: int, cambios: dict) -> dict | None:
+    def editar(self, cliente: int, cambios: dict, *, forzar: bool = False) -> dict | None:
         """Edición **parcial**: se tocan únicamente las claves presentes en `cambios`.
 
         🔴 La diferencia entre «la clave no vino» y «la clave vino en null» es intencional y la
@@ -228,21 +274,133 @@ class ClienteStore:
             if texto in campos and campos[texto] is None:
                 campos[texto] = ""      # la columna es NOT NULL DEFAULT '' (ver `_fila`)
 
-        sets = ", ".join(f"{k} = %s" for k in campos)
+        # `forzar` vale también acá, y no es simetría gratuita: renombrar «Kiosco 2» a «Kiosco» tiene
+        # el MISMO callejón sin salida que el alta —la app dice «ya existe», el emprendedor sabe que
+        # es otro, y no hay maniobra—. Que una de las dos puertas tenga salida y la otra no es peor
+        # que ninguna: el que la encuentra cerrada supone que la función no existe.
+        for intento in range(3):
+            try:
+                sets = ", ".join(f"{k} = %s" for k in campos)
+                with self._conn_factory() as conn, conn.cursor() as cur:
+                    cur.execute(f"UPDATE {_TABLE} SET {sets} WHERE cliente_id = %s AND id = %s "
+                                f"RETURNING {', '.join(_COLS)}",
+                                (*campos.values(), self._cliente_id, cliente))
+                    row = cur.fetchone()
+                    return self._fila(row) if row else None
+            except Exception as exc:
+                if getattr(exc, "pgcode", None) != "23505":
+                    raise
+                actual = self.detalle(cliente) or {}
+                doc = campos.get("doc_nro", normalizar_documento(actual.get("doc_nro")))
+                tipo = campos.get("doc_tipo", actual.get("doc_tipo"))
+                nombre = campos.get("nombre_normalizado",
+                                    normalizar_nombre(actual.get("nombre") or ""))
+                duenio, por = self._duenio_de_la_clave(tipo, doc, nombre)
+                if not (forzar and por == "nombre") or intento == 2:
+                    raise ClienteDuplicado(duenio, por) from None
+                campos["homonimo"] = self._siguiente_homonimo(nombre)
+
+    # ── hito 2: el backfill ──────────────────────────────────────────────────────────────────────
+
+    def _asegurar_derivado(self, *, nombre: str, doc_tipo, doc_nro: str,
+                           condicion_iva=None, domicilio: str = "",
+                           contacto: str = "") -> tuple[int | None, bool]:
+        """Un cliente derivado. Devuelve `(id, era_nuevo)`.
+
+        🔴 **Un dato cargado a mano gana siempre sobre uno derivado (§4).** Por eso al chocar NO se
+        actualiza nada: se devuelve el id del que ya está. El backfill sólo puede *agregar* clientes,
+        nunca pisar lo que el emprendedor escribió — si pisara, correrlo una segunda vez desharía
+        media tarde de correcciones y ni siquiera se notaría.
+
+        Las tres decisiones de «con qué nombre entra, o si no entra» viven en `nombre_derivado`, que
+        es pura y se testea sin base.
+        """
+        nombre = nombre_derivado(nombre, doc_tipo, doc_nro)
+        if nombre is None:
+            return None, False
+        doc = normalizar_documento(doc_nro)
         try:
+            return self.crear(nombre=nombre, doc_tipo=doc_tipo, doc_nro=doc,
+                              condicion_iva=condicion_iva, domicilio=domicilio,
+                              contacto=contacto, origen="derivado")["id"], True
+        except ClienteDuplicado as choque:
+            return (choque.duenio or {}).get("id"), False
+
+    def derivar_clientes(self) -> dict:
+        """Arma la cartera desde lo que el emprendedor ya emitió (contrato §4). **Idempotente.**
+
+        **El orden del cruce lo decide dónde están los nombres.** Los presupuestos van primero porque
+        traen nombre, documento, condición de IVA, domicilio y contacto; los comprobantes de AFIP se
+        enganchan después, por documento, y aportan a los que no tenían presupuesto.
+
+        *(El contrato §4 dice que `afip_comprobantes` **no guarda el nombre del comprador**. Medido
+        hoy contra la tabla viva: **sí lo guarda**, en `receptor_nombre`, y viene lleno en algunos
+        comprobantes. Se usa cuando está, y la caída a «CUIT 30712345678» queda para cuando no.)*
+
+        Devuelve el parte de lo que hizo — no un booleano: el número de duplicados es un dato que
+        alguien pidió, y un backfill que no cuenta lo que tocó no se puede auditar dos días después.
+        """
+        parte = {"presupuestos_vistos": 0, "comprobantes_vistos": 0, "creados": 0,
+                 "ya_estaban": 0, "omitidos_consumidor_final": 0, "presupuestos_vinculados": 0}
+
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT id, receptor_nombre, receptor_doc_tipo, receptor_doc_nro, "
+                        f"receptor_condicion_iva, receptor_domicilio, receptor_contacto "
+                        f"FROM {_SCHEMA}.copiloto_presupuestos WHERE cliente_id = %s ORDER BY id",
+                        (self._cliente_id,))
+            presupuestos = cur.fetchall()
+            cur.execute(f"SELECT doc_tipo, doc_nro, receptor_nombre "
+                        f"FROM {_SCHEMA}.afip_comprobantes WHERE cliente_id = %s "
+                        f"AND cae IS NOT NULL ORDER BY id", (self._cliente_id,))
+            comprobantes = cur.fetchall()
+
+        for presu_id, nombre, doc_tipo, doc_nro, cond, domicilio, contacto in presupuestos:
+            parte["presupuestos_vistos"] += 1
+            if es_consumidor_final(doc_tipo):
+                parte["omitidos_consumidor_final"] += 1
+                continue
+            ref, nuevo = self._asegurar_derivado(
+                nombre=nombre or "", doc_tipo=doc_tipo, doc_nro=doc_nro or "",
+                condicion_iva=cond, domicilio=domicilio or "", contacto=contacto or "")
+            if ref is None:
+                continue
+            parte["creados" if nuevo else "ya_estaban"] += 1
+            # El vínculo de §5. `IS DISTINCT FROM` y no `IS NULL`: así re-correr el backfill no
+            # reescribe filas que ya apuntan bien, y el `rowcount` cuenta vínculos REALES —si
+            # contara los ya vinculados, la segunda corrida informaría el mismo trabajo dos veces.
             with self._conn_factory() as conn, conn.cursor() as cur:
-                cur.execute(f"UPDATE {_TABLE} SET {sets} WHERE cliente_id = %s AND id = %s "
-                            f"RETURNING {', '.join(_COLS)}",
-                            (*campos.values(), self._cliente_id, cliente))
-                row = cur.fetchone()
-                return self._fila(row) if row else None
-        except Exception as exc:
-            if getattr(exc, "pgcode", None) != "23505":
-                raise
-            actual = self.detalle(cliente) or {}
-            doc = campos.get("doc_nro", normalizar_documento(actual.get("doc_nro")))
-            tipo = campos.get("doc_tipo", actual.get("doc_tipo"))
-            nombre = campos.get("nombre_normalizado",
-                                normalizar_nombre(actual.get("nombre") or ""))
-            duenio, por = self._duenio_de_la_clave(tipo, doc, nombre)
-            raise ClienteDuplicado(duenio, por) from None
+                cur.execute(f"UPDATE {_SCHEMA}.copiloto_presupuestos SET cliente_ref = %s "
+                            f"WHERE cliente_id = %s AND id = %s "
+                            f"AND cliente_ref IS DISTINCT FROM %s",
+                            (ref, self._cliente_id, presu_id, ref))
+                parte["presupuestos_vinculados"] += cur.rowcount
+
+        for doc_tipo, doc_nro, nombre in comprobantes:
+            parte["comprobantes_vistos"] += 1
+            if es_consumidor_final(doc_tipo):
+                parte["omitidos_consumidor_final"] += 1
+                continue
+            ref, nuevo = self._asegurar_derivado(nombre=nombre or "", doc_tipo=doc_tipo,
+                                                 doc_nro=doc_nro or "")
+            if ref is not None:
+                parte["creados" if nuevo else "ya_estaban"] += 1
+
+        return parte
+
+    def duplicados_probables(self) -> list[dict]:
+        """El `[ASSUMED_PENDING_VERIFY]` de §3.4: **cuántos duplicados reales genera esto**.
+
+        Un duplicado probable es el mismo `nombre_normalizado` en dos filas del tenant —una con
+        documento y otra sin—, que es el caso concreto que el contrato describe: *«Juan Pérez»* sin
+        documento en un presupuesto y *«Juan Perez»* con CUIT en otro. Los dos índices únicos no lo
+        impiden, porque cada fila cae en un índice distinto.
+
+        Esto **reporta**, no fusiona. Nadie diseña la fusión antes de conocer el número.
+        """
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT nombre_normalizado, count(*), array_agg(id ORDER BY id) "
+                        f"FROM {_TABLE} WHERE cliente_id = %s "
+                        f"GROUP BY nombre_normalizado HAVING count(*) > 1 ORDER BY 2 DESC",
+                        (self._cliente_id,))
+            return [{"nombre_normalizado": n, "cuantos": c, "ids": list(ids)}
+                    for n, c, ids in cur.fetchall()]

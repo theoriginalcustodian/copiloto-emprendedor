@@ -12,8 +12,8 @@ from fastapi import Header, HTTPException
 from fastapi.testclient import TestClient
 
 from cliente_store import (DOC_CONSUMIDOR_FINAL, DOC_CUIT, DOC_DNI, ClienteDuplicado,
-                           es_consumidor_final, inferir_doc_tipo, normalizar_documento,
-                           normalizar_nombre)
+                           es_consumidor_final, inferir_doc_tipo, nombre_derivado,
+                           normalizar_documento, normalizar_nombre)
 from clientes_web import create_clientes_app
 
 
@@ -66,7 +66,11 @@ class _FakeClienteStore:
 
     def _clave(self, c: dict):
         doc = normalizar_documento(c.get("doc_nro"))
-        return ("doc", c.get("doc_tipo"), doc) if doc else ("nom", normalizar_nombre(c["nombre"]))
+        if doc:
+            return ("doc", c.get("doc_tipo"), doc)
+        # `homonimo` entra en la clave por nombre, igual que en el índice real: es lo que deja
+        # convivir a dos «Juan Pérez» legítimos sin aflojarle la dedup al backfill.
+        return ("nom", normalizar_nombre(c["nombre"]), c.get("homonimo", 0))
 
     def _duenio(self, clave, excepto=None):
         for c in self._b.get(self._cid, {}).values():
@@ -74,12 +78,21 @@ class _FakeClienteStore:
                 return c
         return None
 
-    def crear(self, **datos):
+    def _siguiente_homonimo(self, nombre):
+        norm = normalizar_nombre(nombre)
+        previos = [c.get("homonimo", 0) for c in self._b.get(self._cid, {}).values()
+                   if not normalizar_documento(c.get("doc_nro"))
+                   and normalizar_nombre(c["nombre"]) == norm]
+        return max(previos or [0]) + 1
+
+    def crear(self, forzar=False, **datos):
         datos.setdefault("doc_nro", "")
         duenio = self._duenio(self._clave(datos))
         if duenio is not None:
-            raise ClienteDuplicado(duenio, "documento" if normalizar_documento(
-                datos.get("doc_nro")) else "nombre")
+            por = "documento" if normalizar_documento(datos.get("doc_nro")) else "nombre"
+            if not (forzar and por == "nombre"):
+                raise ClienteDuplicado(duenio, por)
+            datos["homonimo"] = self._siguiente_homonimo(datos["nombre"])
         guardado = {**{"doc_tipo": None, "condicion_iva": None, "domicilio": None,
                        "contacto": None, "notas": None, "origen": "manual"}, **datos}
         # El vacío sale como `null`, igual que `ClienteStore._fila`: en la base los opcionales son
@@ -88,15 +101,17 @@ class _FakeClienteStore:
         return self.sembrar(**{k: (v or None) if k in ("doc_nro", "domicilio", "contacto", "notas")
                                else v for k, v in guardado.items()})
 
-    def editar(self, cliente: int, cambios: dict):
+    def editar(self, cliente: int, cambios: dict, *, forzar=False):
         actual = self._b.get(self._cid, {}).get(cliente)
         if actual is None:
             return None
         propuesto = {**actual, **cambios}
         duenio = self._duenio(self._clave(propuesto), excepto=cliente)
         if duenio is not None:
-            raise ClienteDuplicado(duenio, "documento" if normalizar_documento(
-                propuesto.get("doc_nro")) else "nombre")
+            por = "documento" if normalizar_documento(propuesto.get("doc_nro")) else "nombre"
+            if not (forzar and por == "nombre"):
+                raise ClienteDuplicado(duenio, por)
+            cambios = {**cambios, "homonimo": self._siguiente_homonimo(propuesto["nombre"])}
         actual.update(cambios)
         return actual
 
@@ -234,6 +249,40 @@ def test_CONTROL_la_normalizacion_NO_colapsa_nombres_distintos():
     assert normalizar_nombre("Panadería Los Tilos") != normalizar_nombre("Ferretería El Tornillo")
     assert normalizar_nombre("Juan Pérez") != normalizar_nombre("Juan Gómez")
     assert normalizar_nombre("Los Tilos") != ""
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════════
+# HITO 2 — las tres decisiones del backfill, sin base de datos
+# ══════════════════════════════════════════════════════════════════════════════════════════════════
+
+def test_el_consumidor_final_no_entra_a_la_cartera_NI_CON_NOMBRE():
+    """🔴 El caso que los datos reales mostraron y el contrato no previó: hay comprobantes con
+    `doc_tipo = 99` cuyo `receptor_nombre` dice literalmente «Consumidor Final». Si el chequeo del 99
+    fuera DESPUÉS de la caída a nombre, esas ventas crearían un cliente llamado «Consumidor Final» —
+    el mismo registro fantasma de §3.2, entrando por la puerta del nombre en vez de la del documento.
+
+    Y no es un caso de laboratorio: **23 de los 24 comprobantes reales del operador son 99.**"""
+    assert nombre_derivado("Consumidor Final", DOC_CONSUMIDOR_FINAL, "") is None
+    assert nombre_derivado("", DOC_CONSUMIDOR_FINAL, "") is None
+
+
+def test_sin_nombre_y_sin_documento_no_hay_cliente():
+    assert nombre_derivado("", None, "") is None
+    assert nombre_derivado("   ", None, None) is None
+
+
+def test_con_documento_y_sin_nombre_el_nombre_ES_el_documento():
+    """Feo y honesto: el emprendedor lo reconoce y lo edita. Un cliente sin nombre no se puede
+    mostrar en ninguna lista, así que la alternativa a esto es una fila invisible."""
+    assert nombre_derivado("", DOC_CUIT, "30-71234567-8") == "CUIT 30712345678"
+    assert nombre_derivado("", DOC_DNI, "26123456") == "DNI 26123456"
+
+
+def test_CONTROL_cuando_HAY_nombre_gana_el_nombre():
+    """El control de los dos de arriba: si `nombre_derivado` devolviera siempre el documento, la
+    cartera saldría entera en códigos — que es exactamente lo que §4 quiere evitar."""
+    assert nombre_derivado("Panadería Los Tilos", DOC_CUIT, "30712345678") == "Panadería Los Tilos"
+    assert nombre_derivado("  Los Tilos  ", None, "") == "Los Tilos"
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -413,6 +462,58 @@ def test_un_nombre_demasiado_largo_es_400():
     cli, _ = _app()
     r = cli.post("/clientes", json={"nombre": "x" * 201})
     assert r.status_code == 400 and "200" in r.json()["detail"]
+
+
+# --- 🔴 `forzar`: la salida del homónimo legítimo ---
+
+def test_forzar_deja_crear_al_SEGUNDO_Juan_Perez():
+    """Dos clientes se pueden llamar igual de verdad. La dedup por nombre existe para el BACKFILL
+    —donde no hay nadie mirando y sin ella se inventa cartera—; aplicársela al alta explícita de un
+    humano lo deja trabado y sin maniobra, pidiéndole un CUIT que no tiene."""
+    cli, _ = _app()
+    cli.post("/clientes", json={"nombre": "Juan Pérez"})
+    assert cli.post("/clientes", json={"nombre": "Juan Pérez"}).status_code == 409
+    r = cli.post("/clientes", json={"nombre": "Juan Pérez", "forzar": True})
+    assert r.status_code == 201, r.text
+    assert cli.get("/clientes").json()["total"] == 2
+
+
+def test_forzar_TAMBIEN_deja_un_tercero():
+    """Si el discriminador no avanzara, el tercer homónimo chocaría contra el segundo y `forzar`
+    serviría exactamente una vez — un botón que funciona la primera vez es peor que no tenerlo."""
+    cli, _ = _app()
+    for _ in range(3):
+        cli.post("/clientes", json={"nombre": "Kiosco", "forzar": True})
+    assert cli.get("/clientes").json()["total"] == 3
+
+
+def test_CONTROL_forzar_NO_pisa_el_choque_por_DOCUMENTO():
+    """🔴 El control que le da sentido a `forzar`: dos CUIT iguales no son dos personas, son un error
+    de tipeo. Sin este test, un `forzar` que abriera las dos puertas pasaría el de arriba y dejaría
+    entrar el duplicado que toda la §3.3 existe para impedir."""
+    cli, _ = _app()
+    cli.post("/clientes", json={"nombre": "Juan Pérez", "doc_nro": "20123456789"})
+    r = cli.post("/clientes", json={"nombre": "Otro", "doc_nro": "20123456789", "forzar": True})
+    assert r.status_code == 409 and r.json()["por"] == "documento"
+    assert cli.get("/clientes").json()["total"] == 1
+
+
+def test_forzar_sirve_tambien_al_RENOMBRAR_desde_la_ficha():
+    """Renombrar «Kiosco 2» a «Kiosco» tiene el mismo callejón sin salida que el alta. Que una puerta
+    tenga salida y la otra no es peor que ninguna: el que la encuentra cerrada supone que la función
+    no existe."""
+    cli, bucket = _app()
+    cli.post("/clientes", json={"nombre": "Kiosco"})
+    otro = cli.post("/clientes", json={"nombre": "Kiosco 2"}).json()
+    assert cli.post(f"/clientes/{otro['id']}", json={"nombre": "Kiosco"}).status_code == 409
+    r = cli.post(f"/clientes/{otro['id']}", json={"nombre": "Kiosco", "forzar": True})
+    assert r.status_code == 200 and r.json()["nombre"] == "Kiosco"
+
+
+def test_forzar_no_se_guarda_como_un_campo_del_cliente():
+    cli, _ = _app()
+    creado = cli.post("/clientes", json={"nombre": "Los Tilos", "forzar": True}).json()
+    assert "forzar" not in creado
 
 
 # --- 🔴 aislamiento cross-tenant de las rutas nuevas ---

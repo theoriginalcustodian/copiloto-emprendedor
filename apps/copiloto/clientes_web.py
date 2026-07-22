@@ -44,6 +44,11 @@ class ClienteBody(BaseModel):
     contacto: str | None = None
     notas: str | None = None
     origen: str | None = None
+    # 🔴 `forzar` NO es un campo del cliente: es la respuesta del emprendedor a «ya tenés uno que se
+    # llama así». Aplica **sólo** al choque por NOMBRE; contra un choque por documento se ignora, y
+    # sigue saliendo 409 — dos CUIT iguales no son dos personas, son un error de tipeo. Se saca del
+    # body antes de llegar al store para que no se confunda con un dato a guardar.
+    forzar: bool = False
 
 
 def _validar(datos: dict, *, es_alta: bool) -> dict:
@@ -137,9 +142,10 @@ def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Call
         # tiene que dar 400 sin escribir nada.
         datos = _validar(body.model_dump(exclude_unset=True), es_alta=True)
         datos.setdefault("origen", "manual")
+        forzar = bool(datos.pop("forzar", False))
         try:
             return await asyncio.to_thread(
-                lambda: cliente_store_factory(cliente_id).crear(**datos))
+                lambda: cliente_store_factory(cliente_id).crear(forzar=forzar, **datos))
         except ClienteDuplicado as exc:
             return _conflicto(exc)
 
@@ -156,9 +162,10 @@ def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Call
         """
         datos = _validar(body.model_dump(exclude_unset=True), es_alta=False)
         datos.pop("origen", None)      # el origen dice CÓMO nació el cliente; editarlo sería mentir
+        forzar = bool(datos.pop("forzar", False))
         try:
             ficha = await asyncio.to_thread(
-                lambda: cliente_store_factory(cliente_id).editar(cliente, datos))
+                lambda: cliente_store_factory(cliente_id).editar(cliente, datos, forzar=forzar))
         except ClienteDuplicado as exc:
             return _conflicto(exc)
         if ficha is None:
