@@ -19,7 +19,7 @@ jest.mock('@copiloto/core', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso } from '@copiloto/core';
+import { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso, type Ingreso } from '@copiloto/core';
 
 import { PantallaIngresos } from './PantallaIngresos';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -29,17 +29,17 @@ const registrarMock = registrarIngreso as jest.MockedFunction<typeof registrarIn
 const completarMock = completarIngreso as jest.MockedFunction<typeof completarIngreso>;
 const borrarMock = borrarIngreso as jest.MockedFunction<typeof borrarIngreso>;
 
-const DICTADO = {
+const DICTADO: Ingreso = {
   id: 1, monto: '85000.00', medio: 'efectivo', fecha: '2026-07-22', origen: 'manual',
   clienteNombre: 'Panadería', concepto: null, comprobanteId: null, comprobanteNro: null,
   presupuestoRef: null, falta: null, borrable: true,
-} as never;
+};
 
-const DE_FACTURA = {
+const DE_FACTURA: Ingreso = {
   id: 2, monto: '10000.00', medio: null, fecha: '2026-07-21', origen: 'factura',
   clienteNombre: 'Kiosco', concepto: null, comprobanteId: 86, comprobanteNro: 901,
   presupuestoRef: null, falta: null, borrable: false,
-} as never;
+};
 
 async function montar() {
   return render(
@@ -57,8 +57,8 @@ async function tipear(testID: string, texto: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   listarMock.mockResolvedValue({ status: 'ok', ingresos: [DICTADO, DE_FACTURA], total: '95000.00' });
-  registrarMock.mockResolvedValue({ status: 'ok', ingreso: { ...(DICTADO as never), id: 9, falta: [] } as never });
-  completarMock.mockResolvedValue({ status: 'ok', ingreso: { ...(DICTADO as never), id: 9, falta: [] } as never });
+  registrarMock.mockResolvedValue({ status: 'ok', ingreso: { ...DICTADO, id: 9, falta: [] } });
+  completarMock.mockResolvedValue({ status: 'ok', ingreso: { ...DICTADO, id: 9, falta: [] } });
   borrarMock.mockResolvedValue({ status: 'ok' });
 });
 
@@ -89,7 +89,7 @@ describe('PantallaIngresos — el listado', () => {
   });
 
   it('🔴 `borrable` en null tampoco ofrece borrar — "no sé" no habilita una acción destructiva', async () => {
-    listarMock.mockResolvedValue({ status: 'ok', ingresos: [{ ...(DICTADO as never), borrable: null }] as never, total: '1' });
+    listarMock.mockResolvedValue({ status: 'ok', ingresos: [{ ...DICTADO, borrable: null }], total: '1' });
 
     await montar();
 
@@ -197,7 +197,7 @@ describe('PantallaIngresos — anotar', () => {
     // Si contestar el aviso creara otro registro, el aviso duplicaría la caja.
     registrarMock.mockResolvedValue({
       status: 'ok',
-      ingreso: { ...(DICTADO as never), id: 9, falta: ['cliente', 'medio'] } as never,
+      ingreso: { ...DICTADO, id: 9, falta: ['cliente', 'medio'] },
     });
     await abrirFormulario();
 
