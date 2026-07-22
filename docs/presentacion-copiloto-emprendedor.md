@@ -43,8 +43,18 @@ La de la panadería se va a borrar sin que la toque, en el momento en que cobre 
 
 > — *«Pagué 12 mil de herramientas en la ferretería, con tarjeta»*
 
-El copiloto le muestra una tarjeta con lo que entendió —monto, categoría, proveedor, medio de pago—
-por si algo salió mal. Confirma. Anotado.
+El copiloto le muestra una tarjeta con lo que entendió —monto, categoría, proveedor, medio de pago,
+fecha—. **Y ahí mismo puede corregir cualquier campo antes de guardar**: si escuchó *«doce»* donde él
+dijo *«dos»*, lo toca y lo arregla en el momento. Ése es el sentido de la tarjeta — no es un cartel de
+*«¿confirmás?»*, es el lugar donde el error se caza. Confirma. Anotado.
+
+**11:00, camino al próximo trabajo.** Se acuerda de algo que pagó el fin de semana:
+
+> — *«Cargá 8 mil de nafta, fue el sábado»*
+
+La tarjeta sale con la fecha del sábado, no la de hoy. **Lo que se anota es cuándo pasó, no cuándo se
+acordó** — si no fuera así, todos los números del mes estarían corridos. Y si el copiloto no logra
+ubicar una fecha dicha de una forma rara, la pone en hoy, lo dice, y le deja el campo para tocarlo.
 
 **13:30, terminando un trabajo.** El cliente le pide la factura:
 
@@ -259,6 +269,58 @@ dijo.
 
 ---
 
+## 6.bis Cuánto te pregunta, lo elegís vos
+
+Hay dos formas de que el copiloto trabaje, y el emprendedor elige cuál:
+
+| | **Pedir confirmación** | **Automático** |
+|---|---|---|
+| Anotar un gasto, un cobro, un cliente | te muestra la tarjeta y vos confirmás | lo anota directo |
+| Facturar, cobrar por MercadoPago, mandar un mail | te pregunta | **te pregunta igual** |
+
+**Esa segunda fila no se puede apagar, y es a propósito.** Lo que sale del teléfono —una factura con
+CAE, un mail a un cliente, un cobro— no tiene vuelta atrás: una factura no se borra, se anula, y queda
+en ARCA. Anotar un gasto sí se deshace con un toque. Por eso el modo cambia la ceremonia de lo
+reversible, nunca la de lo definitivo.
+
+**Se empieza pidiendo confirmación**, y no por desconfianza: **la tarjeta es donde uno aprende a
+dictar**. Cada vez que aparece mostrando lo que faltó, el emprendedor ve exactamente qué decir la
+próxima vez — sin leer un manual.
+
+**Y el modo automático no se elige de una lista: te lo ofrece el copiloto** cuando ya vio que venís
+dictando completo:
+
+> *«Tus últimos registros vienen entrando completos, así que puedo dejar de pedirte confirmación cada
+> vez. ¿Querés probarlo? Podés volver atrás cuando quieras.»*
+
+Tiene sentido: en automático no hay tarjeta que corrija nada, así que sólo conviene a quien ya no la
+necesita. Volver es un toque.
+
+### Una cosa por vez
+
+Si el copiloto no llegó a entender algo, **pregunta una sola vez**. Si con eso todavía falta, muestra
+la tarjeta para completarla a mano — y **espera a que se resuelva o se descarte antes de aceptar otra
+cosa**.
+
+Suena estricto y es lo contrario: **evita que queden cosas a medio anotar**, que es como se arruina un
+número de fin de mes. Lo que quedó abierto se resuelve o se descarta, pero no se olvida. *(Consultar
+Inteligencia de Negocio sigue disponible: eso no toca nada.)*
+
+### Cómo te habla
+
+Cuando algo no sale, **el copiloto se hace cargo — no te corrige a vos**:
+
+| En vez de | Dice |
+|---|---|
+| *«Te faltó el medio de pago»* | *«¿Cómo te pagaron? Si querés lo agregamos.»* |
+| *«No dijiste la fecha»* | *«Lo anoté con fecha de hoy — si fue otro día, tocá acá.»* |
+
+Y **nunca te traba por un dato que falta**: si dijiste el monto, ya quedó anotado. Lo demás se pide,
+no se exige. Un sistema que no deja anotar hasta tener todo completo es un sistema en el que se deja
+de anotar.
+
+---
+
 ## 7. Por qué no se pierde nada
 
 Un emprendedor factura desde el celular, en la calle, con la señal que haya.
@@ -270,6 +332,9 @@ se reinició el servidor, ARCA tardó veinte segundos en contestar — la operac
 Esto no es un detalle de infraestructura: es la diferencia entre *«se colgó, fijate si salió o
 tenés que hacerla de nuevo»* y que simplemente salga. Cuando lo que está a mitad de camino es un
 comprobante fiscal, esa diferencia se nota.
+
+Vale también para lo chico: **si estabas completando una tarjeta y se cerró la app, al volver está
+ahí**, con lo que ya habías puesto. No hay que dictar de nuevo.
 
 Y por diseño **nada se factura dos veces**: pedir la misma factura dos veces produce una factura, no
 dos comprobantes con CAE que después hay que anular.
@@ -306,6 +371,11 @@ Listo. Ya podés facturar.
 
 Lo demás —clientes, gastos, presupuestos— **se va llenando solo a medida que trabajás**. No hay una
 carga inicial de datos: el primer cliente se crea la primera vez que le facturás.
+
+**¿Y cómo hay que hablarle?** Como le hablarías a alguien que te ayuda. Igual, dentro de la app hay
+una pantalla con ejemplos reales —*«pagué 15 mil de mercadería»*, *«me pagaron 85 mil»*, *«facturale 80
+mil a la panadería»*— por si querés verlos. **No es una lista de comandos que haya que memorizar:** si
+te falta un dato, el copiloto te lo pide; si entendió mal, lo corregís en la tarjeta.
 
 ---
 
