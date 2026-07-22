@@ -269,6 +269,20 @@ export interface EstadoAfip {
 
 /** Una fila de "Mis comprobantes" (`AfipComprobanteStore._fila`), normalizada. */
 export interface Comprobante {
+  /**
+   * Id de FILA de `afip_comprobantes`. Es lo que permite **direccionar** un comprobante desde afuera
+   * —la lista de actividad, un link— sin pasar el objeto entero.
+   *
+   * 🔴 **No confundirlo con el `factura_id` del workflow** (`presu-12`, un uuid): son dos espacios de
+   * ids y **los dos son legítimos**. El del workflow sirve MIENTRAS se emite
+   * (`/afip/facturas/{factura_id}`); éste sirve DESPUÉS (`/afip/comprobantes/{id}`). No hay que
+   * unificarlos: hay que saber cuál usar cuándo.
+   *
+   * Opcional porque las consultas que alimentan activities de Temporal **no** lo traen a propósito —
+   * el shape de ese payload es parte del historial de ejecución del workflow y no se toca por
+   * comodidad. Las dos que consume la app sí (verificado en `afip_comprobante_store.py:117,140`).
+   */
+  id?: number;
   cuit: string;
   tipoCbte: number;
   puntoVenta: number;
@@ -864,6 +878,8 @@ export async function cancelarFactura(facturaId: string): Promise<{ ok: true }> 
 // ---------------------------------------------------------------------------
 
 interface ComprobanteRaw {
+  /** Ausente en las consultas que alimentan Temporal — ver `Comprobante.id`. */
+  id?: number;
   cuit: string;
   tipo_cbte: number;
   punto_venta: number;
@@ -888,6 +904,7 @@ interface ComprobanteRaw {
 
 function normalizarComprobante(raw: ComprobanteRaw): Comprobante {
   return {
+    id: raw.id,
     cuit: raw.cuit,
     tipoCbte: raw.tipo_cbte,
     puntoVenta: raw.punto_venta,
@@ -918,6 +935,30 @@ export async function listarComprobantes(cuit: string, limite = 50): Promise<Con
     const raw = await apiClient.get<{ comprobantes: ComprobanteRaw[] }>(`/afip/comprobantes?${query.toString()}`);
     return { status: 'ok', comprobantes: raw.comprobantes.map(normalizarComprobante) };
   } catch (err) {
+    if (esNoDisponible(err)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/**
+ * `GET /afip/comprobantes/{id}` — un comprobante por su id de FILA.
+ *
+ * Es la puerta que permite abrir una factura desde la lista de actividad: hasta el 2026-07-22 el
+ * detalle sólo se abría pasando el objeto entero, así que **nada externo podía direccionar una
+ * factura**. `no_encontrado` cubre el 404 semántico — no existe, **o es de otro tenant** (el backend
+ * no confirma recursos ajenos y tiene test adversarial).
+ */
+export async function obtenerComprobante(
+  id: number,
+): Promise<ConDisponibilidad<{ comprobante: Comprobante }> | { status: 'no_encontrado' }> {
+  try {
+    const raw = await apiClient.get<{ comprobante: ComprobanteRaw }>(`/afip/comprobantes/${id}`);
+    if (typeof raw !== 'object' || raw === null || !('comprobante' in raw)) {
+      return { status: 'no_disponible' };
+    }
+    return { status: 'ok', comprobante: normalizarComprobante(raw.comprobante) };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     if (esNoDisponible(err)) return { status: 'no_disponible' };
     throw err;
   }

@@ -3,6 +3,7 @@ import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react
 
 import {
   listarGastos,
+  obtenerGasto,
   obtenerResumenGastos,
   type Gasto,
   type ResumenGastos,
@@ -44,7 +45,12 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
 type Vista = 'listado' | 'formulario';
 
-export function PantallaGastos() {
+export interface PantallaGastosProps {
+  /** Id que llegó desde la lista de actividad — abre su detalle al montar. */
+  gastoIdInicial?: number;
+}
+
+export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -87,6 +93,23 @@ export function PantallaGastos() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  /**
+   * Abrir directo un ítem que llegó por la lista de actividad.
+   *
+   * 🔴 **Se busca por id, no se confía en la lista.** Quien navega acá sólo trae un número; el objeto
+   * puede no estar en la página cargada —o la lista puede estar vieja—. Si no se encuentra, no se
+   * abre nada y la pantalla queda en su listado: es preferible a un detalle vacío que parece roto.
+   */
+  useEffect(() => {
+    if (gastoIdInicial == null) return;
+    let cancelado = false;
+    void obtenerGasto(gastoIdInicial).then((res) => {
+      if (cancelado || !vivo.current) return;
+      if (res.status === 'ok') setDetalle(res.gasto);
+    });
+    return () => { cancelado = true; };
+  }, [gastoIdInicial]);
 
   async function tirarParaRefrescar() {
     setRefrescando(true);

@@ -171,6 +171,11 @@ export interface EscritorioFuncionesProps {
   actividad?: readonly ActividadItem[];
   /** `true` mientras el shell trae la primera página — para no pintar el vacío antes de tiempo. */
   cargandoActividad?: boolean;
+  /**
+   * Tocar una operación. Llega del shell, que es quien navega — este componente no conoce
+   * `expo-router`, igual que con `onFuncion`. Si no se pasa, las filas no son tocables.
+   */
+  onAbrirActividad?: (item: ActividadItem) => void;
 }
 
 /** Margen de tolerancia antes de considerar que "hay más contenido a la derecha". RN mide con floats;
@@ -183,6 +188,7 @@ export function EscritorioFunciones({
   onFuncion,
   actividad = [],
   cargandoActividad = false,
+  onAbrirActividad,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
 
@@ -302,7 +308,7 @@ export function EscritorioFunciones({
           </Text>
         )}
         {actividad.map((item) => (
-          <FilaActividad key={item.id} item={item} />
+          <FilaActividad key={item.id} item={item} onPress={onAbrirActividad} />
         ))}
       </ScrollView>
     </View>

@@ -25,6 +25,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { listarActividad, type ActividadItem } from '@copiloto/core';
 
+import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
@@ -105,12 +106,29 @@ export function PantallaPrincipal() {
   // bien medido): es que la navegación no tenía invariante de "uno a la vez".
   const alFuncion = (key: FuncionKey) => empujarUnaVez(RUTA_POR_FUNCION[key]);
 
+  /**
+   * Tocar una operación de la lista la abre **en su función**, con su id.
+   *
+   * 🔴 `empujarUnaVez` y no `router.push`: dos toques rápidos apilarían dos glass de la misma
+   * pantalla, y un solo "Volver" cerraría uno — el segundo queda arriba, transparente, tragándose los
+   * toques. Ya se cazó en device.
+   *
+   * `destinoDe` devuelve `null` para los tipos sin destino, pero acá igual no llega: la fila no es
+   * tocable en ese caso. La guarda está por si el mapeo y el pintado se desincronizan.
+   */
+  function alAbrirActividad(item: ActividadItem) {
+    const destino = destinoDe(item);
+    if (destino == null) return;
+    empujarUnaVez({ pathname: destino.pathname, params: destino.params });
+  }
+
   return (
     <PanelDeslizable testID="panel-principal" fondo={
         <EscritorioFunciones
           onFuncion={alFuncion}
           actividad={actividad}
           cargandoActividad={cargandoActividad}
+          onAbrirActividad={alAbrirActividad}
         />
       }>
       <ChatView />

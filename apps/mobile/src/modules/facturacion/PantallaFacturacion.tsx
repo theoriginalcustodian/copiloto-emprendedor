@@ -15,6 +15,7 @@ import {
   setCliente,
   setDatosVenta,
   type AmbienteAfip,
+  obtenerComprobante,
   type Comprobante,
   type ConfirmarResultado,
   type DatosVentaInput,
@@ -97,6 +98,13 @@ type EstadoGate =
  */
 export interface PantallaFacturacionProps {
   /**
+   * Id de FILA de un comprobante que llegó desde la lista de actividad — abre su detalle al montar.
+   *
+   * 🔴 **No confundir con `facturaIdInicial`**, que es el id del **workflow de emisión** (`presu-12`).
+   * Son dos espacios de ids y los dos son legítimos: aquél sirve MIENTRAS se emite, éste DESPUÉS.
+   */
+  comprobanteIdInicial?: number;
+  /**
    * Un borrador de factura YA creado, del que esta pantalla tiene que hacerse cargo en vez de crear
    * uno nuevo.
    *
@@ -114,7 +122,7 @@ export interface PantallaFacturacionProps {
   facturaIdInicial?: string;
 }
 
-export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionProps = {}) {
+export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: PantallaFacturacionProps = {}) {
 
   /**
    * 🔴 **Esta pantalla también es LANZADORA, y sin esto su único CTA no hace nada.**
@@ -231,6 +239,20 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
    * asíncronos (receptor + ítems), así que la primera lectura puede llegar antes de que estén
    * aplicados. Es la misma función y el mismo motivo que usa el camino de creación.
    */
+  /**
+   * Abrir un comprobante que llegó desde la lista de actividad. Se busca por id: quien navega acá
+   * sólo trae un número, y "Mis comprobantes" puede no tenerlo cargado todavía.
+   */
+  useEffect(() => {
+    if (comprobanteIdInicial == null) return;
+    let cancelado = false;
+    void obtenerComprobante(comprobanteIdInicial).then((res) => {
+      if (cancelado || !vivo.current) return;
+      if (res.status === 'ok') setDetalleComprobante(res.comprobante);
+    });
+    return () => { cancelado = true; };
+  }, [comprobanteIdInicial]);
+
   useEffect(() => {
     if (facturaIdInicial == null) return;
     let cancelado = false;

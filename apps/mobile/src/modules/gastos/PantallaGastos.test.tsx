@@ -85,6 +85,32 @@ describe('PantallaGastos', () => {
   });
 
   describe('detalle', () => {
+    it('🔴 abre directo el gasto que llegó por la lista de actividad, buscándolo por id', async () => {
+      // Quien navega acá sólo trae un número: el objeto puede no estar en la página cargada, o la
+      // lista puede estar vieja. Por eso se busca, no se toma de lo que ya se tenía.
+      await render(
+        <ThemeProvider>
+          <PantallaGastos gastoIdInicial={2} />
+        </ThemeProvider>,
+      );
+
+      await waitFor(() => expect(mockDetalle).toHaveBeenCalledWith(2));
+      await waitFor(() => expect(screen.getByTestId('detalle-gasto-monto')).toBeTruthy());
+    });
+
+    it('si el id no existe NO abre nada — queda el listado', async () => {
+      mockDetalle.mockResolvedValue({ status: 'no_encontrado' });
+
+      await render(
+        <ThemeProvider>
+          <PantallaGastos gastoIdInicial={99999} />
+        </ThemeProvider>,
+      );
+
+      await waitFor(() => expect(screen.getByTestId('gastos-lista')).toBeTruthy());
+      expect(screen.queryByTestId('detalle-gasto')).toBeNull();
+    });
+
     it('tocar una card lo abre y lo RE-PIDE por id', async () => {
       // El listado puede estar viejo —el copiloto pudo registrar algo por voz mientras la pantalla
       // estaba abierta— y el detalle es justo donde uno mira el número con atención.

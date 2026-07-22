@@ -157,6 +157,7 @@ export {
   guardarPerfil,
   leerPerfil,
   listarComprobantes,
+  obtenerComprobante,
   quitarItem,
   setCliente,
   setDatosVenta,

@@ -18,10 +18,10 @@ import { useTema } from '../../theme/ThemeProvider';
  * reconozco cae en `neutro`, que es el que no pinta nada — no mostrar color es honesto; inventar
  * "entra" teñiría de verde algo que quizá salió.
  *
- * 🔴 **No es tappable todavía.** El contrato lo decidió así para la v1: lo que no tiene dónde
- * aterrizar **no invita a tocarse**, porque un ítem que se toca y no hace nada se lee como *«la app
- * está rota»*, no como *«esa función todavía no está»*. El ruteo entra en el hito 5, y ahí cada tipo
- * declara su destino.
+ * 🔴 **Es tappable SÓLO si tiene dónde aterrizar.** `onPress` llega `undefined` para los tipos sin
+ * destino (hoy `ingreso`, que viene con Contabilidad) y entonces la fila no se pinta como botón: un
+ * ítem que se toca y no hace nada se lee como *«la app está rota»*, no como *«esa función todavía no
+ * está»*. Quién tiene destino lo decide `destinoActividad.ts`, no esta fila.
  */
 
 /** Ícono por tipo. `clock` es el default: un tipo nuevo del backend se ve genérico, no roto. */
@@ -36,10 +36,12 @@ const ICONO_POR_TIPO: Record<string, NombreIconoGlass> = {
 
 export interface FilaActividadProps {
   item: ActividadItem;
+  /** Ausente = la fila no es tocable. Ver el docstring. */
+  onPress?: (item: ActividadItem) => void;
   testID?: string;
 }
 
-export function FilaActividad({ item, testID }: FilaActividadProps) {
+export function FilaActividad({ item, onPress, testID }: FilaActividadProps) {
   const tema = useTema();
   const icono = ICONO_POR_TIPO[item.tipo] ?? 'clock';
   const colorMonto =
@@ -50,7 +52,11 @@ export function FilaActividad({ item, testID }: FilaActividadProps) {
         : tema.color.textoTenue;
 
   return (
-    <Row testID={testID ?? `actividad-${item.id}`} style={styles.fila}>
+    <Row
+      testID={testID ?? `actividad-${item.id}`}
+      onPress={onPress != null ? () => onPress(item) : undefined}
+      style={styles.fila}
+    >
       <GlassIcon name={icono} size={34} />
       <View style={styles.texto}>
         <Text

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarPresupuestos, type Presupuesto } from '@copiloto/core';
+import { listarPresupuestos, obtenerPresupuesto, type Presupuesto } from '@copiloto/core';
 
 import { DetallePresupuesto } from './DetallePresupuesto';
 import { FormularioPresupuesto } from './FormularioPresupuesto';
@@ -42,6 +42,8 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type Vista = 'listado' | 'formulario';
 
 export interface PantallaPresupuestosProps {
+  /** Id que llegó desde la lista de actividad — abre su detalle al montar. */
+  presupuestoIdInicial?: number;
   /**
    * Lleva al gate de confirmación de factura con el borrador ya armado.
    *
@@ -52,7 +54,7 @@ export interface PantallaPresupuestosProps {
   onFacturar: (facturaId: string) => void;
 }
 
-export function PantallaPresupuestos({ onFacturar }: PantallaPresupuestosProps) {
+export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: PantallaPresupuestosProps) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
@@ -93,6 +95,23 @@ export function PantallaPresupuestos({ onFacturar }: PantallaPresupuestosProps) 
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  /**
+   * Abrir directo un ítem que llegó por la lista de actividad.
+   *
+   * 🔴 **Se busca por id, no se confía en la lista.** Quien navega acá sólo trae un número; el objeto
+   * puede no estar en la página cargada —o la lista puede estar vieja—. Si no se encuentra, no se
+   * abre nada: es preferible a un detalle vacío que parece roto.
+   */
+  useEffect(() => {
+    if (presupuestoIdInicial == null) return;
+    let cancelado = false;
+    void obtenerPresupuesto(presupuestoIdInicial).then((res) => {
+      if (cancelado || !vivo.current) return;
+      if (res.status === 'ok') setDetalle(res.presupuesto);
+    });
+    return () => { cancelado = true; };
+  }, [presupuestoIdInicial]);
 
   async function tirarParaRefrescar() {
     setRefrescando(true);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarClientes, type Cliente } from '@copiloto/core';
+import { listarClientes, obtenerCliente, type Cliente } from '@copiloto/core';
 
 import { FichaCliente } from './FichaCliente';
 import { TarjetaCliente } from './TarjetaCliente';
@@ -37,7 +37,12 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 /** Lo que tarda en dispararse la búsqueda desde la última tecla. */
 const ESPERA_BUSQUEDA_MS = 350;
 
-export function PantallaClientes() {
+export interface PantallaClientesProps {
+  /** Id que llegó desde la lista de actividad — abre su ficha al montar. */
+  clienteIdInicial?: number;
+}
+
+export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -80,6 +85,23 @@ export function PantallaClientes() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  /**
+   * Abrir directo un ítem que llegó por la lista de actividad.
+   *
+   * 🔴 **Se busca por id, no se confía en la lista.** Quien navega acá sólo trae un número; el objeto
+   * puede no estar en la página cargada —o la lista puede estar vieja—. Si no se encuentra, no se
+   * abre nada y la pantalla queda en su listado: es preferible a un detalle vacío que parece roto.
+   */
+  useEffect(() => {
+    if (clienteIdInicial == null) return;
+    let cancelado = false;
+    void obtenerCliente(clienteIdInicial).then((res) => {
+      if (cancelado || !vivo.current) return;
+      if (res.status === 'ok') setFicha(res.ficha.cliente);
+    });
+    return () => { cancelado = true; };
+  }, [clienteIdInicial]);
 
   async function tirarParaRefrescar() {
     setRefrescando(true);

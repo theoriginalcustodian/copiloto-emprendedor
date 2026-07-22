@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 
 import { PantallaPresupuestos } from '../src/modules/presupuestos/PantallaPresupuestos';
@@ -19,7 +19,16 @@ import { empujarUnaVez, reabrirNavegacion } from '../src/navegacion/empujarUnaVe
  * con los ítems del presupuesto; el destino es el gate de confirmación que ya existe, no una pantalla
  * nueva. Emitir es un acto fiscal y ese gate es el único lugar donde se firma.
  */
+/** Ver `app/gastos.tsx`: string de la URL a número, con guarda. */
+function idDeParam(v: string | string[] | undefined): number | undefined {
+  const crudo = Array.isArray(v) ? v[0] : v;
+  if (crudo == null || !/^\d+$/.test(crudo)) return undefined;
+  return Number(crudo);
+}
+
 export default function PantallaPresupuestosRoute() {
+  const params = useLocalSearchParams<{ presupuestoId?: string }>();
+
   useFocusEffect(
     useCallback(() => {
       reabrirNavegacion();
@@ -30,5 +39,10 @@ export default function PantallaPresupuestosRoute() {
     empujarUnaVez({ pathname: '/facturacion', params: { facturaId } });
   }
 
-  return <PantallaPresupuestos onFacturar={alFacturar} />;
+  return (
+    <PantallaPresupuestos
+      onFacturar={alFacturar}
+      presupuestoIdInicial={idDeParam(params.presupuestoId)}
+    />
+  );
 }
