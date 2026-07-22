@@ -1,49 +1,237 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { useTema } from '../../theme/ThemeProvider';
+import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
+
+import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { Row } from '../../theme/glass/Row';
+import { useTema } from '../../theme/ThemeProvider';
 
 /**
- * `PantallaInteligencia` — cascarón de Inteligencia de Negocio (ex «Métricas»).
+ * `PantallaInteligencia` — la **portada de Inteligencia de Negocio** (hito 6): caja, el mes en curso,
+ * la serie mensual, los mejores clientes y lo por cobrar.
  *
- * 🔴 Trae su propio `MarcoGlass` (2026-07-21, convergencia con documed): antes se montaba dentro de
- * `CapaFuncion`, la capa `absoluteFill` inventada por este repo que en device se comía los toques
- * (ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`). `CapaFuncion` se borró; el
- * chrome (vidrio, handle, ícono, título, "Volver") ahora lo aporta `MarcoGlass`, uno por pantalla.
+ * 🔴 **[CONNECT] — construida contra CONTRATO (§3.1 del `contrato_ADELANTAR`), el endpoint todavía NO
+ * está vivo.** Toda la pantalla habla con `leerPortada()`, que es el único punto que el connect toca:
+ * el día que backend publique `GET /inteligencia/portada`, se confirma la forma ahí y esta pantalla no
+ * se toca. Mientras tanto degrada a `no_disponible` y lo DICE — no simula números.
  *
- * El ícono/título son los MISMOS que el tile de entrada en `EscritorioFunciones`
- * (`inteligencia`→`chart`): entrar por un ícono y llegar a otro desorienta.
+ * 🔴 **`null` no es `0`, y acá se ve.** Un KPI que no vino se muestra como «—», nunca como «$0»: en
+ * plata, *«no sé»* y *«cero»* son la diferencia entre un dato faltante y una afirmación falsa. El
+ * helper `kpi()` centraliza esa regla para que ningún número la saltee.
  *
- * 🔴 **Es un cascarón A PROPÓSITO, y lo dice.** El contenido real —portada, tres gráficos y chat sobre
- * el grafo de negocio— llega en el hito 6 de su propio sprint. Un cascarón que se anuncia es honesto;
- * uno que simula funcionar es el que enseña que la app no anda.
- *
- * El contenido propio SIGUE sin fondo — `MarcoGlass` ya aporta el vidrio, un `backgroundColor` acá
- * lo dejaría opaco.
+ * 🔴 **Cascarón NO: si el endpoint no está, se dice.** El «PRÓXIMAMENTE» anterior era honesto cuando
+ * no había contrato; ahora que la forma existe, la pantalla se construye de verdad y el único estado
+ * que falta es el connect.
  */
+
+type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
+
 export function PantallaInteligencia() {
   const tema = useTema();
+  const [estado, setEstado] = useState<EstadoLista>('cargando');
+  const [portada, setPortada] = useState<Portada | null>(null);
+  const [refrescando, setRefrescando] = useState(false);
+  const vivo = useRef(true);
+
+  const cargar = useCallback(async () => {
+    const res = await leerPortada();
+    if (!vivo.current) return;
+    if (res.status === 'ok') {
+      setPortada(res.portada);
+      setEstado('ok');
+      return;
+    }
+    setEstado('no_disponible');
+  }, []);
+
+  useEffect(() => {
+    vivo.current = true;
+    void cargar();
+    return () => {
+      vivo.current = false;
+    };
+  }, [cargar]);
+
+  async function tirarParaRefrescar() {
+    setRefrescando(true);
+    try {
+      await cargar();
+    } finally {
+      if (vivo.current) setRefrescando(false);
+    }
+  }
+
+  /** Un importe para un KPI: «—» si no vino, nunca «$0». */
+  const kpi = (v: string | null) => (v != null ? formatearImporte(v) : '—');
 
   return (
     <MarcoGlass titulo="Inteligencia de Negocio" icono="chart" testID="pantalla-inteligencia">
-      <View
-        testID="inteligencia-contenido"
-        style={[styles.contenedor, { padding: tema.espacio.lg, gap: tema.espacio.sm }]}
-      >
-        <Text
-          testID="inteligencia-descripcion"
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, lineHeight: 22 }}
+      {estado === 'cargando' && (
+        <View style={styles.centro}>
+          <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
+        </View>
+      )}
+
+      {estado === 'no_disponible' && (
+        <View style={styles.centro}>
+          <Text
+            testID="inteligencia-no-disponible"
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
+          >
+            El resumen de tu negocio todavía no está disponible en tu copiloto.
+          </Text>
+        </View>
+      )}
+
+      {estado === 'ok' && portada != null && (
+        <ScrollFormulario
+          testID="inteligencia-portada"
+          contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refrescando}
+              onRefresh={() => void tirarParaRefrescar()}
+              tintColor={tema.color.acento}
+              colors={[tema.color.acento]}
+              testID="inteligencia-refresh"
+            />
+          }
         >
-          Ventas, cobros y actividad del negocio, resumidos por el copiloto.
-        </Text>
-        <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.mono, fontSize: 11, letterSpacing: 1.2 }}>
-          PRÓXIMAMENTE
-        </Text>
-      </View>
+          {/* CAJA — el número grande, lo primero que se mira. */}
+          <View testID="inteligencia-caja">
+            <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico, letterSpacing: 1.2 }}>
+              EN CAJA
+            </Text>
+            <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: 34 }}>
+              {kpi(portada.caja.saldo)}
+            </Text>
+          </View>
+
+          {/* EL MES — cinco números, en una grilla de dos columnas. */}
+          <Text style={rotulo(tema)}>ESTE MES</Text>
+          <View style={styles.grillaKpis}>
+            {(
+              [
+                ['Ingresos', portada.mes.ingresos, tema.color.exito],
+                ['Gastos', portada.mes.gastos, tema.color.peligro],
+                ['Rentabilidad', portada.mes.rentabilidad, tema.color.acento],
+                ['Facturado', portada.mes.facturado, tema.color.texto],
+                ['Cobrado', portada.mes.cobrado, tema.color.texto],
+              ] as const
+            ).map(([etiqueta, valor, color]) => (
+              <View key={etiqueta} style={styles.kpiCelda} testID={`inteligencia-mes-${etiqueta.toLowerCase()}`}>
+                <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>{etiqueta}</Text>
+                <Text style={{ color, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.titulo }}>
+                  {kpi(valor)}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* POR COBRAR — con lo vencido resaltado, que es lo accionable. */}
+          <Row testID="inteligencia-por-cobrar">
+            <View style={styles.filaEntre}>
+              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+                Por cobrar
+              </Text>
+              <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                {kpi(portada.porCobrar.total)}
+              </Text>
+            </View>
+          </Row>
+          {portada.porCobrar.vencido != null && (
+            <Text testID="inteligencia-vencido" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico, marginTop: -8 }}>
+              {formatearImporte(portada.porCobrar.vencido)} vencido
+            </Text>
+          )}
+
+          {/* SERIE MENSUAL — barras proporcionales, sin librería: ingresos vs gastos por mes. */}
+          {portada.serieMensual.length > 0 && (
+            <View testID="inteligencia-serie">
+              <Text style={rotulo(tema)}>MES A MES</Text>
+              <SerieBarras portada={portada} />
+            </View>
+          )}
+
+          {/* MEJORES CLIENTES — degrada a vacío si Clientes no está (contrato §3.1). */}
+          <Text style={rotulo(tema)}>MEJORES CLIENTES</Text>
+          {portada.mejoresClientes.length === 0 ? (
+            <Text testID="inteligencia-clientes-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              Todavía no hay clientes con ventas registradas.
+            </Text>
+          ) : (
+            portada.mejoresClientes.map((c) => (
+              <Row key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`}>
+                <View style={styles.filaEntre}>
+                  <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
+                  <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                    {kpi(c.total)}
+                  </Text>
+                </View>
+              </Row>
+            ))
+          )}
+        </ScrollFormulario>
+      )}
     </MarcoGlass>
   );
 }
 
+/**
+ * Barras de la serie mensual, dibujadas con `View`s de alto proporcional — sin librería de gráficos
+ * (una dependencia nueva para dos barras por mes sería sobreingeniería). La altura se normaliza contra
+ * el máximo de la serie; un mes sin dato (`null`) no dibuja barra, no dibuja una de alto cero que se
+ * leería como «cero».
+ */
+function SerieBarras({ portada }: { portada: Portada }) {
+  const tema = useTema();
+  const nums = portada.serieMensual.flatMap((p) =>
+    [p.ingresos, p.gastos].filter((v): v is string => v != null).map(Number),
+  );
+  const max = nums.length > 0 ? Math.max(...nums, 1) : 1;
+  const ALTO = 80;
+
+  return (
+    <View style={styles.serieFila}>
+      {portada.serieMensual.map((p) => {
+        const barra = (valor: string | null, color: string) => {
+          if (valor == null) return <View style={[styles.barra, { height: 1, backgroundColor: tema.color.borde }]} />;
+          const h = Math.max(2, (Number(valor) / max) * ALTO);
+          return <View style={[styles.barra, { height: h, backgroundColor: color }]} />;
+        };
+        return (
+          <View key={p.mes} style={styles.serieCol} testID={`inteligencia-barra-${p.mes}`}>
+            <View style={styles.serieBarras}>
+              {barra(p.ingresos, tema.color.exito)}
+              {barra(p.gastos, tema.color.peligro)}
+            </View>
+            {/* `2026-04` → `04`: la etiqueta corta cabe; el año se repite y no aporta acá. */}
+            <Text style={{ color: tema.color.textoTenue, fontSize: 10 }}>{p.mes.slice(5)}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** El rótulo de sección — depende del tema, así que es una función, no una entrada de `StyleSheet`. */
+const rotulo = (tema: ReturnType<typeof useTema>) => ({
+  color: tema.color.acento,
+  fontFamily: tema.fuente.mono,
+  fontSize: 11,
+  letterSpacing: 1.2,
+  opacity: 0.7,
+});
+
 const styles = StyleSheet.create({
-  contenedor: { flex: 1 },
+  centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
+  filaEntre: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
+  serieCol: { alignItems: 'center', gap: 4 },
+  serieBarras: { flexDirection: 'row', gap: 3, alignItems: 'flex-end' },
+  barra: { width: 12, borderRadius: 3 },
 });

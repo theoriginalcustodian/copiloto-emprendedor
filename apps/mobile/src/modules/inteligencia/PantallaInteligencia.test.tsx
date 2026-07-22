@@ -1,9 +1,38 @@
-import { render, screen } from '@testing-library/react-native';
+/**
+ * `PantallaInteligencia` — la portada de IN.
+ *
+ * **[CONNECT] — el endpoint no está vivo; la pantalla habla con `leerPortada()` mockeado.** Lo que se
+ * fija acá son las dos reglas que un tablero de KPIs no puede violar: (1) *«todavía no está»* ≠ *«tu
+ * negocio está en cero»*, y (2) un número que no vino se muestra «—», nunca «$0».
+ *
+ * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
+ */
+jest.mock('@copiloto/core', () => {
+  const actual = jest.requireActual('@copiloto/core');
+  return { ...actual, leerPortada: jest.fn() };
+});
 
-import { ThemeProvider } from '../../theme/ThemeProvider';
+import { render, screen, waitFor } from '@testing-library/react-native';
+
+import { leerPortada } from '@copiloto/core';
+
 import { PantallaInteligencia } from './PantallaInteligencia';
+import { ThemeProvider } from '../../theme/ThemeProvider';
 
-async function envolver() {
+const leerMock = leerPortada as jest.MockedFunction<typeof leerPortada>;
+
+const PORTADA = {
+  caja: { saldo: '184000.00', moneda: 'ARS' },
+  mes: { ingresos: '95000.00', gastos: '31000.00', rentabilidad: '64000.00', facturado: '120000.00', cobrado: '90000.00' },
+  serieMensual: [
+    { mes: '2026-03', ingresos: '80000.00', gastos: '20000.00' },
+    { mes: '2026-04', ingresos: '95000.00', gastos: '31000.00' },
+  ],
+  mejoresClientes: [{ cliente: 'Panadería Los Tilos', total: '48000.00' }],
+  porCobrar: { total: '30000.00', vencido: '12000.00' },
+};
+
+async function montar() {
   return render(
     <ThemeProvider>
       <PantallaInteligencia />
@@ -11,26 +40,79 @@ async function envolver() {
   );
 }
 
-describe('PantallaInteligencia', () => {
-  it('renderiza su descripción', async () => {
-    await envolver();
-    expect(screen.getByTestId('inteligencia-descripcion')).toBeTruthy();
+beforeEach(() => {
+  jest.clearAllMocks();
+  leerMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
+});
+
+describe('PantallaInteligencia — lo que muestra', () => {
+  it('pinta la caja, los cinco números del mes y los mejores clientes', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-mes-rentabilidad')).toBeTruthy();
+    expect(screen.getByText('Panadería Los Tilos')).toBeTruthy();
   });
 
-  /** El porqué extendido está en `PantallaRedes.test.tsx`: esta pantalla trae su propio `MarcoGlass`,
-   *  que ya aporta el vidrio. Un `backgroundColor` en `inteligencia-contenido` lo tapa y nadie se entera. */
-  it('no pinta fondo propio — el vidrio lo aporta MarcoGlass', async () => {
-    await envolver();
-    const estilos = [screen.getByTestId('inteligencia-contenido').props.style].flat(Infinity);
-    for (const e of estilos) {
-      expect(e?.backgroundColor).toBeUndefined();
-    }
+  it('la serie mensual dibuja una barra por mes', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-barra-2026-03')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-barra-2026-04')).toBeTruthy();
   });
 
-  /** Invariante invertido con la convergencia a `MarcoGlass` (2026-07-21) — ver
-   *  `PantallaRedes.test.tsx`: el título ahora lo aporta esta misma pantalla, una sola vez. */
-  it('el título "Inteligencia de Negocio" lo aporta el MarcoGlass propio, una sola vez', async () => {
-    await envolver();
+  it('lo vencido se muestra aparte, porque es lo accionable', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-vencido')).toBeTruthy());
+  });
+
+  it('el título "Inteligencia de Negocio" lo aporta su MarcoGlass, una sola vez', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
     expect(screen.getAllByText('Inteligencia de Negocio')).toHaveLength(1);
+  });
+});
+
+describe('PantallaInteligencia — lo que NO inventa', () => {
+  it('🔴 sin endpoint desplegado lo DICE, y no muestra ningún número', async () => {
+    leerMock.mockResolvedValue({ status: 'no_disponible' });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-no-disponible')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-portada')).toBeNull();
+  });
+
+  it('🔴 un KPI en `null` se muestra «—», nunca «$0»', async () => {
+    // La regla que sostiene el tablero entero: «no sé cuánto facturó» y «facturó cero» son cosas
+    // distintas, y un cero por default sería un KPI que miente.
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: { ...PORTADA, caja: { saldo: null, moneda: 'ARS' }, mes: { ...PORTADA.mes, facturado: null } },
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    // Y NO hay ningún «$0» inventado en pantalla.
+    expect(screen.queryByText(/\$\s?0(\D|$)/)).toBeNull();
+  });
+
+  it('🔴 mejores clientes vacío muestra el aviso, no una lista rota', async () => {
+    // Degrada a [] si Clientes no está (contrato §3.1): la card muestra vacío, no rompe.
+    leerMock.mockResolvedValue({ status: 'ok', portada: { ...PORTADA, mejoresClientes: [] } });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-clientes-vacio')).toBeTruthy());
+  });
+
+  it('🔴 CONTROL — el buscador encuentra un cliente presente y NO uno ausente', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByText('Panadería Los Tilos')).toBeTruthy());
+    expect(screen.queryByText('Cliente Que No Existe')).toBeNull();
   });
 });

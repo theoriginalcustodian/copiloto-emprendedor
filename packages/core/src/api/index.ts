@@ -231,6 +231,20 @@ export type {
   ResultadoIngreso,
 } from './ingresos';
 /**
+ * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
+ * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
+ * `no_disponible` hasta el connect. Plata como string, `ausente ≠ cero`. Ver el docstring.
+ */
+export { leerPortada } from './inteligencia';
+export type {
+  CajaPortada,
+  MejorCliente,
+  MesPortada,
+  Portada,
+  PorCobrarPortada,
+  PuntoSerie,
+} from './inteligencia';
+/**
  * `/capacidades` — lo que el copiloto sabe hacer HOY, para la pantalla de «cómo hablarle». Es una
  * **proyección** de las tools vivas: una capacidad se publica sólo si su tool existe, así que la poda
  * y el alta de tools actualizan la guía solas. **Sin lista de respaldo** — ver el docstring.
