@@ -396,6 +396,17 @@ class CobroStore:
             if campo in datos:
                 sets.append(f"{campo} = %s")
                 valores.append(datos[campo])
+        # `fecha` va aparte de los tres de arriba porque no es texto con tope: pasa por `_fecha`, que
+        # es el MISMO parser que usa el alta. Que la corrección y el alta compartan parser es lo que
+        # evita que una fecha entre bien por una puerta y mal por la otra.
+        #
+        # Existe por la card `ingreso_anotado`: el ingreso se guarda de una y la fecha dictada se
+        # corrige DESPUÉS, tocándola en la tarjeta. Sin esto, «me pagaron 40 mil el lunes» —que el
+        # resolvedor no entiende— quedaba con fecha de hoy y **no había forma de arreglarlo nunca**:
+        # el chat manda la respuesta al mismo resolvedor que ya falló, y por acá no entraba.
+        if "fecha" in datos:
+            sets.append("fecha = %s")
+            valores.append(_fecha(datos["fecha"]))       # ilegible -> la excepción que la web hace 400
         if not sets:
             return None
         with self._conn_factory() as conn, conn.cursor() as cur:
