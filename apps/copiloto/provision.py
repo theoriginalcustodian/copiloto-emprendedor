@@ -152,18 +152,39 @@ def _ensure_clientes_email_telefono(conn) -> None:
     a las filas que todavía no se migraron** (`email = '' AND telefono = ''`), así que es idempotente
     y no pisa lo que el emprendedor haya editado después.
 
-    ⚠️ **DEUDA DELIBERADA Y VISIBLE:** la columna `contacto` **no se borra acá**. Un `DROP COLUMN` es
-    irreversible y esto corre en cada deploy; quiero una corrida en producción con los dos campos
-    vivos antes de tirar el original. **Propietario: BACKEND. Condición de pago: el primer deploy
-    posterior a que FRONTEND cierre su hito 9** (los dos campos en alta, edición y ficha). Mientras
-    tanto `contacto` queda **huérfana**: nadie la lee ni la escribe — `_COLS` del store ya no la
-    incluye—, así que no puede divergir en silencio.
+    ⚠️ **DEUDA DELIBERADA Y VISIBLE, paso 1 de 2 PAGADO:** la columna `contacto` **no se borra acá**.
+    Su condición de pago —*el primer deploy posterior a que FRONTEND cierre su hito 9*— se cumplió
+    (hito 9 verificado en device el 2026-07-22), pero el `DROP COLUMN` **no es una línea**: esta misma
+    función lo rompería. Por eso va en dos pasos y en este orden:
+
+    1. ✅ **hecho acá** — la migración se **saltea sola** cuando la columna ya no está (el bloque de
+       abajo). Sin esto, el `DROP` dejaría el deploy siguiente en rojo.
+    2. ⏳ **pendiente** — `ALTER TABLE … DROP COLUMN contacto`, **irreversible sobre una base viva**:
+       requiere el OK del operador, aunque hoy no haya **ni una** fila con dato adentro (medido:
+       `contacto <> ''` → 0 en todos los tenants). **Propietario: BACKEND.**
+
+    Mientras tanto `contacto` queda **huérfana**: nadie la lee ni la escribe — `_COLS` del store ya no
+    la incluye—, así que no puede divergir en silencio.
     """
     cur = conn.cursor()
     cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
                 f"ADD COLUMN IF NOT EXISTS email text NOT NULL DEFAULT '';")
     cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
                 f"ADD COLUMN IF NOT EXISTS telefono text NOT NULL DEFAULT '';")
+
+    # 🔴 El guard que hace posible el paso 2. Las consultas de abajo nombran `contacto` en el `WHERE`,
+    # y para eso **no existe** un `IF EXISTS` que las salve: contra una columna borrada tiran
+    # `UndefinedColumn`, y dentro de una transacción eso aborta todo lo que venga después — el deploy
+    # entero, no sólo esta migración. Preguntar por el catálogo primero es la única forma de que el
+    # `DROP` sea una decisión y no una bomba de tiempo.
+    cur.execute("SELECT 1 FROM information_schema.columns "
+                "WHERE table_schema = %s AND table_name = 'copiloto_clientes' "
+                "AND column_name = 'contacto'", (SCHEMA,))
+    if cur.fetchone() is None:
+        print(f"OK {SCHEMA}.copiloto_clientes.email/.telefono "
+              f"(la columna `contacto` ya no existe — migración retirada, nada que migrar)",
+              flush=True)
+        return
 
     cur.execute(f"SELECT count(*) FROM {SCHEMA}.copiloto_clientes "
                 f"WHERE contacto <> '' AND email = '' AND telefono = ''")
