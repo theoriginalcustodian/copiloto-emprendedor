@@ -203,3 +203,18 @@ export type {
   ReceptorInput,
   ResultadoEmision,
 } from './afip';
+
+/**
+ * Cobros de comprobantes (hito 3 del sprint de Inteligencia de Negocio) — lo que permite responder
+ * *«¿quién me debe?»*. Forma declarada por backend ANTES de implementar; al exportarse, los endpoints
+ * todavía no estaban vivos y el cliente degrada a `no_disponible`.
+ */
+export { registrarCobro, borrarCobro, listarImpagos } from './cobros';
+export type {
+  Cobro,
+  ComprobanteImpago,
+  EstadoCobro,
+  EstadoDeCobro,
+  RegistrarCobroRequest,
+  ResultadoCobro,
+} from './cobros';
