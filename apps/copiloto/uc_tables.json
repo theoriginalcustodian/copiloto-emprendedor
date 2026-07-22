@@ -86,6 +86,8 @@
     "reemplaza_a bigint",
     "factura_id text",
     "cliente_ref bigint",
+    "estado text NOT NULL DEFAULT 'pendiente'",
+    "estado_actualizado_en timestamptz",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuesto_items": [
