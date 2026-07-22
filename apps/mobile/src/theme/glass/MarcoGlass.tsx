@@ -40,6 +40,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useInerteAlPerderFoco } from '../../navegacion/inerteAlPerderFoco';
 import { useTema } from '../ThemeProvider';
 import { CristalVidrio } from './CristalVidrio';
 import { GlassIcon } from './GlassIcon';
@@ -101,6 +102,7 @@ export interface MarcoGlassProps extends PropsWithChildren {
 
 export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, children }: MarcoGlassProps) {
   const tema = useTema();
+  const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
   const panelY = useSharedValue(0);
   const inicio = useSharedValue(0);
@@ -182,6 +184,14 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
   return (
     <View
       style={styles.raiz}
+      /**
+       * 🔴 **Una función que quedó DEBAJO de otra deja de existir para el lector de pantalla.** Pasa
+       * de verdad: Ajustes queda abajo cuando se abre «Mi negocio» o «Facturación AFIP», y como todas
+       * entran como `transparentModal`, la de abajo sigue montada. El árbol de accesibilidad no sabe
+       * nada de opacidad — para él los seis tiles de Ajustes siguen activables desde adentro de otra
+       * pantalla. Mismo mecanismo que backend midió en el escritorio. Ver `inerteAlPerderFoco`.
+       */
+      {...inercia}
       // La medida que usa el cierre para saber hasta dónde bajar el vidrio antes de navegar.
       onLayout={(e) => {
         altoPantalla.value = e.nativeEvent.layout.height;
