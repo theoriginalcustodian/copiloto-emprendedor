@@ -148,10 +148,10 @@ function comprobanteMock(over: Partial<Comprobante> = {}): Comprobante {
   };
 }
 
-async function montar() {
+async function montar(props: { facturaIdInicial?: string } = {}) {
   return render(
     <ThemeProvider>
-      <PantallaFacturacion />
+      <PantallaFacturacion {...props} />
     </ThemeProvider>,
   );
 }
@@ -476,5 +476,51 @@ describe('PantallaFacturacion', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('facturacion-mis-comprobantes-fila-11-6-18')).toBeTruthy());
+  });
+
+  /**
+   * 🔴 **El camino "Facturar desde un presupuesto", que es el que el operador recorre en el device.**
+   *
+   * El contrato es explícito en que Facturar **no emite**: arma un borrador con los ítems del
+   * presupuesto y deposita al usuario en ESTE gate. Si esta pantalla creara igual un borrador propio,
+   * el usuario perdería los ítems que ya había cargado — y no lo notaría, porque un borrador vacío se
+   * ve idéntico al arranque normal de la pantalla.
+   */
+  describe('adoptar un borrador ya creado (facturaIdInicial)', () => {
+    it('NO crea un borrador nuevo', async () => {
+      await montar({ facturaIdInicial: 'presu-12' });
+
+      await waitFor(() => expect(esperarEstadoEstable).toHaveBeenCalledWith('presu-12'));
+      // El control que importa: el borrador del presupuesto ya existe; pedir otro lo dejaría huérfano
+      // y perdería sus ítems.
+      expect(crearFactura).not.toHaveBeenCalled();
+    });
+
+    it('muestra los datos que el borrador YA trae, sin mandar al usuario a cargarlos de nuevo', async () => {
+      // El backend deja el borrador con receptor e ítems puestos: si la pantalla arrancara igual en
+      // el paso 1, el atajo no ahorraría nada y encima haría dudar de si se guardó algo.
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({
+        convergio: true,
+        estado: estadoMock({
+          estado: 'esperando_confirmacion',
+          items: [{ descripcion: 'Mano de obra', cantidad: '1', precioUnitario: '30000.00', subtotal: '30000.00' }],
+          total: '30000.00',
+          tokenConfirmacion: 'tok-confirmar',
+        }),
+      });
+
+      await montar({ facturaIdInicial: 'presu-12' });
+
+      await waitFor(() => expect(screen.getByText(/Mano de obra/)).toBeTruthy());
+      expect(crearFactura).not.toHaveBeenCalled();
+    });
+
+    it('sin el parámetro sigue creando su propio borrador — el camino de siempre no cambia', async () => {
+      // El control diferencial: si este test también pasara con `crearFactura` sin llamar, los dos
+      // de arriba no estarían probando nada.
+      await montar();
+
+      await waitFor(() => expect(crearFactura).toHaveBeenCalled());
+    });
   });
 });

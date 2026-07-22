@@ -214,6 +214,44 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
     };
   }, [gate]);
 
+  /**
+   * 2.bis Adoptar un borrador que llega de AFUERA (Facturar desde un presupuesto).
+   *
+   * 🔴 **Sin esto, la pantalla adopta el id y nunca carga sus datos.** El efecto 3 (crear) es el que
+   * hace la primera lectura del estado —vía `esperarEstadoEstable`—, y sembrar `facturaId` lo saltea
+   * a propósito para no crear un borrador de más. El polling del efecto 5 tampoco cubre el hueco:
+   * arranca **sólo mientras se está emitiendo** (`emitiendo`/`emitida`), que es justo lo que un
+   * borrador recién adoptado no es. Resultado: `estadoFacturaActual` se quedaba en `null` para
+   * siempre y el usuario llegaba desde el presupuesto a una pantalla muerta.
+   *
+   * Lo cazó un test escrito para el camino del device antes de recorrerlo — no había síntoma en
+   * ninguna otra suite, porque ninguna montaba esta pantalla con un borrador ajeno.
+   *
+   * `esperarEstadoEstable` y no `estadoFactura` a secas: el borrador se acaba de armar con signals
+   * asíncronos (receptor + ítems), así que la primera lectura puede llegar antes de que estén
+   * aplicados. Es la misma función y el mismo motivo que usa el camino de creación.
+   */
+  useEffect(() => {
+    if (facturaIdInicial == null) return;
+    let cancelado = false;
+    setCreandoBorrador(true);
+    setErrorBorrador(false);
+    (async () => {
+      const { estado } = await esperarEstadoEstable(facturaIdInicial);
+      if (cancelado || !vivo.current) return;
+      setEstadoFacturaActual(estado);
+      setCreandoBorrador(false);
+    })().catch(() => {
+      if (!cancelado && vivo.current) {
+        setErrorBorrador(true);
+        setCreandoBorrador(false);
+      }
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [facturaIdInicial]);
+
   // 3. Gate pasado y sin factura activa -> crear el borrador y esperar a que el estado se estabilice.
   useEffect(() => {
     if (gate.tipo !== 'listo' || facturaId !== null) return;
