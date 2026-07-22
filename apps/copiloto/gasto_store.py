@@ -33,15 +33,21 @@ _COLS = ("id", "monto", "fecha", "categoria", "proveedor", "medio_pago", "descri
          "origen", "monto_sugerido", "created_at")
 
 
-def hoy_del_negocio() -> datetime.date:
+def hoy_del_negocio(ahora: datetime.datetime | None = None) -> datetime.date:
     """La ÚNICA fuente de "hoy" para gastos.
 
     La columna `fecha` a propósito **no tiene DEFAULT en SQL**: un `DEFAULT current_date` lo evaluaría
     Postgres en la zona del servidor (UTC) y daría un día distinto al de esta función en las horas de
     la noche argentina. Dos definiciones de "hoy" que divergen 3 horas por día es exactamente el tipo
     de bug que aparece sólo a veces, de noche, y se cierra como "no reproducible".
+
+    `ahora` se inyecta SÓLO desde los tests. Está acá porque la única corrida que ejercitó de verdad
+    este arreglo lo hizo por casualidad —la sonda de FRONTEND cayó a las 22:41 de Argentina, dentro de
+    la ventana de 3 horas donde las dos definiciones difieren— y la misma sonda al mediodía habría
+    pasado sin probar nada. Un test cuyo poder de detección depende de la hora a la que corre el CI es
+    verde por casualidad: pasa 21 horas por día diga lo que diga el código.
     """
-    return datetime.datetime.now(ZONA_DEL_NEGOCIO).date()
+    return (ahora or datetime.datetime.now(datetime.timezone.utc)).astimezone(ZONA_DEL_NEGOCIO).date()
 
 
 def dos_decimales(valor) -> str:
