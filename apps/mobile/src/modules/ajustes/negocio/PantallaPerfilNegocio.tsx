@@ -22,6 +22,7 @@ import {
   type OpcionSelect,
 } from '../../../theme/glass/campos';
 import { MarcoGlass } from '../../../theme/glass/MarcoGlass';
+import { SeccionCatalogo } from './SeccionCatalogo';
 import { useTema } from '../../../theme/ThemeProvider';
 
 /**
@@ -361,6 +362,12 @@ export function PantallaPerfilNegocio() {
               {errorGuardado ?? 'No pudimos guardar los cambios. Probá de nuevo.'}
             </Text>
           )}
+
+          {/* «Lo que vendo» es una TERCERA sección de esta misma pantalla, con su propio ciclo de
+              guardado: no comparte el botón de las otras dos porque no comparte el endpoint —cada
+              concepto se guarda solo, apenas se agrega—. Va acá y no en su propio destino porque es
+              parte de describir el negocio, que es exactamente lo que esta pantalla hace. */}
+          <SeccionCatalogo testID="perfil-negocio-catalogo" />
 
           {/* Los datos fiscales viven en otra pantalla a propósito — decirlo evita que el
               emprendedor los busque acá y concluya que faltan. */}
