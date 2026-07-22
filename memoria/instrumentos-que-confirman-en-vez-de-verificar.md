@@ -25,6 +25,10 @@ metadata:
 8. **Filtro mal escrito → `0` con el dato impreso arriba.** Un ternario sin paréntesis dentro de un generador reportó "conexiones googledrive: 0" mientras la línea de arriba mostraba `googledrive ... ACTIVE`. El resumen mentía y el detalle no.
 9. **`psql: command not found` → `EXIT_REAL=0`.** El binario no existía, el comando no hizo nada, y el exit code salió limpio por la forma del encadenado.
 
+**Décimo, y el más difícil de matar: el instrumento PARCIALMENTE ciego (2026-07-21, noche).** El vigía del buzón de PLANIFICACIÓN miraba `cerrado/` para una cosa (buscar el `avance_` del dueño de un ítem en curso) y **no** para la otra (mensajes nuevos dirigidos a mí). Reportaba cosas archivadas — así que uno concluía que miraba lo archivado. El de FRONTEND, ciego del todo, le costó **horas** de bloqueo con el trabajo ajeno ya hecho desde hacía rato.
+
+**La ceguera parcial dura más que la total, precisamente porque duele menos:** un instrumento que no reporta nada nunca se gana la confianza; uno que acierta en la mitad de los casos la gana entera, y la mitad muda no se descubre hasta que cuesta algo. **No alcanza con preguntar "¿este instrumento mira X?" — hay que preguntar "¿lo mira en TODOS sus caminos, o sólo en el que probé?".**
+
 **La regla que sale de esto:** antes de creerle a un instrumento propio, preguntarse *¿qué devolvería si lo que mido estuviera roto?* Si la respuesta es "lo mismo", el instrumento no sirve. Hornear el control adentro: el smoke ahora sabe QUÉ esperar según haya credencial o no, en vez de dar por bueno cualquier 200.
 
 **Y el corolario del caso 7:** el control horneado también hay que verificarlo. Un control que nunca vio fallar el instrumento es fe, no evidencia. Cuando se pueda, preferir **control diferencial** (mismo instrumento, estado anterior vs actual) sobre control sintético — el diferencial no depende de que uno haya imaginado bien la forma del fallo.
