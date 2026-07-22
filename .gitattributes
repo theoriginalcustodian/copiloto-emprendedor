@@ -1,0 +1,16 @@
+# Normalización de fin de línea.
+#
+# Todo lo que se EJECUTA en el VPS tiene que llegar con LF. En Windows, `core.autocrlf=true`
+# convierte los scripts a CRLF al hacer checkout; el deploy tar-ea el working tree tal cual y bash
+# del VPS termina leyendo `set -euo pipefail\r`, que reporta como "invalid option name" y aborta el
+# deploy a mitad de camino. Costó un deploy silenciosamente incompleto el 2026-07-21: el rsync copió
+# los archivos, el build del frontend murió, los servicios nunca se reiniciaron — y el script devolvió
+# éxito porque su salida estaba pipeada.
+#
+# Esto NO depende de la config git de cada máquina: viaja con el repo.
+
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.service   text eol=lf
+Dockerfile  text eol=lf
+*.snippet   text eol=lf

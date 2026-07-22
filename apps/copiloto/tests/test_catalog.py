@@ -23,7 +23,7 @@ def test_estructura_por_servicio():
     assert {s["key"] for s in services} == _KNOWN_TOOLKITS | {"mercadopago"}
     for s in services:
         for field in ("key", "display_name", "work_label", "category", "kind", "description",
-                      "capabilities", "connected", "connect_path"):
+                      "capabilities", "connected", "connect_path", "disconnect_path"):
             assert field in s, f"{s['key']!r} sin campo {field!r}"
         assert isinstance(s["capabilities"], list)
         assert isinstance(s["connected"], bool)
@@ -97,6 +97,23 @@ def test_connect_path_por_kind():
     services = build_catalog(valid_toolkits={"gmail"}, mp_connected=True, composio_connected=[])
     assert _by_key(services, "mercadopago")["connect_path"] == "/mp/connect"
     assert _by_key(services, "gmail")["connect_path"] == "/composio/connect?service=gmail"
+
+
+def test_disconnect_path_por_kind():
+    """Pedido del frontend (addendum 2026-07-21): el path de desconexión lo emite el backend, igual
+    que `connect_path`. La app lo usa TAL CUAL -- reconstruirlo desde la `key` se rompe justo en
+    MercadoPago, que no va por Composio."""
+    services = build_catalog(valid_toolkits={"gmail"}, mp_connected=True, composio_connected=[])
+    assert _by_key(services, "mercadopago")["disconnect_path"] == "/mp/connection"
+    assert _by_key(services, "gmail")["disconnect_path"] == "/composio/connection?service=gmail"
+
+
+def test_disconnect_path_de_un_toolkit_nuevo_sale_solo():
+    """Un servicio agregado en `services/<svc>.py` trae su `disconnect_path` sin tocar este módulo
+    ni la app -- misma propiedad que ya tenía `connect_path`."""
+    entry = _by_key(build_catalog(valid_toolkits={"un_servicio_nuevo"}, mp_connected=False,
+                                  composio_connected=[]), "un_servicio_nuevo")
+    assert entry["disconnect_path"] == "/composio/connection?service=un_servicio_nuevo"
 
 
 def test_valid_toolkits_vacio_solo_mercadopago():

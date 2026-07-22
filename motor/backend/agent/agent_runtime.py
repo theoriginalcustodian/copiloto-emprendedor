@@ -22,9 +22,15 @@ _STT_PROVIDER = {"provider": None}    # transcripción de voz (agnóstica del do
 
 def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, context_factory=None,
                     memory_provider=None, engine_mode: str = "dispatch",
-                    tool_schemas=None, tool_executor=None) -> None:
+                    tool_schemas=None, tool_executor=None, perfil_provider=None) -> None:
     """`memory_provider` (opcional): boundary de memoria de largo plazo (recall/remember/warm). None = el
     dominio no tiene memoria (default; clinic no lo pasa) → las activities de memoria son no-op para él.
+
+    `perfil_provider` (opcional): `(cliente_id) -> str`, el bloque de contexto ESTABLE del tenant (quién
+    es, a qué se dedica, cómo quiere que le hablen). Se antepone al system prompt en cada llamada al
+    LLM. Es un boundary igual que `memory_provider`: el motor no sabe qué hay adentro ni de qué tabla
+    sale — eso vive en la capa cliente. `None` (default) = el dominio no tiene perfil y el prompt queda
+    EXACTAMENTE como antes, byte a byte.
 
     `engine_mode`: 'dispatch' (default, intent->1 accion, byte-identical) | 'react' (loop tool-calling).
     En 'react' el dominio DEBE pasar `tool_schemas` (catalogo OpenAI function-calling) y `tool_executor`
@@ -32,7 +38,8 @@ def register_domain(name: str, *, system_prompt: str, llm_provider, dispatcher, 
     _DOMAINS[name] = {"system_prompt": system_prompt, "llm_provider": llm_provider,
                       "dispatcher": dispatcher, "context_factory": context_factory,
                       "memory_provider": memory_provider, "engine_mode": engine_mode,
-                      "tool_schemas": tool_schemas, "tool_executor": tool_executor}
+                      "tool_schemas": tool_schemas, "tool_executor": tool_executor,
+                      "perfil_provider": perfil_provider}
 
 
 def get_domain(name: str) -> dict:

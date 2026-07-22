@@ -20,6 +20,7 @@ import asyncio
 import logging
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Callable
 
@@ -31,9 +32,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from backend.agent.inbound_router import route_inbound
 from catalog import build_catalog
+# `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
+# el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
+# que es todo el punto — una segunda lista volvería a ser el catálogo estático que esto viene a matar.
+import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
@@ -97,6 +103,215 @@ def make_start_refresh(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE,
         )
 
     return start_refresh
+
+
+def make_start_onboarding(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Fábrica de `start_onboarding` (hook de `create_afip_app`): arranca el alta ARCA durable.
+
+    `id` determinístico por (cliente_id, cuit, ambiente) + `USE_EXISTING` → idempotente: si el usuario
+    toca dos veces "Conectar" mientras el RPA todavía corre, se engancha al alta en curso en vez de
+    lanzar una segunda. Mismo patrón que `make_start_refresh`.
+
+    El AMBIENTE forma parte del id a propósito: son altas distintas (certificados distintos). Sin él,
+    vincular producción mientras un alta de homologación sigue viva se engancharía a esa —y el usuario
+    vería "conectado" sin tener credencial de producción.
+    """
+
+    async def start_onboarding(cliente_id: str, cuit: str, handle: str,
+                               ambiente: str = "dev") -> str:
+        wf_id = _wf_id_onboarding(cliente_id, cuit, ambiente)
+        await temporal_client.start_workflow(
+            "AfipOnboardingWorkflow",
+            args=[cliente_id, cuit, handle, ambiente],
+            id=wf_id,
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return wf_id
+
+    return start_onboarding
+
+
+# Cuando el workflow murió sin dejar dicho por qué (timeout, terminate, o una excepción anterior al
+# try/except). Nombrar la interrupción es mejor que dejar al usuario esperando: puede reintentar.
+_MOTIVO_ALTA_INTERRUMPIDA = ("La vinculación con ARCA se interrumpió. Podés volver a intentarla.")
+
+
+def _wf_id_onboarding(cliente_id: str, cuit: str, ambiente: str = "dev") -> str:
+    """Un alta por (tenant, CUIT, ambiente). `dev` conserva el id histórico —sin sufijo— para no
+    perder de vista las altas que ya corrieron antes de que el ambiente existiera."""
+    base = f"afip-onboarding-{cliente_id}-{cuit}"
+    return base if ambiente == "dev" else f"{base}-{ambiente}"
+
+
+def make_consultar_onboarding(temporal_client) -> Callable:
+    """Fábrica de `consultar_onboarding`: lee el progreso REAL del alta por query del workflow.
+
+    Es lo que le permite a Ajustes mostrar en qué paso está en vez de un "aguardá un momento" fijo —
+    la diferencia concreta contra el competidor, que ante la pregunta del usuario repite el mismo
+    mensaje (benchmark Facturitas §7).
+    """
+
+    async def consultar_onboarding(cliente_id: str, cuit: str,
+                                   ambiente: str = "dev") -> dict | None:
+        handle = temporal_client.get_workflow_handle(
+            _wf_id_onboarding(cliente_id, cuit, ambiente))
+
+        # El STATUS primero, la query después. Es el orden que importa: el status es un hecho del
+        # servidor, mientras que la query ejecuta código —replaya el history— y puede fallar
+        # justamente en las ejecuciones rotas, que son las que hay que reportar. Preguntando al revés,
+        # un alta muerta se veía como "sin información" en vez de como un fallo.
+        try:
+            descripcion = await handle.describe()
+            vivo = descripcion.status is None or descripcion.status.name == "RUNNING"
+        except Exception:  # noqa: BLE001 — nunca hubo alta, o expiró la retención: no es un error
+            return None
+
+        try:
+            progreso = await handle.query("progreso")
+        except Exception:  # noqa: BLE001
+            # La query puede fallar por un replay que el código actual ya no reproduce (cambió desde
+            # que esa ejecución corrió). Que no se pueda leer el detalle NO es razón para callar que
+            # el alta terminó: se reporta con lo que sí se sabe.
+            progreso = None
+
+        if progreso is None:
+            return ({"paso": "dando_de_alta", "terminado": False, "ok": False, "motivo": None,
+                     "ws_autorizados": []} if vivo else
+                    {"paso": "fallido", "terminado": True, "ok": False,
+                     "motivo": _MOTIVO_ALTA_INTERRUMPIDA, "ws_autorizados": []})
+
+        # Una ejecución MUERTA sigue respondiendo queries: devuelve el último estado del replay. Si el
+        # workflow murió por una excepción antes de marcarse como terminado, ese estado dice "en
+        # curso" para siempre y la app polea indefinidamente — le pasó al operador el 2026-07-21,
+        # cinco minutos frente a un alta muerta en cinco segundos.
+        #
+        # Por eso el estado NO se cree lo que el workflow dice de sí mismo cuando el status lo
+        # contradice. Cubre además timeout, terminate y cancel, que el try/except del workflow no
+        # puede atrapar: honesto por construcción, no por que cada camino de error se acuerde.
+        if not vivo and not progreso.get("terminado"):
+            progreso = {**progreso, "paso": "fallido", "terminado": True, "ok": False,
+                        "motivo": progreso.get("motivo") or _MOTIVO_ALTA_INTERRUMPIDA}
+        return progreso
+
+    return consultar_onboarding
+
+
+def _wf_id_factura(cliente_id: str, factura_id: str) -> str:
+    """El id que ve el front NO es el workflow_id: se reconstruye con el `cliente_id` autenticado.
+
+    Si el front pasara el workflow_id completo, un tenant podría operar la factura de otro con sólo
+    adivinar o filtrar el id. Acá el prefijo sale SIEMPRE del token, nunca del request.
+    """
+    return f"factura-{cliente_id}-{factura_id}"
+
+
+def _wf_id_anulacion(cliente_id: str, anulacion_id: str) -> str:
+    return f"anulacion-{cliente_id}-{anulacion_id}"
+
+
+def make_iniciar_factura(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Abre un borrador durable y devuelve su id público."""
+
+    async def iniciar_factura(cliente_id: str, cuit: str) -> str:
+        factura_id = uuid.uuid4().hex
+        await temporal_client.start_workflow(
+            "FacturaWorkflow",
+            args=[cliente_id, cuit, factura_id],
+            id=_wf_id_factura(cliente_id, factura_id),
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return factura_id
+
+    return iniciar_factura
+
+
+def make_abrir_borrador_de_presupuesto(temporal_client, *,
+                                       task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    """Abre el borrador de un presupuesto con `factura_id` DETERMINÍSTICO. `True` si lo abrió esta
+    llamada; `False` si ya había uno corriendo y hay que reusarlo.
+
+    Difiere de `make_iniciar_factura` en las dos cosas que importan acá: el id lo pone el llamador
+    (deriva del presupuesto) y la política de conflicto es **FAIL**, no USE_EXISTING. USE_EXISTING
+    devolvería un handle indistinguible de uno recién creado, y el endpoint volvería a mandarle los
+    signals de carga: el borrador terminaría con los ítems DUPLICADOS — un modo de fallo peor que el
+    que se está arreglando, porque una factura con el doble de todo parece normal.
+
+    El `WorkflowAlreadyStartedError` es la única señal atómica de "ya existía": la da el servidor al
+    rechazar el arranque, sin ventana entre consultar y crear.
+    """
+
+    async def abrir_borrador(cliente_id: str, cuit: str, factura_id: str) -> bool:
+        try:
+            await temporal_client.start_workflow(
+                "FacturaWorkflow",
+                args=[cliente_id, cuit, factura_id],
+                id=_wf_id_factura(cliente_id, factura_id),
+                task_queue=task_queue,
+                id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            )
+            return True
+        except WorkflowAlreadyStartedError:
+            return False
+
+    return abrir_borrador
+
+
+def make_consultar_factura(temporal_client) -> Callable:
+    async def consultar_factura(cliente_id: str, factura_id: str) -> dict | None:
+        try:
+            handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+            return await handle.query("estado")
+        except Exception:  # noqa: BLE001 — no existe, o no es de este tenant: 404 desde el endpoint
+            return None
+
+    return consultar_factura
+
+
+def make_signal_factura(temporal_client) -> Callable:
+    async def signal_factura(cliente_id: str, factura_id: str, nombre: str, payload) -> None:
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        await handle.signal(nombre, payload) if payload is not None else await handle.signal(nombre)
+
+    return signal_factura
+
+
+def make_iniciar_anulacion(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:
+    async def iniciar_anulacion(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
+                                nro: int) -> str:
+        # id determinístico por comprobante: dos toques de "anular" sobre la misma factura se enganchan
+        # a la misma anulación en curso, no emiten dos notas de crédito.
+        anulacion_id = f"{cuit}-{tipo_cbte}-{punto_venta}-{nro}"
+        await temporal_client.start_workflow(
+            "AnulacionWorkflow",
+            args=[cliente_id, cuit, tipo_cbte, punto_venta, nro, f"nc-{anulacion_id}"],
+            id=_wf_id_anulacion(cliente_id, anulacion_id),
+            task_queue=task_queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+        )
+        return anulacion_id
+
+    return iniciar_anulacion
+
+
+def make_consultar_anulacion(temporal_client) -> Callable:
+    async def consultar_anulacion(cliente_id: str, anulacion_id: str) -> dict | None:
+        try:
+            handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+            return await handle.query("estado")
+        except Exception:  # noqa: BLE001
+            return None
+
+    return consultar_anulacion
+
+
+def make_signal_anulacion(temporal_client) -> Callable:
+    async def signal_anulacion(cliente_id: str, anulacion_id: str, nombre: str, payload) -> None:
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        await handle.signal(nombre)
+
+    return signal_anulacion
 
 
 def _composio_valid_toolkits() -> frozenset[str]:
@@ -189,13 +404,18 @@ class RefreshIn(BaseModel):
 
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
+                   afip_app: FastAPI | None = None,
+                   presupuestos_app: FastAPI | None = None,
+                   gastos_app: FastAPI | None = None,
+                   clientes_app: FastAPI | None = None,
+                   actividad_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
                    warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
-    `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `MP_FERNET_KEY` del
+    `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `COPILOTO_FERNET_KEY` del
     env, mismo patrón que `mp_web.py`/`context_factory.py`).
 
     `mp_gateway` (`MercadoPagoGateway`, Task 7 spec §7): arma la URL de conexión OAuth per-tenant en
@@ -359,6 +579,26 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                                           mp_connected=seller is not None,
                                           composio_connected=composio_connected)}
 
+    @app.get("/capacidades")
+    def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Lo que el copiloto sabe hacer HOY + las expresiones de fecha que entiende.
+
+        🔴 **Existe para que la pantalla de ayuda sea una PROYECCIÓN y no una lista escrita a mano.**
+        Frontend lo pidió con el caso exacto y tenía razón: una guía con las frases adentro es el mismo
+        objeto que el catálogo estático de Apps —lo vivo cambia por su cuenta, cada lado verifica su
+        mitad y la junta no es de nadie—. Y ya había nacido con el bug: prometía *«facturale 80 mil a
+        la panadería»* cuando `emitir_factura` **no existe**.
+
+        Acá una capacidad se publica **sólo si su tool está viva**, así que la poda del hito 2 y el
+        alta de la tool de facturar actualizan la guía solas.
+
+        Requiere Bearer aunque hoy no dependa del tenant: es la superficie que le dice al usuario qué
+        puede pedirle a SU copiloto, y el día que las tools varíen por tenant (poda por plan, servicios
+        conectados) la firma ya está puesta. Abrirla ahora y cerrarla después es un cambio de contrato;
+        dejarla cerrada no cuesta nada.
+        """
+        return tool_catalog.capacidades_vivas()
+
     # --- Connect flows per-tenant (Task 7, spec §7) -----------------------------
     # `def` (no `async def`): ambas rutas hacen I/O bloqueante sync (crypto + HTTP del gateway real)
     # -> threadpool, mismo criterio que /reply,/me,/auth/signup.
@@ -378,6 +618,53 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if service not in _composio_valid_toolkits():
             raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
         return {"url": composio_gateway.authorize(user_id=cliente_id, toolkit=service)}
+
+    @app.delete("/composio/connection")
+    def composio_disconnect(service: str = "", cliente_id: str = Depends(require_tenant)) -> dict:
+        """Desconecta un toolkit Composio de ESTE tenant (pedido del operador: "poder desconectar las
+        apps conectadas").
+
+        El `connection_id` NO viaja desde el cliente, ni siquiera como parámetro opcional: se
+        RESUELVE server-side desde el `cliente_id` del token. Aceptar un id del request sería un BOLA
+        de manual (OWASP API1:2023) -- cualquier tenant revocaría la conexión de otro probando ids.
+        El parámetro es el SLUG, que no identifica nada ajeno: dos tenants que mandan
+        `service=gmail` tocan cada uno lo suyo. La barrera no es una validación que se pueda olvidar,
+        es que el id ajeno nunca entra al proceso (test adversarial en test_connect_endpoints.py --
+        por la regla dura del repo, un control sin caso hostil ejercitado queda [UNVERIFIED]).
+
+        Revoca TODAS las conexiones de ese toolkit, no la primera. No es defensivo: el inventario
+        real del 2026-07-21 mostró un tenant con DOS conexiones `googledrive` a la vez (un reintento
+        de vinculación deja la anterior colgada). Revocar una sola dejaría la otra viva y
+        `/catalog` seguiría diciendo "conectado" después de que el usuario desconectó -- la acción
+        mentiría. Se revocan también las no-ACTIVE (EXPIRED/INITIATED): son justamente el residuo que
+        el usuario quiere sacarse de encima.
+
+        404 cuando el tenant no tiene ese toolkit: sin eso, "desconectar" algo que nunca estuvo
+        conectado respondería `desconectado: true` sobre un no-op silencioso."""
+        if service not in _composio_valid_toolkits():
+            raise HTTPException(status_code=400, detail=f"service inválido o desconocido: {service!r}")
+        mias = [c for c in composio_gateway.list_connections(cliente_id)
+                if (c["toolkit"] or "").lower() == service.lower()]
+        if not mias:
+            raise HTTPException(status_code=404, detail=f"el tenant no tiene {service!r} conectado")
+        for c in mias:
+            composio_gateway.revoke(c["id"])
+        return {"desconectado": True, "revocadas": len(mias)}
+
+    @app.delete("/mp/connection")
+    def mp_disconnect(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Desconecta MercadoPago de ESTE tenant borrando sus credenciales cifradas.
+
+        Mismo criterio que `composio_disconnect`: no recibe identificador alguno del cliente, el
+        `cliente_id` sale del token y el store filtra por él. 404 si no había nada (rowcount 0), para
+        no responder "desconectado" sobre un no-op.
+
+        Alcance HONESTO, ver `MpCredentialStore.delete_all`: el copiloto pierde el acceso, pero el
+        token NO se revoca del lado de MercadoPago -- sigue vivo upstream hasta expirar."""
+        borradas = MpCredentialStore(conn_factory, cliente_id, crypto).delete_all()
+        if not borradas:
+            raise HTTPException(status_code=404, detail="el tenant no tiene MercadoPago conectado")
+        return {"desconectado": True, "revocadas": borradas}
 
     # --- SIN auth (spec §5.3) ---------------------------------------------------
 
@@ -445,6 +732,27 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # barrera (state cifrado / x-signature). `include_router` copia sus rutas absolutas al front-door
     # SIN heredar `require_tenant` -- MercadoPago no manda JWT del tenant en sus llamadas.
     app.include_router(mp_app.router)
+    # `/afip/*` (perfil fiscal + alta ARCA, pantalla de Ajustes). Opcional para no romper los tests que
+    # construyen el front-door sin AFIP; en producción `serve.py` siempre lo inyecta. Sus rutas ya traen
+    # su propia barrera `Depends(require_tenant)`.
+    if afip_app is not None:
+        app.include_router(afip_app.router)
+    # `/presupuestos/*` y `/perfil-negocio` (presupuestos + perfil del negocio y soul del copiloto).
+    # Mismo criterio que `afip_app`: opcional para no romper los tests que arman el front-door sin
+    # esto, y sus rutas ya traen su propia barrera `Depends(require_tenant)`.
+    if presupuestos_app is not None:
+        app.include_router(presupuestos_app.router)
+    if gastos_app is not None:
+        app.include_router(gastos_app.router)
+    if clientes_app is not None:
+        app.include_router(clientes_app.router)
+    # ⚠️ Al mergear la rama mobile: ahí vive un stub `GET /actividad` que devuelve 501, definido
+    # DIRECTAMENTE sobre `app` más arriba. Las rutas directas se registran ANTES que los
+    # `include_router` de acá abajo, así que el stub GANARÍA y ensombrecería esta
+    # implementación real — en silencio, sin conflicto de git y sin ningún error. El stub se
+    # BORRA en ese merge; no se deja "por las dudas".
+    if actividad_app is not None:
+        app.include_router(actividad_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).

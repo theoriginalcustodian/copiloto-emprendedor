@@ -71,7 +71,7 @@ class _Tenant:
 
 @pytest.fixture
 def crypto(monkeypatch):
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
     return FernetCrypto()
 
 

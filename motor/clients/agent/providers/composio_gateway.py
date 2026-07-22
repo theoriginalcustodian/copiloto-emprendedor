@@ -8,8 +8,12 @@ así los unit (factory mockeado) no requieren composio instalado. Cero secretos:
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
+
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -163,22 +167,62 @@ class ComposioGateway:
         items = getattr(resp, "items", None)
         return items if items is not None else resp
 
-    def _auth_config_id(self, toolkit: str) -> str:
-        """auth_config_id del toolkit (Composio-managed). Necesario para generar el link de conexión."""
-        acs = self._sdk.auth_configs.list(toolkit_slug=toolkit)
-        items = self._unwrap_items(acs)
-        for a in items:
-            ac_id = getattr(a, "id", None) or (a.get("id") if isinstance(a, dict) else None)
-            if ac_id:
-                return ac_id
-        raise ComposioExecutionError(f"no hay auth_config para toolkit={toolkit!r}")
+    @staticmethod
+    def _campo(obj, nombre):
+        """Lee un campo de un objeto del SDK o de un dict — el SDK devuelve las dos formas según el
+        endpoint, y `getattr(dict, x, None)` siempre da None sin avisar."""
+        if isinstance(obj, dict):
+            return obj.get(nombre)
+        return getattr(obj, nombre, None)
+
+    def _auth_config(self, toolkit: str) -> tuple[str, bool]:
+        """`(auth_config_id, es_de_composio)` de la config a usar. **Prefiere SIEMPRE la propia.**
+
+        🔴 Antes devolvía la PRIMERA de la lista. Mientras hubo una sola config por toolkit eso daba
+        igual; con la nuestra y la de Composio conviviendo —el estado durante la migración a
+        credenciales propias— elegiría una de las dos **sin criterio y sin error**. El síntoma sería
+        "a veces conecta bien y a veces te manda al dashboard de Composio", que llega como bug de la
+        app y se busca en la pantalla equivocada.
+
+        Ante empate dentro del mismo grupo se ordena por id: no importa cuál gane, importa que gane
+        siempre la misma. Un desempate arbitrario convierte un bug reproducible en uno intermitente.
+        """
+        items = self._unwrap_items(self._sdk.auth_configs.list(toolkit_slug=toolkit))
+        candidatas = [(self._campo(a, "id"), bool(self._campo(a, "is_composio_managed")))
+                      for a in items if self._campo(a, "id")]
+        if not candidatas:
+            raise ComposioExecutionError(f"no hay auth_config para toolkit={toolkit!r}")
+        propias = [c for c in candidatas if not c[1]]
+        return sorted(propias or candidatas)[0]
 
     def authorize(self, user_id: str, toolkit: str) -> str:
-        """redirect_url para que el usuario conecte su cuenta del toolkit (onboarding OAuth). El endpoint
-        legacy (sdk.create().authorize()) fue RETIRADO por Composio (400 ConnectedAccount_BadRequest) →
-        se usa connected_accounts.link con el auth_config_id del toolkit."""
-        req = self._sdk.connected_accounts.link(user_id=user_id,
-                                                auth_config_id=self._auth_config_id(toolkit))
+        """redirect_url para que el usuario conecte su cuenta del toolkit (onboarding OAuth).
+
+        Dos caminos, según de quién sea la app OAuth:
+
+        - **config propia** → `initiate`, que devuelve el consentimiento de Google directo, con la
+          marca del copiloto. Es el que queremos.
+        - **config de Composio** → sólo su link hospedado. `initiate` está RETIRADO para esas
+          (400 `ComposioLegacyConnectedAccountsEndpointRetiredError`) y el link resuelve a
+          `dashboard.composio.dev`: el usuario ve una pantalla de un tercero que no es Google ni
+          nosotros. Es el estado actual y lo que el cliente OAuth propio viene a arreglar.
+
+        El fallback a `link` cuando `initiate` falla con config propia **loguea**: sin eso, una
+        degradación silenciosa nos devolvería al dashboard sin que nadie se entere de por qué.
+        """
+        ac_id, es_de_composio = self._auth_config(toolkit)
+        if not es_de_composio:
+            try:
+                return self._redirect_de(
+                    self._sdk.connected_accounts.initiate(user_id=user_id, auth_config_id=ac_id))
+            except Exception as exc:  # noqa: BLE001 — degradar es preferible a no poder conectar
+                _log.warning("initiate falló con la auth config propia de %r (%s: %s); "
+                             "se cae al link hospedado de Composio", toolkit, type(exc).__name__, exc)
+        return self._redirect_de(
+            self._sdk.connected_accounts.link(user_id=user_id, auth_config_id=ac_id))
+
+    @staticmethod
+    def _redirect_de(req) -> str:
         return (getattr(req, "redirect_url", None)
                 or (req.get("redirect_url") if isinstance(req, dict) else None)
                 or str(req))

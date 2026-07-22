@@ -200,8 +200,8 @@ def _build_mp_app():
 @pytest.fixture(autouse=True)
 def _mp_fernet_key_env(monkeypatch):
     """`create_web_app` construye un `FernetCrypto()` propio para /me (Task 6) y `_build_mp_app`
-    también lo necesita — ambos leen `MP_FERNET_KEY` del env."""
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    también lo necesita — ambos leen `COPILOTO_FERNET_KEY` del env."""
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
 
 def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None,

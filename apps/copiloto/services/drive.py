@@ -17,7 +17,20 @@ TOOLKIT = "googledrive"
 DRIVE_VERSION = "20260629_00"
 CREATE_SLUG = "GOOGLEDRIVE_CREATE_FILE_FROM_TEXT"
 FIND_SLUG = "GOOGLEDRIVE_FIND_FILE"
-POLICY = ToolkitPolicy(version=DRIVE_VERSION, read=frozenset({FIND_SLUG}), write=frozenset({CREATE_SLUG}))
+
+# Archivado automático de facturas (`afip_drive.py`). Están en la policy porque el gateway rechaza
+# cualquier slug que no esté declarado, pero deliberadamente NO en `TOOLS`/`TOOL_SCHEMAS`: el agente
+# conversacional no debe poder subir archivos ni repartir permisos por su cuenta. Los invoca sólo la
+# activity de archivado, que corre cuando el usuario ya lo autorizó en Ajustes.
+ARCHIVADO_SLUGS = frozenset({
+    "GOOGLEDRIVE_FIND_FOLDER",
+    "GOOGLEDRIVE_CREATE_FOLDER",
+    "GOOGLEDRIVE_UPLOAD_FROM_URL",
+    "GOOGLEDRIVE_CREATE_PERMISSION",
+})
+
+POLICY = ToolkitPolicy(version=DRIVE_VERSION, read=frozenset({FIND_SLUG}),
+                       write=frozenset({CREATE_SLUG}) | ARCHIVADO_SLUGS)
 
 PROMPT_FRAGMENT = (
     '- CREAR un archivo de texto en Drive: action="tool_action", entities={"service":"drive","op":"create_file",'

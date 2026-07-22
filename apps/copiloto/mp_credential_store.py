@@ -56,6 +56,29 @@ class MpCredentialStore:
             row = cur.fetchone()
         return row[0] if row else None
 
+    def delete_all(self) -> int:
+        """Borra TODAS las credenciales MP de ESTE tenant (desconectar la app desde Ajustes) y
+        devuelve cuántas filas se borraron -- 0 significa "no había nada que desconectar", que el
+        endpoint traduce a 404. Devolver el rowcount y no `None` es deliberado: un DELETE sobre 0
+        filas es un no-op SILENCIOSO, y sin este dato el endpoint respondería "desconectado" sobre
+        un tenant que nunca conectó MP (el mismo `ok` vacío que ya está anotado como deuda en
+        `web.py`).
+
+        Borra por `cliente_id` y nada más: no recibe ni acepta un id de fila, así que un tenant no
+        puede alcanzar las credenciales de otro ni probando ids (mismo criterio que el resto del
+        store -- el filtro explícito por `cliente_id` es la barrera efectiva, porque el rol owner de
+        DATABASE_URL bypassa RLS).
+
+        Alcance HONESTO: esto borra la credencial LOCAL, con lo cual el copiloto pierde el acceso.
+        NO revoca el token del lado de MercadoPago (su API de revocación no está integrada acá) --
+        el token sigue vivo upstream hasta que expire. TODO(deuda gestionada · 2026-07-21 ·
+        propietario: operador · pagar si se expone la desconexión como garantía de revocación, p.ej.
+        ante un requisito de cumplimiento): integrar la revocación upstream de MP."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {_TABLE} WHERE cliente_id=%s", (self._cid,))
+            return cur.rowcount
+
     def update_tokens(self, seller_user_id: str, *, access_token: str,
                       refresh_token: str, expires_at: int) -> None:
         conn = self._conn_factory()

@@ -39,6 +39,23 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from perfil_negocio_prompt import bloque_de_contexto
+from perfil_negocio_store import PerfilNegocioStore
+from afip_anulacion_workflow import AnulacionWorkflow
+from afip_comprobante_store import AfipComprobanteStore
+from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
+from afip_factura_activities import (
+    archivar_factura_en_drive, buscar_comprobante, cargar_contexto_factura, emitir_comprobante,
+    generar_pdf_comprobante, listar_comprobantes, marcar_comprobante_anulado, set_drive_deps,
+    set_factura_deps)
+from afip_factura_workflow import FacturaWorkflow
+from afip_gateway import AfipGateway
+from cliente_store import ClienteStore
+from cobro_store import CobroStore
+from presupuesto_store import PresupuestoStore
+from afip_onboarding_activities import (
+    dar_de_alta_afip, purgar_secretos_vencidos, set_onboarding_deps, verificar_habilitacion_afip)
+from afip_onboarding_workflow import AfipOnboardingWorkflow
 from calendar_policy import CALENDAR_POLICY
 from context_factory import make_context_factory
 from dispatcher_emprendedor import make_dispatcher
@@ -65,6 +82,21 @@ def build_llm() -> LlmProvider:
     return LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
                        api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
                        quantizations=())
+
+
+def _perfil_provider(conn_factory: Callable) -> Callable:
+    """`(cliente_id) -> str` con el bloque de contexto del negocio, para el boundary `perfil_provider`.
+
+    Corre DENTRO de una activity (nunca en el workflow): toca la base, que es I/O no determinístico.
+    Devuelve `""` ante cualquier fallo — el perfil es contexto, no correctitud, y un problema de DB no
+    puede dejar al emprendedor sin poder chatear."""
+    def proveer(cliente_id: str) -> str:
+        try:
+            return bloque_de_contexto(PerfilNegocioStore(conn_factory, cliente_id).get())
+        except Exception:  # noqa: BLE001
+            return ""
+
+    return proveer
 
 
 def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
@@ -110,6 +142,24 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _mp_dedup_factory(cliente_id: str):
         return MpLinkDedupStore(conn_factory, cliente_id)
 
+    # `consultar_cliente` (hito 5) lee la cartera del tenant. La factory se INYECTA con el
+    # `cliente_id` per-request —igual que las de MP y AFIP— y nunca sale de env: el `ClienteStore`
+    # fija el tenant en el constructor y filtra con él en cada query, que es la barrera efectiva de
+    # aislamiento de este repo (regla 7). Un store construido una vez y compartido entre turnos
+    # respondería «cuánto me compró» con la cartera de otro emprendedor.
+    def _cliente_store_factory(cliente_id: str):
+        return ClienteStore(conn_factory, cliente_id)
+
+    # Hito 3: las tools que anotan la plata que entra y mueven el estado de la cadena. Mismo criterio
+    # de aislamiento que la de clientes — el tenant se fija en el constructor, per-request, y jamás
+    # sale de env. Un store compartido entre turnos anotaría el ingreso de un emprendedor en la caja
+    # de otro, que es el peor fallo posible de este repo (regla 7).
+    def _cobro_store_factory(cliente_id: str):
+        return CobroStore(conn_factory, cliente_id)
+
+    def _presupuesto_store_factory(cliente_id: str):
+        return PresupuestoStore(conn_factory, cliente_id)
+
     # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
     # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
     # (name + description + parameters) ya describen cada tool (auditoría 2026-07-05: 0 matiz de negocio único
@@ -122,18 +172,62 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     system_prompt_react = SYSTEM_PROMPT_REACT
     llm = build_llm()
     tool_executor = tool_catalog.make_tool_executor(
-        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm)
+        gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm,
+        cliente_store_factory=_cliente_store_factory, cobro_store_factory=_cobro_store_factory,
+        presupuesto_store_factory=_presupuesto_store_factory)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,
                     engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
-                    tool_executor=tool_executor)
+                    tool_executor=tool_executor,
+                    # Perfil del negocio + soul: el bloque ESTABLE que se antepone al system prompt en
+                    # cada llamada al LLM. Se lee por llamada y NO se cachea, a propósito: la sesión es
+                    # permanente vía continue-as-new, así que cualquier cosa cacheada del lado del
+                    # workflow quedaría congelada para siempre y los cambios de Ajustes no tendrían
+                    # efecto nunca. Un tenant sin perfil devuelve "" → el prompt queda byte a byte
+                    # igual que antes de que este frente existiera.
+                    perfil_provider=_perfil_provider(conn_factory))
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))
 
-    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow],
-            "activities": _ACTIVITIES + [refresh_credential],
+    # AFIP: mismas fábricas per-tenant, cableadas ANTES de que el worker empiece a pollear (igual que
+    # set_refresh_deps). El gateway de onboarding se construye SIN cert: todavía no existe — el alta es
+    # justamente lo que lo genera.
+    # El mismo `crypto` cifra el certificado AFIP y los tokens de MercadoPago. La llave se llama
+    # `COPILOTO_FERNET_KEY` —no `MP_FERNET_KEY`— justamente para que su nombre no mienta sobre eso:
+    # deuda saldada el 2026-07-21 (ver `crypto.py`). Rotarla es no-destructivo vía COPILOTO_FERNET_KEYS.
+    set_onboarding_deps(
+        lambda cuit, ambiente="dev": AfipGateway(cuit=cuit, production=(ambiente == "prod")),
+        lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
+        lambda cliente_id: AfipSecretHandoff(conn_factory, cliente_id, crypto),
+    )
+
+    # Emisión/anulación: el gateway acá SÍ se construye con el certificado del tenant (a diferencia
+    # del de onboarding, que todavía no tiene ninguno) y en el AMBIENTE de esa credencial — un
+    # certificado de producción contra el endpoint de homologación no autentica.
+    set_factura_deps(
+        lambda cuit, cert, key, ambiente="dev": AfipGateway(
+            cuit=cuit, cert=cert, key=key, production=(ambiente == "prod")),
+        lambda cliente_id: AfipCredentialStore(conn_factory, cliente_id, crypto),
+        lambda cliente_id: AfipPerfilStore(conn_factory, cliente_id),
+        lambda cliente_id: AfipComprobanteStore(conn_factory, cliente_id),
+    )
+
+    # Archivado del PDF en el Drive del emprendedor: el MISMO gateway Composio que usa el agente, con
+    # los slugs de archivado declarados en la policy de `services/drive.py`. Reusarlo trae gratis el
+    # manejo de "el toolkit no está conectado" y la versión de policy; construir uno aparte duplicaría
+    # esa lógica y se desincronizaría.
+    set_drive_deps(gateway)
+
+    return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
+                          FacturaWorkflow, AnulacionWorkflow],
+            "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
+                                         verificar_habilitacion_afip, purgar_secretos_vencidos,
+                                         cargar_contexto_factura, emitir_comprobante,
+                                         generar_pdf_comprobante, buscar_comprobante,
+                                         listar_comprobantes, marcar_comprobante_anulado,
+                                         archivar_factura_en_drive],
             "context_factory": ctx_factory}
 
 

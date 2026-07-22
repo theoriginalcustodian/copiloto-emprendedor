@@ -18,6 +18,13 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        // El SW instala una NavigationRoute que sirve `index.html` (fallback SPA) para TODA
+        // navegación. Sin esta denylist, un click en "Entrar con Google" (navegación same-origin a
+        // /auth/v1/authorize) lo intercepta el SW y devuelve el shell de la SPA en vez de llegar a
+        // GoTrue → el login OAuth "recarga y no hace nada". Excluir /auth/* (authorize Y callback)
+        // deja esas navegaciones ir a la red (Caddy → GoTrue). Los paths de API del front-door
+        // (/chat,/me,/reply…) son fetch/XHR, no navegaciones, así que la NavigationRoute no los toca.
+        navigateFallbackDenylist: [/^\/auth\//],
       },
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {

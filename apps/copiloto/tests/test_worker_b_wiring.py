@@ -44,7 +44,7 @@ def _fake_conn_factory():
 
 @pytest.fixture(autouse=True)
 def _fernet_key(monkeypatch):
-    monkeypatch.setenv("MP_FERNET_KEY", FernetCrypto.generate_key())
+    monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
 
 
 def test_build_worker_config_registra_workflows_activities_context_y_refresh():

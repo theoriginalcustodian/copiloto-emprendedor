@@ -9,11 +9,17 @@
 # corrible N veces sin acumular stale files. `npm install` (no `npm ci`) porque no asumimos un
 # lockfile pre-generado -- ver constraint del Task 5.
 #
-# OJO -- colisión conocida con deploy.sh (backend, fuera de mi ownership, NO tocar):
-#   deploy.sh hace `rm -rf '$REMOTE'/apps '$REMOTE'/deploy` y su tar SOLO contiene `apps/copiloto`
-#   (no `apps/copiloto-web`) -- si deploy.sh corre DESPUÉS de este script sobre el mismo
-#   UC_DEPLOY_PATH, borra `apps/copiloto-web` sin volver a crearlo. Orden seguro: correr
-#   sync-web.sh DESPUÉS de deploy.sh, o re-correr sync-web.sh si deploy.sh corrió más tarde.
+# NOTA -- la colisión con deploy.sh que este comentario describía YA NO EXISTE. Decía que deploy.sh
+#   hacía `rm -rf '$REMOTE'/apps` y por eso correrlo DESPUÉS de este script borraba la PWA. Medido el
+#   2026-07-22 corriendo justo ese orden "peligroso" (sync-web.sh y después deploy.sh): el `dist/` y
+#   el `sw.js` servido quedaron intactos. deploy.sh hoy borra `'$REMOTE'/apps/copiloto` --no `apps`
+#   entero-- y de `apps/copiloto-web` preserva explícitamente `node_modules` y `dist`. Los dos
+#   órdenes son seguros.
+#
+#   Se CORRIGE en vez de borrarse porque un aviso vencido no es inofensivo: hace ordenar deploys
+#   alrededor de un peligro que ya no existe y, cuando alguien descubre que era falso, el descuento
+#   se lo llevan también los demás avisos del archivo. Un aviso caduca igual que una evidencia; la
+#   diferencia es que nadie lo va a chequear salvo que algo se rompa.
 #   Este script sincroniza también su propio fetch-fonts.sh (deploy/copiloto/fetch-fonts.sh) para
 #   no depender de que deploy.sh haya corrido antes -- self-contained.
 #
