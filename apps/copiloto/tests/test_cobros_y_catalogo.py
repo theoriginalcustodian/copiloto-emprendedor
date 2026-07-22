@@ -468,27 +468,36 @@ def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory
 
 
 @necesita_pg
-def test_el_monto_NO_se_puede_cambiar_por_ahora__y_es_una_DECISION(conn_factory, tenants):
-    """🔴 Este test fija una decision PENDIENTE, no una limitacion tecnica.
+def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_factory, tenants):
+    """PLANIFICACION lo decidio el 2026-07-22, despues de que este test fijara la decision pendiente.
 
-    `monto` es el otro campo que la card `ingreso_anotado` pide, y es el que mas importa: la card
-    existe porque un «quince mil» que Whisper oyo «cincuenta mil» solo se detecta viendolo. Pero
-    cambiar el monto de un ingreso YA guardado mueve la caja hacia atras, y hoy `completar` solo
-    AGREGA lo que faltaba — por eso no lleva rastro de quien cambio que.
-
-    Si PLANIFICACION decide que la card corrige el monto, este test se actualiza **a proposito**, con
-    la decision de si el cambio se registra o se pisa. Lo que no puede pasar es que alguien agregue el
-    campo sin enterarse de que habia una decision pendiente.
+    La card existe porque un «quince mil» que Whisper oyo «cincuenta mil» **solo se detecta viendolo**.
+    Una card que muestra el monto y no deja tocarlo no cubre el caso que motivo tener cards: **ensena
+    que el numero esta bien**. Y la alternativa —Deshacer y redictar— son dos pasos, y el segundo
+    vuelve a pasar por el reconocimiento que acaba de fallar.
     """
     a, _ = tenants
     store = CobroStore(conn_factory, a)
-    ingreso = store.registrar_suelto(monto=15000, idem_key="monto-uno")
+    ingreso = store.registrar_suelto(monto=50000, idem_key="monto-uno")
 
-    resultado = store.completar(ingreso["id"], {"monto": 50000})
+    corregido = store.completar(ingreso["id"], {"monto": "15000"})
 
-    assert resultado is None, "`monto` entro a la allowlist sin que la decision de producto exista"
-    # Se mide el EFECTO en la base, no la respuesta: `completar` podria devolver None y haber escrito
-    # igual. Es la leccion de la doble factura — el `if` respondia bien y el efecto era doble.
+    assert corregido["monto"] == "15000.00"
+    # Se mide el EFECTO en la base, no la respuesta: la leccion de la doble factura, donde el `if`
+    # respondia bien y el efecto era doble.
     ingresos = store.listar_ingresos(limite=50)["ingresos"]
     de_nuevo = [k for k in ingresos if k["id"] == ingreso["id"]][0]
-    assert de_nuevo["monto"] == ingreso["monto"], "el monto cambio: la caja se movio sin decision"
+    assert de_nuevo["monto"] == "15000.00"
+
+
+@necesita_pg
+def test_corregir_el_monto_a_cero_o_negativo_NO_se_acepta(conn_factory, tenants):
+    """Misma cota que el alta, y por el mismo motivo: si el monto entrara por acá con otra validacion
+    habria **dos definiciones de «monto valido»**, y la mas laxa seria la verdadera."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=15000, idem_key="monto-cero")
+
+    for invalido in (0, -1, "0"):
+        with pytest.raises(CobroInvalido):
+            store.completar(ingreso["id"], {"monto": invalido})
