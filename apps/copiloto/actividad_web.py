@@ -98,10 +98,19 @@ def create_actividad_app(*, require_tenant: Callable,
         if limit < 1 or limit > LIMITE_MAX:
             raise HTTPException(status_code=400,
                                 detail=f"limit tiene que estar entre 1 y {LIMITE_MAX}")
+        # 🔴 `q` se RECHAZA con 400 mientras no exista la búsqueda (§11, corregido 2026-07-22).
+        #
+        # La versión anterior lo aceptaba y no hacía nada, "para no cambiar la firma después". Es peor:
+        # devuelve 200 con resultados SIN filtrar, y quien lo mande cree que filtró — un falso verde
+        # por dos monedas. Un parámetro que no existe se descubre en el primer intento; uno que se
+        # ignora se descubre comparando resultados, o nunca.
+        #
+        # Y el motivo original era débil: agregar la búsqueda el día que exista es ADITIVO y no rompe
+        # a nadie.
+        if q:
+            raise HTTPException(status_code=400,
+                                detail="la búsqueda por `q` todavía no está implementada")
         desde = parsear_cursor(cursor)
-
-        # `q` se acepta y NO hace nada (§11, decisión escrita). Está en la firma para no cambiarla
-        # después; que devuelva sin filtrar es deliberado y está declarado en el `avance_`.
         if actividad_store_factory is None:
             return {"items": [], "cursor": None}
         return await asyncio.to_thread(

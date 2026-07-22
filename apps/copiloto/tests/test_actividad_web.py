@@ -98,10 +98,18 @@ def test_los_tipos_declarados_son_los_del_contrato():
 
 # --- `q` aceptado y sin efecto (§11) ---
 
-def test_q_se_acepta_y_no_rompe():
-    """Decisión escrita: el parámetro entra en la firma ahora para no cambiarla después, y HOY no
-    filtra nada. Queda el test para que el próximo no lo descubra comparando resultados."""
-    assert _app().get("/actividad?q=panaderia").status_code == 200
+def test_q_es_400_mientras_la_busqueda_no_exista():
+    """🔴 Un parámetro aceptado y sin efecto devuelve 200 con resultados SIN filtrar, y quien lo manda
+    cree que filtró. Es fabricar un falso verde por dos monedas. Un parámetro que no existe se
+    descubre en el primer intento; uno que se ignora, comparando resultados — o nunca."""
+    r = _app().get("/actividad?q=panaderia")
+    assert r.status_code == 400 and "q" in r.json()["detail"]
+
+
+def test_CONTROL_sin_q_sigue_devolviendo_200():
+    """El control del anterior: rechazar `q` no puede romper el camino normal."""
+    assert _app().get("/actividad").status_code == 200
+    assert _app().get("/actividad?q=").status_code == 200, "`q` vacío es 'no vino', no una búsqueda"
 
 
 # --- auth ---
