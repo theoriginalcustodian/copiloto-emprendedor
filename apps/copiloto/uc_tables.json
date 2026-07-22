@@ -158,6 +158,7 @@
     "presupuesto_ref bigint",
     "cliente_nombre text NOT NULL DEFAULT ''",
     "concepto text NOT NULL DEFAULT ''",
+      "nacio_completo boolean",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_conceptos": [
