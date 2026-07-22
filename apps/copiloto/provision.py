@@ -139,6 +139,58 @@ def _ensure_clientes_homonimo_column(conn) -> None:
           flush=True)
 
 
+def _ensure_clientes_email_telefono(conn) -> None:
+    """`copiloto_clientes.email` y `.telefono`, **y la migración del `contacto` que ya existía**.
+
+    Dos campos y no uno de texto libre porque **el destino los usa distinto**: el PDF de la factura
+    sale por WhatsApp y el presupuesto por mail. Con un campo único, cada envío tendría que adivinar
+    qué guardó el emprendedor — y adivinar justo al mandar es el peor momento: o no se manda, o se
+    manda a un destino que no existe.
+
+    **La migración es determinista** y usa la misma regla que `cliente_store.partir_contacto`: el
+    token con `@` va a `email`, el resto a `telefono`; sin `@`, todo a `telefono`. Se aplica **sólo
+    a las filas que todavía no se migraron** (`email = '' AND telefono = ''`), así que es idempotente
+    y no pisa lo que el emprendedor haya editado después.
+
+    ⚠️ **DEUDA DELIBERADA Y VISIBLE:** la columna `contacto` **no se borra acá**. Un `DROP COLUMN` es
+    irreversible y esto corre en cada deploy; quiero una corrida en producción con los dos campos
+    vivos antes de tirar el original. **Propietario: BACKEND. Condición de pago: el primer deploy
+    posterior a que FRONTEND cierre su hito 9** (los dos campos en alta, edición y ficha). Mientras
+    tanto `contacto` queda **huérfana**: nadie la lee ni la escribe — `_COLS` del store ya no la
+    incluye—, así que no puede divergir en silencio.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
+                f"ADD COLUMN IF NOT EXISTS email text NOT NULL DEFAULT '';")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
+                f"ADD COLUMN IF NOT EXISTS telefono text NOT NULL DEFAULT '';")
+
+    cur.execute(f"SELECT count(*) FROM {SCHEMA}.copiloto_clientes "
+                f"WHERE contacto <> '' AND email = '' AND telefono = ''")
+    pendientes = int(cur.fetchone()[0])
+    cur.execute(f"""
+        UPDATE {SCHEMA}.copiloto_clientes SET
+            email    = coalesce((SELECT t FROM regexp_split_to_table(contacto, '\\s+') AS t
+                                  WHERE t LIKE '%@%' LIMIT 1), ''),
+            telefono = coalesce((SELECT string_agg(t, ' ')
+                                   FROM regexp_split_to_table(contacto, '\\s+') AS t
+                                  WHERE t NOT LIKE '%@%'), '')
+         WHERE contacto <> '' AND email = '' AND telefono = ''
+    """)
+    migradas = cur.rowcount
+
+    # El control que la propia migración pide: si había filas con contacto y después NINGUNA tiene
+    # email ni telefono, la migración perdió datos. Se ve acá o no se ve nunca.
+    cur.execute(f"SELECT count(*) FROM {SCHEMA}.copiloto_clientes "
+                f"WHERE contacto <> '' AND email = '' AND telefono = ''")
+    huerfanas = int(cur.fetchone()[0])
+    if huerfanas:
+        raise RuntimeError(f"migración de contacto→email/telefono: {huerfanas} filas quedaron con "
+                           f"contacto y sin ninguno de los dos campos nuevos — se perdió el dato")
+    print(f"OK {SCHEMA}.copiloto_clientes.email/.telefono "
+          f"(pendientes={pendientes} migradas={migradas} huérfanas=0)", flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -187,6 +239,7 @@ def provision(conn) -> dict:
     _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
+    _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     sql_aplicados = _apply_sql_files(conn)

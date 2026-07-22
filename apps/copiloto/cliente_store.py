@@ -15,7 +15,8 @@ _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_clientes"
 
 ORIGENES = ("derivado", "manual", "voz")
-LIMITES = {"nombre": 200, "doc_nro": 20, "domicilio": 200, "contacto": 120, "notas": 500}
+LIMITES = {"nombre": 200, "doc_nro": 20, "domicilio": 200,
+           "email": 120, "telefono": 60, "notas": 500}
 
 # Los códigos de documento son los de AFIP (`afip_rules.TipoDoc`), no un catálogo paralelo: el día que
 # se le factura a este cliente tienen que entrar tal cual al WSFE.
@@ -24,7 +25,7 @@ DOC_DNI = 96
 DOC_CONSUMIDOR_FINAL = 99
 
 _COLS = ("id", "nombre", "nombre_normalizado", "doc_tipo", "doc_nro", "condicion_iva",
-         "domicilio", "contacto", "notas", "origen", "created_at")
+         "domicilio", "email", "telefono", "notas", "origen", "created_at")
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -54,6 +55,29 @@ def normalizar_documento(doc_nro) -> str:
     tres normalizaciones parecidas divergen, y la que diverja crea el duplicado.
     """
     return re.sub(r"\D", "", str(doc_nro or ""))
+
+
+def partir_contacto(texto: str) -> tuple[str, str]:
+    """Un `contacto` de texto libre → `(email, telefono)`. Determinista y sin heurística fina.
+
+    Regla del addendum: **el token con `@` es el mail; todo lo demás es el teléfono.** Si no hay `@`,
+    todo es teléfono — que es el caso real: el emprendedor cargó una cosa **o** la otra.
+
+    Se usa en dos lugares y por eso es una función: la migración de las filas que ya existen, y el
+    backfill al derivar de `copiloto_presupuestos.receptor_contacto`, que sigue siendo **un solo
+    campo de texto libre** y no se toca (es otra entidad, con su propio contrato).
+
+    **No valida formato, ni acá ni en el handler.** Un emprendedor que escribe `juan@gmail` o
+    `1155554444` no puede quedar trabado: rechazar por forma es el tapón que la regla dura de este
+    repo prohíbe. Si algún día un envío falla por un mail mal escrito, eso se resuelve **en el envío**,
+    con el error real de vuelta — no adivinando en el formulario.
+    """
+    partes = (texto or "").split()
+    con_arroba = [p for p in partes if "@" in p]
+    if not con_arroba:
+        return "", (texto or "").strip()
+    resto = " ".join(p for p in partes if "@" not in p)
+    return con_arroba[0], resto.strip()
 
 
 def inferir_doc_tipo(doc_nro: str) -> int | None:
@@ -164,7 +188,14 @@ class ClienteStore:
             "doc_nro": c["doc_nro"] or None,
             "condicion_iva": c["condicion_iva"],
             "domicilio": c["domicilio"] or None,
-            "contacto": c["contacto"] or None,
+            # `email` y `telefono` separados, no un `contacto` de texto libre: el destino los usa
+            # distinto (el PDF de la factura sale por WhatsApp, el presupuesto por mail), y con un
+            # campo único **cada envío tendría que adivinar qué guardó el emprendedor** — adivinar
+            # justo en el momento de mandar, que es el peor. Dos campos convierten una pregunta que
+            # se repite en cada envío en un dato que se responde UNA vez, al cargarlo, por la única
+            # persona que lo sabe.
+            "email": c["email"] or None,
+            "telefono": c["telefono"] or None,
             "notas": c["notas"] or None,
             "origen": c["origen"],
             # `creado_en`, no `creado_at`: es el único deletreo que existe en esta API (`gasto_store`).
@@ -222,7 +253,7 @@ class ClienteStore:
             return int(cur.fetchone()[0])
 
     def crear(self, *, nombre: str, doc_tipo=None, doc_nro: str = "", condicion_iva=None,
-              domicilio: str = "", contacto: str = "", notas: str = "",
+              domicilio: str = "", email: str = "", telefono: str = "", notas: str = "",
               origen: str = "manual", forzar: bool = False) -> dict:
         """Alta. Si la clave ya existe, levanta `ClienteDuplicado` con la ficha del dueño.
 
@@ -249,10 +280,12 @@ class ClienteStore:
                 with self._conn_factory() as conn, conn.cursor() as cur:
                     cur.execute(
                         f"INSERT INTO {_TABLE} (cliente_id, nombre, nombre_normalizado, doc_tipo, "
-                        f"doc_nro, condicion_iva, domicilio, contacto, notas, origen, homonimo) "
-                        f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
+                        f"doc_nro, condicion_iva, domicilio, email, telefono, notas, origen, "
+                        f"homonimo) "
+                        f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
                         (self._cliente_id, nombre, normalizado, doc_tipo, doc, condicion_iva,
-                         domicilio or "", contacto or "", notas or "", origen, homonimo))
+                         domicilio or "", email or "", telefono or "", notas or "", origen,
+                         homonimo))
                     return self._fila(cur.fetchone())
             except Exception as exc:
                 # `23505` es `unique_violation` en SQLSTATE. Se compara el CÓDIGO y no se importa
@@ -278,7 +311,7 @@ class ClienteStore:
         """
         campos = {k: v for k, v in cambios.items()
                   if k in ("nombre", "doc_tipo", "doc_nro", "condicion_iva",
-                           "domicilio", "contacto", "notas")}
+                           "domicilio", "email", "telefono", "notas")}
         if not campos:
             return self.detalle(cliente)
 
@@ -291,7 +324,7 @@ class ClienteStore:
             campos["doc_nro"] = normalizar_documento(campos["doc_nro"])
             if campos["doc_nro"] and campos.get("doc_tipo") is None and "doc_tipo" not in cambios:
                 campos["doc_tipo"] = inferir_doc_tipo(campos["doc_nro"])
-        for texto in ("domicilio", "contacto", "notas"):
+        for texto in ("domicilio", "email", "telefono", "notas"):
             if texto in campos and campos[texto] is None:
                 campos[texto] = ""      # la columna es NOT NULL DEFAULT '' (ver `_fila`)
 
@@ -335,6 +368,11 @@ class ClienteStore:
 
         Las tres decisiones de «con qué nombre entra, o si no entra» viven en `nombre_derivado`, que
         es pura y se testea sin base.
+
+        `contacto` llega como el campo único de `copiloto_presupuestos.receptor_contacto` —esa tabla
+        NO cambia, es otra entidad con su propio contrato— y se parte acá con la misma regla que usó
+        la migración. Una sola función (`partir_contacto`) para los dos caminos: dos reglas parecidas
+        divergen, y la que diverja manda un presupuesto al destino equivocado.
         """
         nombre = nombre_derivado(nombre, doc_tipo, doc_nro)
         if nombre is None:
@@ -347,10 +385,11 @@ class ClienteStore:
             # 99 viajara al cliente, todos ellos compartirían clave `(99, '')` y colapsarían en el
             # registro fantasma por la puerta de siempre.
             doc_tipo, doc = None, ""
+        email, telefono = partir_contacto(contacto)
         try:
             return self.crear(nombre=nombre, doc_tipo=doc_tipo, doc_nro=doc,
                               condicion_iva=condicion_iva, domicilio=domicilio,
-                              contacto=contacto, origen="derivado")["id"], True
+                              email=email, telefono=telefono, origen="derivado")["id"], True
         except ClienteDuplicado as choque:
             return (choque.duenio or {}).get("id"), False
 

@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from cliente_store import (DOC_CONSUMIDOR_FINAL, DOC_CUIT, DOC_DNI, ClienteDuplicado,
                            es_consumidor_final, inferir_doc_tipo, nombre_derivado,
-                           normalizar_documento, normalizar_nombre)
+                           normalizar_documento, normalizar_nombre, partir_contacto)
 from clientes_web import create_clientes_app
 
 
@@ -42,8 +42,9 @@ class _FakeClienteStore:
     def sembrar(self, nombre: str, **extra) -> dict:
         self._b["_seq"] += 1
         c = {"id": self._b["_seq"], "nombre": nombre, "doc_tipo": None, "doc_nro": None,
-             "condicion_iva": None, "domicilio": None, "contacto": None, "notas": None,
-             "origen": "manual", "creado_en": "2026-07-22T10:00:00+00:00", **extra}
+             "condicion_iva": None, "domicilio": None, "email": None, "telefono": None,
+             "notas": None, "origen": "manual",
+             "creado_en": "2026-07-22T10:00:00+00:00", **extra}
         self._b.setdefault(self._cid, {})[c["id"]] = c
         return c
 
@@ -94,11 +95,13 @@ class _FakeClienteStore:
                 raise ClienteDuplicado(duenio, por)
             datos["homonimo"] = self._siguiente_homonimo(datos["nombre"])
         guardado = {**{"doc_tipo": None, "condicion_iva": None, "domicilio": None,
-                       "contacto": None, "notas": None, "origen": "manual"}, **datos}
+                       "email": None, "telefono": None, "notas": None,
+                       "origen": "manual"}, **datos}
         # El vacío sale como `null`, igual que `ClienteStore._fila`: en la base los opcionales son
         # `text NOT NULL DEFAULT ''` y el store traduce '' → None al devolverlos. Si el fake dejara
         # el '' pasar, este test estaría fijando una forma que el backend real no produce.
-        return self.sembrar(**{k: (v or None) if k in ("doc_nro", "domicilio", "contacto", "notas")
+        return self.sembrar(**{k: (v or None) if k in ("doc_nro", "domicilio", "email",
+                                                       "telefono", "notas")
                                else v for k, v in guardado.items()})
 
     def editar(self, cliente: int, cambios: dict, *, forzar=False):
@@ -417,15 +420,15 @@ def test_CONTROL_dos_clientes_DISTINTOS_no_chocan():
 
 # --- 🔴 la edición PARCIAL ---
 
-def test_editar_SOLO_el_contacto_no_borra_el_domicilio():
+def test_editar_SOLO_el_telefono_no_borra_el_domicilio():
     """🔴 DoD §11, y el bug que la regla evita: el domicilio lo puso el backfill desde una factura de
     AFIP, ningún formulario lo muestra, y mandar el objeto entero del form lo borraría sin error."""
     cli, bucket = _app()
     creado = _FakeClienteStore(bucket, "cid-A").sembrar(
-        "Los Tilos", domicilio="Av. Mitre 1234", contacto="11-1111-1111")
-    r = cli.post(f"/clientes/{creado['id']}", json={"contacto": "11-5555-4444"})
+        "Los Tilos", domicilio="Av. Mitre 1234", telefono="11-1111-1111")
+    r = cli.post(f"/clientes/{creado['id']}", json={"telefono": "11-5555-4444"})
     assert r.status_code == 200
-    assert r.json()["contacto"] == "11-5555-4444"
+    assert r.json()["telefono"] == "11-5555-4444"
     assert r.json()["domicilio"] == "Av. Mitre 1234", "la clave ausente NO se toca"
 
 
@@ -441,7 +444,7 @@ def test_CONTROL_mandar_el_domicilio_en_null_SI_lo_borra():
 
 def test_editar_un_cliente_que_no_existe_es_404():
     cli, _ = _app()
-    assert cli.post("/clientes/999", json={"contacto": "x"}).status_code == 404
+    assert cli.post("/clientes/999", json={"telefono": "x"}).status_code == 404
 
 
 def test_ponerle_a_uno_el_documento_de_otro_da_409_con_el_dueno():
@@ -461,7 +464,7 @@ def test_el_origen_no_se_puede_editar():
     de procedencia que se puede reescribir deja de responder esa pregunta."""
     cli, bucket = _app()
     creado = _FakeClienteStore(bucket, "cid-A").sembrar("Los Tilos", origen="derivado")
-    r = cli.post(f"/clientes/{creado['id']}", json={"origen": "manual", "contacto": "x"})
+    r = cli.post(f"/clientes/{creado['id']}", json={"origen": "manual", "telefono": "x"})
     assert r.status_code == 200 and r.json()["origen"] == "derivado"
 
 
@@ -535,10 +538,10 @@ def test_ADVERSARIAL_un_tenant_no_puede_EDITAR_el_cliente_de_otro():
     """404, no 403 — y sobre todo: no lo modifica. Un control de acceso sin test adversarial es un
     control no verificado (regla dura del repo)."""
     bucket: dict = {}
-    ajeno = _FakeClienteStore(bucket, "cid-B").sembrar("Cliente de B", contacto="11-0000-0000")
+    ajeno = _FakeClienteStore(bucket, "cid-B").sembrar("Cliente de B", telefono="11-0000-0000")
     cli_a, _ = _app(cliente_id="cid-A", bucket=bucket)
-    assert cli_a.post(f"/clientes/{ajeno['id']}", json={"contacto": "robado"}).status_code == 404
-    assert _FakeClienteStore(bucket, "cid-B").detalle(ajeno["id"])["contacto"] == "11-0000-0000"
+    assert cli_a.post(f"/clientes/{ajeno['id']}", json={"telefono": "robado"}).status_code == 404
+    assert _FakeClienteStore(bucket, "cid-B").detalle(ajeno["id"])["telefono"] == "11-0000-0000"
 
 
 def test_el_alta_de_un_tenant_no_aparece_en_la_cartera_del_otro():
@@ -557,3 +560,65 @@ def test_el_mismo_nombre_en_DOS_tenants_no_choca():
     cli_b, _ = _app(cliente_id="cid-B", bucket=bucket)
     assert cli_a.post("/clientes", json={"nombre": "Kiosco"}).status_code == 201
     assert cli_b.post("/clientes", json={"nombre": "Kiosco"}).status_code == 201
+
+
+# --- 🔴 hito 8: email y telefono son DOS campos ---
+
+@pytest.mark.parametrize("crudo, esperado", [
+    ("juan@gmail.com", ("juan@gmail.com", "")),
+    ("11-5555-4444", ("", "11-5555-4444")),
+    ("juan@gmail.com 11-5555-4444", ("juan@gmail.com", "11-5555-4444")),
+    ("11-5555-4444 juan@gmail.com", ("juan@gmail.com", "11-5555-4444")),
+    ("", ("", "")),
+])
+def test_partir_contacto_no_pierde_nada(crudo, esperado):
+    """La regla de la migración y del backfill, en una sola función. **Ninguna rama descarta texto:**
+    el caso mixto conserva las dos partes, que es lo que la migración necesita para poder afirmar que
+    no perdió datos."""
+    assert partir_contacto(crudo) == esperado
+
+
+def test_CONTROL_partir_contacto_no_manda_todo_al_mismo_lado():
+    """Sin este control, una implementación que devolviera `(texto, "")` siempre pasaría tres de los
+    cinco casos de arriba."""
+    email, tel = partir_contacto("11-5555-4444")
+    assert email == "" and tel != ""
+    email2, tel2 = partir_contacto("juan@gmail.com")
+    assert email2 != "" and tel2 == ""
+
+
+def test_editar_SOLO_el_telefono_no_borra_el_EMAIL():
+    """🔴 El mismo bug del domicilio con otro nombre — y el que ya está cubierto por un test no cubre
+    a éste. El mail lo puede haber puesto el backfill desde un presupuesto viejo: si el formulario
+    manda `email: ""` porque el usuario no lo tocó, se borra sin ningún error."""
+    cli, bucket = _app()
+    creado = _FakeClienteStore(bucket, "cid-A").sembrar(
+        "Los Tilos", email="tilos@gmail.com", telefono="11-1111-1111")
+    r = cli.post(f"/clientes/{creado['id']}", json={"telefono": "11-9999-0000"})
+    assert r.status_code == 200
+    assert r.json()["telefono"] == "11-9999-0000"
+    assert r.json()["email"] == "tilos@gmail.com", "la clave ausente NO se toca"
+
+
+def test_el_alta_acepta_los_dos_campos_por_separado():
+    cli, _ = _app()
+    r = cli.post("/clientes", json={"nombre": "Los Tilos", "email": "tilos@gmail.com",
+                                    "telefono": "11-5555-4444"})
+    assert r.status_code == 201
+    assert r.json()["email"] == "tilos@gmail.com" and r.json()["telefono"] == "11-5555-4444"
+
+
+def test_un_mail_sin_formato_valido_NO_se_rechaza():
+    """⛔ Sin validación de formato: un emprendedor que escribe `juan@gmail` no puede quedar trabado.
+    Rechazar por forma es el tapón que este repo prohíbe — si un envío falla, se resuelve en el envío
+    con el error real de vuelta, no adivinando en el formulario."""
+    cli, _ = _app()
+    assert cli.post("/clientes", json={"nombre": "A", "email": "juan@gmail"}).status_code == 201
+    assert cli.post("/clientes", json={"nombre": "B", "telefono": "no es un telefono"}
+                    ).status_code == 201
+
+
+def test_pero_el_LARGO_si_se_valida():
+    cli, _ = _app()
+    assert cli.post("/clientes", json={"nombre": "A", "email": "x" * 121}).status_code == 400
+    assert cli.post("/clientes", json={"nombre": "B", "telefono": "9" * 61}).status_code == 400

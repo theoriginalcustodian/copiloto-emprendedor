@@ -41,7 +41,13 @@ class ClienteBody(BaseModel):
     doc_nro: str | int | None = None
     condicion_iva: int | None = None
     domicilio: str | None = None
-    contacto: str | None = None
+    # 🔴 `email` y `telefono` son DOS claves independientes, no un `contacto` de texto libre.
+    # Llenar el mail y dejar el teléfono vacío tiene que mandar **sólo `email`**: si viaja
+    # `telefono: ""`, la edición parcial lo interpreta como «borralo» y se lleva puesto el que el
+    # backfill sacó de un presupuesto viejo, sin ningún error. Es el mismo bug del domicilio, con
+    # otro nombre — y el que ya está cubierto por un test no cubre a éste.
+    email: str | None = None
+    telefono: str | None = None
     notas: str | None = None
     origen: str | None = None
     # 🔴 `forzar` NO es un campo del cliente: es la respuesta del emprendedor a «ya tenés uno que se
