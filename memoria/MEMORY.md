@@ -24,6 +24,7 @@
 
 ## 📐 Doctrina operativa (aplica siempre)
 
+- [🧪 DESPLEGADO ≠ con clientes — estamos en desarrollo, los datos se fabrican](desplegado-no-significa-con-clientes.md) — `project`. **LEER antes de recomendar algo que dependa de "los usuarios".** Hay cero. "prod-beta / BETA-READY" se lee como producción y desvía hacia migraciones defensivas que nadie necesita. El dataset sintético debe traer **cambios en el tiempo** o la bitemporalidad da verde sin ejercitarse.
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. **NUNCA montar en local — rechazado 2×.**
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. Reglas 6/7/8/9. [[spike-first-central-proyecto]]
 - [Spike-first es central](spike-first-central-proyecto.md) — `feedback`. Cimiento no verificado se amplifica a escala.
