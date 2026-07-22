@@ -106,6 +106,18 @@
     "monto_sugerido numeric",
     "created_at timestamptz DEFAULT now()"
   ],
+  "copiloto_clientes": [
+    "nombre text NOT NULL DEFAULT ''",
+    "nombre_normalizado text NOT NULL DEFAULT ''",
+    "doc_tipo integer",
+    "doc_nro text",
+    "condicion_iva integer",
+    "domicilio text NOT NULL DEFAULT ''",
+    "contacto text NOT NULL DEFAULT ''",
+    "notas text NOT NULL DEFAULT ''",
+    "origen text NOT NULL DEFAULT 'manual'",
+    "created_at timestamptz DEFAULT now()"
+  ],
   "afip_comprobantes": [
     "cuit text NOT NULL",
     "tipo_cbte integer NOT NULL",

@@ -403,6 +403,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    afip_app: FastAPI | None = None,
                    presupuestos_app: FastAPI | None = None,
                    gastos_app: FastAPI | None = None,
+                   clientes_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -683,6 +684,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         app.include_router(presupuestos_app.router)
     if gastos_app is not None:
         app.include_router(gastos_app.router)
+    if clientes_app is not None:
+        app.include_router(clientes_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).
