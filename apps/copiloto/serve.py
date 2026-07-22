@@ -64,6 +64,7 @@ from presupuesto_store import PresupuestoStore
 from presupuestos_web import create_presupuestos_app
 from gastos_web import create_gastos_app
 from clientes_web import create_clientes_app
+from actividad_web import create_actividad_app
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
 
@@ -195,6 +196,10 @@ async def _serve() -> None:
         cliente_store_factory=lambda cid: ClienteStore(conn_factory, cid),
     )
 
+    # Hito 1: sin store -> devuelve la lista vacía con su forma final. La unión SQL entra en el hito 2
+    # sin que la app se entere (misma forma en los dos casos).
+    actividad_app = create_actividad_app(require_tenant=require_tenant)
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -211,7 +216,7 @@ async def _serve() -> None:
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
         afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
-        clientes_app=clientes_app,
+        clientes_app=clientes_app, actividad_app=actividad_app,
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
