@@ -155,6 +155,8 @@
     "origen text NOT NULL DEFAULT 'manual'",
     "cliente_ref bigint",
     "presupuesto_ref bigint",
+    "cliente_nombre text NOT NULL DEFAULT ''",
+    "concepto text NOT NULL DEFAULT ''",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_conceptos": [

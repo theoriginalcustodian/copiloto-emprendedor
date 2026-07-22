@@ -35,10 +35,28 @@ class CobroBody(BaseModel):
     idem_key: str | None = None
 
 
-class CobroSueltoBody(CobroBody):
-    """El cobro dictado, sin comprobante. `monto` acá **sí** es obligatorio de hecho (no hay saldo del
-    cual deducirlo), y las dos referencias son opcionales: un cobro sin trabajo entra a la caja igual
-    — lo que se pierde es su margen, no el registro."""
+class IngresoBody(CobroBody):
+    """El ingreso DICTADO. **Lo único obligatorio es el monto** — es la especificación textual del
+    operador: *«tiene que entrar por voz con la mínima fricción, igual que si se lo dictara a la
+    secretaria»*. A una secretaria le decís «me pagaron 85 mil» y lo anota: no te pide la fecha (es
+    hoy), ni el medio, ni el número de comprobante.
+
+    `confirmar_duplicado` existe para el segundo turno: si el backend detectó un ingreso parecido
+    responde 409 con el candidato, y la app **vuelve a mandar lo mismo con este flag** cuando el
+    emprendedor dice que son dos cobros distintos. Avisa, no prohíbe."""
+    cliente_ref: int | None = None
+    presupuesto_ref: int | None = None
+    cliente_nombre: str | None = None
+    concepto: str | None = None
+    confirmar_duplicado: bool = False
+
+
+class CompletarIngresoBody(BaseModel):
+    """La respuesta al aviso de *«no me dijiste de quién ni cómo te pagaron»*. Parcial de verdad:
+    completa el MISMO ingreso, no crea otro."""
+    cliente_nombre: str | None = None
+    medio: str | None = None
+    concepto: str | None = None
     cliente_ref: int | None = None
     presupuesto_ref: int | None = None
 
@@ -313,9 +331,35 @@ def create_afip_app(
         """
         return await asyncio.to_thread(_cobros(cliente_id).impagos)
 
-    @app.post("/cobros", status_code=201)
-    async def registrar_cobro_suelto(body: CobroSueltoBody,
-                                     cliente_id: str = Depends(require_tenant)) -> dict:
+    @app.get("/ingresos")
+    async def listar_ingresos(limite: int = 100,
+                              cliente_id: str = Depends(require_tenant)) -> dict:
+        """TODO lo que entró: facturas cobradas, MercadoPago y lo dictado, **distinguible por origen**."""
+        return await asyncio.to_thread(lambda: _cobros(cliente_id).listar_ingresos(limite=limite))
+
+    @app.delete("/ingresos/{ingreso_id}")
+    async def borrar_ingreso(ingreso_id: int, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Borra un ingreso DICTADO. Que arrepentirse sea fácil es lo que permite que guardar sea
+        rápido: si borrar costara más que equivocarse, el sistema tendría que preguntar antes de
+        anotar — y preguntar antes es lo que hace que el emprendedor deje de anotar."""
+        if not await asyncio.to_thread(_cobros(cliente_id).borrar_ingreso, ingreso_id):
+            raise HTTPException(status_code=404, detail="ingreso no encontrado o no es borrable")
+        return {"borrado": ingreso_id}
+
+    @app.patch("/ingresos/{ingreso_id}")
+    async def completar_ingreso(ingreso_id: int, body: CompletarIngresoBody,
+                                cliente_id: str = Depends(require_tenant)) -> dict:
+        """Completa lo que faltó, **en el mismo ingreso**. Es la segunda mitad de «guarda igual, pero
+        avisa»: el aviso no sirve de nada si contestar crea un registro nuevo."""
+        cambios = body.model_dump(exclude_unset=True)
+        ingreso = await asyncio.to_thread(_cobros(cliente_id).completar, ingreso_id, cambios)
+        if ingreso is None:
+            raise HTTPException(status_code=404, detail="ingreso no encontrado")
+        return {"ingreso": ingreso}
+
+    @app.post("/ingresos", status_code=201)
+    async def registrar_ingreso(body: IngresoBody,
+                                cliente_id: str = Depends(require_tenant)) -> dict:
         """Un cobro SIN factura: *«me pagaron 85 mil en efectivo por el trabajo de la panadería»*.
 
         🔴 **Sin esto la caja miente.** Hasta acá un cobro sólo existía si había pasado por
@@ -324,16 +368,39 @@ def create_afip_app(
 
         La respuesta trae `origen: "manual"`. No es decorativo: un cobro que el sistema **vio** no es
         la misma evidencia que uno que alguien **tipeó**, y la pantalla tiene que poder mostrarlo.
+
+        🔴 **Lo único obligatorio es el monto.** Todo lo demás es opcional, a propósito: un formulario
+        que exige medio de pago y cliente para anotar que te pagaron es lo que hace que el emprendedor
+        deje de anotar — y volvemos a la caja que miente. La respuesta trae `falta: [...]` para que el
+        copiloto **avise después de guardar** (*«no me dijiste de quién ni cómo te pagaron»*). Pedir ≠
+        exigir, y **la app no puede exigir más que esto**.
+
+        🔴 **El duplicado, en cambio, se pregunta ANTES → 409 con el candidato.** Los dos casos tienen
+        costos distintos: un dato faltante **se ve** y se completa cuando aparezca; un ingreso de más
+        **infla la caja y no se ve nunca**. Reintentar con `confirmar_duplicado: true` lo guarda igual
+        — avisa, no prohíbe: el emprendedor sabe mejor que el sistema si le pagaron dos veces.
         """
+        store = _cobros(cliente_id)
+        if not body.confirmar_duplicado:
+            candidato = await asyncio.to_thread(
+                lambda: store.posible_duplicado(monto=body.monto,
+                                                cliente_nombre=body.cliente_nombre or ""))
+            if candidato:
+                raise HTTPException(status_code=409, detail={
+                    "mensaje": "hay un ingreso parecido de estos días — ¿es otro cobro o el mismo?",
+                    "candidato": candidato,
+                    # La app no tiene que adivinar cómo insistir: se lo decimos.
+                    "reintentar_con": {"confirmar_duplicado": True}})
         try:
             cobro = await asyncio.to_thread(
-                lambda: _cobros(cliente_id).registrar_suelto(
+                lambda: store.registrar_suelto(
                     monto=body.monto, medio=body.medio or "", fecha=body.fecha,
                     cliente_ref=body.cliente_ref, presupuesto_ref=body.presupuesto_ref,
-                    idem_key=body.idem_key))
+                    idem_key=body.idem_key, cliente_nombre=body.cliente_nombre or "",
+                    concepto=body.concepto or ""))
         except CobroInvalido as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from None
-        return {"cobro": cobro}
+        return {"ingreso": cobro}
 
     @app.post("/afip/comprobantes/{comprobante_id}/cobros", status_code=201)
     async def registrar_cobro(comprobante_id: int, body: CobroBody,

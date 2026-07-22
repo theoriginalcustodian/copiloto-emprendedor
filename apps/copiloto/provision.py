@@ -266,7 +266,12 @@ def _ensure_imputacion_de_gastos(conn) -> None:
         cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_gastos "
                     f"ADD COLUMN IF NOT EXISTS {col} {tipo};")
     for col, tipo in (("origen", "text NOT NULL DEFAULT 'manual'"), ("cliente_ref", "bigint"),
-                      ("presupuesto_ref", "bigint")):
+                      ("presupuesto_ref", "bigint"),
+                      # El ingreso DICTADO: «me pagaron 85 mil de la panadería». El cliente puede no
+                      # estar en la cartera todavía, así que va como texto libre además del `_ref` —
+                      # exigir que exista primero es la validación de más que hace que no se anote.
+                      ("cliente_nombre", "text NOT NULL DEFAULT ''"),
+                      ("concepto", "text NOT NULL DEFAULT ''")):
         cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_cobros "
                     f"ADD COLUMN IF NOT EXISTS {col} {tipo};")
     # `DROP NOT NULL` es idempotente en Postgres (no falla si ya está sin la restricción).

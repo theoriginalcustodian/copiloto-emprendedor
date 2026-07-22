@@ -37,12 +37,21 @@ _TABLE = f"{_SCHEMA}.copiloto_cobros"
 _COMPROBANTES = f"{_SCHEMA}.afip_comprobantes"
 
 _COLS = ("id", "comprobante_id", "monto", "medio", "fecha", "idem_key", "origen",
-         "cliente_ref", "presupuesto_ref", "created_at")
+         "cliente_ref", "presupuesto_ref", "cliente_nombre", "concepto", "created_at")
 
 # Estados de cobro. NINGUNO se guarda: los tres se derivan de `total` y de la suma de cobros. Una
 # columna de estado tendría que mantenerse en sincronía con las filas de cobro en cada alta y cada
 # baja — y el día que diverjan, la que miente es la columna, no la suma.
 IMPAGA, PARCIAL, COBRADA = "impaga", "parcial", "cobrada"
+
+# 🔴 De dónde SALIÓ el ingreso. El addendum pide que se distingan y no es cosmética: un cobro que el
+# sistema VIO no es la misma evidencia que uno que alguien TIPEÓ. El día que la caja no cuadre con el
+# banco, esto es por dónde se empieza a mirar.
+#
+# `mercadopago` todavía no lo escribe nadie (esos pagos viven en `mp_payments`): está declarado acá
+# para que el día que se unifiquen no haya que inventar el valor, y para que la app pueda cablear la
+# distinción HOY sin esperar esa migración.
+ORIGEN_FACTURA, ORIGEN_MANUAL, ORIGEN_MP = "factura", "manual", "mercadopago"
 
 
 class CobroInvalido(ValueError):
@@ -189,10 +198,11 @@ class CobroStore:
             dia = _fecha(fecha)
             try:
                 cur.execute(
-                    f"INSERT INTO {_TABLE} (cliente_id, comprobante_id, monto, medio, fecha, idem_key)"
-                    f" VALUES (%s, %s, %s, %s, %s, %s) RETURNING {', '.join(_COLS)}",
+                    f"INSERT INTO {_TABLE} (cliente_id, comprobante_id, monto, medio, fecha, "
+                    f"idem_key, origen) VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                    f"RETURNING {', '.join(_COLS)}",
                     (self._cliente_id, comprobante_id, importe, (medio or "").strip()[:40],
-                     dia, idem_key or None))
+                     dia, idem_key or None, ORIGEN_FACTURA))
             except Exception as exc:
                 # `23505` = unique_violation. Se compara el CÓDIGO, no el texto del mensaje: el texto
                 # cambia con la versión de Postgres y con el locale, y un `if "duplicate" in str(exc)`
@@ -210,7 +220,8 @@ class CobroStore:
             return self._fila(fila), self._resumen(cur, comprobante_id)
 
     def registrar_suelto(self, *, monto, medio: str = "", fecha=None, cliente_ref: int | None = None,
-                         presupuesto_ref: int | None = None, idem_key: str | None = None) -> dict:
+                         presupuesto_ref: int | None = None, idem_key: str | None = None,
+                         cliente_nombre: str = "", concepto: str = "") -> dict:
         """Un cobro SIN comprobante: *«me pagaron 85 mil en efectivo por el trabajo de la panadería»*.
 
         🔴 **Esto no es una comodidad: es lo que hace que la caja no mienta.** Hasta acá un cobro sólo
@@ -235,10 +246,12 @@ class CobroStore:
             try:
                 cur.execute(
                     f"INSERT INTO {_TABLE} (cliente_id, monto, medio, fecha, idem_key, origen, "
-                    f"cliente_ref, presupuesto_ref) VALUES (%s,%s,%s,%s,%s,'manual',%s,%s) "
+                    f"cliente_ref, presupuesto_ref, cliente_nombre, concepto) "
+                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s) "
                     f"RETURNING {', '.join(_COLS)}",
                     (self._cliente_id, importe, (medio or "").strip()[:40], _fecha(fecha),
-                     idem_key or None, cliente_ref, presupuesto_ref))
+                     idem_key or None, cliente_ref, presupuesto_ref,
+                     (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500]))
             except Exception as exc:
                 if getattr(exc, "pgcode", None) != "23505" or not idem_key:
                     raise
@@ -249,6 +262,109 @@ class CobroStore:
                                (self._cliente_id, idem_key))
                     return self._fila(c2.fetchone())
             return self._fila(cur.fetchone())
+
+    def listar_ingresos(self, *, limite: int = 100) -> dict:
+        """**Todos** los ingresos: los de facturas cobradas, los de MercadoPago y los dictados.
+
+        Conviven en una lista pero **se distinguen por `origen`**, y no es cosmética: un cobro que el
+        sistema **vio** no es la misma evidencia que uno que alguien **tipeó**. Si se mezclaran sin
+        marca, en tres meses nadie sabría qué dato es duro y cuál es de memoria — y el día que la caja
+        no cuadre con el banco no habría por dónde empezar a mirar.
+        """
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT k.id, k.monto, k.medio, k.fecha, k.origen, k.cliente_nombre, k.concepto,
+                       k.comprobante_id, k.presupuesto_ref, c.nro
+                  FROM {_TABLE} k
+                  LEFT JOIN {_COMPROBANTES} c
+                         ON c.cliente_id = k.cliente_id AND c.id = k.comprobante_id
+                 WHERE k.cliente_id = %s
+                 ORDER BY k.fecha DESC, k.id DESC LIMIT %s
+            """, (self._cliente_id, max(1, min(int(limite), 500))))
+            filas, total = [], Decimal(0)
+            for (kid, monto, medio, fecha, origen, nombre, concepto,
+                 comprobante, presupuesto, nro) in cur.fetchall():
+                total += Decimal(str(monto or 0))
+                filas.append({
+                    "id": kid, "monto": dos_decimales(monto), "medio": medio or "",
+                    "fecha": fecha.isoformat() if fecha else None,
+                    "origen": origen or "manual", "cliente_nombre": nombre or "",
+                    "concepto": concepto or "", "comprobante_id": comprobante,
+                    "comprobante_nro": nro, "presupuesto_ref": presupuesto,
+                    # Sólo los dictados se pueden borrar: el cobro de una factura se deshace por su
+                    # propia ruta, y borrar acá el rastro de un pago que el sistema VIO sería inventar
+                    # que no pasó.
+                    "borrable": (origen or "manual") == "manual",
+                })
+            return {"ingresos": filas, "total": dos_decimales(total)}
+
+    def posible_duplicado(self, *, monto, cliente_nombre: str = "", dias: int = 5) -> dict | None:
+        """¿Ya hay un ingreso parecido en los últimos días? Devuelve el candidato, o `None`.
+
+        🔴 **Esto se pregunta ANTES de guardar, al revés que los datos que faltan.** Los dos casos
+        tienen costos distintos: un dato faltante **se ve** y se completa cuando aparezca; un ingreso
+        de más **infla la caja y no se ve nunca**. Por eso uno se avisa después y el otro antes.
+
+        Y avisa, **no prohíbe** — mismo criterio que el 409 de clientes: el emprendedor sabe mejor que
+        el sistema si le pagaron dos veces lo mismo.
+        """
+        importe = _decimal(monto, "monto")
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT id, monto, medio, fecha, origen, cliente_nombre
+                  FROM {_TABLE}
+                 WHERE cliente_id = %s
+                   AND fecha >= CURRENT_DATE - %s
+                   AND monto = %s
+                   AND (%s = '' OR lower(cliente_nombre) = lower(%s))
+                 ORDER BY fecha DESC, id DESC LIMIT 1
+            """, (self._cliente_id, int(dias), importe,
+                  (cliente_nombre or "").strip(), (cliente_nombre or "").strip()))
+            fila = cur.fetchone()
+        if fila is None:
+            return None
+        kid, monto_previo, medio, fecha, origen, nombre = fila
+        return {"id": kid, "monto": dos_decimales(monto_previo), "medio": medio or "",
+                "fecha": fecha.isoformat() if fecha else None, "origen": origen or "manual",
+                "cliente_nombre": nombre or ""}
+
+    def borrar_ingreso(self, ingreso_id: int) -> bool:
+        """Borra un ingreso **dictado**. Los que el sistema vio no se tocan por acá.
+
+        Que borrar sea fácil es lo que permite que guardar sea rápido: si arrepentirse costara más que
+        equivocarse, el sistema tendría que volverse cauteloso — y un sistema cauteloso pregunta antes
+        de anotar, que es exactamente lo que hace que el emprendedor deje de anotar.
+        """
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {_TABLE} "
+                        f"WHERE cliente_id = %s AND id = %s AND origen = 'manual'",
+                        (self._cliente_id, ingreso_id))
+            return cur.rowcount > 0
+
+    def completar(self, ingreso_id: int, datos: dict) -> dict | None:
+        """Completa un ingreso ya guardado — la respuesta al aviso de *«no me dijiste de quién»*.
+
+        **Completa el MISMO ingreso, no crea otro** (DoD del addendum). Y es parcial de verdad: la
+        clave ausente no se toca.
+        """
+        campos = {"cliente_nombre": 120, "medio": 40, "concepto": 500}
+        sets, valores = [], []
+        for campo, tope in campos.items():
+            if campo in datos:
+                sets.append(f"{campo} = %s")
+                valores.append((str(datos[campo] or "")).strip()[:tope])
+        for campo in ("cliente_ref", "presupuesto_ref"):
+            if campo in datos:
+                sets.append(f"{campo} = %s")
+                valores.append(datos[campo])
+        if not sets:
+            return None
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"UPDATE {_TABLE} SET {', '.join(sets)} "
+                        f"WHERE cliente_id = %s AND id = %s RETURNING {', '.join(_COLS)}",
+                        (*valores, self._cliente_id, ingreso_id))
+            fila = cur.fetchone()
+            return self._fila(fila) if fila else None
 
     def borrar(self, comprobante_id: int, cobro_id: int) -> dict | None:
         """Deshace un cobro. Alguien se equivoca, y sin esto la única salida sería tocar la base."""
@@ -271,6 +387,13 @@ class CobroStore:
                 # evidencia que uno que alguien TIPEÓ, y la pantalla tiene que poder distinguirlos.
                 "origen": k["origen"] or "manual",
                 "cliente_ref": k["cliente_ref"], "presupuesto_ref": k["presupuesto_ref"],
+                "cliente_nombre": k["cliente_nombre"] or "", "concepto": k["concepto"] or "",
+                # Lo que FALTÓ, calculado acá y no en la app: el copiloto avisa después de guardar
+                # («no me dijiste de quién ni cómo te pagaron»), y ese aviso tiene que salir del
+                # mismo lugar que el dato o los dos van a divergir.
+                "falta": [c for c, v in (("cliente", k["cliente_nombre"] or k["cliente_ref"]),
+                                         ("medio", k["medio"]), ("concepto", k["concepto"]))
+                          if not v],
                 "created_at": k["created_at"].isoformat() if k["created_at"] else None}
 
 
