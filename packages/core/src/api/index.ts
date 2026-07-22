@@ -114,16 +114,18 @@ export type {
 
 // `/clientes` — la cartera, DERIVADA de lo ya emitido. ⚠️ Archivo NUEVO: el anterior (cliente HTTP
 // de la app clínica, apuntando a un backend que nunca existió acá) se borró en `8761d54`.
-// `crearCliente`/`editarCliente` son el hito 7 y están escritos contra el contrato, NO medidos: el
-// `POST` daba 405 el 2026-07-22 (hito 3 de backend sin desplegar). Las dos suposiciones —la envoltura
-// de la respuesta y la clave del id en el 409— están aisladas y marcadas `[ASSUMED_PENDING_VERIFY]`
-// en `clientes.ts`. Se miden antes de declarar el hito cerrado.
+// `crearCliente`/`editarCliente` (hito 7) ya están MEDIDOS contra el vivo: el hito 3 se desplegó el
+// 2026-07-22 (sonda propia: `POST /clientes` → 401 con token ausente, y una ruta inexistente → 405).
+// La respuesta viene PELADA y el 409 trae la FICHA ENTERA del dueño bajo `cliente` — no un id, que
+// era lo que yo había supuesto leyendo §3.4. Ver el detalle en `clientes.ts`.
 export { listarClientes, obtenerCliente, crearCliente, editarCliente, cambiosDeCliente } from './clientes';
 export type {
   Cliente,
   DatosCliente,
+  DuplicadoCliente,
   FichaCliente,
   ListarClientesParams,
+  MotivoDuplicadoCliente,
   OperacionCliente,
   OrigenCliente,
   ResultadoGuardarCliente,

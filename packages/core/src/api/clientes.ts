@@ -180,14 +180,16 @@ function aWire(datos: DatosCliente): Record<string, unknown> {
 /**
  * El cliente que devuelve un alta/edición, venga envuelto o pelado.
  *
- * 🔴 **`[ASSUMED_PENDING_VERIFY]` — la envoltura NO está medida**: el `POST` respondía `405` cuando
- * se escribió esto. Y el sistema **no es consistente**: `POST /gastos` devuelve el objeto **pelado**,
- * mientras `/presupuestos`, `/perfil` y `GET /clientes/{id}` lo **envuelven**. Adivinar una de las dos
- * y equivocarse no da error: el normalizador leería `undefined` y el alta mostraría un cliente en
- * blanco con id `NaN`, que se ve como un bug del backend.
+ * ✅ **MEDIDO el 2026-07-22** (backend, `avance_..._clientes-hito3`): la respuesta viene **PELADA** —
+ * `201 {"id": 7, "nombre": …}` en el alta, `200` con la ficha ya actualizada en la edición.
  *
- * Por eso se aceptan las dos formas en vez de apostar a una. Cuando el hito 3 esté vivo se mide y
- * **este comentario se reemplaza por el resultado**, no se borra sin más.
+ * Se conserva la tolerancia a la forma envuelta, y no por indecisión: el sistema **no es consistente**
+ * — aunque la regla que sí lo sostiene es más limpia de lo que yo había leído: **un `POST` que crea o
+ * edita devuelve el recurso pelado; un `GET` de ficha devuelve SECCIONES** (`{cliente, presupuestos,
+ * facturas}` no envuelve un recurso: `cliente` es una de las tres). Aun así la envoltura es el detalle
+ * que alguien cambia sin pensar que rompe algo. Errar acá **no daría error**: el
+ * normalizador leería `undefined` y el alta mostraría un cliente en blanco con id `NaN` — que se lee
+ * como bug del backend. Tolerar las dos cuesta tres líneas.
  */
 function clienteDeLaRespuesta(raw: unknown): Cliente | null {
   if (typeof raw !== 'object' || raw === null) return null;
@@ -198,42 +200,82 @@ function clienteDeLaRespuesta(raw: unknown): Cliente | null {
 }
 
 /**
- * El id del cliente que YA tiene ese documento, sacado del body de un `409`.
+ * Contra qué chocó el alta.
  *
- * 🔴 **`[ASSUMED_PENDING_VERIFY]` — el nombre de la clave no está medido.** El contrato §3.4 dice
- * *"con su id en el body"* y no cuál es la clave. Se prueban los deletreos que ya existen en esta API
- * (`cliente_id` en el resto del sistema, `id`, y los dos anidados bajo `detail`, que es donde FastAPI
- * pone los cuerpos de error).
+ * 🔴 **`nombre` NO estaba en la tabla de errores del contrato (§7) — lo agregó el backend** y es un
+ * caso real: repetir un nombre normalizado **sin documento** también choca, porque el índice parcial
+ * por nombre lo impide (§3.3). Importa para el texto: decir *"ese documento ya es de X"* a alguien
+ * que **no tipeó ningún documento** es una explicación falsa de algo que sí pasó — el usuario busca
+ * un documento que no puso y concluye que la app se equivocó.
  *
- * Si ninguno matchea devuelve `null`, y la UI **igual dice "ya lo tenés"** — sólo que sin el botón
- * para abrirlo. Degradar el atajo es honesto; inventar un id llevaría a la ficha equivocada.
+ * `desconocido` cubre un `por` que el backend agregue mañana: se avisa igual, en genérico.
  */
-function duenoDelDocumento(body: unknown): number | null {
-  if (typeof body !== 'object' || body === null) return null;
+export type MotivoDuplicadoCliente = 'documento' | 'nombre' | 'desconocido';
+
+export interface DuplicadoCliente {
+  por: MotivoDuplicadoCliente;
+  /**
+   * El dueño **entero**, no su id.
+   *
+   * ✅ **MEDIDO el 2026-07-22.** El `409` llega como
+   * `{detail, por, cliente: {…ficha completa…}}` — el backend manda la ficha a propósito, porque el
+   * mensaje que pide el contrato (*"ese documento ya es de Juan Pérez, ¿querés abrirlo?"*) **necesita
+   * el nombre**, y con el id pelado haría falta un `GET` extra sólo para poder escribir la frase.
+   *
+   * `null` si el body no trae nada reconocible: la UI avisa igual, sin el botón de abrirlo.
+   */
+  dueno: Cliente | null;
+}
+
+/**
+ * Lee el dueño del `409`.
+ *
+ * ⚠️ **Acá me equivoqué y vale dejarlo escrito.** Mientras el `POST` daba 405 supuse que el id venía
+ * como `cliente_id`/`id` en la raíz o bajo `detail`, porque §3.4 decía *"con su id en el body"*. Venía
+ * la ficha entera bajo `cliente`. **La suposición no habría dado error**: `duenoId` quedaba `null`, el
+ * aviso salía sin el botón, y eso se ve como *"el backend no manda el id"* — un bug atribuido al otro
+ * lado, indistinguible de la realidad hasta que alguien leyera el body. Los fallbacks siguen porque
+ * son baratos; lo que cambió es cuál se prueba primero y por qué.
+ */
+function duplicadoDelBody(body: unknown): DuplicadoCliente {
+  if (typeof body !== 'object' || body === null) return { por: 'desconocido', dueno: null };
   const raiz = body as Record<string, unknown>;
   const detalle =
     typeof raiz.detail === 'object' && raiz.detail !== null
       ? (raiz.detail as Record<string, unknown>)
       : {};
+
+  const porCrudo = raiz.por ?? detalle.por;
+  const por: MotivoDuplicadoCliente =
+    porCrudo === 'documento' || porCrudo === 'nombre' ? porCrudo : 'desconocido';
+
+  // La forma medida: la ficha completa bajo `cliente`.
+  for (const nivel of [raiz, detalle]) {
+    const c = nivel.cliente;
+    if (typeof c === 'object' && c !== null && typeof (c as ClienteCrudo).id === 'number') {
+      return { por, dueno: normalizar(c as ClienteCrudo) };
+    }
+  }
+
+  // Fallbacks: un id suelto alcanza para navegar, aunque no para nombrarlo.
   for (const clave of ['cliente_id', 'id', 'duplicado_id']) {
     for (const nivel of [raiz, detalle]) {
       const v = nivel[clave];
-      if (typeof v === 'number') return v;
-      // Un id que viaja como string es un caso real en esta API — se acepta si es entero.
-      if (typeof v === 'string' && /^\d+$/.test(v)) return Number(v);
+      const id = typeof v === 'number' ? v : typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : null;
+      if (id != null) return { por, dueno: normalizar({ id }) };
     }
   }
-  return null;
+  return { por, dueno: null };
 }
 
 /**
- * Resultado de guardar. **El `409` no es un error**: es el resultado útil de §6.bis.3 —el documento ya
- * es de otro cliente— y la UI lo pinta como *"ya lo tenés en la cartera"*, no en rojo.
+ * Resultado de guardar. **El `409` no es un error**: es el resultado útil de §6.bis.3 —ese cliente ya
+ * existe— y la UI lo pinta como *"ya lo tenés en la cartera"*, no en rojo.
  */
 export type ResultadoGuardarCliente =
   | { status: 'ok'; cliente: Cliente }
   | { status: 'no_disponible' }
-  | { status: 'duplicado'; duenoId: number | null };
+  | { status: 'duplicado'; duplicado: DuplicadoCliente };
 
 async function guardar(ruta: string, datos: DatosCliente): Promise<ResultadoGuardarCliente> {
   try {
@@ -245,7 +287,7 @@ async function guardar(ruta: string, datos: DatosCliente): Promise<ResultadoGuar
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (err instanceof ApiError && err.status === 409) {
-      return { status: 'duplicado', duenoId: duenoDelDocumento(err.body) };
+      return { status: 'duplicado', duplicado: duplicadoDelBody(err.body) };
     }
     if (!(err instanceof ApiError)) return { status: 'no_disponible' };
     // 400/422 (falta el nombre, doc_tipo 99, un campo largo) sube: son accionables y el formulario

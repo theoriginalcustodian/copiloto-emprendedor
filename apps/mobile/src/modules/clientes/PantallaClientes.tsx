@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarClientes, obtenerCliente, type Cliente } from '@copiloto/core';
+import {
+  listarClientes,
+  obtenerCliente,
+  type Cliente,
+  type DuplicadoCliente,
+} from '@copiloto/core';
 
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
@@ -61,7 +66,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   const [ficha, setFicha] = useState<Cliente | null>(null);
   /** `null` = no hay formulario. `{edita: null}` = alta. `{edita: cliente}` = edición. */
   const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
-  const [avisoDuplicado, setAvisoDuplicado] = useState<{ duenoId: number | null } | null>(null);
+  const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -136,13 +141,36 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   }
 
   /**
-   * El documento ya es de otro cliente (§3.4). **No es un error**: se avisa y se ofrece abrir al
-   * dueño. Si el backend no mandó su id, el aviso se da igual — sin el botón. Inventar un id llevaría
-   * a la ficha equivocada, que es peor que un atajo de menos.
+   * Ese cliente ya existe (§3.4). **No es un error**: se avisa y se ofrece abrir al dueño, cuya ficha
+   * viene entera en el `409`. Si no vino nada reconocible, el aviso se da igual — sin el botón:
+   * inventar un id llevaría a la ficha equivocada, que es peor que un atajo de menos.
    */
-  function alDuplicado(duenoId: number | null) {
+  function alDuplicado(duplicado: DuplicadoCliente) {
     setFormulario(null);
-    setAvisoDuplicado({ duenoId });
+    setAvisoDuplicado(duplicado);
+  }
+
+  /**
+   * 🔴 **Se nombra al dueño, y por eso el motivo importa.** Decir *"ese documento ya es de X"* a quien
+   * **no tipeó ningún documento** —el choque por nombre repetido, que el contrato §7 no listaba— es
+   * explicar mal algo que sí pasó: el emprendedor busca un documento que no puso y concluye que la
+   * app se equivocó. Sin nombre se cae a lo genérico, que es feo y cierto.
+   */
+  function textoDuplicado(d: DuplicadoCliente): string {
+    const quien = d.dueno?.nombre;
+    if (d.por === 'nombre') {
+      return quien != null && quien !== ''
+        ? `Ya tenés un cliente con ese nombre: ${quien}.`
+        : 'Ya tenés un cliente con ese nombre.';
+    }
+    if (d.por === 'documento') {
+      return quien != null && quien !== ''
+        ? `Ese documento ya es de ${quien}.`
+        : 'Ese documento ya es de un cliente que tenés en la cartera.';
+    }
+    return quien != null && quien !== ''
+      ? `Ese cliente ya está en tu cartera: ${quien}.`
+      : 'Ese cliente ya está en tu cartera.';
   }
 
   async function abrirDueno(id: number) {
@@ -221,17 +249,20 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
               {avisoDuplicado != null && (
                 <View style={{ gap: tema.espacio.sm }} testID="clientes-duplicado">
                   {/* 🔴 En tenue, no en rojo: "ya lo tenés" es un resultado útil, no un fallo. */}
-                  <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-                    Ese documento ya es de un cliente que tenés en la cartera.
+                  <Text
+                    testID="clientes-duplicado-texto"
+                    style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}
+                  >
+                    {textoDuplicado(avisoDuplicado)}
                   </Text>
-                  {avisoDuplicado.duenoId != null && (
+                  {avisoDuplicado.dueno != null && (
                     <FilaBotones
                       testID="clientes-duplicado-acciones"
                       compacto
                       botones={[
                         {
                           etiqueta: 'Abrir ese cliente',
-                          onPress: () => void abrirDueno(avisoDuplicado.duenoId as number),
+                          onPress: () => void abrirDueno((avisoDuplicado.dueno as Cliente).id),
                           testID: 'clientes-duplicado-abrir',
                         },
                       ]}

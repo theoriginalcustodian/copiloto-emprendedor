@@ -196,25 +196,55 @@ describe('clientes.ts', () => {
       expect(pelado.status === 'ok' && pelado.cliente.id).toBe(32);
     });
 
-    it('🔴 el 409 es `duplicado` con el id del dueño — NO una excepción', async () => {
-      // §6.bis.3: el documento ya es de otro cliente. Es el resultado útil, no un fallo: la UI dice
-      // "ya lo tenés" y ofrece abrirlo. Tratarlo como error rojo empujaría a reintentar el alta.
-      responder = () => respuesta(409, { detail: 'documento ya registrado', cliente_id: 7 });
+    it('🔴 el 409 trae la FICHA ENTERA del dueño — no un id — y NO es una excepción', async () => {
+      // Forma MEDIDA el 2026-07-22. Yo había supuesto `cliente_id` leyendo el §3.4 ("con su id en el
+      // body"): ninguna de mis cuatro claves matcheaba. Y no habría fallado ruidosamente — el aviso
+      // salía sin el botón de abrirlo, que se lee como "el backend no manda el id".
+      responder = () =>
+        respuesta(409, {
+          detail: 'ese documento ya es de Ferretería El Tornillo',
+          por: 'documento',
+          cliente: clienteCrudo({ id: 7, nombre: 'Ferretería El Tornillo' }),
+        });
 
-      await expect(crearCliente({ nombre: 'X', docTipo: 80, docNro: '30712345678' })).resolves.toEqual({
-        status: 'duplicado',
-        duenoId: 7,
-      });
+      const res = await crearCliente({ nombre: 'X', docTipo: 80, docNro: '30712345678' });
+
+      expect(res.status).toBe('duplicado');
+      if (res.status !== 'duplicado') return;
+      expect(res.duplicado.por).toBe('documento');
+      // El NOMBRE es lo que hace útil al aviso: con el id pelado haría falta un GET extra sólo para
+      // poder escribir "ese documento ya es de X".
+      expect(res.duplicado.dueno?.nombre).toBe('Ferretería El Tornillo');
+      expect(res.duplicado.dueno?.id).toBe(7);
     });
 
-    it('el 409 sin una clave reconocible sigue siendo `duplicado`, con `duenoId` null', async () => {
-      // La clave del id no está medida. Si ninguna matchea, la UI igual dice "ya lo tenés" pero sin
-      // el botón para abrirlo: degradar el atajo es honesto, inventar un id lleva a la ficha ajena.
+    it('🔴 `por: "nombre"` se distingue de `por: "documento"` — no estaba en el contrato', async () => {
+      // Repetir un nombre normalizado SIN documento también choca (índice parcial por nombre). Decir
+      // "ese documento ya es de X" a alguien que no tipeó documento es explicar mal algo que sí pasó.
+      responder = () =>
+        respuesta(409, { detail: 'ya existe', por: 'nombre', cliente: clienteCrudo({ id: 9 }) });
+
+      const res = await crearCliente({ nombre: 'Panadería Los Tilos' });
+
+      expect(res.status === 'duplicado' && res.duplicado.por).toBe('nombre');
+    });
+
+    it('un `por` que el backend agregue mañana cae en `desconocido`, no rompe', async () => {
+      responder = () => respuesta(409, { detail: 'x', por: 'algo_nuevo', cliente: clienteCrudo({ id: 9 }) });
+
+      const res = await crearCliente({ nombre: 'X' });
+
+      expect(res.status === 'duplicado' && res.duplicado.por).toBe('desconocido');
+    });
+
+    it('un 409 sin nada reconocible sigue siendo `duplicado`, sin dueño', async () => {
+      // La UI avisa igual, pero sin el botón para abrirlo: degradar el atajo es honesto, inventar un
+      // id lleva a la ficha de otro cliente.
       responder = () => respuesta(409, { detail: 'ya existe' });
 
       await expect(crearCliente({ nombre: 'X' })).resolves.toEqual({
         status: 'duplicado',
-        duenoId: null,
+        duplicado: { por: 'desconocido', dueno: null },
       });
     });
 

@@ -8,6 +8,7 @@ import {
   editarCliente,
   type Cliente,
   type DatosCliente,
+  type DuplicadoCliente,
 } from '@copiloto/core';
 
 import { CampoSelect, CampoTexto, FilaBotones, type OpcionSelect } from '../../theme/glass/campos';
@@ -37,9 +38,9 @@ import { useTema } from '../../theme/ThemeProvider';
  * vino de las facturas de AFIP, que el emprendedor nunca tipeó y no sabe que puede perder. Ese bug se
  * ve idéntico a un guardado exitoso.
  *
- * 🔴 **El `409` no se pinta en rojo.** Es el resultado útil: el documento ya es de otro cliente. Se
- * dice *"ya lo tenés"* y se ofrece abrirlo. Tratarlo como fallo empujaría a reintentar un alta que
- * nunca va a entrar.
+ * 🔴 **El `409` no se pinta en rojo.** Es el resultado útil: ese cliente ya existe. Se dice *"ya lo
+ * tenés"* y se ofrece abrirlo. Tratarlo como fallo empujaría a reintentar un alta que nunca va a
+ * entrar. El backend manda **la ficha entera del dueño**, no su id, justamente para poder nombrarlo.
  *
  * El teclado ya está resuelto por la cáscara: este formulario vive dentro del `ScrollFormulario` de
  * `PantallaClientes` (revela el campo enfocado) + el `KeyboardAvoidingView` de `MarcoGlass`. Un
@@ -57,8 +58,8 @@ export interface FormularioClienteProps {
   /** Si viene, es una edición: arranca con sus datos y manda sólo el diff. */
   edita?: Cliente | null;
   onGuardado: (cliente: Cliente) => void;
-  /** Un documento repetido: el dueño ya existe. `duenoId` puede ser `null` (ver `clientes.ts`). */
-  onDuplicado: (duenoId: number | null) => void;
+  /** Ese cliente ya existe. Trae la ficha del dueño y por qué chocó — ver `DuplicadoCliente`. */
+  onDuplicado: (duplicado: DuplicadoCliente) => void;
   onCancelar: () => void;
   testID?: string;
 }
@@ -120,7 +121,7 @@ export function FormularioCliente({
         return;
       }
       if (res.status === 'duplicado') {
-        onDuplicado(res.duenoId);
+        onDuplicado(res.duplicado);
         return;
       }
       onGuardado(res.cliente);

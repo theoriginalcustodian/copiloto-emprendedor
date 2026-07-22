@@ -249,22 +249,49 @@ describe('PantallaClientes', () => {
       expect(mockListar.mock.calls.length).toBeGreaterThan(antes);
     });
 
-    it('el 409 avisa "ya lo tenes" y ofrece abrirlo - NO es un error rojo', async () => {
-      mockCrear.mockResolvedValue({ status: 'duplicado', duenoId: 7 });
+    it('el 409 NOMBRA al dueno y ofrece abrirlo - NO es un error rojo', async () => {
+      // El backend manda la ficha entera, no un id, justamente para poder escribir el nombre. Con el
+      // id pelado haria falta un GET extra solo para redactar la frase.
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'documento', dueno: cliente({ id: 7, nombre: 'Ferretería El Tornillo' }) },
+      });
 
       await montar();
       await abrirAltaCon('Repetido');
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
-      expect(screen.getByTestId('clientes-duplicado')).toBeTruthy();
+      expect(screen.getByTestId('clientes-duplicado-texto')).toHaveTextContent(
+        'Ese documento ya es de Ferretería El Tornillo.',
+      );
       expect(screen.queryByTestId('formulario-cliente-error')).toBeNull();
       expect(screen.getByTestId('clientes-duplicado-abrir')).toBeTruthy();
+    });
+
+    it('un choque por NOMBRE no habla de documentos - el usuario no tipeo ninguno', async () => {
+      // `por: "nombre"` no estaba en la tabla del contrato: repetir un nombre normalizado sin
+      // documento tambien choca. Decir "ese documento ya es de X" mandaria a buscar algo que no puso.
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Panadería Los Tilos' }) },
+      });
+
+      await montar();
+      await abrirAltaCon('Panadería Los Tilos');
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+
+      expect(screen.getByTestId('clientes-duplicado-texto')).toHaveTextContent(
+        'Ya tenés un cliente con ese nombre: Panadería Los Tilos.',
+      );
     });
 
     it('un 409 SIN el id del dueno avisa igual, pero sin el boton de abrirlo', async () => {
       // La clave del id en el body no esta medida. Degradar el atajo es honesto; inventar un id
       // llevaria a la ficha de otro cliente.
-      mockCrear.mockResolvedValue({ status: 'duplicado', duenoId: null });
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'desconocido', dueno: null },
+      });
 
       await montar();
       await abrirAltaCon('Repetido');
