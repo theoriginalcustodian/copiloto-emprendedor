@@ -303,6 +303,39 @@ def resolve_date_range(range_raw: str | None, *, now_iso: str, tz: str = DEFAULT
     if "ayer" in t:
         s, e = _day_bounds(today - datetime.timedelta(days=1), tzi)
         return out(s, e, "ayer")
+    # ── 8.bis) 'hace N días/semanas/meses' → el DÍA de hace N unidades ───────────────────────────────
+    # Medido el 2026-07-22 con hoy = miércoles 22: `hace una semana` devolvía **2026-07-20** —el lunes
+    # de ESTA semana— y encima con `entendida=True`, así que ni la card ni el chat mostraban el ⚠️.
+    # Un dato falso que no protesta es peor que uno que falta: el emprendedor ve una fecha plausible y
+    # no tiene motivo para mirarla dos veces.
+    #
+    # La causa era la rama 10 ('esta semana'), que traga CUALQUIER frase con la palabra «semana» que no
+    # matcheó antes. Se arregla en dos mitades: acá se entiende la expresión, y abajo las ramas anchas
+    # dejan de tragarse lo que no entienden.
+    #
+    # Devuelve un DÍA puntual, no un rango, porque es como se usa al fechar («me pagaron hace una
+    # semana» = ese día), igual que `ayer`/`anteayer`.
+    m = re.search(r"hace\s+(\d{1,3}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*"
+                  r"(dia|día|semana|mes)", t)
+    if m:
+        palabra = {"un": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
+                   "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10}
+        crudo = m.group(1)
+        n = palabra.get(crudo) if not crudo.isdigit() else int(crudo)
+        n = max(1, min(n or 1, 366))
+        unidad = m.group(2)
+        dias = n if unidad.startswith("dia") or unidad.startswith("día") else (
+            n * 7 if unidad == "semana" else n * 30)
+        d = today - datetime.timedelta(days=dias)
+        s, e = _day_bounds(d, tzi)
+        return out(s, e, f"hace {crudo} {unidad}{'s' if n > 1 else ''}")
+    # ── 8.ter) FAIL-CLOSED: 'hace …' que NO se entendió arriba NO cae en las ramas anchas ────────────
+    # Generaliza el guard fail-closed de la 2ª pasada (2026-07-04), que cubrió sólo los rangos de días
+    # explícitos. Sin esto, «hace un rato», «hace bastante» o «hace 2 quincenas» caen en 'esta semana'
+    # o 'este mes' y salen con `entendida=True`. Devolver None es lo correcto: el llamador prellena hoy
+    # **y muestra el ⚠️**, que es un fallo honesto y corregible en la card.
+    if "hace" in t:
+        return None
     # ── 9) semana pasada / la semana pasada ──────────────────────────────────────────────────────────
     if "semana" in t and ("pasad" in t or "anterior" in t):
         this_mon = today - datetime.timedelta(days=today.weekday())

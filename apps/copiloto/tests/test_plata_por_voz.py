@@ -445,17 +445,21 @@ def test_sin_store_cableado_degrada_a_error_y_no_explota(tool, args):
 
 # ── la fecha dictada: lo que NO se entiende se dice ──────────────────────────────────────────────
 #
-# Medido contra el vivo el 2026-07-22: `resolve_date_range` NO entiende «hace dos días» —el caso
-# textual del operador— ni «el lunes», que la description de `registrar_gasto` promete literalmente.
-# Antes de esto el gasto quedaba con fecha de HOY y nadie se enteraba: sin error, sin hueco, con el
-# número prolijo. Coherente y falso.
+# Medido contra el vivo el 2026-07-22: el gasto quedaba con fecha de HOY y nadie se enteraba —sin
+# error, sin hueco, con el número prolijo. Coherente y falso.
+#
+# 🔴 El ejemplo de esta sección ERA «hace dos dias», y ya no sirve: **ahora se entiende bien** (mismo
+# día, más tarde). Estos tests fijaban una LIMITACIÓN como si fuera la conducta deseada, así que al
+# arreglar el resolvedor se pusieron rojos por la razón correcta. El ejemplo pasa a «hace un rato»,
+# que no se resuelve a un día y no debería poder nunca: lo que se prueba acá es la CONDUCTA ante lo
+# no entendido —avisar y no perder el registro—, no qué frases entra el parser.
 
 def test_una_fecha_que_no_se_entiende_avisa_y_NO_falla():
     store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace dos días"}, cobro=store)
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=store)
     assert len(store.ingresos) == 1, "fallar el registro pierde el ingreso por un detalle corregible"
     assert store.ingresos[0]["fecha"] == "2026-07-22", "cae a hoy, no a una fecha inventada"
-    assert "hace dos días" in res.observation["result"], \
+    assert "hace un rato" in res.observation["result"], \
         "el aviso tiene que nombrar lo que la persona dijo: un «revisá la fecha» genérico se ignora"
     assert "HOY" in res.observation["result"]
 
@@ -522,10 +526,10 @@ def test_la_card_del_gasto_lleva_el_aviso_de_fecha():
     """El aviso se mudó del chat a la card: preguntarlo por chat costaba dos turnos y mandaba la
     respuesta al MISMO resolvedor que acababa de fallar."""
     ex = tool_catalog.make_tool_executor(None, now_iso_provider=lambda: "2026-07-22T10:00:00")
-    r = ex("registrar_gasto", {"monto": "8000", "fecha_raw": "hace dos días"}, _Ctx(),
+    r = ex("registrar_gasto", {"monto": "8000", "fecha_raw": "hace un rato"}, _Ctx(),
            confirmed=False, idem_key="tc-g")
     assert r.artifact.data["fecha_entendida"] is False
-    assert r.artifact.data["fecha_dictada"] == "hace dos días"
+    assert r.artifact.data["fecha_dictada"] == "hace un rato"
     assert r.artifact.data["fecha"] == "2026-07-22", "cae a hoy, y la card lo muestra"
     assert "OJO" not in r.observation["result"], \
         "con card, el copiloto NO pregunta por chat: el ⚠️ va pegado al campo que lo arregla"
@@ -543,6 +547,76 @@ def test_el_ingreso_SI_avisa_por_chat_porque_no_tiene_card():
     """La distinción que no se puede aplicar como regla ciega: `registrar_ingreso` guarda directo y no
     hay card donde pintar el ⚠️, así que el chat es el único canal que queda."""
     store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace dos días"}, cobro=store)
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=store)
     assert "no ubiqué" in res.observation["result"]
     assert "ayer" in res.observation["result"], "el aviso trae la forma que SÍ funciona"
+
+
+# ── 'hace N ...': lo que el resolvedor entendia MAL sin protestar ──────────────────────────────
+
+_AHORA_MIERCOLES = "2026-07-22T12:00:00+00:00"       # miercoles 22 de julio de 2026
+
+
+def _reloj_fijo():
+    return _AHORA_MIERCOLES
+
+
+def test_hace_una_semana_ya_no_devuelve_el_lunes_de_ESTA_semana():
+    """🔴 El caso que medi el 2026-07-22 y era el peor de todos: **un dato falso que no protesta**.
+
+    Antes devolvia **2026-07-20** —el lunes de esta semana— y encima con `entendida=True`, asi que ni
+    la card ni el chat mostraban el ⚠️. El emprendedor veia una fecha plausible y no tenia motivo para
+    mirarla dos veces.
+
+    La causa era la rama ancha 'esta semana' del resolvedor, que se tragaba CUALQUIER frase con la
+    palabra «semana» que no matcheara antes.
+    """
+    fecha, entendida = tool_catalog._fecha_dictada("hace una semana", _reloj_fijo)
+
+    assert str(fecha) == "2026-07-15", "siete dias antes del miercoles 22 es el miercoles 15"
+    assert entendida is True
+    # Control: que NO sea la respuesta vieja. Sin esto el test pasaria igual si alguien reintrodujera
+    # la rama ancha y por casualidad diera la misma fecha.
+    assert str(fecha) != "2026-07-20", "volvio a caer en el lunes de esta semana"
+
+
+def test_hace_N_dias_semanas_y_meses():
+    """La familia completa, en digitos y en palabras — las dos formas se dictan igual de seguido."""
+    casos = {"hace tres dias": "2026-07-19", "hace 3 dias": "2026-07-19",
+             "hace 2 semanas": "2026-07-08", "hace un mes": "2026-06-22"}
+    for dictado, esperado in casos.items():
+        fecha, entendida = tool_catalog._fecha_dictada(dictado, _reloj_fijo)
+        assert str(fecha) == esperado, f"{dictado!r} dio {fecha}, se esperaba {esperado}"
+        assert entendida is True, f"{dictado!r} se entendio pero quedo marcado como dudoso"
+
+
+def test_un_hace_QUE_NO_SE_ENTIENDE_avisa__en_vez_de_inventar():
+    """🔴 La otra mitad del arreglo, y la que importa cuando aparezca una forma que nadie previo.
+
+    «hace un rato» no se puede resolver a un dia, y esta bien que no se resuelva. Lo que NO puede
+    pasar es que caiga en 'esta semana' y salga con `entendida=True`: **un fallo honesto se corrige en
+    la card; uno silencioso queda en la base**.
+    """
+    for dictado in ("hace un rato", "hace bastante", "hace 2 quincenas"):
+        fecha, entendida = tool_catalog._fecha_dictada(dictado, _reloj_fijo)
+        assert entendida is False, f"{dictado!r} salio como entendido y no lo es"
+        assert str(fecha) == "2026-07-22", "sin entender, la fecha cae en hoy"
+
+
+def test_lo_que_YA_andaba_sigue_andando():
+    """Control de no-regresion: el fail-closed nuevo corta por «hace», y estas frases no lo llevan."""
+    for dictado, esperado in {"hoy": "2026-07-22", "ayer": "2026-07-21", "anteayer": "2026-07-20",
+                              "la semana pasada": "2026-07-13", "el mes pasado": "2026-06-01",
+                              "a principios de mes": "2026-07-01",
+                              "el 5 de julio": "2026-07-05"}.items():
+        fecha, entendida = tool_catalog._fecha_dictada(dictado, _reloj_fijo)
+        assert (str(fecha), entendida) == (esperado, True), f"{dictado!r} se rompio: {fecha}/{entendida}"
+
+
+def test_las_formas_que_PUBLICAMOS_son_las_que_entendemos():
+    """`FECHAS_QUE_ENTIENDO` viaja en el schema de las tools: es lo que el LLM lee y le repite al
+    emprendedor. Publicar una forma que el resolvedor no entiende es prometer algo que falla — y el
+    aviso de fecha usa esta MISMA lista para decir «decilo asi». Si divergen, la ayuda miente."""
+    for forma in tool_catalog.FECHAS_QUE_ENTIENDO:
+        _fecha, entendida = tool_catalog._fecha_dictada(forma, _reloj_fijo)
+        assert entendida is True, f"publicamos {forma!r} pero el resolvedor no la entiende"

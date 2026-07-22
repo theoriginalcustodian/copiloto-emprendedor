@@ -73,8 +73,8 @@ def _obs_service(toolkit: str) -> dict:
 # ⚠️ NO agregar acá nada sin medirlo. El bug que esto cierra fue exactamente ese: la description
 # prometía «el lunes», el resolvedor lo descartaba en silencio, y el gasto quedaba con fecha de hoy.
 # **Una guía que promete de más es peor que no tener guía** — enseña a decir algo que falla.
-FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "la semana pasada", "el mes pasado",
-                       "a principios de mes", "el 5 de julio")
+FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "hace una semana", "hace tres días",
+                       "la semana pasada", "el mes pasado", "a principios de mes", "el 5 de julio")
 
 
 # ── tools de 1ra clase (gateways propios, no vía módulo de servicio) ─────────────────────────────
