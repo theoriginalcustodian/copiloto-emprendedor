@@ -482,3 +482,67 @@ def test_la_factura_cobrada_tambien_avisa():
                   cobro=store)
     assert len(store.cobros_de_factura) == 1
     assert "el martes pasado" in res.observation["result"]
+
+
+# ── la guía es una proyección, no una lista a mano ───────────────────────────────────────────────
+
+def test_la_guia_NO_promete_una_tool_que_no_existe():
+    """🔴 El test que evita repetir el caso de Apps.
+
+    La guía que bajó planificación prometía «facturale 80 mil a la panadería» y `emitir_factura` NO
+    EXISTE — la guía se escribió a la vez que el hito que la haría cierta, y esa simultaneidad es la
+    que la hace fácil de no ver. Acá una capacidad se publica sólo si su tool está viva.
+    """
+    vivas = tool_catalog.capacidades_vivas()
+    for cap in vivas["capacidades"]:
+        assert cap["tool"] in tool_catalog.TOOL_INDEX, \
+            f"la guía promete «{cap['ejemplos'][0]}» y {cap['tool']} no existe"
+
+
+def test_facturar_por_voz_NO_esta_en_la_guia_todavia():
+    """El control del test de arriba: si `_CAPACIDADES` no tuviera ninguna entrada muerta, el filtro
+    pasaría siempre sin filtrar nada. `emitir_factura` está declarada y todavía no existe — cuando
+    el hito 9 la agregue, este test falla y se borra, que es exactamente lo que tiene que pasar."""
+    assert "emitir_factura" not in tool_catalog.TOOL_INDEX
+    rotulos = [c["tool"] for c in tool_catalog.capacidades_vivas()["capacidades"]]
+    assert "emitir_factura" not in rotulos
+
+
+def test_las_fechas_de_la_guia_son_las_MEDIDAS():
+    """Una sola constante alimenta la guía, las descriptions y el aviso. Si la guía tuviera su propia
+    lista, el DoD «los ejemplos coinciden con la tabla medida» dependería de que alguien lo revise —
+    y funciona una vez."""
+    vivas = tool_catalog.capacidades_vivas()
+    assert vivas["fechas"]["entiendo"] == list(tool_catalog.FECHAS_QUE_ENTIENDO)
+    assert "el lunes" not in vivas["fechas"]["entiendo"], \
+        "«el lunes» NO lo entiende el resolvedor: prometerlo es el bug original"
+
+
+def test_la_card_del_gasto_lleva_el_aviso_de_fecha():
+    """El aviso se mudó del chat a la card: preguntarlo por chat costaba dos turnos y mandaba la
+    respuesta al MISMO resolvedor que acababa de fallar."""
+    ex = tool_catalog.make_tool_executor(None, now_iso_provider=lambda: "2026-07-22T10:00:00")
+    r = ex("registrar_gasto", {"monto": "8000", "fecha_raw": "hace dos días"}, _Ctx(),
+           confirmed=False, idem_key="tc-g")
+    assert r.artifact.data["fecha_entendida"] is False
+    assert r.artifact.data["fecha_dictada"] == "hace dos días"
+    assert r.artifact.data["fecha"] == "2026-07-22", "cae a hoy, y la card lo muestra"
+    assert "OJO" not in r.observation["result"], \
+        "con card, el copiloto NO pregunta por chat: el ⚠️ va pegado al campo que lo arregla"
+
+
+def test_el_gasto_con_fecha_ENTENDIDA_no_marca_nada():
+    ex = tool_catalog.make_tool_executor(None, now_iso_provider=lambda: "2026-07-22T10:00:00")
+    r = ex("registrar_gasto", {"monto": "8000", "fecha_raw": "ayer"}, _Ctx(),
+           confirmed=False, idem_key="tc-g2")
+    assert r.artifact.data["fecha_entendida"] is True
+    assert r.artifact.data["fecha"] == "2026-07-21"
+
+
+def test_el_ingreso_SI_avisa_por_chat_porque_no_tiene_card():
+    """La distinción que no se puede aplicar como regla ciega: `registrar_ingreso` guarda directo y no
+    hay card donde pintar el ⚠️, así que el chat es el único canal que queda."""
+    store = _CobroFake()
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace dos días"}, cobro=store)
+    assert "no ubiqué" in res.observation["result"]
+    assert "ayer" in res.observation["result"], "el aviso trae la forma que SÍ funciona"

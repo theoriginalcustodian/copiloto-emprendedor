@@ -63,6 +63,20 @@ def _obs_service(toolkit: str) -> dict:
     return {"service": (toolkit or "").lower(), "label": _friendly_toolkit(toolkit)}
 
 
+# 🔴 FUENTE ÚNICA de las expresiones de fecha, y **son las MEDIDAS** contra el resolvedor vivo el
+# 2026-07-22 — no las que suenan razonables. De acá salen las tres cosas que las nombran: el aviso al
+# emprendedor, las `description` que ve el LLM y el endpoint de capacidades que la app pinta como guía.
+#
+# Que sean una sola constante es lo que hace cierto **por construcción** el DoD «los ejemplos de la
+# guía coinciden con la tabla medida». Verificarlo a mano funciona una vez; lo que falla es la segunda.
+#
+# ⚠️ NO agregar acá nada sin medirlo. El bug que esto cierra fue exactamente ese: la description
+# prometía «el lunes», el resolvedor lo descartaba en silencio, y el gasto quedaba con fecha de hoy.
+# **Una guía que promete de más es peor que no tener guía** — enseña a decir algo que falla.
+FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "la semana pasada", "el mes pasado",
+                       "a principios de mes", "el 5 de julio")
+
+
 # ── tools de 1ra clase (gateways propios, no vía módulo de servicio) ─────────────────────────────
 CALENDAR_BOOK_SCHEMA = {"type": "function", "function": {
     "name": "calendar_book",
@@ -107,10 +121,10 @@ REGISTRAR_GASTO_SCHEMA = {"type": "function", "function": {
         # schema le ofrecía al modelo una forma que el backend descartaba en silencio, y el gasto
         # quedaba con fecha de hoy sin que nadie avisara. Si el resolvedor aprende más formas, esto
         # se amplía; mientras tanto prometer de menos es gratis y prometer de más miente.
-        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural. Entiendo "
-                                                       "'ayer', 'anteayer', 'la semana pasada', 'el "
-                                                       "mes pasado', 'el 5 de julio'. Omitilo si no "
-                                                       "lo dijo: se asume hoy."}},
+        "fecha_raw": {"type": "string",
+                      "description": "cuándo fue, en lenguaje natural. Entiendo: "
+                                     + ", ".join(f"'{f}'" for f in FECHAS_QUE_ENTIENDO)
+                                     + ". Omitilo si no lo dijo: se asume hoy."}},
         "required": ["monto"]}}}
 
 REGISTRAR_CLIENTE_SCHEMA = {"type": "function", "function": {
@@ -158,10 +172,10 @@ REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
         "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta… si lo dijo"},
         "concepto": {"type": "string", "description": "por qué le pagaron, si lo dijo"},
         # Mismos ejemplos medidos que en `registrar_gasto` — ver el comentario de aquel schema.
-        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural. Entiendo "
-                                                       "'ayer', 'anteayer', 'la semana pasada', 'el "
-                                                       "mes pasado', 'el 5 de julio'. Omitilo si no "
-                                                       "lo dijo: se asume hoy."},
+        "fecha_raw": {"type": "string",
+                      "description": "cuándo fue, en lenguaje natural. Entiendo: "
+                                     + ", ".join(f"'{f}'" for f in FECHAS_QUE_ENTIENDO)
+                                     + ". Omitilo si no lo dijo: se asume hoy."},
         "confirmar_duplicado": {"type": "boolean",
                                 "description": "sólo si ya te avisé de un ingreso parecido y él "
                                                "confirmó que es OTRO cobro distinto"}},
@@ -215,6 +229,48 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
 # editable existe para poder tocar el monto ahí mismo — y ése es el único punto donde el error se
 # detecta, porque después lo que se mira es el total, no el gasto.
 _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
+
+
+# ── lo que el copiloto SABE HACER, para que la guía sea una proyección y no una lista a mano ─────
+#
+# 🔴 Frontend lo pidió con el caso exacto: una pantalla de ayuda con las frases escritas adentro es
+# **el mismo objeto que Apps** ([[verificar-que-el-camino-recomendado-existe]]) — un catálogo estático
+# mientras lo vivo cambia por su cuenta, cada lado verificando su mitad y la junta sin dueño. La guía
+# ya nació con ese bug: prometía «facturale 80 mil a la panadería» y `emitir_factura` NO EXISTE.
+#
+# Acá cada capacidad declara su rótulo y sus ejemplos, **y sólo se publica si su tool está viva** en
+# `TOOL_INDEX`. Entonces la poda del hito 2 y el alta de `emitir_factura` (hito 9) actualizan la guía
+# **solas**, y el DoD «los ejemplos coinciden con lo que existe» pasa a ser cierto por construcción en
+# vez de algo que alguien tiene que acordarse de verificar. Verificar a mano funciona una vez.
+_CAPACIDADES = (
+    ("registrar_gasto", "Gastos", ("pagué 15 mil de mercadería", "gasté 3.000 en nafta ayer")),
+    ("registrar_ingreso", "Ingresos", ("me pagaron 85 mil",
+                                       "cobré 40 mil de la panadería en efectivo")),
+    ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
+    ("marcar_presupuesto", "Presupuestos", ("me aprobaron el de la panadería",)),
+    ("registrar_cliente", "Clientes", ("anotá un cliente, Panadería Los Tilos",)),
+    ("consultar_cliente", "Consultas", ("¿cuánto me compró la panadería?",)),
+    ("emitir_factura", "Facturar", ("facturale 80 mil a la panadería",)),
+)
+
+
+def capacidades_vivas() -> dict:
+    """Lo que el copiloto puede hacer HOY, servido para la pantalla de ayuda.
+
+    Una capacidad cuya tool no está en `TOOL_INDEX` **no se publica**: prometer de más es peor que no
+    tener guía, porque enseña a decir algo que falla y quema la confianza en todo lo demás. Prometer
+    de menos es gratis — si el emprendedor dice algo que anda y no estaba en la lista, gana.
+
+    Las expresiones de fecha salen de `FECHAS_QUE_ENTIENDO`, que es la tabla **medida** contra el
+    resolvedor vivo. Es la misma fuente que usan las `description` del LLM y el aviso al emprendedor:
+    las tres no pueden divergir porque son la misma constante.
+    """
+    return {
+        "capacidades": [{"tool": tool, "rotulo": rotulo, "ejemplos": list(ejemplos)}
+                        for tool, rotulo, ejemplos in _CAPACIDADES if tool in TOOL_INDEX],
+        "fechas": {"entiendo": list(FECHAS_QUE_ENTIENDO),
+                   "si_no_esta": "Para cualquier otro día, tocá la fecha en la tarjeta."},
+    }
 
 
 def _service_index() -> dict:
@@ -499,7 +555,12 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
     def recortar(clave: str) -> str:
         return str(arguments.get(clave) or "").strip()[:LIMITES[clave]]
 
+    # `fecha_entendida` + `fecha_dictada` viajan en la card para que el ⚠️ se pinte PEGADO al campo
+    # que lo arregla. La app no infiere cuándo la fecha es dudosa: si lo decidiera por su cuenta, el
+    # aviso y el dato saldrían de dos lugares distintos y divergirían.
     gasto = {"monto": dos_decimales(monto), "fecha": fecha.isoformat(), "categoria": categoria,
+             "fecha_entendida": fecha_ok,
+             "fecha_dictada": (arguments.get("fecha_raw") or "") if not fecha_ok else "",
              "proveedor": recortar("proveedor") or None, "medio_pago": recortar("medio_pago") or None,
              "descripcion": recortar("descripcion") or None, "origen": "voz"}
     return ToolResult(
@@ -510,7 +571,10 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
         observation={"result": f"Propuse el gasto (${gasto['monto']}, {categoria}) y se lo muestro en "
                                f"una tarjeta para que la revise. TODAVÍA NO está guardado: decíselo en "
                                f"una línea corta y pedile que confirme o corrija."
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}"},
+                               # Sin aviso de fecha a propósito: la card lo muestra pegado al campo,
+                               # y preguntarlo por chat mandaría la respuesta al mismo resolvedor que
+                               # ya falló. `hay_card=True` lo deja mudo.
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}"},
         artifact=Artifact(kind="gasto_propuesto", data=gasto))
 
 
@@ -684,16 +748,28 @@ def _fecha_dictada(fecha_raw, now_iso_provider) -> tuple:
     return datetime.fromisoformat(rng["since"]).date(), True
 
 
-def _aviso_de_fecha(entendida: bool, fecha_raw) -> str:
-    """Lo que el copiloto tiene que decir cuando no pudo ubicar la fecha dictada.
 
-    Nombra **lo que la persona dijo** en vez de un «revisá la fecha» genérico: sin la palabra propia
-    adelante, el aviso no tiene con qué chocar y se lee sin registrarlo — el mismo criterio que el
-    aviso del documento incoherente en `registrar_cliente`."""
-    if entendida:
+
+def _aviso_de_fecha(entendida: bool, fecha_raw, *, hay_card: bool) -> str:
+    """Lo que el copiloto dice cuando no pudo ubicar la fecha dictada — **si tiene que decir algo.**
+
+    🔴 **Con card, no dice nada: el aviso viaja en el artifact y se pinta pegado al campo.** Preguntar
+    por chat costaba dos turnos y, peor, **la respuesta volvía al MISMO resolvedor que acaba de
+    fallar**: si contesta «el lunes», tampoco lo entiende, y ahí van tres turnos con el mismo error.
+    Tocar la fecha en la tarjeta cuesta cero y no puede fallar, porque es una fecha elegida.
+
+    Sin card —`registrar_ingreso` guarda directo, `marcar_factura_cobrada` también— **el chat es el
+    único canal que queda**, así que ahí sí se avisa. Es la misma excepción que el modo automático.
+
+    Y el aviso **trae la forma que funciona**, no sólo el problema: nadie lee la ayuda antes, todos
+    leen el mensaje que aparece cuando algo salió raro. Es la única documentación con lectura
+    garantizada.
+    """
+    if entendida or hay_card:
         return ""
-    return (f" OJO: no pude ubicar «{fecha_raw}» en el calendario, así que lo anoté con fecha de HOY. "
-            f"Decíselo con esas palabras y preguntale qué día fue.")
+    formas = "», «".join(FECHAS_QUE_ENTIENDO[1:4])
+    return (f" OJO: no ubiqué «{fecha_raw}», así que quedó con fecha de HOY. Decíselo con esas "
+            f"palabras y pedile que lo diga como «{formas}», o que lo corrija desde la pantalla.")
 
 
 # Lo que el backend llama `falta`, dicho como lo diría una persona. El LLM lee esto y lo repite; si
@@ -771,7 +847,7 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
         observation={"result": f"Anotado y GUARDADO: {_plata(ingreso['monto'])} del "
                                f"{ingreso['fecha']}. Confirmáselo en una línea corta diciendo el "
                                f"monto, para que pueda oír si entendí mal.{aviso}"
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}",
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=False)}",
                      "ingreso": ingreso},
         artifact=Artifact(kind="ingreso_guardado", data=ingreso))
 
@@ -885,7 +961,7 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
         observation={"result": f"Registré {_plata(cobro['monto'])} de la factura {factura['nro']}"
                                f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda} "
                                f"Confirmáselo en una línea corta."
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}",
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=False)}",
                      "cobro": cobro, "resumen": resumen})
 
 
