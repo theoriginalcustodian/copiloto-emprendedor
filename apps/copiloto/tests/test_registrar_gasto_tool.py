@@ -49,7 +49,12 @@ def test_devuelve_una_card_de_gasto_propuesto_con_el_body_del_POST_listo():
     assert r.artifact.kind == "gasto_propuesto"
     assert r.artifact.data == {"monto": "15000.00", "fecha": "2026-07-21", "categoria": "mercaderia",
                                "proveedor": "Distribuidora Sur", "medio_pago": None,
-                               "descripcion": "quince mil de mercadería", "origen": "voz"}
+                               "descripcion": "quince mil de mercadería", "origen": "voz",
+                               # El ⚠️ de la fecha viaja en la CARD, no en el chat: preguntarlo por
+                               # conversación costaba dos turnos y mandaba la respuesta al mismo
+                               # resolvedor que acababa de fallar. `test_el_body_del_POST_acepta...`
+                               # verifica que estos dos campos de más no rompan el alta.
+                               "fecha_entendida": True, "fecha_dictada": ""}
 
 
 def test_le_dice_al_LLM_que_TODAVIA_no_esta_guardado():
@@ -138,3 +143,20 @@ def test_los_opcionales_ausentes_viajan_como_null_no_como_vacio():
 
 def test_el_origen_siempre_es_voz():
     assert _correr(monto="500").artifact.data["origen"] == "voz"
+
+
+def test_el_body_del_POST_acepta_la_card_ENTERA():
+    """🔴 El control de que los dos campos nuevos no rompen el alta.
+
+    Este test se llama «con el body del POST listo» porque la app manda la card tal cual. Agregarle
+    `fecha_entendida`/`fecha_dictada` sería inofensivo *si* pydantic ignora los extras — que es cierto
+    por defecto, pero es una suposición sobre el framework, y esas son las que se descubren en
+    producción. Acá se ejercita: si alguien pone `extra="forbid"` en `NuevoGastoBody`, este test cae
+    antes que el emprendedor.
+    """
+    from gastos_web import NuevoGastoBody
+
+    card = _correr(monto="15000", categoria="mercaderia").artifact.data
+    body = NuevoGastoBody(**card)                     # no levanta: los extras se ignoran
+    assert body.monto == "15000.00"
+    assert body.categoria == "mercaderia"

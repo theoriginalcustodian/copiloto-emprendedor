@@ -36,6 +36,10 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from backend.agent.inbound_router import route_inbound
 from catalog import build_catalog
+# `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
+# el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
+# que es todo el punto — una segunda lista volvería a ser el catálogo estático que esto viene a matar.
+import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
@@ -574,6 +578,26 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
                                           mp_connected=seller is not None,
                                           composio_connected=composio_connected)}
+
+    @app.get("/capacidades")
+    def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Lo que el copiloto sabe hacer HOY + las expresiones de fecha que entiende.
+
+        🔴 **Existe para que la pantalla de ayuda sea una PROYECCIÓN y no una lista escrita a mano.**
+        Frontend lo pidió con el caso exacto y tenía razón: una guía con las frases adentro es el mismo
+        objeto que el catálogo estático de Apps —lo vivo cambia por su cuenta, cada lado verifica su
+        mitad y la junta no es de nadie—. Y ya había nacido con el bug: prometía *«facturale 80 mil a
+        la panadería»* cuando `emitir_factura` **no existe**.
+
+        Acá una capacidad se publica **sólo si su tool está viva**, así que la poda del hito 2 y el
+        alta de la tool de facturar actualizan la guía solas.
+
+        Requiere Bearer aunque hoy no dependa del tenant: es la superficie que le dice al usuario qué
+        puede pedirle a SU copiloto, y el día que las tools varíen por tenant (poda por plan, servicios
+        conectados) la firma ya está puesta. Abrirla ahora y cerrarla después es un cambio de contrato;
+        dejarla cerrada no cuesta nada.
+        """
+        return tool_catalog.capacidades_vivas()
 
     # --- Connect flows per-tenant (Task 7, spec §7) -----------------------------
     # `def` (no `async def`): ambas rutas hacen I/O bloqueante sync (crypto + HTTP del gateway real)
