@@ -70,6 +70,20 @@ export function FilaBotones({ botones, compacto = false, testID = 'fila-botones'
             key={id}
             testID={id}
             accessibilityRole="button"
+            /**
+             * 🔴 **La etiqueta va EXPLÍCITA aunque el texto ya esté adentro.** Android puede derivar
+             * el nombre accesible del `<Text>` hijo, pero "puede" no es "lo hace": depende de que el
+             * árbol colapse en un solo nodo, y un botón que a veces se llama y a veces no es
+             * indistinguible de uno sin nombre justo cuando falla. Declararlo es una línea y lo
+             * vuelve cierto por construcción.
+             *
+             * Sirve para dos cosas a la vez, y ninguna es opcional: **el lector de pantalla** —un
+             * botón sin nombre se anuncia como «botón», que no dice qué hace— y **el E2E por ADB**,
+             * que sin nombres sólo puede tocar píxeles a ciegas: anda hasta que una capa se pone
+             * encima, y ahí el toque va a otro lado y la corrida **sigue como si nada**. Eso no es un
+             * E2E, es una secuencia de toques que parece uno.
+             */
+            accessibilityLabel={boton.etiqueta}
             accessibilityState={{ disabled: deshabilitado }}
             disabled={deshabilitado}
             // Guard explícito además de `disabled`: el `Pressable` de gesture-handler respeta

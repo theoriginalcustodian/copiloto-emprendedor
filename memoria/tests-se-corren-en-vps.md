@@ -1,6 +1,6 @@
 ---
 name: tests-se-corren-en-vps
-description: "Todos los tests del proyecto (FeatureWorkflow, micro-loop, MCP) se corren en el VPS, NO en la PC: la PC no tiene temporalio/fastmcp. Patron = scp + pytest en el venv del VPS. No declarar verde sin correrlo alla."
+description: "Los tests se corren en el VPS, NO en la PC: la PC no tiene temporalio/psycopg2. Patron = sync + pytest en el venv del VPS. No declarar verde sin correrlo alla. Es la regla no negociable #2 del CLAUDE.md del repo."
 metadata: 
   node_type: memory
   type: reference
