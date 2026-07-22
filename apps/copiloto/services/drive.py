@@ -65,22 +65,17 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
 
 
 # ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
-TOOLS = {"drive_create_file": "create_file", "drive_find": "find"}
+# 🔴 Poda del hito 2, con una precisión que decidió planificación el 2026-07-22: se van las TOOLS,
+# NO el módulo. `archivar_factura_en_drive` —el PDF de cada factura emitida— reusa la POLICY de
+# acá (ver worker_b.py: «construir uno aparte duplicaría esa lógica y se desincronizaría»).
+# Borrar el archivo habría roto la facturación sin que ningún test lo cazara, porque ese activity
+# corre en el worker contra Composio real.
+#
+# TOOLS vacío = el agente no ofrece Drive. La policy sigue viva para quien la necesita.
+TOOLS: dict[str, str] = {}
 
-TOOL_SCHEMAS = [
-    {"type": "function", "function": {
-        "name": "drive_create_file",
-        "description": "Crea un archivo de texto en Google Drive. Devuelve un link clicable al archivo.",
-        "parameters": {"type": "object", "properties": {
-            "name": {"type": "string", "description": "nombre del archivo"},
-            "content": {"type": "string", "description": "contenido de texto del archivo"}},
-            "required": ["name"]}}},
-    {"type": "function", "function": {
-        "name": "drive_find",
-        "description": "Busca archivos en Google Drive por nombre.",
-        "parameters": {"type": "object", "properties": {
-            "name": {"type": "string", "description": "nombre (o parte) a buscar"}},
-            "required": []}}},
-]
+TOOL_SCHEMAS: list[dict] = []
 
-WRITE_OPS = frozenset({"create_file"})
+# Coherente con TOOLS (vacío). El guard `test_every_discovered_service_has_schemas` exige que
+# WRITE_OPS no referencie ops que el módulo no declara — me cazó este mismo descuido en sheets.
+WRITE_OPS: frozenset = frozenset()
