@@ -147,4 +147,8 @@ def test_ajustes_sin_perfil_responde_409_y_no_miente():
     problema recién cuando su primera factura no aparezca en Drive."""
     r = _app(PerfilFake(None)).post("/afip/ajustes", json={"cuit": CUIT, "guardar_en_drive": True})
     assert r.status_code == 409
-    assert "datos fiscales" in r.json()["detail"]
+    # `detail` pasó de string a `{codigo, mensaje}`. Este test cazó el cambio de forma justo como lo
+    # cazaría un cliente que leyera el string — que es el motivo de que el paso a `codigo` se avise
+    # por el buzón y no se deploye a secas.
+    assert r.json()["detail"]["codigo"] == "sin_perfil_fiscal"
+    assert "datos fiscales" in r.json()["detail"]["mensaje"]

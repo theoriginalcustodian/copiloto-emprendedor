@@ -17,6 +17,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from errores_web import DOCUMENTO_DE_OTRO_CLIENTE
 from cliente_store import (DOC_CONSUMIDOR_FINAL, LIMITES, ORIGENES, ClienteDuplicado,
                            documento_incoherente, inferir_doc_tipo, normalizar_documento)
 
@@ -115,8 +116,13 @@ def _conflicto(exc: ClienteDuplicado) -> JSONResponse:
     documento ya es de Juan Pérez»*— depende del nombre.
     """
     quien = (exc.duenio or {}).get("nombre") or "otro cliente"
+    # ⚠️ El `codigo` va en la RAÍZ y no dentro de `detail`, al revés que los demás conflictos: acá
+    # `detail` es un string y la app ya lo consume así. Meterlo adentro obligaría a convertirlo en
+    # dict, que es justo el cambio que rompe al cliente en silencio — el mismo modo de fallo que este
+    # código viene a cerrar. La app lee `body.detail?.codigo ?? body.codigo` y cubre las dos formas.
     return JSONResponse(status_code=409,
-                        content={"detail": f"ese {exc.por} ya es de {quien}",
+                        content={"codigo": DOCUMENTO_DE_OTRO_CLIENTE,
+                                 "detail": f"ese {exc.por} ya es de {quien}",
                                  "por": exc.por, "cliente": exc.duenio})
 
 

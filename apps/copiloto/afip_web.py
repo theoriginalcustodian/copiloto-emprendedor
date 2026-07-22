@@ -19,6 +19,8 @@ from pydantic import BaseModel, Field
 
 from afip_credential_store import ClaveFiscal
 from afip_rules import CondicionEmisor, PerfilFiscal, validar_cuit, validar_perfil
+from errores_web import (AMBIENTE_NO_VINCULADO, INGRESO_DUPLICADO_PROBABLE,
+                         SIN_CERTIFICADO_AFIP, SIN_PERFIL_FISCAL, conflicto)
 from cobro_store import CobroInvalido
 
 
@@ -190,7 +192,8 @@ def create_afip_app(
         guardado = await asyncio.to_thread(
             perfil_store_factory(cliente_id).set_guardar_en_drive, body.cuit, body.guardar_en_drive)
         if not guardado:
-            raise HTTPException(409, detail="todavía no cargaste tus datos fiscales para ese CUIT")
+            raise conflicto(SIN_PERFIL_FISCAL,
+                            "todavía no cargaste tus datos fiscales para ese CUIT")
         return {"ok": True, "guardar_en_drive": body.guardar_en_drive}
 
     @app.post("/afip/conectar")
@@ -231,9 +234,7 @@ def create_afip_app(
 
         creds = await asyncio.to_thread(cred_store_factory(cliente_id).get, body.cuit)
         if not creds:
-            raise HTTPException(409, detail={
-                "codigo": "sin_certificado_afip",
-                "mensaje": "Todavía no vinculaste tu cuenta de ARCA."})
+            raise conflicto(SIN_CERTIFICADO_AFIP, "Todavía no vinculaste tu cuenta de ARCA.")
 
         factura_id = await _maybe_async(iniciar_factura, cliente_id, body.cuit)
         return {"ok": True, "factura_id": factura_id}
@@ -386,11 +387,12 @@ def create_afip_app(
                 lambda: store.posible_duplicado(monto=body.monto,
                                                 cliente_nombre=body.cliente_nombre or ""))
             if candidato:
-                raise HTTPException(status_code=409, detail={
-                    "mensaje": "hay un ingreso parecido de estos días — ¿es otro cobro o el mismo?",
-                    "candidato": candidato,
+                raise conflicto(
+                    INGRESO_DUPLICADO_PROBABLE,
+                    "hay un ingreso parecido de estos días — ¿es otro cobro o el mismo?",
+                    candidato=candidato,
                     # La app no tiene que adivinar cómo insistir: se lo decimos.
-                    "reintentar_con": {"confirmar_duplicado": True}})
+                    reintentar_con={"confirmar_duplicado": True})
         try:
             cobro = await asyncio.to_thread(
                 lambda: store.registrar_suelto(
@@ -554,10 +556,10 @@ def create_afip_app(
         ok = await asyncio.to_thread(
             cred_store_factory(cliente_id).activar, body.cuit, body.ambiente)
         if not ok:
-            raise HTTPException(409, detail={
-                "codigo": "ambiente_no_vinculado",
-                "ambiente": body.ambiente,
-                "mensaje": f"Todavía no vinculaste tu cuenta de ARCA en {_NOMBRE_AMBIENTE[body.ambiente]}."})
+            raise conflicto(
+                AMBIENTE_NO_VINCULADO,
+                f"Todavía no vinculaste tu cuenta de ARCA en {_NOMBRE_AMBIENTE[body.ambiente]}.",
+                ambiente=body.ambiente)
         return {"ok": True, "ambiente": body.ambiente}
 
     return app
