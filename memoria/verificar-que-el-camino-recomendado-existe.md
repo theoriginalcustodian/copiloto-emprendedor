@@ -28,5 +28,19 @@ consumidor y una pantalla sin backend se ven perfectos por separado.
 verificar el lado que no la escribió. También sirve al revés — al agregar un endpoint, preguntar
 quién lo consume; si la respuesta es "nadie todavía", eso es deuda, no una feature.
 
-Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]] (cada mitad confirmaba lo suyo) y de
-[[consultar-documed-siempre-antes-de-implementar]] (leer el archivo real antes de afirmar qué hay).
+**La cara espejo: declarar LIBRE una superficie que ya está ocupada (2026-07-22).** En el contrato de
+Clientes escribí *«no hay ningún segmento fijo que compita con `/clientes/{id}»`* — y
+`packages/core/src/api/clientes.ts` ya llamaba a **`/clientes/opciones`** desde antes, herencia muerta
+de la app clínica. En el mismo contrato, «crear el cliente HTTP» ignoraba que **ese archivo ya
+existía con otra forma**: quien fuera a cablear la pantalla iba a importar `listarClientes` de
+`@copiloto/core` y apuntar a la forma vieja — **sin error**, porque el `GET` devuelve el 200 del SPA
+y la pantalla queda *«no disponible» para siempre* contra un backend que anda.
+
+**Un contrato no nace sobre terreno vacío.** Antes de declarar una superficie —una ruta, un módulo,
+un nombre de función— **grepear esa superficie**. Y en el §2.1 de Contabilidad cometí la versión
+directa: escribí *«la card de éxito ofrece…»* describiendo **una pantalla que no existe**. Describir
+el producto que imaginamos en vez del que corre es esta misma regla, aplicada al propio diseño.
+
+Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]] (cada mitad confirmaba lo suyo), de
+[[consultar-documed-siempre-antes-de-implementar]] (leer el archivo real antes de afirmar qué hay) y
+de [[regla-escrita-sobre-el-setup-de-otro]] (asumir el entorno ajeno en vez de preguntarlo).
