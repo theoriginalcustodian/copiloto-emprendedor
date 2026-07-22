@@ -232,7 +232,12 @@ export function FormularioCliente({
         valor={docTipo}
         onChange={setDocTipo}
       />
-      {docTipo !== '' && (
+      {/* 🔴 También se muestra SIN tipo, si hay un número cargado. Es el caso que llega dictado: el
+          backend manda `doc_nro` con `doc_tipo: null` **a propósito** cuando el dictado no da 11 ni
+          7-8 dígitos, para que el emprendedor lo corrija. Con la condición sólo por tipo, ese número
+          no se pintaba y `loTipeado` lo mandaba en `null`: el dato desaparecía de la pantalla Y del
+          body, sin que nada fallara. */}
+      {(docTipo !== '' || docNro.trim() !== '') && (
         <CampoTexto
           testID={`${testID}-doc-nro`}
           etiqueta="Número"
@@ -241,6 +246,16 @@ export function FormularioCliente({
           placeholder="30712345678"
           keyboardType="number-pad"
         />
+      )}
+      {/* ⛔ Avisa, no bloquea — mismo criterio que el homónimo. Sin esto, elegir "Sin documento" con
+          un número escrito lo tira en silencio, que se ve igual que un guardado bueno. */}
+      {docTipo === '' && docNro.trim() !== '' && (
+        <Text
+          testID={`${testID}-doc-sin-tipo`}
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+        >
+          Elegí si ese número es DNI o CUIT — si no, no lo vamos a poder guardar.
+        </Text>
       )}
 
       <CampoTexto

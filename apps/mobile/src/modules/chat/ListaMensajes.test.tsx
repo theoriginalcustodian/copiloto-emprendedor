@@ -2,6 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
+/** `TarjetaClientePropuesto` importa `empujarUnaVez`, que toca `expo-router`. */
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
+
 import type { ChatMessage } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -89,6 +92,45 @@ describe('ListaMensajes', () => {
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-cancelar'));
 
     expect(onChoice).toHaveBeenCalledWith('cancel');
+  });
+
+  it('🔴 un `cliente_propuesto` se renderiza como CARD editable, no como burbuja', async () => {
+    // La card no lleva `choices`, así que `mapearGate` la ignora: sin este cableado caería en
+    // `Burbuja` y el emprendedor vería el texto del copiloto y ningún lugar donde corregir el nombre.
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Entendí este cliente.',
+        card: {
+          kind: 'cliente_propuesto',
+          data: { nombre: 'Ferretería El Tornillo', doc_tipo: 80, doc_nro: '30712345678', origen: 'voz' },
+        },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.getByTestId('cliente-propuesto')).toBeTruthy();
+    expect(screen.getByTestId('cliente-propuesto-formulario')).toBeTruthy();
+    expect(screen.queryByText('Entendí este cliente.')).toBeNull();
+  });
+
+  it('una `cliente_propuesto` SIN nombre no pinta un formulario vacío — cae en burbuja', async () => {
+    // Pedirle que tipee desde cero lo que ya dictó es peor que mostrarle el texto del copiloto.
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'No entendí el nombre.',
+        card: { kind: 'cliente_propuesto', data: { nombre: null, origen: 'voz' } },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.queryByTestId('cliente-propuesto')).toBeNull();
+    expect(screen.getByText('No entendí el nombre.')).toBeTruthy();
   });
 
   it('una card con kind desconocido en un mensaje sin gate no rompe la pantalla', async () => {
