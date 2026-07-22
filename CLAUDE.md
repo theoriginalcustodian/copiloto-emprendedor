@@ -45,6 +45,100 @@ El motor **nació** como copia vendorizada del arquetipo `conversational_agent` 
 6. **Spike-first** ante supuestos críticos no validados; **no codificar la esperanza** (evidencia ejecutable, no autoevaluación).
 7. **Multitenant real:** ningún `cliente_id`/`composio_user_id`/seller sale de env — todo per-request vía `context_factory` (`TenantCtx`). Aislamiento cross-emprendedor verificado con test adversarial.
 
+## 3.bis Skills a invocar (no son opcionales cuando aplican)
+
+Instaladas globales en `~/.claude/skills/`, verificadas el 2026-07-20 (34 en total; las 14 de mobile
+son 3 `callstack-*` + 11 `swmansion-*`, 197 archivos). Sirven desde cualquier repo.
+
+**Instrucción directa del operador (2026-07-21): usar las skills para TODO lo que toque la app, no
+sólo cuando algo falla.** Se invocan **ANTES** de escribir código, no después de atascarse. La skill
+es la fuente canónica del dominio; razonar desde cero sobre gestos, animación o audio nativo
+reproduce errores que Software Mansion ya documentó.
+
+**Y la regla que este workspace ya pagó cara:** si llevás **dos intentos fallidos** sobre gestos,
+animación o rendimiento, el tercero **no es otro fix — es leer la skill del dominio**. Es el mismo
+gate que V-EXT, aplicado al frontend nativo: apilar un fix sobre un fix rara vez converge.
+
+*Caso real de esta sesión:* el `ScrollView` de Apps no scrolleaba; la skill `swmansion-rn-gestures`
+da el criterio de contenedores de scroll y composición Pan/scroll en un párrafo, y evitó dos
+iteraciones a ciegas sobre el gesto del panel — que no era la causa.
+
+| Cuándo | Skill |
+|---|---|
+| Cualquier código en `apps/mobile/` | `swmansion-react-native-best-practices` (New Architecture) |
+| Gestos: pan, tap, drag, swipe del panel | `swmansion-rn-gestures` |
+| Reanimated, worklets, `useSharedValue`, animación del glass | `swmansion-rn-animations` · `swmansion-rn-multithreading` |
+| Jank, FPS, TTI, re-renders, tamaño del bundle | `callstack-react-native-performance` |
+| SVG / íconos del escritorio | `swmansion-rn-svg` |
+| **F6 — captura de dictado** | `swmansion-rn-audio` (`react-native-audio-api`) |
+| Navegación, headers, safe areas | `callstack-react-navigation` |
+| Subir Expo SDK / RN | `callstack-upgrading-react-native` |
+| **Cualquier workflow / activity / worker** | `temporal-developer` (+ `temporal-ai-patterns` para ReAct/HITL) |
+| Memoria de grafo | `graphity` |
+
+**Lo que estas skills NO cubren, y manda igual:** la orquestación **durable** con Temporal (el moat),
+el **aislamiento multitenant** (regla 7) y el contrato del backend —`POST /chat` fire-and-forget +
+polling de `/reply`, ver [`HANDOFF`](docs/copiloto-emprendedor/2026-07-20-HANDOFF-sprint-mobile-first.md) §4.bis.
+Ninguna skill de frontend sabe de eso; si una sugiere algo que choca con estas reglas, ganan estas.
+
+⚠️ Al instalar skills en Windows: `git clone` puede dejar carpetas **incompletas y silenciosas** por
+el `MAX_PATH` de 260 — exit 0, `SKILL.md` legible, y faltando la mitad de los archivos. Contar
+archivos contra el origen, no confiar en que la carpeta exista.
+
+## 3.ter documed-front es la app CANÓNICA de UI/UX — consultarla SIEMPRE primero
+
+`C:\Proyectos\Claude\Claude code\Agencia_IA_HyC\documed-front\apps\mobile`
+
+**Antes de implementar cualquier cosa de cáscara, gesto, animación, barra de sistema, scroll o
+card: abrir el archivo equivalente en documed y leerlo.** No es una sugerencia — es la instrucción
+repetida del operador: *"documed ya tiene todo implementado, no reinventes la rueda"*.
+
+Por qué rinde: documed pagó estos errores **en device** y dejó el porqué en sus docstrings. Cada vez
+que acá se implementó de cero algo que allá existía, se volvió a pagar el mismo peaje. Ejemplos ya
+cobrados: ocultar la barra de botones de Android es `<NavigationBar hidden />` de
+`expo-navigation-bar` (documed `app/_layout.tsx:213` — v57 ya no expone `setBehaviorAsync`, y el
+módulo nativo exige rebuild EAS); el doble render del encabezado se mata con
+`SafeAreaProvider initialMetrics={initialWindowMetrics}`. Nada de eso se deduce: está escrito allá.
+
+**Portar adaptando, no copiar ciego.** El copiloto no tiene el caso clínico (dictado largo,
+retención de audio, huérfanos): traer esa maquinaria es el error espejo.
+
+**Lo que documed NO cubre y manda igual:** Temporal durable (el moat), aislamiento multitenant
+(regla 7) y el contrato `POST /chat` + polling `GET /reply`. Si algo de documed choca con eso,
+ganan las reglas de este repo.
+
+## 3.quater Tres sesiones paralelas — el buzón manda
+
+El repo se trabaja con **tres sesiones simultáneas**: **planificación**, **backend** y
+**frontend/app**. Las reglas vivas —quién es dueño de qué, git, estado compartido, tipos de mensaje,
+prompts de los crones— están en **`coordinacion/COORDINACION.md`**, y se leen **al arrancar la sesión
+y antes de cualquier commit**. Diseño y razonamiento:
+`docs/superpowers/specs/2026-07-21-formato-coordinacion-tres-sesiones-design.md`.
+
+⚠️ **`coordinacion/` NO es parte del repo** (`.gitignore`). Es una carpeta física única apuntada por
+los crones vía ruta absoluta. Si se versionara, `git worktree add` la duplicaría por worktree y el
+mensaje de una sesión no existiría para la otra. **No la vuelvas a versionar.**
+
+Lo que hay que saber sin abrir nada más:
+
+1. **La junta backend↔app tiene dueña: PLANIFICACIÓN.** Todo trabajo de capas `ambas` baja como
+   `contrato_` —endpoint, request, response, códigos, DoD binario por lado— **antes** de que ninguna
+   implemente. Si para avanzar tenés que inventar la forma de un endpoint, eso es codificar la
+   esperanza: emitís `pedido_` y marcás `[ASSUMED_PENDING_VERIFY]`.
+   *Por qué existe:* los cuatro incidentes del 2026-07-21 fueron la misma falla — cada lado verificó
+   su mitad y la costura no era de nadie.
+2. **El estado es la ubicación del archivo**, no un tablero: `abierto/` → `en-curso/` →
+   `cerrado/<fecha>/`. Quien toma un trabajo lo mueve; quien lo termina, también. Un tablero que hay
+   que acordarse de actualizar se desincroniza y **miente**; un `mv` no puede.
+3. **Nadie edita la carpeta de otra sesión. Se pide.** Y con checkout compartido: `git add` con rutas
+   explícitas, nunca `-A`; jamás `checkout` / `pull` / `stash` / `reset --hard`.
+
+**Memoria:** escribí las entradas nuevas en **`memoria/` del repo**, no sólo en el directorio de
+auto-memory del harness — divergen, y `scripts/seed-memory.sh` espeja con `--delete`. Ver
+`memoria/memoria-repo-vs-slug-drift.md` antes de correrlo.
+
+---
+
 ## 4. Deploy y cutover (Fase 2.5)
 
 El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquesta el VPS por SSH) ya está **reconciliado al layout graduado**: el path del motor pasó de `deploy/skeleton_kit/.../reference` a `motor/` en `deploy.sh`, ambos units `uc-copiloto-{web,worker}.service` (PYTHONPATH), `sync-test-backend.sh` y `gotrue/deploy-gotrue.sh`. Mount verificado en el VPS (spike: **333 colección VERDE** con `motor/`).

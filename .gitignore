@@ -10,6 +10,10 @@ venv/
 .env
 .env.*
 !.env*.template
+Openai apikeyp grafity backup 341.txt
+afip sdk tincho toc.txt
+Usuario y clave fiscal David Huck Afip.txt
+
 
 # Frontend
 node_modules/
@@ -23,6 +27,21 @@ es-ar-listen/
 **/APP Copiloto Movil/
 **/Web copiloto/
 
+# Buzón entre sesiones — NO es parte del repo.
+# Carpeta física única apuntada por los crones vía ruta absoluta. Si se versionara,
+# `git worktree add` la duplicaría por worktree y el mensaje de una sesión no existiría
+# para la otra. Ver docs/superpowers/specs/2026-07-21-formato-coordinacion-tres-sesiones-design.md
+coordinacion/
+
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Staging del clon documed (extraído por scripts/sprint-mobile/S1) — NO se versiona
+_staging/
+
+# Mobile
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+*.apk

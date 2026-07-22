@@ -1,0 +1,14 @@
+{
+  "name": "copiloto-emprendedor",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile:start": "npm -w copiloto-mobile run start",
+    "mobile:test": "npm -w copiloto-mobile run test",
+    "core:test": "npm -w @copiloto/core run test",
+    "typecheck": "npm -w @copiloto/core run typecheck && npm -w copiloto-mobile run typecheck"
+  }
+}

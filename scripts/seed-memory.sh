@@ -1,16 +1,37 @@
 #!/usr/bin/env bash
-# scripts/seed-memory.sh — siembra la memoria VERSIONADA del repo (memoria/) en el directorio de
-# auto-memory de Claude Code para ESTE checkout, de modo que una sesión nueva arranque con el
-# contexto completo del proyecto. Parte del init cero-fricción (ver HANDOFF.md).
+# scripts/seed-memory.sh — reconcilia la memoria VERSIONADA del repo (memoria/) con el directorio de
+# auto-memory de Claude Code para ESTE checkout, de modo que una sesión nueva arranque con el contexto
+# completo del proyecto. Parte del init cero-fricción (ver HANDOFF.md).
 #
-# Claude Code guarda la auto-memory en ~/.claude/projects/<slug>/memory/, donde <slug> deriva del
-# PATH del checkout. Este script copia memoria/ -> ese slug dir. La fuente de verdad es memoria/
-# (versionada, viaja con el repo); el slug dir es solo la copia que el harness levanta.
+# Claude Code guarda la auto-memory en ~/.claude/projects/<slug>/memory/, donde <slug> deriva del PATH
+# del checkout.
 #
 #   ./scripts/seed-memory.sh                      # autodetecta el slug dir; lo crea si falta
 #   CLAUDE_MEM_DIR=/ruta/al/memory ./scripts/seed-memory.sh   # override explícito
 #
-# IDEMPOTENTE: rsync --delete (o cp) espeja memoria/ -> destino; re-corrible N veces.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# ⚠️ POR QUÉ ESTE SCRIPT NO BORRA (2026-07-21)
+#
+# Hasta el 2026-07-21 hacía `rsync -a --delete memoria/ → slug/`: un espejo que borraba del destino
+# todo lo que no estuviera en el origen. El supuesto era que la memoria vive en el repo y el slug es
+# una copia descartable. **Es falso en la mitad de los casos**: el harness le dice a CADA sesión de
+# Claude Code que su memoria persistente vive en el slug, así que ahí es donde nacen las entradas
+# nuevas. Al detectarlo había 14 lecciones que vivían SÓLO en el slug —todo el sprint mobile-first— y
+# una corrida las habría borrado en silencio, terminando en exit 0 e informando cuántos archivos
+# sembró, sin mencionar los que destruyó. (Ver `memoria/memoria-repo-vs-slug-drift.md`.)
+#
+# Ahora el flujo es en dos tiempos y NINGUNO destruye trabajo:
+#
+#   1. RESCATE (slug → repo)  lo que existe sólo en el slug se promueve a lo versionado, salvo que
+#                             git demuestre que fue borrado a propósito — en ese caso el borrado sí se
+#                             propaga, que es la intención original.
+#   2. SIEMBRA (repo → slug)  aditiva y con `--update`: no pisa un archivo que el destino tiene más
+#                             nuevo. Los que difieren se REPORTAN para reconciliar a mano; el índice
+#                             `MEMORY.md` no se puede mergear solo.
+#
+# Regla de lectura del reporte: si la salida trae líneas `[RESCATADO]` hay que commitearlas, y si trae
+# `[DIVERGE]` hay que resolverlas a mano. Un `0 / 0 / 0` es lo único que significa "alineado".
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -44,12 +65,63 @@ if [ -z "$DEST" ]; then
     DEST="$PROJECTS/$slug/memory"
   fi
 fi
-
 mkdir -p "$DEST"
+
+# ¿El repo es git? Sin git no se puede distinguir "entrada nueva del slug" de "entrada borrada a
+# propósito del repo" -> fail-safe: se rescata todo y no se borra nada.
+HAY_GIT=0
+git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 && HAY_GIT=1
+
+rescatados=0; purgados=0; divergentes=0
+
+# ── 1. RESCATE: lo que vive SÓLO en el slug ──────────────────────────────────────────────────────
+while IFS= read -r rel; do
+  [ -n "$rel" ] || continue
+  [ -e "$SRC/$rel" ] && continue
+
+  # ¿Estuvo versionado y se borró a propósito? Ese borrado SÍ debe propagarse: si no, una memoria
+  # que se eliminó por ser incorrecta resucitaría en cada corrida y volvería a contaminar el contexto.
+  borrado_adrede=0
+  if [ "$HAY_GIT" = "1" ] && \
+     [ -n "$(git -C "$REPO" log --diff-filter=D --format=%H -1 -- "memoria/$rel" 2>/dev/null)" ]; then
+    borrado_adrede=1
+  fi
+
+  if [ "$borrado_adrede" = "1" ]; then
+    rm -f "$DEST/$rel"
+    printf '  [PURGADO ] %s  (git registra su borrado deliberado)\n' "$rel"
+    purgados=$((purgados + 1))
+  else
+    mkdir -p "$SRC/$(dirname "$rel")"
+    cp -a "$DEST/$rel" "$SRC/$rel"
+    printf '  [RESCATADO] %s  -> memoria/ (COMMITEAR)\n' "$rel"
+    rescatados=$((rescatados + 1))
+  fi
+done < <(cd "$DEST" && find . -type f -name '*.md' -printf '%P\n' 2>/dev/null || true)
+
+# ── 2. SIEMBRA: repo -> slug, aditiva y sin pisar lo más nuevo del destino ───────────────────────
+# Antes de copiar, se reportan los archivos que existen en AMBOS y difieren con el destino más nuevo.
+# Son los que `--update` va a saltear: sin este aviso, el drift seguiría siendo silencioso — que es
+# exactamente la forma de fallar que este script tuvo hasta hoy.
+while IFS= read -r rel; do
+  [ -n "$rel" ] || continue
+  [ -e "$DEST/$rel" ] || continue
+  cmp -s "$SRC/$rel" "$DEST/$rel" && continue
+  if [ "$(stat -c %Y "$DEST/$rel")" -gt "$(stat -c %Y "$SRC/$rel")" ]; then
+    printf '  [DIVERGE ] %s  el del slug es MÁS NUEVO: no se pisa, reconciliar a mano\n' "$rel"
+    divergentes=$((divergentes + 1))
+  fi
+done < <(cd "$SRC" && find . -type f -name '*.md' -printf '%P\n' 2>/dev/null || true)
+
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a --delete "$SRC"/ "$DEST"/
+  rsync -a --update "$SRC"/ "$DEST"/
 else
-  find "$DEST" -mindepth 1 -delete 2>/dev/null || true
-  cp -a "$SRC"/. "$DEST"/
+  cp -a -u "$SRC"/. "$DEST"/
 fi
-echo "memoria sembrada -> $DEST ($(ls -1 "$DEST"/*.md 2>/dev/null | wc -l) archivos .md)"
+
+sembrados="$(find "$DEST" -type f -name '*.md' | wc -l | tr -d ' ')"
+echo "memoria reconciliada -> $DEST"
+echo "  $sembrados archivos .md · rescatados: $rescatados · purgados: $purgados · divergentes: $divergentes"
+[ "$rescatados" -gt 0 ] && echo "  ⚠️  Hay entradas rescatadas SIN COMMITEAR: git add memoria/ && git commit"
+[ "$divergentes" -gt 0 ] && echo "  ⚠️  Hay archivos divergentes: resolvelos a mano (el índice no se mergea solo)"
+exit 0
