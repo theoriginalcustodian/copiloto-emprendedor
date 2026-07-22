@@ -12,6 +12,7 @@ import {
 } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
+import { tituloComprobanteConTotal } from './etiquetasComprobante';
 import { FilaBotones } from '../../theme/glass/campos';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
@@ -233,7 +234,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
                     style={pressableStyle(styles.filaTextos)}
                   >
                     <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
-                      Tipo {c.tipoCbte} · N° {c.nro} · {c.total}
+                      {tituloComprobanteConTotal(c)}
                     </Text>
                     <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
                       CAE {c.cae} · {c.estado}

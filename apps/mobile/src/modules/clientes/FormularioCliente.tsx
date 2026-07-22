@@ -134,6 +134,19 @@ export function FormularioCliente({
     return tieneNombre ? `Ya tenés un cliente parecido: ${quien}.` : 'Ya tenés un cliente parecido en la cartera.';
   }
 
+  /**
+   * 🔴 **Van a quedar dos filas idénticas en la cartera.** Al forzar un homónimo justo después del
+   * 409 —que es cuando pasa— lo normal es tener sólo el nombre cargado, y entonces los dos clientes
+   * quedan **indistinguibles en la lista**: el emprendedor no puede elegir a cuál facturarle.
+   *
+   * ⛔ **Avisa, no bloquea.** Exigir un dato para poder forzar sería el tapón que este formulario
+   * existe para no tener: quizá de verdad no sabe nada más todavía. Pero éste es **el único momento
+   * en que alguien sabe en qué se diferencian** — después, nadie va a volver a la ficha a completarlo.
+   */
+  const quedaraIndistinguible =
+    homonimo != null &&
+    [docNro, domicilio, contacto, notas].every((v) => v.trim() === '');
+
   /** ⛔ Exactamente lo que exige el backend, ni un campo más. Ver el docstring del módulo. */
   const puedeGuardar = nombre.trim() !== '';
 
@@ -255,6 +268,16 @@ export function FormularioCliente({
           >
             {textoHomonimo(homonimo)}
           </Text>
+          {quedaraIndistinguible && (
+            <Text
+              testID={`${testID}-homonimo-sin-datos`}
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+            >
+              Si lo creás así, van a quedar dos clientes iguales en tu cartera. Agregale un teléfono,
+              un domicilio o una nota y los vas a poder distinguir.
+            </Text>
+          )}
+
           <FilaBotones
             compacto
             testID={`${testID}-homonimo-acciones`}

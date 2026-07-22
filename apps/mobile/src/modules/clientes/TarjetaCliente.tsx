@@ -13,6 +13,16 @@ import { useTema } from '../../theme/ThemeProvider';
  * documento es opcional—, así que un "sin CUIT" en rojo marcaría como incompleta a la mitad de las
  * fichas. Lo que falta se ve porque no está, no porque se lo señale.
  *
+ * 🔴 **El subtítulo cae al PRIMER dato que identifique**: documento, contacto, domicilio o notas. No
+ * es adorno — desde que existe `forzar` (el alta de un homónimo legítimo), la cartera puede tener dos
+ * clientes con el mismo nombre, y sin esto quedan **dos filas idénticas**: el emprendedor no puede
+ * elegir a cuál facturarle. Se muestra uno solo, el más identificatorio disponible, para no convertir
+ * la lista en una ficha.
+ *
+ * ⚠️ **Y no alcanza solo.** Dos homónimos recién creados a mano pueden no tener ningún dato: eso se
+ * ataja en el ALTA, avisando antes de forzar (ver `FormularioCliente`), que es el único momento en que
+ * alguien sabe en qué se diferencian.
+ *
  * 🔴 **`origen: 'derivado'` no se marca.** Es el default de una cartera que se armó sola; etiquetar
  * el caso mayoritario es ruido. Se marca lo que el emprendedor cargó a mano, que es la excepción y
  * además es el dato con el que vamos a saber si la cartera se armó sola o la cargaron.
@@ -32,6 +42,13 @@ export function TarjetaCliente({ cliente, onPress }: TarjetaClienteProps) {
       ? `${ETIQUETA_DOC[cliente.docTipo ?? 0] ?? 'Doc'} ${cliente.docNro}`
       : null;
 
+  // El primero que exista, en orden de cuánto identifica. `null` si el cliente no tiene ninguno —y
+  // ahí la fila queda con el nombre solo, que es honesto: no hay nada más que mostrar.
+  const subtitulo =
+    [doc, cliente.contacto, cliente.domicilio, cliente.notas]
+      .map((x) => (x != null && x.trim() !== '' ? x.trim() : null))
+      .find((x) => x != null) ?? null;
+
   return (
     <Tile
       onPress={onPress != null ? () => onPress(cliente) : undefined}
@@ -46,13 +63,13 @@ export function TarjetaCliente({ cliente, onPress }: TarjetaClienteProps) {
           >
             {cliente.nombre}
           </Text>
-          {(doc != null || cliente.contacto != null) && (
+          {subtitulo != null && (
             <Text
               numberOfLines={1}
               style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
               testID={`cliente-${cliente.id}-sub`}
             >
-              {[doc, cliente.contacto].filter((x) => x != null).join(' · ')}
+              {subtitulo}
             </Text>
           )}
         </View>

@@ -314,6 +314,58 @@ describe('PantallaClientes', () => {
       expect(screen.getByTestId('formulario-cliente-homonimo-abrir')).toBeTruthy();
     });
 
+    it('🔴 avisa que van a quedar DOS iguales, y NO bloquea', async () => {
+      // Es la consecuencia de `forzar` que no vimos al implementarlo: forzar ocurre justo despues del
+      // 409, cuando lo normal es tener solo el nombre, y quedan dos filas identicas en la cartera.
+      // Este es el unico momento en que alguien sabe en que se diferencian.
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Juan Pérez' }) },
+      });
+
+      await montar();
+      await abrirAltaCon('Juan Pérez');
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+
+      expect(screen.getByTestId('formulario-cliente-homonimo-sin-datos')).toBeTruthy();
+      // Avisa, no bloquea: exigir un dato seria el tapon que este formulario existe para no tener.
+      expect(screen.getByTestId('formulario-cliente-homonimo-forzar')).toBeTruthy();
+    });
+
+    it('con un dato que los distinga, el aviso NO aparece', async () => {
+      // El control del test de arriba: si el aviso saliera siempre, no estaria midiendo nada.
+      mockCrear.mockResolvedValue({
+        status: 'duplicado',
+        duplicado: { por: 'nombre', dueno: cliente({ id: 9, nombre: 'Juan Pérez' }) },
+      });
+
+      await montar();
+      await abrirAltaCon('Juan Pérez');
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('formulario-cliente-contacto-input'), '11-5555-4444');
+      });
+      await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
+
+      expect(screen.queryByTestId('formulario-cliente-homonimo-sin-datos')).toBeNull();
+    });
+
+    it('🔴 la cartera distingue dos homonimos por su primer dato identificatorio', async () => {
+      mockListar.mockResolvedValue({
+        status: 'ok',
+        total: 2,
+        clientes: [
+          cliente({ id: 20, nombre: 'Juan Pérez', docNro: null, docTipo: null, contacto: '11-1111-1111' }),
+          cliente({ id: 23, nombre: 'Juan Pérez', docNro: null, docTipo: null, contacto: null, domicilio: 'Mitre 500' }),
+        ],
+      });
+
+      await montar();
+
+      await waitFor(() => expect(screen.getByTestId('cliente-20-sub')).toBeTruthy());
+      expect(screen.getByTestId('cliente-20-sub')).toHaveTextContent('11-1111-1111');
+      expect(screen.getByTestId('cliente-23-sub')).toHaveTextContent('Mitre 500');
+    });
+
     it('🔴 "Es otro, crearlo igual" reenvia lo MISMO con forzar - nada se re-tipea', async () => {
       mockCrear.mockResolvedValueOnce({
         status: 'duplicado',

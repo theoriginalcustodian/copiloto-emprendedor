@@ -37,6 +37,15 @@ describe('formatearImporte', () => {
     expect(formatearImporte('45000')).toBe('$45.000');
   });
 
+  it('🔴 UN decimal se completa a dos — `1500.0` y `1500.00` son el mismo número', () => {
+    // Vino de device: /afip/comprobantes devuelve "100.0" y la lista mostraba `$100,0` al lado de una
+    // actividad que mostraba `$1.500,00`. El cero de relleno no afirma precisión que no se recibió:
+    // termina de escribir los centavos que el backend ya empezó a escribir.
+    expect(formatearImporte('1500.0')).toBe('$1.500,00');
+    expect(formatearImporte('100.0')).toBe('$100,00');
+    expect(formatearImporte('-8.5')).toBe('-$8,50');
+  });
+
   it('acepta más de dos decimales sin truncar', () => {
     expect(formatearImporte('1.2345')).toBe('$1,2345');
   });

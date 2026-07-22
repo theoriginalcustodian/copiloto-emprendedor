@@ -18,6 +18,7 @@ import {
   guardarPerfil,
   leerPerfil,
   listarComprobantes,
+  obtenerComprobante,
   SinCertificadoError,
 } from './afip';
 import { configurarApi } from './config';
@@ -541,6 +542,50 @@ describe('afip.ts', () => {
       responder = () => respuesta(200, { ok: true });
       await cancelarFactura('f-1');
       expect(peticiones[0]).toMatchObject({ metodo: 'POST', path: '/afip/facturas/f-1/cancelar' });
+    });
+  });
+
+  describe('obtenerComprobante — GET /afip/comprobantes/{id}', () => {
+    // 🔴 NO existía ningún test de esta función, y por eso el bug llegó al device: yo exigía
+    // `{comprobante: …}` y el handler hace `return fila` — PELADO. El `GET` daba 200, el id viajaba
+    // bien, y la app no abría nada; en el teléfono se leyó como "falta resaltar la fila", que es una
+    // explicación razonable y falsa. Nada gritaba.
+    const fila = {
+      cuit: '1', tipo_cbte: 13, punto_venta: 6, nro: 6, cae: 'x', cae_vto: '2026-08-01',
+      fecha_emision: '2026-07-21', total: '100.00', estado: 'emitida', pdf_url: null, cbte_asoc_nro: 5,
+    };
+
+    it('🔴 acepta el comprobante PELADO — es la forma medida del handler', async () => {
+      responder = () => respuesta(200, fila);
+
+      const res = await obtenerComprobante(27);
+
+      expect(res.status).toBe('ok');
+      if (res.status !== 'ok') return;
+      expect(res.comprobante.tipoCbte).toBe(13);
+      expect(res.comprobante.nro).toBe(6);
+    });
+
+    it('y también el envuelto — mientras el sistema no tenga UNA regla, tolerar sale más barato', async () => {
+      responder = () => respuesta(200, { comprobante: fila });
+
+      const res = await obtenerComprobante(27);
+
+      expect(res.status === 'ok' && res.comprobante.puntoVenta).toBe(6);
+    });
+
+    it('un 200 con el HTML del SPA no fabrica un comprobante vacío', async () => {
+      // El control de que la tolerancia no se volvió "acepta cualquier cosa": sin `tipo_cbte` no hay
+      // comprobante, y abrir un detalle en blanco seria peor que no abrir nada.
+      responder = () => respuesta(200, { detail: 'otra cosa' });
+
+      await expect(obtenerComprobante(27)).resolves.toEqual({ status: 'no_disponible' });
+    });
+
+    it('404 es no_encontrado — semántico, incluye el id de otro tenant', async () => {
+      responder = () => respuesta(404, { detail: 'comprobante no encontrado' });
+
+      await expect(obtenerComprobante(27)).resolves.toEqual({ status: 'no_encontrado' });
     });
   });
 

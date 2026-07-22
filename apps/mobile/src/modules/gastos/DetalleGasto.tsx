@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   ETIQUETA_CATEGORIA,
@@ -55,6 +56,7 @@ function Dato({ etiqueta, valor, testID }: { etiqueta: string; valor: string; te
 
 export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
   const tema = useTema();
+  const insets = useSafeAreaInsets();
   const [estado, setEstado] = useState<Estado>('cargando');
   const [fresco, setFresco] = useState<Gasto | null>(null);
   const vivo = useRef(true);
@@ -87,7 +89,13 @@ export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
     <View style={[styles.overlay, { backgroundColor: tema.color.fondo + 'F2' }]} testID="detalle-gasto">
       <ScrollFormulario
         testID="detalle-gasto-scroll"
-        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 80 }}
+        contentContainerStyle={{
+          padding: tema.espacio.md,
+          gap: tema.espacio.md,
+          paddingBottom: 80,
+          // Ver el comentario de `overlay` abajo: el inset lo pone el overlay, no el marco.
+          paddingTop: tema.espacio.md + insets.top,
+        }}
       >
         <Text
           style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontWeight: '700' }}
@@ -160,6 +168,8 @@ export function DetalleGasto({ gasto, onCerrar }: DetalleGastoProps) {
 }
 
 const styles = StyleSheet.create({
+  // El `paddingTop` con `insets.top` de arriba no es cosmético: `absoluteFill` cubre la barra
+  // de estado, que en una pantalla normal la respeta `MarcoGlass`. Ver `FichaCliente`.
   overlay: { ...StyleSheet.absoluteFill, zIndex: 10 },
   filaDato: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

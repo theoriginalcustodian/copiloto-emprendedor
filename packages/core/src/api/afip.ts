@@ -948,15 +948,38 @@ export async function listarComprobantes(cuit: string, limite = 50): Promise<Con
  * factura**. `no_encontrado` cubre el 404 semántico — no existe, **o es de otro tenant** (el backend
  * no confirma recursos ajenos y tiene test adversarial).
  */
+/**
+ * El comprobante de un detalle, venga **pelado** o envuelto.
+ *
+ * ✅ **MEDIDO el 2026-07-22 leyendo el handler** (`afip_web.py:275`, `return fila`): viene **PELADO**.
+ * Yo exigía `{comprobante: …}` y por eso el detalle **no abría nunca**.
+ *
+ * 🔴 **Y lo que importa del bug es cómo se veía.** El `GET` daba `200`, el id viajaba bien, y la app
+ * simplemente no mostraba nada — así que en el device se leyó como *«falta resaltar la fila»*: una
+ * explicación razonable, que encaja con lo observado, y falsa. Es el mismo patrón que el `409` de
+ * clientes: **un supuesto de forma que falla pareciendo una función a medio hacer**. Nada grita.
+ *
+ * Por eso acepta las dos formas: la regla del sistema —*un `GET` de ficha devuelve secciones*— vale
+ * para `/clientes/{id}`, y acá el mismo verbo devuelve el recurso pelado. Mientras no haya una sola
+ * regla, tolerar es más barato que acertar.
+ */
+function comprobanteDeLaRespuesta(raw: unknown): ComprobanteRaw | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const envuelto = (raw as { comprobante?: unknown }).comprobante;
+  const candidato = (typeof envuelto === 'object' && envuelto !== null ? envuelto : raw) as ComprobanteRaw;
+  // El control de que esto es un comprobante y no otra cosa (el HTML del SPA, un `{detail}`): sin
+  // `tipo_cbte` no hay nada que pintar.
+  return candidato.tipo_cbte != null ? candidato : null;
+}
+
 export async function obtenerComprobante(
   id: number,
 ): Promise<ConDisponibilidad<{ comprobante: Comprobante }> | { status: 'no_encontrado' }> {
   try {
-    const raw = await apiClient.get<{ comprobante: ComprobanteRaw }>(`/afip/comprobantes/${id}`);
-    if (typeof raw !== 'object' || raw === null || !('comprobante' in raw)) {
-      return { status: 'no_disponible' };
-    }
-    return { status: 'ok', comprobante: normalizarComprobante(raw.comprobante) };
+    const raw = await apiClient.get<unknown>(`/afip/comprobantes/${id}`);
+    const fila = comprobanteDeLaRespuesta(raw);
+    if (fila == null) return { status: 'no_disponible' };
+    return { status: 'ok', comprobante: normalizarComprobante(fila) };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     if (esNoDisponible(err)) return { status: 'no_disponible' };

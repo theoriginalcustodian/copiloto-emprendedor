@@ -131,6 +131,25 @@ function Seccion({ titulo, testID, children }: SeccionProps) {
   );
 }
 
+/**
+ * 🔴 **Los ejemplos dicen «ej.:» y eso NO es cosmética: sin el prefijo, un dato guardado y una
+ * sugerencia se leen igual.**
+ *
+ * Pasó en device el 2026-07-22, con el aparato en la mano: `que_vende` tenía **«Instalaciones»** —un
+ * dato real, cargado por el emprendedor— y se leyó como sugerencia. Al tocar el campo para "llenarlo",
+ * el texto nuevo se **concatenó**: quedó *«InstalacionesHerreria y portones a medida»*. El dato no se
+ * perdió: se ensució, que es peor, porque nada avisa.
+ *
+ * **Por qué no alcanzaba con más contraste.** El valor ya se pinta con `color.texto` y el placeholder
+ * con `color.textoTenue` — son distintos en el token y aun así se confundieron sobre el vidrio. Una
+ * defensa que depende de que dos grises se distingan **en una pantalla al sol, en un teléfono
+ * cualquiera**, falla justo cuando importa. El prefijo no depende de la percepción: un texto que
+ * empieza con «ej.:» no puede ser algo que vos escribiste.
+ *
+ * Aplica a **este formulario en particular** porque es el único que llega **pre-cargado desde el
+ * servidor con campos opcionales vacíos**: los dos estados conviven en la misma pantalla. En un alta
+ * no hay valor guardado que confundir.
+ */
 export function PantallaPerfilNegocio() {
   const tema = useTema();
   const [campos, setCampos] = useState<Campos>(CAMPOS_VACIOS);
@@ -253,7 +272,7 @@ export function PantallaPerfilNegocio() {
               etiqueta="¿Qué vendés o qué servicio ofrecés?"
               valor={campos.queVende}
               onChange={(v) => actualizar('queVende', v)}
-              placeholder="Instalaciones eléctricas domiciliarias y pequeñas obras"
+              placeholder="ej.: Instalaciones eléctricas domiciliarias y pequeñas obras"
               multiline
               maxLength={LIMITE_QUE_VENDE}
             />
@@ -269,7 +288,7 @@ export function PantallaPerfilNegocio() {
               etiqueta="Nombre comercial"
               valor={campos.nombreComercial}
               onChange={(v) => actualizar('nombreComercial', v)}
-              placeholder="Electricidad Pérez"
+              placeholder="ej.: Electricidad Pérez"
               maxLength={LIMITE_CAMPO_CORTO}
             />
             <CampoTexto
@@ -277,7 +296,7 @@ export function PantallaPerfilNegocio() {
               etiqueta="Horario de atención"
               valor={campos.horarioAtencion}
               onChange={(v) => actualizar('horarioAtencion', v)}
-              placeholder="Lunes a viernes de 8 a 17"
+              placeholder="ej.: Lunes a viernes de 8 a 17"
               maxLength={LIMITE_CAMPO_CORTO}
             />
             <FilaBotones
@@ -314,7 +333,7 @@ export function PantallaPerfilNegocio() {
               etiqueta="¿Cómo querés llamarlo?"
               valor={campos.nombreCopiloto}
               onChange={(v) => actualizar('nombreCopiloto', v)}
-              placeholder="Copi"
+              placeholder="ej.: Copi"
               maxLength={LIMITE_CAMPO_CORTO}
             />
             <FilaBotones

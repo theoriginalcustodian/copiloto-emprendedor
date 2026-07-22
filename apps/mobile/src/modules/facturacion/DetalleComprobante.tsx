@@ -27,14 +27,7 @@ import { useTema } from '../../theme/ThemeProvider';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
-
-/** 11=C, 6=B, 1=A. Lo que el usuario llama "tipo de factura". */
-const NOMBRE_TIPO_CBTE: Record<number, string> = {
-  1: 'Factura A',
-  6: 'Factura B',
-  11: 'Factura C',
-  13: 'Nota de crédito C',
-};
+import { nombreTipoComprobante } from './etiquetasComprobante';
 
 const ETIQUETA_DOC: Record<number, string> = {
   80: 'CUIT',
@@ -49,9 +42,9 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   nota_credito: 'Nota de crédito',
 };
 
-function nombreTipo(tipo: number): string {
-  return NOMBRE_TIPO_CBTE[tipo] ?? `Comprobante tipo ${tipo}`;
-}
+// El mapeo vive en `etiquetasComprobante.ts`: tenerlo acá adentro fue lo que hizo que la LISTA
+// imprimiera el código crudo de la AFIP — no estaba a mano para reusar.
+const nombreTipo = nombreTipoComprobante;
 
 /** `0006-00000015` — el formato con el que AFIP identifica un comprobante. */
 export function numeroFormateado(puntoVenta: number, nro: number): string {

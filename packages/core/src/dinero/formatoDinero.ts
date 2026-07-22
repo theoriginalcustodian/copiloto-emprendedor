@@ -63,10 +63,23 @@ function agruparMiles(entera: string): string {
 /**
  * `"45000.00"` → `"$45.000,00"`.
  *
- * El backend garantiza 2 decimales siempre, pero esto tolera que no vengan (`"45000"` → `"$45.000"`)
- * en vez de inventarlos: agregar un `,00` que el backend no mandó sería afirmar una precisión que no
- * se recibió. Un valor no numérico se devuelve **tal cual**, sin símbolo: es preferible mostrar el
- * dato crudo que enmascarar con `$0,00` un backend que mandó algo inesperado.
+ * Tolera que **no vengan** decimales (`"45000"` → `"$45.000"`) en vez de inventarlos: agregar un
+ * `,00` que el backend no mandó sería afirmar una precisión que no se recibió. Eso **no cambió**.
+ *
+ * 🔴 **Pero si vino UN decimal, se completa a dos** (`"1500.0"` → `"$1.500,00"`), y no contradice lo
+ * anterior: `1500.0` y `1500.00` son **exactamente el mismo número**, así que el cero de relleno no
+ * afirma nada — sólo termina de escribir los centavos que el backend ya empezó a escribir. La regla
+ * es "no inventar precisión", no "reproducir el tipeo del backend".
+ *
+ * Vino de device (2026-07-22): `/afip/comprobantes` devuelve `"100.0"` y la lista mostraba **`$100,0`**
+ * al lado de una actividad que mostraba `$1.500,00`. Dos vistas del mismo dato con distinta pinta es
+ * lo que hace dudar de cuál está bien — y acá ninguna estaba mal, sólo desparejas.
+ *
+ * Más de dos decimales se dejan **intactos** (`"1.2345"` → `"$1,2345"`): ahí sí hay información que
+ * redondear destruiría, y prefiero que se vea raro a que se vea prolijo y distinto del dato.
+ *
+ * Un valor no numérico se devuelve **tal cual**, sin símbolo: es preferible mostrar el dato crudo que
+ * enmascarar con `$0,00` un backend que mandó algo inesperado.
  */
 export function formatearImporte(valor: string, simbolo = '$'): string {
   const limpio = valor.trim();
@@ -81,9 +94,12 @@ export function formatearImporte(valor: string, simbolo = '$'): string {
   const entera = partes[0] ?? '';
   const decimales = partes[1];
 
-  const cuerpo = decimales === undefined
+  // Un solo decimal se completa a dos; cero o más de dos quedan como vinieron. Ver el docstring.
+  const centavos = decimales !== undefined && decimales.length === 1 ? `${decimales}0` : decimales;
+
+  const cuerpo = centavos === undefined
     ? agruparMiles(entera)
-    : `${agruparMiles(entera)}${SEPARADOR_DECIMAL}${decimales}`;
+    : `${agruparMiles(entera)}${SEPARADOR_DECIMAL}${centavos}`;
 
   return `${negativo ? '-' : ''}${simbolo}${cuerpo}`;
 }

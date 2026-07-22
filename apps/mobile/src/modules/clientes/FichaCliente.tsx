@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   formatearImporte,
@@ -25,6 +26,17 @@ import { useTema } from '../../theme/ThemeProvider';
  * vacías hasta el hito 3 del backend; ocultar la sección haría que la ficha se vea "completa" y que
  * el emprendedor concluya que nunca le compró nada. Un "todavía no vemos operaciones" es feo y
  * cierto; una sección ausente es prolija y mentirosa.
+ *
+
+ * 🔴 **El overlay tapa la barra de estado si no se le suma el inset.** `absoluteFill` cubre la
+ * pantalla ENTERA —reloj y batería incluidos—, a diferencia de una pantalla normal, donde el hueco
+ * de arriba lo pone `MarcoGlass` con `insets.top`. Un overlay se monta por fuera de ese marco, así
+ * que hereda el borde de la pantalla, no el del contenido.
+ *
+ * Visto en device el 2026-07-22: el nombre del cliente se superponía con el reloj. Afecta a los
+ * overlays que arrancan pegados arriba (éste y el detalle del gasto), NO a los que centran su
+ * contenido con un scrim, como el del comprobante — por eso el bug aparecía en unos y no en otros, y
+ * parecía cosa de una pantalla.
  *
  * 🔴 **La ficha se pide SIEMPRE al abrir**, aunque el listado ya traiga el cliente: el listado no
  * trae el historial, y reusar el objeto de la lista dejaría una ficha sin operaciones que se ve
@@ -78,6 +90,7 @@ function Seccion({ titulo, items, testID }: { titulo: string; items: OperacionCl
 
 export function FichaCliente({ cliente, onCerrar, onEditar }: FichaClienteProps) {
   const tema = useTema();
+  const insets = useSafeAreaInsets();
   const [estado, setEstado] = useState<Estado>('cargando');
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const vivo = useRef(true);
@@ -107,7 +120,13 @@ export function FichaCliente({ cliente, onCerrar, onEditar }: FichaClienteProps)
     <View style={[styles.overlay, { backgroundColor: tema.color.fondo + 'F2' }]} testID="ficha-cliente">
       <ScrollFormulario
         testID="ficha-cliente-scroll"
-        contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 80 }}
+        contentContainerStyle={{
+          padding: tema.espacio.md,
+          gap: tema.espacio.md,
+          paddingBottom: 80,
+          // Ver el comentario de `overlay` abajo: el inset lo pone el overlay, no el marco.
+          paddingTop: tema.espacio.md + insets.top,
+        }}
       >
         <Text
           style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontWeight: '700' }}
