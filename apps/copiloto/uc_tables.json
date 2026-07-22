@@ -65,6 +65,7 @@
     "formalidad text NOT NULL DEFAULT 'cercano'",
     "largo_respuesta text NOT NULL DEFAULT 'breve'",
     "nombre_copiloto text NOT NULL DEFAULT ''",
+      "modo_ceremonia text NOT NULL DEFAULT 'confirmacion'",
     "updated_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuestos": [

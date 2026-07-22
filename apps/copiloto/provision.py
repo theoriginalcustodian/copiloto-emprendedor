@@ -242,6 +242,28 @@ def _ensure_presupuesto_estado(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_presupuestos.estado (+estado_actualizado_en, idempotente)", flush=True)
 
 
+def _ensure_modo_ceremonia(conn) -> None:
+    """`copiloto_perfil_negocio.modo_ceremonia text NOT NULL DEFAULT 'confirmacion'` — contrato de modos.
+
+    Cuánta ceremonia pide el copiloto antes de anotar: `confirmacion` (card editable) o `automatico`
+    (guarda y avisa). Vive en el perfil del negocio y **por emprendedor**, nunca en la app: si viviera
+    en el teléfono, la app podría mandar `automatico` sobre algo sensible y el backend no tendría con
+    qué contradecirla.
+
+    `DEFAULT 'confirmacion'` es lo correcto para las filas que ya existen **y** para las nuevas, y no
+    es sólo prudencia: el emprendedor que recién llega no descubre el producto viendo cosas guardarse
+    solas. El que ya confía lo cambia en un toque.
+
+    ⚠️ El default de la columna es la SEGUNDA red, no la primera. La primera es `modo_de()`, que
+    devuelve `confirmacion` ante cualquier cosa que no sea exactamente `automatico` — incluido el
+    caso de que esta columna todavía no exista porque el provision no corrió.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_perfil_negocio "
+                f"ADD COLUMN IF NOT EXISTS modo_ceremonia text NOT NULL DEFAULT 'confirmacion';")
+    print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
+
+
 def _ensure_imputacion_de_gastos(conn) -> None:
     """El addendum del hito 3: **imputar gastos al trabajo**, y el cobro que se registra a mano.
 
@@ -331,6 +353,7 @@ def provision(conn) -> dict:
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
+    _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)

@@ -23,7 +23,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
-from perfil_negocio_store import A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA, LIMITES
+from perfil_negocio_store import (A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA,
+                                  LIMITES, MODOS)
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
 from presupuesto_store import ESTADOS, TransicionInvalida, factura_id_de_presupuesto
@@ -50,6 +51,7 @@ class PerfilBody(BaseModel):
     formalidad: str | None = None
     largo_respuesta: str | None = None
     nombre_copiloto: str | None = None
+    modo_ceremonia: str | None = None
 
 
 def _validar_perfil(body: PerfilBody) -> dict:
@@ -57,7 +59,13 @@ def _validar_perfil(body: PerfilBody) -> dict:
     if not cambios:
         raise HTTPException(status_code=400, detail="no mandaste ningún campo para actualizar")
     for campo, permitidos in (("a_quien", A_QUIEN), ("formalidad", FORMALIDAD),
-                              ("largo_respuesta", LARGO_RESPUESTA)):
+                              ("largo_respuesta", LARGO_RESPUESTA),
+                              # 🔴 `modo_ceremonia` se valida en la ESCRITURA además de leerse
+                              # fail-closed. Sin esto, un `automatic` con typo entraría a la base y
+                              # el emprendedor vería «Automático» en la pantalla mientras el backend
+                              # —que lee bien— sigue pidiendo confirmación: los dos correctos por
+                              # separado, y el producto mintiendo.
+                              ("modo_ceremonia", MODOS)):
         if campo in cambios and cambios[campo] not in permitidos:
             raise HTTPException(
                 status_code=400,
