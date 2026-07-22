@@ -28,6 +28,27 @@ describe('EnvolturaCampo', () => {
     expect(screen.getByTestId('vidrio')).toBeTruthy();
     expect(screen.getByText('adentro')).toBeTruthy();
   });
+
+  it('🔴 tiene una base OPACA bajo el gradiente — si no, el escritorio se lee dentro del campo', async () => {
+    // El bug que este test frena: los campos entran sobre un `transparentModal`, así que detrás está
+    // el escritorio, y el gradiente `s1/s2` es blanco translúcido (α .04-.14). Sin una capa opaca
+    // debajo, el texto del fondo se cuela en el renglón donde se escribe y se guarda un CUIT
+    // equivocado. La base tiene que ser un color OPACO (hex sólido, no `rgba(...,α<1)` ni transparente).
+    const { getByTestId } = await envolver(<EnvolturaCampo testID="vidrio" />);
+
+    const capas = getByTestId('vidrio').children as unknown[];
+    const fondos = capas
+      .filter((c): c is { props: { style?: unknown } } => typeof c === 'object' && c !== null && 'props' in c)
+      .map((c) => c.props.style)
+      .flat(Infinity)
+      .map((s) => (typeof s === 'object' && s !== null ? (s as { backgroundColor?: string }).backgroundColor : undefined))
+      .filter((c): c is string => typeof c === 'string');
+
+    // Al menos un `backgroundColor` opaco: hex de 6/8 dígitos SIN alpha < 1. Un `rgba(...,0.x)` o
+    // `transparent` no taparía nada — que es exactamente el bug.
+    const hayOpaco = fondos.some((c) => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c) && !/^#[0-9a-f]{6}00$/i.test(c));
+    expect(hayOpaco).toBe(true);
+  });
 });
 
 describe('CampoTexto', () => {

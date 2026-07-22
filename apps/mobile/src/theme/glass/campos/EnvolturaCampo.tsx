@@ -10,6 +10,20 @@
  *
  * Todo campo de `campos/` pasa por acá -- incluido el chip de `CampoSelect`, que es la misma
  * superficie de vidrio en una caja más chica. Ninguno vuelve a declarar el `LinearGradient`.
+ *
+ * 🔴 **Base OPACA bajo el gradiente (decisión del operador, 2026-07-22 — "A: campos opacos").** El
+ * gradiente `s1/s2` es blanco translúcido (α 0.04-0.14): sobre otra capa de vidrio lee como brillo,
+ * pero cuando lo que hay detrás es el ESCRITORIO —toda función es un `transparentModal`, así que el
+ * escritorio queda montado atrás— su texto se cuela **adentro del renglón donde se escribe**. Backend
+ * lo midió en device: `ej.: Av. Mitre 1234os`, donde `os` era el final de «Presupuestos» del fondo.
+ * No es estética: **un campo donde no se lee lo que se tipeó hace que se guarde un CUIT equivocado.**
+ *
+ * Por qué acá y sólo la superficie del input: el operador eligió A sobre "vidrio opaco en toda la
+ * pantalla" (B). El `MarcoGlass` sigue traslúcido —el look de vidrio es orden suya—; lo único que deja
+ * de transparentarse es **dónde se escribe**, que es exactamente donde el bleed importa. Al vivir en
+ * `EnvolturaCampo`, vale para los ~40 campos de la app de una vez. La base es `superficieAlta` (hex
+ * sólido, tema-aware) y NO el gradiente: el brillo translúcido se conserva encima, apilado sobre una
+ * superficie que ahora tapa. En ambos temas, porque el token se deriva por tema.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import type { PropsWithChildren } from 'react';
@@ -31,6 +45,9 @@ export function EnvolturaCampo({ children, error = false, style, testID }: Envol
       testID={testID}
       style={[styles.campo, { borderColor: error ? tema.color.peligro : tema.color.borde }, style]}
     >
+      {/* La base opaca. Va PRIMERA (debajo de todo): tapa lo que haya detrás de la pantalla, y el
+          gradiente translúcido se apila encima conservando el brillo del vidrio. */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tema.color.superficieAlta }]} pointerEvents="none" />
       <LinearGradient
         colors={[tema.glass.s1, tema.glass.s2]}
         start={{ x: 0.2, y: 0 }}
