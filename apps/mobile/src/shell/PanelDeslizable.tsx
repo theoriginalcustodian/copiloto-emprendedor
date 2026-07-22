@@ -33,6 +33,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useInerteAlPerderFoco } from '../navegacion/inerteAlPerderFoco';
 import { useTema } from '../theme/ThemeProvider';
 import { CristalVidrio } from '../theme/glass/CristalVidrio';
 import { FondoIluminado } from '../theme/glass/FondoIluminado';
@@ -132,6 +133,7 @@ export interface PanelDeslizableProps extends PropsWithChildren {
  */
 export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDeslizableProps) {
   const tema = useTema();
+  const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
   // 0 = abierto (conversación tapa todo) · RECORRIDO_MAX = abajo (revela el escritorio).
   const panelY = useSharedValue(0);
@@ -285,6 +287,15 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
     <View
       style={[styles.raiz, { backgroundColor: tema.color.fondo }]}
       testID={testID}
+      /**
+       * 🔴 **Con una función abierta encima, este escritorio deja de existir para el lector de
+       * pantalla.** Las funciones entran como `transparentModal`, así que esta pantalla sigue montada
+       * a propósito —es lo que se ve a través del vidrio—, y el árbol de accesibilidad **no sabe nada
+       * de opacidad**: para él los seis tiles de atrás siguen disponibles y activables. Medido por
+       * backend en un `uiautomator dump` con el formulario de cliente abierto: los seis, con nombre.
+       * Ver `inerteAlPerderFoco`.
+       */
+      {...inercia}
       // 🔴 La medida REAL de lo que el panel tiene que cubrir. Es la raíz de esta pantalla, así que
       // incluye lo que el edge-to-edge agrega y que `Dimensions.get('window')` no ve.
       onLayout={(e) => {

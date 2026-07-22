@@ -1,6 +1,24 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
+/**
+ * ⚠️ **Se preserva el resto del módulo con `requireActual`.** Antes esto devolvía **sólo** `router`, y
+ * eso convierte al mock en una afirmación silenciosa: *«esta pantalla no usa nada más de
+ * `expo-router`»*. Era cierto el día que se escribió y dejó de serlo cuando `MarcoGlass` —que esta
+ * pantalla monta— pasó a usar `useFocusEffect`; el test murió con
+ * `useFocusEffect is not a function`, que no describe ningún problema del producto.
+ *
+ * Un mock que reemplaza un módulo entero congela una suposición sobre las dependencias FUTURAS de
+ * todo lo que la pantalla monta adentro. Se pisa lo que se necesita pisar y nada más.
+ */
+jest.mock('expo-router', () => ({
+  ...jest.requireActual('expo-router'),
+  router: { push: jest.fn(), back: jest.fn() },
+  // Igual que el mock global (`jest.setup.js`): EJECUTA el callback, no lo ignora.
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    const { useEffect } = require('react');
+    useEffect(cb, [cb]);
+  },
+}));
 
 // Prefijo `mock` obligatorio: es lo único que jest permite referenciar desde una factory de
 // `jest.mock` (hoisting — la factory corre antes de las declaraciones del módulo).
