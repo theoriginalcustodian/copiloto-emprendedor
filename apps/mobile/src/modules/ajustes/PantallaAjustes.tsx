@@ -17,7 +17,8 @@ export type AjusteKey =
   | 'apps'
   | 'miPlan'
   | 'cuenta'
-  | 'apariencia';
+  | 'apariencia'
+  | 'comoHablarle';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -61,6 +62,18 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'miPlan', label: 'Mi plan', icono: 'chart' },
   { key: 'cuenta', label: 'Mi cuenta', icono: 'user' },
   { key: 'apariencia', label: 'Apariencia', icono: 'media' },
+  /**
+   * 🆕 2026-07-22 · La guía de uso: qué se le puede pedir al copiloto.
+   *
+   * **`mic` y no otro**: en esta app se dicta todo, así que el micrófono no sirve para distinguir una
+   * *función* de otra —por eso Ingresos no lo usó—, pero acá el tema **es** hablarle. Es el único
+   * lugar donde ese glifo dice exactamente de qué se trata la pantalla, y no se repite en este grid.
+   *
+   * Va **última** por la misma regla de orden que el escritorio: se entra una vez, al principio. Y va
+   * en Ajustes —no como tile del escritorio— porque no es un verbo diario: ponerla arriba empujaría
+   * fuera de pantalla algo que se usa todos los días.
+   */
+  { key: 'comoHablarle', label: 'Cómo hablarle', icono: 'mic' },
 ];
 
 /** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
