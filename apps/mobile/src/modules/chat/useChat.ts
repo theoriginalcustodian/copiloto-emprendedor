@@ -16,6 +16,9 @@ import {
 } from '@copiloto/core';
 
 import { almacenClave } from '../../adapters/almacen';
+// `generarId` vivía privado acá. Se movió a `util/id` cuando apareció el segundo consumidor (la
+// `idem_key` de un cobro): un helper encerrado en un módulo se duplica en vez de reusarse.
+import { generarId } from '../../util/id';
 
 /**
  * Hook de EFECTOS del chat mobile — fork del `useChat` de DocuMed
@@ -63,18 +66,6 @@ const POLL_INTERVAL_MS = 1500;
 const POLL_INTERVAL_LENTO_MS = 10_000;
 /** Cuánto esperar por una respuesta antes de avisar que está tardando (agente durable = lento). */
 const WAIT_TIMEOUT_MS = 60_000;
-
-function generarId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback para entornos sin Web Crypto.
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
 
 function claveMensajes(sessionId: string): string {
   return `${PREFIJO_MENSAJES}:${sessionId}`;

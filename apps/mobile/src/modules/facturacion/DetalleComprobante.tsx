@@ -28,6 +28,14 @@ import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { nombreTipoComprobante } from './etiquetasComprobante';
+import { SeccionCobro } from './SeccionCobro';
+
+/**
+ * Tipo 13 = nota de crédito. **No es una deuda de nadie**: es el papel que anula otra factura, así que
+ * la sección de cobro no se ofrece sobre ella. Mismo criterio que el backend, que las deja afuera de
+ * «me deben» — si entraran, la pantalla mostraría plata que nadie va a pagar nunca.
+ */
+const TIPO_NOTA_CREDITO = 13;
 
 const ETIQUETA_DOC: Record<number, string> = {
   80: 'CUIT',
@@ -184,6 +192,21 @@ export function DetalleComprobante({
               valor={ETIQUETA_ESTADO[c.estado] ?? c.estado}
               testID={`${testID}-estado`}
             />
+            {/* 🔴 Sólo sobre una factura EMITIDA. Una anulada o una nota de crédito no son plata que
+                alguien deba: ofrecer «ya me la pagaron» ahí contradice al propio documento que la
+                ficha está mostrando dos líneas más arriba. */}
+            {/* `id` es opcional en el tipo porque el payload que alimenta activities de Temporal no lo
+                trae; las dos consultas que llegan a la app SÍ. Sin id no hay a qué preguntarle por el
+                cobro, así que la sección no se dibuja — inventar una consulta a `/undefined/cobros`
+                daría un 404 y la ficha diría "no pudimos consultar" sobre algo que ni se intentó. */}
+            {c.id != null && (
+              <SeccionCobro
+                comprobanteId={c.id}
+                cobrable={c.estado === 'emitida' && c.tipoCbte !== TIPO_NOTA_CREDITO}
+                testID={`${testID}-cobro`}
+              />
+            )}
+
             {c.cbteAsocNro != null && (
               <Text testID={`${testID}-anulada-por`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
                 Anulada por la nota de crédito N° {c.cbteAsocNro}.

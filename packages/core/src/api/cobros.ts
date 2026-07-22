@@ -218,6 +218,44 @@ export async function borrarCobro(
   }
 }
 
+/**
+ * `GET /afip/comprobantes/{id}/cobros` — **el estado de cobro de UN comprobante, y sus cobros**.
+ *
+ * 🔴 **Es la fuente autorizada, y por eso la ficha pregunta en vez de mirar la fila que ya tenía.** El
+ * listado `GET /afip/comprobantes` no declaró traer `estado_cobro`/`saldo`, y asumir que los trae
+ * sería inventar la costura entre las dos capas: los campos llegarían `undefined`, el cliente los
+ * dejaría en `null`, y la ficha simplemente **no mostraría el cobro** — un dato desapareciendo sin
+ * error, atribuible al backend. Preguntar cuesta un request al abrir el detalle y además lo trae
+ * **fresco**, que es lo que se necesita después de cobrar desde otro dispositivo.
+ *
+ * Y sin esto no hay forma de deshacer: `borrarCobro` necesita el **id del cobro**, que sólo viene acá.
+ */
+export async function listarCobros(
+  comprobanteId: number,
+): Promise<
+  | { status: 'ok'; cobros: Cobro[]; comprobante: EstadoDeCobro | null }
+  | { status: 'no_disponible' }
+  | { status: 'no_encontrado' }
+> {
+  try {
+    const raw = await apiClient.get<{ cobros?: CobroRaw[]; comprobante?: ComprobanteCobroRaw }>(
+      `/afip/comprobantes/${comprobanteId}/cobros`,
+    );
+    if (!esRespuestaDelEndpoint(raw, 'cobros')) return { status: 'no_disponible' };
+    const filas = Array.isArray(raw.cobros) ? raw.cobros : [];
+    return {
+      status: 'ok',
+      cobros: filas.map(normalizarCobro).filter((c): c is Cobro => c != null),
+      comprobante: normalizarEstado(raw.comprobante),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
+    if (esNoDesplegado(err)) return { status: 'no_disponible' };
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
 /** Una fila de «me deben». Es una VISTA del backend, no un `Comprobante` completo: trae sólo lo que
  *  esa pantalla necesita, ya servido. */
 export interface ComprobanteImpago {

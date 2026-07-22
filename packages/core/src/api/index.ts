@@ -211,7 +211,7 @@ export type {
  * *«¿quién me debe?»*. Forma declarada por backend ANTES de implementar; al exportarse, los endpoints
  * todavía no estaban vivos y el cliente degrada a `no_disponible`.
  */
-export { registrarCobro, borrarCobro, listarImpagos } from './cobros';
+export { registrarCobro, borrarCobro, listarCobros, listarImpagos } from './cobros';
 /**
  * `/conceptos` — el catálogo de lo que el emprendedor VENDE. ⚠️ No confundir con `catalogo.ts`, que
  * es el catálogo de *integraciones* de Composio: dos cosas distintas con el mismo nombre en
