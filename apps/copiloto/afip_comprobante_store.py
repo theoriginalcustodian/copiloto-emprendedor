@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Callable
 
+from evento_store import registrar_evento
+
 _TABLE = "uc_factory.afip_comprobantes"
 
 ESTADO_EMITIDA = "emitida"
@@ -46,10 +48,30 @@ class AfipComprobanteStore:
                 f"ON CONFLICT (cliente_id, cuit, tipo_cbte, punto_venta, nro) DO UPDATE SET "
                 f"estado=EXCLUDED.estado, pdf_url=COALESCE(EXCLUDED.pdf_url, {_TABLE}.pdf_url), "
                 f"pdf_expira_at=COALESCE(EXCLUDED.pdf_expira_at, {_TABLE}.pdf_expira_at), "
-                f"cbte_asoc_nro=COALESCE(EXCLUDED.cbte_asoc_nro, {_TABLE}.cbte_asoc_nro)",
+                f"cbte_asoc_nro=COALESCE(EXCLUDED.cbte_asoc_nro, {_TABLE}.cbte_asoc_nro) "
+                f"RETURNING (xmax = 0) AS fue_insert",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision,
                  doc_tipo, doc_nro, receptor_nombre, total, estado, pdf_url, pdf_expira_at, idem_key,
                  workflow_id, cbte_asoc_nro))
+            # 🔴 `EMITIO` (Negocio→Comprobante) + `FACTURADO_A` (→Cliente), §2.1, y el arranque de
+            # `ESTADO_COMPROBANTE` en `emitida` (§2.2). Este método es un UPSERT llamado desde una
+            # activity de Temporal, que **reintenta**: `RETURNING (xmax = 0)` distingue el INSERT fresco
+            # (xmax=0) del camino ON CONFLICT DO UPDATE (xmax≠0, un retry o un re-registro de PDF/estado).
+            # Se loggea SÓLO en el insert fresco: sin esto, cada reintento de la activity sumaría un
+            # `EMITIO` duplicado de una factura que se emitió una sola vez. `Comprobante` es EVENTO, su
+            # clave natural es la tupla que AFIP considera única (§1.2). ⚠️ Anular NO invalida `EMITIO`
+            # (§2.2): eso lo maneja `marcar_anulada` como cambio de `ESTADO_COMPROBANTE`, no acá.
+            if cur.fetchone()[0]:
+                registrar_evento(cur, self._cid, entidad_tipo="comprobante",
+                                 entidad_id=f"{cuit}|{tipo_cbte}|{punto_venta}|{nro}",
+                                 evento="emitido", campo="estado", valor_de=None, valor_a=estado,
+                                 ocurrido_en=fecha_emision,
+                                 datos={"tipo_cbte": tipo_cbte, "punto_venta": punto_venta, "nro": nro,
+                                        "total": (None if total is None else str(total)),
+                                        "fecha_emision": (fecha_emision.isoformat()
+                                                          if fecha_emision else None),
+                                        "receptor_nombre": receptor_nombre or "",
+                                        "doc_tipo": doc_tipo, "doc_nro": doc_nro, "cae": cae})
 
     def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                      pdf_url: str, pdf_expira_at: datetime | None) -> None:
@@ -149,10 +171,28 @@ class AfipComprobanteStore:
         """Marca la factura original como anulada y deja el puntero a la NC que la anuló."""
         conn = self._conn_factory()
         with conn.cursor() as cur:
+            # Estado previo, para el de→a del log Y para no re-loggear en un reintento de la activity.
+            # El UPDATE de abajo queda EXACTO —método verificado E2E, no lo toco—: la condición de
+            # loggear se decide con este SELECT, no cambiando el WHERE. Con autocommit son dos
+            # sentencias, misma tolerancia best-effort que el resto del log (ver evento_store).
+            cur.execute(f"SELECT estado FROM {_TABLE} WHERE cliente_id=%s AND cuit=%s "
+                        f"AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
+                        (self._cid, cuit, tipo_cbte, punto_venta, nro))
+            prev = cur.fetchone()
+            estado_previo = prev[0] if prev else None
             cur.execute(
                 f"UPDATE {_TABLE} SET estado=%s, cbte_asoc_nro=%s "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (ESTADO_ANULADA, nro_nota_credito, self._cid, cuit, tipo_cbte, punto_venta, nro))
+            # `ESTADO_COMPROBANTE`: emitida → anulada (§2.2). NO invalida `EMITIO`: la factura se emitió
+            # y eso sigue siendo cierto. Se loggea sólo si el estado REALMENTE cambió — un reintento
+            # sobre una ya anulada tiene `estado_previo == anulada` y no re-loggea.
+            if estado_previo is not None and estado_previo != ESTADO_ANULADA:
+                registrar_evento(cur, self._cid, entidad_tipo="comprobante",
+                                 entidad_id=f"{cuit}|{tipo_cbte}|{punto_venta}|{nro}",
+                                 evento="estado_cambiado", campo="estado",
+                                 valor_de=estado_previo, valor_a=ESTADO_ANULADA,
+                                 datos={"nota_credito_nro": nro_nota_credito})
 
     @staticmethod
     def _fila(row, *, con_id: bool = False) -> dict | None:
