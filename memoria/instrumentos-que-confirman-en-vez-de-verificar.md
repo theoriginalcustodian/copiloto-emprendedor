@@ -52,4 +52,19 @@ aplicado al propio instrumento.
 
 Y el corolario que cerró el sprint: **el E2E que hablaba con Temporal directamente pasaba aunque el router HTTP no estuviera montado.** Verificar la capa equivocada es la versión arquitectónica del mismo error. Dos bugs (emisión clavada a homologación, PDF que desanulaba) sólo aparecieron cuando el E2E usó la superficie que usa la app.
 
+## Caso 8 (2026-07-22) — el doble levantó una excepción que el código real no puede levantar
+
+Un test del `except TransicionInvalida` usaba un fake que hacía `raise TransicionInvalida("ya no está
+pendiente")`. La firma real es `(desde, hacia)`: lo que viajó fue un **`TypeError`**, que el
+`except Exception` del executor atrapa igual. El test dio **rojo por el motivo equivocado**.
+
+Y ése fue el golpe de suerte. Si el assert hubiera sido un poco más laxo —`res.status in (...)`, o
+mirar sólo que no explotara— habría dado **verde sin ejercitar ni una vez la rama que dice probar**,
+y el `except` específico podría no haber existido nunca.
+
+**Un doble de test no es libre: tiene que poder fallar exactamente como falla el original.** Un fake
+que levanta la excepción con otra firma, devuelve otra forma o rompe un contrato que el real respeta,
+prueba un camino que en producción no ocurre. Barato de verificar: leer la firma real antes de
+escribir el `raise`, o construir la excepción con los mismos argumentos que usa el código.
+
 [[no-codificar-la-esperanza-principio-raiz]] [[copiloto-facturacion-afip]]
