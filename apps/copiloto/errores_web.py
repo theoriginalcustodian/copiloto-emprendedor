@@ -38,10 +38,17 @@ SIN_CERTIFICADO_AFIP = "sin_certificado_afip"
 AMBIENTE_NO_VINCULADO = "ambiente_no_vinculado"
 SIN_PERFIL_FISCAL = "sin_perfil_fiscal"
 
+# Bloqueo TEMPORAL y gestionado, no una regla del producto. El modo automático espera a que se corrija
+# el historial del motor: hoy el copiloto narra acciones que no ejecutó a partir del tercer turno, y
+# en automático ese fallo es INVISIBLE —no hay card que falte, el copiloto dice «listo» y no hay nada
+# que mirar—. En confirmación se ve. Ver `copiloto-narra-la-accion-sin-ejecutarla`.
+# Dueño: backend. Se retira cuando la corrección del motor esté viva (decisión del operador, MAYOR).
+MODO_AUTOMATICO_NO_DISPONIBLE = "modo_automatico_no_disponible"
+
 CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
                      TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
-                     SIN_PERFIL_FISCAL})
+                     SIN_PERFIL_FISCAL, MODO_AUTOMATICO_NO_DISPONIBLE})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:

@@ -11,14 +11,16 @@ y nunca vuelve en una respuesta.
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Callable, Literal
 
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from afip_credential_store import ClaveFiscal
-from afip_rules import CondicionEmisor, PerfilFiscal, validar_cuit, validar_perfil
+from afip_rules import (CondicionEmisor, PerfilFiscal, rango_fechas_permitido,
+                        validar_cuit, validar_perfil)
+from gasto_store import hoy_del_negocio
 from errores_web import (AMBIENTE_NO_VINCULADO, INGRESO_DUPLICADO_PROBABLE,
                          SIN_CERTIFICADO_AFIP, SIN_PERFIL_FISCAL, conflicto)
 from cobro_store import CobroInvalido
@@ -250,7 +252,17 @@ def create_afip_app(
         estado = await _maybe_async(consultar_factura, cliente_id, factura_id)
         if estado is None:
             raise HTTPException(404, detail="factura no encontrada")
-        return estado
+        # 🔴 El RANGO, no el predicado. `fecha_valida_para_afip` ya existía «para que la UI pueda
+        # deshabilitar fechas antes de que el usuario tipee», pero con un predicado la app tendría que
+        # preguntar fecha por fecha — o reimplementar la R4 en TypeScript. **Una regla fiscal escrita
+        # en dos lenguajes diverge sola**, y el día que AFIP mueva el margen quedarían dos verdades,
+        # con la del cliente ganando porque es la que deshabilita el calendario.
+        #
+        # `hoy` es el del NEGOCIO (UTC-3) y no `date.today()`: a las 22:00 de Buenos Aires ya es el día
+        # siguiente en UTC, y el rango se correría un día justo en el borde donde importa.
+        fecha_min, fecha_max = rango_fechas_permitido(
+            hoy_del_negocio(datetime.now(timezone.utc)))
+        return {**estado, "fecha_min": fecha_min.isoformat(), "fecha_max": fecha_max.isoformat()}
 
     @app.post("/afip/facturas/{factura_id}/datos-venta")
     async def set_datos_venta(factura_id: str, body: dict,
