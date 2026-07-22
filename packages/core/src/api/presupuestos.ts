@@ -437,11 +437,18 @@ export type ResultadoFacturar =
   | { status: 'ya_facturado'; facturaId: string | null }
   /** El tenant todavía no cargó su perfil fiscal (CUIT) — hay que mandarlo a Ajustes → Facturación. */
   | { status: 'falta_perfil_fiscal' }
+  /**
+   * 🔴 **El presupuesto está en un estado que no se puede facturar** — hoy, `desestimado`.
+   *
+   * Facturar IMPLICA aprobar (`presupuestos_web.py:318`), y `desestimado → aprobado` no existe: el
+   * camino es emitir un presupuesto nuevo. El backend **no lo revive en silencio** a propósito, y esta
+   * rama es lo que permite decírselo al emprendedor en vez de mandarlo a arreglar otra cosa.
+   */
+  | { status: 'estado_incompatible'; estado: string | null; motivo: string }
   | { status: 'no_disponible' };
 
 /**
- * Los dos 409 de este endpoint se distinguen por **la presencia de `factura_id` en el body**, no por
- * el texto del `detail`.
+ * Los **tres** 409 de este endpoint se distinguen por la ESTRUCTURA del `detail`, no por su texto.
  *
  * 🔴 Atarse a la redacción (`"el presupuesto ya fue facturado"`) sería depender de un string que el
  * backend puede reescribir sin que eso sea un cambio de contrato — y el día que lo haga, "ya
@@ -468,6 +475,15 @@ function facturaIdDelBody(body: unknown): string | null | undefined {
     }
   }
   return undefined;
+}
+
+/** El `estado` de un `detail` estructurado. `undefined` = el body no lo trae (no es este caso). */
+function estadoDelBody(body: unknown): string | null | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const detalle = (body as { detail?: unknown }).detail;
+  if (typeof detalle !== 'object' || detalle === null || !('estado' in detalle)) return undefined;
+  const v = (detalle as { estado?: unknown }).estado;
+  return typeof v === 'string' ? v : null;
 }
 
 /**
@@ -509,7 +525,25 @@ export async function facturarPresupuesto(id: number): Promise<ResultadoFacturar
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
     if (err instanceof ApiError && err.status === 409) {
       const facturaId = facturaIdDelBody(err.body);
-      return facturaId !== undefined ? { status: 'ya_facturado', facturaId } : { status: 'falta_perfil_fiscal' };
+      if (facturaId !== undefined) return { status: 'ya_facturado', facturaId };
+      // 🔴 El TERCER 409, que apareció con los estados: el presupuesto está `desestimado`. Viene con
+      // `{mensaje, estado}` y **sin** `factura_id`, así que antes de esta rama caía en
+      // `falta_perfil_fiscal` — o sea que intentar facturar un presupuesto que el emprendedor había
+      // dado por perdido le decía *«cargá tu CUIT»*. Verificado leyendo `presupuestos_web.py:319`.
+      const estado = estadoDelBody(err.body);
+      if (estado !== undefined) {
+        return {
+          status: 'estado_incompatible',
+          estado,
+          motivo: mensajeDelBody(err.body) ?? 'Ese presupuesto no se puede facturar como está.',
+        };
+      }
+      // ⚠️ Lo que queda es el `detail` STRING de "falta el perfil fiscal (CUIT)". Es el único 409 sin
+      // estructura hoy, y por eso el default cae acá — pero un cuarto 409 sin estructura aterrizaría
+      // en la misma rama y volvería a mandar al emprendedor a Ajustes por algo que no es. Es
+      // exactamente el fallo que este bloque acaba de arreglar dos veces; pedido a backend que todo
+      // 409 nuevo venga con un campo que lo identifique.
+      return { status: 'falta_perfil_fiscal' };
     }
     throw err;
   }

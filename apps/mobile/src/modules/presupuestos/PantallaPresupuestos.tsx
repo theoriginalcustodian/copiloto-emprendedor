@@ -254,6 +254,13 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
           onCerrar={() => setDetalle(null)}
           onFacturar={facturarDesdeDetalle}
           onCorregir={abrirCorreccion}
+          // El estado cambió en la hoja: se pisa la fila de la lista de atrás con lo que devolvió el
+          // backend. Sin esto, cerrar el detalle deja el listado mostrando el estado anterior —
+          // idéntico a que la acción no hubiera surtido efecto, y el emprendedor la repite.
+          onEstadoCambiado={(actualizado) => {
+            setPresupuestos((prev) => prev.map((x) => (x.id === actualizado.id ? actualizado : x)));
+            setDetalle(actualizado);
+          }}
         />
       )}
     </MarcoGlass>

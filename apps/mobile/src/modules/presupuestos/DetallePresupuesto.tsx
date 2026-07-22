@@ -19,10 +19,12 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import {
+  cambiarEstadoPresupuesto,
   facturarPresupuesto,
   formatearFechaLarga,
   formatearImporte,
   obtenerPresupuesto,
+  type EstadoPresupuesto,
   type Presupuesto,
 } from '@copiloto/core';
 
@@ -46,6 +48,8 @@ export interface DetallePresupuestoProps {
   onFacturar: (facturaId: string) => void;
   /** El usuario quiere corregirlo: se abre el formulario en modo "reemplaza a este". */
   onCorregir: (presupuesto: Presupuesto) => void;
+  /** Cambió el estado acá adentro. La lista de atrás lo usa para no quedar mostrando el anterior. */
+  onEstadoCambiado?: (presupuesto: Presupuesto) => void;
   testID?: string;
 }
 
@@ -80,13 +84,35 @@ function Dato({
   );
 }
 
-type EstadoFacturar = 'idle' | 'enviando' | 'ya_facturado' | 'falta_perfil' | 'error' | 'no_disponible';
+type EstadoFacturar =
+  | 'idle'
+  | 'enviando'
+  | 'ya_facturado'
+  | 'falta_perfil'
+  | 'estado_incompatible'
+  | 'error'
+  | 'no_disponible';
+
+/**
+ * Las **tres categorías**, tal como las nombra el emprendedor. No son cuatro: `sin_respuesta` es un
+ * matiz de «pendiente» y se dice aparte.
+ *
+ * 🔴 **No se mezclan, y ésa es toda la razón de que exista este bloque.** Quien cuenta los no-marcados
+ * como rechazos miente sobre su tasa de conversión — y una vez que el número miente, el emprendedor
+ * deja de mirar la pantalla para siempre.
+ */
+const ETIQUETA_ESTADO: Record<EstadoPresupuesto, string> = {
+  pendiente: 'Todavía sin respuesta',
+  aprobado: 'Te lo aprobaron',
+  desestimado: 'No te lo tomaron',
+};
 
 export function DetallePresupuesto({
   presupuesto: inicial,
   onCerrar,
   onFacturar,
   onCorregir,
+  onEstadoCambiado,
   testID = 'detalle-presupuesto',
 }: DetallePresupuestoProps) {
   const tema = useTema();
@@ -97,6 +123,8 @@ export function DetallePresupuesto({
   const [cargandoItems, setCargandoItems] = useState(true);
   const [estadoFacturar, setEstadoFacturar] = useState<EstadoFacturar>('idle');
   const [facturaIdPrevia, setFacturaIdPrevia] = useState<string | null>(null);
+  const [motivoEstado, setMotivoEstado] = useState<string | null>(null);
+  const [marcando, setMarcando] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -134,13 +162,61 @@ export function DetallePresupuesto({
         case 'falta_perfil_fiscal':
           setEstadoFacturar('falta_perfil');
           return;
+        case 'estado_incompatible':
+          // El backend no revive un desestimado en silencio. Su explicación es mejor que cualquier
+          // texto que escribamos acá: dice en qué estado está y qué hacer.
+          setMotivoEstado(res.motivo);
+          setEstadoFacturar('estado_incompatible');
+          return;
         case 'no_encontrado':
         case 'no_disponible':
           setEstadoFacturar('no_disponible');
           return;
+        default: {
+          // 🔴 Guarda de exhaustividad. Sin esto, un `status` nuevo del cliente caía por el hueco del
+          // `switch` y el botón quedaba en «Preparando…» PARA SIEMPRE — la app colgada sin ningún
+          // error, que es como se ve un caso no contemplado. Justo lo que pasó al agregar el tercer
+          // 409. Ahora no compila.
+          const _exhaustivo: never = res;
+          void _exhaustivo;
+          setEstadoFacturar('error');
+        }
       }
     } catch {
       setEstadoFacturar('error');
+    }
+  }
+
+  /**
+   * *«No me lo tomaron»* → `PATCH .../estado {desestimado}`.
+   *
+   * 🔴 **No hay botón para «me lo aprobaron», y es a propósito** (contrato §1): aprobado sale gratis de
+   * *Facturar*, que es una acción que el emprendedor iba a hacer igual. Un estado que hay que acordarse
+   * de marcar envejece hasta que miente; uno que cae de una acción real se sostiene solo.
+   *
+   * 🔴 **Y tampoco hay «volver a pendiente»**: volver a *«no sé»* borra el hecho de que alguien ya
+   * respondió. El backend lo rechaza con 409 y acá directamente no se ofrece.
+   */
+  async function marcarDesestimado() {
+    if (marcando) return;
+    setMarcando(true);
+    setMotivoEstado(null);
+    try {
+      const res = await cambiarEstadoPresupuesto(p.id, 'desestimado');
+      if (res.status === 'ok') {
+        // Se pisa con lo que devolvió el backend, no con un `{...p, estado:'desestimado'}` armado acá:
+        // `sin_respuesta` y `estado_actualizado_en` los deriva él, y adivinarlos sería mostrar en
+        // pantalla un estado que nadie confirmó.
+        setP(res.presupuesto);
+        onEstadoCambiado?.(res.presupuesto);
+        return;
+      }
+      if (res.status === 'transicion_invalida') setMotivoEstado(res.motivo);
+      else setMotivoEstado('No pudimos marcar el presupuesto. Probá de nuevo.');
+    } catch {
+      setMotivoEstado('No pudimos marcar el presupuesto. Probá de nuevo.');
+    } finally {
+      setMarcando(false);
     }
   }
 
@@ -201,6 +277,17 @@ export function DetallePresupuesto({
     variante: 'secundario' as const,
     testID: `${testID}-corregir`,
   });
+  // Sobre uno ya desestimado no se vuelve a ofrecer: el backend no acepta volver atrás, y un botón
+  // que sólo puede fallar es peor que ninguno.
+  if (p.estado !== 'desestimado') {
+    acciones.push({
+      etiqueta: marcando ? 'Marcando…' : 'No me lo tomaron',
+      onPress: () => void marcarDesestimado(),
+      variante: 'secundario' as const,
+      deshabilitado: marcando,
+      testID: `${testID}-desestimar`,
+    });
+  }
 
   return (
     <Pressable
@@ -272,6 +359,30 @@ export function DetallePresupuesto({
               usuario vería un número distinto del que se va a facturar. */}
           <Dato etiqueta="Total" valor={formatearImporte(p.total)} destacado testID={`${testID}-total`} />
 
+          {/* 🔴 El estado se ve SIEMPRE, no sólo cuando alguien lo tocó. Un presupuesto sin marca es
+              «todavía sin respuesta», que es información — y esconderlo dejaría al emprendedor sin
+              saber cuáles quedaron colgados. `null` es otra cosa: el backend no lo mandó, y ahí no se
+              inventa un «pendiente» que nadie declaró. */}
+          {p.estado != null ? (
+            <Dato etiqueta="Estado" valor={ETIQUETA_ESTADO[p.estado]} testID={`${testID}-estado`} />
+          ) : (
+            <Text testID={`${testID}-estado-desconocido`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              No pudimos leer el estado de este presupuesto.
+            </Text>
+          )}
+          {/* «Hace mucho que nadie contesta» es un MATIZ de pendiente, no una cuarta categoría: va como
+              renglón aparte para que la suma de las tres siga dando el total. */}
+          {p.sinRespuesta === true && (
+            <Text testID={`${testID}-sin-respuesta`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              Hace más de un mes que no tenés respuesta. Quizá valga la pena preguntar.
+            </Text>
+          )}
+          {motivoEstado != null && (
+            <Text testID={`${testID}-motivo-estado`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              {motivoEstado}
+            </Text>
+          )}
+
           {p.reemplazaA != null && (
             <Text testID={`${testID}-reemplaza-a`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Reemplaza al presupuesto anterior (N° {p.reemplazaA}).
@@ -316,6 +427,12 @@ export function DetallePresupuesto({
             <Text testID={`${testID}-ya-facturado`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               Este presupuesto ya se facturó
               {facturaIdPrevia != null ? ' (la factura ya existe).' : '.'}
+            </Text>
+          )}
+          {estadoFacturar === 'estado_incompatible' && (
+            <Text testID={`${testID}-estado-incompatible`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              {motivoEstado ?? 'Ese presupuesto no se puede facturar como está.'} Si al final te lo
+              aceptaron, hacé un presupuesto nuevo.
             </Text>
           )}
           {estadoFacturar === 'falta_perfil' && (

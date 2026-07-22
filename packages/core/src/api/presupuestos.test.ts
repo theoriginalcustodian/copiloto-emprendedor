@@ -331,6 +331,22 @@ describe('presupuestos.ts', () => {
       expect(await facturarPresupuesto(12)).toEqual({ status: 'falta_perfil_fiscal' });
     });
 
+    it('🔴 el TERCER 409: el presupuesto está desestimado, y NO es «falta tu CUIT»', async () => {
+      // `presupuestos_web.py:319` — facturar implica aprobar, y `desestimado → aprobado` no existe.
+      // Viene con `estado` y sin `factura_id`, así que sin esta rama caía en `falta_perfil_fiscal`:
+      // al emprendedor que intenta facturar algo que dio por perdido se le decía «cargá tu CUIT».
+      responder = () =>
+        respuesta(409, {
+          detail: { mensaje: 'el presupuesto está desestimado: no se puede facturar sin revisarlo', estado: 'desestimado' },
+        });
+
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'estado_incompatible',
+        estado: 'desestimado',
+        motivo: 'el presupuesto está desestimado: no se puede facturar sin revisarlo',
+      });
+    });
+
     it('sigue discriminando aunque el backend reescriba el copy del detail', async () => {
       // El control de que la discriminación es ESTRUCTURAL: mismo texto en los dos 409, y aun así
       // cada uno cae donde corresponde. Con un `detail.includes('facturado')` este test sería rojo.
