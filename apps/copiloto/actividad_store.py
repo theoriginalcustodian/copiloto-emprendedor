@@ -1,0 +1,138 @@
+"""La unión de ACTIVIDAD RECIENTE (contrato §3.2) — hito 2.
+
+**Una sola query con `UNION ALL` y orden global, no N consultas ordenadas en Python.** Traer el top-N
+de cada tabla y mezclar en memoria **rompe la paginación**: el ítem 21 global puede no estar en ningún
+top-20 parcial, así que desaparece de la lista y nadie se entera. Con la unión, Postgres ordena el
+conjunto completo y el `LIMIT` corta donde tiene que cortar.
+
+**Cursor keyset, no offset.** Entre que el usuario ve la página 1 y pide la 2, el emprendedor carga un
+gasto: con `OFFSET` todo se corre una posición y se **saltea o repite** un ítem. Es una lista que se
+lee de arriba hacia abajo mientras crece por arriba — el caso donde offset siempre falla.
+"""
+from __future__ import annotations
+
+import datetime
+from typing import Callable
+
+_SCHEMA = "uc_factory"
+
+# El id es `"<tipo>:<id>"` (texto) y el orden es `(fecha DESC, id DESC)` con ESE texto. Comparar ids
+# textuales ordena `gasto:9` antes que `gasto:10` —lexicográfico, no numérico—, y está bien: lo que el
+# keyset necesita no es que el orden sea "natural" sino que sea **total y determinista**. Mientras el
+# ORDER BY y el WHERE del cursor usen la misma expresión, no se saltea ni se repite nada.
+#
+# La `fecha` de cada tipo es la de NEGOCIO (la que se muestra), no `created_at`: ordenar por una y
+# mostrar otra haría que la lista se vea desordenada, que es peor que cualquier ganancia de precisión.
+_UNION = f"""
+SELECT (fecha_emision::timestamptz) AS fecha,
+       ('factura:' || id::text)     AS item_id,
+       'factura'                    AS tipo,
+       ('Factura ' || tipo_cbte::text || ' ' || lpad(punto_venta::text, 4, '0')
+        || '-' || lpad(nro::text, 8, '0'))              AS titulo,
+       coalesce(receptor_nombre, '')                    AS detalle,
+       total::text                                      AS monto,
+       'entra'                                          AS signo
+  FROM {_SCHEMA}.afip_comprobantes
+ WHERE cliente_id = %(cid)s AND tipo_cbte NOT IN (12, 13) AND cae IS NOT NULL
+
+UNION ALL
+
+SELECT (fecha_emision::timestamptz),
+       ('nota_credito:' || id::text),
+       'nota_credito',
+       ('Nota de crédito ' || lpad(punto_venta::text, 4, '0') || '-' || lpad(nro::text, 8, '0')),
+       coalesce(receptor_nombre, ''),
+       total::text,
+       'sale'
+  FROM {_SCHEMA}.afip_comprobantes
+ WHERE cliente_id = %(cid)s AND tipo_cbte IN (12, 13) AND cae IS NOT NULL
+
+UNION ALL
+
+SELECT fecha,
+       ('presupuesto:' || id::text),
+       'presupuesto',
+       ('Presupuesto Nº' || numero::text),
+       coalesce(nullif(receptor_nombre, ''), concepto, ''),
+       total::text,
+       'neutro'
+  FROM {_SCHEMA}.copiloto_presupuestos
+ WHERE cliente_id = %(cid)s
+
+UNION ALL
+
+SELECT (fecha::timestamptz),
+       ('gasto:' || id::text),
+       'gasto',
+       ('Gasto en ' || categoria),
+       coalesce(nullif(proveedor, ''), nullif(descripcion, ''), ''),
+       monto::text,
+       'sale'
+  FROM {_SCHEMA}.copiloto_gastos
+ WHERE cliente_id = %(cid)s
+
+UNION ALL
+
+-- Los clientes DERIVADOS no son actividad: nacieron de un backfill, no de algo que el emprendedor
+-- hizo. Meter 200 derivados acá vuelve la lista inútil el día uno (contrato §3.2).
+SELECT created_at,
+       ('cliente:' || id::text),
+       'cliente',
+       ('Cliente nuevo: ' || nombre),
+       '',
+       NULL,
+       'neutro'
+  FROM {_SCHEMA}.copiloto_clientes
+ WHERE cliente_id = %(cid)s AND origen <> 'derivado'
+"""
+
+_COLS = ("fecha", "id", "tipo", "titulo", "detalle", "monto", "signo")
+
+
+def _dos_decimales(valor) -> str | None:
+    if valor is None:
+        return None
+    from decimal import Decimal, InvalidOperation
+    try:
+        return str(Decimal(str(valor)).quantize(Decimal("0.01")))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
+class ActividadStore:
+    def __init__(self, conn_factory: Callable, cliente_id: str) -> None:
+        self._conn_factory = conn_factory
+        self._cliente_id = cliente_id
+
+    def listar(self, *, limit: int = 20,
+               desde: tuple[datetime.datetime, str] | None = None) -> dict:
+        """Una página. `desde` es el `(fecha, id)` del cursor — estrictamente MENOR, para no repetir
+        el último ítem de la página anterior."""
+        from actividad_web import formatear_cursor
+
+        params: dict = {"cid": self._cliente_id, "limite": int(limit)}
+        filtro = ""
+        if desde is not None:
+            # `(fecha, item_id) < (%(f)s, %(i)s)` — comparación de TUPLAS, no dos condiciones con AND.
+            # `fecha < f OR (fecha = f AND id < i)` es lo mismo pero se escribe mal una de cada tres
+            # veces, y el error (usar `<=` en la segunda rama) repite un ítem por página.
+            filtro = " WHERE (a.fecha, a.item_id) < (%(f)s, %(i)s)"
+            params["f"], params["i"] = desde
+
+        sql = (f"SELECT a.fecha, a.item_id, a.tipo, a.titulo, a.detalle, a.monto, a.signo "
+               f"FROM ({_UNION}) AS a{filtro} "
+               f"ORDER BY a.fecha DESC, a.item_id DESC LIMIT %(limite)s")
+
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(sql, params)
+            filas = cur.fetchall()
+
+        items = [{"id": f[1], "tipo": f[2], "fecha": f[0].isoformat() if f[0] else None,
+                  "titulo": f[3], "detalle": f[4] or "", "monto": _dos_decimales(f[5]),
+                  "signo": f[6]} for f in filas]
+
+        # El cursor sale sólo si la página vino LLENA. Si vino corta, no hay más — y devolver un cursor
+        # igual haría que la app pida una página vacía de más en cada scroll hasta el fondo.
+        cursor = (formatear_cursor(filas[-1][0], filas[-1][1])
+                  if len(filas) == int(limit) and filas else None)
+        return {"items": items, "cursor": cursor}

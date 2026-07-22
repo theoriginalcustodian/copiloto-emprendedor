@@ -65,6 +65,7 @@ from presupuestos_web import create_presupuestos_app
 from gastos_web import create_gastos_app
 from clientes_web import create_clientes_app
 from actividad_web import create_actividad_app
+from actividad_store import ActividadStore
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
 
@@ -196,9 +197,10 @@ async def _serve() -> None:
         cliente_store_factory=lambda cid: ClienteStore(conn_factory, cid),
     )
 
-    # Hito 1: sin store -> devuelve la lista vacía con su forma final. La unión SQL entra en el hito 2
-    # sin que la app se entere (misma forma en los dos casos).
-    actividad_app = create_actividad_app(require_tenant=require_tenant)
+    actividad_app = create_actividad_app(
+        require_tenant=require_tenant,
+        actividad_store_factory=lambda cid: ActividadStore(conn_factory, cid),
+    )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
