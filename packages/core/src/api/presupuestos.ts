@@ -371,7 +371,25 @@ export async function crearPresupuesto(
  * nueva de facturación que construir.
  */
 export type ResultadoFacturar =
-  | { status: 'ok'; facturaId: string }
+  | {
+      status: 'ok';
+      facturaId: string;
+      /**
+       * `false` = *"te devuelvo el borrador que ya tenías"*.
+       *
+       * 🔴 **Facturar es IDEMPOTENTE desde el 2026-07-21, y esto es la evidencia de que lo es.**
+       * Antes cada toque creaba un borrador nuevo —medido: dos ids distintos para el mismo
+       * presupuesto—, y por ese camino se podían emitir dos facturas del mismo trabajo. El backend lo
+       * cerró con un `factura_id` determinístico (`presu-{id}`) que Temporal rechaza duplicar de forma
+       * atómica: no hay ventana entre "consultar si existe" y "crearlo".
+       *
+       * **No hace falta ramificar por este campo**: el destino es el mismo borrador en los dos casos.
+       * Se transporta porque permite ajustar el copy ("Continuar la factura" en vez de "Facturar")
+       * sin volver a consultar el presupuesto, y porque un dato del contrato que no se expone es un
+       * dato que el próximo vuelve a descubrir.
+       */
+      borradorNuevo: boolean | null;
+    }
   /** El presupuesto no existe para este tenant. */
   | { status: 'no_encontrado' }
   /** Ya fue facturado. Trae el `facturaId` de aquella vez, para poder ir a verla. */
@@ -405,9 +423,14 @@ function facturaIdDelBody(body: unknown): string | null | undefined {
  */
 export async function facturarPresupuesto(id: number): Promise<ResultadoFacturar> {
   try {
-    const raw = await apiClient.post<{ factura_id: string }>(`/presupuestos/${id}/facturar`, {});
+    const raw = await apiClient.post<{ factura_id: string; borrador_nuevo?: boolean }>(
+      `/presupuestos/${id}/facturar`,
+      {},
+    );
     if (!esRespuestaDelEndpoint(raw, 'factura_id')) return { status: 'no_disponible' };
-    return { status: 'ok', facturaId: raw.factura_id };
+    // `?? null` y no `?? true`: un deploy anterior a la idempotencia no manda el campo, y asumir
+    // "es nuevo" ahí sería inventar un hecho. `null` dice "no sé", que es lo que se sabe.
+    return { status: 'ok', facturaId: raw.factura_id, borradorNuevo: raw.borrador_nuevo ?? null };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };

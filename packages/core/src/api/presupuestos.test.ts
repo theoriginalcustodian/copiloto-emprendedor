@@ -252,13 +252,42 @@ describe('presupuestos.ts', () => {
 
   describe('facturarPresupuesto', () => {
     it('devuelve el factura_id del BORRADOR — no emite', async () => {
-      responder = () => respuesta(200, { factura_id: 'afip-factura-abc' });
+      responder = () => respuesta(200, { factura_id: 'presu-12', borrador_nuevo: true });
 
       const res = await facturarPresupuesto(12);
 
-      expect(res).toEqual({ status: 'ok', facturaId: 'afip-factura-abc' });
+      expect(res).toEqual({ status: 'ok', facturaId: 'presu-12', borradorNuevo: true });
       expect(peticiones[0].path).toBe('/presupuestos/12/facturar');
       expect(peticiones[0].metodo).toBe('POST');
+    });
+
+    it('🔴 el segundo toque devuelve EL MISMO id con borradorNuevo:false — facturar es idempotente', async () => {
+      // Antes de que el backend lo arreglara (2026-07-21), cada toque devolvía un id NUEVO y se
+      // podían emitir dos facturas del mismo trabajo. Ahora el id es determinístico.
+      responder = () => respuesta(200, { factura_id: 'presu-12', borrador_nuevo: false });
+
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'ok',
+        facturaId: 'presu-12',
+        borradorNuevo: false,
+      });
+    });
+
+    it('🔴 el factura_id NO se valida por su forma — cambió de hex-32 a `presu-{id}` sin avisar antes', async () => {
+      // El backend cambió la forma del id el 2026-07-21 al hacerlo determinístico. Cualquier
+      // validación de forma acá habría roto en device y no en los tests. Se trata como string opaco.
+      responder = () => respuesta(200, { factura_id: 'presu-9999', borrador_nuevo: true });
+      const res = await facturarPresupuesto(9999);
+      expect(res.status === 'ok' && res.facturaId).toBe('presu-9999');
+    });
+
+    it('un deploy sin borrador_nuevo deja null, no inventa "es nuevo"', async () => {
+      responder = () => respuesta(200, { factura_id: 'presu-12' });
+      expect(await facturarPresupuesto(12)).toEqual({
+        status: 'ok',
+        facturaId: 'presu-12',
+        borradorNuevo: null,
+      });
     });
 
     it('🔴 distingue los dos 409 por la PRESENCIA de factura_id, no por el texto del detail', async () => {

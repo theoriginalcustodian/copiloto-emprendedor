@@ -240,7 +240,7 @@ describe('PantallaPresupuestos', () => {
     });
 
     it('Facturar deposita en el gate con el id del BORRADOR, no emite', async () => {
-      mockFacturar.mockResolvedValue({ status: 'ok', facturaId: 'afip-factura-abc' });
+      mockFacturar.mockResolvedValue({ status: 'ok', facturaId: 'presu-12', borradorNuevo: true });
 
       await montar();
       await waitFor(() => expect(screen.getByTestId('presupuesto-card-12-abrir')).toBeTruthy());
@@ -249,7 +249,7 @@ describe('PantallaPresupuestos', () => {
 
       fireEvent.press(screen.getByTestId('detalle-presupuesto-facturar'));
 
-      await waitFor(() => expect(onFacturar).toHaveBeenCalledWith('afip-factura-abc'));
+      await waitFor(() => expect(onFacturar).toHaveBeenCalledWith('presu-12'));
     });
 
     /**
