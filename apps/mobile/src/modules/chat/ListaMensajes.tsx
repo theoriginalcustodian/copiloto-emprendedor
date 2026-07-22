@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { mapearGate, type ChatMessage, type Gate } from '@copiloto/core';
+import { leerGastoPropuesto, mapearGate, type ChatMessage, type Gate } from '@copiloto/core';
 
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 
 const TEXTO_VACIO =
   'Contame qué necesitás: mandar un mail, buscar algo en tus archivos, revisar tus métricas, o cobrar con MercadoPago. Antes de ejecutar algo importante, siempre te lo muestro para que lo confirmes.';
@@ -149,6 +150,14 @@ export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
       {messages.map((mensaje) => {
         if (mensaje.role === 'user') {
           return <Burbuja key={mensaje.id} role="user" text={mensaje.text} />;
+        }
+
+        // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que
+        // `mapearGate` la ignoraría y caería en `Burbuja` — el emprendedor vería el texto del
+        // copiloto y ningún lugar donde corregir el monto.
+        const propuesta = leerGastoPropuesto(mensaje.card);
+        if (propuesta) {
+          return <TarjetaGastoPropuesto key={mensaje.id} propuesta={propuesta} />;
         }
 
         const gate = mapearGate(mensaje);

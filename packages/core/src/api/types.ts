@@ -422,6 +422,15 @@ export interface ReplyCard {
   /** Sólo `kind==='start_recording'` (launch-card): qué acción abrir — `'nota'` o `'consulta'`.
    * Cualquier otro valor (o ausente) degrada en silencio — ver `ArtifactView`. */
   accion?: string;
+  /**
+   * Sólo `kind==='gasto_propuesto'` — el gasto que el motor entendió del dictado. Es **exactamente el
+   * body de `POST /gastos`**: la app manda lo que el emprendedor dejó en la card, sin transformar.
+   *
+   * `unknown` y no un tipo cerrado: lo llenó un LLM y lo valida `leerGastoPropuesto` (`chat/
+   * gastoPropuesto.ts`), que es el único lugar que sabe qué hacer con un campo sucio. Tiparlo acá
+   * daría una garantía que nadie verificó.
+   */
+  data?: unknown;
   /** Sólo `kind==='start_recording'` con `accion==='nota'`: categoría que el copiloto ya infirió
    * al llamar la tool correspondiente — puramente informativo en el front, NUNCA contenido de
    * negocio. */
