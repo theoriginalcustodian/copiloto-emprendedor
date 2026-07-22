@@ -102,8 +102,15 @@ REGISTRAR_GASTO_SCHEMA = {"type": "function", "function": {
         "proveedor": {"type": "string", "description": "a quién le pagó, si lo dijo"},
         "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta… si lo dijo"},
         "descripcion": {"type": "string", "description": "lo que dictó, tal cual, para que pueda contrastarlo"},
-        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural ('ayer', 'el lunes'). "
-                                                       "Omitilo si no lo dijo: se asume hoy."}},
+        # 🔴 Los ejemplos son los que el resolvedor ENTIENDE DE VERDAD, medidos contra el vivo el
+        # 2026-07-22 — no los que suenan naturales. Antes decía «el lunes», que NO se entiende: el
+        # schema le ofrecía al modelo una forma que el backend descartaba en silencio, y el gasto
+        # quedaba con fecha de hoy sin que nadie avisara. Si el resolvedor aprende más formas, esto
+        # se amplía; mientras tanto prometer de menos es gratis y prometer de más miente.
+        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural. Entiendo "
+                                                       "'ayer', 'anteayer', 'la semana pasada', 'el "
+                                                       "mes pasado', 'el 5 de julio'. Omitilo si no "
+                                                       "lo dijo: se asume hoy."}},
         "required": ["monto"]}}}
 
 REGISTRAR_CLIENTE_SCHEMA = {"type": "function", "function": {
@@ -150,8 +157,11 @@ REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
         "cliente": {"type": "string", "description": "quién le pagó, si lo dijo"},
         "medio_pago": {"type": "string", "description": "efectivo, transferencia, tarjeta… si lo dijo"},
         "concepto": {"type": "string", "description": "por qué le pagaron, si lo dijo"},
-        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural ('ayer', 'el "
-                                                       "lunes'). Omitilo si no lo dijo: se asume hoy."},
+        # Mismos ejemplos medidos que en `registrar_gasto` — ver el comentario de aquel schema.
+        "fecha_raw": {"type": "string", "description": "cuándo fue, en lenguaje natural. Entiendo "
+                                                       "'ayer', 'anteayer', 'la semana pasada', 'el "
+                                                       "mes pasado', 'el 5 de julio'. Omitilo si no "
+                                                       "lo dijo: se asume hoy."},
         "confirmar_duplicado": {"type": "boolean",
                                 "description": "sólo si ya te avisé de un ingreso parecido y él "
                                                "confirmó que es OTRO cobro distinto"}},
@@ -484,11 +494,7 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
     # "ayer" quedan consistentes entre sí; (2) con el reloj de pared el test era **verde por
     # casualidad** — pasaba mientras el día real coincidiera con el instante del test, y rompió solo al
     # cruzar la medianoche. Ver `guard-caza-algo-distinto-de-lo-que-vigilaba`.
-    fecha = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
-    if arguments.get("fecha_raw"):
-        rng = resolve_date_range(arguments["fecha_raw"], now_iso=now_iso_provider(), tz=DEFAULT_TZ)
-        if rng:
-            fecha = datetime.fromisoformat(rng["since"]).date()
+    fecha, fecha_ok = _fecha_dictada(arguments.get("fecha_raw"), now_iso_provider)
 
     def recortar(clave: str) -> str:
         return str(arguments.get(clave) or "").strip()[:LIMITES[clave]]
@@ -503,7 +509,8 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
         # perdería creyendo los dos que estaba hecho.
         observation={"result": f"Propuse el gasto (${gasto['monto']}, {categoria}) y se lo muestro en "
                                f"una tarjeta para que la revise. TODAVÍA NO está guardado: decíselo en "
-                               f"una línea corta y pedile que confirme o corrija."},
+                               f"una línea corta y pedile que confirme o corrija."
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}"},
         artifact=Artifact(kind="gasto_propuesto", data=gasto))
 
 
@@ -652,16 +659,41 @@ def _run_consultar_cliente(arguments, ctx, idem_key, cliente_store_factory):
 # que es justamente lo que este producto existe para no pedirle.
 
 
-def _fecha_dictada(fecha_raw, now_iso_provider):
-    """La fecha que dictó, o hoy. Mismo criterio que `registrar_gasto`: el reloj es el INYECTADO,
-    nunca `datetime.now()` — así "hoy" y "ayer" se resuelven contra el mismo instante y el test no
-    queda verde por casualidad hasta que alguien lo corre cruzando la medianoche."""
+def _fecha_dictada(fecha_raw, now_iso_provider) -> tuple:
+    """`(fecha, entendida)`. La fecha que dictó, o hoy — **y si hubo que caer a hoy, lo dice.**
+
+    El reloj es el INYECTADO, nunca `datetime.now()`: así "hoy" y "ayer" se resuelven contra el mismo
+    instante, y el test no queda verde por casualidad hasta que alguien lo corre cruzando la medianoche.
+
+    🔴 **`entendida` existe porque el resolvedor entiende menos de lo que prometemos, y medí cuánto.**
+    Contra el vivo, el 2026-07-22: *«hace dos días»* —el caso textual del operador— **no se entiende**;
+    *«el lunes»* tampoco, **y la description de `registrar_gasto` lo ofrece literalmente**. Sin este
+    flag, el gasto de hace dos días quedaba con fecha de HOY y nadie se enteraba: no hay error, no hay
+    hueco, y el número sale prolijo. Es la familia de *coherente y falso*.
+
+    La regla del addendum: lo que no se entienda → **hoy + avisarlo**. Fallar el registro por una
+    fecha ambigua pierde el gasto por un detalle corregible; inventar la fecha en silencio es peor,
+    porque deja un dato preciso y falso.
+    """
     fecha = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
-    if fecha_raw:
-        rng = resolve_date_range(fecha_raw, now_iso=now_iso_provider(), tz=DEFAULT_TZ)
-        if rng:
-            fecha = datetime.fromisoformat(rng["since"]).date()
-    return fecha
+    if not fecha_raw:
+        return fecha, True                    # no dictó fecha: hoy es lo correcto, no una suposición
+    rng = resolve_date_range(fecha_raw, now_iso=now_iso_provider(), tz=DEFAULT_TZ)
+    if not rng:
+        return fecha, False
+    return datetime.fromisoformat(rng["since"]).date(), True
+
+
+def _aviso_de_fecha(entendida: bool, fecha_raw) -> str:
+    """Lo que el copiloto tiene que decir cuando no pudo ubicar la fecha dictada.
+
+    Nombra **lo que la persona dijo** en vez de un «revisá la fecha» genérico: sin la palabra propia
+    adelante, el aviso no tiene con qué chocar y se lee sin registrarlo — el mismo criterio que el
+    aviso del documento incoherente en `registrar_cliente`."""
+    if entendida:
+        return ""
+    return (f" OJO: no pude ubicar «{fecha_raw}» en el calendario, así que lo anoté con fecha de HOY. "
+            f"Decíselo con esas palabras y preguntale qué día fue.")
 
 
 # Lo que el backend llama `falta`, dicho como lo diría una persona. El LLM lee esto y lo repite; si
@@ -717,9 +749,10 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
                                        f"`registrar_ingreso` con confirmar_duplicado=true.",
                              "candidato": candidato})
 
+    fecha, fecha_ok = _fecha_dictada(arguments.get("fecha_raw"), now_iso_provider)
     ingreso = store.registrar_suelto(
         monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
-        fecha=_fecha_dictada(arguments.get("fecha_raw"), now_iso_provider),
+        fecha=fecha,
         cliente_nombre=cliente, concepto=str(arguments.get("concepto") or "").strip()[:500],
         # El `tool_call_id` como clave de idempotencia: la activity es at-least-once y un reintento
         # de Temporal con el mismo turno NO puede dejar dos ingresos. Lo garantiza el índice único
@@ -737,7 +770,8 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
         tool_call_id=idem_key, is_write=True, status="ok",
         observation={"result": f"Anotado y GUARDADO: {_plata(ingreso['monto'])} del "
                                f"{ingreso['fecha']}. Confirmáselo en una línea corta diciendo el "
-                               f"monto, para que pueda oír si entendí mal.{aviso}",
+                               f"monto, para que pueda oír si entendí mal.{aviso}"
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}",
                      "ingreso": ingreso},
         artifact=Artifact(kind="ingreso_guardado", data=ingreso))
 
@@ -840,17 +874,18 @@ def _run_marcar_factura_cobrada(arguments, ctx, idem_key, now_iso_provider, cobr
                                                       for c in candidatos[:6]]})
 
     monto = _monto_dictado(arguments.get("monto")) if arguments.get("monto") else None
+    fecha, fecha_ok = _fecha_dictada(arguments.get("fecha_raw"), now_iso_provider)
     cobro, resumen = store.registrar(
         factura["id"], monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
-        fecha=_fecha_dictada(arguments.get("fecha_raw"), now_iso_provider),
-        idem_key=idem_key)          # at-least-once: el retry NO puede cobrar dos veces la factura
+        fecha=fecha, idem_key=idem_key)          # at-least-once: el retry NO puede cobrar dos veces la factura
     queda = ("" if resumen["estado"] == COBRADA
              else f" Todavía le quedan {_plata(resumen['saldo'])} por pagar.")
     return ToolResult(
         tool_call_id=idem_key, is_write=True, status="ok",
         observation={"result": f"Registré {_plata(cobro['monto'])} de la factura {factura['nro']}"
                                f" ({factura['receptor_nombre'] or 'sin nombre'}).{queda} "
-                               f"Confirmáselo en una línea corta.",
+                               f"Confirmáselo en una línea corta."
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'))}",
                      "cobro": cobro, "resumen": resumen})
 
 
