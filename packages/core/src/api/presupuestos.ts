@@ -102,7 +102,32 @@ export interface Presupuesto {
    * → badge: `facturado`. Link a la factura: `facturaId`.
    */
   facturado: boolean;
+  /**
+   * ¿Se lo tomaron? — hito 3, forma declarada por backend antes de implementar.
+   *
+   * 🔴 **`null` significa «el backend todavía no manda este campo», NO «pendiente».** Es la
+   * distinción que sostiene la pantalla entera: el contrato separa **ganado** (`aprobado`),
+   * **perdido** (`desestimado`) y **no sé** (`pendiente`), y *«el que cuenta los no-marcados como
+   * rechazos miente sobre la tasa de conversión»*. Si acá cayera a `'pendiente'` por defecto, antes
+   * del deploy **todos** los presupuestos se verían como pendientes de verdad — un dato afirmado
+   * sobre uno inexistente, y encima indistinguible del bueno.
+   */
+  estado: EstadoPresupuesto | null;
+  /** Cuándo se marcó el estado actual. `null` si nunca se tocó o si el backend no lo manda. */
+  estadoActualizadoEn: string | null;
+  /**
+   * 🔴 **Es un MATIZ de `pendiente`, no una cuarta categoría.** Lo deriva el backend (pendiente + más
+   * de 30 días, parametrizable) y no existe como estado guardado. Pintarlo como si fuera un estado
+   * propio volvería a mezclar «no sé» con «me dijeron que no».
+   *
+   * `null` = el backend no lo manda todavía. `false` sobre un presupuesto de hace un año sería una
+   * afirmación falsa.
+   */
+  sinRespuesta: boolean | null;
 }
+
+/** Los tres valores ESCRIBIBLES. `sin_respuesta` no está acá a propósito: es derivado. */
+export type EstadoPresupuesto = 'pendiente' | 'aprobado' | 'desestimado';
 
 interface ReceptorCrudo {
   nombre?: string;
@@ -138,6 +163,9 @@ interface PresupuestoCrudo {
   reemplazado_por?: number | null;
   factura_id?: string | null;
   facturado?: boolean;
+  estado?: string | null;
+  estado_actualizado_en?: string | null;
+  sin_respuesta?: boolean | null;
 }
 
 function normalizarReceptor(r: ReceptorCrudo | null | undefined): ReceptorPresupuesto {
@@ -184,7 +212,20 @@ function normalizar(p: PresupuestoCrudo): Presupuesto {
     reemplazadoPor: p.reemplazado_por ?? null,
     facturaId: p.factura_id ?? null,
     facturado: p.facturado === true,
+    // ⛔ Sin `?? 'pendiente'` — ver el docstring del campo. Un valor que no reconocemos también cae
+    // en `null`: si el backend agrega un cuarto estado, mostrarlo como pendiente sería peor que no
+    // mostrar nada.
+    estado: estadoValido(p.estado),
+    estadoActualizadoEn: p.estado_actualizado_en ?? null,
+    // ⛔ Sin `=== true`: eso colapsaría "no vino" a `false`, y `false` sobre un presupuesto de hace
+    // un año es una afirmación, no una ausencia.
+    sinRespuesta: typeof p.sin_respuesta === 'boolean' ? p.sin_respuesta : null,
   };
+}
+
+/** Sólo los tres del contrato. Cualquier otra cosa —o nada— es `null` = "no sé". */
+function estadoValido(v: unknown): EstadoPresupuesto | null {
+  return v === 'pendiente' || v === 'aprobado' || v === 'desestimado' ? v : null;
 }
 
 /**
@@ -440,4 +481,67 @@ export async function facturarPresupuesto(id: number): Promise<ResultadoFacturar
     }
     throw err;
   }
+}
+
+/**
+ * El resultado de marcar un presupuesto como ganado o perdido.
+ *
+ * `transicion_invalida` NO es un fallo de la app: el backend **protege información**. Volver a
+ * `pendiente` borraría el hecho de que alguien ya respondió, y revivir un `desestimado` haría
+ * desaparecer que lo rechazaron — el contrato pide emitir uno nuevo. La pantalla explica, no reintenta.
+ */
+export type ResultadoCambiarEstado =
+  | { status: 'ok'; presupuesto: Presupuesto }
+  | { status: 'no_disponible' }
+  | { status: 'no_encontrado' }
+  | { status: 'transicion_invalida'; motivo: string };
+
+/**
+ * `PATCH /presupuestos/{id}/estado` — *«No me lo tomaron»* y su opuesto.
+ *
+ * 🔴 **`aprobado` casi nunca se manda desde acá.** El contrato decidió que **no tiene botón propio**:
+ * lo implican *Facturar* y *Cobrar*. Facturar un `pendiente` lo pasa a `aprobado` **solo**. Ofrecer
+ * además un botón "Aprobar" crearía dos caminos para el mismo hecho y el emprendedor tendría que
+ * acordarse de usar los dos.
+ *
+ * 🔴 **Y lo que NO hay que hacer con la respuesta: derivar la tasa de conversión contando pendientes
+ * como perdidos.** Son tres categorías —ganado, perdido y **no sé**— y `sinRespuesta` es un matiz de
+ * la tercera, no una cuarta. Mezclarlas quema la pantalla de métricas para siempre, porque el número
+ * se ve razonable.
+ */
+export async function cambiarEstadoPresupuesto(
+  id: number,
+  estado: EstadoPresupuesto,
+): Promise<ResultadoCambiarEstado> {
+  try {
+    const raw = await apiClient.patch<unknown>(`/presupuestos/${id}/estado`, { estado });
+    const crudo = presupuestoDeLaRespuesta(raw);
+    // El control de que esto es un presupuesto y no el HTML del catch-all del SPA ni un `{detail}`.
+    if (crudo == null) return { status: 'no_disponible' };
+    return { status: 'ok', presupuesto: normalizar(crudo) };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
+    if (err instanceof ApiError && err.status === 409) {
+      // El backend explica cuál de las dos transiciones prohibidas fue. Reescribirlo acá perdería
+      // el único dato que le sirve al emprendedor para saber qué hacer en su lugar.
+      return { status: 'transicion_invalida', motivo: err.detail ?? 'Ese cambio de estado no se puede hacer.' };
+    }
+    throw err;
+  }
+}
+
+/**
+ * El presupuesto de la respuesta del `PATCH`, venga **envuelto** o pelado.
+ *
+ * Tolera las dos formas por lo mismo que `comprobanteDeLaRespuesta` de AFIP: este sistema tiene las
+ * dos convenciones vivas —`POST /clientes` devuelve el recurso pelado, `GET /clientes/{id}` devuelve
+ * secciones— y acertar de memoria ya falló una vez, sin ruido: el `GET` daba 200, el id llegaba, y
+ * la pantalla simplemente no mostraba nada.
+ */
+function presupuestoDeLaRespuesta(raw: unknown): PresupuestoCrudo | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const envuelto = (raw as { presupuesto?: unknown }).presupuesto;
+  const candidato = (typeof envuelto === 'object' && envuelto !== null ? envuelto : raw) as PresupuestoCrudo;
+  return typeof candidato.id === 'number' ? candidato : null;
 }

@@ -75,6 +75,7 @@ export type {
 // `/presupuestos` — alta, listado, detalle y el atajo a facturar. Los montos viajan como STRING
 // (plata: el float pierde precisión) y el `total` lo calcula el backend. Ver `presupuestos.ts`.
 export {
+  cambiarEstadoPresupuesto,
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
@@ -82,6 +83,7 @@ export {
 } from './presupuestos';
 export type {
   CrearPresupuestoRequest,
+  EstadoPresupuesto,
   ItemPresupuesto,
   ListarPresupuestosParams,
   NuevoItemPresupuesto,
