@@ -24,6 +24,8 @@ from pydantic import BaseModel, Field
 
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import A_QUIEN, CAMPOS, FORMALIDAD, LARGO_RESPUESTA, LIMITES
+from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
+                         PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
 from presupuesto_store import ESTADOS, TransicionInvalida, factura_id_de_presupuesto
 
 _log = logging.getLogger(__name__)
@@ -261,15 +263,14 @@ def create_presupuestos_app(
         if presupuesto is None:
             raise HTTPException(status_code=404, detail="presupuesto no encontrado")
         if presupuesto.get("facturado"):
-            raise HTTPException(status_code=409, detail={
-                "mensaje": "el presupuesto ya fue facturado",
-                "factura_id": presupuesto.get("factura_id")})
+            raise conflicto(PRESUPUESTO_YA_FACTURADO, "el presupuesto ya fue facturado",
+                            factura_id=presupuesto.get("factura_id"))
         if abrir_borrador is None or signal_factura is None:
             raise HTTPException(status_code=503, detail="la facturación no está disponible")
 
         cuit = await _maybe_async(_cuit_del_tenant, cliente_id)
         if not cuit:
-            raise HTTPException(status_code=409, detail="falta el perfil fiscal (CUIT)")
+            raise conflicto(FALTA_CUIT, "falta el perfil fiscal (CUIT)")
 
         factura_id = factura_id_de_presupuesto(presupuesto_id)
 
@@ -281,9 +282,8 @@ def create_presupuestos_app(
             previo = await _maybe_async(consultar_factura, cliente_id, factura_id)
             if previo and (previo.get("resultado") or {}).get("cae"):
                 await asyncio.to_thread(store.marcar_factura, presupuesto_id, factura_id)
-                raise HTTPException(status_code=409, detail={
-                    "mensaje": "el presupuesto ya fue facturado",
-                    "factura_id": factura_id})
+                raise conflicto(PRESUPUESTO_YA_FACTURADO, "el presupuesto ya fue facturado",
+                                factura_id=factura_id)
 
         nuevo = await _maybe_async(abrir_borrador, cliente_id, cuit, factura_id)
         if nuevo:
@@ -317,9 +317,9 @@ def create_presupuestos_app(
         try:
             await asyncio.to_thread(store.cambiar_estado, presupuesto_id, "aprobado")
         except TransicionInvalida as exc:
-            raise HTTPException(status_code=409, detail={
-                "mensaje": f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",
-                "estado": exc.desde}) from None
+            raise conflicto(PRESUPUESTO_NO_FACTURABLE,
+                            f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",
+                            estado=exc.desde) from None
         return {"factura_id": factura_id, "borrador_nuevo": nuevo}
 
     @app.patch("/presupuestos/{presupuesto_id}/estado")
@@ -341,8 +341,7 @@ def create_presupuestos_app(
         try:
             presupuesto = await asyncio.to_thread(store.cambiar_estado, presupuesto_id, body.estado)
         except TransicionInvalida as exc:
-            raise HTTPException(status_code=409, detail={
-                "mensaje": str(exc), "estado": exc.desde}) from None
+            raise conflicto(TRANSICION_INVALIDA, str(exc), estado=exc.desde) from None
         if presupuesto is None:
             raise HTTPException(status_code=404, detail="presupuesto no encontrado")
         return {"presupuesto": presupuesto}
@@ -373,9 +372,8 @@ def create_presupuestos_app(
         except ConceptoDuplicado as exc:
             # El 409 trae la ficha del que ya está — mismo patrón que Clientes: así la app puede
             # ofrecer abrirlo en vez de dejar al emprendedor adivinando con qué chocó.
-            raise HTTPException(status_code=409, detail={
-                "mensaje": "ya tenés un concepto con ese nombre",
-                "concepto": exc.existente}) from None
+            raise conflicto(CONCEPTO_DUPLICADO, "ya tenés un concepto con ese nombre",
+                            concepto=exc.existente) from None
         return {"concepto": concepto}
 
     @app.patch("/conceptos/{concepto_id}")
@@ -393,9 +391,8 @@ def create_presupuestos_app(
         except ConceptoInvalido as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from None
         except ConceptoDuplicado as exc:
-            raise HTTPException(status_code=409, detail={
-                "mensaje": "ya tenés un concepto con ese nombre",
-                "concepto": exc.existente}) from None
+            raise conflicto(CONCEPTO_DUPLICADO, "ya tenés un concepto con ese nombre",
+                            concepto=exc.existente) from None
         if concepto is None:
             raise HTTPException(status_code=404, detail="concepto no encontrado")
         return {"concepto": concepto}
