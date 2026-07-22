@@ -8,6 +8,7 @@ import {
   type ResumenGastos,
 } from '@copiloto/core';
 
+import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto } from './FormularioGasto';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
@@ -51,6 +52,7 @@ export function PantallaGastos() {
   const [resumen, setResumen] = useState<ResumenGastos | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [refrescando, setRefrescando] = useState(false);
+  const [detalle, setDetalle] = useState<Gasto | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -167,7 +169,7 @@ export function PantallaGastos() {
               )}
 
               {gastos.map((g) => (
-                <TarjetaGasto key={g.id} gasto={g} />
+                <TarjetaGasto key={g.id} gasto={g} onPress={setDetalle} />
               ))}
 
               {/* `total` es el conteo del TENANT, no el de la página: con 50 cards en pantalla y 137
@@ -181,6 +183,11 @@ export function PantallaGastos() {
           )}
         </ScrollFormulario>
       )}
+
+      {/* 🔴 Fuera del scroll, como el detalle de presupuestos y la ficha de clientes: un overlay
+          montado DENTRO del área scrolleable se posiciona contra el contenido del scroll y queda
+          fuera de cuadro. Ver el docstring de `DetalleGasto`. */}
+      {detalle != null && <DetalleGasto gasto={detalle} onCerrar={() => setDetalle(null)} />}
     </MarcoGlass>
   );
 }

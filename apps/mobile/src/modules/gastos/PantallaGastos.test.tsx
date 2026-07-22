@@ -13,12 +13,14 @@ jest.mock('@copiloto/core', () => {
     listarGastos: jest.fn(),
     obtenerResumenGastos: jest.fn(),
     crearGasto: jest.fn(),
+    obtenerGasto: jest.fn(),
   };
 });
 
 import {
   crearGasto,
   listarGastos,
+  obtenerGasto,
   obtenerResumenGastos,
   type Gasto,
   type ResumenGastos,
@@ -30,6 +32,7 @@ import { PantallaGastos } from './PantallaGastos';
 const mockListar = listarGastos as jest.MockedFunction<typeof listarGastos>;
 const mockResumen = obtenerResumenGastos as jest.MockedFunction<typeof obtenerResumenGastos>;
 const mockCrear = crearGasto as jest.MockedFunction<typeof crearGasto>;
+const mockDetalle = obtenerGasto as jest.MockedFunction<typeof obtenerGasto>;
 
 function gasto(over: Partial<Gasto> = {}): Gasto {
   return {
@@ -78,6 +81,35 @@ describe('PantallaGastos', () => {
     jest.clearAllMocks();
     mockListar.mockResolvedValue({ status: 'ok', gastos: [gasto()], total: 1 });
     mockResumen.mockResolvedValue({ status: 'ok', resumen: resumen() });
+    mockDetalle.mockResolvedValue({ status: 'ok', gasto: gasto() });
+  });
+
+  describe('detalle', () => {
+    it('tocar una card lo abre y lo RE-PIDE por id', async () => {
+      // El listado puede estar viejo —el copiloto pudo registrar algo por voz mientras la pantalla
+      // estaba abierta— y el detalle es justo donde uno mira el número con atención.
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('gasto-2')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('gasto-2'));
+      });
+
+      await waitFor(() => expect(mockDetalle).toHaveBeenCalledWith(2));
+      expect(screen.getByTestId('detalle-gasto-monto')).toHaveTextContent('$15.000,50');
+    });
+
+    it('un 404 dice "no encontramos", no "no disponible"', async () => {
+      mockDetalle.mockResolvedValue({ status: 'no_encontrado' });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('gasto-2')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('gasto-2'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('detalle-gasto-no-encontrado')).toBeTruthy());
+    });
   });
 
   it('pinta el resumen del mes y el listado', async () => {
