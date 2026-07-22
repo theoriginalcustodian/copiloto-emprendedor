@@ -349,3 +349,61 @@ def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_factory, tenants)
 
     # y en cuanto hay desenlace deja de contar como "sin respuesta", aunque siga siendo viejo
     assert store.cambiar_estado(p["id"], DESESTIMADO)["sin_respuesta"] is False
+
+
+# ── nacio_completo: el insumo de la oferta del modo automático ────────────────────────────────────
+
+@necesita_pg
+def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_factory, tenants):
+    """🔴 La razón de existir de la columna, medida antes de agregarla.
+
+    `falta` se calcula del estado ACTUAL: un ingreso que entró sin cliente ni medio y se completó
+    después queda con `falta = []`, **idéntico a uno que nació completo**. Contando con `falta`, quien
+    dicta a medias y corrige contaría como buen dictador — y es exactamente a quien la oferta del modo
+    automático NO le tiene que llegar, porque en automático no hay card que corrija.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    store.registrar_suelto(monto=1000, cliente_nombre="Panadería", medio="efectivo",
+                           concepto="torta", idem_key="nc-a")
+    b = store.registrar_suelto(monto=2000, idem_key="nc-b")
+    completado = store.completar(b["id"], {"cliente_nombre": "Panadería", "medio": "efectivo",
+                                           "concepto": "torta"})
+
+    assert completado["falta"] == [], "el control: `falta` los vuelve indistinguibles"
+
+    c = store.completitud_dictada()
+    assert c["completos"] == 1 and c["incompletos"] == 1, \
+        "…y `nacio_completo` sí los distingue, que es todo el punto"
+    assert c["porcentaje"] == 50
+
+
+@necesita_pg
+def test_completar_NO_reescribe_como_nacio(conn_factory, tenants):
+    """Es un hecho del momento, no un estado. Si `completar` lo actualizara, la columna volvería a ser
+    `falta` con otro nombre y el problema entero regresaría."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    b = store.registrar_suelto(monto=2000, idem_key="nc-c")
+    store.completar(b["id"], {"cliente_nombre": "X", "medio": "efectivo", "concepto": "y"})
+    assert store.completitud_dictada()["incompletos"] == 1
+
+
+@necesita_pg
+def test_sin_ingresos_medidos_el_porcentaje_es_None_y_no_cero(conn_factory, tenants):
+    """`0%` diría «dicta mal»; lo cierto es «todavía no sé». De acá sale una oferta, así que la
+    diferencia no es cosmética."""
+    a, _ = tenants
+    c = CobroStore(conn_factory, a).completitud_dictada()
+    assert c["porcentaje"] is None
+    assert c["total_medido"] == 0
+
+
+@necesita_pg
+def test_los_cobros_de_FACTURA_no_entran_en_la_cuenta(conn_factory, tenants):
+    """La oferta mide cómo DICTA el emprendedor. Un cobro que salió de tocar «Ya me la pagaron» no
+    dice nada de eso, y contarlo como completo inflaría el porcentaje con algo que no es dictado."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    store.registrar(_comprobante(conn_factory, a, "500.00"), idem_key="nc-fact")
+    assert store.completitud_dictada()["total_medido"] == 0

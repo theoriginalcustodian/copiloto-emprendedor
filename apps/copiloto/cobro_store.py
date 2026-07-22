@@ -244,14 +244,22 @@ class CobroStore:
                 if ya_estaba is not None:
                     return self._fila(ya_estaba)
             try:
+                # 🔴 `nacio_completo` se fija ACÁ y nunca se actualiza: es un hecho del momento del
+                # alta, no un estado. Derivarlo después de `falta` sería imposible —un ingreso
+                # completado a mano queda con `falta = []`, idéntico a uno que nació completo— y de
+                # esta distinción depende a quién se le ofrece el modo automático.
+                nacio_completo = bool((cliente_nombre or "").strip()
+                                      and (medio or "").strip()
+                                      and (concepto or "").strip())
                 cur.execute(
                     f"INSERT INTO {_TABLE} (cliente_id, monto, medio, fecha, idem_key, origen, "
-                    f"cliente_ref, presupuesto_ref, cliente_nombre, concepto) "
-                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s) "
+                    f"cliente_ref, presupuesto_ref, cliente_nombre, concepto, nacio_completo) "
+                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s) "
                     f"RETURNING {', '.join(_COLS)}",
                     (self._cliente_id, importe, (medio or "").strip()[:40], _fecha(fecha),
                      idem_key or None, cliente_ref, presupuesto_ref,
-                     (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500]))
+                     (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500],
+                     nacio_completo))
             except Exception as exc:
                 if getattr(exc, "pgcode", None) != "23505" or not idem_key:
                     raise
@@ -262,6 +270,37 @@ class CobroStore:
                                (self._cliente_id, idem_key))
                     return self._fila(c2.fetchone())
             return self._fila(cur.fetchone())
+
+    def completitud_dictada(self) -> dict:
+        """Cuántos ingresos dictados **nacieron completos** y cuántos hubo que completar a mano.
+
+        Es el insumo de la oferta del modo automático: sólo se le propone a quien ya demostró que
+        dicta completo, porque en automático **no hay card que corrija** y lo dictado a medias se
+        guarda a medias sin que nadie lo vea.
+
+        ⚠️ **Los `NULL` quedan afuera de la cuenta, no cuentan como completos.** Son las filas
+        anteriores a la columna: no sabemos cómo nacieron, y meterlas del lado bueno inflaría el
+        porcentaje justo en los tenants con más historia — que son los que primero cruzarían el
+        umbral. Un porcentaje sobre 3 de 3 medidos es honesto; sobre 3 medidos y 40 supuestos, no.
+
+        `total_medido` viaja para que quien decida pueda ver **sobre cuántos** se calculó: 100% de 2
+        no es lo mismo que 100% de 30, y sin ese número el porcentaje solo no permite distinguirlos.
+        """
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT count(*) FILTER (WHERE nacio_completo IS TRUE),
+                       count(*) FILTER (WHERE nacio_completo IS FALSE),
+                       count(*) FILTER (WHERE nacio_completo IS NULL)
+                  FROM {_TABLE}
+                 WHERE cliente_id = %s AND origen = %s
+            """, (self._cliente_id, ORIGEN_MANUAL))
+            completos, incompletos, sin_dato = cur.fetchone()
+        medido = completos + incompletos
+        return {"completos": completos, "incompletos": incompletos,
+                "sin_dato": sin_dato, "total_medido": medido,
+                # `None` y no `0` cuando no hay nada medido: 0% diría «dicta mal», y lo cierto es
+                # «todavía no sé». La diferencia importa porque de acá sale una oferta.
+                "porcentaje": round(100 * completos / medido) if medido else None}
 
     def listar_ingresos(self, *, limite: int = 100) -> dict:
         """**Todos** los ingresos: los de facturas cobradas, los de MercadoPago y los dictados.

@@ -264,6 +264,31 @@ def _ensure_modo_ceremonia(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
 
 
+def _ensure_nacio_completo(conn) -> None:
+    """`copiloto_cobros.nacio_completo boolean` — ¿el ingreso entró completo **de una**?
+
+    🔴 **No se puede derivar de `falta`, y lo verifiqué antes de agregar la columna.** `falta` se
+    calcula del estado ACTUAL: un ingreso que entró sin cliente ni medio y se completó después queda
+    con `falta = []`, **idéntico a uno que nació completo**. Medido contra el store real:
+
+        A) nació completo       → falta = []
+        B) nació incompleto     → falta = ['cliente','medio','concepto']
+        B) tras completarlo     → falta = []        ← indistinguible de A
+
+    Importa porque de esto depende **a quién se le ofrece el modo automático**. Contando con `falta`,
+    quien dicta a medias y corrige contaría como buen dictador — y es exactamente a quien la oferta
+    NO le tiene que llegar, porque en automático no hay card que corrija nada.
+
+    ⚠️ **Nullable y SIN default a propósito.** Las filas que ya existen no saben cómo nacieron, y
+    ponerles `true` sería inventarles una historia favorable; `false` una desfavorable. `NULL` es
+    «no sé», y el contador las excluye — un porcentaje sobre lo que se midió de verdad.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_cobros "
+                f"ADD COLUMN IF NOT EXISTS nacio_completo boolean;")
+    print(f"OK {SCHEMA}.copiloto_cobros.nacio_completo (idempotente, nullable = 'no sé')", flush=True)
+
+
 def _ensure_imputacion_de_gastos(conn) -> None:
     """El addendum del hito 3: **imputar gastos al trabajo**, y el cobro que se registra a mano.
 
@@ -354,6 +379,7 @@ def provision(conn) -> dict:
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
+    _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
