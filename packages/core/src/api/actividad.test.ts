@@ -113,4 +113,24 @@ describe('actividad.ts', () => {
 
     expect(peticiones[0]!.path).toBe('/actividad?limit=20');
   });
+
+  it('un 200 con el HTML del SPA es no_disponible, no una excepción de parseo', async () => {
+    // 🔴 Medido en prod el 2026-07-22: `GET /actividad` -> `200 <!doctype html>`, porque la ruta no
+    // está desplegada y el catch-all `@app.get("/{full_path}")` sirve el SPA. Antes de esta guarda,
+    // `res.json()` explotaba con SyntaxError y la pantalla mostraba un ERROR donde debía decir
+    // "todavía no está disponible" — pese a que el docstring del módulo afirmaba lo contrario.
+    responder = () => ({
+      ok: true,
+      status: 200,
+      json: async () => { throw new SyntaxError('Unexpected token < in JSON at position 0'); },
+    });
+
+    await expect(listarActividad()).resolves.toEqual({ status: 'no_disponible' });
+  });
+
+  it('un 200 con un JSON que NO trae `items` tampoco se pinta como actividad', async () => {
+    responder = () => respuesta(200, { detail: 'otra cosa' });
+
+    await expect(listarActividad()).resolves.toEqual({ status: 'no_disponible' });
+  });
 });

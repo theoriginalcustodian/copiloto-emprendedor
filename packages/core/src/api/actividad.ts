@@ -104,6 +104,18 @@ export async function listarActividad(params: ListarActividadParams = {}): Promi
 
   try {
     const body = await apiClient.get<ActividadResponseRaw>(`/actividad?${query.toString()}`);
+    // 🔴 **La ruta no desplegada NO da 404: da `200` con el HTML del SPA.** El front-door monta un
+    // catch-all `@app.get("/{full_path}")` (`apps/copiloto/web.py:141`), así que un GET a una ruta
+    // inexistente devuelve la página. Medido el 2026-07-22: `GET /actividad` → `200 <!doctype html>`
+    // en producción, porque el stub 501 vive en una rama sin mergear.
+    //
+    // Sin esta guarda, `res.json()` explota con `SyntaxError` —comprobado con una sonda, no deducido—
+    // y la pantalla muestra un ERROR donde debería decir "todavía no está disponible". El status por
+    // sí solo diría "desplegado y todo bien" sobre una ruta que no existe: por eso se valida la
+    // FORMA, no el código.
+    if (typeof body !== 'object' || body === null || !('items' in body)) {
+      return { status: 'no_disponible' };
+    }
     return { status: 'ok', items: body.items, cursorSiguiente: body.cursor_siguiente, truncado: body.truncado };
   } catch (err) {
     // 404 = la ruta ni existe todavía (deploy pendiente); 501 = el backend la registró pero la
@@ -113,6 +125,10 @@ export async function listarActividad(params: ListarActividadParams = {}): Promi
     if (err instanceof ApiError && (err.status === 404 || err.status === 501)) {
       return { status: 'no_disponible' };
     }
+    // Un `200` con HTML explota en `res.json()`, no en `mapearError`: llega acá como error de parseo
+    // y NO como `ApiError`. Es el mismo caso de arriba visto desde el otro lado — la guarda de forma
+    // lo agarra cuando el body parsea a algo inesperado, esto cuando ni siquiera parsea.
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
     throw err;
   }
 }
