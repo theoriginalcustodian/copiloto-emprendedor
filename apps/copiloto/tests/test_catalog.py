@@ -6,7 +6,9 @@ from pathlib import Path
 from catalog import build_catalog
 
 _KNOWN_TOOLKITS = frozenset({
-    "gmail", "googlecalendar", "googledrive", "googledocs", "googlesheets", "hubspot", "instagram",
+    # Poda del hito 2: los dos servicios de CRM y redes se fueron enteros. googledrive QUEDA
+    # porque lo usa `archivar_factura_en_drive` (el PDF de cada factura), no el agente.
+    "gmail", "googlecalendar", "googledrive", "googledocs", "googlesheets",
 })
 
 
@@ -39,9 +41,9 @@ def test_mercadopago_connected_cruza_mp_connected():
 
 
 def test_composio_connected_cruza_por_slug_no_por_posicion():
-    services = build_catalog(valid_toolkits={"gmail", "hubspot"}, mp_connected=False,
-                             composio_connected=["hubspot"])
-    assert _by_key(services, "hubspot")["connected"] is True
+    services = build_catalog(valid_toolkits={"gmail", "googledocs"}, mp_connected=False,
+                             composio_connected=["googledocs"])
+    assert _by_key(services, "googledocs")["connected"] is True
     assert _by_key(services, "gmail")["connected"] is False
 
 
@@ -71,21 +73,17 @@ def test_work_label_y_display_name_es_ar_conocidos():
         "gmail": "Mail",
         "googlecalendar": "Agenda",
         "mercadopago": "Cobrar",
-        "hubspot": "Clientes",
         "googledrive": "Archivos",
         "googledocs": "Archivos",
         "googlesheets": "Archivos",
-        "instagram": "Instagram",
     }
     expected_display_name = {
         "gmail": "Gmail",
         "googlecalendar": "Google Calendar",
         "mercadopago": "Mercado Pago",
-        "hubspot": "HubSpot",
         "googledrive": "Google Drive",
         "googledocs": "Google Docs",
         "googlesheets": "Google Sheets",
-        "instagram": "Instagram",
     }
     for key, label in expected_work_label.items():
         assert _by_key(services, key)["work_label"] == label, key

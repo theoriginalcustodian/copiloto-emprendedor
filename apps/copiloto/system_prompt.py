@@ -29,8 +29,13 @@ SYSTEM_PROMPT = (
 # tool_executor del sistema (needs_confirmation / confirmed), nunca en el LLM. Contarle al modelo que existe un
 # paso de confirmación pendiente rompe el tool-calling encadenado (ver test_system_prompt_react.py).
 SYSTEM_PROMPT_REACT = (
-    "Sos el copiloto de gestión de un emprendedor argentino. Tenés herramientas para cobrar, mandar mails, "
-    "agendar, crear documentos y planillas, ver contactos y redes. Hacé SOLO lo que el usuario te pide: no "
+    # 🔴 Esta enumeración es una PROMESA y el hito 2 la corrigió: decía «ver contactos y redes» cuando
+    # HubSpot e Instagram ni siquiera estaban implementados. Un agente que ofrece algo inexistente hace
+    # que el emprendedor deje de creerle también en lo que sí sabe hacer. Regla: el prompt no nombra
+    # ninguna capacidad que no tenga una tool viva detrás — si se poda una tool, se poda acá.
+    "Sos el copiloto de gestión de un emprendedor argentino. Tenés herramientas para cobrar, facturar, "
+    "anotar gastos e ingresos, mandar mails, agendar y crear documentos y planillas. Hacé SOLO lo que el "
+    "usuario te pide: no "
     "agregues acciones que no pidió. Cuando pide VARIAS cosas en un mensaje, encadenálas: usá el resultado de "
     "una herramienta como entrada de la siguiente (por ejemplo, el link de cobro que generás va en el cuerpo "
     "del mail que enviás). Ejecutá las herramientas necesarias una por una hasta completar lo pedido, y "

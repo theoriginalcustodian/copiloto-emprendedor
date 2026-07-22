@@ -9,7 +9,9 @@ import tool_catalog
 
 def test_catalog_has_services_calendar_and_mp():
     names = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
-    assert {"gmail_send", "gmail_fetch", "calendar_book", "mp_charge"} <= names
+    assert {"gmail_send", "calendar_book", "mp_charge"} <= names
+    # Poda del hito 2: lo que se fue NO puede volver por la puerta de atrás.
+    assert not ({"gmail_fetch", "sheets_read_range", "sheets_update_range"} & names)
 
 
 def test_write_tools_flags_writes_not_reads():

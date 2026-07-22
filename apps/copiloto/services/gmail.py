@@ -62,7 +62,10 @@ def build(op: str, entities: dict, *, now_iso: str | None = None):
 
 
 # ── contrato ReAct (motor tool-calling) — ver services/base.py ──────────────────────────────────
-TOOLS = {"gmail_send": "send", "gmail_fetch": "fetch"}
+# Poda del hito 2: `gmail_fetch` se fue — leer correos se quitó por la auditoría de Google.
+# El `build()` de `fetch` queda abajo: el módulo no lo expone, y sacar el slug de la policy
+# es una decisión aparte (cambia lo que `/composio/connect` valida).
+TOOLS = {"gmail_send": "send"}
 
 TOOL_SCHEMAS = [
     {"type": "function", "function": {
@@ -73,12 +76,6 @@ TOOL_SCHEMAS = [
             "subject": {"type": "string", "description": "asunto"},
             "body": {"type": "string", "description": "cuerpo del mail (podés incluir un link de pago)"}},
             "required": ["to", "body"]}}},
-    {"type": "function", "function": {
-        "name": "gmail_fetch",
-        "description": "Busca/lee mails recientes por query de Gmail (ej 'is:unread', 'from:juan').",
-        "parameters": {"type": "object", "properties": {
-            "query": {"type": "string", "description": "búsqueda estilo Gmail"}},
-            "required": []}}},
 ]
 
 WRITE_OPS = frozenset({"send"})
