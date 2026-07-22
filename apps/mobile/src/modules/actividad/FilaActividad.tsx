@@ -55,6 +55,16 @@ export function FilaActividad({ item, onPress, testID }: FilaActividadProps) {
     <Row
       testID={testID ?? `actividad-${item.id}`}
       onPress={onPress != null ? () => onPress(item) : undefined}
+      /**
+       * 🔴 **El nombre de la fila lo arma el BACKEND, igual que su texto visible.** `titulo` y
+       * `detalle` vienen compuestos de allá a propósito (ver el docstring del módulo); reusarlos acá
+       * mantiene esa regla — si la app inventara un nombre distinto del que se ve, el lector de
+       * pantalla y la pantalla dirían cosas distintas sobre la misma operación.
+       *
+       * `detalle` se suma sólo si existe: un separador colgando (« · ») al final de un nombre es
+       * ruido que se lee en voz alta.
+       */
+      accessibilityLabel={item.detalle !== '' ? `${item.titulo} · ${item.detalle}` : item.titulo}
       style={styles.fila}
     >
       <GlassIcon name={icono} size={34} />

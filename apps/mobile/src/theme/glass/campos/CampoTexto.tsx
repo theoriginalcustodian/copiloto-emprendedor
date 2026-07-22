@@ -74,6 +74,19 @@ export function CampoTexto({
       <EnvolturaCampo error={hayError} testID={`${testID}-vidrio`} style={styles.vidrio}>
         <TextInput
           testID={`${testID}-input`}
+          /**
+           * 🔴 **La etiqueta visible NO alcanza: es un `<Text>` HERMANO, no el nombre del input.**
+           * Para el lector de pantalla y para cualquier herramienta que recorra la jerarquía, este
+           * campo se llama «» — y un formulario donde todos los campos se llaman igual (o sea, no se
+           * llaman) es indistinguible de uno donde el foco cayó en el campo equivocado.
+           *
+           * Se declara acá, en el primitivo, y no en cada pantalla: así vale para los ~40 campos de
+           * la app de una vez, y un campo nuevo nace nombrado en lugar de depender de que alguien se
+           * acuerde. `error` NO se concatena: el estado de error tiene su propio `<Text>` visible, y
+           * meterlo en el nombre haría que el campo cambie de nombre cuando falla — justo cuando
+           * quien lo busca necesita que se siga llamando igual.
+           */
+          accessibilityLabel={etiqueta}
           style={[
             styles.input,
             { color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.ui },
