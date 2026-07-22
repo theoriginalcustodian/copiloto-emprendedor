@@ -142,5 +142,21 @@
     "workflow_id text",
     "cbte_asoc_nro bigint",
     "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_cobros": [
+    "comprobante_id bigint NOT NULL",
+    "monto numeric NOT NULL",
+    "medio text NOT NULL DEFAULT ''",
+    "fecha date NOT NULL",
+    "idem_key text",
+    "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_conceptos": [
+    "nombre text NOT NULL",
+    "nombre_normalizado text NOT NULL DEFAULT ''",
+    "precio_referencia numeric",
+    "activo boolean NOT NULL DEFAULT true",
+    "created_at timestamptz DEFAULT now()",
+    "updated_at timestamptz DEFAULT now()"
   ]
 }

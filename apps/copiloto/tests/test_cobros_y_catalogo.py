@@ -1,0 +1,351 @@
+"""Hito 3 — COBROS, ESTADO DE PRESUPUESTO y CATÁLOGO, contra Postgres real.
+
+**Contra la base y no contra fakes, a propósito.** Lo que este hito promete —idempotencia por índice
+único, aislamiento por tenant, que el precio de referencia no toque presupuestos emitidos— **vive en
+el motor**. Un fake que devuelve lo que le pedimos confirmaría las tres cosas sin que ninguna sea
+cierta: es exactamente el instrumento que da verde porque no puede dar rojo.
+
+Lo puro (`estado_de_cobro`, las transiciones) sí se prueba sin base: son funciones, y ahí el fake no
+tiene nada que falsear.
+"""
+from __future__ import annotations
+
+import os
+import uuid
+from decimal import Decimal
+
+import pytest
+
+from cobro_store import COBRADA, IMPAGA, PARCIAL, CobroInvalido, CobroStore, estado_de_cobro
+from concepto_store import ConceptoDuplicado, ConceptoInvalido, ConceptoStore
+from presupuesto_store import (APROBADO, DESESTIMADO, PENDIENTE, TRANSICIONES, PresupuestoStore,
+                               TransicionInvalida)
+
+necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
+                                 reason="requiere Postgres del VPS (DATABASE_URL)")
+
+
+# ── lo puro: sin base, sin fakes que puedan mentir ───────────────────────────────────────────────
+
+@pytest.mark.parametrize("total, cobrado, esperado", [
+    ("1000.00", "0",       IMPAGA),
+    ("1000.00", "400.00",  PARCIAL),
+    ("1000.00", "1000.00", COBRADA),
+    ("1000.00", "1200.00", COBRADA),   # pagó de más (propina, redondeo): sigue cobrada, no "parcial"
+    ("0.00",    "0",       IMPAGA),
+])
+def test_estado_de_cobro(total, cobrado, esperado):
+    assert estado_de_cobro(total, cobrado) == esperado
+
+
+def test_de_desestimado_no_se_vuelve_y_a_pendiente_no_se_llega_nunca():
+    """Las dos transiciones prohibidas del contrato §2.2, afirmadas donde se leen.
+
+    `desestimado → aprobado` revivría un precio y un alcance viejos con un "sí" nuevo encima.
+    `→ pendiente` **borra información** que alguien declaró: volver a "no sé" no es corregir.
+    """
+    assert APROBADO not in TRANSICIONES[DESESTIMADO]
+    assert all(PENDIENTE not in destinos for destinos in TRANSICIONES.values())
+    assert set(TRANSICIONES[PENDIENTE]) == {APROBADO, DESESTIMADO}
+
+
+# ── contra la base ───────────────────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def conn_factory():
+    import psycopg2
+
+    def factory():
+        c = psycopg2.connect(os.environ["DATABASE_URL"])
+        c.autocommit = True
+        return c
+    return factory
+
+
+@pytest.fixture
+def tenants(conn_factory):
+    """Dos tenants sintéticos —A y B— y el barrido de todo lo que esta prueba escriba.
+
+    Son DOS porque el test adversarial necesita un ajeno real. Con uno solo, "no ve lo del otro" no
+    se puede afirmar: no habría otro.
+    """
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    yield a, b
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        for t in ("copiloto_cobros", "copiloto_conceptos", "copiloto_presupuesto_items",
+                  "copiloto_presupuestos", "afip_comprobantes"):
+            cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
+    conn.close()
+
+
+def _comprobante(conn_factory, cliente_id: str, total: str, *, nro: int = 1, estado="emitida"):
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO uc_factory.afip_comprobantes
+                       (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
+                        estado, receptor_nombre)
+                       VALUES (%s, '30712345678', 6, 1, %s, 'CAE-TEST', CURRENT_DATE, %s, %s, 'Panadería')
+                       RETURNING id""", (cliente_id, nro, total, estado))
+        return cur.fetchone()[0]
+
+
+@necesita_pg
+def test_marcar_cobrada_DOS_VECES_deja_UN_cobro(conn_factory, tenants):
+    """El DoD del contrato, medido **sobre el efecto en la base** — no sobre lo que responde el store.
+
+    Un endpoint puede contestar 201 dos veces y haber creado dos filas: la respuesta no es la prueba.
+    """
+    a, _ = tenants
+    comp = _comprobante(conn_factory, a, "1000.00")
+    store = CobroStore(conn_factory, a)
+    clave = str(uuid.uuid4())
+
+    primero, r1 = store.registrar(comp, monto="1000.00", idem_key=clave)
+    segundo, r2 = store.registrar(comp, monto="1000.00", idem_key=clave)
+
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM uc_factory.copiloto_cobros "
+                    "WHERE cliente_id=%s AND comprobante_id=%s", (a, comp))
+        filas = cur.fetchone()[0]
+    assert filas == 1, "dos requests con la misma idem_key dejaron dos cobros"
+    assert primero["id"] == segundo["id"]
+    assert r2["estado_cobro"] == COBRADA and r2["saldo"] == "0.00"
+
+
+@necesita_pg
+def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_factory, tenants):
+    """🔴 La carrera de verdad — el caso que el test de arriba **no** prueba.
+
+    Con las dos llamadas en secuencia, el atajo por `idem_key` alcanza y el índice único nunca se
+    ejercita: el test pasaría igual con el índice borrado. O sea que "es idempotente" quedaría
+    afirmado sin evidencia justo para el escenario donde el `if` falla — dos toques simultáneos, dos
+    dispositivos — que es el que costó dos CAE en facturación.
+
+    Acá las dos entran a la vez desde hilos distintos con conexiones distintas: ninguna ve a la otra
+    en su `SELECT`, y lo único que puede impedir la segunda fila es el motor.
+    """
+    import threading
+
+    a, _ = tenants
+    comp = _comprobante(conn_factory, a, "1000.00", nro=5)
+    clave = str(uuid.uuid4())
+    listos, resultados = threading.Barrier(2), []
+
+    def cobrar():
+        listos.wait()                        # las dos arrancan juntas, no una después de la otra
+        try:
+            resultados.append(CobroStore(conn_factory, a).registrar(
+                comp, monto="1000.00", idem_key=clave))
+        except Exception as exc:             # noqa: BLE001 — se inspecciona abajo
+            resultados.append(exc)
+
+    hilos = [threading.Thread(target=cobrar) for _ in range(2)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM uc_factory.copiloto_cobros "
+                    "WHERE cliente_id=%s AND comprobante_id=%s", (a, comp))
+        filas = cur.fetchone()[0]
+    assert filas == 1, f"la carrera dejó {filas} cobros: el índice único no está cerrando la ventana"
+    assert not any(isinstance(r, Exception) for r in resultados), \
+        f"una de las dos requests explotó en vez de devolver el cobro existente: {resultados}"
+
+
+@necesita_pg
+def test_CONTROL_sin_idem_key_los_dos_cobros_entran_y_es_correcto(conn_factory, tenants):
+    """El control que le da sentido al test de arriba.
+
+    Si sin clave también dedupara, el test anterior pasaría aunque la idempotencia no existiera —
+    bastaría con que el store rechazara todo segundo cobro. Y además sería un bug: **dos cobros
+    parciales del mismo monto son un caso real**.
+    """
+    a, _ = tenants
+    comp = _comprobante(conn_factory, a, "1000.00", nro=2)
+    store = CobroStore(conn_factory, a)
+
+    store.registrar(comp, monto="400.00")
+    _, resumen = store.registrar(comp, monto="400.00")
+
+    assert resumen["cobrado"] == "800.00"
+    assert resumen["estado_cobro"] == PARCIAL
+
+
+@necesita_pg
+def test_no_se_puede_cobrar_mas_que_el_saldo(conn_factory, tenants):
+    a, _ = tenants
+    comp = _comprobante(conn_factory, a, "500.00", nro=3)
+    store = CobroStore(conn_factory, a)
+    store.registrar(comp, monto="300.00")
+    with pytest.raises(CobroInvalido):
+        store.registrar(comp, monto="300.00")
+
+
+@necesita_pg
+def test_impagos_trae_el_saldo_y_el_total__y_la_anulada_queda_afuera(conn_factory, tenants):
+    """Una factura anulada NO es una deuda. Si entrara, «me deben» mostraría plata que nadie va a
+    pagar nunca — y ese número mal una vez quema la pantalla para siempre."""
+    a, _ = tenants
+    viva = _comprobante(conn_factory, a, "1000.00", nro=10)
+    _comprobante(conn_factory, a, "9999.00", nro=11, estado="anulada")
+    CobroStore(conn_factory, a).registrar(viva, monto="250.00")
+
+    salida = CobroStore(conn_factory, a).impagos()
+
+    assert [c["id"] for c in salida["comprobantes"]] == [viva]
+    assert salida["total_adeudado"] == "750.00"
+
+
+@necesita_pg
+def test_ADVERSARIAL_A_no_puede_cobrar_ni_ver_lo_de_B(conn_factory, tenants):
+    """Regla dura del repo: un control de acceso **sin test adversarial es un control no verificado**.
+
+    El happy-path ("cada uno ve lo suyo") pasa igual si el aislamiento no existe. Sólo el caso hostil
+    —A pidiendo explícitamente el recurso de B— distingue un guard real de uno ausente.
+    """
+    a, b = tenants
+    de_b = _comprobante(conn_factory, b, "1000.00", nro=20)
+    CobroStore(conn_factory, b).registrar(de_b, monto="1000.00")
+    ConceptoStore(conn_factory, b).crear("Pintura de living", "50000")
+
+    de_a = CobroStore(conn_factory, a)
+    cobro, resumen = de_a.registrar(de_b, monto="100.00")
+    assert cobro is None and resumen is None, "A pudo registrar un cobro sobre la factura de B"
+    assert de_a.resumen(de_b) is None
+    assert de_a.impagos()["comprobantes"] == []
+    assert ConceptoStore(conn_factory, a).listar() == []
+
+    # y el de B sigue intacto: el intento de A no pudo ni siquiera ensuciarlo
+    assert CobroStore(conn_factory, b).resumen(de_b)["estado_cobro"] == COBRADA
+
+
+# ── catálogo ─────────────────────────────────────────────────────────────────────────────────────
+
+@necesita_pg
+def test_el_catalogo_dedupa_por_nombre_normalizado(conn_factory, tenants):
+    """`"Pintura de Living"` y `"pintura  de living."` son el mismo concepto.
+
+    Si entraran los dos, la serie de precios del grafo quedaría partida — que es exactamente el
+    problema que el catálogo viene a resolver.
+    """
+    a, _ = tenants
+    store = ConceptoStore(conn_factory, a)
+    creado = store.crear("Pintura de Living", "50000")
+    with pytest.raises(ConceptoDuplicado) as exc:
+        store.crear("pintura  de living.", "60000")
+    assert exc.value.existente["id"] == creado["id"]   # el 409 trae con qué chocaste
+
+
+@necesita_pg
+def test_desactivar_no_borra__y_el_nombre_sigue_ocupado(conn_factory, tenants):
+    """Desactivar y recrear el mismo nombre **reactiva el existente**, no crea un gemelo: si no
+    chocara, la historia de precios de ese concepto quedaría partida en dos filas."""
+    a, _ = tenants
+    store = ConceptoStore(conn_factory, a)
+    creado = store.crear("Instalación eléctrica", "80000")
+    store.desactivar(creado["id"])
+
+    assert store.listar() == []
+    assert [c["id"] for c in store.listar(incluir_inactivos=True)] == [creado["id"]]
+    with pytest.raises(ConceptoDuplicado):
+        store.crear("Instalación eléctrica")
+
+
+@necesita_pg
+def test_editar_el_nombre_NO_borra_el_precio(conn_factory, tenants):
+    """Edición parcial de verdad: la clave ausente no se toca.
+
+    Si el store armara el UPDATE con todas las columnas, guardar el nombre pondría el precio en NULL
+    — el bug clásico de "guardé una cosa y se borró otra", que además nadie mira hasta que factura.
+    """
+    a, _ = tenants
+    store = ConceptoStore(conn_factory, a)
+    creado = store.crear("Chapa y pintura", "120000")
+    editado = store.editar(creado["id"], {"nombre": "Chapa y pintura completa"})
+    assert editado["precio_referencia"] == "120000.00"
+
+    borrado = store.editar(creado["id"], {"precio_referencia": None})   # el null EXPLÍCITO sí borra
+    assert borrado["precio_referencia"] is None
+
+
+@necesita_pg
+def test_cambiar_el_precio_de_referencia_NO_altera_un_presupuesto_ya_emitido(conn_factory, tenants):
+    """El DoD del contrato §5, y la razón por la que el hito 5 puede apoyarse en la historia.
+
+    Si el presupuesto tomara el precio del catálogo al leerse en vez de congelarlo al emitirse,
+    cambiar una tarifa **reescribiría el pasado** — y la serie de precios del grafo mostraría que
+    siempre se cobró lo de hoy.
+    """
+    a, _ = tenants
+    conceptos = ConceptoStore(conn_factory, a)
+    concepto = conceptos.crear("Pintura de living", "50000")
+
+    presupuestos = PresupuestoStore(conn_factory, a)
+    presupuesto = presupuestos.crear(
+        concepto="Pintura", receptor={"nombre": "Panadería Los Tilos"},
+        items=[{"descripcion": "Pintura de living", "cantidad": Decimal(1),
+                "precio_unitario": Decimal("50000"), "codigo": ""}])
+    total_antes = presupuestos.detalle(presupuesto["id"])["total"]
+
+    conceptos.editar(concepto["id"], {"precio_referencia": "99999"})
+
+    despues = presupuestos.detalle(presupuesto["id"])
+    assert despues["total"] == total_antes
+    assert despues["items"][0]["precio_unitario"] == "50000.00"
+
+
+# ── estado del presupuesto ───────────────────────────────────────────────────────────────────────
+
+@necesita_pg
+def test_las_tres_categorias_no_se_mezclan(conn_factory, tenants):
+    """Ganado / perdido / **no sé**. Un presupuesto nuevo nace en "no sé", no en "perdido"."""
+    a, _ = tenants
+    store = PresupuestoStore(conn_factory, a)
+    p = store.crear(concepto="Techo", receptor={"nombre": "Kiosco La Esquina"},
+                    items=[{"descripcion": "Membrana", "cantidad": Decimal(1),
+                            "precio_unitario": Decimal("30000"), "codigo": ""}])
+    assert store.detalle(p["id"])["estado"] == PENDIENTE
+    assert store.detalle(p["id"])["sin_respuesta"] is False   # recién emitido: todavía no es tarde
+
+    assert store.cambiar_estado(p["id"], DESESTIMADO)["estado"] == DESESTIMADO
+    with pytest.raises(TransicionInvalida):
+        store.cambiar_estado(p["id"], APROBADO)
+
+
+@necesita_pg
+def test_remarcar_el_mismo_estado_no_es_un_conflicto(conn_factory, tenants):
+    """Repetir la misma orden no es un error: la app tiene que poder reintentar si se cortó la red."""
+    a, _ = tenants
+    store = PresupuestoStore(conn_factory, a)
+    p = store.crear(concepto="Vereda", receptor={"nombre": "Taller Don José"},
+                    items=[{"descripcion": "Cemento", "cantidad": Decimal(2),
+                            "precio_unitario": Decimal("15000"), "codigo": ""}])
+    store.cambiar_estado(p["id"], APROBADO)
+    assert store.cambiar_estado(p["id"], APROBADO)["estado"] == APROBADO
+
+
+@necesita_pg
+def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_factory, tenants):
+    """Se envejece la fila en la base, no un flag: si `sin_respuesta` estuviera guardado, mover la
+    fecha no lo cambiaría — y ahí se vería que hace falta un cron para mantenerlo al día."""
+    a, _ = tenants
+    store = PresupuestoStore(conn_factory, a)
+    p = store.crear(concepto="Portón", receptor={"nombre": "Corralón Norte"},
+                    items=[{"descripcion": "Chapa", "cantidad": Decimal(1),
+                            "precio_unitario": Decimal("90000"), "codigo": ""}])
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("UPDATE uc_factory.copiloto_presupuestos SET fecha = now() - interval '90 days' "
+                    "WHERE cliente_id=%s AND id=%s", (a, p["id"]))
+
+    viejo = store.detalle(p["id"])
+    assert viejo["sin_respuesta"] is True
+    assert viejo["estado"] == PENDIENTE, "sin_respuesta es un MATIZ de pendiente, no un cuarto estado"
+
+    # y en cuanto hay desenlace deja de contar como "sin respuesta", aunque siga siendo viejo
+    assert store.cambiar_estado(p["id"], DESESTIMADO)["sin_respuesta"] is False

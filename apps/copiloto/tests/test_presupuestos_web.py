@@ -10,6 +10,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from presupuesto_store import (APROBADO, DESESTIMADO, PENDIENTE, TRANSICIONES, TransicionInvalida)
 from presupuestos_web import create_presupuestos_app
 
 
@@ -61,6 +62,7 @@ class _FakePresupuestoStore:
              "doc_id": None, "doc_link": None, "sheet_fila": None, "reemplaza_a": reemplaza_a,
              "reemplazado_por": None, "factura_id": None, "facturado": False,
              "cantidad_items": len(items),
+             "estado": PENDIENTE, "estado_actualizado_en": None, "sin_respuesta": False,
              "items": [{"orden": n, "descripcion": i["descripcion"],
                         "cantidad": f"{float(i['cantidad']):.2f}",
                         "precio_unitario": f"{float(i['precio_unitario']):.2f}",
@@ -88,6 +90,25 @@ class _FakePresupuestoStore:
         if p:
             p["factura_id"] = factura_id
         return p is not None
+
+    def cambiar_estado(self, presupuesto_id: int, nuevo: str):
+        """El fake respeta las MISMAS transiciones que el store real.
+
+        Si acá aceptara cualquier salto, el endpoint podría revivir un presupuesto desestimado al
+        facturarlo y los tests seguirían verdes: un fake más permisivo que el original no prueba el
+        camino, lo tapa.
+        """
+        p = self._mios().get(presupuesto_id)
+        if p is None:
+            return None
+        actual = p.get("estado") or PENDIENTE
+        if nuevo == actual:
+            return p
+        if nuevo not in TRANSICIONES.get(actual, ()):
+            raise TransicionInvalida(actual, nuevo)
+        p["estado"] = nuevo
+        p["estado_actualizado_en"] = "2026-07-22T00:00:00Z"
+        return p
 
 
 class _FakeCredStore:
