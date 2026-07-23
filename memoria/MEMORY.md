@@ -38,6 +38,7 @@
 - [No PR por cada cambio chico — batchear](batch-cambios-no-pr-por-tweak.md) — `feedback`. Acumular cambios chicos → PRs con sentido.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
 - [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
+- [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — `project`. **LEER antes de `seed-memory.sh`.** `rsync --delete` espeja repo→slug. Escribir en `memoria/` del repo.
 - [📐 documed-front es la app CANÓNICA — consultarla antes de UI](consultar-documed-siempre-antes-de-implementar.md) — `feedback`. Regla dura 3×. Portar adaptando, no copiar ciego.
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — `feedback`. Cada lado verificó su mitad y la junta no era de nadie.
@@ -55,6 +56,7 @@
 - [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — `feedback`. La espera CON disparador (device) tapa la rebanada de código-puro que quedó adentro. Descomponer por disparador REAL antes de declararla.
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — `feedback`. Correr el caso vacío: el default de toda regla restrictiva es no-hacer.
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — `feedback`. Preguntarse *¿qué devolvería si lo que mido estuviera roto?* (catálogo de 11+ casos).
+- [🕳️🚪 Un stub registrado ANTES del router real lo ensombrece](stub-registrado-antes-del-router-real-lo-ensombrece.md) — `project`. `/actividad` sirvió 501 en prod desde siempre; código verde, endpoint muerto. Guard = test por HTTP contra el vivo, no el unit. El comentario lo predijo y no se borró.
 - [🕵️ Probar AUSENCIA necesita otro instrumento — y el device es de BACKEND](probar-ausencia-necesita-otro-instrumento.md) — `feedback`. Control de 12s no da negativo contra actor intermitente. Dueño único.
 - [📣 El encabezado tranquilizador se come la carga útil](encabezado-tranquilizador-se-come-la-carga-util.md) — `feedback`. Un evento por pendiente; una línea "OK" tapó 6.
 - [🎯 El error apunta a un parámetro que NUNCA mandaste](el-error-apunta-a-un-parametro-que-nunca-mandaste.md) — `project`. `GET /x/resumen` → 422 sobre el id: el segmento cae en la ruta del `{id}`.
@@ -88,6 +90,8 @@
 - [📏 No escribas una regla sobre el SETUP DE OTRO](regla-escrita-sobre-el-setup-de-otro.md) — `feedback`. El dato lo tiene el que ejecuta. Y no ablandar una instrucción del operador hasta que encaje.
 - [🚀📱 Entrega progresiva (PR/merge/deploy por hito) + E2E en device](entrega-progresiva-y-e2e-en-device.md) — `feedback`. Un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. Snapshot no stream; hand-fix a verde; spike dirigido para la raíz.
+- [🆔 Fórmula de identidad congelada sin validar el mecanismo del server](formula-de-identidad-congelada-sin-validar-el-mecanismo-del-server.md) — `project`. El `edge_uuid` lo deriva el server de los uuid de NODOS+tipo, sin `LOG_EVENT_ID`. Mi fórmula rompía el `PATCH` en silencio → dos vigentes. Anti-resurrección va en la clave del NODO (nodo-evento intermedio, patrón documed), no en la arista.
+- [🖋️ El contrato afirma el mecanismo que NO opero — el riesgo del rol PLANIFICACIÓN](el-contrato-afirma-el-mecanismo-que-no-opero.md) — `feedback`. **MACRO.** Dos ejes: A=setup de una persona (preguntar), B=mecanismo de un sistema (leer su código). Guardrail: evidencia adosada o `[ASSUMED_PENDING_VERIFY]` que bloquea el mapeo. La red que contuvo el daño = ejecutor leyendo la fuente + contrato falsable.
 
 ## 🧠 Lecciones sistémicas vivas
 
@@ -114,12 +118,18 @@
 - [🔁 Automatizaciones recurrentes durables — candidato post-v1](copiloto-automatizaciones-recurrentes-candidato.md) — `project`. Infra existe (Schedule+signal). Falta política+canal. NO en v1.
 - [🧾 Trazabilidad de operaciones vía fact-triple — CANDIDATO](copiloto-trazabilidad-operaciones-fact-triple.md) — `project`. Grafo=PROYECCIÓN (DB=SoT); triple≠episodio; spikes S1-S4 abiertos.
 - [🕸️ Grafo: tenant dedicado `copiloto` + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — `project`. **LEER al retomar el hito 5 / ingesta a Graphity.** Instancia COMPARTIDA → ontología con `graph_ids=[copiloto]` o fuga. structured (uuid5) NO fact-triple. `valid_at`=fecha del hecho.
+- [🔑✅ Graphity: la key COMÚN alcanza (admin NO se necesita) — RESUELTO](graphity-copiloto-sin-admin-provisioning-gap.md) — `project`. Ontología graph-scoped + `structured` sin admin; único borde = **project scope** en la key (400, no 403). Tenant real lo provisiona la sesión Graphity por el canal (operador autorizó); key en `~/.claude/graphity/copiloto.env` (`--instance copiloto`). Flag: `SALDA` cobro→comprobante cierra "¿quién me debe?".
 - [🔑 OAuth de Google: hoy es el de COMPOSIO, no el nuestro — bloquea Apps](copiloto-oauth-google-propio.md) — `project`. Scopes por defecto son los CAROS. Decidido: ninguno restringido. Deuda: el gateway elige "la primera" auth config.
 - [💰 Presupuestos + perfil del negocio — implementado las dos capas](copiloto-presupuestos-y-perfil-negocio.md) — `project`. Máquina de estados y Sheet DESCARTADOS. El perfil se lee por turno, ANTES de la memoria. Falta device.
 - [🧾 Facturación AFIP — backend Y frontend TERMINADOS, E2E verde desde device](copiloto-facturacion-afip.md) — `project`. **LEER PRIMERO al retomar facturación.** DETERMINISTA. Clave fiscal no se almacena. Ambiente = dos credenciales. 8 bugs contra AFIP/device real.
 - [🧹 Los tests escribían en la base de PRODUCCIÓN](copiloto-tests-ensuciaban-la-base.md) — `project`. 552 filas huérfanas. Fixture de barrido acotada a la ventana de la corrida.
 - [🧭 IDENTIDAD = automatización/agentes-IA durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — `project`. Moat = orquestación DURABLE. Fit = agentes + frontend FINO + HITL.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — `project`. Keys que pasaron por chat. Diferido a pre-prod. grep-first + restart al rotar.
+- [🗜️ Compactar a 500k — investigación PAUSADA](compactacion-a-umbral-investigacion-pausada.md) — `project`. **Puntero:** cuando pregunte "lo de la compactación", retomar del doc. `/compact` inyectado NO ejecuta (spike); medir transcript SÍ; no hay daemon. Camino: bajar monitores + PreCompact.
+
+## 🔮 Tareas futuras (gated)
+
+- [🔬 Eval global de la app con Fable5 zero-context — al terminar lo pendiente](eval-global-app-fable5-zero-context-pendiente.md) — `project`. Objetividad = cero contexto, report-only. Foco: conflicto/seguridad/resiliencia/escala-sin-fricción. **+ DOS auditorías de eficiencia dedicadas (backend + frontend)** para la velocidad de la UI — alimentadas con localización precisa + código + skills (`callstack-rn-performance`); fix de raíz, simple. Velocidad = opción A (profiling device por hallazgo). Excluye infra externa + features faltantes.
 
 ## 📚 Referencia
 

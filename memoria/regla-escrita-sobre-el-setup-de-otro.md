@@ -1,6 +1,6 @@
 ---
 name: regla-escrita-sobre-el-setup-de-otro
-description: "Cuatro veces en un dia le escribi a otra sesion una regla que no podia cumplir, porque asumi su setup en vez de preguntarselo. Y la peor variante: ABLANDAR una instruccion del operador hasta que encaje con lo que uno cree del sistema. LEER antes de asignarle una accion a otro en un contrato o regla."
+description: "Cinco veces le escribi a otra sesion una regla que no podia cumplir, porque asumi su setup en vez de preguntarselo. Y la peor variante: ABLANDAR una instruccion del operador hasta que encaje con lo que uno cree del sistema. Es el eje A de [[el-contrato-afirma-el-mecanismo-que-no-opero]]. LEER antes de asignarle una accion a otro en un contrato o regla."
 metadata:
   node_type: memory
   type: feedback
@@ -17,8 +17,12 @@ acción las confirma quien la ejecuta — antes de que quede escrita.**
 | «armá tu worktree propio» | Ese worktree **mueve el árbol que Metro sirve** — y había dos corridas en device pendientes contra el actual | FRONTEND |
 | «backend no tiene el aparato, la corrida la hace quien lo tenga» | BACKEND tiene **ADB por USB** al teléfono | BACKEND / el operador |
 | «no hay ningún segmento fijo que compita con `/clientes/{id}`» | `clientes.ts` ya llamaba a **`/clientes/opciones`** desde antes | el repo (un `grep`) |
+| «provisioná el tenant `copiloto` con `provision-tenant.sh`» (a BACKEND, 2026-07-22) | BACKEND **no tiene admin de Graphity** — `provision-tenant.sh` da **403**; su key es común | BACKEND (un intento contra `/admin`) |
 
-**Las cuatro veces el dato lo tenía el que iba a ejecutar, y las cuatro veces era barato pedirlo.**
+**Las cinco veces el dato lo tenía el que iba a ejecutar, y las cinco veces era barato pedirlo.** Esta
+entrada es el **eje A** (setup de una persona/sesión) de un patrón más amplio: ver
+[[el-contrato-afirma-el-mecanismo-que-no-opero]], que suma el **eje B** (mecanismo de un sistema) y el
+guardrail común.
 
 ## Por qué pasa, y no es descuido
 
