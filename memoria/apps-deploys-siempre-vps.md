@@ -22,6 +22,6 @@ Directiva del operador, **re-enfatizada 2026-06-26** ("la fábrica es en el vps.
 **Local vs VPS — quién es quién:**
 - **VPS `unreal-copilot`** = la fábrica y TODO lo que construimos juntos en este proyecto.
 - **PC del operador** = sus proyectos personales (otra cosa, fuera de este alcance).
-- **No confundir con [[fabrica-local-containerizada]]** — esa es una réplica soberana de la infra de la fábrica en la PC que el operador armó para SUS desarrollos personales (proyecto aparte, su decisión). NO es donde corre la fábrica con la que trabajamos: esa es el VPS.
+- **No confundir con** — esa es una réplica soberana de la infra de la fábrica en la PC que el operador armó para SUS desarrollos personales (proyecto aparte, su decisión). NO es donde corre la fábrica con la que trabajamos: esa es el VPS.
 
-[[tests-se-corren-en-vps]] [[frontend-clinic-plantilla-base]] [[no-codificar-la-esperanza-principio-raiz]]
+[[tests-se-corren-en-vps]] [[no-codificar-la-esperanza-principio-raiz]]

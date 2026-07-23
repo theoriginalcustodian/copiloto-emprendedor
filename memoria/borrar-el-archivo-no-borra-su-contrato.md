@@ -54,7 +54,7 @@ Es pariente de [[verificar-que-el-camino-recomendado-existe]] y de
 que tranquiliza**. Un import que resuelve, un tipo que compila y un nombre que coincide con el dominio
 son, los tres, evidencia de que estás en el camino correcto — y ninguno de los tres lo verifica.
 
-Y es hermano de [[el-rastro-del-intento-pisa-al-hecho]] en el mecanismo: un artefacto de otra época
+Y es hermano de [[rastro-del-intento-pisa-al-hecho]] en el mecanismo: un artefacto de otra época
 sigue en pantalla afirmando algo que ya no es cierto, y quien lo lee no tiene cómo saber que es viejo.
 
 Caso completo en el acuse de `coordinacion/.../addendum_...clientes-falta-el-alta-A-MANO-hito-7`,
