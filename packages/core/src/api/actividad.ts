@@ -82,6 +82,21 @@ export type ActividadResult =
   | { status: 'no_disponible' };
 
 export interface ListarActividadParams {
+  /**
+   * Acota el feed a una función. `facturacion` cruza `{factura, nota_credito}`; el resto mapea por su
+   * tipo homónimo (`gastos`→gasto, `ingresos`→ingreso, `presupuestos`→presupuesto). `contabilidad`
+   * queda declarado pero HOY no surte ningún tipo (no existe item "contable").
+   *
+   * 🔴 **`[CONNECT]` — hoy `/actividad` ENTERA da 501.** Backend mergeó el filtro (`#56`), pero al
+   * verificar el vivo encontró que un **stub `@app.get("/actividad")` (`web.py:512-545`) del modelo
+   * viejo "entradas firmadas" ensombrece el router real** —se registra antes— y devuelve 501 para
+   * `funcion`, `q` y la ruta base (`hallazgo_actividad-la-tapa-un-stub-501`). Este cliente ya mapea
+   * 501→`no_disponible`, así que HOY el feed por función degrada honesto a "no disponible". Se levanta
+   * cuando backend borre el stub (`fix/actividad-stub-shadow`) y mande su `listo_`: recién ahí
+   * `?funcion=X` devuelve `{items,cursor}`. **No declarar verde contra el vivo hasta ese `listo_`.** Es
+   * el MISMO endpoint que surte el swipe-left del principal — un solo cableado.
+   */
+  funcion?: string;
   /** Default 20 del backend, máximo 100. Fuera de rango → 400 (medido). */
   limit?: number;
   /**
@@ -93,6 +108,17 @@ export interface ListarActividadParams {
    * vez de dejarlo valer "espacio". Concatenarlo a mano en la URL es lo que rompe.
    */
   cursor?: string | null;
+  /**
+   * Búsqueda por texto (`ILIKE` sobre `titulo`+`detalle`, lo hace el backend). Vive en `/actividad`,
+   * **no** en `/gastos`/`/ingresos`/etc. — esos son la vista de DETALLE, no el buscador.
+   *
+   * 🔴 **`[CONNECT]` — hoy `?q=` también da 501** (el stub de `/actividad` gana antes de llegar a
+   * validar `q`; ver el `funcion`). Cuando backend borre el stub, `q` filtra de verdad (mergeado en
+   * #56) y un `?funcion=invalida` valida a **400** — que **este cliente propaga como error**, sin
+   * disfrazarlo de `no_disponible` (el endpoint estaría desplegado y rechazando el input, no ausente).
+   * Cablear la forma, marcar `[CONNECT]`, no declarar verde hasta el `listo_` de backend.
+   */
+  q?: string;
 }
 
 /**
@@ -123,8 +149,13 @@ function esRespuestaDelEndpoint(raw: unknown): boolean {
  */
 export async function listarActividad(params: ListarActividadParams = {}): Promise<ActividadResult> {
   const query = new URLSearchParams();
+  // `funcion` primero para que la URL se lea `?funcion=gastos&limit=20&cursor=…`; el orden no cambia
+  // la semántica pero mantiene estable lo que ya está medido (sin `funcion`/`q` la URL queda idéntica
+  // a antes: `?limit=&cursor=`).
+  if (params.funcion != null && params.funcion !== '') query.set('funcion', params.funcion);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.cursor != null && params.cursor !== '') query.set('cursor', params.cursor);
+  if (params.q != null && params.q !== '') query.set('q', params.q);
   const qs = query.toString();
 
   try {
