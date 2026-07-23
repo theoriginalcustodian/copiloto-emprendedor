@@ -153,62 +153,55 @@ export async function leerPortada(): Promise<ConDisponibilidad<{ portada: Portad
 // ---------------------------------------------------------------------------
 
 /**
- * Una fuente que respalda la respuesta del chat de IN (una factura, un gasto, un episodio del grafo).
- *
- * 🔴 **[PROVISIONAL — grafo].** La forma sale del §3.3 del `contrato_ADELANTAR`, marcado provisional
- * PORQUE depende del grafo (hito 5, en curso): `tipo`/`ref` pueden cambiar cuando el grafo defina qué
- * es una fuente. La cáscara del chat NO ramifica sobre estos campos todavía — los muestra tal cual.
+ * De dónde salió la respuesta del chat de IN — **VIVO desde PR #73**
+ * (`listo_backend-a-todos_IN-chat-VIVO-cierra-la-cadencia-completa`, verificado contra el server real
+ * con un tenant efímero). `no-se` es el guardarraíl del DoD §5: nunca inventa, y es también lo que
+ * sale cuando el usuario pide una ACCIÓN ("borrá la última factura") — el texto de `respuesta` ya trae
+ * la redirección al copiloto, `fuente` es sólo metadata, la cáscara no ramifica sobre ella.
  */
-export interface FuenteInteligencia {
-  tipo: string;
-  ref: string;
+export type FuenteInteligencia = 'grafo' | 'sql' | 'no-se';
+
+function fuenteInteligencia(v: unknown): FuenteInteligencia {
+  return v === 'grafo' || v === 'sql' || v === 'no-se' ? v : 'no-se';
 }
 
 export interface RespuestaInteligencia {
   /** El texto de la respuesta. Puede venir vacío mientras el grafo no tenga con qué responder. */
   respuesta: string;
-  fuentes: readonly FuenteInteligencia[];
+  fuente: FuenteInteligencia;
 }
 
 interface RespuestaInteligenciaRaw {
   respuesta?: unknown;
-  fuentes?: unknown;
-}
-
-function fuente(v: unknown): FuenteInteligencia | null {
-  if (typeof v !== 'object' || v === null) return null;
-  const r = v as { tipo?: unknown; ref?: unknown };
-  // Una fuente sin `ref` no direcciona a nada: se descarta en vez de pintar un chip que no lleva a
-  // ningún lado. `tipo` puede faltar (default vacío) — es una etiqueta, no la identidad de la fuente.
-  if (typeof r.ref !== 'string' || r.ref.trim() === '') return null;
-  return { tipo: typeof r.tipo === 'string' ? r.tipo.trim() : '', ref: r.ref.trim() };
+  fuente?: unknown;
 }
 
 /**
  * **`POST /inteligencia/chat` — preguntarle al copiloto sobre el negocio en lenguaje natural.**
  *
- * 🔴 **[PROVISIONAL — grafo] — el ÚNICO punto que el connect toca.** Toda la cáscara del chat de IN
- * habla con esta función. La forma (request `{pregunta}`, response `{respuesta, fuentes}`) sale del
- * §3.3 del `contrato_ADELANTAR`, declarada **provisional** porque depende del grafo (hito 5). El día
- * que el grafo fije la forma real, se recablea acá y la pantalla no se toca.
+ * Forma congelada y VIVA desde PR #73: request `{texto}`, response `{respuesta, fuente}` — reemplaza
+ * la forma `[PROVISIONAL]` anterior (`{pregunta}`→`{respuesta,fuentes[]}`) del `contrato_ADELANTAR`
+ * §3.3, que nunca llegó a estar desplegada. El filtro de vigencia (invalidaciones del grafo) lo aplica
+ * el SERVIDOR — la app nunca consulta el grafo directo, sólo esta capa (decisión de planificación que
+ * supersede el §3 "del lado del cliente" del contrato original: server-side es mejor, un solo punto
+ * de verdad).
  *
  * 🔴 **Un `POST` a una ruta no desplegada NO devuelve 200 con el SPA** (el catch-all del front-door es
  * `@app.get`): devuelve 405/501/503, que llegan como `ApiError` y degradan a `no_disponible`. Por eso
  * acá no hace falta la guarda de forma `esRespuestaDelEndpoint` que sí necesita el `GET` de la portada.
  */
 export async function preguntarInteligencia(
-  pregunta: string,
+  texto: string,
 ): Promise<ConDisponibilidad<{ respuesta: RespuestaInteligencia }>> {
   try {
-    const raw = await apiClient.post<RespuestaInteligenciaRaw>('/inteligencia/chat', { pregunta });
-    const fuentes = Array.isArray(raw?.fuentes) ? raw.fuentes : [];
+    const raw = await apiClient.post<RespuestaInteligenciaRaw>('/inteligencia/chat', { texto });
     return {
       status: 'ok',
       respuesta: {
         // Texto: si no vino, cadena vacía (una respuesta sin texto es un caso real del grafo sin datos),
         // no `null` — la burbuja siempre muestra algo, aunque sea el vacío.
         respuesta: typeof raw?.respuesta === 'string' ? raw.respuesta : '',
-        fuentes: fuentes.map(fuente).filter((f): f is FuenteInteligencia => f !== null),
+        fuente: fuenteInteligencia(raw?.fuente),
       },
     };
   } catch (err) {

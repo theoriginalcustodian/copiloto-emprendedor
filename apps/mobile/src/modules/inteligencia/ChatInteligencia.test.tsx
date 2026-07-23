@@ -41,7 +41,7 @@ beforeEach(() => {
 
 describe('ChatInteligencia — el camino bueno', () => {
   it('arranca con la invitación vacía y desaparece al preguntar', async () => {
-    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Gastaste $12.000 en nafta.', fuentes: [] } });
+    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Gastaste $12.000 en nafta.', fuente: 'sql' } });
     await montar();
 
     expect(screen.getByTestId('chat-inteligencia-vacio')).toBeTruthy();
@@ -54,16 +54,18 @@ describe('ChatInteligencia — el camino bueno', () => {
     expect(mockPreguntar).toHaveBeenCalledWith('¿cuánto gasté en nafta?');
   });
 
-  it('pinta las fuentes como chips debajo de la respuesta', async () => {
+  it('🔴 una acción pedida rechaza vía el TEXTO de la respuesta -- `fuente` es sólo metadata', async () => {
+    // DoD §5: el chat rechaza una orden y redirige al copiloto. Verificado E2E por backend
+    // (listo_backend-a-todos_IN-chat-VIVO...): el guardarraíl vive en `respuesta`, no en `fuente` —
+    // esta pantalla no ramifica sobre `fuente` para mostrar el rechazo correctamente.
     mockPreguntar.mockResolvedValue({
       status: 'ok',
-      respuesta: { respuesta: 'Te deben $30.000.', fuentes: [{ tipo: 'factura', ref: 'F-0006-00000015' }] },
+      respuesta: { respuesta: 'Eso lo puedo ejecutar, pero no desde acá — pedímelo por el chat del copiloto.', fuente: 'no-se' },
     });
     await montar();
-    await preguntar('¿quién me debe?');
+    await preguntar('borrá la última factura');
 
-    await waitFor(() => expect(screen.getByText('Te deben $30.000.')).toBeTruthy());
-    expect(screen.getByText('factura · F-0006-00000015')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/pedímelo por el chat del copiloto/)).toBeTruthy());
   });
 });
 
@@ -79,7 +81,7 @@ describe('ChatInteligencia — lo que NO confunde', () => {
   it('🔴 una respuesta REAL vacía se dice «no tengo datos», no se pinta en blanco', async () => {
     // El par del anterior: el endpoint SÍ respondió, pero el grafo no tenía con qué. Es distinto de
     // «no está desplegado» y distinto de una burbuja vacía que se leería como un cuelgue.
-    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: '   ', fuentes: [] } });
+    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: '   ', fuente: 'sql' } });
     await montar();
     await preguntar('¿cuánto facturé en 1999?');
 
@@ -88,7 +90,7 @@ describe('ChatInteligencia — lo que NO confunde', () => {
 
   it('🔴 CONTROL — una respuesta real con texto SÍ se pinta tal cual', async () => {
     // Sin este control, un bug que reemplazara SIEMPRE por «no tengo datos» pasaría los dos de arriba.
-    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Facturaste $800.000.', fuentes: [] } });
+    mockPreguntar.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Facturaste $800.000.', fuente: 'sql' } });
     await montar();
     await preguntar('¿cuánto facturé?');
 
