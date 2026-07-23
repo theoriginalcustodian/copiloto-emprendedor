@@ -375,7 +375,11 @@ class ConversationWorkflow:
                 messages.append(_tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {}))
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
-                                              last_artifact=tr.get("artifact"))
+                                              last_artifact=tr.get("artifact"),
+                                              # sembrado: esta tool YA ejecutó (confirmed=True, arriba) ANTES de
+                                              # entrar al loop -- sin esto el marcador del cierre "olvida" el
+                                              # tool_call que resolvió el gate de confirmación.
+                                              tool_trace=[pend["tool_call"]["name"]])
             # cancel -> CORTE DETERMINÍSTICO (spike B): 1 llamada tool_choice='none', solo texto.
             messages.append(_assistant_tool_call_msg(pend["tool_call"]))
             messages.append(_tool_result_msg(pend["tool_call"]["id"], {"status": "cancelled_by_user"}))
@@ -437,9 +441,13 @@ class ConversationWorkflow:
 
     async def _react_loop(self, config: dict, domain: str, conv: dict, channel: str, channel_ref: str,
                           cliente_id: str, messages: list, *, start_turn_ix: int, start_step: int,
-                          last_artifact) -> bool:
+                          last_artifact, tool_trace: list | None = None) -> bool:
         step = start_step
         last_sig = None                                          # detección de no-progreso (major #7)
+        # tools YA ejecutadas de este turno (fix narra-sin-hacer): sembrado con lo que ejecutó el reingreso de
+        # confirmación (_run_react_turn) antes de entrar acá, y se sigue completando abajo con cada tool que
+        # este loop resuelve. Viaja a _react_finish para que el marcador cubra TODO el turno, no solo esta pasada.
+        trace = list(tool_trace) if tool_trace else []
         while step < self.REACT_MAX_STEPS:
             resp = await workflow.execute_activity(
                 "call_llm_tools",
@@ -453,13 +461,14 @@ class ConversationWorkflow:
             tool_calls = resp.get("tool_calls") or []
             if not tool_calls:                                   # el modelo cerró con texto
                 await self._react_finish(channel, channel_ref, cliente_id,
-                                         resp.get("content") or "Listo.", last_artifact)
+                                         resp.get("content") or "Listo.", last_artifact, tool_trace=trace)
                 return False
             tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
             sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
             if sig == last_sig:
                 await self._react_finish(channel, channel_ref, cliente_id,
-                                         "Me quedé trabado repitiendo lo mismo, ¿lo intentamos de otra forma?", None)
+                                         "Me quedé trabado repitiendo lo mismo, ¿lo intentamos de otra forma?", None,
+                                         tool_trace=trace)
                 return False
             last_sig = sig
             tr = await workflow.execute_activity(
@@ -484,18 +493,38 @@ class ConversationWorkflow:
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
             messages.append(_assistant_tool_call_msg(tc))
             messages.append(_tool_result_msg(tc["id"], tr.get("observation") or {}))
+            trace.append(tc["name"])                            # llegó hasta acá -> execute_tool corrió de verdad
             if tr.get("artifact"):
                 last_artifact = tr["artifact"]
             step += 1
         # tope de pasos: cerrar con texto de fallo (guardrail, jamás loop silencioso)
         await self._react_finish(channel, channel_ref, cliente_id,
-                                 "Se me hizo largo esto, ¿lo intentamos de nuevo por partes?", None)
+                                 "Se me hizo largo esto, ¿lo intentamos de nuevo por partes?", None,
+                                 tool_trace=trace)
         return False
 
-    async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact) -> None:
+    async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact,
+                            tool_trace: list | None = None) -> None:
         """Cierre TERMINAL del turno (texto final, no la card del gate): apendea a self._history para memoria/CAN
-        (major #4) y despacha por el canal con el artifact clicable."""
-        self._history.append({"role": "assistant", "content": text})
+        (major #4) y despacha por el canal con el artifact clicable.
+
+        `tool_trace` (fix narra-sin-hacer, [[copiloto-narra-la-accion-sin-ejecutarla]]): nombres de las tools
+        que el turno EJECUTÓ de verdad (`execute_tool` ya resuelto, no el `needs_confirmation` parqueado) antes
+        de cerrar. Sin esto, self._history solo guardaba el texto final ("listo, lo hice ✅") y el scratchpad de
+        un turno posterior veía el patrón "usuario pide X -> assistant dice que lo hizo" SIN ningún tool_call en
+        el medio -- el LLM lo imita y en un turno futuro narra sin ejecutar. El marcador determinístico que se
+        apendea junto al texto es la evidencia de que hubo tool_call real EN ESE turno.
+
+        `workflow.patched(...)`: no es necesario para el replay en sí -- enriquecer `content` (mismo shape de
+        dict, mismo Command sequence) es tan replay-safe como el precedente de `cliente_id` en el payload de
+        `call_llm_tools` (comment :22-27, de-riskeado además con Replayer.replay_workflow contra CAN real, ver
+        avance_backend_de-risk-narra-sin-hacer). Se usa igual por contrato: versiona explícitamente el momento
+        en que una sesión EN VUELO empieza a narrar con evidencia, y deja un `TemporalChangeVersion` auditable
+        para buscar sesiones viejas vs nuevas sin tener que leer el history a mano."""
+        content = text
+        if tool_trace and workflow.patched("history-tool-trace-marker"):
+            content = f"{text}\n{_tool_trace_marker(tool_trace)}"
+        self._history.append({"role": "assistant", "content": content})
         await self._react_send(channel, channel_ref, cliente_id, text, artifact)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
@@ -535,3 +564,9 @@ def _tool_result_msg(tool_call_id: str, observation: dict) -> dict:
 def _tool_signature(tc: dict) -> str:
     """Firma canónica de un tool-call (nombre + args ordenados) para la detección de no-progreso. Determinista."""
     return tc.get("name", "") + "|" + json.dumps(tc.get("arguments") or {}, sort_keys=True, ensure_ascii=False)
+
+
+def _tool_trace_marker(tool_names: list) -> str:
+    """Marcador determinístico de tools EJECUTADAS en el turno, para self._history (fix narra-sin-hacer).
+    Texto plano (no JSON): el LLM lo lee como parte del scratchpad, no como una tool nueva a parsear."""
+    return "[" + " ".join(f"tool:{name}→ok" for name in tool_names) + "]"

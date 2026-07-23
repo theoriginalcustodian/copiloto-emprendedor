@@ -575,3 +575,152 @@ async def test_react_second_turn_sees_prior_turn_history():
     assert "revisá gmail, últimos 100" in turn2, f"amnesia: el 2º turno no vio el mensaje del 1º -> {turn2}"
     assert "listo, ahí va" in turn2, "el 2º turno no vio la respuesta del asistente del 1º turno"
     assert seen_messages[1][-1]["content"] == "dame los últimos 100"   # el mensaje actual va al final del scratchpad
+
+
+# ═══════════════════════════ Fix narra-sin-hacer: marcador de tool-trace en self._history ═══════════════
+
+@pytest.mark.asyncio
+async def test_react_history_marker_survives_to_next_turn_when_tool_executed():
+    """[[copiloto-narra-la-accion-sin-ejecutarla]]: un turno que EJECUTÓ una tool antes de cerrar debe dejar
+    evidencia de eso en self._history -- si no, el 2º turno ve 'usuario pidió X -> assistant dijo que lo hizo'
+    SIN tool_call en el medio, y el LLM aprende a narrar sin ejecutar. El 2º turno debe ver el marcador
+    determinístico junto al texto final del 1º."""
+    seen_messages: list[list[dict]] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        seen_messages.append(list(p["messages"]))
+        if len(seen_messages) == 1:
+            return _tc("crear_gasto", {"monto": 500})
+        return _TEXT("listo" if len(seen_messages) == 2 else "ok")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="ok",
+                          observation={"result": "ok"}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rmark", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rmark", task_queue="rmark")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "anotá un gasto de 500", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "otra cosa", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    # turno 1 hace 2 llamadas (propone la tool, después cierra con texto); turno 2 es la ÚLTIMA -- por eso
+    # `seen_messages[-1]` (no un índice fijo) es el que hay que inspeccionar, con el buffer YA reconstruido
+    # desde self._history (a diferencia de seen_messages[1], que es el 2º llamado del PROPIO turno 1, scratchpad).
+    assert len(seen_messages) >= 3
+    turn2 = [m.get("content") for m in seen_messages[-1]]
+    marcado = [c for c in turn2 if isinstance(c, str) and "listo" in c]
+    assert marcado, f"el 2º turno no ve el cierre del 1º -> {turn2}"
+    assert "tool:crear_gasto" in marcado[0] and "ok" in marcado[0], (
+        f"el 2º turno no ve evidencia de que la tool EJECUTÓ -> {marcado[0]!r}")
+
+
+@pytest.mark.asyncio
+async def test_react_history_marker_absent_when_no_tool_executed():
+    """Regresión anti-ruido: un turno que cerró SOLO con texto (sin ejecutar ninguna tool) no debe llevar
+    marcador -- si se marcara todo, el marcador deja de ser evidencia de nada."""
+    seen_messages: list[list[dict]] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        seen_messages.append(list(p["messages"]))
+        return _TEXT("hola, en qué te ayudo")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rnomark", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rnomark", task_queue="rnomark")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "hola", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "de nuevo", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(seen_messages) >= 2
+    turn2 = [m.get("content") for m in seen_messages[1]]
+    assert "hola, en qué te ayudo" in turn2                # el texto viaja intacto
+    assert not any(isinstance(c, str) and "tool:" in c for c in turn2), (
+        f"marcó un turno que no ejecutó ninguna tool -> {turn2}")
+
+
+@pytest.mark.asyncio
+async def test_react_history_marker_includes_tool_confirmed_via_gate():
+    """El marcador también cubre la tool que se ejecutó vía el gate de confirmación (confirmed=True) -- el
+    reingreso por _run_react_turn siembra el tool_trace del _react_loop, no arranca en blanco."""
+    seen_messages: list[list[dict]] = []
+    llm_calls = {"n": 0}
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        llm_calls["n"] += 1
+        if llm_calls["n"] == 1:
+            return _tc("mp_charge", {"amount": 1000})
+        seen_messages.append(list(p["messages"]))
+        return _TEXT("listo, cobrado")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        st = "ok" if p["confirmed"] else "needs_confirmation"
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status=st,
+                          observation={"preview": "cobro"}).to_dict()
+
+    sent: list[dict] = []
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        sent.append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rmarkgate", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rmarkgate", task_queue="rmarkgate")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "cobrá 1000", "kind": "text"})
+            await env.sleep(1)
+            confirm_value = _choice_value(sent[-1], "Confirmar")
+            await h.signal(ConversationWorkflow.receive_message, {"text": confirm_value, "kind": "callback"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "otra cosa", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert seen_messages, "no llegó a un 2º turno que pueda ver el history"
+    turn_after = [m.get("content") for m in seen_messages[-1]]
+    marcado = [c for c in turn_after if isinstance(c, str) and "listo, cobrado" in c]
+    assert marcado and "tool:mp_charge" in marcado[0], (
+        f"el marcador no cubre la tool ejecutada vía el gate de confirmación -> {marcado}")
