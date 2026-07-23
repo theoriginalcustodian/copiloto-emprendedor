@@ -16,7 +16,7 @@ import { crearCliente, editarCliente, listarClientes, obtenerCliente } from '@co
 import type { Cliente, FichaCliente } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { PantallaClientes } from './PantallaClientes';
+import { PantallaClientes, ordenarAlfabetico } from './PantallaClientes';
 
 const mockListar = listarClientes as jest.MockedFunction<typeof listarClientes>;
 const mockFicha = obtenerCliente as jest.MockedFunction<typeof obtenerCliente>;
@@ -504,5 +504,44 @@ describe('PantallaClientes', () => {
       await waitFor(() => expect(screen.getByTestId('ficha-cliente-no-disponible')).toBeTruthy());
       expect(screen.queryByTestId('ficha-cliente-editar')).toBeNull();
     });
+  });
+});
+
+describe('ordenarAlfabetico — [CONNECT] orden client-side hasta que el store lo garantice', () => {
+  it('ordena por nombre como una guía telefónica', () => {
+    const desordenados = [
+      cliente({ id: 1, nombre: 'Zapatería Norte' }),
+      cliente({ id: 2, nombre: 'Almacén Don Pepe' }),
+      cliente({ id: 3, nombre: 'Ferretería El Tornillo' }),
+    ];
+    expect(ordenarAlfabetico(desordenados).map((c) => c.nombre)).toEqual([
+      'Almacén Don Pepe',
+      'Ferretería El Tornillo',
+      'Zapatería Norte',
+    ]);
+  });
+
+  it('🔴 ignora mayúsculas y tildes (mismo criterio que el `unaccent` del backend)', () => {
+    // «álvarez» y «Alvarez» tienen que quedar juntos y antes de «bravo», sin que la tilde o la mayúscula
+    // los mande al fondo — que es lo que haría un sort byte a byte (los acentos ordenan después de la z).
+    const nombres = ordenarAlfabetico([
+      cliente({ id: 1, nombre: 'bravo' }),
+      cliente({ id: 2, nombre: 'Álvarez' }),
+      cliente({ id: 3, nombre: 'alvarez' }),
+    ]).map((c) => c.nombre);
+    expect(nombres.indexOf('bravo')).toBe(2);
+    expect(nombres.slice(0, 2).sort()).toEqual(['alvarez', 'Álvarez'].sort());
+  });
+
+  it('🔴 no muta el array de entrada (deriva uno nuevo)', () => {
+    const original = [cliente({ id: 1, nombre: 'Zeta' }), cliente({ id: 2, nombre: 'Alfa' })];
+    const copiaOrden = original.map((c) => c.nombre);
+    ordenarAlfabetico(original);
+    expect(original.map((c) => c.nombre)).toEqual(copiaOrden);
+  });
+
+  it('🔴 CONTROL — una lista ya ordenada queda igual', () => {
+    const yaOrdenados = [cliente({ id: 1, nombre: 'Alfa' }), cliente({ id: 2, nombre: 'Beta' })];
+    expect(ordenarAlfabetico(yaOrdenados).map((c) => c.nombre)).toEqual(['Alfa', 'Beta']);
   });
 });

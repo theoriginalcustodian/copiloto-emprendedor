@@ -50,6 +50,22 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 /** Lo que tarda en dispararse la búsqueda desde la última tecla. */
 const ESPERA_BUSQUEDA_MS = 350;
 
+/**
+ * 🔴 **[CONNECT] Orden alfabético client-side — hasta que el store lo garantice.** El contrato de
+ * «Clientes: listado completo, orden alfabético» pide alfabético, pero `GET /clientes` **no declara
+ * garantizar el sort** (verificado con planificación: el orden del store está sin confirmar). Se ordena
+ * acá para no depender de un orden que el backend no promete. `localeCompare('es', sensitivity:'base')`
+ * agrupa como una guía telefónica: ignora mayúsculas y tildes (á junto a a), igual que el `unaccent`
+ * con el que el backend busca — así el orden visible y el criterio de búsqueda hablan el mismo idioma.
+ *
+ * **La costura:** con paginación, esto ordena SÓLO la página cargada, no la cartera entera. El día que
+ * el backend garantice `ORDER BY nombre`, se saca este sort (o queda como red de seguridad barata) y el
+ * orden es global. Marcado `[CONNECT]` para que ese día sea un punto único.
+ */
+export function ordenarAlfabetico(clientes: readonly Cliente[]): Cliente[] {
+  return [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+}
+
 export interface PantallaClientesProps {
   /** Id que llegó desde la lista de actividad — abre su ficha al montar. */
   clienteIdInicial?: number;
@@ -181,6 +197,9 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
   const hayClientes = clientes.length > 0;
   const buscando = busquedaAplicada !== '';
+  // Alfabético para MOSTRAR; el conteo («Mostrando X de Y») sigue saliendo de `clientes`/`total`, que
+  // el orden no cambia. Ver `ordenarAlfabetico` [CONNECT].
+  const clientesOrdenados = ordenarAlfabetico(clientes);
 
   return (
     <MarcoGlass titulo="Clientes" icono="user" testID="pantalla-clientes">
@@ -289,7 +308,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                 </Text>
               )}
 
-              {clientes.map((c) => (
+              {clientesOrdenados.map((c) => (
                 <TarjetaCliente key={c.id} cliente={c} onPress={setFicha} />
               ))}
             </>
