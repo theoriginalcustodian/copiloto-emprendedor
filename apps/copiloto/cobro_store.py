@@ -30,6 +30,7 @@ import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
+from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
@@ -216,8 +217,16 @@ class CobroStore:
                                (self._cliente_id, idem_key))
                     fila = c2.fetchone()
                     return self._fila(fila), self._resumen(c2, comprobante_id)
-            fila = cur.fetchone()
-            return self._fila(fila), self._resumen(cur, comprobante_id)
+            # 🔴 El log SÓLO acá — este es el único camino con un INSERT real. Los dos returns de
+            # arriba (idem_key ya visto, o 23505) devuelven un cobro que YA existía: re-loggearlos
+            # duplicaría el evento de un hecho que ocurrió una sola vez, y el grafo contaría dos cobros.
+            cobro = self._fila(cur.fetchone())
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="creado", ocurrido_en=dia,
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "comprobante_id": comprobante_id})
+            return cobro, self._resumen(cur, comprobante_id)
 
     def registrar_suelto(self, *, monto, medio: str = "", fecha=None, cliente_ref: int | None = None,
                          presupuesto_ref: int | None = None, idem_key: str | None = None,
@@ -244,14 +253,22 @@ class CobroStore:
                 if ya_estaba is not None:
                     return self._fila(ya_estaba)
             try:
+                # 🔴 `nacio_completo` se fija ACÁ y nunca se actualiza: es un hecho del momento del
+                # alta, no un estado. Derivarlo después de `falta` sería imposible —un ingreso
+                # completado a mano queda con `falta = []`, idéntico a uno que nació completo— y de
+                # esta distinción depende a quién se le ofrece el modo automático.
+                nacio_completo = bool((cliente_nombre or "").strip()
+                                      and (medio or "").strip()
+                                      and (concepto or "").strip())
                 cur.execute(
                     f"INSERT INTO {_TABLE} (cliente_id, monto, medio, fecha, idem_key, origen, "
-                    f"cliente_ref, presupuesto_ref, cliente_nombre, concepto) "
-                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s) "
+                    f"cliente_ref, presupuesto_ref, cliente_nombre, concepto, nacio_completo) "
+                    f"VALUES (%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s) "
                     f"RETURNING {', '.join(_COLS)}",
                     (self._cliente_id, importe, (medio or "").strip()[:40], _fecha(fecha),
                      idem_key or None, cliente_ref, presupuesto_ref,
-                     (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500]))
+                     (cliente_nombre or "").strip()[:120], (concepto or "").strip()[:500],
+                     nacio_completo))
             except Exception as exc:
                 if getattr(exc, "pgcode", None) != "23505" or not idem_key:
                     raise
@@ -261,7 +278,49 @@ class CobroStore:
                                f"WHERE cliente_id = %s AND idem_key = %s",
                                (self._cliente_id, idem_key))
                     return self._fila(c2.fetchone())
-            return self._fila(cur.fetchone())
+            # Log SÓLO en el INSERT real, por lo mismo que en `registrar`: el return del replay
+            # idempotente de arriba devuelve un cobro que ya existía y ya se loggeó.
+            cobro = self._fila(cur.fetchone())
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="creado", ocurrido_en=cobro["fecha"],
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "cliente_nombre": cobro["cliente_nombre"],
+                                    "concepto": cobro["concepto"],
+                                    "cliente_ref": cobro["cliente_ref"],
+                                    "presupuesto_ref": cobro["presupuesto_ref"]})
+            return cobro
+
+    def completitud_dictada(self) -> dict:
+        """Cuántos ingresos dictados **nacieron completos** y cuántos hubo que completar a mano.
+
+        Es el insumo de la oferta del modo automático: sólo se le propone a quien ya demostró que
+        dicta completo, porque en automático **no hay card que corrija** y lo dictado a medias se
+        guarda a medias sin que nadie lo vea.
+
+        ⚠️ **Los `NULL` quedan afuera de la cuenta, no cuentan como completos.** Son las filas
+        anteriores a la columna: no sabemos cómo nacieron, y meterlas del lado bueno inflaría el
+        porcentaje justo en los tenants con más historia — que son los que primero cruzarían el
+        umbral. Un porcentaje sobre 3 de 3 medidos es honesto; sobre 3 medidos y 40 supuestos, no.
+
+        `total_medido` viaja para que quien decida pueda ver **sobre cuántos** se calculó: 100% de 2
+        no es lo mismo que 100% de 30, y sin ese número el porcentaje solo no permite distinguirlos.
+        """
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT count(*) FILTER (WHERE nacio_completo IS TRUE),
+                       count(*) FILTER (WHERE nacio_completo IS FALSE),
+                       count(*) FILTER (WHERE nacio_completo IS NULL)
+                  FROM {_TABLE}
+                 WHERE cliente_id = %s AND origen = %s
+            """, (self._cliente_id, ORIGEN_MANUAL))
+            completos, incompletos, sin_dato = cur.fetchone()
+        medido = completos + incompletos
+        return {"completos": completos, "incompletos": incompletos,
+                "sin_dato": sin_dato, "total_medido": medido,
+                # `None` y no `0` cuando no hay nada medido: 0% diría «dicta mal», y lo cierto es
+                # «todavía no sé». La diferencia importa porque de acá sale una oferta.
+                "porcentaje": round(100 * completos / medido) if medido else None}
 
     def listar_ingresos(self, *, limite: int = 100) -> dict:
         """**Todos** los ingresos: los de facturas cobradas, los de MercadoPago y los dictados.
@@ -357,6 +416,35 @@ class CobroStore:
             if campo in datos:
                 sets.append(f"{campo} = %s")
                 valores.append(datos[campo])
+        # `fecha` va aparte de los tres de arriba porque no es texto con tope: pasa por `_fecha`, que
+        # es el MISMO parser que usa el alta. Que la corrección y el alta compartan parser es lo que
+        # evita que una fecha entre bien por una puerta y mal por la otra.
+        #
+        # Existe por la card `ingreso_anotado`: el ingreso se guarda de una y la fecha dictada se
+        # corrige DESPUÉS, tocándola en la tarjeta. Sin esto, «me pagaron 40 mil el lunes» —que el
+        # resolvedor no entiende— quedaba con fecha de hoy y **no había forma de arreglarlo nunca**:
+        # el chat manda la respuesta al mismo resolvedor que ya falló, y por acá no entraba.
+        if "fecha" in datos:
+            sets.append("fecha = %s")
+            valores.append(_fecha(datos["fecha"]))       # ilegible -> la excepción que la web hace 400
+        # `monto` es el campo POR EL QUE la card existe: un «quince mil» que Whisper oyó «cincuenta
+        # mil» sólo se detecta viéndolo, y mostrarlo sin poder tocarlo enseña que el número está bien.
+        # La alternativa —Deshacer y redictar— manda a reintentar por el camino que acaba de fallar.
+        #
+        # Va por el MISMO `_decimal` + la misma cota que el alta: si el monto entrara por acá con otra
+        # validación, habría dos definiciones de «monto válido» y la más laxa sería la verdadera.
+        #
+        # Sin rastro de auditoría, y es deliberado: un ingreso dictado es la libreta del emprendedor,
+        # no un comprobante (una factura con CAE no se edita, se anula). `created_at` no se toca, así
+        # que se conserva cuándo se anotó. ⚠️ La condición que lo daría vuelta: si algún día un
+        # tercero —contador, exportación firmada, integración bancaria— consume estos ingresos como
+        # DECLARACIÓN, editar plata pasa a necesitar rastro. Hoy no existe ese consumidor.
+        if "monto" in datos:
+            importe = _decimal(datos["monto"], "monto")
+            if importe <= 0:
+                raise CobroInvalido("el monto tiene que ser mayor a cero")
+            sets.append("monto = %s")
+            valores.append(importe)
         if not sets:
             return None
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -364,7 +452,21 @@ class CobroStore:
                         f"WHERE cliente_id = %s AND id = %s RETURNING {', '.join(_COLS)}",
                         (*valores, self._cliente_id, ingreso_id))
             fila = cur.fetchone()
-            return self._fila(fila) if fila else None
+            if fila is None:
+                return None
+            cobro = self._fila(fila)
+            # 🔴 Corregir un ingreso ES un evento de negocio, aunque no sea un alta. El grafo se
+            # re-deriva del log (§3) y el DoD exige que re-derivar dé el estado ACTUAL (§5): si el
+            # dictado oyó «quince mil» por «cincuenta mil» y sólo loggeáramos el alta, el grafo
+            # respondería el monto equivocado para siempre. El derivador (§1.2) aplica el 'corregido'
+            # sobre el 'creado' del mismo `entidad_id`.
+            registrar_evento(cur, self._cliente_id, entidad_tipo="cobro", entidad_id=cobro["id"],
+                             evento="corregido", ocurrido_en=cobro["fecha"], valor_a=datos,
+                             datos={"monto": cobro["monto"], "medio": cobro["medio"],
+                                    "fecha": cobro["fecha"], "origen": cobro["origen"],
+                                    "cliente_nombre": cobro["cliente_nombre"],
+                                    "concepto": cobro["concepto"]})
+            return cobro
 
     def borrar(self, comprobante_id: int, cobro_id: int) -> dict | None:
         """Deshace un cobro. Alguien se equivoca, y sin esto la única salida sería tocar la base."""

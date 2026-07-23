@@ -73,8 +73,8 @@ def _obs_service(toolkit: str) -> dict:
 # ⚠️ NO agregar acá nada sin medirlo. El bug que esto cierra fue exactamente ese: la description
 # prometía «el lunes», el resolvedor lo descartaba en silencio, y el gasto quedaba con fecha de hoy.
 # **Una guía que promete de más es peor que no tener guía** — enseña a decir algo que falla.
-FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "la semana pasada", "el mes pasado",
-                       "a principios de mes", "el 5 de julio")
+FECHAS_QUE_ENTIENDO = ("hoy", "ayer", "anteayer", "hace una semana", "hace tres días",
+                       "la semana pasada", "el mes pasado", "a principios de mes", "el 5 de julio")
 
 
 # ── tools de 1ra clase (gateways propios, no vía módulo de servicio) ─────────────────────────────
@@ -239,9 +239,16 @@ _FIRST_CLASS_WRITES = frozenset({"calendar_book", "mp_charge"})
 # ya nació con ese bug: prometía «facturale 80 mil a la panadería» y `emitir_factura` NO EXISTE.
 #
 # Acá cada capacidad declara su rótulo y sus ejemplos, **y sólo se publica si su tool está viva** en
-# `TOOL_INDEX`. Entonces la poda del hito 2 y el alta de `emitir_factura` (hito 9) actualizan la guía
-# **solas**, y el DoD «los ejemplos coinciden con lo que existe» pasa a ser cierto por construcción en
-# vez de algo que alguien tiene que acordarse de verificar. Verificar a mano funciona una vez.
+# el catálogo que se le arma al LLM (`build_tool_catalog()`, NO `TOOL_INDEX`). La distinción costó un
+# bug 2026-07-22: filtrar por `TOOL_INDEX` publicaba `consultar_cliente` en la guía DESPUÉS de podarla
+# del catálogo, porque una tool podada conserva su entrada de índice. Entonces la poda del hito 2 y el
+# alta de `emitir_factura` (hito 9) actualizan la guía **solas**, y el DoD «los ejemplos coinciden con
+# lo que existe» pasa a ser cierto por construcción — verificar a mano funciona una vez.
+#
+# `_CAPACIDADES` puede listar tools que HOY no están en el catálogo (`emitir_factura`, hito 9): el
+# filtro las excluye hasta que existan, y el día que se agreguen aparecen solas. Lo que NO puede es
+# listar algo que ya no va a volver — por eso `consultar_cliente` se sacó de acá cuando la poda la
+# retiró: dejarla sería prometer una fila muerta que el filtro esconde pero el próximo lector cree viva.
 _CAPACIDADES = (
     ("registrar_gasto", "Gastos", ("pagué 15 mil de mercadería", "gasté 3.000 en nafta ayer")),
     ("registrar_ingreso", "Ingresos", ("me pagaron 85 mil",
@@ -249,7 +256,9 @@ _CAPACIDADES = (
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
     ("marcar_presupuesto", "Presupuestos", ("me aprobaron el de la panadería",)),
     ("registrar_cliente", "Clientes", ("anotá un cliente, Panadería Los Tilos",)),
-    ("consultar_cliente", "Consultas", ("¿cuánto me compró la panadería?",)),
+    # `emitir_factura` queda declarada aunque todavía no exista (hito 9): es una capacidad FUTURA que
+    # aparecerá sola. Es el control vivo del guard `test_facturar_por_voz_NO_esta_en_la_guia_todavia`
+    # — sin una entrada así, el filtro pasaría siempre sin filtrar nada.
     ("emitir_factura", "Facturar", ("facturale 80 mil a la panadería",)),
 )
 
@@ -257,17 +266,25 @@ _CAPACIDADES = (
 def capacidades_vivas() -> dict:
     """Lo que el copiloto puede hacer HOY, servido para la pantalla de ayuda.
 
-    Una capacidad cuya tool no está en `TOOL_INDEX` **no se publica**: prometer de más es peor que no
-    tener guía, porque enseña a decir algo que falla y quema la confianza en todo lo demás. Prometer
-    de menos es gratis — si el emprendedor dice algo que anda y no estaba en la lista, gana.
+    Una capacidad cuya tool no está en el **catálogo que se le arma al LLM** no se publica: prometer de
+    más es peor que no tener guía, porque enseña a decir algo que falla y quema la confianza en todo lo
+    demás. Prometer de menos es gratis — si el emprendedor dice algo que anda y no estaba, gana.
+
+    🔴 **El filtro es `build_tool_catalog()`, NO `TOOL_INDEX`, y la diferencia costó un bug.**
+    `TOOL_INDEX` mapea *toda* tool que el executor sabe ejecutar a su kind de artifact, e incluye las
+    que el catálogo NO le ofrece al agente (una consultiva podada sigue teniendo su `_run_*` y su
+    entrada de índice). Filtrar por ahí publicaba `consultar_cliente` en la pantalla de ayuda **después
+    de podarla del catálogo** (medido contra el vivo, 2026-07-22). La lista que hay que respetar es la
+    ÚNICA que el emprendedor puede efectivamente disparar: la que el LLM recibe.
 
     Las expresiones de fecha salen de `FECHAS_QUE_ENTIENDO`, que es la tabla **medida** contra el
     resolvedor vivo. Es la misma fuente que usan las `description` del LLM y el aviso al emprendedor:
     las tres no pueden divergir porque son la misma constante.
     """
+    ofrecidas = {s["function"]["name"] for s in build_tool_catalog()}
     return {
         "capacidades": [{"tool": tool, "rotulo": rotulo, "ejemplos": list(ejemplos)}
-                        for tool, rotulo, ejemplos in _CAPACIDADES if tool in TOOL_INDEX],
+                        for tool, rotulo, ejemplos in _CAPACIDADES if tool in ofrecidas],
         "fechas": {"entiendo": list(FECHAS_QUE_ENTIENDO),
                    "si_no_esta": "Para cualquier otro día, tocá la fecha en la tarjeta."},
     }
@@ -304,8 +321,13 @@ def _required_of(tool_name: str) -> list:
 
 
 def build_tool_catalog() -> list[dict]:
-    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA, CONSULTAR_ACTIVIDAD_SCHEMA,
-               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA, CONSULTAR_CLIENTE_SCHEMA,
+    # Poda del hito 2 — «el copiloto ejecuta, Inteligencia de Negocio explica»: las dos tools
+    # CONSULTIVAS se fueron. Actividad y Clientes ya son pantallas propias, y preguntárselas al agente
+    # gastaba una tool del presupuesto de routing para llegar peor a un dato que ya está a un toque.
+    # Los `_run_consultar_*` y sus schemas quedan definidos: no cuesta nada y el día que Inteligencia
+    # de Negocio necesite responder por chat, se re-enchufan acá sin reescribirlos.
+    schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA,
+               REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA]
     for mod in services.modules().values():

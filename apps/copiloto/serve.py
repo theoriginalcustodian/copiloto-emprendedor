@@ -68,6 +68,8 @@ from presupuestos_web import create_presupuestos_app
 from gastos_web import create_gastos_app
 from clientes_web import create_clientes_app
 from actividad_web import create_actividad_app
+from inteligencia_web import create_inteligencia_app
+from inteligencia_queries import InteligenciaQueries
 from actividad_store import ActividadStore
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
@@ -208,6 +210,11 @@ async def _serve() -> None:
         actividad_store_factory=lambda cid: ActividadStore(conn_factory, cid),
     )
 
+    inteligencia_app = create_inteligencia_app(
+        require_tenant=require_tenant,
+        queries_factory=lambda cid: InteligenciaQueries(conn_factory, cid),
+    )
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -225,6 +232,7 @@ async def _serve() -> None:
         require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
         afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
         clientes_app=clientes_app, actividad_app=actividad_app,
+        inteligencia_app=inteligencia_app,
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),

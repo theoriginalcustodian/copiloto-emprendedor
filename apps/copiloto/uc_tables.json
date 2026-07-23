@@ -86,6 +86,8 @@
     "reemplaza_a bigint",
     "factura_id text",
     "cliente_ref bigint",
+    "estado text NOT NULL DEFAULT 'pendiente'",
+    "estado_actualizado_en timestamptz",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuesto_items": [
@@ -158,6 +160,7 @@
     "presupuesto_ref bigint",
     "cliente_nombre text NOT NULL DEFAULT ''",
     "concepto text NOT NULL DEFAULT ''",
+      "nacio_completo boolean",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_conceptos": [
@@ -167,5 +170,16 @@
     "activo boolean NOT NULL DEFAULT true",
     "created_at timestamptz DEFAULT now()",
     "updated_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_eventos": [
+    "entidad_tipo text NOT NULL",
+    "entidad_id text NOT NULL",
+    "evento text NOT NULL",
+    "campo text",
+    "valor_de jsonb",
+    "valor_a jsonb",
+    "datos jsonb",
+    "ocurrido_en timestamptz NOT NULL",
+    "created_at timestamptz DEFAULT now()"
   ]
 }

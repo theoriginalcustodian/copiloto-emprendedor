@@ -68,3 +68,73 @@ prueba un camino que en producción no ocurre. Barato de verificar: leer la firm
 escribir el `raise`, o construir la excepción con los mismos argumentos que usa el código.
 
 [[no-codificar-la-esperanza-principio-raiz]] [[copiloto-facturacion-afip]]
+
+## Caso 9 (2026-07-22) — el control comparó dos archivos que no existían y dio el tilde verde
+
+Para probar que correr los tests contra la base nueva **no tocaba producción**, conté las filas antes
+y después y comparé:
+
+```bash
+diff prod_antes.json prod_despues.json && echo "✅ producción IDÉNTICA"
+```
+
+Los dos archivos **no existían** (el redirect no había escrito nada). `diff` no encontró diferencias
+entre dos nadas, devolvió 0, y el `&&` imprimió el tilde. **El control más importante de la sesión
+—el que planificación había pedido explícitamente— reportó verde sin haber medido nada.**
+
+Y no fue por descuido de un principiante: era el control de un riesgo que ya nos había costado 552
+filas huérfanas en producción, escrito por alguien que llevaba todo el día cazando exactamente esto.
+
+**Lo que lo hace tan traicionero:** un `diff` sin diferencias y un `diff` sin datos se ven **idénticos
+en pantalla**. La ausencia de salida es la señal de éxito Y la señal de que no había nada que comparar.
+
+**El arreglo, y es el patrón general:** el control tiene que **abortar ruidoso** ante su propia
+ausencia de insumos —archivo que falta, archivo vacío, cero tablas medidas— y **publicar cuánto
+midió** (`tablas medidas: antes=74 despues=74`) para que el número sea auditable en vez de creíble.
+Un "0 diferencias" sin un "sobre N cosas" al lado no dice nada.
+
+**Corolario que generaliza los 9 casos:** casi todos son la misma forma — *el instrumento no distingue
+entre «medí y no había nada» y «no medí»*. Exit code pipeado, 200 del SPA, espera laxa, muestreo
+contaminado, `tail -12` sobre una lista de 15, y ahora `diff` de dos vacíos. **Cuando un instrumento
+puede devolver el mismo resultado por éxito o por no-haber-corrido, no es un instrumento.**
+
+## Caso 10 (2026-07-22) — el guard traía la explicación adentro, y me la devolvió como hallazgo
+
+Un script de E2E en device abortaba con:
+
+```python
+raise SystemExit("ABORTA: 0 etiquetas — el dump no sirve para navegar (RN suele no exponer texto)")
+```
+
+Salió el mensaje, y **reporté al equipo que la app no exponía `accessibilityLabel`**. Otra sesión midió
+y encontró que sí los exponía. El control que me devolvió —guardar el XML crudo— reveló **dos** causas,
+y ninguna era ésa:
+
+1. **Git Bash traducía `/sdcard/x.xml` a una ruta de Windows.** El dump se escribía en
+   `C:/Files/Git/sdcard/` y el `cat` leía otro lugar. (`MSYS_NO_PATHCONV=1` lo arregla.)
+2. **`uiautomator` exige que la UI quede quieta**, y la app anima de forma continua → aborta con
+   `could not get idle state`. Apagar las animaciones del *sistema* no alcanza: son de la app.
+
+## La regla nueva, y es la que faltaba en los nueve casos anteriores
+
+**El mensaje de un guard no puede contener la causa probable.** Sólo puede decir **qué se midió y qué
+se esperaba**:
+
+```python
+# MAL  — el guard opina, y su opinión sale con la autoridad de una medición
+raise SystemExit("0 etiquetas — RN suele no exponer texto")
+# BIEN — el guard mide; explicar es un acto separado, que exige otro control
+raise SystemExit("0 etiquetas de 0 nodos leídos en ui.xml (0 bytes). NO explicar sin: "
+                 "(a) el archivo crudo, (b) el mismo dump sobre otra app")
+```
+
+**Por qué importa más que los otros nueve:** un guard que trae la hipótesis adentro no falla — te
+**confirma**. Y como el texto salió de un `raise` y no de tu cabeza, se lee como resultado de medir.
+Es la forma más difícil de detectar del error de esta familia, porque el instrumento que debía
+protegerte es el que te entrega la conclusión falsa, ya redactada y con autoridad prestada.
+
+**Y el agravante que lo vuelve doctrina:** escribí el caso 9 —*«un cero del propio instrumento no es un
+hallazgo»*— **cincuenta y cinco minutos antes** de cometer el caso 10, con más confianza que la primera
+vez, porque venía de una racha de diagnósticos correctos. **Saber la regla no protege: protege el
+control.** Por eso la regla operativa no es *«acordate»* sino *«el guard no opina»* — algo que queda
+escrito en el código y no depende de la memoria de nadie.

@@ -21,6 +21,8 @@ import os
 from decimal import Decimal
 from typing import Callable
 
+from evento_store import registrar_evento
+
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_presupuestos"
 _ITEMS = f"{_SCHEMA}.copiloto_presupuesto_items"
@@ -211,6 +213,21 @@ class PresupuestoStore:
                     (self._cid, presupuesto_id, orden, str(it.get("descripcion", "")),
                      Decimal(str(it.get("cantidad", 1))),
                      Decimal(str(it.get("precio_unitario", 0))), str(it.get("codigo") or "")))
+            # `PRESUPUESTO` (Negocio→Presupuesto), `DIRIGIDO_A` (→Cliente) e `INCLUYE` (→Concepto por
+            # ítem), §2.1. `Presupuesto` es un EVENTO (§1.2). El estado inicial `pendiente` viaja en
+            # `datos` como el arranque de la serie `ESTADO_PRESUPUESTO` (§2.2), igual que el precio
+            # inicial del concepto. Los ítems van enteros porque el `fact_template` de `INCLUYE`
+            # interpola `cantidad`/`precio_unitario`/`Concepto` — lo que no esté acá no se lee (trampa 6).
+            registrar_evento(cur, self._cid, entidad_tipo="presupuesto", entidad_id=presupuesto_id,
+                             evento="creado", campo="estado", valor_de=None, valor_a=PENDIENTE,
+                             datos={"numero": numero, "total": str(total), "concepto": concepto,
+                                    "receptor_nombre": receptor.get("nombre", ""),
+                                    "reemplaza_a": reemplaza_a,
+                                    "items": [{"descripcion": str(it.get("descripcion", "")),
+                                               "cantidad": str(Decimal(str(it.get("cantidad", 1)))),
+                                               "precio_unitario": str(Decimal(str(
+                                                   it.get("precio_unitario", 0))))}
+                                              for it in items]})
         return self.detalle(presupuesto_id) or {}
 
     def adjuntar_doc(self, presupuesto_id: int, *, doc_id: str | None, doc_link: str | None,
@@ -278,6 +295,11 @@ class PresupuestoStore:
                             (self._cid, presupuesto_id))
                 otro = cur.fetchone()
                 raise TransicionInvalida((otro[0] if otro else actual), nuevo)
+            # `ESTADO_PRESUPUESTO` cambió (§2.2): el derivador invalida la arista de estado anterior y
+            # crea la nueva. Se loggea sólo acá —después del UPDATE que sí movió una fila—: el camino
+            # idempotente `nuevo == actual` de arriba devolvió sin tocar nada y no es un cambio.
+            registrar_evento(cur, self._cid, entidad_tipo="presupuesto", entidad_id=presupuesto_id,
+                             evento="estado_cambiado", campo="estado", valor_de=actual, valor_a=nuevo)
         return self.detalle(presupuesto_id)
 
     # --- lectura -----------------------------------------------------------------

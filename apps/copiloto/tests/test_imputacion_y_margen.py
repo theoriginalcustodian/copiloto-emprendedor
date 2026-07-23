@@ -38,8 +38,8 @@ def tenants(conn_factory):
     yield a, b
     conn = conn_factory()
     with conn.cursor() as cur:
-        for t in ("copiloto_cobros", "copiloto_gastos", "copiloto_presupuesto_items",
-                  "copiloto_presupuestos", "afip_comprobantes"):
+        for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_gastos",
+                  "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
             cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
     conn.close()
 
@@ -311,3 +311,35 @@ def test_ADVERSARIAL_A_no_ve_ni_borra_los_ingresos_de_B(conn_factory, tenants):
     assert de_a.completar(de_b["id"], {"medio": "hackeado"}) is None
     # CONTROL: B sigue intacto — el intento de A no pudo ni siquiera ensuciarlo
     assert CobroStore(conn_factory, b).listar_ingresos()["ingresos"][0]["medio"] == ""
+
+
+@necesita_pg
+def test_corregir_el_monto_de_un_ingreso_RECALCULA_el_margen(conn_factory, tenants):
+    """🔴 El riesgo que PLANIFICACION nombro al habilitar la edicion del monto (2026-07-22 §3).
+
+    Editar el monto de un ingreso imputado a un trabajo **cambia el margen de ese trabajo**, y eso es
+    correcto: el margen debe reflejar la plata real. Lo que no puede pasar es que quede **cacheado**
+    — un ingreso corregido dejando un margen viejo que nadie va a sospechar, porque un numero
+    coherente y falso no protesta. Es la misma familia que la caja que contaba solo MercadoPago.
+
+    Hoy `margen()` lo **deriva** (`SELECT sum(monto)` en vivo, y no hay ninguna columna `margen` en el
+    manifiesto). Este test lo fija: si alguien lo cachea para acelerar una pantalla, se pone rojo.
+    """
+    a, _ = tenants
+    presupuesto, comprobante = _trabajo_completo(conn_factory, a)
+    cobros = CobroStore(conn_factory, a)
+    gastos = GastoStore(conn_factory, a)
+    trabajos = TrabajoStore(conn_factory, a)
+
+    cobro, _resumen = cobros.registrar(comprobante, monto="100000.00")
+    g = gastos.crear(monto="30000", categoria="mercaderia")
+    trabajos.imputar(g["id"], "comprobante", comprobante)
+
+    antes = trabajos.margen("comprobante", comprobante)
+    assert antes["margen"] == "70000.00", "control: el escenario no da lo esperado, el test no probaria nada"
+
+    cobros.completar(cobro["id"], {"monto": "60000"})
+
+    despues = trabajos.margen("comprobante", comprobante)
+    assert despues["cobrado"] == "60000.00", "el cobrado no siguio al monto corregido"
+    assert despues["margen"] == "30000.00", "el margen quedo viejo: se esta cacheando en algun lado"

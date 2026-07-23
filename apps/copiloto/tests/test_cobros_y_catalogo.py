@@ -73,8 +73,8 @@ def tenants(conn_factory):
     yield a, b
     conn = conn_factory()
     with conn.cursor() as cur:
-        for t in ("copiloto_cobros", "copiloto_conceptos", "copiloto_presupuesto_items",
-                  "copiloto_presupuestos", "afip_comprobantes"):
+        for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_conceptos",
+                  "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
             cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
     conn.close()
 
@@ -349,3 +349,155 @@ def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_factory, tenants)
 
     # y en cuanto hay desenlace deja de contar como "sin respuesta", aunque siga siendo viejo
     assert store.cambiar_estado(p["id"], DESESTIMADO)["sin_respuesta"] is False
+
+
+# ── nacio_completo: el insumo de la oferta del modo automático ────────────────────────────────────
+
+@necesita_pg
+def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_factory, tenants):
+    """🔴 La razón de existir de la columna, medida antes de agregarla.
+
+    `falta` se calcula del estado ACTUAL: un ingreso que entró sin cliente ni medio y se completó
+    después queda con `falta = []`, **idéntico a uno que nació completo**. Contando con `falta`, quien
+    dicta a medias y corrige contaría como buen dictador — y es exactamente a quien la oferta del modo
+    automático NO le tiene que llegar, porque en automático no hay card que corrija.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    store.registrar_suelto(monto=1000, cliente_nombre="Panadería", medio="efectivo",
+                           concepto="torta", idem_key="nc-a")
+    b = store.registrar_suelto(monto=2000, idem_key="nc-b")
+    completado = store.completar(b["id"], {"cliente_nombre": "Panadería", "medio": "efectivo",
+                                           "concepto": "torta"})
+
+    assert completado["falta"] == [], "el control: `falta` los vuelve indistinguibles"
+
+    c = store.completitud_dictada()
+    assert c["completos"] == 1 and c["incompletos"] == 1, \
+        "…y `nacio_completo` sí los distingue, que es todo el punto"
+    assert c["porcentaje"] == 50
+
+
+@necesita_pg
+def test_completar_NO_reescribe_como_nacio(conn_factory, tenants):
+    """Es un hecho del momento, no un estado. Si `completar` lo actualizara, la columna volvería a ser
+    `falta` con otro nombre y el problema entero regresaría."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    b = store.registrar_suelto(monto=2000, idem_key="nc-c")
+    store.completar(b["id"], {"cliente_nombre": "X", "medio": "efectivo", "concepto": "y"})
+    assert store.completitud_dictada()["incompletos"] == 1
+
+
+@necesita_pg
+def test_sin_ingresos_medidos_el_porcentaje_es_None_y_no_cero(conn_factory, tenants):
+    """`0%` diría «dicta mal»; lo cierto es «todavía no sé». De acá sale una oferta, así que la
+    diferencia no es cosmética."""
+    a, _ = tenants
+    c = CobroStore(conn_factory, a).completitud_dictada()
+    assert c["porcentaje"] is None
+    assert c["total_medido"] == 0
+
+
+@necesita_pg
+def test_los_cobros_de_FACTURA_no_entran_en_la_cuenta(conn_factory, tenants):
+    """La oferta mide cómo DICTA el emprendedor. Un cobro que salió de tocar «Ya me la pagaron» no
+    dice nada de eso, y contarlo como completo inflaría el porcentaje con algo que no es dictado."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    store.registrar(_comprobante(conn_factory, a, "500.00"), idem_key="nc-fact")
+    assert store.completitud_dictada()["total_medido"] == 0
+
+
+# ── la fecha del ingreso se corrige DESPUÉS, en la card `ingreso_anotado` ──────────────────────
+
+@necesita_pg
+def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_factory, tenants):
+    """🔴 Sin esto, una fecha dictada mal NO se podia arreglar por ningun lado.
+
+    El ingreso se guarda de una (§2.bis: un ingreso que espera confirmacion reintroduce la caja que
+    miente), asi que cuando el resolvedor no entiende «el lunes» el registro YA existe con fecha de
+    hoy. Y contestar por chat no sirve: la respuesta vuelve **al mismo resolvedor que acaba de
+    fallar**. La unica salida es tocarla en la card — y para eso el PATCH tiene que aceptarla.
+
+    Lo midio FRONTEND leyendo el handler vivo en vez de su propio cliente, que es donde habria
+    confirmado lo que ya creia.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=40000, idem_key="fecha-uno")
+    hoy = ingreso["fecha"]
+
+    corregido = store.completar(ingreso["id"], {"fecha": "2026-07-20"})
+
+    assert corregido["fecha"] == "2026-07-20", "la fecha corregida no viajo al UPDATE"
+    assert hoy != "2026-07-20", "control: el alta ya habia puesto esa fecha, el test no probaria nada"
+
+
+@necesita_pg
+def test_corregir_la_fecha_NO_toca_el_monto_ni_lo_demas(conn_factory, tenants):
+    """Parcial de verdad: la clave ausente no se toca. Un PATCH de fecha que pisara el monto seria
+    peor que no tener el campo — moveria plata sin que nadie lo pidiera."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=40000, cliente_nombre="Panaderia", medio="efectivo",
+                                     concepto="torta", idem_key="fecha-dos")
+
+    corregido = store.completar(ingreso["id"], {"fecha": "2026-07-19"})
+
+    assert corregido["monto"] == ingreso["monto"]
+    assert corregido["cliente_nombre"] == "Panaderia"
+    assert corregido["medio"] == "efectivo"
+    assert corregido["concepto"] == "torta"
+
+
+@necesita_pg
+def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory, tenants):
+    """El `except` de la capa web llego CON este campo, y por eso hay test.
+
+    Hasta que el body acepto `fecha`, `completar` solo tocaba texto y no podia levantar
+    `CobroInvalido`. Agregar el campo sin el `except` dejaba una fecha ilegible saliendo como **500**:
+    un error del servidor por un dato del usuario, que ademas la app no sabe leer.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=1000, idem_key="fecha-tres")
+
+    with pytest.raises(CobroInvalido):
+        store.completar(ingreso["id"], {"fecha": "el lunes pasado"})
+
+
+@necesita_pg
+def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_factory, tenants):
+    """PLANIFICACION lo decidio el 2026-07-22, despues de que este test fijara la decision pendiente.
+
+    La card existe porque un «quince mil» que Whisper oyo «cincuenta mil» **solo se detecta viendolo**.
+    Una card que muestra el monto y no deja tocarlo no cubre el caso que motivo tener cards: **ensena
+    que el numero esta bien**. Y la alternativa —Deshacer y redictar— son dos pasos, y el segundo
+    vuelve a pasar por el reconocimiento que acaba de fallar.
+    """
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=50000, idem_key="monto-uno")
+
+    corregido = store.completar(ingreso["id"], {"monto": "15000"})
+
+    assert corregido["monto"] == "15000.00"
+    # Se mide el EFECTO en la base, no la respuesta: la leccion de la doble factura, donde el `if`
+    # respondia bien y el efecto era doble.
+    ingresos = store.listar_ingresos(limite=50)["ingresos"]
+    de_nuevo = [k for k in ingresos if k["id"] == ingreso["id"]][0]
+    assert de_nuevo["monto"] == "15000.00"
+
+
+@necesita_pg
+def test_corregir_el_monto_a_cero_o_negativo_NO_se_acepta(conn_factory, tenants):
+    """Misma cota que el alta, y por el mismo motivo: si el monto entrara por acá con otra validacion
+    habria **dos definiciones de «monto valido»**, y la mas laxa seria la verdadera."""
+    a, _ = tenants
+    store = CobroStore(conn_factory, a)
+    ingreso = store.registrar_suelto(monto=15000, idem_key="monto-cero")
+
+    for invalido in (0, -1, "0"):
+        with pytest.raises(CobroInvalido):
+            store.completar(ingreso["id"], {"monto": invalido})

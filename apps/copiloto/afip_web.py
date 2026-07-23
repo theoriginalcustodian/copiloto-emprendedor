@@ -57,12 +57,32 @@ class IngresoBody(CobroBody):
 
 class CompletarIngresoBody(BaseModel):
     """La respuesta al aviso de *«no me dijiste de quién ni cómo te pagaron»*. Parcial de verdad:
-    completa el MISMO ingreso, no crea otro."""
+    completa el MISMO ingreso, no crea otro.
+
+    🔴 **`fecha` y `monto` son los dos que pidió la card `ingreso_anotado`**, y los dos entran — el
+    `monto` recién después de que PLANIFICACIÓN lo decidiera (2026-07-22), no antes:
+
+    - **`fecha`** corrige lo que el resolvedor entendió mal (*«el lunes»* → hoy). Sin ella **no había
+      forma de arreglarla nunca**: contestar por chat manda la respuesta al mismo resolvedor que ya
+      falló.
+    - **`monto`** es el campo **por el que la card existe**: un *«quince mil»* que Whisper oyó
+      *«cincuenta mil»* sólo se detecta viéndolo, y una card que lo muestra sin dejar tocarlo **enseña
+      que el número está bien**. La alternativa —Deshacer y redictar— son dos pasos, y el segundo
+      vuelve a pasar por el reconocimiento que falló.
+
+    **Sin rastro de auditoría, y es deliberado:** un ingreso dictado es la libreta del emprendedor, no
+    un comprobante — una factura con CAE no se edita, se anula con nota de crédito. `created_at` no se
+    toca al editar, así que se conserva cuándo se anotó. ⚠️ **La condición que lo daría vuelta:** si
+    algún día un tercero —contador, exportación firmada, integración bancaria— consume estos ingresos
+    como **declaración**, editar plata pasa a necesitar rastro. Hoy no existe ese consumidor.
+    """
     cliente_nombre: str | None = None
     medio: str | None = None
     concepto: str | None = None
     cliente_ref: int | None = None
     presupuesto_ref: int | None = None
+    fecha: str | None = None
+    monto: str | float | int | None = None
 
 
 class PerfilBody(BaseModel):
@@ -365,7 +385,14 @@ def create_afip_app(
         """Completa lo que faltó, **en el mismo ingreso**. Es la segunda mitad de «guarda igual, pero
         avisa»: el aviso no sirve de nada si contestar crea un registro nuevo."""
         cambios = body.model_dump(exclude_unset=True)
-        ingreso = await asyncio.to_thread(_cobros(cliente_id).completar, ingreso_id, cambios)
+        # El `except` es nuevo y llegó CON `fecha`: hasta que este body la aceptó, `completar` no
+        # podía levantar `CobroInvalido` —sólo tocaba texto— así que no hacía falta. Agregar el campo
+        # sin esto dejaba una fecha ilegible saliendo como **500**: un error del servidor por un dato
+        # del usuario, que además la app no sabe leer. Mismo 400 que las otras dos puertas.
+        try:
+            ingreso = await asyncio.to_thread(_cobros(cliente_id).completar, ingreso_id, cambios)
+        except CobroInvalido as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
         if ingreso is None:
             raise HTTPException(status_code=404, detail="ingreso no encontrado")
         return {"ingreso": ingreso}

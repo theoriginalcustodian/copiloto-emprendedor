@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Callable
 
+from evento_store import registrar_evento
+
 _TABLE = "uc_factory.afip_comprobantes"
 
 ESTADO_EMITIDA = "emitida"
@@ -29,12 +31,16 @@ class AfipComprobanteStore:
                   receptor_nombre: str | None = None,
                   pdf_url: str | None = None, pdf_expira_at: datetime | None = None,
                   idem_key: str | None = None, workflow_id: str | None = None,
-                  cbte_asoc_nro: int | None = None) -> None:
+                  cbte_asoc_nro: int | None = None) -> int:
         """Alta idempotente: si el comprobante ya está registrado, actualiza en vez de duplicar.
 
         El `ON CONFLICT` va sobre (cliente_id, cuit, tipo_cbte, punto_venta, nro): un comprobante de
         AFIP es único por esa tupla. Si la activity se reintenta después de haber registrado, no
         explota ni crea una segunda fila.
+
+        Devuelve el **`id` de fila** del comprobante (fresco o el que ya estaba): es lo que la app
+        necesita para direccionar la factura —cargarle un cobro, abrir su detalle— y lo que la activity
+        expone en su resultado para que la card de éxito ofrezca cobrar sin rebuscar por `(pv, nro)`.
         """
         conn = self._conn_factory()
         with conn.cursor() as cur:
@@ -46,10 +52,32 @@ class AfipComprobanteStore:
                 f"ON CONFLICT (cliente_id, cuit, tipo_cbte, punto_venta, nro) DO UPDATE SET "
                 f"estado=EXCLUDED.estado, pdf_url=COALESCE(EXCLUDED.pdf_url, {_TABLE}.pdf_url), "
                 f"pdf_expira_at=COALESCE(EXCLUDED.pdf_expira_at, {_TABLE}.pdf_expira_at), "
-                f"cbte_asoc_nro=COALESCE(EXCLUDED.cbte_asoc_nro, {_TABLE}.cbte_asoc_nro)",
+                f"cbte_asoc_nro=COALESCE(EXCLUDED.cbte_asoc_nro, {_TABLE}.cbte_asoc_nro) "
+                f"RETURNING id, (xmax = 0) AS fue_insert",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision,
                  doc_tipo, doc_nro, receptor_nombre, total, estado, pdf_url, pdf_expira_at, idem_key,
                  workflow_id, cbte_asoc_nro))
+            # 🔴 `EMITIO` (Negocio→Comprobante) + `FACTURADO_A` (→Cliente), §2.1, y el arranque de
+            # `ESTADO_COMPROBANTE` en `emitida` (§2.2). Este método es un UPSERT llamado desde una
+            # activity de Temporal, que **reintenta**: `RETURNING (xmax = 0)` distingue el INSERT fresco
+            # (xmax=0) del camino ON CONFLICT DO UPDATE (xmax≠0, un retry o un re-registro de PDF/estado).
+            # Se loggea SÓLO en el insert fresco: sin esto, cada reintento de la activity sumaría un
+            # `EMITIO` duplicado de una factura que se emitió una sola vez. `Comprobante` es EVENTO, su
+            # clave natural es la tupla que AFIP considera única (§1.2). ⚠️ Anular NO invalida `EMITIO`
+            # (§2.2): eso lo maneja `marcar_anulada` como cambio de `ESTADO_COMPROBANTE`, no acá.
+            comprobante_id, fue_insert = cur.fetchone()
+            if fue_insert:
+                registrar_evento(cur, self._cid, entidad_tipo="comprobante",
+                                 entidad_id=f"{cuit}|{tipo_cbte}|{punto_venta}|{nro}",
+                                 evento="emitido", campo="estado", valor_de=None, valor_a=estado,
+                                 ocurrido_en=fecha_emision,
+                                 datos={"tipo_cbte": tipo_cbte, "punto_venta": punto_venta, "nro": nro,
+                                        "total": (None if total is None else str(total)),
+                                        "fecha_emision": (fecha_emision.isoformat()
+                                                          if fecha_emision else None),
+                                        "receptor_nombre": receptor_nombre or "",
+                                        "doc_tipo": doc_tipo, "doc_nro": doc_nro, "cae": cae})
+        return comprobante_id
 
     def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                      pdf_url: str, pdf_expira_at: datetime | None) -> None:
@@ -103,12 +131,15 @@ class AfipComprobanteStore:
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
+                f"SELECT id, cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
                 f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
                 f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND idem_key=%s", (self._cid, idem_key))
             row = cur.fetchone()
-        return self._fila(row)
+        # `con_id=True`: el dedup viaja de vuelta al workflow (`**ya` en `_emitir_sync`) y el resultado
+        # que la app consume necesita el `id` de fila para direccionar la factura. Es una de las dos
+        # consultas que `_fila` expone con id a propósito (la otra es `listar`).
+        return self._fila(row, con_id=True)
 
     def listar(self, *, cuit: str, limite: int = 50) -> list[dict]:
         conn = self._conn_factory()
@@ -149,10 +180,28 @@ class AfipComprobanteStore:
         """Marca la factura original como anulada y deja el puntero a la NC que la anuló."""
         conn = self._conn_factory()
         with conn.cursor() as cur:
+            # Estado previo, para el de→a del log Y para no re-loggear en un reintento de la activity.
+            # El UPDATE de abajo queda EXACTO —método verificado E2E, no lo toco—: la condición de
+            # loggear se decide con este SELECT, no cambiando el WHERE. Con autocommit son dos
+            # sentencias, misma tolerancia best-effort que el resto del log (ver evento_store).
+            cur.execute(f"SELECT estado FROM {_TABLE} WHERE cliente_id=%s AND cuit=%s "
+                        f"AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
+                        (self._cid, cuit, tipo_cbte, punto_venta, nro))
+            prev = cur.fetchone()
+            estado_previo = prev[0] if prev else None
             cur.execute(
                 f"UPDATE {_TABLE} SET estado=%s, cbte_asoc_nro=%s "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (ESTADO_ANULADA, nro_nota_credito, self._cid, cuit, tipo_cbte, punto_venta, nro))
+            # `ESTADO_COMPROBANTE`: emitida → anulada (§2.2). NO invalida `EMITIO`: la factura se emitió
+            # y eso sigue siendo cierto. Se loggea sólo si el estado REALMENTE cambió — un reintento
+            # sobre una ya anulada tiene `estado_previo == anulada` y no re-loggea.
+            if estado_previo is not None and estado_previo != ESTADO_ANULADA:
+                registrar_evento(cur, self._cid, entidad_tipo="comprobante",
+                                 entidad_id=f"{cuit}|{tipo_cbte}|{punto_venta}|{nro}",
+                                 evento="estado_cambiado", campo="estado",
+                                 valor_de=estado_previo, valor_a=ESTADO_ANULADA,
+                                 datos={"nota_credito_nro": nro_nota_credito})
 
     @staticmethod
     def _fila(row, *, con_id: bool = False) -> dict | None:

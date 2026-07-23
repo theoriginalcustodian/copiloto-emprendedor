@@ -45,13 +45,6 @@ _PRESENTATION: dict[str, dict] = {
         "description": "Agendá reuniones y turnos en tu Google Calendar.",
         "capabilities": ["Agendar reuniones", "Buscar turnos"],
     },
-    "hubspot": {
-        "display_name": "HubSpot",
-        "work_label": "Clientes",
-        "category": "Clientes (CRM)",
-        "description": "Guardá y buscá tus clientes en el CRM.",
-        "capabilities": ["Guardar un cliente", "Buscar un cliente"],
-    },
     "googledrive": {
         "display_name": "Google Drive",
         "work_label": "Archivos",
@@ -70,15 +63,8 @@ _PRESENTATION: dict[str, dict] = {
         "display_name": "Google Sheets",
         "work_label": "Archivos",
         "category": "Archivos",
-        "description": "Agregá y leé datos en tus planillas de Google Sheets.",
-        "capabilities": ["Agregar fila", "Actualizar datos", "Leer planilla"],
-    },
-    "instagram": {
-        "display_name": "Instagram",
-        "work_label": "Instagram",
-        "category": "Redes",
-        "description": "Mirá tu cuenta y publicá fotos en Instagram.",
-        "capabilities": ["Ver cuenta", "Ver publicaciones", "Publicar foto"],
+        "description": "Agregá filas a tus planillas de Google Sheets.",
+        "capabilities": ["Agregar fila"],
     },
 }
 

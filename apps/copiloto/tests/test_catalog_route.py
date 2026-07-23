@@ -117,8 +117,8 @@ def test_catalog_with_token_returns_services_list():
     assert "services" in body
     keys = {s["key"] for s in body["services"]}
     assert "mercadopago" in keys
-    assert "gmail" in keys           # uno de los 7 toolkits derivados de la policy real
-    assert len(keys) == 8            # mercadopago + 7 toolkits
+    assert "gmail" in keys           # uno de los 5 toolkits derivados de la policy real
+    assert len(keys) == 6            # mercadopago + 5 toolkits (poda del hito 2: eran 7)
 
 
 def test_catalog_reflects_mp_connected_true():
@@ -139,14 +139,16 @@ def test_catalog_reflects_composio_connected_only_active():
     gateway = _FakeComposioGateway(connections={
         "cid-A": [
             {"id": "1", "toolkit": "gmail", "status": "ACTIVE"},
-            {"id": "2", "toolkit": "hubspot", "status": "INITIATED"},
+            {"id": "2", "toolkit": "googledocs", "status": "INITIATED"},
         ]
     })
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), composio_gateway=gateway)
     r = TestClient(app).get("/catalog")
     services = {s["key"]: s for s in r.json()["services"]}
     assert services["gmail"]["connected"] is True
-    assert services["hubspot"]["connected"] is False
+    # Era hubspot, podado en el hito 2. Lo que se prueba no es ESE servicio: es que un toolkit en
+    # INITIATED (a medio conectar) NO cuente como conectado.
+    assert services["googledocs"]["connected"] is False
 
 
 def test_catalog_two_tenants_do_not_leak_state():

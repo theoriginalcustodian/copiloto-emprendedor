@@ -32,6 +32,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Callable
 
+from evento_store import registrar_evento
 from gasto_store import dos_decimales
 
 _SCHEMA = "uc_factory"
@@ -186,5 +187,15 @@ class TrabajoStore:
             fila = cur.fetchone()
             if fila is None:
                 return None
+            # `IMPUTADO_A` (Gasto→eslabón, §2.1). Se loggea para que el derivador arme la arista desde
+            # el log solo (§3/§5), sin leer el `*_ref` mutable. `eslabon=None` es una DESIMPUTACIÓN: la
+            # arista vigente se invalida y no nace otra. ⚠️ La ontología §2.1 lista `IMPUTADO_A` como
+            # EVENTO ("no se invalida jamás"), pero re-imputar un gasto DEBE invalidar la anterior o el
+            # margen contaría el gasto en dos trabajos — así que en el grafo se comporta como arista de
+            # ESTADO. Contradicción a resolver en §1.2/§1.3 (anotada como hallazgo del derivador).
+            registrar_evento(cur, self._cid, entidad_tipo="gasto", entidad_id=gasto_id,
+                             evento=("imputado" if eslabon is not None else "desimputado"),
+                             campo="imputacion",
+                             valor_a=({"eslabon": eslabon, "ref": ref} if eslabon is not None else None))
         return {"gasto_id": gasto_id, "presupuesto_ref": fila[0],
                 "comprobante_ref": fila[1], "cobro_ref": fila[2]}

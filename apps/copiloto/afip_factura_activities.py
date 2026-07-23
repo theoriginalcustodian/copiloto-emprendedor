@@ -99,13 +99,13 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
             punto_venta, siguiente)
         cae = str(info.get("CodAutorizacion") or "")
         if cae:
-            store.registrar(
+            comprobante_id = store.registrar(
                 cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=siguiente, cae=cae,
                 cae_vto=_fecha(info.get("FchVto")), fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
                 receptor_nombre=receptor_nombre or None,
                 total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
-            return {"ok": True, "duplicado": True, "cae": cae, "nro": siguiente,
+            return {"ok": True, "duplicado": True, "id": comprobante_id, "cae": cae, "nro": siguiente,
                     "tipo_cbte": tipo_cbte, "punto_venta": punto_venta}
 
     from afip_gateway import RechazoAfip
@@ -116,14 +116,15 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         # Rechazo de negocio: NO se reintenta. Es un resultado, no una falla.
         raise ApplicationError(str(exc), type="RechazoAfip", non_retryable=True) from None
 
-    store.registrar(
+    comprobante_id = store.registrar(
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=res.numero, cae=res.cae,
         cae_vto=res.cae_vto, fecha_emision=_fecha(payload.get("CbteFch")),
         doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
         receptor_nombre=receptor_nombre or None,
         total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
 
-    return {"ok": True, "duplicado": False, "cae": res.cae, "cae_vto": res.cae_vto.isoformat(),
+    return {"ok": True, "duplicado": False, "id": comprobante_id, "cae": res.cae,
+            "cae_vto": res.cae_vto.isoformat(),
             "nro": res.numero, "tipo_cbte": tipo_cbte, "punto_venta": punto_venta,
             "resultado": res.resultado}
 

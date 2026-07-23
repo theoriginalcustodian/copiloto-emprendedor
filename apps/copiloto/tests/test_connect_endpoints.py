@@ -214,7 +214,10 @@ def test_composio_valid_toolkits_derived_matches_policy_union():
     real). Si un test de este archivo divergiera de la policy real, este assert lo cazaría."""
     expected = frozenset(CALENDAR_POLICY) | frozenset(services.merged_policy())
     assert web_module._composio_valid_toolkits() == expected
-    assert len(expected) == 7   # gmail, googlecalendar, googledrive, googledocs, hubspot, googlesheets, instagram
+    # Poda del hito 2: hubspot e instagram se fueron enteros. Quedan 5.
+    # googledrive SIGUE: no lo usa el agente sino `archivar_factura_en_drive` (el PDF de cada factura),
+    # que reusa la policy de este módulo. Ver el pedido a planificación del 2026-07-22.
+    assert len(expected) == 5   # gmail, googlecalendar, googledrive, googledocs, googlesheets
 
 
 @pytest.mark.parametrize("toolkit", sorted(
