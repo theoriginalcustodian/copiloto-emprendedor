@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
+import type { ScrollView } from 'react-native-gesture-handler';
 
+import { Onda } from '../captura/Onda';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
-import { GlassGrabacionCopiloto } from './GlassGrabacionCopiloto';
+import { ControlesFlotantes } from './ControlesFlotantes';
 import { ListaMensajes } from './ListaMensajes';
 import { useChat } from './useChat';
 import { useVozComando } from './useVozComando';
@@ -45,11 +47,22 @@ function useTecladoVisible(): boolean {
  *  - **Artefactos post-confirmación** (`useArtefactosClinicos`/`TarjetaArtefacto`) — específicos de
  *    DocuMed (persistencia de nota clínica + PDF), sin equivalente en este sprint.
  *
- * 🔴 **Botón de voz + HUD de grabación (F6), y en qué se aparta del origen.** `BotonVoz` acá es un
- * TOQUE simple (no "mantener apretado + deslizar para anclar" como en documed): D6 fijó el alcance a
- * dictado CORTO, así que un toque alcanza para abrir el HUD (`GlassGrabacionCopiloto`) ya grabando, y
- * de ahí en más pausar/reanudar/enviar/descartar los maneja el propio HUD. Ver los docstrings de
- * `BotonVoz.tsx` y `GlassGrabacionCopiloto.tsx` para el resto de esa decisión.
+ * 🔴 **Dictado por voz (F6) — hold-graba / soltar-envía / deslizar-fija, SIN glass.** Reescrito contra
+ * `contrato_planificacion-a-frontend_dictado-por-voz-sin-glass-hold-graba-soltar-envia-deslizar-fija`:
+ * la versión anterior (toque simple → HUD glass) mis-citó una decisión de RETENCIÓN de audio (D6) como
+ * si fuera autoridad de una decisión de UX nunca tomada. Ver el docstring de `useVozComando.ts` y
+ * `BotonVoz.tsx` para el resto. El único feedback visual es la onda flotante (`Onda`) + los controles
+ * flotantes (`ControlesFlotantes`) una vez que el usuario desliza para fijar — nunca un glass.
+ *
+ * `fijado` es el ÚNICO estado que este componente agrega sobre `voz.fase`: si se deslizó hacia arriba
+ * lo suficiente (`BotonVoz.onFijar`), y por lo tanto hay que mostrar los controles flotantes en vez de
+ * "soltar = enviar". Se resetea solo cuando `voz.fase` vuelve a `inactivo` (Enviar/Eliminar ya
+ * terminaron su ciclo) — así una próxima grabación siempre arranca sin fijar.
+ *
+ * 🔴 **`scrollRef` es la costura de la composición de gestos.** `BotonVoz` flota ENCIMA de
+ * `ListaMensajes` y su gesto (`Gesture.LongPress`+`Gesture.Pan`) necesita saber del `ScrollView` de la
+ * lista (`simultaneousWithExternalGesture`) para no comerle el toque ni que el scroll se lo coma a él
+ * — es la causa raíz del bug de device que este contrato vino a cerrar (§2 del contrato).
  *
  * 🔴 **Permiso de micrófono denegado: aviso legible, sin romper el chat.** `useVozComando().iniciar()`
  * devuelve `false` si el usuario no concedió el permiso; acá eso dispara un `Alert` nativo en vez de
@@ -66,6 +79,15 @@ export function ChatView() {
   const { estado, send, enviarAudio } = useChat();
   const voz = useVozComando();
   const tecladoVisible = useTecladoVisible();
+  const scrollRef = useRef<ScrollView>(null);
+  const [fijado, setFijado] = useState(false);
+
+  // Una vez que la captura vuelve a `inactivo` (Enviar/Eliminar ya terminaron su ciclo), la puerta de
+  // `fijado` se reabre sola — sin esto, la SEGUNDA grabación de la sesión arrancaría ya "fijada" sin
+  // que el usuario haya deslizado nada.
+  useEffect(() => {
+    if (voz.fase === 'inactivo') setFijado(false);
+  }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
 
@@ -77,7 +99,7 @@ export function ChatView() {
     [send],
   );
 
-  const alTocarVoz = useCallback(() => {
+  const alIniciarVoz = useCallback(() => {
     void (async () => {
       const ok = await voz.iniciar();
       if (!ok) {
@@ -92,7 +114,8 @@ export function ChatView() {
   /**
    * Enviar corta (si todavía graba o está en pausa) y manda en un solo toque -- mismo criterio que
    * documed (2026-07-20): sin fase intermedia "detenida, esperando Enviar" de la que no se puede
-   * volver a Pausar.
+   * volver a Pausar. Es el mismo camino para "soltar sin fijar" (contrato §1, fila 2) y para el botón
+   * "Enviar" de los controles flotantes (fila 3) — un solo lugar que decide qué es "mandar el audio".
    */
   const alEnviarVoz = useCallback(async () => {
     if (voz.fase === 'grabando' || voz.fase === 'pausado') {
@@ -103,6 +126,8 @@ export function ChatView() {
     void enviarAudio(audio);
   }, [voz, enviarAudio]);
 
+  const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
+
   return (
     /**
      * `behavior="padding"` en ambas plataformas: agrega abajo exactamente el alto del teclado para
@@ -110,18 +135,51 @@ export function ChatView() {
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
     <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
-      <ListaMensajes messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+      <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
 
-      {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir. Se oculta
-          si el HUD de grabación ya está abierto (evita un segundo toque a mitad de una captura) o
-          con el teclado a la vista (ver `useTecladoVisible`). */}
-      <View
-        testID="overlay-voz"
-        style={[styles.overlayVoz, tecladoVisible && styles.oculto]}
-        pointerEvents={tecladoVisible ? 'none' : 'box-none'}
-      >
-        <BotonVoz onPress={alTocarVoz} disabled={voz.fase !== 'inactivo'} />
-      </View>
+      {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
+          esté fijado: con controles flotantes abajo, mantener el botón visible sumaría ruido). Se
+          oculta con el teclado a la vista (ver `useTecladoVisible`). */}
+      {!fijado && (
+        <View
+          testID="overlay-voz"
+          style={[styles.overlayVoz, tecladoVisible && styles.oculto]}
+          pointerEvents={tecladoVisible ? 'none' : 'box-none'}
+        >
+          {ondaVisible && (
+            <View testID="onda-flotante" style={styles.ondaFlotante} pointerEvents="none">
+              <Onda niveles={voz.niveles} />
+            </View>
+          )}
+          <BotonVoz
+            onIniciar={alIniciarVoz}
+            onSoltarSinFijar={() => void alEnviarVoz()}
+            onFijar={() => setFijado(true)}
+            disabled={voz.fase !== 'inactivo'}
+            scrollRef={scrollRef}
+          />
+        </View>
+      )}
+
+      {/* Fijado: la onda sigue flotando arriba de los controles (contrato §1, "sin contador, la onda
+          es el único feedback"), y los controles reemplazan al botón — se termina por Enviar o
+          Eliminar (o Pausar/Reanudar), nunca soltando el dedo (ya no hay dedo que sostener). */}
+      {fijado && (
+        <View testID="overlay-voz-fijado" style={styles.overlayVoz}>
+          {ondaVisible && (
+            <View testID="onda-flotante" style={styles.ondaFlotante} pointerEvents="none">
+              <Onda niveles={voz.niveles} />
+            </View>
+          )}
+          <ControlesFlotantes
+            fase={voz.fase}
+            alPausar={voz.pausar}
+            alReanudar={voz.reanudar}
+            alEnviar={() => void alEnviarVoz()}
+            alEliminar={() => void voz.descartar()}
+          />
+        </View>
+      )}
 
       <Composer
         motivoFallo={estado?.motivoFallo ?? null}
@@ -129,22 +187,6 @@ export function ChatView() {
         onSend={manejarEnvio}
         disabled={estado === null}
       />
-
-      {/* El glass de grabación: encima de todo mientras haya captura viva o un audio esperando
-          decisión. Se monta acá y no como ruta propia porque el grabador vive en este componente --
-          llevarlo a otra pantalla obligaría a mover el estado de una captura en curso a través del
-          router, que es justo el momento en que no se puede perder. */}
-      {voz.fase !== 'inactivo' && (
-        <GlassGrabacionCopiloto
-          fase={voz.fase}
-          segundos={voz.segundos}
-          niveles={voz.niveles}
-          alPausar={voz.pausar}
-          alReanudar={voz.reanudar}
-          alEnviar={() => void alEnviarVoz()}
-          alDescartar={() => void voz.descartar()}
-        />
-      )}
     </KeyboardAvoidingView>
   );
 }
@@ -152,7 +194,8 @@ export function ChatView() {
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
-  overlayVoz: { alignItems: 'center', paddingBottom: 8 },
+  overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
+  ondaFlotante: { width: '100%', paddingHorizontal: 24 },
   // `display:'none'` y no `opacity:0`: con opacity el botón seguiría ocupando su lugar y el composer
   // no ganaría el espacio que justamente hace falta cuando el teclado se comió media pantalla.
   oculto: { display: 'none' },

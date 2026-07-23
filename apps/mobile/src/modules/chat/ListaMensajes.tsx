@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView } from 'react-native-gesture-handler';
 
 import {
   leerClientePropuesto,
@@ -111,10 +112,23 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
  *
  * Auto-scroll al último mensaje en cada cambio (best-effort: `scrollToEnd` puede no existir bajo el
  * test-renderer).
+ *
+ * 🔴 **`ScrollView` de `react-native-gesture-handler`, no de `react-native` — y el `ref` se expone
+ * hacia afuera.** Convención del repo (`ScrollFormulario`/`Tile`): mezclar el responder system de RN
+ * con gestos de RNGH dentro del mismo árbol dejó un toque sin dueño (ver `contrato_..._dictado-por-
+ * voz-sin-glass...`, el bug real de device). `BotonVoz` flota ENCIMA de esta lista con un gesto RNGH
+ * propio (mantener apretado / deslizar); para que conviva con el scroll sin comerse el toque, su Pan
+ * necesita `simultaneousWithExternalGesture(refDeEstaLista)` — por eso el `ref` que este componente
+ * recibe apunta DIRECTO al `ScrollView` nativo de RNGH, el mismo que ya usa para su propio
+ * `scrollToEnd` interno, no un objeto envoltorio.
  */
-export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
+export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function ListaMensajes(
+  { messages, onChoice },
+  refExterno,
+) {
   const tema = useTema();
   const scrollRef = useRef<ScrollView>(null);
+  useImperativeHandle(refExterno, () => scrollRef.current as ScrollView, []);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd?.({ animated: true });
@@ -199,7 +213,7 @@ export function ListaMensajes({ messages, onChoice }: ListaMensajesProps) {
       })}
     </ScrollView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   contenido: { flexGrow: 1 },

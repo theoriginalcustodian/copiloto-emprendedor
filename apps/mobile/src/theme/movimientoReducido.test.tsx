@@ -10,7 +10,9 @@
  * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
  */
 import { render, screen, waitFor } from '@testing-library/react-native';
+import { useRef } from 'react';
 import { AccessibilityInfo } from 'react-native';
+import type { ScrollView } from 'react-native-gesture-handler';
 
 import { BotonVoz } from '../modules/chat/BotonVoz';
 import { ThemeProvider } from './ThemeProvider';
@@ -19,6 +21,16 @@ const leerAjuste = jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled');
 
 async function envolver(nodo: React.ReactElement) {
   return render(<ThemeProvider>{nodo}</ThemeProvider>);
+}
+
+/** `BotonVoz` necesita un `scrollRef` real (para `simultaneousWithExternalGesture`) — este archivo
+ *  no prueba el gesto (ver `BotonVoz.test.tsx`), sólo necesita un ref válido para montar. */
+function botonVoz() {
+  function Arnes() {
+    const scrollRef = useRef<ScrollView>(null);
+    return <BotonVoz onIniciar={() => {}} onSoltarSinFijar={() => {}} onFijar={() => {}} scrollRef={scrollRef} />;
+  }
+  return <Arnes />;
 }
 
 beforeEach(() => {
@@ -30,7 +42,7 @@ describe('movimiento reducido', () => {
   it('🔴 se PREGUNTA por el ajuste — sin esto, el resto del archivo no prueba nada', async () => {
     // El control de que el cableado existe. Si nadie consulta el ajuste, los tests de abajo pasarían
     // igual con la app ignorándolo por completo.
-    await envolver(<BotonVoz onPress={() => {}} />);
+    await envolver(botonVoz());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
   });
@@ -40,13 +52,15 @@ describe('movimiento reducido', () => {
     // Quien pide menos movimiento quiere una app quieta, no una app con menos botones.
     leerAjuste.mockResolvedValue(true);
 
-    await envolver(<BotonVoz onPress={() => {}} />);
+    await envolver(botonVoz());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
     expect(screen.getByTestId('boton-voz')).toBeTruthy();
     expect(screen.getByTestId('boton-voz-nucleo')).toBeTruthy();
     // Y conserva su nombre: apagar movimiento no puede costarle el nombre a un control.
-    expect(screen.getByLabelText('Tocá para dictarle al copiloto')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Mantené apretado para grabar. Deslizá hacia arriba para fijar sin soltar.'),
+    ).toBeTruthy();
   });
 
   it('🔴 si la lectura del ajuste FALLA, la app queda como es hoy', async () => {
@@ -55,7 +69,7 @@ describe('movimiento reducido', () => {
     // pero no puede tumbar el render.
     leerAjuste.mockRejectedValue(new Error('sin soporte'));
 
-    await envolver(<BotonVoz onPress={() => {}} />);
+    await envolver(botonVoz());
 
     await waitFor(() => expect(leerAjuste).toHaveBeenCalled());
     expect(screen.getByTestId('boton-voz')).toBeTruthy();

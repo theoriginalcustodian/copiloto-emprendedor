@@ -51,13 +51,11 @@ const PERMITIDOS: Record<string, string> = {
   'src/theme/glass/Tile.tsx':
     'sin feedback de presión por pedido del operador (2026-07-20): los tiles del escritorio son fijos',
 
-  // F6 (dictado corto) trajo `BotonVoz` — mismo motivo que documed anticipaba acá: su botón de voz
-  // tiene animación de presión PROPIA (un latido `Animated.loop` 1 → 1.08, ver `BotonVoz.tsx`) y
-  // meterle `PRESS_SCALE` compondría dos escalas anidadas sobre el mismo `Pressable`. No es una
-  // copia divergente de los valores canónicos (el vector que este guard persigue): es una decisión
-  // de diseño distinta, con su propio feedback ya implementado.
-  'src/modules/chat/BotonVoz.tsx':
-    'tiene su propio feedback de presión (latido Animated.loop) -- PRESS_SCALE compondría dos escalas',
+  // `BotonVoz.tsx` SALIÓ de acá (contrato `dictado-por-voz-sin-glass...`, reescritura del gesto):
+  // ya no tiene ningún `<Pressable>` — el toque es `GestureDetector`+`Gesture.LongPress()`/`Pan()`
+  // (mantener/deslizar/soltar), no un `onPress` simple. La entrada que citaba "su propio feedback de
+  // presión, PRESS_SCALE compondría dos escalas" describía el `Pressable` viejo; sin `Pressable` no
+  // hay nada que `pressableStyle` pudiera tocar, así que el guard ya no tiene nada que permitir acá.
 };
 
 /** Todos los `.ts`/`.tsx` bajo las raíces, sin tests ni el canon (que cita los valores a propósito). */

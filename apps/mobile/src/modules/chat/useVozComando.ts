@@ -67,10 +67,22 @@ const PRESET = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
  * apenas termina de subirlo — ver el docstring de `enviarAudio` para el porqué de que el borrado
  * viva ahí y no acá (el archivo tiene que seguir existiendo mientras el upload lo está leyendo).
  *
- * Es una máquina de fases (no tres funciones sueltas) porque el HUD (`GlassGrabacionCopiloto`)
- * necesita mostrar los mismos controles que la grabación clínica de documed — pausar, detener,
- * enviar, eliminar — y para eso hace falta fase, cronómetro y niveles. Sigue sin segmentar a
+ * Es una máquina de fases (no tres funciones sueltas) porque el gesto de `BotonVoz` (mantener
+ * apretado / deslizar para fijar / soltar) necesita fase, cronómetro y niveles para las waves y los
+ * controles flotantes — ver `contrato_..._dictado-por-voz-sin-glass...`. Sigue sin segmentar a
  * disco, que es lo que la mantiene simple.
+ *
+ * 🔴 **Pre-warm — el `onPressIn` NO puede esperar tres `await`s.** `contrato_..._dictado-por-voz-
+ * sin-glass...` §2.bis, medido por el operador como el punto de fricción real (Groq transcribe
+ * rápido; lo que se siente lento es el arranque). El permiso se pide UNA vez (cacheado en
+ * `permisoRef`), el audio mode se configura UNA vez, y `grabador.prepareToRecordAsync()` corre
+ * **antes** del press (al montar, y de nuevo en background después de cada `detener()`/`descartar()`)
+ * — así el camino caliente de `iniciar()` es sólo `grabador.record()`, sin ningún `await` antes.
+ *
+ * `precalentar()` deduplica llamadas concurrentes con `prepararPromiseRef`: si `iniciar()` llega
+ * mientras el re-prepare de después del último `detener()` sigue en vuelo (la carrera que el
+ * contrato pide cuidar), espera esa MISMA promesa en vez de disparar un `prepareToRecordAsync()`
+ * paralelo — dos preparos concurrentes sobre el mismo grabador nativo son terreno no verificado.
  */
 export function useVozComando(): UseVozComandoResult {
   const grabador = useAudioRecorder(PRESET);
@@ -82,6 +94,50 @@ export function useVozComando(): UseVozComandoResult {
   // haya terminado su cadena de awaits (el usuario apretó y soltó rapidísimo). Sin esta guarda, se
   // llamaría `stop()` sobre un grabador que nunca arrancó.
   const vivoRef = useRef(false);
+
+  // `null` = todavía no se supo (primer chequeo pendiente); `true`/`false` = último resultado
+  // conocido. Se re-consulta cada vez que NO es `true` (permiso denegado no queda cacheado para
+  // siempre: el usuario puede haberlo concedido después, desde Ajustes, y ese chequeo es gratis
+  // frente al costo real que es `prepareToRecordAsync`).
+  const permisoRef = useRef<boolean | null>(null);
+  const audioModeListoRef = useRef(false);
+  const preparadoRef = useRef(false);
+  const prepararPromiseRef = useRef<Promise<void> | null>(null);
+
+  const precalentar = useCallback((): Promise<void> => {
+    if (prepararPromiseRef.current) return prepararPromiseRef.current;
+    if (preparadoRef.current) return Promise.resolve();
+
+    const promesa = (async () => {
+      if (permisoRef.current !== true) {
+        const permiso = await requestRecordingPermissionsAsync();
+        permisoRef.current = permiso.granted;
+      }
+      if (!permisoRef.current) return;
+
+      // `allowsRecording` hay que pedirlo explícito: sin esto, en Android el grabador arranca
+      // "bien" y devuelve un archivo mudo -- un fallo que NO tira error y que sólo se descubre
+      // escuchando. Una sola vez: no cambia entre grabaciones de la misma sesión.
+      if (!audioModeListoRef.current) {
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        audioModeListoRef.current = true;
+      }
+
+      await grabador.prepareToRecordAsync();
+      preparadoRef.current = true;
+    })().finally(() => {
+      prepararPromiseRef.current = null;
+    });
+
+    prepararPromiseRef.current = promesa;
+    return promesa;
+  }, [grabador]);
+
+  // Pre-calienta al montar (foco del chat) — para cuando llegue el primer press, el permiso y el
+  // `prepare` ya deberían estar resueltos.
+  useEffect(() => {
+    void precalentar();
+  }, [precalentar]);
 
   // Muestreo del grabador mientras hay captura viva: alimenta la onda y el cronómetro. Se apaga
   // solo al salir de `grabando` — un intervalo corriendo con la app en `listo` gastaría batería sin
@@ -102,22 +158,27 @@ export function useVozComando(): UseVozComandoResult {
   }, [fase, grabador]);
 
   const iniciar = useCallback(async (): Promise<boolean> => {
-    const permiso = await requestRecordingPermissionsAsync();
-    if (!permiso.granted) return false;
+    // 🔴 El camino caliente: si ya está pre-calentado (el caso normal — mount o el re-prepare del
+    // `detener()`/`descartar()` anterior ya corrieron), esta rama no tiene NINGÚN `await` antes de
+    // `record()` — el efecto (mic abierto, `fase` en `grabando`) es sincrónico dentro de esta misma
+    // función `async`, aunque su firma siga devolviendo una `Promise` (contrato §2.bis: feedback
+    // optimista en `onPressIn`, antes de cualquier async real).
+    if (!preparadoRef.current) {
+      await precalentar();
+    }
+    if (permisoRef.current !== true) return false;
 
-    // `allowsRecording` hay que pedirlo explícito: sin esto, en Android el grabador arranca "bien"
-    // y devuelve un archivo mudo -- un fallo que NO tira error y que sólo se descubre escuchando.
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-
-    await grabador.prepareToRecordAsync();
     grabador.record();
     vivoRef.current = true;
+    // Se consumió el prepare de este ciclo: el próximo `iniciar()` necesita uno nuevo, que arranca
+    // en background apenas termine este `detener()`/`descartar()` (nunca acá, en el camino caliente).
+    preparadoRef.current = false;
     archivoRef.current = null;
     setSegundos(0);
     setNiveles([]);
     setFase('grabando');
     return true;
-  }, [grabador]);
+  }, [grabador, precalentar]);
 
   const pausar = useCallback(() => {
     if (!vivoRef.current) return;
@@ -150,7 +211,9 @@ export function useVozComando(): UseVozComandoResult {
     // Sin archivo no hay nada que ofrecer: se vuelve a `inactivo` en vez de mostrar un "Enviar" que
     // no enviaría nada.
     setFase(archivoRef.current === null ? 'inactivo' : 'listo');
-  }, [grabador]);
+    // Re-arma para el PRÓXIMO press, en background — nunca en el camino caliente de `iniciar()`.
+    void precalentar();
+  }, [grabador, precalentar]);
 
   const descartar = useCallback(async (): Promise<void> => {
     if (vivoRef.current) {
@@ -161,7 +224,8 @@ export function useVozComando(): UseVozComandoResult {
     setSegundos(0);
     setNiveles([]);
     setFase('inactivo');
-  }, [grabador]);
+    void precalentar();
+  }, [grabador, precalentar]);
 
   const tomar = useCallback((): ArchivoSubida | null => {
     const archivo = archivoRef.current;
