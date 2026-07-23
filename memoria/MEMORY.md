@@ -122,6 +122,7 @@
 - [🧹 Los tests escribían en la base de PRODUCCIÓN](copiloto-tests-ensuciaban-la-base.md) — `project`. 552 filas huérfanas. Fixture de barrido acotada a la ventana de la corrida.
 - [🧭 IDENTIDAD = automatización/agentes-IA durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — `project`. Moat = orquestación DURABLE. Fit = agentes + frontend FINO + HITL.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — `project`. Keys que pasaron por chat. Diferido a pre-prod. grep-first + restart al rotar.
+- [🗜️ Compactar a 500k — investigación PAUSADA](compactacion-a-umbral-investigacion-pausada.md) — `project`. **Puntero:** cuando pregunte "lo de la compactación", retomar del doc. `/compact` inyectado NO ejecuta (spike); medir transcript SÍ; no hay daemon. Camino: bajar monitores + PreCompact.
 
 ## 📚 Referencia
 
