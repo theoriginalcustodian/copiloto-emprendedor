@@ -13,6 +13,7 @@ import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto } from './FormularioGasto';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
+import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -185,23 +186,28 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
                 ]}
               />
 
-              {!hayGastos && (
-                <Text testID="gastos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-                  Todavía no anotaste ningún gasto. También podés decírselo al copiloto hablando.
-                </Text>
-              )}
+              {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
+                  query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
+                  `/actividad?funcion=gastos&q=` y muestra el card uniforme. La lista rica queda intacta. */}
+              <BuscadorActividad funcion="gastos" testIDBase="gastos-busqueda" placeholder="Buscar un gasto">
+                {!hayGastos && (
+                  <Text testID="gastos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
+                    Todavía no anotaste ningún gasto. También podés decírselo al copiloto hablando.
+                  </Text>
+                )}
 
-              {gastos.map((g) => (
-                <TarjetaGasto key={g.id} gasto={g} onPress={setDetalle} />
-              ))}
+                {gastos.map((g) => (
+                  <TarjetaGasto key={g.id} gasto={g} onPress={setDetalle} />
+                ))}
 
-              {/* `total` es el conteo del TENANT, no el de la página: con 50 cards en pantalla y 137
-                  gastos, decir "50" sería mentir por omisión. Sólo se muestra si difiere. */}
-              {hayGastos && total > gastos.length && (
-                <Text testID="gastos-total" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                  Mostrando {gastos.length} de {total} gastos.
-                </Text>
-              )}
+                {/* `total` es el conteo del TENANT, no el de la página: con 50 cards en pantalla y 137
+                    gastos, decir "50" sería mentir por omisión. Sólo se muestra si difiere. */}
+                {hayGastos && total > gastos.length && (
+                  <Text testID="gastos-total" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                    Mostrando {gastos.length} de {total} gastos.
+                  </Text>
+                )}
+              </BuscadorActividad>
             </>
           )}
         </ScrollFormulario>
