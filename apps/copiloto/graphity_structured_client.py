@@ -174,3 +174,35 @@ class GraphityStructuredClient:
         if resp.status_code == 200:
             return resp.json() if resp.content else {}
         raise GrafoIngestError(f"PATCH /graph/edge/{edge_uuid}: {resp.status_code} {resp.text[:300]}")
+
+    # ── LECTURA (IN §3, el chat) ─────────────────────────────────────────────────────────────────────
+    # 🔴 `/graph/traverse` NO EXISTE en el server (spike 2026-07-23: 405 Method Not Allowed, pese a que
+    # el contrato de IN lo menciona). El mecanismo real de lectura son estos dos: `search` (semántico,
+    # top-K) y los listados exhaustivos por graph — se usan compuestos para navegación multi-hop
+    # (ej. Comprobante→INCLUYE→Concepto): traer el listado y resolver la relación en memoria.
+
+    def search(self, query: str, *, group_ids: list[str], scope: str = "edges", limit: int = 10) -> dict:
+        """`POST /graph/search` — semántico, top-K. Confirmado (hito 5): **NO filtra `invalid_at`** —
+        el caller filtra vigencia del lado del cliente antes de usar el resultado (trampa 6)."""
+        resp = self._request("POST", "/graph/search",
+                             json={"query": query, "group_ids": group_ids, "scope": scope, "limit": limit})
+        if resp.status_code == 200:
+            return resp.json()
+        raise GrafoIngestError(f"POST /graph/search: {resp.status_code} {resp.text[:300]}")
+
+    def listar_edges_del_graph(self, group_id: str, *, limit: int = 500) -> list[dict]:
+        """`GET /graph/edge/graph/{group_id}` — TODAS las aristas del graph (paginado por `limit`), con
+        `invalid_at` en la raíz (no bajo `attributes` — mismo shape que `get_edge`). Sirve de sustituto
+        de `traverse`: sin navegación por uuid, se trae el listado y se resuelve la relación en memoria
+        (el dataset de negocio es chico; ver el límite conocido en `inteligencia_chat.py`)."""
+        resp = self._request("GET", f"/graph/edge/graph/{group_id}?limit={limit}")
+        if resp.status_code == 200:
+            return (resp.json() or {}).get("edges") or []
+        raise GrafoIngestError(f"GET /graph/edge/graph/{group_id}: {resp.status_code} {resp.text[:300]}")
+
+    def listar_nodes_del_graph(self, group_id: str, *, limit: int = 500) -> list[dict]:
+        """`GET /graph/node/graph/{group_id}` — todos los nodos del graph, paginado."""
+        resp = self._request("GET", f"/graph/node/graph/{group_id}?limit={limit}")
+        if resp.status_code == 200:
+            return (resp.json() or {}).get("nodes") or []
+        raise GrafoIngestError(f"GET /graph/node/graph/{group_id}: {resp.status_code} {resp.text[:300]}")

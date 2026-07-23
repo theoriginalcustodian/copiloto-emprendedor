@@ -185,3 +185,42 @@ def test_margen_trabajo_detalle_inexistente_es_404():
     r = _app(queries_factory=lambda cid: _Q()).get(
         "/inteligencia/graficos/margen-trabajo?detalle=presupuesto:9999")
     assert r.status_code == 404
+
+
+# --- el chat (§3) ---
+
+def test_chat_sin_chat_factory_es_200_no_tengo_ese_dato():
+    """Punto de encuentro: sin LLM/Graphity configurados (best-effort, como `memory_provider`), el
+    endpoint sigue vivo — nunca 500."""
+    r = _app().post("/inteligencia/chat", json={"texto": "¿cuánto me queda?"})
+    assert r.status_code == 200
+    assert r.json() == {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
+
+
+def test_chat_pasa_el_texto_y_el_cliente_id_a_la_factory():
+    vistos = []
+
+    class _Chat:
+        def __init__(self, cid):
+            vistos.append(cid)
+
+        def responder(self, texto):
+            vistos.append(texto)
+            return {"respuesta": "ok", "fuente": "sql"}
+
+    r = _app(require_tenant=_tenant_fijo("cid-XYZ"),
+            chat_factory=lambda cid: _Chat(cid)).post(
+        "/inteligencia/chat", json={"texto": "¿cuánto facturé?"})
+    assert r.status_code == 200
+    assert r.json() == {"respuesta": "ok", "fuente": "sql"}
+    assert vistos == ["cid-XYZ", "¿cuánto facturé?"]
+
+
+def test_chat_sin_texto_es_422_body_invalido():
+    r = _app().post("/inteligencia/chat", json={})
+    assert r.status_code == 422
+
+
+def test_chat_sin_token_es_401():
+    r = _app(require_tenant=_tenant_401()).post("/inteligencia/chat", json={"texto": "hola"})
+    assert r.status_code == 401

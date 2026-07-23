@@ -162,3 +162,54 @@ def test_reintenta_un_503_transitorio_y_despues_pasa():
 
     r = _cliente(handler).post_structured({"e": "X"}, [{"a": 1}], group_id="g")
     assert r["migration_id"] == "m" and llamadas["n"] == 2
+
+
+# ── lectura (IN §3, el chat) ──────────────────────────────────────────────────────────────────────
+
+def test_search_manda_el_body_correcto_y_devuelve_el_json():
+    visto = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        import json as _j
+        visto["path"] = req.url.path
+        visto["body"] = _j.loads(req.content)
+        return httpx.Response(200, json={"edges": [{"fact": "x"}], "nodes": []})
+
+    r = _cliente(handler).search("tablero", group_ids=["g1"], limit=5)
+    assert visto["path"] == "/api/v2/graph/search"
+    assert visto["body"] == {"query": "tablero", "group_ids": ["g1"], "scope": "edges", "limit": 5}
+    assert r["edges"] == [{"fact": "x"}]
+
+
+def test_listar_edges_del_graph_va_al_path_correcto():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/api/v2/graph/edge/graph/g1"
+        assert req.url.params.get("limit") == "500"
+        return httpx.Response(200, json={"edges": [{"uuid": "e1"}, {"uuid": "e2"}]})
+
+    edges = _cliente(handler).listar_edges_del_graph("g1")
+    assert [e["uuid"] for e in edges] == ["e1", "e2"]
+
+
+def test_listar_edges_del_graph_sin_clave_edges_da_lista_vacia():
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={})
+
+    assert _cliente(handler).listar_edges_del_graph("g1") == []
+
+
+def test_listar_nodes_del_graph_va_al_path_correcto():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/api/v2/graph/node/graph/g1"
+        return httpx.Response(200, json={"nodes": [{"uuid": "n1"}]})
+
+    nodes = _cliente(handler).listar_nodes_del_graph("g1")
+    assert [n["uuid"] for n in nodes] == ["n1"]
+
+
+def test_search_error_no_200_revienta_fail_closed():
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json={"error": "x"})
+
+    with pytest.raises(GrafoIngestError):
+        _cliente(handler).search("x", group_ids=["g1"])
