@@ -123,7 +123,7 @@ export function useVozComando(): UseVozComandoResult {
         audioModeListoRef.current = true;
       }
 
-      await grabador.prepareToRecordAsync();
+      await prepararConReintento();
       preparadoRef.current = true;
     })().finally(() => {
       prepararPromiseRef.current = null;
@@ -132,6 +132,43 @@ export function useVozComando(): UseVozComandoResult {
     prepararPromiseRef.current = promesa;
     return promesa;
   }, [grabador]);
+
+  /**
+   * 🔴 **El bug que backend reprodujo 2/2 en device — causa raíz leída del fuente nativo, no
+   * adivinada.** `AudioRecorder.stopRecording()` (Android, `node_modules/expo-audio/android/.../
+   * AudioRecorder.kt:166-224`) corre `reset()` —el que limpia `recorder=null`/`isPrepared=false`—
+   * en su bloque `finally`, DESPUÉS de `recorder?.stop()`. La función `stop` del lado JS es un
+   * `AsyncFunction` SIN el wrapper `Coroutine` que sí usa `prepareToRecordAsync` (`AudioModule.kt:
+   * 579` vs `603`) — asimetría real entre las dos, no simétrica como parecía por la superficie de
+   * la API JS. Con eso, hay una ventana real donde la promesa de `grabador.stop()` puede resolver
+   * en JS un instante antes de que el `reset()` nativo termine de correr, y el `precalentar()` en
+   * background que dispara `detener()` justo después cae ahí: `prepareRecording()` ve
+   * `recorder != null` (todavía no limpiado) y tira `AudioRecorderAlreadyPreparedException` — el
+   * error EXACTO reportado (`AudioRecorder.kt:86-87`).
+   *
+   * Un reintento corto absorbe esa ventana sin tener que adivinar su duración exacta (no medible
+   * sin device). Si el error es otra cosa (paths más raros: prepare que falló feo, etc.), no lo
+   * absorbe — se propaga tras los reintentos, igual que antes.
+   */
+  async function prepararConReintento(intentosRestantes = 2): Promise<void> {
+    try {
+      await grabador.prepareToRecordAsync();
+    } catch (err) {
+      // El bridge nativo de Expo suele anidar la causa real (`AudioRecorderAlreadyPreparedException`)
+      // dentro de un wrapper genérico ("Call to function ... has been rejected") — se busca el texto
+      // en el mensaje Y en la causa, sin asumir en cuál de los dos aterriza.
+      const texto = `${err instanceof Error ? err.message : String(err)} ${
+        err instanceof Error && err.cause ? String(err.cause) : ''
+      }`;
+      const yaPreparado = /already been prepared/i.test(texto);
+      if (yaPreparado && intentosRestantes > 0) {
+        await new Promise((resolver) => setTimeout(resolver, 150));
+        await prepararConReintento(intentosRestantes - 1);
+        return;
+      }
+      throw err;
+    }
+  }
 
   // Pre-calienta al montar (foco del chat) — para cuando llegue el primer press, el permiso y el
   // `prepare` ya deberían estar resueltos.

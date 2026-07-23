@@ -157,6 +157,59 @@ describe('useVozComando -- máquina de fases sobre el grabador nativo (mock loca
     unmount();
   });
 
+  it('🔴 la SEGUNDA grabación consecutiva no revienta con "already been prepared" (bug de device, 2/2)', async () => {
+    // Repro exacta que backend midió en el SM-A217M: el re-prepare en background de `detener()`
+    // puede caer en la ventana donde el `reset()` nativo (Android, `AudioRecorder.kt`) todavía no
+    // terminó de correr tras el `stop()` -- `prepareToRecordAsync` tira
+    // `AudioRecorderAlreadyPreparedException` una vez. El reintento corto de `precalentar()` la
+    // absorbe: acá se simula rechazando la SEGUNDA llamada a `prepareToRecordAsync` (la del
+    // re-prepare tras la primera grabación), que es justo donde backend lo vio explotar.
+    mockRequestRecordingPermissionsAsync.mockResolvedValue({ granted: true });
+    mockGrabador.uri = 'file:///cache/voz.m4a';
+    let llamada = 0;
+    mockGrabador.prepareToRecordAsync.mockImplementation(() => {
+      llamada += 1;
+      if (llamada === 2) {
+        const err = new Error(
+          "Call to function 'AudioRecorder.prepareToRecordAsync' has been rejected.",
+        );
+        (err as any).cause = new Error(
+          'AudioRecorder has already been prepared. Stop or release the current session before preparing again.',
+        );
+        return Promise.reject(err);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    const { result, unmount } = await renderHook(() => useVozComando());
+
+    // Primera grabación: mount ya pre-calentó (llamada 1) -> iniciar() no vuelve a preparar.
+    await act(async () => {
+      await result.current.iniciar();
+    });
+    await act(async () => {
+      await result.current.detener();
+    });
+    // El re-prepare de `detener()` (llamada 2) rechaza una vez con "already prepared" y se reintenta
+    // internamente -- correr un microtask/timer extra para que el `setTimeout(150)` del reintento
+    // se resuelva antes de la próxima aserción.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 200));
+    });
+
+    // Segunda grabación: si el reintento no hubiera absorbido el rechazo, `preparadoRef` seguiría
+    // en `false` y esto forzaría un tercer `prepareToRecordAsync` (llamada 3, que sí resuelve) --
+    // de cualquier manera `iniciar()` tiene que devolver `true` sin ninguna excepción sin capturar.
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.iniciar();
+    });
+
+    expect(ok).toBe(true);
+    expect(result.current.fase).toBe('grabando');
+    unmount();
+  });
+
   it('descartar() corta el grabador vivo y no deja archivo para tomar', async () => {
     mockRequestRecordingPermissionsAsync.mockResolvedValue({ granted: true });
     mockGrabador.uri = 'file:///cache/voz.m4a';
