@@ -235,29 +235,59 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
               {/* Clearance de la status bar: el vidrio es full-bleed (tapa detrás del reloj), sólo el
                   contenido respeta el inset. Igual que el principal. */}
               <View style={{ height: insets.top }} pointerEvents="none" />
-              <GestureDetector gesture={gesto}>
-                <View style={styles.zonaHandle} testID="glass-handle">
-                  <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
-                </View>
-              </GestureDetector>
+              {/*
+                🔴 **La zona de arrastre creció del handle (56dp) a handle+identidad — sin tocar
+                "Volver".** Causa raíz medida por backend (`hallazgo_..._el-repro-no-cuadra`,
+                confirmada `respuesta_..._es-B-ingresos-tenia-scrollformulario-montado-vacio`): con
+                sólo el handle pannable, una pantalla SIN `ScrollView` en su estado inicial (Mi día
+                `no_disponible`) tiene una zona de cierre real de sólo ~56dp — mucho menor que lo que
+                un usuario intenta agarrar de forma natural (todo el encabezado). La zona NO puede
+                depender de si el hijo montó o no un `ScrollView`: acá se agranda de una vez, para
+                las 9 pantallas, en el marco compartido.
 
-              <View style={[styles.encabezado, { paddingHorizontal: tema.espacio.md }]}>
-                <View style={[styles.identidad, { gap: tema.espacio.sm }]}>
-                  <GlassIcon name={icono} size={28} />
-                  <Text
-                    testID="glass-titulo"
-                    style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontFamily: tema.fuente.uiBold }}
-                  >
-                    {titulo}
-                  </Text>
-                </View>
+                `identidad` (ícono+título) es contenido NO interactivo — sumarlo al mismo
+                `GestureDetector` del handle no le compite el toque a nada. `Volver` queda AFUERA,
+                posicionado absoluto sobre el mismo renglón visual: layout idéntico al de antes,
+                cero riesgo sobre un botón que hoy funciona. `zonaArrastre` reserva
+                `paddingRight` para el ancho de "Volver" — los títulos de este marco son nombres de
+                función corridos (`titulo`, prop fija por pantalla, nunca texto largo de usuario), así
+                que no hay caso real donde el título necesite ese espacio.
+              */}
+              <View style={styles.filaEncabezado}>
+                <GestureDetector gesture={gesto}>
+                  <View>
+                    <View style={styles.zonaHandle} testID="glass-handle">
+                      <View style={[styles.barraHandle, { backgroundColor: tema.glass.pill }]} />
+                    </View>
+                    <View
+                      style={[
+                        styles.identidad,
+                        { paddingHorizontal: tema.espacio.md, paddingRight: ANCHO_RESERVADO_VOLVER, gap: tema.espacio.sm },
+                      ]}
+                      testID="glass-zona-arrastre-identidad"
+                    >
+                      <GlassIcon name={icono} size={28} />
+                      <Text
+                        testID="glass-titulo"
+                        style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontFamily: tema.fuente.uiBold }}
+                      >
+                        {titulo}
+                      </Text>
+                    </View>
+                  </View>
+                </GestureDetector>
                 {/* `PRESS_FADE` y no `PRESS_SCALE`: es un link de texto suelto, sin caja propia que
-                    pueda hundirse. Encogerlo sólo movería el texto respecto del título de al lado. */}
+                    pueda hundirse. Posición absoluta: mismo lugar visual que antes (fila del
+                    encabezado, alineado a la derecha), pero FUERA del `GestureDetector` de arriba. */}
                 <Pressable
                   testID="glass-volver"
                   onPress={cerrar}
                   hitSlop={12}
-                  style={pressableStyle(undefined, PRESS_FADE)}
+                  style={(estado) => [
+                    pressableStyle(undefined, PRESS_FADE)(estado),
+                    styles.volverFlotante,
+                    { right: tema.espacio.md },
+                  ]}
                 >
                   <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold }}>Volver</Text>
                 </Pressable>
@@ -272,6 +302,12 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
   );
 }
 
+/** Ancho reservado a la derecha de `identidad` para que el título nunca quede bajo "Volver" (que
+ *  ahora vive posicionado absoluto, fuera del flujo). "Volver" (uiSemibold, tipo base) más el aire
+ *  del layout — no hace falta medirlo exacto: los `titulo` de este marco son nombres de función
+ *  fijos y cortos ("Ingresos", "Facturación AFIP"), nunca texto largo que necesite ese espacio. */
+const ANCHO_RESERVADO_VOLVER = 76;
+
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
   panel: { flex: 1 },
@@ -280,6 +316,12 @@ const styles = StyleSheet.create({
   contenido: { flex: 1 },
   zonaHandle: { height: ALTO_HANDLE, alignItems: 'center', justifyContent: 'center' },
   barraHandle: { ...BARRA_HANDLE },
-  encabezado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // `position:'relative'` es lo que ancla a "Volver" (`position:'absolute'` adentro) al mismo
+  // renglón visual del título, sin ser parte del `GestureDetector` de arriba.
+  filaEncabezado: { position: 'relative' },
   identidad: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  // `top: ALTO_HANDLE`: el handle ocupa el tramo de arriba de `filaEncabezado`; "Volver" tiene que
+  // alinearse con la fila de ícono+título que viene DESPUÉS, no con el bloque entero (handle incluido)
+  // — sin este offset, quedaría centrado a mitad de handle+título en vez de a la altura del título.
+  volverFlotante: { position: 'absolute', top: ALTO_HANDLE, bottom: 0, justifyContent: 'center' },
 });
