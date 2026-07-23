@@ -36,8 +36,18 @@ la eval debe MEDIR dónde se van los ms (red/backend vs render/TTI vs cold-fetch
 SQLite** — prescribir sin profiling es exactamente codificar la esperanza. [[el-modelo-barato-cobra-17x-tokens-de-imagen]]
 (medir el costo), [[no-codificar-la-esperanza-principio-raiz]].
 
-## Cómo correrla (cuando toque)
-Headless (`claude -p`, sesión fresca, modelo `claude-fable-5`) con un prompt de eval **estructurado por
-las dimensiones de arriba + las exclusiones**, y que ella misma siga measure-first (profilear TTI/latencia
-real, verificar contra el código vivo, no afirmar). Relacionado: [[agente-conversacional-hardening-3-lentes]]
-(barrido adversarial 3 lentes ya hecho al agente), [[copiloto-economia-cogs]], [[factory-identidad-automatizacion-ia]].
+## Cómo correrla (cuando toque) — decisiones del operador FIJADAS (2026-07-23)
+- **Report-only**: la eval **detecta y recomienda, NO toca código** (un agente zero-context no tiene el
+  contexto para arreglar sin riesgo; los fixes los triageamos nosotros con contexto). Salida a un doc
+  estructurado por las dimensiones.
+- **Velocidad = opción A (elegida por el operador):** un agente headless leyendo código **NO puede MEDIR**
+  la velocidad percibida — sólo revisa anti-patrones y **flaggea candidatos** (incl. SQLite). El
+  **profiling real en device** (TTI/latencia/cold-fetch) se dispara **por hallazgo, no por default**
+  (device hoy es de backend). La eval mide primero lo que sí puede (seguridad, resiliencia, modularidad,
+  anti-patrones de perf); el número de velocidad sale de un profiling posterior sólo si algo aparece.
+- Headless (`claude -p`, sesión fresca, modelo `claude-fable-5`) con prompt **estructurado por las
+  dimensiones + las exclusiones**, y que ella misma siga measure-first (verificar contra el código vivo,
+  no afirmar).
+
+Relacionado: [[agente-conversacional-hardening-3-lentes]] (barrido adversarial 3 lentes ya hecho al
+agente), [[copiloto-economia-cogs]], [[factory-identidad-automatizacion-ia]].
