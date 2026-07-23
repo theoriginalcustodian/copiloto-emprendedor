@@ -380,7 +380,7 @@ describe('PantallaFacturacion', () => {
         pdf: null,
         motivo: 'la factura se emitió (CAE 86294776469171) pero falló el PDF: timeout',
         motivoCodigo: 'emitida_sin_pdf',
-        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6 },
+        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6, id: null },
       }),
       convergio: true,
     });
@@ -399,7 +399,7 @@ describe('PantallaFacturacion', () => {
         estado: 'emitida',
         terminado: true,
         pdf: { url: 'https://copiloto.example/facturas/f1.pdf', nombre: 'factura.pdf', expiraAt: '2026-07-22T00:00:00Z' },
-        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6 },
+        resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6, id: null },
       }),
       convergio: true,
     });

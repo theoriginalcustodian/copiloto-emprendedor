@@ -4,6 +4,11 @@ import type { EstadoFacturaResp } from '@copiloto/core';
 
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
+import { SeccionCobro } from './SeccionCobro';
+
+/** Tipo 13 = nota de crédito. No es una deuda de nadie: no se ofrece cobrarla. Mismo criterio que
+ *  `DetalleComprobante` y que el backend, que la deja afuera de «me deben». */
+const TIPO_NOTA_CREDITO = 13;
 
 const AVISO_24H =
   'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de AFIP con el CAE.';
@@ -29,10 +34,21 @@ const AVISO_EN_DRIVE = 'Guardada en tu Drive. Ese link no vence.';
 export interface TarjetaComprobanteProps {
   estado: EstadoFacturaResp;
   onNuevaFactura: () => void;
+  /**
+   * Se registró (o deshizo) un cobro desde la card de éxito. La pantalla lo usa para refrescar «Te
+   * deben» y «Mis comprobantes», que viven en otras secciones y no tienen forma de enterarse solas —
+   * igual que `onCobroCambiado` en `DetalleComprobante`.
+   */
+  onCobroRegistrado?: () => void;
   testID?: string;
 }
 
-export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturacion-comprobante' }: TarjetaComprobanteProps) {
+export function TarjetaComprobante({
+  estado,
+  onNuevaFactura,
+  onCobroRegistrado,
+  testID = 'facturacion-comprobante',
+}: TarjetaComprobanteProps) {
   const tema = useTema();
   const resultado = estado.resultado;
 
@@ -84,6 +100,25 @@ export function TarjetaComprobante({ estado, onNuevaFactura, testID = 'facturaci
           )}
           <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>Total: {estado.total}</Text>
         </View>
+      )}
+
+      {/* 🔴 «¿Ya la cobraste?» EN EL MOMENTO de emitir — contrato de Contabilidad §2.1: es lo que hace
+          que el camino de menor esfuerzo (cargar el cobro apenas se factura, cuando el emprendedor se
+          acuerda) sea el correcto. Reusa `SeccionCobro` tal cual la usa `DetalleComprobante`, o sea la
+          MISMA vía viva (`/afip/comprobantes/{id}/cobros`) — no inventa un mecanismo nuevo.
+
+          🔴 **[CONNECT] Cuelga de `resultado.id`, que hoy puede venir `null`.** El payload del workflow
+          todavía no trae el id de fila; hasta que backend lo agregue, la sección simplemente NO se
+          dibuja (degradación honesta, nunca un botón que apunta a `/undefined/cobros`). Sobre una nota
+          de crédito tampoco: no es una deuda. El día que `resultado.id` llegue con número, el toque
+          aparece solo. */}
+      {resultado?.id != null && (
+        <SeccionCobro
+          comprobanteId={resultado.id}
+          cobrable={resultado.tipoCbte !== TIPO_NOTA_CREDITO}
+          onCambio={onCobroRegistrado}
+          testID={`${testID}-cobro`}
+        />
       )}
 
       {sinLink ? (

@@ -114,6 +114,18 @@ export interface ResultadoEmision {
   nro: number;
   tipoCbte: number;
   puntoVenta: number;
+  /**
+   * 🔴 **[CONNECT] Id de FILA del comprobante recién emitido — el que `SeccionCobro` necesita para
+   * ofrecer «¿ya la cobraste?» en la card de éxito.** Es el mismo `id` que expone `GET
+   * /afip/comprobantes` (`Comprobante.id`) y el que referencia `copiloto_ingresos.comprobante_id`
+   * (contrato de Contabilidad §2.1) — backend lo confirmó en su respuesta al `hallazgo_frontend`.
+   *
+   * `null` hasta que el backend lo agregue al payload de `resultado` (hoy éste trae `cae`/`nro` pero
+   * no el id de fila). **`ausente ≠ 0`, y sin id la card de éxito NO dibuja la sección de cobro** —
+   * un botón que apunta a `/undefined/cobros` sería un 404 sobre algo que no se intentó. Se conecta
+   * solo: el día que `resultado.id` llegue con número, el toque aparece sin tocar la card.
+   */
+  id: number | null;
 }
 
 /** `GET /afip/facturas/{id}` — el shape completo que `FacturaWorkflow.estado()` devuelve, normalizado. */
@@ -650,6 +662,8 @@ interface ResultadoEmisionRaw {
   nro: number;
   tipo_cbte: number;
   punto_venta: number;
+  /** Opcional: el payload del workflow todavía no lo trae. Ver `ResultadoEmision.id`. */
+  id?: number | null;
 }
 
 function normalizarResultadoEmision(raw: ResultadoEmisionRaw): ResultadoEmision {
@@ -661,6 +675,8 @@ function normalizarResultadoEmision(raw: ResultadoEmisionRaw): ResultadoEmision 
     nro: raw.nro,
     tipoCbte: raw.tipo_cbte,
     puntoVenta: raw.punto_venta,
+    // `ausente ≠ 0`: sin id la card de éxito no ofrece cobrar. Ver `ResultadoEmision.id`.
+    id: typeof raw.id === 'number' ? raw.id : null,
   };
 }
 
