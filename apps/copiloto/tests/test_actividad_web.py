@@ -96,20 +96,59 @@ def test_los_tipos_declarados_son_los_del_contrato():
     assert TIPOS == ("factura", "nota_credito", "presupuesto", "gasto", "ingreso", "cliente")
 
 
-# --- `q` aceptado y sin efecto (§11) ---
+# --- `q` (búsqueda) y `funcion` (filtro por función) — contrato recientes/buscar ---
 
-def test_q_es_400_mientras_la_busqueda_no_exista():
-    """🔴 Un parámetro aceptado y sin efecto devuelve 200 con resultados SIN filtrar, y quien lo manda
-    cree que filtró. Es fabricar un falso verde por dos monedas. Un parámetro que no existe se
-    descubre en el primer intento; uno que se ignora, comparando resultados — o nunca."""
-    r = _app().get("/actividad?q=panaderia")
-    assert r.status_code == 400 and "q" in r.json()["detail"]
+class _StoreRegistra:
+    """Registra los kwargs de `listar` y devuelve una página vacía — para afirmar QUÉ se le pasó (la
+    aritmética real de la unión vive en `test_actividad_store` contra Postgres)."""
+
+    def __init__(self) -> None:
+        self.kw: dict | None = None
+
+    def listar(self, **kw):
+        self.kw = kw
+        return {"items": [], "cursor": None}
 
 
-def test_CONTROL_sin_q_sigue_devolviendo_200():
-    """El control del anterior: rechazar `q` no puede romper el camino normal."""
-    assert _app().get("/actividad").status_code == 200
-    assert _app().get("/actividad?q=").status_code == 200, "`q` vacío es 'no vino', no una búsqueda"
+def _app_store(store, **kw):
+    return _app(actividad_store_factory=lambda cid: store, **kw)
+
+
+def test_q_ahora_se_implementa_llega_al_store_y_no_da_400():
+    """`q` dejó de dar 400 porque la búsqueda YA existe: llega al store, no se ignora ni se rechaza.
+    (El 400 previo evitaba el falso verde de aceptar `q` sin filtrar; ahora filtra de verdad.)"""
+    store = _StoreRegistra()
+    r = _app_store(store).get("/actividad?q=panaderia")
+    assert r.status_code == 200
+    assert store.kw["q"] == "panaderia"
+
+
+def test_q_vacio_no_es_busqueda():
+    store = _StoreRegistra()
+    _app_store(store).get("/actividad?q=")
+    assert store.kw["q"] == ""
+
+
+@pytest.mark.parametrize("funcion", ["facturacion", "gastos", "ingresos", "presupuestos"])
+def test_funcion_valida_pasa_y_llega_al_store(funcion):
+    store = _StoreRegistra()
+    r = _app_store(store).get(f"/actividad?funcion={funcion}")
+    assert r.status_code == 200
+    assert store.kw["funcion"] == funcion
+
+
+@pytest.mark.parametrize("funcion", ["facturas", "clientes", "contabilidad", "cualquiera"])
+def test_funcion_invalida_es_400_no_un_filtro_vacio_silencioso(funcion):
+    """`clientes` y `contabilidad` NO son funciones del feed (van por `/clientes?q=` / no existen). Un
+    typo que devuelve vacío se lee como «no hay», no como «pediste mal»."""
+    r = _app().get(f"/actividad?funcion={funcion}")
+    assert r.status_code == 400 and "funcion" in r.json()["detail"]
+
+
+def test_funcion_vacia_no_filtra():
+    store = _StoreRegistra()
+    _app_store(store).get("/actividad")
+    assert store.kw["funcion"] is None   # "" → None (sin filtro), no un filtro por cadena vacía
 
 
 # --- auth ---
@@ -125,7 +164,7 @@ def test_con_store_devuelve_lo_que_el_store_diga():
     recablear — este test fija que no."""
     class _Fake:
         def __init__(self, cid): self.cid = cid
-        def listar(self, *, limit, desde):
+        def listar(self, *, limit, desde, funcion=None, q=""):
             return {"items": [{"id": "gasto:1", "tipo": "gasto", "fecha": "2026-07-22T00:00:00+00:00",
                                "titulo": "Nafta", "detalle": "", "monto": "8500.00", "signo": "sale"}],
                     "cursor": None}

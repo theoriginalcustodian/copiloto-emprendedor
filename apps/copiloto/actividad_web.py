@@ -17,6 +17,11 @@ from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
 
+# `FUNCIONES` = las funciones válidas del filtro (fuente única en el store, que las deriva del mapeo
+# funcion→tipo). Import de módulo seguro: `actividad_store` sólo importa `actividad_web` de forma LAZY
+# (dentro de `listar`), así que no hay ciclo al cargar.
+from actividad_store import FUNCIONES
+
 LIMITE_DEFAULT = 20
 LIMITE_MAX = 100
 
@@ -91,29 +96,27 @@ def create_actividad_app(*, require_tenant: Callable,
 
     @app.get("/actividad")
     async def listar_actividad(limit: int = LIMITE_DEFAULT, cursor: str | None = None,
-                               q: str = "", cliente_id: str = Depends(require_tenant)) -> dict:
+                               q: str = "", funcion: str = "",
+                               cliente_id: str = Depends(require_tenant)) -> dict:
         # `limit` fuera de rango es 400 y NO se recorta en silencio: un cliente que pide 500 y recibe
         # 100 sin enterarse concluye que hay 100 ítems en total. El contrato dice máximo 100; decirlo
         # es más barato que el bug de interpretación.
         if limit < 1 or limit > LIMITE_MAX:
             raise HTTPException(status_code=400,
                                 detail=f"limit tiene que estar entre 1 y {LIMITE_MAX}")
-        # 🔴 `q` se RECHAZA con 400 mientras no exista la búsqueda (§11, corregido 2026-07-22).
-        #
-        # La versión anterior lo aceptaba y no hacía nada, "para no cambiar la firma después". Es peor:
-        # devuelve 200 con resultados SIN filtrar, y quien lo mande cree que filtró — un falso verde
-        # por dos monedas. Un parámetro que no existe se descubre en el primer intento; uno que se
-        # ignora se descubre comparando resultados, o nunca.
-        #
-        # Y el motivo original era débil: agregar la búsqueda el día que exista es ADITIVO y no rompe
-        # a nadie.
-        if q:
+        # `funcion` inválida es 400 con la lista de válidas, NO un filtro que devuelve vacío en silencio:
+        # un `funcion=facturas` (typo) que da 0 ítems se lee como «no hay facturas», no como «pediste mal».
+        if funcion and funcion not in FUNCIONES:
             raise HTTPException(status_code=400,
-                                detail="la búsqueda por `q` todavía no está implementada")
+                                detail=f"funcion tiene que ser una de: {', '.join(FUNCIONES)}")
+        # `q` YA está implementada (contrato recientes/buscar): busca por `ILIKE` sobre título+detalle.
+        # (Antes daba 400 «todavía no implementada»; ese candado se levanta al implementarla de verdad —
+        # nunca aceptándola sin filtrar, que sería el falso verde que el 400 evitaba.)
         desde = parsear_cursor(cursor)
         if actividad_store_factory is None:
             return {"items": [], "cursor": None}
         return await asyncio.to_thread(
-            lambda: actividad_store_factory(cliente_id).listar(limit=limit, desde=desde))
+            lambda: actividad_store_factory(cliente_id).listar(
+                limit=limit, desde=desde, funcion=(funcion or None), q=q))
 
     return app
