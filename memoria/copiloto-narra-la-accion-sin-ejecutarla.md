@@ -122,5 +122,49 @@ nunca se limpia solo. No se pudo determinar si esto influyó en el fallo 3/3, po
 de aislar una sesión "limpia" con el usuario canónico único (regla dura, no se crean usuarios ad-hoc).
 Si se escala a (a), vale la pena decidir si esta sesión de prueba debe reiniciarse aparte.
 
+## v2 VERDE (PR#91, 2026-07-23) — guardrail + cura estructural, DoD sustancialmente cerrado
+
+Escalado como MAYOR al operador (dos raíces enredadas: B=`tool_choice="auto"` no obliga, A=el historial
+descarta los `tool_calls`). Autorizado v2 = las dos, no una:
+
+- **Parte 1 (guardrail, deuda GESTIONADA — `TODO(narra-guardrail)`)**: si el turno cierra con
+  `tool_calls=[]` Y el texto usa una palabra de cierre EXACTA (set cerrado, no prefijos — "aprob" como
+  prefijo matchea "¿aprobás?", una pregunta legítima; se usan formas completas: "aprobado", no "aprob*"),
+  se rechaza y se re-pregunta UNA vez con `tool_choice="required"`. Scopeado por `not trace`: un cierre
+  "Listo..." tras una tool que SÍ ejecutó ESE turno es honesto, no dispara nada (gap real cazado por los
+  tests: sin este guard, el propio texto de éxito de PR#88 — "Te armé un borrador" — dispararía sobre sí
+  mismo si empezara con "Listo").
+- **Parte 2 (la cura, la raíz)**: nuevo `self._react_transcript`, durable y paralelo a `self._history`,
+  con el shape NATIVO de OpenAI (`role:'assistant', tool_calls:[...]` / `role:'tool'`) en vez de texto
+  plano. Reemplaza a `self._history` como fuente de `messages` en cada turno react — el modelo ve la
+  MISMA evidencia estructural que ya atiende dentro de un turno, no un relato de texto que podía imitar
+  sin llamar nada. `self._history` sigue existiendo intacto (memoria/Graphity); el marcador de PR#85
+  queda en el código, vestigial pero inofensivo.
+
+Ambos versionados con `workflow.patched()` (ids nuevos). De-risk con `Replayer.replay_workflow` contra
+el history REAL de `e2e-device` (predata los patches) — cero no-determinismo. 979 tests verdes.
+
+**Retest en SESIÓN LIMPIA (Parte 3 del plan): se TERMINÓ el workflow durable de `e2e-device`** (el
+`self._history`/`self._react_transcript` viejo estaba contaminado con los "Anoté..." de PR#85/#88 —
+[[conversacion-permanente-continue-as-new]] no lo limpia solo) y se arrancó fresco con el MISMO
+workflow_id (`ALLOW_DUPLICATE` por default de Temporal permite re-arrancar un id TERMINATED). Mismo
+guion adversarial, 3 gastos:
+
+**3/3 turnos ejecutaron `registrar_gasto` de VERDAD** — confirmado en la fuente cruda del Temporal
+workflow history (`execute_tool` SCHEDULED con `name:"registrar_gasto"` en los 3 turnos, montos
+151/252/353) — y los 3 cerraron con el MISMO texto honesto: *"Esto entendí. Revisalo y tocá Guardar —
+todavía no lo anoté."* Cero llamadas extra a `call_llm_tools` (el guardrail nunca tuvo que disparar:
+el modelo se comportó bien desde el principio con la evidencia estructural real). Bonus: en el turno 1
+el copiloto preguntó de motu proprio *"el monto es muy bajo... ¿seguís adelante?"* — una aclaración
+legítima con `tool_calls=[]` que NO usa ninguna palabra de cierre y, en efecto, no disparó el guardrail
+— validación en vivo del caso de control que el DoD pedía.
+
+**DoD**: criterio 1 (ningún turno confirma sin haber ejecutado) — **VERDE, 3/3**. Criterio 2 tal cual
+estaba escrito ("los gastos existen en `GET /gastos`") no aplica literalmente a `registrar_gasto`: es
+un tool que PROPONE, no persiste (`_FIRST_CLASS_WRITES`) — el oráculo HTTP confirma correctamente que
+NINGUNO de los 3 se guardó (nadie tocó "Guardar" en el device), que es el comportamiento CORRECTO de
+este tool, no una falla. Criterio 3 (control, aclaración legítima no dispara) — **VERDE**, observado en
+vivo sin necesidad de forzarlo. Reportado a planificación como sustancialmente cerrado.
+
 [[instrumentos-que-confirman-en-vez-de-verificar]] [[vacio-no-es-hallazgo-correr-el-control]]
 [[conversacion-permanente-continue-as-new]] [[copiloto-motor-react-concatenadas]]
