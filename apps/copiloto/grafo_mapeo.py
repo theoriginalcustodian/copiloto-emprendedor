@@ -197,7 +197,12 @@ class MapeadorEvento:
                 **ng, edge_type=REGISTRO_GASTO, target_type=GASTO, target_col="gasto_label",
                 target_id_col="gasto_key",
                 fact_template="{source} gastó ${monto} en {categoria} el {fecha}",
-                property_cols=("monto", "categoria", "fecha")),
+                property_cols=("monto", "categoria", "fecha"),
+                # el nodo Gasto carga sus PROPIOS monto/categoria — no sólo la arista — porque #13
+                # ("¿cuánto me dejó este trabajo?") lo lee por TRAVERSAL desde IMPUTADO_A, sin volver
+                # a pasar por REGISTRO_GASTO (decisión planificación 00:24: "el lector traversa... y
+                # lee el monto en el NODO Gasto" — la premisa que dejó falsable, cerrada acá).
+                target_property_cols=("monto", "categoria")),
             PAGADO_A: _AcumuladorArista(
                 source_type=GASTO, source_name_col="gasto_label", source_id_col="gasto_key",
                 edge_type=PAGADO_A, target_type=PROVEEDOR, target_col="proveedor_nombre",
