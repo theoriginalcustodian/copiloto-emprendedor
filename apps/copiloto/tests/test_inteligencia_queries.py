@@ -19,6 +19,7 @@ from decimal import Decimal
 import pytest
 
 from cobro_store import CobroStore
+from gasto_store import CATEGORIAS
 from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
@@ -204,3 +205,123 @@ def test_aislamiento_A_no_ve_los_ingresos_de_B(conn_factory, tenants):
     assert Decimal(portada_a["mes"]["ingresos"]) == Decimal("0.00")
     assert Decimal(portada_a["mes"]["gastos"]) == Decimal("0.00")
     assert Decimal(portada_a["caja"]["saldo"]) == Decimal("0.00")
+
+
+# ── gráfico 1: facturación por mes ────────────────────────────────────────────────────────────────
+
+@necesita_pg
+def test_facturacion_por_mes_suma_y_cuenta_solo_lo_no_anulado_con_cae(conn_factory, tenants):
+    a, _ = tenants
+    _comprobante(conn_factory, a, "1000.00", nro=1)
+    _comprobante(conn_factory, a, "2000.00", nro=2)
+    _comprobante(conn_factory, a, "5000.00", nro=3, estado="anulada")   # no cuenta
+    g = InteligenciaQueries(conn_factory, a).facturacion_por_mes()
+    assert len(g["serie"]) == 6
+    assert g["tipo"] == "barras"
+    ultimo = g["serie"][-1]
+    assert Decimal(ultimo["total"]) == Decimal("3000.00")
+    assert ultimo["cantidad"] == 2
+
+
+@necesita_pg
+def test_facturacion_detalle_mes_trae_las_filas_del_mismo_mes(conn_factory, tenants):
+    a, _ = tenants
+    _comprobante(conn_factory, a, "1000.00", nro=1, receptor="Panadería Los Tilos")
+    mes_actual = InteligenciaQueries(conn_factory, a).facturacion_por_mes()["serie"][-1]["mes"]
+    det = InteligenciaQueries(conn_factory, a).facturacion_detalle_mes(mes_actual)
+    assert det["mes"] == mes_actual
+    assert len(det["filas"]) == 1
+    fila = det["filas"][0]
+    assert fila["cliente"] == "Panadería Los Tilos"
+    assert fila["total"] == "1000.00"
+    assert fila["numero"] == "0001-00000001"
+
+
+# ── gráfico 2: entró vs salió — MISMA definición que la portada ─────────────────────────────────────
+
+@necesita_pg
+def test_entro_vs_salio_es_identico_a_la_serie_de_portada_con_otro_nombre(conn_factory, tenants):
+    a, _ = tenants
+    CobroStore(conn_factory, a).registrar_suelto(monto="500.00", medio="efectivo")
+    _gasto(conn_factory, a, "200.00")
+    q = InteligenciaQueries(conn_factory, a)
+    portada_serie = q.portada()["serie_mensual"]
+    grafico = q.entro_vs_salio()
+    assert len(grafico["serie"]) == len(portada_serie) == 6
+    for p, g in zip(portada_serie, grafico["serie"]):
+        assert p["mes"] == g["mes"]
+        assert p["ingresos"] == g["entro"]
+        assert p["gastos"] == g["salio"]
+
+
+@necesita_pg
+def test_entro_vs_salio_detalle_distingue_origen_en_entro_y_categoria_en_salio(conn_factory, tenants):
+    a, _ = tenants
+    comp = _comprobante(conn_factory, a, "1000.00")
+    CobroStore(conn_factory, a).registrar(comp, monto="1000.00")                       # origen factura
+    CobroStore(conn_factory, a).registrar_suelto(monto="300.00", medio="efectivo")     # origen manual
+    _mp_payment(conn_factory, a, "150.00", status="approved")                          # mercadopago
+    _gasto(conn_factory, a, "400.00", categoria="mercaderia")
+    q = InteligenciaQueries(conn_factory, a)
+    mes_actual = q.entro_vs_salio()["serie"][-1]["mes"]
+
+    entro = q.entro_vs_salio_detalle(mes_actual, "entro")
+    assert entro["lado"] == "entro"
+    origenes = sorted(f["origen"] for f in entro["filas"])
+    assert origenes == ["factura", "manual", "mercadopago"]
+
+    salio = q.entro_vs_salio_detalle(mes_actual, "salio")
+    assert salio["lado"] == "salio"
+    assert salio["filas"][0]["categoria"] == "mercaderia"
+
+
+@necesita_pg
+def test_entro_vs_salio_detalle_lado_invalido_rechaza(conn_factory, tenants):
+    a, _ = tenants
+    with pytest.raises(ValueError):
+        InteligenciaQueries(conn_factory, a).entro_vs_salio_detalle("2026-07", "arriba")
+
+
+# ── gráfico 3: en qué se me va — torta con las 8 categorías SIEMPRE ─────────────────────────────────
+
+@necesita_pg
+def test_torta_categorias_trae_las_ocho_aunque_solo_una_tenga_gasto(conn_factory, tenants):
+    a, _ = tenants
+    _gasto(conn_factory, a, "400.00", categoria="mercaderia")
+    g = InteligenciaQueries(conn_factory, a).torta_categorias()
+    assert [c["categoria"] for c in g["serie"]] == list(CATEGORIAS)
+    por_cat = {c["categoria"]: c["total"] for c in g["serie"]}
+    assert por_cat["mercaderia"] == "400.00"
+    assert por_cat["sueldos"] == "0.00"
+
+
+@necesita_pg
+def test_categoria_detalle_trae_las_filas_de_esa_categoria_solamente(conn_factory, tenants):
+    a, _ = tenants
+    _gasto(conn_factory, a, "400.00", categoria="mercaderia")
+    _gasto(conn_factory, a, "100.00", categoria="transporte")
+    mes_actual = InteligenciaQueries(conn_factory, a).torta_categorias()["periodo"]
+    det = InteligenciaQueries(conn_factory, a).categoria_detalle(mes_actual, "mercaderia")
+    assert len(det["filas"]) == 1
+    assert det["filas"][0]["monto"] == "400.00"
+
+
+@necesita_pg
+def test_categoria_detalle_categoria_invalida_rechaza(conn_factory, tenants):
+    a, _ = tenants
+    with pytest.raises(ValueError):
+        InteligenciaQueries(conn_factory, a).categoria_detalle(None, "inventada")
+
+
+# ── aislamiento adversarial de los 3 gráficos nuevos (regla 7) ──────────────────────────────────────
+
+@necesita_pg
+def test_aislamiento_A_no_ve_los_graficos_de_B(conn_factory, tenants):
+    a, b = tenants
+    _comprobante(conn_factory, b, "999999.00")
+    CobroStore(conn_factory, b).registrar_suelto(monto="888888.00", medio="efectivo")
+    _gasto(conn_factory, b, "777777.00", categoria="mercaderia")
+    q = InteligenciaQueries(conn_factory, a)
+    assert Decimal(q.facturacion_por_mes()["serie"][-1]["total"]) == Decimal("0.00")
+    assert Decimal(q.entro_vs_salio()["serie"][-1]["entro"]) == Decimal("0.00")
+    assert all(c["total"] == "0.00" for c in q.torta_categorias()["serie"])
