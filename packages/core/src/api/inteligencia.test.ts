@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { leerPortada, preguntarInteligencia } from './inteligencia';
+import {
+  leerGraficoCategorias,
+  leerGraficoEntroVsSalio,
+  leerGraficoFacturacion,
+  leerPortada,
+  preguntarInteligencia,
+} from './inteligencia';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -189,5 +195,148 @@ describe('preguntarInteligencia — el chat de IN (§3.3, [PROVISIONAL — grafo
   it('si la red explota (no ApiError) degrada a `no_disponible`', async () => {
     responder = () => { throw new Error('red caída'); };
     expect((await preguntarInteligencia('x')).status).toBe('no_disponible');
+  });
+});
+
+describe('leerGraficoFacturacion — gráfico 1 (VIVO desde PR #69)', () => {
+  it('trae la serie agregada por mes', async () => {
+    responder = () =>
+      respuesta(200, {
+        tipo: 'barras',
+        periodo: '2026-02..2026-07',
+        serie: [{ mes: '2026-02', total: '0.00', cantidad: 0 }, { mes: '2026-07', total: '45000.00', cantidad: 3 }],
+      });
+
+    const res = await leerGraficoFacturacion();
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok' || res.modo !== 'serie') return;
+    expect(res.periodo).toBe('2026-02..2026-07');
+    expect(res.serie).toEqual([
+      { mes: '2026-02', total: '0.00', cantidad: 0 },
+      { mes: '2026-07', total: '45000.00', cantidad: 3 },
+    ]);
+  });
+
+  it('con `detalle` manda `?detalle=<mes>` y trae las filas de ESE mes, no el agregado', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, {
+        mes: '2026-07',
+        filas: [{ id: 1, numero: '0001-00000012', fecha: '2026-07-05', cliente: 'Panadería', total: '0.00' }],
+      });
+    };
+
+    const res = await leerGraficoFacturacion({ detalle: '2026-07' });
+    expect(capturada!.path).toBe('/inteligencia/graficos/facturacion?detalle=2026-07');
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok' || res.modo !== 'detalle') return;
+    expect(res.mes).toBe('2026-07');
+    expect(res.filas[0].numero).toBe('0001-00000012');
+  });
+
+  it('una fila del detalle SIN `id` se descarta — no hay a dónde navegar', async () => {
+    responder = () => respuesta(200, { mes: '2026-07', filas: [{ numero: 'x' }, { id: 2, numero: 'y' }] });
+    const res = await leerGraficoFacturacion({ detalle: '2026-07' });
+    if (res.status === 'ok' && res.modo === 'detalle') expect(res.filas.map((f) => f.id)).toEqual([2]);
+  });
+
+  it('🔴 un `200` con el HTML del SPA es `no_disponible`, no un gráfico en cero', async () => {
+    responder = () => respuesta(200, '<!doctype html><html></html>');
+    expect((await leerGraficoFacturacion()).status).toBe('no_disponible');
+  });
+
+  it('si la red explota degrada a `no_disponible`', async () => {
+    responder = () => { throw new Error('red caída'); };
+    expect((await leerGraficoFacturacion()).status).toBe('no_disponible');
+  });
+});
+
+describe('leerGraficoEntroVsSalio — gráfico 2 (VIVO desde PR #69)', () => {
+  it('trae la serie de barras enfrentadas', async () => {
+    responder = () =>
+      respuesta(200, {
+        tipo: 'barras_enfrentadas',
+        periodo: '2026-02..2026-07',
+        serie: [{ mes: '2026-07', entro: '95000.00', salio: '31000.00' }],
+      });
+
+    const res = await leerGraficoEntroVsSalio();
+    if (res.status !== 'ok' || res.modo !== 'serie') throw new Error('esperaba modo serie');
+    expect(res.tipo).toBe('barras_enfrentadas');
+    expect(res.serie[0].entro).toBe('95000.00');
+  });
+
+  it('`?detalle=<mes>:entro` distingue por `origen` — no por el string que se mandó', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, {
+        mes: '2026-07',
+        filas: [{ id: 1, fecha: '2026-07-03', monto: '5000.00', origen: 'mercadopago', detalle: 'Cobro' }],
+      });
+    };
+
+    const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:entro' });
+    expect(capturada!.path).toBe('/inteligencia/graficos/entro-vs-salio?detalle=2026-07%3Aentro');
+    if (res.status !== 'ok' || res.modo !== 'detalle_entro') throw new Error('esperaba modo detalle_entro');
+    expect(res.filas[0].origen).toBe('mercadopago');
+  });
+
+  it('`?detalle=<mes>:salio` trae filas con `categoria`, no `origen`', async () => {
+    responder = () =>
+      respuesta(200, { mes: '2026-07', filas: [{ id: 9, fecha: '2026-07-10', monto: '3000.00', categoria: 'transporte', detalle: 'Nafta' }] });
+
+    const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:salio' });
+    if (res.status !== 'ok' || res.modo !== 'detalle_salio') throw new Error('esperaba modo detalle_salio');
+    expect(res.filas[0].categoria).toBe('transporte');
+  });
+
+  it('un `origen` desconocido queda en `null`, nunca se inventa uno de los tres válidos', async () => {
+    responder = () => respuesta(200, { mes: '2026-07', filas: [{ id: 1, origen: 'otro-nuevo' }] });
+    const res = await leerGraficoEntroVsSalio({ detalle: '2026-07:entro' });
+    if (res.status === 'ok' && res.modo === 'detalle_entro') expect(res.filas[0].origen).toBeNull();
+  });
+
+  it('si la red explota degrada a `no_disponible`', async () => {
+    responder = () => { throw new Error('red caída'); };
+    expect((await leerGraficoEntroVsSalio()).status).toBe('no_disponible');
+  });
+});
+
+describe('leerGraficoCategorias — gráfico 3 (VIVO desde PR #69)', () => {
+  it('trae la torta con las categorías del mes', async () => {
+    responder = () =>
+      respuesta(200, { tipo: 'torta', periodo: '2026-07', serie: [{ categoria: 'mercaderia', total: '12000.00' }] });
+
+    const res = await leerGraficoCategorias();
+    if (res.status !== 'ok' || res.modo !== 'serie') throw new Error('esperaba modo serie');
+    expect(res.tipo).toBe('torta');
+    expect(res.serie[0].categoria).toBe('mercaderia');
+  });
+
+  it('`?mes=` cambia el período; `?detalle=<categoria>` trae las filas de esa categoría', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, { categoria: 'transporte', filas: [{ id: 1, fecha: '2026-06-10', monto: '3000.00', detalle: 'Nafta' }] });
+    };
+
+    const res = await leerGraficoCategorias({ mes: '2026-06', detalle: 'transporte' });
+    expect(capturada!.path).toBe('/inteligencia/graficos/categorias?mes=2026-06&detalle=transporte');
+    if (res.status !== 'ok' || res.modo !== 'detalle') throw new Error('esperaba modo detalle');
+    expect(res.categoria).toBe('transporte');
+    expect(res.filas[0].detalle).toBe('Nafta');
+  });
+
+  it('una categoría SIN nombre se descarta — un string abierto sigue necesitando una etiqueta', async () => {
+    responder = () => respuesta(200, { periodo: '2026-07', serie: [{ total: '100' }, { categoria: 'otros', total: '50' }] });
+    const res = await leerGraficoCategorias();
+    if (res.status === 'ok' && res.modo === 'serie') expect(res.serie.map((p) => p.categoria)).toEqual(['otros']);
+  });
+
+  it('si la red explota degrada a `no_disponible`', async () => {
+    responder = () => { throw new Error('red caída'); };
+    expect((await leerGraficoCategorias()).status).toBe('no_disponible');
   });
 });
