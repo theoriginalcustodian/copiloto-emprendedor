@@ -49,6 +49,7 @@
 - [🤖 Agente acepta el chat pero NUNCA responde → cuota del LLM](agente-no-responde-revisar-cuota-llm.md) — `project`. `429 insufficient_quota` mata el workflow; mirar el journal.
 - [🚀 Arranque Expo en device: expo-doctor PRIMERO](arranque-device-metro-disable-hierarchical-lookup.md) — `project`. Era `metro disableHierarchicalLookup=true`, no versiones.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — `project`. No es git: pisa en silencio. Chequeo `grep -c <símbolo_de_prod>`.
+- [🏗️ El provisionado "idempotente" NO reconstruye la base desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — `project`. **LEER antes de levantar un entorno nuevo (DR/staging/región).** Pasada 1 falla, 2 OK: `ALTER TABLE IF EXISTS` es no-op sobre tabla inexistente. Idempotente ≠ reproducible.
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — `feedback`. 2º lente = el atajo que *colapsa* el problema.
 - [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — `feedback`. Tu propio estado envejece. Un estado falso da quietud, no bug.
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — `feedback`. Correr el caso vacío: el default de toda regla restrictiva es no-hacer.
