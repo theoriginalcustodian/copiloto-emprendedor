@@ -19,7 +19,7 @@
  * agregar un item a `TILES`, sin tocar esta función ni el JSX que la consume.
  *
  * Layout: padding `64/22/20`, título, grid horizontal-scrolleable de `Tile`
- * (ancho fijo `ANCHO_TILE` por columna), header mono "ACTIVIDAD RECIENTE" y una lista de `Row`
+ * (ancho fijo `ANCHO_TILE` por columna), el encabezado TAPEABLE "Actividad reciente" (→ `/recientes`)
  * scrolleable con `paddingBottom` generoso para no quedar tapada por el panel/handle que se superpone
  * encima (Capa 1+).
  *
@@ -54,6 +54,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ActividadItem } from '@copiloto/core';
 
 import { FilaActividad } from '../actividad/FilaActividad';
+import { EncabezadoListado } from '../../theme/glass/EncabezadoListado';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
 import { Row } from '../../theme/glass/Row';
@@ -203,6 +204,12 @@ export interface EscritorioFuncionesProps {
    * `expo-router`, igual que con `onFuncion`. Si no se pasa, las filas no son tocables.
    */
   onAbrirActividad?: (item: ActividadItem) => void;
+  /**
+   * Tocar el ENCABEZADO "Actividad reciente" → entra a la lista completa (`/recientes`). Del shell,
+   * que es quien navega (`addendum_mi-dia` §3). Si no se pasa, el encabezado se muestra sin flecha, no
+   * tapeable — nunca una flecha sin destino.
+   */
+  onVerRecientes?: () => void;
 }
 
 /** Margen de tolerancia antes de considerar que "hay más contenido a la derecha". RN mide con floats;
@@ -216,6 +223,7 @@ export function EscritorioFunciones({
   actividad = [],
   cargandoActividad = false,
   onAbrirActividad,
+  onVerRecientes,
 }: EscritorioFuncionesProps) {
   const tema = useTema();
 
@@ -315,15 +323,18 @@ export function EscritorioFunciones({
         )}
       </View>
 
-      {/* Template: color de ACENTO con opacity .6 (no gris tenue), mono uppercase letter-spacing .14em. */}
-      <Text
-        style={[
-          styles.headerReciente,
-          { color: tema.color.acento, fontFamily: tema.fuente.mono },
-        ]}
-      >
-        ACTIVIDAD RECIENTE
-      </Text>
+      {/* 🔴 De texto muerto a encabezado TAPEABLE → `/recientes` (addendum_mi-dia §3). El CONTENIDO
+          sigue siendo la actividad reciente: el rediseño del centro a "Mi Día" (tareas del día) espera
+          su endpoint —hoy no existe— y el swipe-left, y sacar la actividad de acá sin ese reemplazo
+          sería una regresión (quedaría inalcanzable desde el principal). El título tapeable, en cambio,
+          es adelantable sobre el layout actual, y de yapa destraba ver la lista COMPLETA, que hoy no
+          tiene entrada. */}
+      <EncabezadoListado
+        titulo="Actividad reciente"
+        onPress={onVerRecientes}
+        style={styles.encabezadoReciente}
+        testID="escritorio-encabezado-recientes"
+      />
 
       <ScrollView contentContainerStyle={styles.listaReciente} testID="escritorio-actividad">
         {!cargandoActividad && actividad.length === 0 && (
@@ -367,7 +378,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   flechaSolapa: { fontSize: 15, lineHeight: 15, marginLeft: -1 },
-  headerReciente: { fontSize: 10, letterSpacing: 1.4, marginBottom: 10, opacity: 0.6, textTransform: 'uppercase' },
+  encabezadoReciente: { marginBottom: 10 },
   listaReciente: { gap: 8, paddingBottom: 180 },
   vacio: { fontSize: 11, opacity: 0.8 },
 });

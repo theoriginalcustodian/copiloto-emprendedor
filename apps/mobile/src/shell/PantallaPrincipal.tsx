@@ -129,6 +129,9 @@ export function PantallaPrincipal() {
           actividad={actividad}
           cargandoActividad={cargandoActividad}
           onAbrirActividad={alAbrirActividad}
+          // El encabezado "Actividad reciente" entra a la lista COMPLETA. `empujarUnaVez` y no
+          // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
+          onVerRecientes={() => empujarUnaVez('/recientes')}
         />
       }>
       <ChatView />
