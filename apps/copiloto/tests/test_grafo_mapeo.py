@@ -65,6 +65,21 @@ def test_gasto_creado_produce_registro_gasto_y_pagado_a_con_su_proveedor():
     assert "Distribuidora Sur" in proveedores
 
 
+def test_el_nodo_gasto_carga_su_propio_monto_y_categoria():
+    """La pregunta #13 ('¿cuánto me dejó este trabajo?') lee `monto`/`categoria` por TRAVERSAL desde
+    `IMPUTADO_A` (Gasto→Imputacion), sin volver a pasar por `REGISTRO_GASTO` — decisión planificación
+    2026-07-23 00:24. Por eso el nodo `Gasto` (no sólo la arista) tiene que cargar esos atributos como
+    `target_property_map`; si sólo estuvieran en la arista, el traversal no los vería (trampa 6:
+    `/search`/`/traverse` no proyectan `attributes` de arista, y un traversal al NODO tampoco ve
+    atributos que sólo vivan en OTRA arista)."""
+    ds = _por_tipo(_neg(eventos=generar_dataset(
+        cliente_id="t-1", hoy=datetime.date(2026, 7, 22), n_clientes=4)))["REGISTRO_GASTO"]
+    edge = ds.mapping["source_entity"]["edges"][0]
+    assert edge["target_property_map"].keys() >= {"monto", "categoria"}
+    # y el dato realmente está en las filas (no sólo declarado el mapeo de columnas).
+    assert all(r.get("monto") and r.get("categoria") for r in ds.rows)
+
+
 # ── PRESUPUESTO / DIRIGIDO_A / INCLUYE / REEMPLAZA_A ────────────────────────────────────────────
 
 def test_presupuesto_produce_las_cuatro_aristas_de_evento_asociadas():
