@@ -61,6 +61,22 @@ describe('GraficoBarras', () => {
     expect(screen.getByTestId('g4-vacio')).toBeTruthy();
   });
 
+  it('🔴 dos puntos con la MISMA etiqueta no chocan de key (ej.: dos trabajos el mismo día)', async () => {
+    // Reproduce el hallazgo de backend en /inteligencia: "Encountered two children with the same
+    // key, `2026-07-23`" — Margen por Trabajo usa el título del trabajo como `punto`, y el contrato
+    // no garantiza que sea único.
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await montar({
+      testID: 'g6',
+      puntos: ['2026-07-23', '2026-07-23'],
+      series: [{ id: 'margen', etiqueta: 'Margen', color: '#4dd9ff', valores: ['100.00', '200.00'] }],
+    });
+
+    const avisoDeKeyDuplicada = spy.mock.calls.some((args) => String(args[0]).includes('same key'));
+    expect(avisoDeKeyDuplicada).toBe(false);
+    spy.mockRestore();
+  });
+
   it('el epígrafe (período · fuente) se muestra cuando se pasa', async () => {
     await montar({
       testID: 'g5',
