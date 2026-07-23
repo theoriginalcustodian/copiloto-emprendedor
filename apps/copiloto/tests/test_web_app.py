@@ -476,6 +476,31 @@ def test_me_two_tenants_do_not_leak_mp_state():
     assert TestClient(app_b).get("/me").json()["mp_connected"] is False
 
 
+def test_me_sin_require_claims_no_trae_email():
+    """Composición sin `require_claims` (legacy/tests) -- la forma vieja se preserva tal cual."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-C"))
+    r = TestClient(app).get("/me")
+    assert "email" not in r.json()
+
+
+def test_me_con_require_claims_trae_el_email_del_MISMO_token():
+    """`email` sale del claim, no de una segunda fuente que pueda divergir del `cliente_id`
+    resuelto por `require_tenant`."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-D"),
+                        require_claims=_require_claims_fixed({"sub": "auth-d", "email": "d@x.test"}))
+    r = TestClient(app).get("/me")
+    assert r.json()["email"] == "d@x.test"
+    assert r.json()["cliente_id"] == "cid-D"
+
+
+def test_me_con_require_claims_sin_email_en_el_token_da_null_no_ausente():
+    """Login por teléfono/anónimo: el claim no trae `email` -- `None`, no inventado ni omitido."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-E"),
+                        require_claims=_require_claims_fixed({"sub": "auth-e"}))
+    r = TestClient(app).get("/me")
+    assert r.json()["email"] is None
+
+
 # --- Escala: las rutas de I/O BLOQUEANTE son `def` (threadpool), no `async def` --------
 # Fix de escala (regla de oro "cero fricción para escalar"): psycopg2/httpx sync en una ruta
 # `async def` bloquean el event loop y SERIALIZAN los requests multitenant. FastAPI corre las rutas
