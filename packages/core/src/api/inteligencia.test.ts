@@ -141,26 +141,23 @@ describe('leerPortada — lo que NO inventa', () => {
   });
 });
 
-describe('preguntarInteligencia — el chat de IN (§3.3, [PROVISIONAL — grafo])', () => {
-  it('manda la pregunta por POST a /inteligencia/chat y devuelve respuesta + fuentes', async () => {
+describe('preguntarInteligencia — el chat de IN (VIVO desde PR #73)', () => {
+  it('manda `{texto}` por POST a /inteligencia/chat y devuelve respuesta + fuente', async () => {
     let capturada: PeticionHttp | null = null;
     responder = (p) => {
       capturada = p;
-      return respuesta(200, {
-        respuesta: 'Gastaste $12.000 en nafta este mes.',
-        fuentes: [{ tipo: 'gasto', ref: 'gasto-42' }],
-      });
+      return respuesta(200, { respuesta: 'Gastaste $12.000 en nafta este mes.', fuente: 'sql' });
     };
 
     const res = await preguntarInteligencia('¿cuánto gasté en nafta este mes?');
 
     expect(capturada!.metodo).toBe('POST');
     expect(capturada!.path).toBe('/inteligencia/chat');
-    expect(capturada!.cuerpoJson).toEqual({ pregunta: '¿cuánto gasté en nafta este mes?' });
+    expect(capturada!.cuerpoJson).toEqual({ texto: '¿cuánto gasté en nafta este mes?' });
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
     expect(res.respuesta.respuesta).toBe('Gastaste $12.000 en nafta este mes.');
-    expect(res.respuesta.fuentes).toEqual([{ tipo: 'gasto', ref: 'gasto-42' }]);
+    expect(res.respuesta.fuente).toBe('sql');
   });
 
   it('🔴 405 (la ruta no está montada) → `no_disponible`, no un chat roto', async () => {
@@ -175,20 +172,15 @@ describe('preguntarInteligencia — el chat de IN (§3.3, [PROVISIONAL — grafo
     await expect(preguntarInteligencia('x')).rejects.toThrow();
   });
 
-  it('una fuente sin `ref` se descarta; `tipo` ausente queda en ""', async () => {
-    responder = () =>
-      respuesta(200, {
-        respuesta: 'ok',
-        fuentes: [{ tipo: 'gasto', ref: 'g-1' }, { tipo: 'sin-ref' }, { ref: 'g-2' }],
-      });
-
+  it('🔴 un `fuente` desconocido nunca inventa uno de los tres válidos -- degrada a "no-se"', async () => {
+    responder = () => respuesta(200, { respuesta: 'ok', fuente: 'algo-nuevo' });
     const res = await preguntarInteligencia('x');
     if (res.status !== 'ok') return;
-    expect(res.respuesta.fuentes).toEqual([{ tipo: 'gasto', ref: 'g-1' }, { tipo: '', ref: 'g-2' }]);
+    expect(res.respuesta.fuente).toBe('no-se');
   });
 
   it('una respuesta sin texto queda en "", no en null — la burbuja siempre muestra algo', async () => {
-    responder = () => respuesta(200, { fuentes: [] });
+    responder = () => respuesta(200, { fuente: 'sql' });
     const res = await preguntarInteligencia('x');
     if (res.status === 'ok') expect(res.respuesta.respuesta).toBe('');
   });
