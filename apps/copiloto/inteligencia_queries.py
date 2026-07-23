@@ -26,7 +26,7 @@ from decimal import Decimal
 from typing import Callable
 
 from cobro_store import CobroStore
-from gasto_store import dos_decimales, hoy_del_negocio
+from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
 
@@ -203,3 +203,147 @@ class InteligenciaQueries:
             "mejores_clientes": mejores,
             "por_cobrar": self.por_cobrar(),
         }
+
+    # ── ventana de N meses, compartida por los 3 gráficos de serie mensual ─────────────────────────
+
+    def _ventana_meses(self, meses: int) -> tuple[datetime.date, datetime.date]:
+        """`(desde, hasta)` = los últimos `meses` (incluido el actual), como rango `[desde, hasta)`."""
+        hoy = hoy_del_negocio()
+        desde = _primer_dia_del_mes(hoy)
+        for _ in range(meses - 1):
+            desde = _primer_dia_del_mes(desde - datetime.timedelta(days=1))
+        return desde, _mes_siguiente(hoy)
+
+    def _mes_o_actual(self, mes: str | None) -> tuple[datetime.date, datetime.date, str]:
+        """Parsea `?mes=YYYY-MM`; sin él, el mes del negocio HOY. Devuelve `(ini, fin, clave)`."""
+        if mes:
+            ini = datetime.date.fromisoformat(f"{mes}-01")
+        else:
+            ini = _primer_dia_del_mes(hoy_del_negocio())
+        return ini, _mes_siguiente(ini), _clave_mes(ini)
+
+    # ── gráfico 1: facturación por mes (§2.1 del contrato IN) ───────────────────────────────────────
+
+    def facturacion_por_mes(self, meses: int = 6) -> dict:
+        """`{tipo, periodo, serie:[{mes, total, cantidad}]}`. Misma definición de «facturado» que la
+        portada (`_facturado`) — acá agregada mes a mes en vez de un solo rango, y con el CONTEO al
+        lado (la portada no lo necesita, el gráfico sí)."""
+        desde, hasta = self._ventana_meses(meses)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT to_char(fecha_emision, 'YYYY-MM') AS mes, coalesce(sum(total), 0), count(*)
+                  FROM {_SCHEMA}.afip_comprobantes
+                 WHERE cliente_id = %(cid)s AND estado <> 'anulada' AND cae IS NOT NULL
+                   AND fecha_emision >= %(desde)s AND fecha_emision < %(hasta)s
+                 GROUP BY 1
+            """, {"cid": self._cliente_id, "desde": desde, "hasta": hasta})
+            por_mes = {mes: (Decimal(str(total or 0)), int(cant)) for mes, total, cant in cur.fetchall()}
+        serie, cursor_mes = [], desde
+        while cursor_mes < hasta:
+            clave = _clave_mes(cursor_mes)
+            total, cant = por_mes.get(clave, (Decimal(0), 0))
+            serie.append({"mes": clave, "total": dos_decimales(total), "cantidad": cant})
+            cursor_mes = _mes_siguiente(cursor_mes)
+        return {"tipo": "barras", "periodo": f"{serie[0]['mes']}..{serie[-1]['mes']}", "serie": serie}
+
+    def facturacion_detalle_mes(self, mes: str) -> dict:
+        """Las filas de comprobantes FACTURADOS (no anulados, con CAE) de `mes` — el desglose de una
+        barra del gráfico 1. Mismo filtro que `facturacion_por_mes`, un mes solo."""
+        ini, fin, clave = self._mes_o_actual(mes)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT id, punto_venta, nro, fecha_emision, coalesce(receptor_nombre, ''), total
+                  FROM {_SCHEMA}.afip_comprobantes
+                 WHERE cliente_id = %(cid)s AND estado <> 'anulada' AND cae IS NOT NULL
+                   AND fecha_emision >= %(ini)s AND fecha_emision < %(fin)s
+                 ORDER BY fecha_emision, nro
+            """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
+            filas = [{"id": cid, "numero": f"{pv:04d}-{nro:08d}", "fecha": fecha.isoformat(),
+                     "cliente": cliente, "total": dos_decimales(total)}
+                    for cid, pv, nro, fecha, cliente, total in cur.fetchall()]
+        return {"mes": clave, "filas": filas}
+
+    # ── gráfico 2: entró vs salió (§2.2) — la MISMA `_serie_mensual` de la portada, otras claves ─────
+
+    def entro_vs_salio(self, meses: int = 6) -> dict:
+        """Reusa `_serie_mensual` (§0: es la MISMA definición de «Entró»/«Salió» que la portada), sólo
+        cambia el nombre de las claves para el shape del gráfico 2 (`entro`/`salio` en vez de
+        `ingresos`/`gastos`)."""
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            base = self._serie_mensual(cur, meses)
+        serie = [{"mes": m["mes"], "entro": m["ingresos"], "salio": m["gastos"]} for m in base]
+        return {"tipo": "barras_enfrentadas", "periodo": f"{serie[0]['mes']}..{serie[-1]['mes']}",
+                "serie": serie}
+
+    def entro_vs_salio_detalle(self, mes: str, lado: str) -> dict:
+        """`lado='entro'`: filas de `_INGRESOS` con `origen` visible (factura/manual/mercadopago) —
+        Ingresos ya distingue así, se reusa la misma etiqueta. `lado='salio'`: filas de `copiloto_gastos`.
+        Dos queries de detalle porque las fuentes son tablas distintas con columnas distintas; el
+        AGREGADO (arriba) sigue siendo una sola definición."""
+        if lado not in ("entro", "salio"):
+            raise ValueError(f"lado inválido: {lado!r} (entro | salio)")
+        ini, fin, clave = self._mes_o_actual(mes)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            if lado == "salio":
+                cur.execute(f"""
+                    SELECT id, fecha, monto, categoria, coalesce(nullif(proveedor, ''), '')
+                      FROM {_SCHEMA}.copiloto_gastos
+                     WHERE cliente_id = %(cid)s AND fecha >= %(ini)s AND fecha < %(fin)s
+                     ORDER BY fecha
+                """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
+                filas = [{"id": gid, "fecha": fecha.isoformat(), "monto": dos_decimales(monto),
+                         "categoria": cat, "proveedor": prov}
+                        for gid, fecha, monto, cat, prov in cur.fetchall()]
+            else:
+                cur.execute(f"""
+                    SELECT id, fecha, monto, origen, coalesce(nullif(cliente_nombre, ''), '')
+                      FROM {_SCHEMA}.copiloto_cobros
+                     WHERE cliente_id = %(cid)s AND fecha >= %(ini)s AND fecha < %(fin)s
+                    UNION ALL
+                    SELECT id, (occurred_at - interval '3 hours')::date, amount, 'mercadopago', ''
+                      FROM {_SCHEMA}.mp_payments
+                     WHERE cliente_id = %(cid)s AND status = 'approved' AND amount IS NOT NULL
+                       AND (occurred_at - interval '3 hours')::date >= %(ini)s
+                       AND (occurred_at - interval '3 hours')::date < %(fin)s
+                     ORDER BY 2
+                """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
+                filas = [{"id": rid, "fecha": fecha.isoformat(), "monto": dos_decimales(monto),
+                         "origen": origen, "cliente": cliente}
+                        for rid, fecha, monto, origen, cliente in cur.fetchall()]
+        return {"mes": clave, "lado": lado, "filas": filas}
+
+    # ── gráfico 3: en qué se me va la plata (§2.3) — torta por categoría, un mes ────────────────────
+
+    def torta_categorias(self, mes: str | None = None) -> dict:
+        """`{tipo, periodo, serie:[{categoria, total}]}` — las 8 de `gasto_store.CATEGORIAS`, SIEMPRE
+        las 8 (en `"0.00"` la que no tuvo gasto ese mes), mismo criterio anti-hueco que `_serie_mensual`
+        con los meses: un gráfico que omite categorías sin dato hace parecer completa una torta que no
+        lo es."""
+        ini, fin, clave = self._mes_o_actual(mes)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT categoria, coalesce(sum(monto), 0) FROM {_SCHEMA}.copiloto_gastos
+                 WHERE cliente_id = %(cid)s AND fecha >= %(ini)s AND fecha < %(fin)s
+                 GROUP BY 1
+            """, {"cid": self._cliente_id, "ini": ini, "fin": fin})
+            por_cat = {cat: Decimal(str(total or 0)) for cat, total in cur.fetchall()}
+        serie = [{"categoria": cat, "total": dos_decimales(por_cat.get(cat, 0))} for cat in CATEGORIAS]
+        return {"tipo": "torta", "periodo": clave, "serie": serie}
+
+    def categoria_detalle(self, mes: str | None, categoria: str) -> dict:
+        """Las filas de `copiloto_gastos` de UNA categoría en `mes` — el desglose de una porción."""
+        if categoria not in CATEGORIAS:
+            raise ValueError(f"categoría inválida: {categoria!r}")
+        ini, fin, clave = self._mes_o_actual(mes)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT id, fecha, monto, coalesce(nullif(proveedor, ''), ''), descripcion
+                  FROM {_SCHEMA}.copiloto_gastos
+                 WHERE cliente_id = %(cid)s AND categoria = %(cat)s
+                   AND fecha >= %(ini)s AND fecha < %(fin)s
+                 ORDER BY fecha
+            """, {"cid": self._cliente_id, "cat": categoria, "ini": ini, "fin": fin})
+            filas = [{"id": gid, "fecha": fecha.isoformat(), "monto": dos_decimales(monto),
+                     "proveedor": prov, "descripcion": desc}
+                    for gid, fecha, monto, prov, desc in cur.fetchall()]
+        return {"mes": clave, "categoria": categoria, "filas": filas}

@@ -88,3 +88,67 @@ def test_sin_token_es_401_no_200_vacio():
     """Sin la barrera, la portada de un tenant sería accesible sin auth. 401, no una portada en cero
     que parecería 'este negocio no tiene nada'."""
     assert _app(require_tenant=_tenant_401()).get("/inteligencia/portada").status_code == 401
+
+
+# --- gráficos: forma final sin queries (mismo punto de encuentro que la portada) ---
+
+def test_facturacion_sin_queries_es_200_forma_vacia():
+    r = _app().get("/inteligencia/graficos/facturacion")
+    assert r.status_code == 200
+    assert r.json() == {"tipo": "barras", "periodo": "", "serie": []}
+
+
+def test_facturacion_detalle_sin_queries_es_200_forma_vacia():
+    r = _app().get("/inteligencia/graficos/facturacion?detalle=2026-07")
+    assert r.status_code == 200
+    assert r.json() == {"mes": "2026-07", "filas": []}
+
+
+def test_entro_vs_salio_sin_queries_es_200_forma_vacia():
+    r = _app().get("/inteligencia/graficos/entro-vs-salio")
+    assert r.status_code == 200
+    assert r.json() == {"tipo": "barras_enfrentadas", "periodo": "", "serie": []}
+
+
+def test_entro_vs_salio_detalle_mal_formado_es_400():
+    r = _app(queries_factory=lambda cid: object()).get(
+        "/inteligencia/graficos/entro-vs-salio?detalle=2026-07-sin-dos-puntos")
+    assert r.status_code == 400
+
+
+def test_categorias_sin_queries_es_200_forma_vacia():
+    r = _app().get("/inteligencia/graficos/categorias")
+    assert r.status_code == 200
+    assert r.json() == {"tipo": "torta", "periodo": "", "serie": []}
+
+
+def test_categorias_detalle_categoria_invalida_es_400():
+    class _Q:
+        def categoria_detalle(self, mes, cat):
+            raise ValueError(f"categoría inválida: {cat!r}")
+
+    r = _app(queries_factory=lambda cid: _Q()).get(
+        "/inteligencia/graficos/categorias?detalle=inventada")
+    assert r.status_code == 400
+
+
+def test_graficos_pasan_el_cliente_id_del_tenant():
+    vistos = []
+
+    class _Q:
+        def __init__(self, cid):
+            vistos.append(cid)
+
+        def facturacion_por_mes(self):
+            return {"tipo": "barras", "periodo": "", "serie": []}
+
+    _app(require_tenant=_tenant_fijo("cid-XYZ"),
+        queries_factory=lambda cid: _Q(cid)).get("/inteligencia/graficos/facturacion")
+    assert vistos == ["cid-XYZ"]
+
+
+def test_graficos_sin_token_son_401():
+    app = _app(require_tenant=_tenant_401())
+    assert app.get("/inteligencia/graficos/facturacion").status_code == 401
+    assert app.get("/inteligencia/graficos/entro-vs-salio").status_code == 401
+    assert app.get("/inteligencia/graficos/categorias").status_code == 401
