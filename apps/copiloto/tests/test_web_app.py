@@ -205,7 +205,8 @@ def _mp_fernet_key_env(monkeypatch):
 
 
 def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None, read_replies_fn=None,
-              mp_gateway=None, composio_gateway=None, warm_fn=None, require_claims=None):
+              mp_gateway=None, composio_gateway=None, warm_fn=None, require_claims=None,
+              actividad_app=None):
     db = db or _FakeTenantsDB()
     app = web_module.create_web_app(
         temporal_client=_FakeTemporal(),
@@ -217,10 +218,50 @@ def _build_app(*, require_tenant, db: _FakeTenantsDB | None = None, gotrue=None,
         gotrue=gotrue or _FakeGoTrue({}),
         mp_gateway=mp_gateway or _FakeMpGateway(),
         composio_gateway=composio_gateway or _FakeComposioGateway(),
+        actividad_app=actividad_app,
         read_replies_fn=read_replies_fn,
         warm_fn=warm_fn,
     )
     return app, db
+
+
+# --- /actividad: guard anti-stub-shadow (regresión 2026-07-22) ------------------
+# Hasta 2026-07-22 un stub `@app.get("/actividad")` directo sobre `app` devolvía 501 y se registraba
+# ANTES del `include_router(actividad_app)`, así que ensombrecía el router real EN SILENCIO: código
+# verde en los unit del handler, front-door tapado en prod. Estos tests son el guard por el FRONT-DOOR
+# (no por el handler suelto): construyen el mismo `create_web_app` que arma producción y verifican que
+# `/actividad` lo sirve el router real. Si alguien re-introduce el stub, estos tests se ponen rojos.
+
+def _actividad_app_real(require_tenant):
+    """El router real de `/actividad` (hito-1, sin store → forma final vacía), montado en el front-door
+    igual que en producción: recibe la MISMA dependencia `require_tenant` que el front-door real."""
+    from actividad_web import create_actividad_app
+    return create_actividad_app(require_tenant=require_tenant)
+
+
+def test_actividad_no_es_stub_501_lo_sirve_el_router_real():
+    dep = _require_tenant_fixed("emp-1")
+    app, _ = _build_app(require_tenant=dep, actividad_app=_actividad_app_real(dep))
+    r = TestClient(app).get("/actividad")
+    assert r.status_code != 501, "el stub 501 volvió a ensombrecer el router real"
+    assert r.status_code == 200
+    assert r.json() == {"items": [], "cursor": None}   # forma del router real, no el detalle del stub
+
+
+def test_actividad_funcion_invalida_es_400_no_501():
+    # Prueba que la request LLEGA a la validación del router real (el stub ganaba ANTES de validar `q`/
+    # `funcion`, devolviendo 501 en vez de 400 — la costura que rompía el contrato del front).
+    dep = _require_tenant_fixed("emp-1")
+    app, _ = _build_app(require_tenant=dep, actividad_app=_actividad_app_real(dep))
+    r = TestClient(app).get("/actividad", params={"funcion": "facturas"})   # typo → 400
+    assert r.status_code == 400
+
+
+def test_actividad_exige_require_tenant():
+    dep = _require_tenant_401()
+    app, _ = _build_app(require_tenant=dep, actividad_app=_actividad_app_real(dep))
+    r = TestClient(app).get("/actividad")
+    assert r.status_code == 401
 
 
 # --- /chat ---------------------------------------------------------------------
@@ -375,62 +416,24 @@ def test_signup_idempotent_same_email_returns_same_cliente_id():
     assert r1.json()["cliente_id"] == r2.json()["cliente_id"]
 
 
-# --- /actividad --------------------------------------------------------------------
-# Ver el docstring del handler en web.py para el POR QUÉ de 501: `ActividadItem` (packages/core/src/
-# api/actividad.ts) pide un modelo de "entradas firmadas por cliente-de-negocio" que NO existe en este
-# backend (verificado: grep del repo + único consumidor real de "actividad" es `consultar_actividad`,
-# que resume episodios de Graphity en lenguaje natural, sin cliente_nombre/tipo_operacion/entrada_id).
-# El cliente YA normaliza 501 a `{status:'no_disponible'}` — es el contrato, no un placeholder olvidado.
-
-def test_actividad_without_token_returns_401():
-    app, _ = _build_app(require_tenant=_require_tenant_401())
-    r = TestClient(app).get("/actividad")
-    assert r.status_code == 401
-
-
-def test_actividad_with_token_returns_501_stub_not_fabricated_data():
-    """Con token válido: 501 explícito (stub deliberado), NUNCA 200 con datos inventados. El cliente
-    (`listarActividad`) trata 404 Y 501 igual (`no_disponible`) -- 501 es más preciso: la ruta SÍ
-    existe y está registrada, la implementación real es la que falta."""
-    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    r = TestClient(app).get("/actividad", params={"q": "ana", "cursor": "cur-1", "limit": 5})
-    assert r.status_code == 501
-    # El detail no debe filtrar cliente_id ni ningún dato de negocio -- es un mensaje genérico de estado.
-    assert "cid-A" not in r.text
-
-
-def test_actividad_accepts_default_query_params_without_error():
-    """Sin q/cursor/limit (llamada mínima que hace `listarActividad()` sin args) -- misma respuesta 501,
-    no un 422 de validación por parámetros ausentes."""
-    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    r = TestClient(app).get("/actividad")
-    assert r.status_code == 501
-
-
-def test_actividad_two_tenants_get_identical_stub_no_cross_tenant_leak():
-    """Adversarial (regla dura del proyecto -- control de aislamiento sin test hostil = no verificado):
-    tenant A y tenant B piden /actividad: NINGUNO ve NADA del otro. Hoy, sin fuente de datos real, la
-    única superficie de fuga posible es el cuerpo de la respuesta (el stub no lee del store) -- se
-    verifica que la respuesta es IDÉNTICA para ambos tenants (mismo status, mismo detail genérico) y
-    que ninguna contiene el cliente_id del otro. El día que la fuente real exista, este test se
-    reemplaza por uno con datos reales de A/B (ver TODO en el docstring del handler), pero el gate de
-    "cliente_id sale EXCLUSIVAMENTE de Depends(require_tenant)" ya lo cubre `test_actividad_route_binds_cliente_id_only_via_require_tenant_dependency`."""
-    app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
-    r_a = TestClient(app_a).get("/actividad")
-    r_b = TestClient(app_b).get("/actividad")
-    assert r_a.status_code == r_b.status_code == 501
-    assert r_a.json() == r_b.json()          # ningún tenant recibe un cuerpo distinto/con datos del otro
-    assert "cid-A" not in r_a.text and "cid-B" not in r_a.text
-    assert "cid-A" not in r_b.text and "cid-B" not in r_b.text
-
+# --- /actividad: aislamiento estructural -------------------------------------------
+# El comportamiento del front-door (no-501, 200 vacío, 400 funcion inválida, 401 sin token) lo cubre
+# la sección "guard anti-stub-shadow" de más arriba, construida CON el router real montado. Acá queda
+# sólo el blindaje ESTRUCTURAL de regla 7 sobre la firma del endpoint registrado.
+# HISTORIA: hasta 2026-07-22 estos tests afirmaban un stub 501 (`ActividadItem`/"entradas firmadas",
+# modelo clínico heredado que NO existe en este backend). Ese stub ensombrecía el router real en
+# silencio; se borró (`fix/actividad-stub-shadow`) y `/actividad` sirve el feed unificado de verdad.
 
 def test_actividad_route_binds_cliente_id_only_via_require_tenant_dependency():
     """Estructural (blindaje a futuro, regla 7): `cliente_id` del handler DEBE resolverse vía
     `Depends(require_tenant)` -- nunca aceptar un `cliente_id`/`cid` por querystring que permitiría
-    pedir la actividad de OTRO tenant. Verifica la firma real del endpoint registrado, no una copia."""
-    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    ep = _route_endpoint(app, "/actividad", "GET")
+    pedir la actividad de OTRO tenant. Inspecciona el endpoint del router de actividad — el MISMO objeto
+    que el front-door monta (`create_web_app` lo incluye vía `_IncludedRouter`, no lo copia), así que en
+    `app.routes` no aparece por path: se inspecciona en su sub-app, que es donde vive el callable real.
+    Que ESE router es el que sirve el front-door lo prueban los guards HTTP de la sección de arriba."""
+    dep = _require_tenant_fixed("cid-A")
+    actividad_app = _actividad_app_real(dep)
+    ep = _route_endpoint(actividad_app, "/actividad", "GET")
     sig = inspect.signature(ep)
     assert "cliente_id" in sig.parameters
     default = sig.parameters["cliente_id"].default
