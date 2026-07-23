@@ -18,9 +18,26 @@
 #   UC_BASE_DOMAIN        dominio base (sslip.io del VPS)      (default: 178-105-191-1.sslip.io)
 #   UC_COPILOTO_SUBDOMAIN subdominio nuevo del front-door      (default: copiloto)
 #   UC_MP_SUBDOMAIN       subdominio existente de MercadoPago  (default: mp)
+#   UC_SKIP_DRIFT_CHECK   saltea el guard de checkout-vs-main   (default: sin setear = guard activo)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Guard: un checkout desactualizado sube apps/copiloto/motor TAL CUAL el disco y regresiona en
+# silencio código ya arreglado en origin/main -- sin conflicto de git, sin error (pasó el
+# 2026-07-23: /actividad y /inteligencia/* volvieron a romperse por un deploy desde una rama vieja).
+# Ver memoria/deploy-sh-no-valida-checkout-al-dia-con-main.md. Escape hatch UC_SKIP_DRIFT_CHECK=1
+# para el caso legítimo de desplegar una rama de feature aislada a propósito.
+if [ -z "${UC_SKIP_DRIFT_CHECK:-}" ]; then
+  git -C "$LOCAL" fetch origin main --quiet
+  DRIFT="$(git -C "$LOCAL" diff origin/main -- apps/copiloto motor | wc -l)"
+  if [ "$DRIFT" -ne 0 ]; then
+    echo "ABORT: el checkout local difiere de origin/main en apps/copiloto/motor ($DRIFT líneas de diff)." >&2
+    echo "Desplegar así regresiona en silencio código ya arreglado en main. Rebaseá/mergeá primero," >&2
+    echo "o si el drift es intencional corré con UC_SKIP_DRIFT_CHECK=1." >&2
+    exit 1
+  fi
+fi
 HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
 ENVDIR="${UC_ENV_DIR:-/etc/unreal-copilot}"
