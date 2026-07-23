@@ -52,6 +52,7 @@
 - [🏗️ El provisionado "idempotente" NO reconstruye la base desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — `project`. **LEER antes de levantar un entorno nuevo (DR/staging/región).** Pasada 1 falla, 2 OK: `ALTER TABLE IF EXISTS` es no-op sobre tabla inexistente. Idempotente ≠ reproducible.
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — `feedback`. 2º lente = el atajo que *colapsa* el problema.
 - [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — `feedback`. Tu propio estado envejece. Un estado falso da quietud, no bug.
+- [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — `feedback`. La espera CON disparador (device) tapa la rebanada de código-puro que quedó adentro. Descomponer por disparador REAL antes de declararla.
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — `feedback`. Correr el caso vacío: el default de toda regla restrictiva es no-hacer.
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — `feedback`. Preguntarse *¿qué devolvería si lo que mido estuviera roto?* (catálogo de 11+ casos).
 - [🕵️ Probar AUSENCIA necesita otro instrumento — y el device es de BACKEND](probar-ausencia-necesita-otro-instrumento.md) — `feedback`. Control de 12s no da negativo contra actor intermitente. Dueño único.
