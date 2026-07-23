@@ -6,6 +6,7 @@ import { listarPresupuestos, obtenerPresupuesto, type Presupuesto } from '@copil
 import { DetallePresupuesto } from './DetallePresupuesto';
 import { FormularioPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
+import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -210,6 +211,10 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                 ]}
               />
 
+              {/* 🔴 Decisión C: la lista rica de presupuestos (con estado, el toggle de historial) NO
+                  se toca — la envuelve el buscador. Sin query, se muestra intacta; con query, pega a
+                  `/actividad?funcion=presupuestos&q=` y muestra el card uniforme. */}
+              <BuscadorActividad funcion="presupuestos" testIDBase="presupuestos-busqueda" placeholder="Buscar un presupuesto">
               {!hayPresupuestos && (
                 <Text
                   testID="presupuestos-vacio"
@@ -238,6 +243,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
                   },
                 ]}
               />
+              </BuscadorActividad>
             </>
           )}
         </ScrollFormulario>
