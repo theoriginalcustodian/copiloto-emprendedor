@@ -91,6 +91,7 @@
 - [🚀📱 Entrega progresiva (PR/merge/deploy por hito) + E2E en device](entrega-progresiva-y-e2e-en-device.md) — `feedback`. Un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. Snapshot no stream; hand-fix a verde; spike dirigido para la raíz.
 - [🆔 Fórmula de identidad congelada sin validar el mecanismo del server](formula-de-identidad-congelada-sin-validar-el-mecanismo-del-server.md) — `project`. El `edge_uuid` lo deriva el server de los uuid de NODOS+tipo, sin `LOG_EVENT_ID`. Mi fórmula rompía el `PATCH` en silencio → dos vigentes. Anti-resurrección va en la clave del NODO (nodo-evento intermedio, patrón documed), no en la arista.
+- [🖋️ El contrato afirma el mecanismo que NO opero — el riesgo del rol PLANIFICACIÓN](el-contrato-afirma-el-mecanismo-que-no-opero.md) — `feedback`. **MACRO.** Dos ejes: A=setup de una persona (preguntar), B=mecanismo de un sistema (leer su código). Guardrail: evidencia adosada o `[ASSUMED_PENDING_VERIFY]` que bloquea el mapeo. La red que contuvo el daño = ejecutor leyendo la fuente + contrato falsable.
 
 ## 🧠 Lecciones sistémicas vivas
 
