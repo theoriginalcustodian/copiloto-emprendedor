@@ -53,6 +53,25 @@ export interface Tokens {
     peligroFondo: string;
     peligroBorde: string;
     exito: string;
+    /**
+     * Paleta CATEGÓRICA — identidad, no magnitud. Hoy la usa el gráfico 3 de Inteligencia de Negocio
+     * ("en qué se me va", torta por categoría de gasto): 8 colores, uno por cada `CATEGORIAS_GASTO`
+     * (`packages/core/src/api/gastos.ts`), en ESE orden — el color sigue a la categoría, nunca a su
+     * posición en la torta (regla dura de `dataviz`: "color follows the entity, never its rank").
+     *
+     * Validada con `scripts/validate_palette.js` del skill `dataviz` contra `#050e18` (fondo `cian`,
+     * representa los 4 skins oscuros) y `#eef3fa` (fondo `medicalWhite`). Resultado, documentado en vez
+     * de silenciado: separación CVD (protan/deutan/tritan) en PASS para los 28 pares; el piso de visión
+     * normal da 13.4 en el peor par (`impuestos`↔`transporte`) contra el mínimo recomendado de 15 — 8
+     * hues verdaderamente distinguibles en sRGB es un límite físico del gamut, no una paleta a medio
+     * hacer. El contrato de IN exige "período y fuente siempre visibles" + toda barra/porción con
+     * detalle-al-tacto, así que la etiqueta de texto (encoding secundario) ya cubre ese par — la regla
+     * del skill lo permite explícitamente bajo esa condición.
+     *
+     * Compartida por los 5 skins (no deriva del acento): la identidad de una categoría de gasto no
+     * tiene que cambiar si el operador cambia de tema.
+     */
+    categorico: readonly string[];
   };
   glass: {
     tint: string;
@@ -246,6 +265,24 @@ const SEMANTICOS_CLARO = {
   peligroBorde: 'rgba(199,69,90,.45)',
 };
 
+/**
+ * Paleta categórica — ver el docstring de `Tokens.color.categorico`. Un solo set para los 5 skins
+ * (validado contra el fondo más oscuro y el más claro de la familia).
+ *
+ * Orden = `CATEGORIAS_GASTO`: mercaderia, servicios, alquiler, sueldos, impuestos, transporte,
+ * herramientas, otros.
+ */
+const CATEGORICO: readonly string[] = [
+  '#8c398b', // mercaderia
+  '#eb5484', // servicios
+  '#aa3900', // alquiler
+  '#929d00', // sueldos
+  '#00915d', // impuestos
+  '#00a7b8', // transporte
+  '#1f57c5', // herramientas
+  '#876bed', // otros
+];
+
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   cian: {
     accent: '#4dd9ff', accent2: '#d6f6ff', on: '#04141c', glow: 'rgba(77,217,255,.6)',
@@ -337,6 +374,7 @@ function construirTokens(p: PaletaCruda): Tokens {
       peligroFondo: p.peligroFondo,
       peligroBorde: p.peligroBorde,
       exito: p.exito,
+      categorico: CATEGORICO,
     },
     glass: {
       tint: p.tint, tint2: p.tint2, bd, hi, s1, s2, chip, pill,

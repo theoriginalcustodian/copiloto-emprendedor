@@ -224,3 +224,288 @@ export async function preguntarInteligencia(
     throw err;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Gráficos de IN — la misma capa de §0, con y sin `?detalle=<segmento>` (§6 del
+// `dato_backend-a-todos_IN-capa-de-queries-forma-final...`, VIVO desde PR #69).
+//
+// 🔴 **Un solo parámetro, agregado o detalle — nunca un segundo camino.** Sin `detalle`, la respuesta
+// es la serie agregada; con él, las filas de ESE segmento. Es la MISMA query del lado del servidor —
+// acá se modela como una unión discriminada por `modo` para que el llamador nunca confunda una cosa
+// con la otra por accidente de tipos.
+// ---------------------------------------------------------------------------
+
+/** Un mes de la serie de facturación. */
+export interface PuntoFacturacion {
+  mes: string;
+  total: string | null;
+  cantidad: number;
+}
+
+/** Una factura del detalle de un mes (`?detalle=<mes>`). */
+export interface FilaFacturacionMes {
+  id: number;
+  numero: string;
+  fecha: string;
+  cliente: string;
+  total: string | null;
+}
+
+export type ResultadoGraficoFacturacion =
+  | { modo: 'serie'; tipo: 'barras'; periodo: string; serie: readonly PuntoFacturacion[] }
+  | { modo: 'detalle'; mes: string; filas: readonly FilaFacturacionMes[] };
+
+function puntoFacturacion(v: unknown): PuntoFacturacion | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { mes?: unknown; total?: unknown; cantidad?: unknown };
+  if (typeof r.mes !== 'string' || r.mes.trim() === '') return null;
+  return {
+    mes: r.mes,
+    total: importe(r.total),
+    cantidad: typeof r.cantidad === 'number' && Number.isFinite(r.cantidad) ? r.cantidad : 0,
+  };
+}
+
+function filaFacturacion(v: unknown): FilaFacturacionMes | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { id?: unknown; numero?: unknown; fecha?: unknown; cliente?: unknown; total?: unknown };
+  // Sin `id` la fila no se puede abrir (no hay a dónde navegar): se descarta, no se pinta huérfana.
+  if (typeof r.id !== 'number') return null;
+  return {
+    id: r.id,
+    numero: typeof r.numero === 'string' ? r.numero : '',
+    fecha: typeof r.fecha === 'string' ? r.fecha : '',
+    cliente: typeof r.cliente === 'string' ? r.cliente : '',
+    total: importe(r.total),
+  };
+}
+
+/** `GET /inteligencia/graficos/facturacion` — gráfico 1: facturación por mes. */
+export async function leerGraficoFacturacion(
+  params: { detalle?: string } = {},
+): Promise<ConDisponibilidad<ResultadoGraficoFacturacion>> {
+  const query = new URLSearchParams();
+  if (params.detalle != null && params.detalle !== '') query.set('detalle', params.detalle);
+  const qs = query.toString();
+  const path = qs ? `/inteligencia/graficos/facturacion?${qs}` : '/inteligencia/graficos/facturacion';
+
+  try {
+    const raw = await apiClient.get<Record<string, unknown>>(path);
+    if (typeof raw !== 'object' || raw === null) return { status: 'no_disponible' };
+    // El detalle-de-segmento devuelve `{mes, filas}`; el agregado, `{tipo, periodo, serie}`. Se
+    // distinguen por forma, no por si se pidió `detalle` — la misma guarda que `/actividad`.
+    if ('filas' in raw) {
+      const filas = Array.isArray((raw as { filas?: unknown }).filas) ? (raw as { filas: unknown[] }).filas : [];
+      return {
+        status: 'ok',
+        modo: 'detalle',
+        mes: typeof raw.mes === 'string' ? raw.mes : '',
+        filas: filas.map(filaFacturacion).filter((f): f is FilaFacturacionMes => f !== null),
+      };
+    }
+    if (!('serie' in raw)) return { status: 'no_disponible' };
+    const serie = Array.isArray((raw as { serie?: unknown }).serie) ? (raw as { serie: unknown[] }).serie : [];
+    return {
+      status: 'ok',
+      modo: 'serie',
+      tipo: 'barras',
+      periodo: typeof raw.periodo === 'string' ? raw.periodo : '',
+      serie: serie.map(puntoFacturacion).filter((p): p is PuntoFacturacion => p !== null),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503)) {
+      return { status: 'no_disponible' };
+    }
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/** Un mes de la serie entró-vs-salió (§1.bis de la portada: los tres orígenes de «Entró»). */
+export interface PuntoEntroVsSalio {
+  mes: string;
+  entro: string | null;
+  salio: string | null;
+}
+
+/** El origen de una fila de "entró" — el mismo distingo que ya expone Ingresos. */
+export type OrigenEntroVsSalio = 'factura' | 'dictado' | 'mercadopago';
+
+/** Una fila del detalle de "entró" en un mes (`?detalle=<mes>:entro`). */
+export interface FilaEntro {
+  id: number;
+  fecha: string;
+  monto: string | null;
+  origen: OrigenEntroVsSalio | null;
+  detalle: string;
+}
+
+/** Una fila del detalle de "salió" en un mes (`?detalle=<mes>:salio`) — un gasto. */
+export interface FilaSalio {
+  id: number;
+  fecha: string;
+  monto: string | null;
+  categoria: string;
+  detalle: string;
+}
+
+export type ResultadoGraficoEntroVsSalio =
+  | { modo: 'serie'; tipo: 'barras_enfrentadas'; periodo: string; serie: readonly PuntoEntroVsSalio[] }
+  | { modo: 'detalle_entro'; mes: string; filas: readonly FilaEntro[] }
+  | { modo: 'detalle_salio'; mes: string; filas: readonly FilaSalio[] };
+
+function puntoEntroVsSalio(v: unknown): PuntoEntroVsSalio | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { mes?: unknown; entro?: unknown; salio?: unknown };
+  if (typeof r.mes !== 'string' || r.mes.trim() === '') return null;
+  return { mes: r.mes, entro: importe(r.entro), salio: importe(r.salio) };
+}
+
+function origenEntro(v: unknown): OrigenEntroVsSalio | null {
+  return v === 'factura' || v === 'dictado' || v === 'mercadopago' ? v : null;
+}
+
+function filaEntro(v: unknown): FilaEntro | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { id?: unknown; fecha?: unknown; monto?: unknown; origen?: unknown; detalle?: unknown };
+  if (typeof r.id !== 'number') return null;
+  return {
+    id: r.id,
+    fecha: typeof r.fecha === 'string' ? r.fecha : '',
+    monto: importe(r.monto),
+    origen: origenEntro(r.origen),
+    detalle: typeof r.detalle === 'string' ? r.detalle : '',
+  };
+}
+
+function filaSalio(v: unknown): FilaSalio | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { id?: unknown; fecha?: unknown; monto?: unknown; categoria?: unknown; detalle?: unknown };
+  if (typeof r.id !== 'number') return null;
+  return {
+    id: r.id,
+    fecha: typeof r.fecha === 'string' ? r.fecha : '',
+    monto: importe(r.monto),
+    categoria: typeof r.categoria === 'string' ? r.categoria : '',
+    detalle: typeof r.detalle === 'string' ? r.detalle : '',
+  };
+}
+
+/** `GET /inteligencia/graficos/entro-vs-salio` — gráfico 2: entró vs salió por mes. */
+export async function leerGraficoEntroVsSalio(
+  params: { detalle?: string } = {},
+): Promise<ConDisponibilidad<ResultadoGraficoEntroVsSalio>> {
+  const query = new URLSearchParams();
+  if (params.detalle != null && params.detalle !== '') query.set('detalle', params.detalle);
+  const qs = query.toString();
+  const path = qs ? `/inteligencia/graficos/entro-vs-salio?${qs}` : '/inteligencia/graficos/entro-vs-salio';
+
+  try {
+    const raw = await apiClient.get<Record<string, unknown>>(path);
+    if (typeof raw !== 'object' || raw === null) return { status: 'no_disponible' };
+    if ('filas' in raw) {
+      const filas = Array.isArray((raw as { filas?: unknown }).filas) ? (raw as { filas: unknown[] }).filas : [];
+      const mes = typeof raw.mes === 'string' ? raw.mes : '';
+      // `?detalle=<mes>:entro` trae `origen`; `?detalle=<mes>:salio` trae `categoria`. Se distinguen
+      // mirando la primera fila con esas claves — si viene vacío, se asume `entro` (el lado por
+      // defecto no cambia nada visible con 0 filas).
+      const esSalio = filas.length > 0 && typeof filas[0] === 'object' && filas[0] !== null && 'categoria' in filas[0];
+      if (esSalio) {
+        return { status: 'ok', modo: 'detalle_salio', mes, filas: filas.map(filaSalio).filter((f): f is FilaSalio => f !== null) };
+      }
+      return { status: 'ok', modo: 'detalle_entro', mes, filas: filas.map(filaEntro).filter((f): f is FilaEntro => f !== null) };
+    }
+    if (!('serie' in raw)) return { status: 'no_disponible' };
+    const serie = Array.isArray((raw as { serie?: unknown }).serie) ? (raw as { serie: unknown[] }).serie : [];
+    return {
+      status: 'ok',
+      modo: 'serie',
+      tipo: 'barras_enfrentadas',
+      periodo: typeof raw.periodo === 'string' ? raw.periodo : '',
+      serie: serie.map(puntoEntroVsSalio).filter((p): p is PuntoEntroVsSalio => p !== null),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503)) {
+      return { status: 'no_disponible' };
+    }
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/** Una categoría de gasto en la torta (las 8 de `CATEGORIAS_GASTO`, siempre string abierto). */
+export interface PuntoCategoria {
+  categoria: string;
+  total: string | null;
+}
+
+/** Un gasto del detalle de una categoría (`?detalle=<categoria>`). */
+export interface FilaCategoria {
+  id: number;
+  fecha: string;
+  monto: string | null;
+  detalle: string;
+}
+
+export type ResultadoGraficoCategorias =
+  | { modo: 'serie'; tipo: 'torta'; periodo: string; serie: readonly PuntoCategoria[] }
+  | { modo: 'detalle'; categoria: string; filas: readonly FilaCategoria[] };
+
+function puntoCategoria(v: unknown): PuntoCategoria | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { categoria?: unknown; total?: unknown };
+  if (typeof r.categoria !== 'string' || r.categoria.trim() === '') return null;
+  return { categoria: r.categoria, total: importe(r.total) };
+}
+
+function filaCategoria(v: unknown): FilaCategoria | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { id?: unknown; fecha?: unknown; monto?: unknown; detalle?: unknown };
+  if (typeof r.id !== 'number') return null;
+  return {
+    id: r.id,
+    fecha: typeof r.fecha === 'string' ? r.fecha : '',
+    monto: importe(r.monto),
+    detalle: typeof r.detalle === 'string' ? r.detalle : '',
+  };
+}
+
+/** `GET /inteligencia/graficos/categorias` — gráfico 3: en qué se me va. `?mes=` cambia el período. */
+export async function leerGraficoCategorias(
+  params: { mes?: string; detalle?: string } = {},
+): Promise<ConDisponibilidad<ResultadoGraficoCategorias>> {
+  const query = new URLSearchParams();
+  if (params.mes != null && params.mes !== '') query.set('mes', params.mes);
+  if (params.detalle != null && params.detalle !== '') query.set('detalle', params.detalle);
+  const qs = query.toString();
+  const path = qs ? `/inteligencia/graficos/categorias?${qs}` : '/inteligencia/graficos/categorias';
+
+  try {
+    const raw = await apiClient.get<Record<string, unknown>>(path);
+    if (typeof raw !== 'object' || raw === null) return { status: 'no_disponible' };
+    if ('filas' in raw) {
+      const filas = Array.isArray((raw as { filas?: unknown }).filas) ? (raw as { filas: unknown[] }).filas : [];
+      return {
+        status: 'ok',
+        modo: 'detalle',
+        categoria: typeof raw.categoria === 'string' ? raw.categoria : '',
+        filas: filas.map(filaCategoria).filter((f): f is FilaCategoria => f !== null),
+      };
+    }
+    if (!('serie' in raw)) return { status: 'no_disponible' };
+    const serie = Array.isArray((raw as { serie?: unknown }).serie) ? (raw as { serie: unknown[] }).serie : [];
+    return {
+      status: 'ok',
+      modo: 'serie',
+      tipo: 'torta',
+      periodo: typeof raw.periodo === 'string' ? raw.periodo : '',
+      serie: serie.map(puntoCategoria).filter((p): p is PuntoCategoria => p !== null),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503)) {
+      return { status: 'no_disponible' };
+    }
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
