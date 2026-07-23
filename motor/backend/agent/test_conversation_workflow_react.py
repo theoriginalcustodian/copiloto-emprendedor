@@ -541,7 +541,11 @@ async def test_react_second_turn_sees_prior_turn_history():
     @activity.defn(name="call_llm_tools")
     async def flt(p):
         seen_messages.append(list(p["messages"]))
-        return {"tool_calls": [], "content": "listo, ahí va"}   # cada turno cierra con texto (sin tools)
+        # "dale, ahí va" (no "listo, ..."): texto neutro a propósito -- "listo" es palabra de cierre del
+        # guardrail narra-sin-hacer v2 (Parte 1) y con trace vacío (sin tool ejecutada) dispararía un
+        # retry con tool_choice="required" que duplicaría las llamadas y rompería el conteo de este test,
+        # que no tiene nada que ver con el guardrail.
+        return {"tool_calls": [], "content": "dale, ahí va"}   # cada turno cierra con texto (sin tools)
 
     @activity.defn(name="recall_memory")
     async def frc(p):
@@ -573,18 +577,24 @@ async def test_react_second_turn_sees_prior_turn_history():
     turn2 = [m.get("content") for m in seen_messages[1]]
     # el 2º turno DEBE traer el contexto del 1º (mensaje del usuario + respuesta del asistente), no solo el actual
     assert "revisá gmail, últimos 100" in turn2, f"amnesia: el 2º turno no vio el mensaje del 1º -> {turn2}"
-    assert "listo, ahí va" in turn2, "el 2º turno no vio la respuesta del asistente del 1º turno"
+    assert "dale, ahí va" in turn2, "el 2º turno no vio la respuesta del asistente del 1º turno"
     assert seen_messages[1][-1]["content"] == "dame los últimos 100"   # el mensaje actual va al final del scratchpad
 
 
-# ═══════════════════════════ Fix narra-sin-hacer: marcador de tool-trace en self._history ═══════════════
+# ═══════════════ Fix narra-sin-hacer: evidencia de tool-trace que ve el turno siguiente ═══════════════
+# NOTA (2026-07-23, v2 Parte 2): estos dos tests verificaban el marcador de texto de PR#85
+# (self._history + "[tool:x→ok]"). Ese marcador SIGUE en el código (self._history, sin cambios) pero ya
+# NO es lo que siembra `messages` -- lo reemplazó `self._react_transcript` (shape nativo, ver Parte 2 en
+# conversation_workflow.py). Las aserciones migraron a verificar la evidencia ESTRUCTURAL real que el
+# turno siguiente recibe, que es lo que efectivamente importa (PR#85 medía 2/2 narrando igual pese al
+# marcador; esto es lo que lo reemplaza).
 
 @pytest.mark.asyncio
-async def test_react_history_marker_survives_to_next_turn_when_tool_executed():
+async def test_react_structural_evidence_survives_to_next_turn_when_tool_executed():
     """[[copiloto-narra-la-accion-sin-ejecutarla]]: un turno que EJECUTÓ una tool antes de cerrar debe dejar
-    evidencia de eso en self._history -- si no, el 2º turno ve 'usuario pidió X -> assistant dijo que lo hizo'
-    SIN tool_call en el medio, y el LLM aprende a narrar sin ejecutar. El 2º turno debe ver el marcador
-    determinístico junto al texto final del 1º."""
+    evidencia ESTRUCTURAL de eso (mensaje role='assistant' con 'tool_calls' + un role='tool' con el
+    resultado) en lo que ve el turno siguiente -- no un marcador de texto que el LLM podía ignorar (PR#85,
+    2/2 en device)."""
     seen_messages: list[list[dict]] = []
 
     @activity.defn(name="call_llm_tools")
@@ -621,13 +631,17 @@ async def test_react_history_marker_survives_to_next_turn_when_tool_executed():
 
     # turno 1 hace 2 llamadas (propone la tool, después cierra con texto); turno 2 es la ÚLTIMA -- por eso
     # `seen_messages[-1]` (no un índice fijo) es el que hay que inspeccionar, con el buffer YA reconstruido
-    # desde self._history (a diferencia de seen_messages[1], que es el 2º llamado del PROPIO turno 1, scratchpad).
+    # desde self._react_transcript (a diferencia de seen_messages[1], que es el 2º llamado del PROPIO
+    # turno 1, scratchpad).
     assert len(seen_messages) >= 3
-    turn2 = [m.get("content") for m in seen_messages[-1]]
-    marcado = [c for c in turn2 if isinstance(c, str) and "listo" in c]
-    assert marcado, f"el 2º turno no ve el cierre del 1º -> {turn2}"
-    assert "tool:crear_gasto" in marcado[0] and "ok" in marcado[0], (
-        f"el 2º turno no ve evidencia de que la tool EJECUTÓ -> {marcado[0]!r}")
+    turn2 = seen_messages[-1]
+    tool_call_msgs = [m for m in turn2 if m.get("role") == "assistant" and m.get("tool_calls")]
+    tool_result_msgs = [m for m in turn2 if m.get("role") == "tool"]
+    assert tool_call_msgs, f"el 2º turno no ve el tool_call ESTRUCTURAL del 1º -> {turn2}"
+    assert tool_call_msgs[0]["tool_calls"][0]["function"]["name"] == "crear_gasto"
+    assert tool_result_msgs, f"el 2º turno no ve el tool_result ESTRUCTURAL del 1º -> {turn2}"
+    textos = [m.get("content") for m in turn2 if isinstance(m.get("content"), str)]
+    assert any("listo" in t for t in textos), f"el 2º turno no ve el cierre en texto del 1º -> {textos}"
 
 
 @pytest.mark.asyncio
@@ -673,9 +687,10 @@ async def test_react_history_marker_absent_when_no_tool_executed():
 
 
 @pytest.mark.asyncio
-async def test_react_history_marker_includes_tool_confirmed_via_gate():
-    """El marcador también cubre la tool que se ejecutó vía el gate de confirmación (confirmed=True) -- el
-    reingreso por _run_react_turn siembra el tool_trace del _react_loop, no arranca en blanco."""
+async def test_react_structural_evidence_includes_tool_confirmed_via_gate():
+    """La evidencia estructural también cubre la tool que se ejecutó vía el gate de confirmación
+    (confirmed=True) -- el reingreso por _run_react_turn apendea a self._react_transcript ANTES de
+    entrar a _react_loop, no arranca en blanco."""
     seen_messages: list[list[dict]] = []
     llm_calls = {"n": 0}
 
@@ -720,7 +735,222 @@ async def test_react_history_marker_includes_tool_confirmed_via_gate():
             await h.result()
 
     assert seen_messages, "no llegó a un 2º turno que pueda ver el history"
-    turn_after = [m.get("content") for m in seen_messages[-1]]
-    marcado = [c for c in turn_after if isinstance(c, str) and "listo, cobrado" in c]
-    assert marcado and "tool:mp_charge" in marcado[0], (
-        f"el marcador no cubre la tool ejecutada vía el gate de confirmación -> {marcado}")
+    turn_after = seen_messages[-1]
+    tool_call_msgs = [m for m in turn_after if m.get("role") == "assistant" and m.get("tool_calls")]
+    tool_result_msgs = [m for m in turn_after if m.get("role") == "tool"]
+    assert tool_call_msgs, f"el 2º turno no ve el tool_call ESTRUCTURAL del gate -> {turn_after}"
+    assert tool_call_msgs[0]["tool_calls"][0]["function"]["name"] == "mp_charge"
+    assert tool_result_msgs, f"el 2º turno no ve el tool_result ESTRUCTURAL del gate -> {turn_after}"
+    textos = [m.get("content") for m in turn_after if isinstance(m.get("content"), str)]
+    assert any("listo, cobrado" in t for t in textos), (
+        f"el 2º turno no ve el cierre en texto del gate -> {textos}")
+
+
+# ═══════════════════════════ Fix narra-sin-hacer v2: guardrail (Parte 1) + cura estructural (Parte 2) ═══════════════
+
+def test_narra_completitud_detecta_solo_palabras_de_cierre_exactas():
+    """Unit puro (sin cluster): el detector dispara con las formas de HECHO CONSUMADO medidas en device (PR#88,
+    3/3), pero NO con una pregunta legítima que use el mismo verbo en otra conjugación -- "¿aprobás?" no es
+    "aprobado". Sin esta distinción, el guardrail se dispararía sobre turnos de aclaración honestos."""
+    from backend.agent.conversation_workflow import _narra_completitud
+
+    # medido en device, PR#88 (spike-b), 3/3:
+    assert _narra_completitud('Anoté el gasto de $141 en la categoría "otros"... revisalo y confirmame.')
+    assert _narra_completitud("Listo, ya lo mandé.")
+    assert _narra_completitud("Quedó guardado el cliente.")
+    # clarificaciones honestas -- NO deben disparar:
+    assert not _narra_completitud("¿Qué categoría le corresponde a este gasto?")
+    assert not _narra_completitud("¿Aprobás este presupuesto?")            # "aprobás" != "aprobado"
+    assert not _narra_completitud("¿Cómo se llama el cliente?")
+    assert not _narra_completitud("")
+    assert not _narra_completitud(None)
+
+
+@pytest.mark.asyncio
+async def test_react_guardrail_forces_required_retry_when_llm_lies():
+    """Parte 1 del fix v2: el LLM cierra el 1er intento SIN tool_call pero afirmando "Anoté..." (la mentira
+    medida 3/3 en device) -> el guardrail rechaza esa respuesta y re-pregunta UNA vez con
+    tool_choice="required". Esta vez el LLM sí llama la tool -> el turno la ejecuta de verdad."""
+    payloads: list[dict] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        payloads.append(dict(p))
+        if len(payloads) == 1:
+            return _TEXT('Anoté el gasto de $141 en la categoría "otros"... revisalo y confirmame.')
+        if len(payloads) == 2:
+            return _tc("registrar_gasto", {"monto": 141})
+        return _TEXT("Listo, te armé el borrador.")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    exec_calls: list[dict] = []
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        exec_calls.append(p)
+        return ToolResult(tool_call_id=p["idem_key"], is_write=False, status="ok",
+                          observation={"result": "propuesto"}).to_dict()
+
+    sent: list[dict] = []
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        sent.append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rguard1", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rguard1", task_queue="rguard1")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "anotá 141 pesos", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(payloads) == 3, f"esperaba 3 llamadas (mentira, retry required, cierre) -> {len(payloads)}"
+    assert payloads[0]["tool_choice"] == "auto"                # intento normal, el que mintió
+    assert payloads[1]["tool_choice"] == "required"             # el guardrail forzó la re-llamada
+    assert len(exec_calls) == 1 and exec_calls[0]["name"] == "registrar_gasto"   # la tool SÍ se ejecutó
+    assert sent[-1]["text"] == "Listo, te armé el borrador."
+
+
+@pytest.mark.asyncio
+async def test_react_guardrail_no_dispara_en_aclaracion_honesta():
+    """Anti-falso-positivo: una repregunta honesta del copiloto (sin tool_call, sin afirmar completitud) NO
+    debe disparar el guardrail -- una sola llamada a call_llm_tools, sin re-preguntar con tool_choice='required'."""
+    payloads: list[dict] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        payloads.append(dict(p))
+        return _TEXT("¿Qué categoría le corresponde a este gasto?")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rguard2", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rguard2", task_queue="rguard2")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "anotá un gasto", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(payloads) == 1, f"la aclaración honesta NO debe disparar el retry required -> {len(payloads)}"
+    assert payloads[0]["tool_choice"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_react_guardrail_cierra_igual_si_el_required_tampoco_da_tool():
+    """Defensivo: si INCLUSO tras forzar tool_choice='required' el LLM sigue sin devolver tool_calls (caso
+    límite de la API real, a verificar empíricamente), el turno cierra igual con ese 2º contenido -- nunca
+    cuelga esperando un tool_call que no llega."""
+    payloads: list[dict] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        payloads.append(dict(p))
+        if len(payloads) == 1:
+            return _TEXT("Listo, ya lo hice.")
+        return _TEXT("Perdón, no puedo hacerlo ahora.")   # ni con required devuelve tool_calls
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], observation={}).to_dict()
+
+    sent: list[dict] = []
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        sent.append(p)
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rguard3", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rguard3", task_queue="rguard3")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "hacé algo", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(payloads) == 2
+    assert sent[-1]["text"] == "Perdón, no puedo hacerlo ahora."   # cerró con el 2º contenido, no colgó
+
+
+@pytest.mark.asyncio
+async def test_react_transcript_estructural_siembra_el_turno_siguiente():
+    """Parte 2 del fix v2 (la cura): el 2º turno debe ver la EVIDENCIA ESTRUCTURAL nativa (mensaje
+    role='assistant' con 'tool_calls', y un role='tool' con el resultado) de la tool que el 1er turno ejecutó
+    -- no solo el texto plano que el LLM podía imitar sin llamar nada. Esto es lo que PR#85 (marcador de texto)
+    no lograba: acá la evidencia vive en la ESTRUCTURA que el propio modelo ya atiende dentro de un turno."""
+    seen_messages: list[list[dict]] = []
+
+    @activity.defn(name="call_llm_tools")
+    async def flt(p):
+        seen_messages.append(list(p["messages"]))
+        if len(seen_messages) == 1:
+            return _tc("registrar_gasto", {"monto": 500})
+        return _TEXT("Te armé el borrador." if len(seen_messages) == 2 else "ok")
+
+    @activity.defn(name="recall_memory")
+    async def frc(p):
+        return {"context": ""}
+
+    @activity.defn(name="execute_tool")
+    async def fe(p):
+        return ToolResult(tool_call_id=p["idem_key"], is_write=False, status="ok",
+                          observation={"result": "propuesto"}).to_dict()
+
+    @activity.defn(name="send_channel_message")
+    async def fs(p):
+        return {"sent": True}
+
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        async with Worker(env.client, task_queue="rstruct", workflows=[ConversationWorkflow],
+                          activities=[flt, frc, fe, fs]):
+            h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
+                                                id="rstruct", task_queue="rstruct")
+            await h.signal(ConversationWorkflow.receive_message, {"text": "anotá un gasto de 500", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "otra cosa", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    assert len(seen_messages) >= 3
+    turn_after = seen_messages[-1]   # el ÚLTIMO llamado ve el buffer YA reconstruido para el 2º turno de usuario
+    assistant_tool_call = [m for m in turn_after
+                           if m.get("role") == "assistant" and m.get("tool_calls")]
+    tool_results = [m for m in turn_after if m.get("role") == "tool"]
+    assert assistant_tool_call, f"el 2º turno no ve el tool_call ESTRUCTURAL del 1º -> {turn_after}"
+    assert assistant_tool_call[0]["tool_calls"][0]["function"]["name"] == "registrar_gasto"
+    assert tool_results, f"el 2º turno no ve el tool_result ESTRUCTURAL del 1º -> {turn_after}"
+
+
+def test_react_tail_constants_consistent_with_history_pattern():
+    """Regresión de config: REACT_CARRY_TAIL >= REACT_TAIL (mismo invariante que CARRY_TAIL >= HISTORY_TAIL) --
+    si se invierte, el continue-as-new arrastraría MENOS de lo que un turno necesita para sembrarse."""
+    from backend.agent.conversation_workflow import REACT_TAIL, REACT_CARRY_TAIL, CARRY_TAIL, HISTORY_TAIL
+    assert REACT_CARRY_TAIL >= REACT_TAIL
+    assert CARRY_TAIL >= HISTORY_TAIL
