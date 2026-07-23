@@ -32,6 +32,15 @@ vive en lugares distintos:
 - **Auditoría FRONTEND:** render/TTI, re-renders, tamaño del bundle, **cold-fetch al montar**, jank de
   gestos/animación, virtualización de listas. Skills que la alimentan: `callstack-react-native-performance`
   (jank/FPS/TTI/re-renders/bundle), `swmansion-rn-animations`/`swmansion-rn-gestures`.
+  - **🎯 SÍNTOMA PRECISO #1 (operador, 2026-07-23):** lo que MÁS lento se siente = **el tap en un botón
+    → tarda en abrir/ejecutar la apertura del glass; la animación del glass EN SÍ levanta bien.** O sea
+    la demora está en el **disparo del tap**, no en el render de la animación. Hipótesis del operador (a
+    VERIFICAR, no asumir): *¿el glass se abre al SOLTAR el botón (`onPress`/press-out) en vez de al
+    presionar (`onPressIn`)?* — en RN `onPress` dispara al release, y puede sumar demora por
+    desambiguación tap-vs-pan (el shell compone Pan del panel + scroll + press). Candidatos a mirar:
+    `onPressIn` vs `onPress`, `delayLongPress`/`activeOffset`/`hitSlop`, y si el handler de apertura
+    hace trabajo síncrono pesado antes de pintar. Vive en el **shell de glass (`MarcoGlass`/tiles)** —
+    mismo hotspot que el freeze. Meta: apertura **ultra-veloz** (idealmente feedback en press-down).
 - **Auditoría BACKEND:** latencia de queries, **N+1** (ya hay uno flaggeado: `margen-trabajo` sobre
   `TrabajoStore`, el propio backend lo marcó), cadencia del polling `/reply`, tiempos de respuesta de
   endpoints, eficiencia de queries SQL.
