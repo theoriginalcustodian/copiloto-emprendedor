@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# .githooks/pre-push — sync del grafo de código (arco autopoiético, onboardeo 2026-07-23).
+# Activar (por clone): git config core.hooksPath .githooks
+set -euo pipefail
+
+# git entrega por stdin una línea por ref — se consume ahora (pipe, una sola lectura).
+REFS_STDIN="$(cat || true)"
+
+# -----------------------------------------------------------------------------
+# Sync del grafo de código (arco autopoiético)
+# -----------------------------------------------------------------------------
+# Extrae el grafo con graphify (0 LLM, incremental) e ingiere solo lo cambiado
+# desde el último commit ya pusheado, reconciliando contra el grafo completo
+# (alta + baja). Fail-closed: si el sync falla, el push ABORTA — el grafo no
+# queda silenciosamente desactualizado. Bypass ante fallo transitorio:
+# git push --no-verify. Patrón copiado de Graphity (.githooks/pre-push §8) /
+# unreal-copilot (.githooks/pre-push).
+ZERO="0000000000000000000000000000000000000000"
+BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
+
+if [ ! -d "$BRIDGE" ]; then
+  echo "[pre-push] ❌ no encuentro el bridge en '$BRIDGE'." >&2
+  echo "[pre-push]    seteá GRAPHITY_BRIDGE_PATH o saltá con: git push --no-verify" >&2
+  exit 1
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  echo "[pre-push] ❌ 'uv' no está en el PATH; no se puede sincronizar el grafo." >&2
+  exit 1
+fi
+
+base=""
+full=0
+nrefs=0
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  case "$local_sha" in *[!0]*) : ;; *) continue ;; esac
+  nrefs=$((nrefs + 1))
+  if [ "${remote_sha:-$ZERO}" = "$ZERO" ]; then
+    full=1
+  else
+    base="$remote_sha"
+  fi
+done <<< "$REFS_STDIN"
+[ "$nrefs" -gt 1 ] && full=1
+
+if [ "$nrefs" -eq 0 ]; then
+  echo "[pre-push] (nada que sincronizar en el grafo)"
+else
+  ( cd "$BRIDGE"
+    if [ "$full" -eq 0 ] && [ -n "$base" ]; then
+      echo "[pre-push] sync del grafo de código (incremental desde ${base:0:12})…"
+      uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync \
+        --checkpoint .bridge/checkpoint-copiloto-emprendedor.db --since "$base"
+    else
+      echo "[pre-push] sync del grafo de código (completo)…"
+      uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync \
+        --checkpoint .bridge/checkpoint-copiloto-emprendedor.db
+    fi
+  )
+  echo "[pre-push] ✅ grafo de código sincronizado"
+fi
