@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
 
+import { ChatInteligencia } from './ChatInteligencia';
+import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -24,15 +28,62 @@ import { useTema } from '../../theme/ThemeProvider';
  * 🔴 **Cascarón NO: si el endpoint no está, se dice.** El «PRÓXIMAMENTE» anterior era honesto cuando
  * no había contrato; ahora que la forma existe, la pantalla se construye de verdad y el único estado
  * que falta es el connect.
+ *
+ * 🔴 **La decisión de placement (`dato_planificacion-a-frontend_IN-vacio-...`) — una sola pantalla,
+ * dos solapas.** Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo
+ * scroll — leen de un vistazo, no multiplican rutas para algo chico. El chat (`ChatInteligencia`) NO
+ * entra al mismo scroll: es un `flex:1` con su propio teclado/scroll interno, anidarlo abajo de los
+ * gráficos lo dejaría compitiendo por alto con contenido que no es suyo. Por eso "Preguntar" es una
+ * solapa aparte, no una sección más — mismo `MarcoGlass`, dos cuerpos que se turnan.
  */
 
 type EstadoLista = 'cargando' | 'ok' | 'no_disponible';
+type Vista = 'resumen' | 'preguntar';
+
+const OPCIONES_VISTA: readonly { valor: Vista; etiqueta: string }[] = [
+  { valor: 'resumen', etiqueta: 'Resumen' },
+  { valor: 'preguntar', etiqueta: 'Preguntar' },
+];
+
+function Solapas({ vista, onChange }: { vista: Vista; onChange: (v: Vista) => void }) {
+  const tema = useTema();
+  return (
+    <View style={styles.solapas} testID="inteligencia-solapas">
+      {OPCIONES_VISTA.map((o) => {
+        const activa = o.valor === vista;
+        return (
+          <Pressable
+            key={o.valor}
+            testID={`inteligencia-solapa-${o.valor}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: activa }}
+            onPress={() => onChange(o.valor)}
+            style={pressableStyle(styles.solapaPresionable)}
+          >
+            <View style={[styles.solapa, { borderColor: activa ? tema.color.acento : tema.color.borde }]}>
+              <Text
+                style={{
+                  color: activa ? tema.color.acento : tema.color.textoTenue,
+                  fontFamily: tema.fuente.uiMedium,
+                  fontSize: tema.tipo.base,
+                }}
+              >
+                {o.etiqueta}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 export function PantallaInteligencia() {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [portada, setPortada] = useState<Portada | null>(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [vista, setVista] = useState<Vista>('resumen');
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -68,22 +119,29 @@ export function PantallaInteligencia() {
 
   return (
     <MarcoGlass titulo="Inteligencia de Negocio" icono="chart" testID="pantalla-inteligencia">
-      {estado === 'cargando' && (
-        <View style={styles.centro}>
-          <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
-        </View>
-      )}
+      <View style={styles.raiz}>
+        <Solapas vista={vista} onChange={setVista} />
 
-      {estado === 'no_disponible' && (
-        <View style={styles.centro}>
-          <Text
-            testID="inteligencia-no-disponible"
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
-          >
-            El resumen de tu negocio todavía no está disponible en tu copiloto.
-          </Text>
-        </View>
-      )}
+        {vista === 'preguntar' ? (
+          <ChatInteligencia />
+        ) : (
+          <>
+            {estado === 'cargando' && (
+              <View style={styles.centro}>
+                <ActivityIndicator testID="inteligencia-cargando" color={tema.color.acento} />
+              </View>
+            )}
+
+            {estado === 'no_disponible' && (
+              <View style={styles.centro}>
+                <Text
+                  testID="inteligencia-no-disponible"
+                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}
+                >
+                  El resumen de tu negocio todavía no está disponible en tu copiloto.
+                </Text>
+              </View>
+            )}
 
       {estado === 'ok' && portada != null && (
         <ScrollFormulario
@@ -173,8 +231,16 @@ export function PantallaInteligencia() {
               </Row>
             ))
           )}
+
+          {/* LOS 4 GRÁFICOS — cada uno con su propia carga, endpoints independientes de la portada. */}
+          <View testID="inteligencia-graficos-seccion" style={{ marginTop: tema.espacio.md }}>
+            <GraficosInteligencia />
+          </View>
         </ScrollFormulario>
-      )}
+            )}
+          </>
+        )}
+      </View>
     </MarcoGlass>
   );
 }
@@ -226,6 +292,17 @@ const rotulo = (tema: ReturnType<typeof useTema>) => ({
 });
 
 const styles = StyleSheet.create({
+  raiz: { flex: 1 },
+  solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  solapaPresionable: { flexGrow: 1 },
+  solapa: {
+    minHeight: 0,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+  },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
