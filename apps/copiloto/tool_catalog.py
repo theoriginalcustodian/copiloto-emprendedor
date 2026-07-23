@@ -589,10 +589,15 @@ def _run_registrar_gasto(arguments, ctx, idem_key, now_iso_provider):
         tool_call_id=idem_key, is_write=False, status="ok",
         # Lo que el LLM lee. Se le dice explícitamente que NO está guardado para que no cierre el turno
         # con "listo, ya lo anoté" — el emprendedor leería eso, no tocaría Guardar, y el gasto se
-        # perdería creyendo los dos que estaba hecho.
+        # perdería creyendo los dos que estaba hecho. [[copiloto-narra-la-accion-sin-ejecutarla]] spike (b):
+        # la instrucción en prosa ("decíselo en una línea corta") dejaba que el LLM parafraseara con
+        # "anoté...revisalo" (verbo de hecho consumado) — medido en device, 2/2 turnos siguientes lo
+        # imitaban. Ahora se prohíbe el verbo explícitamente y se da la frase EXACTA a relayar.
         observation={"result": f"Propuse el gasto (${gasto['monto']}, {categoria}) y se lo muestro en "
-                               f"una tarjeta para que la revise. TODAVÍA NO está guardado: decíselo en "
-                               f"una línea corta y pedile que confirme o corrija."
+                               f"una tarjeta para que la revise. TODAVÍA NO está guardado — NO digas "
+                               f"\"anoté\", \"listo\" ni \"guardado\" porque no es cierto. Decile "
+                               f"exactamente: \"Te armé un borrador de ${gasto['monto']} en {categoria}, "
+                               f"revisalo y confirmalo cuando quieras.\""
                                # Sin aviso de fecha a propósito: la card lo muestra pegado al campo,
                                # y preguntarlo por chat mandaría la respuesta al mismo resolvedor que
                                # ya falló. `hay_card=True` lo deja mudo.
@@ -662,9 +667,14 @@ def _run_registrar_cliente(arguments, ctx, idem_key):
                  f"de DNI (7 u 8). Pedile que lo confirme; puede corregirlo en la tarjeta.")
     return ToolResult(
         tool_call_id=idem_key, is_write=False, status="ok",
+        # spike (b) [[copiloto-narra-la-accion-sin-ejecutarla]]: mismo patrón que registrar_gasto —
+        # verbo prohibido explícito + frase exacta para relayar, en vez de una instrucción en prosa
+        # que el LLM parafraseaba a "anoté" (verbo de hecho consumado).
         observation={"result": f"Propuse el cliente «{nombre}» y se lo muestro en una tarjeta para "
-                               f"que la revise. TODAVÍA NO está guardado: decíselo en una línea "
-                               f"corta y pedile que confirme o corrija.{aviso}"},
+                               f"que la revise. TODAVÍA NO está guardado — NO digas \"anoté\", "
+                               f"\"listo\" ni \"guardado\" porque no es cierto. Decile exactamente: "
+                               f"\"Te armé un borrador de {nombre}, revisalo y confirmalo cuando "
+                               f"quieras.\"{aviso}"},
         artifact=Artifact(kind="cliente_propuesto", data=cliente))
 
 
