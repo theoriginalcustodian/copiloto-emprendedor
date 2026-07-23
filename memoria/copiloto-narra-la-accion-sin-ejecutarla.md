@@ -63,5 +63,64 @@ el síntoma sin tocar la causa, y dejaría el fallo latente para cada tool futur
 del historial, que viaja en el **estado durable** de una sesión permanente (continue-as-new): tocarla
 es un cambio con implicancias de replay y de workflows en vuelo → **MAYOR, se escala**.
 
+## v1 implementado (PR#85, 2026-07-23) — REDUCE el problema, NO lo cierra
+
+De-risk (Replayer.replay_workflow contra CAN real) verde → operador autorizó → `_react_finish` apendea
+un marcador determinístico (`[tool:nombre→ok]`) a `self._history` cuando el turno ejecutó ≥1 tool,
+versionado con `workflow.patched("history-tool-trace-marker")` (replay-safe, sesiones en vuelo no
+rompen). + línea en `SYSTEM_PROMPT_REACT` prohibiendo narrar sin `tool_result`. Deployado, 973 tests
+verdes.
+
+**Retest adversarial en device (mismo día, `e2e-device`, 3 gastos dictados seguidos): 2/2 turnos
+POSTERIORES al primero siguieron narrando sin ejecutar** — verificado contra el **Temporal workflow
+history** (no journalctl, que no loguea tools — [[vacio-no-es-hallazgo-correr-el-control]]): el turno 1
+sí llamó `registrar_gasto` (evidencia real, marcador quedó en el historial); los turnos 2 y 3, con ESE
+marcador ya presente, cerraron con `"tool_calls": []` y el texto *"Anoté el gasto de $222... revisalo y
+confirmame"* — oráculo HTTP `GET /gastos` confirma que esos gastos NUNCA se crearon.
+
+**Por qué el marcador no alcanza:** viaja como sufijo invisible-al-relato DESPUÉS del texto visible. El
+LLM imita la FORMA del texto (`"Anoté el gasto de $X... revisalo"` — frase que el propio `registrar_gasto`
+le sugirió decir la primera vez, con tool_call real detrás) sin necesariamente atender al marcador que la
+acompaña. Es evidencia disponible para el modelo, no una restricción de la API (`tool_choice` sigue en
+`"auto"`). Distinto del bug original (ahora SÍ hay evidencia auditable cuando el turno ejecuta), pero el
+DoD — "el copiloto ya no confirma en voz alta sin haber ejecutado", medido con guion adversarial — sigue
+en rojo. Detalle completo: `coordinacion/.../hallazgo_backend-a-planificacion_narra-sin-hacer-el-marcador-esta-vivo-pero-el-LLM-lo-esquiva-2-de-2.md`.
+
+**Candidatos para una 2ª iteración (sin implementar, decisión pendiente):** forzar `tool_choice="required"`
+cuando el turno anterior fue una pregunta de aclaración del propio copiloto (más agresivo, riesgo de
+sobre-forzar en turnos que sí son solo aclaración) — o cambiar el texto que `registrar_gasto` le sugiere
+al LLM ("Anoté" → algo que no suene a completado, ej. "Te armé el borrador") para que el precedente en
+`self._history` deje de sonar a confirmación aunque el marcador se ignore.
+
+## Spike (b) FALLÓ (PR#88, 2026-07-23) — texto honesto explícito, el LLM lo ignora igual
+
+Planificación descartó el residual y autorizó spike (b): que `registrar_gasto`/`registrar_cliente`
+prohíban el verbo explícitamente y entreguen la frase EXACTA a relayar (*"NO digas 'anoté', 'listo'
+ni 'guardado' porque no es cierto. Decile exactamente: 'Te armé un borrador...'"*), en vez de la
+instrucción en prosa anterior (*"decíselo en una línea corta"*). Tests verdes (929 passed), deployado
+(`a471d66`).
+
+**Retest adversarial (mismo guion, 3 gastos nuevos): 3/3 — PEOR que el 2/2 de PR#85.** Esta vez ni
+siquiera el TURNO 1 ejecutó. Verificado en la fuente cruda, no en la UI: el payload decodificado del
+`ActivityTaskCompleted` de `call_llm_tools` es `{"tool_calls":[], "content":"Anoté el gasto de $141 en
+la categoría \"otros\"...revisalo y confirmame..."}` — el LLM usó **la palabra prohibida**, ignorando
+la plantilla exacta que se le dio. Oráculo HTTP `GET /gastos` post-turnos: siguen los mismos 2 gastos
+de antes de la sesión (`$111`, `$1234,56`) — $141/$242/$343 nunca existieron.
+
+**Lo que esto prueba:** no es que el marcador no alcance (hipótesis de PR#85) — es que **el modelo no
+obedece la instrucción textual de la tool en absoluto**, ni siquiera cuando es una plantilla literal
+con verbo prohibido explícito. La superficie de control por texto (system prompt + observation) está
+agotada: dos intentos independientes (prompt guardrail + marcador; texto honesto + plantilla exacta)
+fallaron por la misma razón — texto no vinculante para `tool_choice="auto"`. Reportado a planificación
+con evidencia completa; recomendación: escalar **(a) `tool_choice="required"`** (HOLD original) al
+operador, con su tradeoff (riesgo de sobre-forzar en turnos de aclaración legítima).
+
+**Contaminación detectada (aparte, documentado por transparencia):** la sesión es durable
+(continue-as-new) y el `self._history` de este mismo usuario YA contenía los "Anoté...revisalo" del
+retest de PR#85 (turnos $222/$333) antes de este spike — el precedente corrupto de un intento fallido
+nunca se limpia solo. No se pudo determinar si esto influyó en el fallo 3/3, porque tampoco había forma
+de aislar una sesión "limpia" con el usuario canónico único (regla dura, no se crean usuarios ad-hoc).
+Si se escala a (a), vale la pena decidir si esta sesión de prueba debe reiniciarse aparte.
+
 [[instrumentos-que-confirman-en-vez-de-verificar]] [[vacio-no-es-hallazgo-correr-el-control]]
 [[conversacion-permanente-continue-as-new]] [[copiloto-motor-react-concatenadas]]
