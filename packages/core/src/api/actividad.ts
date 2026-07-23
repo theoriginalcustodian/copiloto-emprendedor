@@ -87,13 +87,12 @@ export interface ListarActividadParams {
    * tipo homónimo (`gastos`→gasto, `ingresos`→ingreso, `presupuestos`→presupuesto). `contabilidad`
    * queda declarado pero HOY no surte ningún tipo (no existe item "contable").
    *
-   * 🔴 **`[CONNECT]` — hoy `/actividad` ENTERA da 501.** Backend mergeó el filtro (`#56`), pero al
-   * verificar el vivo encontró que un **stub `@app.get("/actividad")` (`web.py:512-545`) del modelo
-   * viejo "entradas firmadas" ensombrece el router real** —se registra antes— y devuelve 501 para
-   * `funcion`, `q` y la ruta base (`hallazgo_actividad-la-tapa-un-stub-501`). Este cliente ya mapea
-   * 501→`no_disponible`, así que HOY el feed por función degrada honesto a "no disponible". Se levanta
-   * cuando backend borre el stub (`fix/actividad-stub-shadow`) y mande su `listo_`: recién ahí
-   * `?funcion=X` devuelve `{items,cursor}`. **No declarar verde contra el vivo hasta ese `listo_`.** Es
+   * ✅ **VIVO desde #58** (`listo_actividad-sirve-el-router-real`, verificado por HTTP contra el vivo).
+   * Backend borró el stub 501 que ensombrecía el router (`hallazgo_actividad-la-tapa-un-stub-501`), así
+   * que `?funcion=X` ya filtra de verdad: `?funcion=gastos → 200 {items,cursor}` con sólo gastos. Los
+   * válidos son exactamente **`facturacion, gastos, ingresos, presupuestos`**; otro → 400 con la lista.
+   * El mapeo 501→`no_disponible` queda como **degradación defensiva**, ya no como el camino esperado.
+   * Falta sólo la confirmación en **device** (de backend, regla del teléfono) para cerrar el ciclo. Es
    * el MISMO endpoint que surte el swipe-left del principal — un solo cableado.
    */
   funcion?: string;
@@ -112,11 +111,9 @@ export interface ListarActividadParams {
    * Búsqueda por texto (`ILIKE` sobre `titulo`+`detalle`, lo hace el backend). Vive en `/actividad`,
    * **no** en `/gastos`/`/ingresos`/etc. — esos son la vista de DETALLE, no el buscador.
    *
-   * 🔴 **`[CONNECT]` — hoy `?q=` también da 501** (el stub de `/actividad` gana antes de llegar a
-   * validar `q`; ver el `funcion`). Cuando backend borre el stub, `q` filtra de verdad (mergeado en
-   * #56) y un `?funcion=invalida` valida a **400** — que **este cliente propaga como error**, sin
-   * disfrazarlo de `no_disponible` (el endpoint estaría desplegado y rechazando el input, no ausente).
-   * Cablear la forma, marcar `[CONNECT]`, no declarar verde hasta el `listo_` de backend.
+   * ✅ **VIVO desde #58** (`?q=nafta → 200`, ya no 501). Un `?funcion=invalida` valida a **400** —que
+   * **este cliente propaga como error**, sin disfrazarlo de `no_disponible` (el endpoint está desplegado
+   * y rechaza el input, no está ausente)—. Falta sólo la confirmación en device (de backend).
    */
   q?: string;
 }
