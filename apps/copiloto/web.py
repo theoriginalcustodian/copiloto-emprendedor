@@ -509,13 +509,26 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         next_id = rows[-1]["id"] if rows else after_id
         return {"replies": rows, "next_id": next_id}
 
-    @app.get("/me")
-    def me(cliente_id: str = Depends(require_tenant)) -> dict:
-        seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
-                              if (c["status"] or "").upper() == "ACTIVE"]
-        return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                "composio_connected": composio_connected}
+    if require_claims is not None:
+        @app.get("/me")
+        def me(cliente_id: str = Depends(require_tenant),
+              claims: dict = Depends(require_claims)) -> dict:
+            # `email` sale del claim del MISMO token ya validado por require_tenant -- no una
+            # segunda fuente que pueda divergir. `None` si el token no lo trae (login por
+            # teléfono/anónimo, o un proveedor que no lo expone): ausente, no inventado.
+            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                                  if (c["status"] or "").upper() == "ACTIVE"]
+            return {"cliente_id": cliente_id, "email": claims.get("email"),
+                    "mp_connected": seller is not None, "composio_connected": composio_connected}
+    else:
+        @app.get("/me")
+        def me(cliente_id: str = Depends(require_tenant)) -> dict:
+            seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
+            composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+                                  if (c["status"] or "").upper() == "ACTIVE"]
+            return {"cliente_id": cliente_id, "mp_connected": seller is not None,
+                    "composio_connected": composio_connected}
 
     @app.post("/warm")
     def warm(cliente_id: str = Depends(require_tenant)) -> dict:
