@@ -4,6 +4,7 @@ import {
   leerGraficoCategorias,
   leerGraficoEntroVsSalio,
   leerGraficoFacturacion,
+  leerGraficoMargenTrabajo,
   leerPortada,
   preguntarInteligencia,
 } from './inteligencia';
@@ -338,5 +339,65 @@ describe('leerGraficoCategorias — gráfico 3 (VIVO desde PR #69)', () => {
   it('si la red explota degrada a `no_disponible`', async () => {
     responder = () => { throw new Error('red caída'); };
     expect((await leerGraficoCategorias()).status).toBe('no_disponible');
+  });
+});
+
+describe('leerGraficoMargenTrabajo — gráfico 4 (VIVO desde PR #70)', () => {
+  it('trae `trabajos` y `sin_ingreso` por separado, camelCase, sin mezclarlos', async () => {
+    responder = () =>
+      respuesta(200, {
+        tipo: 'barras',
+        trabajos: [{ eslabon: 'presupuesto', ref: 12, etiqueta: 'Panadería · 2026-06-10', cobrado: '9000.00', gastado: '3000.00', margen: '6000.00', gastos_imputados: 2 }],
+        sin_ingreso: [{ eslabon: 'presupuesto', ref: 7, etiqueta: 'Kiosco · 2026-06-15', gastado: '1500.00', gastos_imputados: 3 }],
+      });
+
+    const res = await leerGraficoMargenTrabajo();
+    if (res.status !== 'ok' || res.modo !== 'lista') throw new Error('esperaba modo lista');
+    expect(res.trabajos).toEqual([
+      { eslabon: 'presupuesto', ref: 12, etiqueta: 'Panadería · 2026-06-10', cobrado: '9000.00', gastado: '3000.00', margen: '6000.00', gastosImputados: 2 },
+    ]);
+    expect(res.sinIngreso).toEqual([
+      { eslabon: 'presupuesto', ref: 7, etiqueta: 'Kiosco · 2026-06-15', gastado: '1500.00', gastosImputados: 3 },
+    ]);
+    // `TrabajoSinIngreso` no tiene `margen` en el tipo: nunca se calcula ni se muestra para éstos.
+    expect((res.sinIngreso[0] as unknown as { margen?: unknown }).margen).toBeUndefined();
+  });
+
+  it('no manda `mes` — el gráfico no tiene filtro de período', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, { tipo: 'barras', trabajos: [], sin_ingreso: [] });
+    };
+    await leerGraficoMargenTrabajo();
+    expect(capturada!.path).toBe('/inteligencia/graficos/margen-trabajo');
+  });
+
+  it('`?detalle=<eslabon>:<ref>` trae el mismo objeto que /trabajos/.../margen', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, {
+        trabajo: { presupuesto: 12, comprobante: null, cobros: [] },
+        cobrado: '9000.00', gastado: '3000.00', margen: '6000.00', gastos_imputados: 2,
+      });
+    };
+
+    const res = await leerGraficoMargenTrabajo({ detalle: 'presupuesto:12' });
+    expect(capturada!.path).toBe('/inteligencia/graficos/margen-trabajo?detalle=presupuesto%3A12');
+    if (res.status !== 'ok' || res.modo !== 'detalle') throw new Error('esperaba modo detalle');
+    expect(res.margen).toBe('6000.00');
+    expect(res.trabajo).toEqual({ presupuesto: 12, comprobante: null, cobros: [] });
+  });
+
+  it('un `eslabon` desconocido descarta la fila — no se inventa uno de los tres válidos', async () => {
+    responder = () => respuesta(200, { tipo: 'barras', trabajos: [{ eslabon: 'factura', ref: 1 }], sin_ingreso: [] });
+    const res = await leerGraficoMargenTrabajo();
+    if (res.status === 'ok' && res.modo === 'lista') expect(res.trabajos).toEqual([]);
+  });
+
+  it('si la red explota degrada a `no_disponible`', async () => {
+    responder = () => { throw new Error('red caída'); };
+    expect((await leerGraficoMargenTrabajo()).status).toBe('no_disponible');
   });
 });

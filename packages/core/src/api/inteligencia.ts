@@ -509,3 +509,143 @@ export async function leerGraficoCategorias(
     throw err;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Gráfico 4 — cuánto me dejó cada trabajo. VIVO desde PR #70
+// (`listo_backend-a-todos_IN-grafico4-margen-trabajo-VIVO`).
+// ---------------------------------------------------------------------------
+
+/** `presupuesto | comprobante | cobro` — el eslabón de la cadena por el que se referencia el trabajo. */
+export type EslabonTrabajo = 'presupuesto' | 'comprobante' | 'cobro';
+
+function eslabon(v: unknown): EslabonTrabajo | null {
+  return v === 'presupuesto' || v === 'comprobante' || v === 'cobro' ? v : null;
+}
+
+/** Un trabajo CON ingreso registrado — entra al promedio del gráfico. */
+export interface TrabajoConMargen {
+  eslabon: EslabonTrabajo;
+  ref: number;
+  etiqueta: string;
+  cobrado: string | null;
+  gastado: string | null;
+  margen: string | null;
+  gastosImputados: number;
+}
+
+/**
+ * Un trabajo SIN ingreso registrado (`cobrado == 0`) — **dato incompleto, no una pérdida** (contrato
+ * §2/addendum §4). Nunca se promedia con `TrabajoConMargen`: por eso ni siquiera tiene el campo
+ * `margen` en el tipo — mezclarlos por accidente de TypeScript queda imposible, no sólo prohibido por
+ * convención.
+ */
+export interface TrabajoSinIngreso {
+  eslabon: EslabonTrabajo;
+  ref: number;
+  etiqueta: string;
+  gastado: string | null;
+  gastosImputados: number;
+}
+
+/**
+ * El detalle de un trabajo (`?detalle=<eslabon>:<ref>`) — **el mismo objeto** que
+ * `GET /trabajos/{eslabon}/{ref}/margen` (§0, sin segundo camino; forma confirmada en
+ * `avance_backend-a-todos_addendum-imputacion-VIVO-y-la-caja-que-mentia` §0).
+ *
+ * 🔴 **`trabajo` queda sin tipar en detalle — [PROVISIONAL].** El wire trae `{presupuesto, comprobante,
+ * cobros}` pero esta capa nunca vio su forma interna (ningún cliente la consumió todavía). Se pasa tal
+ * cual para no inventar una estructura no verificada; el día que una pantalla necesite navegar dentro
+ * de `trabajo`, se tipa recién ahí, contra el wire real.
+ */
+export interface DetalleMargenTrabajo {
+  trabajo: unknown;
+  cobrado: string | null;
+  gastado: string | null;
+  margen: string | null;
+  gastosImputados: number;
+}
+
+export type ResultadoGraficoMargenTrabajo =
+  | { modo: 'lista'; tipo: 'barras'; trabajos: readonly TrabajoConMargen[]; sinIngreso: readonly TrabajoSinIngreso[] }
+  | ({ modo: 'detalle' } & DetalleMargenTrabajo);
+
+function trabajoConMargen(v: unknown): TrabajoConMargen | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  const esl = eslabon(r.eslabon);
+  // Sin eslabón+ref no hay a dónde navegar (mismo criterio que el resto de las filas de detalle).
+  if (esl === null || typeof r.ref !== 'number') return null;
+  return {
+    eslabon: esl,
+    ref: r.ref,
+    etiqueta: typeof r.etiqueta === 'string' ? r.etiqueta : '',
+    cobrado: importe(r.cobrado),
+    gastado: importe(r.gastado),
+    margen: importe(r.margen),
+    gastosImputados: typeof r.gastos_imputados === 'number' ? r.gastos_imputados : 0,
+  };
+}
+
+function trabajoSinIngreso(v: unknown): TrabajoSinIngreso | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  const esl = eslabon(r.eslabon);
+  if (esl === null || typeof r.ref !== 'number') return null;
+  return {
+    eslabon: esl,
+    ref: r.ref,
+    etiqueta: typeof r.etiqueta === 'string' ? r.etiqueta : '',
+    gastado: importe(r.gastado),
+    gastosImputados: typeof r.gastos_imputados === 'number' ? r.gastos_imputados : 0,
+  };
+}
+
+/**
+ * `GET /inteligencia/graficos/margen-trabajo` — gráfico 4: cuánto me dejó cada trabajo.
+ *
+ * 🔴 **Sin filtro de período** (contrato §2 ítem 4: un trabajo puede abarcar cualquier fecha) — a
+ * diferencia de los otros tres gráficos, esta función no acepta `mes`.
+ */
+export async function leerGraficoMargenTrabajo(
+  params: { detalle?: string } = {},
+): Promise<ConDisponibilidad<ResultadoGraficoMargenTrabajo>> {
+  const query = new URLSearchParams();
+  if (params.detalle != null && params.detalle !== '') query.set('detalle', params.detalle);
+  const qs = query.toString();
+  const path = qs ? `/inteligencia/graficos/margen-trabajo?${qs}` : '/inteligencia/graficos/margen-trabajo';
+
+  try {
+    const raw = await apiClient.get<Record<string, unknown>>(path);
+    if (typeof raw !== 'object' || raw === null) return { status: 'no_disponible' };
+    // El detalle de un trabajo puntual no trae `trabajos`/`sin_ingreso` — los trae la lista.
+    if (!('trabajos' in raw) && !('sin_ingreso' in raw)) {
+      if (!('cobrado' in raw)) return { status: 'no_disponible' };
+      return {
+        status: 'ok',
+        modo: 'detalle',
+        trabajo: (raw as { trabajo?: unknown }).trabajo,
+        cobrado: importe(raw.cobrado),
+        gastado: importe(raw.gastado),
+        margen: importe(raw.margen),
+        gastosImputados: typeof raw.gastos_imputados === 'number' ? raw.gastos_imputados : 0,
+      };
+    }
+    const trabajos = Array.isArray((raw as { trabajos?: unknown }).trabajos) ? (raw as { trabajos: unknown[] }).trabajos : [];
+    const sinIngreso = Array.isArray((raw as { sin_ingreso?: unknown }).sin_ingreso)
+      ? (raw as { sin_ingreso: unknown[] }).sin_ingreso
+      : [];
+    return {
+      status: 'ok',
+      modo: 'lista',
+      tipo: 'barras',
+      trabajos: trabajos.map(trabajoConMargen).filter((t): t is TrabajoConMargen => t !== null),
+      sinIngreso: sinIngreso.map(trabajoSinIngreso).filter((t): t is TrabajoSinIngreso => t !== null),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503)) {
+      return { status: 'no_disponible' };
+    }
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
