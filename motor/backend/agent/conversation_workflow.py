@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import timedelta
 
 from temporalio import workflow
@@ -46,6 +47,13 @@ with workflow.unsafe.imports_passed_through():
 IDLE_TIMEOUT_DEFAULT_S = 30 * 60
 CARRY_TAIL = 40                             # mensajes recientes que arrastra el continue-as-new (contexto del LLM)
 HISTORY_TAIL = 20                           # mensajes del buffer de corto plazo que el turno react inyecta al prompt (<= CARRY_TAIL)
+# `self._react_transcript` (fix narra-sin-hacer v2, Parte 2 -- [[copiloto-narra-la-accion-sin-ejecutarla]]):
+# durable, paralelo a self._history pero con el shape NATIVO de OpenAI (assistant tool_calls / role='tool'),
+# no texto plano. self._history sigue siendo SOLO texto (alimenta memoria/Graphity, que filtra por content
+# str -- ver memory_provider.remember); react_transcript alimenta el SEED de `messages` de cada turno react,
+# para que el LLM vea la EVIDENCIA estructural de sus propias tool_calls pasadas, no solo su relato en texto.
+REACT_TAIL = 30                             # entradas del transcript estructural que siembran un turno react
+REACT_CARRY_TAIL = 60                       # entradas que arrastra el continue-as-new (>= REACT_TAIL, mismo ratio 2x que CARRY_TAIL/HISTORY_TAIL)
 MAX_TURNS_PER_RUN = 200                     # backstop de continue-as-new si is_continue_as_new_suggested no dispara
 STAFF_TIMEOUT = timedelta(hours=4)          # espera de decision humana (HITL) antes de seguir
 ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> margen amplio
@@ -79,6 +87,7 @@ class ConversationWorkflow:
         self._inbox: list[dict] = []          # mensajes recibidos (NormalizedMessage dict)
         self._cursor: int = 0                 # cuantos se procesaron EN ESTA corrida (se resetea en cada continue-as-new)
         self._history: list[dict] = []        # [{role:'user'|'assistant', content}] para el LLM (da contexto)
+        self._react_transcript: list[dict] = []   # scratchpad react DURABLE, shape nativo (tool_calls/role='tool') -- fix narra-sin-hacer v2
         self._state: dict = {}                # estado de conversacion (ej. pending_slot) — lo patchea el dispatcher
         self._staff_decision: dict | None = None
         self._closed: bool = False
@@ -145,6 +154,7 @@ class ConversationWorkflow:
         carry = config.get("carryover") or {}
         if carry:
             self._history = list(carry.get("history") or [])
+            self._react_transcript = list(carry.get("react_transcript") or [])
             self._state = dict(carry.get("state") or {})
             self._inbox = list(carry.get("pending") or [])
             self._remembered_upto = int(carry.get("remembered_upto") or 0)
@@ -183,6 +193,7 @@ class ConversationWorkflow:
                 tail_start = len(self._history) - len(tail)
                 carryover = {
                     "history": tail,
+                    "react_transcript": self._react_transcript[-REACT_CARRY_TAIL:],
                     "state": self._state,
                     "pending": self._inbox[self._cursor:],          # mensajes recibidos aún sin procesar (incl. este turno)
                     "remembered_upto": max(0, self._remembered_upto - tail_start),  # cuántos del tail ya están en Graphity
@@ -369,10 +380,14 @@ class ConversationWorkflow:
                     {"domain": domain, "name": pend["tool_call"]["name"], "arguments": pend["tool_call"]["arguments"],
                      "conv": conv, "confirmed": True, "idem_key": idem},
                     start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
-                messages.append(_assistant_tool_call_msg(pend["tool_call"]))
+                tc_msg = _assistant_tool_call_msg(pend["tool_call"])
                 # minor (defensa): indexado directo `tr["observation"]` -> KeyError = no-determinismo que
                 # cuelga la corrida; `.get(...) or {}` es la misma defensa que ya usa el resto del loop.
-                messages.append(_tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {}))
+                tr_msg = _tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {})
+                messages.append(tc_msg)
+                messages.append(tr_msg)
+                self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
+                self._react_transcript.append(tr_msg)
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"),
@@ -381,8 +396,14 @@ class ConversationWorkflow:
                                               # tool_call que resolvió el gate de confirmación.
                                               tool_trace=[pend["tool_call"]["name"]])
             # cancel -> CORTE DETERMINÍSTICO (spike B): 1 llamada tool_choice='none', solo texto.
-            messages.append(_assistant_tool_call_msg(pend["tool_call"]))
-            messages.append(_tool_result_msg(pend["tool_call"]["id"], {"status": "cancelled_by_user"}))
+            cancel_tc_msg = _assistant_tool_call_msg(pend["tool_call"])
+            cancel_tr_msg = _tool_result_msg(pend["tool_call"]["id"], {"status": "cancelled_by_user"})
+            messages.append(cancel_tc_msg)
+            messages.append(cancel_tr_msg)
+            # honesto y útil: deja constancia estructural de que la tool se PROPUSO y se CANCELÓ (no que
+            # ejecutó) -- un turno futuro no debe imitar "se ejecutó" sobre algo que el usuario rechazó.
+            self._react_transcript.append(cancel_tc_msg)
+            self._react_transcript.append(cancel_tr_msg)
             closing = await workflow.execute_activity(
                 "call_llm_tools",
                 {"domain": domain, "messages": messages, "tool_choice": "none",
@@ -405,14 +426,24 @@ class ConversationWorkflow:
         turn_ix = self._turns_before + self._cursor            # global y monótono (base del idem_key, B1)
         await self._react_recall(config, domain, cliente_id, channel_ref, user_text)
         self._history.append({"role": "user", "content": user_text})   # memoria/CAN (major #4)
+        self._react_transcript.append({"role": "user", "content": user_text})
         # Scratchpad del turno arranca con el BUFFER DE CORTO PLAZO reciente, NO solo el mensaje actual: sin esto
         # el LLM react no veía el turno anterior → perdía referencias cortas ('dame los últimos 100' tras 'revisá
-        # gmail' → '¿a qué te referís?'). `self._history` ya incluye el user actual (recién apendeado) y queda al
-        # final; los previos (user/assistant en texto plano — NUNCA el scratchpad interno de tool_calls) dan la
-        # continuidad conversacional. Análogo al `prior[-20:]` que el modo dispatch pasa a call_llm. Acotado a
-        # HISTORY_TAIL (no crece sin cota) y replay-safe (no cambia el Command sequence: mismo call_llm_tools,
-        # payload más rico). El continue-as-new arrastra CARRY_TAIL≥HISTORY_TAIL → el contexto sobrevive la renovación.
-        messages = list(self._history[-HISTORY_TAIL:])
+        # gmail' → '¿a qué te referís?'). Acotado (no crece sin cota); el continue-as-new arrastra el tail.
+        #
+        # fix narra-sin-hacer v2 Parte 2 [[copiloto-narra-la-accion-sin-ejecutarla]]: `self._react_transcript`
+        # (shape NATIVO -- assistant tool_calls / role='tool', no texto plano) reemplaza a `self._history` como
+        # fuente cuando el patch está activo. self._history solo texto imitable ("Anoté...") sin evidencia de
+        # tool_call al lado -- el LLM aprendía que decir la frase ES hacer la acción (PR#85 lo midió 2/2, PR#88
+        # 3/3). react_transcript le da al turno siguiente la MISMA evidencia estructural que ya atiende el LLM
+        # dentro de un turno (parallel_tool_calls=false, mensajes role='assistant'/tool_calls y role='tool').
+        # `workflow.patched(...)` (defensivo, igual criterio que el marcador de PR#85 -- comment :22-27 de este
+        # archivo: enriquecer el payload de una activity YA EXISTENTE no cambia el Command sequence, replay-safe
+        # de por sí; se versiona igual por auditabilidad de sesiones en vuelo).
+        if workflow.patched("react-structural-transcript"):
+            messages = list(self._react_transcript[-REACT_TAIL:])
+        else:
+            messages = list(self._history[-HISTORY_TAIL:])
         return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                       messages, start_turn_ix=turn_ix, start_step=0, last_artifact=None)
 
@@ -460,9 +491,33 @@ class ConversationWorkflow:
                 start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
             tool_calls = resp.get("tool_calls") or []
             if not tool_calls:                                   # el modelo cerró con texto
-                await self._react_finish(channel, channel_ref, cliente_id,
-                                         resp.get("content") or "Listo.", last_artifact, tool_trace=trace)
-                return False
+                content = resp.get("content") or "Listo."
+                # TODO(narra-guardrail, backend, 2026-07-23): deuda GESTIONADA -- se retira cuando la CURA
+                # (Parte 2, react_transcript arriba) pase el retest adversarial en sesión limpia. Ver
+                # memoria/copiloto-narra-la-accion-sin-ejecutarla.md.
+                #
+                # fix narra-sin-hacer v2 Parte 1 [[copiloto-narra-la-accion-sin-ejecutarla]]: el LLM cerró SIN
+                # tool_call pero el texto afirma una acción completada ("anoté", "listo", ...) -- la mentira
+                # medida 3/3 en device (spike-b, PR#88). Se la rechaza y se re-pregunta UNA vez con
+                # tool_choice="required" para forzar la llamada real. Scopeado por la MENTIRA (el texto), no
+                # por intención de turno: una aclaración honesta ("¿qué categoría fue?") no usa estos verbos y
+                # no dispara esto -- y si tras el `required` la tool devuelve un resultado honesto de negocio
+                # ("no encontré"), ESE es el output correcto, el guardrail no fuerza a mentir en sentido inverso.
+                # `not trace`: si el turno YA ejecutó una tool más temprano en este mismo loop, un cierre
+                # "Listo, ..." es VERDAD (hay tool_call real detrás, en trace) -- sin este guard, un cierre
+                # honesto tras una ejecución real dispararía un required espurio.
+                if workflow.patched("narra-guardrail-required-retry") and not trace and _narra_completitud(content):
+                    resp = await workflow.execute_activity(
+                        "call_llm_tools",
+                        {"domain": domain, "messages": messages, "tool_choice": "required",
+                         "system_extra": self._state.get("react_mem_ctx", ""), "cliente_id": cliente_id},
+                        start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+                    tool_calls = resp.get("tool_calls") or []
+                    content = resp.get("content") or content
+                if not tool_calls:
+                    await self._react_finish(channel, channel_ref, cliente_id, content, last_artifact,
+                                             tool_trace=trace)
+                    return False
             tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
             sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
             if sig == last_sig:
@@ -491,8 +546,12 @@ class ConversationWorkflow:
                                        choices=_confirm_choices(start_turn_ix, step),  # token por gate (HIGH)
                                        card=card)
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
-            messages.append(_assistant_tool_call_msg(tc))
-            messages.append(_tool_result_msg(tc["id"], tr.get("observation") or {}))
+            tc_msg = _assistant_tool_call_msg(tc)
+            tr_msg = _tool_result_msg(tc["id"], tr.get("observation") or {})
+            messages.append(tc_msg)
+            messages.append(tr_msg)
+            self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
+            self._react_transcript.append(tr_msg)
             trace.append(tc["name"])                            # llegó hasta acá -> execute_tool corrió de verdad
             if tr.get("artifact"):
                 last_artifact = tr["artifact"]
@@ -525,6 +584,11 @@ class ConversationWorkflow:
         if tool_trace and workflow.patched("history-tool-trace-marker"):
             content = f"{text}\n{_tool_trace_marker(tool_trace)}"
         self._history.append({"role": "assistant", "content": content})
+        # fix narra-sin-hacer v2 Parte 2: cierre del turno en el transcript estructural -- el texto final queda
+        # DESPUÉS de los tool_call/tool_result reales que ya se apendearon arriba (en _react_loop/_run_react_turn),
+        # así que un turno futuro ve la secuencia completa (pidió X -> tool_call -> tool_result -> texto), no solo
+        # el texto suelto que el marcador de PR#85 intentaba compensar sin éxito.
+        self._react_transcript.append({"role": "assistant", "content": text})
         await self._react_send(channel, channel_ref, cliente_id, text, artifact)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
@@ -570,3 +634,30 @@ def _tool_trace_marker(tool_names: list) -> str:
     """Marcador determinístico de tools EJECUTADAS en el turno, para self._history (fix narra-sin-hacer).
     Texto plano (no JSON): el LLM lo lee como parte del scratchpad, no como una tool nueva a parsear."""
     return "[" + " ".join(f"tool:{name}→ok" for name in tool_names) + "]"
+
+
+# Palabras de CIERRE que afirman una acción YA completada (fix narra-sin-hacer v2, Parte 1 -- guardrail).
+# Set de formas EXACTAS (no prefijos): un stem como "aprob" matchearía también "¿aprobás?"/"aprobar" -- una
+# PREGUNTA legítima del copiloto pidiendo confirmación, no una mentira. Sólo las formas de HECHO CONSUMADO
+# (pasado 1ra persona / participio) entran acá. Lista ajustable con lo que se vea en payloads reales -- el
+# spec de planificación la deja abierta a propósito.
+_PALABRAS_DE_CIERRE = frozenset({
+    "anoté", "anote", "anotado", "anotada",
+    "registré", "registre", "registrado", "registrada",
+    "guardé", "guarde", "guardado", "guardada",
+    "marqué", "marque", "marcado", "marcada",
+    "listo", "lista",
+    "hecho", "hecha",
+    "aprobado", "aprobada",
+    "enviado", "enviada", "mandé", "mande", "mandado", "mandada",
+    "actualicé", "actualice", "actualizado", "actualizada",
+})
+
+
+def _narra_completitud(texto: str) -> bool:
+    """¿El texto final del turno AFIRMA que una acción ya se completó? Detección léxica acotada a los verbos
+    de cierre del dominio, por PALABRA EXACTA -- no dispara en turnos de aclaración honestos (ej. "¿aprobás
+    el presupuesto?" no matchea "aprobado"). Scopeado por la MENTIRA (el texto), no por intención de turno
+    (ver _react_loop, Parte 1 del fix v2)."""
+    palabras = re.findall(r"[a-záéíóúñ]+", (texto or "").lower())
+    return any(p in _PALABRAS_DE_CIERRE for p in palabras)
