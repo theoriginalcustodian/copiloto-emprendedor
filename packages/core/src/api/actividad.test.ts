@@ -99,6 +99,36 @@ describe('actividad.ts', () => {
     expect(peticiones[1].path).toBe('/actividad');
   });
 
+  it('acota por función: manda `funcion` en la query', async () => {
+    await listarActividad({ funcion: 'gastos', limit: 20 });
+    expect(peticiones[0].path).toBe('/actividad?funcion=gastos&limit=20');
+  });
+
+  it('busca por texto: manda `q` en la query', async () => {
+    await listarActividad({ funcion: 'gastos', q: 'nafta' });
+    expect(peticiones[0].path).toBe('/actividad?funcion=gastos&q=nafta');
+  });
+
+  it('sin `funcion` ni `q` la URL queda idéntica a lo ya medido (no rompe el cursor)', async () => {
+    // CONTROL: agregar los dos params opcionales no puede haber cambiado la forma vieja de la URL.
+    await listarActividad({ limit: 20, cursor: '2026-07-22T14:30:00Z|factura:42' });
+    expect(peticiones[0].path).toBe(
+      '/actividad?limit=20&cursor=2026-07-22T14%3A30%3A00Z%7Cfactura%3A42',
+    );
+  });
+
+  it('🔴 un 400 de input (p.ej. `funcion` inválida) se PROPAGA, no se disfraza de no_disponible', async () => {
+    // Una vez borrado el stub 501, backend valida el input: `?funcion=invalida` → 400. Mapear ese 400
+    // a `no_disponible` escondería un endpoint DESPLEGADO que rechaza el input como si estuviera
+    // AUSENTE — el mismo error que la guarda de forma evita del otro lado. Que explote es honesto: es
+    // un bug de la llamada, no una función que no existe.
+    responder = () => respuesta(400, { detail: 'funcion invalida' });
+
+    await expect(listarActividad({ funcion: 'invalida' })).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+
   it('un `signo` desconocido cae en `neutro`, que es el que NO pinta color', async () => {
     // Inventar "entra" teñiría de verde algo que quizá salió. No mostrar color es honesto.
     responder = () => respuesta(200, { items: [itemCrudo({ signo: 'reembolso' })], cursor: null });
