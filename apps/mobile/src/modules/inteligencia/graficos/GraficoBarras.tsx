@@ -81,7 +81,9 @@ export function GraficoBarras({ puntos, series, epigrafe, onSegmentoPress, testI
         )}
 
         {puntos.map((punto, indice) => (
-          <View key={punto} style={styles.columna} testID={testID ? `${testID}-punto-${punto}` : undefined}>
+          // `punto` es una ETIQUETA (mes, o el título de un trabajo) — el contrato no garantiza que sea
+          // única (ej.: dos trabajos del mismo día en Margen por Trabajo). El índice sí lo es.
+          <View key={`${indice}-${punto}`} style={styles.columna} testID={testID ? `${testID}-punto-${punto}` : undefined}>
             <View style={styles.barrasPunto}>
               {series.map((s) => {
                 const valor = s.valores[indice] ?? null;
