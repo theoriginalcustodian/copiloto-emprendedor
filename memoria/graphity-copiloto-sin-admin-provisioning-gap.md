@@ -15,9 +15,21 @@ override cross-tenant. Entonces con la **key de tenant COMÚN**:
 - El **422 por ontología heredada** desaparece: `_resolve_ontology` va **graph > user > project**, la graph-scoped gana.
 
 **El tenant/key REAL de ingesta lo provisiona la sesión Graphity** (el operador autorizó pedirlo directo
-por el canal, 2026-07-23) con **project scope** + aislamiento del dominio — la key llega a
+por el canal, 2026-07-23) con aislamiento del dominio — la key llega a
 `~/.claude/graphity/copiloto.env` (consumo con `--instance copiloto`), **nunca por el canal** (§6). El
 de-risk desechable corre antes, con la key común + `graph_id` temporal. **Backend NO provisiona nada.**
+
+### ✅✅ PROVISIONADO (2026-07-23 00:41, por la sesión Graphity)
+- **tenant DEDICADO `copiloto`** (namespacing físico `copiloto__<lógico>`, ADR-040 — el aislamiento
+  fuerte, no project-scope en tenant compartido). **key `copiloto-ingest` (no admin)** en
+  `~/.claude/graphity/copiloto.env` → `--instance copiloto`. **project default ya creado**, auto-resuelve
+  (no mandar `X-Project-Id`). **graph lógico** lo elige backend en `set_ontology` (`copiloto-negocio`,
+  `compose_default:false`). Smoke 200 con grafo vacío aislado.
+- **Refinamiento del "400 project scope"** (verificado en código por Graphity): `POST structured` es
+  **escritura** → `ProjectMiddleware` con `allow_create=True` auto-resuelve el project default → **NO da
+  400 aunque la key tenga `project_id=None`**. El 400 sólo golpea métodos de **lectura** sin project. La
+  key sin project scope explícito está bien por construcción. (Mi premisa "necesita project scope" era de
+  más — el ejecutor la verificó contra la fuente. El mecanismo de premisa-falsable funcionando otra vez.)
 
 ---
 
