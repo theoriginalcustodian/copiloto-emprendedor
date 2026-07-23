@@ -26,6 +26,24 @@ sesión, ojos frescos sobre el código. (Alineado con "verificación por perspec
   lista para escalar a miles de usuarios; el afuera no.
 - **Features faltantes conocidas**: selección de planes, elementos de gestión de la app. NO es por ahí.
 
+## 🔴🔴 DOS auditorías de eficiencia DEDICADAS (backend + frontend) — elevado por el operador (2026-07-23)
+La UI "por momentos se nota muy lenta". El operador lo separa en **dos auditorías**, porque la latencia
+vive en lugares distintos:
+- **Auditoría FRONTEND:** render/TTI, re-renders, tamaño del bundle, **cold-fetch al montar**, jank de
+  gestos/animación, virtualización de listas. Skills que la alimentan: `callstack-react-native-performance`
+  (jank/FPS/TTI/re-renders/bundle), `swmansion-rn-animations`/`swmansion-rn-gestures`.
+- **Auditoría BACKEND:** latencia de queries, **N+1** (ya hay uno flaggeado: `margen-trabajo` sobre
+  `TrabajoStore`, el propio backend lo marcó), cadencia del polling `/reply`, tiempos de respuesta de
+  endpoints, eficiencia de queries SQL.
+
+**El método que la hace PRECISA (insistencia del operador: "darle información precisa a Fable"):** una
+auditoría vale lo que vale su input. Cada una = (a) **LOCALIZAR** los caminos lentos —qué pantallas/
+interacciones, medido en device, frío vs caliente— NO "la app está lenta"; (b) **darle a Fable ese
+localizado + el código de ese path + el excerpt de la skill relevante** (así aplica patrones probados de
+RN, no consejos genéricos); (c) fix **de raíz, simple, SIN sobreingeniería**. El input #1 de precisión es
+la **observación del operador de QUÉ momentos se sienten lentos** — cuanto más específico, mejor la
+respuesta. Sigue valiendo **opción A**: el profiling en device se dispara por hallazgo.
+
 ## La hipótesis SQLite (mi lectura preliminar, para no codificar la esperanza)
 SQLite local en el cliente (RN/PWA) es un patrón **local-first** que puede mejorar la velocidad
 **percibida** (la pantalla pinta del cache al instante, sincroniza en background) — ataca el *cold-fetch

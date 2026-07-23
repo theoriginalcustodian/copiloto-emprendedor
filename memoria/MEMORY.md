@@ -129,7 +129,7 @@
 
 ## 🔮 Tareas futuras (gated)
 
-- [🔬 Eval global de la app con Fable5 zero-context — al terminar lo pendiente](eval-global-app-fable5-zero-context-pendiente.md) — `project`. Objetividad = cero contexto. Foco: conflicto/seguridad/resiliencia/escala-sin-fricción + **velocidad percibida**. Excluye infra externa + features faltantes. Hipótesis SQLite local: **medir la latencia real antes de prescribir**.
+- [🔬 Eval global de la app con Fable5 zero-context — al terminar lo pendiente](eval-global-app-fable5-zero-context-pendiente.md) — `project`. Objetividad = cero contexto, report-only. Foco: conflicto/seguridad/resiliencia/escala-sin-fricción. **+ DOS auditorías de eficiencia dedicadas (backend + frontend)** para la velocidad de la UI — alimentadas con localización precisa + código + skills (`callstack-rn-performance`); fix de raíz, simple. Velocidad = opción A (profiling device por hallazgo). Excluye infra externa + features faltantes.
 
 ## 📚 Referencia
 
