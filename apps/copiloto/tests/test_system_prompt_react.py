@@ -27,3 +27,12 @@ def test_react_prompt_has_scope_and_ask_guards():
     low = SYSTEM_PROMPT_REACT.lower()
     assert "solo lo que" in low                   # (a) anti sobre-actuación
     assert "falta un dato" in low and "pedí" in low   # (b) pedir el dato faltante, no inventar
+
+
+def test_react_prompt_forbids_narrating_without_tool_call():
+    """Complemento barato del fix narra-sin-hacer ([[copiloto-narra-la-accion-sin-ejecutarla]]): el prompt
+    prohíbe afirmar una acción ejecutada sin el tool_call real de ESE turno. NO es lenguaje de gate (no
+    menciona confirm/pendiente/aprob/botón — el test de arriba lo sigue garantizando)."""
+    low = SYSTEM_PROMPT_REACT.lower()
+    assert "ya hiciste algo" in low or "ya lo hice" in low
+    assert "este turno" in low
