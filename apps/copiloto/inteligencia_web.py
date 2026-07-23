@@ -6,11 +6,12 @@ clave de arriba `caja` **tiene que estar siempre**: el adapter la usa de centine
 portada respondió" de "la ruta no existe y el front-door devolvió el HTML del SPA"
 (`catch-all-vuelve-no-desplegado-indistinguible-de-roto`).
 
-`GET /inteligencia/graficos/{facturacion,entro-vs-salio,categorias}` (§2, `dato_..._IN-capa-de-queries-forma-final`):
-los 3 gráficos SQL-puros. Cada uno acepta `?detalle=<segmento>` — MISMA query, agregado o desglosado, sin
-segundo camino al mismo número (§0). `entro-vs-salio` reusa `_serie_mensual` de la portada tal cual, sólo
-renombra las claves. El gráfico 4 (margen por trabajo) y el chat (§3) vienen en un módulo aparte, todavía
-no expuestos acá.
+`GET /inteligencia/graficos/{facturacion,entro-vs-salio,categorias,margen-trabajo}` (§2,
+`dato_..._IN-capa-de-queries-forma-final`): los 4 gráficos. Cada uno acepta `?detalle=<segmento>` —
+MISMA query, agregado o desglosado, sin segundo camino al mismo número (§0). `entro-vs-salio` reusa
+`_serie_mensual` de la portada tal cual, sólo renombra las claves; `margen-trabajo` reusa
+`TrabajoStore.margen()` (la ficha del presupuesto), agregado por raíz de cadena. El chat (§3) viene en
+un módulo aparte, todavía no expuesto acá.
 
 Mismo patrón que el resto de los `*_web.py`: deps inyectadas, se testea entero sin DB ni Temporal; el
 `cliente_id` sale SIEMPRE de `Depends(require_tenant)`.
@@ -21,6 +22,8 @@ import asyncio
 from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
+
+from trabajo_store import TrabajoInexistente
 
 
 def create_inteligencia_app(*, require_tenant: Callable,
@@ -88,5 +91,28 @@ def create_inteligencia_app(*, require_tenant: Callable,
             return await asyncio.to_thread(lambda: q.torta_categorias(mes))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.get("/inteligencia/graficos/margen-trabajo")
+    async def margen_trabajo(detalle: str | None = None,
+                             cliente_id: str = Depends(require_tenant)) -> dict:
+        if queries_factory is None:
+            if detalle:
+                eslabon, _, ref = detalle.partition(":")
+                return {"trabajo": {"presupuesto": None, "comprobante": None, "cobros": []},
+                       "cobrado": "0.00", "gastado": "0.00", "margen": "0.00", "gastos_imputados": 0}
+            return {"tipo": "barras", "trabajos": [], "sin_ingreso": []}
+        q = queries_factory(cliente_id)
+        if detalle:
+            eslabon, sep, ref = detalle.partition(":")
+            if not sep or not ref.isdigit():
+                raise HTTPException(status_code=400,
+                                    detail="detalle tiene que ser <eslabon>:<ref numérico>")
+            try:
+                return await asyncio.to_thread(lambda: q.margen_trabajo_detalle(eslabon, int(ref)))
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+            except TrabajoInexistente as e:
+                raise HTTPException(status_code=404, detail="trabajo inexistente") from e
+        return await asyncio.to_thread(q.margen_por_trabajo)
 
     return app

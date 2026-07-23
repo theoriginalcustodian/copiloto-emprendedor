@@ -19,8 +19,10 @@ from decimal import Decimal
 import pytest
 
 from cobro_store import CobroStore
-from gasto_store import CATEGORIAS
+from gasto_store import CATEGORIAS, GastoStore
 from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries
+from presupuesto_store import PresupuestoStore
+from trabajo_store import TrabajoStore
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres del VPS (DATABASE_URL)")
@@ -48,7 +50,7 @@ def tenants(conn_factory):
     conn = conn_factory()
     with conn.cursor() as cur:
         for t in ("copiloto_cobros", "copiloto_gastos", "mp_payments", "afip_comprobantes",
-                  "copiloto_eventos"):
+                  "copiloto_presupuesto_items", "copiloto_presupuestos", "copiloto_eventos"):
             cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
     conn.close()
 
@@ -325,3 +327,93 @@ def test_aislamiento_A_no_ve_los_graficos_de_B(conn_factory, tenants):
     assert Decimal(q.facturacion_por_mes()["serie"][-1]["total"]) == Decimal("0.00")
     assert Decimal(q.entro_vs_salio()["serie"][-1]["entro"]) == Decimal("0.00")
     assert all(c["total"] == "0.00" for c in q.torta_categorias()["serie"])
+
+
+# ── gráfico 4: cuánto me dejó cada trabajo — reusa TrabajoStore, no reinventa el cálculo ────────────
+
+def _trabajo_completo(conn_factory, cid, *, nro=800):
+    """Presupuesto → factura enlazados como en producción (`factura_id` + `workflow_id`) — mismo
+    helper que `test_imputacion_y_margen.py`, reusado acá para no reinventar el armado de la cadena."""
+    presupuestos = PresupuestoStore(conn_factory, cid)
+    p = presupuestos.crear(concepto="Pintura", receptor={"nombre": "Panadería Los Tilos"},
+                           items=[{"descripcion": "Living", "cantidad": Decimal(1),
+                                   "precio_unitario": Decimal("100000"), "codigo": ""}])
+    factura_id = f"presu-{p['id']}"
+    presupuestos.marcar_factura(p["id"], factura_id)
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO uc_factory.afip_comprobantes
+                       (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
+                        estado, receptor_nombre, workflow_id)
+                       VALUES (%s,'30712345678',6,1,%s,'CAE-T',CURRENT_DATE,'100000.00','emitida',
+                               'Panadería Los Tilos', %s) RETURNING id""",
+                    (cid, nro, f"factura-{cid}-{factura_id}"))
+        comprobante = cur.fetchone()[0]
+    return p["id"], comprobante
+
+
+@necesita_pg
+def test_margen_por_trabajo_un_gasto_imputado_sin_cobro_va_a_sin_ingreso(conn_factory, tenants):
+    a, _ = tenants
+    p_id, _ = _trabajo_completo(conn_factory, a, nro=801)
+    gasto = GastoStore(conn_factory, a).crear(monto=Decimal("15000"), categoria="herramientas")
+    TrabajoStore(conn_factory, a).imputar(gasto["id"], "presupuesto", p_id)
+
+    g = InteligenciaQueries(conn_factory, a).margen_por_trabajo()
+    assert g["trabajos"] == []
+    assert len(g["sin_ingreso"]) == 1
+    item = g["sin_ingreso"][0]
+    assert item["eslabon"] == "presupuesto" and item["ref"] == p_id
+    assert item["gastado"] == "15000.00"
+    assert item["gastos_imputados"] == 1
+    assert "Panadería Los Tilos" in item["etiqueta"]
+
+
+@necesita_pg
+def test_margen_por_trabajo_imputar_a_dos_eslabones_del_mismo_trabajo_no_duplica(conn_factory, tenants):
+    """Un gasto imputado al PRESUPUESTO y un cobro contra su FACTURA son el mismo trabajo — tiene que
+    aparecer UNA sola vez, con el margen correcto (§0: no hay dos caminos al mismo número)."""
+    a, _ = tenants
+    p_id, comp_id = _trabajo_completo(conn_factory, a, nro=802)
+    gasto = GastoStore(conn_factory, a).crear(monto=Decimal("30000"), categoria="mercaderia")
+    TrabajoStore(conn_factory, a).imputar(gasto["id"], "presupuesto", p_id)
+    CobroStore(conn_factory, a).registrar(comp_id, monto="100000.00")
+
+    g = InteligenciaQueries(conn_factory, a).margen_por_trabajo()
+    assert len(g["trabajos"]) == 1
+    assert g["sin_ingreso"] == []
+    item = g["trabajos"][0]
+    assert item["cobrado"] == "100000.00"
+    assert item["gastado"] == "30000.00"
+    assert item["margen"] == "70000.00"
+    assert item["gastos_imputados"] == 1
+
+
+@necesita_pg
+def test_margen_trabajo_detalle_es_el_mismo_objeto_que_trabajo_store_margen(conn_factory, tenants):
+    a, _ = tenants
+    p_id, _ = _trabajo_completo(conn_factory, a, nro=803)
+    gasto = GastoStore(conn_factory, a).crear(monto=Decimal("5000"), categoria="otros")
+    TrabajoStore(conn_factory, a).imputar(gasto["id"], "presupuesto", p_id)
+
+    directo = TrabajoStore(conn_factory, a).margen("presupuesto", p_id)
+    via_iq = InteligenciaQueries(conn_factory, a).margen_trabajo_detalle("presupuesto", p_id)
+    assert directo == via_iq
+
+
+@necesita_pg
+def test_margen_por_trabajo_sin_ninguna_actividad_es_vacio(conn_factory, tenants):
+    a, _ = tenants
+    assert InteligenciaQueries(conn_factory, a).margen_por_trabajo() == \
+           {"tipo": "barras", "trabajos": [], "sin_ingreso": []}
+
+
+@necesita_pg
+def test_margen_por_trabajo_aislamiento_A_no_ve_los_trabajos_de_B(conn_factory, tenants):
+    a, b = tenants
+    p_id, _ = _trabajo_completo(conn_factory, b, nro=804)
+    gasto = GastoStore(conn_factory, b).crear(monto=Decimal("9999"), categoria="otros")
+    TrabajoStore(conn_factory, b).imputar(gasto["id"], "presupuesto", p_id)
+
+    assert InteligenciaQueries(conn_factory, a).margen_por_trabajo() == \
+           {"tipo": "barras", "trabajos": [], "sin_ingreso": []}

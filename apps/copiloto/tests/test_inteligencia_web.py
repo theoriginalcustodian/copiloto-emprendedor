@@ -152,3 +152,36 @@ def test_graficos_sin_token_son_401():
     assert app.get("/inteligencia/graficos/facturacion").status_code == 401
     assert app.get("/inteligencia/graficos/entro-vs-salio").status_code == 401
     assert app.get("/inteligencia/graficos/categorias").status_code == 401
+    assert app.get("/inteligencia/graficos/margen-trabajo").status_code == 401
+
+
+# --- gráfico 4: margen por trabajo ---
+
+def test_margen_trabajo_sin_queries_es_200_forma_vacia():
+    r = _app().get("/inteligencia/graficos/margen-trabajo")
+    assert r.status_code == 200
+    assert r.json() == {"tipo": "barras", "trabajos": [], "sin_ingreso": []}
+
+
+def test_margen_trabajo_detalle_mal_formado_es_400():
+    r = _app(queries_factory=lambda cid: object()).get(
+        "/inteligencia/graficos/margen-trabajo?detalle=presupuesto-sin-dos-puntos")
+    assert r.status_code == 400
+
+
+def test_margen_trabajo_detalle_ref_no_numerico_es_400():
+    r = _app(queries_factory=lambda cid: object()).get(
+        "/inteligencia/graficos/margen-trabajo?detalle=presupuesto:abc")
+    assert r.status_code == 400
+
+
+def test_margen_trabajo_detalle_inexistente_es_404():
+    from trabajo_store import TrabajoInexistente
+
+    class _Q:
+        def margen_trabajo_detalle(self, eslabon, ref):
+            raise TrabajoInexistente()
+
+    r = _app(queries_factory=lambda cid: _Q()).get(
+        "/inteligencia/graficos/margen-trabajo?detalle=presupuesto:9999")
+    assert r.status_code == 404

@@ -27,6 +27,7 @@ from typing import Callable
 
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
+from trabajo_store import TrabajoStore
 
 _SCHEMA = "uc_factory"
 
@@ -347,3 +348,99 @@ class InteligenciaQueries:
                      "proveedor": prov, "descripcion": desc}
                     for gid, fecha, monto, prov, desc in cur.fetchall()]
         return {"mes": clave, "categoria": categoria, "filas": filas}
+
+    # ── gráfico 4: cuánto me dejó cada trabajo (§2.4 + addendum de imputación) ─────────────────────
+    #
+    # «El trabajo no es una entidad nueva: es la cadena» (trabajo_store.py). Este gráfico no puede
+    # reinventar esa resolución en SQL agregado —sería el segundo camino al mismo número que el §0
+    # prohíbe—: arranca de TODA referencia que aparece en `copiloto_gastos`/`copiloto_cobros` (gasto
+    # imputado o cobro), la sube a su raíz con `TrabajoStore.resolver()` (la MISMA función que usa la
+    # ficha de un presupuesto), deduplica por raíz, y calcula cada margen con `TrabajoStore.margen()`
+    # — cero fórmula propia, cero riesgo de contar un gasto en dos trabajos.
+
+    def _candidatos_de_trabajo(self, cur) -> set[tuple[str, int]]:
+        """`{(eslabon, ref)}` — un punto de partida por cada gasto imputado y cada cobro. Puede haber
+        varios candidatos que resuelven a la MISMA raíz (ej. un gasto imputado a la factura y un cobro
+        del mismo presupuesto); la deduplicación pasa en `margen_por_trabajo`, no acá."""
+        candidatos: set[tuple[str, int]] = set()
+        for columna, eslabon in (("presupuesto_ref", "presupuesto"), ("comprobante_ref", "comprobante"),
+                                 ("cobro_ref", "cobro")):
+            cur.execute(f"SELECT DISTINCT {columna} FROM {_SCHEMA}.copiloto_gastos "
+                        f"WHERE cliente_id = %(cid)s AND {columna} IS NOT NULL",
+                        {"cid": self._cliente_id})
+            candidatos |= {(eslabon, ref) for (ref,) in cur.fetchall()}
+        cur.execute(f"SELECT id, comprobante_id, presupuesto_ref FROM {_SCHEMA}.copiloto_cobros "
+                    f"WHERE cliente_id = %(cid)s", {"cid": self._cliente_id})
+        for cobro_id, comprobante_id, presupuesto_ref in cur.fetchall():
+            if comprobante_id is not None:
+                candidatos.add(("comprobante", comprobante_id))
+            elif presupuesto_ref is not None:
+                candidatos.add(("presupuesto", presupuesto_ref))
+            else:
+                candidatos.add(("cobro", cobro_id))
+        return candidatos
+
+    def _etiqueta_trabajo(self, cur, eslabon: str, ref: int) -> str:
+        """Nombre legible para la barra: `{cliente} · {fecha}`. Un margen sin nombre es un número que
+        nadie puede ubicar entre las otras barras."""
+        if eslabon == "presupuesto":
+            cur.execute(f"SELECT receptor_nombre, fecha FROM {_SCHEMA}.copiloto_presupuestos "
+                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
+                        {"cid": self._cliente_id, "ref": ref})
+            fila = cur.fetchone()
+            nombre, fecha = (fila or ("", None))
+            fecha_str = fecha.date().isoformat() if fecha else ""
+        elif eslabon == "comprobante":
+            cur.execute(f"SELECT coalesce(receptor_nombre, ''), fecha_emision FROM {_SCHEMA}.afip_comprobantes "
+                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
+                        {"cid": self._cliente_id, "ref": ref})
+            fila = cur.fetchone()
+            nombre, fecha = (fila or ("", None))
+            fecha_str = fecha.isoformat() if fecha else ""
+        else:
+            cur.execute(f"SELECT coalesce(cliente_nombre, ''), fecha FROM {_SCHEMA}.copiloto_cobros "
+                        f"WHERE cliente_id=%(cid)s AND id=%(ref)s",
+                        {"cid": self._cliente_id, "ref": ref})
+            fila = cur.fetchone()
+            nombre, fecha = (fila or ("", None))
+            fecha_str = fecha.isoformat() if fecha else ""
+        nombre = (nombre or "").strip()
+        return f"{nombre} · {fecha_str}" if nombre else (fecha_str or f"{eslabon} #{ref}")
+
+    def margen_por_trabajo(self) -> dict:
+        """`{tipo, trabajos:[...], sin_ingreso:[...]}` — TODOS los trabajos con al menos un cobro o un
+        gasto imputado, SIN filtro de período (un trabajo puede abarcar cualquier fecha). Los de
+        `cobrado == 0` van en `sin_ingreso`, aparte, **nunca promediados** con los demás (addendum §4 /
+        contrato §2: un margen incompleto se ve igual que uno malo)."""
+        ts = TrabajoStore(self._conn_factory, self._cliente_id)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            candidatos = self._candidatos_de_trabajo(cur)
+            raices: dict[tuple, tuple[str, int]] = {}
+            for eslabon, ref in candidatos:
+                cadena = ts.resolver(eslabon, ref)
+                clave = (cadena["presupuesto"], cadena["comprobante"], tuple(sorted(cadena["cobros"])))
+                if clave in raices:
+                    continue
+                if cadena["presupuesto"] is not None:
+                    raices[clave] = ("presupuesto", cadena["presupuesto"])
+                elif cadena["comprobante"] is not None:
+                    raices[clave] = ("comprobante", cadena["comprobante"])
+                else:
+                    raices[clave] = ("cobro", cadena["cobros"][0])
+            etiquetas = {(e, r): self._etiqueta_trabajo(cur, e, r) for e, r in raices.values()}
+        trabajos, sin_ingreso = [], []
+        for eslabon, ref in raices.values():
+            m = ts.margen(eslabon, ref)
+            base = {"eslabon": eslabon, "ref": ref, "etiqueta": etiquetas[(eslabon, ref)],
+                   "gastos_imputados": m["gastos_imputados"]}
+            if Decimal(m["gastado"]) > 0 and Decimal(m["cobrado"]) == 0:
+                sin_ingreso.append({**base, "gastado": m["gastado"]})
+            else:
+                trabajos.append({**base, "cobrado": m["cobrado"], "gastado": m["gastado"],
+                                 "margen": m["margen"]})
+        trabajos.sort(key=lambda t: Decimal(t["margen"]), reverse=True)
+        return {"tipo": "barras", "trabajos": trabajos, "sin_ingreso": sin_ingreso}
+
+    def margen_trabajo_detalle(self, eslabon: str, ref: int) -> dict:
+        """El mismo objeto que `GET /trabajos/{eslabon}/{ref}/margen` — no una forma nueva (§0)."""
+        return TrabajoStore(self._conn_factory, self._cliente_id).margen(eslabon, ref)
