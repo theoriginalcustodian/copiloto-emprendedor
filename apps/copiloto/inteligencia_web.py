@@ -22,15 +22,23 @@ import asyncio
 from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
 
 from trabajo_store import TrabajoInexistente
 
 
+class ChatIn(BaseModel):
+    texto: str
+    session_id: str = ""
+
+
 def create_inteligencia_app(*, require_tenant: Callable,
-                            queries_factory: Callable | None = None) -> FastAPI:
-    """`queries_factory(cliente_id) -> InteligenciaQueries`. Opcional a propósito: sin él (los tests
-    del front-door que no arman DB) el endpoint devuelve la forma final con datos en cero, y la app no
-    se entera del cambio — la misma forma en los dos casos, como `actividad_web`."""
+                            queries_factory: Callable | None = None,
+                            chat_factory: Callable | None = None) -> FastAPI:
+    """`queries_factory(cliente_id) -> InteligenciaQueries`. `chat_factory(cliente_id) ->
+    InteligenciaChat`. Ambos opcionales a propósito: sin ellos (los tests del front-door que no arman
+    DB/LLM) el endpoint devuelve la forma final con datos en cero, y la app no se entera del cambio —
+    la misma forma en los dos casos, como `actividad_web`."""
     app = FastAPI(title="Copiloto Inteligencia")
 
     @app.get("/inteligencia/portada")
@@ -114,5 +122,12 @@ def create_inteligencia_app(*, require_tenant: Callable,
             except TrabajoInexistente as e:
                 raise HTTPException(status_code=404, detail="trabajo inexistente") from e
         return await asyncio.to_thread(q.margen_por_trabajo)
+
+    @app.post("/inteligencia/chat")
+    async def chat(payload: ChatIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        if chat_factory is None:
+            return {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
+        c = chat_factory(cliente_id)
+        return await asyncio.to_thread(lambda: c.responder(payload.texto))
 
     return app
