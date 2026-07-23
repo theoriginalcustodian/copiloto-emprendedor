@@ -11,6 +11,13 @@ jest.mock('../../adapters/almacen', () => ({
   },
 }));
 
+/** `ChatView` lee `useSession()` para scopear el chat por tenant (hallazgo 2026-07-23, cross-tenant
+ *  leak) -- fuera de `<SessionProvider>` (que vive en `_layout.tsx`, no en este árbol de test) el hook
+ *  real explota. Fijo un `cliente_id` estable; no es lo que este archivo prueba. */
+jest.mock('../auth/useSession', () => ({
+  useSession: () => ({ me: { cliente_id: 'cli-chatview-test', email: 'usuario@copiloto.test' } }),
+}));
+
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {

@@ -3,6 +3,7 @@ import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-n
 import type { ScrollView } from 'react-native-gesture-handler';
 
 import { Onda } from '../captura/Onda';
+import { useSession } from '../auth/useSession';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
@@ -76,7 +77,12 @@ function useTecladoVisible(): boolean {
  * en `escritorio/`. Un `backgroundColor` acá taparía el vidrio detrás.
  */
 export function ChatView() {
-  const { estado, send, enviarAudio } = useChat();
+  // `''` sólo si `me` todavía no resolvió (no debería pasar: el guard de `_layout.tsx` exige
+  // `estado === 'autenticado'` antes de montar este árbol) — `useChat` degrada ese caso a sesión
+  // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
+  // 2026-07-23 en `memoria/`.
+  const { me } = useSession();
+  const { estado, send, enviarAudio } = useChat(me?.cliente_id ?? '');
   const voz = useVozComando();
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<ScrollView>(null);

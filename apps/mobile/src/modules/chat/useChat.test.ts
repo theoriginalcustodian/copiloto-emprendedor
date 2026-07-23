@@ -33,6 +33,7 @@ jest.mock('expo-file-system/legacy', () => ({
 import { apiReal as api } from '@copiloto/core';
 import { deleteAsync } from 'expo-file-system/legacy';
 
+import { almacenClave } from '../../adapters/almacen';
 import { useChat } from './useChat';
 
 describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activo)', () => {
@@ -47,7 +48,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
     // `renderHook`/`render` de esta versión de @testing-library/react-native son `async`.
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
 
     await waitFor(() => expect(result.current.estado).not.toBeNull());
     expect(result.current.estado?.messages).toEqual([]);
@@ -60,7 +61,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     // promesa colgada lo dejaría afuera para siempre.
     jest.mocked(api.sendChat).mockReturnValue(new Promise(() => {}));
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -80,7 +81,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -101,7 +102,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -117,7 +118,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
   it('no se puede enviar vacío o sólo espacios', async () => {
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -136,7 +137,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     });
     jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-x', accepted: true });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
 
     // El envío dispara un 2do poll inmediato -- lo mockeamos para que devuelva EL MISMO reply id=5
@@ -160,7 +161,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(api.sendChat).mockRejectedValueOnce(new Error('network down'));
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -178,7 +179,7 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(api.sendChat).mockRejectedValueOnce(new UnauthorizedError('token vencido'));
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -188,6 +189,83 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     expect(result.current.estado?.sendStatus).toBe('error');
     expect(result.current.estado?.motivoFallo).toBe('sesion_vencida');
     unmount();
+  });
+});
+
+/**
+ * 🔴 Regresión adversarial (hallazgo en device, 2026-07-23): un segundo login en el MISMO device
+ * (otro tenant) hidrataba el historial del tenant ANTERIOR — `CLAVE_SESSION` era una clave global sin
+ * scope. Este bloque usa un `AlmacenClave` con estado REAL (no mocks estáticos) para probar el caso
+ * hostil: tenant A escribe, tenant B lee -- tiene que ver vacío, no la carta ajena.
+ */
+describe('useChat -- aislamiento por clienteId (no cross-tenant leak)', () => {
+  let store: Map<string, string>;
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-leak-test', accepted: true });
+  });
+
+  afterEach(() => {
+    // Restaurar el mock estático global para no filtrar estado a otros describe de este archivo.
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  it('🔴 CONTROL — el MISMO clienteId sí recupera su propio historial (la persistencia funciona)', async () => {
+    const primero = await renderHook(() => useChat('tenant-a'));
+    await waitFor(() => expect(primero.result.current.estado).not.toBeNull());
+    await act(async () => {
+      await primero.result.current.send('nota de tenant A');
+    });
+    await waitFor(() => expect(primero.result.current.estado?.messages).toHaveLength(1));
+    await primero.unmount();
+
+    const segundo = await renderHook(() => useChat('tenant-a'));
+    await waitFor(() => expect(segundo.result.current.estado?.messages).toHaveLength(1));
+    expect(segundo.result.current.estado?.messages[0]).toEqual(
+      expect.objectContaining({ text: 'nota de tenant A' }),
+    );
+    await segundo.unmount();
+  });
+
+  it('🔴 tenant B NO ve lo que tenant A escribió en el mismo device', async () => {
+    const deA = await renderHook(() => useChat('tenant-a'));
+    await waitFor(() => expect(deA.result.current.estado).not.toBeNull());
+    await act(async () => {
+      await deA.result.current.send('dato sensible de tenant A');
+    });
+    await waitFor(() => expect(deA.result.current.estado?.messages).toHaveLength(1));
+    const sessionIdDeA = deA.result.current.estado?.sessionId;
+    await deA.unmount();
+
+    const deB = await renderHook(() => useChat('tenant-b'));
+    await waitFor(() => expect(deB.result.current.estado).not.toBeNull());
+
+    expect(deB.result.current.estado?.messages).toEqual([]);
+    expect(deB.result.current.estado?.sessionId).not.toBe(sessionIdDeA);
+    await deB.unmount();
+  });
+
+  it('🔴 `clienteId` vacío (sesión sin resolver) nunca persiste en una clave compartida', async () => {
+    const { result, unmount } = await renderHook(() => useChat(''));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.send('no debería guardarse en ningún lado');
+    });
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+
+    // Nada se escribió en el almacén -- ni bajo una clave de sesión ni de mensajes.
+    expect(store.size).toBe(0);
+    await unmount();
   });
 });
 
@@ -205,7 +283,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
   it('transcript OK: agrega el mensaje del usuario (no optimista, recién con el texto real) y arranca el polling', async () => {
     jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a1', accepted: true, transcript: 'anotá esto' });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -224,7 +302,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
   it('CERO retención: borra el archivo local tras un envío exitoso', async () => {
     jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a2', accepted: true, transcript: 'listo' });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -238,7 +316,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
   it('CERO retención: borra el archivo local incluso si el upload falla -- el borrado no depende del éxito', async () => {
     jest.mocked(api.sendAudio).mockRejectedValue(new Error('network down'));
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -254,7 +332,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
   it('transcript vacío (STT no entendió): el envío SALIÓ BIEN, motivo audio_no_entendido, sin mensaje fantasma', async () => {
     jest.mocked(api.sendAudio).mockResolvedValue({ wf_id: 'wf-a3', accepted: true, transcript: '   ' });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -271,7 +349,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     const { ApiError } = jest.requireActual('@copiloto/core');
     jest.mocked(api.sendAudio).mockRejectedValue(new ApiError(413, 'payload too large'));
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
@@ -303,7 +381,7 @@ describe('useChat -- el polling NO abandona tras el timeout', () => {
     jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'w1', accepted: true });
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
-    const { result, unmount } = await renderHook(() => useChat());
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
