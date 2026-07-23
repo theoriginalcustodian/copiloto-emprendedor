@@ -58,7 +58,7 @@ import { generarId } from '../../util/id';
  * usuario que ya tenía sesión en la web no la pierde"). AsyncStorage nativo y el `localStorage` de un
  * origin web están físicamente aislados, así que no hay riesgo real de colisión — es sólo
  * consistencia de nombres entre plataformas del mismo producto. */
-const CLAVE_SESSION = 'copiloto-chat-session-id';
+const PREFIJO_SESSION = 'copiloto-chat-session-id';
 const PREFIJO_MENSAJES = 'copiloto-chat-msgs';
 const POLL_INTERVAL_MS = 1500;
 /** Ritmo tras el timeout: se sigue preguntando, pero sin quemar una request cada 1.5s durante media
@@ -67,18 +67,33 @@ const POLL_INTERVAL_LENTO_MS = 10_000;
 /** Cuánto esperar por una respuesta antes de avisar que está tardando (agente durable = lento). */
 const WAIT_TIMEOUT_MS = 60_000;
 
-function claveMensajes(sessionId: string): string {
-  return `${PREFIJO_MENSAJES}:${sessionId}`;
+/**
+ * 🔴 **Las claves de storage van scoped por `clienteId` (el tenant autenticado, `MeResponse.
+ * cliente_id`) — hallazgo en device 2026-07-23.** Antes, `CLAVE_SESSION` era una clave GLOBAL: un
+ * segundo login en el MISMO device (otro tenant) hidrataba el `sessionId` — y por lo tanto el
+ * historial completo — de la sesión anterior, ajena. El `session_id` que viaja al servidor
+ * (`api.sendChat`/`getReply`) NO cambia de forma por esto — sigue siendo el mismo opaco que siempre
+ * fue; sólo cambia bajo qué clave se lo busca/guarda LOCALMENTE. `clienteId` vacío (sesión aún no
+ * resuelta) degrada a NO persistir — ningún fallback a una clave compartida.
+ */
+function claveSession(clienteId: string): string {
+  return `${PREFIJO_SESSION}:${clienteId}`;
 }
 
-/** Lee (o crea) el `session_id` activo. Best-effort: si `AlmacenClave` falla, degrada a una sesión
- * nueva en memoria — perder la persistencia no puede romper el chat. */
-export async function leerOCrearSessionId(): Promise<string> {
+function claveMensajes(clienteId: string, sessionId: string): string {
+  return `${PREFIJO_MENSAJES}:${clienteId}:${sessionId}`;
+}
+
+/** Lee (o crea) el `session_id` activo PARA ESTE `clienteId`. Best-effort: si `AlmacenClave` falla,
+ * degrada a una sesión nueva en memoria — perder la persistencia no puede romper el chat. */
+export async function leerOCrearSessionId(clienteId: string): Promise<string> {
+  if (clienteId === '') return generarId(); // sin identidad todavía -- efímero, nunca compartido.
   try {
-    const existente = await almacenClave.leer(CLAVE_SESSION);
+    const clave = claveSession(clienteId);
+    const existente = await almacenClave.leer(clave);
     if (existente) return existente;
     const creado = generarId();
-    await almacenClave.guardar(CLAVE_SESSION, creado);
+    await almacenClave.guardar(clave, creado);
     return creado;
   } catch {
     return generarId();
@@ -87,9 +102,9 @@ export async function leerOCrearSessionId(): Promise<string> {
 
 /** Rehidrata el historial de esta sesión — best-effort: cualquier problema (storage caído, JSON
  * corrupto) degrada a "sin historial", nunca rompe el mount. */
-async function leerMensajesPersistidos(sessionId: string): Promise<ChatMessage[]> {
+async function leerMensajesPersistidos(clienteId: string, sessionId: string): Promise<ChatMessage[]> {
   try {
-    const raw = await almacenClave.leer(claveMensajes(sessionId));
+    const raw = await almacenClave.leer(claveMensajes(clienteId, sessionId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
@@ -98,8 +113,9 @@ async function leerMensajesPersistidos(sessionId: string): Promise<ChatMessage[]
   }
 }
 
-function persistirMensajes(sessionId: string, messages: ChatMessage[]): void {
-  void almacenClave.guardar(claveMensajes(sessionId), JSON.stringify(messages));
+function persistirMensajes(clienteId: string, sessionId: string, messages: ChatMessage[]): void {
+  if (clienteId === '') return; // sin identidad resuelta todavía -- nunca a una clave compartida.
+  void almacenClave.guardar(claveMensajes(clienteId, sessionId), JSON.stringify(messages));
 }
 
 export interface SendOptions {
@@ -137,7 +153,12 @@ async function borrarAudioLocal(audio: ArchivoSubida): Promise<void> {
   }
 }
 
-export function useChat(): UseChatResult {
+/**
+ * `clienteId` — `MeResponse.cliente_id` del tenant autenticado (`useSession().me`), NO el "selector de
+ * cliente activo" del docstring de arriba (ese es otro eje, todavía inexistente). Scopea DÓNDE se
+ * persiste el chat, no QUÉ cliente-del-emprendedor está seleccionado.
+ */
+export function useChat(clienteId: string): UseChatResult {
   const [estado, setEstado] = useState<EstadoChat | null>(null);
   // Espejo síncrono de `estado` para que los callbacks de polling/envío (estables vía `useCallback`)
   // siempre lean el valor más reciente sin encadenar todo a las dependencias de React.
@@ -193,7 +214,7 @@ export function useChat(): UseChatResult {
       if (next.messages.length > base.messages.length) {
         detenerPolling();
       }
-      persistirMensajes(next.sessionId, next.messages);
+      persistirMensajes(clienteId, next.sessionId, next.messages);
       actualizarEstado(next);
     } catch {
       // Error transitorio de red/servidor: el intervalo sigue reintentando. No hay un momento en que
@@ -201,22 +222,25 @@ export function useChat(): UseChatResult {
     } finally {
       pollingRef.current = false;
     }
-  }, [actualizarEstado, detenerPolling]);
+  }, [actualizarEstado, detenerPolling, clienteId]);
 
-  // Hidratación inicial: resuelve sessionId + historial persistido (ASYNC — AsyncStorage), siembra
-  // el reducer con `hidratarEstado`, y dispara UN poll para traer cualquier respuesta que haya
-  // llegado mientras la app estaba cerrada (durabilidad real: la app en background no pierde
-  // respuestas que ya llegaron server-side).
+  // Hidratación: resuelve sessionId + historial persistido (ASYNC — AsyncStorage), siembra el reducer
+  // con `hidratarEstado`, y dispara UN poll para traer cualquier respuesta que haya llegado mientras
+  // la app estaba cerrada (durabilidad real: la app en background no pierde respuestas que ya
+  // llegaron server-side). Re-corre si `clienteId` cambia (cambio de tenant en un árbol que sigue
+  // montado) — vuelve a hidratar contra las claves del tenant nuevo, nunca deja las del anterior.
   useEffect(() => {
     void (async () => {
-      const sessionId = await leerOCrearSessionId();
-      const persistidos = await leerMensajesPersistidos(sessionId);
+      const sessionId = await leerOCrearSessionId(clienteId);
+      const persistidos = await leerMensajesPersistidos(clienteId, sessionId);
       if (!montadoRef.current) return;
       actualizarEstado(hidratarEstado(sessionId, persistidos));
       void poll();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo debe correr una vez al montar.
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite: recrearlo en cada
+    // render de `clienteId` reiniciaría el timer de espera en curso, y no cambia entre renders de la
+    // MISMA sesión (sólo cuando cambia `clienteId`, que sí está en las deps).
+  }, [clienteId]);
 
   const iniciarEsperaDeRespuesta = useCallback(() => {
     pollTimerRef.current = setInterval(() => {
@@ -265,7 +289,7 @@ export function useChat(): UseChatResult {
       // `envio_iniciado`, así el mensaje aparece OPTIMISTA (antes de que la red responda).
       let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_iniciado' });
-      persistirMensajes(siguiente.sessionId, siguiente.messages);
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
 
       try {
@@ -287,7 +311,7 @@ export function useChat(): UseChatResult {
       actualizarEstado(reducirChat(enviado, { tipo: 'envio_ok' }));
       iniciarEsperaDeRespuesta();
     },
-    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta],
+    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
   );
 
   /**
@@ -340,12 +364,12 @@ export function useChat(): UseChatResult {
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });
-      persistirMensajes(siguiente.sessionId, siguiente.messages);
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
 
       iniciarEsperaDeRespuesta();
     },
-    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta],
+    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
   );
 
   return { estado, send, enviarAudio };

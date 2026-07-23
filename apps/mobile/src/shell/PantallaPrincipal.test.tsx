@@ -20,6 +20,13 @@ jest.mock('expo-router', () => {
   };
 });
 
+/** `ChatView` (montado real acá, vía `<PantallaPrincipal>`) lee `useSession()` para scopear el chat
+ *  por tenant (hallazgo 2026-07-23, cross-tenant leak) -- este árbol no pasa por `<SessionProvider>`
+ *  (eso vive en `_layout.tsx`), así que el hook real explota sin este mock. */
+jest.mock('../modules/auth/useSession', () => ({
+  useSession: () => ({ me: { cliente_id: 'cli-principal-test', email: 'usuario@copiloto.test' } }),
+}));
+
 import { router } from 'expo-router';
 
 import { ThemeProvider } from '../theme/ThemeProvider';
