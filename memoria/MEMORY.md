@@ -127,6 +127,10 @@
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — `project`. Keys que pasaron por chat. Diferido a pre-prod. grep-first + restart al rotar.
 - [🗜️ Compactar a 500k — investigación PAUSADA](compactacion-a-umbral-investigacion-pausada.md) — `project`. **Puntero:** cuando pregunte "lo de la compactación", retomar del doc. `/compact` inyectado NO ejecuta (spike); medir transcript SÍ; no hay daemon. Camino: bajar monitores + PreCompact.
 
+## 🔮 Tareas futuras (gated)
+
+- [🔬 Eval global de la app con Fable5 zero-context — al terminar lo pendiente](eval-global-app-fable5-zero-context-pendiente.md) — `project`. Objetividad = cero contexto. Foco: conflicto/seguridad/resiliencia/escala-sin-fricción + **velocidad percibida**. Excluye infra externa + features faltantes. Hipótesis SQLite local: **medir la latencia real antes de prescribir**.
+
 ## 📚 Referencia
 
 - [💸 El modelo barato cobró 17× tokens de imagen](el-modelo-barato-cobra-17x-tokens-de-imagen.md) — `reference`. `gpt-4o-mini` = 14.261 vs 842 tokens por la misma foto. El costo multimodal se MIDE.
