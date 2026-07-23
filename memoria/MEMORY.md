@@ -90,6 +90,7 @@
 - [📏 No escribas una regla sobre el SETUP DE OTRO](regla-escrita-sobre-el-setup-de-otro.md) — `feedback`. El dato lo tiene el que ejecuta. Y no ablandar una instrucción del operador hasta que encaje.
 - [🚀📱 Entrega progresiva (PR/merge/deploy por hito) + E2E en device](entrega-progresiva-y-e2e-en-device.md) — `feedback`. Un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. Snapshot no stream; hand-fix a verde; spike dirigido para la raíz.
+- [🆔 Fórmula de identidad congelada sin validar el mecanismo del server](formula-de-identidad-congelada-sin-validar-el-mecanismo-del-server.md) — `project`. El `edge_uuid` lo deriva el server de los uuid de NODOS+tipo, sin `LOG_EVENT_ID`. Mi fórmula rompía el `PATCH` en silencio → dos vigentes. Anti-resurrección va en la clave del NODO (nodo-evento intermedio, patrón documed), no en la arista.
 
 ## 🧠 Lecciones sistémicas vivas
 
