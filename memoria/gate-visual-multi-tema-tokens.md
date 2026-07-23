@@ -15,5 +15,5 @@ Lección del fix de contraste dark mode de la consola clínica (2026-06-29, PR #
 
 **How to apply:**
 1. **Colores = tokens semánticos theme-aware, nunca literales.** Usar `text-foreground` / `text-muted-foreground` / `bg-card` / `border-border` (que ya reaccionan al `.dark`), NUNCA `text-slate-800`, `bg-white`, ni variantes `-light`/`-dark` que el dev tenga que combinar a mano con `dark:`. La dualidad de clases que hay que recordar combinar ES la deuda que produce el bug; colapsar a una clase única theme-aware lo elimina por construcción (test *¿puede volver?* → no, la variante que se olvidaba dejó de existir). [[cero-deuda-no-gestionada]]
-2. **Si la app tiene theme toggle, el gate visual cubre AMBOS temas.** Validar solo el default deja el otro sin evaluar — y el bug llega al usuario. Aplica al objetivo #2 (cosechar plantilla de frontend de la fábrica). [[frontend-clinic-plantilla-base]]
+2. **Si la app tiene theme toggle, el gate visual cubre AMBOS temas.** Validar solo el default deja el otro sin evaluar — y el bug llega al usuario. Aplica al objetivo #2 (cosechar plantilla de frontend de la fábrica).
 3. **Medir contraste, no juzgar "a ojo".** Playwright MCP contra el deploy expuesto + `getComputedStyle` componiendo el alpha de los glass sobre el body → ratio WCAG real. Diagnóstico empírico, no aserción. [[no-codificar-la-esperanza-principio-raiz]]

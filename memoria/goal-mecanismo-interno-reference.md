@@ -1,6 +1,6 @@
 ---
 name: goal-mecanismo-interno-reference
-description: Funcionamiento interno COMPLETO del comando /goal de Claude Code (reverse-engineered del binario) + los 5 tipos de hook + canibalización para la fábrica.
+description: Funcionamiento interno COMPLETO del comando /goal de Claude Code (reverse-engineered del binario) + los 5 tipos de hook.
 metadata: 
   node_type: memory
   type: reference
@@ -18,4 +18,4 @@ metadata:
 
 **Los 5 tipos de hook** (`discriminatedUnion("type")`): `command` (shell; tiene **`asyncRewake`+exit2** = despierta al agente), **`prompt`** (LLM juzga transcript→`{ok,reason}`, lo que usa /goal), **`agent`** (sub-agente CON tools que EJECUTA y verifica — ej "Verify that unit tests ran and passed", llama un tool `{ok,reason}` al final), `http` (POST), `mcp_tool`.
 
-**Canibalización para la fábrica (§20 del reporte):** (a) el verificador del gate del `FeatureWorkflow` hoy usa Claude caro → un **prompt-hook estilo /goal con Haiku/flash** (json_schema + sin tools + sin thinking) = juez barato y determinista en forma; (b) el `reason`→próximo turno = [[localizacion-estructurada-feedback-agentes]] de fábrica; (c) los 3 verificadores = menú para F4/gate (`command` sintáctico / `prompt` lee / **`agent` ejecuta los tests** = gate-por-test regla 9); (d) `/goal` valida la FORMA del loop, **Temporal le da la durabilidad que /goal NO tiene** (efímero, restore grueso) → diferenciador [[loop-engineering-framing]] confirmado vs SOTA Anthropic; (e) anti-reward-hacking: el system prompt exige citar evidencia → canibalizable literal. Relacionado: [[harness-observabilidad-gap2-gap3]] (nuestro `completion_evidence_gate` es la versión `command` de esto), [[macro-loop-diseno-candidato]], [[claude-code-headless-capabilities]].
+Relacionado: [[claude-code-headless-capabilities]].

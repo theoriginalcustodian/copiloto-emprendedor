@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { leerPortada } from './inteligencia';
+import { leerPortada, preguntarInteligencia } from './inteligencia';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -131,5 +131,63 @@ describe('leerPortada — lo que NO inventa', () => {
   it('si la red explota degrada a `no_disponible`, no propaga', async () => {
     responder = () => { throw new Error('red caída'); };
     expect((await leerPortada()).status).toBe('no_disponible');
+  });
+});
+
+describe('preguntarInteligencia — el chat de IN (§3.3, [PROVISIONAL — grafo])', () => {
+  it('manda la pregunta por POST a /inteligencia/chat y devuelve respuesta + fuentes', async () => {
+    let capturada: PeticionHttp | null = null;
+    responder = (p) => {
+      capturada = p;
+      return respuesta(200, {
+        respuesta: 'Gastaste $12.000 en nafta este mes.',
+        fuentes: [{ tipo: 'gasto', ref: 'gasto-42' }],
+      });
+    };
+
+    const res = await preguntarInteligencia('¿cuánto gasté en nafta este mes?');
+
+    expect(capturada!.metodo).toBe('POST');
+    expect(capturada!.path).toBe('/inteligencia/chat');
+    expect(capturada!.cuerpoJson).toEqual({ pregunta: '¿cuánto gasté en nafta este mes?' });
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(res.respuesta.respuesta).toBe('Gastaste $12.000 en nafta este mes.');
+    expect(res.respuesta.fuentes).toEqual([{ tipo: 'gasto', ref: 'gasto-42' }]);
+  });
+
+  it('🔴 405 (la ruta no está montada) → `no_disponible`, no un chat roto', async () => {
+    responder = () => respuesta(405, { detail: 'Method Not Allowed' });
+    expect((await preguntarInteligencia('x')).status).toBe('no_disponible');
+  });
+
+  it('🔴 CONTROL — un 500 (desplegado pero fallando) se PROPAGA, no se disfraza de ausencia', async () => {
+    // El par del anterior: «la función todavía no existe» y «la función existe y se rompió» son cosas
+    // distintas. Colapsarlas escondería un backend caído detrás de «todavía no está disponible».
+    responder = () => respuesta(500, { detail: 'boom' });
+    await expect(preguntarInteligencia('x')).rejects.toThrow();
+  });
+
+  it('una fuente sin `ref` se descarta; `tipo` ausente queda en ""', async () => {
+    responder = () =>
+      respuesta(200, {
+        respuesta: 'ok',
+        fuentes: [{ tipo: 'gasto', ref: 'g-1' }, { tipo: 'sin-ref' }, { ref: 'g-2' }],
+      });
+
+    const res = await preguntarInteligencia('x');
+    if (res.status !== 'ok') return;
+    expect(res.respuesta.fuentes).toEqual([{ tipo: 'gasto', ref: 'g-1' }, { tipo: '', ref: 'g-2' }]);
+  });
+
+  it('una respuesta sin texto queda en "", no en null — la burbuja siempre muestra algo', async () => {
+    responder = () => respuesta(200, { fuentes: [] });
+    const res = await preguntarInteligencia('x');
+    if (res.status === 'ok') expect(res.respuesta.respuesta).toBe('');
+  });
+
+  it('si la red explota (no ApiError) degrada a `no_disponible`', async () => {
+    responder = () => { throw new Error('red caída'); };
+    expect((await preguntarInteligencia('x')).status).toBe('no_disponible');
   });
 });

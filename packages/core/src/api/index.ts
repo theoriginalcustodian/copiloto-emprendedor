@@ -248,14 +248,16 @@ export type {
  * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
  * `no_disponible` hasta el connect. Plata como string, `ausente ≠ cero`. Ver el docstring.
  */
-export { leerPortada } from './inteligencia';
+export { leerPortada, preguntarInteligencia } from './inteligencia';
 export type {
   CajaPortada,
+  FuenteInteligencia,
   MejorCliente,
   MesPortada,
   Portada,
   PorCobrarPortada,
   PuntoSerie,
+  RespuestaInteligencia,
 } from './inteligencia';
 /**
  * `/capacidades` — lo que el copiloto sabe hacer HOY, para la pantalla de «cómo hablarle». Es una

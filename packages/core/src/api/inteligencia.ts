@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { ApiError } from './errors';
 import type { ConDisponibilidad } from './afip';
 
 /**
@@ -144,5 +145,82 @@ export async function leerPortada(): Promise<ConDisponibilidad<{ portada: Portad
     };
   } catch {
     return { status: 'no_disponible' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat de IN — preguntar sobre el negocio en lenguaje natural (§3.3).
+// ---------------------------------------------------------------------------
+
+/**
+ * Una fuente que respalda la respuesta del chat de IN (una factura, un gasto, un episodio del grafo).
+ *
+ * 🔴 **[PROVISIONAL — grafo].** La forma sale del §3.3 del `contrato_ADELANTAR`, marcado provisional
+ * PORQUE depende del grafo (hito 5, en curso): `tipo`/`ref` pueden cambiar cuando el grafo defina qué
+ * es una fuente. La cáscara del chat NO ramifica sobre estos campos todavía — los muestra tal cual.
+ */
+export interface FuenteInteligencia {
+  tipo: string;
+  ref: string;
+}
+
+export interface RespuestaInteligencia {
+  /** El texto de la respuesta. Puede venir vacío mientras el grafo no tenga con qué responder. */
+  respuesta: string;
+  fuentes: readonly FuenteInteligencia[];
+}
+
+interface RespuestaInteligenciaRaw {
+  respuesta?: unknown;
+  fuentes?: unknown;
+}
+
+function fuente(v: unknown): FuenteInteligencia | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as { tipo?: unknown; ref?: unknown };
+  // Una fuente sin `ref` no direcciona a nada: se descarta en vez de pintar un chip que no lleva a
+  // ningún lado. `tipo` puede faltar (default vacío) — es una etiqueta, no la identidad de la fuente.
+  if (typeof r.ref !== 'string' || r.ref.trim() === '') return null;
+  return { tipo: typeof r.tipo === 'string' ? r.tipo.trim() : '', ref: r.ref.trim() };
+}
+
+/**
+ * **`POST /inteligencia/chat` — preguntarle al copiloto sobre el negocio en lenguaje natural.**
+ *
+ * 🔴 **[PROVISIONAL — grafo] — el ÚNICO punto que el connect toca.** Toda la cáscara del chat de IN
+ * habla con esta función. La forma (request `{pregunta}`, response `{respuesta, fuentes}`) sale del
+ * §3.3 del `contrato_ADELANTAR`, declarada **provisional** porque depende del grafo (hito 5). El día
+ * que el grafo fije la forma real, se recablea acá y la pantalla no se toca.
+ *
+ * 🔴 **Un `POST` a una ruta no desplegada NO devuelve 200 con el SPA** (el catch-all del front-door es
+ * `@app.get`): devuelve 405/501/503, que llegan como `ApiError` y degradan a `no_disponible`. Por eso
+ * acá no hace falta la guarda de forma `esRespuestaDelEndpoint` que sí necesita el `GET` de la portada.
+ */
+export async function preguntarInteligencia(
+  pregunta: string,
+): Promise<ConDisponibilidad<{ respuesta: RespuestaInteligencia }>> {
+  try {
+    const raw = await apiClient.post<RespuestaInteligenciaRaw>('/inteligencia/chat', { pregunta });
+    const fuentes = Array.isArray(raw?.fuentes) ? raw.fuentes : [];
+    return {
+      status: 'ok',
+      respuesta: {
+        // Texto: si no vino, cadena vacía (una respuesta sin texto es un caso real del grafo sin datos),
+        // no `null` — la burbuja siempre muestra algo, aunque sea el vacío.
+        respuesta: typeof raw?.respuesta === 'string' ? raw.respuesta : '',
+        fuentes: fuentes.map(fuente).filter((f): f is FuenteInteligencia => f !== null),
+      },
+    };
+  } catch (err) {
+    // 405/501/503 = la ruta no está montada → «todavía no está disponible».
+    if (err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503)) {
+      return { status: 'no_disponible' };
+    }
+    // Un `POST` a una ruta inexistente que devolviera 200 con el HTML del SPA explota en `res.json()`
+    // como un error que NO es `ApiError`: eso también es "no está montada", no un fallo del chat.
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    // Un `ApiError` desplegado-pero-fallando (500, 4xx) NO se disfraza de ausencia: se propaga, para
+    // que la cáscara lo trate como error real y no como «la función todavía no existe».
+    throw err;
   }
 }

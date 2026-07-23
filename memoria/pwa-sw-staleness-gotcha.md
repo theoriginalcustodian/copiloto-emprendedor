@@ -17,4 +17,4 @@ El cliente `uc-copiloto-web` es una **PWA con vite-plugin-pwa**. Su service work
 
 **Escape para un navegador YA cacheado:** una recarga con el SW nuevo se auto-limpia; si persiste, `Ctrl+Shift+R` una vez o DevTools → Application → Unregister service worker.
 
-**Regla:** al deployar el frontend, NO declarar "el operador ya lo ve" — el deploy correcto ≠ el navegador lo tiene. Verificar el bundle servido por curl y, si el operador reporta algo viejo, sospechar el SW ANTES de tocar código. [[deploy-factory-code-vps]] [[apps-deploys-siempre-vps]] [[no-codificar-la-esperanza-principio-raiz]]
+**Regla:** al deployar el frontend, NO declarar "el operador ya lo ve" — el deploy correcto ≠ el navegador lo tiene. Verificar el bundle servido por curl y, si el operador reporta algo viejo, sospechar el SW ANTES de tocar código. [[apps-deploys-siempre-vps]] [[no-codificar-la-esperanza-principio-raiz]]

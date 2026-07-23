@@ -16,4 +16,4 @@ metadata:
 
 **Meta-lección:** un sistema compuesto es el spike que destapa esa clase; el namespacing de tablas es **parte del contrato del plano** en una biblioteca multi-app, no un detalle.
 
-[[r1-workflow-templates-fixed-mount]] [[sprint-biblioteca-7-apps-techo-workflows]] [[clinica-medica-2do-sistema-compuesto]] [[no-codificar-la-esperanza-principio-raiz]]
+ [[no-codificar-la-esperanza-principio-raiz]]

@@ -17,4 +17,4 @@ Decisión metodológica (2026-06-30): el `STATE_OF_THE_ART` de la **trifecta cog
 
 **How to apply:** al hacer la trifecta de un sistema/feature no trivial, buscar los dos lentes por separado — el conservador no encuentra el hack solo. Propagado al pipeline físico de `train-b2b-domain`: el prompt del Synthesizer (`skills/train-b2b-domain/assets/prompt-synthesizer-sonnet.md`) ahora tiene Query 4 (lente lateral) + sección "Atajos / Hacks Asimétricos" en el `STATE_OF_THE_ART.md` generado — sin crear 4º archivo. Si no hay hack documentado → marcar `[ASSUMED_NO_SOURCE]`, nunca inventar.
 
-Relacionado: [[asistente-generar-plano]] (usa la trifecta como paso 2.5 gateado), [[costo-incertidumbre-precision-ratchet]], [[no-codificar-la-esperanza-principio-raiz]].
+Relacionado: (usa la trifecta como paso 2.5 gateado), [[no-codificar-la-esperanza-principio-raiz]].
