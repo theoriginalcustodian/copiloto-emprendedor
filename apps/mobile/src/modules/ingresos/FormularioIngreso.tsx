@@ -21,6 +21,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   completarIngreso,
   formatearImporte,
+  normalizarDecimal,
   registrarIngreso,
   type FaltanteIngreso,
   type Ingreso,
@@ -65,12 +66,14 @@ export function FormularioIngreso({ onGuardado, onCancelar, testID = 'ingreso-fo
 
   async function guardar(confirmarDuplicado = false) {
     if (enviando) return;
-    const importe = monto.trim();
+    const crudo = monto.trim();
     // La ÚNICA validación, y es la del backend.
-    if (importe === '') {
+    if (crudo === '') {
       setError('Escribí cuánto te pagaron.');
       return;
     }
+    // Mismo patrón que FormularioGasto: la coma decimal del teclado argentino no viaja cruda.
+    const importe = normalizarDecimal(crudo);
     setEnviando(true);
     setError(null);
     const clave = claveGesto.current ?? generarId();

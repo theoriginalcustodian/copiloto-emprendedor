@@ -151,6 +151,18 @@ describe('PantallaIngresos — anotar', () => {
     expect(typeof datos.idemKey).toBe('string');
   });
 
+  it('🔴 acepta el monto escrito con COMA y lo manda con punto', async () => {
+    // Mismo bug que tuvo FormularioGasto: el teclado numérico entrega coma en configuración
+    // regional argentina, y el backend hace `Decimal("5678,90")` → InvalidOperation → 400.
+    await abrirFormulario();
+
+    await tipear('ingreso-form-monto-input', '5678,90');
+    await fireEvent.press(screen.getByTestId('ingreso-form-guardar'));
+
+    await waitFor(() => expect(registrarMock).toHaveBeenCalled());
+    expect(registrarMock.mock.calls[0][0].monto).toBe('5678.90');
+  });
+
   it('sin monto no sale a la red, y lo dice', async () => {
     await abrirFormulario();
 
