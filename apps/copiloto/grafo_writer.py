@@ -122,7 +122,18 @@ class GrafoWriter:
     def _esta_invalidada(self, edge_uuid: str, rep: ReporteEscritura) -> bool:
         """¿La arista existe Y tiene `invalid_at` seteado? GET que falla → NO se afirma invalidada
         (fail-open del pre-check, pero VISIBLE en `chequeos_fallidos`): excluir una fila que no está
-        realmente invalidada perdería un hecho válido. Sólo se excluye lo CONFIRMADO invalidado."""
+        realmente invalidada perdería un hecho válido. Sólo se excluye lo CONFIRMADO invalidado.
+
+        🔴 `invalid_at` vive en la RAÍZ del objeto que devuelve `GET /graph/edges/{uuid}`, NO dentro de
+        `attributes` — `attributes` es SOLO el `property_map` custom (queda `{}` si el mapping no
+        declaró propiedades de arista). Verificado contra el servidor VIVO en el de-risk (2026-07-23):
+        un `PATCH {"invalid_at": ...}` que devuelve 200 y un GET inmediato después mostraron
+        `invalid_at` al mismo nivel que `uuid`/`fact`/`name`, con `attributes: {}`. Leer
+        `edge["attributes"]["invalid_at"]` (como hacía esta función hasta ese de-risk) SIEMPRE da
+        `None` contra el server real — el guard anti-resurrección (CRITICAL-2) nunca disparaba, en
+        silencio: exactamente el modo de fallo que esta clase existe para evitar. Los tests contra el
+        `ClienteFake` no lo cazaron porque el fake reproducía la MISMA forma equivocada — instrumento
+        que confirma en vez de verificar (ver `test_grafo_writer.py`, corregido en el mismo commit)."""
         try:
             edge = self._client.get_edge(edge_uuid)
         except GrafoIngestError:
@@ -130,5 +141,4 @@ class GrafoWriter:
             return False
         if edge is None:
             return False
-        attrs = edge.get("attributes") or {}
-        return attrs.get("invalid_at") is not None
+        return edge.get("invalid_at") is not None

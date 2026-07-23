@@ -90,8 +90,25 @@ def test_no_invalida_una_arista_que_este_write_acaba_de_escribir():
 
 # ── CRITICAL-2: guard anti-resurrección ──────────────────────────────────────────────────────────
 
+def test_invalid_at_se_lee_de_la_RAIZ_no_de_attributes():
+    """Regresión del de-risk (2026-07-23): el server real devuelve `invalid_at` en la RAÍZ del edge
+    (`{uuid, fact, name, valid_at, invalid_at, ..., attributes: {}}`), NUNCA dentro de `attributes` —
+    verificado con un PATCH+GET reales contra Graphity vivo. Antes de este fix, `_esta_invalidada`
+    leía `edge["attributes"]["invalid_at"]`, que con `attributes: {}` da SIEMPRE `None`: el guard
+    anti-resurrección nunca excluía nada, en silencio, aunque los tests con un fake mal formado
+    (misma forma equivocada) daban verde. Esta fixture reproduce la forma REAL, no la asumida."""
+    fake = ClienteFake(edges={"edge-muerta": {
+        "uuid": "edge-muerta", "fact": "algo", "name": "TIPO",
+        "valid_at": "2026-01-01T00:00:00Z", "invalid_at": "2026-07-01T00:00:00Z",
+        "expired_at": None, "attributes": {}}})
+    ds = _ds([{"n": "muerta"}], aristas=[(0, "edge-muerta")])
+    rep = _writer(fake).write([ds], [], group_id="g", idem_prefix="run-1")
+    assert rep.resurrecciones_evitadas == ["edge-muerta"]
+    assert rep.datasets_vacios == 1
+
+
 def test_una_arista_estable_ya_invalidada_se_EXCLUYE_del_post_no_se_resucita():
-    fake = ClienteFake(edges={"edge-muerta": {"attributes": {"invalid_at": "2026-07-01T00:00:00Z"}}})
+    fake = ClienteFake(edges={"edge-muerta": {"invalid_at": "2026-07-01T00:00:00Z", "attributes": {}}})
     ds = _ds([{"n": "viva"}, {"n": "muerta"}], aristas=[(0, "edge-viva"), (1, "edge-muerta")])
     # edge-viva no está en `edges` → get_edge devuelve None → no invalidada → su fila se postea.
     rep = _writer(fake).write([ds], [], group_id="g", idem_prefix="run-1")
@@ -100,7 +117,7 @@ def test_una_arista_estable_ya_invalidada_se_EXCLUYE_del_post_no_se_resucita():
 
 
 def test_si_TODAS_las_filas_se_excluyen_el_dataset_no_se_postea():
-    fake = ClienteFake(edges={"e0": {"attributes": {"invalid_at": "2026-07-01T00:00:00Z"}}})
+    fake = ClienteFake(edges={"e0": {"invalid_at": "2026-07-01T00:00:00Z", "attributes": {}}})
     ds = _ds([{"n": "muerta"}], aristas=[(0, "e0")])
     rep = _writer(fake).write([ds], [], group_id="g", idem_prefix="run-1")
     assert rep.datasets_vacios == 1
