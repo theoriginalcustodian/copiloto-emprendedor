@@ -13,8 +13,8 @@ metadata:
 
 **How to apply (al diseñar cualquier loop / activity / prompt que realimente a un agente):**
 - **Feedback localizado, no crudo ni genérico:** "estos N tests fallaron, en estas funciones; el cambio tocó estos módulos; el traceback apunta a X" — NO "los tests fallaron, arreglá".
-- **Para coding loops:** pasar impact-graph / `git blame` / test-diff / localización como **input estructurado**, no el stdout crudo (que además es vector de prompt injection — ver [[macro-loop-diseno-candidato]] §5).
+- **Para coding loops:** pasar impact-graph / `git blame` / test-diff / localización como **input estructurado**, no el stdout crudo (que además es vector de prompt injection — ver §5).
 - **Para el paso diagnose→fix:** el diagnóstico debe atribuir el error al **módulo/función más granular posible** antes de pasarlo al fixer; acotar el campo de acción del fixer a esa unidad, no al archivo entero.
 - **Acompañar con el invariants-log:** "estos tests ya pasaban, no los rompas" (mitiga oscilación). El plano incluye lo que NO hay que tocar, no solo lo que sí.
 
-Relacionado: [[macro-loop-diseno-candidato]] (deuda del feedback sin sanitizar / sin invariants-log) · [[loop-engineering-framing]] (la función de transición: la OBSERVACIÓN bien localizada es lo que hace útil al feedback).
+Relacionado: (deuda del feedback sin sanitizar / sin invariants-log) (la función de transición: la OBSERVACIÓN bien localizada es lo que hace útil al feedback).

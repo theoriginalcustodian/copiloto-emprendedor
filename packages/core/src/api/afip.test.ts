@@ -473,13 +473,33 @@ describe('afip.ts', () => {
         items: [{ descripcion: 'Consultoría', cantidad: '2', precioUnitario: '100.00', subtotal: '200.00' }],
         total: '200.00',
         tokenConfirmacion: null,
-        resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1 },
+        resultado: { ok: true, duplicado: false, cae: '75304012345678', caeVto: '2026-08-01', nro: 5, tipoCbte: 11, puntoVenta: 1, id: null },
         pdf: { url: 'https://x/1.pdf', nombre: '1.pdf', expiraAt: '2026-07-22T00:00:00Z' },
         drive: null,
         motivo: null,
         motivoCodigo: null,
         terminado: true,
       });
+    });
+
+    it('🔴 [CONNECT] si el resultado crudo trae `id`, el normalizado lo conserva; si no, queda null', async () => {
+      // El día que backend agregue el id de fila a `resultado`, la card de éxito lo recibe sin tocar
+      // nada más. Hasta entonces, ausente → null (y la card no ofrece cobrar).
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'entregada', terminado: true,
+          resultado: { ok: true, duplicado: false, cae: 'z', cae_vto: '2026-08-01', nro: 9, tipo_cbte: 11, punto_venta: 6, id: 15 },
+        }));
+      const conId = await estadoFactura('f-1');
+      expect(conId.resultado?.id).toBe(15);
+
+      responder = () =>
+        respuesta(200, estadoFacturaCruda({
+          estado: 'entregada', terminado: true,
+          resultado: { ok: true, duplicado: false, cae: 'z', cae_vto: '2026-08-01', nro: 9, tipo_cbte: 11, punto_venta: 6 },
+        }));
+      const sinId = await estadoFactura('f-1');
+      expect(sinId.resultado?.id).toBeNull();
     });
 
     it('normaliza el archivado en Drive, guardado y fallado', async () => {
@@ -688,7 +708,7 @@ describe('afip.ts', () => {
 
       expect(result.paso).toBe('anulada');
       expect(result.original?.cbteAsocNro).toBe(6);
-      expect(result.resultado).toEqual({ ok: true, duplicado: false, cae: 'y', caeVto: '2026-08-01', nro: 6, tipoCbte: 13, puntoVenta: 1 });
+      expect(result.resultado).toEqual({ ok: true, duplicado: false, cae: 'y', caeVto: '2026-08-01', nro: 6, tipoCbte: 13, puntoVenta: 1, id: null });
     });
 
     it('estadoAnulacion 404 ("anulación no encontrada", id dinámico) -> ApiError', async () => {

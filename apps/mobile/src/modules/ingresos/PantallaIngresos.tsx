@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } 
 import { borrarIngreso, formatearImporte, listarIngresos, type Ingreso, type OrigenIngreso } from '@copiloto/core';
 
 import { FormularioIngreso } from './FormularioIngreso';
+import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
@@ -161,6 +162,10 @@ export function PantallaIngresos() {
                 ]}
               />
 
+              {/* 🔴 Decisión C: la lista rica de ingresos (con `origen`, `borrable`) NO se toca — la
+                  envuelve el buscador. Sin query, se muestra intacta; con query, pega a
+                  `/actividad?funcion=ingresos&q=` y muestra el card uniforme. */}
+              <BuscadorActividad funcion="ingresos" testIDBase="ingresos-busqueda" placeholder="Buscar un ingreso">
               {ingresos.length === 0 && (
                 <Text testID="ingresos-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
                   Todavía no entró nada. Cuando cobres, anotalo acá — o decíselo al copiloto hablando.
@@ -211,6 +216,7 @@ export function PantallaIngresos() {
                   {error}
                 </Text>
               )}
+              </BuscadorActividad>
             </>
           )}
         </ScrollFormulario>

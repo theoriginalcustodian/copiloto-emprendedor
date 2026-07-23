@@ -99,6 +99,25 @@ SELECT (fecha::timestamptz),
 
 UNION ALL
 
+-- Los INGRESOS (cobros: de factura, dictados y MercadoPago) son actividad —el emprendedor registró
+-- que entró plata—, y la unión los omitía: `funcion=ingresos` (contrato recientes/buscar) volvía vacío
+-- sin este branch. El cobro de una factura es un evento DISTINTO de la emisión (la factura ya está en
+-- su propio branch con signo 'entra'): son dos cosas que pasaron, no un duplicado. El feed no suma
+-- —eso es `/inteligencia/portada`, que separa facturado de entró—; acá cada evento es una fila.
+SELECT (fecha::timestamptz),
+       ('ingreso:' || id::text),
+       'ingreso',
+       (CASE WHEN origen = 'factura' THEN 'Cobro de factura'
+             ELSE ('Ingreso' || CASE WHEN coalesce(medio, '') <> '' THEN ' (' || medio || ')'
+                                     ELSE '' END) END),
+       coalesce(nullif(cliente_nombre, ''), nullif(concepto, ''), ''),
+       monto::text,
+       'entra'
+  FROM {_SCHEMA}.copiloto_cobros
+ WHERE cliente_id = %(cid)s
+
+UNION ALL
+
 -- Los clientes DERIVADOS no son actividad: nacieron de un backfill, no de algo que el emprendedor
 -- hizo. Meter 200 derivados acá vuelve la lista inútil el día uno (contrato §3.2).
 SELECT created_at,
@@ -113,6 +132,22 @@ SELECT created_at,
 """
 
 _COLS = ("fecha", "id", "tipo", "titulo", "detalle", "monto", "signo")
+
+# El filtro `funcion` del contrato recientes/buscar: cada función mapea a uno o más `tipo` del feed.
+# `facturacion` junta factura + nota de crédito; las demás son homónimas. `clientes` NO está —un cliente
+# no es un movimiento y su glass va por `/clientes?q=` (decisión del addendum)—; `contabilidad` tampoco,
+# porque todavía no hay tipo de item contable. Fuente única: la valida la capa web contra `FUNCIONES`.
+_FUNCION_TIPOS: dict[str, tuple[str, ...]] = {
+    "facturacion": ("factura", "nota_credito"),
+    "gastos": ("gasto",),
+    "ingresos": ("ingreso",),
+    "presupuestos": ("presupuesto",),
+}
+FUNCIONES = tuple(_FUNCION_TIPOS)
+
+
+class FuncionInvalida(ValueError):
+    """`funcion` fuera de `FUNCIONES`. La capa web lo traduce a 400 (no se filtra en silencio a vacío)."""
 
 
 def _dos_decimales(valor) -> str | None:
@@ -131,19 +166,38 @@ class ActividadStore:
         self._cliente_id = cliente_id
 
     def listar(self, *, limit: int = 20,
-               desde: tuple[datetime.datetime, str] | None = None) -> dict:
+               desde: tuple[datetime.datetime, str] | None = None,
+               funcion: str | None = None, q: str = "") -> dict:
         """Una página. `desde` es el `(fecha, id)` del cursor — estrictamente MENOR, para no repetir
-        el último ítem de la página anterior."""
+        el último ítem de la página anterior. `funcion` acota a una función (contrato recientes/buscar);
+        `q` busca por texto (`ILIKE` sobre título+detalle). Los tres filtros se combinan con AND: el
+        cursor sigue funcionando dentro de la vista filtrada, así que paginar una búsqueda no repite ni
+        saltea."""
         from actividad_web import formatear_cursor
 
         params: dict = {"cid": self._cliente_id, "limite": int(limit)}
-        filtro = ""
+        condiciones: list[str] = []
         if desde is not None:
             # `(fecha, item_id) < (%(f)s, %(i)s)` — comparación de TUPLAS, no dos condiciones con AND.
             # `fecha < f OR (fecha = f AND id < i)` es lo mismo pero se escribe mal una de cada tres
             # veces, y el error (usar `<=` en la segunda rama) repite un ítem por página.
-            filtro = " WHERE (a.fecha, a.item_id) < (%(f)s, %(i)s)"
+            condiciones.append("(a.fecha, a.item_id) < (%(f)s, %(i)s)")
             params["f"], params["i"] = desde
+        if funcion:
+            tipos = _FUNCION_TIPOS.get(funcion)
+            if tipos is None:
+                raise FuncionInvalida(funcion)
+            condiciones.append("a.tipo = ANY(%(tipos)s)")
+            params["tipos"] = list(tipos)
+        if q:
+            # `ILIKE` sobre título+detalle. 🔴 Se escapan los comodines de LIKE (`%`, `_`, `\`) del texto
+            # del usuario: la parametrización del driver frena la inyección SQL, NO la de comodines —son
+            # dos cosas distintas—. Sin esto, buscar `100%` trae TODO (`%` = "cualquier cosa") y `a_b`
+            # matchea `axb`. Con el escape, el usuario busca el texto literal que tipeó.
+            patron = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            condiciones.append("(a.titulo ILIKE %(q)s OR a.detalle ILIKE %(q)s)")
+            params["q"] = f"%{patron}%"
+        filtro = (" WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
         sql = (f"SELECT a.fecha, a.item_id, a.tipo, a.titulo, a.detalle, a.monto, a.signo "
                f"FROM ({_UNION}) AS a{filtro} "

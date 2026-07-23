@@ -24,5 +24,5 @@ error" sino "error **barato y cazado rápido**" (ej.: el reminder de hoy falló,
 sistémico = sistema afinado, no defectuoso). El contrapunto se reserva para cuando hay un error de premisa real
 (como confundir GPU con CPU/RAM en el cuello del gate), con evidencia y proporcionado — no como reflejo ante todo
 logro. Reconocer lo real con precisión ≠ adulación. Relacionado: [[no-codificar-la-esperanza-principio-raiz]]
-(verificar antes de afirmar) — pero verificar no es negar por defecto. [[costo-incertidumbre-precision-ratchet]]
+(verificar antes de afirmar) — pero verificar no es negar por defecto.
 (dentro del envelope el éxito barato es esperado, no sospechoso).

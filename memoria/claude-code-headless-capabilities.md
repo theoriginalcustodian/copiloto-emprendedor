@@ -7,7 +7,7 @@ metadata:
   originSessionId: 2482606c-a89b-44ac-a311-eae9c7d7e344
 ---
 
-Verificado empíricamente el 2026-06-20 contra el CLI real (`claude --help` + spikes en dir de juguete), **versión 2.1.138**. Relevante porque el `FeatureWorkflow` de la casa usa `claude -p` headless como arquitecto E2E ([[casa-fabrica-features-diseno]]).
+Verificado empíricamente el 2026-06-20 contra el CLI real (`claude --help` + spikes en dir de juguete), **versión 2.1.138**. Relevante porque el `FeatureWorkflow` de la casa usa `claude -p` headless como arquitecto E2E ().
 
 **Qué soporta el modo headless (`claude -p`):**
 - **Effort levels** `low/medium/high/xhigh/max` vía `--effort` ✅ (literal del `--help`).

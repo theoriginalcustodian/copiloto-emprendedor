@@ -409,6 +409,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    gastos_app: FastAPI | None = None,
                    clientes_app: FastAPI | None = None,
                    actividad_app: FastAPI | None = None,
+                   inteligencia_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -507,41 +508,6 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         rows = read_replies_fn(cliente_id, session_id, after_id)
         next_id = rows[-1]["id"] if rows else after_id
         return {"replies": rows, "next_id": next_id}
-
-    @app.get("/actividad")
-    def actividad(q: str = "", cursor: str | None = None, limit: int = 20,
-                 cliente_id: str = Depends(require_tenant)) -> dict:
-        """GET /actividad?q=&cursor=&limit= — "Recientes" de la PWA/móvil (`packages/core/src/api/
-        actividad.ts::listarActividad`). Bearer requerido (`cliente_id` SIEMPRE del token, regla 7 —
-        nunca de un valor pasado por query, aunque hoy no haya datos que filtrar por él).
-
-        🔴 STUB DELIBERADO (501), no un placeholder olvidado — spike-first: el contrato que pide el
-        cliente (`ActividadItem`: `entrada_id` + `cliente_id`/`cliente_nombre` de un CLIENTE DEL
-        EMPRENDEDOR + `tipo_operacion` + `extracto`) es el modelo "entradas firmadas" heredado del
-        proyecto de origen (clínico: `paciente_id`). Ese modelo NO EXISTE en este backend, y se
-        verificó ANTES de escribir código (no se "codificó la esperanza"):
-          - grep del repo entero por `cliente_nombre`/`tipo_operacion`/`entrada_id` → cero hits fuera
-            de `packages/core`/`apps/mobile`/docs de research.
-          - el ÚNICO consumidor real de "actividad" en el backend es la acción `consultar_actividad`
-            (`dispatcher_emprendedor.py`), que usa `MemoryProvider.recall_range` sobre episodios de
-            Graphity (`{valid_at, role, content}` — chat crudo, SIN cliente-de-negocio ni tipo de
-            operación) y devuelve un RESUMEN en lenguaje natural (`activity_summary.py`), no una lista
-            de entradas estructuradas navegable/buscable por cliente.
-          - la memoria del proyecto (`copiloto-trazabilidad-operaciones-fact-triple`) ya marca la
-            trazabilidad de operaciones por fact-triple como CANDIDATO con spikes S1-S4 abiertos, no
-            construido.
-        Mapear episodios de chat a `{cliente_nombre, tipo_operacion}` inventando esos campos sería
-        fabricar datos de negocio en una pantalla de producción (peor que no implementar: el usuario
-        vería nombres de "cliente" y "operación" que no corresponden a nada real). El contrato del
-        cliente YA previó este escenario (`listarActividad` normaliza 404 Y 501 a `{status:
-        'no_disponible'}`, con copy explícito "todavía no está disponible" en `PantallaRecientes`) —
-        501 es la señal HONESTA y ya soportada, no un atajo.
-
-        Blindado para cuando la fuente real exista (probablemente sobre el candidato fact-triple):
-        la firma YA fija `cliente_id` exclusivamente por `Depends(require_tenant)` (nunca por query)
-        y YA acepta `q`/`cursor`/`limit` con la forma que espera el cliente — conectar la fuente real
-        el día que exista es un cambio LOCAL a este handler, no un cambio de contrato."""
-        raise HTTPException(status_code=501, detail="actividad: entradas firmadas no implementadas todavía")
 
     @app.get("/me")
     def me(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -750,13 +716,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         app.include_router(gastos_app.router)
     if clientes_app is not None:
         app.include_router(clientes_app.router)
-    # ⚠️ Al mergear la rama mobile: ahí vive un stub `GET /actividad` que devuelve 501, definido
-    # DIRECTAMENTE sobre `app` más arriba. Las rutas directas se registran ANTES que los
-    # `include_router` de acá abajo, así que el stub GANARÍA y ensombrecería esta
-    # implementación real — en silencio, sin conflicto de git y sin ningún error. El stub se
-    # BORRA en ese merge; no se deja "por las dudas".
+    # `/actividad` (feed unificado: "Recientes" + búsqueda por `funcion`/`q`, `actividad_web.py`
+    # sobre la unión de `actividad_store`). Sus rutas traen su propia barrera `Depends(require_tenant)`.
+    # ⚠️ HISTORIA (no re-introducir): hasta 2026-07-22 vivía acá arriba un stub `@app.get("/actividad")`
+    # directo sobre `app` que devolvía 501 (modelo viejo "entradas firmadas", clínico). Las rutas
+    # directas se registran ANTES que los `include_router`, así que ese stub GANABA y ensombrecía
+    # este router real EN SILENCIO — sin conflicto de git, sin error: código verde, front-door tapado.
+    # Se borró (rama `fix/actividad-stub-shadow`) y el test `test_actividad_no_es_stub_501_*` es el
+    # guard de esa regresión exacta. Nunca vuelvas a definir `/actividad` directo sobre `app`.
     if actividad_app is not None:
         app.include_router(actividad_app.router)
+    # `/inteligencia/*` (portada de negocio; gráficos y chat vienen después sobre la misma capa de
+    # queries). Sus rutas traen su propia barrera `Depends(require_tenant)`. Mismo criterio opcional.
+    if inteligencia_app is not None:
+        app.include_router(inteligencia_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).

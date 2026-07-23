@@ -19,4 +19,4 @@ El operador canonizó (2026-06-21, decisión explícita) el principio de desarro
 
 **Reforzado en el harness (2026-06-21, esta sesión):** 3 capas — doctrina (CLAUDE.md global, principio enriquecido) · memoria (este fact) · hook NUEVO `tech_debt_suggester.mjs` + `tech_debt_triggers.json` (8 patrones hot-reload) que dispara por señales de atajo ("TODO", "por ahora", "hardcode", "workaround", "después lo arreglo", "deuda técnica") y recuerda gestionarla. Smoke antes de cablear. Detalle técnico en `~/.claude/HARNESS.md` §1.2/§8 — la memoria NO duplica (regla §6 del HARNESS). Mismo patrón que [[spike-first-central-proyecto]] (señal propia, ortogonal a la complejidad). Requiere restart de sesión.
 
-Relacionado: [[spike-first-central-proyecto]] (el principio hermano, cara temprana), [[harness-code-reviewer-audit-mejorados]].
+Relacionado: [[spike-first-central-proyecto]] (el principio hermano, cara temprana).

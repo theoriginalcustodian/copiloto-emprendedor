@@ -74,7 +74,11 @@ def limpiar(conn, tenant_a, tenant_b):
     """Los tests escriben en la DB viva: se borra lo propio al terminar, filtrando por los UUID del test."""
     yield
     with conn.cursor() as cur:
-        for tabla in ("afip_credentials", "afip_perfil", "afip_secret_handoff"):
+        # `afip_comprobantes` + `copiloto_eventos`: el test del row-id registra un comprobante, y
+        # `registrar` loguea a `copiloto_eventos` (hito 5 §1.1). Sin barrerlos, cada corrida deja
+        # huérfanos en producción — la lección que ese hito pagó caro.
+        for tabla in ("afip_credentials", "afip_perfil", "afip_secret_handoff",
+                      "afip_comprobantes", "copiloto_eventos"):
             # `cliente_id` es uuid en la tabla: hay que castear el array explícitamente. En un
             # `WHERE cliente_id=%s` Postgres castea el literal solo, pero con ANY(ARRAY[...]) no.
             cur.execute(
@@ -312,3 +316,28 @@ def test_adversarial_el_ambiente_no_permite_leer_la_credencial_de_otro_tenant(
     store_b = AfipCredentialStore(conn_factory, tenant_b, CryptoFake())
     assert store_b.get(cuit, "prod") is None
     assert store_b.ambientes_vinculados(cuit) == []
+
+
+# ---------------------------------------------------------------------------
+# El pedido_ de FRONTEND: el `id` de fila viaja para que la card de éxito pueda cobrar
+# ---------------------------------------------------------------------------
+
+
+def test_registrar_devuelve_el_id_y_por_idem_key_lo_expone(conn_factory, tenant_a):
+    """Contra la base real: `registrar` devuelve el `id` de fila (RETURNING) y `por_idem_key` lo trae
+    de vuelta (el SELECT con `id` + `_fila(con_id=True)`). Es lo que hace que la card de éxito ofrezca
+    el cobro sin rebuscar por (punto_venta, nro). El fake del unit test no ejercita este mapeo real."""
+    from afip_comprobante_store import AfipComprobanteStore
+    store = AfipComprobanteStore(conn_factory, tenant_a)
+    kw = dict(cuit="30712345678", tipo_cbte=6, punto_venta=1, nro=1234, cae="CAE-X",
+              cae_vto=None, fecha_emision=date(2026, 7, 22), doc_tipo=96, doc_nro="20111111112",
+              total="1000.00", idem_key="idem-rowid", workflow_id="wf-x")
+
+    rid = store.registrar(**kw)
+    assert isinstance(rid, int)
+
+    ya = store.por_idem_key("idem-rowid")
+    assert ya is not None and ya["id"] == rid
+
+    # Idempotente por la tupla única: re-registrar devuelve el MISMO id (camino ON CONFLICT), no otra fila.
+    assert store.registrar(**kw) == rid

@@ -82,6 +82,20 @@ export type ActividadResult =
   | { status: 'no_disponible' };
 
 export interface ListarActividadParams {
+  /**
+   * Acota el feed a una función. `facturacion` cruza `{factura, nota_credito}`; el resto mapea por su
+   * tipo homónimo (`gastos`→gasto, `ingresos`→ingreso, `presupuestos`→presupuesto). `contabilidad`
+   * queda declarado pero HOY no surte ningún tipo (no existe item "contable").
+   *
+   * ✅ **VIVO desde #58** (`listo_actividad-sirve-el-router-real`, verificado por HTTP contra el vivo).
+   * Backend borró el stub 501 que ensombrecía el router (`hallazgo_actividad-la-tapa-un-stub-501`), así
+   * que `?funcion=X` ya filtra de verdad: `?funcion=gastos → 200 {items,cursor}` con sólo gastos. Los
+   * válidos son exactamente **`facturacion, gastos, ingresos, presupuestos`**; otro → 400 con la lista.
+   * El mapeo 501→`no_disponible` queda como **degradación defensiva**, ya no como el camino esperado.
+   * Falta sólo la confirmación en **device** (de backend, regla del teléfono) para cerrar el ciclo. Es
+   * el MISMO endpoint que surte el swipe-left del principal — un solo cableado.
+   */
+  funcion?: string;
   /** Default 20 del backend, máximo 100. Fuera de rango → 400 (medido). */
   limit?: number;
   /**
@@ -93,6 +107,15 @@ export interface ListarActividadParams {
    * vez de dejarlo valer "espacio". Concatenarlo a mano en la URL es lo que rompe.
    */
   cursor?: string | null;
+  /**
+   * Búsqueda por texto (`ILIKE` sobre `titulo`+`detalle`, lo hace el backend). Vive en `/actividad`,
+   * **no** en `/gastos`/`/ingresos`/etc. — esos son la vista de DETALLE, no el buscador.
+   *
+   * ✅ **VIVO desde #58** (`?q=nafta → 200`, ya no 501). Un `?funcion=invalida` valida a **400** —que
+   * **este cliente propaga como error**, sin disfrazarlo de `no_disponible` (el endpoint está desplegado
+   * y rechaza el input, no está ausente)—. Falta sólo la confirmación en device (de backend).
+   */
+  q?: string;
 }
 
 /**
@@ -123,8 +146,13 @@ function esRespuestaDelEndpoint(raw: unknown): boolean {
  */
 export async function listarActividad(params: ListarActividadParams = {}): Promise<ActividadResult> {
   const query = new URLSearchParams();
+  // `funcion` primero para que la URL se lea `?funcion=gastos&limit=20&cursor=…`; el orden no cambia
+  // la semántica pero mantiene estable lo que ya está medido (sin `funcion`/`q` la URL queda idéntica
+  // a antes: `?limit=&cursor=`).
+  if (params.funcion != null && params.funcion !== '') query.set('funcion', params.funcion);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.cursor != null && params.cursor !== '') query.set('cursor', params.cursor);
+  if (params.q != null && params.q !== '') query.set('q', params.q);
   const qs = query.toString();
 
   try {
