@@ -421,18 +421,18 @@ def create_afip_app(
         — avisa, no prohíbe: el emprendedor sabe mejor que el sistema si le pagaron dos veces.
         """
         store = _cobros(cliente_id)
-        if not body.confirmar_duplicado:
-            candidato = await asyncio.to_thread(
-                lambda: store.posible_duplicado(monto=body.monto,
-                                                cliente_nombre=body.cliente_nombre or ""))
-            if candidato:
-                raise conflicto(
-                    INGRESO_DUPLICADO_PROBABLE,
-                    "hay un ingreso parecido de estos días — ¿es otro cobro o el mismo?",
-                    candidato=candidato,
-                    # La app no tiene que adivinar cómo insistir: se lo decimos.
-                    reintentar_con={"confirmar_duplicado": True})
         try:
+            if not body.confirmar_duplicado:
+                candidato = await asyncio.to_thread(
+                    lambda: store.posible_duplicado(monto=body.monto,
+                                                    cliente_nombre=body.cliente_nombre or ""))
+                if candidato:
+                    raise conflicto(
+                        INGRESO_DUPLICADO_PROBABLE,
+                        "hay un ingreso parecido de estos días — ¿es otro cobro o el mismo?",
+                        candidato=candidato,
+                        # La app no tiene que adivinar cómo insistir: se lo decimos.
+                        reintentar_con={"confirmar_duplicado": True})
             cobro = await asyncio.to_thread(
                 lambda: store.registrar_suelto(
                     monto=body.monto, medio=body.medio or "", fecha=body.fecha,
