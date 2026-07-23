@@ -14,14 +14,20 @@ CUIT = "20269996065"
 class StoreEspia:
     """Registra lo que se le pidió guardar y devuelve filas como las que arma el SELECT real."""
 
-    def __init__(self) -> None:
+    ID_FILA = 4242
+
+    def __init__(self, dedup: dict | None = None) -> None:
         self.registrado: dict = {}
+        self.dedup = dedup   # si está, `por_idem_key` lo devuelve (simula el reintento post-éxito)
 
     def por_idem_key(self, idem_key):
-        return None
+        return self.dedup
 
     def registrar(self, **kw):
         self.registrado = kw
+        # El real devuelve el `id` de fila (fresco o el que ya estaba); la activity lo expone en su
+        # resultado. Sin esto, `comprobante_id` sería None y la card de éxito no podría cobrar.
+        return self.ID_FILA
 
 
 class GatewayFake:
@@ -88,3 +94,31 @@ def test_la_firma_vieja_sigue_andando(monkeypatch):
 
     assert store.registrado["receptor_nombre"] is None
     assert store.registrado["cae"] == "86290621776472"
+
+
+# ── el pedido_ de FRONTEND: el `id` de fila viaja en el resultado del workflow ────────────────────
+
+def test_el_resultado_de_una_emision_fresca_trae_el_id_de_fila(monkeypatch):
+    """La card de éxito necesita el `id` para ofrecer «¿ya la cobraste?» (`/afip/comprobantes/{id}/cobros`).
+    Sin él, `ResultadoEmision.id` es null y la sección de cobro no se dibuja. El id sale de `registrar`."""
+    store = StoreEspia()
+    _cablear(monkeypatch, store)
+
+    resultado = act._emitir_sync("t1", CUIT, PAYLOAD, "idem-fresca", "wf-1", "Juan Pérez")
+
+    assert resultado["duplicado"] is False
+    assert resultado["id"] == StoreEspia.ID_FILA
+
+
+def test_el_reintento_post_exito_tambien_trae_el_id(monkeypatch):
+    """El camino de dedup (`por_idem_key` encuentra el comprobante ya emitido) también expone el `id`:
+    si el usuario reintenta y cae en el dedup, la card sigue pudiendo ofrecer el cobro."""
+    ya_emitido = {"id": 99, "cae": "X", "nro": 8, "tipo_cbte": 11, "punto_venta": 1,
+                  "receptor_nombre": "Juan Pérez"}
+    store = StoreEspia(dedup=ya_emitido)
+    _cablear(monkeypatch, store)
+
+    resultado = act._emitir_sync("t1", CUIT, PAYLOAD, "idem-repetida", "wf-1", "Juan Pérez")
+
+    assert resultado["duplicado"] is True
+    assert resultado["id"] == 99
