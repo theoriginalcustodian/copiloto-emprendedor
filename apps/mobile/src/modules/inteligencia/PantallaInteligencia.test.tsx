@@ -9,17 +9,37 @@
  */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, leerPortada: jest.fn() };
+  return {
+    ...actual,
+    leerPortada: jest.fn(),
+    leerGraficoFacturacion: jest.fn(),
+    leerGraficoEntroVsSalio: jest.fn(),
+    leerGraficoCategorias: jest.fn(),
+    leerGraficoMargenTrabajo: jest.fn(),
+    preguntarInteligencia: jest.fn(),
+  };
 });
 
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { leerPortada } from '@copiloto/core';
+import {
+  leerGraficoCategorias,
+  leerGraficoEntroVsSalio,
+  leerGraficoFacturacion,
+  leerGraficoMargenTrabajo,
+  leerPortada,
+  preguntarInteligencia,
+} from '@copiloto/core';
 
 import { PantallaInteligencia } from './PantallaInteligencia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const leerMock = leerPortada as jest.MockedFunction<typeof leerPortada>;
+const preguntarMock = preguntarInteligencia as jest.MockedFunction<typeof preguntarInteligencia>;
+const facturacionMock = leerGraficoFacturacion as jest.MockedFunction<typeof leerGraficoFacturacion>;
+const entroVsSalioMock = leerGraficoEntroVsSalio as jest.MockedFunction<typeof leerGraficoEntroVsSalio>;
+const categoriasMock = leerGraficoCategorias as jest.MockedFunction<typeof leerGraficoCategorias>;
+const margenTrabajoMock = leerGraficoMargenTrabajo as jest.MockedFunction<typeof leerGraficoMargenTrabajo>;
 
 const PORTADA = {
   caja: { saldo: '184000.00', moneda: 'ARS' },
@@ -43,6 +63,13 @@ async function montar() {
 beforeEach(() => {
   jest.clearAllMocks();
   leerMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
+  // Los 4 gráficos no son el objeto de este archivo (tienen el propio `GraficosInteligencia.test.tsx`)
+  // — `no_disponible` los deja sin pintar nada, así no interfieren con las aserciones de la portada.
+  facturacionMock.mockResolvedValue({ status: 'no_disponible' });
+  entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
+  categoriasMock.mockResolvedValue({ status: 'no_disponible' });
+  margenTrabajoMock.mockResolvedValue({ status: 'no_disponible' });
+  preguntarMock.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Gastaste $18.000 este mes.', fuente: 'sql' } });
 });
 
 describe('PantallaInteligencia — lo que muestra', () => {
@@ -114,5 +141,43 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
 
     await waitFor(() => expect(screen.getByText('Panadería Los Tilos')).toBeTruthy());
     expect(screen.queryByText('Cliente Que No Existe')).toBeNull();
+  });
+});
+
+describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement)', () => {
+  it('arranca en "Resumen"; tocar "Preguntar" monta el chat y oculta la portada', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
+
+    expect(screen.getByTestId('chat-inteligencia')).toBeTruthy();
+    expect(screen.queryByTestId('inteligencia-portada')).toBeNull();
+  });
+
+  it('volver a "Resumen" restaura la portada sin perder la pregunta ya hecha', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
+    await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
+
+    expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
+    expect(screen.queryByTestId('chat-inteligencia')).toBeNull();
+  });
+
+  it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {
+    facturacionMock.mockResolvedValue({
+      status: 'ok',
+      modo: 'serie',
+      tipo: 'barras',
+      periodo: 'Julio 2026',
+      serie: [{ mes: '2026-07', total: '50000.00', cantidad: 3 }],
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-graficos-seccion')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-grafico-facturacion')).toBeTruthy();
   });
 });
