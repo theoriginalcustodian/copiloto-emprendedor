@@ -38,6 +38,7 @@
 - [No PR por cada cambio chico — batchear](batch-cambios-no-pr-por-tweak.md) — `feedback`. Acumular cambios chicos → PRs con sentido.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
 - [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
+- [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — `project`. **LEER antes de `seed-memory.sh`.** `rsync --delete` espeja repo→slug. Escribir en `memoria/` del repo.
 - [📐 documed-front es la app CANÓNICA — consultarla antes de UI](consultar-documed-siempre-antes-de-implementar.md) — `feedback`. Regla dura 3×. Portar adaptando, no copiar ciego.
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — `feedback`. Cada lado verificó su mitad y la junta no era de nadie.
