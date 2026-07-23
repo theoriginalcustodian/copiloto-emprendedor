@@ -25,6 +25,7 @@ import {
 } from '@copiloto/core';
 
 import { empujarUnaVez, reabrirNavegacion } from '../../navegacion/empujarUnaVez';
+import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { useTema } from '../../theme/ThemeProvider';
 // `ScrollFormulario` (y no un `ScrollView`) porque los cuatro pasos son formularios: revela el campo
 // que recibe el foco en vez de dejarlo tapado por el teclado. Ver su docstring y el de `MarcoGlass`.
@@ -556,7 +557,18 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
                 las facturas emitidas, y separarlas obligaría a preguntarse en cuál de los dos
                 lugares está una factura concreta. */}
             <SeccionMeDeben ref={refMeDeben} />
-            <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+            {/* 🔴 Decisión C: el buscador envuelve SÓLO «Mis comprobantes» —no «Te deben» (otra
+                pregunta) ni el wizard—. Sin query, la sección rica (con anular, PDF, CAE) se muestra
+                intacta; con query pega a `/actividad?funcion=facturacion&q=` (cruza factura +
+                nota_credito) y muestra el card uniforme. Ubicación mía por default; si planificación
+                prefiere otra, es un solo movimiento. */}
+            <BuscadorActividad
+              funcion="facturacion"
+              testIDBase="facturacion-busqueda"
+              placeholder="Buscar un comprobante"
+            >
+              <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+            </BuscadorActividad>
           </>
         )}
       </ScrollFormulario>
