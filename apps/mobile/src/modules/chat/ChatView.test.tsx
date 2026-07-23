@@ -31,6 +31,58 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 
 /**
+ * `BotonVoz`/`ControlesFlotantes` MOCKEADOS acá -- no en general, sólo en este archivo de
+ * integración. `GestureDetector` está mockeado GLOBAL a passthrough (`jest.setup.js`: "no
+ * ejercitamos el gesto -- se valida en el device"), así que el `BotonVoz` REAL no tiene ningún
+ * `Pressable`/`onPress` que `fireEvent.press` pueda disparar -- el gesto entero (mantener/deslizar/
+ * soltar) es intocable desde jsdom. Lo que ESTE archivo prueba no es el gesto (ya cubierto por
+ * `BotonVoz.test.tsx` a nivel render + por `useVozComando.test.ts` a nivel máquina de fases): es el
+ * CABLEADO de `ChatView` -- qué le pasa a `voz`/`fijado`/`enviarAudio` cuando cada callback dispara.
+ * Los stand-ins exponen un `Pressable` por callback, wireados a las MISMAS props que el componente
+ * real recibiría de un gesto real.
+ */
+jest.mock('./BotonVoz', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    BotonVoz: ({ onIniciar, onSoltarSinFijar, onFijar, disabled }: any) => (
+      <>
+        <Pressable testID="boton-voz" disabled={disabled} onPress={onIniciar}>
+          <Text>mic</Text>
+        </Pressable>
+        <Pressable testID="boton-voz-fijar-test" onPress={onFijar}>
+          <Text>fijar (mock del deslizar)</Text>
+        </Pressable>
+        <Pressable testID="boton-voz-soltar-test" onPress={onSoltarSinFijar}>
+          <Text>soltar sin fijar (mock)</Text>
+        </Pressable>
+      </>
+    ),
+  };
+});
+jest.mock('./ControlesFlotantes', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    ControlesFlotantes: ({ fase, alPausar, alReanudar, alEnviar, alEliminar }: any) => (
+      <>
+        <Text testID="controles-flotantes-fase">{fase}</Text>
+        <Pressable testID="voz-pausar" onPress={alPausar}>
+          <Text>Pausar</Text>
+        </Pressable>
+        <Pressable testID="voz-reanudar" onPress={alReanudar}>
+          <Text>Reanudar</Text>
+        </Pressable>
+        <Pressable testID="voz-enviar" onPress={alEnviar}>
+          <Text>Enviar</Text>
+        </Pressable>
+        <Pressable testID="voz-eliminar" onPress={alEliminar}>
+          <Text>Eliminar</Text>
+        </Pressable>
+      </>
+    ),
+  };
+});
+
+/**
  * Override LOCAL de `react-native-reanimated`: el mock GLOBAL (`jest.setup.js`) no exporta
  * `SlideInDown`/`SlideOutDown` porque, hasta F6, nada en el árbol de `ChatView` los usaba.
  * `GlassGrabacionCopiloto` sí (la entrada/salida del HUD de voz) -- sin este override, CUALQUIER test
@@ -204,41 +256,113 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
   });
 });
 
-describe('ChatView -- voz-comando (F6): BotonVoz + GlassGrabacionCopiloto', () => {
+describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fija, SIN glass', () => {
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
     jest.mocked(api.sendAudio).mockReset();
+    jest.mocked(api.sendAudio).mockResolvedValue({ replies: [], next_id: 0 } as any);
     jest.mocked(api.getReply).mockReset();
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     mockRequestRecordingPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
     mockGrabadorVoz.uri = null;
   });
 
-  it('tocar el botón de voz abre el HUD de grabación', async () => {
+  it('mantener apretado (mock: tocar el botón) arranca -- SIN glass, con la onda flotante', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
 
     await fireEvent.press(screen.getByTestId('boton-voz'));
 
-    await waitFor(() => expect(screen.getByTestId('glass-grabacion-copiloto')).toBeTruthy());
-    expect(screen.getByTestId('hud-copiloto')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
+    // No hay glass: ni el HUD viejo, ni ningún `MarcoGlass` de por medio -- el botón sigue de pie.
+    expect(screen.queryByTestId('glass-grabacion-copiloto')).toBeNull();
+    expect(screen.getByTestId('boton-voz')).toBeTruthy();
+    // Sin fijar todavía: los controles flotantes no existen.
+    expect(screen.queryByTestId('voz-enviar')).toBeNull();
   });
 
-  it('Descartar cierra el HUD sin llamar a sendAudio -- es la única vía legítima de perder el audio', async () => {
+  it('deslizar hacia arriba (mock: onFijar) muestra los controles flotantes y esconde el botón', async () => {
     await renderChatView();
     await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
-
     await fireEvent.press(screen.getByTestId('boton-voz'));
-    await waitFor(() => expect(screen.getByTestId('glass-grabacion-copiloto')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
 
-    await fireEvent.press(screen.getByTestId('copiloto-descartar'));
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
 
-    await waitFor(() => expect(screen.queryByTestId('glass-grabacion-copiloto')).toBeNull());
+    await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
+    expect(screen.getByTestId('voz-pausar')).toBeTruthy();
+    expect(screen.getByTestId('voz-eliminar')).toBeTruthy();
+    // La onda sigue -- es el ÚNICO feedback, contrato §1: "sin contador, la onda flotante".
+    expect(screen.getByTestId('onda-flotante')).toBeTruthy();
+    // El botón de mantener-apretado ya no está: los controles flotantes tomaron el mando.
+    expect(screen.queryByTestId('boton-voz')).toBeNull();
+  });
+
+  it('🔴 fijado: soltar el dedo (mock: onSoltarSinFijar) NO hace nada -- se termina por Enviar/Eliminar', async () => {
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+    await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
+
+    // El mock de "soltar" ya no está montado (el botón se ocultó al fijar) -- soltar el dedo
+    // literalmente no tiene ningún control al que llegarle, que es la MISMA garantía que el contrato
+    // pide ("ya NO detiene"): no hay callback de soltar disponible una vez fijado.
+    expect(screen.queryByTestId('boton-voz-soltar-test')).toBeNull();
     expect(api.sendAudio).not.toHaveBeenCalled();
   });
 
-  it('permiso de micrófono denegado: aviso legible, sin crash ni HUD', async () => {
-    mockRequestRecordingPermissionsAsync.mockResolvedValueOnce({ granted: false });
+  it('soltar SIN fijar envía directo -- corta, sube, entra como mensaje', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await waitFor(() => expect(screen.getByTestId('onda-flotante')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('boton-voz-soltar-test'));
+
+    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
+    // Vuelve al estado inicial -- ni glass, ni controles, ni onda.
+    await waitFor(() => expect(screen.queryByTestId('onda-flotante')).toBeNull());
+    expect(screen.queryByTestId('voz-enviar')).toBeNull();
+  });
+
+  it('fijado, Enviar -- mismo camino que soltar-sin-fijar (una sola función "mandar")', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+    await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('voz-enviar'));
+
+    await waitFor(() => expect(api.sendAudio).toHaveBeenCalledTimes(1));
+    // `fijado` se resetea solo cuando `voz.fase` vuelve a `inactivo`: el botón de mantener vuelve.
+    await waitFor(() => expect(screen.getByTestId('boton-voz')).toBeTruthy());
+    expect(screen.queryByTestId('voz-enviar')).toBeNull();
+  });
+
+  it('fijado, Eliminar -- cierra sin llamar a sendAudio, la única vía legítima de perder el audio', async () => {
+    mockGrabadorVoz.uri = 'file:///cache/voz.m4a';
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+    await fireEvent.press(screen.getByTestId('boton-voz'));
+    await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
+    await waitFor(() => expect(screen.getByTestId('voz-eliminar')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('voz-eliminar'));
+
+    await waitFor(() => expect(screen.queryByTestId('voz-enviar')).toBeNull());
+    expect(api.sendAudio).not.toHaveBeenCalled();
+    expect(screen.getByTestId('boton-voz')).toBeTruthy();
+  });
+
+  it('permiso de micrófono denegado: aviso legible, sin crash ni controles', async () => {
+    // 🔴 `mockResolvedValue` (persistente), NO `...Once`: con el pre-warm (useVozComando §2.bis) el
+    // permiso se consulta YA al montar (precalentar), no recién al tocar el botón — un mock de un
+    // solo uso lo consumiría el montaje y el press vería el default (`granted: true`) del `beforeEach`.
+    mockRequestRecordingPermissionsAsync.mockResolvedValue({ granted: false });
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
 
     await renderChatView();
@@ -248,7 +372,7 @@ describe('ChatView -- voz-comando (F6): BotonVoz + GlassGrabacionCopiloto', () =
 
     await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(1));
     expect(alertSpy.mock.calls[0]?.[0]).toBe('Sin acceso al micrófono');
-    expect(screen.queryByTestId('glass-grabacion-copiloto')).toBeNull();
+    expect(screen.queryByTestId('onda-flotante')).toBeNull();
 
     alertSpy.mockRestore();
   });

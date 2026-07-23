@@ -112,10 +112,15 @@ export function BotonDescartar({
   id,
   onPress,
   disabled = false,
+  texto = 'Descartar',
 }: {
   id: string;
   onPress: () => void;
   disabled?: boolean;
+  /** El texto por defecto es "Descartar" (grabación clínica); el dictado del copiloto usa "Eliminar"
+   *  (contrato `dictado-por-voz-sin-glass...`) — misma acción destructiva, distinto vocabulario de
+   *  dominio, así que se parametriza en vez de forkear el componente. */
+  texto?: string;
 }) {
   const tema = useTema();
   return (
@@ -133,7 +138,7 @@ export function BotonDescartar({
           Android y en algunos aparece a color -- justo el elemento que NO puede parecer festivo. */}
       <IconoTacho color={tema.color.peligro} />
       <Text style={{ color: tema.color.peligro, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.chico }}>
-        Descartar
+        {texto}
       </Text>
     </Pressable>
   );
