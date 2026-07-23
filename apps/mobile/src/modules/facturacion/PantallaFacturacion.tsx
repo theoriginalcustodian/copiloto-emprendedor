@@ -542,6 +542,10 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
             onEditar={setPasoEdicion}
             onVolverResumen={() => setPasoEdicion(null)}
             onNuevaFactura={nuevaFactura}
+            onCobroRegistrado={() => {
+              void refMeDeben.current?.recargar();
+              void refComprobantes.current?.recargar();
+            }}
           />
         )}
 
@@ -614,6 +618,9 @@ interface PasoActivoProps {
   onEditar: (paso: PasoEditable) => void;
   onVolverResumen: () => void;
   onNuevaFactura: () => void;
+  /** Se registró/deshizo un cobro desde la card de éxito (`TarjetaComprobante`). Refresca «Te deben»
+   *  y «Mis comprobantes». */
+  onCobroRegistrado: () => void;
 }
 
 /** El `switch` del paso VISIBLE (backend, salvo que `pasoEdicion` lo override estando en resumen -- ver
@@ -635,6 +642,7 @@ function PasoActivo({
   onEditar,
   onVolverResumen,
   onNuevaFactura,
+  onCobroRegistrado,
 }: PasoActivoProps) {
   const tema = useTema();
   const enEdicionDesdeResumen = pasoBackend === 'resumen' && pasoEdicion != null;
@@ -684,7 +692,13 @@ function PasoActivo({
     case 'emitiendo':
       return <ActivityIndicator testID="facturacion-paso-emitiendo" color={tema.color.acento} />;
     case 'comprobante':
-      return <TarjetaComprobante estado={estado} onNuevaFactura={onNuevaFactura} />;
+      return (
+        <TarjetaComprobante
+          estado={estado}
+          onNuevaFactura={onNuevaFactura}
+          onCobroRegistrado={onCobroRegistrado}
+        />
+      );
     case 'configurar_rechazo':
       return <BloqueConfigurar />;
     case 'rechazada':
