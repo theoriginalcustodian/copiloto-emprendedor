@@ -27,6 +27,21 @@ prueba nada sobre lo desplegado.
 tiene. Barato y binario: `grep -c <símbolo_que_sólo_está_en_prod> <archivo_local>` — acá habría sido
 `make_consultar_anulacion`. Cero es "estás en la rama equivocada, no sincronices".
 
+**Segunda cara del mismo filo (2026-07-22): el worktree no es el equivocado, es el VIEJO.** Creé un
+worktree `off main` para trabajar, y mientras codeaba las OTRAS dos sesiones mergearon a `main` (modelo
+de 3 sesiones). Mi worktree quedó basado en un `main` de hace minutos — le faltaba el grafo log
+(`evento_store.py` + ganchos). `deploy.sh` hace `rm -rf $REMOTE/apps/copiloto` y untarea el worktree:
+deployar desde ahí **habría borrado `evento_store.py` de prod** y tumbado todos los stores que lo
+importan. Los tests pasaron igual (mi base no tenía los ganchos, así que no había nada que romper) —
+verde en un árbol viejo tampoco prueba nada sobre lo desplegado. Lo cazó `git diff --stat origin/main
+-- apps/copiloto motor deploy` que mostró DELECIONES (evento_store `-91`, test_grafo_log `-240`).
+
+**La regla que sale de las dos:** **nunca deployás desde tu worktree de trabajo.** Deployás desde un
+checkout FRESCO de `origin/main` (`git fetch` + `git worktree add --detach ../_wt-deploy origin/main`),
+tras confirmar el merge. Y antes de tirar el gatillo: `git diff --stat origin/main -- <superficie de
+deploy>` **tiene que salir vacío** — cualquier línea (y sobre todo cualquier `-`) es "vas a pisar
+prod con algo que no es `main`".
+
 Se relaciona con [[instrumentos-que-confirman-en-vez-de-verificar]] y con la regla global de sesiones
 paralelas: los worktrees aíslan el código, **no** el estado compartido — y el VPS es estado
 compartido.
