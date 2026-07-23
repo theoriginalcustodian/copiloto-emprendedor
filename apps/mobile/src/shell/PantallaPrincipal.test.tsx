@@ -118,6 +118,20 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
   });
 
   /**
+   * 🔴 El encabezado "Actividad reciente" pasó de texto muerto a TAPEABLE → `/recientes`
+   * (`addendum_mi-dia` §3). Antes no había forma de ver la lista COMPLETA desde el principal; ahora el
+   * título es la entrada. `empujarUnaVez` igual que los tiles: dos toques no apilan dos glass.
+   */
+  it('tocar el encabezado "Actividad reciente" navega a /recientes', async () => {
+    await envolver();
+
+    await fireEvent.press(screen.getByTestId('escritorio-encabezado-recientes'));
+
+    expect(router.push).toHaveBeenCalledWith('/recientes');
+    expect(router.push).toHaveBeenCalledTimes(1);
+  });
+
+  /**
    * La otra mitad de la invariante: la puerta tiene que REABRIRSE al recuperar el foco, o después del
    * primer glass la app quedaría muda para siempre — un fix peor que el defecto. Remontar la pantalla
    * dispara `useFocusEffect`, que es lo que ocurre al volver de un glass.
