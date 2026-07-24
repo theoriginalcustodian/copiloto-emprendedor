@@ -40,6 +40,26 @@ graphity_search(query="...", group_id="code-copiloto-emprendedor", scope="nodes"
 `deploy`. **NO cubre** `docs/`, `coordinacion/`, `memoria/`, `_evidencia/`, `code/`. Si buscás algo de
 ahí y no aparece, está **fuera de alcance, no roto** ([[vacio-no-es-hallazgo-correr-el-control]]).
 
+## 🕐 El cuarto filo — el grafo conoce lo PUSHEADO, y nada más
+
+Leído del mecanismo real (`.githooks/pre-push`), 2026-07-24 — la doc decía *"puede ir unos minutos
+atrás"* y **se queda corta**: no es un retraso de minutos, es un **horizonte**.
+
+- **Disparador: `git push`** (incremental `--since <sha remoto>`), **fail-closed** — si el sync falla el
+  push aborta, así que *push exitoso ⇒ grafo sincronizado*.
+- **NO está:** lo sin commitear · lo commiteado sin pushear · lo pusheado con **`git push --no-verify`**
+  (bypass **silencioso**, sin detector de drift posterior).
+- **Está:** el estado de la **última rama pusheada** — no necesariamente `main`.
+- **Adelantar sin pushear:** `bash scripts/graph-sync.sh` (sync manual, sin push).
+
+> **Código ESTABLECIDO → el grafo es el índice. Trabajo EN VUELO (últimas horas, otra sesión, lo tuyo
+> sin pushear) → el grafo es CIEGO por diseño**; ahí va `git grep origin/<rama>` o leer el archivo.
+
+Por eso una ausencia en el grafo **nunca** prueba inexistencia: además del control positivo, preguntate
+*«¿esto ya se pusheó?»*. Y el caso peligroso es el **normal**, no el raro — preguntar por lo que otra
+sesión está escribiendo **ahora mismo**. Un grafo desactualizado responde con la misma cara de certeza
+que uno al día: [[supuesto-cuya-falla-parece-un-estado-legitimo]].
+
 ## Evidencia — el control se corrió ANTES de canonizar la regla
 
 2026-07-24, cruzado contra código verificado a mano minutos antes: **4 de 4 exactos** —

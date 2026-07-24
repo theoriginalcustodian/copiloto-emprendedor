@@ -138,3 +138,30 @@ hallazgo»*— **cincuenta y cinco minutos antes** de cometer el caso 10, con m�
 vez, porque venía de una racha de diagnósticos correctos. **Saber la regla no protege: protege el
 control.** Por eso la regla operativa no es *«acordate»* sino *«el guard no opina»* — algo que queda
 escrito en el código y no depende de la memoria de nadie.
+
+## Caso 11 (2026-07-24) — el sensor identificaba a los sujetos por cómo se LLAMAN, no por lo que HACEN
+
+`no-ocio-check.sh` mide la vida de cada sesión por el mtime de su transcript. Para saber **cuál**
+transcript es de cuál sesión, contaba apariciones de `sesión BACKEND` / `sesión FRONTEND`. Falla por
+una razón que sólo se ve en un sistema de varios actores: **todas CITAN el buzón, así que el nombre de
+todas aparece en el transcript de todas.** El conteo empató, las dos vivas quedaron rotuladas
+FRONTEND, y a backend lo nombró **por descarte**.
+
+Un rótulo por descarte **no falla: confirma**. Con backend muerto habría reportado backend vivo igual —
+el número que el operador lee («backend 0min») es idéntico en los dos mundos. Y encima el operador
+**había renombrado las sesiones ese mismo día**: cualquier instrumento anclado a nombres iba a mentir.
+
+Bug apilado debajo, invisible mientras el rótulo estaba mal: se quedaba con el **primer** transcript de
+cada rótulo, no con el **más fresco**. Una sesión deja transcripts viejos al reiniciarse → reportó
+*«backend 66min»* con backend tecleando.
+
+**La regla:** para identificar a un actor, usá **evidencia de conducta ajena a su voluntad**, no su
+autodeclaración. Acá: los **paths que toca** (`apps/copiloto`+`motor` = backend ·
+`apps/mobile`+`packages/core` = frontend). Nadie edita `apps/mobile` desde la sesión de backend, y
+ningún rename lo cambia. Y **si no se puede rotular, decilo fuerte** (`⚠️ transcript vivo SIN rotular`)
+en vez de asignar por descarte: un actor sin identificar puede ser justo el que creés muerto.
+
+Lo destapó el operador diciendo *«están paradas»* contra un instrumento que decía lo contrario. El
+control que lo resolvió no fue mirar el sensor: fue **leer las tool calls de cada transcript** — backend
+grepeando `continue_as_new` en `conversation_workflow.py`, frontend editando `chat/index.ts`.
+Conducta observada, no rótulo.
