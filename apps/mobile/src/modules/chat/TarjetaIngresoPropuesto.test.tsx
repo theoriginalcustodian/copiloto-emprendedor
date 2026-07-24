@@ -76,6 +76,17 @@ describe('TarjetaIngresoPropuesto', () => {
     expect(mockRegistrar).toHaveBeenCalledWith(expect.objectContaining({ monto: '15000' }));
   });
 
+  it('🔴 guarda con `origen:"voz"` — sin esto, el ingreso dictado queda indistinguible de uno tipeado', async () => {
+    mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado({ origen: 'voz' }) });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-guardar'));
+    });
+
+    expect(mockRegistrar).toHaveBeenCalledWith(expect.objectContaining({ origen: 'voz' }));
+  });
+
   it('manda la FECHA que resolvió el motor, no la de hoy — sin campo propio, silenciosa', async () => {
     mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado() });
     await montar();
