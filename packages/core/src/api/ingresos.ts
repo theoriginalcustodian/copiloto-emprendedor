@@ -29,7 +29,7 @@ import type { ConDisponibilidad } from './afip';
  */
 
 /** De dónde salió el ingreso. **Sólo `manual` es borrable.** */
-export type OrigenIngreso = 'factura' | 'manual' | 'mercadopago';
+export type OrigenIngreso = 'factura' | 'manual' | 'mercadopago' | 'voz';
 
 /** Qué dato quedó sin cargar. Lo calcula el backend: el aviso y el dato tienen que salir del mismo
  *  lugar o van a divergir. */
@@ -98,7 +98,7 @@ function texto(v: unknown): string | null {
  * el peso de algo que el sistema vio, que es exactamente la mezcla que `origen` existe para impedir.
  */
 function origen(v: unknown): OrigenIngreso {
-  return v === 'factura' || v === 'mercadopago' ? v : 'manual';
+  return v === 'factura' || v === 'mercadopago' || v === 'voz' ? v : 'manual';
 }
 
 function faltantes(v: unknown): FaltanteIngreso[] | null {
@@ -168,6 +168,15 @@ export async function listarIngresos(
 export interface RegistrarIngresoRequest {
   /** Lo ÚNICO obligatorio. String decimal. */
   monto: string;
+  /**
+   * 🔴 **Sólo la card dictada la manda, con `'voz'`.** El alta manual no manda este campo y el backend
+   * sigue asumiendo `'manual'` en su ausencia — mismo contrato de siempre, cero cambio para
+   * `PantallaIngresos`. Antes de hito 8 el `origen:'voz'` lo ponía el backend porque el guardado pasaba
+   * por su propio tool call; ahora que la card persiste vía este mismo `POST` genérico, si nadie lo
+   * manda el ingreso dictado quedaría indistinguible de uno tipeado — exactamente lo que `origen` existe
+   * para impedir (ver el docstring del módulo).
+   */
+  origen?: OrigenIngreso;
   medio?: string;
   /** `YYYY-MM-DD`. Si falta, el backend pone hoy. */
   fecha?: string;
@@ -186,6 +195,7 @@ export interface RegistrarIngresoRequest {
 
 function aWire(datos: RegistrarIngresoRequest): Record<string, unknown> {
   const wire: Record<string, unknown> = { monto: datos.monto };
+  if (datos.origen !== undefined) wire.origen = datos.origen;
   if (datos.medio !== undefined) wire.medio = datos.medio;
   if (datos.fecha !== undefined) wire.fecha = datos.fecha;
   if (datos.clienteRef !== undefined) wire.cliente_ref = datos.clienteRef;

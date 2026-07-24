@@ -40,6 +40,7 @@ const ETIQUETA_ORIGEN: Record<OrigenIngreso, string> = {
   factura: 'de una factura',
   mercadopago: 'por MercadoPago',
   manual: 'lo anotaste vos',
+  voz: 'lo dictaste por voz',
 };
 
 export function PantallaIngresos() {

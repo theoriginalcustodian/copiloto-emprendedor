@@ -166,6 +166,24 @@ describe('registrarIngreso', () => {
 
     expect(res).toEqual({ status: 'rechazado', motivo: 'el monto tiene que ser mayor que cero' });
   });
+
+  it('🔴 `origen:"voz"` viaja explícito — sin él, el guardado de la card queda indistinguible de uno tipeado (hito 8)', async () => {
+    responder = () => respuesta(201, { ingreso: { id: 11, monto: '85000.00', origen: 'voz', falta: [] } });
+
+    const res = await registrarIngreso({ monto: '85000', origen: 'voz' });
+
+    expect(peticiones[0].cuerpoJson).toEqual({ monto: '85000', origen: 'voz' });
+    if (res.status === 'ok') expect(res.ingreso.origen).toBe('voz');
+    else throw new Error('esperaba ok');
+  });
+
+  it('el alta manual sigue sin mandar `origen` — cero cambio para `PantallaIngresos`', async () => {
+    responder = () => respuesta(201, { ingreso: { id: 12, monto: '1', origen: 'manual', falta: [] } });
+
+    await registrarIngreso({ monto: '1' });
+
+    expect(peticiones[0].cuerpoJson).toEqual({ monto: '1' });
+  });
 });
 
 describe('completarIngreso', () => {

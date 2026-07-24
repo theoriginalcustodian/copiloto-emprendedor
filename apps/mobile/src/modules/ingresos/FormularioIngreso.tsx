@@ -25,6 +25,7 @@ import {
   registrarIngreso,
   type FaltanteIngreso,
   type Ingreso,
+  type OrigenIngreso,
 } from '@copiloto/core';
 
 import { CampoTexto, FilaBotones } from '../../theme/glass/campos';
@@ -56,6 +57,12 @@ export interface ValoresInicialesIngreso {
 
 export interface FormularioIngresoProps {
   iniciales?: ValoresInicialesIngreso;
+  /**
+   * `undefined` = alta manual (`PantallaIngresos`, sin cambios) — el backend sigue asumiendo `'manual'`
+   * en su ausencia. La card dictada (`TarjetaIngresoPropuesto`) manda `'voz'` explícito — ver el
+   * docstring de `RegistrarIngresoRequest.origen`.
+   */
+  origen?: OrigenIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
   testID?: string;
@@ -63,6 +70,7 @@ export interface FormularioIngresoProps {
 
 export function FormularioIngreso({
   iniciales,
+  origen,
   onGuardado,
   onCancelar,
   testID = 'ingreso-form',
@@ -104,6 +112,7 @@ export function FormularioIngreso({
       const res = await registrarIngreso({
         monto: importe,
         idemKey: clave,
+        ...(origen !== undefined ? { origen } : {}),
         // Lo vacío NO viaja: mandar `medio: ''` guardaría una cadena en blanco donde debería quedar
         // el hueco que el backend reporta en `falta`.
         ...(cliente.trim() !== '' ? { clienteNombre: cliente.trim() } : {}),

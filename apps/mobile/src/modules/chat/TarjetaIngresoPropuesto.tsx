@@ -41,6 +41,7 @@ export function TarjetaIngresoPropuesto({
       cita={propuesta.concepto}
     >
       <FormularioIngreso
+        origen="voz"
         iniciales={{
           monto: propuesta.monto,
           cliente: propuesta.clienteNombre ?? undefined,
