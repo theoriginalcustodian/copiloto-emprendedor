@@ -40,6 +40,13 @@ Thumbs.db
 # Staging del clon documed (extraído por scripts/sprint-mobile/S1) — NO se versiona
 _staging/
 
+# PII / evidencia / basura estructural — NUNCA al repo (riesgo real de `git add -A` en checkout
+# compartido por 3 sesiones). Factura/ = fotos de comprobantes (PII); _evidencia/ = capturas de
+# device incl. pantallas de login; code/ = clon de OTRO repo del workspace copiado por error.
+Factura/
+_evidencia/
+code/
+
 # Mobile
 apps/mobile/.expo/
 apps/mobile/android/
