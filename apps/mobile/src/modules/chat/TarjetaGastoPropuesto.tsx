@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
 
 import { formatearImporte, type GastoPropuesto } from '@copiloto/core';
 
 import { FormularioGasto } from '../gastos/FormularioGasto';
-import { Tile } from '../../theme/glass/Tile';
-import { useTema } from '../../theme/ThemeProvider';
+import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
  * `TarjetaGastoPropuesto` — lo que el copiloto entendió de un gasto dictado, **editable antes de
@@ -37,74 +35,53 @@ export function TarjetaGastoPropuesto({
   propuesta,
   testID = 'gasto-propuesto',
 }: TarjetaGastoPropuestoProps) {
-  const tema = useTema();
   const [estado, setEstado] = useState<Estado>('editando');
   const [guardado, setGuardado] = useState<string | null>(null);
 
   if (estado === 'guardado') {
     return (
-      <Tile testID={`${testID}-guardado`}>
-        <Text style={{ color: tema.color.exito, fontSize: tema.tipo.base, fontWeight: '600' }}>
-          Gasto anotado{guardado != null ? `: ${formatearImporte(guardado)}` : ''}
-        </Text>
-      </Tile>
+      <TarjetaPropuestaTerminal
+        testID={`${testID}-guardado`}
+        tono="exito"
+        texto={`Gasto anotado${guardado != null ? `: ${formatearImporte(guardado)}` : ''}`}
+      />
     );
   }
 
   if (estado === 'descartado') {
-    return (
-      <Tile testID={`${testID}-descartado`}>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          No lo anotamos.
-        </Text>
-      </Tile>
-    );
+    return <TarjetaPropuestaTerminal testID={`${testID}-descartado`} tono="tenue" texto="No lo anotamos." />;
   }
 
   return (
-    <Tile testID={testID}>
-      <View style={{ gap: tema.espacio.sm }}>
-        <Text
-          testID={`${testID}-aviso`}
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-        >
-          Esto entendí. Revisalo y tocá Guardar — todavía no lo anoté.
-        </Text>
-
-        {/* Lo que dictó, textual: es contra ESTO que contrasta lo que la card entendió. Sin la cita,
-            para verificar el monto habría que acordarse de lo que uno mismo dijo. */}
-        {propuesta.descripcion != null && (
-          <Text
-            testID={`${testID}-dicho`}
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontStyle: 'italic' }}
-          >
-            «{propuesta.descripcion}»
-          </Text>
-        )}
-
-        <FormularioGasto
-          origen={propuesta.origen}
-          iniciales={{
-            monto: propuesta.monto,
-            categoria: propuesta.categoria,
-            // Se mandan sólo si vinieron: `?? undefined` y no `?? ''`, para que el formulario omita la
-            // clave en el body en vez de guardar un string vacío.
-            proveedor: propuesta.proveedor ?? undefined,
-            medioPago: propuesta.medioPago ?? undefined,
-            descripcion: propuesta.descripcion ?? undefined,
-            // 🔴 La fecha SÍ viaja acá, al revés que en el alta manual: el motor ya resolvió lo que se
-            // dictó («ayer», «el lunes»). Omitirla haría que el backend ponga hoy y un gasto dictado
-            // como "lo de ayer" quede con la fecha equivocada — y los días 30 y 31, en otro MES.
-            fecha: propuesta.fecha !== '' ? propuesta.fecha : undefined,
-          }}
-          onCreado={(g) => {
-            setGuardado(g.monto);
-            setEstado('guardado');
-          }}
-          onCancelar={() => setEstado('descartado')}
-          testID={`${testID}-formulario`}
-        />
-      </View>
-    </Tile>
+    <TarjetaPropuestaShell
+      testID={testID}
+      aviso="Esto entendí. Revisalo y tocá Guardar — todavía no lo anoté."
+      // Lo que dictó, textual: es contra ESTO que contrasta lo que la card entendió. Sin la cita, para
+      // verificar el monto habría que acordarse de lo que uno mismo dijo.
+      cita={propuesta.descripcion}
+    >
+      <FormularioGasto
+        origen={propuesta.origen}
+        iniciales={{
+          monto: propuesta.monto,
+          categoria: propuesta.categoria,
+          // Se mandan sólo si vinieron: `?? undefined` y no `?? ''`, para que el formulario omita la
+          // clave en el body en vez de guardar un string vacío.
+          proveedor: propuesta.proveedor ?? undefined,
+          medioPago: propuesta.medioPago ?? undefined,
+          descripcion: propuesta.descripcion ?? undefined,
+          // 🔴 La fecha SÍ viaja acá, al revés que en el alta manual: el motor ya resolvió lo que se
+          // dictó («ayer», «el lunes»). Omitirla haría que el backend ponga hoy y un gasto dictado
+          // como "lo de ayer" quede con la fecha equivocada — y los días 30 y 31, en otro MES.
+          fecha: propuesta.fecha !== '' ? propuesta.fecha : undefined,
+        }}
+        onCreado={(g) => {
+          setGuardado(g.monto);
+          setEstado('guardado');
+        }}
+        onCancelar={() => setEstado('descartado')}
+        testID={`${testID}-formulario`}
+      />
+    </TarjetaPropuestaShell>
   );
 }
