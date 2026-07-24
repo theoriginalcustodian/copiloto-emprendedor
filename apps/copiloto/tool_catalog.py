@@ -14,6 +14,7 @@ También expone `make_tool_executor` (Task 6): dado un nombre de tool + argument
 excepción de negocio (retry ∞ del workflow), ver `agente-loop-tool-failure-retry-infinito`."""
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 import sys
@@ -50,6 +51,12 @@ from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E40
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
                           documento_incoherente, es_consumidor_final, inferir_doc_tipo,
                           normalizar_documento)
+# Hito 9 — facturar por voz. El gate de "completa" es la MISMA función pura que usa el workflow para
+# `estado().faltantes` (afip_factura_workflow.py:99): una verdad, un solo lugar (respuesta de
+# planificación al fork del turno-1, 2026-07-24). Nada de esto toca red/DB — son dataclasses + reglas.
+from afip_rules import (BorradorFactura, Concepto, CondicionIVA, DatosVenta,  # noqa: E402
+                        Item, Receptor, TipoDoc, determinar_tipo_comprobante, validar_factura_completa,
+                        validar_perfil)
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 
@@ -222,6 +229,36 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
                    "description": "'aprobado' si se lo aceptaron, 'desestimado' si no va"}},
         "required": ["estado"]}}}
 
+# ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────
+
+EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
+    "name": "emitir_factura",
+    "description": "Arma una factura AFIP a partir de lo dictado ('facturale 50 mil a Juan por el "
+                   "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
+                   "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
+                   "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió.",
+    "parameters": {"type": "object", "properties": {
+        "cliente_nombre": {"type": "string", "description": "a quién le factura"},
+        "cliente_documento": {"type": "string", "description": "CUIT o DNI del cliente, si lo dijo"},
+        "cliente_tipo_doc": {"type": "string", "enum": ["CUIT", "DNI"],
+                             "description": "si dijo la palabra «CUIT» o «DNI». Omitilo si sólo dictó "
+                                            "el número o no dijo documento"},
+        "items": {"type": "array", "description": "lo que vendió — al menos uno",
+                  "items": {"type": "object", "properties": {
+                      "descripcion": {"type": "string", "description": "qué vendió"},
+                      "cantidad": {"type": "string", "description": "cuántos, sólo el número. Si no "
+                                                                     "lo dijo, asumí 1"},
+                      "precio_unitario": {"type": "string", "description": "precio de cada uno, sólo "
+                                                                          "el número"}},
+                      "required": ["descripcion", "precio_unitario"]}},
+        "concepto": {"type": "string", "enum": ["productos", "servicios"],
+                    "description": "si vendió productos o prestó un servicio. Si no lo dijo, productos"},
+        "fecha_raw": {"type": "string",
+                      "description": "cuándo fue, en lenguaje natural. Entiendo: "
+                                     + ", ".join(f"'{f}'" for f in FECHAS_QUE_ENTIENDO)
+                                     + ". Omitilo si no lo dijo: se asume hoy."}},
+        "required": ["cliente_nombre", "items"]}}}
+
 # ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
 
 CREAR_TARJETA_MI_DIA_SCHEMA = {"type": "function", "function": {
@@ -366,6 +403,7 @@ def build_tool_catalog() -> list[dict]:
                REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
+               EMITIR_FACTURA_SCHEMA,
                CREAR_TARJETA_MI_DIA_SCHEMA, MOVER_TARJETA_MI_DIA_SCHEMA,
                BORRAR_TARJETA_MI_DIA_SCHEMA]
     for mod in services.modules().values():
@@ -394,7 +432,12 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # tarjeta?", cubierto por `_elegir_uno`, no "¿lo hago?").
               "crear_tarjeta_mi_dia": ("mi_dia_crear",),
               "mover_tarjeta_mi_dia": ("mi_dia_mover",),
-              "borrar_tarjeta_mi_dia": ("mi_dia_borrar",)}
+              "borrar_tarjeta_mi_dia": ("mi_dia_borrar",),
+              # Hito 9 — PROPONE, igual que `registrar_gasto`/`registrar_ingreso`: emitir es un acto
+              # fiscal irreversible, así que ni siquiera en confirm-gate sí/no — la única acción que
+              # persiste algo (abrir el borrador) la dispara la propia tool, pero el borrador NO emite
+              # nada hasta que el usuario toca Emitir desde la card (gate de dominio: token_confirmacion).
+              "emitir_factura": ("factura_dictado",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -1098,6 +1141,167 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                                    "presupuesto": actualizado})
 
 
+# ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────
+
+def factura_id_del_dictado(idem_key: str) -> str:
+    """El `factura_id` del borrador que nace de UN DICTADO — DETERMINÍSTICO, no un `uuid4()`.
+
+    Deriva de `idem_key` (`{workflow_id}-{turn_ix}-{step}`, ya armado por el motor react): `turn_ix`
+    es global/monótono y sobrevive un continue-as-new real, verificado contra Temporal real (no
+    deducido) por `test_turn_ix_sobrevive_continue_as_new_contra_temporal_real` — el spike bloqueante
+    del contrato §4. Mismo criterio que `factura_id_de_presupuesto` (`presupuesto_store.py:82-99`):
+    Temporal decide la idempotencia en el servidor, atómico, sin ventana `if ya_existe`.
+    """
+    return f"dictado-{idem_key}"
+
+
+def _borrador_desde_dictado(arguments: dict, now_iso_provider) -> BorradorFactura:
+    """Arma el `BorradorFactura` (dataclasses PURAS de `afip_rules`) con lo que dictó la voz, para
+    correr `validar_factura_completa` — la MISMA función que usa el workflow. Nada de esto persiste.
+
+    `now_iso_provider` viaja tal cual —MISMO criterio que `_run_registrar_gasto`/`_fecha_dictada`—, no
+    un `date` ya resuelto: `_fecha_dictada` también llama a `resolve_date_range`, que espera el ISO
+    completo, no sólo la fecha."""
+    items = []
+    for it in (arguments.get("items") or []):
+        if not isinstance(it, dict):
+            continue
+        precio = _monto_dictado(it.get("precio_unitario"))
+        cantidad = _monto_dictado(it.get("cantidad")) or Decimal("1")
+        items.append(Item(descripcion=str(it.get("descripcion") or "").strip()[:200],
+                          cantidad=cantidad, precio_unitario=precio or Decimal("0")))
+
+    concepto = Concepto.SERVICIOS if arguments.get("concepto") == "servicios" else Concepto.PRODUCTOS
+    fecha, fecha_ok = _fecha_dictada(arguments.get("fecha_raw"), now_iso_provider)
+    datos_venta = DatosVenta(fecha=fecha, concepto=concepto, condicion_venta="Contado")
+
+    nombre = str(arguments.get("cliente_nombre") or "").strip()[:200]
+    doc = str(arguments.get("cliente_documento") or "").strip()
+    tipo_doc_dicho = str(arguments.get("cliente_tipo_doc") or "").strip().upper()
+    if doc and tipo_doc_dicho == "CUIT":
+        receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL, tipo_doc=TipoDoc.CUIT,
+                            nro_doc=doc, nombre=nombre or "Consumidor Final")
+    elif doc and tipo_doc_dicho == "DNI":
+        receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL, tipo_doc=TipoDoc.DNI,
+                            nro_doc=doc, nombre=nombre or "Consumidor Final")
+    else:
+        # Sin documento identificable: consumidor final. `validar_receptor` sólo lo bloquea por encima
+        # del tope (`TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR`) — la mayoría de las facturas dictadas caen
+        # bien acá, no es un estado degradado (respuesta de planificación al fork del turno-1).
+        receptor = Receptor(condicion_iva=CondicionIVA.CONSUMIDOR_FINAL,
+                            nombre=nombre or "Consumidor Final")
+    return BorradorFactura(datos_venta=datos_venta, items=items, receptor=receptor)
+
+
+def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
+                        afip_cred_store_factory, afip_perfil_store_factory,
+                        abrir_borrador_dictado, consultar_factura_dictado, signal_factura_dictado,
+                        buscar_borrador_dictado):
+    """*«Facturale 50 mil a Juan»* → arma el borrador AFIP y lo propone en una card — NO emite. Mismo
+    patrón que `registrar_gasto`/`registrar_ingreso`: emitir es un acto fiscal irreversible, así que la
+    acción la dispara el usuario desde la card (Emitir con token fresco, o Completar a mano).
+
+    Gate de "completa" — CERO heurística propia: se arma un `BorradorFactura` con lo dictado y corre
+    `validar_factura_completa`, la MISMA función pura que calcula `faltantes` en
+    `FacturaWorkflow.estado()` (`afip_factura_workflow.py:99`). Una verdad, un solo lugar (respuesta de
+    planificación al fork del turno-1).
+
+    Mecanismo de 2 pasos (contrato §1 + respuesta de planificación al fork del turno-2):
+    1ª vez incompleta → PREGUNTA, sin card (pero el borrador SÍ se abre, silencioso — es lo que el
+    turno 2 va a encontrar). 2ª vez (hay borrador abierto para este cliente) → CARD siempre, completa
+    o no. `buscar_borrador_dictado` es Visibility de Temporal (no una tabla nueva) acotada por
+    `StartTime` — ver su docstring en `web.py` para el porqué de la ventana.
+    """
+    if (abrir_borrador_dictado is None or consultar_factura_dictado is None
+            or signal_factura_dictado is None or afip_cred_store_factory is None
+            or afip_perfil_store_factory is None or buscar_borrador_dictado is None):
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo facturar por voz ahora mismo"})
+
+    cuit = afip_cred_store_factory(ctx.cliente_id).primer_cuit()
+    perfil = afip_perfil_store_factory(ctx.cliente_id).get(cuit) if cuit else None
+    errores_perfil = validar_perfil(perfil)
+    if errores_perfil:
+        # Mensaje de negocio (DoD §5.5): el turno no se cae, y no es algo que se resuelva re-dictando.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": errores_perfil[0].mensaje})
+
+    hoy = hoy_del_negocio(datetime.fromisoformat(now_iso_provider()))
+    borrador = _borrador_desde_dictado(arguments, now_iso_provider)
+    errores_dictado = validar_factura_completa(perfil, borrador, hoy=hoy)
+
+    async def _flujo():
+        factura_id_existente = await buscar_borrador_dictado(ctx.cliente_id)
+        continuando = factura_id_existente is not None
+        factura_id = factura_id_existente or factura_id_del_dictado(idem_key)
+        estado_previo = None
+        if continuando:
+            estado_previo = await consultar_factura_dictado(ctx.cliente_id, factura_id)
+        else:
+            # Segunda red (reutiliza `presupuestos_web.py:314-323`): `id_conflict_policy=FAIL` sólo
+            # protege contra un run CORRIENDO — el default de `id_reuse_policy` (ALLOW_DUPLICATE,
+            # validado contra doc oficial) permitiría reabrir sobre un id ya COMPLETADO con CAE. Con
+            # `turn_ix` nuevo por turno esto es un borde de retry, no el camino normal — se cubre igual.
+            previo = await consultar_factura_dictado(ctx.cliente_id, factura_id)
+            if previo and (previo.get("resultado") or {}).get("cae"):
+                return "ya_emitida", None, continuando, factura_id
+            await abrir_borrador_dictado(ctx.cliente_id, cuit, factura_id)
+
+        await signal_factura_dictado(ctx.cliente_id, factura_id, "cargar_datos_venta", {
+            "fecha": borrador.datos_venta.fecha.isoformat(),
+            "concepto": int(borrador.datos_venta.concepto),
+            "condicion_venta": borrador.datos_venta.condicion_venta})
+        # `agregar_item` ACUMULA, no reemplaza (mismo comentario que `presupuestos_web.py:327-329`):
+        # sólo se cargan items si el borrador TODAVÍA no tiene ninguno, para no duplicarlos en la
+        # continuación del turno 2. Limitación conocida: si el turno 2 corrige un ítem del turno 1
+        # (no agrega uno nuevo), esa corrección no se aplica acá — se termina a mano en la pantalla.
+        if borrador.items and not (estado_previo and estado_previo.get("items")):
+            for item in borrador.items:
+                await signal_factura_dictado(ctx.cliente_id, factura_id, "agregar_item", {
+                    "descripcion": item.descripcion, "cantidad": str(item.cantidad),
+                    "precio_unitario": str(item.precio_unitario)})
+        await signal_factura_dictado(ctx.cliente_id, factura_id, "cargar_cliente", {
+            "condicion_iva": int(borrador.receptor.condicion_iva),
+            "tipo_doc": int(borrador.receptor.tipo_doc),
+            "nro_doc": borrador.receptor.nro_doc, "nombre": borrador.receptor.nombre})
+
+        estado = await consultar_factura_dictado(ctx.cliente_id, factura_id)
+        return "ok", estado, continuando, factura_id
+
+    resultado, estado, continuando, factura_id = asyncio.run(_flujo())
+    if resultado == "ya_emitida":
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "esa factura ya se había emitido; no la reabrí"})
+
+    faltantes_codigos = [e.get("codigo") for e in (estado.get("faltantes") or []) if e.get("codigo")]
+    if faltantes_codigos and not continuando:
+        # 1ª vez incompleta (DoD §5.1): pregunta, SIN card — el borrador quedó abierto (silencioso)
+        # para que ESTA MISMA función lo encuentre si el emprendedor sigue dictando.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": errores_dictado[0].mensaje if errores_dictado
+                                                  else "Faltan datos para facturar."})
+
+    tipo_comprobante = determinar_tipo_comprobante(perfil, borrador.receptor).name if perfil else None
+    total = estado.get("total") or "0.00"
+    completa = not faltantes_codigos
+    texto_card = (f"Te armé la factura por ${total}, revisala y confirmala cuando quieras." if completa
+                 else f"Esto entendí de la factura (${total}). Faltan datos — revisala y completala a mano.")
+    return ToolResult(
+        tool_call_id=idem_key, is_write=False, status="ok",
+        observation={"result": f"Armé la factura (${total}) y se la muestro en una tarjeta para que "
+                               f"la revise. TODAVÍA NO está emitida — NO digas \"emití\", \"listo\" ni "
+                               f"\"la mandé\" porque no es cierto. Decile exactamente EXACTAMENTE: "
+                               f"\"{texto_card}\""},
+        artifact=Artifact(kind="factura_propuesta", data={
+            "factura_id": factura_id, "faltantes": faltantes_codigos,
+            "items": estado.get("items") or [],
+            "cliente": {"razon_social": borrador.receptor.nombre,
+                       "cuit": (borrador.receptor.nro_doc
+                               if borrador.receptor.tipo_doc != TipoDoc.CONSUMIDOR_FINAL else None),
+                       "condicion_iva": borrador.receptor.condicion_iva.name},
+            "total": total, "tipo_comprobante": tipo_comprobante}))
+
+
 # ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
 #
 # Las tres PERSISTEN sin gate — mismo criterio que las del hito 3 (TOOL_INDEX): el riesgo real de
@@ -1188,10 +1392,17 @@ def _run_borrar_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
 
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None,
                        cliente_store_factory=None, cobro_store_factory=None,
-                       presupuesto_store_factory=None, tarjeta_store_factory=None):
+                       presupuesto_store_factory=None, tarjeta_store_factory=None,
+                       afip_cred_store_factory=None, afip_perfil_store_factory=None,
+                       abrir_borrador_dictado=None, consultar_factura_dictado=None,
+                       signal_factura_dictado=None, buscar_borrador_dictado=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
-    `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad."""
+    `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad.
+
+    Los últimos 6 params (hito 9) son las 4 factories de Temporal + 2 de Postgres que necesita
+    `emitir_factura`. Sin `client` en el composition root (tests, wiring puro) quedan en `None` y la
+    tool degrada con error de negocio — mismo criterio que `cobro_store_factory is None`."""
 
     def tool_executor(name, arguments, ctx, *, confirmed, idem_key):
         if ctx is None:
@@ -1233,6 +1444,12 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                                    cobro_store_factory)
             if kind == "presupuesto_estado":
                 return _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
+            # ── 1ra clase: hito 9 — facturar por voz (PROPONE; ver TOOL_INDEX) ─────────────────────
+            if kind == "factura_dictado":
+                return _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
+                                           afip_cred_store_factory, afip_perfil_store_factory,
+                                           abrir_borrador_dictado, consultar_factura_dictado,
+                                           signal_factura_dictado, buscar_borrador_dictado)
             # ── 1ra clase: hito 7 — el Kanban "Mi día" por voz (persisten; sin gate, ver TOOL_INDEX) ─
             if kind == "mi_dia_crear":
                 return _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)

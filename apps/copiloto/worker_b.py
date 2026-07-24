@@ -50,6 +50,11 @@ from afip_factura_activities import (
     set_factura_deps)
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
+# Hito 9: los MISMOS builders que `serve.py` usa para "Facturar" desde presupuesto — genéricos pese al
+# nombre (el `factura_id` lo pone SIEMPRE el llamador, ver `web.make_abrir_borrador_de_presupuesto`).
+# Reusarlos acá evita una segunda implementación del `id_conflict_policy=FAIL` que ya está probada.
+from web import (make_abrir_borrador_de_presupuesto, make_buscar_borrador_dictado_abierto,
+                 make_consultar_factura, make_signal_factura)
 from cliente_store import ClienteStore
 from mi_dia_schedule_activities import avanzar_tablero_mi_dia, set_mi_dia_deps
 from mi_dia_schedule_workflow import MiDiaDetectorWorkflow
@@ -102,7 +107,7 @@ def _perfil_provider(conn_factory: Callable) -> Callable:
     return proveer
 
 
-def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
+def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=None) -> dict:
     """Composition root PURO y multitenant real (Task 8): construye los recursos COMPARTIDOS una sola vez
     (crypto, mp_gateway, composio gateway) y arma el `context_factory` que resuelve TODO lo per-tenant
     (`cliente_id`, `composio_user_id`, seller MP) desde el `conv` de cada request — cero
@@ -116,7 +121,15 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
 
     No abre I/O real al construirse (`conn_factory` solo se guarda; recién se invoca cuando una query lo
     necesita) → testeable sin Temporal ni Postgres vivos. Devuelve {workflows, activities, context_factory}
-    listos para `Worker(...)`."""
+    listos para `Worker(...)`.
+
+    `client` (opcional, hito 9): el `temporal_client` para que `emitir_factura` pueda abrir/señalizar el
+    `FacturaWorkflow` del dictado — mismos builders que `serve.py` usa para el camino de presupuesto
+    (`make_abrir_borrador_de_presupuesto`/`make_consultar_factura`/`make_signal_factura`, genéricos pese
+    al nombre: el `factura_id` lo pone el llamador). Sin `client` (tests, wiring puro) `emitir_factura`
+    degrada con error de negocio — mismo criterio que `cobro_store_factory is None` en las demás tools de
+    plata. `main()` conecta el client ANTES de llamar acá (antes se conectaba DESPUÉS, cuando ya era
+    tarde para pasárselo al tool_executor)."""
     crypto = FernetCrypto()
     mp_gateway = MercadoPagoGateway()
     # policy = Calendar (verbo 'book') + policies mínimas de los módulos de servicio (discovery)
@@ -167,6 +180,20 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     def _tarjeta_store_factory(cliente_id: str):
         return TarjetaStore(conn_factory, cliente_id)
 
+    # Hito 9: facturar por voz. `afip_cred_store_factory`/`afip_perfil_store_factory` no necesitan
+    # `client` (van directo a Postgres, mismo criterio de aislamiento); las tres de Temporal SÍ, y
+    # quedan en None sin `client` — `emitir_factura` degrada con error de negocio, no explota.
+    def _afip_cred_store_factory(cliente_id: str):
+        return AfipCredentialStore(conn_factory, cliente_id, crypto)
+
+    def _afip_perfil_store_factory(cliente_id: str):
+        return AfipPerfilStore(conn_factory, cliente_id)
+
+    abrir_borrador_dictado = make_abrir_borrador_de_presupuesto(client) if client is not None else None
+    consultar_factura_dictado = make_consultar_factura(client) if client is not None else None
+    signal_factura_dictado = make_signal_factura(client) if client is not None else None
+    buscar_borrador_dictado = make_buscar_borrador_dictado_abierto(client) if client is not None else None
+
     # En react el prompt NO concatena los PROMPT_FRAGMENT de los servicios: esos están escritos en formato
     # dispatch (`action="tool_action", entities={...}`) y en tool-calling nativo son RUIDO — los TOOL_SCHEMAS
     # (name + description + parameters) ya describen cada tool (auditoría 2026-07-05: 0 matiz de negocio único
@@ -182,7 +209,13 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
         gateway, now_iso_provider=_now_iso, mp_dedup_factory=_mp_dedup_factory, llm=llm,
         cliente_store_factory=_cliente_store_factory, cobro_store_factory=_cobro_store_factory,
         presupuesto_store_factory=_presupuesto_store_factory,
-        tarjeta_store_factory=_tarjeta_store_factory)
+        tarjeta_store_factory=_tarjeta_store_factory,
+        afip_cred_store_factory=_afip_cred_store_factory,
+        afip_perfil_store_factory=_afip_perfil_store_factory,
+        abrir_borrador_dictado=abrir_borrador_dictado,
+        consultar_factura_dictado=consultar_factura_dictado,
+        signal_factura_dictado=signal_factura_dictado,
+        buscar_borrador_dictado=buscar_borrador_dictado)
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,
@@ -251,10 +284,13 @@ async def main() -> None:
     def conn_factory():
         c = psycopg2.connect(db_url); c.autocommit = True; return c
 
-    cfg = build_worker_config(os.environ, conn_factory)
-
+    # Conectar ANTES de armar el config (hito 9): `build_worker_config` necesita el `client` para wirear
+    # `emitir_factura` (abre/señaliza el `FacturaWorkflow` del dictado). Antes se conectaba DESPUÉS —
+    # inofensivo mientras nada del tool_executor necesitó Temporal, dejó de serlo acá.
     target = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
     client = await Client.connect(target, namespace=os.environ.get("TEMPORAL_NAMESPACE", "default"))
+    cfg = build_worker_config(os.environ, conn_factory, client)
+
     async with Worker(client, task_queue=AGENT_B_TASK_QUEUE,
                       workflows=cfg["workflows"], activities=cfg["activities"]):
         print(f"AGENT_B worker up on {AGENT_B_TASK_QUEUE}", flush=True)
