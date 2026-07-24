@@ -15,9 +15,16 @@ docs/aprendizajes/
 ├── README.md          ← esto
 ├── pendientes/        ← LA COLA. Vaciarla es el gate del REPARTO (F3) del sprint siguiente.
 │   └── AAAA-MM-DD_<slug>.md
+├── descartados/       ← decididos que NO se construyen, con la razón y la CONDICIÓN para reabrir
+│   └── AAAA-MM-DD_<slug>.md
 └── AAAA-MM-DD/        ← implementados, por FECHA DE IMPLEMENTACIÓN
     └── <slug>.md
 ```
+
+**Descartar también es implementar la decisión.** Un pendiente que no se va a construir se mueve a
+`descartados/` con **por qué** y con la **condición concreta para reabrirlo** (un número, no "si hace
+falta"). Dejarlo en `pendientes/` sin decidir bloquea el reparto para siempre; borrarlo sin más pierde
+el razonamiento y el próximo sprint lo vuelve a proponer.
 
 **El estado es la ubicación.** Implementar un aprendizaje es `git mv` de `pendientes/` a la carpeta del
 día. Igual que el buzón de coordinación: un tablero que hay que acordarse de actualizar se desincroniza
