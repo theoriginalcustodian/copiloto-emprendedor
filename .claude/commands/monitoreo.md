@@ -1,21 +1,42 @@
 ---
-description: (Re)crea idempotente los DOS crones de monitoreo de la sesión PLANIFICACIÓN (control de sesiones cada 10 min + vigía del buzón cada 20)
-allowed-tools: CronList, CronCreate, Bash
+description: Arranque VERIFICADO de la sesión PLANIFICACIÓN: 3 crones + instrumentos + estado de la cola, con reporte binario
+allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
 ---
 
 # Arrancar el monitoreo de la sesión PLANIFICACIÓN
 
-Recreá los crones de coordinación. **Idempotente: primero `CronList`, y creá SÓLO los que falten**
-(comparando por el schedule + el arranque del prompt). Al terminar, `CronList` para confirmar, y
-reportá en una línea.
+Dejá la sesión PLANIFICACIÓN **lista para dirigir, y demostralo**. No alcanza con instalar los
+crones: si arrancás sin saber en qué hito está la cola y quién está bloqueado, el primer ciclo se va en
+averiguarlo.
 
-⚠️ **Si encontrás vivos los crones VIEJOS —«Monitor de PARÁLISIS» o «Control de SESIONES OCIOSAS»—
-borralos con `CronDelete` y creá el Cron 1 de abajo en su lugar.** Ordenaban correr
-`no-ocio-check.sh` como instrumento obligatorio, que es exactamente la causa raíz que este cambio
-retira (ver más abajo).
+1. **`CronList`** — ¿existen los tres? (comparar por schedule + arranque del prompt). Los que estén, no
+   se tocan.
+2. **`CronCreate`** — creá SÓLO los que falten, con el schedule y prompt EXACTOS de abajo.
+3. **`CronList` de nuevo y CONFIRMÁ los tres.** Sin verlos, no están instalados.
+4. **Instrumentos** — `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`. Los dos tienen que
+   correr **sin error**: son la base de todos los ciclos. Si `no-ocio-check.sh` no existe en tu checkout,
+   estás en una rama vieja — `git log origin/main -1` y decilo.
+5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
+   nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
+6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
+   `-a-planificacion_` y `-a-todos_`, descartando lo que empiece por `planificacion-a-` (es tuyo).
+   Mirá también `cerrado/<hoy>/` por los `avance_`, que nacen archivados.
 
-Verificá también que el instrumento existe antes de reportar verde:
-`bash scripts/ultimas-acciones.sh 2` tiene que imprimir sesiones con hora.
+**REPORTE de arranque — binario, una línea por ítem:**
+
+```
+✅/❌ 3 crones vivos (PARÁLISIS */3 · vigía 7,27,47 · ociosas 1-58/3)
+✅/❌ no-ocio-check + cola-check corren
+✅/❌ buzon_watcher registrado
+📊 PRODUCCIÓN backend Nmin · frontend Nmin   (⚠️ VIDA fresca NO prueba trabajo: el cron también
+     genera turnos — 2026-07-24, la sesión ociosa tuvo 42 disparos y la que implementaba 5)
+🔥 COLA: hito N «...» · siguiente: ...
+📬 N mensajes dirigidos a mí sin resolver → los listo
+▶️  ARRANCO CON: <la acción concreta que sigue>
+```
+
+**La última línea no es opcional.** Y si el instrumento marca `🌀 GIRA EN VACÍO` en alguna sesión, eso
+es OCIO (no dead-man): reasignale algo en el MISMO ciclo, no lo difieras.
 
 > Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 3 sesiones paralelas (planificación/backend/
 > frontend) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir una sesión NUEVA
@@ -23,126 +44,56 @@ Verificá también que el instrumento existe antes de reportar verde:
 
 ---
 
-## 🔴 Por qué el instrumento es el LOG y no un script de heurísticas
+## Cron 1 — Monitor de PARÁLISIS
 
-El 2026-07-24 `scripts/no-ocio-check.sh` se equivocó **seis veces seguidas** sobre si una sesión
-trabajaba: rotuló backend como frontend, llamó backend "por descarte", eligió el transcript
-equivocado tras un reinicio, y gritó `🌀 GIRA EN VACÍO` sobre sesiones que estaban implementando.
-Cada vez se lo parcheó; cada parche habilitó el fallo siguiente.
-
-**La causa raíz no era ninguno de esos bugs: era que el prompt del cron ordenaba correr el script
-PRIMERO y prohibía afirmar nada sin su salida.** Con esa regla, el ciclo arranca leyendo una
-inferencia y sólo va al log cuando algo chirría — así que el error del script se convierte en el
-reporte. El log crudo, en cambio, **muestra** las acciones con hora y no se equivocó nunca.
-
-Un script que infiere identidad y productividad a partir de paths y nombres de herramienta es un
-instrumento que **confirma** en vez de verificar: cuando se equivoca no falla ruidoso, entrega una
-respuesta plausible. `scripts/ultimas-acciones.sh` no infiere nada — imprime qué hizo cada sesión y
-cuándo, y deja el juicio en quien lee.
-
-### ⚠️ `vigilancia-check.sh` NO es el script prohibido de arriba
-
-`scripts/vigilancia-check.sh` (2026-07-24) es un gate DISTINTO al `no-ocio-check.sh` que falló: sólo
-compone tres chequeos deterministas que nunca infieren contenido, identidad ni productividad —
-`cola-check.sh` (lee `COLA-VIVA` de `PLAN.md`), `escaladores-buzon.sh` (mtime + ubicación de
-archivos del buzón) y una medición de `mtime` puro de los transcripts (sin leer ni parsear su
-contenido — eso es lo que costó las 6 fallas). Su único trabajo es decidir si vale la pena que el
-modelo razone; nunca decide POR el modelo si una sesión "trabaja" o "gira en vacío" — esa pregunta
-sigue resuelta por `ultimas-acciones.sh` + juicio humano-en-el-loop, exactamente como hoy.
-
----
-
-## Cron 1 — Control de sesiones (cada 10 min)
-
-Reemplaza a los dos crones viejos de 3 min («PARÁLISIS» + «SESIONES OCIOSAS»): con el log a la vista,
-una sesión parada y una espera mutua se ven en la misma lectura, y dos disparos por ventana era ruido
-duplicado.
-
-### Por qué cada 10 y no cada 3
-
-Medido sobre 30 h de transcripts reales: **el 78 % de los turnos los disparó un cron, no una persona**
-(4.206 contra 1.153), y la sesión coordinadora consumió el **61,5 % de los tokens del sprint sin
-escribir una línea de código de producto**. El ritual determinista de cada tick —listar carpetas,
-comparar `mtime`— dejó ~3.400 invocaciones de bash textualmente idénticas (`cd .../coordinacion` **655
-veces**), todas ejecutadas por el modelo caro.
-
-Y el latido tiene una **sensibilidad invertida**: un cron no puede interrumpir un turno en curso, así
-que **dispara más cuanto menos trabaja la sesión**. Late fuerte cuando el paciente está quieto.
-
-A 10 min la latencia de detección sigue muy por debajo del umbral de alarma (25 min sin actividad), y
-el canal rápido para la sesión que **sí** está trabajando ya no es este cron sino el hook del buzón,
-que dispara con cada tool call — el inverso exacto, y gratis.
-
-⚠️ **No lo vuelvas a bajar a 3 min** sin traer una medición que justifique el costo. Si hace falta
-vigilancia que sobreviva a que esta sesión muera, el camino NO es un cron más rápido: es un watchdog
-fuera del proceso (Task Scheduler del sistema operativo) — ver `docs/aprendizajes/pendientes/`.
-
-- **Schedule (cron):** `*/10 * * * *`
+- **Schedule (cron):** `*/3 * * * *`  (cada 3 minutos)
 - **Prompt:**
 
 ```
-Control de sesiones (PLANIFICACIÓN) — cada 10 min. Caza una sesión PARADA y también la espera MUTUA.
+Monitor de PARÁLISIS (sesión PLANIFICACIÓN). Ruta absoluta del buzón:
+C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-🔴 PASO 0, SIEMPRE PRIMERO — el gate determinista que decide si vale la pena razonar:
+NO es el vigía de 20 min: éste no busca silencio, busca **espera mutua** — dos sesiones que se
+esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 90 min NO ve.
 
-    bash "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/scripts/vigilancia-check.sh"
+0. 🔴 GATE DETERMINISTA — corré PRIMERO, antes de razonar nada:
+   `bash scripts/vigilancia-check.sh --quiet`
+   **Exit 0 = sin novedades. Cerrá el turno en UNA línea y NO sigas** — no releas no-ocio-check.sh
+   ni cola-check.sh a mano, `vigilancia-check.sh` ya los corre a los dos y decide.
+   **Exit 1 = alarma. Su stdout ES el reporte** — partí de ahí, no reconstruyas la medición vos.
+   Este script compone `cola-check.sh` (hito arrancable) + `escaladores-buzon.sh` (contrato/pedido
+   viejo) + mtime de transcripts (VIDA vs PRODUCCIÓN — VIDA fresca NO prueba trabajo, el cron
+   también genera turnos: medido 2026-07-24, la sesión OCIOSA tuvo 42 disparos y la que
+   implementaba 5). Ver su docstring para el detalle de cada pieza.
+   Si el script no existe en tu checkout (`vigilancia-check.sh: command not found`), estás en una
+   rama vieja — `git log origin/main -1` y decilo; mientras tanto, caé al modo manual de abajo.
 
-- **Exit 0 (sin alarma)** → cerrá el turno YA: una sola línea ("VIGILANCIA: sin novedades, HH:MM")
-  y NADA MÁS. No corras `ultimas-acciones.sh`, no listes carpetas, no compares mtimes a mano — ese
-  trabajo es exactamente el que este script reemplaza (COLA + escaladores de edad del buzón + VIDA
-  de transcripts, ver `docs/aprendizajes/2026-07-24/2026-07-24_vigilancia-determinista-fuera-del-modelo.md`).
-- **Exit 1 (alarma)** → el script YA trajo el reporte (COLA / ESCALADORES / SESION MUDA). Usalo como
-  punto de partida, no reconstruyas la medición a mano, y seguí con el resto de este prompt para
-  decidir la acción.
+1. SI HUBO ALARMA (o el script no existe): MEDIR, en un solo comando: hora actual · último commit de `origin/main` y su antigüedad ·
+   último commit de la rama de la app y su antigüedad · `gh pr list --state open` ·
+   `git rev-list --count origin/main..origin/feat/mobile-first-cascara-glass` ·
+   los 3 archivos más recientes de `en-curso/` y `abierto/` con hora.
 
-Si hay alarma y necesitás el detalle de qué hace cada sesión ahora mismo, el instrumento sigue
-siendo el log crudo — corré esto y NADA MÁS para juzgar si alguien trabaja:
+2. DISPARADORES de alarma (cualquiera basta):
+   - Un PR abierto hace más de ~15 min que sea precondición declarada de otra cosa.
+   - Una sesión sin commits ni archivos de buzón hace más de 25 min mientras la otra sí avanza.
+   - **Las dos** sin actividad hace más de 20 min.
+   - Alguien esperando un aviso que nadie emitió («avisá cuando tomes el device», «congelo hasta
+     que cierres»): si el aviso no está en el buzón, la espera es indefinida.
 
-    bash "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/scripts/ultimas-acciones.sh" 3
+3. SI HAY ALARMA: bajar un `dato_` corto al buzón nombrando **quién destraba y con qué acción
+   concreta** (no «coordinen»). Si la acción es de una sola sesión, decilo con su nombre.
 
-Imprime, por sesión viva, sus últimas acciones CON HORA (UTC) leídas del log crudo, y el rol tomado
-del prompt del cron que esa ventana recibe.
+4. SI NO HAY ALARMA: **una sola línea** — antigüedad de cada sesión y estado del PR. Nada más.
+   No repitas hallazgos del vigía de 20 min ni resumas trabajo hecho.
 
-⛔ PROHIBIDO usar `no-ocio-check.sh` para decidir si una sesión trabaja. Medido el 2026-07-24: erró
-6 veces seguidas (rotuló mal, contó producción mal, gritó "GIRA EN VACÍO" sobre sesiones que
-estaban implementando). Sus heurísticas infieren; el log MUESTRA. Si alguna vez el script y el log
-se contradicen, **gana el log, sin excepción y sin volver a revisarlo**.
-
-Cómo leer la salida, y es todo lo que hay que saber:
-- Última acción hace ≤5 min → TRABAJA. No hay nada que reportar sobre ella.
-- Última acción hace >25 min → parada de verdad. Recién ahí buscá POR QUÉ (ver abajo).
-- Mirá QUÉ acción es, no sólo cuándo: Edit/Write/git commit/pytest/adb = produce.
-  Sólo `ls`/`cat`/`date`/`grep` repetidos durante varios ciclos = gira en vacío.
-  ⚠️ Una sola pasada de lecturas NO es ocio: casi siempre es el arranque de un turno.
-
-Si UNA está realmente parada, el primer chequeo NO es pedirle a la otra que conteste — es
-**¿la respuesta ya existe, invisible?**: enterrada bajo una sección posterior, o contestada en el
-hilo de otra sesión → RELAYEALA a un `dato_..._a-<ella>`. ¿Es un blocker que resolvés vos con un
-grep, una lectura, un contrato o una decisión táctica? → resolvelo ESTE ciclo. ¿Espera device
-(exclusivo de backend)? ¿Terminó todo lo suyo y lo reportó? → ocio legítimo, no es alarma.
-
-También revisá el buzón `C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\`:
-`abierto/` filtrando `-a-planificacion_` y `-a-todos_`, y `cerrado/<hoy>/` por los `avance_`, que
-nacen archivados. Y `git ls-remote` / `gh pr list` si hay un hito esperando push o merge.
-
-REPORTE: si todas trabajan, UNA sola línea con la última acción de cada una y su hora. Nada más.
-Si hay alarma, bajá un `dato_` corto nombrando QUIÉN destraba y con qué acción CONCRETA (no
-"coordinen"), y decí explícito si NO necesita device — es lo que más rápido libera.
-
-Y antes de cerrar el turno: si TU cola no está vacía, seguí con lo tuyo. "Sin novedades" describe el
-buzón, no tu trabajo.
-
-NO implementes código de la app. Esta sesión baja contratos y destraba.
+NO implementes código. Esta sesión baja contratos y destraba.
 ```
 
 ---
 
-## Cron 2 — Vigía de coordinación v3 (el buzón, no las sesiones)
+## Cron 2 — Vigía de coordinación v3
 
-Éste NO mira sesiones: mira el **buzón** — qué te interpela, qué quedó en silencio, qué se puede
-archivar. Por eso corre cada 20 min y no cada 3.
-
-- **Schedule (cron):** `7,27,47 * * * *`
+- **Schedule (cron):** `7,27,47 * * * *`  (minutos 7, 27 y 47 de cada hora)
 - **Prompt:**
 
 ```
@@ -170,4 +121,62 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
 5. REPORTE. Máximo 3 ítems, los más accionables, en 6 líneas. Si no hay nada: una línea con el
    silencio de cada sesión y nada más. NO implementes nada — esta sesión baja contratos, no código.
+```
+
+---
+
+## Cron 3 — Control de sesiones ociosas
+
+- **Schedule (cron):** `1-58/3 * * * *`  (cada 3 minutos, intercalado 1 min con PARÁLISIS)
+- **Prompt:**
+
+```
+Control de SESIONES OCIOSAS (sesión PLANIFICACIÓN) — cada 3 min. COMPLEMENTA al monitor de PARÁLISIS:
+aquél caza esperas MUTUAS (ambas trabadas, umbral ~25 min); ÉSTE caza UNA sola sesión PARADA rápido,
+aunque la otra avance. El operador lo pidió porque una sesión parada esperando una respuesta se le
+escapó al umbral de 25 min.
+
+Buzón (ruta absoluta): C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
+
+0. 🔴 GATE DETERMINISTA — corré PRIMERO: `bash scripts/vigilancia-check.sh --quiet`
+   **Exit 0 = sin novedades, cerrá en UNA línea y NO sigas.** Exit 1 = alarma, su stdout ES el
+   reporte (ya trae PRODUCCIÓN vs VIDA de ambas sesiones + escaladores de buzón + cola). Si no
+   existe en tu checkout, caé al modo manual: `bash scripts/no-ocio-check.sh` — PRODUCCIÓN =
+   minutos desde el último `Write`/`Edit` (dice si TRABAJA); VIDA = mtime del transcript, que el
+   CRON también renueva (2026-07-24: sesión ociosa con 42 disparos vs 5 de la que implementaba) →
+   VIDA fresca + PRODUCCIÓN vieja = `🌀 GIRA EN VACÍO`, ocio, no dead-man. **PROHIBIDO afirmar
+   parada/muerte sin ese output** (2026-07-24: "backend muerto 8½h" mientras escribía código).
+   NUNCA leas un `.jsonl` entero.
+
+1. SI HUBO ALARMA, con el output del paso 0 distinguí las DOS señales, que NO son lo mismo:
+   - **VIDA (transcript fresco)** → la sesión está trabajando. Si además su buzón está viejo,
+     eso es "trabaja sin reportar": recordale un `avance_` por hito. **NO es alarma de muerte.**
+   - **Transcript viejo (≥30 min)** → ahí sí, sesión o heartbeat caídos → dead-man: push al
+     operador (`/monitoreo-backend` o `/monitoreo-frontend` en su ventana) + reasignar a
+     planificación lo resoluble sin ella.
+   Como señal secundaria de REPORTE mirá el buzón: archivos que ella autoreó
+   (`*_backend-a-*` / `*_frontend-a-*` en abierto/ y cerrado/<hoy>/) y acuses que pegó al final
+   de archivos ajenos. Reportá minutos de ambas señales por sesión.
+
+2. UMBRAL CORTO: una sesión con > ~6 min sin actividad REAL (a+b), mientras la otra avanza o mientras
+   hay trabajo pendiente que le toca, es candidata a PARADA. No esperar 25 min.
+
+3. SI UNA ESTÁ PARADA, encontrar POR QUÉ antes de reportar (esto es lo que PARÁLISIS no ve). Y el
+   PRIMER chequeo NO es "pedile a la otra que responda" — es **¿la respuesta YA existe, invisible?**:
+   - ¿Hay una respuesta ENTERRADA bajo una sección posterior en el mismo archivo, o contestada en el
+     hilo de OTRA sesión (no en el suyo)? Si existe → el destrabe es RELAYEARLA a un `dato_..._a-<ella>`,
+     no volver a preguntar. (Caso real 2026-07-23: backend había contestado 01:25, quedó enterrado.)
+   - Si no existe: ¿está bloqueada en una PREGUNTA/pedido sin responder que otra sesión puede contestar,
+     incluso de MEMORIA sin device? Buscar secciones `PREGUNTA →` / preguntas abiertas sin respuesta.
+   - ¿Espera un resultado de device que el dueño (backend) todavía no reportó?
+   - ¿Terminó TODO lo suyo y lo reportó? → ocio legítimo, NO es alarma.
+
+4. SI HAY PARADA DESTRABABLE: bajar un `dato_` corto nombrando QUIÉN la destraba y con qué acción
+   CONCRETA. Si la acción NO necesita device (relayear una respuesta que existe, contestar de memoria,
+   una decisión, una lectura), decirlo explícito — es lo que más rápido la libera.
+
+5. SI TODO ACTIVO, o el ocio es legítimo (terminó y reportó): UNA sola línea con los minutos de cada
+   sesión. Nada más. No repetir hallazgos del monitor de PARÁLISIS ni del vigía.
+
+NO implementes código. Esta sesión coordina y destraba.
 ```
