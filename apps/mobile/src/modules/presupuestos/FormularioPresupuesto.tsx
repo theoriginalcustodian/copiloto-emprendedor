@@ -103,9 +103,29 @@ export function totalAproximado(items: readonly FilaItem[]): string | null {
   return acumulado;
 }
 
+/**
+ * Valores de arranque de un presupuesto DICTADO — a diferencia de `corrige`, NO es una corrección
+ * (no lleva `reemplazaA`, no muestra "Corregir el N° X") y no exige un `Presupuesto` persistido: es
+ * lo que el motor entendió, con la MISMA forma laxa que el resto de las cards `*Propuesto` (todo
+ * opcional, se completa/corrige acá antes de guardar). `items` llega editable fila por fila porque el
+ * error de transcripción más caro de un presupuesto vive justo ahí — el monto de cada línea.
+ */
+export interface ValoresInicialesPresupuesto {
+  concepto?: string;
+  receptor?: {
+    nombre?: string;
+    docTipo?: number | null;
+    docNro?: string | null;
+    contacto?: string | null;
+  };
+  items?: readonly FilaItem[];
+}
+
 export interface FormularioPresupuestoProps {
   /** Si viene, el formulario arranca con sus datos y el alta lleva `reemplazaA` — es una corrección. */
   corrige?: Presupuesto | null;
+  /** Si viene (y `corrige` no), el formulario arranca con lo dictado — ver `ValoresInicialesPresupuesto`. */
+  iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto) => void;
   onCancelar: () => void;
   testID?: string;
@@ -113,25 +133,32 @@ export interface FormularioPresupuestoProps {
 
 export function FormularioPresupuesto({
   corrige = null,
+  iniciales = null,
   onCreado,
   onCancelar,
   testID = 'formulario-presupuesto',
 }: FormularioPresupuestoProps) {
   const tema = useTema();
-  const [concepto, setConcepto] = useState(corrige?.concepto ?? '');
-  const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? '');
-  const [docTipo, setDocTipo] = useState(String(corrige?.receptor.docTipo ?? 99));
-  const [docNro, setDocNro] = useState(corrige?.receptor.docNro ?? '');
-  const [contacto, setContacto] = useState(corrige?.receptor.contacto ?? '');
-  const [items, setItems] = useState<FilaItem[]>(
-    corrige != null && corrige.items.length > 0
-      ? corrige.items.map((i) => ({
-          descripcion: i.descripcion,
-          cantidad: i.cantidad,
-          precioUnitario: i.precioUnitario,
-        }))
-      : [{ ...FILA_VACIA }],
+  const [concepto, setConcepto] = useState(corrige?.concepto ?? iniciales?.concepto ?? '');
+  const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? iniciales?.receptor?.nombre ?? '');
+  const [docTipo, setDocTipo] = useState(
+    String(corrige?.receptor.docTipo ?? iniciales?.receptor?.docTipo ?? 99),
   );
+  const [docNro, setDocNro] = useState(corrige?.receptor.docNro ?? iniciales?.receptor?.docNro ?? '');
+  const [contacto, setContacto] = useState(corrige?.receptor.contacto ?? iniciales?.receptor?.contacto ?? '');
+  const [items, setItems] = useState<FilaItem[]>(() => {
+    if (corrige != null && corrige.items.length > 0) {
+      return corrige.items.map((i) => ({
+        descripcion: i.descripcion,
+        cantidad: i.cantidad,
+        precioUnitario: i.precioUnitario,
+      }));
+    }
+    if (iniciales?.items != null && iniciales.items.length > 0) {
+      return iniciales.items.map((i) => ({ ...i }));
+    }
+    return [{ ...FILA_VACIA }];
+  });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**

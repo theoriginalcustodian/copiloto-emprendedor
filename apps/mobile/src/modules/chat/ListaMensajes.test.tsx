@@ -168,6 +168,48 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('No entendí cuánto.')).toBeTruthy();
   });
 
+  it('🔴 un `presupuesto_propuesto` se renderiza como CARD editable, no como burbuja', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Entendí este presupuesto.',
+        card: {
+          kind: 'presupuesto_propuesto',
+          data: {
+            concepto: 'Instalación eléctrica',
+            receptor: { nombre: 'Juan Pérez' },
+            items: [{ descripcion: 'Mano de obra', cantidad: '1', precio_unitario: '30000' }],
+          },
+        },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.getByTestId('presupuesto-propuesto')).toBeTruthy();
+    expect(screen.getByTestId('presupuesto-propuesto-formulario')).toBeTruthy();
+  });
+
+  it('un `presupuesto_propuesto` SIN ítems no pinta un formulario vacío — cae en burbuja', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'No entendí los ítems.',
+        card: {
+          kind: 'presupuesto_propuesto',
+          data: { concepto: 'Instalación eléctrica', receptor: { nombre: 'Juan Pérez' }, items: [] },
+        },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.queryByTestId('presupuesto-propuesto')).toBeNull();
+    expect(screen.getByText('No entendí los ítems.')).toBeTruthy();
+  });
+
   it('una card con kind desconocido en un mensaje sin gate no rompe la pantalla', async () => {
     const mensajes: ChatMessage[] = [
       { id: 'assistant-1', role: 'assistant', text: 'todo bien', card: { kind: 'algo_futuro' } },
