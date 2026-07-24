@@ -18,6 +18,7 @@
 
 ## 📐 Doctrina operativa (aplica siempre)
 
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar.
 - [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — `project`. Hay cero usuarios; "prod-beta" desvía a migraciones defensivas. El dataset sintético debe traer cambios en el tiempo.
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. Montar en local rechazado 2×.
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. La prueba vale, la aserción no. [[spike-first-central-proyecto]]
@@ -25,6 +26,8 @@
 - [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — `feedback`. 6 errores seguidos no eran bugs del script: era el prompt que ordenaba consultarlo ANTES que al log. Preguntá qué regla te lleva a la fuente derivada.
 - [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — `project`. `remote_sha` en ceros ⇒ el pre-push sincroniza el repo ENTERO y el push "tarda minutos". Base correcta: `merge-base origin/main`. Deuda con dueña.
 - [⏱️👁️ Mirar la HORA de la acción no es mirar la ACCIÓN](mirar-la-hora-de-la-accion-no-es-mirar-la-accion.md) — `feedback`. `0min` + mismo `ls` tres ciclos = gira en vacío. Compará contra el ciclo anterior, y auditá la espera que declara.
+- [📬🕳️ "No lo vi" NO distingue "no llegó" de "no lo procesé"](no-lo-vi-no-distingue-no-llego-de-no-lo-procese.md) — `feedback`. El relato de fallo de un agente es TESTIMONIO, no medición: contrastalo con el transcript antes de rediseñar el canal. Un aviso uniforme no interrumpe.
+- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — `reference`. `cmd | tail` devuelve el status de `tail`. Una tarea de fondo dijo "exit 0" con el traceback adentro. El veredicto es la SALIDA, no el status.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo — correr el control](vacio-no-es-hallazgo-correr-el-control.md) — `feedback`. Hornear el control en el script.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — `feedback`. Deliberada+visible OK; impaga/invisible prohibida.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
