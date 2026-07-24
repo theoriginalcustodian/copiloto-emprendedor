@@ -18,6 +18,10 @@ jest.mock('../auth/useSession', () => ({
   useSession: () => ({ me: { cliente_id: 'cli-chatview-test', email: 'usuario@copiloto.test' } }),
 }));
 
+/** `leerPerfilNegocio` mockeado — `IndicadorModoCeremonia` la llama al montar (vía `useFocusEffect`,
+ *  passthrough en `jest.setup.js`); sin mock intentaría un `fetch` real en cada test de este archivo,
+ *  que no es lo que ninguno de ellos prueba. `no_disponible` deja el indicador en su default
+ *  fail-closed ("Pedir confirmación"), invisible para las aserciones existentes. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -28,6 +32,7 @@ jest.mock('@copiloto/core', () => {
       sendAudio: jest.fn(),
       getReply: jest.fn(),
     },
+    leerPerfilNegocio: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
   };
 });
 

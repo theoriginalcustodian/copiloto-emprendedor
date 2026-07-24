@@ -7,6 +7,7 @@ import { useSession } from '../auth/useSession';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
+import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { useChat } from './useChat';
 import { useVozComando } from './useVozComando';
@@ -141,6 +142,12 @@ export function ChatView() {
      * el origen DocuMed, mismo tipo de panel absoluto de pantalla completa).
      */
     <KeyboardAvoidingView testID="chat-view" behavior="padding" style={styles.contenedor}>
+      {/* Contrato de modos §4 ("estado siempre visible sin abrir nada"). Primer hijo, FUERA de
+          `PanelDeslizable` — mismo placement que `ModoClinicoToggle` en documed, ver su docstring. */}
+      <View style={styles.indicadorModo}>
+        <IndicadorModoCeremonia />
+      </View>
+
       <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
 
       {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
@@ -200,6 +207,7 @@ export function ChatView() {
 const styles = StyleSheet.create({
   // SIN `backgroundColor` a propósito — ver docstring del módulo.
   contenedor: { flex: 1 },
+  indicadorModo: { paddingHorizontal: 16, paddingTop: 8 },
   overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
   ondaFlotante: { width: '100%', paddingHorizontal: 24 },
   // `display:'none'` y no `opacity:0`: con opacity el botón seguiría ocupando su lugar y el composer
