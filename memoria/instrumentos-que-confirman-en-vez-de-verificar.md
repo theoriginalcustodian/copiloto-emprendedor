@@ -165,29 +165,3 @@ Lo destapó el operador diciendo *«están paradas»* contra un instrumento que 
 control que lo resolvió no fue mirar el sensor: fue **leer las tool calls de cada transcript** — backend
 grepeando `continue_as_new` en `conversation_workflow.py`, frontend editando `chat/index.ts`.
 Conducta observada, no rótulo.
-
-## Caso 12 (2026-07-24) — la defensa existía, estaba cableada, y NO cubría este repo
-
-Al extender `graph_first_gate.mjs` (el gate PreToolUse de "grafo primero") con un matcher nuevo,
-escribí el smoke con **un control negativo al final**: *«CONTROL: el gate PUEDE decir ask»*. Salió:
-
-```
-7 PASS · 3 FAIL   ← y el que falló fue el CONTROL
-```
-
-Los 7 verdes eran todos `mudo`, o sea **el gate no respondía nada en ningún caso**. La causa:
-`graph_first_config.json` sólo registraba `documed`; el gate es cross-project-safe por diseño (cwd que
-no matchea → sale mudo), así que llevaba **desde su creación mudo en `copiloto-emprendedor`**. Y yo
-lo había citado minutos antes al operador como protección vigente en este repo.
-
-**Lo que lo vuelve un caso y no una anécdota:** sin el control negativo, el smoke daba **7 PASS** y yo
-cableaba un gate muerto **con siete verdes de respaldo**. Todos los casos "mudo" son indistinguibles
-entre *«el gate evaluó y decidió callarse»* y *«el gate no llegó a evaluar nada»* — el corolario que
-generaliza este archivo: *cuando un instrumento devuelve lo mismo por éxito y por no-haber-corrido, no
-es un instrumento*. La diferencia acá fue una sola línea que exige ver el resultado **contrario** al
-menos una vez.
-
-**Y el filo que suma sobre los 11 anteriores:** una defensa puede estar **escrita, cableada, testeada y
-documentada** y aun así **no cubrir tu caso**, porque su alcance vive en una config aparte que nadie
-vuelve a mirar. Antes de citar un guard como protección, correr el control de que **dispara acá**
-([[verificar-que-el-camino-recomendado-existe]]).

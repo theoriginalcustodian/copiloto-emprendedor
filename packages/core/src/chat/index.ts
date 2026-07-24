@@ -7,9 +7,12 @@ export * from './modo';
 // cuando el emprendedor toca Guardar. Ver el docstring del módulo.
 export * from './gastoPropuesto';
 export * from './clientePropuesto';
-// `ingreso_propuesto` — [ASSUMED_PENDING_VERIFY], ver el docstring del módulo: misma convención que
-// las dos de arriba (data = body de POST, kind abierto), sin medir todavía contra el backend real.
+// `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112): el backend emite exactamente lo
+// que este módulo espera. Ver `avance_backend-a-todos_hito8-ingreso-propuesto-verificado-en-device`.
 export * from './ingresoPropuesto';
 // `presupuesto_propuesto` — `data` SÍ está confirmada (contrato de backend §2.4); sólo el `kind` es
 // [ASSUMED_PENDING_VERIFY]. Ver el docstring del módulo.
 export * from './presupuestoPropuesto';
+// `factura_propuesta` — hito 9: `data` confirmada por el contrato §2.1; sólo el `kind` es
+// [ASSUMED_PENDING_VERIFY]. Ver el docstring del módulo.
+export * from './facturaPropuesta';

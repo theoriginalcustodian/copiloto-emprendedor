@@ -1,42 +1,14 @@
 ---
-description: Arranque VERIFICADO de la sesión PLANIFICACIÓN: 3 crones + instrumentos + estado de la cola, con reporte binario
-allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
+description: (Re)crea idempotente los TRES crones de monitoreo de la sesión PLANIFICACIÓN (PARÁLISIS + vigía v3 + sesiones ociosas)
+allowed-tools: CronList, CronCreate
 ---
 
 # Arrancar el monitoreo de la sesión PLANIFICACIÓN
 
-Dejá la sesión PLANIFICACIÓN **lista para dirigir, y demostralo**. No alcanza con instalar los
-crones: si arrancás sin saber en qué hito está la cola y quién está bloqueado, el primer ciclo se va en
-averiguarlo.
-
-1. **`CronList`** — ¿existen los tres? (comparar por schedule + arranque del prompt). Los que estén, no
-   se tocan.
-2. **`CronCreate`** — creá SÓLO los que falten, con el schedule y prompt EXACTOS de abajo.
-3. **`CronList` de nuevo y CONFIRMÁ los tres.** Sin verlos, no están instalados.
-4. **Instrumentos** — `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`. Los dos tienen que
-   correr **sin error**: son la base de todos los ciclos. Si `no-ocio-check.sh` no existe en tu checkout,
-   estás en una rama vieja — `git log origin/main -1` y decilo.
-5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
-   nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
-6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
-   `-a-planificacion_` y `-a-todos_`, descartando lo que empiece por `planificacion-a-` (es tuyo).
-   Mirá también `cerrado/<hoy>/` por los `avance_`, que nacen archivados.
-
-**REPORTE de arranque — binario, una línea por ítem:**
-
-```
-✅/❌ 3 crones vivos (PARÁLISIS */3 · vigía 7,27,47 · ociosas 1-58/3)
-✅/❌ no-ocio-check + cola-check corren
-✅/❌ buzon_watcher registrado
-📊 PRODUCCIÓN backend Nmin · frontend Nmin   (⚠️ VIDA fresca NO prueba trabajo: el cron también
-     genera turnos — 2026-07-24, la sesión ociosa tuvo 42 disparos y la que implementaba 5)
-🔥 COLA: hito N «...» · siguiente: ...
-📬 N mensajes dirigidos a mí sin resolver → los listo
-▶️  ARRANCO CON: <la acción concreta que sigue>
-```
-
-**La última línea no es opcional.** Y si el instrumento marca `🌀 GIRA EN VACÍO` en alguna sesión, eso
-es OCIO (no dead-man): reasignale algo en el MISMO ciclo, no lo difieras.
+Recreá los tres crones de monitoreo de coordinación. **Idempotente: primero `CronList`, y creá SÓLO los
+que falten** (comparando por el schedule + el arranque del prompt). Si los tres ya existen, no hagas nada
+y reportá "los 3 crones ya están vivos". Si falta alguno, `CronCreate` con el schedule y prompt exactos
+de abajo. Al terminar, `CronList` para confirmar que los tres están, y reportá en una línea.
 
 > Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 3 sesiones paralelas (planificación/backend/
 > frontend) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir una sesión NUEVA
@@ -58,15 +30,11 @@ esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 
 
 0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO:
    `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`
-   Da DOS métricas y hay que leer las dos:
-   · **PRODUCCIÓN** = minutos desde el último `Write`/`Edit` (timestamp de la línea JSONL). **Ésta
-     es la que dice si TRABAJA.**
-   · **VIDA** = mtime del transcript. ⚠️ Un turno lo genera también el CRON, así que VIDA fresca
-     NO prueba trabajo: medido 2026-07-24, la sesión OCIOSA tuvo **42 disparos** de cron y la que
-     implementaba **5** — el cron dispara MÁS cuanto MENOS trabaja. VIDA fresca + PRODUCCIÓN vieja
-     = `🌀 GIRA EN VACÍO` (ocio, no dead-man): reasignar, no alarmar.
-   **PROHIBIDO afirmar que una sesión está muerta/parada sin ese output.** NUNCA leas un `.jsonl`
-   entero. Ver COORDINACION §4.2.sexies.
+   El script mide la VIDA de cada sesión por el **mtime de su transcript JSONL**
+   (`~/.claude/projects/<slug>/*.jsonl`), NO por lo que postea al buzón. Una sesión puede
+   trabajar una hora sin postear: el buzón mide REPORTES, no vida.
+   **PROHIBIDO afirmar que una sesión está muerta/parada sin ese output.** Transcript fresco
+   + buzón viejo = "trabaja sin reportar" (señal leve), NO dead-man. Ver COORDINACION §4.2.sexies.
 
 1. MEDIR, en un solo comando: hora actual · último commit de `origin/main` y su antigüedad ·
    último commit de la rama de la app y su antigüedad · `gh pr list --state open` ·
@@ -139,13 +107,11 @@ escapó al umbral de 25 min.
 Buzón (ruta absoluta): C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
 0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO: `bash scripts/no-ocio-check.sh`
-   Da DOS métricas y hay que leer las dos:
-   · **PRODUCCIÓN** = minutos desde el último `Write`/`Edit`. **Ésta dice si TRABAJA.**
-   · **VIDA** = mtime del transcript. ⚠️ El CRON también genera turnos, así que VIDA fresca NO
-     prueba trabajo (2026-07-24: la sesión ociosa tuvo 42 disparos; la que implementaba, 5).
-     VIDA fresca + PRODUCCIÓN vieja = `🌀 GIRA EN VACÍO` → es OCIO, reasignar; NO es dead-man.
-   **PROHIBIDO afirmar que una sesión está parada/muerta sin ese output** (2026-07-24 se reportó
-   "backend muerto 8½ h" mientras backend escribía código). NUNCA leas un `.jsonl` entero.
+   Mide la VIDA de cada sesión por el **mtime de su transcript JSONL**
+   (`~/.claude/projects/<slug>/*.jsonl`), que Claude Code escribe en CADA turno. Ése es el
+   latido real. **PROHIBIDO afirmar que una sesión está parada/muerta sin ese output**
+   (2026-07-24: se reportó "backend muerto 8½ h" mientras backend escribía código).
+   NUNCA leas un `.jsonl` entero — pesan cientos de MB; el script usa `tail -c`.
 
 1. Con el output del paso 0, distinguí las DOS señales, que NO son lo mismo:
    - **VIDA (transcript fresco)** → la sesión está trabajando. Si además su buzón está viejo,
