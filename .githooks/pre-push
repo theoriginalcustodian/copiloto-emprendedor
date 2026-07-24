@@ -21,7 +21,7 @@ REFS_STDIN="$(cat || true)"
 # alcance (incremental vs completo) y le delega la ejecución.
 ZERO="0000000000000000000000000000000000000000"
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
-REPO_NAME="copiloto-emprendedor"
+REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
 CHECKPOINT_REL=".bridge/checkpoint-${REPO_NAME}.db"
 MERGE_BASE_REF="${GRAPHITY_MERGE_BASE_REF:-origin/main}"
 

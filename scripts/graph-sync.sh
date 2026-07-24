@@ -44,7 +44,7 @@
 set -uo pipefail
 
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
-REPO_NAME="copiloto-emprendedor"
+REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
 CKPT=".bridge/checkpoint-${REPO_NAME}.db"
 WT="${UC_GRAPH_WORKTREE:-C:/gfw-src/copiloto-main}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
