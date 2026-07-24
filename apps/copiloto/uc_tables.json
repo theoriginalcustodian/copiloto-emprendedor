@@ -189,5 +189,15 @@
     "emitido_en timestamptz NOT NULL DEFAULT now()",
     "silenciado_hasta timestamptz NOT NULL",
     "datos jsonb"
+  ],
+  "copiloto_mi_dia_tarjetas": [
+    "regla text",
+    "entidad_tipo text",
+    "entidad_id text",
+    "texto text NOT NULL",
+    "estado text NOT NULL DEFAULT 'para_hoy'",
+    "datos jsonb",
+    "creada_en timestamptz NOT NULL DEFAULT now()",
+    "movida_en timestamptz NOT NULL DEFAULT now()"
   ]
 }

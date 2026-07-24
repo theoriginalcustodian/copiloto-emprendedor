@@ -73,6 +73,9 @@ from graphity_structured_client import GraphityStructuredClient
 from inteligencia_chat import InteligenciaChat, group_id_negocio
 from inteligencia_web import create_inteligencia_app
 from inteligencia_queries import InteligenciaQueries
+from mi_dia_orquestador import avanzar_tablero
+from mi_dia_tarjeta_store import TarjetaStore
+from mi_dia_web import create_mi_dia_app
 from actividad_store import ActividadStore
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
@@ -237,6 +240,12 @@ async def _serve() -> None:
         chat_factory=chat_factory,
     )
 
+    mi_dia_app = create_mi_dia_app(
+        require_tenant=require_tenant,
+        tarjeta_store_factory=lambda cid: TarjetaStore(conn_factory, cid),
+        avanzar_tablero_fn=lambda cid: avanzar_tablero(conn_factory, cid),
+    )
+
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
     # el mismo make_pg_reply_sink que usa el worker (Task 5) -- un solo camino de escritura.
     adapter = WebChannelAdapter(reply_sink=make_pg_reply_sink(conn_factory))
@@ -255,6 +264,7 @@ async def _serve() -> None:
         afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
         clientes_app=clientes_app, actividad_app=actividad_app,
         inteligencia_app=inteligencia_app,
+        mi_dia_app=mi_dia_app,
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
