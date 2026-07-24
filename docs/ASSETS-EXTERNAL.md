@@ -9,7 +9,10 @@ repo de producto). Decisión de graduación (Fase 2, 2026-07-06): almacenamiento
 | `Web copiloto/` + `.zip` | Handoff de diseño de la web | ~11 MB |
 | `Copiloto App.html` | Export de diseño | — |
 | `es-ar-listen/` | Spike de voces argentinas (dataset de audio) | ~28 MB |
+| `docs/Imagen de marca/*.pdf` | Deliverables de diseño (propuesta de la diseñadora gráfica) | ~220 KB c/u |
 
 **Ubicación actual (transitoria):** `../_copiloto-assets-fase2/` (sibling del repo `unreal-copilot`,
 con su propio README). **TODO (owner: David):** subir a un bucket/Drive del proyecto y dejar acá el
-puntero definitivo. Están gitignoreados (`*.zip`, `es-ar-listen/`, `APP Copiloto Movil/`, `Web copiloto/`).
+puntero definitivo. Están gitignoreados (`*.zip`, `es-ar-listen/`, `APP Copiloto Movil/`, `Web copiloto/`,
+`docs/Imagen de marca/*.pdf`). Los `.md` de esa misma carpeta (brief, research) **sí** viven en el repo:
+son texto, no assets pesados.

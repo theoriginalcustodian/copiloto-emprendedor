@@ -26,6 +26,7 @@ apps/copiloto-web/dist/
 es-ar-listen/
 **/APP Copiloto Movil/
 **/Web copiloto/
+docs/Imagen de marca/*.pdf
 
 # Buzón entre sesiones — NO es parte del repo.
 # Carpeta física única apuntada por los crones vía ruta absoluta. Si se versionara,
@@ -52,7 +53,3 @@ apps/mobile/.expo/
 apps/mobile/android/
 apps/mobile/ios/
 *.apk
-
-# Estado local de Claude Code (no versionar; los commands SÍ van)
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
