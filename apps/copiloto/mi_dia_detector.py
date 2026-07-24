@@ -168,30 +168,30 @@ def _candidatos_trabajo_margen_negativo(conn_factory: Callable, cliente_id: str)
 
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
 
-def correr_detector(conn_factory: Callable, cliente_id: str) -> list[dict]:
-    """DETECTAR + el filtro de silencio de PRIORIZAR (contrato §1, primeros dos pasos del pipeline).
+def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[dict]]:
+    """DETECTAR puro (contrato §1, primer paso) — la verdad CRUDA, sin filtrar por silencio.
+
+    🔴 A propósito NO filtra silenciados acá. Un consumidor que necesite "cerrar la tarjeta sola
+    porque el hecho ya no es cierto" (contrato §2.1) necesita la verdad completa: si este método
+    filtrara los silenciados, un candidato que sigue vigente pero está silenciado (dentro de sus 14
+    días) desaparecería de la lista y un reconciliador lo leería como "ya no dispara" — cerrando una
+    tarjeta que sigue activa. El filtro de silencio es una decisión de PRIORIZAR (¿corresponde avisar
+    de nuevo?), no de si el hecho es verdad; por eso vive aparte, en quien orquesta (`mi_dia_orquestador.py`).
 
     Determinista dado el estado de la DB en el momento en que corre — no llama al LLM. REDACTAR
-    (texto con tono del negocio) y ENTREGAR (Kanban + portada) son pasos aparte, fuera de este módulo:
-    si el LLM se cae, estos candidatos ya existen y el aviso sale con la plantilla (contrato §1 —
-    "nunca decide *si* hay algo que avisar, sólo *cómo* decirlo").
-
-    Devuelve los candidatos que DISPARAN y no están silenciados — **no los marca emitidos**: eso lo
-    hace quien llama, después de REDACTAR/ENTREGAR con éxito (si se marca antes y ENTREGAR falla, el
-    aviso se pierde y encima queda silenciado — el orden importa).
+    (texto con tono del negocio) y ENTREGAR (Kanban + portada) son pasos aparte, fuera de este módulo.
     """
-    avisos = AvisosEmitidosStore(conn_factory, cliente_id)
-    candidatos: list[dict] = []
+    return {
+        REGLA_PRESUPUESTOS_ENFRIANDOSE:
+            _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id)),
+        REGLA_FACTURAS_IMPAGAS_VIEJAS:
+            _evaluar_facturas_impagas_viejas(_candidatos_facturas_impagas_viejas(conn_factory, cliente_id)),
+        REGLA_TRABAJO_MARGEN_NEGATIVO:
+            _evaluar_trabajo_margen_negativo(_candidatos_trabajo_margen_negativo(conn_factory, cliente_id)),
+    }
 
-    for regla, cands in (
-        (REGLA_PRESUPUESTOS_ENFRIANDOSE,
-         _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id))),
-        (REGLA_FACTURAS_IMPAGAS_VIEJAS,
-         _evaluar_facturas_impagas_viejas(_candidatos_facturas_impagas_viejas(conn_factory, cliente_id))),
-        (REGLA_TRABAJO_MARGEN_NEGATIVO,
-         _evaluar_trabajo_margen_negativo(_candidatos_trabajo_margen_negativo(conn_factory, cliente_id))),
-    ):
-        silenciados = avisos.silenciados(regla)
-        candidatos.extend(c for c in cands if str(c["entidad_id"]) not in silenciados)
 
-    return candidatos
+# Reglas cuya tarjeta se cierra SOLA cuando el candidato deja de aparecer en `detectar_todos()`
+# (contrato §2.1). `trabajo_con_margen_negativo` NO está: es un hecho cerrado que se dice una vez
+# (§1.bis) — no tiene "acción que lo resuelva", así que no se reconcilia por ausencia.
+REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS)

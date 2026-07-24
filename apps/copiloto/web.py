@@ -410,6 +410,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    clientes_app: FastAPI | None = None,
                    actividad_app: FastAPI | None = None,
                    inteligencia_app: FastAPI | None = None,
+                   mi_dia_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -743,6 +744,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # queries). Sus rutas traen su propia barrera `Depends(require_tenant)`. Mismo criterio opcional.
     if inteligencia_app is not None:
         app.include_router(inteligencia_app.router)
+    # `/mi-dia/*` (hito 7 — Kanban + detector proactivo). Mismo criterio opcional que el resto.
+    if mi_dia_app is not None:
+        app.include_router(mi_dia_app.router)
 
     # SPA mismo-origen (Task 8): se monta al final -> no ensombrece ninguna ruta de API/MP de arriba.
     # No-op si todavía no hay build (front-door API-only hasta que `sync-web.sh` produzca el `dist`).
