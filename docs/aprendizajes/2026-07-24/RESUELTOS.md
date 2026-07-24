@@ -18,5 +18,16 @@ cola. Registro completo de la captura: `coordinacion/APRENDIZAJES-SPRINT.md` del
 | 8 | `buzon_watcher` es `PostToolUse`: al **reanudar** tras un compact, el modelo arma su plan antes de la primera tool call — el hook todavía no habló. Ése era el hueco exacto | 1 | `~/.claude/hooks/buzon_al_reanudar.mjs` (`SessionStart`), smoke 4/4 con 2 controles negativos |
 | 9 | Le di a la auditoría un encuadre falso y auditó una premisa que no existe. **El error estuvo en el prompt, no en el auditor** | 3 | Modo de fallo nº 8 del bucle canónico |
 
+## Implementados en F7.5, el mismo día
+
+Los dos primeros de la cola, cada uno con su DoD corrido contra el sistema real (no autoevaluación):
+
+| Aprendizaje | Gancho | Evidencia |
+|---|---|---|
+| Una rama nueva disparaba el sync COMPLETO del grafo | `.githooks/pre-push` decide el alcance con `merge-base`, y lo imprime | Push real de rama nueva: `alcance: incremental … (2 archivos)` → **1 fila** sincronizada, contra las **15.906** del camino viejo |
+| El veredicto de un proceso de fondo es su salida, no su exit code | `scripts/graph-sync.sh` + `graphity_positive_control.py` | `✅ 'scripts_graph_sync' está en Graphity`, **y el diferencial**: uuid inexistente → `False`, uuid real → `True` |
+
+Detalle y controles negativos en cada archivo de esta carpeta.
+
 **Lo que este día dejó abierto** está en [`../pendientes/`](../pendientes/) — cuatro ganchos, todos de
 nivel 1.

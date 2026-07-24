@@ -85,10 +85,17 @@ if grep -Eq "$_ERROR_GREP" "$OUT"; then
   exit 1
 fi
 
-verify_since="${SINCE:-HEAD~1}"
+# En sync COMPLETO no se pasa --since: el control verifica un nodo cualquiera del grafo recién
+# construido. Pasarle HEAD~1 hacía que casi siempre respondiera "nada verificable en este rango"
+# (medido 2026-07-24: el sync subió 15.906 filas y el control no miró ni una) — un control que no
+# falla nunca porque nunca mira es decoración, no verificación.
 (
   cd "$BRIDGE"
-  uv run python "$POSITIVE_CONTROL" --config config/repos.toml --repo "$REPO_NAME" --since "$verify_since"
+  if [ -n "$SINCE" ]; then
+    uv run python "$POSITIVE_CONTROL" --config config/repos.toml --repo "$REPO_NAME" --since "$SINCE"
+  else
+    uv run python "$POSITIVE_CONTROL" --config config/repos.toml --repo "$REPO_NAME"
+  fi
 )
 pc_status=$?
 
