@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mi_dia_detector import (REGLA_FACTURAS_IMPAGAS_VIEJAS, REGLA_PRESUPUESTOS_ENFRIANDOSE,
+from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_FACTURAS_IMPAGAS_VIEJAS,
+                             REGLA_GASTO_MES_ALTO, REGLA_PRESUPUESTOS_ENFRIANDOSE,
                              REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
                              REGLAS_AUTO_CIERRE, AvisosEmitidosStore, detectar_todos)
 from mi_dia_tarjeta_store import TarjetaStore
@@ -32,6 +33,11 @@ _PLANTILLAS = {
     REGLA_TRABAJO_SIN_INGRESO:
         lambda d: (f"Pusiste ${d.get('gastado')} en el trabajo de {d.get('etiqueta') or 'un cliente'} "
                   f"y no registraste que te pagaran. ¿Te lo pagaron?"),
+    REGLA_GASTO_MES_ALTO:
+        lambda d: (f"Este mes gastaste ${d.get('gasto_actual')}, contra ${d.get('gasto_anterior')} "
+                  f"el mes pasado."),
+    REGLA_CAE_POR_VENCER:
+        lambda d: f"La factura {d.get('nro') or ''} tiene el CAE por vencer en {d.get('dias')} días.",
 }
 
 

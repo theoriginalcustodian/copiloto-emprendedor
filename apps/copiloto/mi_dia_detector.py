@@ -23,6 +23,7 @@ import os
 from decimal import Decimal
 from typing import Callable
 
+from afip_comprobante_store import AfipComprobanteStore
 from cobro_store import CobroStore
 # `DIAS_VENCIDO` es el umbral de "vencido" del hito 6 (`por_cobrar`) — se importa, no se redefine:
 # una sola definición de "factura vieja" en toda la app.
@@ -40,6 +41,12 @@ UMBRAL_PRESUPUESTO_ENFRIANDOSE = Decimal(os.environ.get("COPILOTO_MI_DIA_UMBRAL_
 # Umbral de "trabajo sin ingreso" (contrato §1.bis) — días desde el ÚLTIMO MOVIMIENTO, no desde que
 # empezó (ver `TrabajoStore.margen` → `dias_desde_ultimo_movimiento`).
 DIAS_TRABAJO_SIN_INGRESO = int(os.environ.get("COPILOTO_MI_DIA_DIAS_SIN_INGRESO") or "15")
+
+# "Muy por encima" del mes anterior — multiplicador, no una resta: escala con el tamaño del negocio.
+UMBRAL_GASTO_MES_MULTIPLICADOR = Decimal(os.environ.get("COPILOTO_MI_DIA_MULT_GASTO_MES") or "1.5")
+
+# Ventana de "CAE por vencer" — sólo el futuro cercano; ya vencido es otra alerta, no ésta.
+DIAS_CAE_POR_VENCER = int(os.environ.get("COPILOTO_MI_DIA_DIAS_CAE") or "14")
 
 # Silencio "para siempre" — reglas que dicen un hecho cerrado una sola vez (contrato §1.bis,
 # `trabajo_con_margen_negativo`: "no se repite"). `silenciado_hasta` es NOT NULL a propósito: un NULL
@@ -99,6 +106,8 @@ REGLA_PRESUPUESTOS_ENFRIANDOSE = "presupuestos_enfriandose"
 REGLA_FACTURAS_IMPAGAS_VIEJAS = "facturas_impagas_viejas"
 REGLA_TRABAJO_MARGEN_NEGATIVO = "trabajo_con_margen_negativo"
 REGLA_TRABAJO_SIN_INGRESO = "trabajo_con_gastos_y_sin_ingreso"
+REGLA_GASTO_MES_ALTO = "gasto_del_mes_alto"
+REGLA_CAE_POR_VENCER = "cae_por_vencer"
 
 
 def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
@@ -180,6 +189,47 @@ def _evaluar_trabajo_sin_ingreso(trabajos_sin_ingreso: list[dict]) -> list[dict]
     return salida
 
 
+def _evaluar_gasto_del_mes_alto(serie: list[dict]) -> list[dict]:
+    """Contrato §1: `gasto del mes muy por encima del anterior`. Compara los últimos 2 meses de
+    `InteligenciaQueries.serie_mensual_reciente()` (misma definición de "Salió" que la portada, §0).
+
+    Sin baseline (mes anterior en $0) no dispara: "muy por encima de cero" no es una señal de alarma,
+    es el primer mes con actividad — dispararía siempre que hay CUALQUIER gasto."""
+    if len(serie) < 2:
+        return []
+    anterior, actual = serie[-2], serie[-1]
+    gasto_anterior = Decimal(str(anterior.get("gastos") or 0))
+    gasto_actual = Decimal(str(actual.get("gastos") or 0))
+    if gasto_anterior <= 0 or gasto_actual <= gasto_anterior * UMBRAL_GASTO_MES_MULTIPLICADOR:
+        return []
+    return [{
+        "regla": REGLA_GASTO_MES_ALTO, "entidad_tipo": "mes", "entidad_id": actual["mes"],
+        "dias_silencio": 14,
+        "datos": {"mes": actual["mes"], "gasto_actual": actual["gastos"],
+                  "gasto_anterior": anterior["gastos"]},
+    }]
+
+
+def _evaluar_cae_por_vencer(comprobantes: list[dict]) -> list[dict]:
+    """Contrato §1: `CAE... por vencer`. Ventana `[0, DIAS_CAE_POR_VENCER]` — ya vencido
+    (`dias_para_vencer < 0`) es otra alerta ("ya venció"), no ésta; el contrato pide "por vencer",
+    no "vencido". Alcance de esta regla: el CAE por comprobante (`afip_comprobantes.cae_vto`). La
+    otra mitad del nombre del contrato ("...o credencial") — el certificado WSAA de
+    `afip_credentials` — no tiene columna de vencimiento en este schema todavía; queda fuera,
+    deuda separada (no se inventa una fecha que no existe)."""
+    salida = []
+    for c in comprobantes:
+        dias = c.get("dias_para_vencer")
+        if dias is None or dias < 0 or dias > DIAS_CAE_POR_VENCER:
+            continue
+        salida.append({
+            "regla": REGLA_CAE_POR_VENCER, "entidad_tipo": "comprobante", "entidad_id": c["id"],
+            "dias_silencio": 14,
+            "datos": {"nro": c.get("nro"), "cae_vto": c.get("cae_vto"), "dias": dias},
+        })
+    return salida
+
+
 # ── Reglas — mitad IMPURA (traen los datos de la capa del hito 6) ──────────────────────────────────
 
 def _candidatos_presupuestos_enfriandose(conn_factory: Callable, cliente_id: str) -> list[dict]:
@@ -196,6 +246,14 @@ def _candidatos_margen_por_trabajo(conn_factory: Callable, cliente_id: str) -> d
     veces (una por regla) duplicaría el recorrido de TODOS los trabajos del tenant en cada corrida
     del detector — barato de evitar, compartiendo el resultado acá."""
     return InteligenciaQueries(conn_factory, cliente_id).margen_por_trabajo()
+
+
+def _candidatos_gasto_del_mes_alto(conn_factory: Callable, cliente_id: str) -> list[dict]:
+    return InteligenciaQueries(conn_factory, cliente_id).serie_mensual_reciente(meses=2)
+
+
+def _candidatos_cae_por_vencer(conn_factory: Callable, cliente_id: str) -> list[dict]:
+    return AfipComprobanteStore(conn_factory, cliente_id).con_cae_vigente()
 
 
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
@@ -223,6 +281,10 @@ def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[di
             _evaluar_trabajo_margen_negativo(margen_por_trabajo["trabajos"]),
         REGLA_TRABAJO_SIN_INGRESO:
             _evaluar_trabajo_sin_ingreso(margen_por_trabajo["sin_ingreso"]),
+        REGLA_GASTO_MES_ALTO:
+            _evaluar_gasto_del_mes_alto(_candidatos_gasto_del_mes_alto(conn_factory, cliente_id)),
+        REGLA_CAE_POR_VENCER:
+            _evaluar_cae_por_vencer(_candidatos_cae_por_vencer(conn_factory, cliente_id)),
     }
 
 
@@ -231,5 +293,8 @@ def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[di
 # (§1.bis) — no tiene "acción que lo resuelva", así que no se reconcilia por ausencia.
 # `trabajo_con_gastos_y_sin_ingreso` SÍ está — el DoD lo pide explícito: "se cierra sola al
 # registrar el ingreso" (§5), que es exactamente "el trabajo deja de aparecer en `sin_ingreso`".
+# `gasto_del_mes_alto` y `cae_por_vencer` NO están — ninguna tiene una "acción que la resuelva": un
+# mes caro sigue habiendo sido caro, y un CAE no se "renueva" (contrato §2.1: sólo se mueven a mano
+# las que no tienen acción rastreable).
 REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS,
                       REGLA_TRABAJO_SIN_INGRESO)

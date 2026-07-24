@@ -173,3 +173,67 @@ def test_detectar_todos_pide_margen_por_trabajo_UNA_sola_vez():
     import inspect
     fuente = inspect.getsource(detector.detectar_todos)
     assert fuente.count("_candidatos_margen_por_trabajo(") == 1  # una sola invocación de la query cara
+
+
+# ── gasto_del_mes_alto ──────────────────────────────────────────────────────────────────────────
+
+def test_gasto_del_mes_dispara_pasado_el_multiplicador():
+    serie = [{"mes": "2026-06", "ingresos": "0", "gastos": "10000.00"},
+            {"mes": "2026-07", "ingresos": "0", "gastos": "20000.00"}]  # exactamente 2x
+    salida = detector._evaluar_gasto_del_mes_alto(serie)
+    assert len(salida) == 1
+    assert salida[0]["regla"] == detector.REGLA_GASTO_MES_ALTO
+    assert salida[0]["entidad_id"] == "2026-07"
+
+
+def test_gasto_del_mes_no_dispara_bajo_el_multiplicador():
+    serie = [{"mes": "2026-06", "gastos": "10000.00"}, {"mes": "2026-07", "gastos": "12000.00"}]
+    assert detector._evaluar_gasto_del_mes_alto(serie) == []
+
+
+def test_gasto_del_mes_sin_baseline_no_dispara():
+    """Mes anterior en $0 — "muy por encima de cero" no es una señal, es el primer mes con gastos."""
+    serie = [{"mes": "2026-06", "gastos": "0.00"}, {"mes": "2026-07", "gastos": "500.00"}]
+    assert detector._evaluar_gasto_del_mes_alto(serie) == []
+
+
+def test_gasto_del_mes_con_menos_de_2_meses_no_dispara():
+    assert detector._evaluar_gasto_del_mes_alto([{"mes": "2026-07", "gastos": "999999"}]) == []
+    assert detector._evaluar_gasto_del_mes_alto([]) == []
+
+
+# ── cae_por_vencer ──────────────────────────────────────────────────────────────────────────────
+
+def test_cae_por_vencer_dispara_dentro_de_la_ventana():
+    comprobantes = [{"id": 1, "nro": "0001-00099", "cae_vto": "2026-08-01", "dias_para_vencer": 5}]
+    salida = detector._evaluar_cae_por_vencer(comprobantes)
+    assert len(salida) == 1
+    assert salida[0]["regla"] == detector.REGLA_CAE_POR_VENCER
+    assert salida[0]["entidad_id"] == 1
+
+
+def test_cae_ya_vencido_no_dispara_esta_regla():
+    """Negativo = ya venció — es OTRA alerta ("ya venció"), no "por vencer" (contrato §1)."""
+    comprobantes = [{"id": 1, "dias_para_vencer": -3}]
+    assert detector._evaluar_cae_por_vencer(comprobantes) == []
+
+
+def test_cae_muy_lejos_no_dispara():
+    comprobantes = [{"id": 1, "dias_para_vencer": detector.DIAS_CAE_POR_VENCER + 1}]
+    assert detector._evaluar_cae_por_vencer(comprobantes) == []
+
+
+def test_cae_sin_vto_no_dispara():
+    assert detector._evaluar_cae_por_vencer([{"id": 1, "dias_para_vencer": None}]) == []
+
+
+def test_cae_exactamente_en_el_borde_de_la_ventana_dispara():
+    comprobantes = [{"id": 1, "dias_para_vencer": 0}, {"id": 2, "dias_para_vencer": detector.DIAS_CAE_POR_VENCER}]
+    assert len(detector._evaluar_cae_por_vencer(comprobantes)) == 2
+
+
+# ── ninguna de las 2 reglas nuevas tiene auto-cierre (no hay acción que las resuelva) ──────────────
+
+def test_gasto_mes_alto_y_cae_por_vencer_no_estan_en_auto_cierre():
+    assert detector.REGLA_GASTO_MES_ALTO not in detector.REGLAS_AUTO_CIERRE
+    assert detector.REGLA_CAE_POR_VENCER not in detector.REGLAS_AUTO_CIERRE
