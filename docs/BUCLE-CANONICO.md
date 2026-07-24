@@ -575,6 +575,37 @@ crecer. Cuando algo entra al nivel 2, algo debería salir — o convertirse en n
 
 ---
 
+## 11.bis Escasez de recurso — dispara ejecución, no consulta
+
+**Un recurso finito que se agota —cuota del modelo, tiempo antes de un corte, ventana de
+mantenimiento, deadline— no es una señal para preguntar qué hacer. Es la orden de reordenar la cola y
+ejecutar.**
+
+En el mismo turno en que se detecta:
+
+1. **Reordenar lo pendiente por impacto ÷ costo**, no por el orden en que estaba.
+2. **Despachar ya y en paralelo lo barato-y-alto-impacto**: lo que se resuelve con un **script** (se
+   paga una vez y después corre sin modelo), lo delegable a **modelos baratos**, y todo lo que pueda
+   correr en segundo plano.
+3. **Descartar explícitamente lo caro-y-flojo**, diciendo por qué. Con el recurso escaso, gastarlo en
+   el ítem de evidencia más débil es el peor uso posible.
+4. Lo que exige una **decisión humana** se lleva en un batch **mientras el resto ya corre**. No se
+   frena la ejecución para preguntar.
+
+**El error que esta regla mata no es la inacción**: es **enumerar correctamente lo que se podría
+adelantar y no adelantarlo**, dejando que el humano lo pida. Eso convierte al humano en el
+planificador de la cola del agente — y con un recurso agotándose, el ida y vuelta se paga en el
+recurso mismo.
+
+**Por qué "cero ocio" no alcanza.** Esa regla se dispara cuando **terminaste** algo; ésta se dispara
+**mientras trabajás**, y no exige estar ocioso. Un agente ocupado en una tarea de bajo impacto
+mientras se agota la cuota cumple «cero ocio» al pie de la letra y falla igual.
+
+**El blindaje es el mismo de siempre:** acelerar la cola **ya acordada** es ejecución; adelantar una
+fase futura no aprobada, no. La escasez cambia el **orden** y el **paralelismo**, nunca el **alcance**.
+
+---
+
 ## 12. Instrumentación
 
 El bucle necesita medirse a sí mismo, o se degrada sin que nadie lo note.
