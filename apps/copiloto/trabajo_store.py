@@ -135,23 +135,32 @@ class TrabajoStore:
         """
         cadena = self.resolver(eslabon, ref)
         with self._conn_factory() as conn, conn.cursor() as cur:
-            cur.execute(f"SELECT coalesce(sum(monto), 0) FROM {_COBROS} "
+            # `(CURRENT_DATE - max(fecha))` — mismo patrón que `CobroStore.impagos()` (`dias` en
+            # SQL, no en Python): el "último movimiento" de la cadena es el más reciente entre sus
+            # cobros y sus gastos, y lo que el hito 7 necesita no es la fecha en sí sino "hace
+            # cuántos días" (contrato §1.bis: "el umbral es de días desde el último movimiento, no
+            # desde que empezó" — para no avisar de un trabajo que sigue EN CURSO).
+            cur.execute(f"SELECT coalesce(sum(monto), 0), (CURRENT_DATE - max(fecha)) FROM {_COBROS} "
                         f"WHERE cliente_id=%s AND id = ANY(%s)",
                         (self._cid, cadena["cobros"] or [0]))
-            cobrado = Decimal(str(cur.fetchone()[0] or 0))
+            cobrado, dias_desde_cobro = cur.fetchone()
+            cobrado = Decimal(str(cobrado or 0))
 
             # 🔴 El gasto se cuenta UNA vez aunque esté imputado a un eslabón distinto del que se
             # preguntó: se buscan los tres a la vez sobre la MISMA fila, y el check de la tabla
             # garantiza que ninguna tiene dos referencias puestas.
             cur.execute(f"""
-                SELECT count(*), coalesce(sum(monto), 0) FROM {_GASTOS}
+                SELECT count(*), coalesce(sum(monto), 0), (CURRENT_DATE - max(fecha)) FROM {_GASTOS}
                  WHERE cliente_id = %s
                    AND ( (%s IS NOT NULL AND presupuesto_ref = %s)
                       OR (%s IS NOT NULL AND comprobante_ref = %s)
                       OR (cobro_ref = ANY(%s)) )
             """, (self._cid, cadena["presupuesto"], cadena["presupuesto"],
                   cadena["comprobante"], cadena["comprobante"], cadena["cobros"] or [0]))
-            cuantos, gastado = cur.fetchone()
+            cuantos, gastado, dias_desde_gasto = cur.fetchone()
+
+            dias_candidatos = [d.days for d in (dias_desde_cobro, dias_desde_gasto) if d is not None]
+            dias_desde_ultimo_movimiento = min(dias_candidatos) if dias_candidatos else None
 
         return {
             "trabajo": cadena,
@@ -161,6 +170,7 @@ class TrabajoStore:
             # ⚠️ El conteo viaja SIEMPRE, aunque sea 0: es lo que le permite a la pantalla decir «con 0
             # gastos imputados» en vez de mostrar un margen del 100% que parece una gran noticia.
             "gastos_imputados": int(cuantos or 0),
+            "dias_desde_ultimo_movimiento": dias_desde_ultimo_movimiento,
         }
 
     # ── imputar ──────────────────────────────────────────────────────────────────────────────────

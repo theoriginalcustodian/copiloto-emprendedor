@@ -432,7 +432,11 @@ class InteligenciaQueries:
         for eslabon, ref in raices.values():
             m = ts.margen(eslabon, ref)
             base = {"eslabon": eslabon, "ref": ref, "etiqueta": etiquetas[(eslabon, ref)],
-                   "gastos_imputados": m["gastos_imputados"]}
+                   "gastos_imputados": m["gastos_imputados"],
+                   # Hito 7 (detector): "días desde el último movimiento" — NO desde que empezó el
+                   # trabajo, para no avisar de algo que sigue EN CURSO. Campo aditivo, opcional
+                   # para quien no lo necesita (gráfico 4 del hito 6 lo ignora sin romperse).
+                   "dias_desde_ultimo_movimiento": m["dias_desde_ultimo_movimiento"]}
             if Decimal(m["gastado"]) > 0 and Decimal(m["cobrado"]) == 0:
                 sin_ingreso.append({**base, "gastado": m["gastado"]})
             else:

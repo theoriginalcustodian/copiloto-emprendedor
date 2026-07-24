@@ -16,8 +16,8 @@ from __future__ import annotations
 from typing import Callable
 
 from mi_dia_detector import (REGLA_FACTURAS_IMPAGAS_VIEJAS, REGLA_PRESUPUESTOS_ENFRIANDOSE,
-                             REGLA_TRABAJO_MARGEN_NEGATIVO, REGLAS_AUTO_CIERRE,
-                             AvisosEmitidosStore, detectar_todos)
+                             REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
+                             REGLAS_AUTO_CIERRE, AvisosEmitidosStore, detectar_todos)
 from mi_dia_tarjeta_store import TarjetaStore
 
 _PLANTILLAS = {
@@ -29,6 +29,9 @@ _PLANTILLAS = {
                   f"impaga hace {d.get('dias')} días."),
     REGLA_TRABAJO_MARGEN_NEGATIVO:
         lambda d: f"El trabajo de {d.get('etiqueta') or 'un cliente'} te dejó ${d.get('margen')} en contra.",
+    REGLA_TRABAJO_SIN_INGRESO:
+        lambda d: (f"Pusiste ${d.get('gastado')} en el trabajo de {d.get('etiqueta') or 'un cliente'} "
+                  f"y no registraste que te pagaran. ¿Te lo pagaron?"),
 }
 
 
