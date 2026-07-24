@@ -20,7 +20,7 @@
  * TOGGLE (abre/cierra), sin arrastrar.
  */
 import type { PropsWithChildren, ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,6 +119,13 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    * el dueño del estado sigue siendo el gesto, que es quien lo ve de verdad.
    */
   senalSubir?: number;
+  /**
+   * Avisa hacia afuera cada vez que el panel TERMINA de asentarse arriba o abajo — espejo de lectura
+   * del `panelAbajo` interno, para que quien sostenga `senalSubir` (`PantallaPrincipal`, el BACK de
+   * Android) sepa si hoy tocaría hacer algo. No es un tercer dueño de `panelY`: sólo REPORTA el mismo
+   * estado que ya calculan `alternar()` y `onEnd`, en el mismo callback que ya llama `setPanelAbajo`.
+   */
+  onPanelAbajoChange?: (abajo: boolean) => void;
   testID?: string;
 }
 
@@ -131,7 +138,7 @@ export interface PanelDeslizableProps extends PropsWithChildren {
  * amenaza que lo justifica sería ruido para el próximo lector — si el copiloto suma captura de audio
  * de larga duración en el futuro, este es el punto a revisar primero.
  */
-export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDeslizableProps) {
+export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChange, testID }: PanelDeslizableProps) {
   const tema = useTema();
   const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
@@ -149,6 +156,22 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
   // Espejo en React del estado del panel, SÓLO para el texto del pull-hint (el template lo alterna).
   // Se actualiza vía `runOnJS` en cada snap; el drag en sí sigue 100% en el hilo de UI (no re-renderiza).
   const [panelAbajo, setPanelAbajo] = useState(false);
+
+  /**
+   * `onPanelAbajoChange` por `ref`, no directo en el `useMemo` del gesto: si quien llama a
+   * `PanelDeslizable` pasara un arrow function inline (no memoizado), meterlo como dependencia del
+   * gesto lo reconstruiría en cada render — el mismo defecto que el `useMemo` de acá abajo ya evita
+   * para todo lo demás. `setPanelAbajoConAviso` sí es estable (deps `[]`, sólo lee el ref), así que
+   * puede vivir tranquilo en las dependencias del gesto.
+   */
+  const onPanelAbajoChangeRef = useRef(onPanelAbajoChange);
+  useEffect(() => {
+    onPanelAbajoChangeRef.current = onPanelAbajoChange;
+  }, [onPanelAbajoChange]);
+  const setPanelAbajoConAviso = useCallback((abajo: boolean) => {
+    setPanelAbajo(abajo);
+    onPanelAbajoChangeRef.current?.(abajo);
+  }, []);
 
   /**
    * ⚠️ **NO agregar un writer de `panelY` atado al foco (`useFocusEffect`).** Se probó (2026-07-20)
@@ -173,9 +196,9 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
     // Mismo criterio que el snap del gesto: el estado se actualiza cuando la animación TERMINA,
     // para no commitear el árbol de React mientras el panel se está moviendo.
     panelY.value = withTiming(0, CONFIG_SNAP, (finished) => {
-      if (finished) runOnJS(setPanelAbajo)(false);
+      if (finished) runOnJS(setPanelAbajoConAviso)(false);
     });
-  }, [senalSubir, panelY]);
+  }, [senalSubir, panelY, setPanelAbajoConAviso]);
 
   // 🔴 **El `useMemo` no es una optimización: Gesture Handler v2 lo exige.** Sin él se construye un
   // objeto de gesto NUEVO en cada render y `GestureDetector` re-adjunta el recognizer, que pierde su
@@ -186,11 +209,11 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
   //
   // `alternar` vive DENTRO del memo a propósito: si quedara afuera se recrearía en cada render y,
   // como dependencia, invalidaría el memo en cada render — o sea el `useMemo` no serviría de nada,
-  // que es la forma más común de "memoizar" sin memoizar. Sólo usa shared values y `setPanelAbajo`,
-  // todos estables, así que no necesita estar afuera.
+  // que es la forma más común de "memoizar" sin memoizar. Sólo usa shared values y
+  // `setPanelAbajoConAviso`, todos estables, así que no necesita estar afuera.
   //
-  // Las dependencias son todas shared values estables (`useSharedValue` devuelve el mismo objeto
-  // entre renders), así que el gesto se construye UNA sola vez.
+  // Las dependencias son shared values estables (`useSharedValue` devuelve el mismo objeto entre
+  // renders) + `setPanelAbajoConAviso` (estable, deps `[]`), así que el gesto se construye UNA sola vez.
   const gesto = useMemo(() => {
     const alternar = () => {
       'worklet';
@@ -204,7 +227,7 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
       // estado lo fija quien interrumpió, y pisarlo dejaría el hint mintiendo sobre dónde está el
       // panel.
       panelY.value = withTiming(destino, CONFIG_SNAP, (finished) => {
-        if (finished) runOnJS(setPanelAbajo)(destino === max);
+        if (finished) runOnJS(setPanelAbajoConAviso)(destino === max);
       });
     };
 
@@ -247,11 +270,11 @@ export function PanelDeslizable({ fondo, children, senalSubir, testID }: PanelDe
           destino,
           { ...CONFIG_SNAP_GESTO, velocity: e.velocityY },
           (finished) => {
-            if (finished) runOnJS(setPanelAbajo)(destino === max);
+            if (finished) runOnJS(setPanelAbajoConAviso)(destino === max);
           }
         );
       });
-  }, [panelY, inicio, recorrido]);
+  }, [panelY, inicio, recorrido, setPanelAbajoConAviso]);
 
   const estiloPanel = useAnimatedStyle(() => ({ transform: [{ translateY: panelY.value }] }));
 
