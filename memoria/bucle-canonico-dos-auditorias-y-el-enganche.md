@@ -38,8 +38,10 @@ que el sprint destapó, si los consejos de A1 sirvieron.
    **información**, no aprendizaje. La cola vive en `docs/aprendizajes/pendientes/` — **versionada**,
    porque en `coordinacion/` (gitignored) un `clean` la evapora. Implementar = `git mv` a
    `docs/aprendizajes/<fecha>/`: el estado es la ubicación, no un tablero que hay que acordarse de
-   actualizar. **`pendientes/` vacío es gate binario de F0**: si quedó un gancho sin construir, el
-   sprint N+1 se armaría con el método que ya se sabe que falla. Y **sólo el nivel 1 genera cola** (el
+   actualizar. **`pendientes/` vacío es gate binario del REPARTO (F3), no de F0**: los ganchos
+   cambian *cómo se construye*, no cómo se redacta — con el gate en F3, planificación escribe y
+   audita el plan N+1 mientras las implementadoras cierran el N, y desaparece el valle en que las
+   tres sesiones paran juntas. Y **sólo el nivel 1 genera cola** (el
    2 se hace en el acto, el 3 ya está hecho al escribirlo) — meter los tres la vuelve impagable y se
    abandona entera. Dos colas distintas y en este orden: **fixes de aprendizaje primero, fixes de la
    app después** — los primeros cambian *cómo se construye*.

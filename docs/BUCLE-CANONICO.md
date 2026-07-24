@@ -66,6 +66,7 @@ capacidad de ráfaga, no un puesto asignado.
                     │                                     │        │
                     ▼                                     │        │
    [F3] PLANIFICACIÓN baja contratos ◄────────────────────┘        │
+        ⛔ GATE: `pendientes/` vacío — acá, no en F0               │
                     │                                             │
                     ▼                                             │
    [F4] IMPLEMENTACIÓN A + B construyen  ◄──┐                     │
@@ -94,6 +95,21 @@ capacidad de ráfaga, no un puesto asignado.
 sólidos, otra para cerrar el círculo. Auditar cada hito convertiría la auditoría en overhead — que es
 el modo de fallo que este diseño evita explícitamente.
 
+**El bucle se dibuja secuencial, pero no se corre secuencial.** Leído literalmente deja a las dos
+sesiones de implementación sin nada contratado durante F0-F2 (sync, plan, auditoría) y otra vez durante
+F7-F7.5: **dos valles por sprint en los que el equipo entero para**. Lo que de verdad tiene que esperar
+es el **reparto** — y por eso el gate vive en F3:
+
+```
+ sprint N     … [F4] construir ── [F6] verificar ── [F7] A2 ── [F7.5] ganchos ─┐
+                                                                               │
+ sprint N+1            [F0] sync ── [F1] plan ── [F2] A1 ───────────► [F3] reparto
+                       └─ PLANIFICACIÓN trabaja acá mientras A y B cierran ───┘
+```
+
+PLANIFICACIÓN escribe y audita el plan siguiente **mientras** las implementadoras cierran el actual.
+Redactar un plan no construye nada con el método viejo; sólo construir lo hace.
+
 ---
 
 ## 4. F0 — Precondición: conocimiento del código sincronizado y verificado
@@ -115,8 +131,10 @@ Si el proyecto tiene un **grafo de código** (índice semántico del repo), el o
 - [ ] El sync del índice/grafo corrió **y se verificó con un control positivo**: buscar un símbolo que
       sólo existe en el último cambio publicado. Si no aparece, el grafo está viejo → **no se avanza**.
 - [ ] El repo local está en el commit que se cree. (`git log -1`, `git status`.)
-- [ ] **`docs/aprendizajes/pendientes/` está vacío** (§10). Si quedó un aprendizaje del sprint anterior
-      sin implementar, **el sprint N+1 no abre**: se construiría con el método que ya se sabe que falla.
+
+> **El gate de los aprendizajes NO está acá: está en F3** (ver §7). Bloquea el **reparto**, no la
+> escritura. Redactar un plan no construye nada con el método viejo — y bloquear F0 obliga a las
+> sesiones de implementación a esperar de brazos cruzados mientras se paga la cola.
 
 **Anti-patrón:** dar el sync por bueno porque el comando devolvió `exit 0`. Un pipe (`cmd | tail`)
 devuelve el status del último proceso, no del comando: un fallo se ve como éxito. **El veredicto de un
@@ -273,6 +291,18 @@ R7 Alcance — hitos bien recortados, verificables por separado.
 ---
 
 ## 7. F3-F4 — Reparto y construcción
+
+**Gate de F3 — binario, y es acá donde vive:**
+
+- [ ] **`docs/aprendizajes/pendientes/` está vacío** (§10). Si quedó un gancho del sprint anterior sin
+      construir, **no se reparte trabajo**: se construiría con el método que ya se sabe que falla.
+
+> **Por qué en el reparto y no en F0.** Lo que los ganchos cambian es *cómo se construye*, no cómo se
+> redacta. Bloquear F0 congela también la escritura del plan — y como el plan lo escribe PLANIFICACIÓN
+> mientras las implementadoras todavía están cerrando el sprint anterior, mover el gate acá **elimina
+> el valle en que las tres sesiones paran juntas**. Planificación puede correr F0-F1-F2 del sprint N+1
+> mientras A y B terminan F4-F6 del N; lo único que no puede es *repartir* hasta que la cola esté en
+> cero.
 
 PLANIFICACIÓN baja **un contrato por hito** a la sesión que corresponde. Reglas:
 
@@ -465,7 +495,7 @@ es corta **por construcción**: sólo lo que necesita que alguien escriba algo q
 ```
 <repo>/docs/aprendizajes/          ← VERSIONADO. Sobrevive a un clone, a un `clean`, a otra máquina.
 ├── README.md                      ← el contrato de la carpeta
-├── pendientes/                    ← LA COLA DE F7.5. Vaciarla es el gate de F0.
+├── pendientes/                    ← LA COLA DE F7.5. Vaciarla es el gate de F3 (el reparto).
 │   └── AAAA-MM-DD_<slug>.md
 └── AAAA-MM-DD/                    ← archivo histórico: implementados, por fecha de implementación
     └── <slug>.md
@@ -501,8 +531,12 @@ atrapar es indistinguible de uno ausente. Es la ley de los instrumentos (§12) a
 
 ### El gate
 
-`docs/aprendizajes/pendientes/` **vacío** es precondición de F0 del sprint siguiente. No es una meta ni
-una buena práctica: es binario y bloquea.
+`docs/aprendizajes/pendientes/` **vacío** es precondición del **reparto (F3)** del sprint siguiente. No
+es una meta ni una buena práctica: es binario y bloquea.
+
+Va en F3 y no en F0 a propósito: los ganchos cambian *cómo se construye*, no cómo se redacta. Con el
+gate acá, PLANIFICACIÓN puede escribir y auditar el plan N+1 mientras las implementadoras cierran el N
+— y desaparece el valle en que las tres sesiones paran juntas.
 
 Sobre la cola 2 (fixes del artefacto) el criterio es distinto y más honesto: **cero deuda
 NO-gestionada**, no cero deuda literal. Algunos fixes de app son grandes y no entran entre sprints;
@@ -635,12 +669,12 @@ Ninguna de estas es hipotética: todas se observaron.
 | **F0** | Planificación | — | Índice sincronizado | Control positivo verde |
 | **F1** | Planificación | Código real + índice | Plan con hitos | §0 con `path:línea` en cada afirmación |
 | **F2** | Auditoría (A1) | Plan + código + índice | Veredicto + correcciones + elevaciones | **APROBADO** |
-| **F3** | Planificación | Plan aprobado | Contratos por hito | Costura implementable sin negociar |
+| **F3** | Planificación | Plan aprobado | Contratos por hito | Costura implementable sin negociar **+ `pendientes/` vacío** |
 | **F4** | Implementación A/B | Contratos | Código | DoD de cada hito |
 | **F5** | Planificación | Observación en vivo | Aprendizajes capturados + costuras resueltas | Continuo |
 | **F6** | Implementación | Código | Evidencia real | Verificado donde vive |
 | **F7** | Auditoría (A2) | Todo lo anterior | Aprendizajes con enganche + hallazgos rankeados | Entregado |
-| **F7.5** | Planificación + quien corresponda | Cola de `pendientes/` | Ganchos construidos y probados | **`pendientes/` vacío.** Aprendizajes ANTES que fixes de app |
+| **F7.5** | Planificación + quien corresponda | Cola de `pendientes/` | Ganchos construidos y probados | Aprendizajes ANTES que fixes de app |
 | **F8** | Planificación | Informe A2 | Plan N+1 | Deuda del artefacto visible con dueño → vuelve a F0 |
 
 ---

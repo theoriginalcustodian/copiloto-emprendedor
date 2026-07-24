@@ -18,7 +18,7 @@
 
 ## 📐 Doctrina operativa (aplica siempre)
 
-- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar ≠ **implementar (F7.5, entre sprints, ANTES que los fixes de app)**. Cola: `docs/aprendizajes/pendientes/` — vacía es gate binario de F0.
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar ≠ **implementar (F7.5, entre sprints, ANTES que los fixes de app)**. Cola: `docs/aprendizajes/pendientes/` — vacía es gate binario del REPARTO (F3), no de F0.
 - [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — `project`. Hay cero usuarios; "prod-beta" desvía a migraciones defensivas. El dataset sintético debe traer cambios en el tiempo.
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. Montar en local rechazado 2×.
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. La prueba vale, la aserción no. [[spike-first-central-proyecto]]

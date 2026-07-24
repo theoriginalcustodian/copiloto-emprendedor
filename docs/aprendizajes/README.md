@@ -13,7 +13,7 @@ nombre.
 ```
 docs/aprendizajes/
 ├── README.md          ← esto
-├── pendientes/        ← LA COLA. Vaciarla es el gate de F0 del sprint siguiente.
+├── pendientes/        ← LA COLA. Vaciarla es el gate del REPARTO (F3) del sprint siguiente.
 │   └── AAAA-MM-DD_<slug>.md
 └── AAAA-MM-DD/        ← implementados, por FECHA DE IMPLEMENTACIÓN
     └── <slug>.md
@@ -39,9 +39,13 @@ Meter los tres niveles vuelve la cola impagable y se abandona entera. Es corta p
 
 ## El gate
 
-`pendientes/` **vacío** es precondición para abrir el sprint siguiente. Binario, bloquea. Si un
-aprendizaje del sprint anterior sigue sin gancho, el sprint N+1 se construiría con el método que ya se
-sabe que falla.
+`pendientes/` **vacío** es precondición del **reparto** del sprint siguiente (F3). Binario, bloquea. Si
+un aprendizaje del sprint anterior sigue sin gancho, se repartiría trabajo que se construye con el
+método que ya se sabe que falla.
+
+Bloquea el reparto y **no** la escritura del plan a propósito: los ganchos cambian *cómo se construye*,
+no cómo se redacta. Así PLANIFICACIÓN escribe y audita el plan N+1 mientras las implementadoras cierran
+el N, en vez de que las tres sesiones paren juntas esperando que se vacíe la cola.
 
 ## Cuándo se trabaja esta cola
 
