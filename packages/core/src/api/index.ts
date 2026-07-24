@@ -119,6 +119,20 @@ export type {
   ResumenGastos,
 } from './gastos';
 
+// `/contabilidad/resumen` — caja y facturación, dos preguntas separadas (§2 del contrato). El endpoint
+// todavía no existe: ver el docstring de `contabilidad.ts` para el estado de `[ASSUMED_PENDING_VERIFY]`.
+export { obtenerResumenContabilidad } from './contabilidad';
+export type {
+  CajaMesAnterior,
+  CategoriaResumenContabilidad,
+  ClienteRanking,
+  ResumenCaja,
+  ResumenContabilidad,
+  ResumenFacturado,
+  ResumenGastosContabilidad,
+  TopeMonotributo,
+} from './contabilidad';
+
 // `/clientes` — la cartera, DERIVADA de lo ya emitido. ⚠️ Archivo NUEVO: el anterior (cliente HTTP
 // de la app clínica, apuntando a un backend que nunca existió acá) se borró en `8761d54`.
 // `crearCliente`/`editarCliente` (hito 7) ya están MEDIDOS contra el vivo: el hito 3 se desplegó el
