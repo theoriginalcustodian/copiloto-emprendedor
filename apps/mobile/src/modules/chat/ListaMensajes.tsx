@@ -5,6 +5,7 @@ import { Pressable, ScrollView } from 'react-native-gesture-handler';
 import {
   leerClientePropuesto,
   leerGastoPropuesto,
+  leerIngresoPropuesto,
   mapearGate,
   type ChatMessage,
   type Gate,
@@ -17,6 +18,7 @@ import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
+import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
 
 const TEXTO_VACIO =
   'Contame qué necesitás: mandar un mail, buscar algo en tus archivos, revisar tus métricas, o cobrar con MercadoPago. Antes de ejecutar algo importante, siempre te lo muestro para que lo confirmes.';
@@ -195,6 +197,14 @@ export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function
               texto={mensaje.text}
             />
           );
+        }
+
+        // 🔴 [ASSUMED_PENDING_VERIFY] — mismo motivo que `leerIngresoPropuesto`: `ingreso_propuesto`
+        // no está medido contra el `/reply` real todavía. Si backend nunca manda ese `kind`, esta
+        // rama no dispara nunca y el mensaje cae a `Burbuja` como hoy — no hay forma de que rompa.
+        const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
+        if (ingresoPropuesto) {
+          return <TarjetaIngresoPropuesto key={mensaje.id} propuesta={ingresoPropuesto} />;
         }
 
         const gate = mapearGate(mensaje);

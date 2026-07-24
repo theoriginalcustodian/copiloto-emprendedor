@@ -8,6 +8,7 @@ import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
+import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
 
 /**
  * `TarjetaClientePropuesto` — lo que el copiloto entendió de un cliente **dictado**, editable antes de
@@ -79,11 +80,11 @@ export function TarjetaClientePropuesto({
 
   if (estado.fase === 'guardado') {
     return (
-      <Tile testID={`${testID}-guardado`}>
-        <Text style={{ color: tema.color.exito, fontSize: tema.tipo.base, fontWeight: '600' }}>
-          Cliente agregado: {estado.cliente.nombre}
-        </Text>
-      </Tile>
+      <TarjetaPropuestaTerminal
+        testID={`${testID}-guardado`}
+        tono="exito"
+        texto={`Cliente agregado: ${estado.cliente.nombre}`}
+      />
     );
   }
 
@@ -124,51 +125,37 @@ export function TarjetaClientePropuesto({
   }
 
   if (estado.fase === 'descartado') {
-    return (
-      <Tile testID={`${testID}-descartado`}>
-        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          No lo agregamos.
-        </Text>
-      </Tile>
-    );
+    return <TarjetaPropuestaTerminal testID={`${testID}-descartado`} tono="tenue" texto="No lo agregamos." />;
   }
 
   return (
-    <Tile testID={testID}>
-      <View style={{ gap: tema.espacio.sm }}>
+    // 🔴 El texto del copiloto NO usa el slot `cita` de la shell a propósito: ese slot envuelve en
+    // «comillas» —tiene sentido para "lo que el usuario dictó" (gasto)—, pero acá es la EXPLICACIÓN
+    // del copiloto (ej. "dijiste CUIT pero el número tiene 7 dígitos"), que se lee mal entre comillas.
+    // Se queda como texto propio, igual que antes de esta shell.
+    <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.">
+      {texto != null && texto.trim() !== '' && (
         <Text
-          testID={`${testID}-aviso`}
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+          testID={`${testID}-texto`}
+          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontStyle: 'italic' }}
         >
-          Esto entendí. Revisalo y tocá Dar de alta — todavía no lo agregué.
+          {texto.trim()}
         </Text>
+      )}
 
-        {/* El texto del copiloto, debajo del cartel y arriba del formulario — misma estructura que
-            `TarjetaGastoPropuesto` (aviso → lo dicho → formulario). Es donde aparece la explicación
-            de un documento que no cierra. */}
-        {texto != null && texto.trim() !== '' && (
-          <Text
-            testID={`${testID}-texto`}
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, fontStyle: 'italic' }}
-          >
-            {texto.trim()}
-          </Text>
-        )}
-
-        <FormularioCliente
-          iniciales={propuesta}
-          onGuardado={(cliente) => setEstado({ fase: 'guardado', cliente })}
-          onDuplicado={(duplicado) => setEstado({ fase: 'ya_existe', duplicado })}
-          // El homónimo se resolvió abriendo al otro: no se creó nada, y decirlo evita que se vaya
-          // creyendo que además quedó cargado el suyo.
-          onAbrirCliente={(c) => {
-            setEstado({ fase: 'ya_existe', duplicado: { por: 'nombre', dueno: c } });
-            abrirFicha(c.id);
-          }}
-          onCancelar={() => setEstado({ fase: 'descartado' })}
-          testID={`${testID}-formulario`}
-        />
-      </View>
-    </Tile>
+      <FormularioCliente
+        iniciales={propuesta}
+        onGuardado={(cliente) => setEstado({ fase: 'guardado', cliente })}
+        onDuplicado={(duplicado) => setEstado({ fase: 'ya_existe', duplicado })}
+        // El homónimo se resolvió abriendo al otro: no se creó nada, y decirlo evita que se vaya
+        // creyendo que además quedó cargado el suyo.
+        onAbrirCliente={(c) => {
+          setEstado({ fase: 'ya_existe', duplicado: { por: 'nombre', dueno: c } });
+          abrirFicha(c.id);
+        }}
+        onCancelar={() => setEstado({ fase: 'descartado' })}
+        testID={`${testID}-formulario`}
+      />
+    </TarjetaPropuestaShell>
   );
 }

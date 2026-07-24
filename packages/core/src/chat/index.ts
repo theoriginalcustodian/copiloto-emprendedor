@@ -7,3 +7,6 @@ export * from './modo';
 // cuando el emprendedor toca Guardar. Ver el docstring del módulo.
 export * from './gastoPropuesto';
 export * from './clientePropuesto';
+// `ingreso_propuesto` — [ASSUMED_PENDING_VERIFY], ver el docstring del módulo: misma convención que
+// las dos de arriba (data = body de POST, kind abierto), sin medir todavía contra el backend real.
+export * from './ingresoPropuesto';

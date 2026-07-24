@@ -38,18 +38,40 @@ const COMO_SE_PIDE: Record<FaltanteIngreso, string> = {
   concepto: 'por qué trabajo',
 };
 
+/**
+ * Valores de arranque de un ingreso DICTADO — mismo criterio que `ValoresInicialesGasto`
+ * (`FormularioGasto.tsx`): todos opcionales, y sólo `monto` importa para poder guardar. Sin esto no
+ * hay card de voz posible para Ingresos, sólo el alta manual.
+ */
+export interface ValoresInicialesIngreso {
+  monto?: string;
+  cliente?: string;
+  medio?: string;
+  concepto?: string;
+  /** 🔴 Silencioso: viaja al guardar pero NO tiene campo propio en este formulario — mismo criterio
+   *  que `ValoresInicialesGasto.fecha`. El motor ya resolvió lo que se dictó («ayer», «el lunes»);
+   *  omitirlo haría que el backend ponga "hoy" y un ingreso dictado como "lo de ayer" quedara mal. */
+  fecha?: string;
+}
+
 export interface FormularioIngresoProps {
+  iniciales?: ValoresInicialesIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
   testID?: string;
 }
 
-export function FormularioIngreso({ onGuardado, onCancelar, testID = 'ingreso-form' }: FormularioIngresoProps) {
+export function FormularioIngreso({
+  iniciales,
+  onGuardado,
+  onCancelar,
+  testID = 'ingreso-form',
+}: FormularioIngresoProps) {
   const tema = useTema();
-  const [monto, setMonto] = useState('');
-  const [cliente, setCliente] = useState('');
-  const [medio, setMedio] = useState('');
-  const [concepto, setConcepto] = useState('');
+  const [monto, setMonto] = useState(iniciales?.monto ?? '');
+  const [cliente, setCliente] = useState(iniciales?.cliente ?? '');
+  const [medio, setMedio] = useState(iniciales?.medio ?? '');
+  const [concepto, setConcepto] = useState(iniciales?.concepto ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** El 409: hay un ingreso parecido. Se muestra y se deja decidir. */
@@ -87,6 +109,7 @@ export function FormularioIngreso({ onGuardado, onCancelar, testID = 'ingreso-fo
         ...(cliente.trim() !== '' ? { clienteNombre: cliente.trim() } : {}),
         ...(medio.trim() !== '' ? { medio: medio.trim() } : {}),
         ...(concepto.trim() !== '' ? { concepto: concepto.trim() } : {}),
+        ...(iniciales?.fecha !== undefined ? { fecha: iniciales.fecha } : {}),
         ...(confirmarDuplicado ? { confirmarDuplicado: true } : {}),
       });
       if (res.status === 'ok') {
