@@ -44,6 +44,7 @@ from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # n
 # gasto: el enum que ve el LLM y lo que la base acepta tienen que ser la MISMA lista. Un `"aprobado"`
 # literal acá y un rename allá se descubren en producción, cuando el copiloto marca y no pasa nada.
 from cobro_store import COBRADA, ORIGEN_MANUAL  # noqa: E402
+from mi_dia_tarjeta_store import HACIENDO, HECHA, PARA_HOY, EstadoInvalido  # noqa: E402
 from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E402
                                TransicionInvalida)
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
@@ -221,6 +222,38 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
                    "description": "'aprobado' si se lo aceptaron, 'desestimado' si no va"}},
         "required": ["estado"]}}}
 
+# ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
+
+CREAR_TARJETA_MI_DIA_SCHEMA = {"type": "function", "function": {
+    "name": "crear_tarjeta_mi_dia",
+    "description": "Agrega una tarjeta a 'Mi día' cuando el emprendedor pide que le recuerden algo "
+                   "('recordame llamar a Juan', 'anotá que tengo que pasar por el banco'). Es una "
+                   "tarea manual, no un aviso del sistema — nace en 'Para hoy'.",
+    "parameters": {"type": "object", "properties": {
+        "texto": {"type": "string", "description": "la tarea, en las palabras del emprendedor"}},
+        "required": ["texto"]}}}
+
+MOVER_TARJETA_MI_DIA_SCHEMA = {"type": "function", "function": {
+    "name": "mover_tarjeta_mi_dia",
+    "description": "Cambia de columna una tarjeta de 'Mi día' cuando el emprendedor cuenta que "
+                   "arrancó o terminó algo ('ya llamé a Juan', 'estoy yendo al banco'). Sólo para "
+                   "tarjetas SIN acción rastreable por el sistema (las que sí tienen — cobrar una "
+                   "factura, responder un presupuesto — se cierran solas al hacerse).",
+    "parameters": {"type": "object", "properties": {
+        "tarjeta": {"type": "string", "description": "cómo la nombró: alguna palabra del texto de la tarjeta"},
+        "estado": {"type": "string", "enum": [PARA_HOY, HACIENDO, HECHA],
+                   "description": "a qué columna la mueve"}},
+        "required": ["tarjeta", "estado"]}}}
+
+BORRAR_TARJETA_MI_DIA_SCHEMA = {"type": "function", "function": {
+    "name": "borrar_tarjeta_mi_dia",
+    "description": "Borra una tarjeta de 'Mi día' cuando el emprendedor pide que la saque ('sacá lo "
+                   "de Juan', 'borrá esa tarjeta'). Irreversible — si hay más de una que coincide, "
+                   "no elige sola, pregunta.",
+    "parameters": {"type": "object", "properties": {
+        "tarjeta": {"type": "string", "description": "cómo la nombró: alguna palabra del texto de la tarjeta"}},
+        "required": ["tarjeta"]}}}
+
 # `registrar_gasto` NO está en WRITE_TOOLS, y no es un descuido: **no escribe nada**. Devuelve una
 # propuesta que la app pinta como card editable, y el `POST /gastos` lo dispara el emprendedor al tocar
 # Guardar. Meterla en WRITE_TOOLS la mandaría al confirm-gate de sí/no, que es justo el mecanismo que el
@@ -256,6 +289,9 @@ _CAPACIDADES = (
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
     ("marcar_presupuesto", "Presupuestos", ("me aprobaron el de la panadería",)),
     ("registrar_cliente", "Clientes", ("anotá un cliente, Panadería Los Tilos",)),
+    ("crear_tarjeta_mi_dia", "Mi día", ("recordame llamar a Juan",)),
+    ("mover_tarjeta_mi_dia", "Mi día", ("ya llamé a Juan",)),
+    ("borrar_tarjeta_mi_dia", "Mi día", ("sacá lo de Juan",)),
     # `emitir_factura` queda declarada aunque todavía no exista (hito 9): es una capacidad FUTURA que
     # aparecerá sola. Es el control vivo del guard `test_facturar_por_voz_NO_esta_en_la_guia_todavia`
     # — sin una entrada así, el filtro pasaría siempre sin filtrar nada.
@@ -329,7 +365,9 @@ def build_tool_catalog() -> list[dict]:
     schemas = [CALENDAR_BOOK_SCHEMA, MP_CHARGE_SCHEMA,
                REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
-               MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA]
+               MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
+               CREAR_TARJETA_MI_DIA_SCHEMA, MOVER_TARJETA_MI_DIA_SCHEMA,
+               BORRAR_TARJETA_MI_DIA_SCHEMA]
     for mod in services.modules().values():
         schemas.extend(mod.TOOL_SCHEMAS)
     return schemas
@@ -349,7 +387,12 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # borrar el ingreso, deshacer el cobro, volver a mover el presupuesto.
               "registrar_ingreso": ("ingreso",), "completar_ingreso": ("ingreso_completar",),
               "marcar_factura_cobrada": ("factura_cobrada",),
-              "marcar_presupuesto": ("presupuesto_estado",)}
+              "marcar_presupuesto": ("presupuesto_estado",),
+              # Hito 7 — mismo criterio que arriba: PERSISTEN, sin gate (el riesgo es "¿a cuál
+              # tarjeta?", cubierto por `_elegir_uno`, no "¿lo hago?").
+              "crear_tarjeta_mi_dia": ("mi_dia_crear",),
+              "mover_tarjeta_mi_dia": ("mi_dia_mover",),
+              "borrar_tarjeta_mi_dia": ("mi_dia_borrar",)}
 WRITE_TOOLS = frozenset(_service_writes()) | _FIRST_CLASS_WRITES
 
 
@@ -1059,9 +1102,97 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                                    "presupuesto": actualizado})
 
 
+# ── hito 7 — el Kanban "Mi día" por voz (contrato §2.4) ────────────────────────────────────────────
+#
+# Las tres PERSISTEN sin gate — mismo criterio que las del hito 3 (TOOL_INDEX): el riesgo real de
+# `mover`/`borrar` no es "¿lo hago?" sino "¿a cuál tarjeta?", y eso lo cubre `_elegir_uno`. `crear`
+# no tiene ese riesgo (siempre es una fila nueva). Todo reversible salvo `borrar` — de ahí el
+# `EstadoInvalido` explícito en `mover` y que `borrar` nunca reintenta sobre un `id` adivinado.
+
+def _tarjetas_activas(tarjeta_store) -> list[dict]:
+    """`para_hoy` + `haciendo` — las que un swipe o una orden de voz todavía pueden tocar. Las
+    `hecha` quedan afuera: mover o borrar algo que ya se cerró sería reabrir un caso resuelto."""
+    tablero = tarjeta_store.listar_tablero()
+    return tablero.get(PARA_HOY, []) + tablero.get(HACIENDO, [])
+
+
+def _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
+    """*«Recordame llamar a Juan»* → tarjeta manual en 'Para hoy' (contrato §2.4)."""
+    if tarjeta_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo tocar Mi día ahora mismo"})
+    texto = str(arguments.get("texto") or "").strip()
+    if not texto:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No entendí qué anotar. Preguntale qué tarea es."})
+    tarjeta = tarjeta_store_factory(ctx.cliente_id).crear_manual(texto)
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": f"Anoté «{texto}» en Mi día. Confirmáselo en una línea "
+                                             f"corta.", "tarjeta": tarjeta})
+
+
+def _run_mover_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
+    """*«Ya llamé a Juan»* → mueve la tarjeta de columna."""
+    if tarjeta_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo tocar Mi día ahora mismo"})
+    nuevo = str(arguments.get("estado") or "").strip().lower()
+    if nuevo not in (PARA_HOY, HACIENDO, HECHA):
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "No me quedó claro a qué columna moverla. "
+                                                 "Preguntale."})
+    store = tarjeta_store_factory(ctx.cliente_id)
+    referencia = str(arguments.get("tarjeta") or "").strip()
+    candidatos = ([t for t in _tarjetas_activas(store) if _coincide(referencia, t["texto"])]
+                  if referencia else _tarjetas_activas(store))
+
+    tarjeta, problema = _elegir_uno(
+        candidatos, "ninguna tarjeta activa que coincida", lambda t: f"«{t['texto']}»")
+    if problema:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": problema,
+                                       "candidatos": [{"id": t["id"], "texto": t["texto"]}
+                                                      for t in candidatos[:6]]})
+    try:
+        actualizada = store.mover(tarjeta["id"], nuevo)
+    except EstadoInvalido:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Ese estado no es válido. Preguntale de nuevo."})
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": f"Moví «{actualizada['texto']}» a {nuevo}. "
+                                             f"Confirmáselo en una línea corta.",
+                                   "tarjeta": actualizada})
+
+
+def _run_borrar_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory):
+    """*«Sacá lo de Juan»* → borra la tarjeta. Irreversible: `_elegir_uno` nunca elige sola."""
+    if tarjeta_store_factory is None:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
+                          observation={"error": "no puedo tocar Mi día ahora mismo"})
+    store = tarjeta_store_factory(ctx.cliente_id)
+    referencia = str(arguments.get("tarjeta") or "").strip()
+    candidatos = ([t for t in _tarjetas_activas(store) if _coincide(referencia, t["texto"])]
+                  if referencia else _tarjetas_activas(store))
+
+    tarjeta, problema = _elegir_uno(
+        candidatos, "ninguna tarjeta activa que coincida", lambda t: f"«{t['texto']}»")
+    if problema:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": problema,
+                                       "candidatos": [{"id": t["id"], "texto": t["texto"]}
+                                                      for t in candidatos[:6]]})
+    ok = store.borrar(tarjeta["id"])
+    if not ok:
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": "Esa tarjeta ya no estaba — alguien la borró recién."})
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
+                      observation={"result": f"Borré «{tarjeta['texto']}» de Mi día. Confirmáselo en "
+                                             f"una línea corta."})
+
+
 def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=None,
                        cliente_store_factory=None, cobro_store_factory=None,
-                       presupuesto_store_factory=None):
+                       presupuesto_store_factory=None, tarjeta_store_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad."""
@@ -1106,6 +1237,13 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                                    cobro_store_factory)
             if kind == "presupuesto_estado":
                 return _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
+            # ── 1ra clase: hito 7 — el Kanban "Mi día" por voz (persisten; sin gate, ver TOOL_INDEX) ─
+            if kind == "mi_dia_crear":
+                return _run_crear_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)
+            if kind == "mi_dia_mover":
+                return _run_mover_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)
+            if kind == "mi_dia_borrar":
+                return _run_borrar_tarjeta_mi_dia(arguments, ctx, idem_key, tarjeta_store_factory)
 
             # ── servicio (Composio vía módulo plug-in) ────────────────────────────────────────────
             _, mod, op = entry
