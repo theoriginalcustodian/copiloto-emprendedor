@@ -50,11 +50,11 @@ function entero(v: unknown): number | null {
 function item(v: unknown): ItemPresupuestoPropuesto | null {
   if (typeof v !== 'object' || v === null) return null;
   const d = v as Record<string, unknown>;
-  const descripcion = texto(d.descripcion);
-  // Sin descripción, la fila no dice nada que corregir — se descarta, no se pinta una fila muda.
-  if (descripcion == null) return null;
+  // 🔴 Sin descripción, la fila queda VACÍA — no se descarta. Mismo criterio que cantidad/precio: lo
+  // que el motor no entendió se muestra en blanco y editable, nunca desaparece (decisión del operador,
+  // `respuesta_planificacion-a-todos_hito-P-decidido-por-el-operador...`).
   return {
-    descripcion,
+    descripcion: texto(d.descripcion) ?? '',
     cantidad: texto(d.cantidad) ?? '1',
     precioUnitario: texto(d.precio_unitario) ?? '',
   };
@@ -62,8 +62,9 @@ function item(v: unknown): ItemPresupuestoPropuesto | null {
 
 /**
  * Devuelve la propuesta, o `null` si esta card no es una — incluido `concepto`/`receptor.nombre`
- * ausentes o **cero ítems con descripción**, que es exactamente lo que el backend exige para crear
- * (§2.4 del contrato: `concepto`, `receptor.nombre` e `items` con ≥1 elemento).
+ * ausentes o **cero ítems**, que es exactamente lo que el backend exige para crear (§2.4 del contrato:
+ * `concepto`, `receptor.nombre` e `items` con ≥1 elemento). Un ítem SIN descripción cuenta igual: se
+ * muestra vacío y editable (ver `item()`), no se descarta.
  */
 export function leerPresupuestoPropuesto(card: ReplyCard | undefined): PresupuestoPropuesto | null {
   if (card?.kind !== 'presupuesto_propuesto') return null;
