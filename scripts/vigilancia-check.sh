@@ -82,14 +82,30 @@ $esc_out"
 # gancho se autosilencia en una semana por ruido — exactamente el fallo que el pendiente advierte.
 if [ -d "$TRANSCRIPTS" ]; then
   now="$(date +%s)"
-  mt_be=0; mt_fe=0; mt_pl=0
+  mt_be=0; mt_fe=0; mt_pl=0; mt_sin_rol=0
   while IFS= read -r -d '' f; do
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
-    tail_txt="$(tail -c 400000 "$f" 2>/dev/null || true)"
-    b=$( printf '%s' "$tail_txt" | grep -oc 'sesión BACKEND' || true)
-    fr=$(printf '%s' "$tail_txt" | grep -oc 'sesión FRONTEND' || true)
-    pl=$(printf '%s' "$tail_txt" | grep -oc 'sesión PLANIFICACIÓN' || true)
-    [ $((b + fr + pl)) -eq 0 ] && continue   # sin marcador -> no es una de las 3 sesiones vigiladas
+    # ⚠️ El rol se cuenta SÓLO dentro de las líneas que son el PROMPT DEL CRON que esta ventana
+    # RECIBE — no en cualquier mención del texto. Contar menciones sueltas ya falló dos veces:
+    # una sesión que le escribe contratos a otra la nombra más que a sí misma. Medido 2026-07-24
+    # en el transcript de PLANIFICACIÓN mientras trabajaba: 'sesión BACKEND' 4 · 'FRONTEND' 2 ·
+    # 'PLANIFICACIÓN' 2 → se rotulaba a sí misma como BACKEND. La identidad la asigna quien manda
+    # el cron, no el contenido del trabajo. (En JSONL cada mensaje es UNA línea, así que el prompt
+    # del cron entero cae en una sola.)
+    cron_txt="$(tail -c 400000 "$f" 2>/dev/null | grep -E 'Vig[ií]a de coordinaci[oó]n|Control de (sesiones|SESIONES)|Monitor de PAR[AÁ]LISIS' || true)"
+    b=$( printf '%s' "$cron_txt" | grep -oc 'sesión BACKEND' || true)
+    fr=$(printf '%s' "$cron_txt" | grep -oc 'sesión FRONTEND' || true)
+    pl=$(printf '%s' "$cron_txt" | grep -oc 'sesión PLANIFICACIÓN' || true)
+    # Sin marcador NO es "no es una sesión vigilada": puede ser una ventana viva cuyo cron está
+    # apagado. Se registra aparte — abajo bloquea la alarma. Medido 2026-07-24: con los crones
+    # borrados, la ventana de planificación que estaba ESCRIBIENDO quedó sin marcador y el script
+    # rotuló como PLANIFICACION a una ventana vieja que sí lo tenía, alarmando en falso sobre una
+    # sesión activa. La identidad sale del cron; sin cron no hay identidad, y "no sé" no se
+    # resuelve eligiendo otro archivo.
+    if [ $((b + fr + pl)) -eq 0 ]; then
+      [ "$m" -gt "$mt_sin_rol" ] && mt_sin_rol="$m"
+      continue
+    fi
     if   [ "$pl" -ge "$b" ] && [ "$pl" -ge "$fr" ]; then rol=PLANIFICACION
     elif [ "$b" -ge "$fr" ];                        then rol=BACKEND
     else                                                  rol=FRONTEND
@@ -108,7 +124,15 @@ if [ -d "$TRANSCRIPTS" ]; then
     [ "$mt" -eq 0 ] && continue   # sin transcript rotulado <4h para ese rol -> sin señal, no alarma
     edad=$(( (now - mt) / 60 ))
     if [ "$edad" -ge "$UMBRAL_MUERTA_MIN" ]; then
-      add "SESION MUDA: $rol sin escribir hace ${edad}min (umbral ${UMBRAL_MUERTA_MIN}min)."
+      # Si hay una ventana ACTIVA sin rol identificable, podría ser justamente ésta: callar.
+      # Falso negativo (no avisar de una muda real) es recuperable; falso positivo repetido
+      # silencia el watchdog en una semana y lo deja de existir.
+      edad_sin_rol=$(( (now - mt_sin_rol) / 60 ))
+      if [ "$mt_sin_rol" -gt 0 ] && [ "$edad_sin_rol" -lt "$UMBRAL_MUERTA_MIN" ]; then
+        add "AVISO: hay una ventana activa (hace ${edad_sin_rol}min) SIN rol identificable — ¿crones apagados? No se juzga a $rol con este dato."
+      else
+        add "SESION MUDA: $rol sin escribir hace ${edad}min (umbral ${UMBRAL_MUERTA_MIN}min)."
+      fi
     fi
   done
 fi
