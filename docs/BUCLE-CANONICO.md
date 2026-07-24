@@ -3,7 +3,7 @@
 > **Estado:** canónico · **Versión:** 1.0 · **Fecha:** 2026-07-24
 > **Alcance:** agnóstico de repositorio, stack y dominio. Se aplica a **todo** desarrollo con múltiples
 > sesiones de agente en paralelo. Lo específico de un proyecto vive en su `CLAUDE.md`, no acá.
-> **Precondición de uso:** leer §12 antes de instalarlo en un repo nuevo.
+> **Precondición de uso:** leer §13 antes de instalarlo en un repo nuevo.
 
 ---
 
@@ -83,7 +83,11 @@ capacidad de ráfaga, no un puesto asignado.
         · evaluación del propio A1                                │
                     │                                             │
                     ▼                                             │
-   [F8] PLANIFICACIÓN corta, engancha y escribe el plan N+1 ──────┘
+   [F7.5] IMPLEMENTAR LOS APRENDIZAJES ← antes que nada de app    │
+          los ganchos primero: cambian CÓMO se construye          │
+                    │                                             │
+                    ▼                                             │
+   [F8] PLANIFICACIÓN corta y escribe el plan N+1 ────────────────┘
 ```
 
 **Los hitos intermedios no llevan auditoría.** Las dos auditorías van en los extremos: una para salir
@@ -111,6 +115,8 @@ Si el proyecto tiene un **grafo de código** (índice semántico del repo), el o
 - [ ] El sync del índice/grafo corrió **y se verificó con un control positivo**: buscar un símbolo que
       sólo existe en el último cambio publicado. Si no aparece, el grafo está viejo → **no se avanza**.
 - [ ] El repo local está en el commit que se cree. (`git log -1`, `git status`.)
+- [ ] **`docs/aprendizajes/pendientes/` está vacío** (§10). Si quedó un aprendizaje del sprint anterior
+      sin implementar, **el sprint N+1 no abre**: se construiría con el método que ya se sabe que falla.
 
 **Anti-patrón:** dar el sync por bueno porque el comando devolvió `exit 0`. Un pipe (`cmd | tail`)
 devuelve el status del último proceso, no del comando: un fallo se ve como éxito. **El veredicto de un
@@ -182,6 +188,13 @@ El veredicto es **binario y por criterio**, no una opinión global:
 | R5 | **DoD verificable** | Algún hito cierra con un criterio no binario o sin evidencia declarada. |
 | R6 | **Orden y disparadores** | Un hito depende de otro posterior, o hay un hito sin disparador explícito. |
 | R7 | **Alcance** | El plan mezcla en un hito cosas que deberían ser dos, o parte en dos algo que no se puede verificar por separado. |
+| R8 | **Insumos humanos** | Algún hito necesita algo que **sólo una persona puede dar** —una credencial, una decisión de producto, un dispositivo, una habilitación externa— y el plan no lo declara como precondición provista **antes** de arrancar. |
+
+**Por qué R8 existe.** Es el criterio que separa un sprint autónomo de uno que se cuelga. Un plan puede
+estar impecable en código y aun así detenerse en la hora 3 porque asume que un insumo humano
+«aparecerá cuando haga falta». El ejecutor autónomo no negocia con el mundo: llega al muro más rápido
+y después de haber construido la mitad de algo. **Cada insumo humano se declara en el plan con su
+proveedor y su momento, y se provee antes del reparto — o el hito no entra al sprint.**
 
 ### Salida de A1
 
@@ -272,7 +285,7 @@ PLANIFICACIÓN baja **un contrato por hito** a la sesión que corresponde. Regla
   cortesía.
 - **Aislamiento de código.** Un worktree o rama por sesión. Si el checkout es compartido: `add` con
   rutas explícitas, y prohibidas las operaciones que reescriben el árbol entero. *Esta regla debería
-  tener un bloqueo mecánico, no ser una convención — ver §10.*
+  tener un bloqueo mecánico, no ser una convención — ver §11.*
 
 ---
 
@@ -290,6 +303,7 @@ auditoría ve el resultado; coordinación ve el proceso — y el proceso no deja
 |---|---|---|---|---|
 | **Captura** | En el momento, durante el sprint | PLANIFICACIÓN | Una línea + evidencia, append a `<coordinación>/APRENDIZAJES-SPRINT.md` | Segundos. No interrumpe. |
 | **Consolidación** | Al cierre | A2 | Entrada de memoria con enganche, o fusión con una existente, o descarte | Una vez por sprint |
+| **Implementación** | Entre sprints (F7.5) | PLANIFICACIÓN + quien corresponda | El gancho real: hook, gate, test, edición del prompt | Ver §10 |
 
 **Por qué separarlos.** Si cada micro-aprendizaje se convierte en documento permanente, el índice de
 memoria crece sin techo y su costo de contexto se paga en **cada** sesión, para siempre. Si no se
@@ -329,7 +343,7 @@ A2 audita cosas que **no podían existir** cuando corrió A1, así que no hay re
 | 1 | **El artefacto real** | A1 revisó una descripción; A2 revisa código escrito. Bugs, casos borde, seguridad, acoplamientos nacidos en la ejecución. Un plan excelente puede implementarse mal. |
 | 2 | **El delta plan ↔ realidad** | Qué se hizo distinto y por qué. Dónde el plan fue optimista, qué supuesto se cayó al tocar el código, qué contrato resultó insuficiente. **Esto mejora cómo planificamos**, que es donde el valor se compone. |
 | 3 | **Lo que el sprint destapó** | Puntos de fallo latentes que se hicieron visibles, oportunidades que aparecieron, deuda contraída. Material que salió de la realidad, no de nuestra imaginación. |
-| 4 | **Los aprendizajes del sprint** | El archivo de captura + los transcripts. Consolidados, deduplicados, **con su enganche** (§10). **Es el foco principal.** |
+| 4 | **Los aprendizajes del sprint** | El archivo de captura + los transcripts. Consolidados, deduplicados, **con su enganche** (§11). **Es el foco principal.** |
 | 5 | **El propio A1** | Con el resultado en la mano se puede verificar si sus consejos sirvieron. Convierte al auditor en algo que mejora ciclo a ciclo en vez de repetir consejos plausibles para siempre. |
 | 6 | **Los aprendizajes de sprints anteriores** | ¿Cuáles se repitieron **a pesar** de estar escritos? Ahí se mide si el enganche funcionó. Nada más en el sistema hace esto. |
 
@@ -338,14 +352,14 @@ A2 audita cosas que **no podían existir** cuando corrió A1, así que no hay re
 - El plan original **y el informe de A1**.
 - El código final (diff del sprint + estado actual).
 - `APRENDIZAJES-SPRINT.md` (captura cruda).
-- Métricas del proceso extraídas de los logs de las sesiones (ver §11).
+- Métricas del proceso extraídas de los logs de las sesiones (ver §12).
 - El índice de memoria del proyecto (para deduplicar y para verificar repeticiones).
 
 ### Salida de A2
 
 ```markdown
 ## 1. Aprendizajes consolidados        ← LO PRINCIPAL
-Por cada uno: qué se aprendió · evidencia · ENGANCHE PROPUESTO (§10) · ¿es nuevo o
+Por cada uno: qué se aprendió · evidencia · ENGANCHE PROPUESTO (§11) · ¿es nuevo o
 variante de uno existente? (si es variante: cuál, y si conviene fusionar).
 
 ## 2. Aprendizajes anteriores que se repitieron
@@ -411,7 +425,100 @@ Con el resultado real en la mano: ¿en qué acertó el auditor del plan? ¿en qu
 
 ---
 
-## 10. Taxonomía de enganche
+## 10. F7.5 — Implementación de aprendizajes (entre sprints)
+
+> **Un aprendizaje redactado y no implementado no es un aprendizaje: es información.**
+
+Es la fase que cierra el círculo. Sin ella, F5 y F7 producen una lista cada vez más larga de problemas
+conocidos y no arreglados — el equipo *sabe* más y *falla igual*.
+
+### La regla de orden, y por qué
+
+Entre dos sprints hay dos colas de trabajo distintas, y **no se mezclan**:
+
+| Cola | Qué es | Cuándo |
+|---|---|---|
+| **1. Fixes de aprendizaje** | Cambios al **sistema de trabajo**: hooks, gates, tests de regresión, prompts de rol, instrumentos | **Primero**, siempre |
+| **2. Fixes del artefacto** | Bugs y deuda de la **app**, salidos de A2 §3 | Después, y sólo lo que entre |
+
+**El orden no es preferencia: es causalidad.** Los fixes de aprendizaje cambian *cómo se construye*. Si
+van después, el sprint siguiente se construye con el método que ya se sabe que falla, y vuelve a
+producir los mismos aprendizajes. Poner la mejora del método detrás de la mejora del producto es
+exactamente lo que hace que un equipo repita errores mientras acumula documentación sobre ellos.
+
+### Qué entra a la cola (y qué no)
+
+**No todo aprendizaje genera trabajo.** El filtro es la taxonomía de enganche (§11), aplicada al
+capturar:
+
+| Nivel | Qué se hace | ¿Genera pendiente? |
+|---|---|---|
+| **1 — Mecánico** (hook, gate, test, tipo) | Se construye en F7.5 | **Sí.** Es la única cola. |
+| **2 — Contextual** (prompt, convención) | Es una edición de minutos: **se hace en el acto** | No |
+| **3 — Documental** (memoria) | Escribirlo **es** implementarlo | No |
+
+Meter los tres niveles en la cola la vuelve impagable y hace que se abandone entera. La cola de F7.5
+es corta **por construcción**: sólo lo que necesita que alguien escriba algo que bloquee.
+
+### Dónde viven — el estado es la ubicación
+
+```
+<repo>/docs/aprendizajes/          ← VERSIONADO. Sobrevive a un clone, a un `clean`, a otra máquina.
+├── README.md                      ← el contrato de la carpeta
+├── pendientes/                    ← LA COLA DE F7.5. Vaciarla es el gate de F0.
+│   └── AAAA-MM-DD_<slug>.md
+└── AAAA-MM-DD/                    ← archivo histórico: implementados, por fecha de implementación
+    └── <slug>.md
+```
+
+**Implementar un aprendizaje = moverlo** de `pendientes/` a la carpeta del día. Igual que el buzón de
+coordinación: un tablero que hay que acordarse de actualizar se desincroniza y **miente**; un `mv` no
+puede. El estado nunca se declara, se observa con un `ls`.
+
+> ⚠️ **La captura en vivo es efímera; la cola no.** El archivo de captura de F5 puede vivir en la
+> carpeta de coordinación (muere con el sprint), pero **los pendientes van al repositorio versionado**.
+> Si la cola vive en una carpeta ignorada por git, un `clean` o una máquina nueva la evaporan — y sería
+> el mismo saco perdido con mejor nombre.
+
+### Formato de un pendiente
+
+```markdown
+---
+sprint: <sprint en que se aprendió>
+nivel: 1
+dueño: <rol o persona>
+---
+# <qué se aprendió, una línea>
+
+**Evidencia:** <path:línea | comando | cita del log>
+**Qué falló:** <el mecanismo, no el síntoma>
+**Gancho a construir:** <hook / gate / test / script — concreto>
+**DoD binario:** <cómo se prueba que el gancho ENGANCHA — incluido el control negativo>
+```
+
+El **DoD con control negativo** no es adorno: un gancho que nunca se probó contra el caso que debe
+atrapar es indistinguible de uno ausente. Es la ley de los instrumentos (§12) aplicada a los ganchos.
+
+### El gate
+
+`docs/aprendizajes/pendientes/` **vacío** es precondición de F0 del sprint siguiente. No es una meta ni
+una buena práctica: es binario y bloquea.
+
+Sobre la cola 2 (fixes del artefacto) el criterio es distinto y más honesto: **cero deuda
+NO-gestionada**, no cero deuda literal. Algunos fixes de app son grandes y no entran entre sprints;
+esos se registran con dueño y condición de pago y se planifican como hitos. La cola 1 sí se vacía
+entera, porque es corta por construcción.
+
+### Modo de fallo de esta fase
+
+**La carpeta que crece.** Si `pendientes/` acumula entre sprints, no hay que ampliar el plazo: hay que
+mirar qué se está metiendo. Casi siempre es nivel 2 disfrazado de nivel 1 — «hay que acordarse de X»
+escrito como si fuera un gancho. Un pendiente cuyo DoD no se puede escribir en una línea binaria no es
+un pendiente: es una nota.
+
+---
+
+## 11. Taxonomía de enganche
 
 > **Un aprendizaje sin enganche es una nota. Con enganche, es un órgano.**
 
@@ -434,7 +541,7 @@ crecer. Cuando algo entra al nivel 2, algo debería salir — o convertirse en n
 
 ---
 
-## 11. Instrumentación
+## 12. Instrumentación
 
 El bucle necesita medirse a sí mismo, o se degrada sin que nadie lo note.
 
@@ -463,7 +570,7 @@ Cuando se equivoca no da error — da una respuesta plausible, que entra al repo
 
 ---
 
-## 12. Instalación en un repositorio nuevo
+## 13. Instalación en un repositorio nuevo
 
 ### Capa plantilla (se replica tal cual)
 
@@ -471,7 +578,7 @@ Cuando se equivoca no da error — da una respuesta plausible, que entra al repo
 - Las plantillas de prompt de A1 y A2 (§6, §9), con sus placeholders.
 - La estructura del registro de coordinación: estados por ubicación, tipos de mensaje por prefijo,
   captura de aprendizajes append-only.
-- La taxonomía de enganche (§10) y la ley de los instrumentos (§11).
+- La taxonomía de enganche (§11) y la ley de los instrumentos (§12).
 
 ### Capa proyecto (se completa por repo, nunca se hereda)
 
@@ -496,12 +603,13 @@ proveedor, un cliente— va a la capa proyecto.
 - [ ] Índice de código sincronizado **y verificado con control positivo**.
 - [ ] Modelo de auditoría elegido, **distinto** al de las sesiones de trabajo, y su acceso al código y
       al índice **probado** — no asumido.
-- [ ] `APRENDIZAJES-SPRINT.md` creado, vacío.
+- [ ] `APRENDIZAJES-SPRINT.md` creado, vacío, en la carpeta de coordinación (efímero).
+- [ ] `docs/aprendizajes/` creado **y versionado**, con `README.md` y `pendientes/` vacío (§10).
 - [ ] Enganches de nivel 1 mínimos: aislamiento de código, secretos, y lo que el dominio exija.
 
 ---
 
-## 13. Modos de fallo del propio bucle
+## 14. Modos de fallo del propio bucle
 
 Ninguna de estas es hipotética: todas se observaron.
 
@@ -515,10 +623,12 @@ Ninguna de estas es hipotética: todas se observaron.
 | 6 | **El aviso llega y no produce conducta** | Un mensaje urgente se entrega y la sesión sigue como si nada. | Los avisos bloqueantes tienen **forma distinta** de los informativos. Y verificar el efecto, no sólo la entrega. |
 | 7 | **Se declara terminado sin evidencia** | «Funciona», «está listo», sin comando ni salida. | DoD binario, evidencia adjunta. La autoevaluación del agente no cuenta. |
 | 8 | **La auditoría opina sobre un sistema que no existe** | Recomendaciones que no encajan con lo que hacemos. | Revisar el encuadre del prompt: casi siempre el error está ahí, no en el auditor. |
+| 9 | **La cola de aprendizajes crece entre sprints** | `pendientes/` nunca llega a cero. | No ampliar el plazo: mirar qué se mete. Casi siempre es nivel 2 disfrazado de nivel 1. Un pendiente sin DoD binario es una nota (§10). |
+| 10 | **El sprint autónomo se cuelga esperando a una persona** | Una sesión frenada horas por una credencial, una decisión o un dispositivo. | R8 en A1: los insumos humanos se declaran y se proveen **antes** del reparto, o el hito no entra. |
 
 ---
 
-## 14. Resumen operativo
+## 15. Resumen operativo
 
 | Fase | Dueño | Entrada | Salida | Gate para avanzar |
 |---|---|---|---|---|
@@ -530,11 +640,13 @@ Ninguna de estas es hipotética: todas se observaron.
 | **F5** | Planificación | Observación en vivo | Aprendizajes capturados + costuras resueltas | Continuo |
 | **F6** | Implementación | Código | Evidencia real | Verificado donde vive |
 | **F7** | Auditoría (A2) | Todo lo anterior | Aprendizajes con enganche + hallazgos rankeados | Entregado |
-| **F8** | Planificación | Informe A2 | Enganches aplicados + plan N+1 | Deuda visible con dueño → vuelve a F0 |
+| **F7.5** | Planificación + quien corresponda | Cola de `pendientes/` | Ganchos construidos y probados | **`pendientes/` vacío.** Aprendizajes ANTES que fixes de app |
+| **F8** | Planificación | Informe A2 | Plan N+1 | Deuda del artefacto visible con dueño → vuelve a F0 |
 
 ---
 
 **Frase canónica del bucle:**
 *Planificar sobre código real, no sobre memoria. Auditar antes de gastar y después de aprender.
-Capturar barato, consolidar una vez. Y todo aprendizaje que pueda volverse mecánico, se vuelve
-mecánico — porque una regla escrita protege del olvido, no de la racionalización.*
+Capturar barato, consolidar una vez, **implementar antes de volver a empezar**. Y todo aprendizaje que
+pueda volverse mecánico, se vuelve mecánico — porque una regla escrita protege del olvido, no de la
+racionalización.*
