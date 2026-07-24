@@ -44,6 +44,15 @@ from bridge.enrich import build_enriched_graph
 from bridge.identity import EXTERNAL_SYMBOL, external_id, node_uuid
 from bridge.reader.graph_json import read_code_graph
 
+# Windows: cuando stdout/stderr no cuelgan de una consola real (pipe anidado, como
+# cuando scripts/graph-sync.sh nos invoca desde un subshell), Python resuelve el
+# encoding al codepage ANSI (cp1252) en vez de UTF-8 — cualquier emoji en un print()
+# revienta con UnicodeEncodeError DESPUÉS de que el control ya se calculó, disfrazando
+# un PASS real de un traceback. reconfigure() es no-op en plataformas donde ya es UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 
 def _changed_files(repo_path: Path, since_ref: str) -> set[str]:
     """Réplica de ``bridge.orchestrator.incremental.changed_files`` (mismo comando)."""
