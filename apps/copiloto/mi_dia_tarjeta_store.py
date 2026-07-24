@@ -40,7 +40,10 @@ def _js(valor):
 def _fila_a_dict(fila: tuple) -> dict:
     id_, regla, entidad_tipo, entidad_id, texto, estado, datos, creada, movida = fila
     return {
-        "id": id_, "regla": regla, "entidad_tipo": entidad_tipo, "entidad_id": entidad_id,
+        # `str(id_)`: el id es SERIAL (int) en la DB, pero el contrato del wire lo espera string
+        # (packages/core/src/api/miDia.ts:91 descarta en silencio toda tarjeta con `id` no-string —
+        # así se perdían TODAS las tarjetas del tablero sin ningún error visible).
+        "id": str(id_), "regla": regla, "entidad_tipo": entidad_tipo, "entidad_id": entidad_id,
         "texto": texto, "estado": estado, "datos": datos,
         "creada_en": creada.isoformat() if creada else None,
         "movida_en": movida.isoformat() if movida else None,
