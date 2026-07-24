@@ -37,6 +37,10 @@ _TABLE = f"{_SCHEMA}.copiloto_avisos_emitidos"
 # env var con default, nunca hardcodeado a secas.
 UMBRAL_PRESUPUESTO_ENFRIANDOSE = Decimal(os.environ.get("COPILOTO_MI_DIA_UMBRAL_PRESUPUESTO") or "0")
 
+# Umbral de "trabajo sin ingreso" (contrato §1.bis) — días desde el ÚLTIMO MOVIMIENTO, no desde que
+# empezó (ver `TrabajoStore.margen` → `dias_desde_ultimo_movimiento`).
+DIAS_TRABAJO_SIN_INGRESO = int(os.environ.get("COPILOTO_MI_DIA_DIAS_SIN_INGRESO") or "15")
+
 # Silencio "para siempre" — reglas que dicen un hecho cerrado una sola vez (contrato §1.bis,
 # `trabajo_con_margen_negativo`: "no se repite"). `silenciado_hasta` es NOT NULL a propósito: un NULL
 # ahí sería indistinguible de "nunca se calculó" en una lectura apurada; un año 9999 es inequívoco.
@@ -94,6 +98,7 @@ class AvisosEmitidosStore:
 REGLA_PRESUPUESTOS_ENFRIANDOSE = "presupuestos_enfriandose"
 REGLA_FACTURAS_IMPAGAS_VIEJAS = "facturas_impagas_viejas"
 REGLA_TRABAJO_MARGEN_NEGATIVO = "trabajo_con_margen_negativo"
+REGLA_TRABAJO_SIN_INGRESO = "trabajo_con_gastos_y_sin_ingreso"
 
 
 def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
@@ -152,6 +157,29 @@ def _evaluar_trabajo_margen_negativo(trabajos: list[dict]) -> list[dict]:
     return salida
 
 
+def _evaluar_trabajo_sin_ingreso(trabajos_sin_ingreso: list[dict]) -> list[dict]:
+    """Contrato §1.bis: `cadena con gastos imputados, terminada hace > 15 días, sin ningún ingreso`.
+
+    ⚠️ **La trampa del contrato:** un trabajo sin ingreso puede ser (a) que no le pagaron, (b) que
+    le pagaron y no lo anotó, o (c) que **sigue en curso**. Por eso el umbral es
+    `dias_desde_ultimo_movimiento` (calculado en SQL, `TrabajoStore.margen`) — NO "hace cuánto
+    empezó" — así un trabajo con actividad reciente (en curso) nunca dispara esto. Un candidato sin
+    `dias_desde_ultimo_movimiento` (nunca hubo cobro ni gasto con fecha, caso degenerado) tampoco
+    dispara: sin fecha no hay forma de distinguir "viejo" de "recién empezado"."""
+    salida = []
+    for t in trabajos_sin_ingreso:
+        dias = t.get("dias_desde_ultimo_movimiento")
+        if dias is None or dias <= DIAS_TRABAJO_SIN_INGRESO:
+            continue
+        entidad_id = f"{t['eslabon']}:{t['ref']}"
+        salida.append({
+            "regla": REGLA_TRABAJO_SIN_INGRESO, "entidad_tipo": "trabajo",
+            "entidad_id": entidad_id, "dias_silencio": 14,
+            "datos": {"etiqueta": t.get("etiqueta"), "gastado": str(t.get("gastado")), "dias": dias},
+        })
+    return salida
+
+
 # ── Reglas — mitad IMPURA (traen los datos de la capa del hito 6) ──────────────────────────────────
 
 def _candidatos_presupuestos_enfriandose(conn_factory: Callable, cliente_id: str) -> list[dict]:
@@ -162,8 +190,12 @@ def _candidatos_facturas_impagas_viejas(conn_factory: Callable, cliente_id: str)
     return CobroStore(conn_factory, cliente_id).impagos()
 
 
-def _candidatos_trabajo_margen_negativo(conn_factory: Callable, cliente_id: str) -> list[dict]:
-    return InteligenciaQueries(conn_factory, cliente_id).margen_por_trabajo()["trabajos"]
+def _candidatos_margen_por_trabajo(conn_factory: Callable, cliente_id: str) -> dict:
+    """`{trabajos, sin_ingreso}` — UN solo `margen_por_trabajo()` para las DOS reglas que lo
+    necesitan (`trabajo_con_margen_negativo` y `trabajo_con_gastos_y_sin_ingreso`). Llamarlo dos
+    veces (una por regla) duplicaría el recorrido de TODOS los trabajos del tenant en cada corrida
+    del detector — barato de evitar, compartiendo el resultado acá."""
+    return InteligenciaQueries(conn_factory, cliente_id).margen_por_trabajo()
 
 
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
@@ -181,17 +213,23 @@ def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[di
     Determinista dado el estado de la DB en el momento en que corre — no llama al LLM. REDACTAR
     (texto con tono del negocio) y ENTREGAR (Kanban + portada) son pasos aparte, fuera de este módulo.
     """
+    margen_por_trabajo = _candidatos_margen_por_trabajo(conn_factory, cliente_id)
     return {
         REGLA_PRESUPUESTOS_ENFRIANDOSE:
             _evaluar_presupuestos_enfriandose(_candidatos_presupuestos_enfriandose(conn_factory, cliente_id)),
         REGLA_FACTURAS_IMPAGAS_VIEJAS:
             _evaluar_facturas_impagas_viejas(_candidatos_facturas_impagas_viejas(conn_factory, cliente_id)),
         REGLA_TRABAJO_MARGEN_NEGATIVO:
-            _evaluar_trabajo_margen_negativo(_candidatos_trabajo_margen_negativo(conn_factory, cliente_id)),
+            _evaluar_trabajo_margen_negativo(margen_por_trabajo["trabajos"]),
+        REGLA_TRABAJO_SIN_INGRESO:
+            _evaluar_trabajo_sin_ingreso(margen_por_trabajo["sin_ingreso"]),
     }
 
 
 # Reglas cuya tarjeta se cierra SOLA cuando el candidato deja de aparecer en `detectar_todos()`
 # (contrato §2.1). `trabajo_con_margen_negativo` NO está: es un hecho cerrado que se dice una vez
 # (§1.bis) — no tiene "acción que lo resuelva", así que no se reconcilia por ausencia.
-REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS)
+# `trabajo_con_gastos_y_sin_ingreso` SÍ está — el DoD lo pide explícito: "se cierra sola al
+# registrar el ingreso" (§5), que es exactamente "el trabajo deja de aparecer en `sin_ingreso`".
+REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS,
+                      REGLA_TRABAJO_SIN_INGRESO)

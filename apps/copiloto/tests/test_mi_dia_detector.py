@@ -114,3 +114,62 @@ def test_emitir_usa_on_conflict_sobre_el_indice_de_idempotencia():
 def test_silencio_para_siempre_es_muy_futuro_y_naive_no_se_cuela():
     assert detector.SILENCIO_PARA_SIEMPRE.year == 9999
     assert detector.SILENCIO_PARA_SIEMPRE.tzinfo is not None
+
+
+# ── trabajo_con_gastos_y_sin_ingreso ────────────────────────────────────────────────────────────
+
+def test_trabajo_sin_ingreso_dispara_pasado_el_umbral():
+    trabajos = [{"eslabon": "presupuesto", "ref": 3, "etiqueta": "Panadería SRL · 2026-06-01",
+                "gastado": "42000.00", "dias_desde_ultimo_movimiento": detector.DIAS_TRABAJO_SIN_INGRESO + 1}]
+    salida = detector._evaluar_trabajo_sin_ingreso(trabajos)
+    assert len(salida) == 1
+    assert salida[0]["regla"] == detector.REGLA_TRABAJO_SIN_INGRESO
+    assert salida[0]["entidad_id"] == "presupuesto:3"
+    assert salida[0]["dias_silencio"] == 14
+
+
+def test_trabajo_EN_CURSO_no_dispara_aunque_sea_viejo():
+    """🔴 La trampa del contrato (§1.bis): un trabajo con movimiento RECIENTE no es "impago", está en
+    curso. `dias_desde_ultimo_movimiento` bajo el umbral (aunque el trabajo haya arrancado hace
+    meses) tiene que ganarle a cualquier otra señal."""
+    trabajos = [{"eslabon": "presupuesto", "ref": 3, "gastado": "42000.00",
+                "dias_desde_ultimo_movimiento": detector.DIAS_TRABAJO_SIN_INGRESO - 1}]
+    assert detector._evaluar_trabajo_sin_ingreso(trabajos) == []
+
+
+def test_trabajo_exactamente_en_el_umbral_no_dispara():
+    trabajos = [{"eslabon": "presupuesto", "ref": 3, "gastado": "1",
+                "dias_desde_ultimo_movimiento": detector.DIAS_TRABAJO_SIN_INGRESO}]
+    assert detector._evaluar_trabajo_sin_ingreso(trabajos) == []
+
+
+def test_trabajo_sin_fecha_de_movimiento_no_dispara():
+    """Sin `dias_desde_ultimo_movimiento` (caso degenerado, ni cobro ni gasto con fecha) no hay forma
+    de distinguir "viejo" de "recién empezado" — no se arriesga un aviso equivocado (contrato §0)."""
+    trabajos = [{"eslabon": "presupuesto", "ref": 3, "gastado": "1", "dias_desde_ultimo_movimiento": None}]
+    assert detector._evaluar_trabajo_sin_ingreso(trabajos) == []
+
+
+def test_trabajo_sin_ingreso_esta_en_reglas_auto_cierre():
+    """DoD (contrato §5): "la tarjeta de `trabajo_con_gastos_y_sin_ingreso` se cierra sola al
+    registrar el ingreso" — eso es exactamente "el trabajo deja de aparecer en `sin_ingreso`"."""
+    assert detector.REGLA_TRABAJO_SIN_INGRESO in detector.REGLAS_AUTO_CIERRE
+
+
+def test_margen_negativo_no_esta_en_auto_cierre_pero_sin_ingreso_si():
+    assert detector.REGLAS_AUTO_CIERRE == (
+        detector.REGLA_PRESUPUESTOS_ENFRIANDOSE, detector.REGLA_FACTURAS_IMPAGAS_VIEJAS,
+        detector.REGLA_TRABAJO_SIN_INGRESO,
+    )
+    assert detector.REGLA_TRABAJO_MARGEN_NEGATIVO not in detector.REGLAS_AUTO_CIERRE
+
+
+def test_detectar_todos_pide_margen_por_trabajo_UNA_sola_vez():
+    """Antes tenía dos funciones `_candidatos_*` distintas, cada una llamando a
+    `InteligenciaQueries.margen_por_trabajo()` por su cuenta — dos recorridos completos de TODOS los
+    trabajos del tenant en cada corrida del detector. `_candidatos_margen_por_trabajo` comparte el
+    resultado entre las dos reglas que lo usan; este guard (fuente, sin DB) cazaría el regreso a la
+    duplicación si alguien vuelve a llamar `margen_por_trabajo()` dos veces en `detectar_todos`."""
+    import inspect
+    fuente = inspect.getsource(detector.detectar_todos)
+    assert fuente.count("_candidatos_margen_por_trabajo(") == 1  # una sola invocación de la query cara
