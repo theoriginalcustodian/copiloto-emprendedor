@@ -205,6 +205,14 @@ class InteligenciaQueries:
             "por_cobrar": self.por_cobrar(),
         }
 
+    def serie_mensual_reciente(self, meses: int = 2) -> list[dict]:
+        """`[{mes, ingresos, gastos}]` — versión liviana de `portada()` para quien sólo necesita la
+        serie (hito 7: comparar el gasto del mes contra el anterior) sin pagar `mejores_clientes` +
+        `por_cobrar` + `facturado`/`cobrado` del mes que `portada()` calcula de más. Misma definición
+        de "Salió" (§0): reusa `_serie_mensual`, no la redefine."""
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            return self._serie_mensual(cur, meses)
+
     # ── ventana de N meses, compartida por los 3 gráficos de serie mensual ─────────────────────────
 
     def _ventana_meses(self, meses: int) -> tuple[datetime.date, datetime.date]:

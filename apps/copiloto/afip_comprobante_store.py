@@ -175,6 +175,21 @@ class AfipComprobanteStore:
             row = cur.fetchone()
         return self._fila(row, con_id=True)
 
+    def con_cae_vigente(self) -> list[dict]:
+        """Todos los comprobantes NO anulados con `cae_vto` cargado — hito 7 (detector proactivo,
+        regla `cae_por_vencer`). `dias_para_vencer` sale de SQL (`cae_vto - CURRENT_DATE`, negativo
+        si ya venció) para que el umbral de "por vencer" se decida en el detector, no acá: esta
+        capa sólo trae el dato, no interpreta qué es "pronto"."""
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT id, nro, cae_vto, (cae_vto - CURRENT_DATE) FROM {_TABLE} "
+                f"WHERE cliente_id=%s AND estado != %s AND cae_vto IS NOT NULL",
+                (self._cid, ESTADO_ANULADA))
+            filas = cur.fetchall()
+        return [{"id": i, "nro": n, "cae_vto": v.isoformat() if v else None, "dias_para_vencer": d}
+                for i, n, v, d in filas]
+
     def marcar_anulada(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                        nro_nota_credito: int) -> None:
         """Marca la factura original como anulada y deja el puntero a la NC que la anuló."""
