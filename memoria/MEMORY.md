@@ -22,6 +22,7 @@
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. Montar en local rechazado 2×.
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. La prueba vale, la aserción no. [[spike-first-central-proyecto]]
 - [Spike-first es central](spike-first-central-proyecto.md) — `feedback`. Cimiento no verificado se amplifica a escala.
+- [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — `feedback`. 6 errores seguidos no eran bugs del script: era el prompt que ordenaba consultarlo ANTES que al log. Preguntá qué regla te lleva a la fuente derivada.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo — correr el control](vacio-no-es-hallazgo-correr-el-control.md) — `feedback`. Hornear el control en el script.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — `feedback`. Deliberada+visible OK; impaga/invisible prohibida.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
