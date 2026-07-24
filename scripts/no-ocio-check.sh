@@ -97,8 +97,8 @@ if [ -n "$PROJ" ]; then
     # una sesión que está trabajando en otro archivo (medido 2026-07-24: "backend 66min" con
     # backend tecleando).
     case "$(etiqueta_transcript "$f")" in
-      BACKEND)  [ "$m" -gt "${mt_be:-0}" ] && mt_be="$m" ;;
-      FRONTEND) [ "$m" -gt "${mt_fe:-0}" ] && mt_fe="$m" ;;
+      BACKEND)  [ "$m" -gt "${mt_be:-0}" ] && { mt_be="$m"; tf_be="$f"; } ;;
+      FRONTEND) [ "$m" -gt "${mt_fe:-0}" ] && { mt_fe="$m"; tf_fe="$f"; } ;;
       '?')      ambiguos="$ambiguos $(basename "$f" | cut -c1-8)" ;;
     esac
   done < <(find "$PROJ" -maxdepth 1 -name '*.jsonl' -print0 2>/dev/null)
@@ -107,6 +107,52 @@ fi
 [ "$mt_fe" -gt 0 ] && vida_fe="$(min_desde "$mt_fe")"
 # Un transcript vivo que no se pudo rotular NO se silencia: podría ser la sesión que creés muerta.
 [ -n "$ambiguos" ] && echo "⚠️  transcript(s) vivo(s) SIN rotular:$ambiguos — mirá sus tool calls a mano antes de concluir nada."
+
+# ── PRODUCCIÓN: minutos desde el último turno que MUTÓ algo (Write/Edit) ─────────────────────────
+# 🔴 Tercer fallo del mismo sensor (2026-07-24). El mtime del transcript mide "hubo un turno", NO
+# "hubo trabajo" — y una sesión con cron de vigía cada 3 min tiene turnos PARA SIEMPRE. Medido:
+# frontend con `vida 0min` repitiendo "idéntico al tick anterior, cola vacía, esperando" en CADA
+# tick. El sensor daba verde mientras la sesión giraba en vacío, y lo cazó el operador, no el
+# instrumento. Un pulso constante no prueba trabajo: prueba que el marcapasos anda.
+# El timestamp sale de la línea JSONL del último tool_use mutante, no del mtime del archivo.
+prod_desde() {   # minutos desde el último Write/Edit del transcript, o 9999 si no hay ninguno
+  local f="$1"
+  [ -f "$f" ] || { echo 9999; return; }
+  tail -c 3000000 "$f" 2>/dev/null | python -c "
+import sys, json, datetime
+MUT = {'Write','Edit','MultiEdit','NotebookEdit'}
+ult = None
+for l in sys.stdin:
+    if '\"tool_use\"' not in l: continue
+    try: d = json.loads(l)
+    except Exception: continue
+    c = (d.get('message') or {}).get('content')
+    if not isinstance(c, list): continue
+    if any(b.get('type')=='tool_use' and b.get('name') in MUT for b in c):
+        ult = d.get('timestamp') or ult
+if not ult:
+    print(9999); raise SystemExit
+try:
+    t = datetime.datetime.fromisoformat(str(ult).replace('Z','+00:00'))
+    print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 60))
+except Exception:
+    print(9999)
+" 2>/dev/null || echo 9999
+}
+prod_be=9999; prod_fe=9999
+[ -n "${tf_be:-}" ] && prod_be="$(prod_desde "$tf_be")"
+[ -n "${tf_fe:-}" ] && prod_fe="$(prod_desde "$tf_fe")"
+echo "PRODUCCIÓN (último Write/Edit): backend ${prod_be}min · frontend ${prod_fe}min"
+
+# Alarma propia: viva pero improductiva = gira en vacío. Es el caso que el umbral de VIDA no ve.
+for par in "backend:${vida_be:-9999}:${prod_be}" "frontend:${vida_fe:-9999}:${prod_fe}"; do
+  s="${par%%:*}"; rest="${par#*:}"; v="${rest%%:*}"; p="${rest##*:}"
+  if [ "${v:-9999}" -lt "$UMBRAL_OCIO" ] && [ "$p" -ge "$UMBRAL_MUERTA" ]; then
+    echo "🌀 $s GIRA EN VACÍO — transcript fresco (${v}min) pero sin mutar nada hace ${p}min."
+    echo "   Su cron le da pulso, no trabajo. NO es dead-man: es OCIO. Reasignale algo YA (recon"
+    echo "   read-only del hito siguiente, §0 de reutilización, de-risk) o confirmá ocio legítimo."
+  fi
+done
 [ -n "$vida_be" ] && echo "VIDA (transcript): backend ${vida_be}min" || echo "VIDA (transcript): backend — sin transcript reciente"
 [ -n "$vida_fe" ] && echo "VIDA (transcript): frontend ${vida_fe}min" || echo "VIDA (transcript): frontend — sin transcript reciente"
 
