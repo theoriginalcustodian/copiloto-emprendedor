@@ -149,100 +149,98 @@ def test_marcar_presupuesto_solo_ofrece_los_dos_estados_reales():
         ["aprobado", "desestimado"]
 
 
-# ── registrar_ingreso ────────────────────────────────────────────────────────────────────────────
+# ── registrar_ingreso (hito 8 §1: propone, igual que registrar_gasto) ──────────────────────────────
 
-def test_solo_el_monto_YA_QUEDA_GUARDADO():
-    """🔴 El DoD del addendum §6, del lado de la voz. Si esto propusiera en vez de guardar, el
-    emprendedor dicta, no toca nada, y la plata que entró no queda en ningún lado."""
+def test_solo_el_monto_arma_la_card_y_NO_guarda():
+    """🔴 El DoD del contrato hito 8: revierte el guarda-primero. Si esto persistiera, una card
+    mostrada != dato guardado se rompería justo para la acción que más plata mueve."""
     store = _CobroFake()
     res = _correr("registrar_ingreso", {"monto": "85000"}, cobro=store)
     assert res.status == "ok"
-    assert len(store.ingresos) == 1
-    assert store.ingresos[0]["monto"].startswith("85000")
-    assert "GUARDADO" in res.observation["result"]
+    assert store.ingresos == [], "no persiste hasta el POST /ingresos al Guardar la card"
+    assert res.artifact.kind == "ingreso_propuesto"
+    assert res.artifact.data["monto"] == "85000.00"
+    assert "TODAVÍA NO está guardado" in res.observation["result"]
+    assert "anoté" not in res.observation["result"].lower().split("no digas")[0]
 
 
-def test_dice_el_monto_en_la_confirmacion():
-    """Es el único punto donde un «quince mil» que el dictado entendió como «cincuenta mil» se puede
-    detectar: el emprendedor lo OYE. Sin el monto en la respuesta, el error entra mudo."""
+def test_dice_el_monto_en_la_propuesta():
+    """Mismo criterio que gasto: el monto viaja en el texto que el LLM relaya, para que el
+    emprendedor pueda oír si entendió mal — antes de que exista una card que mirar."""
     res = _correr("registrar_ingreso", {"monto": "85000"}, cobro=_CobroFake())
-    assert "$85.000" in res.observation["result"]
+    assert "$85000.00" in res.observation["result"]
 
 
-def test_avisa_lo_que_falto_con_palabras_de_persona():
+def test_los_datos_opcionales_viajan_en_la_card_sin_perseguirlos():
+    """Ya no hay aviso verbal de «lo que faltó»: cliente/medio/concepto quedan editables en la card,
+    mismo criterio que proveedor/medio_pago/descripción en `registrar_gasto` — no se chasean por chat."""
     res = _correr("registrar_ingreso", {"monto": "85000"}, cobro=_CobroFake())
-    dicho = res.observation["result"]
-    assert "de quién" in dicho and "cómo te pagaron" in dicho
-    assert "medio" not in dicho.split("Anotado")[-1].replace("cómo te pagaron", ""), \
-        "no puede filtrarse el nombre técnico de la columna"
+    assert res.artifact.data["cliente_nombre"] is None
+    assert res.artifact.data["medio"] is None
+    assert res.artifact.data["concepto"] is None
+    assert "de quién" not in res.observation["result"], "eso era el aviso verbal viejo, ya no existe"
 
 
-def test_si_no_falta_nada_NO_pide_nada():
-    """Un copiloto que igual pregunta después de que le dijeron todo se vuelve ruido, y el aviso
-    deja de leerse justo cuando importa."""
+def test_los_datos_opcionales_dictados_SI_llegan_a_la_card():
     res = _correr("registrar_ingreso",
                   {"monto": "85000", "cliente": "Panadería", "medio_pago": "efectivo",
                    "concepto": "torta"}, cobro=_CobroFake())
-    assert "No te dijo" not in res.observation["result"]
+    assert res.artifact.data["cliente_nombre"] == "Panadería"
+    assert res.artifact.data["medio"] == "efectivo"
+    assert res.artifact.data["concepto"] == "torta"
 
 
-def test_sin_monto_repregunta_y_NO_guarda():
+def test_sin_monto_repregunta_y_NO_arma_card():
     store = _CobroFake()
     res = _correr("registrar_ingreso", {"cliente": "Panadería"}, cobro=store)
     assert res.status == "ok", "no falló nada: falta un dato, y con `error` el loop se disculpa"
     assert store.ingresos == []
+    assert res.artifact is None
     assert "monto" in res.observation["result"].lower()
 
 
-def test_el_duplicado_probable_NO_guarda_y_pregunta_antes():
-    """🔴 Al revés que un dato faltante, y por eso: un dato que falta se ve y se completa cuando
-    aparezca; un ingreso de más infla la caja y no se ve nunca."""
+def test_el_duplicado_probable_NO_arma_card_y_pregunta_antes():
+    """🔴 Al revés que un dato faltante: el duplicado se pregunta ANTES de mostrar la card, porque
+    una card ya prellenada es fácil de confirmar sin mirar — no protege como protege un campo vacío."""
     store = _CobroFake(duplicado={"id": 7, "monto": "85000.00", "fecha": "2026-07-20",
                                   "origen": "mercadopago", "cliente_nombre": "Panadería"})
     res = _correr("registrar_ingreso", {"monto": "85000", "cliente": "Panadería"}, cobro=store)
-    assert store.ingresos == [], "preguntó y guardó igual: la caja se infla"
+    assert res.artifact is None, "preguntó y armó la card igual: la card ya prellenada se confirma sin mirar"
     assert "todavía NO lo anoté" in res.observation["result"]
     assert "confirmar_duplicado" in res.observation["result"], \
         "el LLM tiene que saber CÓMO insistir, no adivinarlo"
 
 
-def test_confirmando_el_duplicado_SI_guarda():
+def test_confirmando_el_duplicado_SI_arma_la_card():
     """Avisa, no prohíbe: dos cobros iguales del mismo cliente son un caso real y él lo sabe mejor."""
     store = _CobroFake(duplicado={"id": 7, "monto": "85000.00", "fecha": "2026-07-20",
                                   "origen": "mercadopago", "cliente_nombre": "Panadería"})
-    _correr("registrar_ingreso",
-            {"monto": "85000", "cliente": "Panadería", "confirmar_duplicado": True}, cobro=store)
-    assert len(store.ingresos) == 1
-
-
-def test_el_mismo_turno_reintentado_NO_anota_dos_veces():
-    """La activity es at-least-once. Sin `idem_key`, un reintento de Temporal duplica el ingreso —y
-    a diferencia de un fallo, esto no deja rastro: son dos filas plausibles."""
-    store = _CobroFake()
-    for _ in range(3):
-        _correr("registrar_ingreso", {"monto": "85000"}, cobro=store, idem_key="tc-mismo")
-    assert len(store.ingresos) == 1
+    res = _correr("registrar_ingreso",
+                  {"monto": "85000", "cliente": "Panadería", "confirmar_duplicado": True}, cobro=store)
+    assert res.artifact.kind == "ingreso_propuesto"
+    assert store.ingresos == [], "propone, no persiste — ni siquiera confirmado el duplicado"
 
 
 def test_ayer_se_resuelve_contra_el_reloj_inyectado():
-    store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "1000", "fecha_raw": "ayer"}, cobro=store)
-    assert store.ingresos[0]["fecha"] == "2026-07-21"
+    res = _correr("registrar_ingreso", {"monto": "1000", "fecha_raw": "ayer"}, cobro=_CobroFake())
+    assert res.artifact.data["fecha"] == "2026-07-21"
 
 
 def test_quince_mil_dictado_con_punto_no_se_vuelve_quince_pesos():
-    store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "$ 15.000"}, cobro=store)
-    assert store.ingresos[0]["monto"].startswith("15000")
+    res = _correr("registrar_ingreso", {"monto": "$ 15.000"}, cobro=_CobroFake())
+    assert res.artifact.data["monto"].startswith("15000")
 
 
 # ── completar_ingreso ────────────────────────────────────────────────────────────────────────────
+# `registrar_ingreso` ya no persiste (hito 8 §1), así que estos tests siembran el ingreso directo en
+# el store (`store.registrar_suelto`, sin pasar por la tool) — `completar_ingreso` sigue viva sólo
+# para el modo automático (contrato §4), y su lógica (completar UN ingreso ya guardado) no cambió.
 
 def test_completar_toca_EL_MISMO_ingreso_y_no_crea_otro():
     """🔴 El DoD: contestar el aviso completa, no duplica. Si creara otro, el mecanismo que existe
     para mejorar la calidad del dato sería el que infla la caja."""
     store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "85000"}, cobro=store)
+    store.registrar_suelto(monto="85000", idem_key="seed-1")
     res = _correr("completar_ingreso", {"cliente": "Panadería", "medio_pago": "efectivo"},
                   cobro=store)
     assert len(store.ingresos) == 1
@@ -254,8 +252,8 @@ def test_completar_sin_id_toma_el_ULTIMO_dictado():
     """El id viaja en la observación del turno anterior y el historial no garantiza conservarlo. Si
     esta tool dependiera de que el modelo lo recuerde, fallaría justo en el caso que el DoD mide."""
     store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "1000"}, cobro=store, idem_key="a")
-    _correr("registrar_ingreso", {"monto": "2000"}, cobro=store, idem_key="b")
+    store.registrar_suelto(monto="1000", idem_key="seed-a")
+    store.registrar_suelto(monto="2000", idem_key="seed-b")
     _correr("completar_ingreso", {"medio_pago": "efectivo"}, cobro=store)
     assert store.completados == [(2, {"medio": "efectivo"})]
 
@@ -263,14 +261,14 @@ def test_completar_sin_id_toma_el_ULTIMO_dictado():
 def test_completar_NO_pisa_lo_que_ya_estaba():
     """Parcial de verdad: aclarar sólo el medio no puede borrar el cliente que ya se había puesto."""
     store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "1000", "cliente": "Panadería"}, cobro=store)
+    store.registrar_suelto(monto="1000", cliente_nombre="Panadería", idem_key="seed-c")
     _correr("completar_ingreso", {"medio_pago": "efectivo"}, cobro=store)
     assert store.ingresos[0]["cliente_nombre"] == "Panadería"
 
 
 def test_completar_sin_datos_no_borra_nada():
     store = _CobroFake()
-    _correr("registrar_ingreso", {"monto": "1000", "cliente": "Panadería"}, cobro=store)
+    store.registrar_suelto(monto="1000", cliente_nombre="Panadería", idem_key="seed-d")
     _correr("completar_ingreso", {"cliente": "   "}, cobro=store)
     assert store.completados == []
     assert store.ingresos[0]["cliente_nombre"] == "Panadería"
@@ -454,29 +452,27 @@ def test_sin_store_cableado_degrada_a_error_y_no_explota(tool, args):
 # que no se resuelve a un día y no debería poder nunca: lo que se prueba acá es la CONDUCTA ante lo
 # no entendido —avisar y no perder el registro—, no qué frases entra el parser.
 
-def test_una_fecha_que_no_se_entiende_avisa_y_NO_falla():
-    store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=store)
-    assert len(store.ingresos) == 1, "fallar el registro pierde el ingreso por un detalle corregible"
-    assert store.ingresos[0]["fecha"] == "2026-07-22", "cae a hoy, no a una fecha inventada"
-    assert "hace un rato" in res.observation["result"], \
-        "el aviso tiene que nombrar lo que la persona dijo: un «revisá la fecha» genérico se ignora"
-    assert "HOY" in res.observation["result"]
+def test_una_fecha_que_no_se_entiende_no_falla_y_queda_en_hoy():
+    """Con card (hito 8), el ⚠️ va pegado al campo — no pierde el dictado por una fecha ambigua ni
+    inventa una fecha distinta de hoy."""
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=_CobroFake())
+    assert res.artifact.data["fecha"] == "2026-07-22", "cae a hoy, no a una fecha inventada"
+    assert res.artifact.data["fecha_entendida"] is False
+    assert res.artifact.data["fecha_dictada"] == "hace un rato"
 
 
-def test_una_fecha_que_SI_se_entiende_no_avisa_nada():
+def test_una_fecha_que_SI_se_entiende_no_marca_nada():
     """El control. Si el aviso saliera siempre, el copiloto preguntaría por la fecha en cada dictado
     y en dos días el emprendedor dejaría de leerlo — justo cuando importa."""
-    store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "ayer"}, cobro=store)
-    assert store.ingresos[0]["fecha"] == "2026-07-21"
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "ayer"}, cobro=_CobroFake())
+    assert res.artifact.data["fecha"] == "2026-07-21"
+    assert res.artifact.data["fecha_entendida"] is True
     assert "OJO" not in res.observation["result"]
 
 
 def test_sin_fecha_dictada_tampoco_avisa():
     """No dictar fecha no es un fallo de comprensión: hoy es lo correcto, no una suposición."""
-    store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000"}, cobro=store)
+    res = _correr("registrar_ingreso", {"monto": "5000"}, cobro=_CobroFake())
     assert "OJO" not in res.observation["result"]
 
 
@@ -547,13 +543,15 @@ def test_el_gasto_con_fecha_ENTENDIDA_no_marca_nada():
     assert r.artifact.data["fecha"] == "2026-07-21"
 
 
-def test_el_ingreso_SI_avisa_por_chat_porque_no_tiene_card():
-    """La distinción que no se puede aplicar como regla ciega: `registrar_ingreso` guarda directo y no
-    hay card donde pintar el ⚠️, así que el chat es el único canal que queda."""
-    store = _CobroFake()
-    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=store)
-    assert "no ubiqué" in res.observation["result"]
-    assert "ayer" in res.observation["result"], "el aviso trae la forma que SÍ funciona"
+def test_la_card_del_ingreso_lleva_el_aviso_de_fecha():
+    """Hito 8: `registrar_ingreso` ya tiene card, así que sigue el MISMO criterio que gasto — el ⚠️
+    se muda del chat a la card. Antes de la card, éste era el caso que avisaba por chat porque no
+    tenía dónde más pintarlo; ahora sí tiene."""
+    res = _correr("registrar_ingreso", {"monto": "5000", "fecha_raw": "hace un rato"}, cobro=_CobroFake())
+    assert res.artifact.data["fecha_entendida"] is False
+    assert res.artifact.data["fecha_dictada"] == "hace un rato"
+    assert "no ubiqué" not in res.observation["result"], \
+        "con card, el copiloto NO pregunta por chat: el ⚠️ va pegado al campo que lo arregla"
 
 
 # ── 'hace N ...': lo que el resolvedor entendia MAL sin protestar ──────────────────────────────

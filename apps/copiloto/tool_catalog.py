@@ -164,9 +164,9 @@ REGISTRAR_INGRESO_SCHEMA = {"type": "function", "function": {
     "name": "registrar_ingreso",
     "description": "Anota plata que ENTRÓ y que no viene de una factura puntual ('me pagaron 85 mil', "
                    "'cobré 40 mil de la panadería', 'me transfirieron 12000 por el trabajo del "
-                   "sábado'). LA GUARDA de una vez. Lo ÚNICO obligatorio es el monto: no le pidas "
-                   "cliente, medio de pago ni concepto antes de anotar — se piden después. Si lo que "
-                   "cobró es una factura que ya emitió, usá `marcar_factura_cobrada` en vez de ésta.",
+                   "sábado'). NO lo guarda: arma una propuesta para que él la revise y confirme. Lo "
+                   "ÚNICO obligatorio es el monto — si no lo dijo, pedíselo antes de llamarla. Si lo "
+                   "que cobró es una factura que ya emitió, usá `marcar_factura_cobrada` en vez de ésta.",
     "parameters": {"type": "object", "properties": {
         "monto": {"type": "string", "description": "el monto en pesos, sólo el número, ej '85000'"},
         "cliente": {"type": "string", "description": "quién le pagó, si lo dijo"},
@@ -379,12 +379,14 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               # Ninguna de las dos va en WRITE_TOOLS: `registrar_cliente` PROPONE (el POST lo dispara
               # el emprendedor al tocar Guardar) y `consultar_cliente` es read puro.
               "registrar_cliente": ("cliente",), "consultar_cliente": ("cliente_consulta",),
-              # Las cuatro del hito 3 PERSISTEN (a diferencia de gasto y cliente, que proponen) y aun
-              # así NO van en WRITE_TOOLS. El confirm-gate es sí/no sobre los MISMOS argumentos: acá
-              # no protege de nada —el riesgo real no es "¿lo hago?" sino "¿a cuál?", y eso ya lo
-              # cubre `_elegir_uno`, que se niega a elegir— y sí agrega la fricción que el addendum
-              # §2 prohíbe explícitamente para anotar plata que entró. Todo esto es reversible:
-              # borrar el ingreso, deshacer el cobro, volver a mover el presupuesto.
+              # De las cuatro del hito 3, sólo `marcar_factura_cobrada`/`marcar_presupuesto` PERSISTEN
+              # directo (transiciones de estado, no formularios). `registrar_ingreso` pasó a PROPONER
+              # (hito 8 §1, revierte el guarda-primero de §2.bis — relocalizado al modo automático,
+              # contrato §4); `completar_ingreso` sigue viva sólo para esa rama futura. Ninguna va en
+              # WRITE_TOOLS: el confirm-gate es sí/no sobre los MISMOS argumentos, y acá no protege de
+              # nada —el riesgo real no es "¿lo hago?" sino "¿a cuál?", ya cubierto por `_elegir_uno`,
+              # que se niega a elegir— y sólo agrega la fricción que el addendum §2 prohíbe. Todo esto
+              # es reversible: borrar el ingreso, deshacer el cobro, volver a mover el presupuesto.
               "registrar_ingreso": ("ingreso",), "completar_ingreso": ("ingreso_completar",),
               "marcar_factura_cobrada": ("factura_cobrada",),
               "marcar_presupuesto": ("presupuesto_estado",),
@@ -853,23 +855,19 @@ _FALTA_HUMANA = {"cliente": "de quién", "medio": "cómo te pagaron", "concepto"
 
 
 def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_store_factory):
-    """*«Me pagaron 85 mil»* → **queda guardado**, y recién después el copiloto dice qué faltó.
+    """*«Me pagaron 85 mil»* → propone, igual que `registrar_gasto`.
 
-    🔴 **Guarda primero y pregunta después — al revés que `registrar_gasto`, y la asimetría es
-    deliberada.** El addendum §2.bis lo fija con el diálogo textual del operador (*«Anotado, $85.000
-    de hoy. No me dijiste de quién ni cómo te pagaron — ¿lo agregamos?»*) y el DoD lo mide en dos
-    ítems: *se guarda* y *contestar completa el MISMO ingreso*. Un ingreso que espera confirmación
-    para existir reintroduce la caja que miente: el emprendedor dicta, no toca nada, y la plata que
-    entró no queda en ningún lado.
+    🔴 **Hito 8 §1 revierte el guarda-primero del addendum §2.bis a propósito** (decisión del
+    operador, MAYOR, tomada — contrato `hito8-card-para-todo...`): con cards para todo, el guardado
+    directo dejó de ser la protección contra "la caja que miente" — ahora lo es la card editable
+    misma. La doctrina de §2.bis no se pierde: se **relocaliza** al modo automático (contrato §4),
+    donde si hay confirmación por voz, no hay card que corrija, y ahí SÍ hace falta guardar rápido y
+    barato-de-deshacer. Hoy el modo es siempre confirmación, así que esta tool siempre propone.
 
-    El monto mal transcripto —el riesgo que en gastos justifica la card previa— acá se cubre por
-    otro lado: el copiloto **dice el monto en voz alta** al confirmar (*«Anotado, $85.000»*), que es
-    donde se escucha el error, y `DELETE /ingresos/{id}` deshace sin costo. Que borrar sea barato es
-    lo que permite que guardar sea rápido.
-
-    ⚠️ El **duplicado** sí se pregunta ANTES, y por eso está de este lado del `registrar_suelto`:
-    un dato que falta se ve y se completa cuando aparezca; un ingreso de más infla la caja y no se
-    ve nunca.
+    ⚠️ El **duplicado** sigue preguntándose ANTES de construir la card — no es un dato que falte y
+    se vea en pantalla para corregir: es un ingreso de más que, si se muestra en una card ya
+    prellenada, es fácil de confirmar sin mirar. Mismo criterio que antes, sólo que ahora "actuar"
+    es armar la card en vez de persistir.
     """
     if cobro_store_factory is None:
         return ToolResult(tool_call_id=idem_key, is_write=False, status="error",
@@ -887,7 +885,7 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
     if not arguments.get("confirmar_duplicado"):
         candidato = store.posible_duplicado(monto=monto, cliente_nombre=cliente)
         if candidato:
-            # No guarda y NO es un error: es una pregunta. El LLM vuelve a llamar la tool con
+            # No arma la card y NO es un error: es una pregunta. El LLM vuelve a llamar la tool con
             # `confirmar_duplicado` si el emprendedor dice que son dos cobros distintos — él sabe
             # mejor que el sistema si le pagaron dos veces lo mismo. Avisa, no prohíbe.
             quien = f" de {candidato['cliente_nombre']}" if candidato.get("cliente_nombre") else ""
@@ -901,30 +899,28 @@ def _run_registrar_ingreso(arguments, ctx, idem_key, now_iso_provider, cobro_sto
                              "candidato": candidato})
 
     fecha, fecha_ok = _fecha_dictada(arguments.get("fecha_raw"), now_iso_provider)
-    ingreso = store.registrar_suelto(
-        monto=monto, medio=str(arguments.get("medio_pago") or "").strip()[:40],
-        fecha=fecha,
-        cliente_nombre=cliente, concepto=str(arguments.get("concepto") or "").strip()[:500],
-        # El `tool_call_id` como clave de idempotencia: la activity es at-least-once y un reintento
-        # de Temporal con el mismo turno NO puede dejar dos ingresos. Lo garantiza el índice único
-        # parcial `copiloto_cobros_idem_uk`, no un `if` — ver [[idempotencia-con-un-if-tiene-ventana]].
-        idem_key=idem_key)
 
-    falta = [_FALTA_HUMANA[c] for c in (ingreso.get("falta") or []) if c in _FALTA_HUMANA]
-    aviso = (f" No te dijo {' ni '.join(falta)}: pedíselo en la MISMA línea, sin insistir. Si "
-             f"contesta, usá `completar_ingreso` — NO vuelvas a llamar `registrar_ingreso`, "
-             f"quedaría anotado dos veces.") if falta else ""
-    # `is_write=True` acá y no en los returns de arriba: es el HECHO (esta rama persistió, las otras
-    # no). El gate no se dispara por esto —depende de `WRITE_TOOLS`, donde la tool no está— así que
-    # el flag puede decir la verdad sin cambiar el comportamiento.
+    def recortar(clave: str, tope: int) -> str:
+        return str(arguments.get(clave) or "").strip()[:tope]
+
+    # Mismos campos que `registrar_suelto` devolvía, sin `id` (contrato DoD): la card no persiste, y
+    # la app hace el `POST /ingresos` (`afip_web.py`, ya existe) recién al Guardar.
+    ingreso = {"monto": dos_decimales(monto), "fecha": fecha.isoformat(),
+               "fecha_entendida": fecha_ok,
+               "fecha_dictada": (arguments.get("fecha_raw") or "") if not fecha_ok else "",
+               "medio": recortar("medio_pago", 40) or None, "cliente_nombre": cliente or None,
+               "concepto": recortar("concepto", 500) or None, "origen": "voz"}
     return ToolResult(
-        tool_call_id=idem_key, is_write=True, status="ok",
-        observation={"result": f"Anotado y GUARDADO: {_plata(ingreso['monto'])} del "
-                               f"{ingreso['fecha']}. Confirmáselo en una línea corta diciendo el "
-                               f"monto, para que pueda oír si entendí mal.{aviso}"
-                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=False)}",
-                     "ingreso": ingreso},
-        artifact=Artifact(kind="ingreso_guardado", data=ingreso))
+        tool_call_id=idem_key, is_write=False, status="ok",
+        # Mismo verbo prohibido que gasto/cliente [[copiloto-narra-la-accion-sin-ejecutarla]]: con la
+        # card en pantalla, "anoté"/"listo"/"guardado" son falsos hasta que el emprendedor confirma.
+        observation={"result": f"Propuse el ingreso (${ingreso['monto']}) y se lo muestro en una "
+                               f"tarjeta para que la revise. TODAVÍA NO está guardado — NO digas "
+                               f"\"anoté\", \"listo\" ni \"guardado\" porque no es cierto. Decile "
+                               f"exactamente: \"Te armé un borrador de ${ingreso['monto']}, revisalo "
+                               f"y confirmalo cuando quieras.\""
+                               f"{_aviso_de_fecha(fecha_ok, arguments.get('fecha_raw'), hay_card=True)}"},
+        artifact=Artifact(kind="ingreso_propuesto", data=ingreso))
 
 
 def _run_completar_ingreso(arguments, ctx, idem_key, cobro_store_factory):
