@@ -1,112 +1,204 @@
 import { apiClient } from './client';
+import { ApiError, mensajeDeConflicto } from './errors';
 import type { ConDisponibilidad } from './afip';
 
 /**
- * **`GET /mi-dia/tablero` — el tablero Kanban del día: presupuestos → facturado → por cobrar →
- * cobrado.**
+ * **`/mi-dia/*` — el tablero del detector proactivo (hito 7): 3 solapas, pobladas por las reglas
+ * determinísticas del `contrato_mi-dia-y-el-detector-proactivo`, más las 3 mutaciones manuales.**
  *
- * 🔴 **[CONNECT] — construido contra CONTRATO §3.2, el endpoint todavía NO está vivo.** Forma declarada
- * **real** por planificación (los estados que la alimentan —presupuesto/factura/cobro— ya existen). El
- * único punto que el connect toca es `leerTablero()`; degrada a `no_disponible` hasta entonces.
+ * 🔴 **Reemplaza al cliente viejo (`IDS_COLUMNA`, pipeline de 4 etapas), retirado el 2026-07-23 por
+ * arbitraje de planificación** (`respuesta_..._mi-dia-es-el-detector-3-solapas...`): el pipeline de
+ * facturación (presupuesto→facturado→por cobrar→cobrado) NO es Mi Día — son conceptos distintos, y
+ * si algún día se quiere esa vista baja como su propio contrato en su propia URL. Esta URL es del
+ * detector, punto.
  *
- * 🔴 **El DRAG que mueve una tarjeta de columna dispara una tool que TODAVÍA NO está contratada** («las
- * bajo con backend», §3.2). Por eso este cliente cubre **sólo la lectura** del tablero. La acción de
- * mover —marcar un presupuesto aprobado, una factura cobrada— es una superficie aparte que se agrega
- * cuando exista su contrato; construirla ahora sería inventar la forma de esas tools.
+ * 🔴 **Forma CONFIRMADA por backend** (`respuesta_backend-a-frontend_forma-final...`, PR#96) — ya no
+ * es una forma razonada. `id` de solapa es **`hecha` (singular)**, no `hechas` — el título sí es
+ * plural. Cada tarjeta trae `{id, regla, entidad_tipo, entidad_id, texto, estado, datos, creada_en,
+ * movida_en}`; `texto` es el mensaje YA REDACTADO (paso REDACTAR del contrato §1). `[CONNECT]`
+ * todavía: backend mergea PR#96 con CI corriendo — degrada a `no_disponible` hasta el connect real.
  *
- * 🔴 **`estado` se normaliza contra un conjunto CERRADO, con fallback al más inocuo.** Un estado que no
- * reconozco no puede pintarse con el color/acción de otro (eso es «discriminar por ausencia de
- * estructura»): cae en `desconocido`, que la UI muestra neutro y sin acción. Mejor una tarjeta muda que
- * una que ofrece la acción equivocada.
+ * 🔴 **`id` de solapa se normaliza contra un conjunto CERRADO.** Una solapa con un `id` que no
+ * reconozco no puede mostrarse mezclada con las tres conocidas — se descarta entera.
+ *
+ * 🔴 **Una tarjeta sin `texto` no es una tarjeta.** El mensaje redactado es el contenido — una card
+ * con id pero sin frase no tiene qué mostrarle al emprendedor. Se descarta, no se pinta en blanco.
+ *
+ * 🔴 **`datos` es un objeto sin forma cerrada** (varía por regla — contrato §1: cada regla "trae" sus
+ * propios campos). Sólo se leen de ahí los que ya se saben mostrar (cliente/monto/fecha, si vienen con
+ * ese nombre); lo que no se reconoce no se inventa ni se descarta la tarjeta entera por eso.
+ *
+ * 🔴 **`estado` no tiene un conjunto cerrado declarado por el contrato** (a diferencia del viejo
+ * `EstadoTarjeta` del pipeline) — se transporta como el string que venga, sin inventar un enum que
+ * backend no fijó. La UI lo usa sólo para saber en qué solapa está, no para pintar colores por él.
  *
  * 🔴 **`ausente ≠ cero`.** Un monto que no vino vale `null`, jamás `0`.
  */
 
-/** Un importe del wire como string, o `null`. Gemelo del de `conceptos.ts`/`inteligencia.ts`. */
+/** Un importe del wire como string, o `null`. Gemelo del de `afip.ts`/`inteligencia.ts`. */
 function importe(v: unknown): string | null {
   if (typeof v === 'string' && v.trim() !== '') return v.trim();
   if (typeof v === 'number' && Number.isFinite(v)) return String(v);
   return null;
 }
 
-/** Las columnas del tablero, en orden de flujo. Conjunto cerrado: el backend manda estos ids. */
-export const IDS_COLUMNA = ['presupuesto', 'facturado', 'por_cobrar', 'cobrado'] as const;
-export type IdColumna = (typeof IDS_COLUMNA)[number];
+function texto(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+}
 
-/** Los estados que una tarjeta puede tener, más `desconocido` para lo que no reconozco. */
-export type EstadoTarjeta = 'borrador' | 'aprobado' | 'facturado' | 'por_cobrar' | 'cobrado' | 'desconocido';
+/** Las 3 solapas del tablero, en orden fijo (contrato §2.3). Conjunto cerrado: el backend manda estos
+ *  ids — `hecha` en singular, confirmado PR#96. */
+export const IDS_SOLAPA = ['para_hoy', 'haciendo', 'hecha'] as const;
+export type IdSolapa = (typeof IDS_SOLAPA)[number];
 
-const ESTADOS: readonly EstadoTarjeta[] = ['borrador', 'aprobado', 'facturado', 'por_cobrar', 'cobrado'];
-
-export interface TarjetaTablero {
+export interface TarjetaMiDia {
   id: string;
-  titulo: string;
+  /** La frase ya redactada por el paso REDACTAR (contrato §1) — el contenido real de la tarjeta. */
+  texto: string;
+  /** Qué regla la disparó — `null` en las tarjetas manuales (confirmado backend). Para debug/
+   *  telemetría, NUNCA para pintar la card distinto por regla: el texto ya trae el tono. */
+  regla: string | null;
+  entidadTipo: string | null;
+  entidadId: string | null;
+  /** El estado crudo que manda backend — sin enum propio, ver docstring del módulo. */
+  estado: string | null;
   cliente: string | null;
   monto: string | null;
   fecha: string | null;
-  estado: EstadoTarjeta;
 }
 
-export interface ColumnaTablero {
-  id: IdColumna;
+export interface SolapaMiDia {
+  id: IdSolapa;
   titulo: string;
-  tarjetas: readonly TarjetaTablero[];
+  tarjetas: readonly TarjetaMiDia[];
 }
 
-export interface Tablero {
-  columnas: readonly ColumnaTablero[];
+export interface TableroMiDia {
+  solapas: readonly SolapaMiDia[];
 }
 
 interface TableroRaw {
-  columnas?: unknown;
+  solapas?: unknown;
 }
 
-function esRespuestaDelEndpoint(raw: unknown, clave: string): boolean {
-  return typeof raw === 'object' && raw !== null && clave in raw;
+function esRespuestaDelEndpoint(raw: unknown): boolean {
+  return typeof raw === 'object' && raw !== null && 'solapas' in raw;
 }
 
-function estadoDe(v: unknown): EstadoTarjeta {
-  return typeof v === 'string' && (ESTADOS as readonly string[]).includes(v) ? (v as EstadoTarjeta) : 'desconocido';
-}
-
-function tarjeta(v: unknown): TarjetaTablero | null {
+function tarjeta(v: unknown): TarjetaMiDia | null {
   if (typeof v !== 'object' || v === null) return null;
   const r = v as Record<string, unknown>;
-  // Sin `id` no hay a qué aplicar la acción de mover, y una tarjeta sin identidad no se puede seguir
-  // entre columnas: se descarta en vez de pintarse con un id inventado.
   if (typeof r.id !== 'string' || r.id.trim() === '') return null;
+  const txt = texto(r.texto);
+  if (txt == null) return null;
+  const datos = typeof r.datos === 'object' && r.datos !== null ? (r.datos as Record<string, unknown>) : {};
   return {
     id: r.id,
-    titulo: typeof r.titulo === 'string' ? r.titulo : '',
-    cliente: typeof r.cliente === 'string' && r.cliente.trim() !== '' ? r.cliente.trim() : null,
-    monto: importe(r.monto),
-    fecha: typeof r.fecha === 'string' && r.fecha.trim() !== '' ? r.fecha.trim() : null,
-    estado: estadoDe(r.estado),
+    texto: txt,
+    regla: texto(r.regla),
+    entidadTipo: texto(r.entidad_tipo),
+    entidadId: texto(r.entidad_id),
+    estado: texto(r.estado),
+    cliente: texto(datos.cliente),
+    monto: importe(datos.monto),
+    fecha: texto(datos.fecha),
   };
 }
 
-function columna(v: unknown): ColumnaTablero | null {
+function solapa(v: unknown): SolapaMiDia | null {
   if (typeof v !== 'object' || v === null) return null;
   const r = v as { id?: unknown; titulo?: unknown; tarjetas?: unknown };
-  if (typeof r.id !== 'string' || !(IDS_COLUMNA as readonly string[]).includes(r.id)) return null;
+  if (typeof r.id !== 'string' || !(IDS_SOLAPA as readonly string[]).includes(r.id)) return null;
   const tarjetas = Array.isArray(r.tarjetas) ? r.tarjetas : [];
   return {
-    id: r.id as IdColumna,
+    id: r.id as IdSolapa,
     titulo: typeof r.titulo === 'string' && r.titulo.trim() !== '' ? r.titulo : r.id,
-    tarjetas: tarjetas.map(tarjeta).filter((t): t is TarjetaTablero => t !== null),
+    tarjetas: tarjetas.map(tarjeta).filter((t): t is TarjetaMiDia => t !== null),
   };
 }
 
-export async function leerTablero(): Promise<ConDisponibilidad<{ tablero: Tablero }>> {
+export async function leerTablero(): Promise<ConDisponibilidad<{ tablero: TableroMiDia }>> {
   try {
     const raw = await apiClient.get<TableroRaw>('/mi-dia/tablero');
-    if (!esRespuestaDelEndpoint(raw, 'columnas')) return { status: 'no_disponible' };
-    const columnas = Array.isArray(raw.columnas) ? raw.columnas : [];
+    if (!esRespuestaDelEndpoint(raw)) return { status: 'no_disponible' };
+    const solapasRaw = Array.isArray(raw.solapas) ? raw.solapas : [];
     return {
       status: 'ok',
-      tablero: { columnas: columnas.map(columna).filter((c): c is ColumnaTablero => c !== null) },
+      tablero: { solapas: solapasRaw.map(solapa).filter((s): s is SolapaMiDia => s !== null) },
     };
   } catch {
     return { status: 'no_disponible' };
+  }
+}
+
+// `POST /mi-dia/tarjetas` es endpoint de COLECCIÓN: un 404 ahí es "la ruta no existe" (no hay id en
+// la URL que pueda faltar), mismo criterio que un GET de colección.
+function noDesplegadoColeccion(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 404 || err.status === 405 || err.status === 501);
+}
+
+// `PATCH`/`DELETE .../{id}/...` son de ENTIDAD: acá el 404 es semántico ("esa tarjeta no existe"), no
+// "ruta no desplegada" — por eso NO entra en este chequeo, a diferencia del de colección de arriba.
+function noDesplegadoEntidad(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 405 || err.status === 501 || err.status === 503);
+}
+
+/** `POST /mi-dia/tarjetas` — alta manual (contrato §2.4: crear a mano o por voz). */
+export async function crearTarjetaMiDia(
+  texto: string,
+): Promise<{ status: 'ok'; tarjeta: TarjetaMiDia } | { status: 'no_disponible' }> {
+  try {
+    const raw = await apiClient.post<{ tarjeta?: unknown }>('/mi-dia/tarjetas', { texto });
+    const t = tarjeta(raw?.tarjeta);
+    if (t == null) return { status: 'no_disponible' };
+    return { status: 'ok', tarjeta: t };
+  } catch (err) {
+    if (noDesplegadoColeccion(err)) return { status: 'no_disponible' };
+    throw err;
+  }
+}
+
+/**
+ * `PATCH /mi-dia/tarjetas/{id}/estado` — el swipe/toque largo del Kanban (contrato §2.3) y el "cambiar
+ * su estado" por voz (§2.4). `estado_invalido` trae el motivo que el backend explica en el 400 — no se
+ * reescribe con un mensaje genérico, es la única fuente que le sirve al emprendedor.
+ */
+export async function cambiarEstadoTarjetaMiDia(
+  id: string,
+  estado: string,
+): Promise<
+  | { status: 'ok'; tarjeta: TarjetaMiDia }
+  | { status: 'no_disponible' }
+  | { status: 'no_encontrado' }
+  | { status: 'estado_invalido'; motivo: string }
+> {
+  try {
+    const raw = await apiClient.patch<{ tarjeta?: unknown }>(`/mi-dia/tarjetas/${encodeURIComponent(id)}/estado`, {
+      estado,
+    });
+    const t = tarjeta(raw?.tarjeta);
+    if (t == null) return { status: 'no_disponible' };
+    return { status: 'ok', tarjeta: t };
+  } catch (err) {
+    if (noDesplegadoEntidad(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
+    if (err instanceof ApiError && err.status === 400) {
+      return { status: 'estado_invalido', motivo: err.detail ?? mensajeDeConflicto(err.body) ?? 'Ese estado no es válido.' };
+    }
+    throw err;
+  }
+}
+
+/** `DELETE /mi-dia/tarjetas/{id}` — borrar/descartar (contrato §2.4). */
+export async function borrarTarjetaMiDia(
+  id: string,
+): Promise<{ status: 'ok' } | { status: 'no_disponible' } | { status: 'no_encontrado' }> {
+  try {
+    await apiClient.del<unknown>(`/mi-dia/tarjetas/${encodeURIComponent(id)}`);
+    return { status: 'ok' };
+  } catch (err) {
+    if (noDesplegadoEntidad(err)) return { status: 'no_disponible' };
+    if (err instanceof ApiError && err.status === 404) return { status: 'no_encontrado' };
+    throw err;
   }
 }

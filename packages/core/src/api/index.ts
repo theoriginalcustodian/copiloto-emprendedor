@@ -231,17 +231,17 @@ export type {
   ResultadoIngreso,
 } from './ingresos';
 /**
- * `/mi-dia/tablero` — el Kanban del día (presupuesto → facturado → por cobrar → cobrado). **[CONNECT]**
- * — contra contrato §3.2, endpoint no publicado; degrada a `no_disponible`. Sólo LECTURA: la acción de
- * mover una tarjeta dispara una tool que todavía no está contratada. Ver el docstring.
+ * `/mi-dia/*` — el tablero del detector proactivo (hito 7): 3 solapas (para_hoy/haciendo/hecha, forma
+ * CONFIRMADA por backend PR#96) pobladas por las reglas determinísticas del contrato, más las 3
+ * mutaciones manuales (crear/cambiar estado/borrar). **[CONNECT]** — endpoint todavía no vivo (PR#96
+ * con CI corriendo); degrada a `no_disponible`. Ver el docstring.
  */
-export { IDS_COLUMNA, leerTablero } from './miDia';
+export { IDS_SOLAPA, borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, crearTarjetaMiDia, leerTablero } from './miDia';
 export type {
-  ColumnaTablero,
-  EstadoTarjeta,
-  IdColumna,
-  Tablero,
-  TarjetaTablero,
+  IdSolapa,
+  SolapaMiDia,
+  TableroMiDia,
+  TarjetaMiDia,
 } from './miDia';
 /**
  * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
