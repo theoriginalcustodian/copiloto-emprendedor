@@ -22,3 +22,26 @@ estimación, para que un push largo sea legible como esperado y no como cuelgue.
   archivos de ese commit.
 - **Control negativo:** un repo cuyo grafo está genuinamente vacío → el hook sí elige `full`. Si elige
   incremental en ese caso, el gancho está mal: silenciaría el caso que debe atrapar.
+
+---
+
+## ✅ IMPLEMENTADO — 2026-07-24
+
+**Gancho:** `.githooks/pre-push` cuenta filas `done` del checkpoint para saber si el grafo ya conoce el
+repo, y usa `git merge-base origin/main HEAD` para el alcance. Imprime cuál eligió y cuántos archivos.
+
+**DoD, corrida real** (push de `fix/control-positivo-sync-completo`, rama nueva, **sin** `--no-verify`):
+
+```
+[pre-push] alcance: incremental desde 8daab5ae95c0 (2 archivo(s) cambiado(s))
+[graph-sync] sync incremental de copiloto-emprendedor desde 8daab5ae95c0…
+copiloto-emprendedor: sync OK — 1 filas, 1 zombies borrados
+```
+
+Antes de este gancho, esa misma rama nueva habría disparado el camino `full`: **15.906 filas** — el
+número medido en el sync completo de esta misma tarde. Pasó de minutos a segundos.
+
+**Control negativo:** la rama `full` sigue viva para el caso de grafo genuinamente vacío
+(`graph_conoce_el_repo()` devuelve falso → `full=1`). No se ejercitó con un checkpoint vacío real:
+`[PENDIENTE DE EJERCITAR]` — el camino existe y está leído, pero no corrido. Se ejercita gratis la
+próxima vez que se provisione el grafo de un repo nuevo.
