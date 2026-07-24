@@ -212,3 +212,46 @@ def test_factura_id_del_dictado_es_determinístico():
            == tool_catalog.factura_id_del_dictado("wf-1-2-0"))
     assert (tool_catalog.factura_id_del_dictado("wf-1-2-0")
            != tool_catalog.factura_id_del_dictado("wf-1-3-0"))
+
+
+# ── Visibility (web.py): cliente_id hostil se rechaza fail-closed, no se interpola en la query ─────
+# La Visibility de Temporal no toma parámetros -- la defensa es validar la entrada antes de armar el
+# string, no bindear (hallazgo de planificación, `la-query-de-visibility-se-blinda`). Test adversarial
+# porque un control sin ejercitar el caso hostil es indistinguible de uno ausente (CLAUDE.md §Seguridad).
+
+from fastapi import HTTPException  # noqa: E402
+
+from web import make_buscar_borrador_dictado_abierto  # noqa: E402
+
+
+class _TemporalClientVisibilityFake:
+    def __init__(self):
+        self.queries: list[str] = []
+
+    def list_workflows(self, query):
+        self.queries.append(query)
+
+        async def _vacio():
+            return
+            yield  # pragma: no cover
+
+        return _vacio()
+
+
+@pytest.mark.asyncio
+async def test_cliente_id_hostil_se_rechaza_sin_tocar_la_query():
+    client = _TemporalClientVisibilityFake()
+    buscar = make_buscar_borrador_dictado_abierto(client)
+    with pytest.raises(HTTPException) as exc:
+        await buscar("tenant-a' OR '1'='1")
+    assert exc.value.status_code == 400
+    assert not client.queries          # fail-closed: ni siquiera arma la query
+
+
+@pytest.mark.asyncio
+async def test_cliente_id_valido_no_se_rechaza():
+    client = _TemporalClientVisibilityFake()
+    buscar = make_buscar_borrador_dictado_abierto(client)
+    resultado = await buscar("tenant-a")
+    assert resultado is None
+    assert client.queries              # sí llegó a construir/mandar la query

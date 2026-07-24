@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -282,6 +283,7 @@ def make_signal_factura(temporal_client) -> Callable:
 # LLM cargue el id (`hallazgo_..._SS0` pieza 2). Constante con nombre, no literal en la query (pedido
 # explícito de planificación al contestar el fork del turno-2).
 VENTANA_DICTADO_ABIERTO = timedelta(minutes=15)
+_CLIENTE_ID_OK = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
@@ -300,6 +302,12 @@ def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
     no es el momento en medio del hito) — anotado también en `memoria/`.
     """
     async def buscar(cliente_id: str) -> str | None:
+        # `cliente_id` hoy es un UUID server-side (`resolve_cliente_id`), pero la query de Visibility
+        # no toma parámetros -- construye el string directo. Validar acá corta la dependencia con ESE
+        # hecho remoto: si `cliente_id` mañana pasa a ser un slug legible, esta línea no se vuelve
+        # cross-tenant en silencio (hallazgo de planificación, `la-query-de-visibility-se-blinda`).
+        if not _CLIENTE_ID_OK.fullmatch(cliente_id):
+            raise HTTPException(status_code=400, detail="cliente_id inválido")
         desde = (datetime.now(timezone.utc) - VENTANA_DICTADO_ABIERTO).strftime("%Y-%m-%dT%H:%M:%SZ")
         prefijo = _wf_id_factura(cliente_id, "dictado-")
         query = (f"WorkflowType='FacturaWorkflow' AND WorkflowId STARTS_WITH '{prefijo}' "
