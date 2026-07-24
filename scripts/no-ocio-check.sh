@@ -69,22 +69,39 @@ fe="$(ult_actividad frontend)"; min_fe="$(min_desde "$fe")"
 # ve en su transcript JSONL, que Claude Code escribe en cada turno.
 # Ver [[silencio-del-buzon-no-prueba-repl-muerta]].
 PROJ="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")" 2>/dev/null | head -1)"
-etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? según lo que la sesión TOCA
-  # 🔴 Rotula por CONDUCTA (paths en sus tool calls), NO por el marcador `sesión X` que la sesión
-  # escribe de sí misma. Razón medida el 2026-07-24: las tres sesiones CITAN el buzón, así que el
-  # marcador aparece en las tres y el conteo empata; el script terminó rotulando FRONTEND a las dos
-  # vivas y llamando "backend" a una de ellas por descarte. Un rótulo por descarte no falla: CONFIRMA
-  # — con backend muerto habría reportado backend vivo igual. Los paths, en cambio, son ajenos:
-  # nadie edita `apps/mobile` desde la sesión de backend.
+etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identidad ASIGNADA, no inferida
+  # 🔴 Señal primaria: el PROMPT DEL CRON que la sesión RECIBE ("Vigía de coordinación (sesión X)").
+  # Cada ventana recibe únicamente el heartbeat de su propio rol, así que el rótulo no depende ni de
+  # cómo se llame la ventana ni de qué archivos toque. Medido 2026-07-24 sobre los 6 transcripts
+  # vivos: frontend 8/0/0 · backend 2/0/0 · planificación 14 (con 1 y 1 de las otras, porque escribe
+  # SOBRE ellas) → el máximo separa limpio.
+  #
+  # Por qué no alcanzaban los intentos anteriores, y son 5 falsos positivos de la misma familia:
+  #   · por AUTODECLARACIÓN ("soy backend"): las tres citan el buzón, el conteo empata y el rótulo
+  #     sale por descarte — y un rótulo por descarte no falla, CONFIRMA (con backend muerto habría
+  #     reportado backend vivo igual).
+  #   · por CONDUCTA (paths tocados): se contamina sola. Una sesión que está LEYENDO el buzón acumula
+  #     hits de `coordinacion/` y pasa por planificación; backend que lee `apps/mobile` para entender
+  #     la costura suma del lado de frontend. La conducta describe la TAREA DEL MOMENTO, no la identidad.
+  # El cron, en cambio, se lo asigna otro y no cambia con lo que la sesión esté haciendo.
   local f="$1" tail_txt b fr pl
   tail_txt=$(tail -c 400000 "$f" 2>/dev/null || true)
+  b=$( printf '%s' "$tail_txt" | grep -oc 'sesión BACKEND')
+  fr=$(printf '%s' "$tail_txt" | grep -oc 'sesión FRONTEND')
+  pl=$(printf '%s' "$tail_txt" | grep -oc 'sesión PLANIFICACIÓN')
+  if [ $((b + fr + pl)) -gt 0 ]; then
+    if   [ "$pl" -ge "$b" ] && [ "$pl" -ge "$fr" ]; then echo PLANIFICACION
+    elif [ "$b"  -ge "$fr" ];                       then echo BACKEND
+    else                                                 echo FRONTEND
+    fi
+    return
+  fi
+  # Fallback por conducta: sólo para una ventana SIN cron todavía (recién abierta, o heartbeat caído).
+  # Que caiga acá ya es información: una sesión sin cron no está siendo vigilada por nadie.
   b=$( printf '%s' "$tail_txt" | grep -oE 'apps[\\/]+copiloto|motor[\\/]+backend|deploy[\\/]+worker' | wc -l)
   fr=$(printf '%s' "$tail_txt" | grep -oE 'apps[\\/]+mobile|packages[\\/]+core'                      | wc -l)
-  pl=$(printf '%s' "$tail_txt" | grep -oE 'coordinacion[\\/]+(abierto|PLAN|COORDINACION)|scripts[\\/]+no-ocio-check' | wc -l)
-  # Planificación gana sólo si domina claramente: las otras dos también leen el buzón, pero no lo escriben.
-  if   [ "$pl" -gt "$b" ] && [ "$pl" -gt "$fr" ]; then echo PLANIFICACION
-  elif [ "$b"  -gt "$fr" ] && [ "$b"  -gt 0 ];    then echo BACKEND
-  elif [ "$fr" -gt 0 ];                           then echo FRONTEND
+  if   [ "$b" -gt "$fr" ] && [ "$b" -gt 0 ]; then echo BACKEND
+  elif [ "$fr" -gt 0 ];                      then echo FRONTEND
   else echo '?'; fi
 }
 vida_be=""; vida_fe=""; ambiguos=""; mt_be=0; mt_fe=0
@@ -97,8 +114,10 @@ if [ -n "$PROJ" ]; then
     # una sesión que está trabajando en otro archivo (medido 2026-07-24: "backend 66min" con
     # backend tecleando).
     case "$(etiqueta_transcript "$f")" in
-      BACKEND)  [ "$m" -gt "${mt_be:-0}" ] && { mt_be="$m"; tf_be="$f"; } ;;
-      FRONTEND) [ "$m" -gt "${mt_fe:-0}" ] && { mt_fe="$m"; tf_fe="$f"; } ;;
+      # VIDA se queda con el más fresco; PRODUCCIÓN acumula TODOS (una sesión que reinicia deja
+      # su trabajo repartido entre varios transcripts — ver comentario de `prod_min`).
+      BACKEND)  tfs_be="${tfs_be:-} $f"; [ "$m" -gt "${mt_be:-0}" ] && { mt_be="$m"; tf_be="$f"; } ;;
+      FRONTEND) tfs_fe="${tfs_fe:-} $f"; [ "$m" -gt "${mt_fe:-0}" ] && { mt_fe="$m"; tf_fe="$f"; } ;;
       '?')      ambiguos="$ambiguos $(basename "$f" | cut -c1-8)" ;;
     esac
   done < <(find "$PROJ" -maxdepth 1 -name '*.jsonl' -print0 2>/dev/null)
@@ -115,12 +134,20 @@ fi
 # tick. El sensor daba verde mientras la sesión giraba en vacío, y lo cazó el operador, no el
 # instrumento. Un pulso constante no prueba trabajo: prueba que el marcapasos anda.
 # El timestamp sale de la línea JSONL del último tool_use mutante, no del mtime del archivo.
-prod_desde() {   # minutos desde el último Write/Edit del transcript, o 9999 si no hay ninguno
+prod_desde() {   # minutos desde el último acto PRODUCTIVO del transcript, o 9999 si no hay ninguno
+  # 🔴 "Producir" NO es sólo escribir archivos. Medido 2026-07-24 (6º falso positivo del sensor):
+  # backend tenía el hito implementado y estaba corriendo tests, commit y push — todo por Bash —,
+  # así que llevaba 92 min sin un Write y el script gritó `GIRA EN VACÍO` sobre la sesión que estaba
+  # CERRANDO el hito. La fase de cierre es justamente la que no toca archivos.
+  # Por eso cuenta también el Bash que MUTA o VERIFICA (git commit/push/merge, pytest, deploy, sync),
+  # y sigue SIN contar el Bash de lectura (ls, cat, grep, git status) — que es el que un turno ocioso
+  # repite sin avanzar. Sin ese filtro la métrica se vuelve un pulso más, y ya tenemos uno: VIDA.
   local f="$1"
   [ -f "$f" ] || { echo 9999; return; }
   tail -c 3000000 "$f" 2>/dev/null | python -c "
-import sys, json, datetime
+import sys, json, datetime, re
 MUT = {'Write','Edit','MultiEdit','NotebookEdit'}
+CMD_PRODUCTIVO = re.compile(r'git\s+(commit|push|merge|cherry-pick|tag)|gh\s+pr\s+(create|merge)|pytest|npm\s+(run|test)|yarn\s+(test|build)|deploy|sync-(test-)?backend|adb\s+', re.I)
 ult = None
 for l in sys.stdin:
     if '\"tool_use\"' not in l: continue
@@ -128,7 +155,14 @@ for l in sys.stdin:
     except Exception: continue
     c = (d.get('message') or {}).get('content')
     if not isinstance(c, list): continue
-    if any(b.get('type')=='tool_use' and b.get('name') in MUT for b in c):
+    prod = False
+    for b in c:
+        if b.get('type') != 'tool_use': continue
+        if b.get('name') in MUT:
+            prod = True; break
+        if b.get('name') == 'Bash' and CMD_PRODUCTIVO.search(str((b.get('input') or {}).get('command',''))):
+            prod = True; break
+    if prod:
         ult = d.get('timestamp') or ult
 if not ult:
     print(9999); raise SystemExit
@@ -139,9 +173,23 @@ except Exception:
     print(9999)
 " 2>/dev/null || echo 9999
 }
-prod_be=9999; prod_fe=9999
-[ -n "${tf_be:-}" ] && prod_be="$(prod_desde "$tf_be")"
-[ -n "${tf_fe:-}" ] && prod_fe="$(prod_desde "$tf_fe")"
+# 🔴 PRODUCCIÓN se calcula sobre TODOS los transcripts de cada rótulo, no sólo el más fresco.
+# Razón medida (2026-07-24, 4º fallo del mismo sensor): cuando una sesión REINICIA, su transcript
+# nuevo es el más fresco pero todavía no tiene ningún Write/Edit → `prod_desde` devolvía 9999 y
+# disparaba un `🌀 GIRA EN VACÍO` FALSO sobre una sesión que estaba tecleando en el transcript
+# anterior. El trabajo de una sesión vive repartido entre sus reinicios: hay que mirarlos todos y
+# quedarse con el Write/Edit MÁS RECIENTE de cualquiera de ellos.
+prod_min() {   # imprime el MENOR "minutos desde el último Write/Edit" entre los transcripts dados
+  local mejor=9999 v
+  for f in "$@"; do
+    [ -n "$f" ] || continue
+    v="$(prod_desde "$f")"
+    [ "$v" -lt "$mejor" ] && mejor="$v"
+  done
+  echo "$mejor"
+}
+prod_be="$(prod_min ${tfs_be:-})"
+prod_fe="$(prod_min ${tfs_fe:-})"
 echo "PRODUCCIÓN (último Write/Edit): backend ${prod_be}min · frontend ${prod_fe}min"
 
 # Alarma propia: viva pero improductiva = gira en vacío. Es el caso que el umbral de VIDA no ve.
