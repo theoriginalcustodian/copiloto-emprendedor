@@ -28,6 +28,11 @@
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — `feedback`. Test *¿puede volver?* → si no es "no por construcción", no terminó.
 - [🚫💤 CERO tiempo ocioso — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — `feedback`. Único no-trabajar válido = terminó-todo-y-reportó. Límite: no inventar forma para no ociar.
 - [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — `feedback`. Arrancar el próximo hito ya contratado = ejecución, no MAYOR. Frené la fábrica 4 h esperando un "dale". Corré el control: leé los disparadores.
+- [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — `feedback`. **9 h ociosas de noche con 3 monitores.** El blocker de otra sesión suele ser categoría-A (un grep MÍO), no externo. `no-ocio-check.sh` + dead-man 30min + push nocturno. §4.2.sexies.
+- [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — `reference`. **Regla canónica, ahorra greps y tokens.** MCP `graphity-code`, `group_id="code-copiloto-emprendedor"` SIEMPRE; paths sin prefijo `apps/`; nodos pueden estar stale → probar en el archivo. Control 4/4 exacto. **Frescura: conoce lo PUSHEADO y nada más** — trabajo en vuelo (otra sesión, sin pushear, `--no-verify`) es INVISIBLE; adelantar con `scripts/graph-sync.sh`.
+- [♻️🔒 Reutilizar es REGLA — el inventario va ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — `feedback`. **Cómo enunciás el problema decide si reusás o inventás.** "X no encaja en Y" invita a construir de cero. Todo `contrato_` abre con `§0 Reutilización` (§4.2.septies) o no se despacha.
+- [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) — `project`. Nunca se pregunta 2 veces; a la 2ª manda la card. Confirmación=card aun completo · Automático=completo ejecuta directo. Camino incompleto idéntico.
+- [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — `feedback`. Afirmé "ambas muertas" y "no hay monitores" desde un vacío, sin correr el control ni leer `CRONES.md`. La sesión viva ACTÚA (git log/PR) aunque no autoree. Heartbeat de backend caído = re-pegar su cron (§4.ter, no cross-session).
 - [Raíz, no parche](raiz-no-parche.md) — `feedback`. Hook `root_cause_suggester`.
 - [🔑 No insistir con rotación de keys en dev](no-insistir-rotacion-keys-desarrollo.md) — `feedback`. Diferir a prod; solo no commitear/pegar en chat.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — `feedback`. Feedback localizado baja regresiones -70% (TDAD).
@@ -41,6 +46,9 @@
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
 - [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
 - [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
+- [💥 `git checkout <ref> -- .` PISA los cambios solo-en-working-tree — irrecuperables](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — `project`. Un diff sin commit no lo salva ni reflog. Para "¿al día con origin?" usá `merge-base --is-ancestor`, no toques archivos. Commiteá la memoria pronto.
+- [📱🍳 Un gate de device se corre con RECETA async, no con ventana viva](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — `feedback`. Device de dueño único + buzón asíncrono → el dueño lo corre solo con gestos exactos escritos. El cuello era desconocer la UI, no la sincronía.
+- [🧪🔌 Tests que mockean la serialización son CIEGOS al borde del wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `project`. 2 bugs/semana misma clase (int-vs-interval 500, int-vs-string descarte). Suite verde mide el endpoint con el borde cortado; `curl`/device real lo caza en 30 s.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — `project`. **LEER antes de `seed-memory.sh`.** `rsync --delete` espeja repo→slug. Escribir en `memoria/` del repo.
 - [📐 documed-front es la app CANÓNICA — consultarla antes de UI](consultar-documed-siempre-antes-de-implementar.md) — `feedback`. Regla dura 3×. Portar adaptando, no copiar ciego.
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — `feedback`. Cada lado verificó su mitad y la junta no era de nadie.
@@ -99,6 +107,7 @@
 
 ## 🧠 Lecciones sistémicas vivas
 
+- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — `project`. Medido 42 vs 5. Un turno por cron mide **OCIO, no vida**; la sesión está sorda al buzón justo mientras trabaja. Revisar el buzón en cada **frontera de trabajo**, no por reloj.
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. Barrido adversarial 3 lentes → batch por tests.
 - [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. `execute_activity` con `retry_policy` acotada + error de negocio no se propaga.
 - [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
