@@ -138,3 +138,56 @@ hallazgo»*— **cincuenta y cinco minutos antes** de cometer el caso 10, con m�
 vez, porque venía de una racha de diagnósticos correctos. **Saber la regla no protege: protege el
 control.** Por eso la regla operativa no es *«acordate»* sino *«el guard no opina»* — algo que queda
 escrito en el código y no depende de la memoria de nadie.
+
+## Caso 11 (2026-07-24) — el sensor identificaba a los sujetos por cómo se LLAMAN, no por lo que HACEN
+
+`no-ocio-check.sh` mide la vida de cada sesión por el mtime de su transcript. Para saber **cuál**
+transcript es de cuál sesión, contaba apariciones de `sesión BACKEND` / `sesión FRONTEND`. Falla por
+una razón que sólo se ve en un sistema de varios actores: **todas CITAN el buzón, así que el nombre de
+todas aparece en el transcript de todas.** El conteo empató, las dos vivas quedaron rotuladas
+FRONTEND, y a backend lo nombró **por descarte**.
+
+Un rótulo por descarte **no falla: confirma**. Con backend muerto habría reportado backend vivo igual —
+el número que el operador lee («backend 0min») es idéntico en los dos mundos. Y encima el operador
+**había renombrado las sesiones ese mismo día**: cualquier instrumento anclado a nombres iba a mentir.
+
+Bug apilado debajo, invisible mientras el rótulo estaba mal: se quedaba con el **primer** transcript de
+cada rótulo, no con el **más fresco**. Una sesión deja transcripts viejos al reiniciarse → reportó
+*«backend 66min»* con backend tecleando.
+
+**La regla:** para identificar a un actor, usá **evidencia de conducta ajena a su voluntad**, no su
+autodeclaración. Acá: los **paths que toca** (`apps/copiloto`+`motor` = backend ·
+`apps/mobile`+`packages/core` = frontend). Nadie edita `apps/mobile` desde la sesión de backend, y
+ningún rename lo cambia. Y **si no se puede rotular, decilo fuerte** (`⚠️ transcript vivo SIN rotular`)
+en vez de asignar por descarte: un actor sin identificar puede ser justo el que creés muerto.
+
+Lo destapó el operador diciendo *«están paradas»* contra un instrumento que decía lo contrario. El
+control que lo resolvió no fue mirar el sensor: fue **leer las tool calls de cada transcript** — backend
+grepeando `continue_as_new` en `conversation_workflow.py`, frontend editando `chat/index.ts`.
+Conducta observada, no rótulo.
+
+## Caso 12 (2026-07-24) — la defensa existía, estaba cableada, y NO cubría este repo
+
+Al extender `graph_first_gate.mjs` (el gate PreToolUse de "grafo primero") con un matcher nuevo,
+escribí el smoke con **un control negativo al final**: *«CONTROL: el gate PUEDE decir ask»*. Salió:
+
+```
+7 PASS · 3 FAIL   ← y el que falló fue el CONTROL
+```
+
+Los 7 verdes eran todos `mudo`, o sea **el gate no respondía nada en ningún caso**. La causa:
+`graph_first_config.json` sólo registraba `documed`; el gate es cross-project-safe por diseño (cwd que
+no matchea → sale mudo), así que llevaba **desde su creación mudo en `copiloto-emprendedor`**. Y yo
+lo había citado minutos antes al operador como protección vigente en este repo.
+
+**Lo que lo vuelve un caso y no una anécdota:** sin el control negativo, el smoke daba **7 PASS** y yo
+cableaba un gate muerto **con siete verdes de respaldo**. Todos los casos "mudo" son indistinguibles
+entre *«el gate evaluó y decidió callarse»* y *«el gate no llegó a evaluar nada»* — el corolario que
+generaliza este archivo: *cuando un instrumento devuelve lo mismo por éxito y por no-haber-corrido, no
+es un instrumento*. La diferencia acá fue una sola línea que exige ver el resultado **contrario** al
+menos una vez.
+
+**Y el filo que suma sobre los 11 anteriores:** una defensa puede estar **escrita, cableada, testeada y
+documentada** y aun así **no cubrir tu caso**, porque su alcance vive en una config aparte que nadie
+vuelve a mirar. Antes de citar un guard como protección, correr el control de que **dispara acá**
+([[verificar-que-el-camino-recomendado-existe]]).
