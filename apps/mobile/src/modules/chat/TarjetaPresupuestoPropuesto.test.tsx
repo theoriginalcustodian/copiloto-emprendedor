@@ -122,6 +122,20 @@ describe('TarjetaPresupuestoPropuesto', () => {
     expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
   });
 
+  it('🔴 agregar/quitar filas YA está activo en la card — sin modo acotado (decisión del operador, se queda)', async () => {
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-agregar-item'));
+    });
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-item-2-descripcion-input')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-item-2-quitar'));
+    });
+    expect(screen.queryByTestId('presupuesto-propuesto-formulario-item-2-descripcion-input')).toBeNull();
+  });
+
   it('descartar no guarda nada', async () => {
     await montar();
 
