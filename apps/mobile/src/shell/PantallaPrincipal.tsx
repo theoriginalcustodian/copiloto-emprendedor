@@ -21,7 +21,8 @@
  * `PantallaRecientes` ya lo hacían antes de esta convergencia.
  */
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler } from 'react-native';
 
 import { listarActividad, type ActividadItem } from '@copiloto/core';
 
@@ -122,8 +123,35 @@ export function PantallaPrincipal() {
     empujarUnaVez({ pathname: destino.pathname, params: destino.params });
   }
 
+  /**
+   * 🔴 **El BACK de hardware de Android cerraba la app en vez de colapsar el panel "Funciones"**
+   * (device, hito 7, 2026-07-24). Esta es la pantalla RAÍZ: sin ruta que hacer `pop`, el back nativo
+   * cae al comportamiento por defecto (salir). Con el panel abajo (escritorio revelado), eso saca al
+   * emprendedor de la app de un toque que en cualquier otra app volvería una pantalla — el gesto más
+   * instintivo de Android, contra el resultado más destructivo posible.
+   *
+   * El fix usa el ÚNICO canal ya sancionado para subir el panel desde afuera: `senalSubir`
+   * (`PanelDeslizable`). `panelAbajo` es un ESPEJO de lectura (`onPanelAbajoChange`), no un tercer
+   * dueño de `panelY` — ver el invariante documentado ahí. Con el panel arriba (conversación al
+   * frente, el estado normal), el back sigue su comportamiento default: no hay nada que colapsar.
+   */
+  const [panelAbajo, setPanelAbajo] = useState(false);
+  const [senalSubir, setSenalSubir] = useState(0);
+  useEffect(() => {
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!panelAbajo) return false;
+      setSenalSubir((n) => n + 1);
+      return true;
+    });
+    return () => suscripcion.remove();
+  }, [panelAbajo]);
+
   return (
-    <PanelDeslizable testID="panel-principal" fondo={
+    <PanelDeslizable
+      testID="panel-principal"
+      senalSubir={senalSubir}
+      onPanelAbajoChange={setPanelAbajo}
+      fondo={
         <EscritorioFunciones
           onFuncion={alFuncion}
           actividad={actividad}
