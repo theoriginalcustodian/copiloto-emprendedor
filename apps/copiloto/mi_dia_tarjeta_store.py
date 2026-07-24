@@ -21,6 +21,10 @@ _TABLE = f"{_SCHEMA}.copiloto_mi_dia_tarjetas"
 PARA_HOY, HACIENDO, HECHA = "para_hoy", "haciendo", "hecha"
 ESTADOS = (PARA_HOY, HACIENDO, HECHA)
 
+# Título visible de cada solapa (contrato §2: "Para hoy · Haciendo · Hechas") — el `id` que manda la
+# app es el `estado` interno; el título es lo único que cambia si algún día se retraduce la UI.
+SOLAPAS_TITULOS = {PARA_HOY: "Para hoy", HACIENDO: "Haciendo", HECHA: "Hechas"}
+
 # Caducidad — contrato §2.2: "sin tocar en 21 días se archiva sola". Mismo patrón que
 # `DIAS_SIN_RESPUESTA` (presupuesto_store.py): env var con default, nunca hardcodeado a secas.
 DIAS_CADUCIDAD_TARJETA = int(os.environ.get("COPILOTO_MI_DIA_CADUCIDAD_DIAS") or "21")

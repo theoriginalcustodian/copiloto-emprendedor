@@ -20,7 +20,7 @@ from typing import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
-from mi_dia_tarjeta_store import ESTADOS, EstadoInvalido
+from mi_dia_tarjeta_store import ESTADOS, SOLAPAS_TITULOS, EstadoInvalido
 
 
 class TarjetaBody(BaseModel):
@@ -49,11 +49,18 @@ def create_mi_dia_app(*, require_tenant: Callable,
             raise HTTPException(status_code=503, detail="Mi día no está disponible")
         return tarjeta_store_factory(cliente_id)
 
+    def _solapas(por_estado: dict) -> dict:
+        """`{para_hoy: [...], ...}` (forma interna de `TarjetaStore.listar_tablero`) →
+        `{solapas: [{id, titulo, tarjetas}, ...]}` — la forma que consume la app (acordada con
+        frontend en el buzón; `id` de solapa = el `estado` interno, orden fijo §2.3)."""
+        return {"solapas": [{"id": e, "titulo": SOLAPAS_TITULOS[e], "tarjetas": por_estado.get(e, [])}
+                            for e in ESTADOS]}
+
     @app.get("/mi-dia/tablero")
     async def tablero(cliente_id: str = Depends(require_tenant)) -> dict:
         if tarjeta_store_factory is None or avanzar_tablero_fn is None:
-            return {e: [] for e in ESTADOS}
-        return await asyncio.to_thread(avanzar_tablero_fn, cliente_id)
+            return _solapas({})
+        return _solapas(await asyncio.to_thread(avanzar_tablero_fn, cliente_id))
 
     @app.post("/mi-dia/tarjetas", status_code=201)
     async def crear_tarjeta(body: TarjetaBody, cliente_id: str = Depends(require_tenant)) -> dict:

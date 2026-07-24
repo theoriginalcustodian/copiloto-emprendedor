@@ -63,9 +63,14 @@ def _app(**kw):
 # --- el punto de encuentro: la forma final aunque no haya factories (front-door sin DB) ---
 
 def test_sin_factories_tablero_es_200_con_la_forma_final_vacia():
+    """Forma acordada con frontend en el buzón: `{solapas: [{id, titulo, tarjetas}, ...]}`, orden
+    fijo §2.3 (Para hoy · Haciendo · Hechas) — NO el dict plano interno de `TarjetaStore`."""
     r = _app().get("/mi-dia/tablero")
     assert r.status_code == 200
-    assert r.json() == {e: [] for e in ESTADOS}
+    body = r.json()
+    assert [s["id"] for s in body["solapas"]] == list(ESTADOS)
+    assert all(s["tarjetas"] == [] for s in body["solapas"])
+    assert [s["titulo"] for s in body["solapas"]] == ["Para hoy", "Haciendo", "Hechas"]
 
 
 def test_sin_factories_crear_da_503_no_500():
@@ -86,7 +91,8 @@ def test_get_tablero_llama_avanzar_tablero_fn_con_el_cliente_id():
 
     r = _app(tarjeta_store_factory=_fabrica_de_tarjetas(), avanzar_tablero_fn=avanzar).get("/mi-dia/tablero")
     assert r.status_code == 200
-    assert r.json()["para_hoy"] == [{"id": 1}]
+    solapas = {s["id"]: s["tarjetas"] for s in r.json()["solapas"]}
+    assert solapas["para_hoy"] == [{"id": 1}]
     assert llamadas == ["cid-A"]
 
 
