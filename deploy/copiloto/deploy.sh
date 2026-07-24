@@ -136,6 +136,18 @@ cd "$REMOTE/apps/copiloto"
 "$VENV/bin/python" provision.py
 REMOTE_PROVISION
 
+echo "==> [4.5/7] ensure_mi_dia_schedules.py (idempotente: ScheduleAlreadyRunningError -> ya existía, no duplica)"
+ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_MI_DIA_SCHEDULES'
+set -euo pipefail
+REMOTE="$1"; ENVDIR="$2"; VENV="$3"
+set -a
+. "$ENVDIR/fusion-pg.env"
+. "$ENVDIR/copiloto.env"
+set +a
+cd "$REMOTE/deploy/worker"
+"$VENV/bin/python" ensure_mi_dia_schedules.py
+REMOTE_MI_DIA_SCHEDULES
+
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
 ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" <<'REMOTE_UNITS'
 set -euo pipefail
