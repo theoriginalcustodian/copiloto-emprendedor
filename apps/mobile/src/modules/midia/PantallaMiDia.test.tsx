@@ -1,10 +1,12 @@
 /**
- * `PantallaMiDia` — el tablero Kanban del día.
+ * `PantallaMiDia` — el tablero del detector proactivo: 3 solapas, tarjetas con `texto` redactado,
+ * tap-para-expandir.
  *
- * **[CONNECT] — endpoint no vivo; `leerTablero()` mockeado.** Se fija: (1) «todavía no está» ≠
- * «tablero vacío», (2) el board pinta las columnas en orden con sus tarjetas, (3) una columna vacía se
- * ve vacía sin romper. El DRAG no se prueba acá: no está construido (su tool no está contratada) y es
- * gesto de device.
+ * **`leerTablero()` mockeado** (endpoint vivo en device, no en jsdom). Se fija: (1) «todavía no está» ≠
+ * «tablero vacío», (2) las 3 solapas están y arranca en "Para hoy" con `id` real (`hecha`, singular),
+ * (3) cambiar de solapa muestra SU lista, (4) tap expande/contrae, (5) una solapa sin tarjetas se ve
+ * vacía sin romper. El swipe-para-mutar NO se prueba acá: no está construido (el gesto es el próximo
+ * incremento) y es de todos modos gesto de device.
  *
  * ⚠️ Todo `fireEvent` va con `await` — ver el docstring de `jest.config.js`.
  */
@@ -13,7 +15,12 @@ jest.mock('@copiloto/core', () => {
   return { ...actual, leerTablero: jest.fn() };
 });
 
-import { render, screen, waitFor } from '@testing-library/react-native';
+jest.mock('expo-router', () => {
+  const actual = jest.requireActual('expo-router');
+  return { ...actual, useFocusEffect: (cb: () => void | (() => void)) => require('react').useEffect(cb, []) };
+});
+
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { leerTablero } from '@copiloto/core';
 
@@ -23,15 +30,42 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
 
 const TABLERO = {
-  columnas: [
+  solapas: [
     {
-      id: 'presupuesto' as const,
-      titulo: 'Presupuestos',
-      tarjetas: [{ id: 'p1', titulo: 'Pintura del local', cliente: 'Kiosco', monto: '80000.00', fecha: '2026-07-20', estado: 'borrador' as const }],
+      id: 'para_hoy' as const,
+      titulo: 'Para hoy',
+      tarjetas: [
+        {
+          id: 't1',
+          texto: 'El trabajo de la panadería te dejó $8.000 en contra.',
+          regla: 'trabajo_con_margen_negativo',
+          entidadTipo: 'trabajo',
+          entidadId: 'trab-1',
+          estado: 'pendiente',
+          cliente: 'Panadería del barrio',
+          monto: '-8000.00',
+          fecha: '2026-07-22',
+        },
+      ],
     },
-    { id: 'facturado' as const, titulo: 'Facturado', tarjetas: [] },
-    { id: 'por_cobrar' as const, titulo: 'Por cobrar', tarjetas: [] },
-    { id: 'cobrado' as const, titulo: 'Cobrado', tarjetas: [] },
+    { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+    {
+      id: 'hecha' as const,
+      titulo: 'Hechas',
+      tarjetas: [
+        {
+          id: 't2',
+          texto: 'Ya facturaste el presupuesto de Kiosco.',
+          regla: null,
+          entidadTipo: null,
+          entidadId: null,
+          estado: 'hecha',
+          cliente: null,
+          monto: null,
+          fecha: null,
+        },
+      ],
+    },
   ],
 };
 
@@ -48,37 +82,66 @@ beforeEach(() => {
   leerMock.mockResolvedValue({ status: 'ok', tablero: TABLERO });
 });
 
-describe('PantallaMiDia — el board', () => {
-  it('pinta las cuatro columnas en orden, con la tarjeta en la suya', async () => {
+describe('PantallaMiDia — las 3 solapas', () => {
+  it('arranca en "Para hoy" y pinta su tarjeta', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('midia-columna-presupuesto')).toBeTruthy());
-    expect(screen.getByTestId('midia-columna-cobrado')).toBeTruthy();
-    expect(screen.getByTestId('midia-tarjeta-p1')).toBeTruthy();
-    expect(screen.getByText('Pintura del local')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-t2')).toBeNull();
   });
 
-  it('una columna sin tarjetas se ve vacía, no rota', async () => {
+  it('tocar la solapa "hecha" (id singular) muestra SU lista, no la anterior', async () => {
     await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
 
-    await waitFor(() => expect(screen.getByTestId('midia-columna-facturado-vacia')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-solapa-hecha'));
+
+    expect(screen.getByTestId('midia-tarjeta-t2')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
+  });
+
+  it('una solapa sin tarjetas ("Haciendo") se ve vacía, no rota', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('midia-solapa-haciendo'));
+
+    expect(screen.getByTestId('midia-vacio')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-t1')).toBeNull();
+  });
+});
+
+describe('PantallaMiDia — expandir', () => {
+  it('🔴 tocar la tarjeta muestra el detalle (cliente/monto/fecha); tocar de nuevo lo contrae', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+
+    expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
+    expect(screen.getByTestId('midia-tarjeta-t1-detalle')).toBeTruthy();
+    expect(screen.getByText(/Panadería del barrio/)).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
+    expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
   });
 });
 
 describe('PantallaMiDia — lo que NO inventa', () => {
-  it('🔴 sin endpoint desplegado lo DICE, y no dibuja board', async () => {
+  it('🔴 sin endpoint desplegado lo DICE, y no dibuja lista', async () => {
     leerMock.mockResolvedValue({ status: 'no_disponible' });
 
     await montar();
 
     await waitFor(() => expect(screen.getByTestId('midia-no-disponible')).toBeTruthy());
-    expect(screen.queryByTestId('midia-board')).toBeNull();
+    expect(screen.queryByTestId('midia-lista')).toBeNull();
   });
 
   it('🔴 tablero REAL sin ninguna tarjeta dice «nada pendiente» — NO se confunde con no_disponible', async () => {
     leerMock.mockResolvedValue({
       status: 'ok',
-      tablero: { columnas: TABLERO.columnas.map((c) => ({ ...c, tarjetas: [] })) },
+      tablero: { solapas: TABLERO.solapas.map((s) => ({ ...s, tarjetas: [] })) },
     });
 
     await montar();
@@ -90,7 +153,7 @@ describe('PantallaMiDia — lo que NO inventa', () => {
   it('🔴 CONTROL — encuentra una tarjeta presente y NO una ausente', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByText('Pintura del local')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeTruthy());
     expect(screen.queryByText('Tarjeta Que No Existe')).toBeNull();
   });
 });

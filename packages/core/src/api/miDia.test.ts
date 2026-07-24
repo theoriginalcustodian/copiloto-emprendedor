@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { leerTablero } from './miDia';
+import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, crearTarjetaMiDia, leerTablero } from './miDia';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
 
 /**
- * `GET /mi-dia/tablero` — el Kanban del día. Molde del arnés: `conceptos.test.ts`.
+ * `/mi-dia/*` — el detector proactivo, 3 solapas + las 3 mutaciones. Molde del arnés:
+ * `conceptos.test.ts`/`presupuestos.test.ts`.
  *
- * **[CONNECT] — el endpoint NO está publicado.** Estos tests fijan el contrato §3.2 y las reglas que
- * un tablero no puede violar: no confundir «no desplegado» con «tablero vacío», no pintar un estado
- * desconocido con el color/acción de otro, `null` ≠ `0`.
+ * **Forma CONFIRMADA por backend** (PR#96, endpoint vivo — verificado 401 sin token). Estos tests
+ * fijan la forma real y las reglas que un tablero no puede violar: no confundir «no desplegado» con
+ * «tablero vacío», una tarjeta sin `texto` redactado no es una tarjeta, `null` ≠ `0`, `datos` sin
+ * forma cerrada no descarta la tarjeta por traer campos que no reconozco.
  */
 function respuesta(status: number, body: unknown): RespuestaHttp {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
@@ -28,16 +30,23 @@ function crearTokensFake(): AlmacenTokens {
 
 let responder: (p: PeticionHttp) => RespuestaHttp;
 
+const TARJETA_CRUDA = {
+  id: 't1',
+  regla: 'trabajo_con_gastos_y_sin_ingreso',
+  entidad_tipo: 'trabajo',
+  entidad_id: 'trab-1',
+  texto: 'Pusiste $42.000 en el trabajo de la panadería y no registraste que te pagaran. ¿Te lo pagaron?',
+  estado: 'para_hoy',
+  datos: { cliente: 'Panadería del barrio', monto: '42000.00', fecha: '2026-07-20' },
+  creada_en: '2026-07-20T09:00:00Z',
+  movida_en: null,
+};
+
 const TABLERO_VIVO = {
-  columnas: [
-    {
-      id: 'presupuesto',
-      titulo: 'Presupuestos',
-      tarjetas: [{ id: 'p1', titulo: 'Pintura del local', cliente: 'Kiosco', monto: '80000.00', fecha: '2026-07-20', estado: 'borrador' }],
-    },
-    { id: 'facturado', titulo: 'Facturado', tarjetas: [] },
-    { id: 'por_cobrar', titulo: 'Por cobrar', tarjetas: [] },
-    { id: 'cobrado', titulo: 'Cobrado', tarjetas: [] },
+  solapas: [
+    { id: 'para_hoy', titulo: 'Para hoy', tarjetas: [TARJETA_CRUDA] },
+    { id: 'haciendo', titulo: 'Haciendo', tarjetas: [] },
+    { id: 'hecha', titulo: 'Hechas', tarjetas: [] },
   ],
 };
 
@@ -48,19 +57,22 @@ beforeEach(() => {
 });
 
 describe('leerTablero — el camino bueno', () => {
-  it('trae las columnas en orden, con sus tarjetas y la plata como string', async () => {
+  it('trae las 3 solapas en orden (id "hecha" singular), con sus tarjetas y la plata como string', async () => {
     responder = () => respuesta(200, TABLERO_VIVO);
 
     const res = await leerTablero();
 
     expect(res.status).toBe('ok');
     if (res.status !== 'ok') return;
-    expect(res.tablero.columnas.map((c) => c.id)).toEqual(['presupuesto', 'facturado', 'por_cobrar', 'cobrado']);
-    const t = res.tablero.columnas[0].tarjetas[0];
-    expect(t.id).toBe('p1');
-    expect(t.monto).toBe('80000.00');
+    expect(res.tablero.solapas.map((s) => s.id)).toEqual(['para_hoy', 'haciendo', 'hecha']);
+    const t = res.tablero.solapas[0].tarjetas[0];
+    expect(t.id).toBe('t1');
+    expect(t.texto).toContain('¿Te lo pagaron?');
+    expect(t.regla).toBe('trabajo_con_gastos_y_sin_ingreso');
+    expect(t.entidadTipo).toBe('trabajo');
+    expect(t.monto).toBe('42000.00');
     expect(typeof t.monto).toBe('string');
-    expect(t.estado).toBe('borrador');
+    expect(t.cliente).toBe('Panadería del barrio');
   });
 });
 
@@ -70,50 +82,128 @@ describe('leerTablero — lo que NO inventa', () => {
     expect((await leerTablero()).status).toBe('no_disponible');
   });
 
-  it('🔴 CONTROL — un tablero REAL con columnas vacías sí es `ok`', async () => {
-    responder = () =>
-      respuesta(200, { columnas: [{ id: 'presupuesto', titulo: 'Presupuestos', tarjetas: [] }] });
+  it('🔴 CONTROL — un tablero REAL con solapas vacías sí es `ok`', async () => {
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [] }] });
     const res = await leerTablero();
     expect(res.status).toBe('ok');
-    if (res.status === 'ok') expect(res.tablero.columnas[0].tarjetas).toEqual([]);
+    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas).toEqual([]);
   });
 
-  it('🔴 un estado DESCONOCIDO cae en `desconocido`, no se disfraza del vecino', async () => {
-    // Discriminar por ausencia de estructura: un estado nuevo pintado con el color/acción de otro
-    // ofrecería la acción equivocada. Mejor una tarjeta muda.
+  it('🔴 una tarjeta SIN `texto` redactado se descarta — un id sin frase no es una tarjeta', async () => {
     responder = () =>
       respuesta(200, {
-        columnas: [{ id: 'presupuesto', titulo: 'P', tarjetas: [{ id: 'x', titulo: 't', estado: 'un_estado_que_no_existe' }] }],
+        solapas: [
+          {
+            id: 'para_hoy',
+            titulo: 'Para hoy',
+            tarjetas: [{ id: 'sin-texto', regla: 'x' }, { id: 'ok', texto: 'con texto' }],
+          },
+        ],
       });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.columnas[0].tarjetas[0].estado).toBe('desconocido');
+    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas.map((t) => t.id)).toEqual(['ok']);
   });
 
-  it('🔴 una tarjeta SIN id se descarta — sin identidad no se puede mover entre columnas', async () => {
+  it('🔴 una tarjeta SIN id se descarta — sin identidad no se puede seguir', async () => {
     responder = () =>
       respuesta(200, {
-        columnas: [{ id: 'presupuesto', titulo: 'P', tarjetas: [{ titulo: 'sin id' }, { id: 'ok', titulo: 'con id' }] }],
+        solapas: [{ id: 'para_hoy', titulo: 'P', tarjetas: [{ texto: 'sin id' }, { id: 'ok', texto: 'con id' }] }],
       });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.columnas[0].tarjetas.map((t) => t.id)).toEqual(['ok']);
+    if (res.status === 'ok') expect(res.tablero.solapas[0].tarjetas.map((t) => t.id)).toEqual(['ok']);
   });
 
-  it('🔴 una columna con id fuera del conjunto cerrado se descarta', async () => {
+  it('🔴 una solapa con id fuera del conjunto cerrado se descarta', async () => {
     responder = () =>
-      respuesta(200, { columnas: [{ id: 'columna_inventada', titulo: 'X', tarjetas: [] }, TABLERO_VIVO.columnas[1]] });
+      respuesta(200, { solapas: [{ id: 'solapa_inventada', titulo: 'X', tarjetas: [] }, TABLERO_VIVO.solapas[1]] });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.columnas.map((c) => c.id)).toEqual(['facturado']);
+    if (res.status === 'ok') expect(res.tablero.solapas.map((s) => s.id)).toEqual(['haciendo']);
   });
 
-  it('🔴 monto ausente queda `null`, jamás `0`', async () => {
+  it('🔴 monto ausente queda `null`, jamás `0` — y `datos` sin esos campos no descarta la tarjeta', async () => {
     responder = () =>
-      respuesta(200, { columnas: [{ id: 'presupuesto', titulo: 'P', tarjetas: [{ id: 'a', titulo: 't', estado: 'borrador' }] }] });
+      respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'P', tarjetas: [{ id: 'a', texto: 'm', datos: { otro_campo: 'x' } }] }] });
     const res = await leerTablero();
-    if (res.status === 'ok') expect(res.tablero.columnas[0].tarjetas[0].monto).toBeNull();
+    if (res.status === 'ok') {
+      expect(res.tablero.solapas[0].tarjetas[0].monto).toBeNull();
+      expect(res.tablero.solapas[0].tarjetas[0].id).toBe('a');
+    }
   });
 
   it('si la red explota degrada a `no_disponible`', async () => {
     responder = () => { throw new Error('red caída'); };
     expect((await leerTablero()).status).toBe('no_disponible');
+  });
+});
+
+describe('crearTarjetaMiDia', () => {
+  it('manda el texto y devuelve la tarjeta creada', async () => {
+    let cuerpo: unknown = null;
+    responder = (p) => {
+      cuerpo = p.cuerpoJson;
+      return respuesta(201, { tarjeta: TARJETA_CRUDA });
+    };
+
+    const res = await crearTarjetaMiDia('Llamar a Kiosco por el presupuesto');
+
+    expect(cuerpo).toEqual({ texto: 'Llamar a Kiosco por el presupuesto' });
+    expect(res.status).toBe('ok');
+    if (res.status === 'ok') expect(res.tarjeta.id).toBe('t1');
+  });
+
+  it('endpoint no desplegado degrada a `no_disponible`', async () => {
+    responder = () => respuesta(404, { detail: 'not found' });
+    expect((await crearTarjetaMiDia('x')).status).toBe('no_disponible');
+  });
+});
+
+describe('cambiarEstadoTarjetaMiDia', () => {
+  it('manda el estado y devuelve la tarjeta actualizada', async () => {
+    let cuerpo: unknown = null;
+    let ruta = '';
+    responder = (p) => {
+      cuerpo = p.cuerpoJson;
+      ruta = p.path;
+      return respuesta(200, { tarjeta: { ...TARJETA_CRUDA, estado: 'hecha' } });
+    };
+
+    const res = await cambiarEstadoTarjetaMiDia('t1', 'hecha');
+
+    expect(cuerpo).toEqual({ estado: 'hecha' });
+    expect(ruta).toContain('/mi-dia/tarjetas/t1/estado');
+    expect(res.status).toBe('ok');
+    if (res.status === 'ok') expect(res.tarjeta.estado).toBe('hecha');
+  });
+
+  it('🔴 tarjeta inexistente → `no_encontrado`, no una excepción sin manejar', async () => {
+    responder = () => respuesta(404, { detail: 'no existe' });
+    expect((await cambiarEstadoTarjetaMiDia('fantasma', 'hecha')).status).toBe('no_encontrado');
+  });
+
+  it('🔴 estado inválido → el motivo lo explica el backend, no un genérico', async () => {
+    responder = () => respuesta(400, { detail: 'ese estado no existe' });
+    const res = await cambiarEstadoTarjetaMiDia('t1', 'estado_inventado');
+    expect(res).toEqual({ status: 'estado_invalido', motivo: 'ese estado no existe' });
+  });
+});
+
+describe('borrarTarjetaMiDia', () => {
+  it('llama al DELETE', async () => {
+    let ruta = '';
+    let metodo = '';
+    responder = (p) => {
+      ruta = p.path;
+      metodo = p.metodo;
+      return respuesta(200, { ok: true });
+    };
+
+    expect((await borrarTarjetaMiDia('t1')).status).toBe('ok');
+    expect(metodo).toBe('DELETE');
+    expect(ruta).toContain('/mi-dia/tarjetas/t1');
+  });
+
+  it('🔴 tarjeta inexistente → `no_encontrado`', async () => {
+    responder = () => respuesta(404, { detail: 'no existe' });
+    expect((await borrarTarjetaMiDia('fantasma')).status).toBe('no_encontrado');
   });
 });
