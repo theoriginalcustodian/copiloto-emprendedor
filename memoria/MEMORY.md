@@ -7,7 +7,8 @@
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · tablero de frentes → `coordinacion/PLAN.md`.
 
 - **Vivo (prod-beta):** copiloto desplegado multitenant, smoke E2E 10/10. [[copiloto-deploy-multitenant-vivo]]
-- **🔥 EN CURSO:** sprint **Inteligencia de Negocio** + mobile-first (cáscara glass de documed). [[copiloto-mobile-first-cascara-glass]]
+- **🏁 CERRADO 2026-07-23:** sprint **Inteligencia de Negocio** + mobile-first — E2E 6/6 device, sign-off del operador (voz-ítem-7 residual documentado). [[copiloto-mobile-first-cascara-glass]]
+- **🔗 CADENA VIVA post-sprint:** narra-sin-hacer (motor, PR#85 deployado, DoD **rojo** 2/2 en retest) → clientes-cerrado → Contabilidad hito 4. [[copiloto-narra-la-accion-sin-ejecutarla]]
 - **✅ Facturación AFIP** determinista, E2E desde el teléfono (CAE real, PDF, nota de crédito). [[copiloto-facturacion-afip]]
 - **✅ Presupuestos + perfil del negocio**, las dos capas (falta device). [[copiloto-presupuestos-y-perfil-negocio]]
 - **✅ Clientes:** cartera derivada de lo emitido (falta voz en device). [[cero-que-no-se-puede-afirmar]] · [[idempotencia-con-un-if-tiene-ventana]]
@@ -26,6 +27,7 @@
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — `feedback`. Test *¿puede volver?* → si no es "no por construcción", no terminó.
 - [🚫💤 CERO tiempo ocioso — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — `feedback`. Único no-trabajar válido = terminó-todo-y-reportó. Límite: no inventar forma para no ociar.
+- [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — `feedback`. Arrancar el próximo hito ya contratado = ejecución, no MAYOR. Frené la fábrica 4 h esperando un "dale". Corré el control: leé los disparadores.
 - [Raíz, no parche](raiz-no-parche.md) — `feedback`. Hook `root_cause_suggester`.
 - [🔑 No insistir con rotación de keys en dev](no-insistir-rotacion-keys-desarrollo.md) — `feedback`. Diferir a prod; solo no commitear/pegar en chat.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — `feedback`. Feedback localizado baja regresiones -70% (TDAD).
@@ -46,7 +48,7 @@
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — `feedback`. Verde en vitest ≠ verificado; probar en device.
 - [🧭 Un `*.test.tsx` en `app/` tumba la app — expo-router lo carga como RUTA](test-en-carpeta-app-es-una-ruta.md) — `project`. El problema es DÓNDE vive. Guard: `appSoloRutas.test.ts`.
 - [🧊 App "bloqueada" al volver de una función → glass APILADO](glass-apilado-empujar-una-vez.md) — `project`. Doble toque apila 2 `transparentModal`; lock por FOCO (`empujarUnaVez`).
-- [🎙️🕳️ El copiloto dice "listo, ya lo marqué" y NO llamó la tool](copiloto-narra-la-accion-sin-ejecutarla.md) — `project`. El historial descarta `tool_calls`: narra en vez de ejecutar. Raíz en estado durable → MAYOR.
+- [🎙️🕳️ El copiloto dice "listo, ya lo marqué" y NO llamó la tool](copiloto-narra-la-accion-sin-ejecutarla.md) — `project`. v1 (marcador+prompt) deployado, PERO el LLM lo esquiva 2/2 en retest — DoD sigue rojo.
 - [🤖 Agente acepta el chat pero NUNCA responde → cuota del LLM](agente-no-responde-revisar-cuota-llm.md) — `project`. `429 insufficient_quota` mata el workflow; mirar el journal.
 - [🚀 Arranque Expo en device: expo-doctor PRIMERO](arranque-device-metro-disable-hierarchical-lookup.md) — `project`. Era `metro disableHierarchicalLookup=true`, no versiones.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — `project`. No es git: pisa en silencio. Chequeo `grep -c <símbolo_de_prod>`.
@@ -80,6 +82,7 @@
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — `feedback`. Medir el solapamiento; primero la rama que corre en prod.
 - [🧹 Decisión consciente sin control posterior no vale nada](decision-consciente-sin-control-posterior.md) — `feedback`. Declararlo ANTES en el buzón. En el device no hay tenant de prueba.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — `feedback`. El `avance_` nacía en `cerrado/` y miraban `abierto/`. Probar el cable.
+- [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — `feedback`. `abierto/` 32→136 con regla manual; `scripts/archivar-buzon.sh` cada ciclo. Obligaciones=ancla.
 - [⌛ La evidencia VENCE, y el documento no lo dice](la-evidencia-vence-y-el-documento-no-lo-dice.md) — `project`. Un PR "verificado" sobre código desplegado a mano es deuda invisible con reloj. Grepear el artefacto servido.
 - [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — `feedback`. "Cuando X esté listo" no ocurre: nadie mira. Enganchar a una acción que ya se hace.
 - [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — `feedback`. Cada verbo de "dueño de qué" necesita su renglón. El camino a mano va antes que el asistido.
@@ -89,6 +92,7 @@
 - [⏳ Una medición de estado VOLÁTIL vence](medicion-de-estado-volatil-vence.md) — `feedback`. Medir que algo está disponible ≠ que me toca. [[una-espera-sin-disparador-nombrable-es-paralisis]]
 - [📏 No escribas una regla sobre el SETUP DE OTRO](regla-escrita-sobre-el-setup-de-otro.md) — `feedback`. El dato lo tiene el que ejecuta. Y no ablandar una instrucción del operador hasta que encaje.
 - [🚀📱 Entrega progresiva (PR/merge/deploy por hito) + E2E en device](entrega-progresiva-y-e2e-en-device.md) — `feedback`. Un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
+- [🔑✅ Autorización PERMANENTE de merges/deploys — y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) — `project`. NO re-preguntar nimiedades; coordinar es decidir y acotar el cómo. Solo escala lo MAYOR.
 - [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. Snapshot no stream; hand-fix a verde; spike dirigido para la raíz.
 - [🆔 Fórmula de identidad congelada sin validar el mecanismo del server](formula-de-identidad-congelada-sin-validar-el-mecanismo-del-server.md) — `project`. El `edge_uuid` lo deriva el server de los uuid de NODOS+tipo, sin `LOG_EVENT_ID`. Mi fórmula rompía el `PATCH` en silencio → dos vigentes. Anti-resurrección va en la clave del NODO (nodo-evento intermedio, patrón documed), no en la arista.
 - [🖋️ El contrato afirma el mecanismo que NO opero — el riesgo del rol PLANIFICACIÓN](el-contrato-afirma-el-mecanismo-que-no-opero.md) — `feedback`. **MACRO.** Dos ejes: A=setup de una persona (preguntar), B=mecanismo de un sistema (leer su código). Guardrail: evidencia adosada o `[ASSUMED_PENDING_VERIFY]` que bloquea el mapeo. La red que contuvo el daño = ejecutor leyendo la fuente + contrato falsable.
