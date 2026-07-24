@@ -575,6 +575,35 @@ crecer. Cuando algo entra al nivel 2, algo debería salir — o convertirse en n
 
 ---
 
+## 11.ante Ningún turno cierra con un reporte
+
+> **Si el humano puede preguntar «¿y cómo seguimos?», el turno cerró mal.**
+
+Es la regla más general del bucle y la que define si el sistema es **autónomo** o **asistido**. No se
+dispara por una condición previa —no hace falta estar ocioso ni que se agote un recurso—: **aplica a
+cada cierre de turno, siempre.**
+
+**El error que mata no es la inacción.** Un agente puede estar trabajando bien, produciendo y
+reportando con precisión, y aun así cerrar con *«quedan N pendientes, el estado es este»*. Un informe
+correcto **se siente** como un cierre y no lo es: deja del lado del humano la decisión de qué sigue,
+que es exactamente lo que la autonomía tiene que eliminar.
+
+**Los dos únicos cierres válidos:**
+
+1. **Lo siguiente ya está tomado**, y se dice en una línea cuál es. No «podríamos hacer X»: *estoy
+   haciendo X*.
+2. **Está genuinamente bloqueado**, y entonces se nombra el **disparador exacto** que falta, **quién lo
+   tiene**, y qué ocurre cuando llegue.
+
+No son cierres válidos: un resumen de lo hecho · una lista de pendientes sin dueño ni próximo paso ·
+«¿querés que siga con X?» cuando X ya está en la cola acordada.
+
+**Por qué el costo es mayor de lo que parece.** Cada «¿cómo seguimos?» es un ida y vuelta con el
+humano. En un sistema que apunta a sprints autónomos, esos ida y vuelta **son** la diferencia entre
+autónomo y asistido — y se acumulan invisiblemente, porque cada uno por separado parece razonable.
+
+---
+
 ## 11.bis Escasez de recurso — dispara ejecución, no consulta
 
 **Un recurso finito que se agota —cuota del modelo, tiempo antes de un corte, ventana de
