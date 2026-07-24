@@ -47,6 +47,20 @@ ESLABONES = ("presupuesto", "comprobante", "cobro")
 _COLUMNA = {"presupuesto": "presupuesto_ref", "comprobante": "comprobante_ref", "cobro": "cobro_ref"}
 
 
+def _dias_desde_ultimo_movimiento(*candidatos) -> int | None:
+    """El mínimo de los `(CURRENT_DATE - max(fecha))` de cobros/gastos — el más RECIENTE.
+
+    🔴 Función aparte a propósito, para que sea testeable SIN Postgres. `date - date` en Postgres
+    devuelve un `int` (días), no un `interval` — psycopg2 lo trae como `int` de punta a punta, sin
+    `.days` que pedirle (a diferencia de restar dos `datetime`/`timestamptz` en Python, que sí da
+    `timedelta`). Confundir los dos tira `AttributeError: 'int' object has no attribute 'days'` —
+    bug real, cazado por el E2E de device contra la base viva (hito 7): los tests de la regla que
+    consume esto pasan el `dias` YA calculado como fixture, así que nunca ejercitaban este fetch.
+    Este test SÍ lo ejercita, con el tipo real (`int`), sin abrir una conexión."""
+    presentes = [d for d in candidatos if d is not None]
+    return min(presentes) if presentes else None
+
+
 class TrabajoInexistente(Exception):
     """El eslabón no existe **para este emprendedor**. La web lo traduce a 404 — el mismo código que
     "no existe", porque confirmar que el id de otro existe ya es filtrar información."""
@@ -159,8 +173,7 @@ class TrabajoStore:
                   cadena["comprobante"], cadena["comprobante"], cadena["cobros"] or [0]))
             cuantos, gastado, dias_desde_gasto = cur.fetchone()
 
-            dias_candidatos = [d.days for d in (dias_desde_cobro, dias_desde_gasto) if d is not None]
-            dias_desde_ultimo_movimiento = min(dias_candidatos) if dias_candidatos else None
+            dias_desde_ultimo_movimiento = _dias_desde_ultimo_movimiento(dias_desde_cobro, dias_desde_gasto)
 
         return {
             "trabajo": cadena,
