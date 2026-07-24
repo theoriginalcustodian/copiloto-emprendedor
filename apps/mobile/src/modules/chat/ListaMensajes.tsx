@@ -4,6 +4,7 @@ import { Pressable, ScrollView } from 'react-native-gesture-handler';
 
 import {
   leerClientePropuesto,
+  leerFacturaPropuesta,
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
@@ -18,6 +19,7 @@ import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
+import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
@@ -201,9 +203,7 @@ export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function
           );
         }
 
-        // 🔴 [ASSUMED_PENDING_VERIFY] — mismo motivo que `leerIngresoPropuesto`: `ingreso_propuesto`
-        // no está medido contra el `/reply` real todavía. Si backend nunca manda ese `kind`, esta
-        // rama no dispara nunca y el mensaje cae a `Burbuja` como hoy — no hay forma de que rompa.
+        // `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112).
         const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
         if (ingresoPropuesto) {
           return <TarjetaIngresoPropuesto key={mensaje.id} propuesta={ingresoPropuesto} />;
@@ -214,6 +214,13 @@ export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function
         const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
         if (presupuestoPropuesto) {
           return <TarjetaPresupuestoPropuesto key={mensaje.id} propuesta={presupuestoPropuesto} />;
+        }
+
+        // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
+        // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
+        const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
+        if (facturaPropuesta) {
+          return <TarjetaFacturaPropuesta key={mensaje.id} propuesta={facturaPropuesta} />;
         }
 
         const gate = mapearGate(mensaje);

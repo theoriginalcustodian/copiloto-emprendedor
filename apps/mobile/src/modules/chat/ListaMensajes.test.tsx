@@ -210,6 +210,48 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('No entendí los ítems.')).toBeTruthy();
   });
 
+  it('🔴 una `factura_propuesta` se renderiza como CARD de sólo lectura, no como burbuja', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Esto entendí de tu factura.',
+        card: {
+          kind: 'factura_propuesta',
+          data: {
+            factura_id: 'presu-12',
+            faltantes: [],
+            items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
+            cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CF' },
+            total: 50000,
+            tipo_comprobante: 'C',
+          },
+        },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.getByTestId('factura-propuesta')).toBeTruthy();
+    expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
+  });
+
+  it('una `factura_propuesta` SIN `factura_id` no pinta una card sin nada sobre qué actuar — cae en burbuja', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'No pude armar el borrador.',
+        card: { kind: 'factura_propuesta', data: { faltantes: [], items: [], total: 0 } },
+      },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.queryByTestId('factura-propuesta')).toBeNull();
+    expect(screen.getByText('No pude armar el borrador.')).toBeTruthy();
+  });
+
   it('una card con kind desconocido en un mensaje sin gate no rompe la pantalla', async () => {
     const mensajes: ChatMessage[] = [
       { id: 'assistant-1', role: 'assistant', text: 'todo bien', card: { kind: 'algo_futuro' } },
