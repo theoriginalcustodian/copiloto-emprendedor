@@ -69,7 +69,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--repo", required=True)
-    parser.add_argument("--since", required=True, help="ref git — commit(s) a verificar")
+    parser.add_argument(
+        "--since",
+        default=None,
+        help="ref git — verificar sólo los símbolos de ese rango. Sin él (sync COMPLETO) se verifica "
+             "un nodo cualquiera del grafo recién construido.",
+    )
     args = parser.parse_args(argv)
 
     repos = select_repos(load_repos(args.config), args.repo)
@@ -92,24 +97,42 @@ def main(argv: list[str] | None = None) -> int:
 
     graph, types = build_enriched_graph(read_code_graph(raw, clustered), repo)
 
-    try:
-        changed = _changed_files(repo.path, args.since)
-    except subprocess.CalledProcessError as exc:
-        print(f"[positive-control] ❌ 'git diff --since {args.since}' falló: {exc.stderr}", file=sys.stderr)
-        return 2
-
-    candidates = sorted(
-        (node_id, node.source_file)
-        for node_id, node in graph.nodes.items()
-        if node.source_file in changed and types.get(node_id) not in (None, EXTERNAL_SYMBOL)
-    )
-    if not candidates:
-        print(
-            f"[positive-control] ⚠️  ningún nodo de graphify cae en los {len(changed)} archivo(s) "
-            f"cambiados desde {args.since} (source_dirs de {repo.name}: {list(repo.source_dirs)}) — "
-            "nada verificable en este rango. No es un fallo del sync."
+    # Sin --since el sync fue COMPLETO: no hay "rango" que mirar y filtrar por el último commit
+    # dejaría el control sin nada que verificar casi siempre — que es como un control positivo se
+    # vuelve decorativo: no falla nunca porque nunca mira. En ese caso se verifica un nodo
+    # cualquiera del grafo recién construido, elegido determinísticamente.
+    if args.since is None:
+        candidates = sorted(
+            (node_id, node.source_file)
+            for node_id, node in graph.nodes.items()
+            if types.get(node_id) not in (None, EXTERNAL_SYMBOL)
         )
-        return 2
+        if not candidates:
+            print(
+                "[positive-control] ❌ graphify no extrajo NINGÚN nodo verificable — el sync no puede "
+                "haber subido nada. Esto sí es un fallo.",
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        try:
+            changed = _changed_files(repo.path, args.since)
+        except subprocess.CalledProcessError as exc:
+            print(f"[positive-control] ❌ 'git diff {args.since}..HEAD' falló: {exc.stderr}", file=sys.stderr)
+            return 2
+
+        candidates = sorted(
+            (node_id, node.source_file)
+            for node_id, node in graph.nodes.items()
+            if node.source_file in changed and types.get(node_id) not in (None, EXTERNAL_SYMBOL)
+        )
+        if not candidates:
+            print(
+                f"[positive-control] ⚠️  ningún nodo de graphify cae en los {len(changed)} archivo(s) "
+                f"cambiados desde {args.since} (source_dirs de {repo.name}: {list(repo.source_dirs)}) — "
+                "nada verificable en este rango. No es un fallo del sync."
+            )
+            return 2
 
     node_id, source_file = candidates[0]
     entity_type = types[node_id]
