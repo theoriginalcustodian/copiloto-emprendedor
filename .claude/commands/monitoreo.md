@@ -28,6 +28,14 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 NO es el vigía de 20 min: éste no busca silencio, busca **espera mutua** — dos sesiones que se
 esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 90 min NO ve.
 
+0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO:
+   `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`
+   El script mide la VIDA de cada sesión por el **mtime de su transcript JSONL**
+   (`~/.claude/projects/<slug>/*.jsonl`), NO por lo que postea al buzón. Una sesión puede
+   trabajar una hora sin postear: el buzón mide REPORTES, no vida.
+   **PROHIBIDO afirmar que una sesión está muerta/parada sin ese output.** Transcript fresco
+   + buzón viejo = "trabaja sin reportar" (señal leve), NO dead-man. Ver COORDINACION §4.2.sexies.
+
 1. MEDIR, en un solo comando: hora actual · último commit de `origin/main` y su antigüedad ·
    último commit de la rama de la app y su antigüedad · `gh pr list --state open` ·
    `git rev-list --count origin/main..origin/feat/mobile-first-cascara-glass` ·
@@ -98,14 +106,22 @@ escapó al umbral de 25 min.
 
 Buzón (ruta absoluta): C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-1. MEDIR la última actividad de cada sesión (backend, frontend). 🔴 OJO — una sesión trabaja de DOS
-   formas y hay que mirar las dos, o subestimás su actividad y disparás un falso-idle:
-   (a) archivos que ELLA autoreó: `*_backend-a-*` / `*_frontend-a-*` en abierto/ y cerrado/<hoy>/;
-   (b) ACUSES/secciones que ELLA pegó al FINAL de archivos de OTROS (típico: consumir un `dato_` o
-       contestar en el hilo ajeno) — el archivo se llama `X-a-<ella>` pero el último bloque es suyo.
-   Medí la actividad como el mtime MÁS RECIENTE entre (a) y (b). Para (b): mirá los archivos de
-   `abierto/` modificados en los últimos ~10 min y revisá si su último bloque es un acuse suyo
-   (`consumido por FRONTEND`, `BACKEND · <hora>`, `RESPUESTA → ...`, etc.). Reportá minutos de cada una.
+0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO: `bash scripts/no-ocio-check.sh`
+   Mide la VIDA de cada sesión por el **mtime de su transcript JSONL**
+   (`~/.claude/projects/<slug>/*.jsonl`), que Claude Code escribe en CADA turno. Ése es el
+   latido real. **PROHIBIDO afirmar que una sesión está parada/muerta sin ese output**
+   (2026-07-24: se reportó "backend muerto 8½ h" mientras backend escribía código).
+   NUNCA leas un `.jsonl` entero — pesan cientos de MB; el script usa `tail -c`.
+
+1. Con el output del paso 0, distinguí las DOS señales, que NO son lo mismo:
+   - **VIDA (transcript fresco)** → la sesión está trabajando. Si además su buzón está viejo,
+     eso es "trabaja sin reportar": recordale un `avance_` por hito. **NO es alarma de muerte.**
+   - **Transcript viejo (≥30 min)** → ahí sí, sesión o heartbeat caídos → dead-man: push al
+     operador (`/monitoreo-backend` o `/monitoreo-frontend` en su ventana) + reasignar a
+     planificación lo resoluble sin ella.
+   Como señal secundaria de REPORTE mirá el buzón: archivos que ella autoreó
+   (`*_backend-a-*` / `*_frontend-a-*` en abierto/ y cerrado/<hoy>/) y acuses que pegó al final
+   de archivos ajenos. Reportá minutos de ambas señales por sesión.
 
 2. UMBRAL CORTO: una sesión con > ~6 min sin actividad REAL (a+b), mientras la otra avanza o mientras
    hay trabajo pendiente que le toca, es candidata a PARADA. No esperar 25 min.

@@ -62,6 +62,37 @@ min_desde() { local e="$1"; [ "$e" -eq 0 ] && { echo 9999; return; }; echo $(( (
 be="$(ult_actividad backend)";  min_be="$(min_desde "$be")"
 fe="$(ult_actividad frontend)"; min_fe="$(min_desde "$fe")"
 
+# ── VIDA REAL: el transcript, no el buzón ─────────────────────────────────────
+# 🔴 Raíz 2026-07-24 (segunda pasada): medir actividad por archivos del buzón da FALSO IDLE — una
+# sesión puede estar trabajando a full y no postear nada durante una hora. Se reportó "backend muerto
+# 8½ h" mientras backend estaba escribiendo código. La prueba de vida es que la sesión ACTÚE, y eso se
+# ve en su transcript JSONL, que Claude Code escribe en cada turno.
+# Ver [[silencio-del-buzon-no-prueba-repl-muerta]].
+PROJ="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")" 2>/dev/null | head -1)"
+etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? según el marcador dominante
+  local f="$1" b fr pl
+  b=$(tail -c 1000000 "$f" 2>/dev/null | grep -c 'sesión BACKEND' || true)
+  fr=$(tail -c 1000000 "$f" 2>/dev/null | grep -c 'sesión FRONTEND' || true)
+  pl=$(tail -c 1000000 "$f" 2>/dev/null | grep -c 'sesión PLANIFICACIÓN' || true)
+  if   [ "$b"  -ge "$fr" ] && [ "$b"  -ge "$pl" ] && [ "$b"  -gt 0 ]; then echo BACKEND
+  elif [ "$fr" -ge "$pl" ] && [ "$fr" -gt 0 ];                        then echo FRONTEND
+  elif [ "$pl" -gt 0 ];                                                then echo PLANIFICACION
+  else echo '?'; fi
+}
+vida_be=""; vida_fe=""
+if [ -n "$PROJ" ]; then
+  while IFS= read -r -d '' f; do
+    m="$(stat --format=%Y "$f" 2>/dev/null || echo 0)"
+    [ $(( (now - m) / 60 )) -gt 240 ] && continue      # ignorar transcripts viejos (>4 h)
+    case "$(etiqueta_transcript "$f")" in
+      BACKEND)  [ -z "$vida_be" ] && vida_be="$(min_desde "$m")" ;;
+      FRONTEND) [ -z "$vida_fe" ] && vida_fe="$(min_desde "$m")" ;;
+    esac
+  done < <(find "$PROJ" -maxdepth 1 -name '*.jsonl' -print0 2>/dev/null)
+fi
+[ -n "$vida_be" ] && echo "VIDA (transcript): backend ${vida_be}min" || echo "VIDA (transcript): backend — sin transcript reciente"
+[ -n "$vida_fe" ] && echo "VIDA (transcript): frontend ${vida_fe}min" || echo "VIDA (transcript): frontend — sin transcript reciente"
+
 # ¿Es de noche? (para el push inmediato del bloqueo operator-only). 00:00–08:00 local.
 hora="$(date +%H)"; es_noche=0; { [ "$hora" -ge 0 ] && [ "$hora" -lt 8 ]; } && es_noche=1
 
@@ -73,8 +104,14 @@ echo "OCIO: backend ${min_be}min · frontend ${min_fe}min  (umbral parada ${UMBR
 alarma=0
 
 # ── (D) Dead-man's-switch ──────────────────────────────────────────────────────
-for par in "backend:$min_be" "frontend:$min_fe"; do
-  s="${par%%:*}"; m="${par##*:}"
+for par in "backend:$min_be:$vida_be" "frontend:$min_fe:$vida_fe"; do
+  s="$(echo "$par" | cut -d: -f1)"; m="$(echo "$par" | cut -d: -f2)"; v="$(echo "$par" | cut -d: -f3)"
+  # 🔴 La prueba de vida es el TRANSCRIPT, no el buzón. Una sesión con transcript fresco está
+  # TRABAJANDO aunque no postee — eso NO es dead-man, es "trabaja y no reporta" (señal mucho más leve).
+  if [ -n "$v" ] && [ "$v" -lt "$UMBRAL_MUERTA" ]; then
+    [ "$m" -ge 90 ] && echo "ℹ️  $s VIVO (transcript ${v}min) pero sin postear al buzón hace ${m}min — trabaja sin reportar. Recordale un \`avance_\` por hito; NO es dead-man."
+    continue
+  fi
   if [ "$m" -ge "$UMBRAL_MUERTA" ]; then
     alarma=1
     echo "🔔 DEAD-MAN ($s muda ${m}min ≥ ${UMBRAL_MUERTA}): la REPL o su heartbeat pueden estar caídos."
