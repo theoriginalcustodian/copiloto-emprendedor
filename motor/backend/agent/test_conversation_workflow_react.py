@@ -954,3 +954,51 @@ def test_react_tail_constants_consistent_with_history_pattern():
     from backend.agent.conversation_workflow import REACT_TAIL, REACT_CARRY_TAIL, CARRY_TAIL, HISTORY_TAIL
     assert REACT_CARRY_TAIL >= REACT_TAIL
     assert CARRY_TAIL >= HISTORY_TAIL
+
+
+# ═══════════════════ SPIKE hito 9 (§4 del contrato facturar-por-voz): turn_ix × continue-as-new ═══════════════
+
+@pytest.mark.asyncio
+async def test_turn_ix_sobrevive_continue_as_new_contra_temporal_real():
+    """De-risk del `factura_id` determinístico del dictado (hito 9 §4): la clave candidata es `turn_ix`,
+    y su docstring (:327, :452) afirma "global/monótono, sobrevive continue-as-new" -- afirmación que
+    ningún test ejercitaba contra un CAN real hasta acá (grep vacío). `max_turns_per_run` es
+    tuneable/testeable (:148) justo para esto: fuerza el CAN tras 1 turno, sin esperar a que
+    `is_continue_as_new_suggested()` dispare por tamaño de history.
+
+    Si esto fallara -- turn_ix reseteando a un valor ya usado tras un CAN -- un `factura_id` derivado
+    de él podría colisionar con una factura de un cliente ANTERIOR a la renovación del run, abriendo un
+    borrador sobre una factura ajena ya cerrada. El mismo riesgo, en plata, es el que ya cubre
+    `_react_idem_key` para `mp_charge` (B1) -- este test cierra el gap de que esa cobertura nunca se
+    verificó contra un CAN real."""
+    def exec_fn(p):
+        return ToolResult(tool_call_id=p["idem_key"], is_write=False, status="ok",
+                          observation={"result": "ok"}).to_dict()
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        w, calls = _script_worker(env, "can1", llm_script=[
+            _tc("gmail_fetch", {"query": "a"}), _TEXT("listo 1"),   # turno 1 -- pre-CAN
+            _tc("gmail_fetch", {"query": "b"}), _TEXT("listo 2"),   # turno 2 -- fuerza el CAN antes de correr
+        ], exec_fn=exec_fn)
+        async with w:
+            h = await env.client.start_workflow(
+                ConversationWorkflow.run, _cfg(engine_mode="react", max_turns_per_run=1),
+                id="can1", task_queue="can1")
+            run_id_inicial = h.result_run_id or h.run_id   # el run_id de ESTA corrida, fijo (arranque)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "uno", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.receive_message, {"text": "dos", "kind": "text"})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+            # el CAN corrió de VERDAD contra el server (time-skipping, no mock): control positivo -- si
+            # `max_turns_per_run=1` no hubiera forzado el CAN, el run_id "actual" (sin pin) coincidiría
+            # con el inicial, porque nunca se habría abierto una corrida nueva bajo el mismo workflow_id.
+            run_id_final = (await env.client.get_workflow_handle("can1").describe()).run_id
+    assert len(calls["exec"]) == 2
+    idem_1, idem_2 = calls["exec"][0]["idem_key"], calls["exec"][1]["idem_key"]
+    turn_ix_1 = int(idem_1.rsplit("-", 2)[-2])
+    turn_ix_2 = int(idem_2.rsplit("-", 2)[-2])
+    assert idem_1.startswith("can1-") and idem_2.startswith("can1-")   # workflow_id constante a través del CAN
+    assert run_id_final != run_id_inicial, "el CAN nunca ocurrió -- el test no está probando lo que dice probar"
+    assert turn_ix_2 > turn_ix_1          # monótono A TRAVÉS del CAN -- nunca resetea
+    assert idem_1 != idem_2               # dos "facturas" dictadas en turnos distintos NUNCA comparten id

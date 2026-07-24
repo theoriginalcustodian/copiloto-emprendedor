@@ -502,16 +502,6 @@ def test_la_guia_NO_promete_una_tool_que_no_existe():
             f"la guía promete «{cap['ejemplos'][0]}» y {cap['tool']} no esta en el catalogo del agente"
 
 
-def test_facturar_por_voz_NO_esta_en_la_guia_todavia():
-    """El control del test de arriba: si `_CAPACIDADES` no tuviera ninguna entrada muerta, el filtro
-    pasaría siempre sin filtrar nada. `emitir_factura` está declarada y todavía no existe — cuando
-    el hito 9 la agregue, este test falla y se borra, que es exactamente lo que tiene que pasar."""
-    ofrecidas = {s["function"]["name"] for s in tool_catalog.build_tool_catalog()}
-    assert "emitir_factura" not in ofrecidas
-    rotulos = [c["tool"] for c in tool_catalog.capacidades_vivas()["capacidades"]]
-    assert "emitir_factura" not in rotulos
-
-
 def test_las_fechas_de_la_guia_son_las_MEDIDAS():
     """Una sola constante alimenta la guía, las descriptions y el aviso. Si la guía tuviera su propia
     lista, el DoD «los ejemplos coinciden con la tabla medida» dependería de que alguien lo revise —

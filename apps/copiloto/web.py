@@ -19,8 +19,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import sys
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -275,6 +277,49 @@ def make_signal_factura(temporal_client) -> Callable:
         await handle.signal(nombre, payload) if payload is not None else await handle.signal(nombre)
 
     return signal_factura
+
+
+# Hito 9 — turno 2 de un dictado incompleto tiene que encontrar el borrador del turno 1 SIN que el
+# LLM cargue el id (`hallazgo_..._SS0` pieza 2). Constante con nombre, no literal en la query (pedido
+# explícito de planificación al contestar el fork del turno-2).
+VENTANA_DICTADO_ABIERTO = timedelta(minutes=15)
+_CLIENTE_ID_OK = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
+    """Encuentra el `FacturaWorkflow` de origen VOZ que sigue abierto para este `cliente_id`, si hay
+    uno — Visibility de Temporal, no una tabla nueva: *"no puede desincronizarse de Temporal porque
+    ES Temporal"* (respuesta de planificación, `respuesta_planificacion-a-backend_arranca-por-
+    visibility-acotada-por-StartTime`). Sin match, `emitir_factura` abre un borrador nuevo (su propio
+    fallback) — nunca produce un CAE de más, como mucho un borrador huérfano.
+
+    Acotado por `StartTime`: un `FacturaWorkflow` NO caduca solo por sí mismo
+    (`await workflow.wait_condition(lambda: self._confirmado or self._cancelado)`, sin timeout,
+    `afip_factura_workflow.py:208`). Sin ventana, un dictado abandonado de hace días podría
+    "continuarse" con los datos de hoy — no se ve como error, se ve como una factura con datos
+    mezclados. TODO(hito9-dictado-sin-ventana-de-vida, backend, antes de habilitar producción): el
+    workflow en sí no expira; ponerle un timeout real es un cambio de historia (versionado/`patched`,
+    no es el momento en medio del hito) — anotado también en `memoria/`.
+    """
+    async def buscar(cliente_id: str) -> str | None:
+        # `cliente_id` hoy es un UUID server-side (`resolve_cliente_id`), pero la query de Visibility
+        # no toma parámetros -- construye el string directo. Validar acá corta la dependencia con ESE
+        # hecho remoto: si `cliente_id` mañana pasa a ser un slug legible, esta línea no se vuelve
+        # cross-tenant en silencio (hallazgo de planificación, `la-query-de-visibility-se-blinda`).
+        if not _CLIENTE_ID_OK.fullmatch(cliente_id):
+            raise HTTPException(status_code=400, detail="cliente_id inválido")
+        desde = (datetime.now(timezone.utc) - VENTANA_DICTADO_ABIERTO).strftime("%Y-%m-%dT%H:%M:%SZ")
+        prefijo = _wf_id_factura(cliente_id, "dictado-")
+        query = (f"WorkflowType='FacturaWorkflow' AND WorkflowId STARTS_WITH '{prefijo}' "
+                f"AND ExecutionStatus='Running' AND StartTime > '{desde}'")
+        # `list_workflows` NO es coroutine (a diferencia de start_workflow/signal/query) — devuelve el
+        # iterador directo. Verificado contra el Temporal real del VPS (v1.29.7): un `await` acá
+        # tira `TypeError: object WorkflowExecutionAsyncIterator can't be used in 'await' expression`.
+        async for ejecucion in temporal_client.list_workflows(query):
+            return ejecucion.id[len(f"factura-{cliente_id}-"):]
+        return None
+
+    return buscar
 
 
 def make_iniciar_anulacion(temporal_client, *, task_queue: str = AGENT_B_TASK_QUEUE) -> Callable:

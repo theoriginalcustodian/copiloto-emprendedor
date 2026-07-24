@@ -108,6 +108,8 @@
 
 ## 🧠 Lecciones sistémicas vivas
 
+- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — `feedback`. 3× en un día. `copiloto_cobros` **ES** la tabla de ingresos. El nombre se pone al nacer y no se renombra cuando el alcance crece: leé el `WHERE`/la firma/el config, no el identificador.
+- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — `project`. Medido 42 vs 5. Un turno por cron mide **OCIO, no vida**; la sesión está sorda al buzón justo mientras trabaja. Revisar el buzón en cada **frontera de trabajo**, no por reloj.
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. Barrido adversarial 3 lentes → batch por tests.
 - [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. `execute_activity` con `retry_policy` acotada + error de negocio no se propaga.
 - [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
