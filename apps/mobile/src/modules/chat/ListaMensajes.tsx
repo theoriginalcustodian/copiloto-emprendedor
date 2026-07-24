@@ -6,6 +6,7 @@ import {
   leerClientePropuesto,
   leerGastoPropuesto,
   leerIngresoPropuesto,
+  leerPresupuestoPropuesto,
   mapearGate,
   type ChatMessage,
   type Gate,
@@ -19,6 +20,7 @@ import { Burbuja } from './Burbuja';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
+import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
 
 const TEXTO_VACIO =
   'Contame qué necesitás: mandar un mail, buscar algo en tus archivos, revisar tus métricas, o cobrar con MercadoPago. Antes de ejecutar algo importante, siempre te lo muestro para que lo confirmes.';
@@ -205,6 +207,13 @@ export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function
         const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
         if (ingresoPropuesto) {
           return <TarjetaIngresoPropuesto key={mensaje.id} propuesta={ingresoPropuesto} />;
+        }
+
+        // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
+        // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
+        const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
+        if (presupuestoPropuesto) {
+          return <TarjetaPresupuestoPropuesto key={mensaje.id} propuesta={presupuestoPropuesto} />;
         }
 
         const gate = mapearGate(mensaje);
