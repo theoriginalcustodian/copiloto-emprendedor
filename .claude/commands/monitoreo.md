@@ -40,6 +40,16 @@ instrumento que **confirma** en vez de verificar: cuando se equivoca no falla ru
 respuesta plausible. `scripts/ultimas-acciones.sh` no infiere nada — imprime qué hizo cada sesión y
 cuándo, y deja el juicio en quien lee.
 
+### ⚠️ `vigilancia-check.sh` NO es el script prohibido de arriba
+
+`scripts/vigilancia-check.sh` (2026-07-24) es un gate DISTINTO al `no-ocio-check.sh` que falló: sólo
+compone tres chequeos deterministas que nunca infieren contenido, identidad ni productividad —
+`cola-check.sh` (lee `COLA-VIVA` de `PLAN.md`), `escaladores-buzon.sh` (mtime + ubicación de
+archivos del buzón) y una medición de `mtime` puro de los transcripts (sin leer ni parsear su
+contenido — eso es lo que costó las 6 fallas). Su único trabajo es decidir si vale la pena que el
+modelo razone; nunca decide POR el modelo si una sesión "trabaja" o "gira en vacío" — esa pregunta
+sigue resuelta por `ultimas-acciones.sh` + juicio humano-en-el-loop, exactamente como hoy.
+
 ---
 
 ## Cron 1 — Control de sesiones (cada 10 min)
@@ -73,7 +83,20 @@ fuera del proceso (Task Scheduler del sistema operativo) — ver `docs/aprendiza
 ```
 Control de sesiones (PLANIFICACIÓN) — cada 10 min. Caza una sesión PARADA y también la espera MUTUA.
 
-🔴 INSTRUMENTO ÚNICO — corré esto y NADA MÁS para juzgar si alguien trabaja:
+🔴 PASO 0, SIEMPRE PRIMERO — el gate determinista que decide si vale la pena razonar:
+
+    bash "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/scripts/vigilancia-check.sh"
+
+- **Exit 0 (sin alarma)** → cerrá el turno YA: una sola línea ("VIGILANCIA: sin novedades, HH:MM")
+  y NADA MÁS. No corras `ultimas-acciones.sh`, no listes carpetas, no compares mtimes a mano — ese
+  trabajo es exactamente el que este script reemplaza (COLA + escaladores de edad del buzón + VIDA
+  de transcripts, ver `docs/aprendizajes/2026-07-24/2026-07-24_vigilancia-determinista-fuera-del-modelo.md`).
+- **Exit 1 (alarma)** → el script YA trajo el reporte (COLA / ESCALADORES / SESION MUDA). Usalo como
+  punto de partida, no reconstruyas la medición a mano, y seguí con el resto de este prompt para
+  decidir la acción.
+
+Si hay alarma y necesitás el detalle de qué hace cada sesión ahora mismo, el instrumento sigue
+siendo el log crudo — corré esto y NADA MÁS para juzgar si alguien trabaja:
 
     bash "C:/Proyectos/Claude/Claude code/copiloto-emprendedor/scripts/ultimas-acciones.sh" 3
 
