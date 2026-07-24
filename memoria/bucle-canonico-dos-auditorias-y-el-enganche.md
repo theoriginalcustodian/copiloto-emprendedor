@@ -10,14 +10,15 @@ de repo — se replica a todos los proyectos). Acá sólo lo que hay que recorda
 
 **El ciclo:** F0 sincronizar el índice de código *y verificarlo* → F1 plan **sobre código real** →
 **F2 auditoría del PLAN (bloquea el reparto)** → F3-F4 contratos y construcción → F5 captura continua
-de aprendizajes → F6 verificación real → **F7 auditoría del RESULTADO** → F8 corte y plan N+1.
+de aprendizajes → F6 verificación real → **F7 auditoría del RESULTADO** → **F7.5 implementar los
+aprendizajes** → F8 corte y plan N+1.
 
 **Las dos auditorías no se solapan, y ésta es la razón:** A1 audita una **intención** (un texto que
 dice lo que vamos a hacer); A2 audita un **hecho** (código escrito + el proceso que ocurrió + el propio
 A1). Hay cosas que no se pueden saber antes de construir, por definición — el delta plan↔realidad, lo
 que el sprint destapó, si los consejos de A1 sirvieron.
 
-**Las tres piezas que más rinden, y que son las que se olvidan:**
+**Las cuatro piezas que más rinden, y que son las que se olvidan:**
 
 1. **A1 tiene que poder RECHAZAR.** Su criterio nº1 es el anclaje: toda afirmación de existencia o
    ausencia con `path:línea` verificable; si falla, no se mira el resto. Si A1 aprueba todos los
@@ -33,6 +34,21 @@ que el sprint destapó, si los consejos de A1 sirvieron.
    canon de git compartido se recita cada turno y sigue sin hook que lo bloquee; backend conocía la
    regla del buzón y la ignoró «por reflejo, no por decisión».
 
+4. **Implementar antes de volver a empezar (F7.5).** Un aprendizaje redactado y no implementado es
+   **información**, no aprendizaje. La cola vive en `docs/aprendizajes/pendientes/` — **versionada**,
+   porque en `coordinacion/` (gitignored) un `clean` la evapora. Implementar = `git mv` a
+   `docs/aprendizajes/<fecha>/`: el estado es la ubicación, no un tablero que hay que acordarse de
+   actualizar. **`pendientes/` vacío es gate binario de F0**: si quedó un gancho sin construir, el
+   sprint N+1 se armaría con el método que ya se sabe que falla. Y **sólo el nivel 1 genera cola** (el
+   2 se hace en el acto, el 3 ya está hecho al escribirlo) — meter los tres la vuelve impagable y se
+   abandona entera. Dos colas distintas y en este orden: **fixes de aprendizaje primero, fixes de la
+   app después** — los primeros cambian *cómo se construye*.
+
+**R8 de A1 — lo que separa un sprint autónomo de uno que se cuelga:** todo insumo que **sólo una
+persona** puede dar (credencial, decisión de producto, device, habilitación externa) se declara en el
+plan y se provee **antes** del reparto, o el hito no entra. El ejecutor autónomo no negocia con el
+mundo: llega al muro más rápido y con media cosa construida.
+
 **Quién hace qué:** coordinación **nunca** implementa código de producto; la auditoría **no vive** —
 se invoca dos veces por sprint, headless, con un modelo **distinto** al de las sesiones que trabajan
 (un auditor del mismo modelo valida el mismo razonamiento que produjo el plan).
@@ -41,6 +57,6 @@ se invoca dos veces por sprint, headless, con un modelo **distinto** al de las s
 ejecutó el ciclo canónico solo — grafo para localizar, archivo para confirmar. Ver
 [[grafo-primero-codigo-despues-para-localizar]].
 
-Relacionadas: [[instrumentos-que-confirman-en-vez-de-verificar]] (la ley de los instrumentos, §11 del
+Relacionadas: [[instrumentos-que-confirman-en-vez-de-verificar]] (la ley de los instrumentos, §12 del
 doc) · [[la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado]] · [[cero-deuda-no-gestionada]] (lo
 que no entra en el corte de A2 queda como deuda visible con dueño).
