@@ -8,23 +8,28 @@ metadata:
   modified: 2026-07-20T15:48:46.295Z
 ---
 
-**Sprint EN CURSO (2026-07-20).** Rama `feat/mobile-first-cascara-glass`, 9 commits.
-**Al retomar leer:** `docs/copiloto-emprendedor/2026-07-20-HANDOFF-sprint-mobile-first.md`.
+**Estado 2026-07-23 — SPRINT CERRADO (sign-off del operador, opción a).** E2E DATOS+IN 6/6 VERDE en
+device. El trabajo se mergeó a `main` (PR#78-84, `main@ec1735d`); la rama vieja
+`feat/mobile-first-cascara-glass` quedó congelada. Corrido con `e2e-device@copiloto.test`, evidencia en
+`_evidencia/`, math cruzada verificada (caja 5.444,33 = ingresos − gastos, coincide HTTP + Resumen + chat).
+El operador aceptó voz-ítem-7 (dictar mientras se scrollea) como **residual documentado, no bloqueante**.
+
+**Verificado en device:** los 6 frentes (Gastos · Ingresos · Clientes · Presupuestos · Actividad ·
+IN Resumen+Preguntar+chat), freeze-al-volver ✅3/3 (PR#77), voz/dictado ✅ ítems 1-6 (PR#74+#76),
+gestos+scroll ✅ implícito (el E2E navegó las 6 pantallas y scrolleó el Resumen). Fixes menores cerrados:
+#83 (key duplicada GraficoBarras), #84 (`GET /me` devuelve email). **Único residual documentado:**
+**voz-ítem-7** = dictar *mientras* se scrollea la lista (backend no lo pudo simular por ADB con confianza;
+edge case, no roto). Recomendación bajada: cerrar con voz-ítem-7 como residual → **espera sign-off del
+operador**. Ver `coordinacion/abierto/2026-07-23_dato_planificacion...SPRINT-mobile-first-IN-cerrado...`.
 
 **Decisión de origen: mobile-first.** `apps/copiloto-web` pasa a vía secundaria y no se toca. Se
-clona la cáscara visual de `apps/mobile` de documed, pinneada en `documed@a6841474` (rama
-`feat/frontend-h6-anclaje`). **documed es READ-ONLY.**
+clonó la cáscara visual de `apps/mobile` de documed, pinneada en `documed@a6841474`. **documed es READ-ONLY.**
 
-Hecho: scripts S1–S7, `packages/core`, capa glass + shell, escritorio de 6 funciones cableadas
-(Apps · Ajustes · Recientes · Redes Sociales · Métricas · Facturación). 119 tests verdes + 55 de core.
-Falta: F5 chat E2E, F6 voz Groq, F7 índice.
-
-**El gate F2 NO se puede cerrar sin el operador.** El tirón del glass de función se investiga con la
-Medición 1 (`spikes/repliegue-glass/COMO-CORRER.md`), y está verificado que `adb shell input swipe`
-**no reproduce el defecto** — cero frames >40ms contra 150ms con dedo humano. Un A/B cuyo caso base
-no exhibe el síntoma no prueba nada. Mi hipótesis original (el traspaso gesto→router al soltar) está
-**refutada**: el tirón ocurre durante el arrastre. Ver `coordinacion/2026-07-20_handoff_tiron-glass-funcion.md`,
-que lista 5 hipótesis ya refutadas — no repetirlas.
+**Histórico (gate F2, ya superado por el device real):** el tirón del glass se investigó con la Medición 1;
+`adb shell input swipe` **no reproduce el defecto** (cero frames >40ms vs 150ms con dedo humano) — un A/B
+cuyo caso base no exhibe el síntoma no prueba nada. La regresión de freeze-al-volver terminó cerrándose
+por otra vía (PR#77, retest 3/3 en device). Ver `coordinacion/2026-07-20_handoff_tiron-glass-funcion.md`
+(5 hipótesis refutadas, no repetirlas) e [[glass-apilado-empujar-una-vez]].
 
 **Contratos que no se rompen:**
 - La capa aporta el chrome (vidrio, ícono, nombre, Cerrar); la pantalla aporta solo contenido. Una
