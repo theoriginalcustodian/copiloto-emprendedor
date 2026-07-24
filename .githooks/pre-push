@@ -3,6 +3,8 @@
 # Activar (por clone): git config core.hooksPath .githooks
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # git entrega por stdin una línea por ref — se consume ahora (pipe, una sola lectura).
 REFS_STDIN="$(cat || true)"
 
@@ -14,9 +16,14 @@ REFS_STDIN="$(cat || true)"
 # (alta + baja). Fail-closed: si el sync falla, el push ABORTA — el grafo no
 # queda silenciosamente desactualizado. Bypass ante fallo transitorio:
 # git push --no-verify. Patrón copiado de Graphity (.githooks/pre-push §8) /
-# unreal-copilot (.githooks/pre-push).
+# unreal-copilot (.githooks/pre-push). La invocación real (con status/errores/control
+# positivo verificados) vive en scripts/graph-sync.sh — este hook SOLO decide el
+# alcance (incremental vs completo) y le delega la ejecución.
 ZERO="0000000000000000000000000000000000000000"
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
+REPO_NAME="copiloto-emprendedor"
+CHECKPOINT_REL=".bridge/checkpoint-${REPO_NAME}.db"
+MERGE_BASE_REF="${GRAPHITY_MERGE_BASE_REF:-origin/main}"
 
 if [ ! -d "$BRIDGE" ]; then
   echo "[pre-push] ❌ no encuentro el bridge en '$BRIDGE'." >&2
@@ -55,6 +62,25 @@ echo "[pre-push] ✅ grafo de código sincronizado desde origin/main"
 exit 0
 
 # ----- (muerto desde 2026-07-31; se conserva un ciclo por si hay que volver atrás) -----
+# El grafo YA conoce este repo si el checkpoint tiene al menos un chunk 'done' para él.
+# Ojo (vacío-es-pregunta): CheckpointStore crea el archivo (schema vacío) con solo
+# instanciarse — su mera EXISTENCIA no prueba que haya datos; hay que contar filas.
+graph_conoce_el_repo() {
+  local ckpt="$BRIDGE/$CHECKPOINT_REL"
+  [ -f "$ckpt" ] || return 1
+  local n
+  n="$(cd "$BRIDGE" && uv run python -c "
+import sqlite3, sys
+conn = sqlite3.connect(sys.argv[1])
+try:
+    row = conn.execute('SELECT COUNT(*) FROM chunks WHERE repo=? AND done=1', (sys.argv[2],)).fetchone()
+    print(row[0] if row else 0)
+except sqlite3.OperationalError:
+    print(0)
+" "$ckpt" "$REPO_NAME" 2>/dev/null || echo 0)"
+  [ "${n:-0}" -gt 0 ]
+}
+
 base=""
 full=0
 nrefs=0
@@ -63,16 +89,15 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
   case "$local_sha" in *[!0]*) : ;; *) continue ;; esac
   nrefs=$((nrefs + 1))
   if [ "${remote_sha:-$ZERO}" = "$ZERO" ]; then
-    # Rama NUEVA en el remoto != repo desconocido para el grafo. El grafo ya tiene todo lo que
-    # esta en main; lo unico que no vio son los commits propios de esta rama. Tratarlo como
-    # `full` costaba una reingesta completa (~723 archivos, minutos) en CADA rama nueva — y
-    # trabajamos con una rama por frente, asi que el caso caro era el caso normal.
-    # La base correcta es el punto donde esta rama se separo de la principal.
-    principal="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
-    if mb="$(git merge-base "$principal" "$local_sha" 2>/dev/null)" && [ -n "$mb" ]; then
+    # Rama nueva en origin — el bug era leer esto como "el grafo no sabe nada del repo"
+    # y resincronizar TODO (frenó el hito 9 dos veces; el push queda indistinguible de
+    # un cuelgue). "Rama nueva en origin" y "grafo vacío" son preguntas DISTINTAS: si el
+    # grafo ya conoce el repo, alcance incremental contra el merge-base con la rama
+    # principal; si está genuinamente vacío (o no hay merge-base resoluble), full — ese
+    # es el caso que el control negativo del DoD tiene que atrapar.
+    if graph_conoce_el_repo && mb="$(git merge-base "$MERGE_BASE_REF" "$local_sha" 2>/dev/null)" && [ -n "$mb" ]; then
       base="$mb"
     else
-      # Sin merge-base no hay historia comun conocida (repo nuevo de verdad) -> completo.
       full=1
     fi
   else
@@ -84,16 +109,13 @@ done <<< "$REFS_STDIN"
 if [ "$nrefs" -eq 0 ]; then
   echo "[pre-push] (nada que sincronizar en el grafo)"
 else
-  ( cd "$BRIDGE"
-    if [ "$full" -eq 0 ] && [ -n "$base" ]; then
-      echo "[pre-push] sync del grafo de código (incremental desde ${base:0:12})…"
-      uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync \
-        --checkpoint .bridge/checkpoint-copiloto-emprendedor.db --since "$base"
-    else
-      echo "[pre-push] sync del grafo de código (completo)…"
-      uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync \
-        --checkpoint .bridge/checkpoint-copiloto-emprendedor.db
-    fi
-  )
-  echo "[pre-push] ✅ grafo de código sincronizado"
+  if [ "$full" -eq 0 ] && [ -n "$base" ]; then
+    n_files="$(git diff --name-only "$base"..HEAD | wc -l | tr -d ' ')"
+    echo "[pre-push] alcance: incremental desde ${base:0:12} (${n_files} archivo(s) cambiado(s))"
+    bash "$SCRIPT_DIR/scripts/graph-sync.sh" --since "$base"
+  else
+    n_files="$(git ls-files | wc -l | tr -d ' ')"
+    echo "[pre-push] alcance: completo (${n_files} archivo(s) trackeado(s))"
+    bash "$SCRIPT_DIR/scripts/graph-sync.sh"
+  fi
 fi
