@@ -1,5 +1,5 @@
 ---
-description: (Re)crea idempotente los DOS crones de monitoreo de la sesión PLANIFICACIÓN (control de sesiones cada 3 min + vigía del buzón)
+description: (Re)crea idempotente los DOS crones de monitoreo de la sesión PLANIFICACIÓN (control de sesiones cada 10 min + vigía del buzón cada 20)
 allowed-tools: CronList, CronCreate, Bash
 ---
 
@@ -42,17 +42,36 @@ cuándo, y deja el juicio en quien lee.
 
 ---
 
-## Cron 1 — Control de sesiones (cada 3 min)
+## Cron 1 — Control de sesiones (cada 10 min)
 
 Reemplaza a los dos crones viejos de 3 min («PARÁLISIS» + «SESIONES OCIOSAS»): con el log a la vista,
 una sesión parada y una espera mutua se ven en la misma lectura, y dos disparos por ventana era ruido
 duplicado.
 
-- **Schedule (cron):** `*/3 * * * *`
+### Por qué cada 10 y no cada 3
+
+Medido sobre 30 h de transcripts reales: **el 78 % de los turnos los disparó un cron, no una persona**
+(4.206 contra 1.153), y la sesión coordinadora consumió el **61,5 % de los tokens del sprint sin
+escribir una línea de código de producto**. El ritual determinista de cada tick —listar carpetas,
+comparar `mtime`— dejó ~3.400 invocaciones de bash textualmente idénticas (`cd .../coordinacion` **655
+veces**), todas ejecutadas por el modelo caro.
+
+Y el latido tiene una **sensibilidad invertida**: un cron no puede interrumpir un turno en curso, así
+que **dispara más cuanto menos trabaja la sesión**. Late fuerte cuando el paciente está quieto.
+
+A 10 min la latencia de detección sigue muy por debajo del umbral de alarma (25 min sin actividad), y
+el canal rápido para la sesión que **sí** está trabajando ya no es este cron sino el hook del buzón,
+que dispara con cada tool call — el inverso exacto, y gratis.
+
+⚠️ **No lo vuelvas a bajar a 3 min** sin traer una medición que justifique el costo. Si hace falta
+vigilancia que sobreviva a que esta sesión muera, el camino NO es un cron más rápido: es un watchdog
+fuera del proceso (Task Scheduler del sistema operativo) — ver `docs/aprendizajes/pendientes/`.
+
+- **Schedule (cron):** `*/10 * * * *`
 - **Prompt:**
 
 ```
-Control de sesiones (PLANIFICACIÓN) — cada 3 min. Caza una sesión PARADA y también la espera MUTUA.
+Control de sesiones (PLANIFICACIÓN) — cada 10 min. Caza una sesión PARADA y también la espera MUTUA.
 
 🔴 INSTRUMENTO ÚNICO — corré esto y NADA MÁS para juzgar si alguien trabaja:
 
