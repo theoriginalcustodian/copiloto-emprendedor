@@ -1,9 +1,20 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { Pressable, ScrollView } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { type SharedValue } from 'react-native-reanimated';
 
-import { formatearImporte, leerTablero, type IdSolapa, type TarjetaMiDia, type TableroMiDia } from '@copiloto/core';
+import {
+  borrarTarjetaMiDia,
+  cambiarEstadoTarjetaMiDia,
+  formatearImporte,
+  leerTablero,
+  type IdSolapa,
+  type TarjetaMiDia,
+  type TableroMiDia,
+} from '@copiloto/core';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
@@ -32,12 +43,19 @@ import { useTema } from '../../theme/ThemeProvider';
  * expandida agrega el detalle crudo (cliente/monto/fecha, si la regla los trajo en `datos`) debajo. Es
  * estado local puro, sin red.
  *
- * 🔴 **Sin swipe-para-mutar todavía — incremento aparte, a propósito.** El contrato (§2.3) pide "swipe
- * corto o toque largo" para cambiar de estado, y backend YA contrató las 3 mutaciones
- * (`crearTarjetaMiDia`/`cambiarEstadoTarjetaMiDia`/`borrarTarjetaMiDia`, PR#96) — el cliente ya las
- * expone. Lo que falta acá es el GESTO en sí: RNGH (`swmansion-rn-gestures`) + verificación en device
- * (aparato de backend). No se mezcla con este commit para no represar el cliente+pantalla ya verdes;
- * queda como el próximo `avance_` explícito, no una promesa silenciosa.
+ * 🔴 **Swipe con `ReanimatedSwipeable`, no un `Gesture.Pan` a mano** (contrato §2.3 pide "swipe corto...
+ * nunca arrastre libre" — el componente YA fija acciones a un ancho reservado, no drag libre). Revela
+ * "Empezar"/"Terminé" (avanzar de solapa) + "Borrar" a la derecha; en `hecha` sólo queda "Borrar" — no
+ * hay solapa siguiente. Después de una mutación se **relee el tablero entero**, nunca se edita el
+ * estado local a mano: la tarjeta se va de la lista porque el backend confirmó que se movió, no porque
+ * la UI lo asumió (mismo criterio que §2.1 — la tarjeta muere por el HECHO).
+ *
+ * 🔴 **`estado` que se manda es una ASUNCIÓN razonada, no confirmada literal.** Backend documentó los
+ * CAMPOS de la tarjeta pero no el conjunto de valores válidos de `estado`; asumo que coincide con los
+ * `id` de solapa (mismo vocabulario ya confirmado: `para_hoy`/`haciendo`/`hecha`) — preguntado en
+ * `pedido_frontend-a-backend_valores-reales-de-estado...`. Si la asunción es incorrecta, el 400 trae
+ * el `detail` real de backend y se lo muestra tal cual al emprendedor (`estado_invalido` en
+ * `cambiarEstadoTarjetaMiDia`) — no falla en silencio ni inventa un mensaje genérico.
  *
  * 🔴 **Se relee al recuperar el FOCO, no sólo al montar** (mi propio pedido sobre el contrato original):
  * una tarjeta puede morir por una acción hecha en OTRA pantalla (cobrar una factura en Facturación), y
@@ -90,6 +108,13 @@ function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSo
   );
 }
 
+/** A qué solapa avanza cada una, y cómo se llama la acción. `hecha` no tiene entrada: es terminal, no
+ *  hay "siguiente" — sólo queda la acción de borrar. */
+const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }>> = {
+  para_hoy: { estado: 'haciendo', etiqueta: 'Empezar' },
+  haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
+};
+
 export function PantallaMiDia() {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
@@ -98,27 +123,54 @@ export function PantallaMiDia() {
   const [expandida, setExpandida] = useState<string | null>(null);
   const vivo = useRef(true);
 
+  const cargar = useCallback(async () => {
+    try {
+      const res = await leerTablero();
+      if (!vivo.current) return;
+      if (res.status === 'ok') {
+        setTablero(res.tablero);
+        setEstado('ok');
+        return;
+      }
+      setEstado('no_disponible');
+    } catch {
+      if (vivo.current) setEstado('no_disponible');
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
-      leerTablero()
-        .then((res) => {
-          if (!vivo.current) return;
-          if (res.status === 'ok') {
-            setTablero(res.tablero);
-            setEstado('ok');
-            return;
-          }
-          setEstado('no_disponible');
-        })
-        .catch(() => {
-          if (vivo.current) setEstado('no_disponible');
-        });
+      void cargar();
       return () => {
         vivo.current = false;
       };
-    }, []),
+    }, [cargar]),
   );
+
+  async function avanzar(t: TarjetaMiDia) {
+    const siguiente = SIGUIENTE[solapaActiva];
+    if (siguiente == null) return;
+    const res = await cambiarEstadoTarjetaMiDia(t.id, siguiente.estado);
+    if (res.status === 'ok') {
+      void cargar();
+      return;
+    }
+    if (res.status === 'estado_invalido') {
+      Alert.alert('No se pudo mover la tarjeta', res.motivo);
+      return;
+    }
+    Alert.alert('No se pudo mover la tarjeta', 'Probá de nuevo en un momento.');
+  }
+
+  async function borrar(t: TarjetaMiDia) {
+    const res = await borrarTarjetaMiDia(t.id);
+    if (res.status === 'ok') {
+      void cargar();
+      return;
+    }
+    Alert.alert('No se pudo borrar la tarjeta', 'Probá de nuevo en un momento.');
+  }
 
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
 
@@ -163,7 +215,10 @@ export function PantallaMiDia() {
                     key={t.id}
                     tarjeta={t}
                     expandida={expandida === t.id}
+                    etiquetaAvanzar={SIGUIENTE[solapaActiva]?.etiqueta ?? null}
                     onPress={() => setExpandida((prev) => (prev === t.id ? null : t.id))}
+                    onAvanzar={() => void avanzar(t)}
+                    onBorrar={() => void borrar(t)}
                   />
                 ))}
               </ScrollView>
@@ -178,37 +233,96 @@ export function PantallaMiDia() {
 function TarjetaMiDiaRow({
   tarjeta,
   expandida,
+  etiquetaAvanzar,
   onPress,
+  onAvanzar,
+  onBorrar,
 }: {
   tarjeta: TarjetaMiDia;
   expandida: boolean;
+  /** `null` en la solapa "hecha": no hay siguiente, sólo se puede borrar. */
+  etiquetaAvanzar: string | null;
   onPress: () => void;
+  onAvanzar: () => void;
+  onBorrar: () => void;
 }) {
   const tema = useTema();
+  const swipeableRef = useRef<SwipeableMethods>(null);
   const detalle = [tarjeta.cliente, tarjeta.monto != null ? formatearImporte(tarjeta.monto) : null, tarjeta.fecha]
     .filter((x): x is string => x != null && x !== '')
     .join(' · ');
 
-  return (
-    <Row
-      onPress={onPress}
-      testID={`midia-tarjeta-${tarjeta.id}`}
-      accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
-    >
-      <View style={styles.tarjeta}>
-        <Text
-          numberOfLines={expandida ? undefined : 2}
-          style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
+  // `opacity: progress` — Reanimated acepta un `SharedValue` directo en el style de `Animated.View`
+  // (no hace falta `useAnimatedStyle` para un caso de un solo campo). Mismo patrón que la referencia
+  // de la skill `swmansion-rn-gestures` (`swipeable-and-drawer.md`).
+  const acciones = (progress: SharedValue<number>) => (
+    <Animated.View style={[styles.accionesSwipe, { opacity: progress }]}>
+      {etiquetaAvanzar != null && (
+        <Pressable
+          testID={`midia-tarjeta-${tarjeta.id}-avanzar`}
+          accessibilityRole="button"
+          accessibilityLabel={etiquetaAvanzar}
+          onPress={() => {
+            swipeableRef.current?.close();
+            onAvanzar();
+          }}
+          style={[styles.botonSwipe, { backgroundColor: tema.color.acento }]}
         >
-          {tarjeta.texto}
-        </Text>
-        {expandida && detalle !== '' && (
-          <Text testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            {detalle}
+          <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+            {etiquetaAvanzar}
           </Text>
-        )}
-      </View>
-    </Row>
+        </Pressable>
+      )}
+      <Pressable
+        testID={`midia-tarjeta-${tarjeta.id}-borrar`}
+        accessibilityRole="button"
+        accessibilityLabel="Borrar"
+        onPress={() => {
+          swipeableRef.current?.close();
+          onBorrar();
+        }}
+        style={[styles.botonSwipe, { backgroundColor: tema.color.peligro }]}
+      >
+        <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+          Borrar
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={acciones}
+      rightThreshold={40}
+      overshootFriction={8}
+      // 🔴 SIN wiring explícito contra el `Gesture.Pan()` de `MarcoGlass` (drag-down-para-cerrar): ese
+      // gesto vive DENTRO de `MarcoGlass` y no se expone como prop, así que no hay forma de pasárselo acá.
+      // Confío en la resolución de arena por defecto de RNGH (el hijo más profundo prueba primero; si el
+      // gesto no activa por dirección — el Pan del marco es vertical, este swipe es horizontal — cede al
+      // padre), el mismo patrón que ya funciona con el `ScrollView` vertical de esta lista. **NO
+      // verificado — es justo el ítem del DoD "el swipe no rompe el panel deslizable, en device".**
+    >
+      <Row
+        onPress={onPress}
+        testID={`midia-tarjeta-${tarjeta.id}`}
+        accessibilityLabel={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
+      >
+        <View style={styles.tarjeta}>
+          <Text
+            numberOfLines={expandida ? undefined : 2}
+            style={{ color: tema.color.texto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}
+          >
+            {tarjeta.texto}
+          </Text>
+          {expandida && detalle !== '' && (
+            <Text testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              {detalle}
+            </Text>
+          )}
+        </View>
+      </Row>
+    </Swipeable>
   );
 }
 
@@ -227,4 +341,13 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   lista: { gap: 8, padding: 16, paddingBottom: 120 },
   tarjeta: { flex: 1, gap: 4 },
+  accionesSwipe: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 4 },
+  botonSwipe: {
+    height: '100%',
+    minWidth: 76,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
 });
