@@ -125,7 +125,12 @@ def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
         salida.append({
             "regla": REGLA_PRESUPUESTOS_ENFRIANDOSE, "entidad_tipo": "presupuesto",
             "entidad_id": p["id"], "dias_silencio": 14,
-            "datos": {"numero": p.get("numero"), "cliente": p.get("receptor_nombre"),
+            # 🔴 `receptor` viene ANIDADO (`PresupuestoStore._fila_a_dict`: `{"receptor": {"nombre":
+            # ...}}`), no un `receptor_nombre` plano — a diferencia de `CobroStore.impagos()`, que sí
+            # es plano. Confundir los dos deja `cliente` en `None` SIEMPRE, sin error — lo cazó el E2E
+            # de device contra un presupuesto real, porque ningún test unitario abre el store real
+            # (pasan el dict ya armado a mano, con la forma que el autor CREYÓ que tenía).
+            "datos": {"numero": p.get("numero"), "cliente": (p.get("receptor") or {}).get("nombre"),
                       "total": str(p.get("total"))},
         })
     return salida

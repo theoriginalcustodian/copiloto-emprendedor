@@ -14,14 +14,25 @@ import mi_dia_detector as detector
 # ── presupuestos_enfriandose ────────────────────────────────────────────────────────────────────
 
 def test_presupuesto_pendiente_y_sin_respuesta_dispara():
+    """🔴 `receptor` viene ANIDADO (`PresupuestoStore._fila_a_dict`), nunca `receptor_nombre` plano
+    — la forma real de un presupuesto real, no la que el autor de la regla creyó que tenía. Este
+    test con la forma equivocada habría pasado igual (nunca aserta `cliente`) y fue exactamente lo
+    que dejó pasar el bug: lo cazó el E2E de device, no este archivo — ahora sí lo cubre."""
     presupuestos = [{"id": 1, "estado": "pendiente", "sin_respuesta": True, "total": "50000.00",
-                     "numero": "0001-00001", "receptor_nombre": "Panadería SRL"}]
+                     "numero": "0001-00001", "receptor": {"nombre": "Panadería SRL"}}]
     salida = detector._evaluar_presupuestos_enfriandose(presupuestos)
     assert len(salida) == 1
     assert salida[0]["regla"] == detector.REGLA_PRESUPUESTOS_ENFRIANDOSE
     assert salida[0]["entidad_tipo"] == "presupuesto"
     assert salida[0]["entidad_id"] == 1
     assert salida[0]["dias_silencio"] == 14
+    assert salida[0]["datos"]["cliente"] == "Panadería SRL"
+
+
+def test_presupuesto_sin_receptor_no_explota():
+    presupuestos = [{"id": 1, "estado": "pendiente", "sin_respuesta": True, "total": "50000.00"}]
+    salida = detector._evaluar_presupuestos_enfriandose(presupuestos)
+    assert salida[0]["datos"]["cliente"] is None
 
 
 def test_presupuesto_pendiente_pero_CON_respuesta_no_dispara():
