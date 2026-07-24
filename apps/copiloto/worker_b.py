@@ -51,6 +51,8 @@ from afip_factura_activities import (
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
 from cliente_store import ClienteStore
+from mi_dia_schedule_activities import avanzar_tablero_mi_dia, set_mi_dia_deps
+from mi_dia_schedule_workflow import MiDiaDetectorWorkflow
 from cobro_store import CobroStore
 from presupuesto_store import PresupuestoStore
 from afip_onboarding_activities import (
@@ -220,14 +222,18 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable) -> dict:
     # esa lógica y se desincronizaría.
     set_drive_deps(gateway)
 
+    # Hito 7 — Schedule diario de "Mi día". `conn_factory` compartido, el MISMO que usa el resto de
+    # los stores (regla 7: nunca uno nuevo por tenant, ver docstring de `set_mi_dia_deps`).
+    set_mi_dia_deps(conn_factory)
+
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
-                          FacturaWorkflow, AnulacionWorkflow],
+                          FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, emitir_comprobante,
                                          generar_pdf_comprobante, buscar_comprobante,
                                          listar_comprobantes, marcar_comprobante_anulado,
-                                         archivar_factura_en_drive],
+                                         archivar_factura_en_drive, avanzar_tablero_mi_dia],
             "context_factory": ctx_factory}
 
 
