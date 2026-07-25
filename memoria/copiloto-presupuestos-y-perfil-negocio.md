@@ -25,6 +25,24 @@ hable el copiloto) se **inyecta en el system prompt** de cada turno.
    función que no va a usar casi nadie»*. Sobrevive **una** transición y es **derivada**, no
    almacenada: `facturado` sale de que exista el comprobante con CAE. *Un estado que nadie actualiza
    no es un dato, es una mentira que envejece.*
+
+   ⚠️ **CORRECCIÓN 2026-07-24 — esta entrada quedó obsoleta y hay que leerla con cuidado.** Lo que se
+   descartó fue el **pipeline** `enviado→aceptado→rechazado→facturado`. Lo que el hito 3 **sí
+   construyó** es otra cosa, y está VIVO en `apps/copiloto/presupuesto_store.py:41`: tres categorías
+   **`pendiente` / `aprobado` / `desestimado`** (ganado · perdido · **no sé**), con columna `estado` +
+   `estado_actualizado_en`, mapa de `TRANSICIONES` y 409 en la capa web ante una transición inválida.
+   Dos omisiones son deliberadas y están documentadas en el código: `desestimado→aprobado` no existe
+   (se emite un presupuesto nuevo) y **no se puede volver a `pendiente`**, porque *«borra información
+   que alguien declaró»*. `sin_respuesta` es un **matiz calculado** de pendiente, no un cuarto estado.
+
+   El porqué del rediseño, textual del código: *«si los no-marcados contaran como rechazos, la tasa de
+   conversión diría que se pierde el 80% de los presupuestos cuando en realidad no se sabe qué pasó — y
+   un número mal una sola vez hace que el emprendedor no vuelva a mirar la pantalla»*. Es decir: el
+   "no sé" explícito ES la decisión de producto, no una omisión.
+
+   **Cómo se descubrió:** el barrido de domain-modeling del 2026-07-24 cazó la contradicción entre esta
+   entrada (que decía "no re-litigar") y el handoff de diseño del 23 que marcaba los estados ✅ VIVO.
+   Ganó el código. [[la-evidencia-vence-y-el-documento-no-lo-dice]]
 2. **El Sheet de trazabilidad se descartó** (2026-07-21): *«tenemos todo en nuestra base de datos»*.
    `COPILOTO_PRESUPUESTOS_SHEET_ID` nunca se configuró y `sheet_fila` queda siempre `null`. Es código
    muerto a limpiar; FRONTEND confirmó que el campo está tipado pero **no se pinta en ninguna
