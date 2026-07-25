@@ -19,6 +19,7 @@
 ## 📐 Doctrina operativa (aplica siempre)
 
 - [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar ≠ **implementar (F7.5, entre sprints, ANTES que los fixes de app)**. Cola: `docs/aprendizajes/pendientes/` — vacía es gate binario del REPARTO (F3), no de F0.
+- [🔒⚡ Script-first y el modelo son GATES que FRENAN, no recordatorios](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — `feedback`. **Nivel 1, global.** 3er comando del mismo shape · lento sin background · mecánico sin `haiku` (+ su espejo, el error caro). `ask` + fail-open. Ojo: `\b` es ASCII y dejaba las regex mudas.
 - [🐕 watchdog-sesiones.ps1 NO activado — falso positivo de pausa deliberada](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — `feedback`. Decisión del operador. No re-proponer sin marker de pausa deliberada.
 - [🎯 Canibalizar `/goal` en el bucle — 3 candidatos, nada implementado](canibalizar-goal-de-claude-code-en-el-bucle.md) — `reference`. Handoff completo con complejidad y spike pendiente para retomar.
 - [🧰 16 skills de Matt Pocock instaladas — el set `engineering` NO está configurado](skills-matt-pocock-instaladas-set-engineering.md) — `reference`. 50 globales. `setup-matt-pocock-skills` sin correr: choca con `coordinacion/` como tracker.
