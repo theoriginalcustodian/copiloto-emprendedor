@@ -169,6 +169,7 @@
 - [🎨 Import de Claude Design en Claude Code = connector MCP](claude-design-import-connector.md) — `reference`. Agregar el connector `claude-design`, no `/design-login` suelto.
 - [BOM rompe el "set model" del plugin Claude Code](bom-rompe-settings-plugin-claude-code.md) — `reference`. BOM en `settings.json` → error; reescribir sin BOM.
 - [🔁 PWA service worker sirve build viejo](pwa-sw-staleness-gotcha.md) — `reference`. Deploy correcto ≠ el navegador lo tiene. Fix: `cleanupOutdatedCaches`+`no-cache`.
+- [🪟💥 Git Bash mangla paths con punto — y fabricó un handoff EXTERNO falso](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `project`. `origin/main:.githooks/…` → `Not a valid object name`, que se lee como "no está en main". Fix `MSYS_NO_PATHCONV=1`. **Un handoff externo se MIDE aunque diga "verificado empíricamente"** — 3 comandos.
 
 ## 🗄️ Historia de hitos cerrados
 
