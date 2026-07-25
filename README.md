@@ -1,6 +1,6 @@
 # Copiloto del Emprendedor
 
-**Hablale como a un socio. Te contesta con tus números reales.**
+**Hablale como a un asistente. Te contesta con tus números reales.**
 
 No es un chatbot con acceso a tu contabilidad. Es un copiloto que factura ante ARCA, anota lo que
 entra y lo que sale, arma presupuestos, y a la mañana te dice qué se te está pasando — sin que vos
