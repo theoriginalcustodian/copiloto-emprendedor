@@ -61,5 +61,11 @@ claude -p "<prompt self-contenido, igual que a un Agent>" \
 
 Mismo contrato que siempre: prompt self-contenido (no hereda el contexto del parent), scope
 declarado (`--allowedTools`/`--add-dir` en vez de "glob exclusivo" en el prompt), output a archivo.
-Especificado en `pretooluse_validate_agent.mjs` (regla 5) y en
-`~/.claude/commands/ejecutar-con-eficiencia.md` (Pilar 2).
+
+**Asentado en 4 lugares** (instrucción del operador: *«rotundamente inevitable ejecutarlo en todos
+los repositorios»*) — detalle completo en [[gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea]]:
+`pretooluse_validate_agent.mjs` (regla 5, dispara SIEMPRE, no condicional) · `HARNESS.md` §1.3 (smoke
+7/7) · `CLAUDE.md` global §"Sub-agentes van HEADLESS, no inline" (el `Agent` tool pasa de default a
+excepción documentada — interactividad mid-flight, `Workflow` tool, o calibrar un prompt nuevo) ·
+`ejecutar-con-eficiencia.md` Pilar 0 (no Pilar 2 — es el canal que reemplaza a 1-5, no uno más de la
+lista).
