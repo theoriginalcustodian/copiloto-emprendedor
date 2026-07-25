@@ -37,8 +37,32 @@ graphity_search(query="...", group_id="code-copiloto-emprendedor", scope="nodes"
   NO prueba que el símbolo exista hoy**. Por eso el paso 2 no es opcional.
 
 **Alcance — un vacío acá NO es hallazgo.** Cubre `apps/*`, `packages/core`, `motor`, `scripts`, `spikes`,
-`deploy`. **NO cubre** `docs/`, `coordinacion/`, `memoria/`, `_evidencia/`, `code/`. Si buscás algo de
-ahí y no aparece, está **fuera de alcance, no roto** ([[vacio-no-es-hallazgo-correr-el-control]]).
+`deploy` (declarado en `source_dirs`, `graphify-graphity-bridge/config/repos.toml:153`). **NO cubre**
+`docs/`, `coordinacion/`, `memoria/`, `_evidencia/`, `code/`. Si buscás algo de ahí y no aparece, está
+**fuera de alcance, no roto** ([[vacio-no-es-hallazgo-correr-el-control]]).
+
+### 🚫 Y eso es POR DISEÑO — no proponer meter documentos al grafo
+
+Decisión del operador, 2026-07-24, textual: *«no vamos a meter documentos en el código… para leer
+documentos lo hacemos local, con contexto local. **El grafo debe ser una copia fiel del código**. Esa es
+la mayor ventaja para lograr eficiencia en el contexto completo de la app: es un cerebro mapeado del
+repositorio que devuelve información en menos de 50 ms.»*
+
+**El porqué, que es lo que hay que entender para no re-proponerlo:** el valor del grafo es ser un
+**índice isomorfo** — una pregunta por semántica devuelve `file:line` verificable en milisegundos, y
+cada nodo tiene un referente único y comprobable en disco. Mezclarle prosa rompe las dos propiedades a
+la vez: infla el índice con nodos que **no se pueden probar contra un archivo** (paso 2 de la regla de
+arriba deja de existir para ellos) y hace que una búsqueda de código traiga documentos que *hablan* del
+símbolo en vez del símbolo. Se degrada justo lo que lo hace valioso. Los documentos se leen **local**,
+donde ya tenés el contexto y el archivo entero.
+
+Que el bridge **sepa** parsear markdown (`typing_rules/resolver.py:6` tipa un nodo por header) no es un
+argumento a favor: es para los `.md` que viven **dentro** de carpetas de código (ej. `scripts/wave-a-output/`).
+Capacidad ≠ mandato.
+
+Corolario práctico: si te falta contexto de una decisión, **no** es el grafo el que tiene que ampliarse
+— es `memoria/` + `docs/` los que se leen local. Y si una sesión propone ingestar prosa "para que el
+agente sepa más", esto ya se decidió: la respuesta es no.
 
 ## 🕐 El cuarto filo — el grafo conoce lo PUSHEADO, y nada más
 
