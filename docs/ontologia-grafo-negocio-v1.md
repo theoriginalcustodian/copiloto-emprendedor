@@ -3,6 +3,24 @@
 **Fecha:** 2026-07-22 · **Autor:** sesión de PLANIFICACIÓN · **Estado:** PROPUESTA — requiere tres
 decisiones del operador (§7) antes de bajar como contrato.
 
+> ## ⏰ ESTE DOCUMENTO ES UNA FOTO DEL 2026-07-22 — tres de sus afirmaciones ya son FALSAS
+>
+> *Revisado contra el código el 2026-07-24 (barrido de domain-modeling). El documento afirma cosas en
+> **presente** sobre el estado del sistema, y el hito 3 las construyó dentro de las 48 h siguientes.
+> El razonamiento de la ontología sigue siendo válido; **su inventario de "qué existe hoy" no**.*
+>
+> | Dice | Dónde | La realidad, verificada |
+> |---|---|---|
+> | *"Ese catálogo hoy **no existe**"* (Concepto) | §7.3 | **Existe.** `apps/copiloto/concepto_store.py`, 210 líneas, rotulado *"el hueco 3 del hito 3"* |
+> | *"🔴 HUECO — un presupuesto **no tiene estado**... no existe aceptado, rechazado ni sin respuesta"* | §9.2 | **Tiene.** `apps/copiloto/presupuesto_store.py:41`: `pendiente/aprobado/desestimado`, con `TRANSICIONES`, columna `estado` + `estado_actualizado_en`, y 409 ante transición inválida. `sin_respuesta` es un matiz **calculado** de pendiente |
+> | *"El copiloto principal no accede al grafo y **no tiene memoria conversacional**"* | intro | **Sí tiene.** `apps/copiloto/worker_b.py:141-143` construye el `memory_provider` e imprime *"AGENT_B memoria: ON (Graphity)"*; en prod `copiloto.env` aporta las claves. La frase quiso decir que el copiloto no accede a **este grafo de negocio nuevo** — pero dicha a secas contradice a `CLAUDE.md` y `HANDOFF.md` |
+>
+> **La lección, que vale más que las tres correcciones:** un documento que afirma *"X no existe"* sin
+> fecha de verificación ni forma de revalidarlo se convierte en una trampa — la próxima sesión planifica
+> construir algo que ya está. Antes de creerle a este archivo sobre qué existe, **grepealo contra el
+> código**. Ver [[la-evidencia-vence-y-el-documento-no-lo-dice]] y el glosario vivo en
+> [`CONTEXT.md`](../CONTEXT.md).
+
 **Método:** las entidades y atributos salen de medir las 7 tablas de negocio vivas en
 `_copiloto-afip-wt/apps/copiloto/uc_tables.json`, no de imaginar el dominio. El mecanismo de ingesta
 sale de [`ingesta-determinista-grafo.md`](ingesta-determinista-grafo.md), leído contra el código de

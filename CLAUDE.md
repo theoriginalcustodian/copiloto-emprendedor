@@ -147,6 +147,12 @@ El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquest
 
 ## 5. Referencias
 
+- **🗣️ Cómo se llaman las cosas → [`CONTEXT.md`](CONTEXT.md)** (raíz). Glosario del dominio: qué **es**
+  cada término del negocio y de la app, y cuál gana en cada colisión de nombres. **Leerlo antes de
+  nombrar una entidad, un endpoint o un campo nuevo** — sus `_Avoid_` no son estética: son ambigüedades
+  medidas contra el código. Las que más muerden: `ingreso`/`cobro`/`pago` son hoy casi la misma cosa
+  con tres nombres · `actividad` nombra **dos sistemas sin relación** (el feed SQL de negocio y la
+  memoria conversacional) · `cliente` es a quien le vende el emprendedor, **nunca** el tenant.
 - **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md` + 113 entradas); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
 - Plan de graduación (Fase 0/1/2): `docs/copiloto-emprendedor/2026-07-06-graduacion-plan-fase0-fase1.md`.
 - Dominio propio + auth Google: `docs/copiloto-emprendedor/` + config en `deploy/copiloto/`.
