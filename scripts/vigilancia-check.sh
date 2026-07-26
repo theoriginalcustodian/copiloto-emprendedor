@@ -69,6 +69,15 @@ esc_rc=$?
 [ "$esc_rc" -ne 0 ] && add "ESCALADORES:
 $esc_out"
 
+# ── 2.bis) LINT de contratos: un contrato_ nuevo sin artefacto es prosa ambigua ──────────────
+# Regla del formato desde 2026-07-26 (context engineering): todo contrato_/addendum_ baja con
+# ≥1 referencia RICA (shape/test/ejemplo en bloque cercado, o path a artefacto). El lint tiene
+# grandfather: los contratos previos no alarman. Detalle en el propio script.
+lint_out="$(bash "$REPO_ROOT/scripts/lint-contratos-referencias.sh" --quiet 2>&1)"
+lint_rc=$?
+[ "$lint_rc" -ne 0 ] && add "CONTRATOS SIN ARTEFACTO:
+$lint_out"
+
 # ── 3) VIDA por transcript: mtime puro, sin inferir contenido ──────────────────────────────────
 # Rotula por el MARCADOR DEL PROMPT DEL CRON ("sesión BACKEND"/"FRONTEND"/"PLANIFICACIÓN"), la
 # misma técnica de etiqueta_transcript() en no-ocio-check.sh — validada (8/0/0, medido 2026-07-24,
