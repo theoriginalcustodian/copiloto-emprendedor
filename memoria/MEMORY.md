@@ -18,16 +18,32 @@
 
 ## 📐 Doctrina operativa (aplica siempre)
 
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar ≠ **implementar (F7.5, entre sprints, ANTES que los fixes de app)**. Cola: `docs/aprendizajes/pendientes/` — vacía es gate binario del REPARTO (F3), no de F0.
+- [🔒⚡ 3 gates que FRENAN — script-first (2º repetido) · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — `feedback`. **Nivel 1, global.** Severidad EXPLÍCITA por ahorro medido. Asentado en `~/.claude/CLAUDE.md` + `HARNESS.md` + este repo. `ask` + fail-open. Ojo: `\b` es ASCII y dejaba las regex mudas.
+- [🖥️➡️📡 Sub-agentes van HEADLESS — comando completo + auth OAuth confirmada](subagentes-van-headless-no-inline-en-la-terminal.md) — `feedback`. `claude -p`, misma auth Max de la sesión (NO tarifa API — corregido, ver [[claude-code-headless-capabilities]]).
+- [✂️📏 Poda de suggesters (~2,57M tok/mes medidos) + lint de contratos con artefacto](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — `feedback`. 4 hooks OFF (reversible, criterio declarado); contratos ≥2026-07-26 exigen shape/test/path, cableado al vigía. Lateral: el checkout viejo había PERDIDO los scripts de los crones (exit 127 mudo).
+- [🚫 No PR/commit/merge por cada cambio chico — se juntan y se hace UNA vez](batch-cambios-no-pr-por-tweak.md) — `feedback`. **Reincidí 2026-07-25: 7 PRs en una sesión.** Default: NO mergear hasta que el operador cierre el tema.
+- [🐕 watchdog-sesiones.ps1 NO activado — falso positivo de pausa deliberada](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — `feedback`. Decisión del operador. No re-proponer sin marker de pausa deliberada.
+- [🎯 Canibalizar `/goal` en el bucle — 3 candidatos, nada implementado](canibalizar-goal-de-claude-code-en-el-bucle.md) — `reference`. Handoff completo con complejidad y spike pendiente para retomar.
+- [🧰 16 skills de Matt Pocock instaladas — el set `engineering` NO está configurado](skills-matt-pocock-instaladas-set-engineering.md) — `reference`. 50 globales. `setup-matt-pocock-skills` sin correr: choca con `coordinacion/` como tracker.
 - [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — `project`. Hay cero usuarios; "prod-beta" desvía a migraciones defensivas. El dataset sintético debe traer cambios en el tiempo.
 - [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. Montar en local rechazado 2×.
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. La prueba vale, la aserción no. [[spike-first-central-proyecto]]
 - [Spike-first es central](spike-first-central-proyecto.md) — `feedback`. Cimiento no verificado se amplifica a escala.
+- [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — `feedback`. 6 errores seguidos no eran bugs del script: era el prompt que ordenaba consultarlo ANTES que al log. Preguntá qué regla te lleva a la fuente derivada.
+- [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — `feedback`. Un agente reusó "la mitad validada" y reintrodujo el fallo de rotular por menciones. El matiz va en un COMENTARIO en el punto de decisión, no sólo en memoria.
+- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — `project`. `remote_sha` en ceros ⇒ el pre-push sincroniza el repo ENTERO y el push "tarda minutos". Base correcta: `merge-base origin/main`. Deuda con dueña.
+- [⏱️👁️ Mirar la HORA de la acción no es mirar la ACCIÓN](mirar-la-hora-de-la-accion-no-es-mirar-la-accion.md) — `feedback`. `0min` + mismo `ls` tres ciclos = gira en vacío. Compará contra el ciclo anterior, y auditá la espera que declara.
+- [📬🕳️ "No lo vi" NO distingue "no llegó" de "no lo procesé"](no-lo-vi-no-distingue-no-llego-de-no-lo-procese.md) — `feedback`. El relato de fallo de un agente es TESTIMONIO, no medición: contrastalo con el transcript antes de rediseñar el canal. Un aviso uniforme no interrumpe.
+- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — `reference`. `cmd | tail` devuelve el status de `tail`. Una tarea de fondo dijo "exit 0" con el traceback adentro. El veredicto es la SALIDA, no el status.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo — correr el control](vacio-no-es-hallazgo-correr-el-control.md) — `feedback`. Hornear el control en el script.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — `feedback`. Deliberada+visible OK; impaga/invisible prohibida.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — `feedback`. Test *¿puede volver?* → si no es "no por construcción", no terminó.
 - [🚫💤 CERO tiempo ocioso — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — `feedback`. Único no-trabajar válido = terminó-todo-y-reportó. Límite: no inventar forma para no ociar.
 - [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — `feedback`. Arrancar el próximo hito ya contratado = ejecución, no MAYOR. Frené la fábrica 4 h esperando un "dale". Corré el control: leé los disparadores.
+- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — `feedback`. **Regla dura.** Si el operador puede preguntar "¿y cómo seguimos?", cerraste mal. Cierre = lo siguiente YA tomado, o el disparador exacto + quién lo tiene. Canon 8a.
+- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — `feedback`. **Regla dura.** Crédito/cuota/tiempo que se acaban ⇒ reordená por impacto÷costo y despachá scripts+bg YA. Enumerar bien y no ejecutar ES el error. Canon 8b.
 - [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — `feedback`. **9 h ociosas de noche con 3 monitores.** El blocker de otra sesión suele ser categoría-A (un grep MÍO), no externo. `no-ocio-check.sh` + dead-man 30min + push nocturno. §4.2.sexies.
 - [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — `reference`. **Regla canónica, ahorra greps y tokens.** MCP `graphity-code`, `group_id="code-copiloto-emprendedor"` SIEMPRE; paths sin prefijo `apps/`; nodos pueden estar stale → probar en el archivo. Control 4/4 exacto. **Frescura: conoce lo PUSHEADO y nada más** — trabajo en vuelo (otra sesión, sin pushear, `--no-verify`) es INVISIBLE; adelantar con `scripts/graph-sync.sh`.
 - [♻️🔒 Reutilizar es REGLA — el inventario va ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — `feedback`. **Cómo enunciás el problema decide si reusás o inventás.** "X no encaja en Y" invita a construir de cero. Todo `contrato_` abre con `§0 Reutilización` (§4.2.septies) o no se despacha.
@@ -42,9 +58,9 @@
 - [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — `feedback`. Failure mode espejo: pesimismo performativo. Afinar, no rebajar.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — `feedback`. Actualizar el doc-de-registro único (`coordinacion/PLAN.md`), verificado que existe.
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — `feedback`. En este repo es `coordinacion/PLAN.md`.
-- [No PR por cada cambio chico — batchear](batch-cambios-no-pr-por-tweak.md) — `feedback`. Acumular cambios chicos → PRs con sentido.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
 - [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
+- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — `project`. Carpeta `coordinacion/Antigravity/`; NO es cuarta sesión; cron temporal al activarlo. Reglas: COORDINACION.md §7.
 - [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
 - [💥 `git checkout <ref> -- .` PISA los cambios solo-en-working-tree — irrecuperables](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — `project`. Un diff sin commit no lo salva ni reflog. Para "¿al día con origin?" usá `merge-base --is-ancestor`, no toques archivos. Commiteá la memoria pronto.
 - [📱🍳 Un gate de device se corre con RECETA async, no con ventana viva](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — `feedback`. Device de dueño único + buzón asíncrono → el dueño lo corre solo con gestos exactos escritos. El cuello era desconocer la UI, no la sincronía.
@@ -60,12 +76,14 @@
 - [🤖 Agente acepta el chat pero NUNCA responde → cuota del LLM](agente-no-responde-revisar-cuota-llm.md) — `project`. `429 insufficient_quota` mata el workflow; mirar el journal.
 - [🚀 Arranque Expo en device: expo-doctor PRIMERO](arranque-device-metro-disable-hierarchical-lookup.md) — `project`. Era `metro disableHierarchicalLookup=true`, no versiones.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — `project`. No es git: pisa en silencio. Chequeo `grep -c <símbolo_de_prod>`.
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — `project`. Slash commands/hooks/scripts se leen del cwd: rama vieja = herramientas viejas, sin aviso. Verificá contra `origin/main`, no el working tree.
 - [🏗️ El provisionado "idempotente" NO reconstruye la base desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — `project`. **LEER antes de levantar un entorno nuevo (DR/staging/región).** Pasada 1 falla, 2 OK: `ALTER TABLE IF EXISTS` es no-op sobre tabla inexistente. Idempotente ≠ reproducible.
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — `feedback`. 2º lente = el atajo que *colapsa* el problema.
 - [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — `feedback`. Tu propio estado envejece. Un estado falso da quietud, no bug.
 - [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — `feedback`. La espera CON disparador (device) tapa la rebanada de código-puro que quedó adentro. Descomponer por disparador REAL antes de declararla.
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — `feedback`. Correr el caso vacío: el default de toda regla restrictiva es no-hacer.
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — `feedback`. Preguntarse *¿qué devolvería si lo que mido estuviera roto?* (catálogo de 11+ casos).
+- [🫥 Un instrumento que NO MIRA nunca falla — su silencio se lee VERDE](instrumento-que-no-mira-nunca-falla.md) — `feedback`. El sync subió 15.906 filas y el control dijo "nada verificable". Preguntá **sobre cuántos elementos miró**, aparte de si pasó. Diferencial obligatorio.
 - [🕳️🚪 Un stub registrado ANTES del router real lo ensombrece](stub-registrado-antes-del-router-real-lo-ensombrece.md) — `project`. `/actividad` sirvió 501 en prod desde siempre; código verde, endpoint muerto. Guard = test por HTTP contra el vivo, no el unit. El comentario lo predijo y no se borró.
 - [🕵️ Probar AUSENCIA necesita otro instrumento — y el device es de BACKEND](probar-ausencia-necesita-otro-instrumento.md) — `feedback`. Control de 12s no da negativo contra actor intermitente. Dueño único.
 - [📣 El encabezado tranquilizador se come la carga útil](encabezado-tranquilizador-se-come-la-carga-util.md) — `feedback`. Un evento por pendiente; una línea "OK" tapó 6.
@@ -81,6 +99,7 @@
 - [⏱️ Dato en DOS tiempos, lector de UNO](dato-en-dos-tiempos-lector-de-un-tiempo.md) — `project`. Cortar en el 1er "listo" da dato prematuro; cortar por `terminado`.
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — `project`. Facturar 2× → 2 CAE. `USE_EXISTING` duplica. Medir el EFECTO.
 - [🧹 La deuda vencida no siempre se paga en un paso](la-deuda-vencida-no-siempre-se-paga-en-un-paso.md) — `feedback`. El `DROP COLUMN` rompía el deploy que la nombra. `grep` en TODO el repo, incl. deploy.
+- [🔀🌐 Mover la IP, no reconfigurar los consumidores](mover-la-identidad-de-red-en-vez-de-reconfigurar-consumidores.md) — `project`. **LEER antes de migrar un host.** 2 calls de API vs N deploys; el grep no ve consumidores fuera de tu perímetro. Ojo con dominios que llevan la IP en el hostname (`*.1-2-3-4.sslip.io`) y `auto_delete` de la primary IP.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `project`. Sin documento, `$0` afirma "no compró" cuando es "no lo sé". La distinción sobrevive al píxel.
 - [🎯 Discriminar un caso por la AUSENCIA de un campo](discriminar-por-ausencia-de-estructura.md) — `project`. El caso "por descarte" se traga todo caso nuevo. Guarda de exhaustividad + test con la forma real.
 - [🌐 El catch-all del SPA vuelve "no desplegado" indistinguible de "roto"](catch-all-vuelve-no-desplegado-indistinguible-de-roto.md) — `project`. Un GET da 200 con HTML. Sondar por verbo ≠ GET, primero contra ruta inexistente.
@@ -155,6 +174,7 @@
 - [🎨 Import de Claude Design en Claude Code = connector MCP](claude-design-import-connector.md) — `reference`. Agregar el connector `claude-design`, no `/design-login` suelto.
 - [BOM rompe el "set model" del plugin Claude Code](bom-rompe-settings-plugin-claude-code.md) — `reference`. BOM en `settings.json` → error; reescribir sin BOM.
 - [🔁 PWA service worker sirve build viejo](pwa-sw-staleness-gotcha.md) — `reference`. Deploy correcto ≠ el navegador lo tiene. Fix: `cleanupOutdatedCaches`+`no-cache`.
+- [🪟💥 Git Bash mangla paths con punto — y fabricó un handoff EXTERNO falso](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `project`. `origin/main:.githooks/…` → `Not a valid object name`, que se lee como "no está en main". Fix `MSYS_NO_PATHCONV=1`. **Un handoff externo se MIDE aunque diga "verificado empíricamente"** — 3 comandos.
 
 ## 🗄️ Historia de hitos cerrados
 
