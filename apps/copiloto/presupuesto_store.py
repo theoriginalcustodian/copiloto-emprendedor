@@ -18,10 +18,39 @@ de `DATABASE_URL`, que BYPASSA la policy RLS.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from decimal import Decimal
 from typing import Callable
 
 from evento_store import registrar_evento
+
+
+@contextmanager
+def _transaccion(conn):
+    """Agrupa varias sentencias en UNA transacción real sobre una conexión autocommit.
+
+    🔴 **Existía la palabra, no el mecanismo.** El docstring de `crear` decía "en UNA transacción" y
+    "dentro de la misma transacción", pero la conexión viene con `autocommit=True`
+    (`serve.py::_conn_factory_from_env`): cada `execute` se confirmaba solo. Un fallo entre el INSERT
+    de la cabecera y el de los ítems —un ítem con un decimal inválido alcanza— dejaba un presupuesto
+    guardado **sin lo presupuestado**, que es exactamente lo que la pantalla de detalle no puede
+    mostrar. Una afirmación de atomicidad que el código no cumple es peor que no afirmarla: nadie
+    vuelve a revisarla.
+
+    Se restaura el `autocommit` previo al salir: la conexión sale de una fábrica que crea una nueva
+    por invocación, así que nadie más la comparte, pero devolverla como vino evita que el próximo uso
+    dependa de por dónde pasó ésta.
+    """
+    previo = conn.autocommit
+    conn.autocommit = False
+    try:
+        yield
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.autocommit = previo
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_presupuestos"
@@ -192,7 +221,7 @@ class PresupuestoStore:
         total = sum(Decimal(str(i.get("cantidad", 1))) * Decimal(str(i.get("precio_unitario", 0)))
                     for i in items)
         conn = self._conn_factory()
-        with conn.cursor() as cur:
+        with _transaccion(conn), conn.cursor() as cur:
             cur.execute(f"SELECT COALESCE(max(numero), 0) + 1 FROM {_TABLE} WHERE cliente_id=%s",
                         (self._cid,))
             numero = cur.fetchone()[0]
@@ -245,8 +274,12 @@ class PresupuestoStore:
                 f"sheet_fila=COALESCE(%s, sheet_fila) WHERE cliente_id=%s AND id=%s",
                 (doc_id, doc_link, sheet_fila, self._cid, presupuesto_id))
 
-    def marcar_factura(self, presupuesto_id: int, factura_id: str) -> bool:
+    def marcar_factura(self, presupuesto_id: int, factura_id: str | None) -> bool:
         """Ata el presupuesto al BORRADOR de factura que se armó desde él.
+
+        `factura_id=None` lo DESATA. Existe para compensar: si abrir el borrador se ata y el paso
+        siguiente falla, dejar el vínculo puesto bloquearía el presupuesto para siempre con un
+        `ya_facturado` sobre una factura que nunca se emitió (ver `presupuestos_web::facturar`).
 
         Guarda `factura_id`, no un flag "facturado": el borrador puede cancelarse y entonces este
         presupuesto NUNCA se facturó. `facturado` se deriva del comprobante real (ver `_DERIVADOS`).
