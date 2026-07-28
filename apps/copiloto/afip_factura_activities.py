@@ -97,11 +97,18 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         activity.logger.warning(
             "el comprobante %s-%s ya estaba autorizado en AFIP: se adopta en vez de reemitir",
             punto_venta, siguiente)
-        cae = str(info.get("CodAutorizacion") or "")
+        # El campo del código de autorización CAMBIA según la operación del WS: `FECompConsultar`
+        # lo devuelve en `CodAutorizacion`/`FchVto`, mientras que `FECAESolicitar` usa `CAE`/`CAEFchVto`.
+        # Leer sólo uno hace que un comprobante REAL se lea como inexistente y se reemita. La suite
+        # ARCA pagó exactamente este caso contra AFIP real (`mot07-consulta-fe.ts:151-155`, FIX smoke
+        # 2026-06-15: "antes buscaba det.CAE → devolvía found:false pese a que AFIP traía el
+        # comprobante real"). Se aceptan ambos.
+        cae = str(info.get("CodAutorizacion") or info.get("CAE") or "")
         if cae:
             comprobante_id = store.registrar(
                 cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=siguiente, cae=cae,
-                cae_vto=_fecha(info.get("FchVto")), fecha_emision=_fecha(info.get("CbteFch")),
+                cae_vto=_fecha(info.get("FchVto") or info.get("CAEFchVto")),
+                fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
                 receptor_nombre=receptor_nombre or None,
                 total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)

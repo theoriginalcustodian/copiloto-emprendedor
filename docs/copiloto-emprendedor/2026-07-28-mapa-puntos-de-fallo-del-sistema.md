@@ -78,6 +78,20 @@ La capa 2 pregunta por el número **siguiente**, que por construcción nunca fue
 
 Y en ese escenario **ninguna de las dos capas protege**: la capa 1 consulta una fila que nunca se escribió, la capa 2 consulta un número que nunca se emitió. Todo con `maximum_attempts=3` (`afip_factura_workflow.py:54`, `afip_anulacion_workflow.py:22`).
 
+### La tercera vía: `ResultGet` como lista ✅ CORREGIDA
+
+Medida con control diferencial (lógica vieja vs nueva, mismos inputs). **Son dos modos de falla distintos**, no uno:
+
+| Forma de la respuesta | Lógica vieja (`afip_gateway.py:146`) | Consecuencia |
+|---|---|---|
+| `{"ResultGet": [ {...} ]}` | devolvía **la lista** | `_emitir_sync:100` hace `.get()` sobre una lista → **`AttributeError` crudo** → no es `ErrorAfip`, propaga → Temporal reintenta → `getLastVoucher` ya avanzó → **emite el número siguiente** |
+| `[ {...} ]` (lista en la raíz) | `{}` | `existe_comprobante` → `False` → *"no existe"* → **reemite directo** |
+| `{"ResultGet": []}` | `{}` | correcto — ausencia real |
+
+La primera fila es la que estaba mal descrita en la versión anterior de este documento: no era un `{}` silencioso, era una excepción cruda que termina en el mismo daño por otro camino. Corregido con `_primer_result_get()` + 4 tests, incluido el **control negativo** (lista vacía sigue siendo ausencia — el fix no puede inventar comprobantes).
+
+Es el *anti-pattern P5* que la suite ARCA ya tenía catalogado (`mot07-consulta-fe.ts:142-149`).
+
 ### La segunda debilidad del mismo guard (independiente de la anterior)
 
 `existe_comprobante` (`afip_gateway.py:148-158`) además **falla abierto**:

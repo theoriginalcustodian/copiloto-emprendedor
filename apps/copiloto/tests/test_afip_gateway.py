@@ -156,7 +156,13 @@ def test_existe_comprobante_false_cuando_no_hay_nada():
 
 
 def test_existe_comprobante_no_explota_si_el_ws_falla():
-    """Ante un error de consulta devuelve False: el llamador decide, no se aborta la emisión por esto."""
+    """Ante un error de consulta devuelve False: el llamador decide, no se aborta la emisión por esto.
+
+    ⚠️ DEUDA CONOCIDA (plan de errores §Fase 0, item 0.1d): este `False` es **fail-open** — el
+    llamador lo lee como "no existe" y reemite. Este test hoy CONFIRMA ese comportamiento en vez de
+    vigilarlo. Se invierte cuando 0.1d pase a bloqueante, tras el baseline sin falsos positivos
+    (criterio adoptado de ARCA `12_DUAL_CHECK:139`). Propietario: BACKEND.
+    """
     billing = BillingFake(excepcion=Exception("timeout"))
     assert not gateway(billing).existe_comprobante(numero=1, punto_venta=1, tipo_cbte=11)
 
@@ -166,6 +172,36 @@ def test_info_comprobante_devuelve_result_get_plano():
     info = gateway(billing).info_comprobante(numero=1, punto_venta=1, tipo_cbte=11)
     assert info["Resultado"] == "A"
     assert info["CodAutorizacion"] == "123"
+
+
+def test_info_comprobante_soporta_result_get_como_LISTA():
+    """El WS no es consistente: `ResultGet` puede venir como lista.
+
+    Antes se devolvía `{}` ante esta forma — y `{}` lo lee el check-before-act como "el comprobante
+    no existe", habilitando una SEGUNDA emisión sobre una respuesta perfectamente válida de AFIP.
+    """
+    billing = BillingFake(info={"ResultGet": [{"Resultado": "A", "CodAutorizacion": "123"}]})
+    info = gateway(billing).info_comprobante(numero=1, punto_venta=1, tipo_cbte=11)
+    assert info["CodAutorizacion"] == "123"
+
+
+def test_existe_comprobante_true_con_result_get_como_LISTA():
+    """El corolario del anterior sobre el guard: una lista no puede leerse como ausencia."""
+    billing = BillingFake(info={"ResultGet": [{"CbteDesde": 14679, "Resultado": "A"}]})
+    assert gateway(billing).existe_comprobante(numero=14679, punto_venta=1, tipo_cbte=11)
+
+
+def test_info_comprobante_soporta_respuesta_sin_envoltorio():
+    """Algunas respuestas llegan ya planas, sin la clave `ResultGet`."""
+    billing = BillingFake(info={"Resultado": "A", "CodAutorizacion": "123"})
+    assert gateway(billing).info_comprobante(numero=1, punto_venta=1, tipo_cbte=11)["CodAutorizacion"] == "123"
+
+
+def test_info_comprobante_lista_vacia_es_ausencia_real():
+    """Control negativo: una lista VACÍA sí es ausencia — el fix no debe inventar un comprobante."""
+    billing = BillingFake(info={"ResultGet": []})
+    assert gateway(billing).info_comprobante(numero=1, punto_venta=1, tipo_cbte=11) == {}
+    assert not gateway(billing).existe_comprobante(numero=1, punto_venta=1, tipo_cbte=11)
 
 
 # ---------------------------------------------------------------------------
