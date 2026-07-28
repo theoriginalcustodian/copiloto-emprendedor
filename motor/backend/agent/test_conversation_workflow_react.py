@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import pytest
 from temporalio import activity
-from temporalio.client import WorkflowFailureError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
@@ -419,8 +418,14 @@ async def test_react_llm_non_retryable_error_fails_in_one_attempt():
     LLM debe fallar la activity `call_llm_tools` en UN solo intento -- Temporal matchea `non_retryable_error_types`
     por el NOMBRE de la clase de la excepción (str), cableado en `LOOP_RETRY`. Sin el fix, la activity quemaría
     los 5 reintentos de `LOOP_RETRY` contra la MISMA credencial rota antes de fallar igual (nada lo arregla
-    reintentando). El workflow FALLA (nadie captura `ActivityError` en el loop react hoy) pero rápido, no tras 5
-    intentos con backoff."""
+    reintentando).
+
+    ⚠️ **Lo que este test dejó de afirmar (2026-07-28).** Antes esperaba `WorkflowFailureError`, porque
+    "nadie captura `ActivityError` en el loop react". Eso era el fallo, no el contrato: el workflow es
+    la sesión PERMANENTE del emprendedor, y morirse por un turno dejaba el chat aceptando mensajes sin
+    contestar nunca — el síntoma real del `429 insufficient_quota`
+    (`test_turno_no_mata_la_sesion.py`). Ahora el turno falla, la persona se entera y la sesión sigue.
+    Lo que este test vigila —UN intento, no cinco— no cambió."""
     from clients.agent.providers.llm import NonRetryableError
 
     attempts = {"n": 0}
@@ -448,8 +453,8 @@ async def test_react_llm_non_retryable_error_fails_in_one_attempt():
             h = await env.client.start_workflow(ConversationWorkflow.run, _cfg(engine_mode="react"),
                                                 id="r10", task_queue="r10")
             await h.signal(ConversationWorkflow.receive_message, {"text": "hola", "kind": "text"})
-            with pytest.raises(WorkflowFailureError):
-                await h.result()
+            await h.signal(ConversationWorkflow.close)
+            await h.result()                      # ya NO levanta: el turno falla, la sesión no
     assert attempts["n"] == 1   # non-retryable: UN solo intento, NO quema los 5 de LOOP_RETRY
 
 
