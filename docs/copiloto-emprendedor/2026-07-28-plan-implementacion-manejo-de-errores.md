@@ -1,122 +1,153 @@
-# Plan de implementación — manejo de errores INL en el copiloto
+# Plan de implementación — manejo de errores del copiloto
 
-> **Fecha:** 2026-07-28 · **Objetivo declarado por el operador:** *que el software pueda mantenerse solo, con HITL principalmente en el merge a main, hasta que el sistema madure y pueda auto-operarse.*
+> **v2 — 2026-07-28.** Reescrito tras auditar `aplicacion-arca-fe` (5 barridos con globs exclusivos + lectura directa).
+> **Objetivo del operador:** *que el software pueda mantenerse solo, con HITL principalmente en el merge a main.*
 >
-> **Insumos:** [mapa de puntos de fallo](2026-07-28-mapa-puntos-de-fallo-del-sistema.md) · [metodología INL](2026-07-28-metodologia-inl-manejo-de-errores.md) · [auditoría de la app](2026-07-28-analisis-manejo-de-errores-toda-la-app.md).
+> **El cambio de v1 a v2:** v1 diseñaba A-4 desde la metodología INL. v2 **porta selectivamente un sistema que ya corre**. ARCA implementó esto y dejó las cicatrices puestas — pero también dejó partes muertas y partes sin terminar, y la mitad del trabajo es distinguirlas.
+>
+> **Insumos:** [mapa de puntos de fallo](2026-07-28-mapa-puntos-de-fallo-del-sistema.md) · [metodología INL](2026-07-28-metodologia-inl-manejo-de-errores.md) · [auditoría de la app](2026-07-28-analisis-manejo-de-errores-toda-la-app.md) · repo ARCA.
 
 ---
 
-## 0. Inventario de lo existente — qué se extiende, no qué se crea
+## 0. La advertencia que ordena todo lo demás
 
-Regla del repo: todo diseño abre con esto. Casi nada de A-4 se construye de cero.
+**ARCA migró de n8n a Temporal el 2026-06-15 (ADR-050), y Zep Cloud quedó deprecado a favor de Graphity.** Toda la documentación de `docs/12_Error_Handling_System/` es de abril 2026 — **anterior a ambas migraciones**.
 
-| Pieza que A-4 necesita | Ya existe | Evidencia | Qué falta |
+Consecuencia práctica: **la carpeta de docs describe mayormente el motor muerto.** Portar desde ahí sería portar el diseño de un sistema apagado.
+
+| Artefacto | Estado real | Evidencia |
+|---|---|---|
+| `01_ARQUITECTURA_GLOBAL_L0_L4.md` (las 7 capas L0-L6) | ⚰️ **motor n8n legacy** — sólo 2 de 7 niveles tienen equivalente verificado en Temporal | rep-A |
+| `04_CONTRATO_CUSTOMDATA.md`, `09_GUIA_ACTIVACION_Y_TESTING.md` | ⚰️ n8n (`$execution.customData` no existe fuera de n8n) | rep-D |
+| `03_BOT08_REFERENCIA_TECNICA.md` (recuperador DLQ) | ⚠️ el propio doc dice **"❌ Pendiente activación"** | `03_BOT08:6` |
+| `06_INTEGRACION_SENTINEL_C1.md`, `08_GITHUB_DEDUPLICACION.md` | ⚰️ n8n + Zep | rep-C |
+| **Código Temporal en `lib/shared/temporal/` e `infra/temporal/workers/`** | ✅ **VIVO** — es de donde hay que portar | rep-A, lectura directa |
+| **`.github/workflows/`** | ✅ **VIVO** — el ciclo de autosanación corre acá | rep-E, lectura directa |
+
+**Regla del port: se porta desde el código, no desde los docs.** Los docs sirven para entender el *por qué*; el *qué* sale de `.ts` y `.yml`.
+
+---
+
+## 1. Lo que ARCA resolvió y se porta (verificado en código)
+
+| # | Pieza | Archivo de ARCA | Al copiloto |
 |---|---|---|---|
-| Tabla multi-tenant con RLS | `provision(spec, conn)` crea `POLICY tenant_isolation` automáticamente | `deploy/worker/provision_tables.py:89-115` | sólo el spec de la tabla nueva |
-| **Log append-only con payload libre** | `copiloto_eventos` + `registrar_evento(cur, cliente_id, *, entidad_tipo, entidad_id, evento, datos: dict)` | `evento_store.py:55-57` | el mismo patrón, otra tabla |
-| Estructura de pendientes | `invalidaciones_pendientes`, `chequeos_fallidos` | `grafo_writer.py:115-141` | generalizarla |
-| `Idempotency-Key` hacia afuera | ya se manda a Graphity structured | `grafo_writer.py:100` | replicar el criterio |
-| Clave de idempotencia en workflow | `_react_idem_key()` | `conversation_workflow.py:450` | **usarla** en 2 activities que no la usan |
-| Taxonomía transitorio/permanente | 4 embriones sin nombre común | `llm.py:30` · `afip_gateway.py:20-34` · `composio_gateway.py:33-62` · `graphity_memory_client.py:34` | unificar el vocabulario |
-| Códigos de error canónicos hacia el cliente | `errores_web.py` + `conflicto()` valida contra `CODIGOS` en runtime | `errores_web.py:26-65` | extender de 409 a 4xx/5xx |
+| 1 | **`djb2Hash()`** — 9 líneas, cero dependencias | `lib/shared/temporal/err00-djb2-hash.ts:28-36` | copiar tal cual; fingerprint = `workflow\|errorType\|errorMessage[:200]` |
+| 2 | **`handleGlobalError()`** — valida input, upsertea con dedupe, auditea sin PII, alerta sólo ante flood, **nunca lanza por fallo de DB** | `lib/shared/temporal/activities/err00-handle-global-error.ts:170-292` | el artefacto más copiable de todo el repo |
+| 3 | **Upsert atómico con dedupe** `ON CONFLICT (error_fingerprint) DO UPDATE … RETURNING dedupe_count, (xmax = 0)` | `migraciones_supabase/2026-06-01_sprint1_wave4_err00_dedupe.sql:184-199` | 1:1 a Postgres. **El copiloto ya usa `xmax=0`** en `afip_comprobante_store.py:63` — mismo linaje |
+| 4 | **`FLOOD_THRESHOLD`** — alerta sólo al superar N reincidencias | `err00-handle-global-error.ts:63` | portar como **parámetro**, no como el `10` hardcodeado |
+| 5 | **Taxonomía tipada** `AfipBusinessError`→`nonRetryable`, `AfipRateLimitError`/`AfipInfraError`→`retryable` | `mot07-consulta-fe.ts:336-379` | es el `ERROR_MAP` de A-1, ya escrito |
+| 6 | **Categorías con semántica de acción** `business_error` (DLQ, fix humano) · `infra_error` (retry auto) · `manual_intervention` (DLQ bloqueado) · `cascading` (revisar padre) | `error-drawer.tsx:21-55` | casi calcado de Temporal nativo; el copiloto tiene 16 `RetryPolicy` sin categorizar |
+| 7 | **Agrupación por fingerprint + contador** en vez de lista plana | `centro-errores-view.tsx:9,264,270-274` | sin esto, 42 `except` genéricos = ruido 1:1 |
+| 8 | **Máquina de 3 estados de DLQ** `Resolved` / `Still_Failing` / `Skip_Irrecuperable` + ventana `updated_at < now()-N` | `03_BOT08:44-65,94-96` | evita el loop infinito que ARCA ya vivió en v1.0 |
+| 9 | **Audit log SIN `errorMessage`** — excluido por PII/datos fiscales | `err00-handle-global-error.ts:403-413` + test `:298-304` | principio directo |
+| 10 | **Graceful degradation en observabilidad**: registrar el error nunca puede romper el flujo | `err00-handle-global-error.ts:264-276` | *"un error al loguear un error no debe generar un error nuevo"* |
 
-**La conclusión del inventario:** el copiloto ya tiene el **log** (`copiloto_eventos`), el **provisionado con RLS**, el **patrón de append inmediato** y un **caso de referencia de fail-open trazable** (`grafo_writer`). La DLQ de A-4 es una tabla hermana de `copiloto_eventos` con el mismo mecanismo — no una pieza de infraestructura nueva.
+## 1.bis El ciclo de autosanación (`.github/workflows/`, vivo)
 
----
-
-## 1. El orden, y por qué no es L0→L5
-
-INL numera la escala L0→L5, pero **implementarla en ese orden sería un error acá**, por dos razones medidas en el mapa:
-
-1. **Los pasos 2-4 de A-4 no tienen sobre qué operar sin el paso 1.** No se puede encapsular, depositar ni sanar un error que se evaporó en un `except: return None`. Y hoy hay 22 sitios así, más 42 `except` genéricos sólo en backend-app.
-2. **Un guard fail-open es peor que no tener guard.** Produce confianza falsa: el sistema *cree* que está protegido contra la doble emisión fiscal y no lo está. Sanar automáticamente encima de eso amplifica el daño en vez de contenerlo.
-
-Por eso el orden es: **cerrar lo que miente → capturar → depositar → sanar**, con el gate mecánico como precondición transversal.
-
----
-
-## Fase 0 — Cerrar los fail-open (lo que produce daño real hoy)
-
-Nada de esto es infraestructura nueva. Son cambios quirúrgicos en puntos identificados con `archivo:línea`.
-
-| # | Cambio | Dónde | Criterio de cierre (binario) |
+| # | Pieza | Archivo | Por qué importa |
 |---|---|---|---|
-| **0.1a** | **El check-before-act interroga el ÚLTIMO autorizado, no el siguiente.** Hoy pregunta por `ultimo+1`, que por construcción nunca fue emitido — el guard no puede dar `True` en el escenario que dice cubrir. Debe consultar `info_comprobante(ultimo)` y **comparar su contenido contra el payload** (importe, `DocNro`, fecha) para decidir si ese comprobante es nuestro y adoptarlo. El código de adopción ya existe (`:95-109`), sólo apunta al número equivocado. | `afip_factura_activities.py:94-95` | test adversarial: AFIP autoriza y la activity lanza antes de `registrar` → el reintento **adopta** el comprobante existente, **no emite uno nuevo**. Hoy emite el siguiente número. |
-| **0.1b** | **`existe_comprobante` deja de tragar `ErrorAfip`** (segunda vía al mismo daño, independiente de 0.1a). Si no puedo *confirmar*, **no emito**: la excepción propaga. Fail-**closed**. | `afip_gateway.py:155-158` | test: gateway cuyo `getVoucherInfo` lanza `ErrorAfip` → `emitir` **no** llama a `createNextVoucher`. Hoy sí lo llama. |
-| 0.2 | **`marcar_comprobante_anulado` dentro de `try/except`** + estado terminal explícito en el `except`. | `afip_anulacion_workflow.py:98-101` | test: activity que agota reintentos → `estado()` devuelve `terminado: True` con motivo. Hoy devuelve `"emitiendo_nota_credito"` para siempre. |
-| 0.3 | **`consultar_*` distingue "no existe" de "Temporal caído"** → 503, no 404. | `web.py:169,268,348` → `afip_web.py:274` | test: cliente Temporal que lanza error de conexión → HTTP **503**; workflow inexistente → **404**. |
-| 0.4 | **`confirmar` factura deja de devolver `{"ok": true}` con token inválido.** | `afip_web.py:311-328` (TODO propio, `:320-327`) | test: token desactualizado → respuesta que el cliente puede discriminar. |
-| 0.5 | **`idem_key` en `send_channel_message` y `notify_staff`.** `_react_idem_key()` ya existe. | `agent_activities.py:51-59,62-70` | test: activity que envía y luego lanza → el reintento **no** duplica el envío. |
-| 0.6 | **`try/except` de cierre en `ConversationWorkflow`** para el agotamiento de reintentos → mensaje legible en vez de muerte abrupta de la sesión permanente. | `conversation_workflow.py:249-533` | test: `call_llm` que agota 5 intentos → la sesión sobrevive y el usuario recibe un mensaje. |
-| 0.7 | **`catch` en `Linking.openURL` / `Share.share`.** El patrón correcto ya está en `DetallePresupuesto.tsx:223-233` — es propagar, no diseñar. | `DetalleComprobante.tsx:128-134` | test: promesa rechazada → se muestra algo. |
-| 0.8 | **Timeout canónico en el transporte del cliente** (`AbortController`), un solo lugar. | `http.native.ts:37,54` · `http.web.ts:41` | 0 → 4 llamadas con timeout; test de request que nunca resuelve → falla acotada. |
-
-**Nota sobre 0.1 — el riesgo del cambio.** Pasar a fail-closed significa que ante AFIP inestable **no se emite** y el caso queda pendiente. Eso es correcto (una factura no emitida se reintenta; una emitida dos veces exige nota de crédito), pero **exige la Fase 2 para no perder el caso**. Hasta que la DLQ exista, el caso queda en estado `pendiente` consultable — no en el aire.
+| 11 | **Trigger acotado por prefijo** `if: startsWith(title, '[AUTO-HEALING]')` | `copilot_autorepair.yml:10` | nada arranca el ciclo salvo un marcador explícito |
+| 12 | **Zero-Mutation: el agente abre PR, NUNCA mergea** | `copilot_autorepair.yml:107-112` · `10_L3_SRE:15` | **es exactamente el HITL que el operador pidió**, ya definido en ese punto |
+| 13 | **Modo `DIAGNOSTIC_ONLY` por dominio crítico** — capas core no se auto-mutan, sólo se auto-diagnostican | `ISSUE_TEMPLATE/auto_healing.yml:30-35` | guardarraíl de blast-radius |
+| 14 | **Guards de "no mentir con el PR"**: sin mutaciones → no PR; fallback ambiguo (`.patch.json`) → no PR, sólo artifact | `copilot_autorepair.yml:58-75` | *"Un PR 'auto-repair' con solo un .patch.json es engañoso — se intercepta aquí"* |
+| 15 | **Auditor adversarial**: un segundo LLM barato valida el parche del caro (¿viola la constitución? ¿toca `credentials`? ¿el diff es coherente con el diagnóstico?) | `10_L3_SRE:55-60` · secret `GPT_AGENTE_AUDITOR` | |
+| 16 | **Regression suite con fixtures adversariales** que verifican que el agente reparador **rechaza** mutaciones peligrosas (credentials hardcodeadas, `DISABLE RLS`) | `sre_regression_test.yml:41-63` | *el agente que repara está testeado contra romper las invariantes* |
+| 17 | **`forbidden_log`** — aserción **negativa**: verifica que el LLM **no** fue invocado en casos deterministas | `sre_regression_test.yml:145-153` | prueba que el pre-clasificador de 0 tokens hace su trabajo |
+| 18 | **Checklist de idempotencia de 3 capas en el PR template** (`workflowIdReusePolicy` + check pre-action + **verify post-action contra AFIP**) | `PULL_REQUEST_TEMPLATE.md:69-104` | gate humano; ataca directo el bug fiscal #1 |
+| 19 | **Artefactos de debug siempre** (`if: always()`, 30 días) + comentario de resultado en el issue en 3 variantes | `copilot_autorepair.yml:114-141` | trazabilidad sin abrir logs de CI |
 
 ---
 
-## Fase 1 — Que ningún error se evapore (A-4 paso 1: Captura)
+## 2. Lo que ARCA **NO** resolvió — no hay nada que copiar
 
-Hoy: `fingerprint=0 · structlog=0 · sentry=0 · request_id=0` en las 4 capas.
+Esto es tan importante como lo anterior, y es lo que evita construir sobre una ilusión.
 
-**1.1 — Fingerprint canónico.** INL lo especifica como `(workflow + nodo + error_type + payload_shape)`. Un módulo único, sin dependencias nuevas.
+| Hueco | Evidencia | Qué significa para el copiloto |
+|---|---|---|
+| **"Consultar antes de reintentar" (DEUDA-03)** — el guard pre-reintento contra la doble emisión | `2026-04-19_AUDITORIA:139-160`, **issue #200 ABIERTO** | **ARCA tiene el mismo bug de fondo.** Tiene la pieza (`MOT-07`) y **no la cableó** como guard de emisión. No hay solución que portar: hay que construirla. |
+| **Acciones del panel de errores** (Resolver/Asignar/Ignorar) | `error-drawer.tsx:174-182` — `onClick={() => void 0}`, `TODO Wave 3` | UI construida, lógica ausente. Copiar la UI sí; "cómo se resuelve un error desde acá", no. |
+| **Recuperador de DLQ (BOT-08)** | `03_BOT08:6` — **"❌ Pendiente activación"** | el reintentador automático no corre |
+| **Tope de PRs automáticos / kill switch** del autorepair | ausencia verificada en `copilot_autorepair.yml` (rep-E) | si el copiloto porta el ciclo, **tiene que agregar lo que ARCA no tiene** |
+| **Dual-approval de fixes de IA** | `centro-errores-view.tsx:33-54` — flujo declarado, `ai-suggestion-card.tsx` no verificado | diseño parcial |
 
-**1.2 — Log estructurado JSON.** Hoy hay 3 `getLogger` en app y 1 en motor, sin `basicConfig`. El log llega a journald por `logging.lastResort` — funciona, pero no es parseable ni correlacionable.
+### El dato que valida todo el diagnóstico del copiloto
 
-**1.3 — Taxonomía única transitorio/permanente.** Existen 4 embriones; falta el vocabulario común. Es el `ERROR_MAP` de A-1, y su output alimenta directamente `RetryPolicy.non_retryable_error_types` — que ya está cableado para `NonRetryableError` (`llm.py:30` → `LOOP_RETRY`).
+La auditoría de errores silenciosos de ARCA (2026-04-19) encontró que **3 de 9 casos fueron "regresión o claim falso"** — fixes de error-handling **declarados resueltos que no estaban en el código** (`2026-04-19_AUDITORIA:26-29`).
 
-**1.4 — Barrido de los 22 `except` silenciosos**, clasificando cada uno: *best-effort legítimo* (como `warm_fn`, `web.py:589-595`, que declara la intención y loguea) vs *error tragado*. No todos son bugs — la clasificación es el trabajo.
+Es exactamente la clase raíz que el copiloto tiene medida (*"el fix existe y no se propagó"*, 8 instancias), confirmada de forma independiente en otro repo del mismo autor. **Un tercio de los fixes de manejo de errores declarados eran falsos.** Por eso el gate mecánico (§Transversal) no es higiene: es la única defensa contra que este mismo plan se degrade igual.
 
-**Criterio de cierre:** todo error que hoy termina en `return None` deja una entrada con fingerprint, o está explícitamente declarado best-effort con log.
-
----
-
-## Fase 2 — Que ningún error frene el sistema (A-4 pasos 2-4)
-
-**2.1 — La tabla `copiloto_traumas`**, hermana de `copiloto_eventos`: mismo `provision()`, misma RLS `tenant_isolation`, mismo patrón de append. Campos derivados de los 4 pasos de A-4: `fingerprint`, `payload`, `estado_al_fallar`, `metadatos`, `intentos`, `proxima_evaluacion`, `estado`.
-
-**2.2 — `registrar_trauma(cur, cliente_id, *, fingerprint, payload, …)`**, espejo de `registrar_evento`.
-
-**2.3 — El usuario nunca ve un error fatal.** INL es explícito: ve *"procesamiento diferido"*. Esto **cruza la junta backend↔app** → exige un `contrato_` antes de que ninguna capa lo implemente (regla de las tres sesiones).
-
-**Criterio de cierre:** un fallo de emisión con AFIP caído deja fila en `copiloto_traumas`, el workflow termina en estado consultable, y el usuario ve "diferido", no un 500.
+Y la respuesta de ARCA es portable: un **catálogo declarativo de patrones de error silencioso con firmas grep/jq re-ejecutables** (`ES_CATALOG.yaml` + `audit_silent_errors.js`) — el equivalente de `scripts/inventario-errores.sh` que el copiloto ya tiene, pero con aserciones.
 
 ---
 
-## Fase 3 — Auto-reparación (L5 / Agente de Sanación)
+## Fase 0 — Cerrar los fail-open
 
-Lo que INL diseña y **nunca implementó** — sería la primera implementación real del patrón.
+| # | Cambio | Dónde | Cierre binario |
+|---|---|---|---|
+| **0.1a** | **Consultar el comprobante que se intentó emitir.** Write-ahead: registrar la intención (`nro=siguiente`, sin CAE) **antes** de llamar a AFIP; en el retry, consultar **ese** número con `FECompConsultar` (no `ultimo+1`). El copiloto ya tiene `idem_key` en la tabla. | `afip_factura_activities.py:94-95` | AFIP autoriza y la activity lanza → el retry **adopta**, no emite otro |
+| **0.1b** | **`ResultGet` puede venir como array** — anti-pattern P5 de ARCA. Hoy `isinstance(info, dict)` falla → `{}` → *"no existe"* → reemite | `afip_gateway.py:146` | respuesta con `ResultGet` array → se extrae el comprobante, no `{}` |
+| **0.1c** | **Aceptar `CAE` **y** `CodAutorizacion`.** ARCA: *"FIX smoke 2026-06-15: antes buscaba `det.CAE` → devolvía `found:false` pese a que AFIP traía el comprobante real"* | `afip_factura_activities.py:100` | fixture con cada campo → ambos detectan el comprobante |
+| **0.1d** | **`existe_comprobante` deja de tragar `ErrorAfip`** → fail-**closed**. ⚠️ Ver nota de rollout abajo | `afip_gateway.py:155-158` | `getVoucherInfo` lanza → **no** llama a `createNextVoucher` |
+| 0.2 | `marcar_comprobante_anulado` dentro de `try` + estado terminal | `afip_anulacion_workflow.py:98-101` | agota reintentos → `terminado: True` (hoy: polling eterno) |
+| 0.3 | `consultar_*` distingue caído de inexistente | `web.py:169,268,348` | Temporal caído → **503**; inexistente → **404** |
+| 0.4 | `confirmar` deja de devolver `{"ok":true}` con token inválido | `afip_web.py:311-328` | el cliente puede discriminar |
+| 0.5 | `idem_key` en `send_channel_message` / `notify_staff` | `agent_activities.py:51-70` | envía y lanza → el retry no duplica |
+| 0.6 | `try/except` de cierre en `ConversationWorkflow` | `conversation_workflow.py:249-533` | 5 intentos agotados → la sesión sobrevive |
+| 0.7 | `catch` en `Linking.openURL` / `Share.share` | `DetalleComprobante.tsx:128-134` | promesa rechazada → se muestra algo |
+| 0.8 | Timeout canónico (`AbortController`) | `http.native.ts`, `http.web.ts` | 0 → 4 llamadas con timeout |
 
-La clave, textual del framework: el agente **no reintenta a ciegas**, sino que *evalúa si las condiciones externas se restauraron* antes de reinyectar. Es un circuit breaker con *half-open probe* sobre la cola.
-
-**Precondición dura:** sólo se reinyecta lo **idempotente**. El mapa ya clasificó qué lo es y qué no:
-- **Reinyectable:** lecturas, `avanzar_tablero_mi_dia` (`ON CONFLICT` real), cobros e ingresos (`idem_key` + índice único), `add_messages` una vez que tenga `Idempotency-Key`.
-- **NO reinyectable sin HITL:** emisión fiscal, `crear_certificado` (RPA + secreto one-shot), `refresh_credential` (MP rota el token).
-
-Esa frontera **es** el HITL del sistema maduro: lo idempotente se sana solo, lo demás espera al humano.
-
----
-
-## Transversal — G-2: el gate mecánico es la precondición del HITL en el merge
-
-Si el humano sólo mira el merge, **lo que no atrape el CI no lo atrapa nadie.** Hoy: cero ESLint, el CI corre **11 de 92** tests de Python y **0 de 96** de TS.
-
-Esto es lo que INL diagnostica como *"una regla que no puede garantizarse estructuralmente es hardcoding emocional"*, y es la causa raíz medida de la clase *"el fix existe y no se propagó"* (8 instancias). **Sin esto, cada fase de este plan se degrada con el tiempo exactamente igual.**
-
-⚠️ Toca a las tres sesiones → requiere coordinación por el buzón antes de tocarlo.
+> ⚠️ **Rollout de 0.1d — corregido por ARCA.** v1 proponía fail-closed de una. ARCA tomó la decisión opuesta y la documentó (`12_DUAL_CHECK:139`): *"no bloquear escrituras en este PR. Razón: si el dual-check tuviera un falso positivo, **bloqueamos comprobantes legítimos**. Primero observar, luego bloquear con evidencia"*, con roadmap a bloqueante tras **≥30 días de baseline sin falsos positivos** (`§9 PR-C`).
+> **Aplicado acá:** 0.1a/b/c van directo (corrigen lecturas erróneas, no cambian la política de emisión). **0.1d observa primero** — registra el caso en la DLQ y sigue; se vuelve bloqueante con baseline.
 
 ---
 
-## Lo que este plan NO hace
+## Fase 1 — Captura (A-4 paso 1)
 
-- **No persigue cero-deuda absoluto.** `evento_store.py:7-19` es el modelo a imitar: deuda **deliberada, visible, con propietario y condición de pago**. El enemigo es la invisible y la impaga.
-- **No implementa C-4 (memoria bitemporal) ni C-5 (diagnóstico zero-trust).** Están en la metodología INL, no son manejo de errores en runtime.
-- **No toca la retención de Temporal (24 h).** Es una decisión de infraestructura, MAYOR, separada.
+Hoy: `fingerprint=0 · structlog=0 · sentry=0 · request_id=0`. **Casi todo es port.**
 
-## Orden de ejecución y su razón
+- **1.1** `djb2Hash()` portado (`err00-djb2-hash.ts:28-36`), fingerprint `workflow|errorType|errorMessage[:200]`
+- **1.2** Log estructurado — el patrón de `mot07-consulta-fe.ts:275-283`: `ctx.log.info` con `tenantId, cuit, ptoVta, modo, durationMs`
+- **1.3** Taxonomía única, portada de `mot07-consulta-fe.ts:336-379` + categorías de `error-drawer.tsx:21-55`
+- **1.4** Clasificar los 22 `except` silenciosos: *best-effort legítimo* (como `warm_fn`) vs *error tragado*. **La clasificación es el trabajo.** Formalizar como catálogo re-ejecutable (patrón `ES_CATALOG.yaml`) sobre `scripts/inventario-errores.sh`
+- **1.5** **Contrato de contexto mínimo con fallback explícito por campo** (`04_CONTRATO_CUSTOMDATA.md:48-57`) — y la regla arquitectónica: **el contexto lo inyecta el caller de más alto nivel**, no la activity interna (`:130-135`)
 
-**Fase 0 → 1 → 2 → 3**, con G-2 arrancando en paralelo a la Fase 1 (no depende de nada).
+## Fase 2 — Depositar (A-4 pasos 2-4)
 
-La Fase 0 es la única con **daño real demostrable hoy** y no depende de infraestructura nueva. La 1 es precondición de la 2 y la 3. La 3 no puede empezar antes que la 2 porque no tendría cola sobre la cual operar.
+- **2.1** Tabla `copiloto_traumas` con el **upsert atómico de ARCA** (`ON CONFLICT (fingerprint) DO UPDATE … RETURNING dedupe_count, (xmax=0)`), provisionada con `provision()` (RLS gratis)
+- **2.2** `handleGlobalError()` portado — incluido *nunca lanzar por fallo de DB*
+- **2.3** `FLOOD_THRESHOLD` parametrizado
+- **2.4** Máquina de 3 estados + ventana `updated_at < now()-N`
+- **2.5** El usuario ve **"procesamiento diferido"** → ⚠️ cruza la junta backend↔app, exige `contrato_`
 
-**El disparador de cada fase es el criterio de cierre binario de la anterior**, no una estimación de tiempo.
+## Fase 3 — Auto-sanación
+
+**Portar el ciclo de `copilot_autorepair.yml`** con sus guardarraíles, **más los que ARCA no tiene**: tope de PRs/día y kill switch.
+
+**Frontera del HITL** (ya resuelta por ARCA en el punto correcto): el agente **propone PR, nunca mergea**. Sumar `DIAGNOSTIC_ONLY` para el dominio fiscal — dado el bug #1, el guard de idempotencia **nunca** debe auto-repararse sin humano.
+
+**Precondición:** sólo se reinyecta lo idempotente.
+
+| ✅ Se sana solo | 🛑 Espera al humano |
+|---|---|
+| lecturas · `avanzar_tablero_mi_dia` (`ON CONFLICT` real) · cobros e ingresos (`idem_key` + índice único) | emisión fiscal · `crear_certificado` (RPA + secreto one-shot) · `refresh_credential` (MP rota el token) |
+
+---
+
+## Transversal — G-2
+
+Hoy: cero ESLint, CI corre 11/92 Python y 0/96 TS. **Con 1 de cada 3 fixes de error-handling resultando falso en ARCA, esto no es opcional.**
+
+Portar además: **`sre_regression_test.yml`** (fixtures adversariales + `forbidden_log`) y el **checklist de idempotencia del PR template** — el gate humano más barato y el que ataca directo el bug #1.
+
+⚠️ Toca a las tres sesiones → coordinar por buzón.
+
+---
+
+## Orden y disparadores
+
+**Fase 0 → 1 → 2 → 3**, G-2 en paralelo desde el inicio.
+
+0.1a/b/c primero: son lecturas erróneas con daño demostrable y **no cambian la política de emisión**. 0.1d espera baseline. Las Fases 1-2 son mayormente port, no diseño. La 3 no puede empezar sin cola sobre la cual operar.
+
+**El disparador de cada fase es el criterio de cierre binario de la anterior.**
