@@ -16,7 +16,7 @@
  * un estado de carga: mostrar el detalle sin ítems sería mostrar un presupuesto sin lo presupuestado.
  */
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   cambiarEstadoPresupuesto,
@@ -28,6 +28,7 @@ import {
   type Presupuesto,
 } from '@copiloto/core';
 
+import { compartirLink } from '../../util/abrirYCompartir';
 import { useTema } from '../../theme/ThemeProvider';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
@@ -234,7 +235,9 @@ export function DetallePresupuesto({
 
   async function compartir() {
     if (p.docLink == null) return;
-    await Share.share({ message: p.docLink, url: p.docLink });
+    // `Share.share` rechaza (link roto, hoja de compartir que la plataforma no puede abrir) y nadie
+    // lo escuchaba: quedaba como unhandled rejection y el botón simplemente no hacía nada.
+    await compartirLink(p.docLink, 'el presupuesto');
   }
 
   /**

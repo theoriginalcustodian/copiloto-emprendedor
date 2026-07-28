@@ -26,10 +26,11 @@
  * El fondo que captura el toque de afuera se pinta con `color.superficieAlta` — un token del tema,
  * no un scrim inventado (la app no tiene token de scrim y un hex propio violaría la regla cero-hex).
  */
-import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Comprobante } from '@copiloto/core';
 
+import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
 import { useTema } from '../../theme/ThemeProvider';
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { FilaBotones } from '../../theme/glass/campos';
@@ -126,11 +127,11 @@ export function DetalleComprobante({
   const enDrive = c.driveLink != null;
 
   async function guardar() {
-    if (link) await Linking.openURL(link);
+    if (link) await abrirLink(link, 'tu factura');
   }
 
   async function compartir() {
-    if (link) await Share.share({ message: link, url: link });
+    if (link) await compartirLink(link, 'tu factura');
   }
 
   return (

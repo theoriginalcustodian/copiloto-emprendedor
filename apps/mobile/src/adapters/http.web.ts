@@ -1,3 +1,4 @@
+import { TIMEOUT_HTTP_MS } from '@copiloto/core';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from '@copiloto/core';
 
 const BASE = process.env.EXPO_PUBLIC_API_BASE ?? '';
@@ -38,8 +39,23 @@ export const httpWeb: HttpPort = {
       body = JSON.stringify(p.cuerpoJson);
     }
 
-    const res = await fetch(`${BASE}${p.path}`, { method: p.metodo, headers: p.headers, body });
-    return { ok: res.ok, status: res.status, json: () => res.json() };
+    // Mismo corte por tiempo que el adaptador nativo, y por el mismo motivo: un `fetch` sin timeout
+    // no falla, cuelga — y la pantalla se queda con el spinner puesto sin error que mostrar. El core
+    // traduce el aborto a un `ApiError` 408 (`enviarConCorte`).
+    const corteMs = p.timeoutMs ?? TIMEOUT_HTTP_MS;
+    const controlador = new AbortController();
+    const alarma = corteMs > 0 ? setTimeout(() => controlador.abort(), corteMs) : undefined;
+    try {
+      const res = await fetch(`${BASE}${p.path}`, {
+        method: p.metodo,
+        headers: p.headers,
+        body,
+        signal: controlador.signal,
+      });
+      return { ok: res.ok, status: res.status, json: () => res.json() };
+    } finally {
+      if (alarma !== undefined) clearTimeout(alarma);
+    }
   },
 };
 
