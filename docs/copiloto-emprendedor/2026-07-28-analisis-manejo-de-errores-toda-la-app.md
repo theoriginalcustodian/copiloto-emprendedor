@@ -306,30 +306,37 @@ self._cancelado)` **sin timeout** de `afip_factura_workflow.py:208`, porque tien
 (`web.py:296-302`, `hito9-dictado-sin-ventana-de-vida`). Correcto como clasificación; incompleto como
 medición. El estado vivo:
 
-| Tipo | Running |
-|---|---|
-| `GraphDrainWorkflow` | **292** |
-| `ConversationWorkflow` | 82 |
-| `FacturaWorkflow` | **34** |
-| `MiDiaDetectorWorkflow` | 19 |
-| `MpRefreshWorkflow` | 1 |
-| **total** | **428** |
+| Tipo | **Running** | Completed |
+|---|---|---|
+| `ConversationWorkflow` | 80 | 2 |
+| `FacturaWorkflow` | **34** | — |
+| `MpRefreshWorkflow` | 1 | — |
+| `GraphDrainWorkflow` | 0 | 291 |
+| `MiDiaDetectorWorkflow` | 0 | 19 |
+| **abiertos** | **115** | |
 
-Antigüedad: 33 con **6 días**, 28 con **5 días** — y todo esto en un sistema que atendió **155
-requests en 24 h**.
+- Los **34 `FacturaWorkflow` Running** son la deuda del `wait_condition` sin timeout, contada: 34
+  borradores de factura esperando una confirmación que ya no va a llegar, cada uno sostenido por el
+  worker. La deuda está gestionada, pero su interés es medible y crece. En un sistema que atendió
+  **155 requests en 24 h**, 34 borradores abiertos es la señal.
+- Los **80 `ConversationWorkflow` Running** son sesiones permanentes por diseño (continue-as-new) —
+  esperable, aunque 80 para una beta sugiere que las sesiones de e2e no se cierran nunca.
+- Los **291 `GraphDrainWorkflow` están `Completed`**: son de documed (comparte este Temporal), un tick
+  de schedule cada 5 min que cierra bien. **No hay fuga ahí** — el `[ASSUMED_PENDING_VERIFY]` se
+  resolvió y la respuesta es "es el diseño, y funciona".
 
-- Los **34 `FacturaWorkflow`** son la deuda del `wait_condition` sin timeout, contada: 34 borradores
-  de factura esperando una confirmación que ya no va a llegar. Cada uno es un workflow que el worker
-  sostiene. La deuda está gestionada, pero su interés es medible y crece.
-- Los **82 `ConversationWorkflow`** son sesiones permanentes por diseño (continue-as-new) — esperable,
-  aunque 82 para una beta sugiere que las sesiones de e2e no se cierran nunca.
-- Los **292 `GraphDrainWorkflow`** no son de esta app (son del sync del grafo, que comparte este
-  Temporal) y **no los audité**: `[ASSUMED_PENDING_VERIFY]` — 292 puede ser el diseño o puede ser una
-  fuga, y afirmarlo sin leer ese workflow sería exactamente lo que este dossier critica.
+> ⚠️ **Corrección de una medición mía, y de la clase que este dossier critica.** La primera versión de
+> esta tabla decía **"428 Running"**, sumando los 291 `GraphDrainWorkflow`. Era falso: usé
+> `temporal workflow list --limit 500` **asumiendo** que devuelve sólo workflows abiertos (el
+> comportamiento viejo del CLI) cuando devuelve **todos los estados**. El control que lo cazó fue una
+> query explícita `ExecutionStatus = 'Running'` que devolvió **vacío** donde yo esperaba 292 — un vacío
+> tratado como pregunta, no como dato. No leí el contrato de mi propia herramienta, que es exactamente
+> el §5 de este documento aplicado a quien lo escribió. Lo que sobrevive intacto es el hallazgo que
+> importa: **34 borradores de factura abiertos**.
 
 **Lo que suma al análisis:** un `wait_condition` sin timeout no falla nunca — acumula. No hay error,
 no hay log, no hay síntoma de usuario. Es la forma más silenciosa de las que aparecen en este
-documento, y la única que se detecta contando, no leyendo.
+documento, y la única que se detecta contando, no leyendo — **con la herramienta bien leída**.
 
 ---
 
