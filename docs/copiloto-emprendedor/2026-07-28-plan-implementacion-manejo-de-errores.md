@@ -122,7 +122,12 @@ Hoy: `fingerprint=0 · structlog=0 · sentry=0 · request_id=0`. **Casi todo es 
 
 ## Fase 3 — Auto-sanación
 
-**Portar el ciclo de `copilot_autorepair.yml`** con sus guardarraíles, **más los que ARCA no tiene**: tope de PRs/día y kill switch.
+> **Decisión del operador (2026-07-28): la autosanación NO va en GitHub Actions — vive en el propio cluster de Temporal.**
+> Se porta de ARCA el **diseño del ciclo** (clasificar → contextualizar → forjar parche → auditar con un segundo modelo → proponer), no su mecanismo de transporte. Concretamente: `copilot_autorepair.yml` es un *workflow disparado por un evento con guardarraíles*; en el copiloto eso es un **workflow Temporal** disparado por una entrada en la DLQ, lo cual además elimina la dependencia de GitHub como cola y aprovecha el moat (durabilidad, reintentos, visibilidad). Lo que **sí** se porta literal son los guards: Zero-Mutation, `DIAGNOSTIC_ONLY` por dominio, "no mentir con el PR", auditor adversarial, y los que ARCA **no** tiene (tope por día, kill switch).
+>
+> **Y el encuadre completo, en orden:** primero se resuelven los errores que hoy existen (Fase 0) → después se implementa el manejo de errores para que **la superficie de fallo sea mínima y enteramente descriptible** (Fases 1-2) → recién ahí la autosanación es viable, porque un agente con acceso al código y al grafo puede proponer la solución de raíz de cada fallo **sólo si la superficie es chica y está bien caracterizada**. Autosanar sobre una superficie grande y mal capturada es automatizar el parche, no la raíz.
+
+**Portar el ciclo** con sus guardarraíles, **más los que ARCA no tiene**: tope de reparaciones/día y kill switch.
 
 **Frontera del HITL** (ya resuelta por ARCA en el punto correcto): el agente **propone PR, nunca mergea**. Sumar `DIAGNOSTIC_ONLY` para el dominio fiscal — dado el bug #1, el guard de idempotencia **nunca** debe auto-repararse sin humano.
 

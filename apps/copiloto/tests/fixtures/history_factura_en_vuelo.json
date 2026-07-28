@@ -1,0 +1,223 @@
+{
+ "events": [
+  {
+   "eventId": "1",
+   "eventTime": "2026-07-23T03:59:27.107980446Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+   "taskId": "1258759",
+   "workflowExecutionStartedEventAttributes": {
+    "workflowType": {
+     "name": "FacturaWorkflow"
+    },
+    "taskQueue": {
+     "name": "agent-emprendedor",
+     "kind": "TASK_QUEUE_KIND_NORMAL"
+    },
+    "input": {
+     "payloads": [
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMCI="
+      },
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "IjIwMDAwMDAwMDAxIg=="
+      },
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "ImlkZW1maXh0dXJlcmVwbGF5MDAwMDAwMDAwMDAwMDAi"
+      }
+     ]
+    },
+    "workflowTaskTimeout": "10s",
+    "originalExecutionRunId": "019f8d20-d583-7ef1-a17b-2d7d6e6ea0ce",
+    "firstExecutionRunId": "019f8d20-d583-7ef1-a17b-2d7d6e6ea0ce",
+    "attempt": 1,
+    "firstWorkflowTaskBackoff": "0s",
+    "workflowId": "factura-00000000-0000-4000-8000-000000000000-idemfixturereplay00000000000000",
+    "priority": {}
+   }
+  },
+  {
+   "eventId": "2",
+   "eventTime": "2026-07-23T03:59:27.108049225Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+   "taskId": "1258760",
+   "workflowTaskScheduledEventAttributes": {
+    "taskQueue": {
+     "name": "agent-emprendedor",
+     "kind": "TASK_QUEUE_KIND_NORMAL"
+    },
+    "startToCloseTimeout": "10s",
+    "attempt": 1
+   }
+  },
+  {
+   "eventId": "3",
+   "eventTime": "2026-07-23T03:59:27.116613432Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+   "taskId": "1258765",
+   "workflowTaskStartedEventAttributes": {
+    "scheduledEventId": "2",
+    "requestId": "2a133bc3-242a-4fdd-8c0c-ff666d16d3eb",
+    "historySizeBytes": "489",
+    "workerVersion": {
+     "buildId": "4cba423ec0bcb45232a14304691ebaec"
+    }
+   }
+  },
+  {
+   "eventId": "4",
+   "eventTime": "2026-07-23T03:59:27.127157542Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+   "taskId": "1258769",
+   "workflowTaskCompletedEventAttributes": {
+    "scheduledEventId": "2",
+    "startedEventId": "3",
+    "workerVersion": {
+     "buildId": "4cba423ec0bcb45232a14304691ebaec"
+    },
+    "sdkMetadata": {
+     "coreUsedFlags": [
+      3,
+      1,
+      2
+     ],
+     "sdkName": "temporal-python",
+     "sdkVersion": "1.28.0"
+    },
+    "meteringMetadata": {}
+   }
+  },
+  {
+   "eventId": "5",
+   "eventTime": "2026-07-23T03:59:27.127213348Z",
+   "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+   "taskId": "1258770",
+   "activityTaskScheduledEventAttributes": {
+    "activityId": "1",
+    "activityType": {
+     "name": "cargar_contexto_factura"
+    },
+    "taskQueue": {
+     "name": "agent-emprendedor",
+     "kind": "TASK_QUEUE_KIND_NORMAL"
+    },
+    "header": {},
+    "input": {
+     "payloads": [
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMCI="
+      },
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "IjIwMDAwMDAwMDAxIg=="
+      }
+     ]
+    },
+    "scheduleToCloseTimeout": "0s",
+    "scheduleToStartTimeout": "0s",
+    "startToCloseTimeout": "60s",
+    "heartbeatTimeout": "0s",
+    "workflowTaskCompletedEventId": "4",
+    "retryPolicy": {
+     "initialInterval": "1s",
+     "backoffCoefficient": 2,
+     "maximumInterval": "100s",
+     "maximumAttempts": 3
+    },
+    "useWorkflowBuildId": true,
+    "priority": {}
+   }
+  },
+  {
+   "eventId": "6",
+   "eventTime": "2026-07-23T03:59:27.132817789Z",
+   "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+   "taskId": "1258776",
+   "activityTaskStartedEventAttributes": {
+    "scheduledEventId": "5",
+    "requestId": "0d277eb6-cc6d-4bc0-95de-157a11f7e4bf",
+    "attempt": 1,
+    "workerVersion": {
+     "buildId": "4cba423ec0bcb45232a14304691ebaec"
+    }
+   }
+  },
+  {
+   "eventId": "7",
+   "eventTime": "2026-07-23T03:59:27.456278528Z",
+   "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+   "taskId": "1258777",
+   "activityTaskCompletedEventAttributes": {
+    "result": {
+     "payloads": [
+      {
+       "metadata": {
+        "encoding": "anNvbi9wbGFpbg=="
+       },
+       "data": "eyJwZXJmaWwiOnsiY29uZGljaW9uX2l2YSI6Im1vbm90cmlidXRvIiwiY3VpdCI6IjIwMDAwMDAwMDAxIiwiZG9taWNpbGlvX2NvbWVyY2lhbCI6IkxlYW5kcm8gTi4gQWxlbSAxMTAxIFA1IEQgQiAtIFJvc2FyaW8sIFNhbnRhIEZlIiwiZ3VhcmRhcl9lbl9kcml2ZSI6dHJ1ZSwiaW5ncmVzb3NfYnJ1dG9zIjoiUlx1MDBlOWdpbWVuIFNpbXBsaWZpY2FkbyIsImluaWNpb19hY3RpdmlkYWRlcyI6IjIwMjAtMDYtMDEiLCJwdW50b192ZW50YSI6NiwicmF6b25fc29jaWFsIjoiSFVDSyBEQVZJRCJ9LCJ0aWVuZV9jZXJ0aWZpY2FkbyI6dHJ1ZX0="
+      }
+     ]
+    },
+    "scheduledEventId": "5",
+    "startedEventId": "6"
+   }
+  },
+  {
+   "eventId": "8",
+   "eventTime": "2026-07-23T03:59:27.456286833Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+   "taskId": "1258778",
+   "workflowTaskScheduledEventAttributes": {
+    "taskQueue": {
+     "name": "1884089@unreal-copilot-410328eac6a1486eb033a5ba21d699ba",
+     "kind": "TASK_QUEUE_KIND_STICKY",
+     "normalName": "agent-emprendedor"
+    },
+    "startToCloseTimeout": "10s",
+    "attempt": 1
+   }
+  },
+  {
+   "eventId": "9",
+   "eventTime": "2026-07-23T03:59:27.462613267Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+   "taskId": "1258782",
+   "workflowTaskStartedEventAttributes": {
+    "scheduledEventId": "8",
+    "requestId": "86ac2eb4-928a-4fca-9db9-107830b5e853",
+    "historySizeBytes": "1606",
+    "workerVersion": {
+     "buildId": "4cba423ec0bcb45232a14304691ebaec"
+    }
+   }
+  },
+  {
+   "eventId": "10",
+   "eventTime": "2026-07-23T03:59:27.470027017Z",
+   "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+   "taskId": "1258786",
+   "workflowTaskCompletedEventAttributes": {
+    "scheduledEventId": "8",
+    "startedEventId": "9",
+    "workerVersion": {
+     "buildId": "4cba423ec0bcb45232a14304691ebaec"
+    },
+    "sdkMetadata": {},
+    "meteringMetadata": {}
+   }
+  }
+ ]
+}

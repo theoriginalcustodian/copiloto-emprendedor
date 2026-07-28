@@ -46,8 +46,8 @@ from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_factura_activities import (
     archivar_factura_en_drive, buscar_comprobante, cargar_contexto_factura, emitir_comprobante,
-    generar_pdf_comprobante, listar_comprobantes, marcar_comprobante_anulado, set_drive_deps,
-    set_factura_deps)
+    generar_pdf_comprobante, listar_comprobantes, marcar_comprobante_anulado,
+    reservar_numero_comprobante, set_drive_deps, set_factura_deps)
 from afip_factura_workflow import FacturaWorkflow
 from afip_gateway import AfipGateway
 # Hito 9: los MISMOS builders que `serve.py` usa para "Facturar" desde presupuesto — genéricos pese al
@@ -269,7 +269,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
-                                         cargar_contexto_factura, emitir_comprobante,
+                                         cargar_contexto_factura, reservar_numero_comprobante,
+                                         emitir_comprobante,
                                          generar_pdf_comprobante, buscar_comprobante,
                                          listar_comprobantes, marcar_comprobante_anulado,
                                          archivar_factura_en_drive, avanzar_tablero_mi_dia],
