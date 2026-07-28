@@ -61,7 +61,7 @@ que los fixes sean baratos.
 
 ## 3. La clase raíz única: *el fix existe y no se propagó*
 
-Siete instancias verificadas del **mismo** patrón. No es una coincidencia de siete bugs: es un modo
+**Ocho** instancias verificadas del **mismo** patrón. No es una coincidencia de ocho bugs: es un modo
 de fallo del proceso.
 
 | # | El fix que existe | Dónde NO llegó | Consecuencia |
@@ -73,6 +73,7 @@ de fallo del proceso.
 | 5 | El molde de log-antes-de-degradar de `memory_provider.py` | `presupuesto_doc.registrar_en_sheet`, `services/__init__.py:18`, `mercadopago_gateway.py:119` | Misma degradación, sin una línea de rastro |
 | 6 | El molde de timeout-bajo-el-start_to_close de `llm.py` | `composio_gateway.py:94` (`Composio()` sin timeout) y `afip_gateway.py:100` | 2 de 6 gateways tienen la cota correcta; los dos que faltan son los que escriben afuera |
 | 7 | try/catch → estado → JSX, bien hecho en ~40 sitios de mobile | `PantallaMiDia.avanzar()/borrar()` (mismo archivo que un `cargar()` impecable), `DetallePresupuesto.compartir()` (línea siguiente a un `abrirDoc()` protegido) | El swipe falla y **no pasa nada visible** |
+| 8 | `deploy.sh` valida la config de Caddy antes de aplicarla (`caddy validate`, `:213`/`:243`) | El mismo script reinicia el backend Python **sin validar nada** (`:162`) | Los **15 `ImportError` del 21-jul en producción** (§6.bis). Un `pytest --co` de segundos los cazaba |
 
 **Por qué se propaga mal, medido:** no hay ningún mecanismo que lo fuerce.
 
@@ -265,7 +266,15 @@ excepción, así que no aparecen acá.
 
 1. **15 × `ImportError: cannot import name 'make_consultar_anulacion' from 'web'`** — un deploy con
    `web.py` y `afip_web.py` desincronizados. Exactamente la clase de fallo que un `pytest --co` habría
-   cazado… y el CI **sí** corre `--co`, pero el deploy no espera al CI.
+   cazado en segundos… y el CI **sí** lo corre, pero el deploy no espera al CI.
+
+   **Y acá aparece la octava instancia de la clase raíz del §3, la más nítida de todas:**
+   `deploy/copiloto/deploy.sh` **valida la config de Caddy antes de aplicarla**
+   (`caddy validate --config`, líneas 213 y 243) — el criterio correcto, escrito, funcionando — y en la
+   línea **162** hace `systemctl restart "$WEB_UNIT" "$WORKER_UNIT"` **sin validar el código Python**.
+   El deploy sabe que no se recarga una config sin validarla primero, y reinicia el backend a ciegas.
+   El fix de raíz es una línea antes del restart: `python -m pytest tests --co -q` en el venv del VPS,
+   y abortar si falla.
 2. Ese día, el `AfipOnboardingWorkflow` de un usuario terminó en **`WorkflowExecutionFailed`**
    (event id 11, run `019f85cd-…`).
 3. Durante los **20 minutos siguientes** (18:10 → 18:30), una IP real refrescó su pantalla de AFIP.
@@ -302,6 +311,7 @@ existe** (retención 24 h). Lo único que sobrevivió 7 días fue el WARN del jo
 | 6 | Refresh-on-401 en el camino de voz: `postMultipart` (core) y `audio.ts` (PWA) | 2 sitios | **Subió de prioridad al medir `GOTRUE_JWT_EXP=3600`**: con token de 1 h y uso esporádico, el dictado con token vencido es lo esperable, no un borde. Y el audio se borra en el `finally`: no hay reintento posible |
 | 7 | Un `reportError(err, ctx)` (cliente) y el wrapper Temporal→HTTP con log (backend) — enchufados en los `catch` que ya existen | 2 helpers | **Subió al medir la retención de 24 h**: hoy sólo se pueden diagnosticar los bugs que alguien mira el mismo día. Es precondición para operar con usuarios reales, no higiene |
 | 3.bis | Los 3 `consultar_*`: distinguir "no existe" de "no pude preguntar" (503 ≠ 404/estado normal) + log | 3 sitios | **Subió de #8 a acá: §6.bis lo encontró OCURRIDO en producción** — 12 respuestas `200 OK` falsas a un usuario real sobre su estado fiscal. Deja de ser hipotético |
+| 3.ter | `python -m pytest tests --co -q` en `deploy.sh` **antes** del `systemctl restart` (`:162`), abortando si falla | **1 línea** | Es el gate que faltaba para los 15 `ImportError` reales del 21-jul. El script ya hace esto para Caddy (`caddy validate`): sólo falta aplicárselo al backend |
 | 9 | `error(status, codigo, mensaje)` hermano de `conflicto()`, y migración **incremental** de los 400/404 con semántica de negocio | incremental | Extiende el mejor patrón del repo a su 87% faltante. NO migrar los 400 de validación de forma |
 
 **Lo que NO hay que hacer:** agregar `try/except` en los ~90 sitios, ni un log en cada uno de los 61
