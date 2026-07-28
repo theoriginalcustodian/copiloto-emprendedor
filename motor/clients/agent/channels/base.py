@@ -20,11 +20,19 @@ class ChannelAdapter(Protocol):
         ...
 
     def send(self, channel_ref: str, text: str, choices: list | None = None, *,
-             cliente_id: str | None = None, card: dict | None = None) -> dict:
+             cliente_id: str | None = None, card: dict | None = None,
+             idem_key: str | None = None) -> dict:
         """Envia `text` al interlocutor `channel_ref`. Si `choices` (lista de {label, value}), los renderiza
         como opciones discretas (el canal decide cómo: inline keyboard, buttons, lista hablada). `cliente_id`
         (tenant, per-request) es opcional: canales single-tenant o sin noción de tenant (Telegram) lo ignoran;
         solo lo usan los canales cuyo transporte necesita el aislamiento (web -> reply_sink). `card` es metadata
         OPCIONAL de presentacion (ej HITL {'service','label'}): los canales ricos la renderizan, los texto-only
-        la ignoran. Devuelve {'sent': bool, ...}."""
+        la ignoran.
+
+        `idem_key` identifica el ENVÍO, no el mensaje: la activity que llama acá se reintenta, y sin una
+        clave estable entre intentos el interlocutor recibe lo mismo dos veces. Un canal cuyo transporte
+        pueda deduplicar (una tabla propia, un endpoint con clave de idempotencia) DEBE usarla; los que
+        no pueden la ignoran — es aditiva y opcional, no rompe a ningún adapter existente.
+
+        Devuelve {'sent': bool, ...}."""
         ...

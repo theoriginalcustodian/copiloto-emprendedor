@@ -13,20 +13,29 @@ _SCHEMA = "uc_factory"
 _TABLE = f'{_SCHEMA}.copiloto_web_replies'
 
 
-def make_pg_reply_sink(conn_factory: Callable) -> Callable[[str, str, str, list | None, dict | None], None]:
-    """Devuelve un reply_sink(cliente_id, session_id, text, choices, card=None) que inserta una fila. `cliente_id`
-    llega POR LLAMADA (per-request), no horneado en el closure -- un solo worker puede servir N tenants sin fugas.
-    `card` = metadata OPCIONAL de presentacion del reply (ej HITL {'service','label'}); None/{} -> NULL en la fila.
-    conn_factory() -> conexion psycopg2."""
+def make_pg_reply_sink(conn_factory: Callable) -> Callable[..., None]:
+    """Devuelve un reply_sink(cliente_id, session_id, text, choices, card=None, idem_key=None) que inserta una
+    fila. `cliente_id` llega POR LLAMADA (per-request), no horneado en el closure -- un solo worker puede servir
+    N tenants sin fugas. `card` = metadata OPCIONAL de presentacion del reply (ej HITL {'service','label'});
+    None/{} -> NULL en la fila. conn_factory() -> conexion psycopg2.
+
+    `idem_key` identifica el ENVÍO. La activity `send_channel_message` se reintenta, y sin clave el
+    emprendedor veía el mismo mensaje dos veces en el chat: el envío se concretó y el worker murió antes
+    de reportarlo. El deduplicado lo hace el índice único parcial `(cliente_id, idem_key)` con
+    `ON CONFLICT DO NOTHING`, no un SELECT previo — "si ya existe no insertes" deja abierta la ventana
+    entre la consulta y el INSERT, que es justo donde caen los dos intentos que esto viene a evitar.
+    Sin `idem_key` (llamadores viejos, canales que no la puedan generar) se inserta como siempre: el
+    índice es parcial y no los toca."""
     def _sink(cliente_id: str, session_id: str, text: str, choices: list | None,
-              card: dict | None = None) -> None:
+              card: dict | None = None, *, idem_key: str | None = None) -> None:
         conn = conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f'INSERT INTO {_TABLE} (cliente_id, session_id, reply_text, choices, card) '
-                f'VALUES (%s, %s, %s, %s, %s)',
+                f'INSERT INTO {_TABLE} (cliente_id, session_id, reply_text, choices, card, idem_key) '
+                f'VALUES (%s, %s, %s, %s, %s, %s) '
+                f'ON CONFLICT (cliente_id, idem_key) WHERE idem_key IS NOT NULL DO NOTHING',
                 (cliente_id, session_id, text, json.dumps(choices) if choices else None,
-                 json.dumps(card) if card else None))
+                 json.dumps(card) if card else None, idem_key))
     return _sink
 
 

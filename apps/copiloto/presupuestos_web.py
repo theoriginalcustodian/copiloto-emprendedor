@@ -28,7 +28,8 @@ from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FOR
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, MODO_AUTOMATICO_NO_DISPONIBLE,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
-from presupuesto_store import ESTADOS, TransicionInvalida, factura_id_de_presupuesto
+from presupuesto_store import (APROBADO, ESTADOS, PENDIENTE, TRANSICIONES, TransicionInvalida,
+                               factura_id_de_presupuesto)
 
 _log = logging.getLogger(__name__)
 
@@ -305,6 +306,19 @@ def create_presupuestos_app(
         if abrir_borrador is None or signal_factura is None:
             raise HTTPException(status_code=503, detail="la facturación no está disponible")
 
+        # 🔴 El chequeo de estado va ACÁ, ANTES de abrir el borrador — no después de haberlo atado.
+        # Antes, un presupuesto `desestimado` recorría todo el camino: se abría el borrador, se
+        # marcaba el presupuesto con su `factura_id`, y RECIÉN ahí `cambiar_estado` levantaba
+        # `TransicionInvalida` y el usuario recibía «no se puede facturar». Los dos efectos ya habían
+        # ocurrido: el siguiente intento contestaba `ya_facturado` con el id de un borrador que nunca
+        # se iba a emitir, y el presupuesto quedaba trabado para siempre entre dos 409 que se
+        # contradecían. El mensaje negaba un efecto que ya existía.
+        estado_actual = presupuesto.get("estado") or PENDIENTE
+        if estado_actual != APROBADO and APROBADO not in TRANSICIONES.get(estado_actual, ()):
+            raise conflicto(PRESUPUESTO_NO_FACTURABLE,
+                            f"el presupuesto está {estado_actual}: no se puede facturar sin revisarlo",
+                            estado=estado_actual)
+
         cuit = await _maybe_async(_cuit_del_tenant, cliente_id)
         if not cuit:
             raise conflicto(FALTA_CUIT, "falta el perfil fiscal (CUIT)")
@@ -352,8 +366,25 @@ def create_presupuestos_app(
         # `TransicionInvalida`. Facturar algo que se declaró perdido es una contradicción que merece
         # una decisión del emprendedor, no un arreglo automático.
         try:
-            await asyncio.to_thread(store.cambiar_estado, presupuesto_id, "aprobado")
+            await asyncio.to_thread(store.cambiar_estado, presupuesto_id, APROBADO)
         except TransicionInvalida as exc:
+            # Llegar acá ya no es el caso normal —lo cubre el chequeo de arriba— sino la CARRERA:
+            # alguien desestimó el presupuesto desde otro lado mientras se abría el borrador. A esta
+            # altura hay dos efectos hechos, así que antes de contestar se deshacen los dos: se
+            # desata el `factura_id` (si no, el próximo intento choca con `ya_facturado` sobre una
+            # factura que nunca se va a emitir) y se cancela el borrador. Compensar es lo único que
+            # deja el sistema como estaba antes del pedido; contestar 409 y dejar la basura puesta
+            # sería el mismo mensaje que niega un efecto que ya ocurrió.
+            _log.warning("carrera al facturar el presupuesto %s (quedó %s): se compensa",
+                         presupuesto_id, exc.desde)
+            try:
+                await asyncio.to_thread(store.marcar_factura, presupuesto_id, None)
+                await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
+            except Exception:  # noqa: BLE001
+                # La compensación es best-effort: si falla, el 409 sigue siendo la respuesta correcta
+                # y el residuo queda logueado arriba en vez de convertirse en un 500 que tampoco
+                # arregla nada.
+                _log.exception("no se pudo compensar el presupuesto %s", presupuesto_id)
             raise conflicto(PRESUPUESTO_NO_FACTURABLE,
                             f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",
                             estado=exc.desde) from None

@@ -177,6 +177,9 @@ describe('PantallaFacturacion', () => {
     jest.mocked(estadoAnulacion).mockReset().mockResolvedValue({
       paso: 'esperando_confirmacion',
       original: null,
+      // `marcada` es el nuevo campo de `EstadoAnulacion`: dice si la factura original quedó marcada
+      // en el libro propio. `true` acá porque este fixture es el camino feliz.
+      marcada: true,
       errores: [],
       resultado: null,
       motivo: null,

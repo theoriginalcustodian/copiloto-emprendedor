@@ -180,6 +180,33 @@ class FacturaWorkflow:
             return
         self._confirmado = True
 
+    @workflow.update(name="confirmar")
+    async def confirmar_ahora(self, token: str) -> dict:
+        """La MISMA confirmación que el signal, pero devolviendo si valió.
+
+        **Por qué existe.** Un signal es fire-and-forget: el endpoint contestaba `200 {"ok": true}`
+        aunque el token estuviera vencido y no se emitiera nada. Medido: `confirmar` con un token
+        inválido devolvía exactamente lo mismo que uno válido. La app actual sobrevive porque después
+        polea `motivo_codigo`, pero el nombre miente, y el próximo consumidor —una integración, un
+        agente— va a leer ese `ok` como "confirmado" y dar por emitida una factura que no existe.
+
+        Un `update` es la primitiva de Temporal que sí devuelve resultado al cliente. Verificado
+        contra el cluster real (1.29.7): el update viaja, el resultado vuelve, y un signal y un update
+        pueden compartir el nombre de wire — por eso el signal QUEDA, para las ejecuciones en vuelo y
+        cualquier cliente viejo.
+
+        El rechazo se devuelve como dato, no como excepción: que el resumen haya cambiado es un
+        resultado de negocio esperable, no una falla. Levantar acá obligaría a todo consumidor a
+        tratar un caso normal como error.
+        """
+        if self._confirmado:
+            # Idempotente: reintentar el mismo POST no puede contestar "rechazado".
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+        self.confirmar(token)
+        return {"aceptado": self._confirmado,
+                "motivo": None if self._confirmado else self._motivo,
+                "motivo_codigo": None if self._confirmado else self._motivo_codigo}
+
     @workflow.signal
     def cancelar(self) -> None:
         self._cancelado = True
@@ -216,15 +243,38 @@ class FacturaWorkflow:
         hoy = workflow.now().date()
         payload = armar_payload_wsfe(self._perfil, self._borrador, hoy=hoy)
 
+        # El nombre del receptor viaja aparte del payload: el WSFE no lo pide, así que si no
+        # se pasa explícitamente no queda registrado en ningún lado y el detalle de una
+        # factura vieja no puede decir a quién se le facturó.
+        receptor = self._borrador.receptor.nombre if self._borrador.receptor else ""
+
         try:
-            emision = await workflow.execute_activity(
-                "emitir_comprobante",
-                # El nombre del receptor viaja aparte del payload: el WSFE no lo pide, así que si no
-                # se pasa explícitamente no queda registrado en ningún lado y el detalle de una
-                # factura vieja no puede decir a quién se le facturó.
-                args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
-                      self._borrador.receptor.nombre if self._borrador.receptor else ""],
-                start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
+            # El número lo reserva el WORKFLOW, no la activity. Temporal lo guarda en el event
+            # history, así que un reintento de la emisión reusa el MISMO número en vez de recalcular
+            # `ultimo_autorizado + 1` contra un contador de AFIP que ya avanzó. Sin esto, el
+            # check-before-act de la activity interroga un número que por construcción nunca se
+            # emitió: si AFIP autorizó el 11 y la respuesta se perdió, el reintento pregunta por el
+            # 12 —"no existe"— y **emite el 12**. Dos CAE por un solo pedido.
+            #
+            # El patch cubre las DOS llamadas, no sólo la reserva: agregar un argumento a
+            # `emitir_comprobante` cambia el `ScheduleActivityTask` y rompería por no-determinismo a
+            # las ejecuciones en vuelo que todavía no llegaron a emitir (34 medidas al desplegar).
+            if workflow.patched("reservar-nro-antes-de-emitir"):
+                nro_reservado = await workflow.execute_activity(
+                    "reservar_numero_comprobante",
+                    args=[cliente_id, cuit, int(payload["PtoVta"]), int(payload["CbteTipo"])],
+                    start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+                emision = await workflow.execute_activity(
+                    "emitir_comprobante",
+                    args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
+                          receptor, nro_reservado],
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
+            else:
+                emision = await workflow.execute_activity(
+                    "emitir_comprobante",
+                    args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
+                          receptor],
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
         except Exception as exc:  # noqa: BLE001 — un rechazo de AFIP es un final, no un error a propagar
             self._estado = EstadoFactura.RECHAZADA
             self._motivo = str(exc)

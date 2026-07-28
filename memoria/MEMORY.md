@@ -8,6 +8,7 @@
 
 - **Vivo (prod-beta):** copiloto desplegado multitenant, smoke E2E 10/10. [[copiloto-deploy-multitenant-vivo]]
 - **🏁 CERRADO 2026-07-23:** sprint **Inteligencia de Negocio** + mobile-first — E2E 6/6 device, sign-off del operador (voz-ítem-7 residual documentado). [[copiloto-mobile-first-cascara-glass]]
+- **🛡️ MANEJO DE ERRORES — FASE 0 CERRADA** (2026-07-28): 10/12 puntos del mapa, 13 commits locales SIN PR. Sigue Fase 1 (A-4 / DLQ). → `docs/copiloto-emprendedor/2026-07-28-HANDOFF-manejo-de-errores-fase0-cerrada.md`
 - **🔗 CADENA VIVA post-sprint:** narra-sin-hacer (motor, PR#85 deployado, DoD **rojo** 2/2 en retest) → clientes-cerrado → Contabilidad hito 4. [[copiloto-narra-la-accion-sin-ejecutarla]]
 - **✅ Facturación AFIP** determinista, E2E desde el teléfono (CAE real, PDF, nota de crédito). [[copiloto-facturacion-afip]]
 - **✅ Presupuestos + perfil del negocio**, las dos capas (falta device). [[copiloto-presupuestos-y-perfil-negocio]]
@@ -60,7 +61,9 @@
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — `feedback`. En este repo es `coordinacion/PLAN.md`.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
 - [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
+- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — `project`. Carpeta `coordinacion/Antigravity/`; NO es cuarta sesión; cron temporal al activarlo. Reglas: COORDINACION.md §7.
 - [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
+- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — `project`. `git diff --numstat` dio 7/0 y el commit igual dejó afuera 4 entradas: comparaba contra la rama CHEQUEADA, no contra el padre de la cadena. Nombrá la base; `comm -23` sobre slugs > contar líneas.
 - [💥 `git checkout <ref> -- .` PISA los cambios solo-en-working-tree — irrecuperables](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — `project`. Un diff sin commit no lo salva ni reflog. Para "¿al día con origin?" usá `merge-base --is-ancestor`, no toques archivos. Commiteá la memoria pronto.
 - [📱🍳 Un gate de device se corre con RECETA async, no con ventana viva](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — `feedback`. Device de dueño único + buzón asíncrono → el dueño lo corre solo con gestos exactos escritos. El cuello era desconocer la UI, no la sincronía.
 - [🧪🔌 Tests que mockean la serialización son CIEGOS al borde del wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `project`. 2 bugs/semana misma clase (int-vs-interval 500, int-vs-string descarte). Suite verde mide el endpoint con el borde cortado; `curl`/device real lo caza en 30 s.
@@ -98,11 +101,18 @@
 - [⏱️ Dato en DOS tiempos, lector de UNO](dato-en-dos-tiempos-lector-de-un-tiempo.md) — `project`. Cortar en el 1er "listo" da dato prematuro; cortar por `terminado`.
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — `project`. Facturar 2× → 2 CAE. `USE_EXISTING` duplica. Medir el EFECTO.
 - [🧹 La deuda vencida no siempre se paga en un paso](la-deuda-vencida-no-siempre-se-paga-en-un-paso.md) — `feedback`. El `DROP COLUMN` rompía el deploy que la nombra. `grep` en TODO el repo, incl. deploy.
+- [🔀🌐 Mover la IP, no reconfigurar los consumidores](mover-la-identidad-de-red-en-vez-de-reconfigurar-consumidores.md) — `project`. **LEER antes de migrar un host.** 2 calls de API vs N deploys; el grep no ve consumidores fuera de tu perímetro. Ojo con dominios que llevan la IP en el hostname (`*.1-2-3-4.sslip.io`) y `auto_delete` de la primary IP.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `project`. Sin documento, `$0` afirma "no compró" cuando es "no lo sé". La distinción sobrevive al píxel.
 - [🎯 Discriminar un caso por la AUSENCIA de un campo](discriminar-por-ausencia-de-estructura.md) — `project`. El caso "por descarte" se traga todo caso nuevo. Guarda de exhaustividad + test con la forma real.
 - [🌐 El catch-all del SPA vuelve "no desplegado" indistinguible de "roto"](catch-all-vuelve-no-desplegado-indistinguible-de-roto.md) — `project`. Un GET da 200 con HTML. Sondar por verbo ≠ GET, primero contra ruta inexistente.
 - [🙅 El mensaje niega el efecto que YA ocurrió — y el test desde la misma creencia lo confirma](el-mensaje-niega-el-efecto-que-ya-ocurrio.md) — `project`. Guardó y dijo "no disponible" → duplica. Era la envoltura (2 de 8 endpoints). Fixture de respuesta real; test del camino feliz de vuelta; control diferencial.
 - [🛡️ Un guard cazó algo distinto de lo que vigilaba](guard-caza-algo-distinto-de-lo-que-vigilaba.md) — `project`. El anti-DDL destapó un bug de zona horaria. Leer el rechazo antes de aflojarlo.
+- [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — `project`. `existe_comprobante` atrapa el error REINTENTABLE y devuelve `False` = "emití de nuevo" → 2 CAE. Leer la rama de ERROR, no si el guard existe.
+- [✂️🤖 El hook se come el reporte del sub-agente headless](el-hook-se-come-el-reporte-del-subagente.md) — `project`. `result` corto ≠ agente conciso. Está en el transcript; NO re-lanzar. Control de forma sobre el output.
+- [📝⚡ Anotar ADENTRO el efecto externo en el instante en que ocurre](anotar-adentro-el-efecto-externo-en-el-instante.md) — `project`. Certificado en AFIP · CAE · NC. Guardar "al final" borra la única prueba. Un guard cuya evidencia la escribe un paso POSTERIOR no es un guard.
+- [⏱️🧪 Un test sin cota CUELGA en vez de decirte qué falta](un-test-sin-cota-cuelga-en-vez-de-decirte-que-falta.md) — `feedback`. Cota + volcar el estado ENTERO. Me dijo `condicion_venta` en 2 s.
+- [🧨✅ El test que canoniza el BUG como si fuera el contrato](el-test-que-canoniza-el-bug-como-si-fuera-el-contrato.md) — `feedback`. Docstring con "hoy"/"todavía no" describe un estado, no un contrato. Actualizar diciendo por qué, no "arreglar".
+- [🔑🔄 Derivar la clave DENTRO de la activity, no tocar el payload](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — `project`. `activity_id` + `run_id` (el continue-as-new reinicia la numeración). 78 workflows vivos intactos.
 - [🤥 Subir de modelo compra precisión, NO honestidad](subir-de-modelo-compra-precision-no-honestidad.md) — `project`. El OCR se declaró `legible:true` en cada alucinación. Ese gate está siempre abierto.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — `feedback`. Medir el solapamiento; primero la rama que corre en prod.
 - [🧹 Decisión consciente sin control posterior no vale nada](decision-consciente-sin-control-posterior.md) — `feedback`. Declararlo ANTES en el buzón. En el device no hay tenant de prueba.

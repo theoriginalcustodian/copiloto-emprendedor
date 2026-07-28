@@ -141,11 +141,25 @@ class MemoryProvider:
             _log.warning("remember degradado (memoria no persistida): cliente=%s err=%s", cliente_id, exc)
 
     def forget(self, cliente_id: str) -> None:
-        """RTBF/GDPR: borra el user graph del emprendedor (cascade threads/messages + Neo4j). Best-effort."""
+        """RTBF/GDPR: borra el user graph del emprendedor (cascade threads/messages + Neo4j).
+
+        🔴 **La ÚNICA operación de este módulo que NO es best-effort, y la excepción es deliberada.**
+        Todo lo demás degrada porque el costo de fallar es un turno con menos contexto. Acá el costo
+        es que los datos personales de una persona sigan existiendo después de que pidió borrarlos, y
+        **nadie se entere**: el `except` que loggeaba un warning y seguía devolvía exactamente lo
+        mismo que un borrado exitoso, así que el caller no tenía forma de reintentar ni de decirle a
+        la persona que su pedido no se cumplió. Un warning en un log que nadie mira no es un aviso.
+
+        Levanta, entonces, y el caller decide (reintentar, encolar, avisar). Hoy no hay ningún camino
+        de usuario cableado a esto —lo llama sólo el test de aislamiento vivo—, y ése es justamente el
+        momento de dejar el contrato bien: el día que se conecte el pedido de borrado, quien lo
+        conecte se encuentra con una función que no puede fallar en silencio.
+        """
         try:
             self._client.delete_user(self._user_id(cliente_id))
         except (GraphityMemoryError, ValueError) as exc:
-            _log.warning("forget degradado (no borrado): cliente=%s err=%s", cliente_id, exc)
+            _log.error("forget FALLÓ (los datos NO se borraron): cliente=%s err=%s", cliente_id, exc)
+            raise
 
 
 def build_memory_provider(env: Mapping[str, str]) -> MemoryProvider | None:

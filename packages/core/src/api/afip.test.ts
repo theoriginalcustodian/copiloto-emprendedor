@@ -869,6 +869,53 @@ describe('afip.ts', () => {
       expect(result.motivo).toBe('la confirmación no corresponde a los datos actuales; revisá el resumen');
     });
 
+    it('el 409 del backend ES el motivo: no hay que deducirlo releyendo el estado', async () => {
+      // Desde 2026-07-28 `confirmar` va por Workflow Update y el rechazo llega como 409 con
+      // `{motivo, motivo_codigo}`. Antes el backend contestaba 200 `{"ok":true}` y la única forma de
+      // enterarse era el test de arriba (releer y ver que seguía en `esperando_confirmacion`).
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok-viejo' })),
+        respuesta(409, {
+          detail: {
+            codigo: 'confirmacion_no_tomada',
+            mensaje: 'revisá el resumen',
+            motivo_codigo: 'token_desactualizado',
+          },
+        }),
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok-nuevo' })),
+      );
+
+      const result = await confirmarConTokenFresco('f-1');
+
+      expect(result.emitida).toBe(false);
+      expect(result.motivo).toBe('revisá el resumen');
+      // El estado releído se devuelve igual: la UI repinta el resumen que el usuario tiene que mirar.
+      expect(result.estado?.tokenConfirmacion).toBe('tok-nuevo');
+    });
+
+    it('un 409 de OTRO código se repropaga — no todo conflicto es "revisá el resumen"', async () => {
+      // Control diferencial de la discriminación por `codigo`: si esto se tragara, un
+      // `sin_certificado_afip` (que la UI resuelve mandando a vincular ARCA) se mostraría como un
+      // problema del resumen y el usuario tocaría "revisar" para siempre.
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok' })),
+        respuesta(409, { detail: { codigo: 'sin_certificado_afip', mensaje: 'vinculá tu cuenta' } }),
+      );
+
+      await expect(confirmarConTokenFresco('f-1')).rejects.toBeInstanceOf(ApiError);
+    });
+
+    it('un error que NO es 409 se repropaga — un 503 no es "no se tomó", es un fallo', async () => {
+      // Control diferencial: sin esto, tragar todo error convertiría una caída del backend en un
+      // "revisá el resumen" y el usuario reintentaría un resumen que está perfecto.
+      responder = secuencia(
+        respuesta(200, estadoFacturaCruda({ estado: 'esperando_confirmacion', token_confirmacion: 'tok' })),
+        respuesta(503, { detail: 'no se pudo confirmar la factura' }),
+      );
+
+      await expect(confirmarConTokenFresco('f-1')).rejects.toBeInstanceOf(ApiError);
+    });
+
     it('token_confirmacion null -> NO llama al backend (ni confirmar ni un 2º estado)', async () => {
       responder = () => respuesta(200, estadoFacturaCruda({ estado: 'borrador', token_confirmacion: null }));
 

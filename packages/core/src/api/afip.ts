@@ -1,6 +1,6 @@
 import { apiClient, mapearError as mapearErrorGenerico, safeJson } from './client';
 import { config } from './config';
-import { ApiError } from './errors';
+import { ApiError, codigoDeConflicto, mensajeDeConflicto } from './errors';
 import type { PeticionHttp } from './http';
 
 /**
@@ -331,6 +331,13 @@ export interface EstadoAnulacion {
   resultado: ResultadoEmision | null;
   motivo: string | null;
   terminado: boolean;
+  /**
+   * ¿La factura original quedó marcada como anulada en el libro propio? **No es lo mismo que "se
+   * anuló"**: la anulación la define el CAE de la nota de crédito ante AFIP. Puede venir `false` con
+   * `paso: 'anulada'` — la NC existe y es válida, pero el listado va a seguir mostrando la factura
+   * como vigente hasta que se reconcilie. Cuando pase, mostrar el `motivo`, no un error.
+   */
+  marcada: boolean;
 }
 
 /**
@@ -877,10 +884,37 @@ export async function setCliente(facturaId: string, receptor: ReceptorInput): Pr
   return apiClient.post<{ ok: true }>(`/afip/facturas/${encodeURIComponent(facturaId)}/cliente`, cuerpo);
 }
 
-/** `POST /afip/facturas/{id}/confirmar` — signal `confirmar`, gate HITL. Preferir
- * `confirmarConTokenFresco` desde la UI: éste es el primitivo de bajo nivel que no releva el token. */
-export async function confirmarFactura(facturaId: string, token: string): Promise<{ ok: true }> {
-  return apiClient.post<{ ok: true }>(`/afip/facturas/${encodeURIComponent(facturaId)}/confirmar`, { token });
+/**
+ * `POST /afip/facturas/{id}/confirmar` — gate HITL. Preferir `confirmarConTokenFresco` desde la UI:
+ * éste es el primitivo de bajo nivel que no releva el token.
+ *
+ * ⚠️ **Desde 2026-07-28 esto puede fallar con 409, y ese 409 es la respuesta útil.** Antes iba por
+ * signal (fire-and-forget) y contestaba `200 {"ok": true}` aunque el token estuviera vencido y no se
+ * emitiera nada — el único modo de enterarse era releer el estado. Ahora va por Workflow Update: si
+ * la confirmación no se tomó, el backend contesta **409** con `{motivo, motivo_codigo}` en `detail`.
+ */
+export async function confirmarFactura(
+  facturaId: string,
+  token: string,
+): Promise<{ ok: true; aceptado?: boolean }> {
+  return apiClient.post<{ ok: true; aceptado?: boolean }>(
+    `/afip/facturas/${encodeURIComponent(facturaId)}/confirmar`, { token });
+}
+
+/**
+ * Extrae el motivo de un 409 `confirmacion_no_tomada`, o `null` si el error es otra cosa — y "otra
+ * cosa" hay que repropagarla, no traducirla a "revisá el resumen".
+ *
+ * Discrimina por `codigo`, no por forma: es la misma máquina que ya usan `presupuestos.ts` y
+ * `perfilNegocio.ts` (`errores_web.CODIGOS` del lado del backend valida el código al construir el
+ * error). Mantiene el fallback por status para el caso que documenta `codigoDeConflicto`: un deploy
+ * viejo del backend que todavía no mande el código.
+ */
+function motivoDeRechazo(error: unknown): string | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const codigo = codigoDeConflicto(error.body);
+  if (codigo !== null && codigo !== 'confirmacion_no_tomada') return null;   // otro conflicto: no es lo nuestro
+  return mensajeDeConflicto(error.body) ?? 'los datos cambiaron, revisá el resumen antes de confirmar';
 }
 
 /** `POST /afip/facturas/{id}/cancelar` — signal `cancelar`. Sin vuelta atrás: el workflow termina en
@@ -1029,6 +1063,7 @@ export async function estadoAnulacion(anulacionId: string): Promise<EstadoAnulac
     resultado: ResultadoEmisionRaw | null;
     motivo: string | null;
     terminado: boolean;
+    marcada?: boolean;
   }>(`/afip/anulaciones/${encodeURIComponent(anulacionId)}`);
   return {
     paso: raw.paso,
@@ -1036,6 +1071,10 @@ export async function estadoAnulacion(anulacionId: string): Promise<EstadoAnulac
     errores: raw.errores,
     resultado: raw.resultado ? normalizarResultadoEmision(raw.resultado) : null,
     motivo: raw.motivo,
+    // `?? true` porque el campo es nuevo: una anulación anterior al cambio no lo trae, y en esas el
+    // marcado sí había ocurrido (si fallaba, el workflow moría antes de contestar). Default `false`
+    // pintaría de advertencia todas las anulaciones viejas.
+    marcada: raw.marcada ?? true,
     // Sin `motivoCodigo`: el backend documentó `motivo_codigo` para `FacturaWorkflow.estado()`, NO
     // para la anulación (`2026-07-21_respuesta2_backend-a-frontend-afip.md` §4). Agregarlo acá "por
     // simetría" sería inventar un campo del contrato y dejar a la UI ramificando sobre `null`
@@ -1044,8 +1083,9 @@ export async function estadoAnulacion(anulacionId: string): Promise<EstadoAnulac
   };
 }
 
-/** `POST /afip/anulaciones/{id}/confirmar` — signal `confirmar` de `AnulacionWorkflow`, mismo gate HITL
- * que facturar (`AnulacionWorkflow`: "anular es tan irreversible como facturar"). */
+/** `POST /afip/anulaciones/{id}/confirmar` — mismo gate HITL que facturar (`AnulacionWorkflow`:
+ * "anular es tan irreversible como facturar") y el mismo contrato: **409 con `{motivo, motivo_codigo}`
+ * si la confirmación no se tomó** (por ejemplo, si la validación ya dejó la anulación en `fallida`). */
 export async function confirmarAnulacion(anulacionId: string): Promise<{ ok: true }> {
   return apiClient.post<{ ok: true }>(`/afip/anulaciones/${encodeURIComponent(anulacionId)}/confirmar`);
 }
@@ -1179,11 +1219,10 @@ export interface ConfirmarResultado {
 
 /**
  * Confirma con el `tokenConfirmacion` FRESCO (lo relee del estado, nunca uno que la UI tenía guardado)
- * y VERIFICA el resultado releyendo de nuevo — `afip_web.py::confirmar_factura` documenta que si el
- * borrador cambió después de que la UI leyó el token, la confirmación es un no-op DELIBERADO (fail-
- * closed del signal `confirmar`, ver `FacturaWorkflow.confirmar`): el estado sigue en
- * `esperando_confirmacion` con `motivo` explicando por qué. Sin esta verificación, la UI creería que
- * confirmó y el usuario nunca se entera de que la factura no salió.
+ * y VERIFICA el resultado releyendo de nuevo. Si el borrador cambió después de que la UI leyó el
+ * token, la confirmación NO se toma (fail-closed de `FacturaWorkflow.confirmar`) y el backend lo dice
+ * con un **409**. La relectura posterior se mantiene igual: cubre el caso en que la confirmación se
+ * tomó pero la emisión no prosperó, que el 409 no reporta porque ocurre después.
  *
  * Si `tokenConfirmacion` es `null` (la factura no llegó a `esperando_confirmacion`), NO llama al
  * backend — no tiene sentido mandar un `confirmar` que el signal va a rechazar igual.
@@ -1194,7 +1233,15 @@ export async function confirmarConTokenFresco(facturaId: string): Promise<Confir
     return { emitida: false, motivo: 'la factura no está lista para emitir', estado: previo };
   }
 
-  await confirmarFactura(facturaId, previo.tokenConfirmacion);
+  try {
+    await confirmarFactura(facturaId, previo.tokenConfirmacion);
+  } catch (error) {
+    const motivo = motivoDeRechazo(error);
+    if (motivo === null) throw error;   // 401, 503, red: no es "no se tomó", es un fallo real
+    // El backend ya nos dijo POR QUÉ no se tomó. Se relee igual el estado para devolverlo: la UI lo
+    // usa para repintar el resumen actualizado, que es lo que el usuario tiene que volver a mirar.
+    return { emitida: false, motivo, estado: await estadoFactura(facturaId) };
+  }
   const posterior = await estadoFactura(facturaId);
 
   if (posterior.estado === 'esperando_confirmacion') {

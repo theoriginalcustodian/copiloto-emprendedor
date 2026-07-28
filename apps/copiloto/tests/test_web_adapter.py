@@ -25,7 +25,8 @@ def test_normalize_rejects_empty():
 def test_send_invokes_sink_with_cliente_id_choices_and_card():
     seen = []
     a = WebChannelAdapter(
-        reply_sink=lambda cid, ref, text, choices, card: seen.append((cid, ref, text, choices, card)))
+        reply_sink=lambda cid, ref, text, choices, card, *, idem_key=None:
+        seen.append((cid, ref, text, choices, card)))
     out = a.send("s1", "listo", [{"label": "Confirmar", "value": "confirm"}], cliente_id="cid-A",
                  card={"service": "gmail", "label": "Gmail"})
     assert out == {"sent": True}
@@ -33,6 +34,19 @@ def test_send_invokes_sink_with_cliente_id_choices_and_card():
                      {"service": "gmail", "label": "Gmail"})]
 
 
+def test_send_pasa_la_idem_key_al_sink():
+    """El adapter no la inventa ni la ignora: la reenvía. Quien la genera es la activity, que es la
+    que se reintenta — el adapter no tiene forma de saber si esta llamada es un reintento."""
+    seen = []
+    a = WebChannelAdapter(
+        reply_sink=lambda cid, ref, text, choices, card, *, idem_key=None: seen.append(idem_key))
+
+    a.send("s1", "listo", None, cliente_id="cid-A", idem_key="wf-1:run-1:5")
+    a.send("s1", "otro", None, cliente_id="cid-A")          # sin clave: sigue funcionando
+
+    assert seen == ["wf-1:run-1:5", None]
+
+
 def test_send_accepts_no_choices_no_cliente_id_no_card():    # todo keyword-only opcional (backward-compat)
-    a = WebChannelAdapter(reply_sink=lambda cid, ref, text, choices, card: None)
+    a = WebChannelAdapter(reply_sink=lambda cid, ref, text, choices, card, *, idem_key=None: None)
     assert a.send("s1", "hola", None) == {"sent": True}      # sin card -> el sink recibe None

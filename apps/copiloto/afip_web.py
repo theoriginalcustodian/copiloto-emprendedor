@@ -21,7 +21,7 @@ from afip_credential_store import ClaveFiscal
 from afip_rules import (CondicionEmisor, PerfilFiscal, rango_fechas_permitido,
                         validar_cuit, validar_perfil)
 from gasto_store import hoy_del_negocio
-from errores_web import (AMBIENTE_NO_VINCULADO, INGRESO_DUPLICADO_PROBABLE,
+from errores_web import (AMBIENTE_NO_VINCULADO, CONFIRMACION_NO_TOMADA, INGRESO_DUPLICADO_PROBABLE,
                          SIN_CERTIFICADO_AFIP, SIN_PERFIL_FISCAL, conflicto)
 from cobro_store import CobroInvalido
 
@@ -147,6 +147,10 @@ def create_afip_app(
     iniciar_factura: Callable | None = None,
     consultar_factura: Callable | None = None,
     signal_factura: Callable | None = None,
+    # Confirmar por Workflow Update en vez de signal: devuelve si la confirmación se TOMÓ. Opcionales
+    # y con fallback al signal para no romper a quien arme el app sin ellas (tests, montajes parciales).
+    confirmar_factura: Callable | None = None,
+    confirmar_anulacion: Callable | None = None,
     iniciar_anulacion: Callable | None = None,
     consultar_anulacion: Callable | None = None,
     signal_anulacion: Callable | None = None,
@@ -309,23 +313,26 @@ def create_afip_app(
         return {"ok": True}
 
     @app.post("/afip/facturas/{factura_id}/confirmar")
-    async def confirmar_factura(factura_id: str, body: ConfirmarBody,
-                                cliente_id: str = Depends(require_tenant)) -> dict:
+    async def post_confirmar_factura(factura_id: str, body: ConfirmarBody,
+                                     cliente_id: str = Depends(require_tenant)) -> dict:
         """Emite. El `token` sale de `token_confirmacion` del estado — el mismo que se mostró en el resumen.
 
-        Si el borrador cambió después de que la UI leyó el token, esto es un no-op con motivo: el
-        usuario tiene que volver a mirar el resumen. Es deliberado, no un bug.
+        Si el borrador cambió después de que la UI leyó el token, la confirmación NO se toma: se
+        contesta **409** con el motivo, y el usuario tiene que volver a mirar el resumen.
+
+        Hasta el 2026-07-28 esto iba por signal —fire-and-forget— y devolvía `200 {"ok": true}` con el
+        token vencido exactamente igual que con el válido: la respuesta significaba "recibí tu pedido"
+        mientras el nombre decía "confirmado". Ahora va por Workflow Update, que sí devuelve lo que el
+        workflow decidió. El signal queda como fallback para montajes que no inyecten la dependencia.
         """
-        await _maybe_async(signal_factura, cliente_id, factura_id, "confirmar", body.token)
-        # TODO(deuda gestionada · 2026-07-21 · propietario: operador · pagar antes de abrir la API a
-        # terceros): este `ok` —y el de los otros cinco endpoints de signal— significa "recibí tu
-        # pedido", NO "salió bien". Un signal puede ser un no-op y la respuesta es idéntica: medido,
-        # `confirmar` con un token inválido devuelve 200 {"ok": true} y no emite nada. El cliente sólo
-        # lo distingue poleando `motivo_codigo`. La app actual lo hace bien, pero el nombre miente y
-        # el próximo consumidor va a leerlo como "confirmado".
-        # Fix propuesto: `202 Accepted` + {"aceptado": true}. Requiere coordinar con el release del
-        # frontend, por eso no se cambió acá. Ver coordinacion/2026-07-21_respuesta_backend-*.md
-        return {"ok": True}
+        if confirmar_factura is None:
+            await _maybe_async(signal_factura, cliente_id, factura_id, "confirmar", body.token)
+            return {"ok": True}
+
+        resultado = await _maybe_async(confirmar_factura, cliente_id, factura_id, body.token)
+        if not resultado.get("aceptado"):
+            raise _rechazo(resultado)
+        return {"ok": True, "aceptado": True}
 
     @app.post("/afip/facturas/{factura_id}/cancelar")
     async def cancelar_factura(factura_id: str, cliente_id: str = Depends(require_tenant)) -> dict:
@@ -533,10 +540,19 @@ def create_afip_app(
         return estado
 
     @app.post("/afip/anulaciones/{anulacion_id}/confirmar")
-    async def confirmar_anulacion(anulacion_id: str,
-                                  cliente_id: str = Depends(require_tenant)) -> dict:
-        await _maybe_async(signal_anulacion, cliente_id, anulacion_id, "confirmar", None)
-        return {"ok": True}
+    async def post_confirmar_anulacion(anulacion_id: str,
+                                       cliente_id: str = Depends(require_tenant)) -> dict:
+        """Mismo criterio que confirmar una factura: anular es tan irreversible como facturar, así que
+        el cliente tiene que saber si su confirmación se tomó. 409 si el workflow ya no está en el gate
+        (por ejemplo, si la validación lo dejó en `fallida`)."""
+        if confirmar_anulacion is None:
+            await _maybe_async(signal_anulacion, cliente_id, anulacion_id, "confirmar", None)
+            return {"ok": True}
+
+        resultado = await _maybe_async(confirmar_anulacion, cliente_id, anulacion_id)
+        if not resultado.get("aceptado"):
+            raise _rechazo(resultado)
+        return {"ok": True, "aceptado": True}
 
     @app.get("/afip/estado")
     async def estado(cuit: str | None = None, cliente_id: str = Depends(require_tenant)) -> dict:
@@ -602,6 +618,20 @@ def create_afip_app(
         return {"ok": True, "ambiente": body.ambiente}
 
     return app
+
+
+def _rechazo(resultado: dict) -> HTTPException:
+    """El 409 de una confirmación que el gate HITL no tomó.
+
+    Un solo `codigo` —`confirmacion_no_tomada`— y el porqué puntual en `motivo_codigo`
+    (`token_desactualizado`, `faltan_datos`, `fuera_de_gate`). Esos motivos los define el workflow y
+    pueden crecer; el catálogo de `errores_web` es contrato con la app y se agrega, no se renombra.
+    Mezclarlos obligaría a tocar el catálogo cada vez que el workflow suma un motivo.
+    """
+    return conflicto(
+        CONFIRMACION_NO_TOMADA,
+        resultado.get("motivo") or "la confirmación no se pudo tomar",
+        motivo_codigo=resultado.get("motivo_codigo") or "no_aceptada")
 
 
 async def _maybe_async(fn, *args):

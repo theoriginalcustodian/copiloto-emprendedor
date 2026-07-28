@@ -1,7 +1,8 @@
-import { Linking, Share, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { EstadoFacturaResp } from '@copiloto/core';
 
+import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
 import { SeccionCobro } from './SeccionCobro';
@@ -66,11 +67,11 @@ export function TarjetaComprobante({
   const sinLink = link == null;
 
   async function guardar() {
-    if (link) await Linking.openURL(link);
+    if (link) await abrirLink(link, 'tu factura');
   }
 
   async function compartir() {
-    if (link) await Share.share({ message: link, url: link });
+    if (link) await compartirLink(link, 'tu factura');
   }
 
   return (

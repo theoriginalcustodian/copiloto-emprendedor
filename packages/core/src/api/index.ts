@@ -36,6 +36,7 @@ export type { ConfigApi } from './config';
 
 // Puertos — los tipos que cada plataforma implementa.
 export type { ArchivoSubida, HttpPort, PeticionHttp, RespuestaHttp } from './http';
+export { TIMEOUT_HTTP_MS } from './http';
 export type { AlmacenTokens } from './tokens';
 
 // Errores.

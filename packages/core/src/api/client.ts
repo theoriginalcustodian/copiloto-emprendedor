@@ -88,9 +88,39 @@ export async function mapearError(status: number, body: unknown, opts: { limpiar
   throw new ApiError(status, detail ?? `Error HTTP ${status}`, detail, body);
 }
 
+/** ¿Es el aborto por timeout del adaptador, y no otro fallo de red? */
+function esCorteDeTiempo(error: unknown): boolean {
+  // `AbortError` es lo que tiran `fetch` (web) y el `fetch` de Expo (nativo) al abortar. Se mira el
+  // `name` y no `instanceof DOMException` porque el core NO puede tocar tipos del DOM (ADR-010).
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError'
+  );
+}
+
+/**
+ * Envía y convierte el corte por tiempo en un error del dominio del cliente.
+ *
+ * Sin esto, un `AbortError` crudo sube por toda la app: cada pantalla tendría que reconocer un tipo
+ * del navegador para distinguir "tardó demasiado" de un bug. Como `ApiError` 408, entra por el mismo
+ * camino que cualquier otro fallo HTTP y las pantallas que ya muestran `error.detail` lo muestran sin
+ * cambiar una línea.
+ */
+async function enviarConCorte(peticion: PeticionHttp): Promise<RespuestaHttp> {
+  const { http } = config();
+  try {
+    return await http.enviar(peticion);
+  } catch (error) {
+    if (!esCorteDeTiempo(error)) throw error;
+    throw new ApiError(408, 'la conexión tardó demasiado; probá de nuevo', 'timeout');
+  }
+}
+
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true } = opts;
-  const { http, tokens } = config();
+  const { tokens } = config();   // el `http` lo toma `enviarConCorte`, que envuelve el envío
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
   if (auth) {
@@ -103,7 +133,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   // definitivo (no logueado) y reintentar sería inútil.
   const sentBearer = auth && headers.Authorization !== undefined;
 
-  let res = await http.enviar(peticion);
+  let res = await enviarConCorte(peticion);
 
   // Refresh-on-401: si una request CON sesión da 401 (token vencido), renovamos en silencio y
   // reintentamos con el token nuevo. El usuario nunca ve un logout por expiración. Si el refresh
@@ -114,7 +144,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     if (refreshed) {
       const fresh = await tokens.leerToken();
       if (fresh) headers.Authorization = `Bearer ${fresh}`;
-      res = await http.enviar({ ...peticion, headers });
+      res = await enviarConCorte({ ...peticion, headers });
     }
   }
 
@@ -175,6 +205,11 @@ export async function postMultipart<T>(
     path,
     headers,
     multipart: { campos, campoArchivo, archivo },
+    // Sin corte por tiempo, a propósito: subir un audio por una red lenta puede tardar mucho más que
+    // cualquier request JSON, y abortarlo perdería una grabación que el usuario ya hizo. Además el
+    // camino nativo del multipart no pasa por `fetch` (`uploadAsync` streamea desde disco) y no tiene
+    // dónde enganchar el `AbortController` — declararlo explícito evita que parezca un olvido.
+    timeoutMs: 0,
   });
 
   if (res.ok) return (await res.json()) as T;

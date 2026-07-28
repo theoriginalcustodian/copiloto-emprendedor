@@ -260,15 +260,75 @@ def make_abrir_borrador_de_presupuesto(temporal_client, *,
     return abrir_borrador
 
 
+def _no_existe(exc: BaseException) -> bool:
+    """¿El workflow no existe, o es que no pudimos preguntar?
+
+    **La distinción no es cosmética.** Un `except Exception: return None` convierte los dos casos en
+    un 404 "no encontrada", y 404 es una respuesta *definitiva*: el cliente deja de reintentar y le
+    dice al usuario que su factura no existe. Si lo que pasó fue que Temporal estaba caído un
+    instante, esa factura existe, se está emitiendo, y acabamos de mentir de la peor forma posible —
+    con una respuesta que nadie va a volver a consultar.
+
+    Sólo `NOT_FOUND` significa "no existe". Todo lo demás —red, deadline, cluster caído, un fallo de
+    replay que rompe la query— es "no pude preguntar", y eso es un 503 que invita a reintentar. Ante
+    la duda se elige el 503: equivocarse hacia "volvé a intentar" es recuperable; hacia "no existe",
+    no.
+    """
+    from temporalio.service import RPCError, RPCStatusCode
+    return isinstance(exc, RPCError) and exc.status == RPCStatusCode.NOT_FOUND
+
+
+async def _estado_de_workflow(handle, que: str) -> dict | None:
+    """Query de estado con el 404 y el 503 separados. `que` es sólo para el mensaje y el log."""
+    try:
+        return await handle.query("estado")
+    except Exception as exc:  # noqa: BLE001
+        if _no_existe(exc):
+            return None
+        _log.error("no se pudo leer el estado de %s (%s): %s", que, type(exc).__name__, exc)
+        raise HTTPException(503, detail=f"estado de {que} no disponible: reintentá en unos segundos")
+
+
 def make_consultar_factura(temporal_client) -> Callable:
     async def consultar_factura(cliente_id: str, factura_id: str) -> dict | None:
-        try:
-            handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
-            return await handle.query("estado")
-        except Exception:  # noqa: BLE001 — no existe, o no es de este tenant: 404 desde el endpoint
-            return None
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        return await _estado_de_workflow(handle, "la factura")
 
     return consultar_factura
+
+
+async def _confirmar_por_update(handle, args: list, que: str) -> dict:
+    """Confirma vía Workflow Update y devuelve el resultado REAL, no un acuse de recibo.
+
+    Un signal es fire-and-forget: el endpoint contestaba `{"ok": true}` con el token vencido igual que
+    con el válido. Un update devuelve lo que el handler decidió. Verificado contra el cluster del VPS
+    (Temporal 1.29.7) antes de escribir esto: el update viaja, el rechazo vuelve, y un signal y un
+    update pueden compartir nombre de wire — por eso el signal sigue existiendo para los clientes
+    viejos y las ejecuciones en vuelo.
+    """
+    try:
+        return await handle.execute_update("confirmar", *args)
+    except Exception as exc:  # noqa: BLE001
+        if _no_existe(exc):
+            raise HTTPException(404, detail=f"{que} no encontrada") from exc
+        _log.error("no se pudo confirmar %s (%s): %s", que, type(exc).__name__, exc)
+        raise HTTPException(503, detail=f"no se pudo confirmar {que}: reintentá en unos segundos")
+
+
+def make_confirmar_factura(temporal_client) -> Callable:
+    async def confirmar_factura(cliente_id: str, factura_id: str, token: str) -> dict:
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        return await _confirmar_por_update(handle, [token], "la factura")
+
+    return confirmar_factura
+
+
+def make_confirmar_anulacion(temporal_client) -> Callable:
+    async def confirmar_anulacion(cliente_id: str, anulacion_id: str) -> dict:
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        return await _confirmar_por_update(handle, [], "la anulación")
+
+    return confirmar_anulacion
 
 
 def make_signal_factura(temporal_client) -> Callable:
@@ -342,11 +402,8 @@ def make_iniciar_anulacion(temporal_client, *, task_queue: str = AGENT_B_TASK_QU
 
 def make_consultar_anulacion(temporal_client) -> Callable:
     async def consultar_anulacion(cliente_id: str, anulacion_id: str) -> dict | None:
-        try:
-            handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
-            return await handle.query("estado")
-        except Exception:  # noqa: BLE001
-            return None
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        return await _estado_de_workflow(handle, "la anulación")
 
     return consultar_anulacion
 

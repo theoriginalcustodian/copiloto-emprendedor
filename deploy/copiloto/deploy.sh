@@ -148,6 +148,39 @@ cd "$REMOTE/deploy/worker"
 "$VENV/bin/python" ensure_mi_dia_schedules.py
 REMOTE_MI_DIA_SCHEDULES
 
+echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"
+# Por qué existe (incidente 2026-07-21, 15 x `ImportError: cannot import name 'make_consultar_anulacion'
+# from 'web'` en producción): el paso [6/7] valida el Caddyfile ANTES de aplicarlo y aborta sin tocar
+# nada, pero el paso [5/7] hacía `systemctl restart` SIN validar que el código nuevo siquiera importe.
+# La asimetría era el bug: el smoke [7/7] detecta el servicio roto, pero DESPUÉS de haberlo reiniciado
+# con código que no carga -> Restart=always lo deja en loop y el copiloto queda caído.
+# Este gate corre con el MISMO cwd, PYTHONPATH, venv y EnvironmentFile que los units, así que un verde
+# acá significa lo mismo que arrancar. Si falla: aborta por `set -e` con los servicios VIEJOS intactos.
+# Importar es seguro: `serve.py:289` y `worker_b.py:301` tienen guard `if __name__ == "__main__"`, así
+# que nada arranca al importarlos (verificado antes de escribir esto, no asumido).
+ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_IMPORT_GATE'
+set -euo pipefail
+REMOTE="$1"; ENVDIR="$2"; VENV="$3"
+cd "$REMOTE/apps/copiloto"
+export PYTHONPATH="$REMOTE/motor:$REMOTE/deploy/worker"
+# Mismos EnvironmentFile que los units; si alguno falta, el gate igual corre (un import que dependa de
+# una env ausente fallaría también al arrancar -> es exactamente lo que queremos que salte acá).
+set -a
+for f in "$ENVDIR/copiloto.env" "$ENVDIR/fusion-pg.env" "$ENVDIR/fusion-supabase.env"; do
+  [ -f "$f" ] && . "$f"
+done
+set +a
+for m in serve worker_b; do
+  if "$VENV/bin/python" -c "import $m" 2>/tmp/import-gate.err; then
+    echo "import $m: OK"
+  else
+    echo "IMPORT GATE FALLO en '$m' -- abortando SIN reiniciar (los servicios viejos siguen arriba)" >&2
+    cat /tmp/import-gate.err >&2
+    exit 1
+  fi
+done
+REMOTE_IMPORT_GATE
+
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
 ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" <<'REMOTE_UNITS'
 set -euo pipefail

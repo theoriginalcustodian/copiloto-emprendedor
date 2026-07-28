@@ -1,5 +1,6 @@
 import { FileSystemUploadType, uploadAsync } from 'expo-file-system/legacy';
 
+import { TIMEOUT_HTTP_MS } from '@copiloto/core';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from '@copiloto/core';
 
 const BASE = process.env.EXPO_PUBLIC_API_BASE ?? '';
@@ -51,12 +52,26 @@ export const httpNativo: HttpPort = {
       };
     }
 
-    const res = await fetch(url, {
-      method: p.metodo,
-      headers: p.headers,
-      body: p.cuerpoJson !== undefined ? JSON.stringify(p.cuerpoJson) : undefined,
-    });
-    return { ok: res.ok, status: res.status, json: () => res.json() };
+    // 🔴 Un `fetch` sin timeout NO falla: cuelga. En el celular es el caso normal —cambio de wifi a
+    // datos, ascensor, subte— y la promesa nunca resuelve ni rechaza: la pantalla queda con el
+    // spinner puesto para siempre, sin error y sin nada que tocar salvo matar la app. El corte lo
+    // traduce el core a un `ApiError` 408 (`enviarConCorte`), que las pantallas ya saben mostrar.
+    const corteMs = p.timeoutMs ?? TIMEOUT_HTTP_MS;
+    const controlador = new AbortController();
+    const alarma = corteMs > 0 ? setTimeout(() => controlador.abort(), corteMs) : undefined;
+    try {
+      const res = await fetch(url, {
+        method: p.metodo,
+        headers: p.headers,
+        body: p.cuerpoJson !== undefined ? JSON.stringify(p.cuerpoJson) : undefined,
+        signal: controlador.signal,
+      });
+      return { ok: res.ok, status: res.status, json: () => res.json() };
+    } finally {
+      // Siempre: si la respuesta llegó a tiempo, el timer pendiente mantendría vivo el proceso (o
+      // abortaría una request ya terminada) — y en RN un timer huérfano por request es una fuga.
+      if (alarma !== undefined) clearTimeout(alarma);
+    }
   },
 };
 

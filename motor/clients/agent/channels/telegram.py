@@ -51,7 +51,12 @@ class TelegramAdapter:
                 return NormalizedMessage(channel=CHANNEL, channel_ref=ref, text=str(file_id), kind="needs_stt")
         return None
 
-    def send(self, channel_ref: str, text: str, choices: list | None = None, *, cliente_id: str | None = None) -> dict:
+    def send(self, channel_ref: str, text: str, choices: list | None = None, *,
+             cliente_id: str | None = None, **_ignorados) -> dict:
+        """`**_ignorados` absorbe los kwargs opcionales del contrato que este canal no usa (`card`,
+        `idem_key`). Sin eso, la activity —que los manda siempre— hacía `TypeError` acá: un canal que
+        no entiende un campo opcional tiene que ignorarlo, no romper el envío. La Bot API de Telegram
+        no acepta clave de idempotencia, así que el deduplicado no es posible de este lado."""
         # cliente_id: parte del contrato ChannelAdapter (multitenant del canal web); Telegram es single-tenant
         # por bot -> se IGNORA acá a propósito (backward-compatible, no rompe al caller).
         payload = {"chat_id": channel_ref, "text": text}

@@ -22,6 +22,17 @@ export interface ArchivoSubida {
   datos: unknown;
 }
 
+/**
+ * Cuánto se espera una respuesta antes de cortar. **Un `fetch` sin timeout no falla: cuelga.** Si la
+ * red se muere a mitad de una request —el caso típico del celular que cambia de wifi a datos— la
+ * promesa nunca resuelve ni rechaza, y la pantalla queda con el spinner puesto para siempre: sin
+ * error, sin reintento, sin nada que tocar salvo matar la app.
+ *
+ * 20 s es holgado para todo lo que este cliente pide (el endpoint más lento es la emisión, y esa la
+ * arranca el backend en un workflow y se sigue poleando, no se espera en la request).
+ */
+export const TIMEOUT_HTTP_MS = 20_000;
+
 export interface PeticionHttp {
   /** `PATCH` lo usa `actualizarCliente` (edición parcial del cliente); `DELETE`, `quitarItem` de
    * facturación (`DELETE /afip/facturas/{id}/items/{indice}`). Los adaptadores pasan este valor tal
@@ -36,6 +47,15 @@ export interface PeticionHttp {
   cuerpoJson?: unknown;
   /** Cuerpo `multipart/form-data`. Excluyente con `cuerpoJson`. */
   multipart?: { campos: Record<string, string>; campoArchivo: string; archivo: ArchivoSubida };
+  /**
+   * Corte por tiempo, en ms. El adaptador aborta la request al vencer y el core lo traduce a un
+   * `ApiError` 408. Ausente → el adaptador aplica `TIMEOUT_HTTP_MS`.
+   *
+   * Un `0` DESACTIVA el corte, y es deliberado que haya que escribirlo: subir audio por una red
+   * lenta puede tardar mucho más que cualquier request JSON, y matarlo a los 20 s perdería una
+   * grabación que el usuario ya hizo.
+   */
+  timeoutMs?: number;
 }
 
 export interface HttpPort {

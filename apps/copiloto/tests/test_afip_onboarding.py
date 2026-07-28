@@ -376,4 +376,82 @@ async def test_el_workflow_termina_en_fallido_si_el_alta_falla():
 
     assert res["ok"] is False
     assert res["paso"] == "fallido"
-    assert res["motivo"] == "handle_invalido_o_vencido"
+    # ⚠️ Antes esto afirmaba `motivo == "handle_invalido_o_vencido"`, o sea que el CÓDIGO crudo de la
+    # activity llegaba tal cual a `progreso()["motivo"]` — que la pantalla de Ajustes pinta sin
+    # traducir. Eso no era el contrato, era el defecto: el emprendedor leía un identificador de
+    # máquina que no le dice qué hacer. Ahora se traduce con la MISMA tabla que los errores por
+    # excepción, y lo que se vigila es que el texto sea accionable.
+    assert res["motivo"] == ("La sesión de vinculación venció. Volvé a ingresar tu clave fiscal.")
+    assert "handle_invalido" not in res["motivo"], "el código crudo no puede llegar al usuario"
+
+
+# ── El certificado huérfano: el peor desenlace del alta ──────────────────────────────────────────
+
+def test_el_certificado_se_guarda_ANTES_de_autorizar_el_web_service(monkeypatch):
+    """EL TEST QUE IMPORTA. Mide el daño: si falla la autorización, ¿nos quedamos con el certificado?
+
+    El certificado ya existe EN AFIP —efecto externo, irreversible— y la clave fiscal ya se consumió
+    (es one-shot). Con el `save` después de autorizar, un timeout del RPA dejaba un certificado
+    huérfano que este sistema no conocía y obligaba al usuario a gastar OTRA clave fiscal, contra un
+    alias que además ya estaba tomado.
+    """
+    import afip_onboarding_activities as act
+
+    guardados: list = []
+
+    class Gateway:
+        def crear_certificado(self, **kw):
+            return {"cert": "CERT", "key": "KEY"}
+
+        def autorizar_web_service(self, **kw):
+            raise RuntimeError("timeout del RPA de AfipSDK")
+
+    class Cred:
+        def save(self, cuit, **kw):
+            guardados.append(kw.get("ws_autorizados"))
+
+    class Clave:
+        def revelar(self):
+            return "clave"
+
+    monkeypatch.setattr(act, "_gateway_factory", lambda *a, **k: Gateway())
+    monkeypatch.setattr(act, "_cred_store_factory", lambda cid: Cred())
+    monkeypatch.setattr(act, "_handoff_factory",
+                        lambda cid: type("H", (), {"consume": lambda self, h: Clave()})())
+
+    res = act._dar_de_alta_sync("t1", CUIT, "handle-1")
+
+    assert guardados == [[]], "el certificado se perdió: quedó huérfano en AFIP"
+    assert res["ok"] is False
+    assert res["motivo"] == "certificado_ok_falta_autorizar_wsfe", (
+        "el motivo tiene que distinguirse de 'no pasó nada': reintentar NO necesita otra clave fiscal")
+
+
+def test_control_el_camino_feliz_guarda_wsfe_autorizado(monkeypatch):
+    """Control diferencial: si el `save` previo fuera el único, la credencial quedaría para siempre
+    con `ws_autorizados=[]` y el tenant no podría facturar nunca."""
+    import afip_onboarding_activities as act
+
+    guardados: list = []
+
+    class Gateway:
+        def crear_certificado(self, **kw):
+            return {"cert": "CERT", "key": "KEY"}
+
+        def autorizar_web_service(self, **kw):
+            return {"ok": True}
+
+    class Cred:
+        def save(self, cuit, **kw):
+            guardados.append(kw.get("ws_autorizados"))
+
+    monkeypatch.setattr(act, "_gateway_factory", lambda *a, **k: Gateway())
+    monkeypatch.setattr(act, "_cred_store_factory", lambda cid: Cred())
+    monkeypatch.setattr(act, "_handoff_factory",
+                        lambda cid: type("H", (), {
+                            "consume": lambda self, h: type("C", (), {"revelar": lambda s: "x"})()})())
+
+    res = act._dar_de_alta_sync("t1", CUIT, "handle-1")
+
+    assert guardados == [[], ["wsfe"]], "el segundo save (con wsfe) es el que habilita a facturar"
+    assert res["ok"] is True

@@ -49,6 +49,26 @@ class ResultadoPDF:
     nombre: str
 
 
+def _primer_result_get(info: Any) -> dict:
+    """Normaliza la respuesta de `getVoucherInfo` a un dict plano.
+
+    El WS devuelve el detalle en `ResultGet`, que puede venir como **objeto o como lista** (y a veces
+    ya viene plano, sin envoltorio). Cada una de esas formas es una respuesta legítima; lo que NO es
+    legítimo es devolver `{}` ante una de ellas, porque el llamador lee `{}` como "no existe" y el
+    check-before-act de la emisión le da luz verde a reemitir.
+    """
+    if not info:
+        return {}
+    if isinstance(info, list):
+        info = info[0] if info else {}
+    if not isinstance(info, dict):
+        return {}
+    detalle = info.get("ResultGet", info)
+    if isinstance(detalle, list):
+        detalle = detalle[0] if detalle else {}
+    return detalle if isinstance(detalle, dict) else {}
+
+
 class ClienteAfip(Protocol):
     """Lo mínimo que el gateway necesita de `afip.py`. Existe para poder testear sin red."""
 
@@ -136,14 +156,19 @@ class AfipGateway:
             raise ErrorAfip(f"no se pudo obtener el último comprobante: {exc}") from exc
 
     def info_comprobante(self, *, numero: int, punto_venta: int, tipo_cbte: int) -> dict:
-        """Devuelve el `ResultGet` plano. Sirve para el check-before-act de la emisión y para consultas."""
+        """Devuelve el `ResultGet` plano. Sirve para el check-before-act de la emisión y para consultas.
+
+        `ResultGet` puede venir como **objeto o como lista** — el WS no es consistente. La versión
+        anterior devolvía `{}` ante una lista, y ese `{}` lo lee el llamador como "el comprobante no
+        existe" → reemite. Es decir: una respuesta VÁLIDA de AFIP se traducía en luz verde para
+        emitir de nuevo. Mismo tratamiento que el "anti-pattern P5" de la suite ARCA
+        (`mot07-consulta-fe.ts:142-149`), que ya pagó este caso contra el WS real.
+        """
         try:
             info = self.cliente.ElectronicBilling.getVoucherInfo(numero, punto_venta, tipo_cbte)
         except Exception as exc:  # noqa: BLE001
             raise ErrorAfip(f"no se pudo consultar el comprobante {punto_venta}-{numero}: {exc}") from exc
-        if not info:
-            return {}
-        return info.get("ResultGet", info) if isinstance(info, dict) else {}
+        return _primer_result_get(info)
 
     def existe_comprobante(self, *, numero: int, punto_venta: int, tipo_cbte: int) -> bool:
         """Check-before-act: ¿AFIP ya autorizó este número?

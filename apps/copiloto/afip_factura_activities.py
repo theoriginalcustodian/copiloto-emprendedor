@@ -72,15 +72,25 @@ async def cargar_contexto_factura(cliente_id: str, cuit: str) -> dict:
 
 
 def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
-                 workflow_id: str, receptor_nombre: str = "") -> dict:
+                 workflow_id: str, receptor_nombre: str = "",
+                 nro_reservado: int | None = None) -> dict:
     """Emite en AFIP y registra el comprobante. Idempotente en dos capas.
 
     Capa 1 — la base: si `idem_key` ya tiene un comprobante registrado, se devuelve ese sin volver a
     emitir. Cubre el reintento después de un éxito completo.
 
-    Capa 2 — AFIP: antes de emitir se pregunta si el número siguiente ya fue autorizado. Cubre la
-    ventana fea: AFIP autorizó, el proceso se cayó antes de registrar, y el reintento estaría por
-    emitir una SEGUNDA factura. Una factura duplicada sólo se arregla con una nota de crédito.
+    Capa 2 — AFIP: antes de emitir se pregunta si el número **que vamos a usar** ya fue autorizado.
+    Cubre la ventana fea: AFIP autorizó, el proceso se cayó antes de registrar, y el reintento estaría
+    por emitir una SEGUNDA factura. Una factura duplicada sólo se arregla con una nota de crédito.
+
+    ⚠️ **Por qué `nro_reservado` viene de afuera.** Calcular el número acá (`ultimo_autorizado + 1`)
+    hacía que la capa 2 fuera inútil justo en el caso que dice cubrir: si AFIP autorizó el 11 y la
+    respuesta se perdió, el reintento consulta `getLastVoucher` → ya devuelve **11** → pregunta por el
+    **12**, que por construcción nunca se emitió → "no existe" → **emite el 12**. Dos CAE por un
+    pedido. Con el número reservado por el workflow —que es durable y no recalcula— el reintento
+    interroga el **mismo** número que intentó, que es la única pregunta que puede detectar la
+    autorización perdida. Default `None` para no romper el replay de las ejecuciones que arrancaron
+    con 6 argumentos (mismo criterio que `receptor_nombre`).
     """
     store = _comprobante_store_factory(cliente_id)
     ya = store.por_idem_key(idem_key)
@@ -91,19 +101,35 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
     punto_venta = int(payload["PtoVta"])
     tipo_cbte = int(payload["CbteTipo"])
 
-    siguiente = gateway.ultimo_comprobante(punto_venta=punto_venta, tipo_cbte=tipo_cbte) + 1
+    # `CbtesAsoc` es lo que convierte a este comprobante en la nota de crédito que anula a otro, y no
+    # en una NC suelta (ver `armar_payload_nota_credito`). Guardar ese puntero en NUESTRO libro —en la
+    # MISMA escritura que el CAE— es lo que después permite preguntar "¿esta factura ya tiene una NC?"
+    # sin depender del flag `estado`, que lo escribe un UPDATE posterior y separado que puede fallar.
+    _asoc = (payload.get("CbtesAsoc") or [None])[0]
+    cbte_asoc_nro = (int(_asoc["Nro"])
+                     if isinstance(_asoc, dict) and _asoc.get("Nro") is not None else None)
+
+    siguiente = (nro_reservado if nro_reservado is not None
+                 else gateway.ultimo_comprobante(punto_venta=punto_venta, tipo_cbte=tipo_cbte) + 1)
     if gateway.existe_comprobante(numero=siguiente, punto_venta=punto_venta, tipo_cbte=tipo_cbte):
         info = gateway.info_comprobante(numero=siguiente, punto_venta=punto_venta, tipo_cbte=tipo_cbte)
         activity.logger.warning(
             "el comprobante %s-%s ya estaba autorizado en AFIP: se adopta en vez de reemitir",
             punto_venta, siguiente)
-        cae = str(info.get("CodAutorizacion") or "")
+        # El campo del código de autorización CAMBIA según la operación del WS: `FECompConsultar`
+        # lo devuelve en `CodAutorizacion`/`FchVto`, mientras que `FECAESolicitar` usa `CAE`/`CAEFchVto`.
+        # Leer sólo uno hace que un comprobante REAL se lea como inexistente y se reemita. La suite
+        # ARCA pagó exactamente este caso contra AFIP real (`mot07-consulta-fe.ts:151-155`, FIX smoke
+        # 2026-06-15: "antes buscaba det.CAE → devolvía found:false pese a que AFIP traía el
+        # comprobante real"). Se aceptan ambos.
+        cae = str(info.get("CodAutorizacion") or info.get("CAE") or "")
         if cae:
             comprobante_id = store.registrar(
                 cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=siguiente, cae=cae,
-                cae_vto=_fecha(info.get("FchVto")), fecha_emision=_fecha(info.get("CbteFch")),
+                cae_vto=_fecha(info.get("FchVto") or info.get("CAEFchVto")),
+                fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
-                receptor_nombre=receptor_nombre or None,
+                receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
                 total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
             return {"ok": True, "duplicado": True, "id": comprobante_id, "cae": cae, "nro": siguiente,
                     "tipo_cbte": tipo_cbte, "punto_venta": punto_venta}
@@ -120,7 +146,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=res.numero, cae=res.cae,
         cae_vto=res.cae_vto, fecha_emision=_fecha(payload.get("CbteFch")),
         doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
-        receptor_nombre=receptor_nombre or None,
+        receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
         total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
 
     return {"ok": True, "duplicado": False, "id": comprobante_id, "cae": res.cae,
@@ -130,14 +156,34 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
 
 
 @activity.defn
+async def reservar_numero_comprobante(cliente_id: str, cuit: str, punto_venta: int,
+                                      tipo_cbte: int) -> int:
+    """Devuelve el número que se va a emitir (`último autorizado + 1`). **Read-only: no escribe nada.**
+
+    Existe para que el número lo decida el WORKFLOW y no la activity de emisión. Temporal guarda el
+    resultado en el event history, así que un reintento de la emisión reusa el MISMO número en vez de
+    recalcularlo contra un contador de AFIP que ya avanzó. Sin esto, el check-before-act de
+    `emitir_comprobante` interroga un número que nunca se emitió y no puede detectar la autorización
+    perdida (ver el docstring de `_emitir_sync`).
+    """
+    return await asyncio.to_thread(_reservar_numero_sync, cliente_id, cuit, punto_venta, tipo_cbte)
+
+
+def _reservar_numero_sync(cliente_id: str, cuit: str, punto_venta: int, tipo_cbte: int) -> int:
+    gateway = _gateway_con_certificado(cliente_id, cuit)
+    return gateway.ultimo_comprobante(punto_venta=punto_venta, tipo_cbte=tipo_cbte) + 1
+
+
+@activity.defn
 async def emitir_comprobante(cliente_id: str, cuit: str, payload: dict, idem_key: str,
-                             workflow_id: str, receptor_nombre: str = "") -> dict:
-    """`receptor_nombre` con default para no romper el replay de las ejecuciones que arrancaron con 5
-    argumentos. Va aparte del payload porque el WSFE no lo pide: AFIP identifica al receptor por tipo
-    y número de documento, así que el nombre no viaja en el comprobante — pero es lo primero que una
-    persona busca al abrir una factura vieja."""
+                             workflow_id: str, receptor_nombre: str = "",
+                             nro_reservado: int | None = None) -> dict:
+    """`receptor_nombre` y `nro_reservado` con default para no romper el replay de las ejecuciones que
+    arrancaron con 5 y 6 argumentos. `receptor_nombre` va aparte del payload porque el WSFE no lo pide:
+    AFIP identifica al receptor por tipo y número de documento, así que el nombre no viaja en el
+    comprobante — pero es lo primero que una persona busca al abrir una factura vieja."""
     return await asyncio.to_thread(_emitir_sync, cliente_id, cuit, payload, idem_key, workflow_id,
-                                   receptor_nombre)
+                                   receptor_nombre, nro_reservado)
 
 
 def _generar_pdf_sync(cliente_id: str, cuit: str, template: str, params: dict,
@@ -227,8 +273,17 @@ async def marcar_comprobante_anulado(cliente_id: str, cuit: str, tipo_cbte: int,
 
 def _buscar_comprobante_sync(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
                              nro: int) -> dict | None:
-    return _comprobante_store_factory(cliente_id).get(
-        cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro)
+    store = _comprobante_store_factory(cliente_id)
+    comprobante = store.get(cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro)
+    if comprobante is None:
+        return None
+    # El comprobante viaja con la respuesta a "¿ya hay una NC que te anule?". Va acá y no en una
+    # activity nueva a propósito: agregar un paso al `AnulacionWorkflow` cambiaría su secuencia de
+    # comandos y rompería por no-determinismo cualquier anulación en vuelo. Agregar una CLAVE al
+    # resultado de una activity que ya existía no toca la secuencia — y las ejecuciones que replayan
+    # un history viejo simplemente no la traen, que es el comportamiento de hoy.
+    return {**comprobante,
+            "nota_credito_nro": store.nota_credito_de(cuit=cuit, punto_venta=punto_venta, nro=nro)}
 
 
 @activity.defn

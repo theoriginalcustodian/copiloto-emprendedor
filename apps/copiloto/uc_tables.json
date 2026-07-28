@@ -4,6 +4,7 @@
     "reply_text text NOT NULL",
     "choices jsonb",
     "card jsonb",
+    "idem_key text",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_metering": [

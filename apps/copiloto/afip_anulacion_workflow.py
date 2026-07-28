@@ -34,6 +34,7 @@ class AnulacionWorkflow:
         self._cancelado = False
         self._resultado: dict | None = None
         self._motivo: str | None = None
+        self._marcada = False
 
     @workflow.query
     def estado(self) -> dict:
@@ -44,12 +45,32 @@ class AnulacionWorkflow:
             "resultado": self._resultado,
             "motivo": self._motivo,
             "terminado": self._paso in ("anulada", "fallida", "cancelada"),
+            # ¿La factura original quedó marcada en NUESTRO libro? Es información distinta de "se
+            # anuló": la anulación la define el CAE de la nota de crédito ante AFIP, no nuestra base.
+            # Se expone para que la UI —y mañana el agente de sanación— puedan ver la inconsistencia
+            # en vez de descubrirla cuando el listado muestre como vigente una factura ya neutralizada.
+            "marcada": self._marcada,
         }
 
     @workflow.signal
     def confirmar(self) -> None:
         if self._paso == "esperando_confirmacion":
             self._confirmado = True
+
+    @workflow.update(name="confirmar")
+    async def confirmar_ahora(self) -> dict:
+        """La misma confirmación, devolviendo si se tomó. Mismo motivo que en `FacturaWorkflow`:
+        el signal contestaba `200 {"ok": true}` incluso cuando el workflow no estaba en el gate —
+        por ejemplo si la validación ya lo había dejado en `fallida`— y el cliente creía haber
+        autorizado una anulación que nunca iba a ocurrir."""
+        if self._confirmado:
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+        self.confirmar()
+        if self._confirmado:
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+        return {"aceptado": False,
+                "motivo": self._motivo or f"la anulación ya no está esperando confirmación ({self._paso})",
+                "motivo_codigo": "fuera_de_gate"}
 
     @workflow.signal
     def cancelar(self) -> None:
@@ -95,10 +116,26 @@ class AnulacionWorkflow:
         # La factura original queda marcada como anulada, con el puntero a la NC que la neutralizó.
         # Se hace DESPUÉS de que la NC tenga CAE: marcarla antes dejaría una factura "anulada" sin
         # nota de crédito que la respalde si la emisión fallara.
-        await workflow.execute_activity(
-            "marcar_comprobante_anulado",
-            args=[cliente_id, cuit, tipo_cbte, punto_venta, nro, int(nc["nro"])],
-            start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+        #
+        # ⚠️ Y va dentro de un `try` porque a esta altura la anulación YA OCURRIÓ: hay una nota de
+        # crédito con CAE ante AFIP. Sin el `try`, agotar los reintentos de este marcado —una base
+        # momentáneamente caída alcanza— hacía fallar el workflow con `_paso` todavía en
+        # `emitiendo_nota_credito`, que no es terminal: el cliente quedaba poleando para siempre una
+        # operación que había terminado bien. Reportar `fallida` sería peor todavía, porque negaría
+        # un efecto fiscal irreversible que ya existe. Se reporta lo que es cierto —`anulada`, con la
+        # NC— y se deja visible que el libro propio quedó desalineado.
+        try:
+            await workflow.execute_activity(
+                "marcar_comprobante_anulado",
+                args=[cliente_id, cuit, tipo_cbte, punto_venta, nro, int(nc["nro"])],
+                start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+            self._marcada = True
+        except Exception as exc:  # noqa: BLE001
+            workflow.logger.error("la NC %s se emitió pero la factura %s-%s no quedó marcada: %s",
+                                  nc.get("nro"), punto_venta, nro, exc)
+            self._motivo = (
+                f"La nota de crédito N° {nc.get('nro')} se emitió correctamente, pero no pudimos "
+                f"actualizar el estado de la factura original. La anulación ante AFIP es válida.")
 
         # ⚠️ DEUDA GESTIONADA (2026-07-21): la nota de crédito NO genera su PDF. Es un comprobante
         # fiscal con CAE igual que la factura, así que quien anula debería poder descargarla — hoy no

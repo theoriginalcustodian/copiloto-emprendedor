@@ -110,9 +110,16 @@ class _FakeCursor:
             seller = self._db.mp_sellers.get(cliente_id)
             self._result = (seller,) if seller else None
         elif s.startswith("INSERT INTO UC_FACTORY.COPILOTO_WEB_REPLIES"):
-            cliente_id, session_id, reply_text, choices, card = params
+            cliente_id, session_id, reply_text, choices, card, idem_key = params
+            # Emula el índice único PARCIAL `(cliente_id, idem_key) WHERE idem_key IS NOT NULL`, igual
+            # que el fake de `test_reply_store.py`. La semántica real se ejercita contra Postgres en
+            # `test_reply_store.py::test_el_indice_parcial_deduplica_de_verdad`.
+            if idem_key is not None and any(r["cliente_id"] == cliente_id and r.get("idem_key") == idem_key
+                                            for r in self._db.replies):
+                return
             row = {"id": len(self._db.replies) + 1, "cliente_id": cliente_id, "session_id": session_id,
-                   "reply_text": reply_text, "choices": choices, "card": card, "created_at": "t"}
+                   "reply_text": reply_text, "choices": choices, "card": card, "idem_key": idem_key,
+                   "created_at": "t"}
             self._db.replies.append(row)
         elif s.startswith("SELECT ID, REPLY_TEXT, CHOICES, CARD, CREATED_AT FROM UC_FACTORY.COPILOTO_WEB_REPLIES"):
             cliente_id, session_id, after_id = params

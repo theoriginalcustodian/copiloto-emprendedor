@@ -82,6 +82,33 @@ def _ensure_reply_card_column(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_web_replies.card (columna aditiva jsonb, idempotente)", flush=True)
 
 
+def _ensure_reply_idem_key(conn) -> None:
+    """Migración aditiva de `copiloto_web_replies.idem_key text` + su índice único parcial.
+
+    Sin ella, un reintento de la activity `send_channel_message` —el envío se concretó y el worker
+    murió antes de reportarlo— dejaba un SEGUNDO reply idéntico en el chat del emprendedor. La clave
+    la deriva la propia activity de su `activity_id`, que es estable entre intentos.
+
+    El índice es **parcial** (`WHERE idem_key IS NOT NULL`): las filas que ya existen no la tienen, y
+    un índice único sobre NULLs las bloquearía. Y es un índice único, no un `SELECT` previo: "si ya
+    existe no insertes" tiene una ventana entre la consulta y el INSERT por la que pasan justo los dos
+    intentos concurrentes que esto viene a evitar.
+
+    Mismo criterio y ubicación que `_ensure_reply_card_column`: corre ANTES del pase estándar, que
+    hace CREATE TABLE IF NOT EXISTS —nunca ALTER— y cuyo guard anti-colisión aborta si una columna
+    declarada en `uc_tables.json` falta en la tabla viva. `IF NOT EXISTS` en las dos sentencias →
+    corrible N veces.
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_web_replies "
+                f"ADD COLUMN IF NOT EXISTS idem_key text;")
+    cur.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS copiloto_web_replies_idem_key_uk "
+                f"ON {SCHEMA}.copiloto_web_replies (cliente_id, idem_key) "
+                f"WHERE idem_key IS NOT NULL;")
+    print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (columna + índice único parcial, idempotente)",
+          flush=True)
+
+
 def _ensure_afip_activo_column(conn) -> None:
     """Migración aditiva de `afip_credentials.activo boolean` (ambiente homologación ↔ producción).
 
@@ -373,6 +400,7 @@ def provision(conn) -> dict:
     standard_spec = {k: v for k, v in manifest.items() if k != TENANTS_TABLE}
     _ensure_reply_card_column(conn)   # ANTES del pase estándar: su guard anti-colisión aborta si `card` (ya
     #                                   declarada en uc_tables.json) falta en la tabla viva. Ver la función.
+    _ensure_reply_idem_key(conn)      # ídem para `copiloto_web_replies.idem_key` (+ índice único parcial).
     _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.

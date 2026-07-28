@@ -70,11 +70,33 @@ def _dar_de_alta_sync(cliente_id: str, cuit: str, handle: str, ambiente: str = "
         if not (cert and key):
             return {"ok": False, "motivo": "afipsdk_no_devolvio_certificado"}
 
-        gateway.autorizar_web_service(
-            usuario=cuit, clave=clave.revelar(), alias=ALIAS_CERT, wsid="wsfe")
+        # 🔴 **Se guarda ANTES de autorizar, no después.** Es el orden que evita el peor desenlace de
+        # esta activity: el certificado ya existe EN AFIP —efecto externo e irreversible— y la clave
+        # fiscal ya se consumió (es one-shot). Si `autorizar_web_service` fallaba —el RPA de AfipSDK
+        # tarda ~2 min por llamada y un timeout alcanza—, la excepción salía sin llegar nunca al
+        # `save`: quedaba un certificado huérfano en AFIP que este sistema no conocía, y el usuario
+        # tenía que volver a pedir una clave fiscal que ya había gastado. Peor: el próximo intento
+        # choca con el mismo alias, ya tomado.
+        #
+        # Guardarlo con `ws_autorizados=[]` dice la verdad —tengo el certificado, todavía no la
+        # autorización— en vez de no decir nada. Es el mismo criterio que el write-ahead: lo que ya
+        # pasó afuera se anota adentro en el instante en que pasa.
+        cred_store = _cred_store_factory(cliente_id)
+        cred_store.save(cuit, cert=cert, key=key, ambiente=ambiente, ws_autorizados=[])
 
-        _cred_store_factory(cliente_id).save(
-            cuit, cert=cert, key=key, ambiente=ambiente, ws_autorizados=["wsfe"])
+        try:
+            gateway.autorizar_web_service(
+                usuario=cuit, clave=clave.revelar(), alias=ALIAS_CERT, wsid="wsfe")
+        except Exception as exc:  # noqa: BLE001
+            activity.logger.error(
+                "certificado creado y guardado para %s, pero falló la autorización de wsfe: %s",
+                cuit, exc)
+            # Motivo PROPIO, distinguible de "no pasó nada": el certificado está y es reusable, así
+            # que reintentar sólo tiene que rehacer la autorización — no pedir otra clave fiscal.
+            return {"ok": False, "motivo": "certificado_ok_falta_autorizar_wsfe",
+                    "ambiente": ambiente, "ws_autorizados": []}
+
+        cred_store.save(cuit, cert=cert, key=key, ambiente=ambiente, ws_autorizados=["wsfe"])
         return {"ok": True, "motivo": None, "ambiente": ambiente, "ws_autorizados": ["wsfe"]}
     finally:
         # Defensa en profundidad: el `consume` ya borró la fila, pero si algo cambia en el futuro esto

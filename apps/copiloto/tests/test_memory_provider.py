@@ -341,3 +341,38 @@ def test_build_memory_provider_construye_con_graphity_env():
     assert isinstance(provider, MemoryProvider)
     # El warm queda cableado al user graph namespaced (mismo derivador no-adivinable que recall/remember).
     assert provider._user_id("cid-1") == "copiloto-cid-1"
+
+
+# ── RTBF: la única operación de este módulo que NO puede degradar ────────────────────────────────
+
+def test_forget_LEVANTA_si_no_pudo_borrar():
+    """EL TEST QUE IMPORTA. Un pedido de borrado que no se cumple y no avisa es indistinguible de uno
+    cumplido: el caller no puede reintentar ni decirle a la persona que sus datos siguen ahí.
+
+    Es la excepción deliberada al best-effort del resto del módulo. Ahí el costo de fallar es un turno
+    con menos contexto; acá es que los datos personales de alguien sigan existiendo después de que
+    pidió borrarlos.
+    """
+    def handler(_req):
+        raise httpx.ConnectError("graphity down")
+
+    with pytest.raises(Exception):
+        _provider(handler).forget(str(uuid.uuid4()))
+
+
+def test_control_forget_no_levanta_cuando_borra_bien():
+    """Control diferencial: si `forget` levantara siempre, el test de arriba pasaría igual con el bug
+    puesto — y ningún borrado legítimo podría completarse."""
+    def handler(_req):
+        return httpx.Response(200, json={})
+
+    _provider(handler).forget(str(uuid.uuid4()))     # no levanta: eso ES la aserción
+
+
+def test_control_recall_SIGUE_degradando():
+    """El cambio de `forget` no puede haber contagiado al resto: `recall` tiene que seguir tragando
+    la caída, porque su invariante es que el turno del agente NO se cae."""
+    def handler(_req):
+        raise httpx.ConnectError("graphity down")
+
+    assert _provider(handler).recall(str(uuid.uuid4()), "web", "algo") == ""

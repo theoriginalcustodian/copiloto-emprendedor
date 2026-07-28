@@ -204,10 +204,30 @@ class ConversationWorkflow:
 
             msg = self._inbox[self._cursor]
             self._cursor += 1
-            if config.get("engine_mode") == "react":
-                done = await self._run_react_turn(config, msg, domain, channel, channel_ref, cliente_id)
+            # Un turno que revienta NO puede matar la sesión. Esta es una sesión PERMANENTE: si la
+            # excepción sale de `run()`, el workflow queda `Failed` y el emprendedor se queda con un
+            # chat que acepta lo que escribe y nunca contesta — sin error, sin card, sin nada que
+            # mirar. Ya pasó, y el síntoma fue exactamente ése: un `429 insufficient_quota` del LLM
+            # tumbó la conversación y sólo se vio mirando el journal del worker
+            # (`agente-no-responde-revisar-cuota-llm`). Un fallo de UN turno es un fallo de ese turno.
+            #
+            # Versionado porque el `except` agenda una activity que no está en el history de las
+            # ejecuciones que ya venían corriendo (78 medidas contra el Temporal del VPS): en un
+            # replay, `patched` devuelve False y toman el camino de siempre; de su próximo turno
+            # NUEVO en adelante, el fix ya las cubre.
+            if workflow.patched("un-turno-roto-no-mata-la-sesion"):
+                try:
+                    done = await self._despachar_turno(config, msg, domain, channel, channel_ref,
+                                                       cliente_id)
+                except Exception as exc:  # noqa: BLE001 — el turno, no la sesión
+                    # `Exception` y no `BaseException`: `CancelledError` y el `ContinueAsNewError`
+                    # tienen que seguir subiendo, son control de flujo de Temporal, no fallas.
+                    workflow.logger.error("turno fallido, la sesión sigue viva: %s", exc)
+                    await self._avisar_turno_fallido(channel, channel_ref, cliente_id)
+                    done = False
             else:
-                done = await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
+                done = await self._despachar_turno(config, msg, domain, channel, channel_ref,
+                                                   cliente_id)
 
             # Memoria de largo plazo: persistir en BATCH (~20 msgs ≈ 10 turnos) para no saturar la extracción
             # LLM server-side de Graphity (cada add_messages dispara una extracción). Gate config['memory'].
@@ -232,6 +252,33 @@ class ConversationWorkflow:
         # config['memory'] dentro de _flush_memory. Sin esto, el último batch (<20 msgs) se perdería.
         await self._flush_memory(config, domain, cliente_id, channel_ref)
         return {"closed": self._closed, "turns": self._turns_before + self._cursor, "state": self._state}
+
+    async def _despachar_turno(self, config: dict, msg: dict, domain: str, channel: str,
+                               channel_ref: str, cliente_id: str) -> bool:
+        """Elige el motor del turno. Extraído para que la rama versionada y la de compatibilidad
+        despachen por el MISMO camino: duplicar el `if engine_mode` en las dos era garantizar que
+        alguna futura corrección tocara sólo una."""
+        if config.get("engine_mode") == "react":
+            return await self._run_react_turn(config, msg, domain, channel, channel_ref, cliente_id)
+        return await self._run_dispatch_turn(config, msg, domain, channel, channel_ref, cliente_id)
+
+    async def _avisar_turno_fallido(self, channel: str, channel_ref: str, cliente_id: str) -> None:
+        """Le dice al usuario que ESE mensaje no salió, sin prometer nada que no pasó.
+
+        El aviso importa tanto como no morirse: un turno que falla en silencio es indistinguible de
+        uno que el copiloto todavía está pensando, y la persona se queda esperando. Y si el propio
+        aviso no se puede entregar, se traga — quedarse sin canal no puede ser motivo para matar la
+        sesión, que es justo lo que este bloque vino a evitar.
+        """
+        try:
+            await workflow.execute_activity(
+                "send_channel_message",
+                {"channel": channel, "channel_ref": channel_ref, "cliente_id": cliente_id,
+                 "text": "Uf, algo se me trabó procesando ese mensaje 😖. ¿Me lo repetís?",
+                 "choices": []},
+                start_to_close_timeout=ACTIVITY_TIMEOUT, retry_policy=LOOP_RETRY)
+        except Exception as exc:  # noqa: BLE001
+            workflow.logger.error("tampoco se pudo avisar del turno fallido: %s", exc)
 
     # ── modo 'dispatch': intent-based, el motor ORIGINAL (byte-identical) ────────────────────────────
     async def _run_dispatch_turn(self, config: dict, msg: dict, domain: str, channel: str,

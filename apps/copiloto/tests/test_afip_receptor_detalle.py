@@ -6,6 +6,8 @@ pantalla de detalle sólo podía mostrar número, importe y CAE — nunca "Juan 
 """
 from __future__ import annotations
 
+import pytest
+
 import afip_factura_activities as act
 
 CUIT = "20269996065"
@@ -122,3 +124,56 @@ def test_el_reintento_post_exito_tambien_trae_el_id(monkeypatch):
 
     assert resultado["duplicado"] is True
     assert resultado["id"] == 99
+
+
+# ---------------------------------------------------------------------------
+# Adopción del comprobante ya autorizado — el campo del CAE cambia según la operación
+# ---------------------------------------------------------------------------
+
+
+class GatewayYaAutorizado(GatewayFake):
+    """AFIP ya tiene el comprobante: el check-before-act lo encuentra y hay que ADOPTARLO, no reemitir.
+
+    `info` es lo que devuelve `info_comprobante` — se parametriza para probar que da igual en qué
+    campo venga el código de autorización.
+    """
+
+    def __init__(self, info: dict) -> None:
+        self._info = info
+        self.emitio = False
+
+    def existe_comprobante(self, *, numero, punto_venta, tipo_cbte):
+        return True
+
+    def info_comprobante(self, *, numero, punto_venta, tipo_cbte):
+        return self._info
+
+    def emitir(self, payload):
+        self.emitio = True
+        raise AssertionError("no debe emitir: AFIP ya tenía el comprobante autorizado")
+
+
+@pytest.mark.parametrize("info, esperado", [
+    ({"CodAutorizacion": "111", "FchVto": "20260801", "CbteFch": "20260721"}, "111"),
+    ({"CAE": "222", "CAEFchVto": "20260801", "CbteFch": "20260721"}, "222"),
+])
+def test_se_adopta_el_comprobante_venga_el_cae_en_el_campo_que_venga(monkeypatch, info, esperado):
+    """El WS usa `CodAutorizacion`/`FchVto` en la consulta y `CAE`/`CAEFchVto` en la emisión.
+
+    Leer sólo uno hace que un comprobante REAL se lea como inexistente y se reemita — la suite ARCA
+    pagó exactamente este caso contra AFIP real (`mot07-consulta-fe.ts:151-155`, FIX smoke
+    2026-06-15). El `emitir` del fake revienta a propósito: si el fix no está, este test no falla
+    por un assert sino por la emisión duplicada, que es el daño real.
+    """
+    store = StoreEspia()
+    gw = GatewayYaAutorizado(info)
+    _cablear(monkeypatch, store)
+    monkeypatch.setattr(act, "_gateway_factory", lambda *a, **k: gw)
+
+    resultado = act._emitir_sync("t1", CUIT, PAYLOAD, "idem-adopta", "wf-1", "Juan Pérez")
+
+    assert gw.emitio is False, "se reemitió sobre un comprobante que AFIP ya tenía autorizado"
+    assert resultado["duplicado"] is True
+    assert resultado["cae"] == esperado
+    assert store.registrado["cae"] == esperado
+    assert store.registrado["cae_vto"] is not None, "el vencimiento tiene que salir del campo que vino"

@@ -45,6 +45,12 @@ _MOTIVOS_CONOCIDOS = (
                  "de AFIP antes de reintentar."),
     ("handle_invalido_o_vencido", "La sesión de vinculación venció. Volvé a ingresar tu clave "
                                   "fiscal."),
+    # El certificado YA existe en ARCA y ya está guardado acá: lo único que faltó fue habilitar el
+    # web service. Decirlo importa porque cambia lo que el usuario tiene que hacer — reintentar SIN
+    # volver a gastar una clave fiscal, que es one-shot.
+    ("certificado_ok_falta_autorizar_wsfe",
+     "Tu certificado quedó creado, pero no llegamos a habilitar la facturación electrónica. Probá de "
+     "nuevo en unos minutos: no hace falta que vuelvas a ingresar tu clave fiscal."),
     ("alias", "El certificado no se pudo crear por un problema de configuración nuestro. Ya estamos "
               "al tanto."),
     ("timeout", "ARCA tardó demasiado en responder. Probá de nuevo en unos minutos."),
@@ -61,7 +67,19 @@ def _motivo_legible(exc: Exception) -> str:
     en el peor caso refleja lo que se le mandó —incluida la clave—; (2) un stack trace en pantalla no
     le dice a nadie qué hacer. El detalle completo queda en el log de la activity, que es donde sirve.
     """
-    texto = str(exc).lower()
+    return _motivo_de_codigo(str(exc))
+
+
+def _motivo_de_codigo(codigo: str) -> str:
+    """La misma traducción, para el CÓDIGO que devuelve una activity en vez de una excepción.
+
+    Una activity que falla de forma prevista no lanza: devuelve `{"ok": False, "motivo": "<código>"}`.
+    Ese código se estaba copiando tal cual a `progreso()["motivo"]`, que la pantalla de Ajustes pinta
+    tal cual — así que el emprendedor leía literalmente `handle_invalido_o_vencido`. Un código de
+    máquina en la cara del usuario no le dice qué hacer, que es lo único que un motivo tiene que
+    hacer.
+    """
+    texto = codigo.lower()
     for patron, copy in _MOTIVOS_CONOCIDOS:
         if patron in texto:
             return copy
@@ -116,7 +134,10 @@ class AfipOnboardingWorkflow:
 
         if not alta.get("ok"):
             self._paso = "fallido"
-            self._motivo = alta.get("motivo") or "alta_fallida"
+            # Traducido, no crudo: `motivo` es texto para el usuario por contrato (lo pinta la
+            # pantalla de Ajustes tal cual). Sin esto, un alta fallida mostraba literalmente
+            # `handle_invalido_o_vencido` sobre la cara del emprendedor.
+            self._motivo = _motivo_de_codigo(alta.get("motivo") or "alta_fallida")
             return self.progreso()
 
         self._ws_autorizados = alta.get("ws_autorizados") or []
