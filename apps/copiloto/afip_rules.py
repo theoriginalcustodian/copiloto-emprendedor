@@ -755,11 +755,19 @@ def validar_anulacion(comprobante: dict | None, *, importe_nc=None) -> list[Erro
 
     errores: list[ErrorValidacion] = []
     estado = (comprobante.get("estado") or "").lower()
-    if estado == "anulada":
+    # Dos evidencias de que ya se anuló, y la segunda es la que aguanta:
+    #  · `estado == 'anulada'` la escribe `marcar_anulada`, un UPDATE posterior al CAE de la NC que
+    #    puede fallar solo — y si falla, esta validación deja pasar una SEGUNDA nota de crédito.
+    #  · `nota_credito_nro` sale de buscar una NC que apunte a este comprobante, y ese puntero se
+    #    escribe junto con el CAE de la NC: si la nota existe, la evidencia existe.
+    # Se mira `nota_credito_nro` y NO `cbte_asoc_nro`: en la fila de una NC, `cbte_asoc_nro` apunta a
+    # SU original, y confundirlos haría que toda nota de crédito se leyera como "ya anulada".
+    nc_asociada = comprobante.get("nota_credito_nro")
+    if estado == "anulada" or nc_asociada:
+        numero = nc_asociada or comprobante.get("cbte_asoc_nro")
         errores.append(ErrorValidacion(
             "ya_anulada", "comprobante",
-            f"Esta factura ya fue anulada con la nota de crédito "
-            f"N° {comprobante.get('cbte_asoc_nro')}."))
+            f"Esta factura ya fue anulada con la nota de crédito N° {numero}."))
     if estado == "nota_credito":
         errores.append(ErrorValidacion(
             "es_nota_credito", "comprobante",

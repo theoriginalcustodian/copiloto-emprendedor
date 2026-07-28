@@ -180,6 +180,33 @@ class FacturaWorkflow:
             return
         self._confirmado = True
 
+    @workflow.update(name="confirmar")
+    async def confirmar_ahora(self, token: str) -> dict:
+        """La MISMA confirmación que el signal, pero devolviendo si valió.
+
+        **Por qué existe.** Un signal es fire-and-forget: el endpoint contestaba `200 {"ok": true}`
+        aunque el token estuviera vencido y no se emitiera nada. Medido: `confirmar` con un token
+        inválido devolvía exactamente lo mismo que uno válido. La app actual sobrevive porque después
+        polea `motivo_codigo`, pero el nombre miente, y el próximo consumidor —una integración, un
+        agente— va a leer ese `ok` como "confirmado" y dar por emitida una factura que no existe.
+
+        Un `update` es la primitiva de Temporal que sí devuelve resultado al cliente. Verificado
+        contra el cluster real (1.29.7): el update viaja, el resultado vuelve, y un signal y un update
+        pueden compartir el nombre de wire — por eso el signal QUEDA, para las ejecuciones en vuelo y
+        cualquier cliente viejo.
+
+        El rechazo se devuelve como dato, no como excepción: que el resumen haya cambiado es un
+        resultado de negocio esperable, no una falla. Levantar acá obligaría a todo consumidor a
+        tratar un caso normal como error.
+        """
+        if self._confirmado:
+            # Idempotente: reintentar el mismo POST no puede contestar "rechazado".
+            return {"aceptado": True, "motivo": None, "motivo_codigo": None}
+        self.confirmar(token)
+        return {"aceptado": self._confirmado,
+                "motivo": None if self._confirmado else self._motivo,
+                "motivo_codigo": None if self._confirmado else self._motivo_codigo}
+
     @workflow.signal
     def cancelar(self) -> None:
         self._cancelado = True

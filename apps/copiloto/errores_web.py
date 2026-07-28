@@ -45,10 +45,18 @@ SIN_PERFIL_FISCAL = "sin_perfil_fiscal"
 # Dueño: backend. Se retira cuando la corrección del motor esté viva (decisión del operador, MAYOR).
 MODO_AUTOMATICO_NO_DISPONIBLE = "modo_automatico_no_disponible"
 
+# El gate HITL no tomó la confirmación (factura o anulación). Nació el 2026-07-28, cuando `confirmar`
+# pasó de signal a Workflow Update: antes NO había 409 posible porque el backend contestaba
+# `200 {"ok": true}` con el token vencido igual que con el válido, y el cliente sólo se enteraba
+# releyendo el estado. El **por qué** puntual viaja en `motivo_codigo` (`token_desactualizado`,
+# `faltan_datos`, `fuera_de_gate`): un código para "no se tomó" y un detalle para "por qué", en vez de
+# un código nuevo por cada motivo del workflow — esos los define el workflow, no este catálogo.
+CONFIRMACION_NO_TOMADA = "confirmacion_no_tomada"
+
 CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
                      TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
-                     SIN_PERFIL_FISCAL, MODO_AUTOMATICO_NO_DISPONIBLE})
+                     SIN_PERFIL_FISCAL, MODO_AUTOMATICO_NO_DISPONIBLE, CONFIRMACION_NO_TOMADA})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:

@@ -101,6 +101,14 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
     punto_venta = int(payload["PtoVta"])
     tipo_cbte = int(payload["CbteTipo"])
 
+    # `CbtesAsoc` es lo que convierte a este comprobante en la nota de crédito que anula a otro, y no
+    # en una NC suelta (ver `armar_payload_nota_credito`). Guardar ese puntero en NUESTRO libro —en la
+    # MISMA escritura que el CAE— es lo que después permite preguntar "¿esta factura ya tiene una NC?"
+    # sin depender del flag `estado`, que lo escribe un UPDATE posterior y separado que puede fallar.
+    _asoc = (payload.get("CbtesAsoc") or [None])[0]
+    cbte_asoc_nro = (int(_asoc["Nro"])
+                     if isinstance(_asoc, dict) and _asoc.get("Nro") is not None else None)
+
     siguiente = (nro_reservado if nro_reservado is not None
                  else gateway.ultimo_comprobante(punto_venta=punto_venta, tipo_cbte=tipo_cbte) + 1)
     if gateway.existe_comprobante(numero=siguiente, punto_venta=punto_venta, tipo_cbte=tipo_cbte):
@@ -121,7 +129,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
                 cae_vto=_fecha(info.get("FchVto") or info.get("CAEFchVto")),
                 fecha_emision=_fecha(info.get("CbteFch")),
                 doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
-                receptor_nombre=receptor_nombre or None,
+                receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
                 total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
             return {"ok": True, "duplicado": True, "id": comprobante_id, "cae": cae, "nro": siguiente,
                     "tipo_cbte": tipo_cbte, "punto_venta": punto_venta}
@@ -138,7 +146,7 @@ def _emitir_sync(cliente_id: str, cuit: str, payload: dict, idem_key: str,
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=res.numero, cae=res.cae,
         cae_vto=res.cae_vto, fecha_emision=_fecha(payload.get("CbteFch")),
         doc_tipo=payload.get("DocTipo"), doc_nro=str(payload.get("DocNro") or ""),
-        receptor_nombre=receptor_nombre or None,
+        receptor_nombre=receptor_nombre or None, cbte_asoc_nro=cbte_asoc_nro,
         total=payload.get("ImpTotal"), idem_key=idem_key, workflow_id=workflow_id)
 
     return {"ok": True, "duplicado": False, "id": comprobante_id, "cae": res.cae,
@@ -265,8 +273,17 @@ async def marcar_comprobante_anulado(cliente_id: str, cuit: str, tipo_cbte: int,
 
 def _buscar_comprobante_sync(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
                              nro: int) -> dict | None:
-    return _comprobante_store_factory(cliente_id).get(
-        cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro)
+    store = _comprobante_store_factory(cliente_id)
+    comprobante = store.get(cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro)
+    if comprobante is None:
+        return None
+    # El comprobante viaja con la respuesta a "¿ya hay una NC que te anule?". Va acá y no en una
+    # activity nueva a propósito: agregar un paso al `AnulacionWorkflow` cambiaría su secuencia de
+    # comandos y rompería por no-determinismo cualquier anulación en vuelo. Agregar una CLAVE al
+    # resultado de una activity que ya existía no toca la secuencia — y las ejecuciones que replayan
+    # un history viejo simplemente no la traen, que es el comportamiento de hoy.
+    return {**comprobante,
+            "nota_credito_nro": store.nota_credito_de(cuit=cuit, punto_venta=punto_venta, nro=nro)}
 
 
 @activity.defn

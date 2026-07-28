@@ -190,6 +190,33 @@ class AfipComprobanteStore:
         return [{"id": i, "nro": n, "cae_vto": v.isoformat() if v else None, "dias_para_vencer": d}
                 for i, n, v, d in filas]
 
+    def nota_credito_de(self, *, cuit: str, punto_venta: int, nro: int) -> int | None:
+        """¿Existe ya una nota de crédito que apunte a este comprobante? Devuelve su número.
+
+        **Por qué no alcanza con `estado == 'anulada'`.** Ese flag lo escribe `marcar_anulada`, un
+        UPDATE que ocurre DESPUÉS de que la NC tiene CAE y que puede fallar por su cuenta (red, base
+        caída, reintentos agotados). Si falla, la factura queda `emitida` ante nuestra base aunque
+        fiscalmente ya esté neutralizada — y la validación R10, que sólo mira ese flag, deja pasar una
+        SEGUNDA anulación: dos notas de crédito por una factura, el fisco acreditando el doble.
+
+        Este puntero, en cambio, se escribe en el MISMO `registrar()` que guarda el CAE de la NC: si
+        la nota de crédito existe en el libro, el puntero existe. Es un hecho derivado de la escritura
+        que ya era imprescindible, no de una segunda escritura que puede perderse.
+
+        Limitación consciente: la asociación se guarda como número suelto (`cbte_asoc_nro`), sin el
+        tipo del original, así que el filtro es por `(punto_venta, nro)`. Alcanza para monotributo,
+        donde el único tipo emitido es C. Si algún día se emiten A y B en el mismo punto de venta,
+        hay que guardar también el tipo asociado.
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT nro FROM {_TABLE} WHERE cliente_id=%s AND cuit=%s AND punto_venta=%s "
+                f"AND cbte_asoc_nro=%s ORDER BY created_at LIMIT 1",
+                (self._cid, cuit, punto_venta, nro))
+            row = cur.fetchone()
+        return int(row[0]) if row else None
+
     def marcar_anulada(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                        nro_nota_credito: int) -> None:
         """Marca la factura original como anulada y deja el puntero a la NC que la anuló."""

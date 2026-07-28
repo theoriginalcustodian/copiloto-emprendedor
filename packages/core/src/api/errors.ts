@@ -68,7 +68,10 @@ export type CodigoConflicto =
   | 'sin_certificado_afip'
   | 'ambiente_no_vinculado'
   | 'sin_perfil_fiscal'
-  | 'modo_automatico_no_disponible';
+  | 'modo_automatico_no_disponible'
+  /** El gate HITL no tomó la confirmación (factura o anulación). El porqué puntual viaja aparte, en
+   *  `motivo_codigo`: `token_desactualizado` · `faltan_datos` · `fuera_de_gate`. */
+  | 'confirmacion_no_tomada';
 
 /**
  * El `codigo` de un `409`, o `null` si el body no lo trae.
