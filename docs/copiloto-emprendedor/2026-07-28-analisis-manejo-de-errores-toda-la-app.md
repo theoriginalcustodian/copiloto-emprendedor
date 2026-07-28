@@ -20,6 +20,11 @@ que hoy no existen para que la propagación no dependa de que alguien se acuerde
 Y hay **una línea de código** que probablemente explica el bug que hoy bloquea una feature entera
 del producto (§4.1).
 
+**Un hallazgo no es análisis estático:** el journal del VPS muestra que el 21 de julio un emprendedor
+real recibió **doce respuestas `200 OK` falsas** sobre su estado fiscal, construidas sobre un error
+tragado, sin que nada dejara rastro salvo un WARN de Rust que nadie mira (§6.bis). El bug que lo
+originó ya está corregido; **el mecanismo que lo hizo invisible sigue en `main`**.
+
 ---
 
 ## 1. Método y honestidad del instrumento
@@ -233,6 +238,58 @@ usuarios reales**: hoy el equipo puede arreglar sólo los bugs que alguien mira 
 
 ---
 
+## 6.bis · Lo que el journal dice que YA PASÓ (evidencia de producción, no análisis estático)
+
+Todo lo anterior sale de leer código. Esto sale de `journalctl` del VPS, y **confirma el §4.3 con un
+caso real**.
+
+**El vacío que había que interrogar:** en las últimas 24 h, `uc-copiloto-web` y `uc-copiloto-worker`
+tienen **0** líneas con traceback/error. Ese cero **no era un hallazgo**: el control positivo mostró
+169 líneas totales y 155 requests 2xx en el web, y **2 líneas** en el worker — o sea, tráfico mínimo.
+Un cero sobre casi-nada no dice nada. Ampliando a **7 días** (7051 líneas web / 700 worker):
+
+| Patrón | Ocurrencias en 7 d |
+|---|---|
+| `Traceback` | 29 |
+| `NonDeterministicError` (WARN del SDK) | 20 |
+| `ImportError` | 15 |
+| `NonRetryableError` | 2 (esperado — es el diseño de `llm.py`) |
+| `HTTPError` / `AttributeError` | 2 / 1 |
+
+**Primer resultado, que resuelve un pendiente:** los tracebacks **sí** llegan al journal. La
+observabilidad de excepciones no capturadas existe, y su ventana es más larga que las 24 h del history
+de Temporal. Lo que falta no es el transporte: es que los errores **tragados** nunca llegan a ser
+excepción, así que no aparecen acá.
+
+**Segundo resultado, y es el importante — la cadena causal completa, todo el 21 de julio:**
+
+1. **15 × `ImportError: cannot import name 'make_consultar_anulacion' from 'web'`** — un deploy con
+   `web.py` y `afip_web.py` desincronizados. Exactamente la clase de fallo que un `pytest --co` habría
+   cazado… y el CI **sí** corre `--co`, pero el deploy no espera al CI.
+2. Ese día, el `AfipOnboardingWorkflow` de un usuario terminó en **`WorkflowExecutionFailed`**
+   (event id 11, run `019f85cd-…`).
+3. Durante los **20 minutos siguientes** (18:10 → 18:30), una IP real refrescó su pantalla de AFIP.
+   Cada `GET /afip/perfil` era seguido de un `GET /afip/estado` que hacía **query sobre el workflow ya
+   fallado**. La query reventaba —`[TMPRL1100] Nondeterminism error: Complete workflow machine does not
+   handle this event: HistoryEvent(id: 11, WorkflowExecutionFailed)`— **12 veces**.
+4. **Y el endpoint devolvió `200 OK` las 12 veces**, porque `consultar_onboarding` (`web.py:166-170`)
+   hace `except Exception: return None` y el handler traduce ese `None` a un estado de negocio normal.
+
+**Lectura correcta (y corrección de la primera lectura, que fue mía):** esto **no** es "20 workflows
+rotos por replay" ni el moat durable fallando. Es **un** workflow fallado, más un endpoint que traga el
+error de la query y responde 200. El `NonDeterministicError` es un WARN del SDK sobre la *query*, no
+sobre la ejecución — y es el **único** rastro que quedó, en un log de Rust que nadie mira.
+
+**Lo que esto cambia:** el hallazgo §4.3 deja de ser hipotético. Un emprendedor real recibió, doce
+veces seguidas, una afirmación falsa sobre su estado fiscal, construida sobre un error tragado, sin que
+nada ni nadie se enterara. El bug del deploy **ya está corregido**; el mecanismo que lo hizo invisible
+**está en `main` hoy** — la próxima vez que un workflow quede `Failed`, vuelve a pasar igual.
+
+Y cierra el círculo con §6: para investigar esto hoy, el history de Temporal de ese run **ya no
+existe** (retención 24 h). Lo único que sobrevivió 7 días fue el WARN del journal, por casualidad.
+
+---
+
 ## 7. Orden de ataque (impacto ÷ costo, no severidad sola)
 
 | # | Acción | Costo | Por qué ahí |
@@ -244,7 +301,7 @@ usuarios reales**: hoy el equipo puede arreglar sólo los bugs que alguien mira 
 | 5 | Timeout de red: `AbortController` en `http.native.ts` (2 requests, un archivo), `Composio(timeout=…)`, cliente AFIP | 3 sitios | Toda request de la app pasa por el primero: un fix, cota global |
 | 6 | Refresh-on-401 en el camino de voz: `postMultipart` (core) y `audio.ts` (PWA) | 2 sitios | **Subió de prioridad al medir `GOTRUE_JWT_EXP=3600`**: con token de 1 h y uso esporádico, el dictado con token vencido es lo esperable, no un borde. Y el audio se borra en el `finally`: no hay reintento posible |
 | 7 | Un `reportError(err, ctx)` (cliente) y el wrapper Temporal→HTTP con log (backend) — enchufados en los `catch` que ya existen | 2 helpers | **Subió al medir la retención de 24 h**: hoy sólo se pueden diagnosticar los bugs que alguien mira el mismo día. Es precondición para operar con usuarios reales, no higiene |
-| 8 | Los 3 `consultar_*`: distinguir "no existe" de "no pude preguntar" (503 ≠ 404) + log | 3 sitios | Deja de afirmarle al usuario algo falso sobre sus facturas |
+| 3.bis | Los 3 `consultar_*`: distinguir "no existe" de "no pude preguntar" (503 ≠ 404/estado normal) + log | 3 sitios | **Subió de #8 a acá: §6.bis lo encontró OCURRIDO en producción** — 12 respuestas `200 OK` falsas a un usuario real sobre su estado fiscal. Deja de ser hipotético |
 | 9 | `error(status, codigo, mensaje)` hermano de `conflicto()`, y migración **incremental** de los 400/404 con semántica de negocio | incremental | Extiende el mejor patrón del repo a su 87% faltante. NO migrar los 400 de validación de forma |
 
 **Lo que NO hay que hacer:** agregar `try/except` en los ~90 sitios, ni un log en cada uno de los 61
@@ -262,12 +319,13 @@ Postgres. Todos los fixes de arriba son de **un punto por clase**.
 | `COPILOTO_ENGINE_MODE` | **`react`** | Confirmado: el dispatcher es rama muerta en prod. La clase de idempotencia del dossier 2026-07-23 pierde su premisa (`react` **sí** transporta `idem_key`) |
 | `GOTRUE_JWT_EXP` | **3600 s (1 h)** | **Sube la severidad del camino de voz.** Con un token de 1 h y una app de uso esporádico a lo largo del día, que el primer dictado de la tarde caiga con token vencido no es un borde: es lo esperable. El logout + pérdida del audio (§3.3) es un caso **probable**, no teórico |
 | `WorkflowExecutionRetentionTtl` | **24 h** | §6 — la ventana de diagnóstico es más corta que el ciclo de feedback del usuario |
+| Tracebacks en `journalctl` | **29 en 7 días** | El transporte de excepciones **no capturadas** al journal funciona (pendiente resuelto). Lo que no llega son los errores **tragados**: nunca son excepción |
+| `NonDeterministicError` / `ImportError` | **20 / 15**, todos del 21-jul | §6.bis — la cadena causal de un caso real, con 12 respuestas `200 OK` falsas a un usuario |
 
 ### 8.2 · Todavía sin verificar
 
 | Marca | Qué falta |
 |---|---|
-| `[REQUIRES_LIVE_VALIDATION]` | Que el traceback de un 500 real aparezca en `journalctl -u uc-copiloto-web` (forzar uno con Temporal desconectado) |
 | `[REQUIRES_LIVE_VALIDATION]` | Comportamiento de un throw en render en **release build** en device (blanco vs crash vs mensaje) |
 | `[ASSUMED_PENDING_VERIFY]` | Fuga de threads bajo `asyncio.to_thread` con tráfico real (`threading.active_count()` en el tiempo) |
 | `[ASSUMED_PENDING_VERIFY]` | Si AFIP puede emitir **después** de que el cliente abandonó la conexión (riesgo de 2º CAE por thread huérfano) |
