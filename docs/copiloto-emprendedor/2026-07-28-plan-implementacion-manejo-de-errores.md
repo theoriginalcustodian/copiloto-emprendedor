@@ -9,6 +9,32 @@
 
 ---
 
+## 0.bis ESTADO — Fase 0 CERRADA (2026-07-28)
+
+**Los 12 puntos del [mapa](2026-07-28-mapa-puntos-de-fallo-del-sistema.md) están resueltos salvo dos, y los dos por decisión explícita.** Todo con test que mide el **daño** (cuántas facturas se emitieron, si el cliente quedó poleando, si el efecto quedó puesto) y no una excepción intermedia.
+
+| # del mapa | Qué era | Estado |
+|---|---|---|
+| 1 | Guard de doble emisión falla abierto | ✅ `cfc9d4f` `e40e9f3` — número reservado por el workflow + `ResultGet` lista + campo del CAE |
+| 2 | La anulación cuelga al cliente para siempre | ✅ `9541079` — estado terminal + evidencia de la NC que no depende de un UPDATE posterior |
+| 3 | Un turno roto mata la sesión permanente | ✅ `aba5152` — `workflow.patched`, aviso al usuario, sesión viva |
+| 4 | Envíos duplicados a humanos | ✅ `1790c1b` — `idem_key` derivada del `activity_id`, índice único parcial |
+| 5 | Certificado huérfano en AFIP con la clave ya gastada | ✅ `0dda5cd` — write-ahead: se guarda ANTES de autorizar |
+| 6 | Temporal caído se reportaba como "no existe" (404) | ✅ `9541079` — sólo `NOT_FOUND` es 404; el resto, 503 |
+| 7 | `confirmar` devolvía `{"ok":true}` con token inválido | ✅ `9541079` — Workflow Update + 409 `confirmacion_no_tomada` |
+| 8 | 0/4 llamadas de red con timeout | ✅ `7c1e92a` — `AbortController` 20 s → `ApiError` 408 |
+| 9 | RTBF que no ocurría y no avisaba | ✅ `85a1170` — `forget` levanta. **Corrección al mapa:** no era riesgo vivo (no está cableado) |
+| 10 | Dos escrituras sin transacción + 409 que negaba lo hecho | ✅ `a82699e` — transacción real + chequeo antes del efecto + compensación |
+| 11 | `openURL`/`Share` sin `catch` | ✅ `7c1e92a` — helper único; el alcance real eran 5 llamadas en 3 archivos, no todas |
+| 12 | Sin `heartbeat_timeout` en ninguna activity | ⏸️ **a Fase 1.** No es una línea: `heartbeat_timeout` sin que la activity llame a `activity.heartbeat()` **hace fallar** a las largas (el RPA de AfipSDK tarda ~2 min). Necesita diseño por activity, y va junto con la observabilidad |
+| 0.1d | `existe_comprobante` fail-closed | ⏸️ **espera baseline.** Lección de ARCA: un falso positivo bloquea comprobantes legítimos. El test que hoy confirma el fail-open lleva la deuda anotada con propietario |
+
+**Evidencia acumulada:** 1108 passed / 135 skipped (backend + motor, venv del VPS) · 409 passed + `tsc` limpio (`packages/core`) · 645 passed + `tsc` limpio (`apps/mobile`) · replay-verify contra un history real en vuelo con control positivo del instrumento.
+
+**Medido contra el sistema vivo, no supuesto:** Temporal 1.29.7 con Workflow Update habilitado (spike propio) · `FacturaWorkflow` 34 Running · `ConversationWorkflow` 78 Running · `AnulacionWorkflow` 0 en la ventana de retención (con control positivo del instrumento de conteo) · `ON CONFLICT` con inferencia de índice parcial verificado contra el Postgres real con `ROLLBACK`.
+
+---
+
 ## 0. La advertencia que ordena todo lo demás
 
 **ARCA migró de n8n a Temporal el 2026-06-15 (ADR-050), y Zep Cloud quedó deprecado a favor de Graphity.** Toda la documentación de `docs/12_Error_Handling_System/` es de abril 2026 — **anterior a ambas migraciones**.
