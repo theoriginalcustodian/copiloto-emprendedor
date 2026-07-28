@@ -80,16 +80,47 @@ captura estructurada — censo medido: `dlq=0 fingerprint=0 structlog=0 sentry=0
 Es la **precondición de la autosanación**: sin DLQ poblada con fingerprint, los agentes del cluster de
 Temporal no tienen sobre qué operar.
 
-**Primer paso concreto:** censo de los `except` que devuelven `None` / loguean y siguen **sin
-depositar nada**. Script-first (un barrido idempotente, no N tool calls), y el resultado se cruza con
-el mapa para separar los que **deben** degradar (`recall`, `warm_fn`, `grafo_writer` — son
-best-effort por diseño y está bien) de los que **evaporan** un fallo que alguien necesita saber.
+**Primer paso — HECHO (2026-07-28).** Censo con `scripts/censo-except.py` (idempotente, read-only) +
+clasificación semántica de la cola. **147 handlers** en `apps/copiloto` + `motor` (sin tests):
+
+| destino del error | documentado | mudo |
+|---|---|---|
+| relanza | 17 | 38 |
+| deposita | 5 | 1 |
+| solo_log | 16 | 2 |
+| informa (409, motivo en pantalla, `ToolResult` de error) | 9 | 12 |
+| **evapora** | 18 | **29** ← la cola que se leyó a mano |
+
+**Resultado, y reorienta la fase: de los 29, CERO son un fallo evaporado nuevo y vivo.** Los dos
+candidatos ya estaban identificados y gestionados:
+
+- `afip_gateway.py:182` — es **0.1d**, diferido a propósito con su disparador (baseline de 30 días).
+  No es un hallazgo: es deuda con dueño y fecha.
+- `conversation_workflow.py:349` — el `pass` del timeout de HITL convierte un fail-**closed** (esperar
+  al humano) en fail-**open** (mandar la respuesta que el dominio marcó como no apta), sin rastro.
+  **Latente, no vivo:** `escalate=True` sólo lo setea `motor/backend/agent/dispatch.py:48`, el
+  dispatcher de EJEMPLO del motor; `dispatcher_emprendedor.py` nunca escala, y en modo react esa rama
+  ni se ejecuta. Arreglarlo igual (es barato y se activa el día que alguien encienda la escalación).
+
+El resto es best-effort legítimo (parseo con fallback, formateo cosmético, `warm_session`) o convierte
+a error de negocio que el emprendedor **sí** ve en el chat.
+
+⚠️ **Lo que esto cambia.** El número crudo del mapa (99 `try`, 71 "evapora") sugería *tapar agujeros*.
+Medido, el problema es el opuesto: **los handlers manejan bien y no dejan rastro consultable**
+(`dlq=0 fingerprint=0 structlog=0`). Fase 1 no es corregir 71 `except` — es **instrumentar** los que
+ya deciden bien, para que la autosanación tenga sobre qué operar. El trabajo se corre de 1.4
+(clasificar) a **1.1 + 1.2** (fingerprint + log estructurado), que es lo que falta de verdad.
 
 **Referencias que ya existen y hay que reusar, no reinventar** (regla 3 del canon):
 
-- `grafo_writer` — el mejor ciudadano del repo: `Idempotency-Key` real, fail-open **con
-  trazabilidad** (`chequeos_fallidos`) y `invalidaciones_pendientes`, que es lo más parecido a una DLQ
-  que existe hoy. **El diseño de la DLQ sale de acá, extendiéndolo.**
+- `grafo_writer` — el mejor **diseño** del repo: `Idempotency-Key` real, fail-open **con
+  trazabilidad** (`chequeos_fallidos`) y `invalidaciones_pendientes`. **El diseño de la DLQ sale de
+  acá.**
+  ⚠️ **Corregido 2026-07-28 (censo de Fase 1):** NO es un mecanismo vivo del que colgarse.
+  `GrafoWriter` **sólo se instancia en `test_grafo_writer.py`** — ningún camino de producción lo llama
+  (control: `grep -rn "GrafoWriter" .` → el módulo, el test, y `grafo_mapeo.py` que importa sólo
+  `Dataset`/`Invalidacion`). Y `invalidaciones_pendientes` es una **lista en un dataclass**, no una
+  tabla: muere cuando termina el `write()`. Se porta el patrón; la persistencia hay que construirla.
 - `evento_store.registrar_evento` — log de eventos de negocio append-only ya vivo.
 - `errores_web.CODIGOS` + `conflicto()` — el catálogo de errores con código estable, con guard
   mecánico (`test_ningun_409_escrito_a_mano`).
