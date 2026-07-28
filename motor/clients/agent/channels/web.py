@@ -19,7 +19,7 @@ CHANNEL = "web"
 class WebChannelAdapter:
     name = CHANNEL
 
-    def __init__(self, *, reply_sink: Callable[[str, str, str, list | None, dict | None], None]):
+    def __init__(self, *, reply_sink: Callable[..., None]):
         self._reply_sink = reply_sink
 
     def normalize_inbound(self, raw: dict) -> NormalizedMessage | None:
@@ -33,6 +33,10 @@ class WebChannelAdapter:
         return NormalizedMessage(channel=CHANNEL, channel_ref=str(session_id), text=text, kind=kind)
 
     def send(self, channel_ref: str, text: str, choices: list | None = None, *,
-             cliente_id: str | None = None, card: dict | None = None) -> dict:
-        self._reply_sink(cliente_id, channel_ref, text, choices or None, card or None)
+             cliente_id: str | None = None, card: dict | None = None,
+             idem_key: str | None = None) -> dict:
+        """El reply se persiste con `idem_key`: el sink lo usa para que un reintento de la activity no
+        deje un segundo reply idéntico en el chat del emprendedor."""
+        self._reply_sink(cliente_id, channel_ref, text, choices or None, card or None,
+                         idem_key=idem_key)
         return {"sent": True}

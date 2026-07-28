@@ -48,14 +48,37 @@ async def dispatch_intent(payload: dict) -> dict:
     return result.to_dict() if isinstance(result, DispatchResult) else result
 
 
+def _idem_key_de_la_activity() -> str:
+    """Clave de idempotencia derivada de la PROPIA activity, no del payload.
+
+    Una activity se reintenta: si el envío se concretó y el worker murió antes de reportarlo, Temporal
+    la corre de nuevo y el usuario ve el mismo mensaje dos veces. La clave tiene que ser la misma en
+    todos los intentos y distinta entre envíos — que es exactamente `activity_id`, asignado al agendar
+    y reusado por cada reintento.
+
+    **Se calcula acá y no se recibe por payload a propósito.** Sumar una clave al payload cambiaría el
+    input de un `ScheduleActivityTask` de `ConversationWorkflow`, que tiene 78 ejecuciones vivas
+    (sesiones permanentes con continue-as-new); derivarla adentro no toca ninguna. Y de paso no se
+    puede olvidar: no depende de que el llamador la mande.
+
+    `workflow_run_id` va incluido porque el continue-as-new reinicia la numeración de `activity_id`.
+    """
+    info = activity.info()
+    return f"{info.workflow_id}:{info.workflow_run_id}:{info.activity_id}"
+
+
 @activity.defn
 async def send_channel_message(payload: dict) -> dict:
     """payload = {channel, channel_ref, text, choices?, cliente_id?}. Despacha al adapter del canal (choices
     opcional). `cliente_id` viaja per-request (tenant del workflow que originó el mensaje); los adapters que
-    no lo necesitan (Telegram) lo ignoran -- ver ChannelAdapter.send."""
+    no lo necesitan (Telegram) lo ignoran -- ver ChannelAdapter.send.
+
+    `idem_key` sale de la propia activity (ver `_idem_key_de_la_activity`): un reintento reusa la misma
+    clave, así que el canal puede descartar el duplicado en vez de volver a escribirle al usuario."""
     adapter = get_channel(payload["channel"])
     res = await asyncio.to_thread(adapter.send, payload["channel_ref"], payload["text"], payload.get("choices"),
-                                  cliente_id=payload.get("cliente_id"), card=payload.get("card"))
+                                  cliente_id=payload.get("cliente_id"), card=payload.get("card"),
+                                  idem_key=_idem_key_de_la_activity())
     return res if isinstance(res, dict) else {"sent": True}
 
 
@@ -66,7 +89,11 @@ async def notify_staff(payload: dict) -> dict:
     if notifier is None:
         activity.logger.warning(f"[notify_staff] sin notifier registrado; escalacion perdida: {payload.get('reason')}")
         return {"notified": False}
-    res = await asyncio.to_thread(notifier, payload)
+    # Misma clave que en `send_channel_message`, y por el mismo motivo: un reintento no puede volver a
+    # despertar a una persona por la misma escalación. Se agrega al dict ACÁ —no en el workflow— para
+    # no tocar el input de un `ScheduleActivityTask` con ejecuciones vivas. Un notifier que la ignore
+    # queda como está: es aditivo.
+    res = await asyncio.to_thread(notifier, {**payload, "idem_key": _idem_key_de_la_activity()})
     return res if isinstance(res, dict) else {"notified": True}
 
 
