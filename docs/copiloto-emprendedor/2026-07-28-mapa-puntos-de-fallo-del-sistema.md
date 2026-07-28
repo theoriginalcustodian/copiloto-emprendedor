@@ -54,11 +54,33 @@ La emisión de una factura tiene **dos capas de defensa** contra emitir dos vece
 
 **Capa 1 — `por_idem_key` (`afip_factura_activities.py:86-88`).** Es un `SELECT` previo al `INSERT` (`afip_comprobante_store.py:125-137`). Es el patrón *"si ya existe, devolvelo"* que la constitución del proyecto marca explícitamente como **no-idempotente** — tiene ventana de carrera. El `ON CONFLICT` de `registrar()` (`:52`) **no la cierra**, porque su clave es `(cliente_id, cuit, tipo_cbte, punto_venta, nro)`: si AFIP emitió dos veces, asignó **dos números distintos**, y entonces no hay conflicto que detectar — son dos filas legítimas, dos CAE reales.
 
-**Capa 2 — `existe_comprobante` (`afip_gateway.py:148-158`).** Pregunta a AFIP si el número ya fue autorizado. Su docstring declara exactamente para qué existe:
+**Capa 2 — el check-before-act (`afip_factura_activities.py:94-95`).** Su docstring (`:81-83`) declara exactamente qué cubre:
 
-> *"Cubre la ventana fea: AFIP respondió, nosotros nos caímos antes de registrarlo, y el reintento estaría por emitir una segunda factura."*
+> *"antes de emitir se pregunta si el número siguiente ya fue autorizado. Cubre la ventana fea: AFIP autorizó, el proceso se cayó antes de registrar, y el reintento estaría por emitir una SEGUNDA factura."*
 
-Y su implementación es:
+**Es el caso que NO cubre.** El código es:
+
+```python
+siguiente = gateway.ultimo_comprobante(punto_venta=..., tipo_cbte=...) + 1
+if gateway.existe_comprobante(numero=siguiente, ...):
+```
+
+Y `ultimo_comprobante` es `getLastVoucher` (`afip_gateway.py:132-136`) — **el último comprobante autorizado por AFIP**. La secuencia real del reintento:
+
+| | `getLastVoucher` | `siguiente` | `existe_comprobante(siguiente)` | resultado |
+|---|---|---|---|---|
+| intento 1 | 10 | **11** | `False` | emite → **AFIP autoriza el 11** → se corta la red → `store.registrar` nunca corre → la activity lanza |
+| retry | **11** ← AFIP ya lo cuenta | **12** | `False` ← correcto, el 12 no existe | **emite el 12** |
+
+**Facturas 11 y 12, ambas con CAE real, por un solo pedido del usuario.**
+
+La capa 2 pregunta por el número **siguiente**, que por construcción nunca fue emitido. Sólo detectaría algo si `getLastVoucher` **no reflejara aún** la autorización que acaba de dar — lo contrario de lo que ese método hace por definición. El código de adopción (`:95-109`, *"se adopta en vez de reemitir"*) está bien escrito: **se aplica al número equivocado.** Para funcionar tendría que consultar el **último** (`info_comprobante(ultimo)`) y comparar su contenido contra el payload para decidir si es nuestro.
+
+Y en ese escenario **ninguna de las dos capas protege**: la capa 1 consulta una fila que nunca se escribió, la capa 2 consulta un número que nunca se emitió. Todo con `maximum_attempts=3` (`afip_factura_workflow.py:54`, `afip_anulacion_workflow.py:22`).
+
+### La segunda debilidad del mismo guard (independiente de la anterior)
+
+`existe_comprobante` (`afip_gateway.py:148-158`) además **falla abierto**:
 
 ```python
 try:
@@ -67,15 +89,9 @@ except ErrorAfip:
     return False
 ```
 
-`ErrorAfip` es, por su propio docstring (`afip_gateway.py:20-21`), **el error reintentable** — timeout, red, AFIP inestable. Es decir: **la única condición en la que este guard se activa es la condición en la que devuelve `False`** = *"no existe"* = *"emití de nuevo"*.
+`ErrorAfip` es, por su propio docstring (`:20-21`), **el error reintentable** — timeout, red, AFIP inestable. Devuelve *"no existe → emití"* cuando lo que pasó es *"no pude preguntar"*. Es una segunda vía al mismo daño, más estrecha que la principal (requiere que `getLastVoucher` funcione y `getVoucherInfo` falle, dos llamadas distintas al WS), pero real.
 
-**Y arriba de todo esto, `emitir_comprobante` corre con `maximum_attempts=3`** (`afip_factura_workflow.py:54`, `afip_anulacion_workflow.py:22`).
-
-La secuencia completa del fallo: AFIP autoriza → la red se corta antes de que llegue la respuesta → Temporal reintenta → capa 1 no ve el registro (nunca se escribió) → capa 2 pregunta a AFIP, **AFIP sigue inestable**, `ErrorAfip` → `False` → **se emite la segunda factura, con CAE real, ante el fisco.**
-
-Es el patrón de la memoria [`disenar-contra-el-riesgo-temido-ciega-al-caso-normal`](../../memoria/disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) en su forma más pura: el guard está diseñado contra el riesgo correcto, y **falla abierto precisamente en su caso de activación**.
-
-> **Patrón INL que aplica:** ninguno de los existentes lo resuelve — necesita un **fail-closed explícito**: si no puedo *confirmar* que no existe, **no emito**; el `ErrorAfip` debe propagar y dejar el caso en DLQ (A-4) para reconciliación, no convertirse en `False`.
+> **Patrón INL que aplica:** el fix no es sólo fail-closed. Son **dos** cambios: (a) el check-before-act debe interrogar el **último autorizado** y compararlo contra el payload, no el siguiente; (b) si no se puede *confirmar*, **no se emite** — el `ErrorAfip` propaga y el caso va a DLQ (A-4) para reconciliación.
 
 ---
 
@@ -156,4 +172,18 @@ Los tres que declaré baratos se cerraron acá mismo. Dos confirman, uno **refut
 - **Si `AfipSDK.generar_pdf` sobreescribe o duplica** ante llamada repetida — `generar_pdf_comprobante` reintenta 3× y genera un PDF nuevo cada vez.
 - **Si el `tool_executor` de dominio usa el `idem_key`** que recibe (`conversation_workflow.py:532`) — de esto depende que `execute_tool` con `maximum_attempts=5` sea seguro.
 - **La tupla de códigos de rechazo de AFIP** (`afip_gateway.py:197`: `10016, 10243, 11002, 600, 601`) no se contrastó contra la spec completa del WSFE — un rechazo de negocio no listado se trataría como error transitorio y **se reintentaría 3 veces**.
-- **`StartLimitBurst` efectivo en el VPS** — el default de systemd se asumió, no se midió contra el servicio vivo. Requiere SSH.
+### Medido contra el VPS vivo (ya no es supuesto)
+
+`systemctl show` sobre `unreal-copilot`, 2026-07-28:
+
+```
+uc-copiloto-worker:  Restart=always  RestartUSec=5s
+                     StartLimitBurst=5  StartLimitIntervalUSec=10s
+                     NRestarts=0  ActiveState=active
+uc-copiloto-web:     StartLimitBurst=5  NRestarts=0  ActiveState=active
+```
+
+El límite asumido **se confirma medido**: 5 arranques en 10 s y systemd abandona el servicio. Pero
+`NRestarts=0` en ambos dice algo importante: **el escenario nunca se dio**. Es un riesgo latente
+con cero incidentes, no un problema activo — lo cual lo baja de prioridad frente a los puntos 1-7,
+que sí tienen camino de ocurrencia demostrado.
