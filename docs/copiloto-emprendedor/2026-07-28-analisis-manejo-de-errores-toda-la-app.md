@@ -296,6 +296,40 @@ nada ni nadie se enterara. El bug del deploy **ya está corregido**; el mecanism
 
 Y cierra el círculo con §6: para investigar esto hoy, el history de Temporal de ese run **ya no
 existe** (retención 24 h). Lo único que sobrevivió 7 días fue el WARN del journal, por casualidad.
+*(Control corrido: `temporal workflow list` con filtro de estado devolvió vacío, y el listado sin
+filtro devolvió 428 workflows — el vacío es real, no del instrumento.)*
+
+### 6.ter · La deuda "declarada BAJA" ya está acumulando: 34 borradores vivos
+
+El barrido clasificó como **BAJA (deuda gestionada)** el `wait_condition(lambda: self._confirmado or
+self._cancelado)` **sin timeout** de `afip_factura_workflow.py:208`, porque tiene TODO con dueño
+(`web.py:296-302`, `hito9-dictado-sin-ventana-de-vida`). Correcto como clasificación; incompleto como
+medición. El estado vivo:
+
+| Tipo | Running |
+|---|---|
+| `GraphDrainWorkflow` | **292** |
+| `ConversationWorkflow` | 82 |
+| `FacturaWorkflow` | **34** |
+| `MiDiaDetectorWorkflow` | 19 |
+| `MpRefreshWorkflow` | 1 |
+| **total** | **428** |
+
+Antigüedad: 33 con **6 días**, 28 con **5 días** — y todo esto en un sistema que atendió **155
+requests en 24 h**.
+
+- Los **34 `FacturaWorkflow`** son la deuda del `wait_condition` sin timeout, contada: 34 borradores
+  de factura esperando una confirmación que ya no va a llegar. Cada uno es un workflow que el worker
+  sostiene. La deuda está gestionada, pero su interés es medible y crece.
+- Los **82 `ConversationWorkflow`** son sesiones permanentes por diseño (continue-as-new) — esperable,
+  aunque 82 para una beta sugiere que las sesiones de e2e no se cierran nunca.
+- Los **292 `GraphDrainWorkflow`** no son de esta app (son del sync del grafo, que comparte este
+  Temporal) y **no los audité**: `[ASSUMED_PENDING_VERIFY]` — 292 puede ser el diseño o puede ser una
+  fuga, y afirmarlo sin leer ese workflow sería exactamente lo que este dossier critica.
+
+**Lo que suma al análisis:** un `wait_condition` sin timeout no falla nunca — acumula. No hay error,
+no hay log, no hay síntoma de usuario. Es la forma más silenciosa de las que aparecen en este
+documento, y la única que se detecta contando, no leyendo.
 
 ---
 
