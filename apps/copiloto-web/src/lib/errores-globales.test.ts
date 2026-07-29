@@ -5,7 +5,7 @@
  * cada `fetch` que nadie envolvió— pasa de largo y hoy no deja absolutamente nada. Estos tests miden
  * que quede rastro, que es la mitad que suele olvidarse.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { instalarCapturaGlobal } from './errores-globales';
 
