@@ -43,17 +43,51 @@ Levantando una base de tests desde cero — la primera vez que alguien provision
 875 tests nunca lo detectaron porque **los que tocan Postgres se saltaban siempre**
 ([[instrumentos-que-confirman-en-vez-de-verificar]]): el instrumento nunca ejercitó el caso.
 
-## Workaround y arreglo
+## 🔴 2026-07-28 — se cumplió la condición de pago, y había DOS eslabones más
 
-- **Workaround (hoy):** correr `provision.py` **dos veces**. Converge y es idempotente de ahí en más.
-- **Arreglo (pendiente, en frío):** reordenar (ensures **después** del pase estándar) o declarar las
-  columnas en el manifiesto. ⚠️ **No hacerlo apurado:** toca el orden del que dependen los guards
-  anti-colisión, sobre el provisionado que corre en producción.
-- **Propietario:** BACKEND. **Condición de pago:** antes de escribir `deploy/copiloto/test-db.sh`, o
-  antes del primer entorno nuevo (staging / DR / región) — lo que llegue primero.
+El Postgres efímero que se agregó al CI **es** ese "primer entorno nuevo". Falló en el acto, y **antes**
+de llegar al síntoma documentado arriba:
+
+```
+psycopg2.errors.InvalidSchemaName: schema "uc_factory" does not exist
+```
+
+**Nadie hacía `CREATE SCHEMA`.** El diagnóstico de julio arrancaba en el eslabón 2 (columnas que
+faltan) porque en esa base de tests el schema ya existía; el CI arrancó del cero real.
+
+Y el segundo eslabón nuevo: **`CREATE INDEX ... IF NOT EXISTS` sobre una tabla inexistente falla
+igual.** El `IF NOT EXISTS` habla del **índice**, no de la tabla. `ALTER TABLE IF EXISTS` se protege
+solo; `CREATE INDEX` no — matiz fácil de leer al revés cuando los dos están en la misma función.
+
+**Arreglado (parcial, `ac05cf7`):** `_ensure_schema` corre primero, y `_ensure_reply_idem_key`
+pregunta al catálogo con el helper `_tabla_existe`. Se revisaron **las 11** funciones `_ensure_*` de
+una pasada, con script, en vez de descubrirlas de a una por corrida de CI: las otras 9 ya eran seguras.
+
+**Sigue pendiente** el arreglo de fondo (reordenar los ensures **después** del pase estándar, o
+declarar las columnas en el manifiesto): eso toca el orden del que dependen los guards anti-colisión,
+sobre el provisionado que corre en producción. ⚠️ Ese sigue siendo trabajo en frío.
+
+**Lo que sí cambió para siempre:** ahora hay un entorno que ejercita la base virgen **en cada PR**. El
+escenario que "nunca se ejercitaba" pasó a ser el que más se ejercita.
+
+## Workaround y arreglo (histórico)
+
+- **Workaround:** correr `provision.py` **dos veces**. Converge y es idempotente de ahí en más.
+- **Propietario:** BACKEND. **Condición de pago:** ✅ **vencida y pagada a medias el 2026-07-28.**
 
 ## La regla que deja
 
 **Un provisionado idempotente no es un provisionado reproducible.** "Corre N veces sin romper" y
 "levanta el sistema desde cero" son dos propiedades distintas, y sólo la primera se prueba sola:
 la segunda **exige una base vacía de verdad**, no una que ya venía andando.
+
+**Y el corolario que agregó el 28-jul: una advertencia escrita no es una defensa.** Esta memoria
+existía —con el mecanismo bien explicado y su propietario— seis días antes, y no evitó nada: el
+siguiente que provisionó una base virgen chocó igual, con dos eslabones que el análisis en frío no
+había visto. Lo que lo arregló no fue saberlo, fue **un entorno que lo ejercita solo en cada PR**.
+Cuando algo depende de que alguien se acuerde, no está defendido: está documentado, que es otra cosa.
+
+**El detalle que más costó al diagnosticar:** `_ensure_reply_card_column` usa `ALTER TABLE IF EXISTS`,
+así que sobre base fresca es un no-op que **imprime `OK`**. El log mostraba un éxito justo antes del
+error, invitando a buscar la causa después del punto equivocado. Un paso que dice OK sin haber hecho
+nada es peor que uno que falla ([[instrumentos-que-confirman-en-vez-de-verificar]]).
