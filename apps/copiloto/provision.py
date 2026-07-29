@@ -44,19 +44,6 @@ UC_TABLES_JSON = APP_DIR / "uc_tables.json"
 # Los `.sql` NO se listan acá a propósito — se descubren con un glob. Ver `_apply_sql_files`.
 
 
-def _tabla_existe(cur, tabla: str) -> bool:
-    """¿La tabla ya está en el schema? Se pregunta al catálogo en vez de intentar y rezar.
-
-    Importa el orden: los `_ensure_*` son migraciones ADITIVAS y corren ANTES del `CREATE TABLE` del
-    pase estándar. Sobre una base viva las tablas ya están; sobre una base fresca no, y ahí un DDL que
-    las asume revienta. `ALTER TABLE IF EXISTS` se protege solo, pero `CREATE INDEX ... ON tabla`
-    **no**: su `IF NOT EXISTS` habla del índice, no de la tabla.
-    """
-    cur.execute("SELECT 1 FROM information_schema.tables "
-                "WHERE table_schema = %s AND table_name = %s", (SCHEMA, tabla))
-    return cur.fetchone() is not None
-
-
 def _ensure_schema(conn) -> None:
     """Crea el schema `uc_factory` si no está. **Corre PRIMERO: sin esto, todo lo de abajo revienta.**
 
@@ -139,16 +126,16 @@ def _ensure_reply_idem_key(conn) -> None:
     # Sobre una base FRESCA la tabla todavía no existe (el `CREATE TABLE` del pase estándar corre
     # después). `ALTER TABLE IF EXISTS` es no-op ahí, pero `CREATE INDEX ... ON tabla_inexistente`
     # **falla igual aunque diga IF NOT EXISTS** — el `IF NOT EXISTS` habla del índice, no de la tabla.
-    # Ese matiz era el segundo eslabón del fallo que destapó el Postgres virgen del CI; el índice lo
-    # crea el pase estándar cuando la tabla nace. Mismo criterio de "preguntar al catálogo primero"
-    # que ya usa `_ensure_clientes_email_telefono`.
-    if not _tabla_existe(cur, "copiloto_web_replies"):
-        print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (base fresca: la crea el pase estándar)",
-              flush=True)
-        return
-    cur.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS copiloto_web_replies_idem_key_uk "
-                f"ON {SCHEMA}.copiloto_web_replies (cliente_id, idem_key) "
-                f"WHERE idem_key IS NOT NULL;")
+    #
+    # ⚠️ El índice ya NO se crea acá: vive en `replies_indexes.sql`, que se aplica al FINAL de
+    # `provision()` con las tablas ya creadas. La versión intermedia de este fix salteaba el índice en
+    # base fresca "porque lo crea el pase estándar" — **falso**: el pase estándar crea tablas con sus
+    # columnas, no índices. El resultado era una tabla sin su índice único y un `ON CONFLICT` que
+    # reventaba con *"no unique or exclusion constraint matching"*, que es exactamente el modo de fallo
+    # que el encabezado de `mp_indexes.sql` ya venía documentando. Lo cazó el CI en una corrida.
+    print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (columna; el índice, en replies_indexes.sql)",
+          flush=True)
+    return
     print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (columna + índice único parcial, idempotente)",
           flush=True)
 

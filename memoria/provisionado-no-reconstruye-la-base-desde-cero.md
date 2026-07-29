@@ -63,6 +63,31 @@ solo; `CREATE INDEX` no — matiz fácil de leer al revés cuando los dos están
 pregunta al catálogo con el helper `_tabla_existe`. Se revisaron **las 11** funciones `_ensure_*` de
 una pasada, con script, en vez de descubrirlas de a una por corrida de CI: las otras 9 ya eran seguras.
 
+### Tercer eslabón — y el que más pesa: el schema depende de **Supabase**, no de Postgres
+
+Con lo anterior los 11 `_ensure_*` pasan, y el pase estándar muere en:
+
+```
+CREATE POLICY tenant_isolation ON uc_factory."…" FOR ALL
+  USING (cliente_id = ((auth.jwt() ->> 'cliente_id')::uuid));
+InvalidSchemaName: schema "auth" does not exist
+```
+
+`provision_tables.py` no sólo crea tablas: activa RLS con una policy que llama `auth.jwt()` y otorga
+permisos a `anon`/`authenticated`/`service_role`. **Nada de eso es Postgres — es Supabase.**
+
+**Lo que esto significa fuera de los tests:** el runbook de *"levantar el copiloto en un entorno
+nuevo"* (staging, DR, otra región, un clon para probar algo) era **inejecutable** sin una instancia
+completa de Supabase, y nadie lo sabía porque nunca se había intentado. La memoria de julio ya decía
+*"el runbook de recuperación no está probado"* — resultó peor que no probado: **era imposible**.
+
+**Desbloqueado con `deploy/worker/bootstrap-supabase-compat.sql`** (`ac33a22`): roles + `auth.jwt()` +
+`auth.uid()`. ⚠️ **No se corre contra producción** — allí `auth` ya existe con GoTrue real.
+
+**Y la decisión que hace que el test valga:** `auth.jwt()` lee `request.jwt.claims`, la **misma GUC**
+que usa la implementación real. Un test puede `set_config('request.jwt.claims', …)` y ejercitar la
+policy **de verdad**; un stub que devolviera un tenant fijo probaría el stub, no el aislamiento.
+
 **Sigue pendiente** el arreglo de fondo (reordenar los ensures **después** del pase estándar, o
 declarar las columnas en el manifiesto): eso toca el orden del que dependen los guards anti-colisión,
 sobre el provisionado que corre en producción. ⚠️ Ese sigue siendo trabajo en frío.
