@@ -15,6 +15,7 @@ negocian:
 """
 from __future__ import annotations
 
+from latido import con_latido
 import asyncio
 
 from temporalio import activity
@@ -111,7 +112,11 @@ async def dar_de_alta_afip(cliente_id: str, cuit: str, handle: str, ambiente: st
     `ambiente` con default: las ejecuciones que quedaron en el event history ANTES de que existiera el
     parámetro se reproducen con 3 argumentos, y sin default el replay fallaría.
     """
-    return await asyncio.to_thread(_dar_de_alta_sync, cliente_id, cuit, handle, ambiente)
+    # `con_latido`: el RPA bloquea el hilo hasta ~2 min por llamada y el alta entera puede irse a 10.
+    # Sin latir, una caída del worker recién se detecta cuando vence el start_to_close — 10 minutos de
+    # alguien esperando sin que nadie sepa si su alta se procesa o murió. Item #12.
+    return await con_latido(
+        asyncio.to_thread(_dar_de_alta_sync, cliente_id, cuit, handle, ambiente))
 
 
 def _verificar_habilitacion_sync(cliente_id: str, cuit: str, ambiente: str = "dev") -> dict:

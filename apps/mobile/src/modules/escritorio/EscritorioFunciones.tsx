@@ -57,7 +57,6 @@ import { FilaActividad } from '../actividad/FilaActividad';
 import { EncabezadoListado } from '../../theme/glass/EncabezadoListado';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
-import { Row } from '../../theme/glass/Row';
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
 
