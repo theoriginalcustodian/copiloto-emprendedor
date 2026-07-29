@@ -66,27 +66,37 @@ def test_el_typo_no_se_corrige_solo():
 # viva. Está acá y no en la app porque el contrato de modos §3 dice «el backend decide y el backend
 # impone» — si sólo estuviera gris en la UI, un `POST` alcanzaría para ponerse en el modo peligroso.
 
-def test_el_modo_automatico_se_rechaza_con_MOTIVO():
-    from errores_web import MODO_AUTOMATICO_NO_DISPONIBLE
-    from presupuestos_web import _modo_habilitado
+def test_el_modo_automatico_YA_SE_ACEPTA():
+    """⚠️ ANTES esto afirmaba lo contrario (`test_el_modo_automatico_se_rechaza_con_MOTIVO`), y esa
+    expectativa era correcta EN SU MOMENTO: el modo estaba en pausa porque el copiloto narraba
+    acciones que no ejecutaba, y en automático ese fallo es invisible.
+
+    Se invierte —no se borra— el 2026-07-29, tras pagar la condición que el propio código declaraba
+    («se retira cuando la corrección del motor esté viva»). Se pagó MIDIENDO:
+    `scripts/retest_narra_sin_hacer.py --rondas 10` contra el LLM real, 10 sesiones limpias →
+    **0/10 mentiras**, comparando lo que el texto afirma contra los `execute_tool` completados en el
+    history de Temporal.
+
+    Queda invertido en vez de borrado para que el próximo que lea esto sepa que hubo una pausa, por
+    qué existió y con qué evidencia se levantó ([[el-test-que-canoniza-el-bug-como-si-fuera-el-contrato]]).
+    """
+    from presupuestos_web import _validar_perfil, PerfilBody
+
+    # El modo automático ya no se rechaza: pasa la validación como cualquier otro modo válido.
+    cambios = _validar_perfil(PerfilBody(modo_ceremonia=AUTOMATICO))
+    assert cambios["modo_ceremonia"] == AUTOMATICO
+
+
+def test_CONTROL_un_modo_INEXISTENTE_sigue_siendo_400():
+    """El control que hace que el test de arriba signifique algo: si la validación aceptara
+    cualquier cosa, aceptar `automatico` no probaría nada. Un typo sigue siendo 400."""
+    from presupuestos_web import _validar_perfil, PerfilBody
     import pytest as _pytest
     from fastapi import HTTPException
 
     with _pytest.raises(HTTPException) as exc:
-        _modo_habilitado({"modo_ceremonia": AUTOMATICO})
-    assert exc.value.status_code == 409
-    assert exc.value.detail["codigo"] == MODO_AUTOMATICO_NO_DISPONIBLE
-    assert exc.value.detail["modo_vigente"] == CONFIRMACION
-    # El motivo viaja en el mensaje: un control gris sin explicación se lee como app rota, y el
-    # emprendedor no tiene forma de saber que es temporal.
-    assert "pausa" in exc.value.detail["mensaje"]
-
-
-def test_confirmacion_pasa_sin_problema():
-    """El control. Si el guard rechazara todo, el test de arriba pasaría igual y no probaría nada."""
-    from presupuestos_web import _modo_habilitado
-    _modo_habilitado({"modo_ceremonia": CONFIRMACION})     # no levanta
-    _modo_habilitado({"que_vende": "cortes"})              # sin el campo, tampoco
+        _validar_perfil(PerfilBody(modo_ceremonia="automatic"))   # typo, valor que NO existe
+    assert exc.value.status_code == 400
 
 
 def test_el_enum_distingue_NO_EXISTE_de_EN_PAUSA():

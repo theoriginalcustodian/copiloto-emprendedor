@@ -43,7 +43,6 @@ SIN_PERFIL_FISCAL = "sin_perfil_fiscal"
 # en automático ese fallo es INVISIBLE —no hay card que falte, el copiloto dice «listo» y no hay nada
 # que mirar—. En confirmación se ve. Ver `copiloto-narra-la-accion-sin-ejecutarla`.
 # Dueño: backend. Se retira cuando la corrección del motor esté viva (decisión del operador, MAYOR).
-MODO_AUTOMATICO_NO_DISPONIBLE = "modo_automatico_no_disponible"
 
 # El gate HITL no tomó la confirmación (factura o anulación). Nació el 2026-07-28, cuando `confirmar`
 # pasó de signal a Workflow Update: antes NO había 409 posible porque el backend contestaba
@@ -56,7 +55,7 @@ CONFIRMACION_NO_TOMADA = "confirmacion_no_tomada"
 CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
                      TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
-                     SIN_PERFIL_FISCAL, MODO_AUTOMATICO_NO_DISPONIBLE, CONFIRMACION_NO_TOMADA})
+                     SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:
