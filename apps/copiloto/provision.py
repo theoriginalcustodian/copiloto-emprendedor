@@ -61,8 +61,21 @@ def _ensure_schema(conn) -> None:
     error. Un paso que dice OK sin haber hecho nada es peor que uno que falla.
     """
     cur = conn.cursor()
-    cur.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA};")
-    print(f"OK schema {SCHEMA} (idempotente)", flush=True)
+    # ⚠️ Se PREGUNTA antes de crear, y no se usa `CREATE SCHEMA IF NOT EXISTS` a secas (2026-07-29):
+    # ese `IF NOT EXISTS` habla del schema, **no de los permisos**. Postgres chequea el privilegio
+    # `CREATE` sobre la base ANTES de mirar si el schema ya está, así que la sentencia falla con
+    # `InsufficientPrivilege: permission denied for database postgres` incluso cuando no habría nada
+    # que crear. El usuario de la app en producción no tiene ese privilegio — y hace bien en no
+    # tenerlo (menor privilegio); crear schemas no es tarea suya.
+    #
+    # Lo destapó el deploy real: el CI pasó porque ahí el usuario es dueño de la base efímera. Es la
+    # diferencia de entorno que un Postgres de test NO reproduce — los privilegios.
+    cur.execute("SELECT 1 FROM information_schema.schemata WHERE schema_name = %s", (SCHEMA,))
+    if cur.fetchone() is not None:
+        print(f"OK schema {SCHEMA} (ya existe — no se intenta crear)", flush=True)
+        return
+    cur.execute(f"CREATE SCHEMA {SCHEMA};")
+    print(f"OK schema {SCHEMA} (creado)", flush=True)
 
 
 def _provision_tenants(conn) -> None:
