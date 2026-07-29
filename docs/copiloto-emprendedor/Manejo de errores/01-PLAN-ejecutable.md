@@ -79,11 +79,15 @@ adjunta al PR. No reemplaza tu merge; evita que llegue basura a él.
 
 ---
 
-## 2.5 ESTADO DE EJECUCIÓN — 2026-07-28
+## 2.5 ESTADO DE EJECUCIÓN — 2026-07-28 · **actualizado 2026-07-29**
 
 **14 de 14 ítems cerrados.** PR #156 (16 commits) **mergeado** → `main` = `dc4e609`; PR #157 (ítem #12)
 en verde. Más dos entregas que no estaban en el DoD y resultaron lo más caro del frente: el Postgres
 en el CI y la reconstrucción de la base desde cero.
+
+**2026-07-29 — se saldó el único desvío que quedaba abierto:** el flag `MODO_AUTOMATICO_NO_DISPONIBLE`
+**se retiró**, tras correr el retest adversarial que exigía su condición de pago. El plan decía
+*"NO se eliminó"*; ya no es cierto. Detalle abajo (fila `0.5a-flag`) y en el reporte de cierre.
 
 | Ítem | Estado | Commit | Evidencia |
 |---|---|---|---|
@@ -99,6 +103,7 @@ en el CI y la reconstrucción de la base desde cero.
 | 1.5 | ✅ **ya estaba** | — | `context_factory` ya arma el ctx desde el request; `test_adversarial_context_factory_binds_to_a_never_b` y `test_context_factory_resuelve_seller_del_tenant_sin_env_manual` ya lo vigilan. **Mi DoD pedía escribir un test que existía** — 4º ítem mal especificado |
 | #12 | ✅ | `2d60ea1` (PR #157) | `con_latido` en las 3 largas + `heartbeat_timeout` en sus 4 call sites. Replay verificado **con control positivo**. Versionado leído en la doc, no asumido |
 | **G2.1+** | ✅ | `443ef5d` | **Postgres efímero en el CI**: desbloquea 100 tests que no corrían en ningún lado, incluido el aislamiento cross-tenant |
+| **0.5a-flag** | ✅ **2026-07-29** | `2a731c7` (PR #159) | `retest_narra_sin_hacer.py --rondas 10` contra el **LLM real de producción**: `0 mentiras · 0 rondas sin medir · 10 intentadas`. El instrumento se equivocó **dos veces** antes de medir bien — ver §2.6 |
 
 **Suite del VPS: 1143 passed / 138 skipped** (venía de 1108).
 **Suite del CI con Postgres: 1269 passed / 16 skipped** — **137 tests que no corrían en ningún lado**,
@@ -139,10 +144,12 @@ que ejercita la base virgen en cada PR.
 **Cuatro** ítems no salieron como los escribí. En los cuatro, el DoD estaba mal y la evidencia lo
 corrigió — ver [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]]:
 
-1. **0.5a — el flag `MODO_AUTOMATICO_NO_DISPONIBLE` NO se eliminó.** Su condición de pago está
-   escrita en el código y no es este fix: *"se retira cuando la CURA (`react_transcript`) pase el
-   retest adversarial en sesión limpia"*. Además, haber encontrado un hueco **en** el guardrail
-   refuerza mantener la pausa. Levantarlo sería codificar la esperanza.
+1. **0.5a — el flag `MODO_AUTOMATICO_NO_DISPONIBLE` no se eliminó** *(el 2026-07-28; **saldado el
+   2026-07-29** — ver §2.6)*. Su condición de pago estaba escrita en el código y no era ese fix: *"se
+   retira cuando la CURA (`react_transcript`) pase el retest adversarial en sesión limpia"*. Además,
+   haber encontrado un hueco **en** el guardrail reforzaba mantener la pausa. Levantarlo ese día
+   habría sido codificar la esperanza. **Lo que faltaba no era discutir el DoD: era ir a buscar el
+   dato** — y resultó que se podía sin device, hablándole al copiloto por HTTP.
 2. **G2.1 — el criterio "92/92 y 96/96" era falso.** El universo real es **108 tests Python y 155
    TS**; esos números ya habían envejecido. El criterio correcto no es un número (que envejece y
    miente) sino **"todos"** — una lista hardcodeada es justo lo que dejó `test_errores_web.py` fuera.
@@ -161,6 +168,49 @@ corrigió — ver [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]]:
 | `apps/copiloto-web` fuera de los `workspaces` del root | Es la causa de que sus **457 tests** no los corriera nadie. Toca estado compartido por las 3 sesiones → va aparte |
 | `status='rejected'` sin test (0.5a) | Ningún executor lo produce hoy; dueño = quien agregue el primero |
 | Unificar el refresh-on-401 duplicado | Está idéntico en `packages/core` y `copiloto-web`. Cambio cross-package |
+| El grafo no tiene los últimos commits | El hook `pre-push` cortó con `httpx.RemoteProtocolError`; se usó `--no-verify` (el bypass que el propio hook documenta). Se salda en el próximo push que complete la ingesta |
+
+---
+
+## 2.6 El flag levantado — y el instrumento que se equivocó dos veces (2026-07-29)
+
+**Qué se hizo.** Se corrió `scripts/retest_narra_sin_hacer.py --rondas 10` contra el **LLM real de
+producción**, con el usuario canónico `e2e-device@copiloto.test`, en 10 sesiones limpias distintas.
+Cada ronda compara lo que el texto **afirma** contra los `execute_tool` **completados** en el history
+de Temporal:
+
+```
+texto afirma  ∧  ¬∃ tool ejecutada   ⇒   mentira
+RESULTADO: 0 mentiras · 0 rondas sin medir · 10 intentadas
+```
+
+Eso pagó la condición escrita en `02-RETEST-modo-automatico.md` y habilitó retirar el flag
+(`2a731c7`, PR #159).
+
+**Lo que más vale de este tramo no es el flag.** El instrumento se equivocó **dos veces, en
+direcciones opuestas, sobre la misma pregunta** — y las dos salidas se veían plausibles:
+
+| | Veredicto | Realidad |
+|---|---|---|
+| v1 | ✅ *"0/3, la cura sostiene"* | Las 3 rondas reventaron con `KeyError: 'text'` (el campo real es `reply_text`, `reply_store.py:43-56`) y el `except` las contaba como no-mentira → **no midió nada** |
+| v2 | 🔴 *"1/3 mentiras"* | El contador usaba `.endswith("ActivityTaskCompleted")`; el `eventType` real es `EVENT_TYPE_ACTIVITY_TASK_COMPLETED` → daba 0 siempre → **toda afirmación parecía mentira** |
+| v3 | ✅ *"0/10, validado"* | Contador verificado: 2 `execute_tool` por sesión, filtrado por nombre de activity |
+
+Con v1 se levantaba el flag a ciegas sobre un verde vacío. Con v2 se reportaba que la cura falla
+cuando funciona. **Los dos arreglos quedaron en el script, no en la memoria de nadie:** una ronda que
+revienta **invalida el veredicto entero** (`return 2`), y el contador **filtra por `execute_tool`**
+—`call_llm_tools`/`recall_memory`/`send_channel_message` también son activities, y contarlas diría
+*"hizo algo"* cuando el copiloto sólo habló.
+
+**Dos decisiones contra el procedimiento que yo mismo había escrito** en `02-RETEST`:
+
+1. **El test se invirtió, no se borró** — `test_el_modo_automatico_YA_SE_ACEPTA` +
+   `test_CONTROL_un_modo_INEXISTENTE_sigue_siendo_400`, para que el 400 siga significando algo. Un
+   test borrado deja de contar que hubo una pausa y con qué evidencia se levantó.
+2. **La rama `modo_no_disponible` del cliente TS se conservó** — el paso 2 del procedimiento decía
+   quitarla; al mirar quién la consume (`PantallaPerfilNegocio.tsx:231,270`) resultó no ser código
+   muerto sino **la defensa que muestra el motivo si el guard se repone**. Se corrigió el
+   procedimiento, no el código.
 
 ---
 
@@ -168,9 +218,9 @@ corrigió — ver [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]]:
 
 | Bloque | Estado | Disparador para ejecutar |
 |---|---|---|
-| **0.5** — lo que el mapa de 12 puntos no cubrió | 🟢 **ejecutable ya** | ninguno |
-| **G-2** — gate mecánico | 🟢 **ejecutable ya** (en paralelo) | ninguno |
-| **Fase 1** — Captura | 🟢 **ejecutable ya** | ninguno |
+| **0.5** — lo que el mapa de 12 puntos no cubrió | ✅ **cerrada** (0.5a incl. el flag, 2026-07-29) | — |
+| **G-2** — gate mecánico | ✅ **cerrada** salvo el job de lint (deuda con disparador) | — |
+| **Fase 1** — Captura | ✅ **cerrada** (1.1-1.5 + #12) | — |
 | **Features** (onboarding, tiers, soporte) | 🟡 tuyas | — |
 | **Fase 2** — Depositar (DLQ) | ⏸️ diseñada | Features terminadas **y** Fase 1 cerrada |
 | **Fase 3** — Autosanación | ⏸️ diseñada | Fase 2 cerrada **y** 30 días de superficie estable |
@@ -194,8 +244,9 @@ cualquier status `!= "needs_confirmation"`, **incluido `"error"`**. El guardrail
 (`:509`) usa `trace` para decidir el retry `required` → una tool que **falló** habilita el cierre
 *"Listo"*. Es la raíz de [[copiloto-narra-la-accion-sin-ejecutarla]].
 
-**Sostiene el flag `MODO_AUTOMATICO_NO_DISPONIBLE`, que bloquea una feature del producto, y cero test
-lo ejercita.**
+**Sostenía el flag `MODO_AUTOMATICO_NO_DISPONIBLE`, que bloqueaba una feature del producto, y cero
+test lo ejercitaba.** ✅ El fix entró el 2026-07-28 y **el flag se levantó el 2026-07-29** con el
+retest en verde (§2.6).
 
 - **Cierre:** `pytest motor/backend/agent/test_react_adversarial.py -k narra -q` → nuevo test
   `test_una_tool_con_status_error_no_entra_al_trace` en verde, y el flag eliminado de `errores_web.py`.
