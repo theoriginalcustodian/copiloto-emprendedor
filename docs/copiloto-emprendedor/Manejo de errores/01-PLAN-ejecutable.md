@@ -238,9 +238,24 @@ Las candidatas largas —`dar_de_alta_afip` (RPA de AfipSDK, ~2 min), `emitir_co
 (`asyncio.to_thread(...)`): no hay punto intermedio donde reportar progreso sin partir la operación o
 levantar un hilo que lata en paralelo mientras el otro trabaja.
 
-Diseño requerido antes de tocar nada (y por eso #12 sigue sin ejecutarse):
+**Paso 1 — HECHO** (medido leyendo el `start_to_close_timeout` de cada call site, 2026-07-28):
 
-1. Clasificar las 23 en **largas** (>60 s) vs **cortas**; sólo las largas necesitan latir.
+| Duración declarada | Activities | ¿Necesita latir? |
+|---|---|---|
+| **10 min** | `dar_de_alta_afip` (RPA de AfipSDK) | ✅ sí |
+| **3 min** | `emitir_comprobante` | ✅ sí |
+| **2 min** | `archivar_factura_en_drive` | ✅ sí |
+| 120 s | `call_llm` · `call_llm_tools` · `dispatch_intent` · `execute_tool` · `notify_staff` · `send_channel_message` · `transcribe_voice` | ⚠️ al límite: sólo si alguna supera el minuto de trabajo real |
+| 60–75 s | `buscar_comprobante` · `cargar_contexto_factura` · `generar_pdf_comprobante` · `marcar_comprobante_anulado` · `reservar_numero_comprobante` · `verificar_habilitacion_afip` · `avanzar_tablero_mi_dia` · `recall_memory` · `remember_memory` · `warm_memory` | ❌ no |
+
+**Las tres largas comparten el mismo obstáculo**: son una llamada bloqueante única
+(`asyncio.to_thread(...)` sobre un SDK externo), así que ninguna puede latir por sí misma. Las tres
+necesitan la misma solución — una tarea concurrente que emita `heartbeat()` mientras la llamada
+corre — lo que vuelve el trabajo **un solo mecanismo aplicado tres veces**, no tres diseños.
+
+Pasos que faltan:
+
+1. ~~Clasificar las 23 en largas vs cortas~~ ✅ arriba.
 2. Para cada larga, decidir el mecanismo: ¿tiene loop propio, o hace falta una tarea concurrente que
    emita `heartbeat()` mientras la llamada bloqueante corre?
 3. `heartbeat_timeout` por activity, nunca global.
