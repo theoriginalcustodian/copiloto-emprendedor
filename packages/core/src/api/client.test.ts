@@ -28,12 +28,11 @@ function tokensFake(): AlmacenTokens {
       return null;
     },
     async guardarToken() {},
-    async borrarToken() {},
     async leerRefresh() {
       return null;
     },
     async guardarRefresh() {},
-    async borrarRefresh() {},
+    async limpiar() {},
   };
 }
 
@@ -104,5 +103,64 @@ describe('corte por tiempo', () => {
     // Control del propio contrato: si alguien pusiera `TIMEOUT_HTTP_MS = 0` "para desactivarlo
     // mientras debuggea", TODAS las requests quedarían sin corte y este archivo entero pasaría igual.
     expect(TIMEOUT_HTTP_MS).toBeGreaterThan(1000);
+  });
+});
+
+describe('postMultipart — refresh-on-401 (EL QUE IMPORTA: sin esto, un dictado con token vencido desloguea sin reintentar)', () => {
+  it('401 en el multipart → refresca y reintenta CON el mismo archivo → resuelve', async () => {
+    let llamada = 0;
+    responder = () => {
+      llamada += 1;
+      if (llamada === 1) return { ok: false, status: 401, json: async () => ({ detail: 'expirado' }) };
+      if (llamada === 2) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'rt-nuevo' }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ wf_id: 'wf-1' }) };
+    };
+    configurarApi({
+      http: httpFake,
+      tokens: {
+        ...tokensFake(),
+        async leerRefresh() { return 'rt-viejo'; },
+        async leerToken() { return 'tok-viejo'; },
+      },
+      apiBase: '',
+    });
+
+    const resultado = await postMultipart('/chat/audio', { session_id: 's1' }, 'archivo', {
+      nombre: 'voz.m4a',
+      mime: 'audio/m4a',
+      datos: 'file:///tmp/voz.m4a',
+    });
+
+    expect(resultado).toEqual({ wf_id: 'wf-1' });
+    expect(peticiones).toHaveLength(3); // original 401 + /auth/refresh + reintento
+    // El reintento debe llevar el MISMO multipart (mismo archivo), no perder la grabación.
+    expect(peticiones[2]!.multipart?.archivo.nombre).toBe('voz.m4a');
+  });
+
+  it('401 y el refresh también falla → propaga UnauthorizedError (no cuelga ni pierde el audio en silencio)', async () => {
+    responder = () => ({ ok: false, status: 401, json: async () => ({ detail: 'expirado' }) });
+    configurarApi({
+      http: httpFake,
+      tokens: {
+        ...tokensFake(),
+        async leerRefresh() { return 'rt-viejo'; },
+        async leerToken() { return 'tok-viejo'; },
+      },
+      apiBase: '',
+    });
+
+    await expect(
+      postMultipart('/chat/audio', { session_id: 's1' }, 'archivo', {
+        nombre: 'voz.m4a',
+        mime: 'audio/m4a',
+        datos: 'file:///tmp/voz.m4a',
+      }),
+    ).rejects.toBeInstanceOf(ApiError);
   });
 });

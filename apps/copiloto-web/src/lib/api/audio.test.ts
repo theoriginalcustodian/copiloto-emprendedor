@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { setToken } from '../../auth/session';
+import { getToken, setRefreshToken, setToken } from '../../auth/session';
 import { ApiError, ForbiddenError, UnauthorizedError } from './client';
 import { sendAudio } from './audio';
 
@@ -74,5 +74,32 @@ describe('sendAudio — POST /chat/audio (multipart)', () => {
     const error = (await sendAudio('sid', new Blob()).catch((err: unknown) => err)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(500);
+  });
+
+  it('EL QUE IMPORTA: token vencido a mitad del dictado → refresca y reintenta CON el mismo audio, no lo pierde', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' })) // request original
+      .mockResolvedValueOnce(
+        mockResponse(200, { access_token: 'tok-nuevo', refresh_token: 'rt-nuevo' }),
+      ) // POST /auth/refresh
+      .mockResolvedValueOnce(
+        mockResponse(200, { wf_id: 'wf-1', accepted: true, transcript: 'Mandale un mail a Juan' }),
+      ); // reintento
+
+    const blob = new Blob(['fake-audio-bytes'], { type: 'audio/webm' });
+    const result = await sendAudio('sid-abc', blob);
+
+    expect(result).toEqual({ wf_id: 'wf-1', accepted: true, transcript: 'Mandale un mail a Juan' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(getToken()).toBe('tok-nuevo');
+
+    // El reintento (3ª llamada) debe llevar el MISMO FormData que la request original (1ª) — el
+    // audio no se descarta ni se re-crea entre el 401 y el reintento.
+    const original = fetchMock.mock.calls[0] as [string, RequestInit];
+    const reintento = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(reintento[1].body).toBe(original[1].body);
+    expect((reintento[1].body as FormData).get('audio')).toBeInstanceOf(Blob);
   });
 });
