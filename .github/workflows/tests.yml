@@ -5,6 +5,20 @@ on:
     branches: [main]
   pull_request:
 
+# G-2 del frente de manejo de errores. Lo que este CI corrige (medido el 2026-07-28):
+#
+#   - backend corría una LISTA HARDCODEADA de 11 archivos sobre los 108 que existen. Un test nuevo
+#     nacía fuera del CI salvo que alguien se acordara de agregarlo a la lista — y nadie se acuerda.
+#     Así fue como `test_errores_web.py`, que es el guard de los códigos de error, nunca corrió.
+#   - frontend hacía SOLO `npm run build`: 0 de 155 archivos de test de TS, y ningún `tsc --noEmit`.
+#
+# Por eso el criterio ahora es "TODO lo que exista", nunca una lista: una lista se desactualiza en
+# silencio y sigue dando verde. En ARCA, 1 de cada 3 fixes de error-handling declarados resultó falso
+# (`2026-04-19_AUDITORIA:26-29`); sin este gate, el mismo plan que lo arregla se degrada igual.
+#
+# Los tests que necesitan Postgres o credenciales reales se auto-saltean (`skip`, no `fail`), y eso es
+# correcto: este CI protege imports, mount y lógica pura; lo live se ejercita en el VPS al desplegar.
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -15,27 +29,65 @@ jobs:
           python-version: '3.12'
       - name: install deps
         run: pip install -r requirements.txt
-      - name: collect (valida imports/mount del motor) + unit subset
+      - name: collect (valida imports/mount del motor)
         working-directory: apps/copiloto
-        run: |
-          python -m pytest tests --co -q
-          python -m pytest \
-            tests/test_dispatcher.py tests/test_mp_tables.py tests/test_context_factory.py \
-            tests/test_catalog.py tests/test_mp_crypto.py tests/test_system_prompt_react.py \
-            tests/test_service_schemas.py tests/test_web_adapter.py tests/test_selection_qa.py \
-            tests/test_reply_store.py tests/test_mp_credential_store.py -q
-        # Nota: los tests E2E/live (Composio/MP/Graphity reales) se saltan sin credenciales;
-        # se ejercitan en el VPS al deployar. Este CI protege imports + mount + lógica pura.
+        run: python -m pytest tests --co -q
+      - name: suite completa (backend + motor vendorizado)
+        working-directory: apps/copiloto
+        # Sin lista de archivos: todo lo que exista corre.
+        run: python -m pytest tests ../../motor/backend/agent ../../motor/clients/agent -q
 
-  frontend:
+  core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: build (valida frontend standalone)
+      - run: npm install --no-audit --no-fund
+      - name: typecheck
+        working-directory: packages/core
+        run: npx tsc --noEmit
+      - name: tests
+        working-directory: packages/core
+        run: npx vitest run
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: typecheck
+        working-directory: apps/mobile
+        run: npx tsc --noEmit
+      - name: tests
+        working-directory: apps/mobile
+        run: npx jest
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # ⚠️ `apps/copiloto-web` NO está en los `workspaces` del root (sólo `apps/mobile` y
+      # `packages/*`), así que un `npm install` desde la raíz no instala sus dependencias. De ahí que
+      # sus 56 archivos de test (457 tests) no los corriera nadie, ni acá ni en local. Se instala en
+      # su propio directorio. Meterlo al workspace del root es lo correcto de fondo, pero toca estado
+      # compartido por las tres sesiones del repo → va aparte, no en este PR.
+      - name: install (aislado — la PWA no está en el workspace del root)
         working-directory: apps/copiloto-web
-        run: |
-          npm install --no-audit --no-fund
-          npm run build
+        run: npm install --no-audit --no-fund
+      - name: typecheck
+        working-directory: apps/copiloto-web
+        run: npx tsc --noEmit
+      - name: tests
+        working-directory: apps/copiloto-web
+        run: npx vitest run
+      - name: build (valida el frontend standalone)
+        working-directory: apps/copiloto-web
+        run: npm run build
