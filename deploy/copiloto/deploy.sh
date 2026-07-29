@@ -28,9 +28,25 @@ LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # 2026-07-23: /actividad y /inteligencia/* volvieron a romperse por un deploy desde una rama vieja).
 # Ver memoria/deploy-sh-no-valida-checkout-al-dia-con-main.md. Escape hatch UC_SKIP_DRIFT_CHECK=1
 # para el caso legítimo de desplegar una rama de feature aislada a propósito.
+#
+# ⚠️ Cómo se mide importa (2026-07-28). La v1 usaba `git diff origin/main -- apps/copiloto motor`,
+# que compara pasando por el ÍNDICE de la rama chequeada. Con checkout compartido —tres sesiones,
+# cada una en su rama— eso da FALSO POSITIVO aunque el disco sea idéntico a main: los archivos que
+# main tiene y el índice de la otra rama no, cuentan como borrados. Midió 1502 líneas de drift con
+# el disco byte a byte igual a main (210 archivos verificados uno por uno).
+# Y un guard que grita en el caso NORMAL enseña a saltearlo por reflejo: a las dos semanas nadie lo
+# lee y vuelve el incidente que vino a prevenir. Un falso positivo no es "ruido": desarma el guard.
+# La v2 arma un índice TEMPORAL desde origin/main y stagea el disco contra él, así la comparación es
+# disco-vs-main sin que el índice real (de otra sesión) participe. Mismo mecanismo que ya se usa para
+# commitear en checkout compartido. Verificado en las dos direcciones antes de instalarlo: disco==main
+# -> 0; con una línea agregada a serve.py -> 9.
 if [ -z "${UC_SKIP_DRIFT_CHECK:-}" ]; then
   git -C "$LOCAL" fetch origin main --quiet
-  DRIFT="$(git -C "$LOCAL" diff origin/main -- apps/copiloto motor | wc -l)"
+  _idx="$(mktemp)"
+  DRIFT="$(GIT_INDEX_FILE="$_idx" git -C "$LOCAL" read-tree origin/main 2>/dev/null \
+    && GIT_INDEX_FILE="$_idx" git -C "$LOCAL" add -- apps/copiloto motor 2>/dev/null \
+    && GIT_INDEX_FILE="$_idx" git -C "$LOCAL" diff --cached origin/main -- apps/copiloto motor | wc -l)"
+  rm -f "$_idx"
   if [ "$DRIFT" -ne 0 ]; then
     echo "ABORT: el checkout local difiere de origin/main en apps/copiloto/motor ($DRIFT líneas de diff)." >&2
     echo "Desplegar así regresiona en silencio código ya arreglado en main. Rebaseá/mergeá primero," >&2
