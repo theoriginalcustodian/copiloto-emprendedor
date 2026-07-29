@@ -265,6 +265,11 @@ export async function guardarPerfilNegocio(
       err.status === 409 &&
       codigoDeConflicto(err.body) === 'modo_automatico_no_disponible'
     ) {
+      // ⚠️ Esta rama SOBREVIVE al levantamiento del flag (2026-07-29). Hoy el backend ya no
+      // rechaza el modo automático, así que en la práctica no se toma — pero NO es código muerto:
+      // es la defensa que hace que, si el guard se repone (el retest vuelve a medir mentiras), la
+      // app muestre el MOTIVO en vez de un error crudo. Quitarla sería desarmar una defensa por
+      // prolijidad, y dejar a la app sin respuesta el día que el backend vuelva a decir que no.
       const vigente = (err.body as { detail?: { modo_vigente?: unknown } })?.detail?.modo_vigente;
       return {
         status: 'modo_no_disponible',

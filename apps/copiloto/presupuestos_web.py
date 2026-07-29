@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
-from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, MODO_AUTOMATICO_NO_DISPONIBLE,
+from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
 from log_estructurado import log_error
@@ -85,28 +85,21 @@ def _validar_perfil(body: PerfilBody) -> dict:
     return cambios
 
 
-# 🔴 El modo automático se rechaza EN EL BACKEND, no se esconde en la app.
+# ✅ El modo automático quedó HABILITADO el 2026-07-29, tras pagar su condición.
 #
-# El contrato de modos §3 dice «el backend decide y el backend impone; la app refleja». Si esto
-# quedara aceptable por HTTP y sólo gris en la UI, alcanzaría un `POST /perfil-negocio` para ponerse
-# en el modo que sabemos peligroso — y la restricción viviría en la capa que el propio contrato dice
-# que NO decide.
+# Estuvo en pausa porque el copiloto narraba acciones que no ejecutaba, y en automático ese fallo es
+# INVISIBLE: no falta ninguna card, el copiloto dice «listo», no hay nada que mirar. En confirmación
+# la card es el testigo. La deuda estaba GESTIONADA, con dueño y condición escrita: «se retira cuando
+# la corrección del motor esté viva».
 #
-# Por qué está bloqueado: el copiloto narra acciones que no ejecutó a partir del tercer turno, y en
-# automático ese fallo es INVISIBLE (no falta ninguna card, el copiloto dice «listo», no hay nada que
-# mirar). En confirmación la card es el testigo. Deuda GESTIONADA, con dueño y condición de pago:
-# se retira cuando la corrección del motor esté viva. Ver `copiloto-narra-la-accion-sin-ejecutarla`.
-_POR_QUE_NO_AUTOMATICO = (
-    "El modo automático está en pausa: el copiloto todavía puede decir que hizo algo que no hizo, y "
-    "sin la tarjeta de confirmación eso no se ve. Se habilita cuando esté corregido.")
-
-
-def _modo_habilitado(cambios: dict) -> None:
-    if cambios.get("modo_ceremonia") == AUTOMATICO:
-        raise conflicto(MODO_AUTOMATICO_NO_DISPONIBLE, _POR_QUE_NO_AUTOMATICO,
-                        modo_vigente=CONFIRMACION)
-
-
+# La condición se pagó midiendo, no opinando: `scripts/retest_narra_sin_hacer.py --rondas 10` contra
+# el LLM REAL, en 10 sesiones limpias → **0/10 mentiras**, comparando lo que el texto afirma contra
+# los `execute_tool` completados en el history de Temporal. El procedimiento y el criterio están en
+# `docs/copiloto-emprendedor/Manejo de errores/02-RETEST-modo-automatico.md`.
+#
+# ⚠️ Si el modo automático vuelve a dar problemas, el camino NO es re-esconderlo en la UI: es correr
+# el retest y, si falla, reponer el guard ACÁ. El contrato de modos §3 manda: «el backend decide y el
+# backend impone; la app refleja». Un control sólo gris en la app lo saltea un `POST`.
 # --- presupuestos -----------------------------------------------------------------
 
 class ReceptorBody(BaseModel):
@@ -210,7 +203,6 @@ def create_presupuestos_app(
     async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
         cambios = _validar_perfil(body)          # 400 ANTES de tocar la base: el control de "¿está
                                                  # desplegado?" manda `{}` y no debe escribir nada.
-        _modo_habilitado(cambios)                # 409 con el motivo, NO un 400 mudo (ver el guard)
         perfil = await asyncio.to_thread(perfil_negocio_store_factory(cliente_id).upsert, cambios)
         return {"perfil": perfil}
 
