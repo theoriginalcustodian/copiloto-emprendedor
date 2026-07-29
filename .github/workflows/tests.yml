@@ -134,3 +134,16 @@ jobs:
       - name: build (valida el frontend standalone)
         working-directory: apps/copiloto-web
         run: npm run build
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      # Sólo los ERRORES rompen. Los 11 avisos son directivas `eslint-disable` huérfanas de una config
+      # anterior: quedan a la vista para limpiarlas al pasar, sin bloquear a nadie por basura inofensiva.
+      - name: eslint (0 errores; los avisos no bloquean)
+        run: npx eslint packages/core/src apps/mobile/src apps/copiloto-web/src
