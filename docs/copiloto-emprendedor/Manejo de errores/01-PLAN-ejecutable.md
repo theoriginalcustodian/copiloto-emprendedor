@@ -81,7 +81,8 @@ adjunta al PR. No reemplaza tu merge; evita que llegue basura a él.
 
 ## 2.5 ESTADO DE EJECUCIÓN — 2026-07-28
 
-**9 de 14 ítems cerrados** en la rama `frente/0.5-alcance-faltante` (9 commits sobre `main`).
+**11 de 14 ítems cerrados** en la rama `frente/0.5-alcance-faltante` (11 commits sobre `main`), más un
+ítem que no estaba en el DoD y resultó el hallazgo más caro (Postgres en el CI).
 
 | Ítem | Estado | Commit | Evidencia |
 |---|---|---|---|
@@ -94,14 +95,16 @@ adjunta al PR. No reemplaza tu merge; evita que llegue basura a él.
 | 1.2 | ✅ | `509d20a` | 6 tests + cableado en 2 sitios reales |
 | 1.3 | ✅ | `509d20a` | 10 tests; sin categoría por descarte |
 | 1.4 | ✅ | `c0fd674` | control negativo: un `except` mudo nuevo → CI rojo |
-| 1.5 | ❌ | — | no empezado |
-| #12 | ❌ | — | no empezado |
+| 1.5 | ✅ **ya estaba** | — | `context_factory` ya arma el ctx desde el request; `test_adversarial_context_factory_binds_to_a_never_b` y `test_context_factory_resuelve_seller_del_tenant_sin_env_manual` ya lo vigilan. **Mi DoD pedía escribir un test que existía** — 4º ítem mal especificado |
+| #12 | ❌ | — | inventario hecho (23 activities, 0 heartbeats); requiere diseño por activity — ver §6 |
+| **G2.1+** | ✅ | `443ef5d` | **Postgres efímero en el CI**: desbloquea 100 tests que no corrían en ningún lado, incluido el aislamiento cross-tenant |
 
 **Suite del VPS: 1129 passed / 135 skipped** (venía de 1108).
 
 ### Desvíos del DoD, con su razón
 
-Tres ítems no salieron como los escribí. En los tres, el DoD estaba mal y la evidencia lo corrigió:
+**Cuatro** ítems no salieron como los escribí. En los cuatro, el DoD estaba mal y la evidencia lo
+corrigió — ver [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]]:
 
 1. **0.5a — el flag `MODO_AUTOMATICO_NO_DISPONIBLE` NO se eliminó.** Su condición de pago está
    escrita en el código y no es este fix: *"se retira cuando la CURA (`react_transcript`) pase el
@@ -110,7 +113,9 @@ Tres ítems no salieron como los escribí. En los tres, el DoD estaba mal y la e
 2. **G2.1 — el criterio "92/92 y 96/96" era falso.** El universo real es **108 tests Python y 155
    TS**; esos números ya habían envejecido. El criterio correcto no es un número (que envejece y
    miente) sino **"todos"** — una lista hardcodeada es justo lo que dejó `test_errores_web.py` fuera.
-3. **G2.3 — `require-await` se descartó con evidencia.** Marcaba 8 funciones `async` sin `await` que
+3. **1.5 ya estaba implementado y testeado.** Pedía escribir un test que existía. Bastaba mirar
+   antes de escribir — el desvío más barato de haber evitado.
+4. **G2.3 — `require-await` se descartó con evidencia.** Marcaba 8 funciones `async` sin `await` que
    devuelven promesa **por contrato**. Igual `no-require-imports` en tests: 20 casos idiomáticos de
    jest. Las dos gritaban en el caso normal, y un gate así se termina desactivando entero.
 
@@ -220,7 +225,30 @@ instrumentar los que ya deciden bien.
 | 1.3 | Taxonomía única: `business_error` · `infra_error` · `manual_intervention` · `cascading` | Todo error mapea a una; una sin categoría **falla el test** | Test con un error nuevo inventado → debe fallar |
 | 1.4 | `censo-except.py` + `inventario-errores.sh` → catálogo con **aserciones** | Un `except` mudo nuevo **rompe el CI** | Agregar un `except: pass` en rama scratch → CI rojo |
 | 1.5 | Contrato de contexto: lo inyecta el caller de más alto nivel | Test que verifica que la activity interna **no** lo fabrica | — |
-| #12 | `heartbeat_timeout` **sólo** donde la activity llama `activity.heartbeat()` | El RPA de AFIP (~2 min) **no** falla; test de activity larga | ⚠️ Ponerlo sin heartbeat **hace fallar** a las largas: ese es el punto |
+| #12 | `heartbeat_timeout` **sólo** donde la activity llama `activity.heartbeat()` | El RPA de AFIP (~2 min) **no** falla; test de activity larga | ⚠️ Ponerlo sin heartbeat **hace fallar** a las largas: ese es el punto. **Inventario hecho ↓** |
+
+### #12 — inventario previo (medido 2026-07-28), y por qué no es configuración
+
+**23 activities registradas. `activity.heartbeat()`: 0.** Poner `heartbeat_timeout` de forma global
+mata a todas las que tarden más que el umbral.
+
+El obstáculo no es elegir el número: es que **una activity sólo puede latir si tiene dónde hacerlo**.
+Las candidatas largas —`dar_de_alta_afip` (RPA de AfipSDK, ~2 min), `emitir_comprobante`,
+`verificar_habilitacion_afip`— son **una sola llamada bloqueante a un SDK externo**
+(`asyncio.to_thread(...)`): no hay punto intermedio donde reportar progreso sin partir la operación o
+levantar un hilo que lata en paralelo mientras el otro trabaja.
+
+Diseño requerido antes de tocar nada (y por eso #12 sigue sin ejecutarse):
+
+1. Clasificar las 23 en **largas** (>60 s) vs **cortas**; sólo las largas necesitan latir.
+2. Para cada larga, decidir el mecanismo: ¿tiene loop propio, o hace falta una tarea concurrente que
+   emita `heartbeat()` mientras la llamada bloqueante corre?
+3. `heartbeat_timeout` por activity, nunca global.
+4. Test de activity larga que verifique que **no** la mata el timeout.
+
+**Riesgo si se hace mal:** las 112 ejecuciones en vuelo incluyen 34 `FacturaWorkflow`. Una activity
+de emisión abortada a mitad por un `heartbeat_timeout` mal puesto es una factura que quedó en un
+estado ambiguo ante AFIP.
 
 **Salida de fase:** arranca el reloj de 30 días de 0.1d.
 
