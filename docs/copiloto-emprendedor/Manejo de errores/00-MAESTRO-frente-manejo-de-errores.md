@@ -75,7 +75,43 @@ describe el **motor n8n muerto** (migró a Temporal el 2026-06-15, ADR-050). Se 
 Cada fix tiene un test que mide el **daño** (cuántas facturas se emitieron, si el cliente quedó
 poleando, si el efecto quedó puesto), no una excepción intermedia.
 
-### 3.2 ⚠️ Nada de esto está en producción
+### 3.2 ✅ EN PRODUCCIÓN — desplegado y verificado el 2026-07-28
+
+**PR [#154](https://github.com/theoriginalcustodian/copiloto-emprendedor/pull/154) mergeado
+(`637a9ba`) y desplegado.** CI verde (backend 28 s / frontend 29 s).
+
+Verificación en el sistema real — no la salida del deploy, sino el efecto:
+
+| Control | Antes | Después |
+|---|---|---|
+| `reservar_numero_comprobante` | 0 archivos | **7** |
+| `confirmacion_no_tomada` | 0 | **5** |
+| `nota_credito_de` | 0 | **5** |
+| `_idem_key_de_la_activity` | 0 | **2** |
+| Control **negativo** (símbolo inventado) | — | **0** ✅ el grep discrimina |
+| Gate `[4.9/7]` presente en el VPS | 0 | **1** |
+| Errores en el journal post-deploy | — | **0** |
+
+Los procesos arrancaron a las 23:58:09 con `date` en 23:58:49 — procesos **nuevos** de 40 s, no los
+viejos con otro nombre.
+
+**Y lo que de verdad podía romperse, las 112 ejecuciones en vuelo replayando con código nuevo:**
+
+| | Antes | Después |
+|---|---|---|
+| `ConversationWorkflow` Running | 78 | **78** |
+| `FacturaWorkflow` Running | 34 | **34** |
+| `MpRefreshWorkflow` | 1 | **1** |
+| Failed / Terminated | — | **0 / 0** |
+| `NonDeterministicError` post-restart | — | **0** (control positivo: 7 líneas de journal) |
+
+El gate de import corrió por primera vez en un deploy real y pasó (`import serve: OK`,
+`import worker_b: OK`), y el smoke devolvió `{"status":"ok"}`.
+
+<details>
+<summary>3.2.bis — Estado anterior (histórico): "nada de esto está en producción"</summary>
+
+
 
 **Medido 2026-07-28:**
 
@@ -94,6 +130,8 @@ Los 16 commits viven en una rama **local**. No hay PR. `origin/main` no tiene ni
 objetos** — sin ella, un `git gc` los borra.
 
 **Total del frente:** 61 archivos, +3375 / −152 (a `544f734`), más el censo posterior.
+
+</details>
 
 ### 3.3 Evidencia (fecha de medición: 2026-07-28)
 
@@ -437,6 +475,25 @@ Los cuatro primeros están en `memoria/` con detalle; los dos últimos son de la
    [[ejecutar-la-cola-acordada-no-es-una-decision-de-scope]]): la memoria existe y **no funciona como
    gate**.
 
+7. **Un guard que grita en el caso normal se desarma solo**
+   ([[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]). El guard de drift de `deploy.sh` abortó
+   un deploy legítimo: reportó 1502 líneas con el disco byte a byte igual a main, porque medía contra
+   el índice de la rama chequeada. Corregido con índice temporal, verificado en las dos direcciones.
+8. **`UNKNOWN` no es `NO`** ([[unknown-no-es-no-el-estado-que-el-proveedor-aun-calcula]]). Reporté que
+   el auto-merge no se había activado leyendo un estado que GitHub todavía calculaba. Sí se activó: el
+   merge ocurrió 14 s después del CI verde.
+9. **Un flag `--since` acota su paso, no el pipeline**
+   ([[el-flag-incremental-que-solo-acota-el-ultimo-paso]]). 17 min para pushear 1 archivo: extracción
+   y reconcile del grafo son ciegos al `--since` **por diseño**. Optimicé la entrada de un pipeline
+   cuyo costo está en la salida.
+
+**El patrón que atravesó la jornada: tres ceros que se veían iguales y no lo eran.** Los símbolos
+ausentes en el VPS eran un cero **real** (control positivo: `emitir_comprobante` → 8); los workflows
+de Temporal, un cero **falso** (el CLI vive en un contenedor y no existía en esa sesión SSH); los
+"archivos sobrantes" y el log de `--since`, ceros **inválidos** — un `sed` roto y un `tail -6` míos
+habían vaciado la fuente antes de medirla. Ninguno vale sin su control al lado
+([[vacio-no-es-hallazgo-correr-el-control]]).
+
 Y una del harness que **sí** funcionó: el guard `test_ningun_409_escrito_a_mano` frenó un
 `HTTPException(409)` escrito a mano y mandó a la maquinaria que ya existía
 ([[guard-caza-algo-distinto-de-lo-que-vigilaba]] — leer el rechazo antes de aflojarlo).
@@ -445,10 +502,8 @@ Y una del harness que **sí** funcionó: el guard `test_ningun_409_escrito_a_man
 
 ## 10. Lo siguiente
 
-1. **PR + merge + deploy de los 16 commits** (§3.2, §4.5) — están terminados y no valen nada fuera de
-   producción. Re-medir antes el estado vivo (§3.3 vence; ojo con la retención de 24 h, §5.bis).
-   ⚠️ Y arreglar `deploy.sh` en el mismo movimiento: **valida Caddy y no valida el import de Python**
-   (§5.bis), que es exactamente cómo se rompió el deploy del 21-jul. Desplegar sin eso es repetirlo.
+1. ~~PR + merge + deploy~~ — **HECHO y verificado** (§3.2). El gate de import entró en el mismo
+   movimiento y corrió por primera vez en un deploy real.
 2. ~~Spike de población real de errores~~ — **ya medido**, §5.bis.
 3. **Trifecta cognitiva de Fase 3** (§4.4 punto 2) — el único diseño que falta de raíz.
 4. **Plan quirúrgico** de Fases 1-3 + G-2 con cierre binario por ítem (§4.4 punto 3), incorporando el
