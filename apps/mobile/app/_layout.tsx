@@ -31,6 +31,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 // única vez que se ejecuta en toda la app.
 import '../src/adapters/plataforma';
 import { PantallaLogin, SessionProvider, useSession } from '../src/modules/auth';
+import { LimiteDeError } from '../src/shell/LimiteDeError';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 /**
@@ -100,10 +101,15 @@ export default function LayoutRaiz() {
   });
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <BarraNavegacionOculta />
-        <ThemeProvider>
+    // `LimiteDeError` va POR FUERA de todo lo demás a propósito: si `ThemeProvider`, `SessionProvider`
+    // o cualquier pantalla lanza en render, el árbol entero se desmonta y queda la pantalla negra.
+    // Envolviéndolo desde afuera, el fallback sobrevive a la caída de cualquiera de esas capas.
+    // Ojo: NO captura errores de handlers ni de código asíncrono (límite de React, no decisión).
+    <LimiteDeError>
+      <GestureHandlerRootView style={styles.root}>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+          <BarraNavegacionOculta />
+          <ThemeProvider>
           {fuentesListas ? (
             <SessionProvider>
               <Guard>
@@ -151,12 +157,13 @@ export default function LayoutRaiz() {
                 </Stack>
               </Guard>
             </SessionProvider>
-          ) : (
-            <Splash />
-          )}
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+            ) : (
+              <Splash />
+            )}
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </LimiteDeError>
   );
 }
 
