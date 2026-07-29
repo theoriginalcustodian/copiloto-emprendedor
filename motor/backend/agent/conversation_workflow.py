@@ -441,7 +441,13 @@ class ConversationWorkflow:
                                               # sembrado: esta tool YA ejecutó (confirmed=True, arriba) ANTES de
                                               # entrar al loop -- sin esto el marcador del cierre "olvida" el
                                               # tool_call que resolvió el gate de confirmación.
-                                              tool_trace=[pend["tool_call"]["name"]])
+                                              # ...pero SÓLO si salió bien: acá el usuario apretó "Confirmar"
+                                              # para emitir/cobrar. Si eso falló y el trace lo cuenta igual, el
+                                              # guardrail no dispara y el cierre le dice "Listo" -- cree que se
+                                              # emitió. Es el mismo bug que :602 y el caso donde más duele.
+                                              tool_trace=([pend["tool_call"]["name"]]
+                                                          if (not workflow.patched("trace-solo-cuenta-tools-ok")
+                                                              or tr.get("status") == "ok") else []))
             # cancel -> CORTE DETERMINÍSTICO (spike B): 1 llamada tool_choice='none', solo texto.
             cancel_tc_msg = _assistant_tool_call_msg(pend["tool_call"])
             cancel_tr_msg = _tool_result_msg(pend["tool_call"]["id"], {"status": "cancelled_by_user"})
@@ -599,7 +605,14 @@ class ConversationWorkflow:
             messages.append(tr_msg)
             self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
             self._react_transcript.append(tr_msg)
-            trace.append(tc["name"])                            # llegó hasta acá -> execute_tool corrió de verdad
+            # `execute_tool` corrió, pero eso NO significa que la acción se hizo: el contrato es
+            # 'ok' | 'error' | 'rejected' | 'needs_confirmation' (types.py:147). `trace` alimenta dos
+            # cosas —el guard `not trace` del required-retry (:556) y el marcador del cierre (:631)—
+            # y las dos afirman "esto se ejecutó". Anotar acá una tool con status='error' desactivaba
+            # el guardrail JUSTO en el caso que existe para cubrir: el LLM dice "Listo, ya lo anoté"
+            # sobre algo que falló, y nadie lo contradice. Sólo 'ok' cuenta como hecho.
+            if not workflow.patched("trace-solo-cuenta-tools-ok") or tr.get("status") == "ok":
+                trace.append(tc["name"])
             if tr.get("artifact"):
                 last_artifact = tr["artifact"]
             step += 1
