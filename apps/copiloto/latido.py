@@ -51,9 +51,11 @@ async def con_latido(operacion: Awaitable[T], *, intervalo_s: float = INTERVALO_
         return await operacion
     finally:
         tarea.cancel()
-        # Esperar la cancelación —y tragar el `CancelledError` que ella misma provoca— evita el
-        # "Task was destroyed but it is pending!" que ensucia los logs y esconde errores de verdad.
         try:
             await tarea
         except asyncio.CancelledError:
+            # Tragar acá es correcto y es el ÚNICO caso en que lo es: este `CancelledError` lo provoca
+            # el `cancel()` de la línea de arriba, o sea que es la confirmación de que la tarea murió
+            # como se le pidió — no un fallo. Esperarla evita el "Task was destroyed but it is
+            # pending!" que ensucia los logs y termina escondiendo errores de verdad.
             pass
