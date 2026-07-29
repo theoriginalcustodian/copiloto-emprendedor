@@ -77,6 +77,11 @@ def _tool_choices(calls) -> list:
     return [p.get("tool_choice") for p in calls["llm_payloads"]]
 
 
+def _choice_value(sent_payload: dict, label: str) -> str:
+    """El `value` con el token del gate embebido — simula al frontend reenviándolo tal cual."""
+    return next(c["value"] for c in sent_payload["choices"] if c["label"] == label)
+
+
 @pytest.mark.asyncio
 async def test_una_tool_con_status_error_no_desactiva_el_guardrail():
     """La tool falla (`status='error'`) y el LLM igual cierra afirmando que la hizo.
@@ -139,3 +144,53 @@ async def test_una_tool_ok_no_dispara_el_guardrail():
     choices = _tool_choices(calls)
     assert "required" not in choices, (
         f"retry espurio: la tool ejecutó OK y el guardrail forzó `required` igual. choices={choices}")
+
+
+@pytest.mark.asyncio
+async def test_la_tool_que_el_usuario_CONFIRMO_y_fallo_tampoco_cuenta():
+    """EL CASO QUE MÁS DUELE — hueco señalado por el revisor adversarial de este mismo fix.
+
+    El emprendedor apretó **Confirmar** para una acción con efecto real (emitir, cobrar). La tool
+    confirmada **falla**. El reingreso `action == 'confirm'` sembraba `tool_trace` con el nombre de esa
+    tool sin mirar el status → el guardrail quedaba desactivado y el cierre le decía "Listo": cree que
+    se emitió.
+
+    Este camino NO pasa por `_react_loop` en su primera vuelta, así que los otros dos tests no lo
+    cubrían — el fix del segundo sitio estaba escrito pero **no verificado**, que por la regla dura del
+    repo es indistinguible de ausente.
+    """
+    def exec_fn(p):
+        # gateada: sin confirmar abre el gate; confirmada, FALLA.
+        if not p["confirmed"]:
+            return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="needs_confirmation",
+                              observation={"preview": "¿Emito la factura?"}).to_dict()
+        return ToolResult(tool_call_id=p["idem_key"], is_write=True, status="error",
+                          observation={"error": "AFIP no respondió"}).to_dict()
+
+    llm = [
+        _tc("emitir_factura", {"monto": 5000}),   # 1) pide la tool → gate
+        _TEXT("Listo, ya la emití."),             # 2) tras confirmar FALLIDO, afirma haberlo hecho
+        _TEXT("No pude emitirla: AFIP no respondió."),   # 3) tras el `required`: honesto
+    ]
+    tq = "tool-confirm-error-1"
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        w, calls = _worker(env, tq, llm_script=llm, exec_fn=exec_fn)
+        async with w:
+            h = await env.client.start_workflow(
+                ConversationWorkflow.run, _cfg(engine_mode="react"),
+                id="wf-tool-confirm-error-1", task_queue=tq)
+            await h.signal(ConversationWorkflow.receive_message,
+                           {"kind": "text", "text": "emití una factura de 5000"})
+            await env.sleep(1)
+            token = _choice_value(calls["sent"][-1], "Confirmar")
+            await h.signal(ConversationWorkflow.receive_message, {"kind": "callback", "text": token})
+            await env.sleep(1)
+            await h.signal(ConversationWorkflow.close)
+            await h.result()
+
+    confirmadas = [c for c in calls["exec"] if c.get("confirmed")]
+    assert len(confirmadas) == 1, f"el ciclo de confirmación no ocurrió: exec={calls['exec']}"
+    choices = _tool_choices(calls)
+    assert "required" in choices, (
+        "la tool CONFIRMADA falló y el guardrail no disparó: el emprendedor lee 'Listo, ya la emití' "
+        f"sobre una emisión que no ocurrió. tool_choice de cada llamada = {choices}")
