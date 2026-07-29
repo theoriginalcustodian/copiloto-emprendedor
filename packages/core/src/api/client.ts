@@ -199,9 +199,10 @@ export async function postMultipart<T>(
   const headers: Record<string, string> = {};
   const token = await tokens.leerToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  const sentBearer = headers.Authorization !== undefined;
 
-  const res = await http.enviar({
-    metodo: 'POST',
+  const peticion = {
+    metodo: 'POST' as const,
     path,
     headers,
     multipart: { campos, campoArchivo, archivo },
@@ -210,7 +211,20 @@ export async function postMultipart<T>(
     // camino nativo del multipart no pasa por `fetch` (`uploadAsync` streamea desde disco) y no tiene
     // dónde enganchar el `AbortController` — declararlo explícito evita que parezca un olvido.
     timeoutMs: 0,
-  });
+  };
+
+  let res = await http.enviar(peticion);
+
+  // Refresh-on-401 — mismo criterio que `request()`: sin esto, un dictado con token vencido
+  // desloguea en vez de reintentar, y el audio ya grabado se pierde silenciosamente.
+  if (res.status === 401 && sentBearer) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      const fresh = await tokens.leerToken();
+      if (fresh) headers.Authorization = `Bearer ${fresh}`;
+      res = await http.enviar({ ...peticion, headers });
+    }
+  }
 
   if (res.ok) return (await res.json()) as T;
 

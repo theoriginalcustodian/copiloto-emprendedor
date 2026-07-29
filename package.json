@@ -10,5 +10,9 @@
     "mobile:test": "npm -w copiloto-mobile run test",
     "core:test": "npm -w @copiloto/core run test",
     "typecheck": "npm -w @copiloto/core run typecheck && npm -w copiloto-mobile run typecheck"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "typescript-eslint": "^8.65.0"
   }
 }

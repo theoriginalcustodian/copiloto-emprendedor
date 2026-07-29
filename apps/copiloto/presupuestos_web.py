@@ -28,6 +28,7 @@ from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FOR
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, MODO_AUTOMATICO_NO_DISPONIBLE,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
+from log_estructurado import log_error
 from presupuesto_store import (APROBADO, ESTADOS, PENDIENTE, TRANSICIONES, TransicionInvalida,
                                factura_id_de_presupuesto)
 
@@ -245,6 +246,11 @@ def create_presupuestos_app(
                         doc.get("doc_id"), doc.get("doc_link"), doc.get("sheet_fila"))
                     presupuesto = await asyncio.to_thread(store.detalle, presupuesto["id"])
             except Exception as exc:  # noqa: BLE001 — el Doc es una comodidad, no la fuente de verdad
+                # Degradar acá es correcto (el presupuesto ya existe; el Doc es accesorio), pero el
+                # fallo tiene que quedar CONTABLE: si esto pasa 40 veces en una semana, Google Docs
+                # está roto para ese tenant y nadie se entera con una línea en prosa. Item 1.2.
+                log_error(exc, workflow="crear_presupuesto", cliente_id=cliente_id,
+                          extra={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
         return {"presupuesto": presupuesto}
@@ -380,10 +386,14 @@ def create_presupuestos_app(
             try:
                 await asyncio.to_thread(store.marcar_factura, presupuesto_id, None)
                 await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
-            except Exception:  # noqa: BLE001
+            except Exception as exc_comp:  # noqa: BLE001
                 # La compensación es best-effort: si falla, el 409 sigue siendo la respuesta correcta
                 # y el residuo queda logueado arriba en vez de convertirse en un 500 que tampoco
-                # arregla nada.
+                # arregla nada. Pero el residuo es un EFECTO QUEDADO —una factura arrancada que nadie
+                # canceló—, así que va estructurado: es exactamente el material de la DLQ de Fase 2.
+                log_error(exc_comp, workflow="facturar_presupuesto", cliente_id=cliente_id,
+                          extra={"presupuesto_id": presupuesto_id, "factura_id": factura_id,
+                                 "residuo": "compensacion_fallida"})
                 _log.exception("no se pudo compensar el presupuesto %s", presupuesto_id)
             raise conflicto(PRESUPUESTO_NO_FACTURABLE,
                             f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",

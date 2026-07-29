@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getRefreshToken, getToken, setRefreshToken, setToken } from '../../auth/session';
-import { ApiError, ForbiddenError, UnauthorizedError, apiClient } from './client';
+import { ApiError, ForbiddenError, UnauthorizedError, apiClient, postMultipart } from './client';
 
 function mockResponse(status: number, body: unknown): Response {
   return {
@@ -132,5 +132,78 @@ describe('apiClient', () => {
     const error = (await apiClient.get('/catalog').catch((err: unknown) => err)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(500);
+  });
+});
+
+describe('postMultipart — refresh-on-401 (EL QUE IMPORTA: sin esto, un dictado con token vencido se pierde en vez de reintentar)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function formData(): FormData {
+    const form = new FormData();
+    form.append('session_id', 's1');
+    form.append('audio', new Blob(['bytes'], { type: 'audio/webm' }), 'voz.webm');
+    return form;
+  }
+
+  it('postea el FormData tal cual, sin forzar Content-Type (el browser pone el boundary)', async () => {
+    setToken('tok-123');
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { wf_id: 'wf-1' }));
+
+    const form = formData();
+    await postMultipart('/chat/audio', form);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(form);
+    const headers = init.headers as Record<string, string>;
+    expect(headers['Content-Type']).toBeUndefined();
+    expect(headers.Authorization).toBe('Bearer tok-123');
+  });
+
+  it('401 → refresca y reintenta CON EL MISMO FormData → resuelve (el audio sobrevive al refresh)', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' })) // request original
+      .mockResolvedValueOnce(
+        mockResponse(200, { access_token: 'tok-nuevo', refresh_token: 'rt-nuevo' }),
+      ) // POST /auth/refresh
+      .mockResolvedValueOnce(mockResponse(200, { wf_id: 'wf-1' })); // reintento
+
+    const form = formData();
+    await expect(postMultipart('/chat/audio', form)).resolves.toEqual({ wf_id: 'wf-1' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const reintento = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(reintento[1].body).toBe(form); // MISMO FormData — el archivo no se re-lee ni se pierde
+    const headersReintento = reintento[1].headers as Record<string, string>;
+    expect(headersReintento.Authorization).toBe('Bearer tok-nuevo');
+  });
+
+  it('401 y el refresh también falla → UnauthorizedError, limpia tokens', async () => {
+    setToken('tok-viejo');
+    setRefreshToken('rt-viejo');
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'expirado' }))
+      .mockResolvedValueOnce(mockResponse(401, { detail: 'refresh token invalido' }));
+
+    await expect(postMultipart('/chat/audio', formData())).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(getToken()).toBeNull();
+  });
+
+  it('mapea 403 a ForbiddenError', async () => {
+    setToken('tok-valido');
+    fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'sin tenant' }));
+
+    await expect(postMultipart('/chat/audio', formData())).rejects.toBeInstanceOf(ForbiddenError);
   });
 });

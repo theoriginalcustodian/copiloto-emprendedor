@@ -147,3 +147,43 @@ export const apiClient = {
     return request<T>(path, { ...opts, method: 'POST', body });
   },
 };
+
+/**
+ * POST `multipart/form-data` compartido — usado por las rutas que suben un archivo (ej.
+ * `/chat/audio`). NO fuerza `Content-Type`: el browser tiene que poner el boundary del multipart él
+ * mismo; pisarlo a mano rompe el parseo en el backend. Por eso no pasa por `request()` (esa función
+ * fuerza `Content-Type: application/json` + `JSON.stringify(body)`, incompatible con `FormData`).
+ *
+ * Mismo refresh-on-401 que `request()`: sin esto, un dictado con token vencido desloguea en vez de
+ * reintentar, y el audio ya grabado se pierde en silencio.
+ */
+export async function postMultipart<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const sentBearer = headers.Authorization !== undefined;
+
+  let res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
+
+  if (res.status === 401 && sentBearer) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      const fresh = getToken();
+      if (fresh) headers.Authorization = `Bearer ${fresh}`;
+      res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
+    }
+  }
+
+  if (res.ok) return (await res.json()) as T;
+
+  const detail = await readErrorDetail(res);
+
+  if (res.status === 401) {
+    if (sentBearer) clearToken();
+    throw new UnauthorizedError(detail);
+  }
+  if (res.status === 403) {
+    throw new ForbiddenError(detail);
+  }
+  throw new ApiError(res.status, detail ?? `Error HTTP ${res.status}`, detail);
+}
