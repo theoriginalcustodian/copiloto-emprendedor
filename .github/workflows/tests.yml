@@ -62,6 +62,13 @@ jobs:
           python-version: '3.12'
       - name: install deps
         run: pip install -r requirements.txt
+      # El provisionado activa RLS con una policy que llama `auth.jwt()` y otorga permisos a
+      # `anon`/`authenticated`/`service_role`: nada de eso es Postgres, es **Supabase**. En el VPS lo
+      # trae la instancia de Supabase; en un Postgres pelado hay que crearlo. Sin esto el provisionado
+      # muere con `schema "auth" does not exist` — y ese es el motivo real de que el runbook de
+      # "levantar el copiloto en un entorno nuevo" nunca se hubiera podido ejecutar.
+      - name: compatibilidad Supabase (roles + auth.jwt) — sólo para la base efímera
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f deploy/worker/bootstrap-supabase-compat.sql
       - name: provisionar el schema (idempotente)
         working-directory: apps/copiloto
         run: python provision.py
