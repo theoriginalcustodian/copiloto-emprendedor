@@ -9,6 +9,7 @@ fiscal apareciera acá, existiría en dos lugares y se desincronizaría.
 """
 from __future__ import annotations
 
+from latido import con_latido
 import asyncio
 from datetime import date, datetime
 
@@ -182,8 +183,13 @@ async def emitir_comprobante(cliente_id: str, cuit: str, payload: dict, idem_key
     arrancaron con 5 y 6 argumentos. `receptor_nombre` va aparte del payload porque el WSFE no lo pide:
     AFIP identifica al receptor por tipo y número de documento, así que el nombre no viaja en el
     comprobante — pero es lo primero que una persona busca al abrir una factura vieja."""
-    return await asyncio.to_thread(_emitir_sync, cliente_id, cuit, payload, idem_key, workflow_id,
-                                   receptor_nombre, nro_reservado)
+    # `con_latido` (item #12): la emisión bloquea el hilo hasta ~3 min contra el WS de AFIP. Latir deja
+    # que Temporal distinga "lento" de "muerto" en segundos en vez de esperar el start_to_close entero.
+    # ⚠️ Latir NO cambia la semántica de reintento: el guard anti-doble-emisión sigue siendo el número
+    # reservado por el workflow + `FECompConsultar`. Esto sólo acelera la DETECCIÓN de un worker caído.
+    return await con_latido(
+        asyncio.to_thread(_emitir_sync, cliente_id, cuit, payload, idem_key, workflow_id,
+                          receptor_nombre, nro_reservado))
 
 
 def _generar_pdf_sync(cliente_id: str, cuit: str, template: str, params: dict,
@@ -250,8 +256,10 @@ async def archivar_factura_en_drive(cliente_id: str, cuit: str, tipo_cbte: int, 
     terminaría con copias duplicadas de la misma factura en su Drive.
     """
     try:
-        return await asyncio.to_thread(_archivar_en_drive_sync, cliente_id, cuit, tipo_cbte,
-                                       punto_venta, nro, pdf_url)
+        # `con_latido` (item #12): subir a Drive bloquea el hilo hasta ~2 min.
+        return await con_latido(
+            asyncio.to_thread(_archivar_en_drive_sync, cliente_id, cuit, tipo_cbte,
+                              punto_venta, nro, pdf_url))
     except Exception as exc:  # noqa: BLE001
         activity.logger.warning("archivado en Drive falló para %s-%s: %s", punto_venta, nro, exc)
         return {"guardado": False, "motivo": f"error_drive: {type(exc).__name__}"}

@@ -24,6 +24,10 @@ from temporalio.common import RetryPolicy
 # El RPA de AfipSDK hace polling interno (hasta ~2 min por llamada) y el alta son DOS llamadas
 # encadenadas. 10 minutos deja margen sin quedarse colgado para siempre.
 TIMEOUT_ALTA = timedelta(minutes=10)
+# Latido de las activities LARGAS (item #12). 60 s de umbral con latido cada 20 s deja margen para dos
+# latidos perdidos antes de que el server declare muerta la activity. Sólo va donde la activity
+# REALMENTE late (`con_latido`): ponerlo sin latido la mataría a los 60 s, que es peor que no tenerlo.
+HEARTBEAT_TIMEOUT = timedelta(seconds=60)
 TIMEOUT_CORTO = timedelta(seconds=60)
 
 # El alta NO se reintenta: consume un secreto one-shot. Si falla, el usuario reingresa la clave — es
@@ -118,6 +122,11 @@ class AfipOnboardingWorkflow:
                 args=[cliente_id, cuit, handle, ambiente],
                 start_to_close_timeout=TIMEOUT_ALTA,
                 retry_policy=SIN_REINTENTO,
+                # La más larga del repo: el RPA de AfipSDK puede irse a 10 min. Sin latido, una caída
+                # del worker recién se detecta al vencer esos 10 minutos — y como acá `SIN_REINTENTO`
+                # no reintenta, ese tiempo es puro silencio para el emprendedor que está dando de alta
+                # su CUIT. Con latido, la activity se declara muerta en ~60 s. Item #12.
+                heartbeat_timeout=HEARTBEAT_TIMEOUT,
             )
         except Exception as exc:  # noqa: BLE001
             # Una activity que LANZA (en vez de devolver {"ok": False}) mataba el workflow por
