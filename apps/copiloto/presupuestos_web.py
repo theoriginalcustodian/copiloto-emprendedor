@@ -25,9 +25,10 @@ from pydantic import BaseModel, Field
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
-from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT, MODO_AUTOMATICO_NO_DISPONIBLE,
+from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
+from log_estructurado import log_error
 from presupuesto_store import (APROBADO, ESTADOS, PENDIENTE, TRANSICIONES, TransicionInvalida,
                                factura_id_de_presupuesto)
 
@@ -84,28 +85,21 @@ def _validar_perfil(body: PerfilBody) -> dict:
     return cambios
 
 
-# 🔴 El modo automático se rechaza EN EL BACKEND, no se esconde en la app.
+# ✅ El modo automático quedó HABILITADO el 2026-07-29, tras pagar su condición.
 #
-# El contrato de modos §3 dice «el backend decide y el backend impone; la app refleja». Si esto
-# quedara aceptable por HTTP y sólo gris en la UI, alcanzaría un `POST /perfil-negocio` para ponerse
-# en el modo que sabemos peligroso — y la restricción viviría en la capa que el propio contrato dice
-# que NO decide.
+# Estuvo en pausa porque el copiloto narraba acciones que no ejecutaba, y en automático ese fallo es
+# INVISIBLE: no falta ninguna card, el copiloto dice «listo», no hay nada que mirar. En confirmación
+# la card es el testigo. La deuda estaba GESTIONADA, con dueño y condición escrita: «se retira cuando
+# la corrección del motor esté viva».
 #
-# Por qué está bloqueado: el copiloto narra acciones que no ejecutó a partir del tercer turno, y en
-# automático ese fallo es INVISIBLE (no falta ninguna card, el copiloto dice «listo», no hay nada que
-# mirar). En confirmación la card es el testigo. Deuda GESTIONADA, con dueño y condición de pago:
-# se retira cuando la corrección del motor esté viva. Ver `copiloto-narra-la-accion-sin-ejecutarla`.
-_POR_QUE_NO_AUTOMATICO = (
-    "El modo automático está en pausa: el copiloto todavía puede decir que hizo algo que no hizo, y "
-    "sin la tarjeta de confirmación eso no se ve. Se habilita cuando esté corregido.")
-
-
-def _modo_habilitado(cambios: dict) -> None:
-    if cambios.get("modo_ceremonia") == AUTOMATICO:
-        raise conflicto(MODO_AUTOMATICO_NO_DISPONIBLE, _POR_QUE_NO_AUTOMATICO,
-                        modo_vigente=CONFIRMACION)
-
-
+# La condición se pagó midiendo, no opinando: `scripts/retest_narra_sin_hacer.py --rondas 10` contra
+# el LLM REAL, en 10 sesiones limpias → **0/10 mentiras**, comparando lo que el texto afirma contra
+# los `execute_tool` completados en el history de Temporal. El procedimiento y el criterio están en
+# `docs/copiloto-emprendedor/Manejo de errores/02-RETEST-modo-automatico.md`.
+#
+# ⚠️ Si el modo automático vuelve a dar problemas, el camino NO es re-esconderlo en la UI: es correr
+# el retest y, si falla, reponer el guard ACÁ. El contrato de modos §3 manda: «el backend decide y el
+# backend impone; la app refleja». Un control sólo gris en la app lo saltea un `POST`.
 # --- presupuestos -----------------------------------------------------------------
 
 class ReceptorBody(BaseModel):
@@ -209,7 +203,6 @@ def create_presupuestos_app(
     async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
         cambios = _validar_perfil(body)          # 400 ANTES de tocar la base: el control de "¿está
                                                  # desplegado?" manda `{}` y no debe escribir nada.
-        _modo_habilitado(cambios)                # 409 con el motivo, NO un 400 mudo (ver el guard)
         perfil = await asyncio.to_thread(perfil_negocio_store_factory(cliente_id).upsert, cambios)
         return {"perfil": perfil}
 
@@ -245,6 +238,11 @@ def create_presupuestos_app(
                         doc.get("doc_id"), doc.get("doc_link"), doc.get("sheet_fila"))
                     presupuesto = await asyncio.to_thread(store.detalle, presupuesto["id"])
             except Exception as exc:  # noqa: BLE001 — el Doc es una comodidad, no la fuente de verdad
+                # Degradar acá es correcto (el presupuesto ya existe; el Doc es accesorio), pero el
+                # fallo tiene que quedar CONTABLE: si esto pasa 40 veces en una semana, Google Docs
+                # está roto para ese tenant y nadie se entera con una línea en prosa. Item 1.2.
+                log_error(exc, workflow="crear_presupuesto", cliente_id=cliente_id,
+                          extra={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
         return {"presupuesto": presupuesto}
@@ -380,10 +378,14 @@ def create_presupuestos_app(
             try:
                 await asyncio.to_thread(store.marcar_factura, presupuesto_id, None)
                 await _maybe_async(signal_factura, cliente_id, factura_id, "cancelar", None)
-            except Exception:  # noqa: BLE001
+            except Exception as exc_comp:  # noqa: BLE001
                 # La compensación es best-effort: si falla, el 409 sigue siendo la respuesta correcta
                 # y el residuo queda logueado arriba en vez de convertirse en un 500 que tampoco
-                # arregla nada.
+                # arregla nada. Pero el residuo es un EFECTO QUEDADO —una factura arrancada que nadie
+                # canceló—, así que va estructurado: es exactamente el material de la DLQ de Fase 2.
+                log_error(exc_comp, workflow="facturar_presupuesto", cliente_id=cliente_id,
+                          extra={"presupuesto_id": presupuesto_id, "factura_id": factura_id,
+                                 "residuo": "compensacion_fallida"})
                 _log.exception("no se pudo compensar el presupuesto %s", presupuesto_id)
             raise conflicto(PRESUPUESTO_NO_FACTURABLE,
                             f"el presupuesto está {exc.desde}: no se puede facturar sin revisarlo",

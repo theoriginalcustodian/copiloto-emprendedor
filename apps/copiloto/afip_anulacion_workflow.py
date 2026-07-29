@@ -18,6 +18,10 @@ with workflow.unsafe.imports_passed_through():
     from afip_rules import armar_payload_nota_credito, validar_anulacion
 
 TIMEOUT_EMISION = timedelta(minutes=3)
+# Latido de las activities LARGAS (item #12). 60 s con latido cada 20 s deja margen para dos
+# latidos perdidos. Sin esto, una caída del worker recién se detecta al vencer el
+# start_to_close (3 min la emisión, 10 el alta): minutos de alguien esperando sin saber.
+HEARTBEAT_TIMEOUT = timedelta(seconds=60)
 TIMEOUT_CORTO = timedelta(seconds=60)
 REINTENTO_EMISION = RetryPolicy(maximum_attempts=3,
                                 non_retryable_error_types=["RechazoAfip", "SinCertificado"])
@@ -105,7 +109,8 @@ class AnulacionWorkflow:
             nc = await workflow.execute_activity(
                 "emitir_comprobante",
                 args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id],
-                start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
+                start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
+                heartbeat_timeout=HEARTBEAT_TIMEOUT)
         except Exception as exc:  # noqa: BLE001
             self._paso = "fallida"
             self._motivo = str(exc)

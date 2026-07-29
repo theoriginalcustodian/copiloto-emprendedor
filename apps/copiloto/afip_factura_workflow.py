@@ -44,6 +44,10 @@ with workflow.unsafe.imports_passed_through():
     )
 
 TIMEOUT_EMISION = timedelta(minutes=3)
+# Latido de las activities LARGAS (item #12). 60 s con latido cada 20 s deja margen para dos
+# latidos perdidos. Sin esto, una caída del worker recién se detecta al vencer el
+# start_to_close (3 min la emisión, 10 el alta): minutos de alguien esperando sin saber.
+HEARTBEAT_TIMEOUT = timedelta(seconds=60)
 TIMEOUT_CORTO = timedelta(seconds=60)
 # El archivado son 4 llamadas a Composio (buscar carpeta, crearla, subir, compartir) y la subida baja
 # el PDF desde AfipSDK server-side: más lento que una query, lejos de una emisión.
@@ -268,13 +272,15 @@ class FacturaWorkflow:
                     "emitir_comprobante",
                     args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
                           receptor, nro_reservado],
-                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
+                    heartbeat_timeout=HEARTBEAT_TIMEOUT)
             else:
                 emision = await workflow.execute_activity(
                     "emitir_comprobante",
                     args=[cliente_id, cuit, payload, idem_key, workflow.info().workflow_id,
                           receptor],
-                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION)
+                    start_to_close_timeout=TIMEOUT_EMISION, retry_policy=REINTENTO_EMISION,
+                    heartbeat_timeout=HEARTBEAT_TIMEOUT)
         except Exception as exc:  # noqa: BLE001 — un rechazo de AFIP es un final, no un error a propagar
             self._estado = EstadoFactura.RECHAZADA
             self._motivo = str(exc)
@@ -321,7 +327,8 @@ class FacturaWorkflow:
                     "archivar_factura_en_drive",
                     args=[cliente_id, cuit, int(emision["tipo_cbte"]), int(emision["punto_venta"]),
                           int(emision["nro"]), str(self._pdf.get("url"))],
-                    start_to_close_timeout=TIMEOUT_ARCHIVADO, retry_policy=SIN_REINTENTO_ARCHIVADO)
+                    start_to_close_timeout=TIMEOUT_ARCHIVADO, retry_policy=SIN_REINTENTO_ARCHIVADO,
+                    heartbeat_timeout=HEARTBEAT_TIMEOUT)
             except Exception as exc:  # noqa: BLE001
                 self._drive = {"guardado": False, "motivo": f"archivado_interrumpido: {type(exc).__name__}"}
         else:

@@ -44,6 +44,40 @@ UC_TABLES_JSON = APP_DIR / "uc_tables.json"
 # Los `.sql` NO se listan acá a propósito — se descubren con un glob. Ver `_apply_sql_files`.
 
 
+def _ensure_schema(conn) -> None:
+    """Crea el schema `uc_factory` si no está. **Corre PRIMERO: sin esto, todo lo de abajo revienta.**
+
+    Por qué faltaba, y por qué nadie lo notó (2026-07-28): este script era **idempotente pero no
+    reproducible** — sabía actualizar una base que ya existía, y no construir una desde cero. En el VPS
+    el schema lo había creado otra cosa hace tiempo, así que el hueco nunca dio síntoma.
+
+    Lo destapó el Postgres efímero del CI, que fue la primera base **virgen** contra la que este script
+    corrió: `psycopg2.errors.InvalidSchemaName: schema "uc_factory" does not exist`. Confirma
+    empíricamente lo que la memoria del proyecto ya advertía en abstracto
+    ([[provisionado-no-reconstruye-la-base-desde-cero]]).
+
+    Detalle que hizo el diagnóstico más lento: `_ensure_reply_card_column` usa `ALTER TABLE IF EXISTS`,
+    así que sobre base fresca es un **no-op que imprime OK** — el log mostraba un éxito antes del
+    error. Un paso que dice OK sin haber hecho nada es peor que uno que falla.
+    """
+    cur = conn.cursor()
+    # ⚠️ Se PREGUNTA antes de crear, y no se usa `CREATE SCHEMA IF NOT EXISTS` a secas (2026-07-29):
+    # ese `IF NOT EXISTS` habla del schema, **no de los permisos**. Postgres chequea el privilegio
+    # `CREATE` sobre la base ANTES de mirar si el schema ya está, así que la sentencia falla con
+    # `InsufficientPrivilege: permission denied for database postgres` incluso cuando no habría nada
+    # que crear. El usuario de la app en producción no tiene ese privilegio — y hace bien en no
+    # tenerlo (menor privilegio); crear schemas no es tarea suya.
+    #
+    # Lo destapó el deploy real: el CI pasó porque ahí el usuario es dueño de la base efímera. Es la
+    # diferencia de entorno que un Postgres de test NO reproduce — los privilegios.
+    cur.execute("SELECT 1 FROM information_schema.schemata WHERE schema_name = %s", (SCHEMA,))
+    if cur.fetchone() is not None:
+        print(f"OK schema {SCHEMA} (ya existe — no se intenta crear)", flush=True)
+        return
+    cur.execute(f"CREATE SCHEMA {SCHEMA};")
+    print(f"OK schema {SCHEMA} (creado)", flush=True)
+
+
 def _provision_tenants(conn) -> None:
     """DDL bespoke de uc_factory.tenants (spec §4 / Task 1). Fuera del mecanismo genérico a propósito:
     PK = auth_user_id (no id bigserial) y cliente_id UNIQUE + DEFAULT gen_random_uuid() (no un simple
@@ -102,9 +136,19 @@ def _ensure_reply_idem_key(conn) -> None:
     cur = conn.cursor()
     cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_web_replies "
                 f"ADD COLUMN IF NOT EXISTS idem_key text;")
-    cur.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS copiloto_web_replies_idem_key_uk "
-                f"ON {SCHEMA}.copiloto_web_replies (cliente_id, idem_key) "
-                f"WHERE idem_key IS NOT NULL;")
+    # Sobre una base FRESCA la tabla todavía no existe (el `CREATE TABLE` del pase estándar corre
+    # después). `ALTER TABLE IF EXISTS` es no-op ahí, pero `CREATE INDEX ... ON tabla_inexistente`
+    # **falla igual aunque diga IF NOT EXISTS** — el `IF NOT EXISTS` habla del índice, no de la tabla.
+    #
+    # ⚠️ El índice ya NO se crea acá: vive en `replies_indexes.sql`, que se aplica al FINAL de
+    # `provision()` con las tablas ya creadas. La versión intermedia de este fix salteaba el índice en
+    # base fresca "porque lo crea el pase estándar" — **falso**: el pase estándar crea tablas con sus
+    # columnas, no índices. El resultado era una tabla sin su índice único y un `ON CONFLICT` que
+    # reventaba con *"no unique or exclusion constraint matching"*, que es exactamente el modo de fallo
+    # que el encabezado de `mp_indexes.sql` ya venía documentando. Lo cazó el CI en una corrida.
+    print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (columna; el índice, en replies_indexes.sql)",
+          flush=True)
+    return
     print(f"OK {SCHEMA}.copiloto_web_replies.idem_key (columna + índice único parcial, idempotente)",
           flush=True)
 
@@ -398,6 +442,7 @@ def provision(conn) -> dict:
     `conn` con autocommit=True (cada DDL es su propia transacción, igual que provision_tables.py)."""
     manifest = json.load(open(UC_TABLES_JSON, encoding="utf-8"))
     standard_spec = {k: v for k, v in manifest.items() if k != TENANTS_TABLE}
+    _ensure_schema(conn)              # PRIMERO de todo: sin el schema, cualquier DDL de abajo revienta.
     _ensure_reply_card_column(conn)   # ANTES del pase estándar: su guard anti-colisión aborta si `card` (ya
     #                                   declarada en uc_tables.json) falta en la tabla viva. Ver la función.
     _ensure_reply_idem_key(conn)      # ídem para `copiloto_web_replies.idem_key` (+ índice único parcial).
