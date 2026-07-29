@@ -81,8 +81,9 @@ adjunta al PR. No reemplaza tu merge; evita que llegue basura a él.
 
 ## 2.5 ESTADO DE EJECUCIÓN — 2026-07-28
 
-**11 de 14 ítems cerrados** en la rama `frente/0.5-alcance-faltante` (11 commits sobre `main`), más un
-ítem que no estaba en el DoD y resultó el hallazgo más caro (Postgres en el CI).
+**14 de 14 ítems cerrados.** PR #156 (16 commits) **mergeado** → `main` = `dc4e609`; PR #157 (ítem #12)
+en verde. Más dos entregas que no estaban en el DoD y resultaron lo más caro del frente: el Postgres
+en el CI y la reconstrucción de la base desde cero.
 
 | Ítem | Estado | Commit | Evidencia |
 |---|---|---|---|
@@ -96,10 +97,42 @@ adjunta al PR. No reemplaza tu merge; evita que llegue basura a él.
 | 1.3 | ✅ | `509d20a` | 10 tests; sin categoría por descarte |
 | 1.4 | ✅ | `c0fd674` | control negativo: un `except` mudo nuevo → CI rojo |
 | 1.5 | ✅ **ya estaba** | — | `context_factory` ya arma el ctx desde el request; `test_adversarial_context_factory_binds_to_a_never_b` y `test_context_factory_resuelve_seller_del_tenant_sin_env_manual` ya lo vigilan. **Mi DoD pedía escribir un test que existía** — 4º ítem mal especificado |
-| #12 | ❌ | — | inventario hecho (23 activities, 0 heartbeats); requiere diseño por activity — ver §6 |
+| #12 | ✅ | `2d60ea1` (PR #157) | `con_latido` en las 3 largas + `heartbeat_timeout` en sus 4 call sites. Replay verificado **con control positivo**. Versionado leído en la doc, no asumido |
 | **G2.1+** | ✅ | `443ef5d` | **Postgres efímero en el CI**: desbloquea 100 tests que no corrían en ningún lado, incluido el aislamiento cross-tenant |
 
-**Suite del VPS: 1129 passed / 135 skipped** (venía de 1108).
+**Suite del VPS: 1143 passed / 138 skipped** (venía de 1108).
+**Suite del CI con Postgres: 1269 passed / 16 skipped** — **137 tests que no corrían en ningún lado**,
+incluidos los 8 adversariales de aislamiento cross-tenant que hasta ahora sólo podían ejercitarse a
+mano contra la base de **producción**.
+
+⚠️ **Y una corrección a mi propio criterio de verificación:** vine diciendo "suite VPS verde" toda la
+jornada como si alcanzara. No alcanza. El guard del censo (1.4) **se saltea en el VPS** —el stage es un
+checkout parcial sin `scripts/`— y sólo corre en CI; por eso el VPS daba 1143 verde mientras el CI
+bloqueaba el merge del ítem #12. **Decir "verde" sin decir en cuál entorno oculta el hueco**
+([[el-guard-que-caza-a-su-propio-autor]]).
+
+### El hallazgo que no estaba en el DoD: el sistema no se podía reconstruir
+
+Agregar un Postgres efímero al CI destapó que **`provision.py` nunca podía levantar el schema desde
+cero**. Cuatro eslabones, cada uno invisible hasta resolver el anterior:
+
+| # | Qué faltaba | Por qué nadie lo vio |
+|---|---|---|
+| 1 | Nadie hacía `CREATE SCHEMA uc_factory` | En el VPS lo había creado otra cosa hace tiempo |
+| 2 | `CREATE INDEX ... IF NOT EXISTS` **falla igual** sobre tabla inexistente | El `IF NOT EXISTS` habla del índice, no de la tabla |
+| 3 | El RLS depende de **Supabase** (`auth.jwt()`, 3 roles), no de Postgres | El VPS trae la instancia de Supabase entera |
+| 4 | El índice de `idem_key` quedó sin crearse | **Lo introduje yo** arreglando el #2: asumí que "lo crea el pase estándar" sin verificarlo |
+
+**Lo que esto significa fuera del CI:** el runbook de *"levantar el copiloto en un entorno nuevo"*
+—staging, DR, otra región— era **inejecutable**. La memoria de julio ya decía *"el runbook de
+recuperación no está probado"*; resultó peor: era imposible. Ahora
+`deploy/worker/bootstrap-supabase-compat.sql` lo desbloquea.
+
+**Y la lección de método, que vale más que los cuatro fixes:** el #4 fue mío, y el modo de fallo
+estaba documentado **palabra por palabra** en el encabezado de `mp_indexes.sql` desde el 2026-07-03.
+La respuesta ya vivía en el repo. Igual que la memoria del provisionado, escrita seis días antes, que
+tampoco evitó nada. **Una advertencia escrita no es una defensa**: lo que lo arregló fue un entorno
+que ejercita la base virgen en cada PR.
 
 ### Desvíos del DoD, con su razón
 
