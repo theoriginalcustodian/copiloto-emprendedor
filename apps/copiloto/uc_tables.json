@@ -66,7 +66,7 @@
     "formalidad text NOT NULL DEFAULT 'cercano'",
     "largo_respuesta text NOT NULL DEFAULT 'breve'",
     "nombre_copiloto text NOT NULL DEFAULT ''",
-      "modo_ceremonia text NOT NULL DEFAULT 'confirmacion'",
+    "modo_ceremonia text NOT NULL DEFAULT 'confirmacion'",
     "updated_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuestos": [
@@ -161,7 +161,7 @@
     "presupuesto_ref bigint",
     "cliente_nombre text NOT NULL DEFAULT ''",
     "concepto text NOT NULL DEFAULT ''",
-      "nacio_completo boolean",
+    "nacio_completo boolean",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_conceptos": [
@@ -200,5 +200,18 @@
     "datos jsonb",
     "creada_en timestamptz NOT NULL DEFAULT now()",
     "movida_en timestamptz NOT NULL DEFAULT now()"
+  ],
+  "copiloto_traumas": [
+    "fingerprint text NOT NULL",
+    "workflow text NOT NULL",
+    "error_type text NOT NULL",
+    "costura text",
+    "contexto jsonb",
+    "estado text NOT NULL DEFAULT 'pendiente'",
+    "dedupe_count integer NOT NULL DEFAULT 1",
+    "intentos integer NOT NULL DEFAULT 0",
+    "ultimo_intento_en timestamptz",
+    "created_at timestamptz DEFAULT now()",
+    "updated_at timestamptz DEFAULT now()"
   ]
 }

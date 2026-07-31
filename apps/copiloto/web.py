@@ -44,6 +44,7 @@ from catalog import build_catalog
 import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
@@ -549,7 +550,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
     # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
     # `HTTPException` (404/409/400 son respuestas de negocio, no fallos) — ver `handler_errores_web`.
-    registrar_captura_global(app)
+    # La DLQ (Fase 2) se alimenta de esta costura: `conn_factory` ya viene envuelta con
+    # `conexion_con_tenant` desde `serve.py`, así que el trauma se escribe con el tenant que el borde
+    # declaró — nunca con uno que el llamador elija.
+    registrar_captura_global(app, traumas=fabrica_desde(conn_factory))
 
     # --- BFF: EXIGE tenant (auth per-request, spec §5.2) ------------------------
 
