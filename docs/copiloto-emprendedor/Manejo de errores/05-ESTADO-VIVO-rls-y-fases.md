@@ -261,6 +261,55 @@ el del CI; si difieren, hay tests que el bucle rápido no está corriendo.
 
 ---
 
+## 3.quater 🔧 Fase 3 — las tres piezas base, construidas y medidas
+
+Ninguna es "el ciclo": son las piezas **sin las cuales el ciclo no se puede encender**. El ciclo que
+las une (disparo desde la DLQ → forjar → auditar → proponer PR) es lo que sigue.
+
+| Pieza | PR | Evidencia |
+|---|---|---|
+| **Auditor** + 3 parches congelados + kill switch runtime | #166 | 11 con dobles · **13/13 contra `gpt-4o` real** |
+| **Aplicador SEARCH/REPLACE** | #167 | 12 tests puros · **11/12 corridas reales** |
+| **Los 4 gates** | #168 | 23 tests, con sus controles positivos |
+
+### Lo que hay que saber al retomar
+
+**El auditor: `verificar_auditor()` NO es un test, es el kill switch.** Corre los 3 parches rotos
+**en runtime** antes de que el ciclo opere. Un test de CI probaría que el auditor estaba sano al
+mergear; esto prueba que lo está **ahora**, con el modelo que va a correr — que es lo que importa
+cuando el proveedor cambia un modelo por debajo. Si aprueba aunque sea uno, el ciclo **no arranca**.
+Los 3 parches son **inmutables** y hay un guard que lo vigila.
+
+**🔴 El forjador NO acierta siempre — y eso define el ciclo.** 12 corridas, `temperature=0`:
+**11 verde, 1 roja**. La que falló **aplicó su bloque sin problemas** y dejó la suite roja igual: el
+aplicador **no puede** detectar un parche bien formado y mal pensado.
+
+⚠️ Mi primera explicación —que había cambiado el texto del contexto— la **refutó un diferencial**
+(3 corridas con cada versión → 3/3 verde con las dos). Es variabilidad del modelo. Sin ese
+diferencial habría quedado escrita en el código una causa falsa deducida de **una sola observación**.
+→ **El ciclo jamás puede confiar en que el forjador acertó.** Correr la suite tras aplicar y
+descartar si queda roja es conclusión medida, no precaución.
+
+**Los gates, en orden de costo:** kill switch (env, se lee en **cada** decisión) → dominio prohibido
+→ tope diario. La whitelist **se le pregunta a la base** (`tiene_indice_unico`, incluye índices
+parciales), no a un catálogo: un catálogo envejece en silencio. El fiscal queda afuera **por la regla
+misma**, no por una excepción escrita a mano — `existe_comprobante` consulta a AFIP, no a la DB, así
+que ningún índice puede cerrar esa ventana.
+
+### Lo que FALTA del ciclo (el próximo paso exacto)
+
+1. **Disparo:** entrada en la DLQ → workflow Temporal. **Reusar** el mecanismo de Schedules que ya
+   existe (`mi_dia_schedule_workflow.py`, `deploy/worker/ensure_mi_dia_schedules.py`) — no inventar
+   otro. ⚠️ **Invocar la skill `temporal-developer` antes de tocar workflows/activities.**
+2. **Contextualizar:** armar el `prompt_de_forja` con el código real + la salida real de pytest.
+3. **Sandbox + gate de tests** (el punto medido de arriba): aplicar sobre una copia, correr la suite,
+   descartar si queda roja. **El evaluador no puede correr en el mismo proceso que el evaluado**
+   (METR "HackRouter", en el §8.1 del PLAN).
+4. **Zero-Mutation:** propone PR, **nunca** mergea. Y "no mentir con el PR": sin mutaciones, sin PR.
+5. Contar reparaciones/día para alimentar `puede_reparar(reparaciones_hoy=...)`.
+
+---
+
 ## 4. Cola pendiente, en orden
 
 | # | Qué | Estado |
