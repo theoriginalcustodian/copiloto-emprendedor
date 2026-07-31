@@ -113,7 +113,7 @@ class AutosanacionWorkflow:
 
         await workflow.execute_activity(
             "marcar_trauma", {"id": trauma.get("id"), "estado": "reparacion_propuesta",
-                              "nota": pr.get("url", "")},
+                              "nota": pr.get("url", ""), "cliente_id": cliente_id},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
         return {"estado": "pr_propuesto", "url": pr.get("url"), "trauma_id": trauma.get("id")}
 
@@ -124,7 +124,13 @@ class AutosanacionWorkflow:
         disparo no lo ve (no está pendiente) y nadie lo repara nunca. `rescatar_colgados` lo salvaría
         recién tras el timeout — soltarlo explícito es el camino barato, y además deja escrito POR QUÉ
         se rechazó, que es lo que hace revisable al ciclo.
+
+        El `cliente_id` sale del **trauma**, no del argumento del workflow: es el dueño de la fila, y
+        es lo que la activity necesita para declarar el tenant. Sin él, con RLS forzado el UPDATE
+        afecta 0 filas **sin fallar** y el trauma queda colgado igual — con el ciclo reportando que
+        lo soltó.
         """
         await workflow.execute_activity(
-            "marcar_trauma", {"id": trauma.get("id"), "estado": "pendiente", "nota": motivo},
+            "marcar_trauma", {"id": trauma.get("id"), "estado": "pendiente", "nota": motivo,
+                              "cliente_id": trauma.get("cliente_id")},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
