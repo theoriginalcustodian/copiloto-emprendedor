@@ -200,10 +200,23 @@ con `--since` cuando Graphity vuelva (hoy da **503 de Caddy**: la VM corre, el s
 |---|---|---|
 | 1.5a | `CapturaInterceptor` de worker registrado en `worker_b.py` — emite `log_error` con fingerprint, categoría, `cliente_id` y nombre de activity | Test: una activity que falla deja el registro; **control**: una que pasa no deja nada |
 | 1.5b | `exception_handler` global de FastAPI en la app | Test: un 500 queda registrado · **control**: un 404/409 de negocio **no** se registra ni cambia de código |
-| 1.5c | Retirar el `log_error` cableado a mano de `presupuestos_web.py:244,386` | La cobertura no baja: el mismo error sigue registrándose, ahora por la costura |
+| 1.5c | ~~Retirar el `log_error` cableado a mano~~ → **CANCELADO** | Ver abajo: no era redundante |
 
-**Por qué 1.5c no es opcional:** dejar las dos formas conviviendo garantiza doble registro y que nadie
-sepa cuál manda.
+**1.5c se canceló al leer el código que iba a borrar** (2026-07-31). El plan asumía que los dos
+`log_error` de `presupuestos_web.py:244,386` quedaban redundantes con la costura. **Son otra cosa:**
+están dentro de `except` que **degradan a propósito y NO re-lanzan** — el presupuesto se crea igual
+sin su Doc; la compensación fallida sigue devolviendo 409. Como la excepción nunca sale, **el handler
+global no las ve**. Retirarlas habría **bajado** la cobertura mientras el plan decía lo contrario.
+
+**La distinción que hay que respetar de acá en adelante, y no es un detalle:**
+
+| Qué | Quién lo captura | Por qué |
+|---|---|---|
+| Fallo **no manejado** (bug, DB caída, 500) | **la costura**, automáticamente | Es el default, y por eso una feature nueva nace cubierta |
+| **Degradación deliberada**: el sistema sigue, pero quedó un **efecto** (un Doc que no se creó, una compensación que no corrió) | **cableado explícito**, a mano | La excepción nunca sale; nadie de afuera puede verla. Y son **el material más valioso de la DLQ**: un efecto quedado que nadie va a reintentar solo |
+
+Son **complementarios**, no duplicados. La regla queda: *si tu `except` re-lanza, no cablees nada —
+la costura lo toma. Si degradás y seguís, cableá el `log_error`, porque sos el único que sabe que pasó.*
 
 ### 8.2 Fase 2 — DLQ (disparador: 1.5 cerrada)
 
