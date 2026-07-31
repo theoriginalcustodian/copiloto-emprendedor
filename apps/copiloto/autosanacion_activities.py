@@ -39,6 +39,7 @@ repo.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -55,6 +56,11 @@ from contexto_tenant import tenant
 from forjador_parches import aplicar_bloques, prompt_de_forja
 from sandbox_tests import correr_suite, evaluar, preparar_copia
 from trauma_store import PENDIENTE, TABLA, TraumaStore
+
+#: `warning` y no `info`, por la misma razón que `log_estructurado`: sin `basicConfig`, el
+#: `lastResort` de logging sólo emite `warning+` a stderr, y en el unit del worker eso es journald.
+#: Un aviso en `.info` no llega — es un log que no existe.
+_log = logging.getLogger("copiloto")
 
 _conn_factory = None
 _llm_client = None
@@ -120,7 +126,15 @@ async def tomar_trauma_para_reparar(cliente_id: str) -> dict | None:
     """
     with tenant(cliente_id):
         tomados = _store(cliente_id).tomar(limite=1)
-    return _serializable(tomados[0]) if tomados else None
+    if not tomados:
+        return None
+    # `cliente_id` se inyecta acá porque `tomar()` NO lo devuelve entre sus columnas — y todo lo que
+    # sigue lo necesita: el conteo del tope, y sobre todo el `_soltar` del workflow, que sin dueño
+    # no puede devolver el trauma a `pendiente`. Sin esto viajaba vacío: la query comparaba
+    # `cliente_id = ''` contra un uuid (InvalidTextRepresentation, tragado por el except) y el ciclo
+    # se apagaba solo informando "tope diario alcanzado". Dos fallos con una sola causa, y ninguno
+    # de los dos mencionaba al dueño ausente.
+    return {**_serializable(tomados[0]), "cliente_id": cliente_id}
 
 
 # ======================================================================================
@@ -129,6 +143,13 @@ async def tomar_trauma_para_reparar(cliente_id: str) -> dict | None:
 def _reparaciones_de_hoy(cliente_id: str) -> int:
     """Cuántas reparaciones se propusieron hoy para este tenant. Ante un fallo devuelve el tope, no
     cero: si la cuenta no se puede hacer, lo seguro es frenar, no seguir de largo."""
+    if not cliente_id:
+        # Fail-closed y ruidoso. Sin dueño no hay cuenta posible, y devolver 0 dejaría el tope sin
+        # efecto justo cuando el ciclo perdió de vista a quién le está reparando.
+        _log.warning(json.dumps({"evento": "autosanacion_sin_tenant",
+                                 "efecto": "no se puede contar el tope; el ciclo NO repara"}))
+        from autosanacion_gates import tope_diario
+        return tope_diario()
     conn = None
     try:
         with tenant(cliente_id):
@@ -138,8 +159,16 @@ def _reparaciones_de_hoy(cliente_id: str) -> int:
                             f"AND estado = 'reparacion_propuesta' AND updated_at::date = %s",
                             (cliente_id, date.today()))
                 return int(cur.fetchone()[0])
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        # Degradar al tope es lo seguro, pero degradar EN SILENCIO no: el ciclo se apagaría solo con
+        # el motivo "tope diario alcanzado (5/5)" y nadie sabría que en realidad la query nunca
+        # corrió. Ya pasó en el primer E2E de este módulo y costó una vuelta entera de diagnóstico
+        # sobre el gate equivocado.
         from autosanacion_gates import tope_diario
+        _log.warning(json.dumps({"evento": "autosanacion_conteo_fallido",
+                                 "error_type": type(exc).__name__,
+                                 "efecto": "se asume el tope alcanzado y el ciclo NO repara"},
+                                ensure_ascii=False))
         return tope_diario()
     finally:
         try:

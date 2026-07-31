@@ -45,6 +45,8 @@ from interceptor_errores import CapturaDeErroresInterceptor
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
+from autosanacion_activities import ACTIVITIES_AUTOSANACION, set_autosanacion_deps
+from autosanacion_workflow import AutosanacionWorkflow
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_factura_activities import (
@@ -268,15 +270,37 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     # los stores (regla 7: nunca uno nuevo por tenant, ver docstring de `set_mi_dia_deps`).
     set_mi_dia_deps(conn_factory)
 
+    # Fase 3 — el ciclo de auto-reparación. El cliente es un `OpenAI()` crudo y NO el `LlmProvider`
+    # del agente: `auditor_parches` y el forjador usan `client.chat.completions.create`, que es el
+    # contrato que el banco C0 midió, y `LlmProvider` expone otro (`complete`/`complete_tools`).
+    # Pasarle el provider haría que el ciclo reventara recién al forjar el primer parche.
+    #
+    # Sin `OPENAI_API_KEY` queda en None **a propósito**: el worker arranca igual y el ciclo se apaga
+    # solo con un motivo legible. Un worker que no levanta porque falta la key de una feature
+    # opcional se lleva puestas las que sí funcionan.
+    _autosanacion_llm = None
+    if env.get("OPENAI_API_KEY"):
+        try:
+            from openai import OpenAI
+            _autosanacion_llm = OpenAI()
+        except Exception as exc:  # noqa: BLE001
+            print(f"AGENT_B autosanacion: OFF (no se pudo construir el cliente: {exc})", flush=True)
+    print("AGENT_B autosanacion: ON" if _autosanacion_llm is not None
+          else "AGENT_B autosanacion: OFF (sin OPENAI_API_KEY — el ciclo no forja parches)",
+          flush=True)
+    set_autosanacion_deps(conn_factory, llm_client=_autosanacion_llm)
+
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
-                          FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow],
+                          FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
+                          AutosanacionWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, reservar_numero_comprobante,
                                          emitir_comprobante,
                                          generar_pdf_comprobante, buscar_comprobante,
                                          listar_comprobantes, marcar_comprobante_anulado,
-                                         archivar_factura_en_drive, avanzar_tablero_mi_dia],
+                                         archivar_factura_en_drive, avanzar_tablero_mi_dia]
+                          + ACTIVITIES_AUTOSANACION,
             "context_factory": ctx_factory}
 
 
