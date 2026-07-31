@@ -45,6 +45,7 @@ class _ConnFalsa:
     def __init__(self) -> None:
         self.ejecutado: list = []
         self.cerrada = False
+        self.autocommit = False
 
     def cursor(self):  # noqa: ANN201
         return _CursorFalso(self.ejecutado)
@@ -159,7 +160,7 @@ def test_ADVERSARIAL_un_tenant_no_ve_ni_escribe_lo_de_otro_por_RLS(monkeypatch):
 
         for quien, dato in ((A, "de-A"), (B, "de-B")):
             with tenant(quien):
-                c = factory(); c.autocommit = True
+                c = factory()
                 with c.cursor() as cur:
                     cur.execute(f'INSERT INTO uc_factory."{tabla}" (cliente_id, dato) VALUES (%s,%s)',
                                 (quien, dato))
@@ -176,7 +177,7 @@ def test_ADVERSARIAL_un_tenant_no_ve_ni_escribe_lo_de_otro_por_RLS(monkeypatch):
 
         # --- ESCRITURA como otro: el WITH CHECK tiene que rechazarla.
         with tenant(B):
-            c = factory(); c.autocommit = True
+            c = factory()
             with pytest.raises(psycopg2.Error):
                 with c.cursor() as cur:
                     cur.execute(f'INSERT INTO uc_factory."{tabla}" (cliente_id, dato) VALUES (%s,%s)',

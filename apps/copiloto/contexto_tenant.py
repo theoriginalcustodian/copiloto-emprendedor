@@ -100,6 +100,13 @@ def conexion_con_tenant(conn_factory):  # noqa: ANN001, ANN201
     def factory():  # noqa: ANN202
         conn = conn_factory()
         try:
+            # `autocommit` ANTES de ejecutar nada: declarar el tenant es una sentencia SQL, y en una
+            # conexión sin autocommit abre una transacción implícita — después de eso, psycopg2
+            # rechaza cambiar el modo (`set_session cannot be used inside a transaction`). El
+            # llamador que quisiera ponerlo más tarde recibiría un error sin relación aparente con
+            # este módulo. Lo cazó el CI, no yo. Es idempotente: si ya venía en True, no hace nada.
+            if not conn.autocommit:
+                conn.autocommit = True
             declarar_en_conexion(conn)
         except Exception:
             # Si no se puede declarar el tenant, la conexión NO sirve: con `FORCE` daría 0 filas y el

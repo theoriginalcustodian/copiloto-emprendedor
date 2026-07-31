@@ -53,7 +53,15 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://copiloto:copiloto@localhost:5432/copiloto_test
+      # ⚠️ El usuario es `copiloto_app`, NO el `copiloto` del contenedor. El de la imagen es
+      # **superuser**, y un superuser saltea RLS **incluso con FORCE**: corriendo con él, todo test de
+      # aislamiento pasa aunque el aislamiento no exista — el CI confirmaría en vez de verificar
+      # (2026-07-31, el rojo que destapó esto). `copiloto_app` replica al rol de producción: dueño de
+      # sus tablas, NO superuser, NO BYPASSRLS.
+      DATABASE_URL: postgresql://copiloto_app:copiloto@localhost:5432/copiloto_test
+      # Con FORCE activo, como quedará producción tras la migración. El CI ejercita el estado FINAL.
+      UC_RLS_FORCE: "1"
+      PGPASSWORD: copiloto
 
     steps:
       - uses: actions/checkout@v4
@@ -67,8 +75,29 @@ jobs:
       # trae la instancia de Supabase; en un Postgres pelado hay que crearlo. Sin esto el provisionado
       # muere con `schema "auth" does not exist` — y ese es el motivo real de que el runbook de
       # "levantar el copiloto en un entorno nuevo" nunca se hubiera podido ejecutar.
+      # El rol con el que corren los tests. Se crea con el superuser del contenedor y a partir de ahí
+      # NO se lo vuelve a usar: si los tests corrieran como superuser, el RLS no los alcanzaría y el
+      # job daría verde sobre un aislamiento inexistente.
+      - name: rol de aplicación NO-superuser (replica producción)
+        run: |
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "DO \$\$ BEGIN
+               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='copiloto_app') THEN
+                 CREATE ROLE copiloto_app LOGIN PASSWORD 'copiloto' NOSUPERUSER NOBYPASSRLS;
+               END IF;
+             END \$\$;"
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "GRANT ALL ON DATABASE copiloto_test TO copiloto_app;"
       - name: compatibilidad Supabase (roles + auth.jwt) — sólo para la base efímera
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f deploy/worker/bootstrap-supabase-compat.sql
+        run: |
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 \
+            -f deploy/worker/bootstrap-supabase-compat.sql
+          # El schema lo crea el superuser y se lo cede al rol de la app: `provision.py` corre como
+          # `copiloto_app` y necesita ser DUEÑO de sus tablas (igual que en producción), no sólo tener
+          # permiso de escritura.
+          psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
+            "CREATE SCHEMA IF NOT EXISTS uc_factory AUTHORIZATION copiloto_app;
+             GRANT ALL ON SCHEMA uc_factory TO copiloto_app;"
       - name: provisionar el schema (idempotente)
         working-directory: apps/copiloto
         run: python provision.py
