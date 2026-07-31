@@ -178,3 +178,45 @@ Postgres efímero. Detalle → [`03-REPORTE-implementacion.md`](03-REPORTE-imple
 
 **Deuda viva no relacionada con el diseño:** el batch de memoria sin commitear · la reingesta del grafo
 con `--since` cuando Graphity vuelva (hoy da **503 de Caddy**: la VM corre, el servicio detrás no).
+
+---
+
+## 8. Post-spikes — el plan de implementación (2026-07-31)
+
+**Los 5 spikes se corrieron. Ninguno tumbó el diseño; tres cambiaron detalles.** Evidencia completa →
+[`spikes/RESULT.md`](../../../spikes/RESULT.md).
+
+| Spike | Veredicto | Qué cambió |
+|---|---|---|
+| S1 interceptor | ✅ PASA | — (⚠️ el exit code no sirve como oráculo: aborta en el teardown) |
+| S2 dedupe + RLS | ✅ PASA + adversarial | índice `(cliente_id, fingerprint)` y **`FORCE RLS`** |
+| S3 reinyección | ⚠️ PASA con condición | se habilita **por índice único**, no por dominio |
+| S4 LLM | ✅ PASA | — |
+| S5 forjador/auditor | ⚠️ PASA cambiando el formato | **SEARCH/REPLACE**, nunca diffs |
+
+### 8.1 Fase 1.5 — Cobertura por costura (ejecutable ya)
+
+| # | Qué | Cierre |
+|---|---|---|
+| 1.5a | `CapturaInterceptor` de worker registrado en `worker_b.py` — emite `log_error` con fingerprint, categoría, `cliente_id` y nombre de activity | Test: una activity que falla deja el registro; **control**: una que pasa no deja nada |
+| 1.5b | `exception_handler` global de FastAPI en la app | Test: un 500 queda registrado · **control**: un 404/409 de negocio **no** se registra ni cambia de código |
+| 1.5c | Retirar el `log_error` cableado a mano de `presupuestos_web.py:244,386` | La cobertura no baja: el mismo error sigue registrándose, ahora por la costura |
+
+**Por qué 1.5c no es opcional:** dejar las dos formas conviviendo garantiza doble registro y que nadie
+sepa cuál manda.
+
+### 8.2 Fase 2 — DLQ (disparador: 1.5 cerrada)
+
+Los 5 ítems del `01-PLAN §7`, con las correcciones de S2 en 2.1. El 2.5 (*"procesamiento diferido"* en
+la UI) **cruza la junta backend↔app** → exige `contrato_` en el buzón **antes** de implementar.
+
+### 8.3 Fase 3 — Autosanación acotada al mapa (disparador: Fase 2 cerrada)
+
+- **Forjador `gpt-4o-mini`, salida SEARCH/REPLACE.** Un diff unificado **no aplica** — medido.
+- **Auditor `gpt-4o`**, y sus **3 parches rotos se congelan como test de regresión permanente**: si un
+  cambio de prompt o de modelo hace que apruebe alguno, el ciclo se apaga solo.
+- **La whitelist de auto-reparación se deriva del índice único**, no de una opinión: una operación es
+  reinyectable si y sólo si existe un índice único que la proteja de la carrera.
+- **🛑 Fiscal `DIAGNOSTIC_ONLY`, ahora por medición y no por precaución:** `existe_comprobante` consulta
+  a **AFIP**, no a la DB — no hay índice que salve la ventana (S3).
+- Kill switch + tope de reparaciones/día.
