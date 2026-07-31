@@ -71,10 +71,19 @@ atrás"* y **se queda corta**: no es un retraso de minutos, es un **horizonte**.
 
 - **Disparador: `git push`** (incremental `--since <sha remoto>`), **fail-closed** — si el sync falla el
   push aborta, así que *push exitoso ⇒ grafo sincronizado*.
-- **NO está:** lo sin commitear · lo commiteado sin pushear · lo pusheado con **`git push --no-verify`**
-  (bypass **silencioso**, sin detector de drift posterior).
+- **NO está:** lo commiteado sin pushear · lo pusheado con **`git push --no-verify`** (bypass
+  **silencioso**, sin detector de drift posterior).
 - **Está:** el estado de la **última rama pusheada** — no necesariamente `main`.
 - **Adelantar sin pushear:** `bash scripts/graph-sync.sh` (sync manual, sin push).
+
+> ⚠️ **Corrección medida (2026-07-31) — «lo sin commitear NO está» es FALSO.** `graphify` parsea el
+> **working tree en disco**; el git-ref sólo decide *qué archivos mirar* y de dónde sale el
+> `valid_at`. Probado: `spikes/s5-parche-y-auditor/spike.py` **no existe en el `HEAD`** de este
+> checkout y el grafo **sí lo tiene**. O sea: el grafo puede contener código que no está en ninguna
+> rama, presentado como hecho establecido. Y `valid_at` es el commit date del `HEAD` que corrió el
+> sync — con el checkout 111 commits atrás, **todos** los edges quedaron sellados `2026-07-27`.
+> La frescura real es **la hora del último sync**, no la del último push: cruzá `mtime` en disco
+> contra `created_at` del nodo. Detalle → [[el-grafo-ingesta-el-disco-pero-fecha-con-head]].
 
 > **Código ESTABLECIDO → el grafo es el índice. Trabajo EN VUELO (últimas horas, otra sesión, lo tuyo
 > sin pushear) → el grafo es CIEGO por diseño**; ahí va `git grep origin/<rama>` o leer el archivo.

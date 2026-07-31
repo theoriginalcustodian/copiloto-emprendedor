@@ -34,10 +34,22 @@ bash deploy/copiloto/sync-test-backend.sh "tests ../../motor -q"
 
 **Dos cosas fuera del repo que hay que saber:**
 
-1. 🔴 **Graphity responde HTTP 000** (ni conecta). El `pre-push` sincroniza el grafo y es
-   *fail-closed*, así que **traba todo push**. Los de hoy usaron `--no-verify`, que es el bypass que
-   el propio hook documenta para fallo transitorio. **Deuda abierta:** reingestar con `--since`
-   cuando vuelva. **Lo resuelve el operador.**
+1. ✅ **Graphity está ARRIBA** — verificado el 2026-07-31 tras el cierre: `/health` ok y `/ready` 200
+   con las tres dependencias verdes (postgres · neo4j · openai). El `HTTP 000` que este doc declaraba
+   ya estaba resuelto por el operador; la afirmación había quedado congelada acá y **el pre-push no
+   está trabado**.
+
+   ⚠️ Pero el grafo **sí** estaba desactualizado, por una causa distinta de la que este doc culpaba:
+   el sync corrió a las **16:50** y los módulos de la Fase 3 se escribieron **17:02-17:32**. Nada
+   posterior al sync entró — no porque Graphity fallara, sino porque nadie volvió a sincronizar.
+   Medido por diferencial (mtime en disco vs `created_at` de los nodos), no deducido.
+
+   🧬 **Y de paso, una precisión al canon.** «El grafo conoce lo pusheado» es **impreciso**: el bridge
+   parsea el **working tree en disco**, pero sella `valid_at` con la fecha de **`HEAD`**. Probado:
+   `spikes/s5-parche-y-auditor/spike.py` **no existe en `HEAD`** (este checkout está 111 commits
+   detrás de `main`), está en disco, y el grafo lo tiene — mientras *todos* los edges quedaron
+   sellados `2026-07-27T22:50:48Z`, que es exactamente el commit date de `HEAD`. Con el checkout
+   compartido parado en una rama vieja, **el contenido es actual y la fecha miente 4 días**.
 2. 📬 **El ítem 2.5 está esperando a las otras sesiones**: `contrato_` en
    `coordinacion/abierto/2026-07-31_contrato_planificacion-a-todos_dlq-procesamiento-diferido-item-2-5.md`
    + línea `E2.5` en la COLA VIVA de `coordinacion/PLAN.md`. ⚠️ `coordinacion/` **no se versiona**
@@ -235,9 +247,9 @@ conteo se hace ya con el tenant declarado. Herramienta permanente: `deploy/copil
 **Rollback**, si algún camino aparece sin tenant declarado:
 `ALTER TABLE uc_factory.<tabla> NO FORCE ROW LEVEL SECURITY;` — reversible tabla por tabla.
 
-⚠️ **El pre-push está trabado:** sincroniza el grafo y es *fail-closed*; Graphity responde **HTTP 000**
-(ni conecta). Los dos commits de hoy se pusharon con `--no-verify`, que es el bypass que el propio hook
-documenta para fallo transitorio. **Deuda abierta:** reingestar el grafo con `--since` cuando vuelva.
+ℹ️ **Nota histórica:** los commits de este tramo se pusharon con `--no-verify` porque en ese momento
+Graphity respondía `HTTP 000` y el `pre-push` es *fail-closed* sobre el sync del grafo. **Ya está
+resuelto** (verificado el 2026-07-31: `/health` ok, `/ready` 200) y el grafo fue reingestado — ver §0.
 
 **Por qué el flag:** activar `FORCE` antes de que el código que declara el tenant esté corriendo
 dejaría la app viendo 0 filas en todo. `TODO(rls-force, backend, 2026-07-31)` para retirarlo cuando
@@ -363,7 +375,7 @@ que ningún índice puede cerrar esa ventana.
 | 5 | Desplegar la DLQ (`provision.py` crea `copiloto_traumas` con `FORCE`) | bloqueado por 4 |
 | 6 | Ítem **2.5** — "procesamiento diferido" | 📬 `contrato_` en el buzón; backend primero, frontend en paralelo contra el contrato congelado |
 | 7 | **Fase 3 — Autosanación** | diseñada; disparador = Fase 2 cerrada. Forjador **SEARCH/REPLACE** (el diff unificado **no aplica** — medido en S5) · los **3 parches rotos del auditor se congelan como regresión permanente**: si un cambio de prompt o de modelo hace que apruebe alguno, el ciclo se apaga solo |
-| 8 | Reingestar el grafo con `--since` | 🔴 bloqueado: **Graphity da HTTP 000** (ni conecta). Traba el `pre-push`, que es *fail-closed* sobre el sync del grafo → los pushes de hoy usaron `--no-verify`, el bypass que el propio hook documenta para fallo transitorio. **Lo resuelve el operador** |
+| 8 | Reingestar el grafo | ✅ **hecho** — Graphity estaba **arriba** (`/health` ok, `/ready` 200: postgres · neo4j · openai); el `HTTP 000` era un estado viejo que este doc tenía congelado. La causa real del grafo desactualizado se **midió**: el sync corrió 16:50 y los módulos se escribieron 17:02-17:32. `graph-sync.sh` reingestó y los 5 módulos (`autosanacion_gates` · `auditor_parches` · `forjador_parches` · `trauma_store` · `deposito_traumas`) están **verificados por consulta a Graphity**, no por exit code. ⚠️ `valid_at` quedó sellado con la fecha de `HEAD` — ver §0 |
 
 ---
 
