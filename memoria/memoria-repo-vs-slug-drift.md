@@ -44,10 +44,16 @@ pérdida no habría dado síntoma hasta que alguien buscara una lección que ya 
    sobrevive; el slug es una copia.
 2. **Antes de correr `seed-memory.sh`, comparar los dos directorios.** Si hay archivos sólo en el
    slug, rescatarlos primero.
-3. El `--delete` del script sigue siendo una bomba armada mientras exista. → **deuda registrada, sin
-   pagar**: hacerlo aditivo (o bidireccional) y quitarle el `--delete`.
-   **Propietario:** BACKEND (dueño de `memoria/` y `scripts/`). **Condición de pago:** antes del
-   próximo arranque que use el init de `HANDOFF.md`.
+3. ~~El `--delete` del script sigue siendo una bomba armada mientras exista.~~ → ✅ **DEUDA PAGADA**
+   (verificado el 2026-07-31): `seed-memory.sh` ya no espeja con `--delete`, es **bidireccional** —
+   rescata al repo lo que sólo vive en el slug antes de reconciliar, y reporta
+   `rescatados / purgados / divergentes` en cada corrida.
+
+   ⚠️ **La regla 2 sigue viva igual, y no es redundante:** el script rescata **archivos**, no decide
+   cuál de dos versiones **divergentes** es la buena. La corrida del 2026-07-31 dio
+   `194 archivos · rescatados: 0 · purgados: 0 · divergentes: 0` **porque la comparación se hizo antes
+   y los dos huérfanos del slug ya se habían copiado a mano**. Mirar el contador de `divergentes`
+   antes de dar por buena la reconciliación.
 
 Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]]: un espejo con `--delete` no falla
 ruidosamente, *confirma* — termina en exit 0 diciendo cuántos archivos sembró, sin mencionar los que
