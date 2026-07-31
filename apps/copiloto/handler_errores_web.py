@@ -32,12 +32,17 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from deposito_traumas import FabricaDeTraumas, depositar
 from log_estructurado import log_error
 from taxonomia_errores import ErrorSinCategoria, categoria_de
 
 
-def registrar_captura_global(app: FastAPI) -> None:
-    """Instala la costura C2 en `app`. Idempotente: registrar dos veces reemplaza, no duplica."""
+def registrar_captura_global(app: FastAPI, *, traumas: FabricaDeTraumas | None = None) -> None:
+    """Instala la costura C2 en `app`. Idempotente: registrar dos veces reemplaza, no duplica.
+
+    `traumas` es opcional a propósito: sin DLQ la costura sigue **capturando y logueando** igual. El
+    depósito es una mejora del registro, no una condición para registrar — ver `deposito_traumas`.
+    """
 
     @app.exception_handler(Exception)
     async def _capturar(request: Request, exc: Exception) -> JSONResponse:  # noqa: ANN202
@@ -53,12 +58,18 @@ def registrar_captura_global(app: FastAPI) -> None:
         # — y un fallo ahí no puede impedir que el error se registre.
         cliente_id = getattr(request.state, "cliente_id", None)
 
+        workflow = f"{request.method} {request.scope.get('route_path') or request.url.path}"
         fingerprint = log_error(
             exc,
-            workflow=f"{request.method} {request.scope.get('route_path') or request.url.path}",
+            workflow=workflow,
             cliente_id=cliente_id,
             extra={"categoria": categoria, "costura": "http_handler"},
         )
+        # El depósito va DESPUÉS del log y nunca antes: si la DLQ estuviera caída, el error igual
+        # quedó registrado. `depositar` no lanza ni devuelve nada (ver `deposito_traumas`).
+        depositar(traumas, fingerprint=fingerprint, workflow=workflow,
+                  error_type=type(exc).__name__, cliente_id=cliente_id, costura="http_handler",
+                  contexto={"categoria": categoria})
         return JSONResponse(
             status_code=500,
             content={

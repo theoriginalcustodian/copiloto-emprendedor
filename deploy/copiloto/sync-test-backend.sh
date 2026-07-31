@@ -53,8 +53,12 @@ echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # que otra corra pytest para que se reescriban los `.pyc` mientras este `tar` lee el directorio →
 # "file changed as we read it" y el sync aborta. Además viajan más rápido sin ellos, y los `.pyc` de
 # la PC no le sirven a nadie en el VPS.
+# `scripts/` viaja desde el 2026-07-31: sin él, `test_censo_except_guard.py` se **SKIPPEA** en local
+# ("no está …/scripts/censo-except.py — checkout parcial") y corre sólo en el CI. Un guard que se
+# salta en el bucle rápido es un guard que se descubre 8 minutos tarde: exactamente lo que este
+# runner vino a evitar. Pasó de verdad — el CI cazó un `except` mudo que la corrida local no vio.
 tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
-  -czf - apps/copiloto "$MOTOR" deploy/worker \
+  -czf - apps/copiloto "$MOTOR" deploy/worker scripts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> pytest en el venv del VPS: ${PYTEST_ARGS}"

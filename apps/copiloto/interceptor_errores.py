@@ -42,6 +42,7 @@ from temporalio.worker import (
 )
 
 from contexto_tenant import tenant
+from deposito_traumas import FabricaDeTraumas, depositar
 from log_estructurado import log_error
 from taxonomia_errores import ErrorSinCategoria, categoria_de
 
@@ -68,6 +69,11 @@ def _cliente_id_de(payload: Any) -> str | None:
 
 
 class _CapturaInbound(ActivityInboundInterceptor):
+    def __init__(self, next: ActivityInboundInterceptor,  # noqa: A002
+                 traumas: FabricaDeTraumas | None = None) -> None:
+        super().__init__(next)
+        self._traumas = traumas
+
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:
         # El interceptor es el BORDE de la activity, y un borde hace dos cosas: declara de quién es la
         # operación (para que la base pueda aplicar RLS — `contexto_tenant.py`) y registra lo que
@@ -85,8 +91,7 @@ class _CapturaInbound(ActivityInboundInterceptor):
                     pass
                 raise  # Regla 1: la excepción original sigue su curso, intacta.
 
-    @staticmethod
-    def _registrar(exc: BaseException, input: ExecuteActivityInput) -> None:
+    def _registrar(self, exc: BaseException, input: ExecuteActivityInput) -> None:  # noqa: A002
         payload = input.args[0] if input.args else None
         try:
             categoria = categoria_de(exc)
@@ -95,7 +100,7 @@ class _CapturaInbound(ActivityInboundInterceptor):
             categoria = "SIN_CATEGORIA"
 
         info = activity.info()
-        log_error(
+        fingerprint = log_error(
             exc,
             workflow=info.activity_type,
             cliente_id=_cliente_id_de(payload),
@@ -109,12 +114,26 @@ class _CapturaInbound(ActivityInboundInterceptor):
                 "tool": (payload or {}).get("name") if isinstance(payload, dict) else None,
             },
         )
+        # Depositar va después del log: si la DLQ falla, el error ya quedó registrado igual.
+        # `depositar` no lanza (`deposito_traumas`), y además todo `_registrar` corre dentro del
+        # `try/except` de `execute_activity` — dos redes, porque acá abajo está el turno del usuario.
+        depositar(self._traumas, fingerprint=fingerprint, workflow=info.activity_type,
+                  error_type=type(exc).__name__, cliente_id=_cliente_id_de(payload),
+                  costura="activity_interceptor",
+                  contexto={"categoria": categoria, "workflow_id": info.workflow_id,
+                            "attempt": info.attempt})
 
 
 class CapturaDeErroresInterceptor(Interceptor):
-    """Registralo en el `Worker(...)` con `interceptors=[CapturaDeErroresInterceptor()]`."""
+    """Registralo en el `Worker(...)` con `interceptors=[CapturaDeErroresInterceptor(...)]`.
+
+    `traumas` es opcional: sin DLQ la costura captura y loguea igual (ver `deposito_traumas`).
+    """
+
+    def __init__(self, traumas: FabricaDeTraumas | None = None) -> None:
+        self._traumas = traumas
 
     def intercept_activity(
         self, next: ActivityInboundInterceptor
     ) -> ActivityInboundInterceptor:
-        return _CapturaInbound(next)
+        return _CapturaInbound(next, self._traumas)

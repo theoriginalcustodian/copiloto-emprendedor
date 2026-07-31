@@ -218,15 +218,61 @@ las 77 tablas estén migradas.
 
 ---
 
+## 3.bis ✅ Fase 2 — la DLQ (`copiloto_traumas`), ítems 2.1 a 2.4
+
+`log_error` deja el error en journald: consultable, pero **nadie vuelve sobre una línea de log**. La
+DLQ es el otro lado del *Trauma Empaquetado* — el error queda **con estado**, deduplicado y contado.
+
+| Ítem | Qué | Evidencia |
+|---|---|---|
+| 2.1 | dedupe | dos errores iguales → **1 fila, `dedupe_count=2`** |
+| 2.2 | nunca lanza | dos tests: la base caída **y** la query reventando |
+| 2.3 | `FLOOD_THRESHOLD` parametrizado | umbral inyectado respetado; env var basura → default |
+| 2.4 | 3 estados + ventana | las 3 transiciones · `tomar()` no entrega dos veces · rescate de colgados |
+
+**Las dos correcciones del spike S2, aplicadas:** el índice único va sobre **`(cliente_id, fingerprint)`**
+—con RLS, dos tenants con el mismo error chocarían contra una fila que el segundo no puede ver— y
+`FORCE` es obligatorio, que ahora **hereda del provisionado**.
+
+**Dos decisiones que no son de estilo:** `tomar()` usa `FOR UPDATE SKIP LOCKED` (sin eso, la única
+defensa contra dos recuperadores sería *que nunca haya dos*: una suposición, no un mecanismo), y
+`rescatar_colgados()` existe porque un proceso que muere a mitad deja el trauma en `en_proceso`
+**para siempre**, en un sumidero que **no da síntoma** — la cola se ve vacía porque todo figura "en
+proceso".
+
+**Enganche:** `deposito_traumas` es el puente; las dos costuras depositan **después** de loguear, y la
+fábrica se inyecta desde el composition root con la `conn_factory` ya envuelta, así que el trauma se
+escribe con el tenant **que el borde declaró**. Sin DLQ, las costuras capturan y loguean igual.
+
+**Ítem 2.5** (*"procesamiento diferido"* en la UI) → **`contrato_` en el buzón**, con DoD binario por
+lado y un **control negativo** explícito: un `business_error` no puede decir "lo estamos reintentando".
+
+### 3.ter ⚠️ El bucle local tenía un guard invisible — lo cazó el CI
+
+La corrida local dijo **1310 passed** y el CI encontró un `except` mudo nuevo **8 minutos después**.
+Causa: `sync-test-backend.sh` sincronizaba `apps/copiloto` + `motor` + `deploy/worker` pero **no
+`scripts/`**, así que `test_censo_except_guard.py` se **saltaba en silencio** en local y corría sólo en
+el CI. El bucle rápido que existe para no esperar al CI **dependía del CI** para ese guard.
+
+**Un test que se salta no resta:** el verde se lee igual con `1310 passed / 17 skipped` que con
+`1313 passed / 14 skipped`, y la diferencia son exactamente los tres que nadie corría. Arreglado —
+`scripts/` viaja en el tar. **Control al tocar el sync:** comparar el número de `skipped` local contra
+el del CI; si difieren, hay tests que el bucle rápido no está corriendo.
+
+---
+
 ## 4. Cola pendiente, en orden
 
 | # | Qué | Estado |
 |---|---|---|
-| 1 | **Cerrar el PR #162** (§2.3) | 🔴 en curso — 98 tests por revisar |
-| 2 | Encender `UC_RLS_FORCE` en prod y verificar por efecto | bloqueado por 1 |
-| 3 | **Fase 2 — DLQ** (`copiloto_traumas`) | listo para arrancar; nace con `FORCE` + índice `(cliente_id, fingerprint)` (correcciones de S2) |
-| 4 | **Fase 3 — Autosanación** | diseñada; disparador = Fase 2 cerrada |
-| 5 | Reingestar el grafo con `--since` | bloqueado: **Graphity da 503** (Caddy responde, el servicio detrás no). El operador lo está resolviendo aparte |
+| 1 | **PR #162 — RLS real** | ✅ mergeado (CI 5/5) y **desplegado** |
+| 2 | Encender `UC_RLS_FORCE` en prod y verificar por efecto | ✅ **hecho** — §2.8 |
+| 3 | **PR #163 — verificador por efecto** | ✅ mergeado |
+| 4 | **Fase 2 — DLQ** ítems 2.1-2.4 (**PR #164**) | 🟡 CI corriendo; local 1313 passed / 0 failed |
+| 5 | Desplegar la DLQ (`provision.py` crea `copiloto_traumas` con `FORCE`) | bloqueado por 4 |
+| 6 | Ítem **2.5** — "procesamiento diferido" | 📬 `contrato_` en el buzón; backend primero, frontend en paralelo contra el contrato congelado |
+| 7 | **Fase 3 — Autosanación** | diseñada; disparador = Fase 2 cerrada. Forjador **SEARCH/REPLACE** (el diff unificado **no aplica** — medido en S5) · los **3 parches rotos del auditor se congelan como regresión permanente**: si un cambio de prompt o de modelo hace que apruebe alguno, el ciclo se apaga solo |
+| 8 | Reingestar el grafo con `--since` | 🔴 bloqueado: **Graphity da HTTP 000** (ni conecta). Traba el `pre-push`, que es *fail-closed* sobre el sync del grafo → los pushes de hoy usaron `--no-verify`, el bypass que el propio hook documenta para fallo transitorio. **Lo resuelve el operador** |
 
 ---
 

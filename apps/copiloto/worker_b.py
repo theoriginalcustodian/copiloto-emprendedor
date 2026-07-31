@@ -40,6 +40,7 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 import services
 import tool_catalog
 from contexto_tenant import conexion_con_tenant
+from deposito_traumas import fabrica_desde
 from interceptor_errores import CapturaDeErroresInterceptor
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
@@ -303,7 +304,7 @@ async def main() -> None:
     # `interceptor_errores.py`. No altera el comportamiento: registra y re-lanza intacto.
     async with Worker(client, task_queue=AGENT_B_TASK_QUEUE,
                       workflows=cfg["workflows"], activities=cfg["activities"],
-                      interceptors=[CapturaDeErroresInterceptor()]):
+                      interceptors=[CapturaDeErroresInterceptor(fabrica_desde(conn_factory))]):
         print(f"AGENT_B worker up on {AGENT_B_TASK_QUEUE}", flush=True)
         await asyncio.Event().wait()
 
