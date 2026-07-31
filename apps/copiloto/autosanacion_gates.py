@@ -84,8 +84,25 @@ class Decision:
 
 
 def apagado() -> bool:
-    """El kill switch. Se lee en **cada** decisión, no al arrancar: apagarlo tiene que surtir efecto
-    sin reiniciar el worker — si hiciera falta un reinicio, no sería un kill switch."""
+    """El kill switch. Se lee en **cada** decisión, nunca cacheado al importar.
+
+    ⚠️ **Lo que esto NO da, y antes este docstring prometía** (medido en el VPS el 2026-07-31): que
+    leer `os.environ` en cada decisión permita apagar el ciclo *sin reiniciar el worker*. No: el
+    worker corre bajo systemd con `EnvironmentFile=`, y systemd fija el entorno del proceso **al
+    arrancar**. Editar `/etc/unreal-copilot/copiloto.env` no cambia el `environ` de un proceso vivo —
+    se verificó leyendo `/proc/<pid>/environ`. Para que esta variable surta efecto hace falta
+    `systemctl restart uc-copiloto-worker`.
+
+    Leerla en cada decisión sigue valiendo (un reinicio basta, no hace falta redesplegar), pero
+    llamarlo "sin reiniciar" era una promesa que el despliegue real no cumple — y un apagado de
+    emergencia que se cree instantáneo y no lo es, es peor que uno que se sabe lento.
+
+    **El apagado INMEDIATO es pausar los Schedules**, que no toca el proceso:
+
+        python deploy/worker/verificar_autosanacion.py --pausar-todo
+
+    Sin Schedule que dispare no hay ejecución, y surte efecto en el momento.
+    """
     return os.environ.get(ENV_KILL_SWITCH, "").strip().lower() in ("1", "true", "yes")
 
 
