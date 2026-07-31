@@ -28,6 +28,33 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
+# -----------------------------------------------------------------------------
+# 2026-07-31 — el grafo se sincroniza desde origin/main, NO desde la rama que se pushea.
+# -----------------------------------------------------------------------------
+# Decisión del operador: el grafo es el modelo de la app sobre sí misma y lo consume el ciclo de
+# autosanación; su verdad es lo que puede llegar a producción, no el trabajo en vuelo de cada frente.
+# Antes esto sincronizaba la rama pusheada leyendo el WORKING TREE del checkout compartido — que
+# está en una rama y llegó a estar 111 commits detrás de main. Resultado: contenido de hoy con
+# `valid_at` de hace 4 días, y nodos de código que no estaba en ninguna rama.
+#
+# Ahora: si origin/main NO se movió desde el último sync exitoso, no hay nada que hacer y el push
+# sigue de largo (pushear una rama de trabajo ya no paga el costo del sync). Si SÍ se movió —o sea,
+# alguien mergeó— se sincroniza, y sigue siendo fail-closed: si falla, el push aborta.
+# Bypass ante fallo transitorio: git push --no-verify.
+git fetch origin main --quiet 2>/dev/null || true
+MAIN_SHA="$(git rev-parse origin/main 2>/dev/null || echo desconocido)"
+MARCADOR="$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
+ULTIMO="$(cat "$MARCADOR" 2>/dev/null || echo ninguno)"
+if [ "$MAIN_SHA" = "$ULTIMO" ]; then
+  echo "[pre-push] (grafo ya sincronizado con origin/main @ ${MAIN_SHA:0:12} — nada que hacer)"
+  exit 0
+fi
+echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sincronizando el grafo…"
+bash "$(git rev-parse --show-toplevel)/scripts/graph-sync.sh"
+echo "[pre-push] ✅ grafo de código sincronizado desde origin/main"
+exit 0
+
+# ----- (muerto desde 2026-07-31; se conserva un ciclo por si hay que volver atrás) -----
 base=""
 full=0
 nrefs=0
