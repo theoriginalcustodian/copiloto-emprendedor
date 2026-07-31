@@ -59,6 +59,11 @@ def flood_threshold() -> int:
         valor = int(os.environ.get("COPILOTO_FLOOD_THRESHOLD", FLOOD_THRESHOLD_DEFAULT))
         return valor if valor > 0 else FLOOD_THRESHOLD_DEFAULT
     except (TypeError, ValueError):
+        # Degradar acá es correcto y deliberado (caso (c) del censo de `except`): una env var mal
+        # tipeada no puede ser el motivo de que se deje de capturar errores. Lanzar tumbaría el
+        # depósito entero por un problema de configuración de un umbral secundario, y loguear haría
+        # que un valor inválido grite en CADA error registrado — ruido en el peor momento. El default
+        # es sano y el test `test_un_umbral_invalido_se_degrada_al_default_en_vez_de_lanzar` lo fija.
         return FLOOD_THRESHOLD_DEFAULT
 
 
