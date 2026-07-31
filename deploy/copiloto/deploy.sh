@@ -76,6 +76,37 @@ tar -C "$LOCAL" \
     -czf - apps/copiloto apps/copiloto-web "$MOTOR" "$WORKER" deploy/copiloto \
   | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
 
+# ---------------------------------------------------------------------------------------------
+# Sello de PROCEDENCIA (2026-07-31). El deploy es `tar | ssh`: en el VPS NO hay git, así que sin
+# esto el árbol desplegado no declara de qué versión es y NADA puede verificarlo después — ni una
+# sesión que audita, ni el grafo de código, ni el ciclo de autosanación, que necesita saber si el
+# código que va a parchear es el MISMO que tiró el trauma. Un sanador que no puede distinguir "el
+# grafo está al día" de "el grafo describe otra cosa" parchea a ciegas.
+#
+# Honesto por diseño: el gate de drift de arriba sólo verifica `apps/copiloto` y `motor` contra
+# origin/main. Los otros 3 paths del tar van sin verificar, y el manifiesto lo dice en vez de
+# sugerir que todo el árbol está anclado. Fail-open: si algo acá falla, el manifiesto queda con
+# "indeterminado" y el deploy sigue — un sello que rompe el deploy sería peor que no tenerlo, pero
+# un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
+echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
+_sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
+_sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
+if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
+_manifiesto="$(cat <<JSON
+{
+  "desplegado_en": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "origin_main_sha": "${_sha}",
+  "gate_de_drift": "${_gate}",
+  "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
+  "paths_NO_verificados": ["apps/copiloto-web", "deploy/worker", "deploy/copiloto"],
+  "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
+  "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
+}
+JSON
+)"
+printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
+  || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
+
 echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build) -> dist servido mismo-origen por _mount_spa (web.py)"
 ssh "$HOST" bash -s -- "$REMOTE" <<'REMOTE_WEB'
 set -euo pipefail
