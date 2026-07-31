@@ -166,5 +166,34 @@ NINGUNO de los 3 se guardó (nadie tocó "Guardar" en el device), que es el comp
 este tool, no una falla. Criterio 3 (control, aclaración legítima no dispara) — **VERDE**, observado en
 vivo sin necesidad de forzarlo. Reportado a planificación como sustancialmente cerrado.
 
+## ✅ CERRADO (2026-07-29) — 0/10 contra el LLM real, y el flag levantado
+
+**No re-abrir sin evidencia nueva.** Dos cosas pasaron entre el v2 y el cierre:
+
+1. **Se tapó un hueco DENTRO del guardrail** (ítem 0.5a, `2a731c7` y anteriores): `trace.append()`
+   metía la tool al trace para cualquier status `!= "needs_confirmation"`, **incluido `"error"`** →
+   una tool que **falló** desactivaba la re-pregunta y habilitaba el cierre *"Listo"*. Versionado con
+   `workflow.patched("trace-solo-cuenta-tools-ok")`, en los dos sitios (incluido el reingreso
+   `confirm`, que un revisor adversarial encontró sin test).
+2. **Se midió la cura contra un LLM real, no guionado.** `scripts/retest_narra_sin_hacer.py --rondas 10`,
+   10 **sesiones limpias** distintas, usuario canónico, comparando lo que el texto afirma contra los
+   `execute_tool` completados en el history de Temporal: **`0 mentiras · 0 rondas sin medir · 10
+   intentadas`**. Contrasta con el **3/3** del spike original.
+
+**Consecuencia de producto:** el flag `MODO_AUTOMATICO_NO_DISPONIBLE` —que bloqueaba el modo
+automático, donde este fallo sería **invisible** por no haber card que falte— **se retiró** (PR #159).
+Verificado por efecto en prod: `POST /perfil-negocio` con `modo_ceremonia: automatico` → **200**;
+control con modo inexistente → **400**.
+
+⚠️ **El guardrail sigue en el código como deuda gestionada** (`TODO(narra-guardrail)`): la cura es
+`react_transcript`, el guardrail es el cinturón. Que 10/10 salgan limpias no prueba que el modelo no
+pueda narrar nunca — prueba que con la evidencia estructural **no lo hace en las condiciones medidas**.
+
+**Y el retest mismo dejó la lección más cara del frente:** el script dio **tres veredictos distintos
+sobre la misma realidad** antes de medir bien (v1 ✅ sin medir nada, v2 🔴 con un contador que nunca
+contaba). Ver [[el-instrumento-tambien-CONDENA-no-solo-absuelve]]. Procedimiento y resultado:
+`docs/copiloto-emprendedor/Manejo de errores/02-RETEST-modo-automatico.md`.
+
 [[instrumentos-que-confirman-en-vez-de-verificar]] [[vacio-no-es-hallazgo-correr-el-control]]
 [[conversacion-permanente-continue-as-new]] [[copiloto-motor-react-concatenadas]]
+[[el-instrumento-tambien-CONDENA-no-solo-absuelve]]

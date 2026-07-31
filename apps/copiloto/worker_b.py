@@ -39,6 +39,7 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from interceptor_errores import CapturaDeErroresInterceptor
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
@@ -292,8 +293,12 @@ async def main() -> None:
     client = await Client.connect(target, namespace=os.environ.get("TEMPORAL_NAMESPACE", "default"))
     cfg = build_worker_config(os.environ, conn_factory, client)
 
+    # Costura C3: la captura de errores de TODAS las activities entra acá y en ningún otro lado.
+    # Antes se cableaba `log_error` a mano feature por feature (2 de 80 rutas) — ver
+    # `interceptor_errores.py`. No altera el comportamiento: registra y re-lanza intacto.
     async with Worker(client, task_queue=AGENT_B_TASK_QUEUE,
-                      workflows=cfg["workflows"], activities=cfg["activities"]):
+                      workflows=cfg["workflows"], activities=cfg["activities"],
+                      interceptors=[CapturaDeErroresInterceptor()]):
         print(f"AGENT_B worker up on {AGENT_B_TASK_QUEUE}", flush=True)
         await asyncio.Event().wait()
 

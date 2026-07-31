@@ -44,6 +44,7 @@ from catalog import build_catalog
 import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
 from mp_credential_store import MpCredentialStore
@@ -544,6 +545,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
+
+    # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
+    # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
+    # `HTTPException` (404/409/400 son respuestas de negocio, no fallos) — ver `handler_errores_web`.
+    registrar_captura_global(app)
 
     # --- BFF: EXIGE tenant (auth per-request, spec §5.2) ------------------------
 
