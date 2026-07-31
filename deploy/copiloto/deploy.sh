@@ -142,6 +142,16 @@ fi
 REMOTE_GROQ
 
 echo "==> [4/7] provision.py (idempotente: CREATE ... IF NOT EXISTS / DROP+CREATE policy / GRANT repetible)"
+# ⚠️ `UC_RLS_FORCE=1` va acá y no es opcional (2026-07-31). Sin él, `provision.py` crea las tablas con
+# RLS pero SIN `FORCE`, y la app se conecta con el rol DUEÑO — que Postgres exime de sus propias
+# policies salvo FORCE. O sea: **toda tabla nueva nacería desprotegida**, en silencio, y el catálogo
+# diría `rowsecurity=t` igual. Lo cazamos con `copiloto_traumas`, la primera tabla creada después de
+# encender el RLS: llegó a producción con `FORCE=False` porque este paso no pasaba el flag.
+#
+# El flag existió sólo para el ORDEN del despliegue —activar FORCE antes de que el código que declara
+# el tenant estuviera corriendo dejaría a la app viendo 0 filas—, y ese paso YA se hizo: el 2026-07-31
+# se verificó por efecto que la GUC llega (canary HTTP) y se encendió sobre las 18 tablas. Desde
+# entonces, desplegar sin el flag es un downgrade silencioso para cualquier tabla nueva.
 ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_PROVISION'
 set -euo pipefail
 REMOTE="$1"; ENVDIR="$2"; VENV="$3"
@@ -149,7 +159,7 @@ set -a
 . "$ENVDIR/fusion-pg.env"
 set +a
 cd "$REMOTE/apps/copiloto"
-"$VENV/bin/python" provision.py
+UC_RLS_FORCE="${UC_RLS_FORCE:-1}" "$VENV/bin/python" provision.py
 REMOTE_PROVISION
 
 echo "==> [4.5/7] ensure_mi_dia_schedules.py (idempotente: ScheduleAlreadyRunningError -> ya existía, no duplica)"
