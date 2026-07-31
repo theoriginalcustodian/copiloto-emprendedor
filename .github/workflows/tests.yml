@@ -97,7 +97,12 @@ jobs:
           # permiso de escritura.
           psql "postgresql://copiloto:copiloto@localhost:5432/copiloto_test" -v ON_ERROR_STOP=1 -c \
             "CREATE SCHEMA IF NOT EXISTS uc_factory AUTHORIZATION copiloto_app;
-             GRANT ALL ON SCHEMA uc_factory TO copiloto_app;"
+             GRANT ALL ON SCHEMA uc_factory TO copiloto_app;
+             -- El schema \`auth\` lo crea el bootstrap de compatibilidad y pertenece al superuser;
+             -- el provisionado lo necesita (la policy legacy referencia \`auth.jwt()\`). En Supabase
+             -- real estos permisos vienen dados: acá hay que otorgarlos explícitamente.
+             GRANT USAGE ON SCHEMA auth TO copiloto_app;
+             GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO copiloto_app;"
       - name: provisionar el schema (idempotente)
         working-directory: apps/copiloto
         run: python provision.py
