@@ -60,6 +60,46 @@ _TABLAS_CON_TENANT = {
 }
 
 
+# ---------------------------------------------------------------------------
+# La conexión de los tests tiene que ser LA MISMA que la de producción
+# ---------------------------------------------------------------------------
+#
+# Hasta el 2026-07-31, 16 archivos de test repetían su propio `_conn_factory()` con
+# `psycopg2.connect(DATABASE_URL)` crudo. Producción NO usa eso: `serve.py` y `worker_b.py` envuelven
+# la fábrica con `conexion_con_tenant(...)`, que declara el tenant a la conexión. O sea que los tests
+# ejercitaban un camino **que no existe en producción** — y por eso ninguno podía haber detectado que
+# el RLS no estaba aplicando: no pasaban por la pieza que lo hace aplicar.
+#
+# Este fixture es esa fábrica, atada a un tenant explícito. `factory_de(cid)` es el equivalente exacto
+# de lo que hace el borde real (`require_tenant` en HTTP, la costura C3 en activities): declarar de
+# quién es la operación ANTES de tocar la base. El tenant sigue sin ser un parámetro del store — se
+# declara alrededor de la conexión, igual que en producción.
+@pytest.fixture
+def conn_de_tenant():
+    """`conn_de_tenant(cliente_id)` → conn_factory que declara ESE tenant, como el borde real.
+
+    Usar en vez de un `psycopg2.connect` crudo: con `FORCE ROW LEVEL SECURITY` una conexión sin
+    tenant declarado no lee ni escribe **nada**, que es precisamente el punto del mecanismo.
+    """
+    import psycopg2
+
+    from contexto_tenant import conexion_con_tenant, tenant
+
+    def factory_de(cliente_id: str):
+        envuelta = conexion_con_tenant(lambda: psycopg2.connect(os.environ["DATABASE_URL"]))
+
+        def factory():
+            # El scope se abre y se cierra alrededor de la APERTURA: `conexion_con_tenant` lee el
+            # ContextVar ahí y lo fija en la conexión con `set_config(..., false)`, que sobrevive al
+            # scope. Así la conexión queda atada a su tenant aunque el test siga con otro.
+            with tenant(cliente_id):
+                return envuelta()
+
+        return factory
+
+    return factory_de
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _barrer_huerfanas_de_test():
     """Borra al final SOLO lo que esta corrida creó y quedó sin tenant."""

@@ -37,16 +37,24 @@ MOTOR="motor"                                     # motor VENDORIZADO en el repo
 if [ "$#" -gt 0 ]; then PYTEST_ARGS="$*"; else PYTEST_ARGS="tests ../../motor -q"; fi
 
 # Opt-in explícito: sólo viaja si la sesión la exportó a propósito.
+# `UC_RLS_FORCE` viaja con ella: los tests que provisionan tablas al vuelo (el adversarial de RLS)
+# leen ese flag para decidir si nacen con `FORCE`. Default 1 — la base de tests ejercita el estado
+# FINAL de la migración, no la etapa intermedia en la que está producción hoy.
 if [ -n "${UC_TEST_DATABASE_URL:-}" ]; then
-  PG_ENV="DATABASE_URL='${UC_TEST_DATABASE_URL}' "
-  PG_AVISO="ON — los tests @necesita_pg CORREN y ESCRIBEN en la base apuntada"
+  PG_ENV="DATABASE_URL='${UC_TEST_DATABASE_URL}' UC_RLS_FORCE='${UC_RLS_FORCE:-1}' "
+  PG_AVISO="ON — los tests @necesita_pg CORREN y ESCRIBEN en la base apuntada (UC_RLS_FORCE=${UC_RLS_FORCE:-1})"
 else
   PG_ENV=""
   PG_AVISO="OFF — los tests @necesita_pg se SALTAN (no están en el número de abajo)"
 fi
 
 echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
-tar -C "$LOCAL" -czf - apps/copiloto "$MOTOR" deploy/worker \
+# `--exclude __pycache__` no es cosmética: el checkout es COMPARTIDO por varias sesiones, y basta con
+# que otra corra pytest para que se reescriban los `.pyc` mientras este `tar` lee el directorio →
+# "file changed as we read it" y el sync aborta. Además viajan más rápido sin ellos, y los `.pyc` de
+# la PC no le sirven a nadie en el VPS.
+tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+  -czf - apps/copiloto "$MOTOR" deploy/worker \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 echo "==> pytest en el venv del VPS: ${PYTEST_ARGS}"
@@ -58,7 +66,7 @@ set -e
 
 if [ -z "${UC_TEST_DATABASE_URL:-}" ]; then
   echo "==> ⚠️  Ese resultado NO incluye los tests contra Postgres. Para incluirlos:"
-  echo "        UC_TEST_DATABASE_URL='<url>' bash deploy/copiloto/sync-test-backend.sh ${PYTEST_ARGS}"
-  echo "        (hoy la única URL disponible es la de PRODUCCIÓN — ver la cabecera de este script)"
+  echo "        eval \"\$(bash deploy/copiloto/test-db.sh --export)\"   # base efímera, rol NO-superuser"
+  echo "        bash deploy/copiloto/sync-test-backend.sh ${PYTEST_ARGS}"
 fi
 exit $RC

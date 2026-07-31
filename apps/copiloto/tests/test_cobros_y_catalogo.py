@@ -52,18 +52,7 @@ def test_de_desestimado_no_se_vuelve_y_a_pendiente_no_se_llega_nunca():
 # ── contra la base ───────────────────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-def conn_factory():
-    import psycopg2
-
-    def factory():
-        c = psycopg2.connect(os.environ["DATABASE_URL"])
-        c.autocommit = True
-        return c
-    return factory
-
-
-@pytest.fixture
-def tenants(conn_factory):
+def tenants(conn_de_tenant):
     """Dos tenants sintéticos —A y B— y el barrido de todo lo que esta prueba escriba.
 
     Son DOS porque el test adversarial necesita un ajeno real. Con uno solo, "no ve lo del otro" no
@@ -71,16 +60,17 @@ def tenants(conn_factory):
     """
     a, b = str(uuid.uuid4()), str(uuid.uuid4())
     yield a, b
-    conn = conn_factory()
-    with conn.cursor() as cur:
-        for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_conceptos",
-                  "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
-            cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
-    conn.close()
+    for cid in (a, b):
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_conceptos",
+                      "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
+                cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id=%s", (cid,))
+        conn.close()
 
 
-def _comprobante(conn_factory, cliente_id: str, total: str, *, nro: int = 1, estado="emitida"):
-    conn = conn_factory()
+def _comprobante(conn_de_tenant, cliente_id: str, total: str, *, nro: int = 1, estado="emitida"):
+    conn = conn_de_tenant(cliente_id)()
     with conn.cursor() as cur:
         cur.execute("""INSERT INTO uc_factory.afip_comprobantes
                        (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
@@ -91,20 +81,20 @@ def _comprobante(conn_factory, cliente_id: str, total: str, *, nro: int = 1, est
 
 
 @necesita_pg
-def test_marcar_cobrada_DOS_VECES_deja_UN_cobro(conn_factory, tenants):
+def test_marcar_cobrada_DOS_VECES_deja_UN_cobro(conn_de_tenant, tenants):
     """El DoD del contrato, medido **sobre el efecto en la base** — no sobre lo que responde el store.
 
     Un endpoint puede contestar 201 dos veces y haber creado dos filas: la respuesta no es la prueba.
     """
     a, _ = tenants
-    comp = _comprobante(conn_factory, a, "1000.00")
-    store = CobroStore(conn_factory, a)
+    comp = _comprobante(conn_de_tenant, a, "1000.00")
+    store = CobroStore(conn_de_tenant(a), a)
     clave = str(uuid.uuid4())
 
     primero, r1 = store.registrar(comp, monto="1000.00", idem_key=clave)
     segundo, r2 = store.registrar(comp, monto="1000.00", idem_key=clave)
 
-    conn = conn_factory()
+    conn = conn_de_tenant(a)()
     with conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM uc_factory.copiloto_cobros "
                     "WHERE cliente_id=%s AND comprobante_id=%s", (a, comp))
@@ -115,7 +105,7 @@ def test_marcar_cobrada_DOS_VECES_deja_UN_cobro(conn_factory, tenants):
 
 
 @necesita_pg
-def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_factory, tenants):
+def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_de_tenant, tenants):
     """🔴 La carrera de verdad — el caso que el test de arriba **no** prueba.
 
     Con las dos llamadas en secuencia, el atajo por `idem_key` alcanza y el índice único nunca se
@@ -129,14 +119,14 @@ def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_factory
     import threading
 
     a, _ = tenants
-    comp = _comprobante(conn_factory, a, "1000.00", nro=5)
+    comp = _comprobante(conn_de_tenant, a, "1000.00", nro=5)
     clave = str(uuid.uuid4())
     listos, resultados = threading.Barrier(2), []
 
     def cobrar():
         listos.wait()                        # las dos arrancan juntas, no una después de la otra
         try:
-            resultados.append(CobroStore(conn_factory, a).registrar(
+            resultados.append(CobroStore(conn_de_tenant(a), a).registrar(
                 comp, monto="1000.00", idem_key=clave))
         except Exception as exc:             # noqa: BLE001 — se inspecciona abajo
             resultados.append(exc)
@@ -147,7 +137,7 @@ def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_factory
     for h in hilos:
         h.join()
 
-    conn = conn_factory()
+    conn = conn_de_tenant(a)()
     with conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM uc_factory.copiloto_cobros "
                     "WHERE cliente_id=%s AND comprobante_id=%s", (a, comp))
@@ -158,7 +148,7 @@ def test_dos_requests_SIMULTANEAS_con_la_misma_clave_dejan_UN_cobro(conn_factory
 
 
 @necesita_pg
-def test_CONTROL_sin_idem_key_los_dos_cobros_entran_y_es_correcto(conn_factory, tenants):
+def test_CONTROL_sin_idem_key_los_dos_cobros_entran_y_es_correcto(conn_de_tenant, tenants):
     """El control que le da sentido al test de arriba.
 
     Si sin clave también dedupara, el test anterior pasaría aunque la idempotencia no existiera —
@@ -166,8 +156,8 @@ def test_CONTROL_sin_idem_key_los_dos_cobros_entran_y_es_correcto(conn_factory, 
     parciales del mismo monto son un caso real**.
     """
     a, _ = tenants
-    comp = _comprobante(conn_factory, a, "1000.00", nro=2)
-    store = CobroStore(conn_factory, a)
+    comp = _comprobante(conn_de_tenant, a, "1000.00", nro=2)
+    store = CobroStore(conn_de_tenant(a), a)
 
     store.registrar(comp, monto="400.00")
     _, resumen = store.registrar(comp, monto="400.00")
@@ -177,64 +167,68 @@ def test_CONTROL_sin_idem_key_los_dos_cobros_entran_y_es_correcto(conn_factory, 
 
 
 @necesita_pg
-def test_no_se_puede_cobrar_mas_que_el_saldo(conn_factory, tenants):
+def test_no_se_puede_cobrar_mas_que_el_saldo(conn_de_tenant, tenants):
     a, _ = tenants
-    comp = _comprobante(conn_factory, a, "500.00", nro=3)
-    store = CobroStore(conn_factory, a)
+    comp = _comprobante(conn_de_tenant, a, "500.00", nro=3)
+    store = CobroStore(conn_de_tenant(a), a)
     store.registrar(comp, monto="300.00")
     with pytest.raises(CobroInvalido):
         store.registrar(comp, monto="300.00")
 
 
 @necesita_pg
-def test_impagos_trae_el_saldo_y_el_total__y_la_anulada_queda_afuera(conn_factory, tenants):
+def test_impagos_trae_el_saldo_y_el_total__y_la_anulada_queda_afuera(conn_de_tenant, tenants):
     """Una factura anulada NO es una deuda. Si entrara, «me deben» mostraría plata que nadie va a
     pagar nunca — y ese número mal una vez quema la pantalla para siempre."""
     a, _ = tenants
-    viva = _comprobante(conn_factory, a, "1000.00", nro=10)
-    _comprobante(conn_factory, a, "9999.00", nro=11, estado="anulada")
-    CobroStore(conn_factory, a).registrar(viva, monto="250.00")
+    viva = _comprobante(conn_de_tenant, a, "1000.00", nro=10)
+    _comprobante(conn_de_tenant, a, "9999.00", nro=11, estado="anulada")
+    CobroStore(conn_de_tenant(a), a).registrar(viva, monto="250.00")
 
-    salida = CobroStore(conn_factory, a).impagos()
+    salida = CobroStore(conn_de_tenant(a), a).impagos()
 
     assert [c["id"] for c in salida["comprobantes"]] == [viva]
     assert salida["total_adeudado"] == "750.00"
 
 
 @necesita_pg
-def test_ADVERSARIAL_A_no_puede_cobrar_ni_ver_lo_de_B(conn_factory, tenants):
+def test_ADVERSARIAL_A_no_puede_cobrar_ni_ver_lo_de_B(conn_de_tenant, tenants):
     """Regla dura del repo: un control de acceso **sin test adversarial es un control no verificado**.
 
     El happy-path ("cada uno ve lo suyo") pasa igual si el aislamiento no existe. Sólo el caso hostil
     —A pidiendo explícitamente el recurso de B— distingue un guard real de uno ausente.
+
+    Ahora hay DOS barreras y el test las cruza las dos: el filtro `cliente_id` explícito del store, y
+    el RLS de la base — la conexión de A nace declarando A, así que la fila de B le es invisible
+    incluso si la query se olvidara del WHERE.
     """
     a, b = tenants
-    de_b = _comprobante(conn_factory, b, "1000.00", nro=20)
-    CobroStore(conn_factory, b).registrar(de_b, monto="1000.00")
-    ConceptoStore(conn_factory, b).crear("Pintura de living", "50000")
+    de_b = _comprobante(conn_de_tenant, b, "1000.00", nro=20)
+    CobroStore(conn_de_tenant(b), b).registrar(de_b, monto="1000.00")
+    ConceptoStore(conn_de_tenant(b), b).crear("Pintura de living", "50000")
 
-    de_a = CobroStore(conn_factory, a)
+    de_a = CobroStore(conn_de_tenant(a), a)
     cobro, resumen = de_a.registrar(de_b, monto="100.00")
     assert cobro is None and resumen is None, "A pudo registrar un cobro sobre la factura de B"
     assert de_a.resumen(de_b) is None
     assert de_a.impagos()["comprobantes"] == []
-    assert ConceptoStore(conn_factory, a).listar() == []
+    assert ConceptoStore(conn_de_tenant(a), a).listar() == []
 
     # y el de B sigue intacto: el intento de A no pudo ni siquiera ensuciarlo
-    assert CobroStore(conn_factory, b).resumen(de_b)["estado_cobro"] == COBRADA
+    assert CobroStore(conn_de_tenant(b), b).resumen(de_b)["estado_cobro"] == COBRADA
 
 
 # ── catálogo ─────────────────────────────────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_el_catalogo_dedupa_por_nombre_normalizado(conn_factory, tenants):
+def test_el_catalogo_dedupa_por_nombre_normalizado(conn_de_tenant, tenants):
     """`"Pintura de Living"` y `"pintura  de living."` son el mismo concepto.
 
     Si entraran los dos, la serie de precios del grafo quedaría partida — que es exactamente el
     problema que el catálogo viene a resolver.
     """
     a, _ = tenants
-    store = ConceptoStore(conn_factory, a)
+    store = ConceptoStore(conn_de_tenant(a), a)
     creado = store.crear("Pintura de Living", "50000")
     with pytest.raises(ConceptoDuplicado) as exc:
         store.crear("pintura  de living.", "60000")
@@ -242,11 +236,11 @@ def test_el_catalogo_dedupa_por_nombre_normalizado(conn_factory, tenants):
 
 
 @necesita_pg
-def test_desactivar_no_borra__y_el_nombre_sigue_ocupado(conn_factory, tenants):
+def test_desactivar_no_borra__y_el_nombre_sigue_ocupado(conn_de_tenant, tenants):
     """Desactivar y recrear el mismo nombre **reactiva el existente**, no crea un gemelo: si no
     chocara, la historia de precios de ese concepto quedaría partida en dos filas."""
     a, _ = tenants
-    store = ConceptoStore(conn_factory, a)
+    store = ConceptoStore(conn_de_tenant(a), a)
     creado = store.crear("Instalación eléctrica", "80000")
     store.desactivar(creado["id"])
 
@@ -257,14 +251,14 @@ def test_desactivar_no_borra__y_el_nombre_sigue_ocupado(conn_factory, tenants):
 
 
 @necesita_pg
-def test_editar_el_nombre_NO_borra_el_precio(conn_factory, tenants):
+def test_editar_el_nombre_NO_borra_el_precio(conn_de_tenant, tenants):
     """Edición parcial de verdad: la clave ausente no se toca.
 
     Si el store armara el UPDATE con todas las columnas, guardar el nombre pondría el precio en NULL
     — el bug clásico de "guardé una cosa y se borró otra", que además nadie mira hasta que factura.
     """
     a, _ = tenants
-    store = ConceptoStore(conn_factory, a)
+    store = ConceptoStore(conn_de_tenant(a), a)
     creado = store.crear("Chapa y pintura", "120000")
     editado = store.editar(creado["id"], {"nombre": "Chapa y pintura completa"})
     assert editado["precio_referencia"] == "120000.00"
@@ -274,7 +268,7 @@ def test_editar_el_nombre_NO_borra_el_precio(conn_factory, tenants):
 
 
 @necesita_pg
-def test_cambiar_el_precio_de_referencia_NO_altera_un_presupuesto_ya_emitido(conn_factory, tenants):
+def test_cambiar_el_precio_de_referencia_NO_altera_un_presupuesto_ya_emitido(conn_de_tenant, tenants):
     """El DoD del contrato §5, y la razón por la que el hito 5 puede apoyarse en la historia.
 
     Si el presupuesto tomara el precio del catálogo al leerse en vez de congelarlo al emitirse,
@@ -282,10 +276,10 @@ def test_cambiar_el_precio_de_referencia_NO_altera_un_presupuesto_ya_emitido(con
     siempre se cobró lo de hoy.
     """
     a, _ = tenants
-    conceptos = ConceptoStore(conn_factory, a)
+    conceptos = ConceptoStore(conn_de_tenant(a), a)
     concepto = conceptos.crear("Pintura de living", "50000")
 
-    presupuestos = PresupuestoStore(conn_factory, a)
+    presupuestos = PresupuestoStore(conn_de_tenant(a), a)
     presupuesto = presupuestos.crear(
         concepto="Pintura", receptor={"nombre": "Panadería Los Tilos"},
         items=[{"descripcion": "Pintura de living", "cantidad": Decimal(1),
@@ -302,10 +296,10 @@ def test_cambiar_el_precio_de_referencia_NO_altera_un_presupuesto_ya_emitido(con
 # ── estado del presupuesto ───────────────────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_las_tres_categorias_no_se_mezclan(conn_factory, tenants):
+def test_las_tres_categorias_no_se_mezclan(conn_de_tenant, tenants):
     """Ganado / perdido / **no sé**. Un presupuesto nuevo nace en "no sé", no en "perdido"."""
     a, _ = tenants
-    store = PresupuestoStore(conn_factory, a)
+    store = PresupuestoStore(conn_de_tenant(a), a)
     p = store.crear(concepto="Techo", receptor={"nombre": "Kiosco La Esquina"},
                     items=[{"descripcion": "Membrana", "cantidad": Decimal(1),
                             "precio_unitario": Decimal("30000"), "codigo": ""}])
@@ -318,10 +312,10 @@ def test_las_tres_categorias_no_se_mezclan(conn_factory, tenants):
 
 
 @necesita_pg
-def test_remarcar_el_mismo_estado_no_es_un_conflicto(conn_factory, tenants):
+def test_remarcar_el_mismo_estado_no_es_un_conflicto(conn_de_tenant, tenants):
     """Repetir la misma orden no es un error: la app tiene que poder reintentar si se cortó la red."""
     a, _ = tenants
-    store = PresupuestoStore(conn_factory, a)
+    store = PresupuestoStore(conn_de_tenant(a), a)
     p = store.crear(concepto="Vereda", receptor={"nombre": "Taller Don José"},
                     items=[{"descripcion": "Cemento", "cantidad": Decimal(2),
                             "precio_unitario": Decimal("15000"), "codigo": ""}])
@@ -330,15 +324,15 @@ def test_remarcar_el_mismo_estado_no_es_un_conflicto(conn_factory, tenants):
 
 
 @necesita_pg
-def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_factory, tenants):
+def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_de_tenant, tenants):
     """Se envejece la fila en la base, no un flag: si `sin_respuesta` estuviera guardado, mover la
     fecha no lo cambiaría — y ahí se vería que hace falta un cron para mantenerlo al día."""
     a, _ = tenants
-    store = PresupuestoStore(conn_factory, a)
+    store = PresupuestoStore(conn_de_tenant(a), a)
     p = store.crear(concepto="Portón", receptor={"nombre": "Corralón Norte"},
                     items=[{"descripcion": "Chapa", "cantidad": Decimal(1),
                             "precio_unitario": Decimal("90000"), "codigo": ""}])
-    conn = conn_factory()
+    conn = conn_de_tenant(a)()
     with conn.cursor() as cur:
         cur.execute("UPDATE uc_factory.copiloto_presupuestos SET fecha = now() - interval '90 days' "
                     "WHERE cliente_id=%s AND id=%s", (a, p["id"]))
@@ -354,7 +348,7 @@ def test_sin_respuesta_se_DERIVA_del_tiempo__no_se_guarda(conn_factory, tenants)
 # ── nacio_completo: el insumo de la oferta del modo automático ────────────────────────────────────
 
 @necesita_pg
-def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_factory, tenants):
+def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_de_tenant, tenants):
     """🔴 La razón de existir de la columna, medida antes de agregarla.
 
     `falta` se calcula del estado ACTUAL: un ingreso que entró sin cliente ni medio y se completó
@@ -363,7 +357,7 @@ def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_factory, tenants):
     automático NO le tiene que llegar, porque en automático no hay card que corrija.
     """
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     store.registrar_suelto(monto=1000, cliente_nombre="Panadería", medio="efectivo",
                            concepto="torta", idem_key="nc-a")
     b = store.registrar_suelto(monto=2000, idem_key="nc-b")
@@ -379,40 +373,40 @@ def test_nacio_completo_distingue_lo_que_FALTA_no_puede(conn_factory, tenants):
 
 
 @necesita_pg
-def test_completar_NO_reescribe_como_nacio(conn_factory, tenants):
+def test_completar_NO_reescribe_como_nacio(conn_de_tenant, tenants):
     """Es un hecho del momento, no un estado. Si `completar` lo actualizara, la columna volvería a ser
     `falta` con otro nombre y el problema entero regresaría."""
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     b = store.registrar_suelto(monto=2000, idem_key="nc-c")
     store.completar(b["id"], {"cliente_nombre": "X", "medio": "efectivo", "concepto": "y"})
     assert store.completitud_dictada()["incompletos"] == 1
 
 
 @necesita_pg
-def test_sin_ingresos_medidos_el_porcentaje_es_None_y_no_cero(conn_factory, tenants):
+def test_sin_ingresos_medidos_el_porcentaje_es_None_y_no_cero(conn_de_tenant, tenants):
     """`0%` diría «dicta mal»; lo cierto es «todavía no sé». De acá sale una oferta, así que la
     diferencia no es cosmética."""
     a, _ = tenants
-    c = CobroStore(conn_factory, a).completitud_dictada()
+    c = CobroStore(conn_de_tenant(a), a).completitud_dictada()
     assert c["porcentaje"] is None
     assert c["total_medido"] == 0
 
 
 @necesita_pg
-def test_los_cobros_de_FACTURA_no_entran_en_la_cuenta(conn_factory, tenants):
+def test_los_cobros_de_FACTURA_no_entran_en_la_cuenta(conn_de_tenant, tenants):
     """La oferta mide cómo DICTA el emprendedor. Un cobro que salió de tocar «Ya me la pagaron» no
     dice nada de eso, y contarlo como completo inflaría el porcentaje con algo que no es dictado."""
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
-    store.registrar(_comprobante(conn_factory, a, "500.00"), idem_key="nc-fact")
+    store = CobroStore(conn_de_tenant(a), a)
+    store.registrar(_comprobante(conn_de_tenant, a, "500.00"), idem_key="nc-fact")
     assert store.completitud_dictada()["total_medido"] == 0
 
 
 # ── la fecha del ingreso se corrige DESPUÉS, en la card `ingreso_anotado` ──────────────────────
 
 @necesita_pg
-def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_factory, tenants):
+def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_de_tenant, tenants):
     """🔴 Sin esto, una fecha dictada mal NO se podia arreglar por ningun lado.
 
     El ingreso se guarda de una (§2.bis: un ingreso que espera confirmacion reintroduce la caja que
@@ -424,7 +418,7 @@ def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_factory, te
     confirmado lo que ya creia.
     """
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto=40000, idem_key="fecha-uno")
     hoy = ingreso["fecha"]
 
@@ -435,11 +429,11 @@ def test_completar_corrige_la_FECHA__el_unico_camino_que_existe(conn_factory, te
 
 
 @necesita_pg
-def test_corregir_la_fecha_NO_toca_el_monto_ni_lo_demas(conn_factory, tenants):
+def test_corregir_la_fecha_NO_toca_el_monto_ni_lo_demas(conn_de_tenant, tenants):
     """Parcial de verdad: la clave ausente no se toca. Un PATCH de fecha que pisara el monto seria
     peor que no tener el campo — moveria plata sin que nadie lo pidiera."""
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto=40000, cliente_nombre="Panaderia", medio="efectivo",
                                      concepto="torta", idem_key="fecha-dos")
 
@@ -452,7 +446,7 @@ def test_corregir_la_fecha_NO_toca_el_monto_ni_lo_demas(conn_factory, tenants):
 
 
 @necesita_pg
-def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory, tenants):
+def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_de_tenant, tenants):
     """El `except` de la capa web llego CON este campo, y por eso hay test.
 
     Hasta que el body acepto `fecha`, `completar` solo tocaba texto y no podia levantar
@@ -460,7 +454,7 @@ def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory
     un error del servidor por un dato del usuario, que ademas la app no sabe leer.
     """
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto=1000, idem_key="fecha-tres")
 
     with pytest.raises(CobroInvalido):
@@ -468,7 +462,7 @@ def test_una_fecha_ilegible_es_400_del_usuario__no_500_del_servidor(conn_factory
 
 
 @necesita_pg
-def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_factory, tenants):
+def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_de_tenant, tenants):
     """PLANIFICACION lo decidio el 2026-07-22, despues de que este test fijara la decision pendiente.
 
     La card existe porque un «quince mil» que Whisper oyo «cincuenta mil» **solo se detecta viendolo**.
@@ -477,7 +471,7 @@ def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_factory
     vuelve a pasar por el reconocimiento que acaba de fallar.
     """
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto=50000, idem_key="monto-uno")
 
     corregido = store.completar(ingreso["id"], {"monto": "15000"})
@@ -491,11 +485,11 @@ def test_el_monto_se_corrige__es_el_campo_por_el_que_la_card_existe(conn_factory
 
 
 @necesita_pg
-def test_corregir_el_monto_a_cero_o_negativo_NO_se_acepta(conn_factory, tenants):
+def test_corregir_el_monto_a_cero_o_negativo_NO_se_acepta(conn_de_tenant, tenants):
     """Misma cota que el alta, y por el mismo motivo: si el monto entrara por acá con otra validacion
     habria **dos definiciones de «monto valido»**, y la mas laxa seria la verdadera."""
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto=15000, idem_key="monto-cero")
 
     for invalido in (0, -1, "0"):

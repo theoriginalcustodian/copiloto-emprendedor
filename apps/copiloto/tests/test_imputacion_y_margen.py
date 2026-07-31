@@ -22,35 +22,26 @@ necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
 
 
 @pytest.fixture
-def conn_factory():
-    import psycopg2
-
-    def factory():
-        c = psycopg2.connect(os.environ["DATABASE_URL"])
-        c.autocommit = True
-        return c
-    return factory
-
-
-@pytest.fixture
-def tenants(conn_factory):
+def tenants(conn_de_tenant):
     a, b = str(uuid.uuid4()), str(uuid.uuid4())
     yield a, b
-    conn = conn_factory()
-    with conn.cursor() as cur:
-        for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_gastos",
-                  "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
-            cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
-    conn.close()
+    for cid in (a, b):
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            for t in ("copiloto_eventos", "copiloto_cobros", "copiloto_gastos",
+                      "copiloto_presupuesto_items", "copiloto_presupuestos", "afip_comprobantes"):
+                cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id = %s", (cid,))
+        conn.close()
 
 
-def _trabajo_completo(conn_factory, cid, *, nro=800):
+def _trabajo_completo(conn_de_tenant, cid, *, nro=800):
     """Un trabajo con la cadena ENTERA: presupuesto → factura → (listo para cobrar).
 
     El enlace se arma como en producción (`factura_id` en el presupuesto + `workflow_id` en el
     comprobante), no seteando a mano un id "equivalente": si el formato del `workflow_id` cambiara,
     este test tiene que romperse.
     """
+    conn_factory = conn_de_tenant(cid)
     presupuestos = PresupuestoStore(conn_factory, cid)
     p = presupuestos.crear(concepto="Pintura", receptor={"nombre": "Panadería Los Tilos"},
                            items=[{"descripcion": "Living", "cantidad": Decimal(1),
@@ -70,7 +61,7 @@ def _trabajo_completo(conn_factory, cid, *, nro=800):
 
 
 @necesita_pg
-def test_la_cadena_se_resuelve_desde_CUALQUIER_eslabon(conn_factory, tenants):
+def test_la_cadena_se_resuelve_desde_CUALQUIER_eslabon(conn_de_tenant, tenants):
     """Presupuesto ↔ factura: preguntar por uno tiene que traer al otro.
 
     Es la pieza que hace que imputar a la factura y preguntar por el presupuesto den lo mismo. Sin
@@ -78,8 +69,8 @@ def test_la_cadena_se_resuelve_desde_CUALQUIER_eslabon(conn_factory, tenants):
     verían plausibles.
     """
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a)
-    store = TrabajoStore(conn_factory, a)
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a)
+    store = TrabajoStore(conn_de_tenant(a), a)
 
     desde_arriba = store.resolver("presupuesto", presupuesto)
     desde_abajo = store.resolver("comprobante", comprobante)
@@ -89,7 +80,7 @@ def test_la_cadena_se_resuelve_desde_CUALQUIER_eslabon(conn_factory, tenants):
 
 
 @necesita_pg
-def test_el_margen_da_IGUAL_imputando_al_presupuesto_o_a_la_factura(conn_factory, tenants):
+def test_el_margen_da_IGUAL_imputando_al_presupuesto_o_a_la_factura(conn_de_tenant, tenants):
     """🔴 El corazón del addendum: da igual a qué eslabón imputó el emprendedor.
 
     Y el gasto se cuenta **una sola vez**: si el cálculo sumara por cada eslabón que coincide, un
@@ -97,10 +88,10 @@ def test_el_margen_da_IGUAL_imputando_al_presupuesto_o_a_la_factura(conn_factory
     dirección que hace que el emprendedor deje de tomar un trabajo que sí le convenía.
     """
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a)
-    gastos = GastoStore(conn_factory, a)
-    trabajos = TrabajoStore(conn_factory, a)
-    CobroStore(conn_factory, a).registrar(comprobante, monto="100000.00")
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a)
+    gastos = GastoStore(conn_de_tenant(a), a)
+    trabajos = TrabajoStore(conn_de_tenant(a), a)
+    CobroStore(conn_de_tenant(a), a).registrar(comprobante, monto="100000.00")
 
     g1 = gastos.crear(monto="30000", categoria="mercaderia")
     g2 = gastos.crear(monto="10000", categoria="transporte")
@@ -116,24 +107,24 @@ def test_el_margen_da_IGUAL_imputando_al_presupuesto_o_a_la_factura(conn_factory
 
 
 @necesita_pg
-def test_el_conteo_de_gastos_imputados_viaja_SIEMPRE__aunque_sea_cero(conn_factory, tenants):
+def test_el_conteo_de_gastos_imputados_viaja_SIEMPRE__aunque_sea_cero(conn_de_tenant, tenants):
     """Un margen incompleto se ve igual que uno bueno.
 
     Sin el conteo, un trabajo con 0 gastos imputados muestra margen 100% y parece una gran noticia.
     Por eso el campo va aunque valga 0: es lo único con lo que la pantalla puede avisar.
     """
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a, nro=801)
-    CobroStore(conn_factory, a).registrar(comprobante, monto="100000.00")
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=801)
+    CobroStore(conn_de_tenant(a), a).registrar(comprobante, monto="100000.00")
 
-    resultado = TrabajoStore(conn_factory, a).margen("presupuesto", presupuesto)
+    resultado = TrabajoStore(conn_de_tenant(a), a).margen("presupuesto", presupuesto)
 
     assert resultado["gastos_imputados"] == 0
     assert resultado["margen"] == "100000.00"      # ← plausible y engañoso: por eso va el conteo
 
 
 @necesita_pg
-def test_no_se_puede_imputar_a_DOS_eslabones_a_la_vez(conn_factory, tenants):
+def test_no_se_puede_imputar_a_DOS_eslabones_a_la_vez(conn_de_tenant, tenants):
     """El check vive en la TABLA, no en el endpoint.
 
     Un chequeo sólo en Python dejaría entrar cualquier otra vía —la tool del copiloto, un backfill,
@@ -141,10 +132,10 @@ def test_no_se_puede_imputar_a_DOS_eslabones_a_la_vez(conn_factory, tenants):
     en el margen, que se ve exactamente igual que un margen malo.
     """
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a, nro=802)
-    gasto = GastoStore(conn_factory, a).crear(monto="5000", categoria="otros")
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=802)
+    gasto = GastoStore(conn_de_tenant(a), a).crear(monto="5000", categoria="otros")
 
-    conn = conn_factory()
+    conn = conn_de_tenant(a)()
     with pytest.raises(Exception) as exc:      # el motor, no la app
         with conn.cursor() as cur:
             cur.execute("UPDATE uc_factory.copiloto_gastos "
@@ -154,12 +145,12 @@ def test_no_se_puede_imputar_a_DOS_eslabones_a_la_vez(conn_factory, tenants):
 
 
 @necesita_pg
-def test_reimputar_LIMPIA_la_referencia_anterior(conn_factory, tenants):
+def test_reimputar_LIMPIA_la_referencia_anterior(conn_de_tenant, tenants):
     """Mover un gasto de un trabajo a otro no puede dejar puesta la referencia vieja: el check lo
     atraparía, pero fallar es peor que no ensuciar."""
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a, nro=803)
-    gastos, trabajos = GastoStore(conn_factory, a), TrabajoStore(conn_factory, a)
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=803)
+    gastos, trabajos = GastoStore(conn_de_tenant(a), a), TrabajoStore(conn_de_tenant(a), a)
     g = gastos.crear(monto="7000", categoria="otros")
 
     trabajos.imputar(g["id"], "presupuesto", presupuesto)
@@ -170,41 +161,45 @@ def test_reimputar_LIMPIA_la_referencia_anterior(conn_factory, tenants):
 
 
 @necesita_pg
-def test_un_gasto_SIN_imputar_entra_a_la_caja_igual(conn_factory, tenants):
+def test_un_gasto_SIN_imputar_entra_a_la_caja_igual(conn_de_tenant, tenants):
     """Lo que no se negocia del addendum §3: imputar nunca es obligatorio.
 
     Si lo fuera, el emprendedor dejaría de cargar gastos — y perderíamos el dato bueno por exigir el
     perfecto.
     """
     a, _ = tenants
-    gastos = GastoStore(conn_factory, a)
+    gastos = GastoStore(conn_de_tenant(a), a)
     g = gastos.crear(monto="9000", categoria="otros")
     assert gastos.detalle(g["id"]) is not None
     assert g["monto"] == "9000.00"
 
 
 @necesita_pg
-def test_el_cobro_DICTADO_existe_sin_factura__y_se_distingue_del_de_mercadopago(conn_factory, tenants):
+def test_el_cobro_DICTADO_existe_sin_factura__y_se_distingue_del_de_mercadopago(conn_de_tenant, tenants):
     """Sin esto la caja miente: el efectivo no dejaba rastro de ninguna clase."""
     a, _ = tenants
-    presupuesto, _ = _trabajo_completo(conn_factory, a, nro=804)
-    store = CobroStore(conn_factory, a)
+    presupuesto, _ = _trabajo_completo(conn_de_tenant, a, nro=804)
+    store = CobroStore(conn_de_tenant(a), a)
 
     suelto = store.registrar_suelto(monto="85000", medio="efectivo", presupuesto_ref=presupuesto)
 
     assert suelto["comprobante_id"] is None
     assert suelto["origen"] == "manual"
     # y entra al margen del trabajo aunque nunca se haya facturado
-    assert TrabajoStore(conn_factory, a).margen("presupuesto", presupuesto)["cobrado"] == "85000.00"
+    assert TrabajoStore(conn_de_tenant(a), a).margen("presupuesto", presupuesto)["cobrado"] == "85000.00"
 
 
 @necesita_pg
-def test_ADVERSARIAL_A_no_imputa_un_gasto_a_un_trabajo_de_B(conn_factory, tenants):
-    """Regla dura: el control se ejercita con el caso hostil, no con el happy-path."""
+def test_ADVERSARIAL_A_no_imputa_un_gasto_a_un_trabajo_de_B(conn_de_tenant, tenants):
+    """Regla dura: el control se ejercita con el caso hostil, no con el happy-path.
+
+    Ahora hay DOS barreras y el test las cruza las dos: el filtro `cliente_id` explícito de
+    `resolver()`, y el RLS de la base — la conexión de A nace declarando A, así que la fila de B le es
+    invisible incluso si la query se olvidara del WHERE."""
     a, b = tenants
-    presupuesto_de_b, _ = _trabajo_completo(conn_factory, b, nro=805)
-    gasto_de_a = GastoStore(conn_factory, a).crear(monto="1000", categoria="otros")
-    trabajos_de_a = TrabajoStore(conn_factory, a)
+    presupuesto_de_b, _ = _trabajo_completo(conn_de_tenant, b, nro=805)
+    gasto_de_a = GastoStore(conn_de_tenant(a), a).crear(monto="1000", categoria="otros")
+    trabajos_de_a = TrabajoStore(conn_de_tenant(a), a)
 
     with pytest.raises(TrabajoInexistente):
         trabajos_de_a.imputar(gasto_de_a["id"], "presupuesto", presupuesto_de_b)
@@ -212,14 +207,14 @@ def test_ADVERSARIAL_A_no_imputa_un_gasto_a_un_trabajo_de_B(conn_factory, tenant
         trabajos_de_a.margen("presupuesto", presupuesto_de_b)
 
     # CONTROL: si A tampoco pudiera con lo SUYO, lo roto sería el test y no habría guard que probar
-    propio, _ = _trabajo_completo(conn_factory, a, nro=806)
+    propio, _ = _trabajo_completo(conn_de_tenant, a, nro=806)
     assert trabajos_de_a.imputar(gasto_de_a["id"], "presupuesto", propio)["presupuesto_ref"] == propio
 
 
 # ── INGRESOS: la función propia (addendum del escritorio) ────────────────────────────────────────
 
 @necesita_pg
-def test_un_ingreso_SOLO_CON_MONTO_se_guarda__y_dice_que_falto(conn_factory, tenants):
+def test_un_ingreso_SOLO_CON_MONTO_se_guarda__y_dice_que_falto(conn_de_tenant, tenants):
     """La especificación textual del operador: *«igual que si se lo dictara a la secretaria»*.
 
     A una secretaria le decís «me pagaron 85 mil» y lo anota. No te pide la fecha, ni el medio, ni el
@@ -228,7 +223,7 @@ def test_un_ingreso_SOLO_CON_MONTO_se_guarda__y_dice_que_falto(conn_factory, ten
     divergir.
     """
     a, _ = tenants
-    ingreso = CobroStore(conn_factory, a).registrar_suelto(monto="85000")
+    ingreso = CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="85000")
 
     assert ingreso["monto"] == "85000.00"
     assert ingreso["fecha"] is not None                  # hoy, sin que nadie lo pida
@@ -236,11 +231,11 @@ def test_un_ingreso_SOLO_CON_MONTO_se_guarda__y_dice_que_falto(conn_factory, ten
 
 
 @necesita_pg
-def test_contestar_el_aviso_completa_el_MISMO_ingreso__no_crea_otro(conn_factory, tenants):
+def test_contestar_el_aviso_completa_el_MISMO_ingreso__no_crea_otro(conn_de_tenant, tenants):
     """DoD del addendum. Si contestar creara un registro nuevo, el aviso duplicaría la caja — que es
     exactamente el daño que la función viene a evitar."""
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     ingreso = store.registrar_suelto(monto="85000")
 
     completo = store.completar(ingreso["id"], {"cliente_nombre": "Panadería", "medio": "efectivo"})
@@ -251,14 +246,14 @@ def test_contestar_el_aviso_completa_el_MISMO_ingreso__no_crea_otro(conn_factory
 
 
 @necesita_pg
-def test_el_duplicado_probable_se_DETECTA__y_no_bloquea(conn_factory, tenants):
+def test_el_duplicado_probable_se_DETECTA__y_no_bloquea(conn_de_tenant, tenants):
     """Un dato faltante se ve; un ingreso de más **no se ve nunca**. Por eso éste se pregunta antes.
 
     Pero avisa y no prohíbe: dos cobros iguales del mismo cliente en la misma semana son un caso real,
     y el emprendedor sabe mejor que el sistema cuál de los dos es.
     """
     a, _ = tenants
-    store = CobroStore(conn_factory, a)
+    store = CobroStore(conn_de_tenant(a), a)
     store.registrar_suelto(monto="85000", cliente_nombre="Panadería", medio="mercadopago")
 
     candidato = store.posible_duplicado(monto="85000", cliente_nombre="panadería")
@@ -274,11 +269,11 @@ def test_el_duplicado_probable_se_DETECTA__y_no_bloquea(conn_factory, tenants):
 
 
 @necesita_pg
-def test_los_de_mercadopago_y_los_dictados_conviven_pero_se_DISTINGUEN(conn_factory, tenants):
+def test_los_de_mercadopago_y_los_dictados_conviven_pero_se_DISTINGUEN(conn_de_tenant, tenants):
     """Si se mezclaran sin marca, en tres meses nadie sabría qué dato es duro y cuál es de memoria."""
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a, nro=810)
-    store = CobroStore(conn_factory, a)
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a, nro=810)
+    store = CobroStore(conn_de_tenant(a), a)
     store.registrar(comprobante, monto="100000.00")      # el de la factura
     store.registrar_suelto(monto="85000", medio="efectivo")
 
@@ -301,20 +296,23 @@ def test_los_de_mercadopago_y_los_dictados_conviven_pero_se_DISTINGUEN(conn_fact
 
 
 @necesita_pg
-def test_ADVERSARIAL_A_no_ve_ni_borra_los_ingresos_de_B(conn_factory, tenants):
+def test_ADVERSARIAL_A_no_ve_ni_borra_los_ingresos_de_B(conn_de_tenant, tenants):
+    """Ahora hay DOS barreras: el filtro `cliente_id` explícito del store, y el RLS de la base — la
+    conexión de A nace declarando A, así que las filas de B le son invisibles incluso si la query se
+    olvidara del WHERE."""
     a, b = tenants
-    de_b = CobroStore(conn_factory, b).registrar_suelto(monto="99000", cliente_nombre="Kiosco")
-    de_a = CobroStore(conn_factory, a)
+    de_b = CobroStore(conn_de_tenant(b), b).registrar_suelto(monto="99000", cliente_nombre="Kiosco")
+    de_a = CobroStore(conn_de_tenant(a), a)
 
     assert de_a.listar_ingresos()["ingresos"] == []
     assert de_a.borrar_ingreso(de_b["id"]) is False
     assert de_a.completar(de_b["id"], {"medio": "hackeado"}) is None
     # CONTROL: B sigue intacto — el intento de A no pudo ni siquiera ensuciarlo
-    assert CobroStore(conn_factory, b).listar_ingresos()["ingresos"][0]["medio"] == ""
+    assert CobroStore(conn_de_tenant(b), b).listar_ingresos()["ingresos"][0]["medio"] == ""
 
 
 @necesita_pg
-def test_corregir_el_monto_de_un_ingreso_RECALCULA_el_margen(conn_factory, tenants):
+def test_corregir_el_monto_de_un_ingreso_RECALCULA_el_margen(conn_de_tenant, tenants):
     """🔴 El riesgo que PLANIFICACION nombro al habilitar la edicion del monto (2026-07-22 §3).
 
     Editar el monto de un ingreso imputado a un trabajo **cambia el margen de ese trabajo**, y eso es
@@ -326,10 +324,10 @@ def test_corregir_el_monto_de_un_ingreso_RECALCULA_el_margen(conn_factory, tenan
     manifiesto). Este test lo fija: si alguien lo cachea para acelerar una pantalla, se pone rojo.
     """
     a, _ = tenants
-    presupuesto, comprobante = _trabajo_completo(conn_factory, a)
-    cobros = CobroStore(conn_factory, a)
-    gastos = GastoStore(conn_factory, a)
-    trabajos = TrabajoStore(conn_factory, a)
+    presupuesto, comprobante = _trabajo_completo(conn_de_tenant, a)
+    cobros = CobroStore(conn_de_tenant(a), a)
+    gastos = GastoStore(conn_de_tenant(a), a)
+    trabajos = TrabajoStore(conn_de_tenant(a), a)
 
     cobro, _resumen = cobros.registrar(comprobante, monto="100000.00")
     g = gastos.crear(monto="30000", categoria="mercaderia")

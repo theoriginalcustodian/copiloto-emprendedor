@@ -70,6 +70,10 @@ def _token_y_cuit() -> tuple[str, str, str]:
         if not fila:
             sys.exit(f"no existe el tenant {EMAIL}: corré setup_tenant_pruebas.py")
         auth_user_id, cliente_id = fila
+        # Ver la nota equivalente en `e2e_facturacion_http.py`: `afip_credentials` tiene FORCE RLS y
+        # sin declarar el tenant esta consulta da 0 filas → aborta con un diagnóstico falso.
+        cur.execute("SELECT set_config('request.jwt.claims', %s, false)",
+                    (json.dumps({"cliente_id": str(cliente_id)}),))
         cur.execute("SELECT cuit FROM uc_factory.afip_credentials WHERE cliente_id=%s AND activo",
                     (cliente_id,))
         cred = cur.fetchone()

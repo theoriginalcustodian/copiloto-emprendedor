@@ -44,6 +44,7 @@ import services
 from auth import make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
+from contexto_tenant import conexion_con_tenant
 from mp_credential_store import MpCredentialStore
 from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
@@ -106,7 +107,9 @@ def _conn_factory_from_env():
         conn.autocommit = True
         return conn
 
-    return conn_factory
+    # Toda conexión nace declarándole a la base de qué tenant es la operación en curso. Sin esto, el
+    # RLS con `FORCE` no tendría cómo filtrar y la app vería 0 filas. Ver `contexto_tenant.py`.
+    return conexion_con_tenant(conn_factory)
 
 
 async def _serve() -> None:

@@ -60,6 +60,12 @@ def _token_y_cuit() -> tuple[str, str]:
         if not fila:
             sys.exit(f"no existe el tenant {EMAIL}: corré primero setup_tenant_pruebas.py")
         auth_user_id, cliente_id = fila
+        # `afip_credentials` tiene FORCE ROW LEVEL SECURITY: sin declarar el tenant, esta consulta
+        # devuelve 0 filas y el script aborta con "no tiene certificado activo" — un diagnóstico
+        # falso que manda a revisar el onboarding en vez de la conexión. `tenants` (arriba) no lo
+        # necesita: es la tabla que resuelve el tenant y por eso está exenta.
+        cur.execute("SELECT set_config('request.jwt.claims', %s, false)",
+                    (json.dumps({"cliente_id": str(cliente_id)}),))
         cur.execute("SELECT cuit FROM uc_factory.afip_credentials WHERE cliente_id=%s AND activo",
                     (cliente_id,))
         cred = cur.fetchone()

@@ -48,11 +48,43 @@ HUERFANA = ("NOT EXISTS (SELECT 1 FROM uc_factory.tenants t "
             "WHERE t.cliente_id = x.cliente_id)")
 
 
+def _abortar_si_el_rls_lo_ciega(cur) -> str | None:
+    """Este script es cross-tenant POR DISEÑO: busca filas cuyo `cliente_id` no existe en `tenants`.
+
+    Con `FORCE ROW LEVEL SECURITY` y una conexión sin claims, todos sus `count(*)` devuelven **0** y
+    el parte dice *"0 huérfanas de 0"* en cada tabla: no falla, no avisa, y se lee exactamente igual
+    que "está todo limpio". Es el peor resultado posible para una herramienta de higiene.
+
+    El control es determinista, no una heurística sobre los números: se le pregunta a la base si este
+    rol puede saltear RLS. Si no puede y hay tablas con `FORCE`, el script **no puede hacer su
+    trabajo** y decirlo es la única salida honesta.
+    """
+    cur.execute("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")
+    fila = cur.fetchone()
+    if fila and fila[0]:
+        return None
+    cur.execute("SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'uc_factory' AND c.relforcerowsecurity")
+    con_force = cur.fetchone()[0]
+    if not con_force:
+        return None
+    return (f"el rol '{os.environ.get('PGUSER', 'de la app')}' no puede saltear RLS y hay {con_force} "
+            "tablas con FORCE ROW LEVEL SECURITY.\n"
+            "        Este script busca filas SIN tenant, que es justo lo que el RLS oculta: sus\n"
+            "        conteos darían 0 en todo y el parte diría 'está limpio' sin estarlo.\n"
+            "        Corrélo con un rol administrativo (o con BYPASSRLS) para que signifique algo.")
+
+
 def main() -> int:
     ejecutar = "--ejecutar" in sys.argv
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = True
     cur = conn.cursor()
+
+    problema = _abortar_si_el_rls_lo_ciega(cur)
+    if problema:
+        print(f"ABORTA: {problema}")
+        return 2
 
     print("MODO: " + ("BORRADO REAL" if ejecutar else "dry-run (nada se borra)"))
     print()

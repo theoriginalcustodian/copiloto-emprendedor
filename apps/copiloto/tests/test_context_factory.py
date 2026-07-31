@@ -12,14 +12,6 @@ pytestmark = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                 reason="requiere Postgres del VPS (DATABASE_URL)")
 
 
-def _conn_factory():
-    import psycopg2
-
-    def f():
-        c = psycopg2.connect(os.environ["DATABASE_URL"]); c.autocommit = True; return c
-    return f
-
-
 @pytest.fixture
 def crypto(monkeypatch):
     monkeypatch.setenv("COPILOTO_FERNET_KEY", FernetCrypto.generate_key())
@@ -30,9 +22,9 @@ class _FakeMpGateway:
     """Stateless (sin datos por-tenant) → el factory lo inyecta compartido, igual en todo ctx."""
 
 
-def test_context_factory_arma_ctx_atado_al_cliente_id_del_conv(crypto):
+def test_context_factory_arma_ctx_atado_al_cliente_id_del_conv(crypto, conn_de_tenant):
     cid = str(uuid.uuid4())
-    factory = make_context_factory(conn_factory=_conn_factory(), crypto=crypto,
+    factory = make_context_factory(conn_factory=conn_de_tenant(cid), crypto=crypto,
                                    mp_gateway=_FakeMpGateway(), mp_webhook_base="https://mp.example")
     ctx = factory({"cliente_id": cid})
     assert ctx.cliente_id == cid
@@ -43,33 +35,34 @@ def test_context_factory_arma_ctx_atado_al_cliente_id_del_conv(crypto):
     assert ctx.mp_seller_user_id is None                # el tenant todavía no conectó MercadoPago
 
 
-def test_context_factory_resuelve_seller_del_tenant_sin_env_manual(crypto):
+def test_context_factory_resuelve_seller_del_tenant_sin_env_manual(crypto, conn_de_tenant):
     """mp_seller_user_id sale del mp_credentials DE ESE tenant — elimina el MP_SELLER_USER_ID manual."""
     cid = str(uuid.uuid4())
-    MpCredentialStore(_conn_factory(), cid, crypto).save(
+    MpCredentialStore(conn_de_tenant(cid), cid, crypto).save(
         "seller-777", access_token="AT", refresh_token="RT", expires_at=1)
-    factory = make_context_factory(conn_factory=_conn_factory(), crypto=crypto)
+    factory = make_context_factory(conn_factory=conn_de_tenant(cid), crypto=crypto)
     ctx = factory({"cliente_id": cid})
     assert ctx.mp_seller_user_id == "seller-777"
 
 
-def test_context_factory_dos_tenants_no_se_pisan(crypto):
+def test_context_factory_dos_tenants_no_se_pisan(crypto, conn_de_tenant):
     """Cero fuga entre tenants: dos conv distintos arman ctx distintos, cada uno atado a SU cliente_id."""
     cid_a, cid_b = str(uuid.uuid4()), str(uuid.uuid4())
-    MpCredentialStore(_conn_factory(), cid_a, crypto).save(
+    MpCredentialStore(conn_de_tenant(cid_a), cid_a, crypto).save(
         "seller-A", access_token="AT-A", refresh_token="RT-A", expires_at=1)
-    factory = make_context_factory(conn_factory=_conn_factory(), crypto=crypto)
-    ctx_a = factory({"cliente_id": cid_a})
-    ctx_b = factory({"cliente_id": cid_b})
+    factory_a = make_context_factory(conn_factory=conn_de_tenant(cid_a), crypto=crypto)
+    factory_b = make_context_factory(conn_factory=conn_de_tenant(cid_b), crypto=crypto)
+    ctx_a = factory_a({"cliente_id": cid_a})
+    ctx_b = factory_b({"cliente_id": cid_b})
     assert ctx_a.mp_seller_user_id == "seller-A"
     assert ctx_b.mp_seller_user_id is None              # B NO ve el seller de A
     assert ctx_a.mp_cred_store._cid != ctx_b.mp_cred_store._cid
 
 
-def test_first_seller_user_id_toma_el_mas_reciente(crypto):
+def test_first_seller_user_id_toma_el_mas_reciente(crypto, conn_de_tenant):
     """Si el tenant reconecta con OTRO seller, first_seller_user_id() resuelve el más reciente (updated_at)."""
     cid = str(uuid.uuid4())
-    store = MpCredentialStore(_conn_factory(), cid, crypto)
+    store = MpCredentialStore(conn_de_tenant(cid), cid, crypto)
     store.save("seller-old", access_token="AT1", refresh_token="RT1", expires_at=1)
     store.save("seller-new", access_token="AT2", refresh_token="RT2", expires_at=2)
     assert store.first_seller_user_id() == "seller-new"

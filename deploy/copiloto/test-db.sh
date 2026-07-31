@@ -8,14 +8,27 @@
 # en fusion: es un Postgres propio en el VPS, de la MISMA versión mayor (17), efímero y vaciable
 # entero sin pensarlo. Medido: con esto la suite pasa de 809 passed / 89 skipped a 884 / 15.
 #
+# ⚠️ EL ROL IMPORTA MÁS QUE LA BASE (2026-07-31). Hasta hoy esta base se usaba como `postgres`, que es
+# SUPERUSER — y un superuser saltea RLS **incluso con FORCE**. O sea: cualquier test de aislamiento
+# pasaba acá sobre un aislamiento que no existía; el instrumento CONFIRMABA en vez de verificar. Es
+# exactamente el falso-verde que tenía el CI y que costó descubrir que 72 de 77 tablas no filtraban
+# nada. Por eso ahora la URL que este script entrega es la de un rol que REPLICA PRODUCCIÓN:
+# `copiloto_app`, dueño de sus tablas, NOSUPERUSER NOBYPASSRLS. Si un test se pone rojo con este rol
+# y verde con `--admin`, el rojo es el dato correcto.
+#
 # IDEMPOTENTE: si el contenedor ya corre, lo reutiliza; el bootstrap y el provisionado son
 # idempotentes por sí mismos. `--recreate` lo destruye y lo vuelve a levantar vacío.
-# Parametrizable (cero hardcoding): UC_DEPLOY_HOST, UC_TEST_STAGE, UC_VENV, UC_TESTDB_{NAME,PORT,PASS,IMAGE}.
+# Parametrizable (cero hardcoding): UC_DEPLOY_HOST, UC_TEST_STAGE, UC_VENV,
+# UC_TESTDB_{NAME,PORT,PASS,IMAGE,APP_USER}, UC_RLS_FORCE.
 #
 # Uso:
-#   bash deploy/copiloto/test-db.sh                 # levanta o reutiliza, imprime la URL
+#   bash deploy/copiloto/test-db.sh                 # levanta o reutiliza, imprime la URL (rol app)
 #   bash deploy/copiloto/test-db.sh --recreate      # tira la base y la reconstruye desde cero
+#   bash deploy/copiloto/test-db.sh --admin         # URL del superuser (NO verifica RLS; ver arriba)
 #   eval "$(bash deploy/copiloto/test-db.sh --export)"   # deja UC_TEST_DATABASE_URL en el shell
+#
+# ⚠️ Al cambiar de rol hay que `--recreate`: las tablas viejas son propiedad de `postgres` y el rol de
+# la app no puede alterarlas. Es efímera y descartable, para eso existe.
 #
 # Después:
 #   UC_TEST_DATABASE_URL="<la url>" bash deploy/copiloto/sync-test-backend.sh tests -q
@@ -31,16 +44,23 @@ NOMBRE="${UC_TESTDB_NAME:-copiloto-test-db}"
 PUERTO="${UC_TESTDB_PORT:-55432}"
 PASS="${UC_TESTDB_PASS:-tests-locales-sin-datos-reales}"
 IMAGEN="${UC_TESTDB_IMAGE:-postgres:17-alpine}"   # pinneada: fusion corre 17.6, nada de `latest`
-URL="postgres://postgres:${PASS}@127.0.0.1:${PUERTO}/postgres"
+APP_USER="${UC_TESTDB_APP_USER:-copiloto_app}"
+URL_ADMIN="postgres://postgres:${PASS}@127.0.0.1:${PUERTO}/postgres"
+URL_APP="postgres://${APP_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 
-RECREAR=0; EXPORTAR=0
+RECREAR=0; EXPORTAR=0; ADMIN=0
 for arg in "$@"; do
   case "$arg" in
     --recreate) RECREAR=1 ;;
     --export)   EXPORTAR=1 ;;
+    --admin)    ADMIN=1 ;;
     *) echo "argumento desconocido: $arg" >&2; exit 2 ;;
   esac
 done
+
+# La URL que se entrega y con la que se provisiona. Por default el rol de la app, para que el
+# provisionado lo deje como DUEÑO de las tablas — igual que producción, donde `uc_factory` las posee.
+if [ "$ADMIN" -eq 1 ]; then URL="$URL_ADMIN"; else URL="$URL_APP"; fi
 
 decir() { [ "$EXPORTAR" -eq 1 ] || echo "$@"; }   # con --export sólo sale la línea evaluable
 
@@ -71,24 +91,51 @@ fi
 
 # --- 2. lo que fusion trae de fábrica y un Postgres pelado no ---------------------------------
 # Sin esto, CADA policy RLS del provisionado falla: `auth.jwt()` es de Supabase, no de Postgres.
-decir "==> bootstrap: schema uc_factory, roles y auth.jwt()"
-ssh "$HOST" "docker exec -i '${NOMBRE}' psql -U postgres -q -v ON_ERROR_STOP=1" <<'SQL'
-CREATE SCHEMA IF NOT EXISTS uc_factory;
-CREATE SCHEMA IF NOT EXISTS auth;
-DO $$ BEGIN
+decir "==> bootstrap: rol ${APP_USER} (NOSUPERUSER), schema uc_factory, roles y auth.jwt()"
+ssh "$HOST" "docker exec -i '${NOMBRE}' psql -U postgres -q -v ON_ERROR_STOP=1" <<SQL
+DO \$do\$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon')          THEN CREATE ROLE anon          NOLOGIN; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role')  THEN CREATE ROLE service_role  NOLOGIN BYPASSRLS; END IF;
-END $$;
+  -- El rol de la app. NOSUPERUSER NOBYPASSRLS no es un detalle: es LA condición para que el RLS
+  -- llegue a aplicarse. Con cualquiera de las dos al revés, esta base miente en verde.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${APP_USER}') THEN
+    CREATE ROLE ${APP_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER NOBYPASSRLS;
+  END IF;
+END \$do\$;
+-- Dueño de su schema, como en producción: \`provision.py\` corre con este rol y necesita CREAR las
+-- tablas (ser dueño), no sólo escribir en ellas.
+CREATE SCHEMA IF NOT EXISTS uc_factory AUTHORIZATION ${APP_USER};
+ALTER SCHEMA uc_factory OWNER TO ${APP_USER};
+GRANT ALL ON SCHEMA uc_factory TO ${APP_USER};
+CREATE SCHEMA IF NOT EXISTS auth;
 -- Stub: en fusion lo provee GoTrue leyendo el JWT del request. Acá alcanza con que exista y devuelva
--- un jsonb: los tests abren la conexión como admin, que bypassea RLS igual.
+-- un jsonb; la policy legacy del provisionado lo referencia y sin esto el provisionado muere.
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS
-  $$ SELECT coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb $$;
+  \$fn\$ SELECT coalesce(current_setting('request.jwt.claims', true), '{}')::jsonb \$fn\$;
+GRANT USAGE ON SCHEMA auth TO ${APP_USER};
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO ${APP_USER};
 SQL
+
+# CONTROL del instrumento, antes de usarlo. Una base de tests cuyo rol saltea RLS no es una base de
+# tests peor: es una que da verde sobre aislamiento inexistente, que es peor que no tenerla.
+if [ "$ADMIN" -eq 0 ]; then
+  SQL_ATRIB="SELECT rolsuper::text || ' ' || rolbypassrls::text FROM pg_roles WHERE rolname='${APP_USER}'"
+  ATRIBUTOS="$(ssh "$HOST" "docker exec '${NOMBRE}' psql -U postgres -tAc \"${SQL_ATRIB}\"")"
+  if [ "$ATRIBUTOS" != "false false" ]; then
+    echo "ABORTA: ${APP_USER} tiene (rolsuper rolbypassrls) = '${ATRIBUTOS}', se esperaba 'false false'." >&2
+    echo "        Con cualquiera en true el RLS NO aplica y esta base daria verde sobre nada." >&2
+    exit 1
+  fi
+  decir "==> control OK: ${APP_USER} no es superuser ni bypassrls (el RLS lo alcanza)"
+fi
 
 # --- 3. el esquema, con el MISMO provisionado que usa producción ------------------------------
 decir "==> sync worktree -> ${HOST}:${STAGE}"
-tar -C "$LOCAL" -czf - apps/copiloto "$MOTOR" deploy/worker \
+# Ver la nota de `sync-test-backend.sh`: sin excluir `__pycache__`, otra sesión corriendo pytest sobre
+# el mismo checkout hace fallar este tar con "file changed as we read it".
+tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+  -czf - apps/copiloto "$MOTOR" deploy/worker \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
 # UNA sola pasada. Hasta el PR #28 hacían falta dos: `estado` y `estado_actualizado_en` las agregaba
@@ -96,8 +143,12 @@ tar -C "$LOCAL" -czf - apps/copiloto "$MOTOR" deploy/worker \
 # `ALTER IF EXISTS` era no-op silencioso y el .sql posterior moría. Si algún día vuelve a hacer falta
 # una segunda pasada, NO la agregues acá: es el síntoma de que alguien rompió otra vez el invariante,
 # y hay un test que lo caza (`test_toda_columna_de_un_ensure_esta_declarada_en_el_manifiesto`).
-decir "==> provisiono el esquema (una pasada)"
-ssh "$HOST" "cd '$STAGE/apps/copiloto' && DATABASE_URL='${URL}' \
+# `UC_RLS_FORCE` decide si las tablas nacen con `FORCE ROW LEVEL SECURITY`. Acá el default es
+# ENCENDIDO —al revés que producción, que está a mitad de migración— porque esta base existe para
+# ejercitar el estado FINAL. Apagarlo reproduce el bug que el frente entero vino a arreglar.
+FORCE_RLS="${UC_RLS_FORCE:-1}"
+decir "==> provisiono el esquema (una pasada) — UC_RLS_FORCE=${FORCE_RLS}"
+ssh "$HOST" "cd '$STAGE/apps/copiloto' && DATABASE_URL='${URL}' UC_RLS_FORCE='${FORCE_RLS}' \
   PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' '$VENV/bin/python' provision.py >/dev/null"
 
 # --- 4. control: que la base tenga de verdad lo que decimos que tiene -------------------------
@@ -126,6 +177,11 @@ if [ "$EXPORTAR" -eq 1 ]; then
   echo "export UC_TEST_DATABASE_URL='${URL}'"
 else
   echo "==> LISTA: ${CREADAS} tablas en uc_factory (el manifiesto declara ${ESPERADAS})"
+  if [ "$ADMIN" -eq 1 ]; then
+    echo "    ⚠️  rol: postgres (SUPERUSER) — el RLS NO se aplica. Esta URL no sirve para verificar aislamiento."
+  else
+    echo "    rol: ${APP_USER} (NOSUPERUSER NOBYPASSRLS) · FORCE RLS=${FORCE_RLS} — replica producción"
+  fi
   echo
   echo "    UC_TEST_DATABASE_URL='${URL}' bash deploy/copiloto/sync-test-backend.sh tests -q"
   echo

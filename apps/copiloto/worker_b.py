@@ -39,6 +39,7 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from contexto_tenant import conexion_con_tenant
 from interceptor_errores import CapturaDeErroresInterceptor
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
@@ -283,8 +284,12 @@ async def main() -> None:
 
     db_url = os.environ["DATABASE_URL"]
 
-    def conn_factory():
+    def _conn_crudo():
         c = psycopg2.connect(db_url); c.autocommit = True; return c
+
+    # Igual que en el front-door: la conexión declara el tenant del contexto. En el worker ese tenant
+    # lo pone la costura C3 (`interceptor_errores`) a partir del payload de la activity.
+    conn_factory = conexion_con_tenant(_conn_crudo)
 
     # Conectar ANTES de armar el config (hito 9): `build_worker_config` necesita el `client` para wirear
     # `emitir_factura` (abre/señaliza el `FacturaWorkflow` del dictado). Antes se conectaba DESPUÉS —
