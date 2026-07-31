@@ -5,6 +5,48 @@
 
 ---
 
+## 0. ⚡ LO PRIMERO AL RETOMAR (cierre de la jornada del 2026-07-31)
+
+**Todo el código de la jornada está pusheado.** Verificado archivo por archivo contra las ramas.
+
+| PR | Qué | Estado |
+|---|---|---|
+| #162 | RLS real + los 98 rojos + 4 bugs de la app | ✅ mergeado y **desplegado** |
+| #163 | `verificar-rls.sh` (mide por efecto) | ✅ mergeado |
+| #164 | **DLQ** `copiloto_traumas` (Fase 2, ítems 2.1-2.4) | ✅ mergeado y **desplegado** |
+| #165 | el deploy no pasaba `UC_RLS_FORCE` | ✅ mergeado |
+| #166 | **auditor** + 3 parches congelados + kill switch runtime | ✅ mergeado |
+| #167 | **aplicador SEARCH/REPLACE** | ✅ mergeado |
+| #168 | **los 4 gates** de la autosanación | ✅ mergeado (CI 5/5) |
+
+**Los 7 PRs de la jornada están mergeados. No quedó nada a mitad de camino.**
+
+**Estado del producto:** suite **1364 passed / 16 skipped** en ~35 s locales · RLS **aplicando** en
+producción (sin tenant → 0 filas) · DLQ viva y verificada por efecto · smoke E2E **10/10**.
+
+**Cómo correr los tests (lo que cambió hoy y hay que usar siempre):**
+```bash
+bash deploy/copiloto/test-db.sh            # imprime la URL (rol copiloto_app NO-superuser, FORCE=1)
+export UC_TEST_DATABASE_URL='<esa url>'
+export UC_TEST_STAGE='/opt/uc-stage-<lo-tuyo>'   # stage propio: el sync hace rm -rf del suyo
+bash deploy/copiloto/sync-test-backend.sh "tests ../../motor -q"
+```
+
+**Dos cosas fuera del repo que hay que saber:**
+
+1. 🔴 **Graphity responde HTTP 000** (ni conecta). El `pre-push` sincroniza el grafo y es
+   *fail-closed*, así que **traba todo push**. Los de hoy usaron `--no-verify`, que es el bypass que
+   el propio hook documenta para fallo transitorio. **Deuda abierta:** reingestar con `--since`
+   cuando vuelva. **Lo resuelve el operador.**
+2. 📬 **El ítem 2.5 está esperando a las otras sesiones**: `contrato_` en
+   `coordinacion/abierto/2026-07-31_contrato_planificacion-a-todos_dlq-procesamiento-diferido-item-2-5.md`
+   + línea `E2.5` en la COLA VIVA de `coordinacion/PLAN.md`. ⚠️ `coordinacion/` **no se versiona**
+   (gitignored): vive sólo en el disco compartido.
+
+**El próximo paso de trabajo: el ciclo de la Fase 3** → §3.quater, sub-sección *"Lo que FALTA"*.
+
+---
+
 ## 1. Lo CERRADO y en producción
 
 | Bloque | PR | Evidencia |
