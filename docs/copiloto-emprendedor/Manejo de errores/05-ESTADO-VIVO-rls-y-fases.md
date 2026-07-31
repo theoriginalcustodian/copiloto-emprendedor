@@ -72,27 +72,71 @@ producción: el tenant ve sólo lo suyo · el `ContextVar` sobrevive a `asyncio.
 2. **El spike S6 dijo "no funciona nada"** en su primera corrida — su rol era **superuser**, y los
    superusuarios saltean RLS **incluso con `FORCE`**. Hay un test que vigila eso permanentemente.
 
-### 2.3 🔴 EL PRÓXIMO PASO EXACTO — 98 tests rojos, y son la buena noticia
+### 2.3 Los 98 rojos: **una sola causa**, no 98 problemas
 
 ```
-98 failed, 1189 passed, 16 skipped, 8 errors
+98 failed, 1188 passed, 17 skipped, 8 errors
 ERROR: new row violates row-level security policy for table "mp_credentials"
 ```
 
-**El RLS está funcionando y frena a los tests**, porque siembran datos **sin declarar tenant**. Es la
-prueba de que el mecanismo actúa; antes esas escrituras pasaban porque el RLS no existía en la práctica.
+**El RLS estaba funcionando y frenaba a los tests**, porque sembraban datos **sin declarar tenant**.
+La causa era única: 16 archivos repetían su propio `conn_factory` con `psycopg2.connect()` **crudo**.
+Producción no usa eso —`serve.py` y `worker_b.py` envuelven con `conexion_con_tenant(...)`— así que
+**los tests ejercitaban un camino que no existe en producción**, y por eso ninguno podía haber
+detectado que el RLS no aplicaba: no pasaban por la pieza que lo hace aplicar.
 
-**Lo que falta hacer (el trabajo restante del PR #162):**
+**El fix, en un solo lugar:** el fixture `conn_de_tenant` de `apps/copiloto/conftest.py`.
+`conn_de_tenant(cid)` devuelve la fábrica **de ese tenant**, equivalente exacto del borde real. Los
+16 archivos lo usan; ninguno vuelve a abrir una conexión cruda.
 
-1. Que los tests declaren el tenant al sembrar — usar `with tenant(cliente_id):` o la factory
-   envuelta. Archivos afectados (al menos 9): `test_actividad_store`, `test_afip_stores_integracion`,
-   `test_cobros_y_catalogo`, `test_context_factory`, `test_grafo_log`, `test_imputacion_y_margen`,
-   `test_inteligencia_queries`, `test_mp_credential_store`, `test_mp_payment_store`.
-2. ⚠️ **Antes de tocarlos, revisar uno por uno si el rojo es del test o de la APP.** Si un store
-   escribe sin que el borde haya declarado el tenant, el bug es del código, no del test. Ese es el
-   valor real de este rojo: **está mostrando qué caminos operan sin tenant declarado**.
-3. Recién con el CI verde: mergear, desplegar (paso 1, el flag apagado), verificar por efecto que la
-   GUC llega, y **encender `UC_RLS_FORCE=1`** (paso 2).
+### 2.4 ⚡ La suite ahora corre LOCAL en 24 segundos (no 8 minutos en el CI)
+
+`deploy/copiloto/test-db.sh` y `sync-test-backend.sh` ya existían; les faltaba **el rol**. La base
+entregaba la URL de `postgres`, que es **superuser** — y un superuser saltea RLS *incluso con FORCE*.
+Su propio comentario lo decía sin alarma: *"los tests abren la conexión como admin, que bypassea RLS
+igual"*. **El instrumento que iba a reemplazar al CI tenía el mismo defecto que el CI.**
+
+```bash
+bash deploy/copiloto/test-db.sh --recreate     # Postgres 17 efímero, rol copiloto_app NO-superuser
+export UC_TEST_DATABASE_URL='<la url que imprime>'
+bash deploy/copiloto/sync-test-backend.sh "tests ../../motor -q"
+```
+
+Aborta si el rol puede saltear RLS. `--admin` vuelve al rol viejo **y lo dice en pantalla**.
+`UC_TEST_STAGE` da a cada sesión su stage propio en el VPS. El CI de GitHub queda como **gate final**,
+no como consola de errores.
+
+### 2.5 🔑 Hallazgo mayor: `tenants` NO puede tener `FORCE` — nunca
+
+`resolve_cliente_id()` (`auth.py:56`) consulta `uc_factory.tenants` con el `sub` del JWT **para
+averiguar** el `cliente_id`; recién después el borde puede declarar el tenant. Control diferencial
+sobre la base de tests:
+
+| | filas visibles para `copiloto_app` |
+|---|---|
+| admin — **control positivo** | 1 ← la fila existe |
+| `tenants` **sin** FORCE (como está hoy) | **1** ← el login funciona |
+| `tenants` **con** FORCE | **0** ← `resolve_cliente_id` → `None` → **403 a TODOS** |
+
+Hoy se sostiene **por accidente**: `tenants` quedó fuera de `uc_tables.json`, que es lo que el
+provisionado recorre para aplicar `FORCE`. Agregarla —un cambio que **se lee como una mejora de
+seguridad**— tumba la autenticación entera, y ningún test de store lo notaría.
+
+**Guard permanente:** `tests/test_rls_invariantes.py`, con tres invariantes: el efecto
+(`relforcerowsecurity` en `tenants`), la causa (que no entre al manifiesto) y que ninguna policy
+`FOR ALL` con `FORCE` quede sin `WITH CHECK`.
+
+### 2.6 Bugs de la APP que el rojo destapó (no eran de los tests)
+
+| Dónde | Qué pasaba con `FORCE` | Estado |
+|---|---|---|
+| `apps/copiloto/derivar_clientes.py` | consulta **global** sin tenant → 0 filas → imprime *"no hay tenants con presupuestos ni comprobantes"* y **sale con éxito** | ✅ arreglado: enumera desde `tenants` y pregunta por cada uno con su tenant declarado |
+| `deploy/copiloto/limpiar_residuos_test.py` | todos sus `count(*)` darían 0 → parte *"0 huérfanas de 0"*, indistinguible de "está limpio" | ✅ control determinista: aborta si el rol no puede saltear RLS y hay tablas con `FORCE` |
+
+Los dos son el mismo modo de fallo: **el vacío que no protesta**. Ninguno tira error.
+
+**Lo que falta del PR #162:** suite completa verde → commit del batch → mergear → desplegar (paso 1,
+flag apagado) → verificar por efecto que la GUC llega → **encender `UC_RLS_FORCE=1`** (paso 2).
 
 **Por qué el flag:** activar `FORCE` antes de que el código que declara el tenant esté corriendo
 dejaría la app viendo 0 filas en todo. `TODO(rls-force, backend, 2026-07-31)` para retirarlo cuando

@@ -31,6 +31,7 @@ import web as web_module  # noqa: E402
 from auth import resolve_cliente_id  # noqa: E402
 from clients.agent.providers.crypto import FernetCrypto  # noqa: E402
 from context_factory import make_context_factory  # noqa: E402
+from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
 from mp_web import create_mp_app  # noqa: E402
@@ -42,7 +43,10 @@ pytestmark = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
 _SCHEMA = "uc_factory"
 
 
-def _conn_factory():
+def _conn_factory_cruda():
+    """SOLO para `uc_factory.tenants`: la tabla no tiene RLS (resuelve el tenant, no puede exigirlo
+    de antemano) y `resolve_cliente_id` la consulta antes de que exista un tenant que declarar --
+    es el mismo camino que usa el `require_tenant` real (`auth.py::resolve_cliente_id`)."""
     import psycopg2
 
     def f():
@@ -76,91 +80,108 @@ def crypto(monkeypatch):
 
 
 @pytest.fixture
-def two_tenants(crypto):
+def two_tenants(crypto, conn_de_tenant):
     """Siembra 2 tenants A/B en la DB REAL: fila `tenants`, credencial MP propia (seller distinto),
     reply propio (session_id distinto) y pago propio (amount distinto). uuid4 + sufijo random ->
     idempotente entre corridas (jamás colisiona con datos previos); teardown borra TODA la huella
-    de (A, B) en las 4 tablas."""
-    cf = _conn_factory()
+    de (A, B) en las 4 tablas.
+
+    `tenants` (sin RLS) se siembra/borra con conexión cruda -- es la tabla que resuelve el tenant, no
+    puede exigirlo de antemano. Las otras 3 (`mp_credentials`, `copiloto_web_replies`, `mp_payments`)
+    tienen `FORCE ROW LEVEL SECURITY`: cada escritura nace con `conn_de_tenant(cliente_id)`, como el
+    borde real."""
+    cf_cruda = _conn_factory_cruda()
     suffix = uuid.uuid4().hex[:8]
     a = _Tenant(auth_user_id=str(uuid.uuid4()), cliente_id=str(uuid.uuid4()),
                 seller=f"seller-A-{suffix}", session_id=f"sess-A-{suffix}", token=f"TOKEN-A-{suffix}")
     b = _Tenant(auth_user_id=str(uuid.uuid4()), cliente_id=str(uuid.uuid4()),
                 seller=f"seller-B-{suffix}", session_id=f"sess-B-{suffix}", token=f"TOKEN-B-{suffix}")
 
-    conn = cf()
+    conn = cf_cruda()
     with conn.cursor() as cur:
         for t, email in ((a, f"adv-a-{suffix}@test.invalid"), (b, f"adv-b-{suffix}@test.invalid")):
             cur.execute(
                 f"INSERT INTO {_SCHEMA}.tenants (auth_user_id, cliente_id, email, composio_user_id) "
                 f"VALUES (%s,%s,%s,%s)", (t.auth_user_id, t.cliente_id, email, t.cliente_id))
 
-    MpCredentialStore(cf, a.cliente_id, crypto).save(
+    MpCredentialStore(conn_de_tenant(a.cliente_id), a.cliente_id, crypto).save(
         a.seller, access_token="AT-A", refresh_token="RT-A", expires_at=1)
-    MpCredentialStore(cf, b.cliente_id, crypto).save(
+    MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).save(
         b.seller, access_token="AT-B", refresh_token="RT-B", expires_at=1)
 
-    sink = make_pg_reply_sink(cf)
-    sink(a.cliente_id, a.session_id, "reply de A", None)
-    sink(b.cliente_id, b.session_id, "reply de B", None)
+    sink_a = make_pg_reply_sink(conn_de_tenant(a.cliente_id))
+    sink_a(a.cliente_id, a.session_id, "reply de A", None)
+    sink_b = make_pg_reply_sink(conn_de_tenant(b.cliente_id))
+    sink_b(b.cliente_id, b.session_id, "reply de B", None)
 
-    MpPaymentStore(cf, a.cliente_id).upsert_from_payment(_payment(f"pay-A-{suffix}", 111.0), seller_user_id=a.seller)
-    MpPaymentStore(cf, b.cliente_id).upsert_from_payment(_payment(f"pay-B-{suffix}", 222.0), seller_user_id=b.seller)
+    MpPaymentStore(conn_de_tenant(a.cliente_id), a.cliente_id).upsert_from_payment(
+        _payment(f"pay-A-{suffix}", 111.0), seller_user_id=a.seller)
+    MpPaymentStore(conn_de_tenant(b.cliente_id), b.cliente_id).upsert_from_payment(
+        _payment(f"pay-B-{suffix}", 222.0), seller_user_id=b.seller)
 
     yield a, b
 
-    cleanup_conn = cf()
+    for cid in (a.cliente_id, b.cliente_id):
+        conn_propia = conn_de_tenant(cid)()
+        try:
+            with conn_propia.cursor() as cur:
+                cur.execute(f"DELETE FROM {_SCHEMA}.copiloto_web_replies WHERE cliente_id=%s", (cid,))
+                cur.execute(f"DELETE FROM {_SCHEMA}.mp_payments WHERE cliente_id=%s", (cid,))
+                cur.execute(f"DELETE FROM {_SCHEMA}.mp_credentials WHERE cliente_id=%s", (cid,))
+        finally:
+            conn_propia.close()
+
+    cleanup_conn = cf_cruda()
     with cleanup_conn.cursor() as cur:
         for cid in (a.cliente_id, b.cliente_id):
-            cur.execute(f"DELETE FROM {_SCHEMA}.copiloto_web_replies WHERE cliente_id=%s", (cid,))
-            cur.execute(f"DELETE FROM {_SCHEMA}.mp_payments WHERE cliente_id=%s", (cid,))
-            cur.execute(f"DELETE FROM {_SCHEMA}.mp_credentials WHERE cliente_id=%s", (cid,))
             cur.execute(f"DELETE FROM {_SCHEMA}.tenants WHERE cliente_id=%s", (cid,))
 
 
 # --- Store-level (MpCredentialStore / reply_store / MpPaymentStore) ---------------
 
 
-def test_adversarial_credential_store_a_cannot_read_b_creds(two_tenants, crypto):
+def test_adversarial_credential_store_a_cannot_read_b_creds(two_tenants, crypto, conn_de_tenant):
     """A conoce (o adivina) el seller_user_id de B y pide esa credencial CON SU PROPIO cliente_id.
     Si el filtro cliente_id se hubiera perdido en el WHERE de `MpCredentialStore.get`, esto
-    devolvería la credencial de B (fail-open). Debe ser None."""
+    devolvería la credencial de B (fail-open). Debe ser None.
+
+    Ahora hay DOS barreras: el filtro `cliente_id` del store, y el RLS de la conexión de A (declarada
+    con `conn_de_tenant(a.cliente_id)`), que ya no puede ver la fila física de B."""
     a, b = two_tenants
-    cf = _conn_factory()
-    store_a = MpCredentialStore(cf, a.cliente_id, crypto)
+    store_a = MpCredentialStore(conn_de_tenant(a.cliente_id), a.cliente_id, crypto)
     assert store_a.get(b.seller) is None
 
 
-def test_adversarial_credential_store_first_seller_never_leaks_b(two_tenants, crypto):
+def test_adversarial_credential_store_first_seller_never_leaks_b(two_tenants, crypto, conn_de_tenant):
     """`first_seller_user_id()` (usado por `/me` y `context_factory` para resolver el seller sin env
     manual) debe resolver SIEMPRE el seller del cliente_id con el que se construyó el store, nunca
     el de otro tenant aunque ambos tengan filas en la misma tabla física."""
     a, b = two_tenants
-    cf = _conn_factory()
-    assert MpCredentialStore(cf, a.cliente_id, crypto).first_seller_user_id() == a.seller
-    assert MpCredentialStore(cf, b.cliente_id, crypto).first_seller_user_id() == b.seller
+    assert MpCredentialStore(conn_de_tenant(a.cliente_id), a.cliente_id, crypto).first_seller_user_id() == a.seller
+    assert MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).first_seller_user_id() == b.seller
 
 
-def test_adversarial_reply_store_a_cannot_read_b_session(two_tenants):
+def test_adversarial_reply_store_a_cannot_read_b_session(two_tenants, conn_de_tenant):
     """A conoce el session_id de B (ej. lo vio en un log/URL) y lo consulta con SU PROPIO
     cliente_id. Si `read_replies` filtrara solo por session_id (sin cliente_id), devolvería el
-    reply de B. Debe ser vacío."""
+    reply de B. Debe ser vacío.
+
+    Ahora hay DOS barreras: el filtro `cliente_id` de `read_replies`, y el RLS de la conexión de A
+    (declarada con `conn_de_tenant(a.cliente_id)`)."""
     a, b = two_tenants
-    cf = _conn_factory()
-    assert read_replies(cf, a.cliente_id, b.session_id, 0) == []
+    assert read_replies(conn_de_tenant(a.cliente_id), a.cliente_id, b.session_id, 0) == []
     # control positivo: A SÍ ve su propio reply con su propio session_id -- si este control
     # fallara, el assert de arriba sería vacuo (pasaría igual con la ruta rota de otra forma).
-    own = read_replies(cf, a.cliente_id, a.session_id, 0)
+    own = read_replies(conn_de_tenant(a.cliente_id), a.cliente_id, a.session_id, 0)
     assert [r["reply_text"] for r in own] == ["reply de A"]
 
 
-def test_adversarial_payment_store_isolation_and_cash_sum_per_tenant(two_tenants):
+def test_adversarial_payment_store_isolation_and_cash_sum_per_tenant(two_tenants, conn_de_tenant):
     """El BI de caja de A no debe listar NI sumar el pago de B. Si el filtro cliente_id faltara en
     `list_payments`/`sum_approved`, `sum_approved()` de A daría 333.0 (111+222) en vez de 111.0 --
     un tenant vería (y facturaría) la caja de otro."""
     a, b = two_tenants
-    cf = _conn_factory()
-    store_a = MpPaymentStore(cf, a.cliente_id)
+    store_a = MpPaymentStore(conn_de_tenant(a.cliente_id), a.cliente_id)
     rows = store_a.list_payments()
     assert len(rows) == 1 and rows[0]["amount"] == 111.0
     assert store_a.sum_approved() == 111.0
@@ -172,11 +193,19 @@ def test_adversarial_payment_store_isolation_and_cash_sum_per_tenant(two_tenants
 def test_adversarial_context_factory_binds_to_a_never_b(two_tenants, crypto):
     """El `TenantCtx` armado con `conv={"cliente_id": A}` debe atar TODO (el store y el seller
     resuelto) a A -- nunca al seller de B, aunque la misma factory sirva ambos tenants en el mismo
-    proceso (patrón real: 1 worker, N tenants por request)."""
+    proceso (patrón real: 1 worker, N tenants por request).
+
+    Con RLS, el `conn_factory` de `context_factory` tiene que nacer declarando el tenant -- igual que
+    en producción (`worker_b.py`: `conexion_con_tenant(_conn_crudo)` + `declarar_tenant(cliente_id)`
+    antes de invocar la factory, costura C3)."""
     a, b = two_tenants
-    cf = _conn_factory()
-    factory = make_context_factory(conn_factory=cf, crypto=crypto)
-    ctx_a = factory({"cliente_id": a.cliente_id})
+    cf = conexion_con_tenant(_conn_factory_cruda())
+    declarar_tenant(a.cliente_id)
+    try:
+        factory = make_context_factory(conn_factory=cf, crypto=crypto)
+        ctx_a = factory({"cliente_id": a.cliente_id})
+    finally:
+        declarar_tenant(None)
     assert ctx_a.mp_cred_store._cid == a.cliente_id
     assert ctx_a.mp_seller_user_id == a.seller
     assert ctx_a.mp_seller_user_id != b.seller
@@ -185,9 +214,11 @@ def test_adversarial_context_factory_binds_to_a_never_b(two_tenants, crypto):
 def test_adversarial_resolve_cliente_id_never_returns_other_tenant(two_tenants):
     """`resolve_cliente_id` (camino crítico de `require_tenant`) resuelve el `sub` del JWT de A al
     cliente_id de A -- nunca al de B, ni siquiera devuelve un valor ambiguo cuando ambos tenants
-    están sembrados en la misma tabla."""
+    están sembrados en la misma tabla. Contra `uc_factory.tenants`, que no tiene RLS -- es la tabla
+    que resuelve el tenant, no puede exigirlo de antemano (mismo camino que el `require_tenant`
+    real)."""
     a, b = two_tenants
-    cf = _conn_factory()
+    cf = _conn_factory_cruda()
     assert resolve_cliente_id(cf, a.auth_user_id) == a.cliente_id
     assert resolve_cliente_id(cf, a.auth_user_id) != b.cliente_id
     assert resolve_cliente_id(cf, b.auth_user_id) == b.cliente_id
@@ -201,17 +232,28 @@ class _RequireTenantByToken:
     alcanza para probar wiring), resuelve el cliente_id del BEARER TOKEN del request vía un dict.
     Con esto, la MISMA instancia de `FastAPI` app sirve a A o a B según el token que llegue --
     si una ruta ignorara `Depends(require_tenant)` y usara un cliente_id de closure/global, este
-    fake lo delataría porque los dos tokens golpean la misma app."""
+    fake lo delataría porque los dos tokens golpean la misma app.
+
+    También `declarar_tenant(cliente_id)` -- igual que el `require_tenant` real (`auth.py`) -- porque
+    el `conn_factory` de la app está envuelto con `conexion_con_tenant`: sin esto, con RLS, cada ruta
+    vería 0 filas para los dos tenants, y el test no distinguiría "aislado" de "roto".
+
+    `async def __call__`, NO `def`: medido en `auth.py::make_require_tenant` que una dependencia SYNC
+    de FastAPI corre en un threadpool y el `ContextVar` que setea no llega al handler (0 filas, sin
+    error). Con `def` acá el control positivo del test fallaría igual que si el aislamiento real
+    estuviera roto -- sería el instrumento fallando, no la app."""
 
     def __init__(self, token_to_cid: dict[str, str]) -> None:
         self._token_to_cid = token_to_cid
 
-    def __call__(self, request: Request) -> str:
+    async def __call__(self, request: Request) -> str:
         authorization = request.headers.get("Authorization", "")
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or token not in self._token_to_cid:
             raise HTTPException(status_code=401, detail="invalid test token")
-        return self._token_to_cid[token]
+        cliente_id = self._token_to_cid[token]
+        declarar_tenant(cliente_id)
+        return cliente_id
 
 
 class _NoopMpGateway:
@@ -246,8 +288,11 @@ class _SpyComposioGateway:
 
 
 def _build_http_app(two_tenants, crypto, *, composio_connections=None):
+    """`cf` envuelto con `conexion_con_tenant` -- igual que `serve.py::_conn_factory_from_env` en
+    producción -- porque `create_web_app` usa el `conn_factory` que recibe directo, sin volver a
+    envolverlo (la declaración del tenant es responsabilidad del composition root, no de la app)."""
     a, b = two_tenants
-    cf = _conn_factory()
+    cf = conexion_con_tenant(_conn_factory_cruda())
     token_to_cid = {a.token: a.cliente_id, b.token: b.cliente_id}
     mp_app = create_mp_app(
         gateway=_NoopMpGateway(), crypto=crypto,
@@ -279,6 +324,7 @@ def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, cr
     r_own = client.get("/reply", params={"session_id": a.session_id},
                        headers={"Authorization": f"Bearer {a.token}"})
     assert [x["reply_text"] for x in r_own.json()["replies"]] == ["reply de A"]
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
 
 
 def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants, crypto):
@@ -297,3 +343,4 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
     # y B NO ve la conexión composio que solo existe para A.
     assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": []}
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests

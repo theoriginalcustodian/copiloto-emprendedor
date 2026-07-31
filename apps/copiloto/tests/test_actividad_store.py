@@ -21,26 +21,16 @@ necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
 
 
 @pytest.fixture
-def conn_factory():
-    import psycopg2
-
-    def factory():
-        c = psycopg2.connect(os.environ["DATABASE_URL"])
-        c.autocommit = True
-        return c
-    return factory
-
-
-@pytest.fixture
-def tenants(conn_factory):
+def tenants(conn_de_tenant):
     a, b = str(uuid.uuid4()), str(uuid.uuid4())
     yield a, b
-    conn = conn_factory()
-    with conn.cursor() as cur:
-        for t in ("afip_comprobantes", "copiloto_presupuestos", "copiloto_gastos",
-                  "copiloto_clientes", "copiloto_cobros", "copiloto_eventos"):
-            cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id IN (%s, %s)", (a, b))
-    conn.close()
+    for cid in (a, b):
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            for t in ("afip_comprobantes", "copiloto_presupuestos", "copiloto_gastos",
+                      "copiloto_clientes", "copiloto_cobros", "copiloto_eventos"):
+                cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id = %s", (cid,))
+        conn.close()
 
 
 def _gasto(cf, cid, monto, *, categoria="otros", proveedor=""):
@@ -75,10 +65,11 @@ def _tipos(pagina):
 # ── la rama de ingresos (la que faltaba) ──────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_la_union_incluye_los_ingresos_dictados(conn_factory, tenants):
+def test_la_union_incluye_los_ingresos_dictados(conn_de_tenant, tenants):
     a, _ = tenants
-    _cobro(conn_factory, a, "500.00", medio="efectivo", cliente_nombre="Panadería")
-    items = ActividadStore(conn_factory, a).listar()["items"]
+    cf = conn_de_tenant(a)
+    _cobro(cf, a, "500.00", medio="efectivo", cliente_nombre="Panadería")
+    items = ActividadStore(cf, a).listar()["items"]
     ing = [i for i in items if i["tipo"] == "ingreso"]
     assert len(ing) == 1
     assert ing[0]["signo"] == "entra"
@@ -87,63 +78,69 @@ def test_la_union_incluye_los_ingresos_dictados(conn_factory, tenants):
 
 
 @necesita_pg
-def test_el_cobro_de_factura_se_titula_distinto_del_dictado(conn_factory, tenants):
+def test_el_cobro_de_factura_se_titula_distinto_del_dictado(conn_de_tenant, tenants):
     a, _ = tenants
-    _cobro(conn_factory, a, "100.00", origen="factura")
-    ing = [i for i in ActividadStore(conn_factory, a).listar()["items"] if i["tipo"] == "ingreso"]
+    cf = conn_de_tenant(a)
+    _cobro(cf, a, "100.00", origen="factura")
+    ing = [i for i in ActividadStore(cf, a).listar()["items"] if i["tipo"] == "ingreso"]
     assert ing[0]["titulo"] == "Cobro de factura"
 
 
 # ── filtro funcion ────────────────────────────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_funcion_gastos_solo_trae_gastos(conn_factory, tenants):
+def test_funcion_gastos_solo_trae_gastos(conn_de_tenant, tenants):
     a, _ = tenants
-    _gasto(conn_factory, a, "100.00")
-    _cobro(conn_factory, a, "200.00")
-    _comprobante(conn_factory, a, "300.00", nro=1)
-    pagina = ActividadStore(conn_factory, a).listar(funcion="gastos")
+    cf = conn_de_tenant(a)
+    _gasto(cf, a, "100.00")
+    _cobro(cf, a, "200.00")
+    _comprobante(cf, a, "300.00", nro=1)
+    pagina = ActividadStore(cf, a).listar(funcion="gastos")
     assert _tipos(pagina) == {"gasto"}
 
 
 @necesita_pg
-def test_funcion_facturacion_junta_factura_y_nota_credito(conn_factory, tenants):
+def test_funcion_facturacion_junta_factura_y_nota_credito(conn_de_tenant, tenants):
     a, _ = tenants
-    _comprobante(conn_factory, a, "1000.00", nro=1, tipo_cbte=6)    # factura B
-    _comprobante(conn_factory, a, "200.00", nro=2, tipo_cbte=13)    # nota de crédito C
-    _gasto(conn_factory, a, "50.00")
-    pagina = ActividadStore(conn_factory, a).listar(funcion="facturacion")
+    cf = conn_de_tenant(a)
+    _comprobante(cf, a, "1000.00", nro=1, tipo_cbte=6)    # factura B
+    _comprobante(cf, a, "200.00", nro=2, tipo_cbte=13)    # nota de crédito C
+    _gasto(cf, a, "50.00")
+    pagina = ActividadStore(cf, a).listar(funcion="facturacion")
     assert _tipos(pagina) == {"factura", "nota_credito"}   # el gasto queda afuera
 
 
 @necesita_pg
-def test_funcion_ingresos_trae_los_cobros(conn_factory, tenants):
+def test_funcion_ingresos_trae_los_cobros(conn_de_tenant, tenants):
     a, _ = tenants
-    _cobro(conn_factory, a, "800.00", medio="transferencia")
-    _gasto(conn_factory, a, "50.00")
-    pagina = ActividadStore(conn_factory, a).listar(funcion="ingresos")
+    cf = conn_de_tenant(a)
+    _cobro(cf, a, "800.00", medio="transferencia")
+    _gasto(cf, a, "50.00")
+    pagina = ActividadStore(cf, a).listar(funcion="ingresos")
     assert _tipos(pagina) == {"ingreso"}
 
 
 # ── filtro q (búsqueda) ───────────────────────────────────────────────────────────────────────────
 
 @necesita_pg
-def test_q_filtra_por_titulo_y_detalle_case_insensitive(conn_factory, tenants):
+def test_q_filtra_por_titulo_y_detalle_case_insensitive(conn_de_tenant, tenants):
     a, _ = tenants
-    _gasto(conn_factory, a, "8500.00", proveedor="Nafta YPF")   # 'nafta' cae en detalle
-    _gasto(conn_factory, a, "200.00", proveedor="Kiosco")
-    items = ActividadStore(conn_factory, a).listar(q="nafta")["items"]   # minúsculas → ILIKE
+    cf = conn_de_tenant(a)
+    _gasto(cf, a, "8500.00", proveedor="Nafta YPF")   # 'nafta' cae en detalle
+    _gasto(cf, a, "200.00", proveedor="Kiosco")
+    items = ActividadStore(cf, a).listar(q="nafta")["items"]   # minúsculas → ILIKE
     assert len(items) == 1 and "Nafta" in items[0]["detalle"]
 
 
 @necesita_pg
-def test_q_escapa_los_comodines_de_LIKE(conn_factory, tenants):
+def test_q_escapa_los_comodines_de_LIKE(conn_de_tenant, tenants):
     """`q='%'` NO puede traer todo: el `%` se escapa como texto literal. Sin el escape, `%` sería
     "cualquier cosa" y el buscador devolvería la actividad entera ante un carácter."""
     a, _ = tenants
-    _gasto(conn_factory, a, "100.00", proveedor="Uno")
-    _gasto(conn_factory, a, "200.00", proveedor="Dos")
-    store = ActividadStore(conn_factory, a)
+    cf = conn_de_tenant(a)
+    _gasto(cf, a, "100.00", proveedor="Uno")
+    _gasto(cf, a, "200.00", proveedor="Dos")
+    store = ActividadStore(cf, a)
     assert len(store.listar(q="")["items"]) == 2       # sin filtro, están los dos
     assert store.listar(q="%")["items"] == []          # '%' literal no matchea ninguno → escapado
 
@@ -151,11 +148,12 @@ def test_q_escapa_los_comodines_de_LIKE(conn_factory, tenants):
 # ── cursor dentro de la vista filtrada + aislamiento ──────────────────────────────────────────────
 
 @necesita_pg
-def test_el_cursor_pagina_dentro_del_filtro_sin_repetir(conn_factory, tenants):
+def test_el_cursor_pagina_dentro_del_filtro_sin_repetir(conn_de_tenant, tenants):
     a, _ = tenants
+    cf = conn_de_tenant(a)
     for _ in range(3):
-        _gasto(conn_factory, a, "100.00")
-    store = ActividadStore(conn_factory, a)
+        _gasto(cf, a, "100.00")
+    store = ActividadStore(cf, a)
     p1 = store.listar(funcion="gastos", limit=2)
     assert len(p1["items"]) == 2 and p1["cursor"] is not None
     p2 = store.listar(funcion="gastos", limit=2, desde=parsear_cursor(p1["cursor"]))
@@ -165,9 +163,11 @@ def test_el_cursor_pagina_dentro_del_filtro_sin_repetir(conn_factory, tenants):
 
 
 @necesita_pg
-def test_aislamiento_A_no_ve_la_actividad_de_B(conn_factory, tenants):
+def test_aislamiento_A_no_ve_la_actividad_de_B(conn_de_tenant, tenants):
     a, b = tenants
-    _gasto(conn_factory, b, "999999.00", proveedor="Secreto de B")
-    _cobro(conn_factory, b, "888888.00")
-    assert ActividadStore(conn_factory, a).listar()["items"] == []
-    assert ActividadStore(conn_factory, a).listar(q="secreto")["items"] == []
+    cf_b = conn_de_tenant(b)
+    _gasto(cf_b, b, "999999.00", proveedor="Secreto de B")
+    _cobro(cf_b, b, "888888.00")
+    cf_a = conn_de_tenant(a)
+    assert ActividadStore(cf_a, a).listar()["items"] == []
+    assert ActividadStore(cf_a, a).listar(q="secreto")["items"] == []
