@@ -205,6 +205,23 @@ cd "$REMOTE/deploy/worker"
 "$VENV/bin/python" ensure_mi_dia_schedules.py
 REMOTE_MI_DIA_SCHEDULES
 
+echo "==> [4.6/7] ensure_autosanacion_schedules.py (Fase 3 — nace PAUSADO si el kill switch está activo)"
+# Fail-open a propósito: un problema creando el Schedule del ciclo de auto-reparación NO puede
+# abortar el deploy del copiloto. La feature es opcional y el resto de la app no depende de ella;
+# tumbar un deploy entero por esto sería el mismo error de proporción que el worker que no arranca
+# porque falta una API key opcional.
+ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_AUTOSANACION_SCHEDULES' || \
+  echo "    (aviso: no se pudo asegurar el Schedule de autosanación; el deploy sigue)" >&2
+set -euo pipefail
+REMOTE="$1"; ENVDIR="$2"; VENV="$3"
+set -a
+. "$ENVDIR/fusion-pg.env"
+. "$ENVDIR/copiloto.env"
+set +a
+cd "$REMOTE/deploy/worker"
+"$VENV/bin/python" ensure_autosanacion_schedules.py
+REMOTE_AUTOSANACION_SCHEDULES
+
 echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"
 # Por qué existe (incidente 2026-07-21, 15 x `ImportError: cannot import name 'make_consultar_anulacion'
 # from 'web'` en producción): el paso [6/7] valida el Caddyfile ANTES de aplicarlo y aborta sin tocar

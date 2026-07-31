@@ -86,6 +86,25 @@ def _store(cliente_id: str) -> TraumaStore:
     return TraumaStore(_conn_factory, cliente_id)
 
 
+def _cerrar(conn) -> None:  # noqa: ANN001
+    """Cierra la conexión sin que un fallo al cerrar tape el resultado real.
+
+    Degradar acá es correcto y es el caso (c) del censo de `except`: esto corre en el `finally`, o
+    sea **después** de que la operación ya terminó (bien o mal). Un error al cerrar —la conexión ya
+    se cayó, el socket murió— no cambia nada de lo que pasó antes, y dejarlo propagar reemplazaría
+    el resultado verdadero (o el error verdadero) por uno de limpieza que no le sirve a nadie.
+
+    Un solo lugar en vez de repetir el `try/except/pass` en cada activity: así el criterio se lee
+    una vez y no hay que confiar en que cada llamador lo repita igual.
+    """
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception:  # noqa: BLE001 — ver docstring: falla de limpieza post-operación
+        pass
+
+
 def _serializable(fila: dict) -> dict:
     """Temporal serializa el payload a JSON: los `datetime` de psycopg2 no pasan.
 
@@ -96,6 +115,27 @@ def _serializable(fila: dict) -> dict:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in fila.items()}
 
 
+def _contexto_de(trauma: dict) -> dict:
+    """El `contexto` del trauma como dict, siempre. `{}` si no se puede leer.
+
+    Un solo lugar: `_origen_de` y el gate lo necesitan igual, y tenerlo duplicado significaba dos
+    `except` haciendo lo mismo — que es como se desincronizan (uno se arregla, el otro no).
+
+    Que un `contexto` ilegible degrade a `{}` es correcto (caso (c) del censo): un trauma viejo o
+    con un jsonb corrupto no es reparable, y el gate lo rechaza por falta de `origen`. Propagar
+    convertiría un dato malo de UNA fila en la caída del ciclo entero para ese tenant.
+    """
+    contexto = trauma.get("contexto") or {}
+    if isinstance(contexto, str):
+        try:
+            contexto = json.loads(contexto)
+        except (ValueError, TypeError):
+            # Caso (c) del censo: un jsonb corrupto o de otra época degrada a `{}` y el gate rechaza
+            # el trauma por falta de `origen`. Propagar tumbaría el ciclo del tenant por UNA fila.
+            return {}
+    return contexto if isinstance(contexto, dict) else {}
+
+
 def _origen_de(trauma: dict) -> dict | None:
     """El `{archivo, linea, funcion}` que dejó la costura, o `None`.
 
@@ -103,13 +143,7 @@ def _origen_de(trauma: dict) -> dict | None:
     —depositado antes de que existiera `origen_en_el_codigo`— simplemente no lo trae. Ese caso no es
     un error: es un trauma que no se puede reparar, y se rechaza en el gate con ese motivo.
     """
-    contexto = trauma.get("contexto") or {}
-    if isinstance(contexto, str):
-        try:
-            contexto = json.loads(contexto)
-        except (ValueError, TypeError):
-            return None
-    origen = contexto.get("origen") if isinstance(contexto, dict) else None
+    origen = _contexto_de(trauma).get("origen")
     return origen if isinstance(origen, dict) and origen.get("archivo") else None
 
 
@@ -171,11 +205,7 @@ def _reparaciones_de_hoy(cliente_id: str) -> int:
                                 ensure_ascii=False))
         return tope_diario()
     finally:
-        try:
-            if conn is not None:
-                conn.close()
-        except Exception:  # noqa: BLE001
-            pass
+        _cerrar(conn)
 
 
 @activity.defn
@@ -193,12 +223,7 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         return {"permitido": False, "archivo": None,
                 "motivo": "el trauma no registró archivo:línea — no es reparable, sólo contable"}
 
-    contexto = trauma.get("contexto") or {}
-    if isinstance(contexto, str):
-        try:
-            contexto = json.loads(contexto)
-        except (ValueError, TypeError):
-            contexto = {}
+    contexto = _contexto_de(trauma)
 
     decision = puede_reparar(
         # La ruta que se chequea es el ARCHIVO real, no el nombre del workflow: `dominio_prohibido`
@@ -207,7 +232,7 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         # nombre, que es justo como se cuela un permiso que no debía darse.
         ruta=origen["archivo"],
         reparaciones_hoy=_reparaciones_de_hoy(trauma.get("cliente_id", "")),
-        categoria=contexto.get("categoria") if isinstance(contexto, dict) else None)
+        categoria=contexto.get("categoria"))
     return {"permitido": decision.permitido, "motivo": decision.motivo,
             "archivo": origen["archivo"]}
 
@@ -372,8 +397,18 @@ async def proponer_pr_de_reparacion(payload: dict) -> dict:
     ruta = (_raiz_repo / forja["archivo"]) if _raiz_repo else Path(forja["archivo"])
     try:
         actual = ruta.read_text(encoding="utf-8")
-    except OSError:
-        actual = ""
+    except OSError as exc:
+        # No se puede comparar => no se puede DEMOSTRAR que hubo mutación, y Zero-Mutation exige
+        # demostrarlo, no suponerlo. La versión anterior degradaba a `actual = ""`, que era peor que
+        # inútil: con el archivo ilegible, `"" != contenido` daba verdadero y el ciclo proponía un PR
+        # sobre un archivo que ni siquiera pudo abrir.
+        _log.warning(json.dumps({"evento": "autosanacion_no_se_pudo_leer_el_destino",
+                                 "archivo": forja.get("archivo"),
+                                 "error_type": type(exc).__name__,
+                                 "efecto": "no se propone nada"}, ensure_ascii=False))
+        return {"url": "", "modo": "sin_cambios",
+                "motivo": f"no se pudo leer {forja.get('archivo')}: sin poder comparar, no se "
+                          f"puede afirmar que el parche cambie algo"}
     if actual == forja.get("contenido"):
         return {"url": "", "modo": "sin_cambios",
                 "motivo": "el parche no produjo mutaciones; no se abre nada"}
@@ -398,6 +433,10 @@ def _hay_gh() -> bool:
         return subprocess.run(["gh", "auth", "status"], capture_output=True,
                               timeout=15).returncode == 0
     except (OSError, subprocess.SubprocessError):
+        # `gh` no instalado, sin PATH, o sin credenciales. Los tres significan lo mismo para el
+        # llamador —no hay canal de PR— y ninguno es un error: el ciclo degrada a artefacto, que es
+        # un camino previsto y no una falla. Loguear acá gritaria en el caso NORMAL del VPS del
+        # worker, que deliberadamente NO tiene credenciales de GitHub.
         return False
 
 
@@ -461,10 +500,7 @@ async def marcar_trauma(payload: dict) -> None:
                         f"marcar_trauma tocó {cur.rowcount} filas para id={payload.get('id')} "
                         f"tenant={cliente_id!r}: el trauma quedaría colgado en `en_proceso`")
         finally:
-            try:
-                conn.close()
-            except Exception:  # noqa: BLE001
-                pass
+            _cerrar(conn)
 
 
 ACTIVITIES_AUTOSANACION: list[Any] = [
