@@ -33,8 +33,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from deposito_traumas import FabricaDeTraumas, depositar
-from log_estructurado import log_error
-from taxonomia_errores import ErrorSinCategoria, categoria_de
+from log_estructurado import log_error, origen_en_el_codigo
+from taxonomia_errores import ErrorSinCategoria, categoria_de, es_reintentable
 
 
 def registrar_captura_global(app: FastAPI, *, traumas: FabricaDeTraumas | None = None) -> None:
@@ -66,15 +66,30 @@ def registrar_captura_global(app: FastAPI, *, traumas: FabricaDeTraumas | None =
             extra={"categoria": categoria, "costura": "http_handler"},
         )
         # El depósito va DESPUÉS del log y nunca antes: si la DLQ estuviera caída, el error igual
-        # quedó registrado. `depositar` no lanza ni devuelve nada (ver `deposito_traumas`).
-        depositar(traumas, fingerprint=fingerprint, workflow=workflow,
-                  error_type=type(exc).__name__, cliente_id=cliente_id, costura="http_handler",
-                  contexto={"categoria": categoria})
+        # quedó registrado. `depositar` no lanza (ver `deposito_traumas`); devuelve si depositó.
+        # El `origen` viaja también al trauma, no sólo al log: el ciclo de auto-reparación lee la
+        # DLQ, y sin archivo:línea un trauma no es reparable — sólo contable.
+        deposito_ok = depositar(traumas, fingerprint=fingerprint, workflow=workflow,
+                                error_type=type(exc).__name__, cliente_id=cliente_id,
+                                costura="http_handler",
+                                contexto={"categoria": categoria,
+                                          "origen": origen_en_el_codigo(exc)})
+        # `diferido` es la respuesta a "¿esto se reintenta solo?", y son DOS condiciones, no una:
+        # la categoría tiene que ser reintentable **y** el trauma tiene que haber quedado depositado.
+        # Con sólo la primera estaríamos afirmando la intención en vez del hecho — un `infra_error`
+        # cuyo depósito falló no lo va a reintentar nadie, y decirle al usuario que sí es la mentira
+        # cara: no reintenta a mano algo que cree en curso, y el error queda muerto.
+        # `es_reintentable("SIN_CATEGORIA")` da False, así que un tipo nuevo cae del lado seguro.
+        diferido = deposito_ok and es_reintentable(categoria)
         return JSONResponse(
+            # Sigue siendo 500, no 202: la operación NO se aceptó, falló y hay un plan. Un 202 le
+            # diría al frontend "salió bien" y si el reintento no prospera nadie vuelve a mirar.
             status_code=500,
             content={
                 "detail": "error interno del servidor",
                 # Sin el mensaje de la excepción: PII / datos fiscales / estructura interna.
                 "codigo": fingerprint,
+                # Campo opcional: un cliente que no lo lee se comporta exactamente como hoy.
+                "diferido": diferido,
             },
         )

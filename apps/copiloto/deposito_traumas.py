@@ -36,8 +36,8 @@ def fabrica_desde(conn_factory) -> FabricaDeTraumas:  # noqa: ANN001
 
 def depositar(fabrica: FabricaDeTraumas | None, *, fingerprint: str, workflow: str,
               error_type: str, cliente_id: str | None, costura: str,
-              contexto: dict[str, Any] | None = None) -> None:
-    """Deposita el trauma si hay DLQ y hay tenant. **Nunca lanza, nunca devuelve nada.**
+              contexto: dict[str, Any] | None = None) -> bool:
+    """Deposita el trauma si hay DLQ y hay tenant. **Nunca lanza.** Devuelve si depositó.
 
     Tres motivos legítimos para no depositar, y ninguno es un fallo:
 
@@ -49,13 +49,26 @@ def depositar(fabrica: FabricaDeTraumas | None, *, fingerprint: str, workflow: s
 
     El `try` de acá es la última red: esto corre **dentro del manejo de errores**, y una excepción
     escapando por este camino reemplazaría el error original del usuario por uno nuestro.
+
+    **Por qué ahora devuelve un `bool`** (antes era `None` siempre). La costura HTTP necesita decirle
+    al usuario *"esto se va a reintentar solo"*, y eso sólo es cierto si el trauma **quedó** en la DLQ.
+    Inferirlo de la categoría del error no alcanza: un `infra_error` cuyo depósito falló no lo va a
+    reintentar nadie, y prometerlo sería mentir en la dirección cara — el usuario no reintenta a mano
+    algo que cree en curso. Devolver el hecho, no la intención: es la misma distinción que separa
+    "lo mandé" de "llegó" ([[el-mensaje-niega-el-efecto-que-ya-ocurrio]]).
+
+    La regla 1 no se toca: el `bool` reemplaza al `None`, **no** a una excepción. Todos los caminos de
+    fallo siguen saliendo por `False`.
     """
     if fabrica is None or not cliente_id:
-        return
+        return False
     try:
         store = fabrica(cliente_id)
-        if store is not None:
-            store.depositar(fingerprint=fingerprint, workflow=workflow, error_type=error_type,
-                            costura=costura, contexto=contexto)
+        if store is None:
+            return False
+        # `TraumaStore.depositar` devuelve el dict del depósito, o `None` si la DLQ falló (tampoco
+        # lanza). Ese `None` es el caso que importa distinguir: hubo intento y no quedó nada.
+        return store.depositar(fingerprint=fingerprint, workflow=workflow, error_type=error_type,
+                               costura=costura, contexto=contexto) is not None
     except Exception:  # noqa: BLE001 — depositar un error jamás puede generar uno nuevo
-        return
+        return False

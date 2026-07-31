@@ -150,3 +150,99 @@ aparecer UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de cont
 (texto nuevo)
 >>>>>>> REPLACE
 """
+
+
+def _neutralizar_marcadores(texto: str) -> str:
+    """Reescribe los marcadores SEARCH/REPLACE del intento previo como prosa.
+
+    **Medido el 2026-07-31, y es la causa por la que el reintento daba 0/12.** El prompt citaba el
+    intento anterior tal cual, con sus `<<<<<<< SEARCH` / `=======` / `>>>>>>> REPLACE` adentro de un
+    bloque ```. El modelo entonces devolvía el arreglo **correcto** (`& 0xffffffff`, exacto) pero
+    envuelto en un fence ``` y con sólo el `=======` del medio: había imitado la forma del texto
+    citado en vez de la del formato pedido. `aplicar_bloques` lo rechazaba —bien rechazado— y el
+    ciclo agotaba los 3 intentos con un parche correcto en la mano.
+
+    El ejemplo negativo contaminaba la salida. Y era invisible: el intento 1 no lleva texto citado, y
+    por eso el banco sin reintento daba 12/12 mientras el reintento estaba roto de punta a punta.
+
+    Lo que el modelo necesita del intento previo es **qué propuso**, para no repetirlo. Los marcadores
+    no aportan nada a eso y son justamente lo que lo desvía.
+    """
+    lineas = []
+    for linea in texto.splitlines():
+        pelada = linea.strip()
+        if pelada.startswith("<<<<<<< SEARCH"):
+            lineas.append("  [buscabas]")
+        elif pelada.startswith("======="):
+            lineas.append("  [y lo reemplazabas por]")
+        elif pelada.startswith(">>>>>>> REPLACE"):
+            lineas.append("  [fin del cambio propuesto]")
+        elif pelada.startswith("```"):
+            continue          # los fences también invitan a imitar la envoltura
+        else:
+            lineas.append(f"  {linea}")
+    return "\n".join(lineas)
+
+
+def prompt_de_reintento(*, archivo: str, contenido: str, salida_pytest: str, no_romper: str,
+                        intento_previo: str, motivo_rechazo: str,
+                        regresiones: tuple[str, ...] = ()) -> str:
+    """El prompt del SEGUNDO intento — el que convierte "acierta 11 de 12" en "termina bien 12 de 12".
+
+    Medido en S5: el forjador falla ~1 de cada 12 por **variabilidad del modelo**, no por falta de
+    contexto (`temperature=0` no la elimina — se verificó con un diferencial de 3 corridas por cada
+    versión del prompt: 3/3 verde con las dos). Contra variabilidad, la respuesta no es un prompt más
+    perfecto: es **volver a tirar con información nueva**.
+
+    Y la información nueva tiene que ser **localizada**, no un "falló, probá de nuevo". Empírico
+    (TDAD): decirle QUÉ archivo, QUÉ test y QUÉ no romper baja regresiones ~70%; la orden genérica
+    las **aumenta**. Por eso este prompt lleva el parche anterior (para que no lo repita), el motivo
+    exacto del rechazo, y los nodeids que rompió.
+
+    El intento previo va COMPLETO a propósito: sin verlo, el modelo tiende a re-emitir el mismo
+    parche —es su respuesta de máxima probabilidad para el mismo input— y el reintento se convierte
+    en una segunda tirada idéntica, que es exactamente lo que no queremos.
+    """
+    detalle = ""
+    if regresiones:
+        listado = "\n".join(f"  - {r}" for r in regresiones)
+        detalle = (f"\nTESTS QUE PASABAN ANTES Y TU PARCHE ROMPIÓ (son la causa del rechazo):\n"
+                   f"{listado}\n")
+
+    previo = _neutralizar_marcadores(intento_previo[-1200:])
+
+    return f"""Tu intento anterior de reparar este bug FUE RECHAZADO. Corregilo.
+
+ARCHIVO {archivo}:
+```python
+{contenido}
+```
+
+SALIDA REAL DE PYTEST (el bug original):
+```
+{salida_pytest[-1500:]}
+```
+
+TU INTENTO ANTERIOR, descrito en palabras (NO lo repitas, y NO copies ESTE formato):
+{previo}
+
+POR QUÉ SE RECHAZÓ: {motivo_rechazo}
+{detalle}
+QUÉ NO ROMPER: {no_romper}
+
+Pensá qué asumiste mal en el intento anterior antes de escribir. Si el rechazo fue por romper otros
+tests, tu parche tocó algo de lo que esos tests dependen: acotá el cambio.
+
+Tu respuesta tiene que EMPEZAR con la línea `<<<<<<< SEARCH`. No la envuelvas en ``` ni omitas
+ninguno de los tres marcadores: un parche sin ellos se descarta entero aunque el arreglo sea correcto.
+
+Respondé SOLO con uno o más bloques en este formato EXACTO, copiando el texto a buscar
+LITERALMENTE del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que
+aparecer UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de contexto.
+
+<<<<<<< SEARCH
+(texto exacto actual)
+=======
+(texto nuevo)
+>>>>>>> REPLACE
+"""

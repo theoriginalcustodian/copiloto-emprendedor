@@ -132,3 +132,37 @@ def test_wiring_registers_react_domain_and_activities():
     assert {"call_llm_tools", "execute_tool", "recall_memory"} <= names
     assert call_llm_tools in cfg["activities"] and execute_tool in cfg["activities"]
     assert recall_memory in cfg["activities"]
+
+
+# ======================================================================================
+# Fase 3 — el ciclo de auto-reparación tiene que estar REGISTRADO en el worker.
+# Un workflow que existe pero nadie registró no falla: el Schedule dispara, la ejecución
+# queda encolada para siempre y desde afuera se ve igual que "todavía no le tocó".
+# ======================================================================================
+def test_el_workflow_de_autosanacion_esta_registrado():
+    reset_registry()
+    cfg = worker_b.build_worker_config({}, _fake_conn_factory())
+    assert any(w.__name__ == "AutosanacionWorkflow" for w in cfg["workflows"])
+
+
+def test_las_7_activities_de_autosanacion_estan_registradas():
+    """Por nombre, que es como el workflow las invoca (`execute_activity("tomar_trauma...")`).
+    Registrar 6 de 7 no rompe al arrancar: revienta a mitad del ciclo, con el trauma ya tomado."""
+    reset_registry()
+    cfg = worker_b.build_worker_config({}, _fake_conn_factory())
+    nombres = {getattr(a, "__name__", "") for a in cfg["activities"]}
+    for esperada in ("tomar_trauma_para_reparar", "evaluar_gates_de_reparacion", "forjar_parche",
+                     "auditar_parche", "probar_parche_en_sandbox", "proponer_pr_de_reparacion",
+                     "marcar_trauma"):
+        assert esperada in nombres, f"falta la activity {esperada}"
+
+
+def test_sin_OPENAI_API_KEY_el_worker_igual_ARRANCA():
+    """El ciclo es opcional; el worker no. Si faltara la key y el worker no levantara, una feature
+    de reparación automática se llevaría puestas las que sí funcionan — el agente, la facturación,
+    los cobros. El ciclo se apaga solo, con motivo legible, y todo lo demás sigue."""
+    reset_registry()
+    cfg = worker_b.build_worker_config({}, _fake_conn_factory())   # env SIN la key
+    assert cfg["activities"] and cfg["workflows"]
+    import autosanacion_activities as A
+    assert A._llm_client is None, "sin key el cliente queda None, no a medias"

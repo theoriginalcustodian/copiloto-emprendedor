@@ -24,7 +24,7 @@ import logging
 
 import pytest
 
-from log_estructurado import log_error
+from log_estructurado import log_error, origen_en_el_codigo
 
 
 @pytest.fixture()
@@ -108,3 +108,77 @@ class TestLogError:
 
         # No explotó, y aun así dejó rastro.
         assert capturado.records, "se tragó el log entero al fallar la serialización"
+
+
+# ======================================================================================
+# `origen_en_el_codigo` — dónde falló NUESTRO código.
+#
+# Sin esto el trauma es contable pero no reparable: el ciclo de auto-reparación lee la DLQ,
+# y el traceback vive en otro canal (`exc_info` → journald). Se descubrió el 2026-07-31 al
+# escribir las activities de la Fase 3, cuando `forjar_parche` no tenía archivo que abrir.
+# ======================================================================================
+def _detona() -> None:
+    raise ValueError("algo se rompió acá")
+
+
+def test_apunta_al_archivo_la_linea_y_la_funcion_donde_fallo():
+    try:
+        _detona()
+    except ValueError as exc:
+        origen = origen_en_el_codigo(exc)
+
+    assert origen is not None
+    assert origen["archivo"].endswith("tests/test_log_estructurado.py")
+    assert origen["funcion"] == "_detona"
+    assert isinstance(origen["linea"], int) and origen["linea"] > 0
+
+
+def test_el_path_es_RELATIVO_a_la_raiz_del_repo():
+    """Prod, el stage de tests y el checkout local viven en tres paths distintos. Si el origen
+    guardara el absoluto, el mismo error daría ubicaciones distintas según dónde corrió — y encima
+    filtraría el layout del servidor a una tabla que después se lee desde otro lado."""
+    try:
+        _detona()
+    except ValueError as exc:
+        origen = origen_en_el_codigo(exc)
+
+    assert not origen["archivo"].startswith("/")
+    assert ":" not in origen["archivo"][:3]      # ni 'C:/…' de Windows
+    assert "\\" not in origen["archivo"]         # siempre POSIX, para que sea comparable
+
+
+def test_elige_el_frame_PROPIO_mas_profundo_no_el_de_una_libreria():
+    """El frame más profundo suele estar dentro de `json`, `psycopg2` o `httpx` — donde no hay nada
+    que reparar. El punto reparable es la última línea de código NUESTRO que se ejecutó."""
+    def _parsea_mal() -> None:
+        json.loads("{esto no es json")
+
+    try:
+        _parsea_mal()
+    except ValueError as exc:
+        origen = origen_en_el_codigo(exc)
+
+    assert origen is not None
+    assert origen["funcion"] == "_parsea_mal", \
+        f"apuntó a {origen['funcion']}: se quedó con un frame de la librería, no con el nuestro"
+    assert "json" not in origen["archivo"]
+
+
+def test_CONTROL_una_excepcion_SIN_traceback_devuelve_None():
+    """Un `None` explícito, no un dict a medias. Una ubicación inventada es peor que ninguna: manda
+    al forjador a parchear un archivo que no tuvo nada que ver."""
+    assert origen_en_el_codigo(ValueError("nunca se lanzó")) is None
+
+
+def test_el_origen_viaja_en_la_LINEA_de_log(caplog):
+    """El control de integración: que la función ande no sirve si `log_error` no la llama."""
+    caplog.set_level(logging.WARNING)
+    try:
+        _detona()
+    except ValueError as exc:
+        log_error(exc, workflow="GET /prueba")
+
+    (registro,) = [json.loads(r.getMessage()) for r in caplog.records]
+    assert registro["origen"]["funcion"] == "_detona"
+    # Y sigue sin filtrar el mensaje: la regla 2 no se afloja porque el consumidor sea un agente.
+    assert "algo se rompió acá" not in json.dumps(registro)
