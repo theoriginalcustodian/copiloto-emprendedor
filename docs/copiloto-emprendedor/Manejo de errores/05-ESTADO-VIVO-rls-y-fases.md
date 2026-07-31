@@ -166,8 +166,32 @@ sin claims                 = None
 encender `FORCE`, y sin claims dan `NULL` (fail-closed, que es lo correcto). Las 18 tablas del
 manifiesto además pasan a `current_cliente_id()`, que lee esa misma GUC: los dos caminos conviven.
 
-**Lo que falta del PR #162:** CI verde → mergear → desplegar (paso 1, flag apagado) → verificar por
-efecto que la GUC llega en el binario desplegado → **encender `UC_RLS_FORCE=1`** (paso 2).
+### 2.8 ✅ CERRADO — el RLS está APLICANDO en producción (2026-07-31)
+
+PR #162 mergeado (CI 5/5), desplegado y **`UC_RLS_FORCE=1` encendido**. Secuencia y evidencia:
+
+| Paso | Evidencia |
+|---|---|
+| **Deploy** (flag apagado) | gate de import OK · ambos units `active` · `/healthz` ok. En el binario desplegado: `conexion_con_tenant` ×2 en `serve.py` y `worker_b.py`, `require_tenant` **`async`** (auth.py:108) |
+| **Canary** — `FORCE` en **una** tabla + sonda HTTP real | `GET /actividad` **antes**: 200, items=6 · **después**: 200, items=6 → **la GUC llega desde el borde HTTP**. Con rollback automático si el número cambiaba |
+| **Paso 2** — provisionado con el flag | **23 tablas con `FORCE`** (18 del copiloto + 5 de documed). `tenants` sigue **sin** `FORCE` ✔ |
+| **Por efecto, sin tenant** | `copiloto_gastos` · `presupuestos` · `afip_comprobantes` · `mp_credentials` · `cobros` → **0 filas, 0 tenants visibles**. Antes: 8/3/24/1/4 filas y hasta **3 tenants** |
+| **Control positivo** | con tenant declarado ve **5 gastos propios** ✔ — los ceros significan aislamiento, no consulta rota |
+| **Camino worker** | `smoke_beta_e2e.py` → **10/10 BETA-READY** (chat, ReAct multi-paso, OAuth, refresh) |
+
+**Alcance, medido:** `uc_factory` es un schema **compartido** — 77 tablas, 73 con `cliente_id`, pero
+sólo **18 son del copiloto**. El resto es clinic/billing/CRM: ponerles `FORCE` sin que sus apps
+declaren el tenant las rompería, y son de otro equipo. El flag cubre exactamente las 18 del
+manifiesto, que es lo correcto.
+
+⚠️ **El propio verificador tuvo el bug que venía a cazar.** Su control positivo buscaba *"un tenant
+con gastos"* **sin declarar tenant**: con `FORCE` eso da 0 y el control se auto-anulaba
+(*"no hay ningún tenant con gastos"*) justo cuando el mecanismo empezaba a funcionar — el instrumento
+roto por lo mismo que medía. Corregido: los candidatos salen de `tenants` (la tabla exenta) y el
+conteo se hace ya con el tenant declarado. Herramienta permanente: `deploy/copiloto/verificar-rls.sh`.
+
+**Rollback**, si algún camino aparece sin tenant declarado:
+`ALTER TABLE uc_factory.<tabla> NO FORCE ROW LEVEL SECURITY;` — reversible tabla por tabla.
 
 ⚠️ **El pre-push está trabado:** sincroniza el grafo y es *fail-closed*; Graphity responde **HTTP 000**
 (ni conecta). Los dos commits de hoy se pusharon con `--no-verify`, que es el bypass que el propio hook
