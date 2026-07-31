@@ -11,7 +11,7 @@
 - **🛡️ MANEJO DE ERRORES — TRAMO EJECUTABLE CERRADO** (2026-07-29): Fases 0 · 0.5 · G-2 · 1 **en prod** (PRs #154-#159). VPS 1143 · CI 1269 con Postgres efímero. Fases 2 (DLQ) y 3 (autosanación en Temporal) **diseñadas y en pausa**, con disparador. → `docs/copiloto-emprendedor/Manejo de errores/03-REPORTE-implementacion.md`
 - **✅ narra-sin-hacer — CURA VERIFICADA** (2026-07-29): retest 10 rondas contra el LLM real → **0 mentiras**; flag `MODO_AUTOMATICO_NO_DISPONIBLE` **levantado** (PR #159). El instrumento se equivocó 2× antes de medir bien. [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[copiloto-narra-la-accion-sin-ejecutarla]]
 - **✅ Facturación AFIP** determinista, E2E desde el teléfono (CAE real, PDF, nota de crédito). [[copiloto-facturacion-afip]]
-- **✅ Presupuestos + perfil del negocio**, las dos capas (falta device). [[copiloto-presupuestos-y-perfil-negocio]]
+- **✅ Presupuestos + perfil del negocio**, las dos capas — **device PASS E2E 6/6** (2026-07-23, `coordinacion/PLAN.md:82`). [[copiloto-presupuestos-y-perfil-negocio]]
 - **✅ Clientes:** cartera derivada de lo emitido (falta voz en device). [[cero-que-no-se-puede-afirmar]] · [[idempotencia-con-un-if-tiene-ventana]]
 - **🚧 OAuth Google** es de Composio, no nuestro; runbook listo para el operador. [[copiloto-oauth-google-propio]]
 - **🔀 Tres sesiones paralelas** coordinadas por el buzón de `coordinacion/`. [[coordinacion-tres-sesiones-buzon]]

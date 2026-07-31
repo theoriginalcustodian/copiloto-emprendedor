@@ -66,8 +66,11 @@ hable el copiloto) se **inyecta en el system prompt** de cada turno.
 
 ## Estado
 
-Backend terminado y desplegado (546 tests passed / 0 failed, E2E contra el vivo). App implementada;
-**falta la prueba en device**. El `contrato_` sigue en `en-curso/` hasta que FRONTEND la corra.
+Backend terminado y desplegado (546 tests passed / 0 failed, E2E contra el vivo). App implementada.
+**✅ device PASS — E2E 6/6 el 2026-07-23** (evidencia en `_evidencia/`, registrado en
+`coordinacion/PLAN.md:82`). Este párrafo dijo *"falta la prueba en device"* durante seis días
+**después** de que la prueba pasara: el dato vivía en el tablero y nadie lo trajo acá
+([[propagar-cierre-a-docs-maestros]]).
 
 Ver [[copiloto-facturacion-afip]] (el destino del botón) y
 [[coordinacion-tres-sesiones-buzon]] (es el primer trabajo largo del régimen de tres sesiones).
