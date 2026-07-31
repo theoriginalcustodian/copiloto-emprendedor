@@ -73,8 +73,21 @@ def _armar_caja(caja: Path) -> str:
     return roto
 
 
-def una_corrida(client, python: str, numero: int) -> tuple[bool, str, int]:
-    """Una corrida completa del ciclo. Devuelve `(exitoso, motivo, intentos)`."""
+def una_corrida(client, python: str, numero: int,
+                forzar_rechazo_inicial: bool = False,
+                volcar: Path | None = None) -> tuple[bool, str, int, dict]:
+    """Una corrida completa del ciclo. Devuelve `(exitoso, motivo, intentos, diagnostico)`.
+
+    Con `forzar_rechazo_inicial`, el veredicto del **primer** intento se descarta aunque la suite haya
+    quedado verde. Es el modo **C0-DURO** y existe por una razón medida: las 12 corridas del banco
+    normal acertaron al primer tiro, así que el reintento —el mecanismo construido justamente para
+    garantizar el 12/12— **nunca se ejecutó** contra el modelo real. Un 12/12 en el que el reintento
+    no corre no prueba que el reintento funcione: prueba que no hizo falta.
+
+    El truco toca **sólo** el intento 1. El intento 2 pasa por el gate **real**, sin trucos: su verde
+    es la suite corriendo de verdad. Lo que se mide es *"dado un rechazo con feedback localizado,
+    ¿el ciclo produce un parche que el gate acepta?"* — y eso es exactamente el mecanismo.
+    """
     with tempfile.TemporaryDirectory() as td:
         caja = Path(td) / "caja"
         caja.mkdir()
@@ -82,9 +95,14 @@ def una_corrida(client, python: str, numero: int) -> tuple[bool, str, int]:
 
         rc, salida_bug = _correr_pytest(caja, python)
         if rc == 0:
-            return False, "CONTROL FALLIDO: el bug no rompe la suite — el banco no mide nada", 0
+            return False, "CONTROL FALLIDO: el bug no rompe la suite — el banco no mide nada", 0, {}
+
+        #: Los tests que el bug rompe de verdad. Se usan como feedback del rechazo forzado.
+        nodeids_bug = nodeids_fallados(salida_bug)
+        prompts: list[str] = []
 
         def forjar(prompt: str) -> str:
+            prompts.append(prompt)
             r = client.chat.completions.create(
                 model=os.environ.get("COPILOTO_FORJADOR_MODELO", "gpt-4o-mini"),
                 messages=[{"role": "user", "content": prompt}], temperature=0)
@@ -98,16 +116,26 @@ def una_corrida(client, python: str, numero: int) -> tuple[bool, str, int]:
             v = _auditar(client, texto, f"archivo {archivo}; no romper: {NO_ROMPER}")
             return bool(getattr(v, "aprobado", False)), getattr(v, "motivo", "")
 
+        veces_probado = [0]
+
         def probar(contenido: str) -> tuple[bool, str, tuple[str, ...]]:
             """El veredicto es la SUITE VERDE, no que el parche haya aplicado."""
+            veces_probado[0] += 1
             (caja / ARCHIVO).write_text(contenido, encoding="utf-8")
             rc2, salida2 = _correr_pytest(caja, python)
             resumen = parsear_resumen(salida2)
+            # Se restaura el archivo roto ante CUALQUIER rechazo: el próximo intento tiene que partir
+            # del MISMO estado inicial, no del que dejó el intento fallido. Sin esto, los intentos se
+            # apilan y el 2º "arregla" un archivo que el 1º ya modificó — midiendo otra cosa.
+            if forzar_rechazo_inicial and veces_probado[0] == 1:
+                (caja / ARCHIVO).write_text(roto, encoding="utf-8")
+                # Motivo y nodeids con la MISMA forma que uno real —y los nodeids son los que el bug
+                # rompe DE VERDAD, sacados de la corrida con el bug, no inventados. Citar un test
+                # inexistente mandaría al modelo a buscar algo que no está, y estaríamos midiendo su
+                # reacción a un feedback corrupto en vez de al feedback del sistema.
+                return False, "la suite queda roja: 1 fallaron", nodeids_bug
             if resumen.verde:
                 return True, f"ACEPTADO: {resumen.pasaron} pasaron", ()
-            # Se restaura el archivo roto: el próximo intento tiene que partir del MISMO estado
-            # inicial, no del que dejó el intento fallido. Sin esto, los intentos se apilan y el
-            # 2º "arregla" un archivo que el 1º ya modificó — midiendo otra cosa.
             (caja / ARCHIVO).write_text(roto, encoding="utf-8")
             return (False, f"la suite queda roja: {resumen.fallaron} fallaron",
                     nodeids_fallados(salida2))
@@ -115,13 +143,43 @@ def una_corrida(client, python: str, numero: int) -> tuple[bool, str, int]:
         r = reparar(archivo=ARCHIVO, contenido=roto, salida_pytest=salida_bug, no_romper=NO_ROMPER,
                     forjar=forjar, aplicar=aplicar, auditar=auditar, probar=probar,
                     prompt_inicial=prompt_de_forja, prompt_reintento=prompt_de_reintento)
-        return r.exitoso, r.motivo, r.cantidad_intentos
+
+        # Diagnóstico del reintento. Un "aceptado en el intento 2" no alcanza: si el 2º parche fuera
+        # idéntico al 1º, el reintento no estaría aportando nada y el acierto sería del gate, no del
+        # feedback. Y si el prompt del 2º no llevara el parche previo ni el nodeid, el modelo estaría
+        # tirando de nuevo a ciegas — que es lo que empíricamente AUMENTA las regresiones.
+        diag: dict = {}
+        if len(r.intentos) >= 2 and len(prompts) >= 2:
+            diag = {
+                "parche_distinto": r.intentos[0].texto_modelo.strip() != r.intentos[1].texto_modelo.strip(),
+                "prompt_lleva_el_previo": r.intentos[0].texto_modelo.strip()[:60] in prompts[1],
+                # Contra los nodeids REALES del bug, no contra un nombre escrito a mano. La primera
+                # versión comparaba con un literal que había quedado de una iteración anterior y daba
+                # False siempre: el instrumento acusaba al sistema de un fallo que era suyo.
+                "prompt_lleva_el_nodeid": bool(nodeids_bug) and any(n in prompts[1] for n in nodeids_bug),
+                "cuantos_nodeids": len(nodeids_bug),
+            }
+        if volcar:
+            volcar.write_text(
+                "\n\n".join(
+                    [f"### nodeids que el bug rompe ({len(nodeids_bug)}): {list(nodeids_bug)}"]
+                    + [f"### PROMPT intento {i+1}\n{p}\n### RESPUESTA intento {i+1}\n"
+                       f"{r.intentos[i].texto_modelo if i < len(r.intentos) else '(sin respuesta)'}"
+                       for i, p in enumerate(prompts)]),
+                encoding="utf-8")
+        return r.exitoso, r.motivo, r.cantidad_intentos, diag
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--corridas", type=int, default=12)
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--volcar", default="",
+                    help="archivo donde volcar prompts y respuestas CRUDAS de la 1ª corrida. Sin "
+                         "esto, un '0/12' sólo dice que falló, no en qué se equivocó el modelo.")
+    ap.add_argument("--forzar-rechazo-inicial", action="store_true",
+                    help="modo C0-DURO: descarta el veredicto del 1er intento para que el REINTENTO "
+                         "se ejecute de verdad. El 2º intento pasa por el gate real, sin trucos.")
     args = ap.parse_args()
 
     if not os.environ.get("OPENAI_API_KEY"):
@@ -130,31 +188,67 @@ def main() -> int:
     from openai import OpenAI
     client = OpenAI()
 
-    print(f"[c0] midiendo {args.corridas} corridas del ciclo contra el LLM real…\n")
+    modo = "C0-DURO (reintento forzado)" if args.forzar_rechazo_inicial else "C0"
+    print(f"[{modo}] midiendo {args.corridas} corridas del ciclo contra el LLM real…\n")
     exitos, detalle = 0, []
     for n in range(1, args.corridas + 1):
         try:
-            ok, motivo, intentos = una_corrida(client, args.python, n)
+            ok, motivo, intentos, diag = una_corrida(
+                client, args.python, n, args.forzar_rechazo_inicial,
+                volcar=Path(args.volcar) if (args.volcar and n == 1) else None)
         except Exception as exc:  # noqa: BLE001 — una corrida que revienta es un FALLO, no un skip
-            ok, motivo, intentos = False, f"EXCEPCIÓN: {type(exc).__name__}: {exc}", 0
+            ok, motivo, intentos, diag = False, f"EXCEPCIÓN: {type(exc).__name__}: {exc}", 0, {}
         exitos += int(ok)
-        detalle.append((n, ok, intentos, motivo))
-        print(f"  corrida {n:>2}: {'✅' if ok else '❌'} intentos={intentos} — {motivo}")
+        detalle.append((n, ok, intentos, motivo, diag))
+        extra = ""
+        if diag:
+            extra = (f" [parche≠previo={diag['parche_distinto']}"
+                     f" prompt_lleva_previo={diag['prompt_lleva_el_previo']}"
+                     f" prompt_lleva_nodeid={diag['prompt_lleva_el_nodeid']}]")
+        print(f"  corrida {n:>2}: {'✅' if ok else '❌'} intentos={intentos} — {motivo}{extra}")
 
-    print(f"\n[c0] RESULTADO: {exitos}/{args.corridas}")
+    print(f"\n[{modo}] RESULTADO: {exitos}/{args.corridas}")
     # El diferencial de intentos: 12/12 siempre al 3er intento es un dato MUY distinto de 12/12 al
     # 1º, y el promedio los haría indistinguibles.
     for i in (1, 2, 3):
-        cuantas = sum(1 for _, ok, k, _ in detalle if ok and k == i)
+        cuantas = sum(1 for _, ok, k, _, _ in detalle if ok and k == i)
         if cuantas:
             print(f"       aceptados en el intento {i}: {cuantas}")
+
+    if args.forzar_rechazo_inicial:
+        # CONTROL DEL MODO DURO. Sin esto, el modo podría reportar 12/12 sin que el reintento haya
+        # corrido —exactamente el agujero que este modo viene a tapar— y quedaría igual de verde.
+        # Dos cosas distintas que la primera versión colapsaba en un solo mensaje —y el mensaje que
+        # elegía era el FALSO: con 0 aciertos decía "el forzado no se aplicó", acusando al instrumento
+        # cuando lo que había fallado era el sistema medido. Un instrumento que se echa la culpa
+        # manda a depurar el lugar equivocado.
+        al_primer_intento = sum(1 for _, ok, k, _, _ in detalle if ok and k == 1)
+        if al_primer_intento:
+            print(f"\n[{modo}] ❌ CONTROL FALLIDO: {al_primer_intento} corridas acertaron en el "
+                  f"intento 1, pero el modo duro rechaza ese intento SIEMPRE. El forzado no se "
+                  f"aplicó y esto no midió lo que dice medir.", file=sys.stderr)
+            return 2
+        if exitos == 0:
+            print(f"\n[{modo}] ❌ ninguna corrida terminó con parche aceptado: con un rechazo en el "
+                  f"intento 1, el ciclo NO se recupera. El reintento no está cumpliendo su función.",
+                  file=sys.stderr)
+            return 1
+        ciegos = [n for n, ok, _, _, d in detalle
+                  if ok and d and not (d["parche_distinto"] and d["prompt_lleva_el_previo"]
+                                       and d["prompt_lleva_el_nodeid"])]
+        if ciegos:
+            print(f"\n[{modo}] ⚠️  corridas donde el 2º intento acertó SIN feedback útil "
+                  f"(parche idéntico, o el prompt no llevó el previo/los nodeids): {ciegos}\n"
+                  f"       acertaron por otra vía, no por el mecanismo.", file=sys.stderr)
+            return 1
+
     if exitos != args.corridas:
-        print("\n[c0] ❌ NO se alcanzó el objetivo. Corridas fallidas:", file=sys.stderr)
-        for n, ok, k, motivo in detalle:
+        print(f"\n[{modo}] ❌ NO se alcanzó el objetivo. Corridas fallidas:", file=sys.stderr)
+        for n, ok, k, motivo, _ in detalle:
             if not ok:
                 print(f"       corrida {n} (intentos={k}): {motivo}", file=sys.stderr)
         return 1
-    print("[c0] ✅ objetivo alcanzado")
+    print(f"[{modo}] ✅ objetivo alcanzado")
     return 0
 
 

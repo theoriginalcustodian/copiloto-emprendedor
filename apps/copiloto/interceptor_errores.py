@@ -43,7 +43,7 @@ from temporalio.worker import (
 
 from contexto_tenant import tenant
 from deposito_traumas import FabricaDeTraumas, depositar
-from log_estructurado import log_error
+from log_estructurado import log_error, origen_en_el_codigo
 from taxonomia_errores import ErrorSinCategoria, categoria_de
 
 #: Claves del payload donde puede venir el tenant, en orden de preferencia. Es una lista y no un
@@ -121,7 +121,10 @@ class _CapturaInbound(ActivityInboundInterceptor):
                   error_type=type(exc).__name__, cliente_id=_cliente_id_de(payload),
                   costura="activity_interceptor",
                   contexto={"categoria": categoria, "workflow_id": info.workflow_id,
-                            "attempt": info.attempt})
+                            "attempt": info.attempt,
+                            # Sin archivo:línea el trauma es contable pero no reparable — el ciclo de
+                            # la Fase 3 lee de la DLQ, no del journal donde vive el traceback.
+                            "origen": origen_en_el_codigo(exc)})
 
 
 class CapturaDeErroresInterceptor(Interceptor):

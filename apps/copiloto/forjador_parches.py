@@ -152,6 +152,38 @@ aparecer UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de cont
 """
 
 
+def _neutralizar_marcadores(texto: str) -> str:
+    """Reescribe los marcadores SEARCH/REPLACE del intento previo como prosa.
+
+    **Medido el 2026-07-31, y es la causa por la que el reintento daba 0/12.** El prompt citaba el
+    intento anterior tal cual, con sus `<<<<<<< SEARCH` / `=======` / `>>>>>>> REPLACE` adentro de un
+    bloque ```. El modelo entonces devolvía el arreglo **correcto** (`& 0xffffffff`, exacto) pero
+    envuelto en un fence ``` y con sólo el `=======` del medio: había imitado la forma del texto
+    citado en vez de la del formato pedido. `aplicar_bloques` lo rechazaba —bien rechazado— y el
+    ciclo agotaba los 3 intentos con un parche correcto en la mano.
+
+    El ejemplo negativo contaminaba la salida. Y era invisible: el intento 1 no lleva texto citado, y
+    por eso el banco sin reintento daba 12/12 mientras el reintento estaba roto de punta a punta.
+
+    Lo que el modelo necesita del intento previo es **qué propuso**, para no repetirlo. Los marcadores
+    no aportan nada a eso y son justamente lo que lo desvía.
+    """
+    lineas = []
+    for linea in texto.splitlines():
+        pelada = linea.strip()
+        if pelada.startswith("<<<<<<< SEARCH"):
+            lineas.append("  [buscabas]")
+        elif pelada.startswith("======="):
+            lineas.append("  [y lo reemplazabas por]")
+        elif pelada.startswith(">>>>>>> REPLACE"):
+            lineas.append("  [fin del cambio propuesto]")
+        elif pelada.startswith("```"):
+            continue          # los fences también invitan a imitar la envoltura
+        else:
+            lineas.append(f"  {linea}")
+    return "\n".join(lineas)
+
+
 def prompt_de_reintento(*, archivo: str, contenido: str, salida_pytest: str, no_romper: str,
                         intento_previo: str, motivo_rechazo: str,
                         regresiones: tuple[str, ...] = ()) -> str:
@@ -177,6 +209,8 @@ def prompt_de_reintento(*, archivo: str, contenido: str, salida_pytest: str, no_
         detalle = (f"\nTESTS QUE PASABAN ANTES Y TU PARCHE ROMPIÓ (son la causa del rechazo):\n"
                    f"{listado}\n")
 
+    previo = _neutralizar_marcadores(intento_previo[-1200:])
+
     return f"""Tu intento anterior de reparar este bug FUE RECHAZADO. Corregilo.
 
 ARCHIVO {archivo}:
@@ -189,10 +223,8 @@ SALIDA REAL DE PYTEST (el bug original):
 {salida_pytest[-1500:]}
 ```
 
-TU INTENTO ANTERIOR (NO lo repitas):
-```
-{intento_previo[-1200:]}
-```
+TU INTENTO ANTERIOR, descrito en palabras (NO lo repitas, y NO copies ESTE formato):
+{previo}
 
 POR QUÉ SE RECHAZÓ: {motivo_rechazo}
 {detalle}
@@ -200,6 +232,9 @@ QUÉ NO ROMPER: {no_romper}
 
 Pensá qué asumiste mal en el intento anterior antes de escribir. Si el rechazo fue por romper otros
 tests, tu parche tocó algo de lo que esos tests dependen: acotá el cambio.
+
+Tu respuesta tiene que EMPEZAR con la línea `<<<<<<< SEARCH`. No la envuelvas en ``` ni omitas
+ninguno de los tres marcadores: un parche sin ellos se descarta entero aunque el arreglo sea correcto.
 
 Respondé SOLO con uno o más bloques en este formato EXACTO, copiando el texto a buscar
 LITERALMENTE del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que

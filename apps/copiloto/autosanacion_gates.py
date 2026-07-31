@@ -60,6 +60,23 @@ DOMINIOS_PROHIBIDOS = (
 )
 
 
+#: Las ÚNICAS categorías que se auto-reparan con un parche de código. Es el gate que más recorta la
+#: superficie del ciclo, y sale de una observación del operador (2026-07-31): en producción los
+#: fallos no van a ser features rotas sino operación —un campo vacío, un dato raro, un 503—, así que
+#: la pregunta no es "¿puedo repararlo?" sino "¿hay algo de código que reparar?".
+#:
+#: - `infra_error` **NO**: un timeout o un 503 de Composio no tienen bug. Ya se reintentan solos
+#:   (ítem 2.5); mandarlos al forjador es pagar dos llamadas al LLM y una suite entera para que el
+#:   modelo "arregle" código que está bien — y un parche sobre código sano es una regresión con
+#:   forma de reparación.
+#: - `manual_intervention` **NO**: permisos y credenciales necesitan una persona, por definición.
+#: - `cascading` **NO**: el bug está en el padre; parchear al hijo tapa el síntoma.
+#: - `SIN_CATEGORIA` **NO** (no está acá y no debe estarlo): es un tipo que nadie clasificó todavía.
+#:   `taxonomia_errores` se niega a asumir una categoría por descarte justamente para forzar esa
+#:   decisión; auto-reparar lo no clasificado sería tomarla a ciegas y en el peor momento.
+CATEGORIAS_REPARABLES = ("business_error",)
+
+
 @dataclass(frozen=True)
 class Decision:
     permitido: bool
@@ -118,7 +135,7 @@ def tiene_indice_unico(conn, tabla: str, columnas: tuple[str, ...]) -> bool:  # 
     return False
 
 
-def puede_reparar(*, ruta: str, reparaciones_hoy: int) -> Decision:
+def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = None) -> Decision:
     """El gate de la reparación, en orden de costo: lo barato primero.
 
     El orden importa — preguntar por el kill switch cuesta una lectura de env, y consultar índices
@@ -131,6 +148,13 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int) -> Decision:
     if dominio:
         return Decision(False, f"dominio DIAGNOSTIC_ONLY: {dominio} — efecto irreversible y externo "
                                "(CAE ante AFIP, secreto one-shot, token rotado). Nunca se auto-repara")
+
+    # `categoria=None` NO se interpreta como "adelante": un trauma viejo o depositado por una costura
+    # que no la registró tiene que caer del lado del no. El default permisivo sería el error clásico
+    # de este gate — el caso normal de toda regla restrictiva es no-hacer.
+    if categoria not in CATEGORIAS_REPARABLES:
+        return Decision(False, f"categoría {categoria!r}: no hay código que reparar acá. Sólo se "
+                               f"auto-reparan {CATEGORIAS_REPARABLES}")
 
     tope = tope_diario()
     if reparaciones_hoy >= tope:

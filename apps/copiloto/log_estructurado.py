@@ -28,11 +28,56 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from fingerprint import fingerprint_de_error
 
 _log = logging.getLogger("copiloto")
+
+#: Raíz del repo desplegado, derivada del propio módulo (`…/apps/copiloto/log_estructurado.py`).
+#: Nunca hardcodeada: prod vive en `/opt/uc-repos/copiloto`, el stage de tests en otro path y el
+#: checkout local en un tercero — los tres tienen que dar el mismo path relativo.
+_RAIZ = Path(__file__).resolve().parents[2]
+
+
+def origen_en_el_codigo(exc: BaseException) -> dict[str, Any] | None:
+    """Dónde falló **nuestro** código: `{archivo, linea, funcion}` relativo a la raíz del repo.
+
+    **Por qué hace falta, y por qué no estaba.** El traceback viaja por `exc_info` al canal de
+    excepción —texto en journald— y nada de eso vuelve a entrar en la línea estructurada ni en el
+    trauma. Para un humano alcanza: abre el journal y lee. Para el ciclo de auto-reparación no: sin
+    archivo, `forjar_parche` no tiene nada que abrir, y "reparar" se convierte en adivinar el módulo
+    desde el nombre del workflow. Medido el 2026-07-31 al escribir las activities de la Fase 3 — el
+    trauma guardaba `workflow`, `error_type` y `categoria`, y ninguno de los tres localiza una línea.
+
+    **Se toma el frame más profundo que sea NUESTRO**, no el más profundo a secas: ese suele estar
+    dentro de `psycopg2` o `httpx`, donde no hay nada que reparar. El punto reparable es la última
+    línea de código propio que se ejecutó.
+
+    **Qué NO se emite:** el mensaje de la excepción ni el texto de la línea. Un path y un número no
+    son PII; el contenido de la línea podría serlo, y la regla 2 del módulo no admite excepciones
+    porque el consumidor sea un agente en vez de una persona.
+
+    Devuelve `None` si no hay traceback o si ningún frame es propio (p. ej. una excepción construida
+    a mano en un test) — un `None` explícito, nunca un dict a medias que después parezca una
+    ubicación real.
+    """
+    tb = getattr(exc, "__traceback__", None)
+    origen = None
+    while tb is not None:
+        crudo = tb.tb_frame.f_code.co_filename
+        try:
+            relativo = Path(crudo).resolve().relative_to(_RAIZ)
+        except (ValueError, OSError):
+            tb = tb.tb_next     # fuera del repo: stdlib, site-packages, `<string>` de un exec
+            continue
+        # Se pisa en cada vuelta a propósito: al salir del while queda el ÚLTIMO frame propio, que
+        # es el más profundo — el más cercano al fallo real.
+        origen = {"archivo": relativo.as_posix(), "linea": tb.tb_lineno,
+                  "funcion": tb.tb_frame.f_code.co_name}
+        tb = tb.tb_next
+    return origen
 
 
 def log_error(
@@ -58,6 +103,11 @@ def log_error(
         "cliente_id": cliente_id,
         "duration_ms": duration_ms,
     }
+    # Dónde falló, si se puede saber. Va como campo aparte y no dentro de `extra` para que ninguna
+    # costura tenga que acordarse de agregarlo: la que olvide hacerlo dejaría traumas irreparables.
+    origen = origen_en_el_codigo(exc)
+    if origen:
+        registro["origen"] = origen
     if extra:
         registro.update(extra)
 
