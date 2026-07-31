@@ -41,6 +41,7 @@ from temporalio.worker import (
     Interceptor,
 )
 
+from contexto_tenant import tenant
 from log_estructurado import log_error
 from taxonomia_errores import ErrorSinCategoria, categoria_de
 
@@ -68,15 +69,21 @@ def _cliente_id_de(payload: Any) -> str | None:
 
 class _CapturaInbound(ActivityInboundInterceptor):
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:
-        try:
-            return await self.next.execute_activity(input)
-        except Exception as exc:
-            # Regla 2: registrar NUNCA puede costar más que el error que se registra.
+        # El interceptor es el BORDE de la activity, y un borde hace dos cosas: declara de quién es la
+        # operación (para que la base pueda aplicar RLS — `contexto_tenant.py`) y registra lo que
+        # falla. Es el mismo `cliente_id` que ya se extraía para el log: no hay una segunda fuente de
+        # verdad del tenant, que es justo lo que haría falsificable el aislamiento.
+        payload = input.args[0] if input.args else None
+        with tenant(_cliente_id_de(payload)):
             try:
-                self._registrar(exc, input)
-            except Exception:  # noqa: BLE001
-                pass
-            raise  # Regla 1: la excepción original sigue su curso, intacta.
+                return await self.next.execute_activity(input)
+            except Exception as exc:
+                # Regla 2: registrar NUNCA puede costar más que el error que se registra.
+                try:
+                    self._registrar(exc, input)
+                except Exception:  # noqa: BLE001
+                    pass
+                raise  # Regla 1: la excepción original sigue su curso, intacta.
 
     @staticmethod
     def _registrar(exc: BaseException, input: ExecuteActivityInput) -> None:

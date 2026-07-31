@@ -10,10 +10,13 @@ desde el composition root — nunca literales acá. Sumar un tenant = 0 cambios 
 resolución es por query a `tenants`, no por config)."""
 from __future__ import annotations
 
+import asyncio
 from typing import Callable
 
 import jwt
 from fastapi import HTTPException, Request
+
+from contexto_tenant import declarar_tenant
 
 _SCHEMA = "uc_factory"
 _TENANTS_TABLE = f"{_SCHEMA}.tenants"
@@ -96,11 +99,22 @@ def make_require_tenant(*, secret: str, conn_factory: Callable, issuer: str | No
     if not secret or not isinstance(secret, str):
         raise ValueError("SUPABASE_JWT_SECRET missing/empty")
 
-    def require_tenant(request: Request) -> str:
+    # ⚠️ `async def` NO es cosmético y no se puede volver a `def` sin romper el aislamiento de la
+    # base. Medido el 2026-07-31: una dependencia SYNC de FastAPI corre en un threadpool, y el
+    # `ContextVar` que setea NO llega al handler (probe: `{'visto': None}`); en una dependencia ASYNC
+    # sí llega, y además sobrevive a `asyncio.to_thread`, que es donde corren todos los stores.
+    # Como el RLS con `FORCE` depende de ese ContextVar, volverla sync haría que la app deje de ver
+    # SUS PROPIOS datos —0 filas en todo— sin ningún error que lo delate.
+    async def require_tenant(request: Request) -> str:
         claims = _bearer_claims(request, secret=secret, issuer=issuer)
-        cliente_id = resolve_cliente_id(conn_factory, claims["sub"])
+        # `to_thread` porque `resolve_cliente_id` hace I/O de DB síncrono: llamarlo directo acá
+        # bloquearía el event loop en CADA request autenticado.
+        cliente_id = await asyncio.to_thread(resolve_cliente_id, conn_factory, claims["sub"])
         if cliente_id is None:
             raise HTTPException(status_code=403, detail="tenant not provisioned for this user")
+        # El borde declara el tenant: de acá en adelante, toda conexión que se abra en este request
+        # se lo dice a la base. Ver `contexto_tenant.py`.
+        declarar_tenant(cliente_id)
         return cliente_id
 
     return require_tenant

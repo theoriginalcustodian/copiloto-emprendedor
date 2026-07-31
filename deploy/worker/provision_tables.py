@@ -26,6 +26,29 @@ import sys
 
 SCHEMA = "uc_factory"
 GRANTEES = ["anon", "authenticated", "service_role"]
+
+#: Función que resuelve el tenant de la conexión, usada por TODAS las policies.
+#: Lee `request.jwt.claims`, la GUC que setea PostgREST **y** que la app declara al abrir cada
+#: conexión directa (`apps/copiloto/contexto_tenant.py`). Un solo modelo de policy sirve para los dos
+#: caminos de acceso: bifurcar la seguridad por camino es cómo se cuela un agujero en el que nadie mira.
+#: Sin claims devuelve NULL → ninguna fila matchea → **fail-closed**, que es el comportamiento correcto
+#: ante un olvido.
+def _force_rls() -> bool:
+    """¿Aplicar `FORCE ROW LEVEL SECURITY`? Ver el comentario en `provision()`.
+
+    Se lee en cada llamada (no como constante de módulo) para que un test pueda ejercitar las dos
+    ramas sin reimportar: una rama que ningún test puede recorrer es una rama sin verificar.
+    """
+    return os.environ.get("UC_RLS_FORCE", "").strip().lower() in ("1", "true", "yes")
+
+
+TENANT_FN = f"{SCHEMA}.current_cliente_id"
+_TENANT_SQL = f"{TENANT_FN}()"
+_TENANT_FN_DDL = f"""
+CREATE OR REPLACE FUNCTION {TENANT_FN}() RETURNS uuid LANGUAGE sql STABLE AS $fn$
+  SELECT NULLIF(NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'cliente_id', '')::uuid
+$fn$;
+"""
 # IMPORTANTE: validar con re.fullmatch (NO .match): en Python `$` matchea ANTES de un `\n` final, así que un
 # `match` con `$` deja pasar identificadores con newline embebido (review adversarial — finding LOW). fullmatch
 # + regex sin anclas cierra ese hueco.
@@ -91,6 +114,11 @@ def provision(spec: dict, conn) -> list:
     `conn` con autocommit (cada DDL es su propia transacción). Separado de main() para testearlo."""
     done = []
     cur = conn.cursor()
+    # La función del tenant, ANTES de cualquier policy que la referencie. `CREATE OR REPLACE` la hace
+    # idempotente y permite corregirla en una corrida posterior sin tocar las 77 policies.
+    cur.execute(_TENANT_FN_DDL)
+    for g in GRANTEES:
+        cur.execute(f"GRANT EXECUTE ON FUNCTION {_TENANT_SQL} TO {g};")
     for table, cols in spec.items():
         t = _ident(table)
         coldefs = ",\n  ".join(['id bigserial PRIMARY KEY', 'cliente_id uuid NOT NULL']
@@ -111,9 +139,27 @@ def provision(spec: dict, conn) -> list:
                 f"ese nombre en el schema compartido). Namespacá las tablas por app/sistema con un prefijo "
                 f"(p.ej. '<app>_{t}'). Ver domain-cards/postgres.md §8.")
         cur.execute(f'ALTER TABLE {SCHEMA}."{t}" ENABLE ROW LEVEL SECURITY;')
+        # ⚠️ FORCE no es opcional y su ausencia NO da síntoma. Medido el 2026-07-31: la app se conecta
+        # con el rol DUEÑO de estas tablas, y Postgres exime al dueño de sus propias policies salvo
+        # FORCE. Sin esta línea el RLS existe en el catálogo y no filtra NADA: una consulta sin JWT
+        # devolvió filas de 3 tenants distintos. 72 de 77 tablas vivieron así.
+        #
+        # Detrás de flag SÓLO por el orden de despliegue, no por duda: activar FORCE **antes** de que
+        # el código que declara el tenant esté corriendo dejaría a la app viendo 0 filas en todo, sin
+        # un error que lo explique. Paso 1: desplegar el código (este flag apagado). Paso 2: verificar
+        # por efecto que la GUC llega, y recién ahí encenderlo. El flag tiene fecha de retiro: cuando
+        # las 77 tablas estén migradas, `FORCE` pasa a incondicional y esta rama se borra.
+        # TODO(rls-force, backend, 2026-07-31): retirar el flag una vez migradas las 77 tablas.
+        if _force_rls():
+            cur.execute(f'ALTER TABLE {SCHEMA}."{t}" FORCE ROW LEVEL SECURITY;')
         cur.execute(f'DROP POLICY IF EXISTS tenant_isolation ON {SCHEMA}."{t}";')
+        # `WITH CHECK` además de `USING`: sin él, un tenant filtra bien la LECTURA pero puede ESCRIBIR
+        # filas con el cliente_id de otro. 65 de 70 policies estaban así.
+        # `_TENANT_SQL` en vez de `auth.jwt()`: la app se conecta directo (psycopg2), donde `auth.jwt()`
+        # es null — es el mismo patrón que las 5 tablas de `documed` ya usan en esta base.
         cur.execute(f'CREATE POLICY tenant_isolation ON {SCHEMA}."{t}" '
-                    f"FOR ALL USING (cliente_id = ((auth.jwt() ->> 'cliente_id')::uuid));")
+                    f"FOR ALL USING (cliente_id = {_TENANT_SQL}) "
+                    f"WITH CHECK (cliente_id = {_TENANT_SQL});")
         for g in GRANTEES:
             cur.execute(f'GRANT SELECT, INSERT, UPDATE, DELETE ON {SCHEMA}."{t}" TO {g};')
             cur.execute(f'GRANT USAGE, SELECT ON SEQUENCE {SCHEMA}."{t}_id_seq" TO {g};')
