@@ -135,8 +135,43 @@ seguridad**— tumba la autenticación entera, y ningún test de store lo notar�
 
 Los dos son el mismo modo de fallo: **el vacío que no protesta**. Ninguno tira error.
 
-**Lo que falta del PR #162:** suite completa verde → commit del batch → mergear → desplegar (paso 1,
-flag apagado) → verificar por efecto que la GUC llega → **encender `UC_RLS_FORCE=1`** (paso 2).
+### 2.7 ✅ El paso 2 (encender `FORCE` en prod) ya está de-riskeado
+
+El riesgo real no era el `FORCE`: era que las **policies vivas** no entendieran nuestra GUC. Medido
+contra producción el 2026-07-31:
+
+| | |
+|---|---|
+| tablas en `uc_factory` | **77**, todas con RLS, sólo **5** con `FORCE` (las de documed) |
+| `tenants` con `FORCE` | **no** ✔ coherente con el guard de §2.5 |
+| policies con `auth.jwt() ->> 'cliente_id'` | **64** |
+| `uc_factory.current_cliente_id()` en prod | **todavía no existe** (la crea el provisionado nuevo) |
+
+La pregunta que decidía todo: **¿`auth.jwt()` lee la misma GUC que seteamos?** Su definición en
+producción:
+
+```sql
+select coalesce(nullif(current_setting('request.jwt.claim',  true), ''),
+                nullif(current_setting('request.jwt.claims', true), ''))::jsonb
+```
+
+Y el control **por efecto**, seteando la GUC igual que `contexto_tenant.declarar_en_conexion`:
+
+```
+auth.jwt() ->> cliente_id  = 11111111-1111-1111-1111-111111111111
+sin claims                 = None
+```
+
+**Las 64 policies viejas funcionan tal cual con el mecanismo nuevo** — no hay que migrarlas antes de
+encender `FORCE`, y sin claims dan `NULL` (fail-closed, que es lo correcto). Las 18 tablas del
+manifiesto además pasan a `current_cliente_id()`, que lee esa misma GUC: los dos caminos conviven.
+
+**Lo que falta del PR #162:** CI verde → mergear → desplegar (paso 1, flag apagado) → verificar por
+efecto que la GUC llega en el binario desplegado → **encender `UC_RLS_FORCE=1`** (paso 2).
+
+⚠️ **El pre-push está trabado:** sincroniza el grafo y es *fail-closed*; Graphity responde **HTTP 000**
+(ni conecta). Los dos commits de hoy se pusharon con `--no-verify`, que es el bypass que el propio hook
+documenta para fallo transitorio. **Deuda abierta:** reingestar el grafo con `--since` cuando vuelva.
 
 **Por qué el flag:** activar `FORCE` antes de que el código que declara el tenant esté corriendo
 dejaría la app viendo 0 filas en todo. `TODO(rls-force, backend, 2026-07-31)` para retirarlo cuando
