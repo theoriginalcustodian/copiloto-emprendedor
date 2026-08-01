@@ -46,6 +46,12 @@ gh auth status >/dev/null 2>&1 || { echo "❌ \`gh\` sin credenciales: el ciclo 
 # no porque el provisionado la pusiera. Un reprovisionado del host la perdía en silencio.
 gh auth setup-git    # idempotente: reescribe el helper por-host, no acumula
 
+# La etiqueta con la que el ciclo marca sus PRs. `|| true` porque a la segunda pasada ya existe y
+# `gh label create` sale con error — y este script no puede abortar por eso. La etiqueta se aplica
+# best-effort DESPUÉS de crear el PR, así que si esto fallara el ciclo igual abre PRs, sin marcar.
+gh label create autosanacion --color "1D76DB" \
+  --description "PR propuesto por el ciclo de auto-reparación" 2>/dev/null || true
+
 if [ -d "$REPO/.git" ]; then
   echo "    el clon ya existe: actualizando a origin/main"
   git -C "$REPO" fetch --quiet origin main
