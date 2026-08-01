@@ -69,16 +69,21 @@ def _spec():
 
 
 def _horas_del_spec(spec) -> list[int]:
-    """Expande los `ScheduleRange` de un spec vivo a horas concretas.
+    """Expande los `ScheduleRange` de un spec a horas concretas: *¿a qué horas dispara?*
 
-    `ScheduleRange(4)` deja `end=0` y `step=0` — significa "sólo la hora 4", no "de la 4 a la 0".
-    Comparar los objetos crudos daría falsos negativos por esa asimetría; comparar las horas
-    expandidas responde la única pregunta que importa: *¿a qué horas dispara hoy?*
+    Se compara el EFECTO y no los objetos: un mismo conjunto de horas se puede expresar de varias
+    formas (`[0,2,4,6,8]` suelto vs. un rango con paso 2), y comparar objetos marcaría como
+    "distinto" un Schedule idéntico → reescritura en cada deploy.
+
+    Medido contra el temporalio 1.28.0 del VPS y contra el Schedule vivo: tanto el constructor como
+    el server normalizan —`ScheduleRange(4)` llega como `(start=4, end=4, step=1)`, en tupla—, así
+    que no hace falta tratar `end` ausente. El `or 1` queda sólo para un rango construido a mano con
+    `step=0`, que haría lanzar a `range()`.
     """
     horas: set[int] = set()
     for cal in getattr(spec, "calendars", []) or []:
         for r in getattr(cal, "hour", []) or []:
-            horas.update(range(r.start, max(r.end, r.start) + 1, max(r.step, 1)))
+            horas.update(range(r.start, r.end + 1, r.step or 1))
     return sorted(horas)
 
 
