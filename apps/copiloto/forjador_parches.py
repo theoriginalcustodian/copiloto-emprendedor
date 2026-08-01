@@ -198,6 +198,33 @@ Reglas del test, todas obligatorias:
 """
 
 
+#: Centinela imposible de encontrar en un prompt. Un parche sin ninguna línea de código no viajó a
+#: ningún lado y `False` es la respuesta correcta — pero tiene que salir de una comparación que falle
+#: de verdad, no de un `""` que está contenido en cualquier texto y daría `True` siempre.
+SIN_CODIGO = "\0sin-codigo-en-el-parche"
+
+
+def linea_de_codigo(texto_modelo: str) -> str:
+    """La primera línea con contenido REAL de un parche: ni marcador, ni fence, ni vacía.
+
+    Existe para poder preguntar honestamente *¿el prompt de reintento lleva el intento previo?*. Es
+    lo único que sobrevive intacto a `_neutralizar_marcadores`, que indenta cada línea y reescribe
+    los marcadores como prosa.
+
+    El banco lo preguntaba comparando los primeros 60 caracteres **crudos** del intento previo contra
+    el prompt, y eso no podía dar `True` nunca: el previo empieza por `<<<<<<< SEARCH` —el formato lo
+    exige— y en el prompt ese marcador ya no existe. Se midió contra el código anterior para
+    descartar que fuera una regresión: daba `False` ahí también. El instrumento acusaba al sistema de
+    un fallo que era suyo, y no era inofensivo — el guard `ciegos` del banco puede reprobar la
+    corrida entera por ese flag.
+    """
+    for linea in texto_modelo.splitlines():
+        pelada = linea.strip()
+        if pelada and not pelada.startswith(("<<<<<<<", "=======", ">>>>>>>", "```")):
+            return pelada
+    return SIN_CODIGO
+
+
 def _neutralizar_marcadores(texto: str) -> str:
     """Reescribe los marcadores SEARCH/REPLACE del intento previo como prosa.
 
