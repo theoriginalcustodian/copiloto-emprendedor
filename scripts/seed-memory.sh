@@ -124,4 +124,21 @@ echo "memoria reconciliada -> $DEST"
 echo "  $sembrados archivos .md · rescatados: $rescatados · purgados: $purgados · divergentes: $divergentes"
 [ "$rescatados" -gt 0 ] && echo "  ⚠️  Hay entradas rescatadas SIN COMMITEAR: git add memoria/ && git commit"
 [ "$divergentes" -gt 0 ] && echo "  ⚠️  Hay archivos divergentes: resolvelos a mano (el índice no se mergea solo)"
+
+# ── 3. SALUD DEL ÍNDICE ──────────────────────────────────────────────────────────────────────────
+# Enganchado acá, y no en un cron ni en la disciplina de nadie: un control que hay que ACORDARSE de
+# correr se desincroniza (memoria/atar-la-accion-a-un-momento-no-a-un-estado.md), y este es el
+# momento en que la memoria ya se está tocando. Si el índice pasa el techo de carga, su cola deja de
+# existir para la sesión SIN dar síntoma (memoria/el-indice-truncado-fabrica-duplicados.md).
+# Avisa, no aborta: sembrar la memoria no debe fallar porque el índice esté gordo.
+MEDIDOR="$REPO/scripts/medir-indice-memoria.py"
+if [ ! -f "$MEDIDOR" ]; then
+  # Un control que no está no puede fallar: decilo, no lo saltees en silencio.
+  echo "  ⚠️  Falta $MEDIDOR — la salud del índice quedó SIN medir."
+elif ! command -v python >/dev/null 2>&1; then
+  echo "  ⚠️  No hay python en el PATH — la salud del índice quedó SIN medir."
+else
+  echo
+  PYTHONIOENCODING=utf-8 python "$MEDIDOR" || echo "  ⚠️  El índice necesita PODA — ver arriba qué falla."
+fi
 exit 0
