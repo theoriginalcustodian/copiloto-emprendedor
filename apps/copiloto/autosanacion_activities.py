@@ -501,30 +501,87 @@ def _hay_gh() -> bool:
 
 def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
     """Abre el PR con `gh`. Ante cualquier fallo degrada al artefacto en vez de lanzar: perder la
-    propuesta por un problema de red sería el peor resultado posible del ciclo entero."""
+    propuesta por un problema de red sería el peor resultado posible del ciclo entero.
+
+    ## Este camino NUNCA había funcionado (2026-08-01)
+
+    Faltaban dos pasos, y un tercer defecto tapaba a los dos:
+
+    1. **Nadie escribía el archivo parcheado en el clon.** Se hacía `git add <archivo>` sobre un
+       clon prístino: no quedaba nada staged, `git commit` salía con error y el `except` degradaba a
+       artefacto. El contenido reparado vivía en `forja["contenido"]` y no se copiaba a ningún lado.
+    2. **Faltaba `git push` de la rama.** `gh pr create --head <rama>` necesita que exista en el
+       remoto; sin eso tampoco habría abierto nada.
+    3. **El `except` se comía el motivo.** Con `capture_output=True` + `check=True` el `stderr` real
+       queda dentro del `CalledProcessError`, y `f"{exc}"` sólo dice *"Command … returned non-zero
+       exit status 1"*. El diagnóstico verdadero —*"nothing to commit"*— no se imprimió nunca.
+
+    **Y no dio síntoma porque el camino jamás se ejercitó**: `COPILOTO_AUTOSANACION_REPO_GIT` no
+    estaba seteada en producción, así que el ciclo salía por el artefacto **antes** de llegar acá.
+    Un camino muerto no se rompe: espera. Es la forma de
+    `memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`, con el agravante de que acá el
+    degradado es un desenlace **legítimo** — ni siquiera se veía raro.
+    """
     rama = f"autosanacion/trauma-{trauma.get('id')}"
     cuerpo = (f"Reparación **propuesta automáticamente** para el trauma `{trauma.get('id')}`.\n\n"
               f"- error: `{trauma.get('error_type')}` en `{forja['archivo']}`\n"
               f"- operación: `{trauma.get('workflow')}` · ocurrencias: {trauma.get('dedupe_count')}\n\n"
               f"⚠️ El gate verificó **no-regresión** (la suite completa sigue verde), **no** que esto "
               f"arregle el bug: no existe un test que lo reproduzca. Revisá el cambio.\n")
+
+    def _git(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True, timeout=timeout, check=True)
+
     try:
-        subprocess.run(["git", "-C", str(repo), "checkout", "-b", rama],
-                       capture_output=True, timeout=30, check=True)
-        subprocess.run(["git", "-C", str(repo), "add", forja["archivo"]],
-                       capture_output=True, timeout=30, check=True)
-        subprocess.run(["git", "-C", str(repo), "commit", "-m",
-                        f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}"],
-                       capture_output=True, timeout=30, check=True)
+        # Base limpia. El clon es sólo del ciclo, así que descartar es seguro — y necesario: si un
+        # intento anterior se cayó a mitad, el árbol arrastra su parche y el PR nuevo lo incluiría.
+        _git("checkout", "--force", "main")
+        _git("fetch", "--quiet", "origin", "main", timeout=60)
+        _git("reset", "--hard", "--quiet", "origin/main")
+        # `-B`, no `-b`: un reintento sobre el mismo trauma reusa la rama en vez de morir con
+        # "already exists" — que es un fallo de reintento disfrazado de fallo de reparación.
+        _git("checkout", "-B", rama)
+
+        # EL PASO QUE FALTABA. Sin esto no hay diff, y sin diff no hay commit ni PR.
+        destino_en_repo = repo / forja["archivo"]
+        destino_en_repo.parent.mkdir(parents=True, exist_ok=True)
+        destino_en_repo.write_text(forja["contenido"], encoding="utf-8")
+
+        _git("add", "--", forja["archivo"])
+        # Control positivo antes de commitear: si no hay nada staged, el parche no llegó al árbol y
+        # el PR saldría vacío. Un PR vacío que dice "reparé X" es peor que no reparar — le enseña al
+        # revisor a aprobar sin mirar. Se dice con nombre propio en vez de esperar el error de git.
+        if subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--quiet"],
+                          capture_output=True, timeout=30).returncode == 0:
+            return {"url": artefacto.as_posix(), "modo": "sin_cambios",
+                    "motivo": "el parche no produjo ninguna diferencia contra origin/main; "
+                              "no se abre PR"}
+
+        _git("commit", "-m",
+             f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}")
+        _git("push", "--force-with-lease", "--set-upstream", "origin", rama, timeout=120)
+
         salida = subprocess.run(
             ["gh", "pr", "create", "--title",
              f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}",
              "--body", cuerpo, "--head", rama],
-            capture_output=True, text=True, timeout=60, check=True)
+            capture_output=True, text=True, timeout=60, check=True,
+            cwd=str(repo))   # `gh` resuelve el repo desde el cwd; sin esto usaba el del proceso
         return {"url": (salida.stdout or "").strip(), "modo": "pr"}
     except (OSError, subprocess.SubprocessError) as exc:
+        # El `stderr` va EN el motivo. Sin él, "returned non-zero exit status 1" es todo lo que
+        # queda de un fallo que sí sabía explicarse — y este camino se pasó semanas roto por eso.
+        detalle = getattr(exc, "stderr", None) or getattr(exc, "stdout", None) or ""
+        if isinstance(detalle, bytes):
+            detalle = detalle.decode("utf-8", "replace")
+        _log.warning(json.dumps({"evento": "autosanacion_pr_fallido",
+                                 "error_type": type(exc).__name__,
+                                 "detalle": str(detalle)[:500],
+                                 "efecto": "la propuesta queda como artefacto"}, ensure_ascii=False))
         return {"url": artefacto.as_posix(), "modo": "artefacto",
-                "motivo": f"no se pudo abrir el PR ({exc}); la propuesta quedó como artefacto"}
+                "motivo": f"no se pudo abrir el PR ({exc}): {str(detalle).strip()[:300]}; "
+                          f"la propuesta quedó como artefacto"}
 
 
 # ======================================================================================

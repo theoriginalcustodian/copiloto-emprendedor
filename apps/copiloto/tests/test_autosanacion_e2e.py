@@ -521,3 +521,89 @@ async def test_los_caminos_de_RECHAZO_del_workflow_no_mandan_fingerprint(monkeyp
     # Control positivo del mismo instrumento: si el registrador no viera nada, el assert de arriba
     # pasaría vacío. El dueño SÍ tiene que viajar — es lo que la activity necesita para el mensaje.
     assert payload["cliente_id"] == "dueño-de-la-ocurrencia"
+
+
+# ======================================================================================
+# C9 — el camino de PR contra un repo git REAL (el que nunca se había ejercitado)
+# ======================================================================================
+@pytest.mark.asyncio
+async def test_abrir_pr_ESCRIBE_el_parche_en_el_clon_y_lo_commitea(tmp_path):
+    """El bug del 2026-08-01: `_abrir_pr` hacía `git add <archivo>` sobre un clon PRÍSTINO.
+
+    Nunca escribía `forja["contenido"]` en el árbol, así que no había nada staged, `git commit`
+    fallaba y el ciclo degradaba a artefacto — con el `stderr` real tragado por el `except`. Vivió
+    roto sin dar síntoma porque `COPILOTO_AUTOSANACION_REPO_GIT` no estaba seteada en producción:
+    el ciclo salía por el artefacto **antes** de llegar a esta función. Un camino muerto no se
+    rompe, espera.
+
+    Este test lo ejercita contra un repo git de verdad. `gh` y el `push` van a fallar (no hay
+    remoto), y eso está bien: lo que se verifica es el ESTADO DEL REPO —que el parche llegó al
+    árbol y quedó commiteado—, que es exactamente lo que estaba roto. Verificar el desenlace
+    devuelto no serviría: `artefacto` es lo que devolvía cuando estaba roto Y cuando no hay remoto.
+    """
+    import subprocess
+
+    repo = tmp_path / "clon"
+    repo.mkdir()
+    def git(*a, **kw):
+        return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True,
+                              check=kw.pop("check", True))
+    git("init", "--quiet", "--initial-branch=main")
+    git("config", "user.email", "t@t.local")
+    git("config", "user.name", "t")
+    (repo / "modulo.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    git("add", "modulo.py")
+    git("commit", "--quiet", "-m", "base")
+    # `origin` apuntando a sí mismo: el fetch/reset del arranque necesitan un remoto que resuelva.
+    git("remote", "add", "origin", str(repo))
+    git("fetch", "--quiet", "origin")
+
+    reparado = "def f():\n    return 2  # reparado\n"
+    A._abrir_pr(repo, tmp_path / "x.patch",
+                {"archivo": "modulo.py", "contenido": reparado, "parche": "..."},
+                {"id": 42, "error_type": "KeyError", "workflow": "POST /x", "dedupe_count": 3})
+
+    # LO QUE ESTABA ROTO: el contenido reparado tiene que estar EN EL COMMIT de la rama.
+    rama = "autosanacion/trauma-42"
+    ramas = git("branch", "--list", rama).stdout
+    assert rama in ramas, f"no se creó la rama {rama}"
+    commiteado = git("show", f"{rama}:modulo.py").stdout
+    assert commiteado == reparado, (
+        "el parche NO llegó al commit: es exactamente el bug que hacía que el ciclo no pudiera "
+        "abrir un PR ni una vez")
+    # Y el commit existe de verdad, no es sólo el árbol sucio.
+    assert git("log", "-1", "--format=%s", rama).stdout.strip().startswith("fix(autosanacion):")
+
+
+@pytest.mark.asyncio
+async def test_abrir_pr_NO_commitea_si_el_parche_no_cambia_nada(tmp_path):
+    """Control negativo, y no es simétrico del anterior: si el "parche" es idéntico a lo que ya
+    hay, no se abre nada. Un PR vacío que dice "reparé X" es peor que no reparar — le enseña al
+    revisor a aprobar sin mirar, y esa costumbre después se aplica a los PR que sí cambian algo.
+
+    Sin este control, el test de arriba pasaría también con un `_abrir_pr` que commiteara SIEMPRE.
+    """
+    import subprocess
+
+    repo = tmp_path / "clon"
+    repo.mkdir()
+    def git(*a):
+        return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True,
+                              check=True)
+    git("init", "--quiet", "--initial-branch=main")
+    git("config", "user.email", "t@t.local")
+    git("config", "user.name", "t")
+    igual = "def f():\n    return 1\n"
+    (repo / "modulo.py").write_text(igual, encoding="utf-8")
+    git("add", "modulo.py")
+    git("commit", "--quiet", "-m", "base")
+    git("remote", "add", "origin", str(repo))
+    git("fetch", "--quiet", "origin")
+
+    resultado = A._abrir_pr(repo, tmp_path / "x.patch",
+                            {"archivo": "modulo.py", "contenido": igual, "parche": "..."},
+                            {"id": 43, "error_type": "KeyError", "workflow": "POST /x",
+                             "dedupe_count": 1})
+
+    assert resultado["modo"] == "sin_cambios", resultado
+    assert "ninguna diferencia" in resultado["motivo"]

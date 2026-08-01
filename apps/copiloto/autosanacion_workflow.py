@@ -136,7 +136,12 @@ class AutosanacionWorkflow:
                               "nota": pr.get("url", ""), "cliente_id": trauma.get("cliente_id"),
                               "fingerprint": trauma.get("fingerprint")},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
-        return {"estado": "pr_propuesto", "url": pr.get("url"), "trauma_id": trauma.get("id")}
+        # `modo` viaja en el desenlace, y no es cosmético: sin él `pr_propuesto` cubre DOS realidades
+        # opuestas —un PR abierto en GitHub y un `.patch` tirado en un /tmp que nadie visita— y las
+        # dos se leen igual desde afuera. Así el camino de PR estuvo roto sin que nada protestara
+        # (2026-08-01). Un resultado que puede significar dos cosas contrarias no es un resultado.
+        return {"estado": "pr_propuesto", "url": pr.get("url"), "modo": pr.get("modo"),
+                "motivo": pr.get("motivo"), "trauma_id": trauma.get("id")}
 
     async def _soltar(self, trauma: dict, motivo: str) -> None:
         """Devuelve el trauma a `pendiente` con la nota del rechazo.
