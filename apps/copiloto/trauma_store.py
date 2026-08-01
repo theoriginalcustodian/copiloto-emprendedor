@@ -225,7 +225,15 @@ class TraumaStore:
         """Las OTRAS filas pendientes con el mismo `fingerprint` — el mismo bug en otros tenants.
 
         No se tocan al tomar: si el ciclo falla a mitad de camino, quedan intactas para el próximo
-        intento. Se usan al **cerrar**, para que un bug reparado no vuelva a proponerse N veces.
+        intento. Se cierran al **cerrar**, para que un bug reparado no vuelva a proponerse N veces.
+
+        ⚠️ **Su único llamador hoy es el test de control**, y está dicho a propósito en vez de dejarlo
+        como sorpresa. `marcar_trauma` NO usa este método: cierra a los hermanos con un solo `UPDATE
+        … WHERE fingerprint = %s AND estado = 'pendiente'`, porque leer-y-después-escribir abriría
+        una ventana entre las dos sentencias — la misma clase de agujero que
+        `memoria/idempotencia-con-un-if-tiene-ventana.md`. Acá la lectura existe para **verificar** el
+        invariante desde afuera (qué hermanos quedaron, y de quién), que es justo lo que un test
+        necesita y lo que el UPDATE atómico no puede contar.
         """
         conn = self._conn_factory()
         try:

@@ -238,11 +238,19 @@ async def main() -> int:
             print(f"\ncontrol cross-tenant (mismo fingerprint, 2 dueños):\n"
                   f"  trauma {trauma_a} ({tenant_a[:8]}…): intentos={intentos_a} estado={estado_a}\n"
                   f"  trauma {trauma_b} ({tenant_b[:8]}…): intentos={intentos_b} estado={estado_b}")
-            if len(tomados) != 1:
-                print(f"❌ el ciclo tomó {len(tomados)} de las 2 ocurrencias del MISMO bug. "
-                      f"Tenía que tomar exactamente 1: el agrupado por fingerprint no está "
-                      f"funcionando y el humano recibiría un PR por tenant afectado.",
-                      file=sys.stderr)
+            if len(tomados) == 2:
+                print("❌ el ciclo tomó LAS DOS ocurrencias del MISMO bug. Tenía que tomar una: "
+                      "el agrupado por fingerprint no está funcionando y el humano recibiría un PR "
+                      "por cada tenant afectado.", file=sys.stderr)
+                return 1
+            if len(tomados) == 0:
+                # No es lo mismo que el fallo de arriba y no se puede reportar igual: significa que
+                # el ciclo tomó OTRO bug (la DLQ real tenía pendientes con más `dedupe_count`). El
+                # desenlace de arriba es legítimo, pero no dice nada sobre el agrupado — y darlo por
+                # verde sería exactamente el veredicto que cubre dos realidades opuestas.
+                print("❌ el ciclo no tocó ninguna de las 2 ocurrencias fabricadas: tomó otro bug "
+                      "de la DLQ real. La cadena corrió, pero este E2E NO midió el agrupado "
+                      "cross-tenant. Volvé a correrlo con la DLQ vacía.", file=sys.stderr)
                 return 1
 
             # Y si se llegó a proponer PR, el hermano tiene que haber quedado cerrado también — si
