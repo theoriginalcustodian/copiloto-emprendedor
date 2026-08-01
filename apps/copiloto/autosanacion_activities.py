@@ -423,9 +423,47 @@ async def proponer_pr_de_reparacion(payload: dict) -> dict:
         f"# reproduzca. Revisá el cambio, no el veredicto verde.\n\n{forja.get('parche', '')}\n",
         encoding="utf-8")
 
-    if not _hay_gh():
+    # DOS condiciones, no una: `gh` autenticado NO alcanza. Hace falta además un repo de trabajo
+    # declarado y distinto del desplegado — si no, el ciclo ramificaría sobre producción.
+    repo_pr = _repo_para_pr()
+    if repo_pr is None or not _hay_gh():
         return {"url": destino.as_posix(), "modo": "artefacto"}
-    return _abrir_pr(destino, forja, trauma)
+    return _abrir_pr(repo_pr, destino, forja, trauma)
+
+
+#: Repo de trabajo donde el ciclo puede crear ramas. **Tiene que ser distinto del repo desplegado.**
+#: Sin esta variable NO se abre ningún PR: se deja el artefacto y listo.
+ENV_REPO_GIT = "COPILOTO_AUTOSANACION_REPO_GIT"
+
+
+def _repo_para_pr() -> Path | None:
+    """El clon donde se puede ramificar, o `None` si no hay uno declarado y seguro.
+
+    **Por qué existe, y por qué el default es `None`** (hallazgo del 2026-07-31, antes de correr el
+    primer E2E real): el VPS del worker **tiene `gh` autenticado** —se verificó con `gh auth
+    status`— y la versión anterior de `_abrir_pr` corría `git checkout -b` sobre `_raiz_repo`, que
+    es **el repo del que corre el servicio vivo**. Un proceso automático creándole ramas al código
+    en producción es exactamente lo que Zero-Mutation existe para impedir.
+
+    Hoy no explotaba por un accidente: `/opt/uc-repos/copiloto` no es un repo git, así que el
+    `checkout` fallaba y el ciclo degradaba a artefacto. Depender de eso es depender de que nadie
+    cambie la forma de desplegar — la misma clase de "zafa por accidente" que este repo ya
+    documentó ([[la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control]]).
+
+    Ahora el camino peligroso es **imposible por construcción**: hace falta declarar un repo
+    distinto del desplegado, y si coincide se rechaza.
+    """
+    declarado = os.environ.get(ENV_REPO_GIT, "").strip()
+    if not declarado:
+        return None
+    ruta = Path(declarado)
+    if _raiz_repo and ruta.resolve() == Path(_raiz_repo).resolve():
+        _log.warning(json.dumps({"evento": "autosanacion_repo_pr_es_el_desplegado",
+                                 "efecto": "NO se abre PR; el ciclo jamás rama sobre producción"}))
+        return None
+    if not (ruta / ".git").exists():
+        return None
+    return ruta
 
 
 def _hay_gh() -> bool:
@@ -435,12 +473,12 @@ def _hay_gh() -> bool:
     except (OSError, subprocess.SubprocessError):
         # `gh` no instalado, sin PATH, o sin credenciales. Los tres significan lo mismo para el
         # llamador —no hay canal de PR— y ninguno es un error: el ciclo degrada a artefacto, que es
-        # un camino previsto y no una falla. Loguear acá gritaria en el caso NORMAL del VPS del
-        # worker, que deliberadamente NO tiene credenciales de GitHub.
+        # un camino previsto y no una falla. Loguear acá gritaría en el caso NORMAL de un worker
+        # que deliberadamente no tiene credenciales de GitHub.
         return False
 
 
-def _abrir_pr(artefacto: Path, forja: dict, trauma: dict) -> dict:
+def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
     """Abre el PR con `gh`. Ante cualquier fallo degrada al artefacto en vez de lanzar: perder la
     propuesta por un problema de red sería el peor resultado posible del ciclo entero."""
     rama = f"autosanacion/trauma-{trauma.get('id')}"
@@ -450,11 +488,11 @@ def _abrir_pr(artefacto: Path, forja: dict, trauma: dict) -> dict:
               f"⚠️ El gate verificó **no-regresión** (la suite completa sigue verde), **no** que esto "
               f"arregle el bug: no existe un test que lo reproduzca. Revisá el cambio.\n")
     try:
-        subprocess.run(["git", "-C", str(_raiz_repo), "checkout", "-b", rama],
+        subprocess.run(["git", "-C", str(repo), "checkout", "-b", rama],
                        capture_output=True, timeout=30, check=True)
-        subprocess.run(["git", "-C", str(_raiz_repo), "add", forja["archivo"]],
+        subprocess.run(["git", "-C", str(repo), "add", forja["archivo"]],
                        capture_output=True, timeout=30, check=True)
-        subprocess.run(["git", "-C", str(_raiz_repo), "commit", "-m",
+        subprocess.run(["git", "-C", str(repo), "commit", "-m",
                         f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}"],
                        capture_output=True, timeout=30, check=True)
         salida = subprocess.run(

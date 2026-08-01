@@ -315,16 +315,38 @@ el del CI; si difieren, hay tests que el bucle rápido no está corriendo.
 
 ---
 
-## 3.quater 🔧 Fase 3 — las tres piezas base, construidas y medidas
+## 3.quater ✅ Fase 3 — EL CICLO ESTÁ VIVO EN PRODUCCIÓN (2026-07-31, PR #172)
 
-Ninguna es "el ciclo": son las piezas **sin las cuales el ciclo no se puede encender**. El ciclo que
-las une (disparo desde la DLQ → forjar → auditar → proponer PR) es lo que sigue.
+Desplegado y verificado **por efecto**, no por el log del deploy:
+
+| Verificación | Evidencia |
+|---|---|
+| El worker levanta con el ciclo | `AGENT_B autosanacion: ON` en el journal |
+| Los Schedules existen | 19 creados, disparan 04:00 |
+| **El worker tiene el workflow registrado** | disparo manual → ejecución **COMPLETED**, desenlace `{'estado': 'sin_traumas'}` |
+| **Apagado de emergencia** | 19/19 pausados (RC=0) y reanudados (RC=0) |
+| No-regresión | **1362 passed**, 0 failed, Postgres real con `UC_RLS_FORCE=1` |
+
+⚠️ **Qué significa "aceptado por el gate", y qué no.** El banco C0 dio 12/12, pero midió al forjador
+reparando **un bug que rompe tests**. Un trauma de producción está en un camino que **ningún test
+ejercita** —si lo ejerciera, el CI lo habría cazado antes del deploy—, así que el gate sólo puede
+afirmar **no-regresión**, no que arregle. Por eso el ciclo propone y una persona revisa. **Deuda
+visible:** el paso que lo haría demostrable es que el ciclo escriba primero un test que reproduzca
+el trauma; no está construido.
+
+⚠️ **El kill switch por env NO es inmediato.** systemd fija el entorno al arrancar: hace falta
+`systemctl restart`. El apagado inmediato es `verificar_autosanacion.py --pausar-todo`
+([[kill-switch-por-env-no-es-inmediato-bajo-systemd]]).
+
+### Las piezas base
 
 | Pieza | PR | Evidencia |
 |---|---|---|
 | **Auditor** + 3 parches congelados + kill switch runtime | #166 | 11 con dobles · **13/13 contra `gpt-4o` real** |
 | **Aplicador SEARCH/REPLACE** | #167 | 12 tests puros · **11/12 corridas reales** |
-| **Los 4 gates** | #168 | 23 tests, con sus controles positivos |
+| **Los 4 gates** (+ el 5º, por categoría) | #168 · #172 | 31 tests, con sus controles positivos |
+| **Localización del fallo** (`origen_en_el_codigo`) | #172 | sin esto el trauma es contable, no reparable |
+| **El ciclo con reintento informado** | #172 | **0/12 → 7/12** con rechazo forzado |
 
 ### Lo que hay que saber al retomar
 

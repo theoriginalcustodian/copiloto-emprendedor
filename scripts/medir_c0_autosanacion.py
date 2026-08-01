@@ -34,6 +34,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -55,27 +56,77 @@ NO_ROMPER = ("la firma pública de fingerprint_de_error(...) y que dos errores d
              "fingerprints distintos")
 
 
-def _correr_pytest(caja: Path, python: str) -> tuple[int, str]:
-    p = subprocess.run([python, "-m", "pytest", TEST, "-q", "-ra"],
+@dataclass(frozen=True)
+class Caso:
+    """Un bug **real** inyectado en un archivo **real**, con su suite.
+
+    No son bugs de juguete: cada uno imita una clase de fallo que este backend puede tener de verdad,
+    y todos rompen tests que ya existían. El `por_que` no es documentación: es el criterio por el que
+    el caso está en la lista, y si alguien no puede escribirlo, el caso no entra.
+    """
+    nombre: str
+    archivo: str
+    test: str
+    original: str
+    roto: str
+    no_romper: str
+    por_que: str
+
+
+#: Los casos del banco. Ninguno toca dominios prohibidos (el ciclo los rechazaría antes de forjar,
+#: y estaríamos midiendo el gate en vez del forjador).
+CASOS = (
+    Caso("mascara-32-bits", "fingerprint.py", "test_fingerprint.py",
+         "& 0xFFFFFFFF", "",
+         "la firma pública de fingerprint_de_error(...) y que dos errores distintos sigan dando "
+         "fingerprints distintos",
+         "aritmética que se desborda en silencio — el hash deja de ser estable entre corridas"),
+    Caso("truncado-del-mensaje", "fingerprint.py", "test_fingerprint.py",
+         "[:200]", "",
+         "que el fingerprint siga siendo estable y que dos errores distintos den valores distintos",
+         "un límite que alguien quita 'porque no hacía falta': mensajes largos parten el grupo de "
+         "deduplicación y la DLQ se llena de entradas que son el mismo error"),
+    Caso("herencia-del-mro", "taxonomia_errores.py", "test_taxonomia_errores.py",
+         "for tipo in type(exc).__mro__:", "for tipo in [type(exc)]:",
+         "que una subclase siga heredando la categoría de su padre",
+         "el caso clásico de 'esto se puede simplificar': sin recorrer el MRO, un HTTPError(OSError) "
+         "deja de ser infra_error y nunca más se reintenta solo"),
+)
+
+
+#: El caso por defecto: el de S5, con el que se midió el 12/12.
+CASO_DEFAULT = CASOS[0]
+
+
+def _correr_pytest(caja: Path, python: str, test: str = TEST) -> tuple[int, str]:
+    p = subprocess.run([python, "-m", "pytest", test, "-q", "-ra"],
                        cwd=str(caja), capture_output=True, text=True, timeout=300)
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
-def _armar_caja(caja: Path) -> str:
-    """Deja en `caja` el módulo ROTO y su suite. Devuelve el contenido roto."""
-    fuente = (REPO / "apps/copiloto" / ARCHIVO).read_text(encoding="utf-8")
-    roto = fuente.replace(ORIGINAL, ROTO)
+def _armar_caja(caja: Path, caso: "Caso" = None) -> str:
+    """Deja en `caja` el módulo ROTO y su suite. Devuelve el contenido roto.
+
+    Si el fragmento a romper no está en el archivo, ABORTA en vez de seguir: un banco que mide sobre
+    un archivo sano diría 12/12 sin haber reparado nada — el instrumento que confirma en vez de
+    verificar.
+    """
+    caso = caso or CASO_DEFAULT
+    fuente = (REPO / "apps/copiloto" / caso.archivo).read_text(encoding="utf-8")
+    roto = fuente.replace(caso.original, caso.roto)
     if roto == fuente:
-        raise SystemExit(f"[c0] ❌ no se pudo introducir el bug ({ORIGINAL!r} no está en {ARCHIVO})")
-    (caja / ARCHIVO).write_text(roto, encoding="utf-8")
-    (caja / TEST).write_text(
-        (REPO / "apps/copiloto/tests" / TEST).read_text(encoding="utf-8"), encoding="utf-8")
+        raise SystemExit(f"[banco] ❌ no se pudo introducir el bug de '{caso.nombre}': "
+                         f"{caso.original!r} no está en {caso.archivo}")
+    (caja / caso.archivo).write_text(roto, encoding="utf-8")
+    (caja / caso.test).write_text(
+        (REPO / "apps/copiloto/tests" / caso.test).read_text(encoding="utf-8"), encoding="utf-8")
     return roto
 
 
 def una_corrida(client, python: str, numero: int,
                 forzar_rechazo_inicial: bool = False,
-                volcar: Path | None = None) -> tuple[bool, str, int, dict]:
+                volcar: Path | None = None,
+                caso: "Caso" = None) -> tuple[bool, str, int, dict]:
     """Una corrida completa del ciclo. Devuelve `(exitoso, motivo, intentos, diagnostico)`.
 
     Con `forzar_rechazo_inicial`, el veredicto del **primer** intento se descarta aunque la suite haya
@@ -91,9 +142,10 @@ def una_corrida(client, python: str, numero: int,
     with tempfile.TemporaryDirectory() as td:
         caja = Path(td) / "caja"
         caja.mkdir()
-        roto = _armar_caja(caja)
+        caso = caso or CASO_DEFAULT
+        roto = _armar_caja(caja, caso)
 
-        rc, salida_bug = _correr_pytest(caja, python)
+        rc, salida_bug = _correr_pytest(caja, python, caso.test)
         if rc == 0:
             return False, "CONTROL FALLIDO: el bug no rompe la suite — el banco no mide nada", 0, {}
 
@@ -113,7 +165,7 @@ def una_corrida(client, python: str, numero: int,
 
         def auditar(texto: str, archivo: str) -> tuple[bool, str]:
             from auditor_parches import auditar as _auditar
-            v = _auditar(client, texto, f"archivo {archivo}; no romper: {NO_ROMPER}")
+            v = _auditar(client, texto, f"archivo {archivo}; no romper: {caso.no_romper}")
             return bool(getattr(v, "aprobado", False)), getattr(v, "motivo", "")
 
         veces_probado = [0]
@@ -121,14 +173,14 @@ def una_corrida(client, python: str, numero: int,
         def probar(contenido: str) -> tuple[bool, str, tuple[str, ...]]:
             """El veredicto es la SUITE VERDE, no que el parche haya aplicado."""
             veces_probado[0] += 1
-            (caja / ARCHIVO).write_text(contenido, encoding="utf-8")
-            rc2, salida2 = _correr_pytest(caja, python)
+            (caja / caso.archivo).write_text(contenido, encoding="utf-8")
+            rc2, salida2 = _correr_pytest(caja, python, caso.test)
             resumen = parsear_resumen(salida2)
             # Se restaura el archivo roto ante CUALQUIER rechazo: el próximo intento tiene que partir
             # del MISMO estado inicial, no del que dejó el intento fallido. Sin esto, los intentos se
             # apilan y el 2º "arregla" un archivo que el 1º ya modificó — midiendo otra cosa.
             if forzar_rechazo_inicial and veces_probado[0] == 1:
-                (caja / ARCHIVO).write_text(roto, encoding="utf-8")
+                (caja / caso.archivo).write_text(roto, encoding="utf-8")
                 # Motivo y nodeids con la MISMA forma que uno real —y los nodeids son los que el bug
                 # rompe DE VERDAD, sacados de la corrida con el bug, no inventados. Citar un test
                 # inexistente mandaría al modelo a buscar algo que no está, y estaríamos midiendo su
@@ -136,11 +188,12 @@ def una_corrida(client, python: str, numero: int,
                 return False, "la suite queda roja: 1 fallaron", nodeids_bug
             if resumen.verde:
                 return True, f"ACEPTADO: {resumen.pasaron} pasaron", ()
-            (caja / ARCHIVO).write_text(roto, encoding="utf-8")
+            (caja / caso.archivo).write_text(roto, encoding="utf-8")
             return (False, f"la suite queda roja: {resumen.fallaron} fallaron",
                     nodeids_fallados(salida2))
 
-        r = reparar(archivo=ARCHIVO, contenido=roto, salida_pytest=salida_bug, no_romper=NO_ROMPER,
+        r = reparar(archivo=caso.archivo, contenido=roto, salida_pytest=salida_bug,
+                    no_romper=caso.no_romper,
                     forjar=forjar, aplicar=aplicar, auditar=auditar, probar=probar,
                     prompt_inicial=prompt_de_forja, prompt_reintento=prompt_de_reintento)
 
@@ -170,10 +223,51 @@ def una_corrida(client, python: str, numero: int,
         return r.exitoso, r.motivo, r.cantidad_intentos, diag
 
 
+def _banco_de_casos(client, python: str) -> int:
+    """Un bug real de cada clase, una corrida cada uno.
+
+    Complementa a `--corridas`, no lo reemplaza: aquel mide **consistencia** (¿12 de 12 sobre el
+    MISMO bug?), este mide **amplitud** (¿repara clases de bug distintas, en archivos distintos, con
+    suites distintas?). Un ciclo que sólo sabe arreglar el bug con el que se lo entrenó pasaría el
+    primero con honores y fallaría el segundo — y en producción los bugs no se eligen.
+
+    El veredicto de cada caso es la **suite verde**, no que el parche aplique.
+    """
+    print(f"[banco] {len(CASOS)} casos reales, un bug distinto cada uno\n")
+    resultados = []
+    for caso in CASOS:
+        try:
+            ok, motivo, intentos, _ = una_corrida(client, python, 1, caso=caso)
+        except SystemExit as exc:            # el control del bug abortó: es un fallo del BANCO
+            print(f"  {caso.nombre:22s} ⚠️  {exc}")
+            resultados.append((caso, False, str(exc), 0))
+            continue
+        except Exception as exc:  # noqa: BLE001
+            ok, motivo, intentos = False, f"EXCEPCIÓN: {type(exc).__name__}: {exc}", 0
+        resultados.append((caso, ok, motivo, intentos))
+        print(f"  {caso.nombre:22s} {'✅' if ok else '❌'} intentos={intentos} — {motivo}")
+        print(f"  {'':22s}    ({caso.por_que})")
+
+    logrados = sum(1 for _, ok, _, _ in resultados if ok)
+    print(f"\n[banco] RESULTADO: {logrados}/{len(CASOS)} casos reales resueltos")
+    if logrados != len(CASOS):
+        print("\n[banco] ❌ casos NO resueltos:", file=sys.stderr)
+        for caso, ok, motivo, _ in resultados:
+            if not ok:
+                print(f"       {caso.nombre}: {motivo}", file=sys.stderr)
+        return 1
+    print("[banco] ✅ el ciclo repara las tres clases de bug, no sólo la que se midió 12 veces")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--corridas", type=int, default=12)
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--casos", action="store_true",
+                    help="corre el banco de CASOS REALES: cada bug de `CASOS` una vez, con su "
+                         "propio archivo y su propia suite. Mide amplitud (¿repara clases de bug "
+                         "distintas?) donde --corridas mide consistencia sobre UNA.")
     ap.add_argument("--volcar", default="",
                     help="archivo donde volcar prompts y respuestas CRUDAS de la 1ª corrida. Sin "
                          "esto, un '0/12' sólo dice que falló, no en qué se equivocó el modelo.")
@@ -187,6 +281,9 @@ def main() -> int:
         return 2
     from openai import OpenAI
     client = OpenAI()
+
+    if args.casos:
+        return _banco_de_casos(client, args.python)
 
     modo = "C0-DURO (reintento forzado)" if args.forzar_rechazo_inicial else "C0"
     print(f"[{modo}] midiendo {args.corridas} corridas del ciclo contra el LLM real…\n")
