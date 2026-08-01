@@ -462,7 +462,14 @@ def _probar_reproduccion(copia: Path, python: str, forja: dict, trauma: dict, *,
         con_parche = correr_suite(copia, python=python, args=(ruta_rel, "-q", "-ra"),
                                   timeout=TIMEOUT_TEST_REPRO)
     finally:
-        destino.write_text(contenido_original, encoding="utf-8")   # la copia queda como estaba
+        # La copia queda EXACTAMENTE como estaba: el archivo original restaurado **y el test
+        # borrado**. Dejarlo sería sabotear la no-regresión que corre después, que descubre los
+        # tests por directorio: un test de reproducción inválido (import roto, sintaxis) volvería
+        # roja la suite parcheada y el parche se rechazaría por culpa del INSTRUMENTO — justo lo que
+        # los cinco desenlaces existen para impedir. Y uno válido tampoco puede quedarse: falla en
+        # el baseline por diseño, que es su razón de ser.
+        destino.write_text(contenido_original, encoding="utf-8")
+        archivo_test.unlink(missing_ok=True)
 
     dictamen = evaluar_reproduccion(sin_parche, con_parche)
     _log.info(json.dumps({"evento": "autosanacion_reproduccion",

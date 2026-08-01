@@ -205,3 +205,19 @@ def test_REAL_la_copia_queda_como_estaba_para_que_la_no_regresion_no_herede_el_p
                        "test_reproduccion": TEST_QUE_REPRODUCE}, {"id": 3})
 
     assert destino.read_text(encoding="utf-8") == antes
+
+
+def test_REAL_el_test_de_reproduccion_NO_queda_en_la_copia(arbolito: Path):
+    """La no-regresión que corre después descubre los tests POR DIRECTORIO.
+
+    Si el archivo se quedara ahí, un test de reproducción inválido (import roto, sintaxis) pondría
+    roja la suite parcheada y el parche se rechazaría por culpa del **instrumento** — exactamente lo
+    que los cinco desenlaces existen para impedir. Y uno válido tampoco puede quedarse: falla en el
+    baseline por diseño, que es su razón de ser, y dejaría el gate en `NO_EVALUABLE` para siempre.
+    """
+    _correr(arbolito, {"archivo": "modulo_con_bug.py", "contenido": PARCHE_QUE_ARREGLA,
+                       "test_reproduccion": TEST_QUE_REPRODUCE}, {"id": 4})
+
+    quedaron = list((arbolito / "apps" / "copiloto" / "tests").glob("test_repro_*.py"))
+
+    assert quedaron == [], f"el test de reproducción quedó en la copia: {quedaron}"
