@@ -42,6 +42,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -362,7 +363,15 @@ async def probar_parche_en_sandbox(payload: dict) -> dict:
 
     with tempfile.TemporaryDirectory() as td:
         copia = preparar_copia(_raiz_repo, Path(td) / "sandbox")
-        python = os.environ.get("COPILOTO_SANDBOX_PYTHON", "python3")
+        #: `sys.executable` y NO `"python3"`. Medido en el primer E2E real (2026-08-01): el worker
+        #: corre bajo systemd con `PATH=/usr/local/sbin:…:/usr/bin` —sin el venv—, así que `python3`
+        #: resolvía a `/usr/bin/python3`, que **no tiene pytest**. El gate arrancaba, moría con
+        #: `No module named pytest`, no dejaba ninguna línea de conteo, y `evaluar` lo leía como
+        #: "la suite ya estaba roja" → `NO_EVALUABLE`. Es decir: **el gate de no-regresión nunca
+        #: corrió un solo test en producción**, y no dio síntoma porque falla hacia RECHAZAR.
+        #: El intérprete del propio proceso es el correcto por construcción y no puede driftear con
+        #: el `PATH`; la env var queda como override explícito.
+        python = os.environ.get("COPILOTO_SANDBOX_PYTHON") or sys.executable
 
         baseline = correr_suite(copia, python=python)
         destino = copia / "apps" / "copiloto" / Path(forja["archivo"]).name

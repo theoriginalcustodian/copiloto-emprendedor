@@ -63,11 +63,35 @@ def _tenant_con_schedule() -> str:
     return fila[0]
 
 
+def _declarar_tenant(conn, cliente_id: str) -> None:
+    """Hace lo que hace el BORDE en producción: decirle a la conexión de quién es la operación.
+
+    La primera versión insertaba directo, con el comentario *"superuser, sin RLS"*. **Era falso y
+    nadie lo había verificado**: el rol de `DATABASE_URL` no es superuser, `copiloto_traumas` tiene
+    `FORCE ROW LEVEL SECURITY`, y el `INSERT` murió con *"new row violates row-level security
+    policy"*. Que fallara ruidosamente fue suerte del `RETURNING`: un `UPDATE` en la misma situación
+    habría tocado **0 filas y devuelto éxito**.
+
+    El mecanismo es el mismo que `contexto_tenant.aplicar_tenant`: la GUC `request.jwt.claims` con
+    `set_config(..., false)` —equivalente a `SET`, no a `SET LOCAL`, porque acá también se corre en
+    autocommit y un `SET LOCAL` moriría al terminar esa sentencia.
+
+    Se replica en vez de importarse porque `deploy/worker/` no tiene `apps/copiloto` en el path y
+    montarlo para dos líneas traería el módulo entero. **La constante va acá abajo con su nombre
+    completo**, así un `grep request.jwt.claims` encuentra los dos lugares.
+    """
+    import json
+    with conn.cursor() as cur:
+        cur.execute("SELECT set_config(%s, %s, false)",
+                    ("request.jwt.claims", json.dumps({"cliente_id": cliente_id})))
+
+
 def _depositar(cliente_id: str, fingerprint: str) -> int:
-    """Inserta el trauma directo (superuser, sin RLS): es el papel del BORDE, que acá no existe."""
+    """Deposita el trauma declarando el tenant, igual que el borde."""
     import json
     conn = _conectar()
     conn.autocommit = True
+    _declarar_tenant(conn, cliente_id)
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -85,13 +109,24 @@ def _depositar(cliente_id: str, fingerprint: str) -> int:
         conn.close()
 
 
-def _limpiar(trauma_id: int) -> None:
+def _limpiar(trauma_id: int, cliente_id: str) -> None:
+    """Saca el trauma fabricado de la DLQ real. **Declara el tenant, o no borra nada y dice que sí.**
+
+    Sin la GUC, este `DELETE` bajo `FORCE RLS` no falla: afecta **0 filas y devuelve éxito**. El
+    `INSERT` de arriba al menos protestó porque tenía `RETURNING`; un borrado silencioso habría
+    dejado el trauma fabricado en la cola de producción, listo para que el ciclo lo tomara mañana a
+    las 04:00 como si fuera un error real. Por eso el conteo se imprime y se grita si es 0.
+    """
     conn = _conectar()
     conn.autocommit = True
+    _declarar_tenant(conn, cliente_id)
     try:
         with conn.cursor() as cur:
             cur.execute(f"DELETE FROM {TABLA} WHERE id = %s", (trauma_id,))
             print(f"  limpieza: {cur.rowcount} fila(s) borrada(s)")
+            if cur.rowcount != 1:
+                print(f"  ⚠️  ATENCIÓN: el trauma {trauma_id} NO se borró — queda en la DLQ real. "
+                      f"Borralo a mano.", file=sys.stderr)
     finally:
         conn.close()
 
@@ -136,6 +171,16 @@ async def main() -> int:
             resultado = await wf.result()
             estado = resultado.get("estado")
             print(f"\ndesenlace: {resultado}")
+            # Un desenlace `NO_EVALUABLE` NO prueba nada, aunque el estado esté en la lista: el gate
+            # devuelve `rechazado_por_tests` tanto cuando midió y rechazó como cuando **no pudo
+            # medir**. La primera corrida real (2026-08-01) salió "✅" con el gate mudo —pytest ni
+            # arrancaba— y el criterio no lo distinguió. Un mecanismo que falla hacia el "no" se ve
+            # igual que uno que funciona y dice que no.
+            if "NO_EVALUABLE" in str(resultado.get("motivo", "")):
+                print(f"❌ el gate de tests NO PUDO MEDIR ({resultado.get('motivo')}). La cadena "
+                      f"llegó al paso 5, pero el paso 5 no hizo su trabajo: esto NO es un E2E "
+                      f"verde.", file=sys.stderr)
+                return 1
             if estado in DESENLACES_QUE_PRUEBAN:
                 print(f"✅ E2E REAL: la cadena entera corrió (desenlace '{estado}').\n"
                       f"   El trauma pasó por gates → forja → auditor → gate de tests.")
@@ -148,7 +193,7 @@ async def main() -> int:
         return 1
     finally:
         # Siempre, pase lo que pase: el trauma es fabricado y no puede quedar en la DLQ real.
-        _limpiar(trauma_id)
+        _limpiar(trauma_id, cliente_id)
 
 
 if __name__ == "__main__":

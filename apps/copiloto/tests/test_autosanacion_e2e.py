@@ -264,3 +264,37 @@ def test_un_repo_declarado_que_NO_es_git_no_habilita_nada(monkeypatch, tmp_path)
     monkeypatch.setenv(A.ENV_REPO_GIT, str(otro))
     A.set_autosanacion_deps(lambda: None, raiz_repo=desplegado)
     assert A._repo_para_pr() is None
+
+
+# ======================================================================================
+# El intérprete del sandbox — la causa de que el gate nunca corriera un test en producción
+# ======================================================================================
+def test_el_sandbox_usa_el_interprete_del_PROCESO_no_un_python3_del_PATH(monkeypatch):
+    """El gate de no-regresión **nunca corrió un solo test en producción**, y no dio síntoma.
+
+    Medido en el primer E2E real (2026-08-01): el default era el literal `"python3"`, el worker corre
+    bajo systemd con `PATH=/usr/local/sbin:…:/usr/bin` —**sin el venv**—, así que resolvía a
+    `/usr/bin/python3`, que no tiene pytest. El subproceso moría con `No module named pytest`, no
+    dejaba ninguna línea de conteo, y el veredicto salía `NO_EVALUABLE`.
+
+    Que fallara hacia RECHAZAR es lo que lo hizo invisible: nunca propuso un parche malo, sólo era
+    incapaz de aceptar ninguno. Un mecanismo de seguridad roto hacia el "no" no protesta.
+
+    `sys.executable` es correcto **por construcción** —es el intérprete que ya está corriendo el
+    worker, con su venv— y no puede driftear con el `PATH`."""
+    import sys
+
+    monkeypatch.delenv("COPILOTO_SANDBOX_PYTHON", raising=False)
+    elegido = os.environ.get("COPILOTO_SANDBOX_PYTHON") or sys.executable
+    assert elegido == sys.executable
+    assert elegido != "python3", "un nombre suelto depende del PATH; el del proceso no"
+
+
+def test_CONTROL_la_env_var_sigue_pudiendo_forzar_otro_interprete(monkeypatch):
+    """El control del de arriba: si `sys.executable` ganara SIEMPRE, el override no existiría y no se
+    podría apuntar el sandbox a otro venv sin tocar código."""
+    import sys
+
+    monkeypatch.setenv("COPILOTO_SANDBOX_PYTHON", "/otro/venv/bin/python")
+    elegido = os.environ.get("COPILOTO_SANDBOX_PYTHON") or sys.executable
+    assert elegido == "/otro/venv/bin/python" != sys.executable

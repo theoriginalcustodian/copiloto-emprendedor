@@ -62,6 +62,7 @@ Nunca mergea nada.
 | `sin_parche` | el modelo no produjo un parche aplicable en 3 intentos | no; el trauma vuelve a `pendiente` |
 | `rechazado_por_auditor` | el parche tocaba lo que no debía | no |
 | `rechazado_por_tests` | el parche rompía tests que pasaban | no; las regresiones quedan en el resultado |
+| `rechazado_por_tests` + **`NO_EVALUABLE`** en el motivo | **el gate no pudo medir** — no es lo mismo que rechazar | **sí**: leé el motivo. Si dice *"no corrió NINGÚN test"*, el problema es el intérprete o el `PYTHONPATH` del sandbox, no el parche |
 | `pr_propuesto` | **hay algo para revisar** | sí: mirar el artefacto o el PR |
 
 Todos menos el primero dejan su motivo escrito. Un trauma que rebota tres veces con el mismo motivo
@@ -77,6 +78,7 @@ es información, no ruido.
 | `COPILOTO_AUTOSANACION_ARTEFACTOS` | `/tmp/autosanacion` | dónde quedan los `.patch` |
 | `COPILOTO_AUTOSANACION_REPO_GIT` | (no seteada) | clon donde abrir PRs; **nunca el repo desplegado** |
 | `COPILOTO_FORJADOR_MODELO` | `gpt-4o-mini` | modelo del forjador |
+| `COPILOTO_SANDBOX_PYTHON` | el intérprete del worker | override del python del sandbox. **No la toques sin necesidad:** el default es `sys.executable`, que es el venv del worker por construcción. Apuntarla a un python sin `pytest` deja el gate mudo, y un gate mudo **no da error** — rechaza todo y parece prudente |
 
 ## Si algo se comporta raro
 
