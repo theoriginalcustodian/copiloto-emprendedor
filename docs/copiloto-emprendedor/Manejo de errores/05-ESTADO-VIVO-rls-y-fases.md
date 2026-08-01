@@ -325,7 +325,9 @@ Desplegado y verificado **por efecto**, no por el log del deploy:
 | Los Schedules existen | 19 creados, disparan 04:00 |
 | **El worker tiene el workflow registrado** | disparo manual → ejecución **COMPLETED**, desenlace `{'estado': 'sin_traumas'}` |
 | **Apagado de emergencia** | 19/19 pausados (RC=0) y reanudados (RC=0) |
-| No-regresión | **1362 passed**, 0 failed, Postgres real con `UC_RLS_FORCE=1` |
+| No-regresión | **1373 passed**, 0 failed, Postgres real con `UC_RLS_FORCE=1` |
+| **Amplitud: 3 clases de bug distintas** | banco de casos reales **3/3** (máscara de 32 bits · truncado del mensaje · recorrido del MRO) |
+| **La cadena entera, con LLM real** | `tomar → gates → forjar → auditar → probar → proponer`, 2 passed + control negativo fiscal |
 
 ⚠️ **Qué significa "aceptado por el gate", y qué no.** El banco C0 dio 12/12, pero midió al forjador
 reparando **un bug que rompe tests**. Un trauma de producción está en un camino que **ningún test
