@@ -575,6 +575,71 @@ async def test_abrir_pr_ESCRIBE_el_parche_en_el_clon_y_lo_commitea(tmp_path):
     assert git("log", "-1", "--format=%s", rama).stdout.strip().startswith("fix(autosanacion):")
 
 
+def _clon_de_prueba(tmp_path):
+    """Un repo git real, con `origin` apuntando a sí mismo para que el fetch/reset del arranque
+    resuelvan. Devuelve `(repo, git)`."""
+    import subprocess
+
+    repo = tmp_path / "clon"
+    repo.mkdir()
+
+    def git(*a):
+        return subprocess.run(["git", "-C", str(repo), *a], capture_output=True, text=True,
+                              check=True)
+
+    git("init", "--quiet", "--initial-branch=main")
+    git("config", "user.email", "t@t.local")
+    git("config", "user.name", "t")
+    (repo / "modulo.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    git("add", "modulo.py")
+    git("commit", "--quiet", "-m", "base")
+    git("remote", "add", "origin", str(repo))
+    git("fetch", "--quiet", "origin")
+    return repo, git
+
+
+@pytest.mark.asyncio
+async def test_el_PR_lleva_el_TEST_de_reproduccion_cuando_el_arreglo_esta_demostrado(tmp_path):
+    """Un arreglo demostrado tiene que llegarle al revisor **con su prueba**, en el mismo commit.
+
+    Si el test se quedara en el sandbox, el PR volvería a ser indistinguible de uno no demostrado:
+    un diff y un mensaje que dice "demostrado" sin nada que lo respalde.
+    """
+    repo, git = _clon_de_prueba(tmp_path)
+
+    A._abrir_pr(repo, tmp_path / "x.patch",
+                {"archivo": "modulo.py", "contenido": "def f():\n    return 2\n", "parche": "...",
+                 "test_reproduccion": "def test_repro():\n    assert True\n"},
+                {"id": 55, "error_type": "KeyError", "workflow": "POST /x", "dedupe_count": 1},
+                {"arreglo_demostrado": True,
+                 "reproduccion": {"archivo_test": "tests/test_repro_trauma_55.py"}})
+
+    archivos = git("show", "--name-only", "--format=", "autosanacion/trauma-55").stdout
+    assert "apps/copiloto/tests/test_repro_trauma_55.py" in archivos, (
+        "el test de reproducción no viajó en el commit: el PR diría 'demostrado' sin la prueba")
+    assert "Arreglo DEMOSTRADO" in git("log", "-1", "--format=%b", "autosanacion/trauma-55").stdout
+
+
+@pytest.mark.asyncio
+async def test_un_test_que_NO_demostro_nada_no_se_commitea(tmp_path):
+    """Control negativo, y es el que le da valor al de arriba: sin él, `_abrir_pr` podría commitear
+    el test SIEMPRE y los dos pasarían igual. Un test decorativo en el PR es peor que ninguno — le
+    da al revisor una confianza que nadie verificó."""
+    repo, git = _clon_de_prueba(tmp_path)
+
+    A._abrir_pr(repo, tmp_path / "x.patch",
+                {"archivo": "modulo.py", "contenido": "def f():\n    return 2\n", "parche": "...",
+                 "test_reproduccion": "def test_repro():\n    assert True\n"},
+                {"id": 56, "error_type": "KeyError", "workflow": "POST /x", "dedupe_count": 1},
+                {"arreglo_demostrado": False,
+                 "reproduccion": {"archivo_test": "tests/test_repro_trauma_56.py",
+                                  "motivo": "el test PASA sin el parche"}})
+
+    archivos = git("show", "--name-only", "--format=", "autosanacion/trauma-56").stdout
+    assert "test_repro" not in archivos, "se commiteó un test que no demostró nada"
+    assert "NO demostrado" in git("log", "-1", "--format=%b", "autosanacion/trauma-56").stdout
+
+
 @pytest.mark.asyncio
 async def test_abrir_pr_NO_commitea_si_el_parche_no_cambia_nada(tmp_path):
     """Control negativo, y no es simétrico del anterior: si el "parche" es idéntico a lo que ya
