@@ -350,6 +350,14 @@ afirmar **no-regresión**, no que arregle. Por eso el ciclo propone y una person
 visible:** el paso que lo haría demostrable es que el ciclo escriba primero un test que reproduzca
 el trauma; no está construido.
 
+> **Deuda registrada — DEUDA-AUTOSAN-1 · "el ciclo no prueba que arregle, sólo que no rompe".**
+> *Dueño:* el frente de manejo de errores (sesión backend). *Condición de pago:* cuando aparezca el
+> **primer trauma real de un usuario real** — hoy no hay usuarios ([[desplegado-no-significa-con-clientes]]),
+> así que construirlo ahora sería diseñar contra un caso imaginado. *Forma esperada:* que el forjador
+> emita primero un test que reproduzca el trauma (rojo), y que el gate exija verlo pasar **además**
+> de la no-regresión. *Mientras tanto:* el `.patch` lleva el aviso en su encabezado y una persona
+> revisa el cambio, no el verde. Deliberada y visible, no invisible ni impaga.
+
 ⚠️ **El gate de tests NUNCA había corrido un test en producción** (hallazgo del primer E2E real,
 2026-08-01). Tres causas encadenadas: el default del intérprete era el literal `"python3"` y el
 worker corre sin el venv en el `PATH` → `/usr/bin/python3`, sin pytest; el sandbox copiaba
