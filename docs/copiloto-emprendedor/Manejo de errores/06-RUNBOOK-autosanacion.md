@@ -52,9 +52,13 @@ y **deja una propuesta que una persona revisa**. Nunca mergea nada.
 - **No demuestra que el parche arregle el bug.** El gate verifica **no-regresión**: que la suite
   completa siga verde. Un trauma de producción está en un camino que ningún test ejercita, así que no
   hay test rojo que poner verde. **Por eso el PR se revisa mirando el cambio, no el verde.**
-- **No abre PRs** salvo que se declare `COPILOTO_AUTOSANACION_REPO_GIT` apuntando a un clon distinto
-  del repo desplegado. Sin eso deja un archivo `.patch` y listo — deliberado: el VPS tiene `gh`
-  autenticado y un proceso automático no puede ramificar sobre producción.
+- **Abre PRs desde un clon aparte** (`/opt/uc-autosanacion-repo`, provisionado 2026-08-01), nunca
+  desde el repo desplegado: el ciclo hace `checkout -b` + `commit` sobre lo que se le declare, y
+  apuntarlo a producción movería el código que el worker está sirviendo, en caliente.
+  Si `COPILOTO_AUTOSANACION_REPO_GIT` falta o `gh` no está autenticado, degrada a dejar un `.patch`
+  en `/tmp/autosanacion`. **Ese degradado no protesta**: hay que mirar el desenlace del workflow
+  (`modo: "artefacto"` en vez de `"pr"`), porque un ciclo que deja parches en un /tmp que nadie
+  visita se ve exactamente igual que uno que anda.
 
 ## Dónde mirar
 
@@ -90,7 +94,7 @@ es información, no ruido.
 | `COPILOTO_AUTOSANACION_TOPE_DIARIO` | 5 | reparaciones propuestas por día, **en toda la app** (el tope acota los PRs que le caen al revisor, y el revisor es uno) |
 | `COPILOTO_AUTOSANACION_HORA` | 4 | hora del disparo (el paso caro es una suite completa) |
 | `COPILOTO_AUTOSANACION_ARTEFACTOS` | `/tmp/autosanacion` | dónde quedan los `.patch` |
-| `COPILOTO_AUTOSANACION_REPO_GIT` | (no seteada) | clon donde abrir PRs; **nunca el repo desplegado** |
+| `COPILOTO_AUTOSANACION_REPO_GIT` | `/opt/uc-autosanacion-repo` | clon donde abrir PRs; **nunca el repo desplegado**. Lo provisiona `deploy/copiloto/provision-repo-autosanacion.sh` (idempotente), que además **verifica** que no sea el desplegado en vez de confiarlo a este renglón |
 | `COPILOTO_FORJADOR_MODELO` | `gpt-4o-mini` | modelo del forjador |
 | `COPILOTO_SANDBOX_PYTHON` | el intérprete del worker | override del python del sandbox. **No la toques sin necesidad:** el default es `sys.executable`, que es el venv del worker por construcción. Apuntarla a un python sin `pytest` deja el gate mudo, y un gate mudo **no da error** — rechaza todo y parece prudente |
 
