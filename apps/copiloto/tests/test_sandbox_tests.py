@@ -6,12 +6,13 @@ la suite entera no se prueba nunca.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from sandbox_tests import (Resultado, Resumen, correr_suite, evaluar, parsear_resumen,
+from sandbox_tests import (SUBARBOLES, Resultado, Resumen, correr_suite, evaluar, parsear_resumen,
                            preparar_copia, nodeids_fallados)
 
 VERDE = "=" * 20 + " 1364 passed, 16 skipped in 35.20s " + "=" * 20
@@ -85,6 +86,55 @@ def test_baseline_ROJO_da_NO_EVALUABLE_no_rechazo():
     v = evaluar(baseline=_res(ROJO), parcheado=_res(VERDE))
     assert v.aceptado is False
     assert "NO_EVALUABLE" in v.motivo and "ya estaba roja" in v.motivo
+
+
+def test_CERO_RECOLECTADOS_no_se_reporta_como_suite_ROJA():
+    """Dos causas opuestas no pueden dar el mismo mensaje.
+
+    El primer E2E real (2026-08-01) devolvió *"la suite ya estaba roja SIN el parche (0 fallaron, 0
+    errores)"* — una frase que **se contradice sola** y que mandó la investigación a buscar un rojo
+    inexistente. La verdad era otra: pytest ni arrancó (`python3` sin pytest, y encima la colección
+    cortaba por un subárbol faltante), así que no hubo ninguna línea de conteo.
+
+    "Estaba roja" y "no llegó a correr" piden arreglos distintos: uno mira los tests, el otro mira el
+    intérprete y el PYTHONPATH."""
+    v = evaluar(baseline=_res("no se colectó nada"), parcheado=_res(VERDE))
+    assert v.aceptado is False
+    assert "NINGÚN test" in v.motivo and "no llegó a ejecutarse" in v.motivo
+    assert "ya estaba roja" not in v.motivo
+
+
+def test_el_sandbox_lleva_deploy_worker_o_la_suite_NO_COLECTA(tmp_path):
+    """`tests/test_provision.py` y `tests/test_mp_tables.py` importan `provision_tables`, que vive en
+    `deploy/worker`. Sin ese subárbol pytest corta la colección y corren **cero** tests — y un gate
+    de no-regresión sobre cero tests aprueba cualquier cosa o rechaza todo, según cómo se lea.
+
+    Medido en el VPS: 0 recolectados sin `deploy/worker`, **1277 passed** con él."""
+    assert "deploy/worker" in SUBARBOLES
+
+    origen = tmp_path / "origen"
+    (origen / "apps" / "copiloto").mkdir(parents=True)
+    (origen / "motor").mkdir()
+    (origen / "deploy" / "worker").mkdir(parents=True)
+    (origen / "deploy" / "worker" / "provision_tables.py").write_text("ok = 1", encoding="utf-8")
+
+    copia = preparar_copia(origen, tmp_path / "copia")
+    assert (copia / "deploy" / "worker" / "provision_tables.py").exists()
+
+
+def test_el_PYTHONPATH_del_sandbox_incluye_deploy_worker(tmp_path):
+    """Copiarlo no alcanza: si no está en el `PYTHONPATH`, el import falla igual."""
+    visto = {}
+
+    def _espia(cmd, **kw):  # noqa: ANN001, ANN003, ANN202
+        visto.update(kw)
+        return type("P", (), {"returncode": 0, "stdout": VERDE, "stderr": ""})()
+
+    copia = tmp_path / "copia"
+    (copia / "apps" / "copiloto").mkdir(parents=True)
+    correr_suite(copia, python="python3", ejecutor=_espia)
+    rutas = visto["env"]["PYTHONPATH"].split(os.pathsep)
+    assert str(copia / "deploy" / "worker") in rutas, f"faltó deploy/worker en {rutas}"
 
 
 def test_baseline_verde_y_parche_verde_ACEPTA():
@@ -201,6 +251,8 @@ def test_la_copia_trae_el_codigo_y_deja_afuera_la_basura(tmp_path):
     (origen / "apps" / "copiloto" / "__pycache__" / "a.pyc").write_text("basura", encoding="utf-8")
     (origen / "motor").mkdir()
     (origen / "motor" / "m.py").write_text("y = 2", encoding="utf-8")
+    (origen / "deploy" / "worker").mkdir(parents=True)
+    (origen / "deploy" / "worker" / "provision_tables.py").write_text("z = 3", encoding="utf-8")
 
     destino = preparar_copia(origen, tmp_path / "copia")
     assert (destino / "apps" / "copiloto" / "serve.py").read_text(encoding="utf-8") == "x = 1"
@@ -213,6 +265,7 @@ def test_la_copia_es_IDEMPOTENTE(tmp_path):
     origen = tmp_path / "origen"
     (origen / "apps" / "copiloto").mkdir(parents=True)
     (origen / "motor").mkdir()
+    (origen / "deploy" / "worker").mkdir(parents=True)
     destino = preparar_copia(origen, tmp_path / "copia")
     (destino / "sobra.txt").write_text("resto viejo", encoding="utf-8")
     preparar_copia(origen, tmp_path / "copia")

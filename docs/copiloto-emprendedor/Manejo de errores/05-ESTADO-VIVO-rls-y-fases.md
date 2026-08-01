@@ -336,6 +336,17 @@ afirmar **no-regresión**, no que arregle. Por eso el ciclo propone y una person
 visible:** el paso que lo haría demostrable es que el ciclo escriba primero un test que reproduzca
 el trauma; no está construido.
 
+⚠️ **El gate de tests NUNCA había corrido un test en producción** (hallazgo del primer E2E real,
+2026-08-01). Tres causas encadenadas: el default del intérprete era el literal `"python3"` y el
+worker corre sin el venv en el `PATH` → `/usr/bin/python3`, sin pytest; el sandbox copiaba
+`apps/copiloto` + `motor` pero no `deploy/worker`, del que dependen dos tests para colectar; y el
+mensaje decía *"la suite ya estaba roja"* cuando en realidad no había llegado a ejecutarse. Las tres
+arregladas, con tests.
+
+**Lo que hay que llevarse:** falla hacia RECHAZAR, así que **no dio síntoma** — no propuso nada malo,
+sólo era incapaz de aceptar. Todo mecanismo fail-closed necesita un control POSITIVO que pruebe que
+sabe decir que sí ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+
 ⚠️ **El kill switch por env NO es inmediato.** systemd fija el entorno al arrancar: hace falta
 `systemctl restart`. El apagado inmediato es `verificar_autosanacion.py --pausar-todo`
 ([[kill-switch-por-env-no-es-inmediato-bajo-systemd]]).

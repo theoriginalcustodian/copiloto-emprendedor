@@ -44,7 +44,13 @@ TIMEOUT_DEFAULT = 600
 
 #: Lo que se copia al sandbox. `motor` va porque sus tests son nuestros (fork duro, CLAUDE.md §2) y
 #: su rojo es nuestro problema.
-SUBARBOLES = ("apps/copiloto", "motor")
+#:
+#: `deploy/worker` va porque **sin él la suite no colecta**: `tests/test_provision.py` y
+#: `tests/test_mp_tables.py` importan `provision_tables`, que vive ahí. Sin ese subárbol pytest corta
+#: la colección con 2 errores y corren **cero** tests — medido el 2026-08-01: 0 recolectados sin él,
+#: 1277 passed con él. Es la misma lista que ya usaba `sync-test-backend.sh` para el dev-loop; el
+#: sandbox se había quedado con dos de los tres.
+SUBARBOLES = ("apps/copiloto", "motor", "deploy/worker")
 
 #: Basura que no debe viajar: acelera la copia y evita que un `.pyc` viejo enmascare el parche.
 _IGNORAR = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", "node_modules", ".venv")
@@ -174,7 +180,8 @@ def correr_suite(
 
     cwd = copia / "apps" / "copiloto"
     entorno = dict(os.environ)
-    entorno["PYTHONPATH"] = os.pathsep.join([str(cwd), str(copia / "motor")])
+    entorno["PYTHONPATH"] = os.pathsep.join(
+        [str(cwd), str(copia / "motor"), str(copia / "deploy" / "worker")])
     # Sin `DATABASE_URL` los tests contra Postgres se SALTAN. Es deliberado: el gate jamás debe
     # escribir en una base real. Quien quiera cobertura de Postgres pasa una base EFÍMERA por
     # `env_extra` (deploy/copiloto/test-db.sh). El conteo de `saltados` deja el hueco a la vista en
@@ -207,6 +214,19 @@ def evaluar(baseline: Resultado, parcheado: Resultado) -> Veredicto:
     if baseline.expiro:
         return Veredicto(False, "NO_EVALUABLE: la suite SIN el parche ya expiraba por timeout",
                          baseline, parcheado)
+    if baseline.resumen.total_corridos == 0:
+        # Causa DISTINTA de "estaba roja", y con un arreglo distinto: acá la suite no llegó a correr
+        # (intérprete sin pytest, colección interrumpida, path mal). Las dos daban el mismo mensaje
+        # —"ya estaba roja"— y eso mandó la primera investigación al lugar equivocado: el E2E real
+        # del 2026-08-01 reportó "ya estaba roja (0 fallaron, 0 errores)", una frase que se
+        # contradice sola. Un mensaje que no distingue sus causas hace perder el tiempo justo cuando
+        # más importa.
+        return Veredicto(
+            False,
+            "NO_EVALUABLE: la suite del sandbox no corrió NINGÚN test (0 recolectados). No es que "
+            "estuviera roja: no llegó a ejecutarse. Mirá el intérprete, la colección y el "
+            f"PYTHONPATH. Últimas líneas: {baseline.salida.strip()[-300:]!r}",
+            baseline, parcheado)
     if not baseline.resumen.verde:
         return Veredicto(
             False,
