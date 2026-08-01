@@ -328,6 +328,20 @@ Desplegado y verificado **por efecto**, no por el log del deploy:
 | No-regresión | **1373 passed**, 0 failed, Postgres real con `UC_RLS_FORCE=1` |
 | **Amplitud: 3 clases de bug distintas** | banco de casos reales **3/3** (máscara de 32 bits · truncado del mensaje · recorrido del MRO) |
 | **La cadena entera, con LLM real** | `tomar → gates → forjar → auditar → probar → proponer`, 2 passed + control negativo fiscal |
+| **🏁 E2E REAL en el Temporal vivo** | un trauma atravesó los 6 pasos → desenlace **`pr_propuesto`**, artefacto en `/tmp/autosanacion/trauma-6-*.patch`, DLQ limpiada (1 fila). El gate midió de verdad: baseline verde, parche sin regresiones |
+
+**Las tres corridas del E2E, porque el camino importa más que el resultado.** Ninguna falló por lo
+mismo, y las dos primeras destaparon cosas que ninguna suite veía:
+
+| # | Desenlace | Qué destapó |
+|---|---|---|
+| 1 | `NO_EVALUABLE (0 fallaron, 0 errores)` | el gate **nunca había corrido un test** — `python3` sin pytest, y faltaba `deploy/worker` en el sandbox |
+| 2 | `NO_EVALUABLE (5 fallaron)` | el gate ya corría, pero **heredaba las credenciales del worker** y activaba tests de integración real (uno manda un mail) |
+| 3 | **`pr_propuesto`** | ✅ la cadena entera, con el gate midiendo |
+
+La corrida 2 habría salido con un ✅ bajo el criterio original del script: `rechazado_por_tests` es el
+mismo desenlace cuando el gate mide y rechaza que cuando **no puede medir**. El criterio se corrigió
+—`NO_EVALUABLE` ya no cuenta como prueba— y por eso la 2 se reportó como fallo.
 
 ⚠️ **Qué significa "aceptado por el gate", y qué no.** El banco C0 dio 12/12, pero midió al forjador
 reparando **un bug que rompe tests**. Un trauma de producción está en un camino que **ningún test
@@ -335,6 +349,14 @@ ejercita** —si lo ejerciera, el CI lo habría cazado antes del deploy—, así
 afirmar **no-regresión**, no que arregle. Por eso el ciclo propone y una persona revisa. **Deuda
 visible:** el paso que lo haría demostrable es que el ciclo escriba primero un test que reproduzca
 el trauma; no está construido.
+
+> **Deuda registrada — DEUDA-AUTOSAN-1 · "el ciclo no prueba que arregle, sólo que no rompe".**
+> *Dueño:* el frente de manejo de errores (sesión backend). *Condición de pago:* cuando aparezca el
+> **primer trauma real de un usuario real** — hoy no hay usuarios ([[desplegado-no-significa-con-clientes]]),
+> así que construirlo ahora sería diseñar contra un caso imaginado. *Forma esperada:* que el forjador
+> emita primero un test que reproduzca el trauma (rojo), y que el gate exija verlo pasar **además**
+> de la no-regresión. *Mientras tanto:* el `.patch` lleva el aviso en su encabezado y una persona
+> revisa el cambio, no el verde. Deliberada y visible, no invisible ni impaga.
 
 ⚠️ **El gate de tests NUNCA había corrido un test en producción** (hallazgo del primer E2E real,
 2026-08-01). Tres causas encadenadas: el default del intérprete era el literal `"python3"` y el
@@ -346,6 +368,21 @@ arregladas, con tests.
 **Lo que hay que llevarse:** falla hacia RECHAZAR, así que **no dio síntoma** — no propuso nada malo,
 sólo era incapaz de aceptar. Todo mecanismo fail-closed necesita un control POSITIVO que pruebe que
 sabe decir que sí ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+
+⚠️ **Y arreglarlo lo volvió peligroso, que es el coletazo de reparar algo que nunca funcionó.** Con el
+gate corriendo tests de verdad, el baseline salió con 5 rojos: el sandbox **hereda el entorno del
+worker**, que en producción tiene las credenciales, y con ellas se activan los tests de integración
+real. `test_gmail::test_send_real_y_readback` **manda un mail**; el ciclo corre la suite dos veces por
+intento, hasta 3 intentos por trauma, cada día a las 04:00. Ahora el sandbox es **hermético**: se
+tapan `DATABASE_URL` y toda credencial por patrón (`*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`,
+`*_CREDENTIALS`) más cuatro nombres exactos, con un control de que `PATH`/`HOME`/`PYTHONPATH` sí
+sobreviven.
+
+De paso: esos 4 tests de Composio importaban `composio_gateway` **pelado**, forma que no funciona en
+ningún entorno (el bootstrap pone `motor`, `apps/copiloto` y `deploy/worker`, nunca
+`motor/clients/agent/providers`). Nunca habían corrido en ninguna parte; la única vez que llegaron a
+ejecutarse fue dentro de este sandbox, y murieron en el import. Corregidos a la forma qualificada,
+con barrido de control que confirma que no queda ningún otro import pelado del motor.
 
 ⚠️ **El kill switch por env NO es inmediato.** systemd fija el entorno al arrancar: hace falta
 `systemctl restart`. El apagado inmediato es `verificar_autosanacion.py --pausar-todo`
