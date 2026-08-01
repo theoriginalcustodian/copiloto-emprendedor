@@ -35,5 +35,17 @@ contrato externo, >5 archivos, stack/ADR, scope de sprint) — el fix del motor 
 estado durable, ya tenía el "dale" y el de-risk hecho: era acote, no sign-off. Hermana de
 [[ejecutar-autonomo-no-esperar-si-dale]].
 
+**Condiciones (no las toca la autorización):** CI verde/`CLEAN` · el cambio no es destructivo
+(migración con datos en prod, contrato externo) · **se reporta con evidencia** (commit + verificación
+contra el vivo), no con autoevaluación · cada sesión mergea **sólo sus propios PR**, nunca los de otra
+· las reglas duras de git en checkout compartido siguen intactas. Y si el **clasificador del harness**
+bloquea `gh pr merge`, eso es un gate de la herramienta, no del operador: se reporta transparente,
+**no se busca workaround**.
+
 Las tres sesiones siguen sin poder auto-mergear (clasificador). El merge lo hace planificación.
 [[coordinacion-tres-sesiones-buzon]] · [[orden-de-merge-por-el-estado-intermedio]]
+
+> **Fusionada en la poda del 2026-08-01:** absorbió `autorizacion-permanente-merge-y-deploy` y
+> `operador-autorizo-merge-y-deploy-permanente` — **tres archivos para el mismo hecho del mismo día**,
+> escritos porque dos eran huérfanos del índice y la sesión siguiente no los encontró.
+> [[el-indice-truncado-fabrica-duplicados]]

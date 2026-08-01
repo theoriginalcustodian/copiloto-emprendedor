@@ -1,222 +1,196 @@
 # Memoria — Copiloto del Emprendedor
 
-> Repo graduado de la fábrica `unreal-copilot` el 2026-07-06; el 2026-07-07 se purgaron 53 entradas heredadas. Acá vive **producto del copiloto**, **doctrina universal** (también en el `CLAUDE.md` global) y **referencia** de Claude Code. Hitos cerrados → [HISTORIA.md](HISTORIA.md) (NO se carga; buscable). **Una línea por entrada — el detalle en el topic file.** Arranque del repo → `HANDOFF.md` (raíz).
+> **Una línea = un gancho, no un resumen** (≤160 chars): el detalle vive en el topic file.
+> **Techo duro: 25.000 caracteres** — lo que pase de ahí se trunca y no existe para la sesión
+> ([[el-indice-truncado-fabrica-duplicados]]). Al llegar al techo no se comprime más: se baja a
+> [HISTORIA.md](HISTORIA.md) (no se carga; buscable). Control: `scripts/medir-indice-memoria.py`.
 
-## 🚦 Estado vivo (puntero — NO se espeja acá)
+## 🚦 Estado vivo
 
-**"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · tablero de frentes → `coordinacion/PLAN.md`.
+**"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
-- **Vivo (prod-beta):** copiloto desplegado multitenant, smoke E2E 10/10. [[copiloto-deploy-multitenant-vivo]]
-- **🏁 CERRADO 2026-07-23:** sprint **Inteligencia de Negocio** + mobile-first — E2E 6/6 device, sign-off del operador (voz-ítem-7 residual documentado). [[copiloto-mobile-first-cascara-glass]]
-- **🛡️ MANEJO DE ERRORES — FRENTE COMPLETO, fases 0 → 3 en prod** (PRs **#151→#185**, 2026-07-28 al 08-01). Las cuatro capas, cada una verificada por efecto:
-  - **F0** — 10 de 12 puntos de fallo cerrados + **gate de import** en el deploy (#154). **F0.5/G-2/F1** — `ErrorBoundary` web+mobile, `fingerprint` real (antes era `0` siempre), log JSON, `RetryPolicy` por categoría, CI que corre **todo** lo que exista (#156) + **heartbeats** vía `con_latido` en las 3 activities largas (#157).
-  - **F1.5 — las DOS COSTURAS**: `handler_errores_web.py` (HTTP, montado en `web.py`) e `interceptor_errores.py` (activities, en `worker_b.py`). De **2/80 rutas** cableadas a mano a **todas** + todas las activities (#161).
-  - **F2 — DLQ `copiloto_traumas`** (13 columnas, viva): dedupe por `(cliente_id, fingerprint)`, `FOR UPDATE SKIP LOCKED`, `rescatar_colgados()`. Puente `deposito_traumas.py` — deposita **después** de loguear, y sin DLQ la costura registra igual (#164).
-  - **F3 — CICLO DE AUTOSANACIÓN** vivo: `autosanacion_{workflow,activities,gates}.py` + `auditor_parches.py` (3 parches rotos congelados como kill switch) + `forjador_parches.py` (SEARCH/REPLACE, no diffs — medido) + `sandbox_tests.py` (hermético: filtra credenciales por patrón) (#166-#176).
-  → `Manejo de errores/00-MAESTRO…` · estado final `07-ESTADO-autohealing-global-2026-08-01.md`
-- **⚠️ Este frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features.** El patrón dominante de los 35 PRs: guard de drift con falso positivo de 1502 líneas (#155) · retest con 2 veredictos falsos antes del bueno (#159) · verificador de Schedules que acusaba en falso (#173) · **el gate de tests que nunca corrió un test en producción** (#174) · el flag del banco que daba `False` siempre (#184). Antes de creerle a un número de este frente, preguntá *¿qué devolvería este instrumento si estuviera roto?*. [[instrumentos-que-confirman-en-vez-de-verificar]] · [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[instrumento-que-no-mira-nunca-falla]]
-- **🤖 AUTOHEALING GLOBAL — CERRADO E2E y con gate de ARREGLO (PRs #177→#184, 2026-08-01).** UNO para toda la app (no por tenant), rol `copiloto_autosanacion` con `BYPASSRLS`, **5 disparos/noche**, y el ciclo **abre PRs solo** (#179, #183). Desde #182 el gate distingue **arregla** de *no rompe*: el forjador escribe un test de reproducción y se corre sin/con parche; de 5 desenlaces **sólo `parche_no_arregla` rechaza**. Medido: suite 1411, banco 6/6 al 1er intento con LLM real. → `Manejo de errores/07-ESTADO-autohealing-global-2026-08-01.md` · [[no-romper-no-es-arreglar]] · [[idempotente-no-es-convergente]]
-- **✅ RLS REAL APLICANDO en prod (PR #162, 2026-07-31).** 23 tablas con `FORCE`; sin tenant → **0 filas** (antes 3 tenants visibles); con tenant → ve lo suyo; smoke **10/10**. Verificador: `deploy/copiloto/verificar-rls.sh`. [[rls-activado-que-no-filtraba-el-dueno-esta-exento]] · [[la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control]]
-- **✅ narra-sin-hacer — CURA VERIFICADA** (2026-07-29): retest 10 rondas contra el LLM real → **0 mentiras**; flag `MODO_AUTOMATICO_NO_DISPONIBLE` **levantado** (PR #159). El instrumento se equivocó 2× antes de medir bien. [[el-instrumento-tambien-CONDENA-no-solo-absuelve]] · [[copiloto-narra-la-accion-sin-ejecutarla]]
-- **✅ Facturación AFIP** determinista, E2E desde el teléfono (CAE real, PDF, nota de crédito). [[copiloto-facturacion-afip]]
-- **✅ Presupuestos + perfil del negocio**, las dos capas — **device PASS E2E 6/6** (2026-07-23, `coordinacion/PLAN.md:82`). [[copiloto-presupuestos-y-perfil-negocio]]
-- **✅ Clientes:** cartera derivada de lo emitido (falta voz en device). [[cero-que-no-se-puede-afirmar]] · [[idempotencia-con-un-if-tiene-ventana]]
-- **🚧 OAuth Google** es de Composio, no nuestro; runbook listo para el operador. [[copiloto-oauth-google-propio]]
-- **🔀 Tres sesiones paralelas** coordinadas por el buzón de `coordinacion/`. [[coordinacion-tres-sesiones-buzon]]
-- **Identidad:** automatización/agentes-IA DURABLES (moat = Temporal). [[factory-identidad-automatizacion-ia]]
-- **🧾 DEUDA VISIBLE (2026-08-01):** **24 de 200 entradas de `memoria/` no están en este índice** — ni como link ni como `[[wikilink]]`. Existen en disco y son invisibles para la sesión: nadie las va a leer. Ninguna es del frente de errores (ese quedó completo). Control para re-medirlo: por cada `memoria/*.md`, buscar en este archivo **tanto** el link markdown **como** el wikilink — la 1ª versión sólo miraba el markdown y daba **25** falsos. Y medir **el sentido inverso** también: el `seed` del 08-01 rescató 3 entradas que el índice nombraba y **no existían en el repo** (vivían sólo en el slug). Dueña: la próxima sesión que toque memoria.
+- **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
+- **🛡️ Manejo de errores — frente COMPLETO, fases 0→3 en prod** (#151→#185) + **autohealing global** E2E: uno para toda la app, `BYPASSRLS`, abre PRs solo, gate que distingue *arregla* de *no rompe*. → `Manejo de errores/07-ESTADO-…-08-01.md` · [[no-romper-no-es-arreglar]]
+- **⚠️ Ese frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
+- **✅ Cerrados:** AFIP E2E en device · presupuestos + perfil · clientes (falta voz) · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]]
+- **🚧 Abiertos:** OAuth Google (es de Composio) · ingesta real al grafo (MAYOR). [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
+- **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal) · [[copiloto-emprendedor-roadmap]]. [[coordinacion-tres-sesiones-buzon]] · [[factory-identidad-automatizacion-ia]]
 
-## 📐 Doctrina operativa (aplica siempre)
+## 🔑 Órdenes del operador (reglas duras — se cumplen, no se evalúan)
 
-- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — `project`. **EL MARCO DE TODO SPRINT.** Doc: `docs/BUCLE-CANONICO.md`. A1 audita el PLAN y puede rechazarlo; A2 audita el RESULTADO y consolida aprendizajes CON ENGANCHE. Capturar ≠ consolidar ≠ **implementar (F7.5, entre sprints, ANTES que los fixes de app)**. Cola: `docs/aprendizajes/pendientes/` — vacía es gate binario del REPARTO (F3), no de F0.
-- [🔒⚡ 3 gates que FRENAN — script-first (2º repetido) · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — `feedback`. **Nivel 1, global.** Severidad EXPLÍCITA por ahorro medido. Asentado en `~/.claude/CLAUDE.md` + `HARNESS.md` + este repo. `ask` + fail-open. Ojo: `\b` es ASCII y dejaba las regex mudas.
-- [🖥️➡️📡 Sub-agentes van HEADLESS — comando completo + auth OAuth confirmada](subagentes-van-headless-no-inline-en-la-terminal.md) — `feedback`. `claude -p`, misma auth Max de la sesión (NO tarifa API — corregido, ver [[claude-code-headless-capabilities]]).
-- [✂️📏 Poda de suggesters (~2,57M tok/mes medidos) + lint de contratos con artefacto](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — `feedback`. 4 hooks OFF (reversible, criterio declarado); contratos ≥2026-07-26 exigen shape/test/path, cableado al vigía. Lateral: el checkout viejo había PERDIDO los scripts de los crones (exit 127 mudo).
-- [🚫 No PR/commit/merge por cada cambio chico — se juntan y se hace UNA vez](batch-cambios-no-pr-por-tweak.md) — `feedback`. **Reincidí 2026-07-25: 7 PRs en una sesión.** Default: NO mergear hasta que el operador cierre el tema.
-- [🐕 watchdog-sesiones.ps1 NO activado — falso positivo de pausa deliberada](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — `feedback`. Decisión del operador. No re-proponer sin marker de pausa deliberada.
-- [🎯 Canibalizar `/goal` en el bucle — 3 candidatos, nada implementado](canibalizar-goal-de-claude-code-en-el-bucle.md) — `reference`. Handoff completo con complejidad y spike pendiente para retomar.
-- [🧰 16 skills de Matt Pocock instaladas — el set `engineering` NO está configurado](skills-matt-pocock-instaladas-set-engineering.md) — `reference`. 50 globales. `setup-matt-pocock-skills` sin correr: choca con `coordinacion/` como tracker.
-- [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — `project`. Hay cero usuarios; "prod-beta" desvía a migraciones defensivas. El dataset sintético debe traer cambios en el tiempo.
-- [🖥️ TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — `feedback`. PC SOLO edita. Montar en local rechazado 2×.
-- [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — `feedback`. La prueba vale, la aserción no. [[spike-first-central-proyecto]]
-- [Spike-first es central](spike-first-central-proyecto.md) — `feedback`. Cimiento no verificado se amplifica a escala.
-- [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — `feedback`. 6 errores seguidos no eran bugs del script: era el prompt que ordenaba consultarlo ANTES que al log. Preguntá qué regla te lleva a la fuente derivada.
-- [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — `feedback`. Un agente reusó "la mitad validada" y reintrodujo el fallo de rotular por menciones. El matiz va en un COMENTARIO en el punto de decisión, no sólo en memoria.
-- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — `project`. `remote_sha` en ceros ⇒ el pre-push sincroniza el repo ENTERO y el push "tarda minutos". Base correcta: `merge-base origin/main`. Deuda con dueña.
-- [⏱️👁️ Mirar la HORA de la acción no es mirar la ACCIÓN](mirar-la-hora-de-la-accion-no-es-mirar-la-accion.md) — `feedback`. `0min` + mismo `ls` tres ciclos = gira en vacío. Compará contra el ciclo anterior, y auditá la espera que declara.
-- [📬🕳️ "No lo vi" NO distingue "no llegó" de "no lo procesé"](no-lo-vi-no-distingue-no-llego-de-no-lo-procese.md) — `feedback`. El relato de fallo de un agente es TESTIMONIO, no medición: contrastalo con el transcript antes de rediseñar el canal. Un aviso uniforme no interrumpe.
-- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — `reference`. `cmd | tail` devuelve el status de `tail`. Una tarea de fondo dijo "exit 0" con el traceback adentro. El veredicto es la SALIDA, no el status.
-- [🕳️ Un vacío del PROPIO instrumento no es hallazgo — correr el control](vacio-no-es-hallazgo-correr-el-control.md) — `feedback`. Hornear el control en el script.
-- [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — `feedback`. Deliberada+visible OK; impaga/invisible prohibida.
-- [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — `feedback`. Solo se difiere no-código + MAYOR.
-- [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — `feedback`. Test *¿puede volver?* → si no es "no por construcción", no terminó.
-- [🚫💤 CERO tiempo ocioso — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — `feedback`. Único no-trabajar válido = terminó-todo-y-reportó. Límite: no inventar forma para no ociar.
-- [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — `feedback`. Arrancar el próximo hito ya contratado = ejecución, no MAYOR. Frené la fábrica 4 h esperando un "dale". Corré el control: leé los disparadores.
-- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — `feedback`. **Regla dura.** Si el operador puede preguntar "¿y cómo seguimos?", cerraste mal. Cierre = lo siguiente YA tomado, o el disparador exacto + quién lo tiene. Canon 8a.
-- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — `feedback`. **Regla dura.** Crédito/cuota/tiempo que se acaban ⇒ reordená por impacto÷costo y despachá scripts+bg YA. Enumerar bien y no ejecutar ES el error. Canon 8b.
-- [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — `feedback`. **9 h ociosas de noche con 3 monitores.** El blocker de otra sesión suele ser categoría-A (un grep MÍO), no externo. `no-ocio-check.sh` + dead-man 30min + push nocturno. §4.2.sexies.
-- [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — `reference`. **Regla canónica, ahorra greps y tokens.** MCP `graphity-code`, `group_id="code-copiloto-emprendedor"` SIEMPRE; paths sin prefijo `apps/`; nodos pueden estar stale → probar en el archivo. Control 4/4 exacto. **Frescura: conoce lo que estaba EN DISCO en el último sync** (⚠️ corregido 2026-07-31, ver ↓) — adelantar con `scripts/graph-sync.sh`.
-- [🕰️🕸️ El grafo ingesta el DISCO, pero pone la fecha de `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — `project`. **Corrige el canon "conoce lo pusheado".** Puede tener código que no está en ninguna rama, y `valid_at` es el commit date del `HEAD` que corrió el sync (checkout 111 commits atrás ⇒ fecha uniforme y falsa). Frescura = hora del último SYNC: cruzá `mtime` en disco vs `created_at` del nodo.
-- [♻️🔒 Reutilizar es REGLA — el inventario va ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — `feedback`. **Cómo enunciás el problema decide si reusás o inventás.** "X no encaja en Y" invita a construir de cero. Todo `contrato_` abre con `§0 Reutilización` (§4.2.septies) o no se despacha.
-- [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) — `project`. Nunca se pregunta 2 veces; a la 2ª manda la card. Confirmación=card aun completo · Automático=completo ejecuta directo. Camino incompleto idéntico.
-- [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — `feedback`. Afirmé "ambas muertas" y "no hay monitores" desde un vacío, sin correr el control ni leer `CRONES.md`. La sesión viva ACTÚA (git log/PR) aunque no autoree. Heartbeat de backend caído = re-pegar su cron (§4.ter, no cross-session).
-- [Raíz, no parche](raiz-no-parche.md) — `feedback`. Hook `root_cause_suggester`.
-- [🔑 No insistir con rotación de keys en dev](no-insistir-rotacion-keys-desarrollo.md) — `feedback`. Diferir a prod; solo no commitear/pegar en chat.
-- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — `feedback`. Feedback localizado baja regresiones -70% (TDAD).
-- [Orquestación de waves — parent valida+commitea](orquestacion-waves-parent-valida.md) — `feedback`. Ownership exclusiva; verificar estado real, no el reporte bg.
-- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — `feedback`. Adelantar trabajo independiente+no-conflictivo. Ejecutar fase futura no.
-- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — `feedback`. "Luz verde para construir" ≠ "fase validada".
-- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — `feedback`. Failure mode espejo: pesimismo performativo. Afinar, no rebajar.
-- [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — `feedback`. Actualizar el doc-de-registro único (`coordinacion/PLAN.md`), verificado que existe.
-- [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — `feedback`. En este repo es `coordinacion/PLAN.md`.
-- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `feedback`. `gh` CLI; MCP solo si no está.
-- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — `feedback`. **LEER al arrancar sesión.** Estado = ubicación; `contrato_` antes de cruzar la junta backend↔app.
-- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — `project`. Carpeta `coordinacion/Antigravity/`; NO es cuarta sesión; cron temporal al activarlo. Reglas: COORDINACION.md §7.
-- [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — `project`. HEAD puede ser de otra sesión. Mensaje feo → commit `docs:` nuevo, NO reescribir. reflog reconstruye; el dueño reconcilia.
-- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — `project`. `git diff --numstat` dio 7/0 y el commit igual dejó afuera 4 entradas: comparaba contra la rama CHEQUEADA, no contra el padre de la cadena. Nombrá la base; `comm -23` sobre slugs > contar líneas.
-- [💥 `git checkout <ref> -- .` PISA los cambios solo-en-working-tree — irrecuperables](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — `project`. Un diff sin commit no lo salva ni reflog. Para "¿al día con origin?" usá `merge-base --is-ancestor`, no toques archivos. Commiteá la memoria pronto.
-- [📱🍳 Un gate de device se corre con RECETA async, no con ventana viva](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — `feedback`. Device de dueño único + buzón asíncrono → el dueño lo corre solo con gestos exactos escritos. El cuello era desconocer la UI, no la sincronía.
-- [🧪🔌 Tests que mockean la serialización son CIEGOS al borde del wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `project`. 2 bugs/semana misma clase (int-vs-interval 500, int-vs-string descarte). Suite verde mide el endpoint con el borde cortado; `curl`/device real lo caza en 30 s.
-- [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — `project`. **LEER antes de `seed-memory.sh`.** `rsync --delete` espeja repo→slug. Escribir en `memoria/` del repo.
-- [📐 documed-front es la app CANÓNICA — consultarla antes de UI](consultar-documed-siempre-antes-de-implementar.md) — `feedback`. Regla dura 3×. Portar adaptando, no copiar ciego.
-- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — `feedback`. Cada lado verificó su mitad y la junta no era de nadie.
-- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — `feedback`. Gate AMBOS temas; colores = tokens theme-aware.
-- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — `feedback`. Verde en vitest ≠ verificado; probar en device.
-- [🧭 Un `*.test.tsx` en `app/` tumba la app — expo-router lo carga como RUTA](test-en-carpeta-app-es-una-ruta.md) — `project`. El problema es DÓNDE vive. Guard: `appSoloRutas.test.ts`.
-- [🧊 App "bloqueada" al volver de una función → glass APILADO](glass-apilado-empujar-una-vez.md) — `project`. Doble toque apila 2 `transparentModal`; lock por FOCO (`empujarUnaVez`).
-- [🎙️🕳️ El copiloto dice "listo, ya lo marqué" y NO llamó la tool](copiloto-narra-la-accion-sin-ejecutarla.md) — `project`. **CURADO** (2026-07-29, PR #159): 0/10 mentiras contra el LLM real y el flag `MODO_AUTOMATICO_NO_DISPONIBLE` ya no existe en el código. Ojo al releer: el retest dio 2 veredictos FALSOS antes del bueno.
-- [🤖 Agente acepta el chat pero NUNCA responde → cuota del LLM](agente-no-responde-revisar-cuota-llm.md) — `project`. `429 insufficient_quota` mata el workflow; mirar el journal.
-- [🚀 Arranque Expo en device: expo-doctor PRIMERO](arranque-device-metro-disable-hierarchical-lookup.md) — `project`. Era `metro disableHierarchicalLookup=true`, no versiones.
-- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — `project`. No es git: pisa en silencio. Chequeo `grep -c <símbolo_de_prod>`.
-- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — `project`. Slash commands/hooks/scripts se leen del cwd: rama vieja = herramientas viejas, sin aviso. Verificá contra `origin/main`, no el working tree.
-- [🏗️ El provisionado "idempotente" NO reconstruye la base desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — `project`. **LEER antes de levantar un entorno nuevo (DR/staging/región).** Pasada 1 falla, 2 OK: `ALTER TABLE IF EXISTS` es no-op sobre tabla inexistente. Idempotente ≠ reproducible.
-- [🩺🟢 "No rompió nada" NO es "arregló algo" — la suite verde no distingue](no-romper-no-es-arreglar.md) — `feedback`. Un no-op es lo que MEJOR puntúa en un gate de no-regresión (PR #179: CI 5/5). Sólo un test que falla antes y pasa después separa las dos. Y dos trampas de diseño: las fallas del instrumento no pueden rechazar al evaluado, y un criterio que sólo se cumple mintiendo premia al que miente.
-- [♻️🙈 Idempotente ≠ CONVERGENTE — "ya existía" es un éxito que no hizo nada](idempotente-no-es-convergente.md) — `feedback`. `create … except YaExiste: pass` nunca aplica el estado declarado: cambiás la config, desplegás, y el recurso vivo sigue igual con el log en tono de éxito. Preguntá *¿si cambio el valor, cambia el recurso?*. Separá qué converge (`spec`) de qué se respeta (`state`).
-- [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — `feedback`. 2º lente = el atajo que *colapsa* el problema.
-- [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — `feedback`. Tu propio estado envejece. Un estado falso da quietud, no bug.
-- [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — `feedback`. La espera CON disparador (device) tapa la rebanada de código-puro que quedó adentro. Descomponer por disparador REAL antes de declararla.
-- [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — `feedback`. Correr el caso vacío: el default de toda regla restrictiva es no-hacer.
-- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — `feedback`. Preguntarse *¿qué devolvería si lo que mido estuviera roto?* (catálogo de 11+ casos).
-- [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — `project`. El **dueño está exento** sin `FORCE`; superuser/`BYPASSRLS` saltea *incluso con* `FORCE`; `USING` sin `WITH CHECK` deja escribir como otro. Control: conectarse **sin tenant** y contar. Estaba documentado y sin pagar.
-- [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md) — `project`. `tenants` traduce JWT→`cliente_id` y se lee **antes** de declarar el tenant: con `FORCE` da 403 a **todos**. Hoy zafa por accidente (quedó fuera del manifiesto). Guard: `test_rls_invariantes.py`.
-- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s, no 8 min](suite-local-en-vps-con-rol-no-superuser.md) — `feedback`. `test-db.sh` + `sync-test-backend.sh` con rol `copiloto_app` NO-superuser. El CI queda como gate final, no como consola de errores.
-- [🔌🙈 El test que NO usa el camino de producción no puede verlo fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — `feedback`. 16 tests con `psycopg2` crudo; producción envuelve. 8 adversariales verdes y **ciegos**. El setup sale del composition root, no se reescribe.
-- [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — `project`. El gate de no-regresión **nunca corrió un test** en prod (`python3` sin pytest) y nadie lo vio: fail-closed hace su propia rotura idéntica a su funcionamiento. Todo gate necesita control POSITIVO.
-- [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — `project`. Rechazó **3/3 el parche CORRECTO**: *"¿arregla la causa?"* sin mostrarle la causa. Un juez sin contexto no da error: **rechaza, y parece prudencia**. Banco 2/3→3/3.
-- [🕘🟢 Un test verde 21 h por día no está verde: está SIN MEDIR](el-test-verde-21-horas-por-dia-no-esta-medido.md) — `project`. Fixture con `CURRENT_DATE` (UTC) vs query con `hoy_del_negocio()` (UTC−3): 7 rojos sólo 21:00–00:00 ARG de fin de mes. Si estás DENTRO de la ventana, corré todo YA.
-- [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — `project`. El parche que falló **aplicó limpio**: formato válido ≠ contenido correcto. Gate de tests = conclusión medida. **Mi 1ª causa era falsa y coherente con la doctrina**; la mató un diferencial de 6 llamadas. **Y antes: el cuello era el FORMATO DE ENTREGA** — mismo modelo, diff `git apply` ❌ vs `SEARCH/REPLACE` ✅. Aplica a cualquier agente que edite archivos.
-- [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — `feedback`. 3 versiones, 3 veredictos opuestos sobre la MISMA realidad. El falso rojo **nunca choca con nada** (la feature queda apagada, sin síntoma) y se disfraza de prudencia. Control: *¿este contador alguna vez cuenta?*
-- [🫥 Un instrumento que NO MIRA nunca falla — su silencio se lee VERDE](instrumento-que-no-mira-nunca-falla.md) — `feedback`. El sync subió 15.906 filas y el control dijo "nada verificable". Preguntá **sobre cuántos elementos miró**, aparte de si pasó. Diferencial obligatorio.
-- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `project`. **LEER antes de confiar en un apagado de emergencia.** Leer `os.environ` en cada decisión es dinámico *dentro* del proceso; systemd fija el entorno al arrancar. El test con `monkeypatch.setenv` pasa en verde y mide el módulo, no el despliegue. Verificá con `/proc/<pid>/environ`. Apagado inmediato = pausar el Schedule.
-- [🕳️🚪 Un stub registrado ANTES del router real lo ensombrece](stub-registrado-antes-del-router-real-lo-ensombrece.md) — `project`. `/actividad` sirvió 501 en prod desde siempre; código verde, endpoint muerto. Guard = test por HTTP contra el vivo, no el unit. El comentario lo predijo y no se borró.
-- [🕵️ Probar AUSENCIA necesita otro instrumento — y el device es de BACKEND](probar-ausencia-necesita-otro-instrumento.md) — `feedback`. Control de 12s no da negativo contra actor intermitente. Dueño único.
-- [📣 El encabezado tranquilizador se come la carga útil](encabezado-tranquilizador-se-come-la-carga-util.md) — `feedback`. Un evento por pendiente; una línea "OK" tapó 6.
-- [🎯 El error apunta a un parámetro que NUNCA mandaste](el-error-apunta-a-un-parametro-que-nunca-mandaste.md) — `project`. `GET /x/resumen` → 422 sobre el id: el segmento cae en la ruta del `{id}`.
-- [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `project`. `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
-- [🚧 Validación de MÁS en la UI = tapón que enmascara bugs](validacion-de-mas-en-la-ui-enmascara-bugs.md) — `feedback`. Exigir más que el backend esconde bugs de las dos capas. Control por HTTP.
-- [🧩 Una defensa de una capa la deshace una regla CORRECTA de la otra](defensa-deshecha-por-una-regla-correcta-de-la-otra-capa.md) — `project`. Seguir el dato hasta el píxel; test punta a punta.
-- [⌨️ El teclado tapa los campos del glass Y mata el scroll — un bug](teclado-tapa-campos-cascara-glass.md) — `project`. Se dibuja encima. `KeyboardAvoidingView padding` + revelar el campo enfocado.
-- [🎯 Un supuesto cuya falla parece un estado LEGÍTIMO es una pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — `feedback`. Al `[ASSUMED_PENDING_VERIFY]`: *¿cómo se vería si fuera falso?*
-- [🪦 Borrar el archivo NO borra su contrato](borrar-el-archivo-no-borra-su-contrato.md) — `project`. Tipos y errores sobreviven en `types.ts`. Grepear por nombres del dominio.
-- [🎭 El RASTRO del último intento pisa al HECHO](rastro-del-intento-pisa-al-hecho.md) — `project`. Un alta fallida mostraba desconectada una credencial activa, gastando intentos contra ARCA.
-- [🔄 Un listado que NUNCA vuelve a preguntar](listado-que-nunca-vuelve-a-preguntar.md) — `project`. Cargar al montar y nada más = dato viejo. 3 disparadores; el tirón cubre lo de afuera.
-- [⏱️ Dato en DOS tiempos, lector de UNO](dato-en-dos-tiempos-lector-de-un-tiempo.md) — `project`. Cortar en el 1er "listo" da dato prematuro; cortar por `terminado`.
-- [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — `project`. Facturar 2× → 2 CAE. `USE_EXISTING` duplica. Medir el EFECTO.
-- [🧹 La deuda vencida no siempre se paga en un paso](la-deuda-vencida-no-siempre-se-paga-en-un-paso.md) — `feedback`. El `DROP COLUMN` rompía el deploy que la nombra. `grep` en TODO el repo, incl. deploy.
-- [🔀🌐 Mover la IP, no reconfigurar los consumidores](mover-la-identidad-de-red-en-vez-de-reconfigurar-consumidores.md) — `project`. **LEER antes de migrar un host.** 2 calls de API vs N deploys; el grep no ve consumidores fuera de tu perímetro. Ojo con dominios que llevan la IP en el hostname (`*.1-2-3-4.sslip.io`) y `auto_delete` de la primary IP.
-- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `project`. Sin documento, `$0` afirma "no compró" cuando es "no lo sé". La distinción sobrevive al píxel.
-- [🎯 Discriminar un caso por la AUSENCIA de un campo](discriminar-por-ausencia-de-estructura.md) — `project`. El caso "por descarte" se traga todo caso nuevo. Guarda de exhaustividad + test con la forma real.
-- [🌐 El catch-all del SPA vuelve "no desplegado" indistinguible de "roto"](catch-all-vuelve-no-desplegado-indistinguible-de-roto.md) — `project`. Un GET da 200 con HTML. Sondar por verbo ≠ GET, primero contra ruta inexistente.
-- [🙅 El mensaje niega el efecto que YA ocurrió — y el test desde la misma creencia lo confirma](el-mensaje-niega-el-efecto-que-ya-ocurrio.md) — `project`. Guardó y dijo "no disponible" → duplica. Era la envoltura (2 de 8 endpoints). Fixture de respuesta real; test del camino feliz de vuelta; control diferencial.
-- [🛡️ Un guard cazó algo distinto de lo que vigilaba](guard-caza-algo-distinto-de-lo-que-vigilaba.md) — `project`. El anti-DDL destapó un bug de zona horaria. Leer el rechazo antes de aflojarlo.
-- [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO, no por qué era el TRABAJO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — `feedback`. **El autohealing nació 1-por-tenant porque la DLQ tiene RLS.** La restricción de ACCESO eligió la arquitectura. Y era MAYOR: si un mecanismo de seguridad te está dictando la forma del diseño, escalá. Con 1 tenant las dos topologías se ven idénticas.
-- [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — `project`. `existe_comprobante` atrapa el error REINTENTABLE y devuelve `False` = "emití de nuevo" → 2 CAE. Leer la rama de ERROR, no si el guard existe.
-- [✂️🤖 El hook se come el reporte del sub-agente headless](el-hook-se-come-el-reporte-del-subagente.md) — `project`. `result` corto ≠ agente conciso. Está en el transcript; NO re-lanzar. Control de forma sobre el output.
-- [📝⚡ Anotar ADENTRO el efecto externo en el instante en que ocurre](anotar-adentro-el-efecto-externo-en-el-instante.md) — `project`. Certificado en AFIP · CAE · NC. Guardar "al final" borra la única prueba. Un guard cuya evidencia la escribe un paso POSTERIOR no es un guard.
-- [⏱️🧪 Un test sin cota CUELGA en vez de decirte qué falta](un-test-sin-cota-cuelga-en-vez-de-decirte-que-falta.md) — `feedback`. Cota + volcar el estado ENTERO. Me dijo `condicion_venta` en 2 s.
-- [🧨✅ El test que canoniza el BUG como si fuera el contrato](el-test-que-canoniza-el-bug-como-si-fuera-el-contrato.md) — `feedback`. Docstring con "hoy"/"todavía no" describe un estado, no un contrato. Actualizar diciendo por qué, no "arreglar".
-- [🔑🔄 Derivar la clave DENTRO de la activity, no tocar el payload](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — `project`. `activity_id` + `run_id` (el continue-as-new reinicia la numeración). 78 workflows vivos intactos.
-- [🤥 Subir de modelo compra precisión, NO honestidad](subir-de-modelo-compra-precision-no-honestidad.md) — `project`. El OCR se declaró `legible:true` en cada alucinación. Ese gate está siempre abierto.
-- [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — `feedback`. Medir el solapamiento; primero la rama que corre en prod.
-- [🧹 Decisión consciente sin control posterior no vale nada](decision-consciente-sin-control-posterior.md) — `feedback`. Declararlo ANTES en el buzón. En el device no hay tenant de prueba.
-- [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — `feedback`. El `avance_` nacía en `cerrado/` y miraban `abierto/`. Probar el cable.
-- [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — `feedback`. `abierto/` 32→136 con regla manual; `scripts/archivar-buzon.sh` cada ciclo. Obligaciones=ancla.
-- [⌛ La evidencia VENCE, y el documento no lo dice](la-evidencia-vence-y-el-documento-no-lo-dice.md) — `project`. Un PR "verificado" sobre código desplegado a mano es deuda invisible con reloj. Grepear el artefacto servido.
-- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — `feedback`. "Cuando X esté listo" no ocurre: nadie mira. Enganchar a una acción que ya se hace.
-- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — `feedback`. Cada verbo de "dueño de qué" necesita su renglón. El camino a mano va antes que el asistido.
-- [🎛️ Verificar la COMPOSICIÓN ROOT, no la capa que declara el default](verificar-la-composicion-root-no-el-default.md) — `feedback`. `worker_b.py` sobreescribe `llm.py`. El `Read` verificó otra cosa.
-- [📄 El dato correcto en la SECCIÓN EQUIVOCADA no existe](dato-correcto-en-la-seccion-equivocada.md) — `feedback`. La advertencia va PEGADA al procedimiento, no en su sección temática.
-- [📱🛑 El TELÉFONO exige dueño único — y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) — `project`. Dos ADB se fabrican evidencia falsa; un dictado creó un gasto real.
-- [⏳ Una medición de estado VOLÁTIL vence](medicion-de-estado-volatil-vence.md) — `feedback`. Medir que algo está disponible ≠ que me toca. [[una-espera-sin-disparador-nombrable-es-paralisis]]
-- [📏 No escribas una regla sobre el SETUP DE OTRO](regla-escrita-sobre-el-setup-de-otro.md) — `feedback`. El dato lo tiene el que ejecuta. Y no ablandar una instrucción del operador hasta que encaje.
-- [🚀📱 Entrega progresiva (PR/merge/deploy por hito) + E2E en device](entrega-progresiva-y-e2e-en-device.md) — `feedback`. Un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
-- [🔑✅ Autorización PERMANENTE de merges/deploys — y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) — `project`. NO re-preguntar nimiedades; coordinar es decidir y acotar el cómo. Solo escala lo MAYOR.
-- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — `feedback`. Snapshot no stream; hand-fix a verde; spike dirigido para la raíz.
-- [🛡️💥 Un guard que grita en el caso NORMAL se desarma solo](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — `feedback`. El falso positivo no es ruido: enseña a saltearlo. Correrlo en el flujo habitual, no sólo contra el fallo.
-- [❓ UNKNOWN no es NO — el estado que el proveedor AÚN calcula](unknown-no-es-no-el-estado-que-el-proveedor-aun-calcula.md) — `feedback`. Buscar el campo que dice si el valor está listo. Los timestamps son hecho; el estado en transición, opinión.
-- [🐌 El flag "incremental" que sólo acota el ÚLTIMO paso](el-flag-incremental-que-solo-acota-el-ultimo-paso.md) — `project`. `--since` del grafo: 17 min por 1 archivo. Extracción y reconcile son ciegos por diseño.
-- [📋❌ El DoD que escribí estaba mal y la evidencia lo corrigió](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — `feedback`. 3 de 14 ítems mal especificados. El DoD no es el oráculo. **Cierre como propiedad, no como número**: «todos» no envejece, «92/92» sí — y en silencio.
-- [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — `feedback`. Si nunca te frenó, no sabés si funciona. Y el VPS daba verde porque el guard **ni corría ahí**: decir «verde» sin decir **en cuál** oculta el hueco.
-- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — `project`. Habla del objeto nombrado, no de su tabla ni de los permisos. 3 fallos en 1 día. **Preguntar al catálogo primero.** El CI no reproduce privilegios.
-- [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — `feedback`. 7 instancias medidas: `errores_web` cubre 12/90, `ApiError.body` no llegó a `afip.ts`, PR#114 no llegó a los sitios nuevos. Grepeá el patrón del FIX, no del bug. Nada lo propaga: cero ESLint, CI corre 11/92 py y 0/96 ts.
-- [🧨 Heredoc sin quotar EJECUTA el prompt del sub-agente](heredoc-sin-quotar-ejecuta-el-prompt.md) — `project`. `<<EOF` expandió los backticks de 5 prompts y los 5 barridos arrancaron mutilados sin protestar. Usá `<<'EOF'` y contá bytes+marcas del prompt ANTES de despachar; leé el stdout del lanzador en el mismo turno.
-- [🔢 El DEFAULT de la herramienta devuelve más de lo que asumís](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — `feedback`. Conté 428 workflows "Running" y eran **115**: `temporal workflow list` sin query trae TODOS los estados. Un vacío dispara el control; **un número grande que confirma tu hipótesis no dispara nada**. Contá desagregado y leé el default antes de contar.
-- [🆔 Fórmula de identidad congelada sin validar el mecanismo del server](formula-de-identidad-congelada-sin-validar-el-mecanismo-del-server.md) — `project`. El `edge_uuid` lo deriva el server de los uuid de NODOS+tipo, sin `LOG_EVENT_ID`. Mi fórmula rompía el `PATCH` en silencio → dos vigentes. Anti-resurrección va en la clave del NODO (nodo-evento intermedio, patrón documed), no en la arista.
-- [🖋️ El contrato afirma el mecanismo que NO opero — el riesgo del rol PLANIFICACIÓN](el-contrato-afirma-el-mecanismo-que-no-opero.md) — `feedback`. **MACRO.** Dos ejes: A=setup de una persona (preguntar), B=mecanismo de un sistema (leer su código). Guardrail: evidencia adosada o `[ASSUMED_PENDING_VERIFY]` que bloquea el mapeo. La red que contuvo el daño = ejecutor leyendo la fuente + contrato falsable.
+- [Autorización PERMANENTE de merges/deploys — y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) — no re-preguntar nimiedades; sólo escala lo MAYOR.
+- [Autónomo = ejecutar, no esperar un "dale"](ejecutar-autonomo-no-esperar-si-dale.md) — disparador cumplido ⇒ se ejecuta. Costó ~400 min de ocio.
+- [Un solo usuario de prueba canónico, a fuego](usuario-de-prueba-canonico-uno-solo-a-fuego.md) — `e2e-device@copiloto.test`. Ningún agente elige otro.
+- ["Terminado" exige evidencia de DEVICE](una-orden-cerrada-exige-evidencia-de-device.md) — implementado + desplegado + probado en device + `cierre_`.
+- [Iterar en device NO compila nada](iterar-en-device-es-metro-local-con-dev-client-ya-instalado.md) — dev-client ya instalado + Metro local por USB.
+- [Aplicar `/ejecutar-con-eficiencia` siempre](aplicar-siempre-ejecutar-con-eficiencia.md) — proactiva y constante, no sólo si se invoca.
+- [TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — la PC SOLO edita. Montar en local rechazado 2×.
+- [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) — leerla ANTES de implementar. Portar adaptando, no copiar ciego.
+- [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) — se juntan. Reincidí con 7 PRs en una sesión.
+- [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) — diferido a prod; sólo no commitear ni pegar en chat.
+- [watchdog-sesiones NO se activa](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — falso positivo de pausa deliberada. No re-proponer.
 
-## 🧠 Lecciones sistémicas vivas
+## 🧭 Cómo trabajo
 
-- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — `feedback`. 3× en un día. `copiloto_cobros` **ES** la tabla de ingresos. El nombre se pone al nacer y no se renombra cuando el alcance crece: leé el `WHERE`/la firma/el config, no el identificador.
-- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — `project`. Medido 42 vs 5. Un turno por cron mide **OCIO, no vida**; la sesión está sorda al buzón justo mientras trabaja. Revisar el buzón en cada **frontera de trabajo**, no por reloj.
-- [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — `project`. Barrido adversarial 3 lentes → batch por tests.
-- [⛔ Fallo de tool colgaba el chat (retry ∞) — PR #114](agente-loop-tool-failure-retry-infinito.md) — `project`. `execute_activity` con `retry_policy` acotada + error de negocio no se propaga.
-- [♾️ Sesión PERMANENTE vía continue-as-new (PR #122)](conversacion-permanente-continue-as-new.md) — `project`. Valve de CAN al TOPE del loop. Replay-verify antes de deployar.
-- [💵 Copiloto — economía/COGS (~$1-12/usuario/mes)](copiloto-economia-cogs.md) — `project`. LLM ~95% del costo; palancas = prompt caching + tool gating.
-- [🧰 Tool overload — orden de defensas](tool-overload-routing-agente.md) — `project`. Degrada ~20-30 tools. Driver = precisión.
-- [🔌 Composio — ladrillo + runbook](composio-gateway-ladrillo.md) — `project`. Boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
-- [🔌 Copiloto — 7 servicios Composio plug-in (PR #104)](copiloto-servicios-composio-plugin.md) — `project`. Módulo-plug-in + confirm-gate HITL.
-- [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — `project`. OAuth Auth-Code (token 180d), webhook HMAC, SDK ≥3.3.0. ✅ SPIKE E2E.
+### Cadencia, cierre y ocio
 
-## 🏭 Estado / decisiones activas
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — **marco de todo sprint**. A1 audita el plan y puede rechazarlo; A2, el resultado. Cola: `docs/aprendizajes/pendientes/`.
+- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — si el operador puede preguntar "¿y cómo seguimos?", cerraste mal. Canon 8a.
+- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — reordená por impacto÷costo y despachá YA. Enumerar y no ejecutar ES el error. Canon 8b.
+- [🚫💤 CERO ocio — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — único no-trabajar válido: terminó todo y reportó.
+- [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — 9 h ociosas con 3 monitores. El blocker suele ser un grep MÍO.
+- [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — el próximo hito ya contratado es ejecución. Frené la fábrica 4 h.
+- [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — tu propio estado envejece; un estado falso da quietud, no bug.
+- [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — descomponé por disparador real antes de declararlo.
+- [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — contestada bajo otra pregunta o en el hilo de al lado.
+- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando X esté listo" no ocurre: nadie mira.
+- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantar lo independiente y no-conflictivo; ejecutar una fase futura no.
+- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde para construir" ≠ "fase validada".
+- [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
+- [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?*; si no es "no por construcción", no terminó.
+- [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
+- [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
+- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada verbo de "dueño de qué" necesita su renglón.
+- [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — acá es `coordinacion/PLAN.md`.
+- [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único, verificado que existe.
 
-- [🔱 Motor en FORK DURO + el fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) — `project`. **LEER antes de tocar `motor/`.** `sync-motor.sh` retirado; un fix se hace ACÁ. El buffer no inyectaba `self._history` → amnesia.
-- [🔗 Motor ReAct tareas concatenadas — VIVO + CERRADO](copiloto-motor-react-concatenadas.md) — `project`. **NO re-abrir.** Loop ReAct en `ConversationWorkflow`, flag `COPILOTO_ENGINE_MODE`.
-- [🌐 Copiloto dominio duckdns + Google OAuth](copiloto-dominio-duckdns.md) — `project`. `copilotoemprendedor.duckdns.org`→VPS. [[copiloto-gotrue-dedicada-cutover]]
-- [🟢 Copiloto DESPLEGADO VIVO + multitenant real](copiloto-deploy-multitenant-vivo.md) — `project`. **LEER PRIMERO al retomar.** systemd web+worker, JWT, agente durable. Cross-tenant [VERIFIED]. Smoke 10/10.
-- [🏗️ Arquitectura OBJETIVO de PROD = 3 VPS dedicados](copiloto-arquitectura-prod-3-nodos.md) — `project`. app+temporal / clon fusion / clon graphity. VPS actual = SOLO dev.
-- [🔐 Copiloto auth = GoTrue DEDICADA (cutover VIVO, PR #130)](copiloto-gotrue-dedicada-cutover.md) — `project`. **LEER al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales. [[deuda-secretos-rotar]]
-- [🧠✅ Graphity aislamiento cross-tenant RESUELTO + CERRADO (ADR-040)](graphity-aislamiento-cross-tenant-verificado.md) — `project`. **NO re-abrir.** `tenant_aisla_DURO=true`; sha `90721af`.
-- [🧠🧱 Copiloto MemoryProvider — memoria conversacional CABLEADA VIVA](copiloto-memoria-provider-ladrillo.md) — `project`. **LEER al tocar la memoria.** Sobre Graphity, warm+recall+remember, gate `config['memory']`. [[copiloto-recall-temporal]]
-- [🕰️ Copiloto recall temporal — "qué hice ayer" (PR #125)](copiloto-recall-temporal.md) — `project`. `consultar_actividad`. Acción→`types.ACTIONS`; `valid_at` naive→UTC; anti-injection.
-- [🔁 Automatizaciones recurrentes durables — candidato post-v1](copiloto-automatizaciones-recurrentes-candidato.md) — `project`. Infra existe (Schedule+signal). Falta política+canal. NO en v1.
-- [🧾 Trazabilidad de operaciones vía fact-triple — CANDIDATO](copiloto-trazabilidad-operaciones-fact-triple.md) — `project`. Grafo=PROYECCIÓN (DB=SoT); triple≠episodio; spikes S1-S4 abiertos.
-- [🕸️ Grafo: tenant dedicado `copiloto` + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — `project`. **LEER al retomar el hito 5 / ingesta a Graphity.** Instancia COMPARTIDA → ontología con `graph_ids=[copiloto]` o fuga. structured (uuid5) NO fact-triple. `valid_at`=fecha del hecho.
-- [🔑✅ Graphity: la key COMÚN alcanza (admin NO se necesita) — RESUELTO](graphity-copiloto-sin-admin-provisioning-gap.md) — `project`. Ontología graph-scoped + `structured` sin admin; único borde = **project scope** en la key (400, no 403). Tenant real lo provisiona la sesión Graphity por el canal (operador autorizó); key en `~/.claude/graphity/copiloto.env` (`--instance copiloto`). Flag: `SALDA` cobro→comprobante cierra "¿quién me debe?".
-- [🔑 OAuth de Google: hoy es el de COMPOSIO, no el nuestro — bloquea Apps](copiloto-oauth-google-propio.md) — `project`. Scopes por defecto son los CAROS. Decidido: ninguno restringido. Deuda: el gateway elige "la primera" auth config.
-- [💰 Presupuestos + perfil del negocio — implementado las dos capas](copiloto-presupuestos-y-perfil-negocio.md) — `project`. Máquina de estados y Sheet DESCARTADOS. El perfil se lee por turno, ANTES de la memoria. Falta device.
-- [🧾 Facturación AFIP — backend Y frontend TERMINADOS, E2E verde desde device](copiloto-facturacion-afip.md) — `project`. **LEER PRIMERO al retomar facturación.** DETERMINISTA. Clave fiscal no se almacena. Ambiente = dos credenciales. 8 bugs contra AFIP/device real.
-- [🧹 Los tests escribían en la base de PRODUCCIÓN](copiloto-tests-ensuciaban-la-base.md) — `project`. 552 filas huérfanas. Fixture de barrido acotada a la ventana de la corrida.
-- [🧭 IDENTIDAD = automatización/agentes-IA durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — `project`. Moat = orquestación DURABLE. Fit = agentes + frontend FINO + HITL.
-- [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — `project`. Keys que pasaron por chat. Diferido a pre-prod. grep-first + restart al rotar.
-- [🗜️ Compactar a 500k — investigación PAUSADA](compactacion-a-umbral-investigacion-pausada.md) — `project`. **Puntero:** cuando pregunte "lo de la compactación", retomar del doc. `/compact` inyectado NO ejecuta (spike); medir transcript SÍ; no hay daemon. Camino: bajar monitores + PreCompact.
-- [⏳🕳️ La ventana de diagnóstico vence antes de que el usuario avise](la-ventana-de-diagnostico-vence-antes-que-el-usuario-avise.md) — `project`. Retención Temporal **24h** (medido) + 0 logging estructurado + 0 rastro en cliente ⇒ *"ayer no me anduvo"* no tiene nada que mirar. Temporal SÍ es observabilidad (mientras dure); ciegos los ~64 endpoints CRUD de 80. Dossier: `docs/copiloto-emprendedor/2026-07-28-analisis-manejo-de-errores-toda-la-app.md`.
+### Evidencia: el instrumento antes que el resultado
 
-## 🔮 Tareas futuras (gated)
+- [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
+- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica a escala.
+- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué devolvería si lo que mido estuviera roto?* Catálogo de 11+ casos.
+- [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo no choca con nada y se disfraza de prudencia.
+- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá **sobre cuántos elementos miró**, no sólo si pasó.
+- [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
+- [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
+- [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op es lo que MEJOR puntúa en un gate de no-regresión.
+- [🔌🙈 El test que NO usa el camino de producción no puede verlo fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — 8 adversariales verdes y ciegos.
+- [🧪🔌 Tests que mockean la serialización son CIEGOS al borde del wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `curl`/device lo caza en 30 s.
+- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — `test-db.sh` con rol NO-superuser. El CI es gate final, no consola.
+- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado. Probar en device.
+- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base; `comm -23` sobre slugs > contar líneas.
+- [🔢 El DEFAULT de la herramienta devuelve más de lo que asumís](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — un número grande que confirma tu hipótesis no dispara ningún control.
+- [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — 6 errores seguidos: el prompt mandaba a la fuente derivada.
+- [📋❌ El DoD que escribí estaba mal y la evidencia lo corrigió](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — cierre como **propiedad**, no número: «92/92» envejece en silencio.
+- [🎯 Un supuesto cuya falla parece un estado LEGÍTIMO es una pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 
-- [🔬 Eval global de la app con Fable5 zero-context — al terminar lo pendiente](eval-global-app-fable5-zero-context-pendiente.md) — `project`. Objetividad = cero contexto, report-only. Foco: conflicto/seguridad/resiliencia/escala-sin-fricción. **+ DOS auditorías de eficiencia dedicadas (backend + frontend)** para la velocidad de la UI — alimentadas con localización precisa + código + skills (`callstack-rn-performance`); fix de raíz, simple. Velocidad = opción A (profiling device por hallazgo). Excluye infra externa + features faltantes.
+### Guards, gates y jueces
+
+- [🛡️💥 Un guard que grita en el caso NORMAL se desarma solo](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltearlo.
+- [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR, no si el guard existe.
+- [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona. Decir "verde" sin decir **dónde** oculta el hueco.
+- [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — rechazó 3/3 el parche correcto. Un juez sin contexto rechaza, y parece prudencia.
+- [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto. El cuello era el FORMATO: `SEARCH/REPLACE` ✅ vs diff ❌.
+- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `monkeypatch.setenv` mide el módulo, no el despliegue. Apagado real = pausar el Schedule.
+
+### Diagnóstico: leer el contrato antes de explicar
+
+- [Raíz, no parche](raiz-no-parche.md) — hook `root_cause_suggester`.
+- [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío: toda regla restrictiva default a no-hacer.
+- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — `copiloto_cobros` ES la tabla de ingresos. Leé el `WHERE`, no el identificador.
+- [🎛️ Verificar la COMPOSICIÓN ROOT, no la capa que declara el default](verificar-la-composicion-root-no-el-default.md) — `worker_b.py` sobreescribe `llm.py`.
+- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream; spike dirigido para la raíz.
+- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — `cmd | tail` devuelve el status de `tail`. El veredicto es la SALIDA.
+
+### Diseño y arquitectura
+
+- [♻️🔒 Reutilizar es REGLA — el inventario va ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — "X no encaja en Y" invita a construir de cero. Todo `contrato_` abre con §0.
+- [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — la restricción de ACCESO eligió la arquitectura, y era MAYOR.
+- [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente es el atajo que *colapsa* el problema.
+- [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?* Separá lo que converge de lo que se respeta.
+- [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — facturar 2× → 2 CAE. Medí el EFECTO.
+- [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — **leer antes de levantar DR/staging**. Idempotente ≠ reproducible.
+- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — habla del objeto, no de su tabla ni de los permisos. Preguntá al catálogo.
+- [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX, no del bug. Nada lo propaga solo.
+- [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en un COMENTARIO en el punto de decisión.
+- [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — guardar "al final" borra la única prueba (CAE, certificado).
+- [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — `activity_id`+`run_id`; el continue-as-new reinicia la numeración.
+- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — sin documento, `$0` dice "no compró" cuando es "no lo sé".
+- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — cada lado verificó su mitad y la junta no era de nadie.
+- [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — **MACRO.** Setup de una persona: preguntar. Mecanismo de un sistema: leer su código.
+- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas; colores = tokens theme-aware.
+- [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) — "portar del canónico" importa en silencio la respuesta de ESA app.
+
+### Delegación, contexto y herramientas
+
+- [🔒⚡ 3 gates que FRENAN — script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — nivel 1, global. `ask` + fail-open.
+- [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth Max (NO tarifa API).
+- [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`, `group_id=code-copiloto-emprendedor`. Ahorra greps.
+- [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del último SYNC, no `valid_at`.
+- [✂️📏 Poda de suggesters + lint de contratos](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — ~2,57M tok/mes medidos. 4 hooks OFF, criterio declarado.
+- [🧨 Heredoc sin quotar EJECUTA el prompt del sub-agente](heredoc-sin-quotar-ejecuta-el-prompt.md) — usá `<<'EOF'`; contá bytes del prompt ANTES de despachar.
+- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — feedback localizado baja regresiones -70% (TDAD).
+- [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — ownership exclusiva; verificar estado real, no el reporte bg.
+- [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable pedido por el operador.
+- [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — 48% del índice no se cargaba ⇒ 3 archivos para el mismo hecho. Presupuesto + control.
+- [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — **leer antes de correrlo**. Escribí en `memoria/` del repo.
+- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — failure mode espejo: pesimismo performativo. Afinar, no rebajar.
+
+### Coordinación entre sesiones
+
+- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — **leer al arrancar**. Estado = ubicación del archivo.
+- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — NO es cuarta sesión. Reglas: COORDINACION.md §7.
+- [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — el `avance_` nacía en `cerrado/`. Probá el cable.
+- [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — `abierto/` 32→136 con regla manual.
+- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno por cron mide OCIO. Revisar en cada frontera de trabajo.
+- [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — la sesión viva ACTÚA (git log/PR) aunque no autoree.
+- [📱🛑 El TELÉFONO exige dueño único — y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) — dos ADB fabrican evidencia falsa; un dictado creó un gasto real.
+- [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — gestos exactos escritos, no ventana viva.
+
+### Git, deploy y checkout compartido
+
+- [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — mensaje feo → commit `docs:` nuevo.
+- [💥 `git checkout <ref> -- .` PISA lo que sólo vive en el working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — irrecuperable. Usá `merge-base --is-ancestor`.
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja = hooks y scripts viejos, sin aviso.
+- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa en silencio. Chequeo `grep -c`.
+- [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual: regresiona en silencio.
+- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base correcta: `merge-base origin/main`.
+- [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama que corre en prod.
+- [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`. Fabricó un handoff externo falso.
+- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `gh`; MCP sólo si no está.
+
+## 🏭 El producto — LEER antes de tocar
+
+- [🟢 Copiloto DESPLEGADO VIVO + multitenant real](copiloto-deploy-multitenant-vivo.md) — **leer primero al retomar.** systemd web+worker, JWT, cross-tenant [VERIFIED].
+- [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) — **antes de tocar `motor/`.** `sync-motor.sh` retirado; el fix se hace ACÁ.
+- [🔗 Motor ReAct tareas concatenadas — VIVO y CERRADO](copiloto-motor-react-concatenadas.md) — **NO re-abrir.** Flag `COPILOTO_ENGINE_MODE`.
+- [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) — **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
+- [🌐 Dominio duckdns + Google OAuth](copiloto-dominio-duckdns.md) — `copilotoemprendedor.duckdns.org` → VPS.
+- [🧠🧱 MemoryProvider — memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) — **al tocar la memoria.** warm+recall+remember, gate `config['memory']`.
+- [🕰️ Recall temporal — "qué hice ayer"](copiloto-recall-temporal.md) — `consultar_actividad`; `valid_at` naive→UTC; anti-injection.
+- [🧾 Facturación AFIP — backend y frontend TERMINADOS](copiloto-facturacion-afip.md) — **primero al retomar facturación.** Determinista; la clave fiscal no se almacena.
+- [💰 Presupuestos + perfil del negocio](copiloto-presupuestos-y-perfil-negocio.md) — el perfil se lee por turno, ANTES de la memoria.
+- [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) — nunca se pregunta 2 veces; a la 2ª manda la card.
+- [🔑 OAuth de Google: hoy es el de COMPOSIO](copiloto-oauth-google-propio.md) — bloquea Apps. Los scopes por defecto son los CAROS.
+- [🔌 Composio — ladrillo + runbook](composio-gateway-ladrillo.md) — boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
+- [🔌 7 servicios Composio plug-in](copiloto-servicios-composio-plugin.md) — módulo-plug-in + confirm-gate HITL.
+- [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) — incluye borrado permanente. No heredarlo a agentes autónomos.
+- [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — OAuth Auth-Code (180 d), webhook HMAC. ✅ spike E2E.
+- [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — instancia COMPARTIDA → ontología con `graph_ids` o fuga.
+- [🔑✅ Graphity: la key COMÚN alcanza (admin no se necesita)](graphity-copiloto-sin-admin-provisioning-gap.md) — único borde = project scope en la key (400, no 403).
+- [🧠✅ Graphity aislamiento cross-tenant RESUELTO (ADR-040)](graphity-aislamiento-cross-tenant-verificado.md) — **NO re-abrir.** `tenant_aisla_DURO=true`.
+- [📡 Ingesta real al grafo por tenant — FRENTE ABIERTO (MAYOR)](copiloto-ingesta-grafo-por-tenant-real-frente-abierto.md) — sólo existe la demo sintética del hito 5.
+- [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — barrido adversarial → batch por tests.
+- [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — el **dueño está exento** sin `FORCE`. Control: conectarse sin tenant y contar.
+- [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md) — `tenants` con `FORCE` daría 403 a todos.
+- [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — cero usuarios; "prod-beta" desvía a migraciones defensivas.
+- [🧭 IDENTIDAD = automatización/agentes durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — moat = orquestación DURABLE.
+- [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — keys que pasaron por chat. grep-first + restart al rotar.
+
+### Frontend móvil
+
+- [📱 Estado del frontend móvil — chrome auto-hide y sus regresiones](copiloto-frontend-movil-ux-estado.md) — **al retomar cualquier arreglo del móvil.**
+- [🧊 App "bloqueada" al volver de una función → glass APILADO](glass-apilado-empujar-una-vez.md) — doble toque apila 2 `transparentModal`; lock por FOCO.
+- [🧭 Un `*.test.tsx` en `app/` tumba la app](test-en-carpeta-app-es-una-ruta.md) — expo-router lo carga como RUTA. Guard: `appSoloRutas.test.ts`.
+- [⌨️ El teclado tapa los campos del glass Y mata el scroll](teclado-tapa-campos-cascara-glass.md) — `KeyboardAvoidingView padding` + revelar el campo enfocado.
+- [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
+- [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — 404 al bundlear; `tsc`/`jest` sí los siguen.
+- [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild.
 
 ## 📚 Referencia
 
-- [💸 El modelo barato cobró 17× tokens de imagen](el-modelo-barato-cobra-17x-tokens-de-imagen.md) — `reference`. `gpt-4o-mini` = 14.261 vs 842 tokens por la misma foto. El costo multimodal se MIDE.
-- [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — `reference`. Worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
-- [Capacidades de `claude -p` headless](claude-code-headless-capabilities.md) — `reference`. `--effort`, `/goal`, sub-agentes. Sesión aislada.
-- [Consultar el agente de OTRO repo vía claude -p](consultar-otro-repo-headless.md) — `reference`. `--output-format json` con cwd=repo target. Stateless.
-- [⭐ `/goal` mecanismo interno](goal-mecanismo-interno-reference.md) — `reference`. Stop hook `prompt`; evalúa con Haiku + json_schema. Los 5 tipos de hook.
-- [🎨 Import de Claude Design en Claude Code = connector MCP](claude-design-import-connector.md) — `reference`. Agregar el connector `claude-design`, no `/design-login` suelto.
-- [BOM rompe el "set model" del plugin Claude Code](bom-rompe-settings-plugin-claude-code.md) — `reference`. BOM en `settings.json` → error; reescribir sin BOM.
-- [🔁 PWA service worker sirve build viejo](pwa-sw-staleness-gotcha.md) — `reference`. Deploy correcto ≠ el navegador lo tiene. Fix: `cleanupOutdatedCaches`+`no-cache`.
-- [🪟💥 Git Bash mangla paths con punto — y fabricó un handoff EXTERNO falso](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `project`. `origin/main:.githooks/…` → `Not a valid object name`, que se lee como "no está en main". Fix `MSYS_NO_PATHCONV=1`. **Un handoff externo se MIDE aunque diga "verificado empíricamente"** — 3 comandos.
+- [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 
-## 🗄️ Historia de hitos cerrados
+## 🗄️ Historia
 
-→ [HISTORIA.md](HISTORIA.md) — bitácora cronológica + entradas movidas del índice, NO se carga. Buscable.
+→ [HISTORIA.md](HISTORIA.md) — hitos cerrados y entradas bajadas del índice. **NO se carga; buscable.**

@@ -28,7 +28,19 @@ bundle de MB, no 404.
 `packages/core` en el worktree, hay que re-copiar o poner un watcher. Para un worktree de verificación
 (rama congelada) no importa; para uno de trabajo activo, sí.
 
+**El hermano que muerde igual:** un worktree nuevo tampoco trae `apps/mobile/.env` (gitignored; sólo
+`.env.template` se versiona) — sin él `EXPO_PUBLIC_API_BASE` queda `''` **horneado en el bundle** y la
+app falla con un error de red genérico ("No pudimos conectarnos"), que se confunde con servidor o
+credenciales. **Checklist de un worktree que va a servir Metro a un device:** `node_modules` real (no
+linkeado) + copiar `.env` + `--clear` al reiniciar Metro.
+
 **Cuándo aparece:** cualquier device/Metro corriendo desde un git worktree en Windows (nuestro caso, por
 las 3 sesiones con checkouts/worktrees separados). Con un checkout normal (node_modules real) no pasa.
+Costó dos rondas de device: el 404 real venía enmascarado por los crash/ANR previos que no dejaban leer
+el logcat entero — la primera explicación plausible (el ANR upstream ya conocido) no era la causa.
 [[sincronizar-al-vps-desde-el-worktree-equivocado]] [[gate-jsdom-no-ve-gestos-tactiles]] (verde en
 tsc/jest ≠ el bundle de Metro anda).
+
+> **Fusionada en la poda del 2026-08-01:** absorbió `metro-no-resuelve-node_modules-symlinked-worktree`
+> — mismo gotcha del mismo día escrito dos veces, porque ninguna de las dos estaba en el índice.
+> [[el-indice-truncado-fabrica-duplicados]]
