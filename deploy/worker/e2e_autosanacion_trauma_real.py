@@ -49,18 +49,49 @@ def _conectar():  # noqa: ANN202
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
-def _tenant_con_schedule() -> str:
+def _dos_tenants() -> tuple[str, str]:
+    """DOS tenants activos: el E2E necesita el MISMO bug sufrido por dos emprendedores distintos.
+
+    Es el control del rediseño del 2026-08-01. Con un solo tenant, un ciclo por tenant y un ciclo
+    global se ven **idénticos**: los dos toman un trauma y proponen un parche. La diferencia sólo
+    aparece cuando el mismo defecto tiene dos ocurrencias con dueños distintos — ahí el ciclo viejo
+    habría abierto dos PRs iguales (uno por Schedule) y el nuevo tiene que abrir uno.
+    """
     conn = _conectar()
     try:
         with conn.cursor() as cur:
             cur.execute(f"SELECT cliente_id::text FROM {SCHEMA}.tenants "
-                        f"WHERE status = 'active' LIMIT 1")
-            fila = cur.fetchone()
+                        f"WHERE status = 'active' ORDER BY cliente_id LIMIT 2")
+            filas = cur.fetchall()
     finally:
         conn.close()
-    if not fila:
-        raise SystemExit("❌ no hay tenants activos: no hay dónde correr el E2E")
-    return fila[0]
+    if len(filas) < 2:
+        raise SystemExit(f"❌ hacen falta 2 tenants activos para el control cross-tenant; "
+                         f"hay {len(filas)}")
+    return filas[0][0], filas[1][0]
+
+
+def _intentos_de(trauma_id: int, cliente_id: str) -> tuple[int, str]:
+    """`(intentos, estado)` de una fila, leída **declarando su tenant**.
+
+    A propósito NO se usa la conexión con `BYPASSRLS` del ciclo: medir con el mismo instrumento que
+    se está evaluando hace que un fallo de ese instrumento se vea como un resultado. Acá se lee por
+    el camino normal —una conexión por tenant, como cualquier otro código de la app— así que si el
+    rol del ciclo estuviera roto, esta medición lo mostraría en vez de acompañarlo.
+    """
+    conn = _conectar()
+    conn.autocommit = True
+    _declarar_tenant(conn, cliente_id)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT intentos, estado FROM {TABLA} WHERE id = %s", (trauma_id,))
+            fila = cur.fetchone()
+            if not fila:
+                raise SystemExit(f"❌ el trauma {trauma_id} no se ve declarando su propio tenant: "
+                                 f"la medición no es confiable")
+            return int(fila[0]), fila[1]
+    finally:
+        conn.close()
 
 
 def _declarar_tenant(conn, cliente_id: str) -> None:
@@ -134,10 +165,15 @@ def _limpiar(trauma_id: int, cliente_id: str) -> None:
 async def main() -> int:
     from temporalio.client import Client
 
-    cliente_id = _tenant_con_schedule()
+    tenant_a, tenant_b = _dos_tenants()
     fingerprint = f"e2e{uuid.uuid4().hex[:5]}"
-    trauma_id = _depositar(cliente_id, fingerprint)
-    print(f"trauma {trauma_id} depositado para {cliente_id} sobre {ARCHIVO}")
+    # El MISMO fingerprint para los dos: un solo bug de nuestro código, dos ocurrencias con dueños
+    # distintos. El índice único de la DLQ es `(cliente_id, fingerprint)`, así que conviven.
+    trauma_a = _depositar(tenant_a, fingerprint)
+    trauma_b = _depositar(tenant_b, fingerprint)
+    print(f"MISMO bug ({fingerprint}) depositado 2 veces sobre {ARCHIVO}:\n"
+          f"  trauma {trauma_a} → tenant {tenant_a}\n"
+          f"  trauma {trauma_b} → tenant {tenant_b}")
 
     try:
         client = await Client.connect(os.environ.get("TEMPORAL_TARGET", "localhost:7233"))
@@ -151,8 +187,9 @@ async def main() -> int:
             return vistas
 
         antes = await ejecuciones()
-        await client.get_schedule_handle(f"autosanacion-{cliente_id}").trigger()
-        print("Schedule disparado; esperando el desenlace…")
+        # UN solo Schedule para toda la app — ya no hay uno por tenant que disparar.
+        await client.get_schedule_handle("autosanacion-global").trigger()
+        print("Schedule global disparado; esperando el desenlace…")
 
         for segundo in range(600):
             await asyncio.sleep(2)
@@ -181,19 +218,64 @@ async def main() -> int:
                       f"llegó al paso 5, pero el paso 5 no hizo su trabajo: esto NO es un E2E "
                       f"verde.", file=sys.stderr)
                 return 1
-            if estado in DESENLACES_QUE_PRUEBAN:
-                print(f"✅ E2E REAL: la cadena entera corrió (desenlace '{estado}').\n"
-                      f"   El trauma pasó por gates → forja → auditor → gate de tests.")
-                return 0
-            print(f"❌ desenlace '{estado}': el ciclo NO llegó a forjar. "
-                  f"Esperado uno de {DESENLACES_QUE_PRUEBAN}", file=sys.stderr)
-            return 1
+            if estado not in DESENLACES_QUE_PRUEBAN:
+                print(f"❌ desenlace '{estado}': el ciclo NO llegó a forjar. "
+                      f"Esperado uno de {DESENLACES_QUE_PRUEBAN}", file=sys.stderr)
+                return 1
+
+            # ── EL CONTROL DEL REDISEÑO ────────────────────────────────────────────────────────
+            # Vale cualquiera sea el desenlace, porque no depende del LLM: el ciclo tiene que haber
+            # tocado UNA de las dos ocurrencias del mismo bug, no las dos. `intentos` lo cuenta
+            # `tomar_un_bug_distinto` al tomarlo, y sobrevive a que el trauma se suelte después.
+            #
+            # Sin este control, un E2E verde no distinguiría el rediseño de la topología vieja: con
+            # UNA sola ocurrencia los dos se ven igual. Y el modo de fallo que caza es silencioso —
+            # si el agrupado por bug no funcionara, no habría error: habría dos PRs idénticos, y eso
+            # se descubre recién cuando alguien los mira.
+            intentos_a, estado_a = _intentos_de(trauma_a, tenant_a)
+            intentos_b, estado_b = _intentos_de(trauma_b, tenant_b)
+            tomados = [n for n in (intentos_a, intentos_b) if n >= 1]
+            print(f"\ncontrol cross-tenant (mismo fingerprint, 2 dueños):\n"
+                  f"  trauma {trauma_a} ({tenant_a[:8]}…): intentos={intentos_a} estado={estado_a}\n"
+                  f"  trauma {trauma_b} ({tenant_b[:8]}…): intentos={intentos_b} estado={estado_b}")
+            if len(tomados) == 2:
+                print("❌ el ciclo tomó LAS DOS ocurrencias del MISMO bug. Tenía que tomar una: "
+                      "el agrupado por fingerprint no está funcionando y el humano recibiría un PR "
+                      "por cada tenant afectado.", file=sys.stderr)
+                return 1
+            if len(tomados) == 0:
+                # No es lo mismo que el fallo de arriba y no se puede reportar igual: significa que
+                # el ciclo tomó OTRO bug (la DLQ real tenía pendientes con más `dedupe_count`). El
+                # desenlace de arriba es legítimo, pero no dice nada sobre el agrupado — y darlo por
+                # verde sería exactamente el veredicto que cubre dos realidades opuestas.
+                print("❌ el ciclo no tocó ninguna de las 2 ocurrencias fabricadas: tomó otro bug "
+                      "de la DLQ real. La cadena corrió, pero este E2E NO midió el agrupado "
+                      "cross-tenant. Volvé a correrlo con la DLQ vacía.", file=sys.stderr)
+                return 1
+
+            # Y si se llegó a proponer PR, el hermano tiene que haber quedado cerrado también — si
+            # no, mañana el ciclo lo toma y forja el mismo parche otra vez, un día por tenant.
+            if estado == "pr_propuesto" and "reparacion_propuesta" not in (estado_a, estado_b):
+                print("❌ se propuso el PR pero ninguna fila quedó en `reparacion_propuesta`",
+                      file=sys.stderr)
+                return 1
+            if estado == "pr_propuesto" and (estado_a, estado_b) != ("reparacion_propuesta",) * 2:
+                print(f"❌ se propuso el PR pero el HERMANO quedó en {estado_a!r}/{estado_b!r}: "
+                      f"mañana el ciclo lo vuelve a tomar y propone el mismo parche de nuevo.",
+                      file=sys.stderr)
+                return 1
+
+            print(f"\n✅ E2E REAL: la cadena entera corrió (desenlace '{estado}') y el ciclo trató "
+                  f"a las 2 ocurrencias como UN solo bug.\n"
+                  f"   gates → forja → auditor → gate de tests, una vez para toda la app.")
+            return 0
 
         print("❌ no terminó en 20 minutos", file=sys.stderr)
         return 1
     finally:
-        # Siempre, pase lo que pase: el trauma es fabricado y no puede quedar en la DLQ real.
-        _limpiar(trauma_id, cliente_id)
+        # Siempre, pase lo que pase: los traumas son fabricados y no pueden quedar en la DLQ real.
+        _limpiar(trauma_a, tenant_a)
+        _limpiar(trauma_b, tenant_b)
 
 
 if __name__ == "__main__":

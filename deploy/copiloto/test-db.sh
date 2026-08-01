@@ -45,8 +45,11 @@ PUERTO="${UC_TESTDB_PORT:-55432}"
 PASS="${UC_TESTDB_PASS:-tests-locales-sin-datos-reales}"
 IMAGEN="${UC_TESTDB_IMAGE:-postgres:17-alpine}"   # pinneada: fusion corre 17.6, nada de `latest`
 APP_USER="${UC_TESTDB_APP_USER:-copiloto_app}"
+#: El rol del ciclo de auto-reparación (BYPASSRLS), espejo del de producción. Ver el bootstrap.
+AUTOSAN_USER="${UC_TESTDB_AUTOSAN_USER:-copiloto_autosanacion}"
 URL_ADMIN="postgres://postgres:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_APP="postgres://${APP_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
+URL_AUTOSAN="postgres://${AUTOSAN_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 
 RECREAR=0; EXPORTAR=0; ADMIN=0
 for arg in "$@"; do
@@ -101,6 +104,13 @@ DO \$do\$ BEGIN
   -- llegue a aplicarse. Con cualquiera de las dos al revés, esta base miente en verde.
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${APP_USER}') THEN
     CREATE ROLE ${APP_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER NOBYPASSRLS;
+  END IF;
+  -- El rol del ciclo de auto-reparación, que en producción es UNO para toda la app y por eso ve la
+  -- DLQ cross-tenant. Replicarlo acá no es comodidad: sin él, el test del agrupado por bug tendría
+  -- que correr con el superuser, y entonces probaría el superuser — no el rol que corre de verdad
+  -- (ver \`memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md\`).
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${AUTOSAN_USER}') THEN
+    CREATE ROLE ${AUTOSAN_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER BYPASSRLS;
   END IF;
 END \$do\$;
 -- Dueño de su schema, como en producción: \`provision.py\` corre con este rol y necesita CREAR las
@@ -173,8 +183,18 @@ if [ "$CREADAS" -lt "$ESPERADAS" ]; then
   exit 1
 fi
 
+# Los permisos del rol del ciclo van DESPUÉS del provisionado: la tabla la crea `provision.py` y no
+# se puede otorgar sobre lo que todavía no existe. Es el mismo recorte que en producción —una sola
+# tabla—, así que un test que intente tocar otra falla acá igual que allá.
+ssh "$HOST" "docker exec -i '${NOMBRE}' psql -U postgres -q -v ON_ERROR_STOP=1" <<SQL
+GRANT USAGE ON SCHEMA uc_factory TO ${AUTOSAN_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_traumas TO ${AUTOSAN_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_traumas_id_seq TO ${AUTOSAN_USER};
+SQL
+
 if [ "$EXPORTAR" -eq 1 ]; then
   echo "export UC_TEST_DATABASE_URL='${URL}'"
+  echo "export UC_TEST_AUTOSANACION_URL='${URL_AUTOSAN}'"
 else
   echo "==> LISTA: ${CREADAS} tablas en uc_factory (el manifiesto declara ${ESPERADAS})"
   if [ "$ADMIN" -eq 1 ]; then

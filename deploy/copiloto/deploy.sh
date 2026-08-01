@@ -218,6 +218,16 @@ set -a
 . "$ENVDIR/fusion-pg.env"
 . "$ENVDIR/copiloto.env"
 set +a
+# El ciclo de autosanación es UNO para toda la app (2026-08-01) y corre con un rol propio
+# (`copiloto_autosanacion`, BYPASSRLS) que ve la DLQ de todos los tenants. Ese rol se provisiona UNA
+# vez con `deploy/copiloto/provision-rol-autosanacion.sh` —necesita el superusuario de la base, que
+# el deploy no tiene ni debería tener— así que acá sólo se VERIFICA que esté. Sin el DSN el worker
+# arranca igual y deja el ciclo apagado: avisar en el deploy es lo que evita que ese apagado pase
+# desapercibido durante semanas.
+if [ -z "${COPILOTO_AUTOSANACION_DSN:-}" ]; then
+  echo "    ⚠️  falta COPILOTO_AUTOSANACION_DSN: el ciclo de autosanación queda APAGADO." >&2
+  echo "        Corré deploy/copiloto/provision-rol-autosanacion.sh (una sola vez)." >&2
+fi
 cd "$REMOTE/deploy/worker"
 "$VENV/bin/python" ensure_autosanacion_schedules.py
 REMOTE_AUTOSANACION_SCHEDULES

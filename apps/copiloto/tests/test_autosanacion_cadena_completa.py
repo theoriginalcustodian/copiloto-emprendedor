@@ -22,6 +22,15 @@ El criterio es que **la cadena llegue hasta el gate de tests con un veredicto**,
 sea "aceptado". Exigir un parche aceptado mediría al modelo; lo que está en duda es el ciclo. Un
 `rechazado_por_tests` con regresiones concretas prueba lo mismo que un `pr_propuesto`: los seis pasos
 corrieron y cada uno le pasó al siguiente lo que necesitaba.
+
+## 2026-08-01 — `tomar_trauma_para_reparar()` ya no recibe `cliente_id`
+
+Cross-tenant: `set_autosanacion_deps` recibe ahora una conexión CRUDA (`conn_dlq`, sin envolver con
+tenant), y `tomar_trauma_para_reparar()` toma un bug de TODA la DLQ. Esa conexión va con el rol
+`copiloto_autosanacion` (`BYPASSRLS`), que `deploy/copiloto/test-db.sh` crea en la base de tests al
+lado de `copiloto_app` — este último sigue siendo `NOSUPERUSER NOBYPASSRLS` porque es el que prueba
+que el aislamiento aplica. Sin el DSN del primero estos tests se SALTAN: con `copiloto_app` no darían
+rojo, darían "no hay traumas", que es un desenlace legítimo.
 """
 from __future__ import annotations
 
@@ -41,18 +50,29 @@ necesita_llm = pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"),
 #: Real, chico, con tests, y **fuera** de los dominios prohibidos. El mismo del banco C0.
 ARCHIVO = "apps/copiloto/fingerprint.py"
 
+#: Ver el docstring del módulo. Se salta, no se degrada: con `copiloto_app` la conexión cruda ve 0
+#: filas y `tomar_trauma_para_reparar()` daría `None` — un verde que no midió nada.
+necesita_rol_dlq = pytest.mark.skipif(
+    not os.environ.get("COPILOTO_AUTOSANACION_DSN"),
+    reason="requiere el rol del ciclo (BYPASSRLS): levantá la base con `test-db.sh` y pasá "
+           "UC_TEST_AUTOSANACION_URL a sync-test-backend.sh")
+
 
 @pytest.fixture
 def cadena_lista(conn_de_tenant):
-    """Deja las deps como las arma el composition root, con el LLM REAL."""
+    """Deja las deps como las arma el composition root, con el LLM REAL.
+
+    `set_autosanacion_deps` recibe `conn_dlq` **crudo** (sin `conexion_con_tenant`) y con el DSN del
+    rol del ciclo — el MISMO nombre de variable que usa el worker, para no ejercitar un cableado que
+    no existe en producción. El depósito del trauma sigue yendo por `conn_de_tenant(cid)`: así es
+    como las costuras reales escriben, con el tenant declarado.
+    """
     import psycopg2
     from openai import OpenAI
 
-    from contexto_tenant import conexion_con_tenant
-
     cid = str(uuid.uuid4())
-    factory = conexion_con_tenant(lambda: psycopg2.connect(os.environ["DATABASE_URL"]))
-    A.set_autosanacion_deps(factory, llm_client=OpenAI())
+    conn_dlq = lambda: psycopg2.connect(os.environ["COPILOTO_AUTOSANACION_DSN"])  # noqa: E731 — cruda
+    A.set_autosanacion_deps(conn_dlq, llm_client=OpenAI())
     yield cid
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
@@ -62,6 +82,7 @@ def cadena_lista(conn_de_tenant):
 
 @necesita_pg
 @necesita_llm
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto(cadena_lista, conn_de_tenant, monkeypatch):
     cid = cadena_lista
@@ -75,8 +96,8 @@ async def test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto(cadena_lista, conn_de_t
                   "origen": {"archivo": ARCHIVO, "linea": 30,
                              "funcion": "fingerprint_de_error"}})
 
-    # 1 — sale de la DLQ, con su dueño
-    trauma = await A.tomar_trauma_para_reparar(cid)
+    # 1 — sale de la DLQ (cross-tenant: sin cliente_id)
+    trauma = await A.tomar_trauma_para_reparar()
     assert trauma is not None
     assert trauma["cliente_id"] == cid, "sin dueño, todo lo que sigue falla en silencio"
 
@@ -116,6 +137,7 @@ async def test_la_cadena_COMPLETA_de_la_DLQ_al_veredicto(cadena_lista, conn_de_t
 
 @necesita_pg
 @necesita_llm
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_la_cadena_se_CORTA_en_el_dominio_fiscal(cadena_lista, conn_de_tenant):
     """El control que hace que el test de arriba signifique algo.
@@ -132,7 +154,7 @@ async def test_CONTROL_la_cadena_se_CORTA_en_el_dominio_fiscal(cadena_lista, con
                   "origen": {"archivo": "apps/copiloto/afip_gateway.py", "linea": 10,
                              "funcion": "emitir"}})
 
-    trauma = await A.tomar_trauma_para_reparar(cid)
+    trauma = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(trauma)
 
     assert not decision["permitido"]

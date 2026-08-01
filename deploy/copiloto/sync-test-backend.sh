@@ -40,8 +40,15 @@ if [ "$#" -gt 0 ]; then PYTEST_ARGS="$*"; else PYTEST_ARGS="tests ../../motor -q
 # `UC_RLS_FORCE` viaja con ella: los tests que provisionan tablas al vuelo (el adversarial de RLS)
 # leen ese flag para decidir si nacen con `FORCE`. Default 1 — la base de tests ejercita el estado
 # FINAL de la migración, no la etapa intermedia en la que está producción hoy.
+#
+# `COPILOTO_AUTOSANACION_DSN` viaja con el MISMO nombre que en producción, a propósito: el ciclo de
+# auto-reparación lo lee desde el composition root con ese nombre, y darle otro en tests haría que
+# la suite ejercite un cableado que no existe en ningún lado. Lo emite `test-db.sh --export` como
+# `UC_TEST_AUTOSANACION_URL` (rol `copiloto_autosanacion`, BYPASSRLS, acotado a `copiloto_traumas`).
 if [ -n "${UC_TEST_DATABASE_URL:-}" ]; then
   PG_ENV="DATABASE_URL='${UC_TEST_DATABASE_URL}' UC_RLS_FORCE='${UC_RLS_FORCE:-1}' "
+  [ -n "${UC_TEST_AUTOSANACION_URL:-}" ] && \
+    PG_ENV="${PG_ENV}COPILOTO_AUTOSANACION_DSN='${UC_TEST_AUTOSANACION_URL}' "
   PG_AVISO="ON — los tests @necesita_pg CORREN y ESCRIBEN en la base apuntada (UC_RLS_FORCE=${UC_RLS_FORCE:-1})"
 else
   PG_ENV=""

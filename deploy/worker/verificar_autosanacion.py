@@ -61,7 +61,7 @@ async def main() -> int:
             schedules.append(s)
 
     if not schedules:
-        print(f"❌ no hay ningún Schedule '{PREFIJO}*'. El ciclo NO está activo para ningún tenant.\n"
+        print(f"❌ no hay ningún Schedule '{PREFIJO}*'. El ciclo NO está activo.\n"
               f"   Corré `ensure_autosanacion_schedules.py` (paso 4.6 del deploy).", file=sys.stderr)
         return 2
 

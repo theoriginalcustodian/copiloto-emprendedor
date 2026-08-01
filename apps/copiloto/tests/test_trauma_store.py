@@ -4,6 +4,17 @@ Corre contra Postgres real (no un mock): lo que se verifica acá —`ON CONFLICT
 `FOR UPDATE SKIP LOCKED`, el `WITH CHECK` de la policy— **es comportamiento de la base**. Un doble no
 reproduce ninguno de los tres, y el spike S2 existe precisamente porque el detalle que importaba
 (la clave compuesta) no se deducía del código.
+
+## 2026-08-01 — `tomar_un_bug_distinto()` y `hermanos_del_mismo_bug()` son CROSS-TENANT
+
+Necesitan un `TraumaStore` construido con una conexión SIN tenant: el rol `copiloto_autosanacion`
+(`BYPASSRLS`, acotado a `copiloto_traumas`), que `test-db.sh` crea al lado de `copiloto_app` — este
+último sigue siendo `NOSUPERUSER NOBYPASSRLS` con `FORCE RLS` porque es el que permite verificar que
+el aislamiento aplica. Dos roles, dos propósitos opuestos, los dos necesarios.
+
+`test_tomar_un_bug_distinto_agrupa_por_fingerprint_cross_tenant` es **el control del rediseño**: con
+un solo tenant, un ciclo por tenant y un ciclo global se ven idénticos, así que sólo dos dueños con
+el mismo `fingerprint` distinguen uno del otro.
 """
 from __future__ import annotations
 
@@ -12,11 +23,37 @@ import uuid
 
 import pytest
 
-from trauma_store import (DESCARTADO, EN_PROCESO, PENDIENTE, RESUELTO, TraumaStore,
+from trauma_store import (DESCARTADO, EN_PROCESO, PENDIENTE, RESUELTO, TABLA, TraumaStore,
                           flood_threshold)
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
+
+#: Se salta, no se degrada: con `copiloto_app` este control no daría rojo — daría "no hay traumas",
+#: que es un desenlace legítimo. Un test que no puede fallar cuando lo que mide está roto no mide.
+necesita_rol_dlq = pytest.mark.skipif(
+    not os.environ.get("COPILOTO_AUTOSANACION_DSN"),
+    reason="requiere el rol del ciclo (BYPASSRLS): levantá la base con `test-db.sh` y pasá "
+           "UC_TEST_AUTOSANACION_URL a sync-test-backend.sh")
+
+
+@pytest.fixture
+def store_cruda():
+    """Un `TraumaStore` SIN tenant (`cliente_id=""`) con conexión CRUDA del rol del ciclo — la misma
+    forma que arma el composition root desde 2026-08-01 (`worker_b.py` → `conn_dlq`).
+
+    Lee `COPILOTO_AUTOSANACION_DSN`, el MISMO nombre que en producción: darle otro haría que la
+    suite ejercite un cableado inexistente. Y va cruda a propósito — envolverla con `conn_de_tenant`
+    mediría lo contrario de lo que este test verifica.
+    """
+    import psycopg2
+
+    def factory():
+        conn = psycopg2.connect(os.environ["COPILOTO_AUTOSANACION_DSN"])
+        conn.autocommit = True
+        return conn
+
+    return TraumaStore(factory)
 
 
 @pytest.fixture
@@ -42,6 +79,18 @@ def _depositar(store, *, fingerprint="fp-1", workflow="emitir_factura",
                error_type="RuntimeError", **kw):
     return store.depositar(fingerprint=fingerprint, workflow=workflow,
                            error_type=error_type, **kw)
+
+
+def _estado(conn_de_tenant, cid: str, trauma_id: int) -> str:
+    """El estado de una fila puntual, leído con la conexión DEL DUEÑO — el store cross-tenant no
+    tiene `listar()` filtrado a un tenant, así que el control necesita esta lectura directa."""
+    conn = conn_de_tenant(cid)()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT estado FROM {TABLA} WHERE id = %s", (trauma_id,))
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
 
 
 # ======================================================================================
@@ -240,3 +289,54 @@ def test_depositar_NUNCA_lanza_aunque_la_query_reviente():
 
     store = TraumaStore(lambda: _ConnRota(), str(uuid.uuid4()))
     assert store.depositar(fingerprint="fp", workflow="w", error_type="E") is None
+
+
+# ======================================================================================
+# 2026-08-01 — el ciclo pasó a ser UNO SOLO cross-tenant: agrupa por BUG, no por ocurrencia
+# ======================================================================================
+@necesita_pg
+@necesita_rol_dlq
+def test_tomar_un_bug_distinto_agrupa_por_fingerprint_cross_tenant(tenants, conn_de_tenant,
+                                                                    store_cruda):
+    """EL CONTROL DEL REDISEÑO. Dos tenants distintos sufren el MISMO bug (mismo `fingerprint`):
+    `tomar_un_bug_distinto()` tiene que devolver UN SOLO representante —no uno por tenant—, y
+    `hermanos_del_mismo_bug(fingerprint, excepto=<el tomado>)` tiene que devolver justo el otro.
+
+    Sin esto el ciclo forjaría el MISMO parche dos veces y abriría dos PRs idénticos para un único
+    defecto de nuestro código — exactamente lo que el índice único `(cliente_id, fingerprint)` obliga
+    a que pase si nadie agrupa (ver `trauma_store.tomar_un_bug_distinto`).
+
+    Es el ÚNICO test que distingue el rediseño de la topología anterior: con un solo tenant, un ciclo
+    por tenant y un ciclo global se comportan exactamente igual.
+    """
+    a, b = tenants
+    store_a, store_b = _store(conn_de_tenant, a), _store(conn_de_tenant, b)
+    #: Único por corrida: `store_cruda` ve la DLQ ENTERA, así que un fingerprint fijo podría chocar
+    #: con el de otra corrida que dejó filas colgadas.
+    fingerprint = f"fp-mismo-bug-{uuid.uuid4().hex[:8]}"
+
+    # Varias veces a propósito: `tomar_un_bug_distinto` ordena por `dedupe_count DESC` (se repara
+    # primero lo que más duele) y esta conexión ve los pendientes de TODA la base de tests. Con un
+    # solo hit, un residuo de otro test podría ganarle el turno y el test fallaría por contaminación
+    # en vez de por el comportamiento que mide.
+    for _ in range(9):
+        _depositar(store_a, fingerprint=fingerprint)
+        _depositar(store_b, fingerprint=fingerprint)
+
+    tomado = store_cruda.tomar_un_bug_distinto()
+    assert tomado is not None, "el store cross-tenant no vio ningún trauma pendiente"
+    assert tomado["fingerprint"] == fingerprint, (
+        f"tomó {tomado['fingerprint']!r} en vez del bug de este test: hay pendientes viejos con "
+        f"dedupe_count más alto en la base de tests (contaminación, no un fallo del agrupado)")
+    # Que el representante sea de A o de B ya prueba lo cross-tenant: `store_cruda` nunca declaró
+    # ningún tenant y sin embargo alcanzó la fila de uno de los dos.
+    assert tomado["cliente_id"] in (a, b), "el representante tiene que ser el de A o el de B"
+    assert _estado(conn_de_tenant, tomado["cliente_id"], tomado["id"]) == EN_PROCESO
+
+    hermanos = store_cruda.hermanos_del_mismo_bug(fingerprint, excepto=tomado["id"])
+    assert len(hermanos) == 1, "tiene que quedar exactamente el OTRO tenant, pendiente"
+    dueno_del_otro = b if tomado["cliente_id"] == a else a
+    assert hermanos[0]["cliente_id"] == dueno_del_otro
+    # El hermano NO se tocó al tomar (se cierra recién al marcar `reparacion_propuesta`): sigue
+    # pendiente, no en_proceso.
+    assert _estado(conn_de_tenant, dueno_del_otro, hermanos[0]["id"]) == PENDIENTE

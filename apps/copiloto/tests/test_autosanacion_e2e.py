@@ -10,6 +10,21 @@ costura no es de nadie ([[verificar-que-el-camino-recomendado-existe]]).
 Sin Temporal a propósito: el workflow ya está probado como código determinista, y levantar un
 worker acá mediría el arranque de Temporal, no las costuras. Lo que se ejercita es la cadena real de
 activities contra la base real, con RLS forzado.
+
+## 2026-08-01 — el ciclo pasó a ser UNO SOLO para toda la app (cross-tenant)
+
+`tomar_trauma_para_reparar` ya no recibe `cliente_id`: toma **un bug distinto** de TODA la DLQ, con
+una conexión cruda del rol `copiloto_autosanacion` (`BYPASSRLS`) que ve todos los tenants.
+
+Ese rol **también existe en la base de tests**: `deploy/copiloto/test-db.sh` lo crea al lado de
+`copiloto_app` (que sigue siendo `NOSUPERUSER NOBYPASSRLS` con `FORCE RLS`, porque es el que permite
+verificar que el aislamiento aplica). Son dos roles con dos propósitos opuestos y los dos hacen
+falta: uno prueba que RLS filtra, el otro prueba el camino que a propósito lo saltea.
+
+**El error que esto evita:** correr estos tests con `copiloto_app` no los pondría rojos — una
+conexión suya sin tenant ve 0 filas, así que `tomar_trauma_para_reparar()` devolvería `None` y el
+test leería *"no hay traumas"*, que es el desenlace legítimo de un ciclo sano. Verde o rojo daría
+igual: el instrumento no estaría mirando. Por eso el skip es explícito y su motivo dice qué correr.
 """
 from __future__ import annotations
 
@@ -25,28 +40,47 @@ from trauma_store import EN_PROCESO, PENDIENTE, TABLA, TraumaStore
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
 
+#: El ciclo NO puede probarse con el rol de la app: `copiloto_app` es `NOSUPERUSER NOBYPASSRLS` con
+#: `FORCE RLS` a propósito, y una conexión suya sin tenant ve **0 filas de todos los tenants**. Un
+#: test así no daría rojo: daría "no hay traumas", que es el desenlace legítimo de un ciclo sano.
+#: Por eso se salta en vez de correr degradado — y el motivo dice qué hacer, no sólo que faltó.
+necesita_rol_dlq = pytest.mark.skipif(
+    not os.environ.get("COPILOTO_AUTOSANACION_DSN"),
+    reason="requiere el rol del ciclo (BYPASSRLS): levantá la base con `test-db.sh` y pasá "
+           "UC_TEST_AUTOSANACION_URL a sync-test-backend.sh")
+
 
 @pytest.fixture
-def factory_de_produccion():
-    """La `conn_factory` **tal como la arma el composition root**: envuelta con
-    `conexion_con_tenant`, que lee el `ContextVar` en el momento de abrir la conexión.
+def conn_dlq_cruda():
+    """Conexión **sin tenant declarado** con el rol del ciclo — el mismo cableado que producción.
 
-    NO se usa `conn_de_tenant` para inyectarla en las activities: esa fixture está **pre-ligada** a
-    un tenant (abre su propio `with tenant(cid)` adentro) y pisa el `ContextVar` que la activity
-    declara. Con ella, un `marcar_trauma` apuntando al tenant equivocado igual encuentra la fila —
-    el test pasaría y sería ciego justo al fallo que viene a cazar
-    ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).
+    Desde 2026-08-01 el composition root hace `set_autosanacion_deps(_conn_dlq, ...)` con el rol
+    dedicado `copiloto_autosanacion` (`BYPASSRLS`, permisos sobre UNA tabla), que
+    `deploy/copiloto/provision-rol-autosanacion.sh` provisiona en producción y `test-db.sh` replica
+    en la base de tests. La fixture lee `COPILOTO_AUTOSANACION_DSN`, **el mismo nombre de variable
+    que el worker**: si se le diera otro, la suite estaría ejercitando un cableado que no existe en
+    ningún lado (ver `memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md`).
+
+    Cruda a propósito: sin `conexion_con_tenant`, porque el ciclo es cross-tenant por diseño y ese
+    envoltorio cierra la conexión si no hay tenant que declarar.
     """
     import psycopg2
 
-    from contexto_tenant import conexion_con_tenant
-    return conexion_con_tenant(lambda: psycopg2.connect(os.environ["DATABASE_URL"]))
+    def factory():
+        conn = psycopg2.connect(os.environ["COPILOTO_AUTOSANACION_DSN"])
+        conn.autocommit = True
+        return conn
+
+    return factory
 
 
 @pytest.fixture
-def tenant_de_prueba(conn_de_tenant, factory_de_produccion):
+def tenant_de_prueba(conn_de_tenant, conn_dlq_cruda):
+    """El trauma se deposita con el tenant declarado (así lo hacen las costuras reales), pero el
+    ciclo (`set_autosanacion_deps`) recibe la conexión CRUDA — es el mismo desacople que hay en
+    producción entre quien escribe (por tenant) y quien repara (cross-tenant, `conn_dlq`)."""
     cid = str(uuid.uuid4())
-    A.set_autosanacion_deps(factory_de_produccion, llm_client=None)
+    A.set_autosanacion_deps(conn_dlq_cruda, llm_client=None)
     yield cid
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
@@ -54,14 +88,40 @@ def tenant_de_prueba(conn_de_tenant, factory_de_produccion):
     conn.close()
 
 
-def _depositar(conn_de_tenant, cid: str, *, archivo: str, categoria: str) -> dict:
-    """Deja un trauma con la forma EXACTA que dejan las costuras — incluido el `origen`."""
+def _depositar(conn_de_tenant, cid: str, *, archivo: str, categoria: str,
+               fingerprint: str | None = None) -> dict:
+    """Deja un trauma con la forma EXACTA que dejan las costuras — incluido el `origen`.
+
+    `fingerprint` explícito para el caso cross-tenant: dos emprendedores que sufren EL MISMO bug
+    tienen la misma huella (se calcula de workflow + tipo de error, no del dueño). Se devuelve la
+    fila buscándola por huella y no `listar()[0]`, porque con más de un trauma por tenant el índice
+    fijo devolvería cualquiera.
+    """
+    fp = fingerprint or uuid.uuid4().hex[:8]
     store = TraumaStore(conn_de_tenant(cid), cid)
-    store.depositar(fingerprint=uuid.uuid4().hex[:8], workflow="POST /prueba",
+    store.depositar(fingerprint=fp, workflow="POST /prueba",
                     error_type="KeyError", costura="http_handler",
                     contexto={"categoria": categoria,
                               "origen": {"archivo": archivo, "linea": 42, "funcion": "cobrar"}})
-    return store.listar()[0]
+    return next(t for t in store.listar() if t["fingerprint"] == fp)
+
+
+@pytest.fixture
+def dos_tenants(conn_de_tenant, conn_dlq_cruda):
+    """Dos emprendedores sintéticos, con el ciclo cableado como en producción, y barrido al final.
+
+    El DELETE va **uno por tenant con su propia conexión**: con RLS, la de A no puede borrar las
+    filas de B aunque el `WHERE` las incluyera — y un barrido que cree haber limpiado y no lo hizo
+    deja traumas fabricados en la cola real.
+    """
+    a, b = str(uuid.uuid4()), str(uuid.uuid4())
+    A.set_autosanacion_deps(conn_dlq_cruda, llm_client=None)
+    yield a, b
+    for cid in (a, b):
+        conn = conn_de_tenant(cid)()
+        with conn.cursor() as cur:
+            cur.execute(f"DELETE FROM {TABLA} WHERE cliente_id = %s", (cid,))
+        conn.close()
 
 
 def _estado(conn_de_tenant, cid: str, trauma_id: int) -> str:
@@ -74,17 +134,37 @@ def _estado(conn_de_tenant, cid: str, trauma_id: int) -> str:
         conn.close()
 
 
+def _nota(conn_de_tenant, cid: str, trauma_id: int) -> str | None:
+    """La `ultima_nota` del contexto, o `None` si nadie escribió una.
+
+    Existe porque el ESTADO no siempre alcanza para distinguir "no lo tocaron" de "lo tocaron y
+    escribieron lo mismo que ya tenía" — y esa diferencia es justo la que separa el camino de
+    rechazo del de propuesta cuando los dos escriben `pendiente`.
+    """
+    conn = conn_de_tenant(cid)()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT contexto FROM {TABLA} WHERE id = %s", (trauma_id,))
+            contexto = cur.fetchone()[0] or {}
+            if isinstance(contexto, str):
+                contexto = json.loads(contexto)
+            return contexto.get("ultima_nota")
+    finally:
+        conn.close()
+
+
 # ======================================================================================
 # C1 — el trauma sale de la DLQ y llega entero al gate
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_un_trauma_reparable_pasa_los_gates(tenant_de_prueba, conn_de_tenant):
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     assert tomado is not None, "el trauma no salió de la DLQ"
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
 
@@ -99,6 +179,7 @@ async def test_un_trauma_reparable_pasa_los_gates(tenant_de_prueba, conn_de_tena
 # C2 — el control negativo que más importa
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, conn_de_tenant):
     """Equivocarse hacia el permiso acá emite una factura con CAE real ante AFIP. El trauma llega
@@ -108,7 +189,7 @@ async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, co
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/afip_gateway.py",
                categoria="business_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -116,6 +197,7 @@ async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, co
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_tenant):
     """El gate que recorta la superficie en producción: un 503 no tiene código que reparar."""
@@ -123,7 +205,7 @@ async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_ten
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="infra_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -131,6 +213,7 @@ async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_ten
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prueba, conn_de_tenant):
     """Todo trauma depositado antes de que las costuras guardaran `origen`. No es un error: es un
@@ -141,7 +224,7 @@ async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prue
                     error_type="KeyError", costura="http_handler",
                     contexto={"categoria": "business_error"})     # sin `origen`
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -152,6 +235,7 @@ async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prue
 # C4 — el rechazo SUELTA el trauma (el que evita el trauma colgado para siempre)
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba, conn_de_tenant):
     """Se verifica **en la base**, no por el valor de retorno. Con RLS forzado, un UPDATE sin tenant
@@ -160,7 +244,7 @@ async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba,
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
 
     await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE,
@@ -184,23 +268,120 @@ async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba,
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
-async def test_marcar_trauma_con_el_tenant_EQUIVOCADO_falla_fuerte(tenant_de_prueba,
-                                                                   conn_de_tenant):
-    """El caso adversarial. Sin el chequeo de `rowcount`, este UPDATE no encontraría la fila y
-    devolvería éxito igual — el fallo silencioso que deja traumas colgados. Que grite es el punto."""
+async def test_marcar_trauma_con_un_ID_INEXISTENTE_falla_fuerte(tenant_de_prueba, conn_de_tenant):
+    """El caso adversarial, reescrito el 2026-08-01 junto con la topología.
+
+    **Antes** este test pasaba un `cliente_id` ajeno y esperaba el grito: con RLS forzado y una
+    conexión por tenant, el UPDATE no veía la fila, tocaba 0 filas y **devolvía éxito** — el trauma
+    quedaba colgado en `en_proceso` con el ciclo informando que lo había soltado.
+
+    Ese modo de fallo **ya no existe**: el ciclo corre con `BYPASSRLS` y encuentra la fila por `id`
+    sea de quien sea, que es exactamente lo que necesita un ciclo cross-tenant. El `cliente_id` del
+    payload pasó a ser informativo (va en el mensaje de error, no en el `WHERE`).
+
+    Lo que **sigue** existiendo es el fallo silencioso por `id` inexistente — un UPDATE que no
+    matchea nada tampoco protesta solo. Ese es el que el guard de `rowcount` cubre hoy, y es el que
+    este test ejercita. Se reescribió en vez de borrarse: el guard sigue vivo, cambió cuál es el
+    error que puede llegar a él.
+    """
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
 
-    ajeno = str(uuid.uuid4())
     with pytest.raises(RuntimeError, match="colgado"):
-        await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE, "nota": "x",
-                               "cliente_id": ajeno})
+        await A.marcar_trauma({"id": -1, "estado": PENDIENTE, "nota": "x", "cliente_id": cid})
 
-    # Y el trauma del dueño quedó intacto: el intento ajeno no lo movió.
+    # El trauma real quedó intacto: el intento contra un id inexistente no movió nada.
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
+
+    # Control positivo del mismo guard: con el id REAL sí marca, aunque el `cliente_id` del payload
+    # sea de otro. Sin esta mitad, el test de arriba pasaría también con un `marcar_trauma` que
+    # fallara SIEMPRE — que es el instrumento que condena sin mirar.
+    await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE, "nota": "ok",
+                           "cliente_id": str(uuid.uuid4())})
+    assert _estado(conn_de_tenant, cid, tomado["id"]) == PENDIENTE
+
+
+# ======================================================================================
+# C7 — al proponer el PR se cierran los HERMANOS: el mismo bug en otros tenants
+# ======================================================================================
+@necesita_pg
+@necesita_rol_dlq
+@pytest.mark.asyncio
+async def test_proponer_el_PR_cierra_tambien_a_los_hermanos_del_mismo_bug(dos_tenants,
+                                                                          conn_de_tenant):
+    """La pieza más nueva del rediseño, y la única que escribe filas de OTROS tenants.
+
+    Sin esto la deduplicación duraría un solo disparo: `tomar_un_bug_distinto` elige un
+    representante por `fingerprint`, pero los hermanos siguen `pendiente` — y mañana el ciclo toma
+    uno, forja el MISMO parche y abre el MISMO PR. Un día por tenant afectado, hasta agotarlos.
+
+    El fallo sería **silencioso**: nada rompe, nadie recibe un error. Aparece recién como PRs
+    repetidos que alguien tiene que notar a ojo.
+    """
+    a, b = dos_tenants
+    fp = f"mismo-bug-{uuid.uuid4().hex[:8]}"
+    trauma_a = _depositar(conn_de_tenant, a, archivo="apps/copiloto/cobro_store.py",
+                          categoria="business_error", fingerprint=fp)
+    trauma_b = _depositar(conn_de_tenant, b, archivo="apps/copiloto/cobro_store.py",
+                          categoria="business_error", fingerprint=fp)
+    # EL CONTROL NEGATIVO, y es lo que hace que el test signifique algo: un trauma de OTRO bug, del
+    # mismo tenant. Sin él, un `marcar_trauma` que marcara todo lo pendiente pasaría igual —
+    # e imposible de distinguir de uno que agrupa bien.
+    otro_bug = _depositar(conn_de_tenant, b, archivo="apps/copiloto/cobro_store.py",
+                          categoria="business_error")
+
+    await A.marcar_trauma({"id": trauma_a["id"], "estado": "reparacion_propuesta",
+                           "nota": "https://github.com/x/y/pull/1",
+                           "cliente_id": a, "fingerprint": fp})
+
+    assert _estado(conn_de_tenant, a, trauma_a["id"]) == "reparacion_propuesta"
+    assert _estado(conn_de_tenant, b, trauma_b["id"]) == "reparacion_propuesta", \
+        "el hermano quedó pendiente: mañana el ciclo propone el mismo parche otra vez"
+    assert _estado(conn_de_tenant, b, otro_bug["id"]) == PENDIENTE, \
+        "se cerró un trauma de OTRO bug: el UPDATE de hermanos no está filtrando por fingerprint"
+
+
+@necesita_pg
+@necesita_rol_dlq
+@pytest.mark.asyncio
+async def test_un_RECHAZO_no_toca_a_los_hermanos(dos_tenants, conn_de_tenant):
+    """La cara opuesta, y no es simétrica: soltar el representante NO cierra a nadie más.
+
+    Un rechazo dice "este intento no salió", no "este bug está resuelto". Si el rechazo cerrara a
+    los hermanos, un gate demasiado estricto enterraría el bug para todos los tenants de una vez —
+    y sin dejar rastro de que había N ocurrencias esperando.
+
+    **Qué prueba exactamente, y qué no.** Prueba el contrato de la ACTIVITY: un payload sin
+    `fingerprint` no toca a nadie más. La otra mitad —que el workflow no mande `fingerprint` en sus
+    caminos de rechazo— este test no la puede violar, porque él mismo escribe el payload. Esa mitad
+    la cubre `test_los_caminos_de_RECHAZO_del_workflow_no_mandan_fingerprint`, abajo; son dos
+    invariantes distintos y un solo test que pretendiera cubrir los dos no fallaría por ninguno.
+    """
+    a, b = dos_tenants
+    fp = f"mismo-bug-{uuid.uuid4().hex[:8]}"
+    trauma_a = _depositar(conn_de_tenant, a, archivo="apps/copiloto/cobro_store.py",
+                          categoria="business_error", fingerprint=fp)
+    trauma_b = _depositar(conn_de_tenant, b, archivo="apps/copiloto/cobro_store.py",
+                          categoria="business_error", fingerprint=fp)
+
+    # Los caminos de rechazo NO mandan `fingerprint` — es lo que los distingue del que propone PR.
+    await A.marcar_trauma({"id": trauma_a["id"], "estado": PENDIENTE,
+                           "nota": "rechazado por el gate", "cliente_id": a})
+
+    assert _estado(conn_de_tenant, a, trauma_a["id"]) == PENDIENTE
+    assert _nota(conn_de_tenant, a, trauma_a["id"]) == "rechazado por el gate"
+
+    # ⚠️ Mirar el ESTADO del hermano acá no probaría nada: el rechazo escribe `pendiente`, que es lo
+    # que el hermano YA tenía — el test pasaría igual con y sin la guarda del `fingerprint`. Lo que
+    # sí distingue las dos realidades es la NOTA: si el UPDATE de hermanos hubiera corrido, le
+    # habría dejado un "mismo bug que el trauma N" encima.
+    assert _estado(conn_de_tenant, b, trauma_b["id"]) == PENDIENTE
+    assert _nota(conn_de_tenant, b, trauma_b["id"]) is None, \
+        "el rechazo tocó al hermano: un intento fallido no puede cerrar el bug de los otros tenants"
 
 
 # ======================================================================================
@@ -208,13 +389,17 @@ async def test_marcar_trauma_con_el_tenant_EQUIVOCADO_falla_fuerte(tenant_de_pru
 # ======================================================================================
 @necesita_pg
 @pytest.mark.asyncio
-async def test_no_se_propone_NADA_si_el_parche_no_muta(tenant_de_prueba, conn_de_tenant, tmp_path):
+async def test_no_se_propone_NADA_si_el_parche_no_muta(tenant_de_prueba, conn_dlq_cruda, tmp_path):
     """Un PR vacío que dice "reparé X" es peor que no reparar: le enseña al revisor a aprobar sin
-    mirar, y esa costumbre después se aplica a los PR que sí cambian algo."""
+    mirar, y esa costumbre después se aplica a los PR que sí cambian algo.
+
+    `proponer_pr_de_reparacion` no toca `_conn_dlq` (sólo lee/escribe archivos), así que este test no
+    lleva `@necesita_rol_dlq`: corre igual sin el rol del ciclo. Se le pasa `conn_dlq_cruda` de todos
+    modos por ser la forma real que arma el composition root desde 2026-08-01."""
     cid = tenant_de_prueba
     archivo = tmp_path / "modulo.py"
     archivo.write_text("x = 1\n", encoding="utf-8")
-    A.set_autosanacion_deps(conn_de_tenant(cid), llm_client=None, raiz_repo=tmp_path)
+    A.set_autosanacion_deps(conn_dlq_cruda, llm_client=None, raiz_repo=tmp_path)
 
     resultado = await A.proponer_pr_de_reparacion({
         "trauma": {"id": 1, "fingerprint": "abc", "error_type": "KeyError"},
@@ -298,3 +483,41 @@ def test_CONTROL_la_env_var_sigue_pudiendo_forzar_otro_interprete(monkeypatch):
     monkeypatch.setenv("COPILOTO_SANDBOX_PYTHON", "/otro/venv/bin/python")
     elegido = os.environ.get("COPILOTO_SANDBOX_PYTHON") or sys.executable
     assert elegido == "/otro/venv/bin/python" != sys.executable
+
+
+# ======================================================================================
+# C8 — la otra mitad del invariante: qué manda el WORKFLOW en los caminos de rechazo
+# ======================================================================================
+@pytest.mark.asyncio
+async def test_los_caminos_de_RECHAZO_del_workflow_no_mandan_fingerprint(monkeypatch):
+    """`_soltar` NO puede llevar `fingerprint` en el payload: si lo llevara, cada rechazo cerraría
+    el bug para todos los tenants que lo sufren, sin haberlo reparado para ninguno.
+
+    Sin Temporal: `_soltar` es un método async común y `workflow.execute_activity` es una función
+    del módulo. Se la reemplaza por un registrador y se lee lo que el workflow QUISO mandar — que es
+    exactamente el invariante, y el único lugar donde se puede romper. Levantar un `WorkflowEnvironment`
+    mediría el arranque de Temporal, no esto.
+    """
+    from autosanacion_workflow import AutosanacionWorkflow
+
+    enviados = []
+
+    async def _registrar(nombre, payload=None, **kw):
+        enviados.append((nombre, payload))
+        return None
+
+    monkeypatch.setattr("autosanacion_workflow.workflow.execute_activity", _registrar)
+
+    trauma = {"id": 7, "cliente_id": "dueño-de-la-ocurrencia", "fingerprint": "fp-del-bug"}
+    await AutosanacionWorkflow()._soltar(trauma, "rechazado por el gate")
+
+    assert len(enviados) == 1
+    nombre, payload = enviados[0]
+    assert nombre == "marcar_trauma"
+    assert payload["estado"] == "pendiente"
+    assert "fingerprint" not in payload, (
+        "el camino de rechazo manda fingerprint: `marcar_trauma` cerraría a los hermanos y el bug "
+        "quedaría enterrado para los otros tenants sin haberse reparado para ninguno")
+    # Control positivo del mismo instrumento: si el registrador no viera nada, el assert de arriba
+    # pasaría vacío. El dueño SÍ tiene que viajar — es lo que la activity necesita para el mensaje.
+    assert payload["cliente_id"] == "dueño-de-la-ocurrencia"

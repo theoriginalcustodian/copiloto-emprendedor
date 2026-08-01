@@ -112,6 +112,28 @@ def _perfil_provider(conn_factory: Callable) -> Callable:
     return proveer
 
 
+def _conn_dlq_factory(env: Mapping[str, str]) -> Callable | None:
+    """La fábrica de conexiones del ciclo de auto-reparación, o `None` si no está provisionada.
+
+    **Cruda a propósito**: no se envuelve con `conexion_con_tenant` porque el ciclo es cross-tenant
+    por diseño, y ese envoltorio cierra la conexión y propaga si no hay tenant que declarar.
+
+    Se construye acá y no en el módulo de activities para que el composition root siga siendo el
+    único lugar del worker que sabe de DSNs — el mismo criterio que `main()` con `DATABASE_URL`.
+    """
+    dsn = env.get("COPILOTO_AUTOSANACION_DSN")
+    if not dsn:
+        return None
+
+    def factory():  # noqa: ANN202
+        import psycopg2
+        conn = psycopg2.connect(dsn)
+        conn.autocommit = True
+        return conn
+
+    return factory
+
+
 def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=None) -> dict:
     """Composition root PURO y multitenant real (Task 8): construye los recursos COMPARTIDOS una sola vez
     (crypto, mp_gateway, composio gateway) y arma el `context_factory` que resuelve TODO lo per-tenant
@@ -288,7 +310,19 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     print("AGENT_B autosanacion: ON" if _autosanacion_llm is not None
           else "AGENT_B autosanacion: OFF (sin OPENAI_API_KEY — el ciclo no forja parches)",
           flush=True)
-    set_autosanacion_deps(conn_factory, llm_client=_autosanacion_llm)
+    # La conexión del ciclo NO es `conn_factory`. Desde 2026-08-01 la auto-reparación es una sola
+    # para toda la app y necesita ver la DLQ entera; `conn_factory` declara un tenant y con RLS
+    # forzado mostraría sólo el suyo. El rol dedicado (`copiloto_autosanacion`, `BYPASSRLS`, con
+    # permisos sobre UNA tabla) lo provisiona `deploy/copiloto/provision-rol-autosanacion.sh`.
+    #
+    # Sin el DSN el ciclo queda OFF y lo dice: la alternativa —caer de vuelta a `conn_factory`—
+    # arrancaría verde y mediría mal para siempre (vería un tenant, agruparía por bug sobre un solo
+    # dueño, y no habría un solo síntoma). Un apagado ruidoso es preferible a un encendido mentiroso.
+    _conn_dlq = _conn_dlq_factory(env)
+    if _conn_dlq is None:
+        print("AGENT_B autosanacion: OFF (sin COPILOTO_AUTOSANACION_DSN — el ciclo no ve la DLQ "
+              "cross-tenant; correr deploy/copiloto/provision-rol-autosanacion.sh)", flush=True)
+    set_autosanacion_deps(_conn_dlq, llm_client=_autosanacion_llm)
 
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
