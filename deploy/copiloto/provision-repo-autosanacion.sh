@@ -39,6 +39,13 @@ VAR="COPILOTO_AUTOSANACION_REPO_GIT"
 command -v gh >/dev/null || { echo "❌ falta \`gh\` en el VPS: sin él el ciclo no puede abrir PRs" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "❌ \`gh\` sin credenciales: el ciclo degradaría a artefacto" >&2; exit 1; }
 
+# `gh` autenticado NO implica que `git push` pueda autenticarse: son dos credenciales distintas.
+# `gh pr create` usa el token de `gh`; `git push` usa el credential helper de git, y sin él no hay
+# forma de responder al challenge de github.com — sin TTY, muere. El ciclo necesita LAS DOS, y le
+# faltaba la segunda: vivía en `/root/.gitconfig` porque alguien corrió `setup-git` a mano una vez,
+# no porque el provisionado la pusiera. Un reprovisionado del host la perdía en silencio.
+gh auth setup-git    # idempotente: reescribe el helper por-host, no acumula
+
 if [ -d "$REPO/.git" ]; then
   echo "    el clon ya existe: actualizando a origin/main"
   git -C "$REPO" fetch --quiet origin main

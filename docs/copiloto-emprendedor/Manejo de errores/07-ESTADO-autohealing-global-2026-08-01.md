@@ -51,10 +51,47 @@ suite con el **mismo nombre que en producción** (`COPILOTO_AUTOSANACION_DSN`), 
 
 ---
 
-## 3. PENDIENTE — el fix del camino de PR (rama `fix/autosanacion-pr-nunca-pudo-abrirse`, `5d0d781`)
+## 2.bis 🏁 CICLO CERRADO E2E — el autohealing abre PRs de verdad (PR #178, `05d8378`)
 
-**Estado: commiteado y verde, NO pusheado, NO mergeado, NO desplegado.**
-Worktree: `C:/Proyectos/Claude/Claude code/_wt-fix-pr`.
+**Medido contra el sistema vivo, no autoevaluado.** Corrida del `e2e_autosanacion_trauma_real.py`
+con el criterio endurecido (`modo == "pr"` obligatorio cuando hay repo declarado):
+
+```
+desenlace: {'estado': 'pr_propuesto', 'modo': 'pr', 'motivo': None, 'trauma_id': 10,
+            'url': 'https://github.com/theoriginalcustodian/copiloto-emprendedor/pull/179'}
+```
+
+Y el PR **existe y es mergeable**, verificado aparte con `gh pr view 179` (no se confió en la URL que
+devolvió el propio ciclo): `autosanacion/trauma-10 → main`, 1 archivo, +1/−1, `MERGEABLE`, título
+`fix(autosanacion): KeyError en apps/copiloto/fingerprint.py`. El diff arregla el slice sobre un
+`error_message` que podía ser `None`.
+
+La cadena entera corrió una sola vez para toda la app: **gates → forja → auditor → gate de tests →
+PR**, con las 2 ocurrencias del mismo `fingerprint` (traumas 10 y 11, tenants distintos) tratadas
+como UN bug (`intentos=1` / `intentos=0`).
+
+**Queda abierto el PR #179 a propósito**: es la evidencia del ciclo. Es sintético (el trauma lo
+fabricó el E2E) — cerrarlo o mergearlo es decisión del operador.
+
+### El supuesto que casi cuesta el ciclo: `gh` autenticado ≠ `git push` autenticado
+
+Antes de gastar la corrida se validó que el VPS pudiera pushear. **`gh auth status` verde no prueba
+nada sobre `git push`**: son dos credenciales distintas (`gh pr create` usa el token de `gh`; el push
+usa el credential helper de git). El primer control dio "SIN HELPER GLOBAL" y pareció confirmar el
+peor caso — pero era el **instrumento equivocado**: el helper está registrado **por host**
+(`credential.https://github.com.helper=!/usr/bin/gh auth git-credential` en `/root/.gitconfig`), y
+preguntar por la clave genérica `credential.helper` devuelve vacío. Lo que zanjó la duda fue el
+control por efecto: `git push --dry-run` → exit 0.
+
+Ese helper lo puso alguien a mano alguna vez; el provisionado no lo ponía. Un reprovisionado del host
+lo perdía en silencio → `provision-repo-autosanacion.sh` ahora corre `gh auth setup-git`.
+
+---
+
+## 3. ~~PENDIENTE~~ HECHO — el fix del camino de PR (PR #178, mergeado como `05d8378`)
+
+**Mergeado con CI 5/5 y desplegado.** Verificado en prod: el símbolo del fix está en el disco del
+VPS y el worker levantó con `AGENT_B autosanacion: ON`.
 
 ### El bug
 
@@ -105,19 +142,31 @@ Consolidado en [`memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`](../../
 
 ---
 
-## 4. Cambio pedido por el operador y NO implementado todavía
+## 4. Frecuencia: 1 → 5 disparos (aprobado por el operador el 2026-08-01)
 
 > *"no sé por qué está limitado a 5 acciones el autohealing"*
 
-**El tope de 5/día es arbitrario** (lo puse yo, sin medir; el comentario dice *"acota el daño de un
-ciclo que se vuelve loco"*) **y hoy no limita nada**: hay **1 disparo/día** y cada disparo repara
-**1 bug**, así que el máximo real es 1/día. El 5 es decorativo.
+**El tope de 5/día no limitaba nada.** Había **1 disparo/día** y cada ejecución repara **1 bug**, así
+que el techo real era 1/día: el 5 era decorativo. Los disparos y el tope son la misma decisión mirada
+de dos lados.
 
-**Acordado en la sesión, pendiente de implementar en el mismo deploy del fix:** subir la frecuencia
-a **cada 2 h entre 00:00 y 08:00** (5 disparos) para que el tope pase a morder y la DLQ se drene en
-una noche. **NO se saca el tope** — con el camino de PR recién arreglado y cero traumas reales, sacar
-el freno sería codificar la esperanza. `COPILOTO_AUTOSANACION_HORA` ya existe; hay que agregarle el
-intervalo en `deploy/worker/ensure_autosanacion_schedules.py`.
+**Implementado:** `00, 02, 04, 06, 08` (cada 2 h de madrugada) → 5 disparos, uno por cada reparación
+que el tope permite. **El tope NO se saca**: con el camino de PR recién estrenado, quitar el freno
+sería codificar la esperanza. Parametrizado sin hardcoding —`COPILOTO_AUTOSANACION_HORA` /
+`_HORA_FIN` / `_PASO_HORAS`— y el script **avisa** si los disparos quedan por debajo del tope, que es
+justo la incoherencia que vivió meses sin que nadie la notara.
+
+### La trampa que lo habría dejado en no-op
+
+`ensure_schedule` hacía `create … except ScheduleAlreadyRunningError: return "ya existía"` — y **nunca
+actualizaba**. Idempotente, sí; **convergente, no**: el código nuevo se despliega, el Schedule viejo
+de las 04:00 sigue igual, y el log dice *"ya existía"* con tono de éxito. Ahora compara las horas
+efectivas del Schedule vivo contra las deseadas y **sincroniza sólo el `spec`**, dejando `state`
+intacto para que un deploy no pueda re-encender algo que alguien pausó a mano.
+
+Las partes puras están cubiertas por `tests/test_autosanacion_schedule_spec.py`, incluida la asimetría
+que arruina la comparación: `ScheduleRange(4)` deja `end=0`, y expandido crudo daría **vacío** en vez
+de `[4]` — el Schedule se reescribiría en cada deploy sin que nada lo delate.
 
 ---
 
