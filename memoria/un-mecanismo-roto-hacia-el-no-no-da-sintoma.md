@@ -95,6 +95,45 @@ tenía esa doctrina escrita para `DATABASE_URL` (*"el gate jamás debe escribir 
 aplicada a **una sola variable**. Generalizarla es el arreglo; se hizo por patrón (`*_API_KEY`,
 `*_TOKEN`, …) para que una integración nueva quede tapada sola.
 
+## La variante peor: el camino que NUNCA se ejecutó (2026-08-01)
+
+Mismo día, tercera pieza del mismo ciclo. `_abrir_pr` —el paso final, el que abre el PR en GitHub—
+**no podía funcionar**: hacía `git add <archivo>` sobre un clon prístino, sin escribir nunca el
+contenido reparado en el árbol. Sin diff no hay commit; `git commit` salía con error; el `except`
+degradaba a artefacto. Faltaba además el `git push` de la rama, sin el cual `gh pr create --head`
+tampoco habría abierto nada. **Dos pasos ausentes en cinco líneas de código.**
+
+Vivió así desde que se escribió, y no dio ni un síntoma por una razón distinta de las de arriba:
+
+> **El camino nunca se ejecutó.** `COPILOTO_AUTOSANACION_REPO_GIT` no estaba seteada en producción,
+> y la función que la lee devolvía `None` **antes** de llegar acá. Un camino muerto no se rompe:
+> espera.
+
+Y cuando por fin se ejecutó, tampoco protestó — porque **su degradado es un desenlace legítimo**. El
+workflow devolvía `{"estado": "pr_propuesto", "url": "/tmp/…​.patch"}`: estado de éxito, URL
+presente. Ni el E2E ni yo lo miramos dos veces. `pr_propuesto` cubría dos realidades opuestas —un PR
+abierto en GitHub y un `.patch` tirado en un `/tmp` que nadie visita— y **se leen igual desde
+afuera**.
+
+El tercer defecto tapaba a los dos: `capture_output=True` + `check=True` mete el `stderr` real dentro
+del `CalledProcessError`, y `f"{exc}"` sólo dice *"Command … returned non-zero exit status 1"*. El
+diagnóstico verdadero —*"nothing to commit"*— **existía y nunca se imprimió**.
+
+**Las tres correcciones, y ninguna es el fix del bug:**
+
+1. El desenlace lleva `modo` (`pr` | `artefacto` | `sin_cambios`). Un resultado que puede significar
+   dos cosas contrarias no es un resultado.
+2. El E2E **exige** `modo == "pr"` cuando hay repo declarado. Antes daba ✅ con el paso final muerto.
+3. El `except` pone el `stderr` **en el motivo y en el log**. Un error que sabe explicarse y no se
+   imprime es peor que uno mudo: hace creer que no había nada que decir.
+
+**La pregunta que lo hubiera encontrado antes:** al mirar un `if` que decide entre el camino real y
+un fallback — *¿alguna vez se tomó la rama de la izquierda?* Si la respuesta es "no lo sé", ese
+código es **no-ejecutado**, no "probado por defecto". Y un test que lo ejercite contra el recurso
+real (acá: un repo git de verdad en `tmp_path`) lo caza en un segundo — se verificó por mutación:
+quitar la escritura del archivo reproduce el bug original y el test se pone rojo con el mensaje
+exacto.
+
 ## Al revisar cualquier gate, guarda, validador o filtro
 
 Preguntá las dos, no una:

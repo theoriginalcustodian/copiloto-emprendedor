@@ -218,6 +218,21 @@ async def main() -> int:
                       f"llegó al paso 5, pero el paso 5 no hizo su trabajo: esto NO es un E2E "
                       f"verde.", file=sys.stderr)
                 return 1
+            # `pr_propuesto` NO alcanza: hasta el 2026-08-01 ese estado salía igual con un PR
+            # abierto en GitHub que con un `.patch` en un /tmp que nadie visita, y el camino de PR
+            # estuvo roto todo ese tiempo sin que nada protestara. Si HAY repo declarado, el modo
+            # tiene que ser `pr`; si no lo hay, el artefacto es el desenlace correcto y se dice.
+            if estado == "pr_propuesto":
+                modo = resultado.get("modo")
+                hay_repo = bool(os.environ.get("COPILOTO_AUTOSANACION_REPO_GIT", "").strip())
+                print(f"  modo de la propuesta: {modo!r} (repo declarado: {hay_repo})")
+                if hay_repo and modo != "pr":
+                    print(f"❌ hay repo de trabajo declarado pero la propuesta salió como {modo!r}: "
+                          f"{resultado.get('motivo')}\n"
+                          f"   El ciclo llegó al final y no abrió PR — el trabajo queda en un /tmp "
+                          f"que nadie mira. Esto NO es un E2E verde.", file=sys.stderr)
+                    return 1
+
             if estado not in DESENLACES_QUE_PRUEBAN:
                 print(f"❌ desenlace '{estado}': el ciclo NO llegó a forjar. "
                       f"Esperado uno de {DESENLACES_QUE_PRUEBAN}", file=sys.stderr)
