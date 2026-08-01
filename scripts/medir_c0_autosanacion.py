@@ -30,10 +30,12 @@ de cuál falló y por qué — no se redondea a "casi".
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import subprocess
 import sys
 import tempfile
+import tokenize
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -81,8 +83,12 @@ CASOS = (
          "la firma pública de fingerprint_de_error(...) y que dos errores distintos sigan dando "
          "fingerprints distintos",
          "aritmética que se desborda en silencio — el hash deja de ser estable entre corridas"),
+    # OJO con el marcador: la primera versión decía `[:200]`, que en `fingerprint.py` existe **sólo
+    # dentro de un docstring** (el código usa `[:_LARGO_MENSAJE]`). La mutación cambiaba prosa, el
+    # módulo quedaba sano, y el banco reportaba "el bug no rompe la suite" — verdad literal que
+    # apuntaba al lugar equivocado. Por eso `_armar_caja` ahora exige que el marcador esté en CÓDIGO.
     Caso("truncado-del-mensaje", "fingerprint.py", "test_fingerprint.py",
-         "[:200]", "",
+         "[:_LARGO_MENSAJE]", "",
          "que el fingerprint siga siendo estable y que dos errores distintos den valores distintos",
          "un límite que alguien quita 'porque no hacía falta': mensajes largos parten el grupo de "
          "deduplicación y la DLQ se llena de entradas que son el mismo error"),
@@ -104,6 +110,33 @@ def _correr_pytest(caja: Path, python: str, test: str = TEST) -> tuple[int, str]
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
+def _marcador_en_codigo(fuente: str, marcador: str) -> bool:
+    """¿El marcador aparece en CÓDIGO, o sólo dentro de un docstring/comentario?
+
+    Existe por un fallo medido (2026-07-31): el caso `truncado-del-mensaje` usaba `[:200]`, que en
+    `fingerprint.py` vive únicamente en un docstring — el código real dice `[:_LARGO_MENSAJE]`. La
+    mutación cambiaba prosa, el módulo quedaba **sano**, y el banco reportaba *"el bug no rompe la
+    suite"*. Literalmente cierto y engañoso: ese mensaje también es el que sale cuando la suite tiene
+    un hueco real, así que dos causas opuestas —banco roto vs. suite ciega— se veían igual y pedían
+    arreglos distintos. Acá se separan, en el punto donde la causa todavía se puede nombrar.
+    """
+    #: Se tapan strings y comentarios con espacios y se busca en lo que queda. Tapar en vez de
+    #: borrar mantiene las posiciones, así que el resultado no depende del orden de los tokens.
+    lineas = fuente.splitlines(keepends=True)
+    tapado = [list(l) for l in lineas]
+    for tok in tokenize.generate_tokens(io.StringIO(fuente).readline):
+        if tok.type not in (tokenize.STRING, tokenize.COMMENT):
+            continue
+        (fila_ini, col_ini), (fila_fin, col_fin) = tok.start, tok.end
+        for fila in range(fila_ini, fila_fin + 1):
+            desde = col_ini if fila == fila_ini else 0
+            hasta = col_fin if fila == fila_fin else len(tapado[fila - 1])
+            for col in range(desde, min(hasta, len(tapado[fila - 1]))):
+                if tapado[fila - 1][col] != "\n":
+                    tapado[fila - 1][col] = " "
+    return marcador in "".join("".join(l) for l in tapado)
+
+
 def _armar_caja(caja: Path, caso: "Caso" = None) -> str:
     """Deja en `caja` el módulo ROTO y su suite. Devuelve el contenido roto.
 
@@ -117,6 +150,12 @@ def _armar_caja(caja: Path, caso: "Caso" = None) -> str:
     if roto == fuente:
         raise SystemExit(f"[banco] ❌ no se pudo introducir el bug de '{caso.nombre}': "
                          f"{caso.original!r} no está en {caso.archivo}")
+    if not _marcador_en_codigo(fuente, caso.original):
+        raise SystemExit(
+            f"[banco] ❌ el bug de '{caso.nombre}' NO toca código: {caso.original!r} sólo aparece en "
+            f"docstrings o comentarios de {caso.archivo}. El módulo quedaría sano y el banco diría "
+            f"'el bug no rompe la suite', que es el mismo mensaje que da una suite con un hueco "
+            f"real. Corregí el marcador para que apunte al código.")
     (caja / caso.archivo).write_text(roto, encoding="utf-8")
     (caja / caso.test).write_text(
         (REPO / "apps/copiloto/tests" / caso.test).read_text(encoding="utf-8"), encoding="utf-8")
@@ -164,8 +203,14 @@ def una_corrida(client, python: str, numero: int,
             return aplicar_bloques(texto, contenido)
 
         def auditar(texto: str, archivo: str) -> tuple[bool, str]:
+            #: `salida_bug` es la MISMA evidencia que recibe el forjador. Antes el auditor sólo veía
+            #: el diff y el "no romper", y con eso rechazó 3/3 el parche correcto del caso del MRO:
+            #: reponer el recorrido se lee como "cambiar la lógica de herencia", justo lo que el
+            #: contexto pedía no romper. Sin la causa a la vista, "¿arregla la causa?" no es
+            #: contestable.
             from auditor_parches import auditar as _auditar
-            v = _auditar(client, texto, f"archivo {archivo}; no romper: {caso.no_romper}")
+            v = _auditar(client, texto, f"archivo {archivo}; no romper: {caso.no_romper}",
+                         evidencia=salida_bug)
             return bool(getattr(v, "aprobado", False)), getattr(v, "motivo", "")
 
         veces_probado = [0]

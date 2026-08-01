@@ -327,7 +327,11 @@ async def auditar_parche(payload: dict) -> dict:
     trauma, forja = payload["trauma"], payload["forja"]
     contexto = (f"archivo {forja.get('archivo')}; error {trauma.get('error_type')} en "
                 f"{trauma.get('workflow')}; no romper: {forja.get('no_romper', '')}")
-    veredicto = _auditar(_llm_client, forja.get("parche", ""), contexto)
+    #: La MISMA evidencia que recibió el forjador. Sin esto el auditor juzgaba *"¿arregla la causa?"*
+    #: sin conocerla, y rechazaba reparaciones correctas cuya forma es reponer lógica borrada — medido
+    #: contra el caso del MRO: 3 intentos, 3 rechazos al parche bueno. Ver `auditor_parches.auditar`.
+    evidencia = _evidencia_del_fallo(trauma, _origen_de(trauma) or {})
+    veredicto = _auditar(_llm_client, forja.get("parche", ""), contexto, evidencia=evidencia)
     return {"aprobado": bool(getattr(veredicto, "aprobado", False)),
             "motivo": getattr(veredicto, "motivo", "")}
 
