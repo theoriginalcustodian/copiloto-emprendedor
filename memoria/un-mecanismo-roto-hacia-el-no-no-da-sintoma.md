@@ -51,6 +51,21 @@ La diferencia entre las dos: **el auditor tenía control positivo** —`test_REA
 que le pasa un parche bueno y exige que lo apruebe— y por eso su sesgo se pudo acorralar. El gate de
 tests no tenía ninguno: nada afirmaba nunca *"el gate aceptó algo real"*.
 
+## Por qué el banco daba 12/12 y 3/3 con el gate de producción mudo
+
+`scripts/medir_c0_autosanacion.py:311` ya declaraba `--python default=sys.executable`. **El banco
+ejercitaba el ciclo con el intérprete correcto; producción usaba otro.** Las dos rutas divergían
+exactamente en el parámetro que estaba roto, así que ninguna medición del banco —por buena que fuera,
+y era buena: 12/12 de consistencia, 3/3 de amplitud, contra el LLM real— podía enterarse.
+
+Es [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] otra vez, y en su forma más
+incómoda: no fallaba el banco ni la suite, fallaba **el único parámetro que el banco elegía por su
+cuenta en vez de heredar**. Cuando un instrumento tiene que *elegir* algo que producción también
+elige, esa elección es una junta — y las juntas son de nadie.
+
+Barrido posterior: no hay otro `"python3"` hardcodeado en el repo (`apps/`, `deploy/`, `scripts/`,
+`motor/`), así que el arreglo es de raíz y no un parche puntual.
+
 ## Y el criterio del propio E2E era demasiado flojo
 
 `DESENLACES_QUE_PRUEBAN` incluía `rechazado_por_tests`, que el gate devuelve **tanto cuando midió y

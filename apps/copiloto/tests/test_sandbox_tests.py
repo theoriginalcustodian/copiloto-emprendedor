@@ -216,6 +216,54 @@ def test_el_sandbox_NUNCA_hereda_DATABASE_URL(tmp_path, monkeypatch):
     assert "DATABASE_URL" not in visto["env"]
 
 
+def test_el_sandbox_NO_hereda_NINGUNA_credencial_de_servicio_externo(tmp_path, monkeypatch):
+    """El gate corre la suite DOS VECES por cada intento de parche. Si hereda las credenciales del
+    worker, los tests de integración real se activan — y `test_gmail::test_send_real_y_readback`
+    **manda un mail de verdad**.
+
+    Medido el 2026-08-01, la primera vez que el gate corrió tests de verdad: 5 rojos en el baseline
+    (`test_docs`, `test_drive`, `test_gmail`, `test_sheets`, `test_selection_qa`), todos tests que en
+    el dev-loop y el CI se saltan solos porque ahí no hay credenciales. No-deterministas y con
+    efectos afuera: las dos cosas que un gate de no-regresión no puede tener."""
+    visto = {}
+
+    def _espia(cmd, **kw):  # noqa: ANN001, ANN003, ANN202
+        visto.update(kw)
+        return type("P", (), {"returncode": 0, "stdout": VERDE, "stderr": ""})()
+
+    for var in ("DATABASE_URL", "OPENAI_API_KEY", "COMPOSIO_API_KEY", "GROQ_API_KEY",
+                "COPILOTO_COMPOSIO_USER_ID", "COPILOTO_CLIENTE_ID", "GRAPHITY_API_KEY",
+                "GRAPHITY_BASE_URL", "MP_ACCESS_TOKEN", "AFIP_PASSWORD"):
+        monkeypatch.setenv(var, "valor-que-no-debe-viajar")
+
+    copia = tmp_path / "copia"
+    (copia / "apps" / "copiloto").mkdir(parents=True)
+    correr_suite(copia, python="python3", ejecutor=_espia)
+
+    filtradas = [v for v in visto["env"] if "valor-que-no-debe-viajar" == visto["env"][v]]
+    assert filtradas == [], f"el sandbox heredó credenciales: {filtradas}"
+
+
+def test_CONTROL_el_sandbox_SI_conserva_el_entorno_que_pytest_necesita(tmp_path, monkeypatch):
+    """EL CONTROL del de arriba: vaciar el entorno entero también lo haría pasar, y dejaría a pytest
+    sin `PATH` ni `HOME`. Se tapa lo que apunta afuera, no todo."""
+    visto = {}
+
+    def _espia(cmd, **kw):  # noqa: ANN001, ANN003, ANN202
+        visto.update(kw)
+        return type("P", (), {"returncode": 0, "stdout": VERDE, "stderr": ""})()
+
+    monkeypatch.setenv("PATH", "/usr/bin")
+    monkeypatch.setenv("HOME", "/home/alguien")
+    copia = tmp_path / "copia"
+    (copia / "apps" / "copiloto").mkdir(parents=True)
+    correr_suite(copia, python="python3", ejecutor=_espia)
+
+    assert visto["env"]["PATH"] == "/usr/bin"
+    assert visto["env"]["HOME"] == "/home/alguien"
+    assert "PYTHONPATH" in visto["env"]
+
+
 def test_una_base_EFIMERA_explicita_si_puede_pasarse(tmp_path, monkeypatch):
     """Control del test anterior: sin esto, un `pop` mal puesto que borrara TODO el env pasaría
     igual, y el gate quedaría sin poder correr nunca los tests contra Postgres."""

@@ -52,6 +52,21 @@ TIMEOUT_DEFAULT = 600
 #: sandbox se había quedado con dos de los tres.
 SUBARBOLES = ("apps/copiloto", "motor", "deploy/worker")
 
+#: Nombres exactos de variables que apuntan a un servicio externo pero no parecen credenciales.
+#: `DATABASE_URL` estaba desde el principio; las demás se sumaron cuando el gate empezó a correr de
+#: verdad y activó los tests de integración real (ver `correr_suite`).
+_VARS_DE_SERVICIO_EXTERNO = frozenset({
+    "DATABASE_URL",
+    "COPILOTO_COMPOSIO_USER_ID",   # sin él, los tests de Composio se saltan
+    "COPILOTO_CLIENTE_ID",         # activa E2E que hablan con servicios de un tenant real
+    "GRAPHITY_BASE_URL",
+})
+
+#: Sufijos de credencial. Por patrón a propósito: una integración nueva trae su `X_API_KEY` y queda
+#: tapada sola. Una lista cerrada habría que acordarse de actualizarla, y el modo de fallo —tests
+#: reales corriendo dentro del gate— es silencioso hasta que manda un mail.
+_SUFIJOS_DE_CREDENCIAL = ("_API_KEY", "_TOKEN", "_SECRET", "_PASSWORD", "_CREDENTIALS")
+
 #: Basura que no debe viajar: acelera la copia y evita que un `.pyc` viejo enmascare el parche.
 _IGNORAR = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", "node_modules", ".venv")
 
@@ -186,7 +201,25 @@ def correr_suite(
     # escribir en una base real. Quien quiera cobertura de Postgres pasa una base EFÍMERA por
     # `env_extra` (deploy/copiloto/test-db.sh). El conteo de `saltados` deja el hueco a la vista en
     # vez de esconderlo detrás de un "passed".
-    entorno.pop("DATABASE_URL", None)
+    #
+    # Y lo mismo para TODO servicio externo, por la misma razón llevada hasta el final. El gate
+    # hereda el entorno del worker, que en producción tiene las credenciales de verdad; con ellas
+    # puestas se **activan** los tests de integración real. Medido el 2026-08-01: 5 rojos en el
+    # baseline (`test_docs`, `test_drive`, `test_gmail`, `test_sheets`, `test_selection_qa`) que en
+    # el dev-loop y en el CI se saltan solos porque ahí no hay credenciales.
+    #
+    # Dos problemas, y el segundo es el grave:
+    #   1. Son no-deterministas —dependen de un servicio ajeno y de un LLM—, así que un gate de
+    #      no-regresión construido sobre ellos decide por ruido.
+    #   2. **Tienen efectos afuera.** `test_gmail::test_send_real_y_readback` manda un mail de
+    #      verdad. Un ciclo automático que corre la suite dos veces por cada intento de parche
+    #      mandaría mails, escribiría Drive y crearía Docs a espaldas de todos.
+    #
+    # Por patrón y no por lista cerrada: una integración nueva trae su `X_API_KEY` y queda tapada
+    # sola, en vez de reactivar el problema en silencio hasta que alguien lo note.
+    for var in list(entorno):
+        if var in _VARS_DE_SERVICIO_EXTERNO or any(var.endswith(s) for s in _SUFIJOS_DE_CREDENCIAL):
+            entorno.pop(var, None)
     entorno.update(env_extra or {})
 
     try:
