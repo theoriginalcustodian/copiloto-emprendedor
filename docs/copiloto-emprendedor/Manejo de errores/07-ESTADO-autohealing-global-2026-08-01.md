@@ -89,7 +89,14 @@ Se entiende: el trauma era fabricado y el código señalado no tenía el bug.
 distintas y sólo la primera tiene evidencia hoy. Y hay una limitación estructural detrás: el gate de
 tests verifica **no-regresión**, así que un parche inocuo lo pasa igual de bien que uno correcto — no
 existe hoy un control que distinga *arregla* de *no rompe*. Con traumas reales eso importa: un PR
-verde no es un PR útil. Candidato al próximo ciclo de mejora, **no** algo que ya esté resuelto.
+verde no es un PR útil.
+
+**Y no es un hallazgo nuevo: estaba previsto y escrito.** El docstring de
+`autosanacion_activities.py` ya lo dice —*"el gate de tests, acá, sólo puede afirmar que el parche no
+rompe nada de lo que ya funcionaba… el paso que convertiría esto en reparación demostrable es que el
+ciclo escriba primero un **test que reproduzca el trauma**"*— y lo deja como deuda visible. Lo que
+aporta el #179 es la **confirmación empírica**: dejó de ser un riesgo razonado y pasó a ser un caso
+con número de PR. Ese es el próximo paso del frente, y sigue sin construir.
 
 ### El supuesto que casi cuesta el ciclo: `gh` autenticado ≠ `git push` autenticado
 
