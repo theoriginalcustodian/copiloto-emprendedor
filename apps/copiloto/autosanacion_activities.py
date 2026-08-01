@@ -53,7 +53,6 @@ from temporalio import activity
 from autosanacion_gates import puede_reparar
 from auditor_parches import auditar as _auditar
 from auditor_parches import verificar_auditor
-from contexto_tenant import tenant
 from forjador_parches import aplicar_bloques, prompt_de_forja
 from sandbox_tests import correr_suite, evaluar, preparar_copia
 from trauma_store import PENDIENTE, TABLA, TraumaStore
@@ -63,28 +62,37 @@ from trauma_store import PENDIENTE, TABLA, TraumaStore
 #: Un aviso en `.info` no llega — es un log que no existe.
 _log = logging.getLogger("copiloto")
 
-_conn_factory = None
+#: La conexión del ciclo. **NO es la del worker.** Va con el rol `copiloto_autosanacion`
+#: (`BYPASSRLS`, con permisos sobre una sola tabla: la DLQ), porque desde 2026-08-01 el ciclo es UNO
+#: para toda la app y tiene que ver los traumas de todos los tenants para agruparlos por bug.
+#: El nombre lleva el `_dlq` a propósito: pasarle acá la `conn_factory` de tenant del worker no
+#: rompe nada visible — devuelve lo de un solo tenant y el agrupado por bug queda mudo.
+_conn_dlq = None
 _llm_client = None
 #: Raíz del repo desplegado. Se inyecta para no derivarla del `__file__` de este módulo: el sandbox
 #: copia el árbol a otro lado y el path tiene que seguir siendo el del repo, no el de la copia.
 _raiz_repo: Path | None = None
 
 
-def set_autosanacion_deps(conn_factory, llm_client=None, raiz_repo=None) -> None:  # noqa: ANN001
+def set_autosanacion_deps(conn_dlq, llm_client=None, raiz_repo=None) -> None:  # noqa: ANN001
     """Inyecta las dependencias. SYNC, se llama en el composition root del worker.
+
+    `conn_dlq` **no es la `conn_factory` del worker**: es la del rol `copiloto_autosanacion`
+    (`BYPASSRLS`), la única que ve la DLQ entera. Ver `deploy/copiloto/provision-rol-autosanacion.sh`.
 
     `llm_client` opcional: un worker sin LLM cableado sigue arrancando y el ciclo se apaga solo con
     un motivo legible, en vez de reventar en la mitad. Es el mismo criterio que el resto de las
     activities de este repo para las dependencias que pueden faltar.
     """
-    global _conn_factory, _llm_client, _raiz_repo
-    _conn_factory = conn_factory
+    global _conn_dlq, _llm_client, _raiz_repo
+    _conn_dlq = conn_dlq
     _llm_client = llm_client
     _raiz_repo = Path(raiz_repo) if raiz_repo else Path(__file__).resolve().parents[2]
 
 
-def _store(cliente_id: str) -> TraumaStore:
-    return TraumaStore(_conn_factory, cliente_id)
+def _store() -> TraumaStore:
+    """El store de la DLQ **sin tenant**: el ciclo trabaja sobre toda la app, no sobre un cliente."""
+    return TraumaStore(_conn_dlq)
 
 
 def _cerrar(conn) -> None:  # noqa: ANN001
@@ -152,48 +160,48 @@ def _origen_de(trauma: dict) -> dict | None:
 # 1 — tomar
 # ======================================================================================
 @activity.defn
-async def tomar_trauma_para_reparar(cliente_id: str) -> dict | None:
-    """Toma UN trauma pendiente y lo deja `en_proceso`. `None` si no hay.
+async def tomar_trauma_para_reparar() -> dict | None:
+    """Toma UN trauma pendiente **de toda la app** y lo deja `en_proceso`. `None` si no hay.
+
+    Sin argumento: desde 2026-08-01 el ciclo no es de nadie en particular. Antes recibía un
+    `cliente_id` y el aislamiento lo ponía RLS; hoy elige **un bug distinto**, no una ocurrencia
+    (`tomar_un_bug_distinto`), porque el índice único de la DLQ es `(cliente_id, fingerprint)` y un
+    solo defecto que pega en N tenants deja N filas idénticas salvo el dueño. Sin agrupar, el ciclo
+    propondría N veces el mismo PR.
 
     Uno y no un lote: cada ejecución del workflow repara como mucho uno, así que tomar más los
     dejaría `en_proceso` sin que nadie los trabaje — colgados hasta que `rescatar_colgados` los
     devuelva media hora después.
+
+    El `cliente_id` sigue viajando en el dict, pero ahora sale de **la fila** (`tomar_un_bug_distinto`
+    lo devuelve entre sus columnas) en vez de inyectarlo el llamador desde su propio argumento. Es
+    el mismo dato con una fuente honesta: el dueño de la ocurrencia que se está reparando.
     """
-    with tenant(cliente_id):
-        tomados = _store(cliente_id).tomar(limite=1)
-    if not tomados:
+    tomado = _store().tomar_un_bug_distinto()
+    if not tomado:
         return None
-    # `cliente_id` se inyecta acá porque `tomar()` NO lo devuelve entre sus columnas — y todo lo que
-    # sigue lo necesita: el conteo del tope, y sobre todo el `_soltar` del workflow, que sin dueño
-    # no puede devolver el trauma a `pendiente`. Sin esto viajaba vacío: la query comparaba
-    # `cliente_id = ''` contra un uuid (InvalidTextRepresentation, tragado por el except) y el ciclo
-    # se apagaba solo informando "tope diario alcanzado". Dos fallos con una sola causa, y ninguno
-    # de los dos mencionaba al dueño ausente.
-    return {**_serializable(tomados[0]), "cliente_id": cliente_id}
+    return _serializable(tomado)
 
 
 # ======================================================================================
 # 2 — gates
 # ======================================================================================
-def _reparaciones_de_hoy(cliente_id: str) -> int:
-    """Cuántas reparaciones se propusieron hoy para este tenant. Ante un fallo devuelve el tope, no
-    cero: si la cuenta no se puede hacer, lo seguro es frenar, no seguir de largo."""
-    if not cliente_id:
-        # Fail-closed y ruidoso. Sin dueño no hay cuenta posible, y devolver 0 dejaría el tope sin
-        # efecto justo cuando el ciclo perdió de vista a quién le está reparando.
-        _log.warning(json.dumps({"evento": "autosanacion_sin_tenant",
-                                 "efecto": "no se puede contar el tope; el ciclo NO repara"}))
-        from autosanacion_gates import tope_diario
-        return tope_diario()
+def _reparaciones_de_hoy() -> int:
+    """Cuántas reparaciones se propusieron hoy **en toda la app**. Ante un fallo devuelve el tope, no
+    cero: si la cuenta no se puede hacer, lo seguro es frenar, no seguir de largo.
+
+    Global y no por tenant, por la misma razón que el ciclo (2026-08-01): el tope existe para acotar
+    cuántos PRs le caen encima al humano que los revisa, y ese humano es uno solo. Un tope de 5 por
+    tenant con 5.000 tenants no es un tope: es 25.000 PRs con nombre de límite.
+    """
     conn = None
     try:
-        with tenant(cliente_id):
-            conn = _conn_factory()
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT count(*) FROM {TABLA} WHERE cliente_id = %s "
-                            f"AND estado = 'reparacion_propuesta' AND updated_at::date = %s",
-                            (cliente_id, date.today()))
-                return int(cur.fetchone()[0])
+        conn = _conn_dlq()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT count(*) FROM {TABLA} "
+                        f"WHERE estado = 'reparacion_propuesta' AND updated_at::date = %s",
+                        (date.today(),))
+            return int(cur.fetchone()[0])
     except Exception as exc:  # noqa: BLE001
         # Degradar al tope es lo seguro, pero degradar EN SILENCIO no: el ciclo se apagaría solo con
         # el motivo "tope diario alcanzado (5/5)" y nadie sabría que en realidad la query nunca
@@ -232,7 +240,7 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         # falló vive en `afip_gateway.py`. Chequear el rótulo en vez del código sería confiar en el
         # nombre, que es justo como se cuela un permiso que no debía darse.
         ruta=origen["archivo"],
-        reparaciones_hoy=_reparaciones_de_hoy(trauma.get("cliente_id", "")),
+        reparaciones_hoy=_reparaciones_de_hoy(),
         categoria=contexto.get("categoria"))
     return {"permitido": decision.permitido, "motivo": decision.motivo,
             "archivo": origen["archivo"]}
@@ -529,29 +537,56 @@ async def marcar_trauma(payload: dict) -> None:
     Es la activity que **cierra el ciclo en todos los caminos**, incluidos los rechazos: un trauma
     que se tomó y no se devuelve queda `en_proceso` para siempre, invisible para el próximo disparo
     (no está `pendiente`) y sin que nadie lo repare.
+
+    ## Los hermanos del mismo bug (2026-08-01)
+
+    Cuando el desenlace es `reparacion_propuesta` y el payload trae `fingerprint`, se marcan también
+    **las otras filas pendientes con ese mismo fingerprint** — el mismo defecto sufrido por otros
+    tenants. Sin esto la deduplicación duraría un solo disparo: mañana el ciclo tomaría un hermano,
+    forjaría el MISMO parche y abriría el MISMO PR, un día por tenant afectado. Se hace al cerrar y
+    no al tomar a propósito: si el ciclo se cae a mitad de camino, los hermanos quedan intactos y el
+    próximo intento los encuentra.
     """
-    cliente_id = payload.get("cliente_id") or ""
     estado = payload.get("estado", PENDIENTE)
-    # `with tenant(...)` explícito: con RLS forzado, un UPDATE sin tenant declarado no ve la fila y
-    # **no falla** — afecta 0 filas y devuelve éxito. El trauma quedaría `en_proceso` para siempre y
-    # el ciclo lo reportaría como soltado. Un fallo que no protesta es el que hay que blindar.
-    with tenant(cliente_id):
-        conn = _conn_factory()
-        try:
-            with conn.cursor() as cur:
+    # Sin `with tenant(...)`: la conexión del ciclo salta RLS (`BYPASSRLS`) y ve la fila sea de quien
+    # sea, que es justo lo que hace falta cuando el trauma que se está cerrando puede ser de
+    # cualquier emprendedor. El guard que importa NO se fue: sigue siendo el `rowcount != 1` de abajo
+    # — un UPDATE que no ve la fila no falla, afecta 0 filas y devuelve éxito.
+    conn = _conn_dlq()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"UPDATE {TABLA} SET estado = %s, updated_at = now(), "
+                        f"contexto = coalesce(contexto, '{{}}'::jsonb) || %s::jsonb "
+                        f"WHERE id = %s",
+                        (estado, json.dumps({"ultima_nota": payload.get("nota", "")}),
+                         payload.get("id")))
+            if cur.rowcount != 1:
+                # Se afirma en voz alta en vez de degradar en silencio: 0 filas acá significa que el
+                # id no existe (o que la conexión no es la del rol con BYPASSRLS y sigue sujeta a
+                # RLS), y las dos cosas dejan un trauma colgado en `en_proceso`.
+                raise RuntimeError(
+                    f"marcar_trauma tocó {cur.rowcount} filas para id={payload.get('id')} "
+                    f"(dueño={payload.get('cliente_id')!r}): el trauma quedaría colgado "
+                    f"en `en_proceso`")
+
+            fingerprint = payload.get("fingerprint")
+            if estado == "reparacion_propuesta" and fingerprint:
                 cur.execute(f"UPDATE {TABLA} SET estado = %s, updated_at = now(), "
                             f"contexto = coalesce(contexto, '{{}}'::jsonb) || %s::jsonb "
-                            f"WHERE id = %s",
-                            (estado, json.dumps({"ultima_nota": payload.get("nota", "")}),
-                             payload.get("id")))
-                if cur.rowcount != 1:
-                    # Se afirma en voz alta en vez de degradar en silencio: 0 filas acá significa
-                    # tenant equivocado o id inexistente, y las dos cosas dejan un trauma colgado.
-                    raise RuntimeError(
-                        f"marcar_trauma tocó {cur.rowcount} filas para id={payload.get('id')} "
-                        f"tenant={cliente_id!r}: el trauma quedaría colgado en `en_proceso`")
-        finally:
-            _cerrar(conn)
+                            f"WHERE fingerprint = %s AND estado = %s AND id <> %s",
+                            (estado,
+                             json.dumps({"ultima_nota": f"mismo bug que el trauma "
+                                                        f"{payload.get('id')}: "
+                                                        f"{payload.get('nota', '')}"}),
+                             fingerprint, PENDIENTE, payload.get("id")))
+                if cur.rowcount:
+                    _log.warning(json.dumps(
+                        {"evento": "autosanacion_hermanos_cerrados", "fingerprint": fingerprint,
+                         "hermanos": cur.rowcount,
+                         "efecto": "el mismo bug en otros tenants NO se vuelve a proponer"},
+                        ensure_ascii=False))
+    finally:
+        _cerrar(conn)
 
 
 ACTIVITIES_AUTOSANACION: list[Any] = [

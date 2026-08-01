@@ -52,17 +52,33 @@ SIN_REINTENTO = RetryPolicy(maximum_attempts=1)
 
 @workflow.defn
 class AutosanacionWorkflow:
-    """Un disparo = un intento de reparación para UN tenant. Devuelve siempre un dict con `estado`,
-    nunca lanza por un "no": un rechazo de gate es un resultado legítimo del ciclo, no un fallo, y
-    hacerlo excepción llenaría Temporal de ejecuciones rojas que no son errores."""
+    """Un disparo = un intento de reparación para **toda la app**. Devuelve siempre un dict con
+    `estado`, nunca lanza por un "no": un rechazo de gate es un resultado legítimo del ciclo, no un
+    fallo, y hacerlo excepción llenaría Temporal de ejecuciones rojas que no son errores.
+
+    ## Sin `cliente_id` (2026-08-01, decisión del operador)
+
+    Antes recibía un tenant y había un Schedule por emprendedor. Estaba mal por dos motivos, y el
+    segundo es el de fondo:
+
+    1. **Escala.** 19 Schedules hoy; 5.000 procesos a las 04:00 el día que haya 5.000 emprendedores,
+       cada uno corriendo la suite completa dos veces para llegar al mismo parche.
+    2. **Concepto.** El ciclo repara **nuestro código**, no los datos del emprendedor. Un `KeyError`
+       en `fingerprint.py` es el mismo defecto lo haya pegado el tenant A o el Z: el tenant es un
+       atributo de la *ocurrencia*, la unidad de reparación es el *bug*. Partir el ciclo por tenant
+       era partirlo por un eje que no es el del problema.
+
+    El tenant no desapareció: sale de la fila del trauma y viaja en el dict, porque cerrar o soltar
+    una ocurrencia sigue necesitando saber de quién es.
+    """
 
     @workflow.run
-    async def run(self, cliente_id: str) -> dict:
+    async def run(self) -> dict:
         trauma = await workflow.execute_activity(
-            "tomar_trauma_para_reparar", cliente_id,
+            "tomar_trauma_para_reparar",
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
         if not trauma:
-            return {"estado": "sin_traumas", "cliente_id": cliente_id}
+            return {"estado": "sin_traumas"}
 
         # Paso 1 — los gates, antes de gastar un centavo. `puede_reparar` lee env (kill switch, tope)
         # y consulta la base (índice único), así que es activity aunque "parezca" lógica pura.
@@ -111,9 +127,14 @@ class AutosanacionWorkflow:
             "proponer_pr_de_reparacion", {"trauma": trauma, "forja": forja, "prueba": prueba},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
 
+        # `fingerprint` va en el payload SÓLO en este camino: es el que cierra también a los hermanos
+        # —el mismo bug sufrido por otros tenants— para que mañana el ciclo no vuelva a forjar el
+        # mismo parche y abrir el mismo PR, un día por tenant afectado. En los caminos de rechazo NO
+        # se manda: ahí sólo se suelta la ocurrencia que se tomó, y los hermanos siguen pendientes.
         await workflow.execute_activity(
             "marcar_trauma", {"id": trauma.get("id"), "estado": "reparacion_propuesta",
-                              "nota": pr.get("url", ""), "cliente_id": cliente_id},
+                              "nota": pr.get("url", ""), "cliente_id": trauma.get("cliente_id"),
+                              "fingerprint": trauma.get("fingerprint")},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
         return {"estado": "pr_propuesto", "url": pr.get("url"), "trauma_id": trauma.get("id")}
 

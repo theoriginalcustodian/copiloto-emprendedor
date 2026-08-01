@@ -26,9 +26,22 @@ permanente (sobrevive a que alguien reanude los Schedules), no como freno de eme
 
 ## Qué hace, en una línea
 
-Una vez por día y por tenant, a las 04:00, toma **un** trauma pendiente de la DLQ, intenta un parche,
-lo audita, corre la suite completa en un sandbox, y **deja una propuesta que una persona revisa**.
-Nunca mergea nada.
+Una vez por día, a las 04:00, **para toda la app** (un solo Schedule: `autosanacion-global`), toma
+**un bug** pendiente de la DLQ, intenta un parche, lo audita, corre la suite completa en un sandbox,
+y **deja una propuesta que una persona revisa**. Nunca mergea nada.
+
+> **Un bug, no una ocurrencia** (2026-08-01, decisión del operador). Antes había un Schedule por
+> tenant — 19 disparos, y 5.000 el día que haya 5.000 emprendedores, todos reparando el mismo
+> defecto de nuestro código. El tenant es un atributo de la *ocurrencia*; la unidad de reparación es
+> el *bug*. Como el índice único de la DLQ es `(cliente_id, fingerprint)`, un solo defecto que toca N
+> tenants deja N filas: el ciclo toma **un representante por `fingerprint`** (el de mayor
+> `dedupe_count` — se repara primero lo que más duele) y, si llega a proponer PR, **cierra también a
+> los hermanos**, para no volver a proponer el mismo parche un día por tenant afectado.
+>
+> Corre con un rol propio, `copiloto_autosanacion` (`BYPASSRLS`, permisos sobre **una sola** tabla),
+> que se provisiona **una vez** con `deploy/copiloto/provision-rol-autosanacion.sh`. Sin su DSN
+> (`COPILOTO_AUTOSANACION_DSN`) el worker arranca igual y el ciclo queda **apagado**, diciéndolo en
+> el journal — nunca cae de vuelta a la conexión por tenant, que arrancaría verde midiendo mal.
 
 ## Qué NO hace, y conviene tenerlo presente
 
@@ -73,7 +86,8 @@ es información, no ruido.
 | Variable | Default | Para qué |
 |---|---|---|
 | `COPILOTO_AUTOSANACION_OFF` | (no seteada) | apagado permanente; **exige reiniciar el worker** |
-| `COPILOTO_AUTOSANACION_TOPE_DIARIO` | 5 | reparaciones propuestas por día y por tenant |
+| `COPILOTO_AUTOSANACION_DSN` | (no seteada) | conexión del rol con `BYPASSRLS`; **sin ella el ciclo no corre** |
+| `COPILOTO_AUTOSANACION_TOPE_DIARIO` | 5 | reparaciones propuestas por día, **en toda la app** (el tope acota los PRs que le caen al revisor, y el revisor es uno) |
 | `COPILOTO_AUTOSANACION_HORA` | 4 | hora del disparo (el paso caro es una suite completa) |
 | `COPILOTO_AUTOSANACION_ARTEFACTOS` | `/tmp/autosanacion` | dónde quedan los `.patch` |
 | `COPILOTO_AUTOSANACION_REPO_GIT` | (no seteada) | clon donde abrir PRs; **nunca el repo desplegado** |

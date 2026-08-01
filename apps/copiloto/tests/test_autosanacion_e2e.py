@@ -10,6 +10,21 @@ costura no es de nadie ([[verificar-que-el-camino-recomendado-existe]]).
 Sin Temporal a propósito: el workflow ya está probado como código determinista, y levantar un
 worker acá mediría el arranque de Temporal, no las costuras. Lo que se ejercita es la cadena real de
 activities contra la base real, con RLS forzado.
+
+## 2026-08-01 — el ciclo pasó a ser UNO SOLO para toda la app (cross-tenant)
+
+`tomar_trauma_para_reparar` ya no recibe `cliente_id`: toma **un bug distinto** de TODA la DLQ, con
+una conexión cruda del rol `copiloto_autosanacion` (`BYPASSRLS`) que ve todos los tenants.
+
+Ese rol **también existe en la base de tests**: `deploy/copiloto/test-db.sh` lo crea al lado de
+`copiloto_app` (que sigue siendo `NOSUPERUSER NOBYPASSRLS` con `FORCE RLS`, porque es el que permite
+verificar que el aislamiento aplica). Son dos roles con dos propósitos opuestos y los dos hacen
+falta: uno prueba que RLS filtra, el otro prueba el camino que a propósito lo saltea.
+
+**El error que esto evita:** correr estos tests con `copiloto_app` no los pondría rojos — una
+conexión suya sin tenant ve 0 filas, así que `tomar_trauma_para_reparar()` devolvería `None` y el
+test leería *"no hay traumas"*, que es el desenlace legítimo de un ciclo sano. Verde o rojo daría
+igual: el instrumento no estaría mirando. Por eso el skip es explícito y su motivo dice qué correr.
 """
 from __future__ import annotations
 
@@ -25,28 +40,47 @@ from trauma_store import EN_PROCESO, PENDIENTE, TABLA, TraumaStore
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
 
+#: El ciclo NO puede probarse con el rol de la app: `copiloto_app` es `NOSUPERUSER NOBYPASSRLS` con
+#: `FORCE RLS` a propósito, y una conexión suya sin tenant ve **0 filas de todos los tenants**. Un
+#: test así no daría rojo: daría "no hay traumas", que es el desenlace legítimo de un ciclo sano.
+#: Por eso se salta en vez de correr degradado — y el motivo dice qué hacer, no sólo que faltó.
+necesita_rol_dlq = pytest.mark.skipif(
+    not os.environ.get("COPILOTO_AUTOSANACION_DSN"),
+    reason="requiere el rol del ciclo (BYPASSRLS): levantá la base con `test-db.sh` y pasá "
+           "UC_TEST_AUTOSANACION_URL a sync-test-backend.sh")
+
 
 @pytest.fixture
-def factory_de_produccion():
-    """La `conn_factory` **tal como la arma el composition root**: envuelta con
-    `conexion_con_tenant`, que lee el `ContextVar` en el momento de abrir la conexión.
+def conn_dlq_cruda():
+    """Conexión **sin tenant declarado** con el rol del ciclo — el mismo cableado que producción.
 
-    NO se usa `conn_de_tenant` para inyectarla en las activities: esa fixture está **pre-ligada** a
-    un tenant (abre su propio `with tenant(cid)` adentro) y pisa el `ContextVar` que la activity
-    declara. Con ella, un `marcar_trauma` apuntando al tenant equivocado igual encuentra la fila —
-    el test pasaría y sería ciego justo al fallo que viene a cazar
-    ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]).
+    Desde 2026-08-01 el composition root hace `set_autosanacion_deps(_conn_dlq, ...)` con el rol
+    dedicado `copiloto_autosanacion` (`BYPASSRLS`, permisos sobre UNA tabla), que
+    `deploy/copiloto/provision-rol-autosanacion.sh` provisiona en producción y `test-db.sh` replica
+    en la base de tests. La fixture lee `COPILOTO_AUTOSANACION_DSN`, **el mismo nombre de variable
+    que el worker**: si se le diera otro, la suite estaría ejercitando un cableado que no existe en
+    ningún lado (ver `memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md`).
+
+    Cruda a propósito: sin `conexion_con_tenant`, porque el ciclo es cross-tenant por diseño y ese
+    envoltorio cierra la conexión si no hay tenant que declarar.
     """
     import psycopg2
 
-    from contexto_tenant import conexion_con_tenant
-    return conexion_con_tenant(lambda: psycopg2.connect(os.environ["DATABASE_URL"]))
+    def factory():
+        conn = psycopg2.connect(os.environ["COPILOTO_AUTOSANACION_DSN"])
+        conn.autocommit = True
+        return conn
+
+    return factory
 
 
 @pytest.fixture
-def tenant_de_prueba(conn_de_tenant, factory_de_produccion):
+def tenant_de_prueba(conn_de_tenant, conn_dlq_cruda):
+    """El trauma se deposita con el tenant declarado (así lo hacen las costuras reales), pero el
+    ciclo (`set_autosanacion_deps`) recibe la conexión CRUDA — es el mismo desacople que hay en
+    producción entre quien escribe (por tenant) y quien repara (cross-tenant, `conn_dlq`)."""
     cid = str(uuid.uuid4())
-    A.set_autosanacion_deps(factory_de_produccion, llm_client=None)
+    A.set_autosanacion_deps(conn_dlq_cruda, llm_client=None)
     yield cid
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
@@ -78,13 +112,14 @@ def _estado(conn_de_tenant, cid: str, trauma_id: int) -> str:
 # C1 — el trauma sale de la DLQ y llega entero al gate
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_un_trauma_reparable_pasa_los_gates(tenant_de_prueba, conn_de_tenant):
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     assert tomado is not None, "el trauma no salió de la DLQ"
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
 
@@ -99,6 +134,7 @@ async def test_un_trauma_reparable_pasa_los_gates(tenant_de_prueba, conn_de_tena
 # C2 — el control negativo que más importa
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, conn_de_tenant):
     """Equivocarse hacia el permiso acá emite una factura con CAE real ante AFIP. El trauma llega
@@ -108,7 +144,7 @@ async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, co
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/afip_gateway.py",
                categoria="business_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -116,6 +152,7 @@ async def test_CONTROL_un_trauma_del_dominio_FISCAL_no_pasa(tenant_de_prueba, co
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_tenant):
     """El gate que recorta la superficie en producción: un 503 no tiene código que reparar."""
@@ -123,7 +160,7 @@ async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_ten
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="infra_error")
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -131,6 +168,7 @@ async def test_CONTROL_un_transitorio_no_se_repara(tenant_de_prueba, conn_de_ten
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prueba, conn_de_tenant):
     """Todo trauma depositado antes de que las costuras guardaran `origen`. No es un error: es un
@@ -141,7 +179,7 @@ async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prue
                     error_type="KeyError", costura="http_handler",
                     contexto={"categoria": "business_error"})     # sin `origen`
 
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     decision = await A.evaluar_gates_de_reparacion(tomado)
 
     assert not decision["permitido"]
@@ -152,6 +190,7 @@ async def test_un_trauma_SIN_origen_se_rechaza_por_no_localizable(tenant_de_prue
 # C4 — el rechazo SUELTA el trauma (el que evita el trauma colgado para siempre)
 # ======================================================================================
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
 async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba, conn_de_tenant):
     """Se verifica **en la base**, no por el valor de retorno. Con RLS forzado, un UPDATE sin tenant
@@ -160,7 +199,7 @@ async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba,
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
 
     await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE,
@@ -184,23 +223,41 @@ async def test_marcar_trauma_lo_devuelve_a_PENDIENTE_de_verdad(tenant_de_prueba,
 
 
 @necesita_pg
+@necesita_rol_dlq
 @pytest.mark.asyncio
-async def test_marcar_trauma_con_el_tenant_EQUIVOCADO_falla_fuerte(tenant_de_prueba,
-                                                                   conn_de_tenant):
-    """El caso adversarial. Sin el chequeo de `rowcount`, este UPDATE no encontraría la fila y
-    devolvería éxito igual — el fallo silencioso que deja traumas colgados. Que grite es el punto."""
+async def test_marcar_trauma_con_un_ID_INEXISTENTE_falla_fuerte(tenant_de_prueba, conn_de_tenant):
+    """El caso adversarial, reescrito el 2026-08-01 junto con la topología.
+
+    **Antes** este test pasaba un `cliente_id` ajeno y esperaba el grito: con RLS forzado y una
+    conexión por tenant, el UPDATE no veía la fila, tocaba 0 filas y **devolvía éxito** — el trauma
+    quedaba colgado en `en_proceso` con el ciclo informando que lo había soltado.
+
+    Ese modo de fallo **ya no existe**: el ciclo corre con `BYPASSRLS` y encuentra la fila por `id`
+    sea de quien sea, que es exactamente lo que necesita un ciclo cross-tenant. El `cliente_id` del
+    payload pasó a ser informativo (va en el mensaje de error, no en el `WHERE`).
+
+    Lo que **sigue** existiendo es el fallo silencioso por `id` inexistente — un UPDATE que no
+    matchea nada tampoco protesta solo. Ese es el que el guard de `rowcount` cubre hoy, y es el que
+    este test ejercita. Se reescribió en vez de borrarse: el guard sigue vivo, cambió cuál es el
+    error que puede llegar a él.
+    """
     cid = tenant_de_prueba
     _depositar(conn_de_tenant, cid, archivo="apps/copiloto/cobro_store.py",
                categoria="business_error")
-    tomado = await A.tomar_trauma_para_reparar(cid)
+    tomado = await A.tomar_trauma_para_reparar()
 
-    ajeno = str(uuid.uuid4())
     with pytest.raises(RuntimeError, match="colgado"):
-        await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE, "nota": "x",
-                               "cliente_id": ajeno})
+        await A.marcar_trauma({"id": -1, "estado": PENDIENTE, "nota": "x", "cliente_id": cid})
 
-    # Y el trauma del dueño quedó intacto: el intento ajeno no lo movió.
+    # El trauma real quedó intacto: el intento contra un id inexistente no movió nada.
     assert _estado(conn_de_tenant, cid, tomado["id"]) == EN_PROCESO
+
+    # Control positivo del mismo guard: con el id REAL sí marca, aunque el `cliente_id` del payload
+    # sea de otro. Sin esta mitad, el test de arriba pasaría también con un `marcar_trauma` que
+    # fallara SIEMPRE — que es el instrumento que condena sin mirar.
+    await A.marcar_trauma({"id": tomado["id"], "estado": PENDIENTE, "nota": "ok",
+                           "cliente_id": str(uuid.uuid4())})
+    assert _estado(conn_de_tenant, cid, tomado["id"]) == PENDIENTE
 
 
 # ======================================================================================
@@ -208,13 +265,17 @@ async def test_marcar_trauma_con_el_tenant_EQUIVOCADO_falla_fuerte(tenant_de_pru
 # ======================================================================================
 @necesita_pg
 @pytest.mark.asyncio
-async def test_no_se_propone_NADA_si_el_parche_no_muta(tenant_de_prueba, conn_de_tenant, tmp_path):
+async def test_no_se_propone_NADA_si_el_parche_no_muta(tenant_de_prueba, conn_dlq_cruda, tmp_path):
     """Un PR vacío que dice "reparé X" es peor que no reparar: le enseña al revisor a aprobar sin
-    mirar, y esa costumbre después se aplica a los PR que sí cambian algo."""
+    mirar, y esa costumbre después se aplica a los PR que sí cambian algo.
+
+    `proponer_pr_de_reparacion` no toca `_conn_dlq` (sólo lee/escribe archivos), así que este test no
+    lleva `@necesita_rol_dlq`: corre igual sin el rol del ciclo. Se le pasa `conn_dlq_cruda` de todos
+    modos por ser la forma real que arma el composition root desde 2026-08-01."""
     cid = tenant_de_prueba
     archivo = tmp_path / "modulo.py"
     archivo.write_text("x = 1\n", encoding="utf-8")
-    A.set_autosanacion_deps(conn_de_tenant(cid), llm_client=None, raiz_repo=tmp_path)
+    A.set_autosanacion_deps(conn_dlq_cruda, llm_client=None, raiz_repo=tmp_path)
 
     resultado = await A.proponer_pr_de_reparacion({
         "trauma": {"id": 1, "fingerprint": "abc", "error_type": "KeyError"},

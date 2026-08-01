@@ -68,9 +68,23 @@ def flood_threshold() -> int:
 
 
 class TraumaStore:
-    """Depósito de errores por tenant. `conn_factory` debe venir envuelta con `conexion_con_tenant`."""
+    """Depósito de errores de la DLQ. **Dos modos de uso, y confundirlos falla en silencio.**
 
-    def __init__(self, conn_factory, cliente_id: str) -> None:  # noqa: ANN001
+    - **Por tenant** (`cliente_id` presente, `conn_factory` envuelta con `conexion_con_tenant`): es
+      el modo de la CAPTURA — `depositar`, y todo lo que escribe la fila de un emprendedor.
+    - **Para toda la app** (`cliente_id` vacío, `conn_factory` del rol `copiloto_autosanacion` con
+      `BYPASSRLS`): es el modo del CICLO DE REPARACIÓN — `tomar_un_bug_distinto` y
+      `hermanos_del_mismo_bug`, que agrupan por bug **cruzando tenants** porque un bug de nuestro
+      código no es de nadie en particular.
+
+    Por qué importa la distinción: los métodos cross-tenant corridos con una conexión de tenant **no
+    fallan** — devuelven lo de ese tenant y el `DISTINCT ON (fingerprint)` no agrupa nada, porque
+    dentro de un tenant el fingerprint ya es único. O sea: mismo resultado que antes, medición
+    equivocada, cero síntoma. De ahí que el nombre del parámetro en el composition root sea
+    `conn_dlq` y no `conn_factory` a secas.
+    """
+
+    def __init__(self, conn_factory, cliente_id: str = "") -> None:  # noqa: ANN001
         self._conn_factory = conn_factory
         self._cid = cliente_id
 
@@ -180,14 +194,22 @@ class TraumaStore:
                     f"""UPDATE {TABLA} SET estado = %s, intentos = intentos + 1,
                                            ultimo_intento_en = now(), updated_at = now()
                         WHERE id = (
-                            SELECT id FROM (
-                                SELECT DISTINCT ON (fingerprint) id, dedupe_count, updated_at
-                                  FROM {TABLA} WHERE estado = %s
-                                 ORDER BY fingerprint, dedupe_count DESC, updated_at
-                            ) AS por_bug
-                            ORDER BY dedupe_count DESC, updated_at
-                            LIMIT 1
-                            FOR UPDATE SKIP LOCKED
+                            -- Tres niveles, y el anidado NO es adorno: `FOR UPDATE` sólo se puede
+                            -- aplicar sobre una tabla REAL (Postgres: *"FOR UPDATE is not allowed
+                            -- with DISTINCT clause"* si el nivel que bloquea es una tabla derivada
+                            -- con DISTINCT). Así que el `DISTINCT ON` queda encerrado en el `IN`,
+                            -- que sólo elige candidatos, y el nivel que bloquea lee de {TABLA}.
+                            SELECT id FROM {TABLA}
+                             WHERE id IN (
+                                SELECT id FROM (
+                                    SELECT DISTINCT ON (fingerprint) id
+                                      FROM {TABLA} WHERE estado = %s
+                                     ORDER BY fingerprint, dedupe_count DESC, updated_at
+                                ) AS un_representante_por_bug
+                             )
+                             ORDER BY dedupe_count DESC, updated_at
+                             LIMIT 1
+                             FOR UPDATE SKIP LOCKED
                         )
                         RETURNING id, cliente_id::text, fingerprint, workflow, error_type, costura,
                                   contexto, dedupe_count, intentos""",
