@@ -55,5 +55,5 @@ def fingerprint_de_error(
     if exc is not None:
         error_type = type(exc).__name__
         error_message = str(exc)
-    partes = (workflow or "", error_type or "", (error_message or "")[:_LARGO_MENSAJE])
+    partes = (workflow or "", error_type or "", (error_message or "")[:_LARGO_MENSAJE] if error_message is not None else "")
     return djb2_hash("|".join(partes))
