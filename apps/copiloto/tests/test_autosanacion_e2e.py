@@ -223,3 +223,44 @@ async def test_no_se_propone_NADA_si_el_parche_no_muta(tenant_de_prueba, conn_de
 
     assert resultado["modo"] == "sin_cambios"
     assert resultado["url"] == ""
+
+
+# ======================================================================================
+# El ciclo NUNCA ramifica sobre el repo desplegado.
+# El VPS del worker tiene `gh` autenticado (verificado con `gh auth status`, 2026-07-31).
+# Sin este guard, `_abrir_pr` corría `git checkout -b` sobre el repo del que corre el
+# servicio vivo. Hoy no explotaba sólo porque ese path no es un repo git — depender de eso
+# es depender de que nadie cambie la forma de desplegar.
+# ======================================================================================
+def test_sin_repo_declarado_NO_se_abre_PR_aunque_haya_gh(monkeypatch, tmp_path):
+    monkeypatch.delenv(A.ENV_REPO_GIT, raising=False)
+    A.set_autosanacion_deps(lambda: None, raiz_repo=tmp_path)
+    assert A._repo_para_pr() is None, "sin repo declarado el modo PR tiene que estar apagado"
+
+
+def test_el_repo_del_PR_NO_puede_ser_el_DESPLEGADO(monkeypatch, tmp_path):
+    """El caso hostil concreto: alguien apunta la variable al repo de producción."""
+    (tmp_path / ".git").mkdir()
+    monkeypatch.setenv(A.ENV_REPO_GIT, str(tmp_path))
+    A.set_autosanacion_deps(lambda: None, raiz_repo=tmp_path)   # el MISMO path
+    assert A._repo_para_pr() is None, "ramificar sobre el repo desplegado tiene que ser imposible"
+
+
+def test_CONTROL_un_repo_distinto_y_valido_SI_habilita_el_PR(monkeypatch, tmp_path):
+    """El control positivo. Sin él, un `_repo_para_pr` que devolviera siempre `None` haría pasar los
+    dos tests de arriba dejando el modo PR muerto para siempre, sin que nadie se entere."""
+    desplegado, clon = tmp_path / "prod", tmp_path / "clon"
+    desplegado.mkdir()
+    (clon / ".git").mkdir(parents=True)
+    monkeypatch.setenv(A.ENV_REPO_GIT, str(clon))
+    A.set_autosanacion_deps(lambda: None, raiz_repo=desplegado)
+    assert A._repo_para_pr() == clon
+
+
+def test_un_repo_declarado_que_NO_es_git_no_habilita_nada(monkeypatch, tmp_path):
+    desplegado, otro = tmp_path / "prod", tmp_path / "otro"
+    desplegado.mkdir()
+    otro.mkdir()          # existe pero no tiene .git
+    monkeypatch.setenv(A.ENV_REPO_GIT, str(otro))
+    A.set_autosanacion_deps(lambda: None, raiz_repo=desplegado)
+    assert A._repo_para_pr() is None

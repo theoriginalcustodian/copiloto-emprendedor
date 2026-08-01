@@ -12,6 +12,7 @@ exactamente ese control, horneado en la suite.
 """
 from __future__ import annotations
 
+import datetime
 import os
 import uuid
 from decimal import Decimal
@@ -19,7 +20,7 @@ from decimal import Decimal
 import pytest
 
 from cobro_store import CobroStore
-from gasto_store import CATEGORIAS, GastoStore
+from gasto_store import CATEGORIAS, GastoStore, hoy_del_negocio
 from inteligencia_queries import DIAS_VENCIDO, InteligenciaQueries
 from presupuesto_store import PresupuestoStore
 from trabajo_store import TrabajoStore
@@ -50,6 +51,25 @@ def tenants(conn_de_tenant):
 
 # ── helpers de inserción (el territorio, no un sustituto) ────────────────────────────────────────
 
+def _dia_del_negocio(dias_atras: int = 0) -> datetime.date:
+    """El "hoy" del NEGOCIO (UTC−3), no el de Postgres.
+
+    Estos helpers escribían `CURRENT_DATE`, que Postgres evalúa en la zona del servidor —UTC en el
+    CI—, mientras las queries que se están probando recortan el mes con `hoy_del_negocio()`. Las dos
+    definiciones difieren durante las 3 horas de la noche argentina en que allá ya es el día
+    siguiente: entre las 21:00 y las 00:00 del último día del mes, las filas se escribían en el mes
+    entrante y las consultas seguían mirando el que terminaba, así que TODO leía `0.00`.
+
+    No es hipotético — es lo que pasó: 7 tests de este archivo se pusieron rojos en el CI del
+    2026-08-01T00:19Z, cuando en Argentina eran las 21:19 del 31/7. Y estaba escrito de antemano en
+    el docstring de `hoy_del_negocio`, que explica por qué la columna `fecha` **no tiene DEFAULT en
+    SQL**: *"dos definiciones de 'hoy' que divergen 3 horas por día es exactamente el tipo de bug que
+    aparece sólo a veces, de noche, y se cierra como 'no reproducible'"*. El fixture reintrodujo por
+    la puerta de atrás la trampa que el store había cerrado por la de adelante.
+    """
+    return hoy_del_negocio() - datetime.timedelta(days=dias_atras)
+
+
 def _comprobante(conn_de_tenant, cid, total, *, nro=1, estado="emitida", dias_atras=0,
                  receptor="Cliente Uno"):
     conn = conn_de_tenant(cid)()
@@ -58,8 +78,8 @@ def _comprobante(conn_de_tenant, cid, total, *, nro=1, estado="emitida", dias_at
                        (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae,
                         fecha_emision, total, estado, receptor_nombre)
                        VALUES (%s,'30712345678',6,1,%s,'CAE-TEST',
-                               CURRENT_DATE - %s, %s, %s, %s) RETURNING id""",
-                    (cid, nro, dias_atras, total, estado, receptor))
+                               %s, %s, %s, %s) RETURNING id""",
+                    (cid, nro, _dia_del_negocio(dias_atras), total, estado, receptor))
         return cur.fetchone()[0]
 
 
@@ -67,8 +87,8 @@ def _gasto(conn_de_tenant, cid, monto, *, categoria="otros", dias_atras=0):
     conn = conn_de_tenant(cid)()
     with conn.cursor() as cur:
         cur.execute("""INSERT INTO uc_factory.copiloto_gastos (cliente_id, monto, fecha, categoria)
-                       VALUES (%s, %s, CURRENT_DATE - %s, %s)""",
-                    (cid, monto, dias_atras, categoria))
+                       VALUES (%s, %s, %s, %s)""",
+                    (cid, monto, _dia_del_negocio(dias_atras), categoria))
 
 
 def _mp_payment(conn_de_tenant, cid, amount, *, status="approved", pid=None):
@@ -342,9 +362,9 @@ def _trabajo_completo(conn_de_tenant, cid, *, nro=800):
         cur.execute("""INSERT INTO uc_factory.afip_comprobantes
                        (cliente_id, cuit, tipo_cbte, punto_venta, nro, cae, fecha_emision, total,
                         estado, receptor_nombre, workflow_id)
-                       VALUES (%s,'30712345678',6,1,%s,'CAE-T',CURRENT_DATE,'100000.00','emitida',
+                       VALUES (%s,'30712345678',6,1,%s,'CAE-T',%s,'100000.00','emitida',
                                'Panadería Los Tilos', %s) RETURNING id""",
-                    (cid, nro, f"factura-{cid}-{factura_id}"))
+                    (cid, nro, _dia_del_negocio(), f"factura-{cid}-{factura_id}"))
         comprobante = cur.fetchone()[0]
     return p["id"], comprobante
 

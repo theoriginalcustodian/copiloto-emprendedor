@@ -27,6 +27,10 @@ import pytest
 from taxonomia_errores import (BUSINESS_ERROR, CASCADING, CATEGORIAS, INFRA_ERROR,
                                MANUAL_INTERVENTION, ErrorSinCategoria, categoria_de,
                                es_reintentable, registrar_categoria)
+#: Privado a propósito: se importa sólo para el control de `TestHerenciaPorMro`, que necesita
+#: afirmar que `URLError` NO está registrado — si alguien lo agrega, ese test dejaría de probar el
+#: MRO y pasaría igual, y esto lo convierte en un fallo ruidoso en vez de un verde vacío.
+from taxonomia_errores import _REGISTRO
 
 
 class TestCategorias:
@@ -68,6 +72,53 @@ class TestCategorias:
 
         with pytest.raises(ValueError):
             registrar_categoria(Otro, "categoria_inventada")
+
+
+class TestHerenciaPorMro:
+    """Una subclase hereda la categoría de su padre — y sin esto la suite quedaba CIEGA.
+
+    Lo destapó el banco de casos reales del ciclo de auto-reparación (2026-07-31): reemplazar
+    `for tipo in type(exc).__mro__` por `for tipo in [type(exc)]` —el "esto se puede simplificar"
+    clásico— dejaba los 9 tests de este archivo en VERDE, porque todos usaban tipos registrados
+    **directamente**. La propiedad estaba prometida en el docstring del módulo y no la vigilaba
+    nadie.
+
+    Importa porque el gate de no-regresión de la autosanación es exactamente tan bueno como esta
+    suite: lo que ningún test mira, un parche lo puede borrar y el gate lo aprueba.
+    """
+
+    def test_una_subclase_hereda_la_categoria_del_padre(self) -> None:
+        """El caso del docstring: `HTTPError(OSError)` es infra sin registrarlo una por una."""
+        class ErrorHttpDeAlgunaLibreria(OSError):
+            pass
+
+        assert categoria_de(ErrorHttpDeAlgunaLibreria("502 del proveedor")) == INFRA_ERROR
+
+    def test_un_error_de_la_stdlib_que_NADIE_registro_igual_se_clasifica(self) -> None:
+        """`urllib.error.URLError` hereda de `OSError` y no está en el registro. Que se clasifique
+        bien es la prueba de que el MRO se recorre de verdad, no de que alguien lo anotó."""
+        from urllib.error import URLError
+
+        assert URLError not in _REGISTRO, "si alguien lo registró, este test dejó de probar el MRO"
+        assert categoria_de(URLError("no resuelve el DNS")) == INFRA_ERROR
+
+    def test_y_por_eso_se_reintenta_solo(self) -> None:
+        """La consecuencia, no la etiqueta: sin herencia, un 502 transitorio se vuelve un error
+        sin categoría y nunca más se reintenta automáticamente."""
+        from urllib.error import URLError
+
+        assert es_reintentable(categoria_de(URLError("timeout del proveedor"))) is True
+
+    def test_CONTROL_lo_especifico_le_gana_al_padre(self) -> None:
+        """EL CONTROL. Sin esto, `return INFRA_ERROR` a secas pasaría los tres tests de arriba.
+        Registrar la subclase tiene que poder contradecir al padre, o el MRO no está eligiendo:
+        está devolviendo lo primero que encuentra por casualidad."""
+        class ErrorQueParecePeroNoEs(OSError):
+            pass
+
+        registrar_categoria(ErrorQueParecePeroNoEs, BUSINESS_ERROR)
+        assert categoria_de(ErrorQueParecePeroNoEs("el CUIT del receptor no existe")) == BUSINESS_ERROR
+        assert categoria_de(OSError("la red se cayó")) == INFRA_ERROR
 
 
 class TestSemanticaDeAccion:

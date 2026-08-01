@@ -38,8 +38,18 @@ def test_el_kill_switch_apaga_con_cualquiera_de_sus_formas(monkeypatch, valor):
 
 
 def test_el_kill_switch_se_lee_en_CADA_decision_no_al_arrancar(monkeypatch):
-    """Apagarlo tiene que surtir efecto sin reiniciar el worker. Si hiciera falta un reinicio, no
-    sería un kill switch — sería un cambio de configuración."""
+    """No se cachea al importar: cambiar `os.environ` surte efecto en la decisión siguiente.
+
+    ⚠️ **Lo que este test NO prueba, y su versión anterior afirmaba que sí:** que el ciclo se pueda
+    apagar sin reiniciar el worker. `monkeypatch.setenv` cambia `os.environ` del proceso de pytest —
+    que no es el camino por el que la variable llega en producción. Ahí el worker corre bajo systemd
+    con `EnvironmentFile=`, que fija el entorno **al arrancar**: editar el archivo no toca un proceso
+    vivo (verificado en `/proc/<pid>/environ`, 2026-07-31).
+
+    Este test mide el módulo; la propiedad que importaba vivía en el despliegue, y ninguna de las dos
+    mitades vigilaba esa frontera. El apagado inmediato es pausar el Schedule
+    ([[kill-switch-por-env-no-es-inmediato-bajo-systemd]]).
+    """
     monkeypatch.delenv(ENV_KILL_SWITCH, raising=False)
     assert puede_reparar(ruta="x.py", reparaciones_hoy=0, categoria="business_error").permitido
     monkeypatch.setenv(ENV_KILL_SWITCH, "1")

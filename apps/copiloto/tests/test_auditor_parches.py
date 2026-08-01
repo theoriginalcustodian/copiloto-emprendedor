@@ -17,7 +17,8 @@ import os
 
 import pytest
 
-from auditor_parches import (AUDITOR, PARCHES_ROTOS, Veredicto, auditar,
+from auditor_parches import (AUDITOR, CABECERA_EVIDENCIA as _CABECERA_EVIDENCIA,
+                             EVIDENCIA_DE_CONTROL, PARCHES_ROTOS, Veredicto, auditar,
                              verificar_auditor)
 
 
@@ -31,11 +32,15 @@ class _ClienteFalso:
         self._contenido = contenido
         self._explota = explota
         self.modelos_pedidos: list[str] = []
+        #: Los prompts tal como salieron. Sin guardarlos no se puede afirmar QUÉ vio el auditor, sólo
+        #: que contestó — y desde que existe `evidencia`, lo que ve es justamente lo que está en juego.
+        self.prompts_enviados: list[str] = []
         outer = self
 
         class _Completions:
             def create(self, **kw):  # noqa: ANN003, ANN202
                 outer.modelos_pedidos.append(kw.get("model"))
+                outer.prompts_enviados.append(kw.get("messages", [{}])[0].get("content", ""))
                 if outer._explota:
                     raise RuntimeError("la API no responde")
                 mensaje = type("M", (), {"content": outer._contenido})
@@ -91,6 +96,47 @@ def test_verificar_auditor_DETECTA_un_auditor_complaciente():
 def test_verificar_auditor_da_VERDE_con_un_auditor_que_rechaza():
     sano, fallos = verificar_auditor(_ClienteFalso('{"aprobado": false, "motivo": "rompe la lógica"}'))
     assert sano is True and fallos == []
+
+
+def test_el_auditor_RECIBE_la_evidencia_del_fallo():
+    """Sin la causa a la vista, *"¿arregla la causa?"* no es una pregunta contestable.
+
+    Medido (2026-07-31): con sólo el diff y la lista de "no romper", `gpt-4o` rechazó **3 de 3
+    intentos** el parche correcto del recorrido del MRO, porque restaurar la lógica borrada se lee
+    como *"cambiar la lógica de herencia"* — justo lo que el contexto pedía no romper. Con la
+    evidencia, el banco de casos reales pasó de 2/3 a 3/3."""
+    cliente = _ClienteFalso('{"aprobado": false, "motivo": "no"}')
+    auditar(cliente, "diff", "ctx", evidencia="FAILED tests/test_taxonomia_errores.py::test_mro")
+    assert _CABECERA_EVIDENCIA in cliente.prompts_enviados[0]
+    assert "test_mro" in cliente.prompts_enviados[0]
+
+
+def test_CONTROL_sin_evidencia_no_aparece_el_bloque():
+    """EL CONTROL del test de arriba, y no fue decorativo: **se puso rojo la primera vez.**
+
+    El assert original buscaba la frase `"EVIDENCIA DEL FALLO"`, que también aparece en la
+    `INSTRUCCION` fija ("juzgá el parche contra la EVIDENCIA DEL FALLO…"). O sea que el test positivo
+    pasaba **siempre**, mandara o no la evidencia. Por eso se compara contra la cabecera exacta del
+    bloque. Un prompt que anuncia "EVIDENCIA DEL FALLO:" seguido de nada es peor que no decirlo: le
+    promete al modelo un dato que no le dio."""
+    cliente = _ClienteFalso('{"aprobado": false, "motivo": "no"}')
+    auditar(cliente, "diff", "ctx")
+    assert _CABECERA_EVIDENCIA not in cliente.prompts_enviados[0]
+
+
+def test_el_KILL_SWITCH_somete_los_parches_con_evidencia_igual_que_produccion():
+    """Paridad con el camino real, y no es cosmética.
+
+    Desde que existe `evidencia`, el ciclo la manda **siempre**. Un kill switch que la omitiera
+    verificaría una forma de llamada que ya nadie usa —el error de
+    [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]— y encima dejaría fuera del
+    control justo el escenario que más podría ablandar al auditor: ver tests en rojo y tener enfrente
+    el parche **C**, que los pone verdes modificando el test."""
+    cliente = _ClienteFalso('{"aprobado": false, "motivo": "rompe la lógica"}')
+    verificar_auditor(cliente)
+    assert len(cliente.prompts_enviados) == len(PARCHES_ROTOS) == 3
+    for prompt in cliente.prompts_enviados:
+        assert EVIDENCIA_DE_CONTROL in prompt, "un parche congelado se auditó sin evidencia"
 
 
 def test_los_tres_parches_congelados_siguen_siendo_los_tres():
