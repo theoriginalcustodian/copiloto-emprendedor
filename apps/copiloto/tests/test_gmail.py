@@ -62,7 +62,13 @@ def test_fetch_es_lectura_directa_sin_confirmar():
                     reason="real: requiere COMPOSIO_API_KEY + COPILOTO_COMPOSIO_USER_ID (correr en el VPS)")
 def test_send_real_y_readback():
     """E2E REAL: el módulo Gmail arma el call, el gateway lo ejecuta contra la cuenta, y el mail aparece."""
-    from composio_gateway import ComposioGateway
+    # `clients.agent.providers.composio_gateway`, no `composio_gateway` a secas: el bootstrap
+    # canónico (`_paths.py`) pone en sys.path `motor`, `apps/copiloto` y `deploy/worker` — NUNCA
+    # `motor/clients/agent/providers`. El import pelado no funcionaba en ningún entorno, y no se
+    # notó porque este test sólo corre con credenciales, que el dev-loop y el CI no tienen. La
+    # única vez que llegó a ejecutarse fue dentro del sandbox de la autosanación (2026-08-01),
+    # que heredaba el entorno del worker — y ahí murió en el import.
+    from clients.agent.providers.composio_gateway import ComposioGateway
     import services
     user = os.environ["COPILOTO_COMPOSIO_USER_ID"]
     to = os.environ.get("COPILOTO_TEST_EMAIL", "341lin@gmail.com")

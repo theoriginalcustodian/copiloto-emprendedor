@@ -51,6 +51,21 @@ La diferencia entre las dos: **el auditor tenía control positivo** —`test_REA
 que le pasa un parche bueno y exige que lo apruebe— y por eso su sesgo se pudo acorralar. El gate de
 tests no tenía ninguno: nada afirmaba nunca *"el gate aceptó algo real"*.
 
+## Por qué el banco daba 12/12 y 3/3 con el gate de producción mudo
+
+`scripts/medir_c0_autosanacion.py:311` ya declaraba `--python default=sys.executable`. **El banco
+ejercitaba el ciclo con el intérprete correcto; producción usaba otro.** Las dos rutas divergían
+exactamente en el parámetro que estaba roto, así que ninguna medición del banco —por buena que fuera,
+y era buena: 12/12 de consistencia, 3/3 de amplitud, contra el LLM real— podía enterarse.
+
+Es [[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]] otra vez, y en su forma más
+incómoda: no fallaba el banco ni la suite, fallaba **el único parámetro que el banco elegía por su
+cuenta en vez de heredar**. Cuando un instrumento tiene que *elegir* algo que producción también
+elige, esa elección es una junta — y las juntas son de nadie.
+
+Barrido posterior: no hay otro `"python3"` hardcodeado en el repo (`apps/`, `deploy/`, `scripts/`,
+`motor/`), así que el arreglo es de raíz y no un parche puntual.
+
 ## Y el criterio del propio E2E era demasiado flojo
 
 `DESENLACES_QUE_PRUEBAN` incluía `rechazado_por_tests`, que el gate devuelve **tanto cuando midió y
@@ -60,6 +75,25 @@ un motivo con `NO_EVALUABLE` ya no cuenta como prueba, por más que el estado es
 Es la misma trampa que la del banco de casos reales unas horas antes: **un solo veredicto cubriendo
 dos realidades opuestas**. Cuando un resultado puede significar "funcionó" o "ni se ejecutó", no es
 un resultado.
+
+## El coletazo: arreglar un mecanismo mudo lo vuelve PELIGROSO
+
+Apenas el gate empezó a correr tests de verdad, apareció lo que su mudez venía tapando: el sandbox
+**hereda el entorno del worker**, que en producción tiene las credenciales reales. Con ellas puestas
+se activan los tests de integración real —Composio, Drive, Docs, Sheets, el LLM—, y uno de ellos,
+`test_gmail::test_send_real_y_readback`, **manda un mail**. El ciclo corre la suite dos veces por
+intento, hasta tres intentos por trauma, todos los días a las 04:00.
+
+O sea: **mientras el gate estuvo roto, ese riesgo fue teórico. El arreglo lo activó.** Un mecanismo
+que nunca funcionó no tiene su comportamiento en producción probado por nadie — ni siquiera el que
+lo arregla, si sólo mira que ahora "haga algo".
+
+Al reparar algo que nunca funcionó, la pregunta no es *¿ya funciona?* sino **¿qué hace ahora que
+antes no hacía, y quién lo autorizó?** Acá la respuesta correcta era que el gate debe ser
+**hermético**: sin credenciales de servicios externos, sin efectos afuera, determinista. El módulo ya
+tenía esa doctrina escrita para `DATABASE_URL` (*"el gate jamás debe escribir en una base real"*) y
+aplicada a **una sola variable**. Generalizarla es el arreglo; se hizo por patrón (`*_API_KEY`,
+`*_TOKEN`, …) para que una integración nueva quede tapada sola.
 
 ## Al revisar cualquier gate, guarda, validador o filtro
 

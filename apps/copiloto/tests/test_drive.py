@@ -58,7 +58,13 @@ def test_find_es_lectura_directa():
 @pytest.mark.skipif(not (os.environ.get("COMPOSIO_API_KEY") and os.environ.get("COPILOTO_COMPOSIO_USER_ID")),
                     reason="real: requiere COMPOSIO_API_KEY + COPILOTO_COMPOSIO_USER_ID (VPS)")
 def test_create_real_y_readback():
-    from composio_gateway import ComposioGateway
+    # `clients.agent.providers.composio_gateway`, no `composio_gateway` a secas: el bootstrap
+    # canónico (`_paths.py`) pone en sys.path `motor`, `apps/copiloto` y `deploy/worker` — NUNCA
+    # `motor/clients/agent/providers`. El import pelado no funcionaba en ningún entorno, y no se
+    # notó porque este test sólo corre con credenciales, que el dev-loop y el CI no tienen. La
+    # única vez que llegó a ejecutarse fue dentro del sandbox de la autosanación (2026-08-01),
+    # que heredaba el entorno del worker — y ahí murió en el import.
+    from clients.agent.providers.composio_gateway import ComposioGateway
     import services
     user = os.environ["COPILOTO_COMPOSIO_USER_ID"]
     gw = ComposioGateway(services.merged_policy())
