@@ -99,7 +99,8 @@ verde no es un PR útil.
 rompe nada de lo que ya funcionaba… el paso que convertiría esto en reparación demostrable es que el
 ciclo escriba primero un **test que reproduzca el trauma**"*— y lo deja como deuda visible. Lo que
 aporta el #179 es la **confirmación empírica**: dejó de ser un riesgo razonado y pasó a ser un caso
-con número de PR. Ese es el próximo paso del frente, y sigue sin construir.
+con número de PR — y eso fue lo que lo movió. Un riesgo razonado no mueve a nadie; uno con número de
+PR sí. Construido el mismo día (§6).
 
 ### El supuesto que casi cuesta el ciclo: `gh` autenticado ≠ `git push` autenticado
 
