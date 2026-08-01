@@ -233,6 +233,23 @@ async def main() -> int:
                           f"que nadie mira. Esto NO es un E2E verde.", file=sys.stderr)
                     return 1
 
+            # El gate de reproducción tiene que haberse PRONUNCIADO. Se exige que el desenlace traiga
+            # el veredicto, NO que sea `True`: este E2E fabrica un trauma sobre un archivo que no
+            # tiene el bug, así que lo correcto ahí es que el forjador no consiga escribir un test
+            # que falle hoy. Exigir `demostrado` sería exigirle al modelo que mienta — y un criterio
+            # que sólo se puede cumplir mintiendo termina premiando al que miente.
+            if estado == "pr_propuesto":
+                if "arreglo_demostrado" not in resultado:
+                    print("❌ el desenlace no trae `arreglo_demostrado`: volvimos a un `pr_propuesto` "
+                          "que cubre dos realidades opuestas (arreglo probado vs. no-op).",
+                          file=sys.stderr)
+                    return 1
+                print(f"  arreglo demostrado : {resultado['arreglo_demostrado']} "
+                      f"(reproducción: {resultado.get('reproduccion')})")
+                if not resultado["arreglo_demostrado"]:
+                    print("  ℹ️  esperable en este E2E: el trauma es sintético sobre un archivo sano, "
+                          "así que no hay test que pueda fallar hoy. Lo que importa es que se DIGA.")
+
             if estado not in DESENLACES_QUE_PRUEBAN:
                 print(f"❌ desenlace '{estado}': el ciclo NO llegó a forjar. "
                       f"Esperado uno de {DESENLACES_QUE_PRUEBAN}", file=sys.stderr)
