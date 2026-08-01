@@ -91,12 +91,16 @@ tests verifica **no-regresión**, así que un parche inocuo lo pasa igual de bie
 existe hoy un control que distinga *arregla* de *no rompe*. Con traumas reales eso importa: un PR
 verde no es un PR útil.
 
-**Y no es un hallazgo nuevo: estaba previsto y escrito.** El docstring de
+> **RESUELTO el mismo día** — ver §6. El gate ahora corre un test de reproducción y distingue
+> `arreglo_demostrado` de `no rompe`. Lo de abajo queda como la historia de por qué existe.
+
+**Y no era un hallazgo nuevo: estaba previsto y escrito.** El docstring de
 `autosanacion_activities.py` ya lo dice —*"el gate de tests, acá, sólo puede afirmar que el parche no
 rompe nada de lo que ya funcionaba… el paso que convertiría esto en reparación demostrable es que el
 ciclo escriba primero un **test que reproduzca el trauma**"*— y lo deja como deuda visible. Lo que
 aporta el #179 es la **confirmación empírica**: dejó de ser un riesgo razonado y pasó a ser un caso
-con número de PR. Ese es el próximo paso del frente, y sigue sin construir.
+con número de PR — y eso fue lo que lo movió. Un riesgo razonado no mueve a nadie; uno con número de
+PR sí. Construido el mismo día (§6).
 
 ### El supuesto que casi cuesta el ciclo: `gh` autenticado ≠ `git push` autenticado
 
@@ -240,3 +244,58 @@ desde una tool call **mueren al cerrarse la call**. Para desacoplar de verdad ha
   script **verifica** que no coincidan, en vez de dejarlo escrito en un runbook.
 - El deploy corre `ensure_autosanacion_schedules.py` **antes** de reiniciar los units. Sin riesgo
   real: el Schedule dispara de madrugada.
+
+---
+
+## 6. 🩺 El gate que distingue *arregla* de *no rompe* (2026-08-01, mismo día)
+
+Lo que en §2.bis figuraba como limitación estructural está construido. El forjador produce, junto al
+parche, **un test que reproduce el bug**, y el gate lo corre **dos veces**: sin el parche (donde debe
+FALLAR) y con el parche (donde debe PASAR).
+
+### Los cinco desenlaces, y por qué cinco
+
+| Estado | Qué significa | ¿Rechaza? |
+|---|---|---|
+| `arreglo_demostrado` | falla sin el parche, pasa con él | — ✅ |
+| `parche_no_arregla` | el test sigue rojo con el parche | **SÍ** — el único |
+| `test_no_reproduce` | el test pasa sin el parche: no ejercita el bug | no |
+| `test_invalido` | 0 recolectados / timeout: no es que no falle, es que no corre | no |
+| `sin_test_de_reproduccion` | el forjador se abstuvo | no |
+
+**Sólo uno rechaza, y es deliberado.** Los otros tres son fallas del *instrumento*, no del parche.
+Si un forjador flojo escribiendo tests pudiera tumbar parches correctos, el ciclo se apagaría solo —
+y como falla hacia el "no", nadie se enteraría ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+Cuando no hay demostración el ciclo **igual propone**, pero el PR, el mensaje de commit y el
+artefacto lo dicen en la primera línea.
+
+### Lo que llega al revisor
+
+- **El test viaja EN EL COMMIT**, y sólo si el gate lo validó. Un test que no falla sin el parche no
+  se commitea: sería decoración que da confianza que nadie verificó.
+- El cuerpo del PR y el `git log` dicen `Arreglo DEMOSTRADO` o `Arreglo NO demostrado`. Nunca la
+  misma frase para los dos.
+
+### Dos decisiones de diseño que valen más que el código
+
+1. **El nombre del archivo de test lo pone el ciclo, no el modelo** (`test_repro_trauma_<id>.py`,
+   saneado). Un path elegido por un LLM puede salirse del árbol o pisar un test existente — y este
+   archivo termina commiteado en un repo real.
+2. **El E2E exige que el ciclo se PRONUNCIE, no que demuestre.** Fabrica un trauma sobre un archivo
+   sano: exigir `demostrado=True` ahí obligaría al modelo a inventar un test que "falla" por
+   cualquier motivo. Un criterio que sólo se puede cumplir mintiendo premia al que miente. Por eso
+   el prompt también ofrece la abstención explícita: *"si no podés escribir un test que falle hoy,
+   NO inventes uno"*.
+
+### Verificación
+
+- Suite en el VPS: **1407 passed**, 0 failed (+15).
+- **Probado por mutación, 5 mutaciones, cada una roja en el test correcto y sólo ese:** que
+  `parche_no_arregla` deje de rechazar · que no se restaure el archivo tras la reproducción · que un
+  test que pasa sin parche cuente como demostrado · que el test se commitee siempre · que no se
+  commitee nunca.
+- El test central corre **pytest de verdad** sobre un árbol de juguete con un bug real
+  (`dividir(1, 0)`), no con dobles: lo que puede fallar ahí es la mecánica —cwd, PYTHONPATH, dónde
+  se escribe el archivo— y un doble no ejercita nada de eso.
+
+Aprendizaje consolidado: [`memoria/no-romper-no-es-arreglar.md`](../../../memoria/no-romper-no-es-arreglar.md).

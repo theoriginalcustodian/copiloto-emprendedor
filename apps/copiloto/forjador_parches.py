@@ -117,6 +117,25 @@ def aplicar_bloques(texto_modelo: str, contenido: str) -> Aplicacion:
     return Aplicacion(True, nuevo, f"{len(bloques)} bloque(s) aplicado(s)", bloques=len(bloques))
 
 
+#: El test de reproducción viaja en su propio bloque: es un archivo COMPLETO, no un reemplazo dentro
+#: de otro. Marcador distinto del de `BLOQUE` a propósito — mezclarlos obligaría al modelo a usar
+#: SEARCH/REPLACE contra un archivo que todavía no existe.
+BLOQUE_TEST = re.compile(r"<<<<<<< TEST\n(.*?)\n>>>>>>> FIN TEST", re.DOTALL)
+
+
+def extraer_test(texto_modelo: str) -> str | None:
+    """El contenido del test de reproducción, o `None` si el modelo no lo produjo.
+
+    Devuelve el **contenido**, nunca una ruta: el nombre del archivo lo decide el ciclo, no el
+    modelo. Dejar que un LLM elija dónde escribir es abrirle la puerta a `../..` y a pisar un test
+    existente — y acá el archivo termina commiteado en un repo de verdad.
+    """
+    encontrado = BLOQUE_TEST.search(texto_modelo)
+    if not encontrado:
+        return None
+    return encontrado.group(1).strip() or None
+
+
 def prompt_de_forja(*, archivo: str, contenido: str, salida_pytest: str, no_romper: str) -> str:
     """El prompt del forjador.
 
@@ -125,7 +144,12 @@ def prompt_de_forja(*, archivo: str, contenido: str, salida_pytest: str, no_romp
     cuatro: el archivo entero, la salida **real** de pytest (no un resumen), qué NO romper, y el
     formato exacto — y no una orden genérica del tipo *"arreglá el bug"*, que empíricamente **aumenta**
     las regresiones ([[localizacion-estructurada-feedback-agentes]]).
+
+    **Y desde el 2026-08-01 pide una segunda cosa: un test que REPRODUZCA el bug.** Sin él, el gate
+    sólo puede afirmar que el parche no rompe nada — que es exactamente lo que dejó pasar un parche
+    no-op con CI 5/5 (PR #179). El test es lo único que convierte "no rompió" en "arregló".
     """
+    modulo = archivo.rsplit("/", 1)[-1].removesuffix(".py")
     return f"""Sos un ingeniero reparando UN bug puntual. NO reescribas el módulo.
 
 ARCHIVO {archivo}:
@@ -140,15 +164,37 @@ SALIDA REAL DE PYTEST:
 
 QUÉ NO ROMPER: {no_romper}
 
-Respondé SOLO con uno o más bloques en este formato EXACTO, copiando el texto a buscar
-LITERALMENTE del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que
-aparecer UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de contexto.
+Respondé con DOS cosas, en este orden.
+
+1) EL ARREGLO: uno o más bloques en este formato EXACTO, copiando el texto a buscar LITERALMENTE
+del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que aparecer
+UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de contexto.
 
 <<<<<<< SEARCH
 (texto exacto actual)
 =======
 (texto nuevo)
 >>>>>>> REPLACE
+
+2) UN TEST QUE REPRODUZCA EL BUG. Archivo pytest completo, sin fences ```, entre estos marcadores:
+
+<<<<<<< TEST
+(archivo de test completo)
+>>>>>>> FIN TEST
+
+El test tiene que FALLAR con el código ACTUAL y PASAR con tu arreglo aplicado. Se va a correr las
+dos veces y se comparan los resultados. Es lo único que prueba que arreglaste algo: sin él, un
+cambio que no rompe nada es indistinguible de uno que tampoco arregla nada.
+
+Reglas del test, todas obligatorias:
+- importá el módulo bajo prueba por su nombre (`import {modulo}` o `from {modulo} import ...`), sin
+  rutas relativas y sin tocar `sys.path`;
+- ejercitá EXACTAMENTE la condición del error de arriba, con los mismos datos si los tenés;
+- nada de red, base de datos, archivos ni servicios externos: tiene que correr aislado;
+- una sola función de test, con nombre descriptivo del bug;
+- el assert tiene que fallar HOY **por el bug**, no por un import roto ni por un error de sintaxis;
+- si no podés escribir un test que falle hoy por esta causa, NO inventes uno: omití el bloque TEST
+  por completo. Un test que pasa antes y después no prueba nada y va a ser descartado.
 """
 
 
@@ -177,6 +223,10 @@ def _neutralizar_marcadores(texto: str) -> str:
             lineas.append("  [y lo reemplazabas por]")
         elif pelada.startswith(">>>>>>> REPLACE"):
             lineas.append("  [fin del cambio propuesto]")
+        elif pelada.startswith("<<<<<<< TEST"):
+            lineas.append("  [y este test proponías]")
+        elif pelada.startswith(">>>>>>> FIN TEST"):
+            lineas.append("  [fin del test propuesto]")
         elif pelada.startswith("```"):
             continue          # los fences también invitan a imitar la envoltura
         else:
@@ -233,12 +283,20 @@ QUÉ NO ROMPER: {no_romper}
 Pensá qué asumiste mal en el intento anterior antes de escribir. Si el rechazo fue por romper otros
 tests, tu parche tocó algo de lo que esos tests dependen: acotá el cambio.
 
-Tu respuesta tiene que EMPEZAR con la línea `<<<<<<< SEARCH`. No la envuelvas en ``` ni omitas
-ninguno de los tres marcadores: un parche sin ellos se descarta entero aunque el arreglo sea correcto.
+No envuelvas nada en ``` ni omitas ninguno de los marcadores: un parche sin sus tres marcadores se
+descarta entero aunque el arreglo sea correcto.
 
-Respondé SOLO con uno o más bloques en este formato EXACTO, copiando el texto a buscar
-LITERALMENTE del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que
-aparecer UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de contexto.
+Respondé con el arreglo Y con un test que reproduzca el bug (falla con el código actual, pasa con
+tu arreglo). Si el rechazo anterior fue porque tu test no fallaba sin el parche, ese test no
+ejercitaba la causa: escribí otro o no lo mandes.
+
+<<<<<<< TEST
+(archivo de test completo, sin fences)
+>>>>>>> FIN TEST
+
+Y el arreglo en uno o más bloques en este formato EXACTO, copiando el texto a buscar LITERALMENTE
+del archivo (mismos espacios, misma indentación). El fragmento que cites tiene que aparecer
+UNA SOLA VEZ en el archivo: si es ambiguo, incluí más líneas de contexto.
 
 <<<<<<< SEARCH
 (texto exacto actual)

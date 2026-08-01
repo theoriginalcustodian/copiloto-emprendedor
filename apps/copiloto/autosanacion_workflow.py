@@ -141,7 +141,12 @@ class AutosanacionWorkflow:
         # dos se leen igual desde afuera. Así el camino de PR estuvo roto sin que nada protestara
         # (2026-08-01). Un resultado que puede significar dos cosas contrarias no es un resultado.
         return {"estado": "pr_propuesto", "url": pr.get("url"), "modo": pr.get("modo"),
-                "motivo": pr.get("motivo"), "trauma_id": trauma.get("id")}
+                "motivo": pr.get("motivo"), "trauma_id": trauma.get("id"),
+                # Por la MISMA razón que `modo`, un nivel más adentro: sin esto, "el ciclo abrió un
+                # PR" cubre por igual un arreglo probado y un cambio que no arregla nada (PR #179).
+                # El desenlace tiene que decir cuál de los dos fue.
+                "arreglo_demostrado": bool(prueba.get("arreglo_demostrado")),
+                "reproduccion": (prueba.get("reproduccion") or {}).get("estado")}
 
     async def _soltar(self, trauma: dict, motivo: str) -> None:
         """Devuelve el trauma a `pendiente` con la nota del rechazo.
