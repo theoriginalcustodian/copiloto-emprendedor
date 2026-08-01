@@ -30,11 +30,24 @@ Por eso el diseño no cambia pero su lectura sí:
 - y el gate por categoría (`CATEGORIAS_REPARABLES`) recorta la superficie a `business_error`, que es
   donde un parche de código tiene sentido. Un timeout no se repara: se reintenta.
 
-**Lo que queda pendiente y hay que decir en voz alta:** el paso que convertiría esto en reparación
-demostrable es que el ciclo escriba primero un **test que reproduzca el trauma**, y recién después
-lo arregle. No está construido. Sin él, "aceptado por el gate" significa *no rompió nada*, y eso es
-menos de lo que la palabra sugiere. Está marcado como deuda visible, con dueño, en la memoria del
-repo.
+## Y desde el 2026-08-01 el gate SÍ puede afirmar "arregla" — cuando hay test
+
+Lo que acá arriba figuraba como deuda pendiente está construido. El forjador produce, junto al
+parche, **un test que reproduce el bug**, y el gate lo corre **dos veces**: sin el parche (donde
+debe FALLAR) y con el parche (donde debe PASAR). Eso —y sólo eso— convierte *no rompió nada* en
+*arregló el bug*.
+
+Lo detonó un caso real: el PR #179, primer PR que el ciclo abrió solo, pasó CI 5/5 con un parche
+**semánticamente equivalente al original**. Un no-op no rompe nada, así que la no-regresión lo
+aprueba con honores. El riesgo estaba escrito acá desde el principio; el #179 lo hizo medible.
+
+**Los cinco desenlaces, y por qué son cinco y no dos** (`sandbox_tests`): `arreglo_demostrado` ·
+`parche_no_arregla` (el ÚNICO que rechaza) · `test_no_reproduce` · `test_invalido` ·
+`sin_test_de_reproduccion`. Las tres últimas son fallas del **instrumento**, no del parche, y no
+pueden tumbarlo: si un forjador flojo escribiendo tests pudiera rechazar parches buenos, el ciclo se
+apagaría por la puerta de atrás — y un mecanismo que falla hacia el "no" no da síntoma
+([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]). Cuando no hay demostración, el ciclo **igual
+propone**, pero el PR, el commit y el artefacto lo dicen en la primera línea.
 """
 from __future__ import annotations
 
@@ -53,8 +66,9 @@ from temporalio import activity
 from autosanacion_gates import puede_reparar
 from auditor_parches import auditar as _auditar
 from auditor_parches import verificar_auditor
-from forjador_parches import aplicar_bloques, prompt_de_forja
-from sandbox_tests import correr_suite, evaluar, preparar_copia
+from forjador_parches import aplicar_bloques, extraer_test, prompt_de_forja
+from sandbox_tests import (SIN_TEST, TIMEOUT_TEST_REPRO, correr_suite, evaluar,
+                           evaluar_reproduccion, nombre_de_test_de_reproduccion, preparar_copia)
 from trauma_store import PENDIENTE, TABLA, TraumaStore
 
 #: `warning` y no `info`, por la misma razón que `log_estructurado`: sin `basicConfig`, el
@@ -309,7 +323,11 @@ async def forjar_parche(trauma: dict) -> dict:
     aplicacion = aplicar_bloques(texto, contenido)
     return {"aplicado": aplicacion.ok, "motivo": aplicacion.detalle,
             "contenido": aplicacion.contenido if aplicacion.ok else "",
-            "parche": texto, "archivo": origen["archivo"], "no_romper": no_romper}
+            "parche": texto, "archivo": origen["archivo"], "no_romper": no_romper,
+            # El test de reproducción viaja junto al parche. Puede ser `None`: el prompt pide
+            # explícitamente NO inventar uno si no se puede escribir un test que falle hoy, y esa
+            # abstención es información honesta — no un fallo del forjador.
+            "test_reproduccion": extraer_test(texto)}
 
 
 # ======================================================================================
@@ -362,8 +380,13 @@ async def probar_parche_en_sandbox(payload: dict) -> dict:
     3. verde con **menos** tests que el baseline se rechaza: borrar el test que molesta pone la
        suite verde y no arregla nada.
 
-    Y lo que este gate **no** puede afirmar acá: que el parche arregle el trauma. No hay test del
-    bug (docstring del módulo). Esto es no-regresión.
+    Y desde el 2026-08-01 contesta **dos** preguntas, no una:
+
+    - **¿arregla?** — el test de reproducción corrido sin el parche (debe fallar) y con él (debe
+      pasar). Es lo único que distingue un arreglo de un no-op; la suite verde no puede.
+    - **¿rompe?** — la no-regresión de siempre, con las tres reglas de arriba.
+
+    El orden importa: la reproducción va **primero**, porque necesita el árbol todavía sin parchear.
     """
     forja = payload["forja"]
     if not forja.get("aplicado"):
@@ -390,12 +413,64 @@ async def probar_parche_en_sandbox(payload: dict) -> dict:
         if not destino.exists():
             return {"aceptado": False, "regresiones": [],
                     "motivo": f"{forja['archivo']} no está en el sandbox: no se puede probar"}
+
+        # --- ¿ARREGLA? (antes de preguntar si rompe) -------------------------------------------
+        # Se corre PRIMERO porque es la pregunta que la suite no puede contestar, y porque necesita
+        # el árbol SIN el parche: una vez escrito el archivo parcheado ya no se puede volver atrás
+        # sin rehacer la copia.
+        repro = _probar_reproduccion(copia, python, forja, payload.get("trauma") or {},
+                                     contenido_original=destino.read_text(encoding="utf-8"),
+                                     destino=destino)
+
         destino.write_text(forja["contenido"], encoding="utf-8")
 
         parcheado = correr_suite(copia, python=python)
         veredicto = evaluar(baseline, parcheado)
-        return {"aceptado": veredicto.aceptado, "motivo": veredicto.motivo,
-                "regresiones": list(veredicto.regresiones)}
+
+        # El rechazo por "no arregla" manda sobre el de no-regresión: un parche que no arregla nada
+        # no mejora por no romper nada.
+        aceptado = veredicto.aceptado and not repro["rechaza"]
+        motivo = veredicto.motivo if aceptado or not repro["rechaza"] else repro["motivo"]
+        return {"aceptado": aceptado, "motivo": motivo,
+                "regresiones": list(veredicto.regresiones),
+                "arreglo_demostrado": repro["demostrado"],
+                "reproduccion": repro}
+
+
+def _probar_reproduccion(copia: Path, python: str, forja: dict, trauma: dict, *,
+                         contenido_original: str, destino: Path) -> dict:
+    """Corre el test de reproducción SIN el parche y CON el parche. Devuelve el dict de `Reproduccion`.
+
+    Deja la copia como la encontró (restaura el archivo original) para que la corrida de
+    no-regresión que viene después no herede el parche de acá.
+    """
+    contenido_test = forja.get("test_reproduccion")
+    if not contenido_test:
+        return {"estado": SIN_TEST, "motivo": "el forjador no produjo test de reproducción: el "
+                                              "gate sólo puede afirmar no-regresión",
+                "demostrado": False, "rechaza": False}
+
+    # El NOMBRE lo pone el ciclo, nunca el modelo: un path elegido por un LLM puede salirse del
+    # árbol o pisar un test existente, y este archivo termina commiteado en un repo real.
+    ruta_rel = f"tests/{nombre_de_test_de_reproduccion(trauma)}"
+    archivo_test = copia / "apps" / "copiloto" / ruta_rel
+    archivo_test.write_text(contenido_test, encoding="utf-8")
+    try:
+        sin_parche = correr_suite(copia, python=python, args=(ruta_rel, "-q", "-ra"),
+                                  timeout=TIMEOUT_TEST_REPRO)
+        destino.write_text(forja["contenido"], encoding="utf-8")
+        con_parche = correr_suite(copia, python=python, args=(ruta_rel, "-q", "-ra"),
+                                  timeout=TIMEOUT_TEST_REPRO)
+    finally:
+        destino.write_text(contenido_original, encoding="utf-8")   # la copia queda como estaba
+
+    dictamen = evaluar_reproduccion(sin_parche, con_parche)
+    _log.info(json.dumps({"evento": "autosanacion_reproduccion",
+                          "estado": dictamen.estado, "demostrado": dictamen.demostrado,
+                          "archivo_test": ruta_rel}, ensure_ascii=False))
+    return {"estado": dictamen.estado, "motivo": dictamen.motivo,
+            "demostrado": dictamen.demostrado, "rechaza": dictamen.rechaza,
+            "archivo_test": ruta_rel}
 
 
 # ======================================================================================
@@ -434,14 +509,14 @@ async def proponer_pr_de_reparacion(payload: dict) -> dict:
         return {"url": "", "modo": "sin_cambios",
                 "motivo": "el parche no produjo mutaciones; no se abre nada"}
 
+    prueba = payload.get("prueba") or {}
     artefactos = Path(os.environ.get("COPILOTO_AUTOSANACION_ARTEFACTOS", "/tmp/autosanacion"))
     artefactos.mkdir(parents=True, exist_ok=True)
     destino = artefactos / f"trauma-{trauma.get('id')}-{trauma.get('fingerprint')}.patch"
     destino.write_text(
         f"# trauma {trauma.get('id')} · {trauma.get('error_type')} en {forja['archivo']}\n"
         f"# operación: {trauma.get('workflow')} · veces: {trauma.get('dedupe_count')}\n"
-        f"# ATENCIÓN: el gate verificó NO-REGRESIÓN, no que esto arregle el bug — no hay test que lo\n"
-        f"# reproduzca. Revisá el cambio, no el veredicto verde.\n\n{forja.get('parche', '')}\n",
+        f"# {_leyenda_de_evidencia(prueba)}\n\n{forja.get('parche', '')}\n",
         encoding="utf-8")
 
     # DOS condiciones, no una: `gh` autenticado NO alcanza. Hace falta además un repo de trabajo
@@ -449,7 +524,22 @@ async def proponer_pr_de_reparacion(payload: dict) -> dict:
     repo_pr = _repo_para_pr()
     if repo_pr is None or not _hay_gh():
         return {"url": destino.as_posix(), "modo": "artefacto"}
-    return _abrir_pr(repo_pr, destino, forja, trauma)
+    return _abrir_pr(repo_pr, destino, forja, trauma, prueba)
+
+
+def _leyenda_de_evidencia(prueba: dict) -> str:
+    """La línea que le dice al revisor QUÉ quedó probado. Nunca la misma para los dos casos.
+
+    Es el arreglo del problema que dejó pasar el PR #179: un parche no-op con la suite verde se lee
+    idéntico a uno correcto si el veredicto no distingue *arregla* de *no rompe*.
+    """
+    if prueba.get("arreglo_demostrado"):
+        return ("✅ ARREGLO DEMOSTRADO: hay un test que FALLA sin este parche y PASA con él, y va "
+                "incluido. El gate corrió las dos veces.")
+    motivo = (prueba.get("reproduccion") or {}).get("motivo", "no hay test de reproducción")
+    return (f"⚠️ ARREGLO **NO** DEMOSTRADO — el gate sólo verificó NO-REGRESIÓN ({motivo}). "
+            f"Que la suite esté verde no dice que esto arregle nada: revisá el cambio, no el "
+            f"veredicto.")
 
 
 #: Repo de trabajo donde el ciclo puede crear ramas. **Tiene que ser distinto del repo desplegado.**
@@ -503,7 +593,7 @@ def _hay_gh() -> bool:
         return False
 
 
-def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
+def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict, prueba: dict | None = None) -> dict:
     """Abre el PR con `gh`. Ante cualquier fallo degrada al artefacto en vez de lanzar: perder la
     propuesta por un problema de red sería el peor resultado posible del ciclo entero.
 
@@ -526,12 +616,13 @@ def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
     `memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`, con el agravante de que acá el
     degradado es un desenlace **legítimo** — ni siquiera se veía raro.
     """
+    prueba = prueba or {}
+    demostrado = bool(prueba.get("arreglo_demostrado"))
     rama = f"autosanacion/trauma-{trauma.get('id')}"
     cuerpo = (f"Reparación **propuesta automáticamente** para el trauma `{trauma.get('id')}`.\n\n"
               f"- error: `{trauma.get('error_type')}` en `{forja['archivo']}`\n"
               f"- operación: `{trauma.get('workflow')}` · ocurrencias: {trauma.get('dedupe_count')}\n\n"
-              f"⚠️ El gate verificó **no-regresión** (la suite completa sigue verde), **no** que esto "
-              f"arregle el bug: no existe un test que lo reproduzca. Revisá el cambio.\n")
+              f"{_leyenda_de_evidencia(prueba)}\n")
 
     def _git(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-C", str(repo), *args],
@@ -553,6 +644,16 @@ def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
         destino_en_repo.write_text(forja["contenido"], encoding="utf-8")
 
         _git("add", "--", forja["archivo"])
+
+        # El test de reproducción va EN EL MISMO COMMIT, y sólo si el gate lo validó. Un test que no
+        # falla sin el parche no se commitea: sería un test decorativo que da falsa confianza al
+        # revisor, exactamente lo contrario de lo que este archivo existe para dar.
+        if demostrado and forja.get("test_reproduccion"):
+            ruta_test = f"apps/copiloto/{(prueba.get('reproduccion') or {}).get('archivo_test')}"
+            destino_test = repo / ruta_test
+            destino_test.parent.mkdir(parents=True, exist_ok=True)
+            destino_test.write_text(forja["test_reproduccion"], encoding="utf-8")
+            _git("add", "--", ruta_test)
         # Control positivo antes de commitear: si no hay nada staged, el parche no llegó al árbol y
         # el PR saldría vacío. Un PR vacío que dice "reparé X" es peor que no reparar — le enseña al
         # revisor a aprobar sin mirar. Se dice con nombre propio en vez de esperar el error de git.
@@ -562,8 +663,13 @@ def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
                     "motivo": "el parche no produjo ninguna diferencia contra origin/main; "
                               "no se abre PR"}
 
+        # El mensaje dice si el arreglo está demostrado: el revisor lo ve en `git log` sin abrir el
+        # PR, y queda en la historia del repo cuando el cuerpo del PR ya no esté a mano.
         _git("commit", "-m",
-             f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}")
+             f"fix(autosanacion): {trauma.get('error_type')} en {forja['archivo']}",
+             "-m", ("Arreglo DEMOSTRADO: incluye un test que falla sin el parche y pasa con él."
+                    if demostrado else
+                    "Arreglo NO demostrado: sólo se verificó no-regresión. Revisar el cambio."))
         _git("push", "--force-with-lease", "--set-upstream", "origin", rama, timeout=120)
 
         salida = subprocess.run(

@@ -32,6 +32,7 @@ falta ssh: el worker ya está en el VPS.
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -234,6 +235,95 @@ def correr_suite(
 
     salida = (proc.stdout or "") + (proc.stderr or "")
     return Resultado(resumen=parsear_resumen(salida), rc=proc.returncode, salida=salida)
+
+
+#: Los cuatro desenlaces posibles del test de reproducción. Cuatro y no dos: "el test no falló sin
+#: el parche" y "el test no llegó a correr" son causas OPUESTAS que se ven igual desde afuera (en
+#: ninguna de las dos hay un rojo), y confundirlas manda la investigación al lugar equivocado — la
+#: misma trampa que costó una sesión con el `NO_EVALUABLE` de la suite.
+DEMOSTRADO = "arreglo_demostrado"
+NO_REPRODUCE = "test_no_reproduce"
+NO_ARREGLA = "parche_no_arregla"
+TEST_INVALIDO = "test_invalido"
+#: Quinto estado, y el único que NO es un dictamen sobre el test: acá no hubo test que juzgar.
+SIN_TEST = "sin_test_de_reproduccion"
+
+#: Un test de reproducción es UN caso aislado, no una suite: si tarda minutos, algo hace I/O que no
+#: debería. Un timeout corto lo convierte en `TEST_INVALIDO` rápido en vez de comerse el presupuesto
+#: de la corrida entera (que además se paga DOS veces, sin parche y con parche).
+TIMEOUT_TEST_REPRO = int(os.environ.get("COPILOTO_TIMEOUT_TEST_REPRO", "120"))
+
+
+def nombre_de_test_de_reproduccion(trauma: dict) -> str:
+    """`test_repro_trauma_<id>.py` — determinista y saneado.
+
+    Lo decide el ciclo y no el modelo: un nombre elegido por un LLM puede traer `../`, pisar un test
+    existente o colisionar entre reparaciones. Determinista además significa que un reintento sobre
+    el mismo trauma reescribe SU archivo en vez de acumular uno por intento.
+    """
+    crudo = str(trauma.get("id") or trauma.get("fingerprint") or "sin_id")
+    seguro = re.sub(r"[^A-Za-z0-9_]", "_", crudo)[:40]
+    return f"test_repro_trauma_{seguro}.py"
+
+
+@dataclass(frozen=True)
+class Reproduccion:
+    """El dictamen sobre si el parche ARREGLA algo (no sobre si rompe: para eso está `Veredicto`)."""
+    #: Uno de los cuatro de arriba.
+    estado: str
+    motivo: str
+    #: `True` sólo con `DEMOSTRADO`. Es el único caso en que se puede decir "arregló el bug".
+    demostrado: bool = False
+    #: `True` cuando el parche debe RECHAZARSE por esta vía. Ojo: sólo `NO_ARREGLA` rechaza. Un test
+    #: malo (`NO_REPRODUCE`, `TEST_INVALIDO`) no es culpa del parche y no puede tumbarlo — si no,
+    #: un forjador flojo escribiendo tests apagaría el ciclo entero por la puerta de atrás.
+    rechaza: bool = False
+
+
+def evaluar_reproduccion(sin_parche: Resultado, con_parche: Resultado) -> Reproduccion:
+    """¿El test reproduce el bug, y el parche lo arregla? Puro: no corre nada, sólo decide.
+
+    La pregunta que este gate contesta y `evaluar` no puede: **¿arregla, o solamente no rompe?** Un
+    parche que no cambia la semántica pasa la no-regresión con honores (PR #179: CI 5/5 y un diff
+    equivalente al original). Sólo un test que falla ANTES y pasa DESPUÉS distingue las dos cosas.
+
+    El orden de las guardas vuelve a ser el orden del costo de equivocarse: primero se descarta que
+    el instrumento esté roto, y recién con un test que se sabe válido se juzga al parche.
+    """
+    if sin_parche.expiro or con_parche.expiro:
+        return Reproduccion(TEST_INVALIDO, "el test de reproducción se cuelga (timeout): no sirve "
+                                           "como instrumento")
+    if sin_parche.resumen.total_corridos == 0:
+        # NO es "el test pasó". Es que no llegó a ejecutarse: import roto, sintaxis, path. Si esto
+        # se leyera como "no reproduce", se culparía al modelo de escribir un test que no falla
+        # cuando en realidad el test nunca corrió.
+        return Reproduccion(
+            TEST_INVALIDO,
+            "el test de reproducción no ejecutó NINGÚN caso (0 recolectados): no es que no falle, "
+            f"es que no corre. Últimas líneas: {sin_parche.salida.strip()[-300:]!r}")
+
+    if sin_parche.resumen.verde:
+        return Reproduccion(
+            NO_REPRODUCE,
+            "el test PASA sin el parche: no ejercita el bug, así que no puede demostrar que el "
+            "parche lo arregle. Se descarta el test; el parche se juzga sólo por no-regresión")
+
+    if con_parche.resumen.total_corridos == 0:
+        return Reproduccion(
+            TEST_INVALIDO,
+            "el test corrió sin el parche pero no con él (0 recolectados): lo más probable es que "
+            f"el parche rompa el import del módulo. Últimas líneas: {con_parche.salida.strip()[-300:]!r}")
+
+    if not con_parche.resumen.verde:
+        return Reproduccion(
+            NO_ARREGLA,
+            f"el test sigue FALLANDO con el parche aplicado ({con_parche.resumen.fallaron} "
+            f"fallaron, {con_parche.resumen.errores} errores): el parche NO arregla el bug",
+            rechaza=True)
+
+    return Reproduccion(DEMOSTRADO,
+                        "el test falla sin el parche y pasa con él: el arreglo está DEMOSTRADO",
+                        demostrado=True)
 
 
 def evaluar(baseline: Resultado, parcheado: Resultado) -> Veredicto:
