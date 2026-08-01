@@ -32,6 +32,7 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from contexto_tenant import tenant_actual
 from deposito_traumas import FabricaDeTraumas, depositar
 from log_estructurado import log_error, origen_en_el_codigo
 from taxonomia_errores import ErrorSinCategoria, categoria_de, es_reintentable
@@ -53,10 +54,26 @@ def registrar_captura_global(app: FastAPI, *, traumas: FabricaDeTraumas | None =
             # adivina. Es el error que más importa ver, justamente porque nadie lo clasificó todavía.
             categoria = "SIN_CATEGORIA"
 
-        # El `cliente_id` lo deja el middleware de auth en `request.state` cuando la ruta está
-        # autenticada. `getattr` con default porque las rutas públicas (health, webhooks) no lo tienen
-        # — y un fallo ahí no puede impedir que el error se registre.
-        cliente_id = getattr(request.state, "cliente_id", None)
+        # El tenant sale del **ContextVar**, que es donde lo deja el borde: `require_tenant`
+        # (`auth.py`) llama a `declarar_tenant(cliente_id)` en cada request autenticado. `request.state`
+        # queda como fallback para quien quiera setearlo, pero NO es la fuente.
+        #
+        # ⚠️ Esto era un bug, no un detalle de estilo (medido el 2026-08-01). Hasta hoy esta línea leía
+        # SÓLO `request.state.cliente_id` — y **nadie en todo el backend escribe ese atributo**
+        # (`grep` con control positivo: las únicas dos apariciones estaban en este archivo). Con
+        # `cliente_id=None`, `depositar()` corta en su primera línea y devuelve False: **ningún error
+        # de las ~80 rutas HTTP llegó nunca a la DLQ en producción**. La Fase 2 estaba viva sólo del
+        # lado de las activities, que sacan el `cliente_id` del payload.
+        #
+        # Por qué no dio síntoma: no rompe nada. La captura seguía logueando, el usuario seguía viendo
+        # su 500 con fingerprint, y la DLQ vacía se leía como "no falla nada" en vez de "no entra
+        # nada" — y el ciclo de autosanación no puede reparar lo que nunca ve.
+        #
+        # Y por qué el test no lo vio: montaba su propia app con un middleware que sí seteaba
+        # `request.state.cliente_id`, o sea verificaba un camino que producción no tiene
+        # ([[el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar]]). El test de
+        # reproducción ahora usa `require_tenant` real.
+        cliente_id = getattr(request.state, "cliente_id", None) or tenant_actual()
 
         workflow = f"{request.method} {request.scope.get('route_path') or request.url.path}"
         fingerprint = log_error(

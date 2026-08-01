@@ -18,9 +18,10 @@ import os
 import uuid
 
 import pytest
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
+from contexto_tenant import declarar_tenant
 from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from trauma_store import PENDIENTE, TraumaStore
@@ -42,8 +43,10 @@ def tenant_de_prueba(conn_de_tenant):
 def _app_con_dlq(conn_factory, cliente_id: str | None) -> FastAPI:
     """Una app mínima con la costura enganchada a la DLQ real.
 
-    `cliente_id` se pone en `request.state` con un middleware, que es donde lo deja `require_tenant`
-    en producción — la costura lo lee de ahí y de ningún otro lado.
+    ⚠️ Este helper monta el tenant con un **middleware propio**, que producción NO tiene. Se conserva
+    porque los casos que verifica (dedupe, 404 que no ensucia, `diferido`) son independientes de cómo
+    llegó el tenant — pero **no sirve para probar que el tenant llega**: eso es justo lo que este
+    montaje regalaba. Para eso está `_app_camino_real` (abajo), que replica el borde de verdad.
     """
     app = FastAPI()
 
@@ -69,6 +72,64 @@ def _app_con_dlq(conn_factory, cliente_id: str | None) -> FastAPI:
         raise ValueError("el importe no es un número")
 
     return app
+
+
+def _app_camino_real(conn_factory, cliente_id: str) -> FastAPI:
+    """La app montada como en PRODUCCIÓN: el tenant lo declara una dependencia async, igual que
+    `require_tenant` (`auth.py`), y **nadie toca `request.state`** — porque en producción nadie lo hace.
+
+    Se replica la dependencia en vez de importar `require_tenant` para no arrastrar el JWT: lo que se
+    está probando no es la validación del token, es **de dónde saca el tenant la costura**. La única
+    línea que importa replicar es `declarar_tenant(cliente_id)`, que es lo que hace el borde real
+    (`auth.py:117`), y tiene que ser `async` por el mismo motivo documentado ahí: una dependencia sync
+    corre en un threadpool y su `ContextVar` no llega al handler.
+    """
+    app = FastAPI()
+
+    async def _tenant_del_borde() -> str:
+        declarar_tenant(cliente_id)
+        return cliente_id
+
+    registrar_captura_global(app, traumas=fabrica_desde(conn_factory))
+
+    @app.get("/revienta-autenticada")
+    def _revienta(_cid: str = Depends(_tenant_del_borde)):  # noqa: ANN202, B008
+        raise ConnectionError("la base no responde")
+
+    return app
+
+
+@necesita_pg
+def test_REPRODUCCION_el_500_de_una_ruta_AUTENTICADA_llega_a_la_dlq(tenant_de_prueba, conn_de_tenant):
+    """El test que faltaba, y el bug que tapaba.
+
+    Hasta el 2026-08-01 la costura leía el tenant SÓLO de `request.state.cliente_id`, y **nadie en
+    todo el backend escribe ese atributo** — `require_tenant` declara el tenant en el `ContextVar`
+    (`auth.py:117`). Con el tenant en `None`, `depositar()` corta en su primera línea: ningún error de
+    las ~80 rutas HTTP llegó nunca a la DLQ en producción.
+
+    No dio síntoma porque no rompe nada: el 500 salía igual, el log quedaba igual, y la DLQ vacía se
+    leía como *"no falla nada"* en vez de *"no entra nada"*. El ciclo de autosanación no puede reparar
+    lo que nunca ve.
+
+    Este test es el que separa las dos cosas: monta el borde REAL (dependencia async que declara el
+    tenant, sin middleware inventado) y exige la fila. Sin el fix falla; con el fix pasa.
+
+    De paso valida el supuesto del que depende el fix: que el `ContextVar` declarado por una
+    dependencia async **sigue visible desde el exception handler**.
+    """
+    cid = tenant_de_prueba
+    cliente = TestClient(_app_camino_real(conn_de_tenant(cid), cid), raise_server_exceptions=False)
+
+    respuesta = cliente.get("/revienta-autenticada")
+    assert respuesta.status_code == 500
+
+    traumas = TraumaStore(conn_de_tenant(cid), cid).listar()
+    assert traumas, ("la costura NO depositó: el tenant no llegó desde el borde real. "
+                     "Con `request.state` como única fuente, esto es lo que pasa en producción "
+                     "en TODAS las rutas HTTP.")
+    assert traumas[0]["fingerprint"] == respuesta.json()["codigo"]
+    assert traumas[0]["costura"] == "http_handler"
 
 
 @necesita_pg
