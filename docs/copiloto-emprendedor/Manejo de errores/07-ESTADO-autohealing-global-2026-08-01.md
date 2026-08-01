@@ -73,6 +73,24 @@ como UN bug (`intentos=1` / `intentos=0`).
 **Queda abierto el PR #179 a propósito**: es la evidencia del ciclo. Es sintético (el trauma lo
 fabricó el E2E) — cerrarlo o mergearlo es decisión del operador.
 
+### ⚠️ Lo que esto prueba y lo que NO: el parche de #179 es un no-op
+
+El PR pasó CI 5/5 y quedó `CLEAN`, **y su parche no arregla nada**:
+
+```diff
+-partes = (workflow or "", error_type or "", (error_message or "")[:_LARGO_MENSAJE])
++partes = (workflow or "", error_type or "", (error_message or "")[:_LARGO_MENSAJE] if error_message is not None else "")
+```
+
+`(error_message or "")` ya cubre `None`. El agregado es **semánticamente equivalente** al original.
+Se entiende: el trauma era fabricado y el código señalado no tenía el bug.
+
+**Está probado el mecanismo punta a punta, no la calidad de los parches.** Son dos afirmaciones
+distintas y sólo la primera tiene evidencia hoy. Y hay una limitación estructural detrás: el gate de
+tests verifica **no-regresión**, así que un parche inocuo lo pasa igual de bien que uno correcto — no
+existe hoy un control que distinga *arregla* de *no rompe*. Con traumas reales eso importa: un PR
+verde no es un PR útil. Candidato al próximo ciclo de mejora, **no** algo que ya esté resuelto.
+
 ### El supuesto que casi cuesta el ciclo: `gh` autenticado ≠ `git push` autenticado
 
 Antes de gastar la corrida se validó que el VPS pudiera pushear. **`gh auth status` verde no prueba
