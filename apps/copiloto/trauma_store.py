@@ -127,6 +127,11 @@ class TraumaStore:
         `FOR UPDATE SKIP LOCKED` para que dos recuperadores corriendo a la vez no tomen el mismo
         trauma. Sin eso, la única defensa sería que nunca haya dos — que es una suposición, no un
         mecanismo.
+
+        **Devuelve `cliente_id`.** Es el dueño de la fila y lo necesita todo lo que viene después
+        (declarar el tenant para marcarla, soltarla, o cerrarla). Antes no lo devolvía y el llamador
+        lo inyectaba desde su propio argumento — algo que dejó de existir cuando el ciclo pasó a ser
+        uno solo para toda la app.
         """
         conn = self._conn_factory()
         try:
@@ -136,11 +141,78 @@ class TraumaStore:
                                            ultimo_intento_en = now(), updated_at = now()
                         WHERE id IN (SELECT id FROM {TABLA} WHERE estado = %s
                                      ORDER BY updated_at LIMIT %s FOR UPDATE SKIP LOCKED)
-                        RETURNING id, fingerprint, workflow, error_type, costura, contexto,
-                                  dedupe_count, intentos""",
+                        RETURNING id, cliente_id::text, fingerprint, workflow, error_type, costura,
+                                  contexto, dedupe_count, intentos""",
                     (EN_PROCESO, PENDIENTE, limite))
                 cols = [d[0] for d in cur.description]
                 return [dict(zip(cols, fila)) for fila in cur.fetchall()]
+        finally:
+            conn.close()
+
+    def tomar_un_bug_distinto(self) -> dict | None:
+        """Toma **un** trauma por cada BUG distinto, no por cada ocurrencia. Cross-tenant.
+
+        ## Por qué existe (2026-08-01, decisión del operador)
+
+        El ciclo de auto-reparación era **uno por tenant**: 19 Schedules hoy, 5.000 el día que haya
+        5.000 emprendedores, cada uno corriendo la suite completa dos veces a las 04:00. Y el error
+        de fondo era conceptual, no de escala: **el bug está en NUESTRO código, no en los datos del
+        emprendedor.** Un `KeyError` en `fingerprint.py` es el mismo defecto lo haya pegado el tenant
+        A o el Z. El tenant es un atributo de la *ocurrencia*; la unidad de reparación es el *bug*.
+
+        Y la deduplicación no es opcional acá: el índice único de la DLQ es
+        **`(cliente_id, fingerprint)`**, así que un solo bug que toque a N tenants deja **N filas con
+        el mismo fingerprint**. Sin agrupar, el ciclo propondría N parches idénticos y el humano que
+        revisa recibiría N veces el mismo PR.
+
+        `DISTINCT ON (fingerprint)` elige un representante por bug —el de mayor `dedupe_count`, o sea
+        el que más veces pegó— y ordena por eso: **se repara primero lo que más duele**, no lo que
+        llegó primero.
+
+        Requiere una conexión que vea la DLQ entera: el rol `copiloto_autosanacion` con `BYPASSRLS`.
+        Con una conexión de tenant esto devuelve sólo lo de ese tenant y el `DISTINCT` no agrupa
+        nada — funcionaría, en silencio, midiendo mal.
+        """
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""UPDATE {TABLA} SET estado = %s, intentos = intentos + 1,
+                                           ultimo_intento_en = now(), updated_at = now()
+                        WHERE id = (
+                            SELECT id FROM (
+                                SELECT DISTINCT ON (fingerprint) id, dedupe_count, updated_at
+                                  FROM {TABLA} WHERE estado = %s
+                                 ORDER BY fingerprint, dedupe_count DESC, updated_at
+                            ) AS por_bug
+                            ORDER BY dedupe_count DESC, updated_at
+                            LIMIT 1
+                            FOR UPDATE SKIP LOCKED
+                        )
+                        RETURNING id, cliente_id::text, fingerprint, workflow, error_type, costura,
+                                  contexto, dedupe_count, intentos""",
+                    (EN_PROCESO, PENDIENTE))
+                fila = cur.fetchone()
+                if fila is None:
+                    return None
+                return dict(zip([d[0] for d in cur.description], fila))
+        finally:
+            conn.close()
+
+    def hermanos_del_mismo_bug(self, fingerprint: str, *, excepto: int) -> list[dict]:
+        """Las OTRAS filas pendientes con el mismo `fingerprint` — el mismo bug en otros tenants.
+
+        No se tocan al tomar: si el ciclo falla a mitad de camino, quedan intactas para el próximo
+        intento. Se usan al **cerrar**, para que un bug reparado no vuelva a proponerse N veces.
+        """
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT id, cliente_id::text FROM {TABLA}
+                         WHERE fingerprint = %s AND estado = %s AND id <> %s""",
+                    (fingerprint, PENDIENTE, excepto))
+                return [{"id": r[0], "cliente_id": r[1]} for r in cur.fetchall()]
         finally:
             conn.close()
 
