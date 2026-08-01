@@ -182,9 +182,27 @@ de las 04:00 sigue igual, y el log dice *"ya existía"* con tono de éxito. Ahor
 efectivas del Schedule vivo contra las deseadas y **sincroniza sólo el `spec`**, dejando `state`
 intacto para que un deploy no pueda re-encender algo que alguien pausó a mano.
 
-Las partes puras están cubiertas por `tests/test_autosanacion_schedule_spec.py`, incluida la asimetría
-que arruina la comparación: `ScheduleRange(4)` deja `end=0`, y expandido crudo daría **vacío** en vez
-de `[4]` — el Schedule se reescribiría en cada deploy sin que nada lo delate.
+Cubierto por `tests/test_autosanacion_schedule_spec.py`, **probado por mutación**: romper la
+convergencia pone rojo 2 tests; hacer que el update toque `state` pone rojo exactamente 1. Los
+primeros 5 tests de este archivo **pasaban con el código roto** —estaban escritos sobre un supuesto
+falso sobre la forma de `ScheduleRange`— y sólo la mutación lo delató.
+
+### Verificado en producción (post-deploy, PR #180 → `683a788`)
+
+```
+SCHEDULE VIVO -> horas: [0, 2, 4, 6, 8] | disparos: 5
+pausado: False
+proximas ejecuciones: ['2026-08-02 00:00', '02:00', '04:00', '06:00', '08:00']
+```
+
+Antes del deploy el mismo comando devolvía `[4]`. **La convergencia se ejercitó de verdad**: no es
+un Schedule recién creado, es el que estaba vivo, actualizado en su lugar.
+
+**Qué esperar esta noche:** la DLQ está **vacía** (0 filas; control corrido: la secuencia lleva 11
+ids emitidos, o sea la tabla sí recibe inserciones — no es que el rol no vea). Con cero traumas
+reales, los 5 disparos van a encontrar nada que reparar y **no** van a abrir PRs. Eso es correcto,
+no un fallo: con cero usuarios ([[desplegado-no-significa-con-clientes]]) una DLQ vacía es lo
+esperable.
 
 ---
 
