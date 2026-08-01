@@ -1,5 +1,19 @@
 # 05 — ESTADO VIVO · dónde quedó todo (2026-07-31)
 
+> ## ⛔ CONGELADO EN EL PR #168 — ya NO es el estado vivo
+>
+> **El estado real está en [`07-ESTADO-autohealing-global-2026-08-01.md`](07-ESTADO-autohealing-global-2026-08-01.md).**
+>
+> Lo que pasó **después** de lo que este archivo describe, y que acá no figura: el ciclo completo de
+> la Fase 3 (#172) · tres cosas rotas sin síntoma (#173) · **el gate de tests que nunca había corrido
+> un test en producción** (#174) · el sandbox que ejecutaba tests de integración real —uno manda un
+> mail— (#175) · el rediseño a **un ciclo global** en vez de uno por tenant (#177) · el camino de PR
+> que **nunca pudo abrirse** (#178) · 5 disparos por noche (#180) · y el gate que distingue **arregla**
+> de *no rompe* (#182).
+>
+> Se conserva porque su §0 documenta la jornada del 31 y los comandos de test siguen vigentes. **Todo
+> lo que diga sobre "lo que falta" está vencido.**
+
 > **Punto de retome.** Escrito para sobrevivir a una compactación de contexto: si algo no está acá, se
 > perdió. Lo que está **en `main`** y lo que está **a mitad de camino**, con el próximo paso exacto.
 

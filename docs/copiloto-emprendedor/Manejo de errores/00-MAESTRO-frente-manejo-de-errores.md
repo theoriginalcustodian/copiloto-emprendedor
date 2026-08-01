@@ -1,5 +1,17 @@
 # 00 — MAESTRO · Frente Manejo de Errores → Autosanación
 
+> ## 🏁 EL FRENTE ESTÁ COMPLETO — fases 0 → 3 en producción (2026-08-01)
+>
+> **Estado final y evidencia → [`07-ESTADO-autohealing-global-2026-08-01.md`](07-ESTADO-autohealing-global-2026-08-01.md).**
+> 35 PRs (#151 → #185). El §3 de abajo es del **2026-07-28**: describe el arranque, no el resultado.
+> Sirve para entender *por qué* se hizo cada cosa, no para saber qué hay hoy.
+>
+> Lo que existe y funciona, en una línea: los errores se capturan por **dos costuras** (HTTP y
+> activities), se depositan deduplicados en la **DLQ `copiloto_traumas`**, y un **ciclo de
+> autosanación único para toda la app** los toma de madrugada (5 disparos), forja un parche **con su
+> test de reproducción**, lo audita, corre la suite en un sandbox hermético y **abre un PR** que dice
+> explícitamente si el arreglo está **demostrado** o sólo no rompe nada. Nunca mergea.
+
 > **Escrito el 2026-07-28.** Punto de entrada único del frente. Si retomás sin contexto, **leé sólo
 > este archivo**: dice qué se busca, qué está hecho, qué falta, en qué orden, y dónde está cada cosa.
 >

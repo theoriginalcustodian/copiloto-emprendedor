@@ -41,3 +41,27 @@ causa establecida, para que el próximo la leyera como hecho.
 cosa, no es una causa — es una **hipótesis con dos variables**. Correr el diferencial cuesta minutos;
 canonizar la falsa contamina todo lo que se apoye encima.
 [[instrumentos-que-confirman-en-vez-de-verificar]] · [[no-codificar-la-esperanza-principio-raiz]]
+
+## Y antes de eso: el cuello era el FORMATO DE ENTREGA, no la capacidad del modelo
+
+Medición del spike S5 con el **mismo** modelo, contexto y temperatura, cambiando **una sola
+variable** —cómo se le pide que entregue el parche—:
+
+| Formato pedido | Resultado |
+|---|---|
+| diff unificado (`git apply`) | ❌ `error: while searching for:` |
+| bloques `SEARCH/REPLACE` | ✅ aplicado → 12 tests verdes |
+
+`gpt-4o-mini` **sabe** reparar el bug. Lo que no puede es acertar líneas y espacios exactos de un
+diff. Antes de concluir *"el modelo no alcanza"* —que es la conclusión cómoda, y la que manda a
+cambiar de modelo o a abandonar— hay que aislar la variable de **entrega**: pedirle que **cite** el
+texto a reemplazar en vez de calcular posiciones convierte un fallo total en un acierto.
+
+Aplica a cualquier agente que edite archivos, no sólo a este ciclo.
+
+**El endurecimiento que el spike no traía, y que importa más que el formato:** el spike hacía
+`replace(buscar, reemplazar, 1)`. Con el fragmento repetido, parchaba **la primera** ocurrencia y
+seguía como si nada — aplicar mal **en silencio**, que es peor que fallar: compila, puede pasar los
+tests, y modificó un lugar que nadie eligió. El aplicador rechaza ambiguo · inventado · no-op ·
+más de 8 bloques (eso es una reescritura, no un parche revisable), y es **atómico**: si un bloque
+falla, no se aplica ninguno.
