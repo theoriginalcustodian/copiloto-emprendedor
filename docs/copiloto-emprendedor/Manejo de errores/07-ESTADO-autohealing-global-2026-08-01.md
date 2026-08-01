@@ -299,3 +299,56 @@ artefacto lo dicen en la primera línea.
   se escribe el archivo— y un doble no ejercita nada de eso.
 
 Aprendizaje consolidado: [`memoria/no-romper-no-es-arreglar.md`](../../../memoria/no-romper-no-es-arreglar.md).
+
+---
+
+## 7. 🏁 Cierre del frente — medido en producción (2026-08-01)
+
+### E2E real con el gate de reproducción vivo (`f5ea1c5`)
+
+```
+desenlace: {'arreglo_demostrado': False, 'estado': 'pr_propuesto', 'modo': 'pr',
+            'reproduccion': 'test_no_reproduce', 'trauma_id': 12,
+            'url': 'https://github.com/theoriginalcustodian/copiloto-emprendedor/pull/183'}
+```
+
+`False` **es el resultado correcto acá**, y ese es el punto: el forjador escribió un test, el gate lo
+corrió sin el parche, **pasó** (el archivo está sano porque el trauma es sintético), y el ciclo lo
+dijo en vez de fingir. Verificado sobre el PR que abrió:
+
+| Control | Resultado |
+|---|---|
+| archivos del commit | sólo `apps/copiloto/fingerprint.py` — **el test NO viajó**, como debe ser |
+| cuerpo del PR | `⚠️ ARREGLO **NO** DEMOSTRADO … el test PASA sin el parche: no ejercita el bug` |
+| mensaje de commit | `Arreglo NO demostrado: sólo se verificó no-regresión. Revisar el cambio.` |
+
+Comparado con el #179: mismo tipo de PR, pero ahora **el revisor sabe qué no quedó probado**.
+
+### El prompt nuevo no degradó al forjador
+
+Banco contra **LLM real y bug real** (`fingerprint.py` sin la máscara de 32 bits): **6/6, todas
+aceptadas en el primer intento**. El prompt ahora pide dos cosas (parche + test) y el acierto se
+mantuvo.
+
+⚠️ Dos lecturas falsas descartadas antes de creerles, las dos por invocar mal el instrumento:
+un `0/6` que era **mi** error de invocación (corrí el script desde `/tmp`, y deriva la raíz del repo
+de su propia ubicación → buscaba `/apps/copiloto/…`), y un `prompt_lleva_previo=False` que resultó
+ser un flag roto desde antes (§ PR #184). En los dos casos el número acusaba al sistema y el
+culpable era el instrumento.
+
+### Estado final
+
+| Pieza | Estado |
+|---|---|
+| Ciclo global, un Schedule | ✅ 5 disparos/noche (`00,02,04,06,08`), verificado en el Schedule vivo |
+| Rol `copiloto_autosanacion` | ✅ `BYPASSRLS` + `NOSUPERUSER`, una sola tabla, control diferencial |
+| Abre PRs de verdad | ✅ #179 y #183, con etiqueta `autosanacion` |
+| Distingue arregla / no rompe | ✅ 5 desenlaces; sólo `parche_no_arregla` rechaza |
+| Suite en el VPS | ✅ **1411 passed**, 0 failed |
+| Banco con LLM real | ✅ **6/6** al primer intento |
+
+**Lo que sigue sin estar probado, y hay que decirlo:** ningún trauma **real** pasó por el ciclo — la
+DLQ está vacía (0 filas; la secuencia lleva 11 ids, o sea la tabla sí recibe inserciones). Con cero
+usuarios eso es lo esperable. El día que entre un trauma real, el camino `arreglo_demostrado = True`
+se ejercitará por primera vez en producción; hoy está probado en la suite (pytest real sobre un bug
+real) y por el banco, no por un caso de producción.
