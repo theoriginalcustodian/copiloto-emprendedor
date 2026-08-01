@@ -229,7 +229,12 @@ if [ -z "${COPILOTO_AUTOSANACION_DSN:-}" ]; then
   echo "        Corré deploy/copiloto/provision-rol-autosanacion.sh (una sola vez)." >&2
 fi
 cd "$REMOTE/deploy/worker"
-"$VENV/bin/python" ensure_autosanacion_schedules.py
+# `apps/copiloto` en el path para que el script pueda leer el tope diario y avisar si los disparos
+# del Schedule no alcanzan a agotarlo (es la incoherencia que vivió meses sin que nadie la notara:
+# tope 5, un solo disparo). Sin este path el control nace mudo — imprimiría "OMITIDO" en cada
+# deploy, que es la peor forma de un control: la que nunca protesta. `autosanacion_gates` sólo
+# importa `os` y `dataclasses`, así que no arrastra nada al proceso del deploy.
+PYTHONPATH="$REMOTE/apps/copiloto" "$VENV/bin/python" ensure_autosanacion_schedules.py
 REMOTE_AUTOSANACION_SCHEDULES
 
 echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"

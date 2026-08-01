@@ -456,6 +456,10 @@ async def proponer_pr_de_reparacion(payload: dict) -> dict:
 #: Sin esta variable NO se abre ningún PR: se deja el artefacto y listo.
 ENV_REPO_GIT = "COPILOTO_AUTOSANACION_REPO_GIT"
 
+#: Etiqueta de los PRs que abre el ciclo. Se aplica best-effort después de crear el PR (ver
+#: `_abrir_pr`), y la crea el provisionado del clon de trabajo.
+ETIQUETA_PR = os.environ.get("COPILOTO_AUTOSANACION_ETIQUETA_PR", "autosanacion")
+
 
 def _repo_para_pr() -> Path | None:
     """El clon donde se puede ramificar, o `None` si no hay uno declarado y seguro.
@@ -568,7 +572,17 @@ def _abrir_pr(repo: Path, artefacto: Path, forja: dict, trauma: dict) -> dict:
              "--body", cuerpo, "--head", rama],
             capture_output=True, text=True, timeout=60, check=True,
             cwd=str(repo))   # `gh` resuelve el repo desde el cwd; sin esto usaba el del proceso
-        return {"url": (salida.stdout or "").strip(), "modo": "pr"}
+        url = (salida.stdout or "").strip()
+
+        # Etiqueta best-effort, y DESPUÉS de crear el PR a propósito: pasada dentro de `gh pr
+        # create`, una etiqueta inexistente hace fallar el comando entero y un PR perfectamente
+        # válido degradaría a artefacto por un detalle cosmético. Acá el peor caso es un PR sin
+        # etiqueta. Sirve para distinguir de un vistazo lo que propuso el ciclo de lo que propuso
+        # una persona; NO notifica a nadie —el PR lo abre el mismo usuario del token y GitHub no
+        # permite asignarse como reviewer a uno mismo—, así que enterarse sigue siendo ir a mirar.
+        subprocess.run(["gh", "pr", "edit", url, "--add-label", ETIQUETA_PR],
+                       capture_output=True, timeout=30, cwd=str(repo))
+        return {"url": url, "modo": "pr"}
     except (OSError, subprocess.SubprocessError) as exc:
         # El `stderr` va EN el motivo. Sin él, "returned non-zero exit status 1" es todo lo que
         # queda de un fallo que sí sabía explicarse — y este camino se pasó semanas roto por eso.
