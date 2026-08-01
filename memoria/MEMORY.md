@@ -24,7 +24,7 @@
 - **🚧 OAuth Google** es de Composio, no nuestro; runbook listo para el operador. [[copiloto-oauth-google-propio]]
 - **🔀 Tres sesiones paralelas** coordinadas por el buzón de `coordinacion/`. [[coordinacion-tres-sesiones-buzon]]
 - **Identidad:** automatización/agentes-IA DURABLES (moat = Temporal). [[factory-identidad-automatizacion-ia]]
-- **🧾 DEUDA VISIBLE (2026-08-01):** **24 de 200 entradas de `memoria/` no están en este índice** — ni como link ni como `[[wikilink]]`. Existen en disco y son invisibles para la sesión: nadie las va a leer. Ninguna es del frente de errores (ese quedó completo). Control para re-medirlo: por cada `memoria/*.md`, `grep` de `(nombre.md)` **y** de `[[nombre]]` en este archivo — la 1ª versión del control sólo miraba el link markdown y daba **25** falsos. Dueña: la sesión que toque memoria próxima.
+- **🧾 DEUDA VISIBLE (2026-08-01):** **24 de 200 entradas de `memoria/` no están en este índice** — ni como link ni como `[[wikilink]]`. Existen en disco y son invisibles para la sesión: nadie las va a leer. Ninguna es del frente de errores (ese quedó completo). Control para re-medirlo: por cada `memoria/*.md`, buscar en este archivo **tanto** el link markdown **como** el wikilink — la 1ª versión sólo miraba el markdown y daba **25** falsos. Y medir **el sentido inverso** también: el `seed` del 08-01 rescató 3 entradas que el índice nombraba y **no existían en el repo** (vivían sólo en el slug). Dueña: la próxima sesión que toque memoria.
 
 ## 📐 Doctrina operativa (aplica siempre)
 
