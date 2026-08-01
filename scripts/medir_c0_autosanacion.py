@@ -47,7 +47,8 @@ for _s in (sys.stdout, sys.stderr):
         _s.reconfigure(encoding="utf-8", errors="replace")
 
 from ciclo_autosanacion import reparar  # noqa: E402
-from forjador_parches import aplicar_bloques, prompt_de_forja, prompt_de_reintento  # noqa: E402
+from forjador_parches import (aplicar_bloques, linea_de_codigo, prompt_de_forja,  # noqa: E402
+                              prompt_de_reintento)
 from sandbox_tests import nodeids_fallados, parsear_resumen  # noqa: E402
 
 #: El bug real de S5: quitar la máscara de 32 bits del fingerprint.
@@ -250,7 +251,15 @@ def una_corrida(client, python: str, numero: int,
         if len(r.intentos) >= 2 and len(prompts) >= 2:
             diag = {
                 "parche_distinto": r.intentos[0].texto_modelo.strip() != r.intentos[1].texto_modelo.strip(),
-                "prompt_lleva_el_previo": r.intentos[0].texto_modelo.strip()[:60] in prompts[1],
+                # Contra una línea de CÓDIGO del intento previo, no contra sus primeros 60 caracteres
+                # crudos. El previo entra al prompt **neutralizado** —cada línea indentada, los
+                # marcadores reescritos como prosa— porque citarlo tal cual hacía que el modelo
+                # imitara la envoltura (medido el 2026-07-31, era la causa del 0/12). Comparar el
+                # texto crudo contra el texto transformado no podía dar `True` nunca: el flag
+                # acusaba al sistema de un fallo que era del instrumento, y el guard `ciegos` de
+                # abajo llegó a poder **fallar el banco** por eso. Segunda vez que esta misma línea
+                # de diagnóstico miente; la primera está documentada abajo.
+                "prompt_lleva_el_previo": linea_de_codigo(r.intentos[0].texto_modelo) in prompts[1],
                 # Contra los nodeids REALES del bug, no contra un nombre escrito a mano. La primera
                 # versión comparaba con un literal que había quedado de una iteración anterior y daba
                 # False siempre: el instrumento acusaba al sistema de un fallo que era suyo.

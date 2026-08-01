@@ -6,8 +6,9 @@ y esa tiene que estar cubierta hasta el hueso antes de que ningún modelo la use
 """
 from __future__ import annotations
 
-from forjador_parches import (MAX_BLOQUES, Aplicacion, aplicar_bloques, extraer_bloques,
-                              prompt_de_forja)
+from forjador_parches import (MAX_BLOQUES, SIN_CODIGO, Aplicacion, aplicar_bloques,
+                              extraer_bloques, linea_de_codigo, prompt_de_forja,
+                              prompt_de_reintento)
 
 ORIGINAL = """def djb2(texto):
     h = 5381
@@ -141,3 +142,40 @@ def test_aplicacion_es_inmutable():
     except Exception:
         return
     raise AssertionError("Aplicacion debería ser inmutable (frozen)")
+
+
+# ============================================================ el diagnóstico del reintento
+
+def test_linea_de_codigo_saltea_marcadores_y_fences():
+    """Lo único del parche que sobrevive a la neutralización del prompt de reintento."""
+    parche = "```python\n<<<<<<< SEARCH\n\ndef djb2(t):\n=======\ndef djb2(t):  # fix\n>>>>>>> REPLACE"
+
+    assert linea_de_codigo(parche) == "def djb2(t):"
+
+
+def test_un_parche_SIN_codigo_devuelve_un_centinela_que_no_matchea_nunca():
+    """Devolver `""` daría `True` contra cualquier prompt: el flag pasaría a mentir al revés."""
+    assert linea_de_codigo("<<<<<<< SEARCH\n=======\n>>>>>>> REPLACE") == SIN_CODIGO
+    assert SIN_CODIGO not in "cualquier prompt imaginable"
+
+
+def test_el_flag_del_banco_AHORA_PUEDE_dar_True():
+    """El control que faltaba, y que da sentido a los dos de arriba.
+
+    El banco preguntaba *¿el prompt de reintento lleva el intento previo?* comparando los primeros
+    60 caracteres **crudos** — que empiezan con `<<<<<<< SEARCH`, un marcador que la neutralización
+    borra por diseño. Nunca podía dar `True`: acusaba al sistema de un fallo del instrumento, y el
+    guard `ciegos` del banco puede reprobar la corrida por eso. Verificado también contra el código
+    anterior al cambio, para descartar que fuera una regresión: daba `False` ahí también.
+
+    Este test es el control positivo del flag — la pregunta que ningún instrumento debería no poder
+    contestar que sí ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
+    """
+    previo = "<<<<<<< SEARCH\ndef djb2(t):\n    h = 5381\n=======\ndef djb2(t):\n    h = 5382\n>>>>>>> REPLACE"
+    prompt = prompt_de_reintento(archivo="f.py", contenido=ORIGINAL, salida_pytest="E assert",
+                                 no_romper="la firma", intento_previo=previo,
+                                 motivo_rechazo="no arregla")
+
+    assert linea_de_codigo(previo) in prompt, "el prompt de reintento perdió el intento previo"
+    # Y el control de que la comparación VIEJA era la rota, no el prompt:
+    assert previo.strip()[:60] not in prompt, "si esto matchea, la neutralización dejó de aplicarse"
