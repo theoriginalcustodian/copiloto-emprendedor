@@ -247,6 +247,53 @@ def test_CONTROL_los_rechazos_TRANSITORIOS_siguen_volviendo_a_la_cola(monkeypatc
     assert not d.permitido and d.reintentable is True, "el tope diario se libera mañana"
 
 
+# ======================================================================================
+# Pedir ayuda: qué rechazos abren un issue en GitHub y cuáles no
+# ======================================================================================
+# El sistema sabía detectar, clasificar y reparar — pero no sabía PEDIR AYUDA. Un error que
+# Temporal no arregló y el ciclo no puede reparar quedaba en la DLQ sin alerta, sin mail y
+# sin métrica (grep del 2026-08-02: cero notificaciones sobre traumas en todo el repo). Y en
+# régimen normal el ciclo devuelve `sin_traumas`, así que ese mismo silencio significaba a la
+# vez "todo bien" y "hay algo roto que nadie mira".
+def test_una_categoria_que_solo_arregla_una_PERSONA_pide_ayuda():
+    """`infra_error` y `manual_intervention` no los arregla Temporal (ya se reintentó) ni el
+    ciclo (no hay código que parchear). Si nadie avisa, no los arregla nadie."""
+    for categoria in ("infra_error", "manual_intervention", "cascading"):
+        d = puede_reparar(ruta="cobro_store.py", reparaciones_hoy=0, categoria=categoria)
+        assert d.necesita_humano is True, f"{categoria}: nadie se enteraría"
+
+
+def test_el_dominio_prohibido_pide_ayuda():
+    """Un fallo emitiendo ante AFIP es justamente lo que una persona TIENE que ver."""
+    for ruta in DOMINIOS_PROHIBIDOS:
+        d = puede_reparar(ruta=f"{ruta}.py", reparaciones_hoy=0, categoria="business_error")
+        assert d.necesita_humano is True, ruta
+
+
+def test_CONTROL_los_rechazos_OPERATIVOS_no_abren_issue(monkeypatch):
+    """El control que impide que el canal se vuelva ruido — y con eso, inútil.
+
+    El kill switch y el tope diario son estados operativos NORMALES y esperados: un issue por
+    cada uno inundaría el repo, y una etiqueta que grita en el caso normal se termina ignorando.
+    Ahí se pierde el aviso que sí importaba, que es el modo de fallo de todo canal de alerta.
+    """
+    monkeypatch.setenv(ENV_KILL_SWITCH, "1")
+    assert puede_reparar(ruta="x.py", reparaciones_hoy=0,
+                         categoria="business_error").necesita_humano is False
+
+    monkeypatch.delenv(ENV_KILL_SWITCH, raising=False)
+    monkeypatch.setenv(ENV_TOPE_DIARIO, "1")
+    d = puede_reparar(ruta="x.py", reparaciones_hoy=5, categoria="business_error")
+    assert not d.permitido, "el tope no frenó: el control no está midiendo lo que dice"
+    assert d.necesita_humano is False
+
+
+def test_CONTROL_lo_que_SI_se_repara_no_abre_issue():
+    """Un `business_error` reparable no molesta a nadie: para eso está el ciclo."""
+    d = puede_reparar(ruta="cobro_store.py", reparaciones_hoy=0, categoria="business_error")
+    assert d.permitido and d.necesita_humano is False
+
+
 def test_el_dominio_fiscal_gana_aunque_la_categoria_sea_reparable():
     """Los gates no se anulan entre sí. Un `business_error` en AFIP sigue siendo intocable: el
     efecto es irreversible y externo, y eso no depende de por qué falló."""

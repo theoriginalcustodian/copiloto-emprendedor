@@ -265,7 +265,8 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         reparaciones_hoy=_reparaciones_de_hoy(),
         categoria=contexto.get("categoria"))
     return {"permitido": decision.permitido, "motivo": decision.motivo,
-            "reintentable": decision.reintentable, "archivo": origen["archivo"]}
+            "reintentable": decision.reintentable,
+            "necesita_humano": decision.necesita_humano, "archivo": origen["archivo"]}
 
 
 # ======================================================================================
@@ -781,7 +782,105 @@ async def marcar_trauma(payload: dict) -> None:
         _cerrar(conn)
 
 
+#: Etiqueta de los issues que abre el ciclo cuando algo NO se puede auto-reparar.
+#: Distinta de `ETIQUETA_PR` a propósito: un PR propone un arreglo, un issue pide ayuda. Mezclarlos
+#: haría que "todo lo del ciclo" se lea igual, y lo que necesita a una persona se perdería entre
+#: los parches automáticos.
+ETIQUETA_ISSUE = os.environ.get("COPILOTO_AUTOSANACION_ETIQUETA_ISSUE", "autosanacion-manual")
+
+
+@activity.defn
+async def abrir_issue_de_trauma(payload: dict) -> dict:
+    """Pide ayuda humana por GitHub cuando el ciclo no puede reparar algo.
+
+    El escalón que faltaba: Temporal reintenta lo transitorio, el ciclo repara lo que es código
+    nuestro — y lo que no cae en ninguno de los dos (un `infra_error`, un `manual_intervention`, un
+    fallo en dominio AFIP) se quedaba en la DLQ **sin que nadie se enterara**. Verificado por grep el
+    2026-08-02: cero notificaciones, cero métricas, cero alertas sobre traumas en todo el repo.
+
+    ## Idempotente por FINGERPRINT, no por trauma
+
+    El mismo bug puede pegar mil veces y en N tenants. Abrir un issue por ocurrencia inundaría el
+    repo y entrenaría a ignorar la etiqueta — el mismo modo de fallo que un guard que grita en el
+    caso normal. Se busca primero un issue ABIERTO con el fingerprint en el cuerpo; si existe, no se
+    crea otro. El fingerprint es la unidad correcta: es la misma con la que la DLQ deduplica y con la
+    que el ciclo agrupa hermanos.
+
+    ## Degrada, nunca lanza
+
+    Sin `gh` o sin repo declarado no hay canal, y eso es un camino previsto (worker sin credenciales
+    de GitHub), no una falla. Perder el trauma porque no se pudo avisar sería el peor resultado
+    posible: el aviso es un extra sobre la fila, no un reemplazo de la fila.
+    """
+    trauma = payload.get("trauma") or {}
+    motivo = payload.get("motivo") or "no reparable automáticamente"
+    fingerprint = str(trauma.get("fingerprint") or "")
+    repo = _repo_para_pr()
+    if repo is None or not _hay_gh() or not fingerprint:
+        return {"abierto": False, "modo": "sin_canal"}
+
+    # Idempotencia: `--search` sobre issues ABIERTOS. Si el humano lo cerró y el bug vuelve, se abre
+    # uno nuevo — correcto: que vuelva a pasar después de cerrado es información, no ruido.
+    try:
+        ya = subprocess.run(
+            ["gh", "issue", "list", "--state", "open", "--search", fingerprint,
+             "--json", "number", "--limit", "1"],
+            cwd=repo, capture_output=True, text=True, timeout=30)
+        if ya.returncode == 0 and (ya.stdout or "").strip() not in ("", "[]"):
+            return {"abierto": False, "modo": "ya_existe"}
+    except (OSError, subprocess.SubprocessError):
+        # No se pudo consultar: se sigue igual. Un issue duplicado es molesto; NO avisar es el fallo
+        # que este mecanismo viene a cerrar. Ante la duda, avisar de más.
+        pass
+
+    cuerpo = (
+        f"El ciclo de autosanación **no puede reparar** este error y lo escala.\n\n"
+        f"**Motivo:** {motivo}\n\n"
+        f"| campo | valor |\n|---|---|\n"
+        f"| trauma | `{trauma.get('id')}` |\n"
+        f"| tipo | `{trauma.get('error_type')}` |\n"
+        f"| costura | `{trauma.get('costura')}` |\n"
+        f"| workflow / ruta | `{trauma.get('workflow')}` |\n"
+        f"| veces que pegó | `{trauma.get('dedupe_count')}` |\n"
+        f"| fingerprint | `{fingerprint}` |\n\n"
+        f"Este issue es **idempotente por fingerprint**: mientras siga abierto, las repeticiones del "
+        f"mismo bug no crean otro.\n\n"
+        f"---\n🤖 abierto por el ciclo de autosanación")
+    try:
+        hecho = subprocess.run(
+            ["gh", "issue", "create", "--title",
+             f"[autosanación] no reparable: {trauma.get('error_type')} en {trauma.get('workflow')}",
+             "--body", cuerpo, "--label", ETIQUETA_ISSUE],
+            cwd=repo, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as exc:
+        _log.warning(json.dumps({"evento": "autosanacion_issue_fallo", "error": type(exc).__name__,
+                                 "efecto": "el trauma queda en la DLQ, pero NADIE fue avisado"},
+                                ensure_ascii=False))
+        return {"abierto": False, "modo": "error"}
+
+    if hecho.returncode != 0:
+        # Reintento sin etiqueta: la causa más probable es que la label no exista en el repo, y
+        # perder el aviso por un detalle cosmético sería absurdo.
+        try:
+            hecho = subprocess.run(
+                ["gh", "issue", "create", "--title",
+                 f"[autosanación] no reparable: {trauma.get('error_type')} en {trauma.get('workflow')}",
+                 "--body", cuerpo],
+                cwd=repo, capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            return {"abierto": False, "modo": "error"}
+
+    if hecho.returncode != 0:
+        _log.warning(json.dumps({"evento": "autosanacion_issue_fallo",
+                                 "stderr": (hecho.stderr or "")[:200],
+                                 "efecto": "el trauma queda en la DLQ, pero NADIE fue avisado"},
+                                ensure_ascii=False))
+        return {"abierto": False, "modo": "error"}
+    return {"abierto": True, "modo": "issue", "url": (hecho.stdout or "").strip()}
+
+
 ACTIVITIES_AUTOSANACION: list[Any] = [
     tomar_trauma_para_reparar, evaluar_gates_de_reparacion, forjar_parche,
     auditar_parche, probar_parche_en_sandbox, proponer_pr_de_reparacion, marcar_trauma,
+    abrir_issue_de_trauma,
 ]
