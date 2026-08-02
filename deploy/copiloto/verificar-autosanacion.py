@@ -111,6 +111,45 @@ def revisar_dlq(fallas: list[str]) -> None:
         print(f"[OK ] DLQ: {vivos} traumas ahora · {emitidos} ids emitidos históricos "
               f"(el cable sí fue ejercitado) · por estado: {por_estado or '—'}")
 
+    revisar_canario(dsn, fallas)
+
+
+#: Un canario más viejo que esto ya no dice nada del presente: el cable pudo cortarse ayer.
+DIAS_DE_VIGENCIA_DEL_CANARIO = 7
+
+
+def revisar_canario(dsn: str, fallas: list[str]) -> None:
+    """La prueba de vida: ¿cuándo fue la última vez que el camino completo funcionó?
+
+    Es la medida que vuelve informativo al silencio. `sin_traumas` significa "no falla nada" **sólo
+    si** el canario pasó hace poco; sin eso significa "no sé", que es lo que este frente ya pagó.
+
+    Y la vigencia importa tanto como el hecho: un canario que pasó hace un mes prueba que el cable
+    estaba sano hace un mes. La evidencia vence.
+    """
+    import psycopg2
+
+    with psycopg2.connect(dsn) as c, c.cursor() as cur:
+        cur.execute("""SELECT max(created_at), count(*)
+                         FROM copiloto_traumas WHERE error_type = 'ErrorDeCanario'""")
+        ultimo, cuantos = cur.fetchone()
+
+    if not ultimo:
+        print("[MAL] canario: nunca se disparó — el camino detección→DLQ no tiene prueba de vida")
+        fallas.append("sin canario: un 'sin_traumas' no se puede distinguir de un cable cortado")
+        return
+
+    import datetime as _dt
+
+    edad = _dt.datetime.now(_dt.timezone.utc) - ultimo.astimezone(_dt.timezone.utc)
+    dias = edad.days
+    vencido = dias > DIAS_DE_VIGENCIA_DEL_CANARIO
+    print(f"[{'MAL' if vencido else 'OK '}] canario: última prueba de vida hace {dias} día(s) "
+          f"({ultimo:%Y-%m-%d %H:%M} UTC) · {cuantos} registro(s)")
+    if vencido:
+        fallas.append(f"el canario no pasa hace {dias} días (vigencia: "
+                      f"{DIAS_DE_VIGENCIA_DEL_CANARIO}): la salud del cable es una foto vieja")
+
 
 async def main() -> int:
     fallas: list[str] = []

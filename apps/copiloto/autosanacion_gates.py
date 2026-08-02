@@ -76,6 +76,11 @@ DOMINIOS_PROHIBIDOS = (
 #:   decisión; auto-reparar lo no clasificado sería tomarla a ciegas y en el peor momento.
 CATEGORIAS_REPARABLES = ("business_error",)
 
+#: Marca del canario de salud (`canario_autosanacion.MARCA`). Se copia el literal en vez de importar
+#: el módulo para no atar los gates —que corren dentro del workflow— a una dependencia que sólo existe
+#: por el endpoint. El test de contrato verifica que los dos valores no se separen.
+MARCA_CANARIO = "canario"
+
 
 @dataclass(frozen=True)
 class Decision:
@@ -160,6 +165,15 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = N
     """
     if apagado():
         return Decision(False, f"kill switch activo ({ENV_KILL_SWITCH})")
+
+    # El canario ANTES que los dominios: su error es deliberado, así que no hay nada que reparar y
+    # preguntarse por el resto es trabajo perdido. Sin esta salida el forjador le escribiría un parche
+    # a un `raise` puesto a propósito y abriría un PR basura en cada prueba de vida — y un guard que
+    # ensucia en el caso normal se termina desarmando. Se excluye de REPARAR, no de REGISTRARSE: la
+    # fila en la DLQ es justamente la evidencia que el canario viene a producir.
+    if MARCA_CANARIO in (ruta or "").lower():
+        return Decision(False, "canario de salud: el error es deliberado, no hay bug que reparar. "
+                               "Su valor está en haber quedado registrado, no en repararse")
 
     dominio = dominio_prohibido(ruta)
     if dominio:
