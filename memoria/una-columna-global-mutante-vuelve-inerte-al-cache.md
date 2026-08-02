@@ -81,6 +81,25 @@ Fix en `graphify-graphity-bridge` (PR #3), con tests que cuentan **requests, no 
 ahorro, no la no-regresión ([[no-romper-no-es-arreglar]]) — y un guard que fija el set de columnas,
 para que una columna nueva obligue a decidir si entra a la identidad, verificado por mutación.
 
+## El resultado, medido en el camino de producción
+
+`graph-sync.sh` (no el script instrumentado), mismo commit, sin cambios de código:
+
+| corrida | qué mide | tiempo |
+|---|---|---|
+| antes del fix | re-ingiere las 45 particiones | **1.492 s** |
+| con el fix, 1ª | paga una vez la migración de hash | 1.492 s |
+| con el fix, 2ª | **el estado normal** | **132 s** |
+
+**11,3× más rápido.** Y el detalle que importa para la próxima vuelta: de esos 132 s, casi todo es
+**graphify parseando el repo (~50 s) y el reconcile enumerando el grafo entero (~64 s)** — ninguno
+de los dos depende del diff. Ahí está el siguiente techo, si alguna vez molesta.
+
+⚠️ **Toda corrida posterior a un cambio del esquema de hash paga la migración completa** (los
+hashes viejos no matchean por construcción). No es una regresión: es el costo, una sola vez, de
+cambiar qué cuenta como identidad. Medir el ahorro en esa corrida da 0 y lleva a la conclusión
+contraria — hay que medir la SEGUNDA.
+
 ## Dos hallazgos del mismo camino, registrados y NO resueltos
 
 **1. Un umbral medido y documentado que hoy es falso.** El docstring de `co_change.py` afirma —con
