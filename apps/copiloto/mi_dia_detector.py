@@ -24,6 +24,7 @@ from decimal import Decimal
 from typing import Callable
 
 from afip_comprobante_store import AfipComprobanteStore
+from afip_credential_store import AfipCredentialStore
 from cobro_store import CobroStore
 # `DIAS_VENCIDO` es el umbral de "vencido" del hito 6 (`por_cobrar`) — se importa, no se redefine:
 # una sola definición de "factura vieja" en toda la app.
@@ -47,6 +48,17 @@ UMBRAL_GASTO_MES_MULTIPLICADOR = Decimal(os.environ.get("COPILOTO_MI_DIA_MULT_GA
 
 # Ventana de "CAE por vencer" — sólo el futuro cercano; ya vencido es otra alerta, no ésta.
 DIAS_CAE_POR_VENCER = int(os.environ.get("COPILOTO_MI_DIA_DIAS_CAE") or "14")
+
+# Ventana de "certificado de AFIP por vencer". 30 días y no 14 como el CAE: renovar el certificado
+# exige entrar a AFIP con clave fiscal y volver a hacer el alta — no es un clic, y avisar con dos
+# semanas puede caer entero dentro de unas vacaciones.
+DIAS_CERT_POR_VENCER = int(os.environ.get("COPILOTO_MI_DIA_DIAS_CERT") or "30")
+
+# Silencio de esa regla: 7 días, la mitad que el resto. Las demás avisan de una oportunidad de
+# negocio (un presupuesto frío, un mes caro) y repetirlas seguido es ruido. Ésta avisa de lo único
+# que apaga la facturación entera, y 14 días de silencio con el certificado por vencer se puede
+# comer media ventana de aviso.
+DIAS_SILENCIO_CERT = 7
 
 # Silencio "para siempre" — reglas que dicen un hecho cerrado una sola vez (contrato §1.bis,
 # `trabajo_con_margen_negativo`: "no se repite"). `silenciado_hasta` es NOT NULL a propósito: un NULL
@@ -108,6 +120,7 @@ REGLA_TRABAJO_MARGEN_NEGATIVO = "trabajo_con_margen_negativo"
 REGLA_TRABAJO_SIN_INGRESO = "trabajo_con_gastos_y_sin_ingreso"
 REGLA_GASTO_MES_ALTO = "gasto_del_mes_alto"
 REGLA_CAE_POR_VENCER = "cae_por_vencer"
+REGLA_CERTIFICADO_POR_VENCER = "certificado_afip_por_vencer"
 
 
 def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
@@ -235,6 +248,41 @@ def _evaluar_cae_por_vencer(comprobantes: list[dict]) -> list[dict]:
     return salida
 
 
+def _evaluar_certificado_por_vencer(certificados: list[dict]) -> list[dict]:
+    """El certificado de AFIP está por vencer — o ya venció, o no se puede leer.
+
+    Cierra la deuda que `_evaluar_cae_por_vencer` dejó declarada ("...o credencial"): el certificado
+    WSAA dura ~2 años y cuando vence **se cae la facturación entera, de golpe y sin aviso previo**.
+    Es el fallo más caro del sistema y hasta acá era el único que nadie veía venir — justamente en el
+    dominio donde la autosanación no puede entrar (`DOMINIOS_PROHIBIDOS`: el CAE es irreversible).
+
+    🔴 **Dos diferencias deliberadas con la regla del CAE. Copiar aquella tal cual reabre el hueco:**
+
+    1. **Ya vencido SÍ dispara** (`dias < 0`), mientras que en el CAE se excluye. Allá "ya vencido"
+       es un hecho consumado de un comprobante puntual; acá es la emergencia máxima: la facturación
+       está caída AHORA. Filtrar el caso peor por simetría con la otra regla sería diseñar contra el
+       riesgo temido y quedar ciego al que de verdad duele.
+    2. **Un certificado ilegible también dispara.** Saltearlo dejaría la lista idéntica a la de un
+       tenant sano: el vigilante ciego se vería exactamente igual que el vigilante que no tiene nada
+       que reportar ([[instrumento-que-no-mira-nunca-falla]]).
+    """
+    salida = []
+    for c in certificados:
+        dias = c.get("dias_para_vencer")
+        ilegible = bool(c.get("ilegible"))
+        if not ilegible and (dias is None or dias > DIAS_CERT_POR_VENCER):
+            continue
+        vence_at = c.get("vence_at")
+        salida.append({
+            "regla": REGLA_CERTIFICADO_POR_VENCER, "entidad_tipo": "certificado",
+            "entidad_id": f"{c['cuit']}:{c['ambiente']}", "dias_silencio": DIAS_SILENCIO_CERT,
+            "datos": {"cuit": c["cuit"], "ambiente": c["ambiente"], "dias": dias,
+                      "ilegible": ilegible, "vencido": (not ilegible and dias is not None and dias < 0),
+                      "vence_at": vence_at.isoformat() if hasattr(vence_at, "isoformat") else vence_at},
+        })
+    return salida
+
+
 # ── Reglas — mitad IMPURA (traen los datos de la capa del hito 6) ──────────────────────────────────
 
 def _candidatos_presupuestos_enfriandose(conn_factory: Callable, cliente_id: str) -> list[dict]:
@@ -261,9 +309,27 @@ def _candidatos_cae_por_vencer(conn_factory: Callable, cliente_id: str) -> list[
     return AfipComprobanteStore(conn_factory, cliente_id).con_cae_vigente()
 
 
+def _candidatos_certificado_por_vencer(conn_factory: Callable, cliente_id: str,
+                                       crypto=None) -> list[dict]:
+    """El vencimiento sale del certificado guardado, así que hay que descifrarlo.
+
+    `crypto` se inyecta en los tests y en producción se construye acá (`FernetCrypto()` lee su clave
+    del entorno, igual que `mp_connect.py`). El import es local a propósito: `mi_dia_detector` no
+    depende del motor vendorizado al importarse, y así la mitad pura sigue testeándose sin él.
+
+    Si el certificado no se puede descifrar, el error NO se traga: sale como candidato `ilegible` en
+    `AfipCredentialStore.vencimientos()`. Devolver `[]` ante un problema de claves haría que la
+    regla se viera igual que un tenant sin certificados — silencio indistinguible de salud.
+    """
+    if crypto is None:
+        from clients.agent.providers.crypto import FernetCrypto
+        crypto = FernetCrypto()
+    return AfipCredentialStore(conn_factory, cliente_id, crypto).vencimientos()
+
+
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
 
-def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[dict]]:
+def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None) -> dict[str, list[dict]]:
     """DETECTAR puro (contrato §1, primer paso) — la verdad CRUDA, sin filtrar por silencio.
 
     🔴 A propósito NO filtra silenciados acá. Un consumidor que necesite "cerrar la tarjeta sola
@@ -290,6 +356,9 @@ def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[di
             _evaluar_gasto_del_mes_alto(_candidatos_gasto_del_mes_alto(conn_factory, cliente_id)),
         REGLA_CAE_POR_VENCER:
             _evaluar_cae_por_vencer(_candidatos_cae_por_vencer(conn_factory, cliente_id)),
+        REGLA_CERTIFICADO_POR_VENCER:
+            _evaluar_certificado_por_vencer(
+                _candidatos_certificado_por_vencer(conn_factory, cliente_id, crypto)),
     }
 
 
@@ -301,5 +370,9 @@ def detectar_todos(conn_factory: Callable, cliente_id: str) -> dict[str, list[di
 # `gasto_del_mes_alto` y `cae_por_vencer` NO están — ninguna tiene una "acción que la resuelva": un
 # mes caro sigue habiendo sido caro, y un CAE no se "renueva" (contrato §2.1: sólo se mueven a mano
 # las que no tienen acción rastreable).
+# `certificado_afip_por_vencer` SÍ está, y es la diferencia con el CAE de al lado: un certificado
+# **sí** se renueva, y al renovarlo el candidato desaparece de `detectar_todos()` solo. Que se cierre
+# por el HECHO y no por el gesto importa acá más que en ninguna otra: una tarjeta de "certificado por
+# vencer" cerrada a mano sin haber renovado nada dejaría al emprendedor creyendo que lo resolvió.
 REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS,
-                      REGLA_TRABAJO_SIN_INGRESO)
+                      REGLA_TRABAJO_SIN_INGRESO, REGLA_CERTIFICADO_POR_VENCER)
