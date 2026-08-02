@@ -94,6 +94,9 @@ metadata:
 
 ### Referencia de bajo uso
 
+- [✂️📏 Poda de suggesters + lint de contratos](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — ~2,57M tok/mes medidos. 4 hooks OFF con criterio declarado.
+- [🐕 watchdog-sesiones NO se activa](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — decisión del operador: falso positivo de pausa deliberada. No re-proponer.
+
 - [✂️🤖 El hook se come el reporte del sub-agente headless](el-hook-se-come-el-reporte-del-subagente.md) — `result` corto ≠ agente conciso. Está en el transcript; NO re-lanzar.
 - [🔁 PWA service worker sirve build viejo](pwa-sw-staleness-gotcha.md) — deploy correcto ≠ el navegador lo tiene. `cleanupOutdatedCaches` + `no-cache`.
 - [Capacidades de `claude -p` headless](claude-code-headless-capabilities.md) — `--effort`, `/goal`, sub-agentes. Sesión aislada.
