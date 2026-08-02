@@ -205,15 +205,30 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = N
 
     dominio = dominio_prohibido(ruta)
     if dominio:
+        # `reintentable=False`: "nunca se auto-repara" es literal — la respuesta de este gate es una
+        # propiedad del DOMINIO, no del entorno, y no va a cambiar mañana. Y acá el costo de soltarlo
+        # es peor que con el canario: los errores de AFIP son frecuentes, así que un trauma de este
+        # tipo acumula `dedupe_count` alto y se sienta en el TOPE del orden que usa
+        # `tomar_un_bug_distinto` — bloqueando la cola para todos los bugs que SÍ se pueden reparar.
         return Decision(False, f"dominio DIAGNOSTIC_ONLY: {dominio} — efecto irreversible y externo "
-                               "(CAE ante AFIP, secreto one-shot, token rotado). Nunca se auto-repara")
+                               "(CAE ante AFIP, secreto one-shot, token rotado). Nunca se auto-repara",
+                        reintentable=False)
 
     # `categoria=None` NO se interpreta como "adelante": un trauma viejo o depositado por una costura
     # que no la registró tiene que caer del lado del no. El default permisivo sería el error clásico
     # de este gate — el caso normal de toda regla restrictiva es no-hacer.
     if categoria not in CATEGORIAS_REPARABLES:
+        # Acá los dos casos NO son el mismo, y la diferencia decide si el trauma se cierra o vuelve:
+        #
+        #  - `categoria is None` -> PERMANENTE. La categoría se sella al depositar; un trauma que no
+        #    la trae (viejo, o de una costura que no la registraba) no la va a tener nunca. Volver a
+        #    preguntárselo cada 2 h es garantizado inútil.
+        #  - una categoría CONOCIDA que hoy no es reparable -> TRANSITORIO. `CATEGORIAS_REPARABLES`
+        #    es una decisión nuestra y puede ampliarse; el día que se amplíe, ese trauma tiene que
+        #    seguir en la cola. Descartarlo sería perder un bug real por una política que cambió.
         return Decision(False, f"categoría {categoria!r}: no hay código que reparar acá. Sólo se "
-                               f"auto-reparan {CATEGORIAS_REPARABLES}")
+                               f"auto-reparan {CATEGORIAS_REPARABLES}",
+                        reintentable=categoria is not None)
 
     tope = tope_diario()
     if reparaciones_hoy >= tope:
