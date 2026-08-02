@@ -85,21 +85,42 @@ async def revisar_schedule(fallas: list[str]) -> None:
 def revisar_dlq(fallas: list[str]) -> None:
     import psycopg2
 
-    dsn = next((os.environ[k] for k in
-                ("COPILOTO_PG_DSN", "DATABASE_URL", "PG_DSN", "FUSION_PG_DSN")
-                if os.environ.get(k)), None)
+    # El DSN del CICLO primero: su rol tiene `BYPASSRLS` porque el auditor es global (uno para toda
+    # la app, no uno por tenant). Los otros DSN son de la app, cuyo rol está sujeto a RLS `FORCE`.
+    #
+    # ⚠️ Medido el 2026-08-02: con un DSN de app y sin declarar la GUC de tenant, `select count(*)
+    # from uc_factory.copiloto_traumas` devuelve **0 SIEMPRE** — no porque no haya filas, sino porque la policy
+    # no deja verlas. Este verificador reportó "0 traumas" y "el canario nunca se disparó" mientras
+    # la fila del canario estaba en la tabla (id 14). Un instrumento ciego no dice "no veo": dice
+    # "no hay", que es la peor forma de mentir ([[instrumentos-que-confirman-en-vez-de-verificar]]).
+    dsn = os.environ.get("COPILOTO_AUTOSANACION_DSN") or next(
+        (os.environ[k] for k in ("COPILOTO_PG_DSN", "DATABASE_URL", "PG_DSN", "FUSION_PG_DSN")
+         if os.environ.get(k)), None)
     if not dsn:
         print("[MAL] DLQ: no hay DSN en el entorno — ¿cargaste los EnvironmentFile del servicio?")
         fallas.append("sin DSN: la DLQ quedó SIN medir")
         return
 
+    # Control de ceguera, ANTES de contar: si el rol no saltea RLS, cualquier cero que sigue es
+    # indistinguible de "no puedo ver". Preguntárselo al catálogo cuesta una query y evita publicar
+    # un número que no significa nada.
     with psycopg2.connect(dsn) as c, c.cursor() as cur:
-        cur.execute("select count(*) from copiloto_traumas")
+        cur.execute("select current_user, coalesce((select rolbypassrls from pg_roles "
+                    "where rolname = current_user), false)")
+        rol, ve_todo = cur.fetchone()
+    if not ve_todo:
+        print(f"[MAL] DLQ: el rol '{rol}' NO tiene BYPASSRLS — cualquier conteo sería ceguera, "
+              "no ausencia. Cargá COPILOTO_AUTOSANACION_DSN (el rol del ciclo)")
+        fallas.append(f"medida ciega: '{rol}' está sujeto a RLS y no puede ver la DLQ completa")
+        return
+
+    with psycopg2.connect(dsn) as c, c.cursor() as cur:
+        cur.execute("select count(*) from uc_factory.copiloto_traumas")
         vivos = cur.fetchone()[0]
-        cur.execute("select last_value, is_called from copiloto_traumas_id_seq")
+        cur.execute("select last_value, is_called from uc_factory.copiloto_traumas_id_seq")
         ultimo, arrancada = cur.fetchone()
         emitidos = ultimo if arrancada else 0
-        cur.execute("select estado, count(*) from copiloto_traumas group by estado order by 2 desc")
+        cur.execute("select estado, count(*) from uc_factory.copiloto_traumas group by estado order by 2 desc")
         por_estado = cur.fetchall()
 
     # El control que hace significativo al cero: una DLQ vacía puede ser "no falla nada" o
@@ -131,7 +152,7 @@ def revisar_canario(dsn: str, fallas: list[str]) -> None:
 
     with psycopg2.connect(dsn) as c, c.cursor() as cur:
         cur.execute("""SELECT max(created_at), count(*)
-                         FROM copiloto_traumas WHERE error_type = 'ErrorDeCanario'""")
+                         FROM uc_factory.copiloto_traumas WHERE error_type = 'ErrorDeCanario'""")
         ultimo, cuantos = cur.fetchone()
 
     if not ultimo:
