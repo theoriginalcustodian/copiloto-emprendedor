@@ -118,3 +118,29 @@ def test_devuelve_el_tablero_ya_actualizado(monkeypatch):
              REGLA_TRABAJO_MARGEN_NEGATIVO: []}
     resultado = _correr(monkeypatch, crudos, _AvisosFake(), _TarjetasFake())
     assert resultado == {"para_hoy": [], "haciendo": [], "hecha": []}
+
+
+def test_GUARD_toda_regla_del_detector_tiene_su_plantilla():
+    """La costura que este guard cierra, encontrada el 2026-08-02.
+
+    `certificado_afip_por_vencer` se agregó al detector y detectaba perfecto, pero nadie le escribió
+    plantilla: `_redactar_plantilla` degradaba al fallback y el emprendedor habría visto
+    literalmente "Aviso: certificado_afip_por_vencer." — el aviso MÁS crítico del producto
+    (sin certificado no se factura) mostrado como un slug técnico.
+
+    El fallback está bien y se queda: que el pipeline no se caiga por una plantilla faltante es
+    robustez deliberada. Lo que no puede pasar es que se use por OLVIDO — un default que salva la
+    corrida es exactamente el que hace que nadie note el hueco.
+
+    Por introspección y no con una lista a mano: una lista habría que acordarse de actualizar, que
+    es el mismo olvido que este test viene a cazar.
+    """
+    import mi_dia_detector as detector
+
+    reglas = {v for k, v in vars(detector).items()
+              if k.startswith("REGLA_") and isinstance(v, str)}
+    assert reglas, "control positivo: si no se descubre ninguna regla, el test no mide nada"
+    faltan = reglas - set(orq._PLANTILLAS)
+    assert not faltan, (
+        f"reglas sin plantilla: {sorted(faltan)}. Sin ella el usuario ve 'Aviso: <slug>'. "
+        f"Agregá su texto en `mi_dia_orquestador._PLANTILLAS`.")
