@@ -44,6 +44,8 @@ from catalog import build_catalog
 import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from canario_autosanacion import RUTA as RUTA_CANARIO
+from canario_autosanacion import disparar as disparar_canario
 from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
@@ -823,6 +825,21 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     @app.get("/healthz")
     def healthz() -> dict:
         return {"status": "ok"}
+
+    @app.post(RUTA_CANARIO)
+    def canario(cliente_id: str = Depends(require_tenant)) -> dict:
+        """Prueba de vida del manejo de errores: lanza un error DELIBERADO por el camino real.
+
+        Va **autenticada** y no en `/healthz` por dos motivos, y los dos son el punto del canario:
+        sin `require_tenant` no hay tenant declarado, y sin tenant la costura no deposita — con lo
+        cual el canario mediría un camino distinto al que quiere vigilar. Y el trauma tiene que
+        quedar en un tenant real para atravesar el `WITH CHECK` de la policy de RLS.
+
+        No devuelve nada: `disparar()` lanza, la costura lo convierte en el 500 con `codigo` de
+        siempre y lo deposita. El `return` sólo se alcanza con el canario apagado.
+        """
+        disparar_canario(cliente_id)
+        return {"status": "canario apagado", "cliente_id": cliente_id}
 
     # `/mp/callback` y `/mp/webhook` ya construidos en `mp_app` (create_mp_app) con su propia
     # barrera (state cifrado / x-signature). `include_router` copia sus rutas absolutas al front-door
