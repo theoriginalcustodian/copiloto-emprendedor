@@ -33,7 +33,7 @@
 
 ### Cadencia, cierre y ocio
 
-- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — **marco de todo sprint**. A1 audita el plan y puede rechazarlo; A2, el resultado. Cola: `docs/aprendizajes/pendientes/`.
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — **marco de todo sprint**. A1 audita el plan y puede rechazarlo; A2, el resultado.
 - [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — si el operador puede preguntar "¿y cómo seguimos?", cerraste mal. Canon 8a.
 - [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — reordená por impacto÷costo y despachá YA. Enumerar y no ejecutar ES el error. Canon 8b.
 - [🚫💤 CERO ocio — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — único no-trabajar válido: terminó todo y reportó.
@@ -62,7 +62,7 @@
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué devolvería si lo que mido estuviera roto?* Catálogo de 11+ casos.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo no choca con nada y se disfraza de prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá **sobre cuántos elementos miró**, no sólo si pasó.
-- [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — el cero de una query con RLS no es dato hasta saber si el rol puede ver. Control de ceguera ANTES de contar.
+- [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera ANTES de contar.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
 - [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op es lo que MEJOR puntúa en un gate de no-regresión.
@@ -83,7 +83,7 @@
 - [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona. Decir "verde" sin decir **dónde** oculta el hueco.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — rechazó 3/3 el parche correcto. Un juez sin contexto rechaza, y parece prudencia.
 - [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto. El cuello era el FORMATO: `SEARCH/REPLACE` ✅ vs diff ❌.
-- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `monkeypatch.setenv` mide el módulo, no el despliegue. Apagado real = pausar el Schedule.
+- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `monkeypatch.setenv` mide el módulo, no el despliegue. Apagar = pausar el Schedule.
 
 ### Diagnóstico: leer el contrato antes de explicar
 
@@ -101,6 +101,7 @@
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente es el atajo que *colapsa* el problema.
 - [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?* Separá lo que converge de lo que se respeta.
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — facturar 2× → 2 CAE. Medí el EFECTO.
+- [⏱️🕳️ Un campo que cambia con el RELOJ dentro del hash anula el cache](una-columna-global-mutante-vuelve-inerte-al-cache.md) — 20 min/push. Invalidar de más no rompe: tarda.
 - [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — **leer antes de levantar DR/staging**. Idempotente ≠ reproducible.
 - [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — habla del objeto, no de su tabla ni de los permisos. Preguntá al catálogo.
 - [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX, no del bug. Nada lo propaga solo.
