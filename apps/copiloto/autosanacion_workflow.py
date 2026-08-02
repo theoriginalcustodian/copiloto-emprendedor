@@ -86,8 +86,15 @@ class AutosanacionWorkflow:
             "evaluar_gates_de_reparacion", trauma,
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
         if not decision.get("permitido"):
-            await self._soltar(trauma, decision.get("motivo", "rechazado por gate"))
+            # Un rechazo PERMANENTE se cierra; uno transitorio se suelta. El default `True` mantiene
+            # el comportamiento anterior para todo gate que no declare lo contrario: se reintenta de
+            # más, nunca se descarta de menos. Ver el docstring de `Decision`.
+            if decision.get("reintentable", True):
+                await self._soltar(trauma, decision.get("motivo", "rechazado por gate"))
+            else:
+                await self._descartar(trauma, decision.get("motivo", "rechazado por gate"))
             return {"estado": "rechazado_por_gate", "motivo": decision.get("motivo"),
+                    "reintentable": decision.get("reintentable", True),
                     "trauma_id": trauma.get("id")}
 
         # Paso 2 — forjar. El contexto (archivo real + salida real de pytest) lo arma la activity:
@@ -163,5 +170,25 @@ class AutosanacionWorkflow:
         """
         await workflow.execute_activity(
             "marcar_trauma", {"id": trauma.get("id"), "estado": "pendiente", "nota": motivo,
+                              "cliente_id": trauma.get("cliente_id")},
+            start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
+
+    async def _descartar(self, trauma: dict, motivo: str) -> None:
+        """Cierra el trauma como `descartado`: nunca más vuelve a la cola.
+
+        Es el hermano de `_soltar` para los rechazos cuya respuesta **no puede cambiar** — hoy, el
+        canario. Soltar uno de esos lo deja circulando para siempre: medido en prod el 2026-08-02,
+        las corridas de las 02, 04, 06 y 08 salieron todas `rechazado_por_gate` con el mismo
+        `trauma_id: 14`. Y como el ciclo toma UN trauma por corrida ordenado por `dedupe_count DESC`,
+        y cada prueba de vida del canario comparte fingerprint (⇒ su `dedupe_count` crece), el
+        vigilante habría terminado quedándose con todas las corridas y tapando a los bugs reales.
+
+        `descartado`, no `resuelto`: nada se reparó. La fila queda —con su nota— porque **la fila ES
+        lo que el canario viene a producir**: `verificar-autosanacion.py` lee su `created_at` para
+        saber hace cuánto se probó el camino detección→DLQ de punta a punta. Borrarla destruiría la
+        prueba de vida; dejarla pendiente rompería el ciclo. Cerrarla conserva las dos cosas.
+        """
+        await workflow.execute_activity(
+            "marcar_trauma", {"id": trauma.get("id"), "estado": "descartado", "nota": motivo,
                               "cliente_id": trauma.get("cliente_id")},
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)

@@ -233,7 +233,11 @@ def _reparaciones_de_hoy() -> int:
 
 @activity.defn
 async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
-    """Los gates, en orden de costo. Devuelve `{permitido, motivo, archivo}`.
+    """Los gates, en orden de costo. Devuelve `{permitido, motivo, reintentable, archivo}`.
+
+    `reintentable` viaja al workflow para que decida entre SOLTAR el trauma (rechazo transitorio:
+    kill switch, tope — mañana sí se repara) y CERRARLO (rechazo permanente: el canario). Ver el
+    docstring de `Decision`.
 
     Es activity y no lógica del workflow porque `puede_reparar` lee `os.environ` en **cada** decisión
     —el kill switch tiene que surtir efecto sin reiniciar el worker— y leer env dentro de un workflow
@@ -257,7 +261,7 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         reparaciones_hoy=_reparaciones_de_hoy(),
         categoria=contexto.get("categoria"))
     return {"permitido": decision.permitido, "motivo": decision.motivo,
-            "archivo": origen["archivo"]}
+            "reintentable": decision.reintentable, "archivo": origen["archivo"]}
 
 
 # ======================================================================================

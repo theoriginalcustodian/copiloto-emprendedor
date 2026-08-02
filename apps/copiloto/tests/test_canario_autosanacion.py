@@ -43,6 +43,37 @@ def test_el_gate_RECHAZA_reparar_el_canario():
     assert "canario" in decision.motivo.lower()
 
 
+def test_el_rechazo_del_canario_NO_es_reintentable():
+    """El canario se CIERRA, no se suelta: si vuelve a la cola, termina tapándola.
+
+    Medido en prod el 2026-08-02: el ciclo toma UN trauma por corrida
+    (`tomar_un_bug_distinto`, `ORDER BY dedupe_count DESC`). El canario rechazado se soltaba a
+    `pendiente` y volvía en CADA corrida — las de las 02, 04, 06 y 08 salieron todas
+    `rechazado_por_gate` con el mismo `trauma_id: 14`. Peor a futuro: cada prueba de vida comparte
+    fingerprint, así que su `dedupe_count` crece y a los pocos disparos se quedaría con todas las
+    corridas. El vigilante impidiendo trabajar al sistema que vigila — y el síntoma sería "el
+    autohealing no repara nada", indistinguible de "no hay nada que reparar".
+    """
+    decision = gates.puede_reparar(ruta=f"POST {canario.RUTA}", reparaciones_hoy=0,
+                                   categoria="business_error")
+    assert decision.reintentable is False
+
+
+def test_CONTROL_un_rechazo_TRANSITORIO_si_es_reintentable(monkeypatch):
+    """El control que hace significativo al de arriba.
+
+    Sin él, un `reintentable=False` cableado en todos lados pasaría aquel test y descartaría bugs
+    REALES en silencio cada vez que el kill switch estuviera activo o el tope alcanzado — que es el
+    daño opuesto y mucho peor. El kill switch es transitorio por definición: cuando se apague, ese
+    trauma tiene que seguir ahí.
+    """
+    monkeypatch.setenv(gates.ENV_KILL_SWITCH, "1")
+    decision = gates.puede_reparar(ruta="POST /presupuestos", reparaciones_hoy=0,
+                                   categoria="business_error")
+    assert decision.permitido is False, "el kill switch no frenó: el control no está midiendo"
+    assert decision.reintentable is True
+
+
 def test_CONTROL_el_gate_PERMITE_reparar_una_ruta_normal():
     """El control que hace significativo al test de arriba.
 

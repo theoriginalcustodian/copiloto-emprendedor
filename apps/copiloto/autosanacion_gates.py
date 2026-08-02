@@ -84,8 +84,31 @@ MARCA_CANARIO = "canario"
 
 @dataclass(frozen=True)
 class Decision:
+    """El veredicto del gate, y —si es negativo— si tiene sentido volver a intentarlo.
+
+    ``reintentable`` separa dos rechazos que hasta el 2026-08-02 se trataban igual y no lo son:
+
+    - **transitorio** (kill switch, tope diario): la respuesta depende del ENTORNO y va a cambiar.
+      El trauma se **suelta** a `pendiente` y mañana se repara. Cerrarlo sería perder un bug real.
+    - **permanente** (el canario): la respuesta es una propiedad del trauma MISMO y no va a cambiar
+      nunca. Soltarlo lo deja circulando para siempre.
+
+    Por qué importa, medido en prod: el ciclo toma **UN** trauma por corrida
+    (``tomar_un_bug_distinto``), ordenado por ``dedupe_count DESC``. El canario rechazado volvía a
+    `pendiente` y era re-tomado en CADA corrida — las de las 02, 04, 06 y 08 del 2026-08-02 salieron
+    todas `rechazado_por_gate` con el mismo `trauma_id: 14`. Y como cada prueba de vida comparte
+    fingerprint, su ``dedupe_count`` crece: a los pocos disparos sería el más alto de la DLQ y se
+    llevaría **todas** las corridas. El vigilante terminaría impidiendo trabajar al sistema que
+    vigila — y el síntoma sería "el autohealing no repara nada", indistinguible de "no hay nada
+    que reparar" ([[el-canario-el-control-positivo-de-lo-que-falla-callado]]).
+
+    El default es ``True`` a propósito: un rechazo cuya permanencia nadie declaró se trata como
+    transitorio, que es el lado seguro — se reintenta de más, no se descarta de menos.
+    """
+
     permitido: bool
     motivo: str
+    reintentable: bool = True
 
 
 def apagado() -> bool:
@@ -172,8 +195,13 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = N
     # ensucia en el caso normal se termina desarmando. Se excluye de REPARAR, no de REGISTRARSE: la
     # fila en la DLQ es justamente la evidencia que el canario viene a producir.
     if MARCA_CANARIO in (ruta or "").lower():
+        # `reintentable=False`: el trauma se CIERRA, no se suelta. Su error es deliberado, así que
+        # la respuesta de este gate no va a cambiar nunca — dejarlo en `pendiente` lo hacía volver
+        # en cada corrida y, peor, escalar en el orden `dedupe_count DESC` hasta quedarse con todas.
+        # Ver el docstring de Decision: el vigilante bloqueando al sistema que vigila.
         return Decision(False, "canario de salud: el error es deliberado, no hay bug que reparar. "
-                               "Su valor está en haber quedado registrado, no en repararse")
+                               "Su valor está en haber quedado registrado, no en repararse",
+                        reintentable=False)
 
     dominio = dominio_prohibido(ruta)
     if dominio:
