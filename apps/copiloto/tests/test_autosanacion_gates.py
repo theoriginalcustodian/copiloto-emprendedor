@@ -185,6 +185,68 @@ def test_SIN_categoria_declarada_tampoco_repara():
     assert not puede_reparar(ruta="x.py", reparaciones_hoy=0, categoria=None).permitido
 
 
+# ======================================================================================
+# Permanente vs transitorio: qué rechazos vuelven a la cola y cuáles la taparían
+# ======================================================================================
+# Medido en prod el 2026-08-02: el ciclo toma UN trauma por corrida
+# (`tomar_un_bug_distinto`, ORDER BY dedupe_count DESC). Un rechazo permanente devuelto a
+# `pendiente` vuelve en CADA corrida, y como su `dedupe_count` crece con cada ocurrencia,
+# termina sentado en el tope del orden y se queda con todas las corridas — tapando a los
+# bugs que SÍ se pueden reparar. El síntoma sería "el autohealing no repara nada",
+# indistinguible de "no hay nada que reparar". Ya se había cruzado con esto sin nombrarlo:
+# `e2e_autosanacion_trauma_real.py:280` tiene una rama entera para "el ciclo tomó otro bug
+# porque la DLQ real tenía pendientes con más dedupe_count".
+#
+# Nadie más lee `pendiente`: no hay dashboard ni reporte humano sobre la DLQ (verificado por
+# grep en apps/, deploy/ y scripts/). Así que dejar ahí un rechazo permanente no le da
+# visibilidad a nadie — sólo tapa la cola. La fila NO se borra: queda `descartado`, con su
+# nota, disponible para cualquier consumidor futuro.
+def test_el_dominio_prohibido_NO_es_reintentable():
+    """"Nunca se auto-repara" es literal: es una propiedad del dominio, no del entorno.
+
+    Y acá el costo de soltarlo es peor que en el canario: los errores de AFIP son frecuentes,
+    así que acumulan `dedupe_count` alto y se sientan primeros en la cola.
+    """
+    for ruta in DOMINIOS_PROHIBIDOS:
+        d = puede_reparar(ruta=f"{ruta}.py", reparaciones_hoy=0, categoria="business_error")
+        assert d.reintentable is False, f"{ruta}: un rechazo permanente devuelto a la cola la tapa"
+
+
+def test_un_trauma_SIN_categoria_no_es_reintentable():
+    """La categoría se sella al depositar: un trauma que no la trae no la va a tener nunca."""
+    assert puede_reparar(ruta="x.py", reparaciones_hoy=0, categoria=None).reintentable is False
+
+
+@pytest.mark.parametrize("categoria", ["infra_error", "manual_intervention", "cascading"])
+def test_CONTROL_una_categoria_CONOCIDA_no_reparable_SI_es_reintentable(categoria):
+    """El control que impide que esto se vuelva un descarte masivo.
+
+    `CATEGORIAS_REPARABLES` es una decisión NUESTRA y puede ampliarse. El día que se amplíe,
+    esos traumas tienen que seguir en la cola — descartarlos sería perder bugs reales por una
+    política que cambió. La distinción fina está en el `None`, no en "no reparable".
+    """
+    d = puede_reparar(ruta="cobro_store.py", reparaciones_hoy=0, categoria=categoria)
+    assert not d.permitido, "el gate no rechazó: el control no está midiendo lo que dice"
+    assert d.reintentable is True
+
+
+def test_CONTROL_los_rechazos_TRANSITORIOS_siguen_volviendo_a_la_cola(monkeypatch):
+    """El control positivo espejo de todo este bloque.
+
+    Cablear `reintentable=False` en todos lados pasaría los tests de arriba y descartaría bugs
+    REALES en silencio cada vez que el kill switch estuviera activo o el tope alcanzado — el daño
+    opuesto y mucho peor, porque el ciclo seguiría reportando que "decidió" sobre cada trauma.
+    """
+    monkeypatch.setenv(ENV_KILL_SWITCH, "1")
+    d = puede_reparar(ruta="x.py", reparaciones_hoy=0, categoria="business_error")
+    assert not d.permitido and d.reintentable is True, "el kill switch es transitorio por definición"
+
+    monkeypatch.delenv(ENV_KILL_SWITCH, raising=False)
+    monkeypatch.setenv(ENV_TOPE_DIARIO, "1")
+    d = puede_reparar(ruta="x.py", reparaciones_hoy=5, categoria="business_error")
+    assert not d.permitido and d.reintentable is True, "el tope diario se libera mañana"
+
+
 def test_el_dominio_fiscal_gana_aunque_la_categoria_sea_reparable():
     """Los gates no se anulan entre sí. Un `business_error` en AFIP sigue siendo intocable: el
     efecto es irreversible y externo, y eso no depende de por qué falló."""

@@ -247,7 +247,11 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
     if not origen:
         # Antes que cualquier otro gate: sin archivo no hay nada que reparar, y el rechazo cuesta
         # cero. Es el caso de todo trauma depositado antes de que las costuras guardaran el origen.
-        return {"permitido": False, "archivo": None,
+        # `reintentable=False`: el origen se sella al DEPOSITAR el trauma. Una fila que no lo trae
+        # no lo va a tener nunca —arreglar la costura no reescribe los traumas viejos—, así que
+        # volver a evaluarla en cada corrida es garantizado inútil, y con `dedupe_count` alto le
+        # gana a los bugs que sí se pueden reparar.
+        return {"permitido": False, "archivo": None, "reintentable": False,
                 "motivo": "el trauma no registró archivo:línea — no es reparable, sólo contable"}
 
     contexto = _contexto_de(trauma)
