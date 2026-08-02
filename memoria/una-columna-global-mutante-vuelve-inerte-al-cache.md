@@ -51,6 +51,21 @@ Fix en `graphify-graphity-bridge`, commit `fix(sync): el checkpoint no salteaba 
 tests que cuentan **requests, no filas** — miden el ahorro, no la no-regresión
 ([[no-romper-no-es-arreglar]]).
 
-**Deuda visible:** el sync corta con `httpx.RemoteProtocolError: Server disconnected` en algún
+## Dos hallazgos del mismo camino, registrados y NO resueltos
+
+**1. Un umbral medido y documentado que hoy es falso.** El docstring de `co_change.py` afirma —con
+medición de julio— que `min_support=3` "deja 16 aristas: borra la SEÑAL, no el ruido". Medido de
+nuevo el 2026-08-02, con la historia ya en 505 commits (eran ~250): `min_support=3` deja **316**
+pares, y `top_k` pasa de podar 42 a podar 1 — o sea recupera casi entera la monotonía que el propio
+módulo declara innegociable. **Un umbral calibrado contra un dataset que crece envejece en
+silencio**, y queda escrito como verdad permanente en un docstring que nadie vuelve a medir. Subirlo
+es MAYOR (cambia el contenido del grafo): queda medido, no ejecutado.
+
+**2. La config del arco vive sólo en el working tree.** `graphify-graphity-bridge/config/repos.toml`
+está versionado, pero los 7 repos de la flota son 43 líneas **sin commitear**, apoyadas en 3 commits
+locales sin pushear. Un `git checkout` ahí borra la configuración del arco autopoiético entero, sin
+recuperación ([[checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree]]).
+
+**3. Deuda técnica:** el sync corta con `httpx.RemoteProtocolError: Server disconnected` en algún
 request al server de Graphity. Con el fix la exposición baja de ~225 requests a un puñado, pero la
-causa del corte sigue sin diagnosticar.
+causa del corte sigue sin diagnosticar (sin acceso SSH a ese VPS desde esta sesión).
