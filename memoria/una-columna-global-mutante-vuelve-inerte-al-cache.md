@@ -1,18 +1,41 @@
 ---
 name: una-columna-global-mutante-vuelve-inerte-al-cache
-description: El checkpoint por contenido del bridge no salteaba nada porque commit_date (fecha del HEAD) viajaba en todas las filas y entraba al hash — un campo que cambia con el reloj adentro de la identidad anula el cache entero sin romper ningún test
+description: El checkpoint del bridge no salteaba nada porque dos campos que mutan sin que cambie el código (commit_date y el id de comunidad del clustering) entraban al hash — y arreglar el primero, probado por diferencial, no movió el reloj: un diferencial prueba que una causa CONTRIBUYE, nunca que sea la única
 metadata:
   type: project
 ---
 
-**Medido el 2026-08-02.** Cada push que movía `origin/main` tardaba ~20 minutos sincronizando el
+**Medido el 2026-08-02.** Cada push que movía `origin/main` tardaba **~25 minutos** sincronizando el
 grafo, con **3 archivos de diferencia**. El bridge tiene un checkpoint por contenido bien diseñado
 (`sha256(mapping + filas)` por chunk: si el código no cambió, se saltea). Estaba inerte: **0 de 45
 particiones salteadas, siempre**.
 
-Causa: `commit_date` —la fecha del commit **HEAD**, no la del archivo— viaja en **todas** las filas
-de **todas** las particiones, y entraba al hash. Cualquier commit cambiaba ese valor en las ~8.300
-filas del grafo ⇒ los 45 `content_hash` cambiaban ⇒ el checkpoint no podía saltear nada.
+Dos campos lo anulaban, y ese "dos" es el corazón de la entrada:
+
+1. **`commit_date`** — la fecha del commit **HEAD**, no la del archivo. Viaja en todas las filas de
+   todas las particiones: cualquier commit la cambia en las ~18.000 filas del grafo.
+2. **`src_community` / `dst_community`** — el id de comunidad del clustering de graphify **no es
+   reproducible entre procesos**. Dos corridas consecutivas sobre el *mismo commit* dieron **43 y
+   45** para la misma arista.
+
+## El error que más enseña: probé la causa, y no era la causa
+
+Encontré (1), escribí un test que **fallaba sin el fix y pasaba con él**, y di el problema por
+resuelto. En el territorio, `graph-sync.sh` siguió tardando **1.405 s**: prácticamente igual.
+
+**Un diferencial prueba que una causa CONTRIBUYE al efecto, no que sea la única.** `commit_date`
+bastaba para anular el cache; el `community` *también* bastaba. Con dos causas suficientes e
+independientes, arreglar una sola no mueve el resultado ni un segundo — y el test verde dice la
+verdad mientras el sistema no cambia. Es la trampa exacta de un test bien hecho: mide **su**
+hipótesis, aislada, en un fixture que congela todo lo demás.
+
+Lo que lo destapó fue medir el **efecto en el sistema real**, no el mecanismo en el test. Y la señal
+que lo confirmó fue un número que se movía solo: al comparar el hash calculado contra el guardado,
+corridas seguidas daban 3/40, 2/41, 3/40 — **si el mutante estuviera muerto, ese número sería fijo**.
+
+Regla que queda: cuando el fix de una causa probada **no mueve la métrica que motivó el trabajo**,
+la conclusión no es "el fix no sirvió" ni "faltó desplegarlo" — es *hay otra causa suficiente del
+mismo tipo, seguí buscando en la misma familia*.
 
 ## Por qué no dio síntoma nunca
 
@@ -28,28 +51,35 @@ que causaba el bug.
 
 ## La forma general
 
-**Un campo que cambia con el reloj, adentro de la identidad de contenido de un cache, lo anula
-entero.** Y es difícil de ver porque el campo suele ser legítimo *en el dato* (el `valid_at` del
-grafo lo necesita) — el error no es que exista, es que participe de la **identidad**. La pregunta
-que lo caza: *¿qué campos de esto cambian sin que cambie lo que el cache describe?*
+**Un campo que cambia sin que cambie lo que el cache describe —el reloj, un id de proceso, un
+contador de clustering— anula el cache entero desde adentro de la identidad.** Es difícil de ver
+porque el campo suele ser legítimo *en el dato* (el `valid_at` lo necesita; el `community` es
+información útil): el error no es que exista, es que participe de la **identidad**. La pregunta que
+lo caza: *¿qué campos de esto cambian sin que cambie lo que el cache describe?* — y hay que
+responderla para **todos** los campos, no parar en el primero que aparece.
 
-Bonus: sacarlo **corrigió una semántica falsa**. Antes toda arista decía "válida desde el último
-commit del repo" aunque el código no se tocara hace meses — el campo describía cuándo corrió el
-sync, no cuándo el hecho pasó a ser verdad. Hermana directa de
+Bonus: sacar `commit_date` **corrigió una semántica falsa**. Antes toda arista decía "válida desde
+el último commit del repo" aunque el código no se tocara hace meses — el campo describía cuándo
+corrió el sync, no cuándo el hecho pasó a ser verdad. Hermana directa de
 [[el-grafo-ingesta-el-disco-pero-fecha-con-head]].
 
 ## Dónde estaba el costo (medido, no supuesto)
 
-Con el cliente instrumentado: `wait_for` (polling de la migración) = **112 s de 170 s** — el server
-tarda **~28 s en procesar cada partición**; el POST en sí, 0,7 s. Por eso 45 particiones × 28 s ≈
-**21 min**. La palanca no era la red ni el tamaño de los chunks: era **no mandar lo que no cambió**.
+Sync completo instrumentado: **1.488 s**, 168 requests. De esos, `wait_for` (el server procesando)
+= **1.333 s en 45 llamadas, ~30 s cada una: el 90%**. El POST en sí son 0,52 s. **Mandar** las
+particiones costaba 23 s; que el server las **procesara**, 22 minutos. La palanca nunca fue la red,
+ni el tamaño de los chunks, ni paralelizar: era **no mandar lo que no cambió**.
 
-Segundo hallazgo del mismo camino: el `validate_only` corría una vez por partición **fuera** del
+Tercer hallazgo del mismo camino: el `validate_only` corría una vez por partición **fuera** del
 checkpoint — 45 requests que no escribían nada y que el skip no podía evitar. Ahora es perezoso.
 
-Fix en `graphify-graphity-bridge`, commit `fix(sync): el checkpoint no salteaba NADA…`, con dos
-tests que cuentan **requests, no filas** — miden el ahorro, no la no-regresión
-([[no-romper-no-es-arreglar]]).
+Y una hipótesis mía que el contrato mató antes de costar nada: subir el `page_size` del reconcile
+(200) para hacer menos requests. El server declara `le=200` — **200 ya es el máximo**. Leer el
+contrato costó un `grep`; tantearlo hubiera costado una corrida de 25 minutos.
+
+Fix en `graphify-graphity-bridge` (PR #3), con tests que cuentan **requests, no filas** — miden el
+ahorro, no la no-regresión ([[no-romper-no-es-arreglar]]) — y un guard que fija el set de columnas,
+para que una columna nueva obligue a decidir si entra a la identidad, verificado por mutación.
 
 ## Dos hallazgos del mismo camino, registrados y NO resueltos
 
