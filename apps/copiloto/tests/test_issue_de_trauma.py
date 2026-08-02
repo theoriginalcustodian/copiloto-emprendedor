@@ -102,6 +102,64 @@ def test_un_trauma_SIN_fingerprint_no_abre_nada(monkeypatch, tmp_path):
     assert _abrir(trauma={**TRAUMA, "fingerprint": None})["modo"] == "sin_canal"
 
 
+def test_INVARIANTE_lo_unico_que_se_descarta_SIN_avisar_es_el_canario():
+    """El invariante que cierra el agujero, y la lección de cómo se abrió.
+
+    `necesita_humano` y `reintentable` se agregaron el mismo día, cada uno con su razón, y por
+    separado los dos eran correctos:
+
+      - "descartá lo permanente" (para que no tape la cola)
+      - "no avises de lo que no es accionable" (para que el canal no sea ruido)
+
+    Juntos producían el PEOR resultado posible en la intersección: un trauma sin `archivo:línea`
+    se cerraba **y** nadie se enteraba nunca. Antes al menos quedaba `pendiente`. Lo destapó un
+    E2E en el VPS, no la suite — porque ningún test miraba las dos banderas A LA VEZ.
+
+    Este test mira el par. `descartado` significa "no vuelve nunca más", así que sale del sistema
+    en silencio: la única excepción legítima es el canario, cuyo error es deliberado y cuyo valor
+    ya quedó registrado en la fila. Cualquier otra combinación (`reintentable=False` +
+    `necesita_humano=False`) es un error que desaparece sin que nadie lo sepa.
+    """
+    import autosanacion_gates as gates
+
+    casos = [
+        ("dominio prohibido", dict(ruta="afip_gateway.py", reparaciones_hoy=0,
+                                   categoria="business_error")),
+        ("sin categoría", dict(ruta="x.py", reparaciones_hoy=0, categoria=None)),
+        ("infra_error", dict(ruta="x.py", reparaciones_hoy=0, categoria="infra_error")),
+        ("kill switch OFF / normal", dict(ruta="x.py", reparaciones_hoy=0,
+                                          categoria="business_error")),
+    ]
+    for nombre, kw in casos:
+        d = gates.puede_reparar(**kw)
+        if not d.permitido and not d.reintentable and not d.necesita_humano:
+            assert gates.MARCA_CANARIO in kw["ruta"].lower(), (
+                f"{nombre}: se descarta y NO avisa. El trauma sale del sistema en silencio — "
+                f"sólo el canario puede hacer eso.")
+
+    # Control positivo: la excepción TIENE que existir de verdad. Sin esto, un gate que devolviera
+    # `necesita_humano=True` para todo pasaría el bucle de arriba sin ejercitar ni una vez la rama
+    # que importa — el test se volvería un `assert True` con forma de invariante.
+    canario = gates.puede_reparar(ruta="POST /salud/canario", reparaciones_hoy=0,
+                                  categoria="business_error")
+    assert not canario.permitido and not canario.reintentable and not canario.necesita_humano
+
+
+def test_INVARIANTE_un_trauma_SIN_ORIGEN_tambien_avisa(monkeypatch):
+    """La otra mitad del invariante: este rechazo vive en la ACTIVITY, no en el gate.
+
+    Es el caso exacto que abrió el agujero — se rechaza ANTES de mirar la categoría, así que un
+    `manual_intervention` sin `archivo:línea` ni siquiera llegaba a `puede_reparar`. Sin archivo
+    igual hay `error_type`, `workflow`, `costura` y `dedupe_count`: un error que pegó 9 veces es
+    accionable aunque no sepamos la línea.
+    """
+    d = asyncio.run(A.evaluar_gates_de_reparacion(
+        {"id": 1, "fingerprint": "fp", "error_type": "ConnectionError",
+         "workflow": "CobroWorkflow", "contexto": {}}))
+    assert d["permitido"] is False and d["reintentable"] is False, "debería descartarse"
+    assert d["necesita_humano"] is True, "se descarta sin avisar: desaparece en silencio"
+
+
 def test_si_la_ETIQUETA_no_existe_igual_abre_el_issue(monkeypatch, tmp_path):
     """Perder el aviso por una label que nadie creó en el repo sería absurdo: se reintenta sin ella."""
     gh = _Gh(crear_ok=False)

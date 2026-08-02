@@ -251,8 +251,17 @@ async def evaluar_gates_de_reparacion(trauma: dict) -> dict:
         # no lo va a tener nunca —arreglar la costura no reescribe los traumas viejos—, así que
         # volver a evaluarla en cada corrida es garantizado inútil, y con `dedupe_count` alto le
         # gana a los bugs que sí se pueden reparar.
-        return {"permitido": False, "archivo": None, "reintentable": False,
-                "motivo": "el trauma no registró archivo:línea — no es reparable, sólo contable"}
+        #
+        # `necesita_humano=True`, y esto se aprendió caro el mismo día: al principio iba en False
+        # ("sin archivo no hay nada accionable, avisar sería ruido"). Combinado con el descarte de
+        # arriba, eso producía el peor resultado posible — el trauma se cerraba Y nadie se enteraba
+        # jamás. Cada decisión era razonable por separado; juntas abrían el agujero que este frente
+        # vino a cerrar. Sin archivo igual hay `error_type`, `workflow`, `costura` y `dedupe_count`:
+        # un error que pegó 9 veces es accionable aunque no sepamos la línea.
+        #
+        # El invariante, que el test de abajo fija: lo ÚNICO que se descarta sin avisar es el canario.
+        return {"permitido": False, "archivo": None, "reintentable": False, "necesita_humano": True,
+                "motivo": "el trauma no registró archivo:línea — no es reparable automáticamente"}
 
     contexto = _contexto_de(trauma)
 
