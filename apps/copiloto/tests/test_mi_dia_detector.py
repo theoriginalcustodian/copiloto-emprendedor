@@ -168,11 +168,17 @@ def test_trabajo_sin_ingreso_esta_en_reglas_auto_cierre():
 
 
 def test_margen_negativo_no_esta_en_auto_cierre_pero_sin_ingreso_si():
+    # Igualdad EXACTA a propósito: que este test se rompa al agregar una regla es la feature, no el
+    # costo — obliga a decidir explícitamente si la nueva se cierra sola, en vez de heredar el
+    # default por descuido.
     assert detector.REGLAS_AUTO_CIERRE == (
         detector.REGLA_PRESUPUESTOS_ENFRIANDOSE, detector.REGLA_FACTURAS_IMPAGAS_VIEJAS,
-        detector.REGLA_TRABAJO_SIN_INGRESO,
+        detector.REGLA_TRABAJO_SIN_INGRESO, detector.REGLA_CERTIFICADO_POR_VENCER,
     )
     assert detector.REGLA_TRABAJO_MARGEN_NEGATIVO not in detector.REGLAS_AUTO_CIERRE
+    # El CAE NO auto-cierra (no se "renueva") y el certificado SÍ. Son la misma familia de alerta y
+    # la diferencia es real: se afirma acá para que nadie las unifique por parecido.
+    assert detector.REGLA_CAE_POR_VENCER not in detector.REGLAS_AUTO_CIERRE
 
 
 def test_detectar_todos_pide_margen_por_trabajo_UNA_sola_vez():

@@ -22,13 +22,44 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Callable
+
+from cryptography import x509
 
 _SCHEMA = "uc_factory"
 _T_CRED = f"{_SCHEMA}.afip_credentials"
 _T_PERFIL = f"{_SCHEMA}.afip_perfil"
 _T_HANDOFF = f"{_SCHEMA}.afip_secret_handoff"
+
+
+class CertificadoIlegible(Exception):
+    """El PEM guardado no se pudo parsear.
+
+    Se levanta en vez de devolver `None`: un certificado ilegible NO es "sin vencimiento". Son dos
+    estados distintos y confundirlos apaga el aviso — el vigilante quedaría ciego exactamente igual
+    a como se ve cuando todo está bien ([[instrumento-que-no-mira-nunca-falla]]).
+    """
+
+
+def vencimiento_del_certificado(pem: str | bytes) -> datetime:
+    """`notAfter` del certificado X.509, en UTC. Puro: no toca DB ni red.
+
+    **Por qué no hay columna `vence_at`.** La fecha ya viene DENTRO del certificado que este store
+    persiste; copiarla a una columna crearía dos fuentes que pueden desincronizarse, y la que
+    mentiría es justo la que se consulta (el cert se pisa con `ON CONFLICT DO UPDATE` en `save()`,
+    y nada obligaría a actualizar la copia). Derivarla en cada lectura cuesta un parseo por tenant
+    y no puede quedar vieja.
+
+    Es también la razón por la que esto vive acá y no en el detector: el detector consume la capa
+    que ya existe, no define cálculos propios sobre los datos de otro módulo.
+    """
+    crudo = pem.encode("utf-8") if isinstance(pem, str) else pem
+    try:
+        cert = x509.load_pem_x509_certificate(crudo)
+    except Exception as exc:  # noqa: BLE001 — cualquier fallo de parseo es el MISMO estado accionable
+        raise CertificadoIlegible(str(exc)) from exc
+    return cert.not_valid_after_utc
 
 TTL_HANDOFF_SEGUNDOS = 900  # 15 minutos: alcanza de sobra para el RPA de AfipSDK
 
@@ -123,6 +154,46 @@ class AfipCredentialStore:
         cert_enc, key_enc, amb, ws = row
         return {"cert": self._crypto.decrypt(cert_enc), "key": self._crypto.decrypt(key_enc),
                 "ambiente": amb, "ws_autorizados": list(ws or [])}
+
+    def vencimientos(self) -> list[dict]:
+        """Cuándo vence el certificado **activo** de cada CUIT del tenant.
+
+        Filtra por `activo` y no por ambiente a propósito: activo es, por contrato de esta clase, el
+        único con el que se factura (índice único parcial por tenant+CUIT). Un `prod` guardado pero
+        inactivo puede vencer sin romper nada, y avisar de él sería un falso positivo — y un aviso
+        que grita en el caso normal se termina ignorando, que es como se pierde el que importaba.
+
+        Devuelve `dias_para_vencer` ya calculado, con el MISMO nombre de campo que
+        `AfipComprobanteStore.con_cae_vigente()`: las dos reglas del detector comparan lo mismo, así
+        que se leen igual.
+
+        Un certificado ilegible sale con `ilegible=True` y `dias_para_vencer=None` en vez de
+        omitirse. Omitirlo lo volvería invisible: la lista quedaría idéntica a la de un tenant sano
+        y el fallo sería indistinguible del estado normal.
+        """
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT cuit, ambiente, cert_enc FROM {_T_CRED} "
+                f"WHERE cliente_id=%s AND activo ORDER BY cuit", (self._cid,))
+            filas = cur.fetchall()
+        ahora = datetime.now(timezone.utc)
+        salida = []
+        for cuit, ambiente, cert_enc in filas:
+            fila = {"cuit": cuit, "ambiente": ambiente, "vence_at": None,
+                    "dias_para_vencer": None, "ilegible": False}
+            try:
+                vence_at = vencimiento_del_certificado(self._crypto.decrypt(cert_enc))
+            except CertificadoIlegible:
+                # Degradar acá es correcto y NO es tragarse el error: la fila sale marcada y
+                # `_evaluar_certificado_por_vencer` la hace disparar igual que un vencimiento. Lo que
+                # no puede pasar es que un certificado roto de UN tenant impida leer los del resto.
+                fila["ilegible"] = True
+            else:
+                fila["vence_at"] = vence_at
+                fila["dias_para_vencer"] = (vence_at - ahora).days
+            salida.append(fila)
+        return salida
 
     def ambientes_vinculados(self, cuit: str) -> list[str]:
         """Para qué ambientes ya hay certificado. La UI lo necesita para distinguir un toggle de un

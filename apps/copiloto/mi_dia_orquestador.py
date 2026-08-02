@@ -15,11 +15,26 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_FACTURAS_IMPAGAS_VIEJAS,
+from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER,
+                             REGLA_FACTURAS_IMPAGAS_VIEJAS,
                              REGLA_GASTO_MES_ALTO, REGLA_PRESUPUESTOS_ENFRIANDOSE,
                              REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
                              REGLAS_AUTO_CIERRE, AvisosEmitidosStore, detectar_todos)
 from mi_dia_tarjeta_store import TarjetaStore
+
+
+def _texto_certificado(d: dict) -> str:
+    """Tres estados bien distintos. Decirlos con una sola frase mentiría en dos: "vence en -12
+    días" no es un aviso, es un bug a la vista del emprendedor."""
+    if d.get("ilegible"):
+        return ("No pudimos leer tu certificado de AFIP. Revisalo: si está dañado, no vas a poder "
+                "facturar.")
+    dias = d.get("dias")
+    if d.get("vencido"):
+        return (f"Tu certificado de AFIP venció hace {abs(dias or 0)} días. Hasta que lo renueves "
+                f"no vas a poder facturar.")
+    return (f"Tu certificado de AFIP vence en {dias} días. Renovalo antes de esa fecha para no "
+            f"quedarte sin facturar.")
 
 _PLANTILLAS = {
     REGLA_PRESUPUESTOS_ENFRIANDOSE:
@@ -38,6 +53,7 @@ _PLANTILLAS = {
                   f"el mes pasado."),
     REGLA_CAE_POR_VENCER:
         lambda d: f"La factura {d.get('nro') or ''} tiene el CAE por vencer en {d.get('dias')} días.",
+    REGLA_CERTIFICADO_POR_VENCER: _texto_certificado,
 }
 
 

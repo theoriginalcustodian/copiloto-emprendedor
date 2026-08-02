@@ -71,9 +71,9 @@
 - [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — `test-db.sh` con rol NO-superuser. El CI es gate final, no consola.
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado. Probar en device.
 - [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base; `comm -23` sobre slugs > contar líneas.
-- [🔢 El DEFAULT de la herramienta devuelve más de lo que asumís](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — un número grande que confirma tu hipótesis no dispara ningún control.
+- [🔢 El DEFAULT de la herramienta devuelve más de lo que asumís](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — un número que confirma tu hipótesis no dispara ningún control.
 - [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — 6 errores seguidos: el prompt mandaba a la fuente derivada.
-- [📋❌ El DoD que escribí estaba mal y la evidencia lo corrigió](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — cierre como **propiedad**, no número: «92/92» envejece en silencio.
+- [📋❌ El DoD que escribí estaba mal y la evidencia lo corrigió](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — cierre como **propiedad**: «92/92» envejece en silencio.
 - [🎯 Un supuesto cuya falla parece un estado LEGÍTIMO es una pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 
 ### Guards, gates y jueces
@@ -82,7 +82,9 @@
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR, no si el guard existe.
 - [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona. Decir "verde" sin decir **dónde** oculta el hueco.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — rechazó 3/3 el parche correcto. Un juez sin contexto rechaza, y parece prudencia.
-- [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto. El cuello era el FORMATO: `SEARCH/REPLACE` ✅ vs diff ❌.
+- [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto. El cuello: `SEARCH/REPLACE` ✅ vs diff ❌.
+- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA de lo que protege](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — el canario tapaba la cola; declará si el rechazo es permanente.
+- [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — cada test miraba UNA bandera; el hueco vive en el par.
 - [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `monkeypatch.setenv` mide el módulo, no el despliegue. Apagar = pausar el Schedule.
 
 ### Diagnóstico: leer el contrato antes de explicar
@@ -168,8 +170,6 @@
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) — incluye borrado permanente. No heredarlo a agentes autónomos.
 - [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — OAuth Auth-Code (180 d), webhook HMAC. ✅ spike E2E.
 - [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — instancia COMPARTIDA → ontología con `graph_ids` o fuga.
-- [🔑✅ Graphity: la key COMÚN alcanza (admin no se necesita)](graphity-copiloto-sin-admin-provisioning-gap.md) — único borde = project scope en la key (400, no 403).
-- [🧠✅ Graphity aislamiento cross-tenant RESUELTO (ADR-040)](graphity-aislamiento-cross-tenant-verificado.md) — **NO re-abrir.** `tenant_aisla_DURO=true`.
 - [📡 Ingesta real al grafo por tenant — FRENTE ABIERTO (MAYOR)](copiloto-ingesta-grafo-por-tenant-real-frente-abierto.md) — sólo existe la demo sintética del hito 5.
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — barrido adversarial → batch por tests.
 - [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — el **dueño está exento** sin `FORCE`. Control: conectarse sin tenant y contar.

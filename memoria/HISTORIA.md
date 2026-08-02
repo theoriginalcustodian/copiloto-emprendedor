@@ -109,3 +109,5 @@ metadata:
 - [Consultar el agente de OTRO repo vía `claude -p`](consultar-otro-repo-headless.md) — `--output-format json` con cwd = repo target. Stateless.
 - [🎨 Import de Claude Design = connector MCP](claude-design-import-connector.md) — agregar el connector, no `/design-login` suelto.
 - [BOM rompe el "set model" del plugin](bom-rompe-settings-plugin-claude-code.md) — reescribir `settings.json` sin BOM.
+- [🔑✅ Graphity: la key COMÚN alcanza (admin no se necesita)](graphity-copiloto-sin-admin-provisioning-gap.md) — único borde = project scope en la key (400, no 403).
+- [🧠✅ Graphity aislamiento cross-tenant RESUELTO (ADR-040)](graphity-aislamiento-cross-tenant-verificado.md) — **NO re-abrir.** `tenant_aisla_DURO=true`. Bajadas del índice el 2026-08-02 por presupuesto; siguen vigentes.
