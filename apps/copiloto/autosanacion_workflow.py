@@ -86,15 +86,28 @@ class AutosanacionWorkflow:
             "evaluar_gates_de_reparacion", trauma,
             start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
         if not decision.get("permitido"):
+            motivo = decision.get("motivo", "rechazado por gate")
+            # Pedir ayuda ANTES de mover el estado: si el issue falla, el trauma queda como estaba y
+            # el próximo ciclo lo reintenta. Al revés —descartar y después fallar el aviso— dejaría
+            # un error cerrado del que nadie se enteró nunca, que es exactamente el agujero que este
+            # escalón viene a tapar.
+            aviso = {}
+            if decision.get("necesita_humano"):
+                aviso = await workflow.execute_activity(
+                    "abrir_issue_de_trauma", {"trauma": trauma, "motivo": motivo},
+                    start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_CORTO)
             # Un rechazo PERMANENTE se cierra; uno transitorio se suelta. El default `True` mantiene
             # el comportamiento anterior para todo gate que no declare lo contrario: se reintenta de
             # más, nunca se descarta de menos. Ver el docstring de `Decision`.
             if decision.get("reintentable", True):
-                await self._soltar(trauma, decision.get("motivo", "rechazado por gate"))
+                await self._soltar(trauma, motivo)
             else:
-                await self._descartar(trauma, decision.get("motivo", "rechazado por gate"))
+                await self._descartar(trauma, motivo)
             return {"estado": "rechazado_por_gate", "motivo": decision.get("motivo"),
                     "reintentable": decision.get("reintentable", True),
+                    # El desenlace dice si se avisó o no: sin esto, "rechazado_por_gate" cubriría
+                    # por igual un error escalado a una persona y uno que se tragó el silencio.
+                    "aviso": aviso.get("modo", "no_aplica"),
                     "trauma_id": trauma.get("id")}
 
         # Paso 2 — forjar. El contexto (archivo real + salida real de pytest) lo arma la activity:

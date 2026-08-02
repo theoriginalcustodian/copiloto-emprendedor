@@ -109,6 +109,23 @@ class Decision:
     permitido: bool
     motivo: str
     reintentable: bool = True
+    #: ¿Este rechazo necesita que lo mire una persona? Si sí, el ciclo abre un issue en GitHub.
+    #:
+    #: Existe porque el sistema sabía detectar, clasificar y reparar — pero **no sabía pedir
+    #: ayuda**. Un error que Temporal no arregló y el ciclo no puede reparar quedaba en la DLQ sin
+    #: alerta, sin mail y sin métrica (verificado por grep el 2026-08-02: cero notificaciones sobre
+    #: traumas en todo el repo). La única forma de enterarse era que alguien corriera el verificador
+    #: a mano.
+    #:
+    #: Y lo que lo volvía grave: en régimen normal el ciclo devuelve `sin_traumas` y el silencio
+    #: significa "todo bien". Sin esto, ESE MISMO silencio también significaba "hay algo roto que
+    #: nadie puede reparar y nadie está mirando" — el problema que el canario resolvió para el
+    #: *cable de detección*, sin resolver para el *resultado*.
+    #:
+    #: Default `False`: se avisa sólo de lo que un humano puede accionar. Un issue por cada rechazo
+    #: operativo (kill switch, tope diario) sería ruido, y un canal que grita en el caso normal se
+    #: termina ignorando — que es como se pierde el aviso que sí importaba.
+    necesita_humano: bool = False
 
 
 def apagado() -> bool:
@@ -212,7 +229,7 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = N
         # `tomar_un_bug_distinto` — bloqueando la cola para todos los bugs que SÍ se pueden reparar.
         return Decision(False, f"dominio DIAGNOSTIC_ONLY: {dominio} — efecto irreversible y externo "
                                "(CAE ante AFIP, secreto one-shot, token rotado). Nunca se auto-repara",
-                        reintentable=False)
+                        reintentable=False, necesita_humano=True)
 
     # `categoria=None` NO se interpreta como "adelante": un trauma viejo o depositado por una costura
     # que no la registró tiene que caer del lado del no. El default permisivo sería el error clásico
@@ -226,9 +243,12 @@ def puede_reparar(*, ruta: str, reparaciones_hoy: int, categoria: str | None = N
         #  - una categoría CONOCIDA que hoy no es reparable -> TRANSITORIO. `CATEGORIAS_REPARABLES`
         #    es una decisión nuestra y puede ampliarse; el día que se amplíe, ese trauma tiene que
         #    seguir en la cola. Descartarlo sería perder un bug real por una política que cambió.
+        # `necesita_humano=True`: éste es EL caso que motivó el mecanismo. Un `infra_error` o un
+        # `manual_intervention` no lo arregla Temporal (ya se reintentó) ni lo arregla el ciclo (no
+        # hay código que parchear) — sólo lo arregla una persona, y hasta hoy nadie se enteraba.
         return Decision(False, f"categoría {categoria!r}: no hay código que reparar acá. Sólo se "
                                f"auto-reparan {CATEGORIAS_REPARABLES}",
-                        reintentable=categoria is not None)
+                        reintentable=categoria is not None, necesita_humano=True)
 
     tope = tope_diario()
     if reparaciones_hoy >= tope:
