@@ -94,6 +94,8 @@ metadata:
 
 ### Referencia de bajo uso
 
+- [🧨 Heredoc sin quotar EJECUTA el prompt del sub-agente](heredoc-sin-quotar-ejecuta-el-prompt.md) — usá `<<'EOF'`; contá bytes del prompt ANTES de despachar.
+
 - [✂️📏 Poda de suggesters + lint de contratos](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — ~2,57M tok/mes medidos. 4 hooks OFF con criterio declarado.
 - [🐕 watchdog-sesiones NO se activa](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — decisión del operador: falso positivo de pausa deliberada. No re-proponer.
 

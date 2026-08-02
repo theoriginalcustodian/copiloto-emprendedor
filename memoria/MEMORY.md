@@ -62,6 +62,7 @@
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué devolvería si lo que mido estuviera roto?* Catálogo de 11+ casos.
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo no choca con nada y se disfraza de prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá **sobre cuántos elementos miró**, no sólo si pasó.
+- [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — el cero de una query con RLS no es dato hasta saber si el rol puede ver. Control de ceguera ANTES de contar.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
 - [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op es lo que MEJOR puntúa en un gate de no-regresión.
@@ -118,7 +119,6 @@
 - [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth Max (NO tarifa API).
 - [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`, `group_id=code-copiloto-emprendedor`. Ahorra greps.
 - [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del último SYNC, no `valid_at`.
-- [🧨 Heredoc sin quotar EJECUTA el prompt del sub-agente](heredoc-sin-quotar-ejecuta-el-prompt.md) — usá `<<'EOF'`; contá bytes del prompt ANTES de despachar.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — feedback localizado baja regresiones -70% (TDAD).
 - [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — ownership exclusiva; verificar estado real, no el reporte bg.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable pedido por el operador.
