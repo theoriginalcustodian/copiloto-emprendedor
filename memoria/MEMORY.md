@@ -28,7 +28,6 @@
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) — leerla ANTES de implementar. Portar adaptando, no copiar ciego.
 - [No PR/commit/merge por cada cambio chico](batch-cambios-no-pr-por-tweak.md) — se juntan. Reincidí con 7 PRs en una sesión.
 - [No insistir con rotar keys en dev](no-insistir-rotacion-keys-desarrollo.md) — diferido a prod; sólo no commitear ni pegar en chat.
-- [watchdog-sesiones NO se activa](watchdog-sesiones-no-activado-por-falso-positivo-de-pausa.md) — falso positivo de pausa deliberada. No re-proponer.
 
 ## 🧭 Cómo trabajo
 
@@ -55,6 +54,8 @@
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único, verificado que existe.
 
 ### Evidencia: el instrumento antes que el resultado
+- [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — 0 errores HTTP en la DLQ por 4 días. Grepeá quién ESCRIBE el campo, no sólo quién lo lee.
+- [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — cuanto mejor el sistema, menos dice su silencio. Inyectá el caso a propósito.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica a escala.
@@ -117,7 +118,6 @@
 - [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth Max (NO tarifa API).
 - [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`, `group_id=code-copiloto-emprendedor`. Ahorra greps.
 - [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del último SYNC, no `valid_at`.
-- [✂️📏 Poda de suggesters + lint de contratos](poda-de-suggesters-y-lint-de-contratos-context-engineering.md) — ~2,57M tok/mes medidos. 4 hooks OFF, criterio declarado.
 - [🧨 Heredoc sin quotar EJECUTA el prompt del sub-agente](heredoc-sin-quotar-ejecuta-el-prompt.md) — usá `<<'EOF'`; contá bytes del prompt ANTES de despachar.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — feedback localizado baja regresiones -70% (TDAD).
 - [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — ownership exclusiva; verificar estado real, no el reporte bg.
