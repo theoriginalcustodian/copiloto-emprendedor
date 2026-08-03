@@ -36,3 +36,14 @@ def test_react_prompt_forbids_narrating_without_tool_call():
     low = SYSTEM_PROMPT_REACT.lower()
     assert "ya hiciste algo" in low or "ya lo hice" in low
     assert "este turno" in low
+
+
+def test_react_prompt_forbids_inventing_contacto():
+    """Hallazgo 2026-08-03 (Hito P device): el LLM completaba email/teléfono de un cliente con un valor
+    plausible aunque el emprendedor no lo hubiera dictado -- una validación de forma en la tool no puede
+    distinguir un mail real de uno inventado con formato válido. Decisión de planificación: fix en el
+    prompt, mismo criterio que "no inventes un dato que no tengas"."""
+    low = SYSTEM_PROMPT_REACT.lower()
+    assert "contacto" in low
+    assert "email" in low and "teléfono" in low
+    assert "inventad" in low or "dejalos vacíos" in low
