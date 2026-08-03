@@ -116,8 +116,13 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
    declare otro — ese gana. Reportar sólo los que lo pasaron, con el frente y los minutos.
    NO escribas líneas de acuse sobre un `avance_`: su `mtime` ES la medición.
 
-4. ARCHIVO. Para cada archivo de `abierto/`: contar los acuses ya escritos. Si están cubiertos
-   todos los destinatarios del nombre, moverlo a `cerrado/<fecha>/`. Ante la duda, no mover.
+4. ARCHIVO — `bash scripts/archivar-buzon.sh`. NO archives a mano ni razones caso por caso: el
+   script ya es el janitor determinista e idempotente (obligaciones `contrato_`/`pedido_`/`urgente_`
+   nunca se tocan — son el ancla; el resto con `mtime` > TTL 90min va a `cerrado/<fecha>/`).
+   Archivar a mano fue la regla que se escribió en 2026-07-22 y **empeoró** (`abierto/` 32→136,
+   memoria `buzon-se-ordena-por-janitor-no-por-disciplina`): el `mv` cae en el hueco entre tareas y
+   los broadcasts `-a-todos_` nunca tienen un acuse que los cierre. Si el script no existe en tu
+   checkout, estás en una rama vieja — decilo.
 
 5. REPORTE. Máximo 3 ítems, los más accionables, en 6 líneas. Si no hay nada: una línea con el
    silencio de cada sesión y nada más. NO implementes nada — esta sesión baja contratos, no código.
