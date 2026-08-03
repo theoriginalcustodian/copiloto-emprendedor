@@ -13,9 +13,9 @@ averiguarlo.
    se tocan.
 2. **`CronCreate`** — creá SÓLO los que falten, con el schedule y prompt EXACTOS de abajo.
 3. **`CronList` de nuevo y CONFIRMÁ los tres.** Sin verlos, no están instalados.
-4. **Instrumentos** — `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`. Los dos tienen que
-   correr **sin error**: son la base de todos los ciclos. Si `no-ocio-check.sh` no existe en tu checkout,
-   estás en una rama vieja — `git log origin/main -1` y decilo.
+4. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Tiene que correr **sin error**: es la
+   base de todos los ciclos (compone `cola-check.sh` + `escaladores-buzon.sh` + mtime de transcripts).
+   Si no existe en tu checkout, estás en una rama vieja — `git log origin/main -1` y decilo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
    nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
 6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
@@ -26,7 +26,7 @@ averiguarlo.
 
 ```
 ✅/❌ 3 crones vivos (PARÁLISIS */3 · vigía 7,27,47 · ociosas 1-58/3)
-✅/❌ no-ocio-check + cola-check corren
+✅/❌ vigilancia-check.sh corre
 ✅/❌ buzon_watcher registrado
 📊 PRODUCCIÓN backend Nmin · frontend Nmin   (⚠️ VIDA fresca NO prueba trabajo: el cron también
      genera turnos — 2026-07-24, la sesión ociosa tuvo 42 disparos y la que implementaba 5)
@@ -38,9 +38,9 @@ averiguarlo.
 **La última línea no es opcional.** Y si el instrumento marca `🌀 GIRA EN VACÍO` en alguna sesión, eso
 es OCIO (no dead-man): reasignale algo en el MISMO ciclo, no lo difieras.
 
-> Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 3 sesiones paralelas (planificación/backend/
-> frontend) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir una sesión NUEVA
-> (sobreviven a `--continue`/`--resume`). Este command los re-arma cuando hace falta.
+> Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 4 sesiones paralelas (planificación/backend/
+> frontend/manejo-de-errores) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir
+> una sesión NUEVA (sobreviven a `--continue`/`--resume`). Este command los re-arma cuando hace falta.
 
 ---
 
