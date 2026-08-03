@@ -89,6 +89,20 @@ export function codigoDeConflicto(body: unknown): CodigoConflicto | null {
   return typeof c === 'string' && c !== '' ? (c as CodigoConflicto) : null;
 }
 
+/**
+ * `true` si el 500 que la costura C2 devuelve viene marcado como **reintento automático en curso**
+ * (ítem 2.5 del DLQ, `handler_errores_web.py`): el trauma ya quedó depositado con estado `pendiente`
+ * y el sistema lo va a reintentar solo. `false`/ausente = el comportamiento de siempre — un fallo que
+ * el usuario sí puede necesitar reintentar a mano.
+ *
+ * Mismo patrón que `codigoDeConflicto`: lee del `body` ya parseado (`ApiError.body`), nunca del
+ * `detail` string — la presencia de un campo es estructura, un texto no lo es.
+ */
+export function esDiferido(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null) return false;
+  return (body as { diferido?: unknown }).diferido === true;
+}
+
 /** El `mensaje` legible que acompaña al código. Es el texto que el emprendedor puede leer — el código
  *  es para la app, no para la persona. */
 export function mensajeDeConflicto(body: unknown): string | null {

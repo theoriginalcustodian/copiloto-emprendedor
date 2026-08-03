@@ -43,7 +43,7 @@ export type { AlmacenTokens } from './tokens';
 // ⚠️ `DuplicadoProbableError`, `GeneroInvalidoError` y `MotivoDuplicado` se exportaban acá y se
 // BORRARON el 2026-07-22: eran de la app clínica y describían un `409` de `POST /clientes` con otro
 // significado que el de este producto. Ver el epitafio en `errors.ts`.
-export { ApiError, ForbiddenError, UnauthorizedError, codigoDeConflicto, mensajeDeConflicto } from './errors';
+export { ApiError, ForbiddenError, UnauthorizedError, codigoDeConflicto, mensajeDeConflicto, esDiferido } from './errors';
 // Todo `409` del backend trae `codigo` desde el 2026-07-22 (`errores_web.CODIGOS`). Es lo que permite
 // reconocer cada caso por algo que TRAE, en vez de por lo que le falta — ver el docstring allá.
 export type { CodigoConflicto } from './errors';

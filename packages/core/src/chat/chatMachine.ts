@@ -63,7 +63,11 @@ export type MotivoFallo =
   /** La sesión venció (HTTP 401). Reintentar no sirve; hay que volver a entrar. */
   | 'sesion_vencida'
   /** El servidor falló (5xx) o devolvió algo que no sabemos leer. Reintentar puede servir. */
-  | 'servidor';
+  | 'servidor'
+  /** 🔴 500 con `diferido:true` (ítem 2.5 del DLQ): el trauma YA quedó depositado y el sistema lo
+   *  reintenta solo. Distinto de `'servidor'` porque acá reintentar a mano no ayuda — **duplica** un
+   *  efecto que ya va a correr de nuevo (un cobro, un gasto). El texto se lo dice explícitamente. */
+  | 'servidor_diferido';
 
 export interface EstadoChat {
   sessionId: string;
