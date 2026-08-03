@@ -133,23 +133,27 @@ export interface UseChatResult {
   /** Sube un dictado corto (`useVozComando`) para transcribir y despachar -- ver el docstring de
    * `enviarAudio` más abajo. */
   enviarAudio: (audio: ArchivoSubida) => Promise<void>;
+  /** Sube una foto de ticket (`useCapturaFoto`) para OCR y despachar -- ver el docstring de
+   * `enviarFoto` más abajo. */
+  enviarFoto: (foto: ArchivoSubida) => Promise<void>;
 }
 
 /**
- * Best-effort: borra el archivo de audio del filesystem tras usarlo. Nunca lanza -- un fallo acá
- * (permiso, archivo ya borrado, plataforma sin `deleteAsync`) no puede tumbar el envío que ya
+ * Best-effort: borra el archivo (audio O foto) del filesystem tras usarlo. Nunca lanza -- un fallo
+ * acá (permiso, archivo ya borrado, plataforma sin `deleteAsync`) no puede tumbar el envío que ya
  * terminó. `datos` es OPACO al core (`ArchivoSubida`, ver `packages/core/src/api/http.ts`): sólo el
  * adaptador nativo sabe que en esta plataforma es una URI de archivo (string) -- de ahí el guard de
- * tipo antes de intentar borrar.
+ * tipo antes de intentar borrar. Genérico desde que `enviarFoto` lo sumó como segundo consumidor --
+ * el nombre viejo (`borrarAudioLocal`) ya era una mentira parcial antes de renombrarlo.
  */
-async function borrarAudioLocal(audio: ArchivoSubida): Promise<void> {
-  if (typeof audio.datos !== 'string') return;
+async function borrarArchivoLocal(archivo: ArchivoSubida): Promise<void> {
+  if (typeof archivo.datos !== 'string') return;
   try {
-    await deleteAsync(audio.datos, { idempotent: true });
+    await deleteAsync(archivo.datos, { idempotent: true });
   } catch {
     // Best-effort: no hay ningún camino de negocio que dependa de que esto salga bien -- ver el
-    // docstring de `enviarAudio` sobre CERO retención y por qué el borrado es "mejor esfuerzo", no
-    // una condición de éxito del envío.
+    // docstring de `enviarAudio`/`enviarFoto` sobre CERO retención y por qué el borrado es "mejor
+    // esfuerzo", no una condición de éxito del envío.
   }
 }
 
@@ -343,7 +347,7 @@ export function useChat(clienteId: string): UseChatResult {
           const respuesta = await api.sendAudio(actual.sessionId, audio, '');
           transcript = respuesta.transcript.trim();
         } finally {
-          await borrarAudioLocal(audio);
+          await borrarArchivoLocal(audio);
         }
       } catch (e) {
         const conError = estadoRef.current ?? actual;
@@ -372,5 +376,57 @@ export function useChat(clienteId: string): UseChatResult {
     [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
   );
 
-  return { estado, send, enviarAudio };
+  /**
+   * FOTO DE TICKET (Gastos Fase 2, OCR). El usuario elige/saca una foto, el servidor la lee con
+   * `gpt-4o` y arma el `gasto_propuesto` -- ver `contrato_..._POST-chat-foto-gastos-fase2.md`.
+   *
+   * 🔴 A diferencia de `enviarAudio`, acá NUNCA hay transcript que mostrar como mensaje del usuario
+   * -- `SendFotoResponse` no lo trae (a propósito, ver su docstring en `packages/core`): la respuesta
+   * de negocio es la card `gasto_propuesto` que llega por `/reply`, no un texto. El mensaje optimista
+   * (`'📷 Foto del ticket enviada'`) se agrega recién cuando el upload YA confirmó `accepted`, mismo
+   * criterio que `enviarAudio` esperando el transcript real: nunca mostrar algo antes de saber que
+   * pasó de verdad.
+   *
+   * 🔴 **CERO retención**: mismo `try/finally` que `enviarAudio` alrededor de la llamada de red --
+   * `borrarArchivoLocal` corre haya salido bien o mal.
+   */
+  const enviarFoto = useCallback(
+    async (foto: ArchivoSubida) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+
+      detenerPolling();
+      actualizarEstado(reducirChat(actual, { tipo: 'envio_iniciado' }));
+
+      try {
+        try {
+          // `cliente_id` vacío, mismo criterio que `enviarAudio`: es el "cliente del emprendedor"
+          // opcional (ver docstring del módulo), no el tenant -- el chat general no tiene selector.
+          await api.sendFoto(actual.sessionId, foto, '');
+        } finally {
+          await borrarArchivoLocal(foto);
+        }
+      } catch (e) {
+        const conError = estadoRef.current ?? actual;
+        actualizarEstado(reducirChat(conError, { tipo: 'envio_fallo', motivo: motivoDeError(e, 'foto') }));
+        return;
+      }
+
+      const mensajeUsuario: ChatMessage = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: '📷 Foto del ticket enviada',
+      };
+      const base = estadoRef.current ?? actual;
+      let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
+      siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+
+      iniciarEsperaDeRespuesta();
+    },
+    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
+  );
+
+  return { estado, send, enviarAudio, enviarFoto };
 }

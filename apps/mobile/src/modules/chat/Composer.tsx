@@ -19,6 +19,22 @@ function IconoAvion({ color }: { color: string }) {
   );
 }
 
+/** Cámara — Gastos Fase 2 (foto de ticket). Trazo simple, mismo grosor que `IconoAvion` para que
+ *  los dos íconos del composer pesen igual visualmente. */
+function IconoCamara({ color }: { color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+      <Path d="M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke={color} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
 /** Punto que parpadea del indicador de estado del copiloto. Módulo-level: no se recrea en cada
  *  render del composer. El loop queda inerte bajo Jest (mock de `Animated.loop` en `jest.setup.js`),
  *  se ve en el device. */
@@ -53,6 +69,9 @@ export interface ComposerProps {
   /** Deshabilita el composer entero -- lo usa `ChatView` mientras el chat todavía no terminó de
    * hidratarse (`estado === null`, ver `useChat.ts`). */
   disabled?: boolean;
+  /** Gastos Fase 2 (foto de ticket). Ausente == sin botón de cámara -- ver el docstring del
+   * componente sobre por qué ésta SÍ vive acá adentro, a diferencia de las demás acciones. */
+  onFoto?: () => void;
 }
 
 /**
@@ -87,8 +106,17 @@ function textoEstado(sendStatus: SendStatus, motivoFallo: MotivoFallo | null): s
  * `GlassGrabacionCopiloto`) no tiene nada que ver con el de un mensaje de texto -- ver `ChatView.tsx`.
  * Vacío/sólo-espacios no envía; `sendStatus==='sending'` bloquea un segundo envío mientras el primero
  * está en vuelo.
+ *
+ * 🔴 **`onFoto` rompe la regla de "sin botones de acción propios", y es la única excepción a
+ * propósito** (Gastos Fase 2, OCR de ticket). Las demás acciones se piden hablando o escribiendo
+ * ("anotame un gasto de $500") porque el copiloto las entiende por lenguaje natural; "sacame una
+ * foto" no es algo que el copiloto pueda ejecutar por sí mismo -- abrir la cámara del teléfono es
+ * una capacidad del DISPOSITIVO, no del agente. Por eso necesita un botón, igual que el dictado por
+ * voz necesitó `BotonVoz`. Vive DENTRO del composer (y no como overlay como `BotonVoz`) porque no
+ * tiene ciclo de vida propio que animar: `useCapturaFoto().elegir()` es una sola llamada que se
+ * resuelve o cancela, no una máquina de fases.
  */
-export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false }: ComposerProps) {
+export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = false, onFoto }: ComposerProps) {
   const tema = useTema();
   const [borrador, setBorrador] = useState('');
   const puedeEnviar = !disabled && borrador.trim() !== '' && sendStatus !== 'sending';
@@ -120,6 +148,27 @@ export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = fa
         </View>
       )}
       <View style={styles.fila}>
+        {onFoto && (
+          <Pressable
+            testID="chat-foto"
+            accessibilityRole="button"
+            accessibilityLabel="Foto del ticket"
+            disabled={disabled}
+            onPress={onFoto}
+            style={pressableStyle([
+              styles.boton,
+              {
+                backgroundColor: tema.glass.chip,
+                borderColor: tema.color.borde,
+                borderWidth: 1,
+                borderRadius: RADIO_BOTON,
+                opacity: disabled ? 0.5 : 1,
+              },
+            ])}
+          >
+            <IconoCamara color={tema.glass.accent2} />
+          </Pressable>
+        )}
         {/* El campo es una píldora de vidrio (gradiente s1→s2, borde, radio, luz superior) — un
             `TextInput` no puede llevar hijos, así que el vidrio se arma alrededor y el input va
             adentro, transparente. */}

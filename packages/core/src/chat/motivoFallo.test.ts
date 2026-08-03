@@ -57,13 +57,30 @@ describe('motivoDeError', () => {
     const err = new ApiError(409, 'conflicto', undefined, { diferido: true });
     expect(motivoDeError(err)).toBe('servidor');
   });
+
+  it('🔴 origen "foto" reinterpreta 413/422 — mismo status HTTP, motivo distinto', () => {
+    // El caso que justifica el parámetro: sin él, un 422 de /chat/foto se leería como
+    // "no se entendió el audio" y mandaría a hablarle al micrófono sobre un problema de foto.
+    expect(motivoDeError(new ApiError(422, 'sin ticket reconocible'), 'foto')).toBe('foto_no_legible');
+    expect(motivoDeError(new ApiError(413, 'imagen muy pesada'), 'foto')).toBe('foto_muy_grande');
+  });
+
+  it('sin `origen` (default), 413/422 siguen siendo los de audio — no rompe los call-sites existentes', () => {
+    expect(motivoDeError(new ApiError(422, 'x'))).toBe('audio_no_entendido');
+    expect(motivoDeError(new ApiError(413, 'x'))).toBe('audio_muy_grande');
+  });
 });
 
 describe('textoDeMotivo', () => {
   it('🔴 NO dice "no pudimos enviar" en los casos donde el mensaje SÍ se envió', () => {
     // La invariante de honestidad de este módulo. Un 422 y un 413 llegaron al servidor: afirmar lo
     // contrario es falso y desvía el diagnóstico.
-    for (const motivo of ['audio_no_entendido', 'audio_muy_grande'] as const) {
+    for (const motivo of [
+      'audio_no_entendido',
+      'audio_muy_grande',
+      'foto_no_legible',
+      'foto_muy_grande',
+    ] as const) {
       expect(textoDeMotivo(motivo).toLowerCase()).not.toContain('no pudimos enviar');
     }
   });
@@ -72,17 +89,25 @@ describe('textoDeMotivo', () => {
     // Un aviso que sólo describe el fallo deja al usuario adivinando. Cada texto nombra una acción.
     // 🔴 `servidor_diferido` queda AFUERA a propósito: su acción es "ninguna" — es el único motivo
     // donde decirle al usuario qué hacer sería decirle que reintente, y eso es justo lo prohibido.
-    const acciones = [/probá|revisá|grabá|volvé/i];
+    const acciones = [/probá|revisá|grabá|volvé|elegí|sacala/i];
     const todos: MotivoFallo[] = [
       'red',
       'audio_no_entendido',
       'audio_muy_grande',
       'sesion_vencida',
       'servidor',
+      'foto_no_legible',
+      'foto_muy_grande',
     ];
     for (const motivo of todos) {
       expect(acciones.some((re) => re.test(textoDeMotivo(motivo)))).toBe(true);
     }
+  });
+
+  it('el de foto manda a repetir la FOTO, no es intercambiable con el de audio', () => {
+    expect(textoDeMotivo('foto_no_legible')).toMatch(/foto|ticket/i);
+    expect(textoDeMotivo('foto_no_legible')).not.toBe(textoDeMotivo('audio_no_entendido'));
+    expect(textoDeMotivo('foto_muy_grande')).not.toBe(textoDeMotivo('audio_muy_grande'));
   });
 
   it('🔴 "servidor_diferido" NO invita a reintentar — es lo único vinculante del contrato', () => {

@@ -30,6 +30,7 @@ jest.mock('@copiloto/core', () => {
       ...actual.apiReal,
       sendChat: jest.fn(),
       sendAudio: jest.fn(),
+      sendFoto: jest.fn(),
       getReply: jest.fn(),
     },
     leerPerfilNegocio: jest.fn().mockResolvedValue({ status: 'no_disponible' }),
@@ -136,6 +137,18 @@ const mockGrabadorVoz = {
   getStatus: jest.fn(() => ({ durationMillis: 0, metering: -60 })),
   uri: null as string | null,
 };
+// `expo-image-picker` (Gastos Fase 2) -- `useCapturaFoto` NO se mockea (a diferencia de `BotonVoz`):
+// no tiene gesto que un `GestureDetector` mockeado se coma, así que se ejercita REAL a través de su
+// `Alert.alert` (mismo criterio que `useCapturaFoto.test.ts`).
+const mockRequestCameraPermissionsAsync = jest.fn().mockResolvedValue({ granted: true });
+const mockLaunchCameraAsync = jest.fn();
+jest.mock('expo-image-picker', () => ({
+  requestCameraPermissionsAsync: (...args: unknown[]) => mockRequestCameraPermissionsAsync(...args),
+  requestMediaLibraryPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
+  launchCameraAsync: (...args: unknown[]) => mockLaunchCameraAsync(...args),
+  launchImageLibraryAsync: jest.fn().mockResolvedValue({ canceled: true, assets: null }),
+}));
+
 // Expuesto aparte (y no inline en el factory) para que el test de permiso denegado pueda pisarlo con
 // `mockResolvedValueOnce({granted:false})` sin tocar el resto de la suite.
 const mockRequestRecordingPermissionsAsync = jest.fn().mockResolvedValue({ granted: true });
@@ -386,6 +399,92 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     expect(alertSpy.mock.calls[0]?.[0]).toBe('Sin acceso al micrófono');
     expect(screen.queryByTestId('onda-flotante')).toBeNull();
 
+    alertSpy.mockRestore();
+  });
+});
+
+describe('ChatView -- foto de ticket (Gastos Fase 2, OCR)', () => {
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendFoto).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    mockRequestCameraPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
+    mockLaunchCameraAsync.mockReset();
+  });
+
+  /** Simula al usuario tocando el botón `texto` de la última llamada a `Alert.alert` -- mismo
+   *  helper que `useCapturaFoto.test.ts` (acá no se puede importar: depende del spy local). */
+  function tocarBoton(spy: jest.SpyInstance, texto: string) {
+    const llamada = spy.mock.calls.at(-1);
+    const botones = llamada?.[2] as { text: string; onPress?: () => void }[] | undefined;
+    botones?.find((b) => b.text === texto)?.onPress?.();
+  }
+
+  it('el botón de cámara existe y dispara el picker Cámara/Galería/Cancelar', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Foto del ticket',
+      expect.any(String),
+      expect.arrayContaining([expect.objectContaining({ text: 'Cámara' })]),
+    );
+    alertSpy.mockRestore();
+  });
+
+  it('Cámara -> sube la foto y agrega el mensaje optimista fijo en la lista', async () => {
+    mockLaunchCameraAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/ticket.jpg', mimeType: 'image/jpeg' }],
+    });
+    jest.mocked(api.sendFoto).mockResolvedValue({ wf_id: 'wf-foto-1', accepted: true } as any);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+    tocarBoton(alertSpy, 'Cámara');
+
+    await waitFor(() => expect(api.sendFoto).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('📷 Foto del ticket enviada')).toBeTruthy();
+    // `cliente_id` viaja vacío, mismo criterio que `enviarAudio` -- ver el docstring de `useChat.ts`.
+    expect(api.sendFoto).toHaveBeenCalledWith(
+      expect.any(String),
+      { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' },
+      '',
+    );
+    alertSpy.mockRestore();
+  });
+
+  it('permiso de cámara denegado: aviso legible, sin llamar a sendFoto', async () => {
+    mockRequestCameraPermissionsAsync.mockResolvedValue({ granted: false });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+    tocarBoton(alertSpy, 'Cámara');
+
+    await waitFor(() => expect(alertSpy.mock.calls.length).toBeGreaterThanOrEqual(2));
+    expect(alertSpy.mock.calls[1]?.[0]).toMatch(/cámara/i);
+    expect(api.sendFoto).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('Cancelar en el picker no llama a sendFoto ni pide ningún permiso', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await renderChatView();
+    await waitFor(() => expect(screen.getByTestId('chat-composer').props.editable).toBe(true));
+
+    await fireEvent.press(screen.getByTestId('chat-foto'));
+    tocarBoton(alertSpy, 'Cancelar');
+
+    expect(mockRequestCameraPermissionsAsync).not.toHaveBeenCalled();
+    expect(api.sendFoto).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 });

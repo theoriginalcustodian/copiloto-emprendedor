@@ -19,6 +19,7 @@ jest.mock('@copiloto/core', () => {
       ...actual.apiReal,
       sendChat: jest.fn(),
       sendAudio: jest.fn(),
+      sendFoto: jest.fn(),
       getReply: jest.fn(),
     },
   };
@@ -270,6 +271,7 @@ describe('useChat -- aislamiento por clienteId (no cross-tenant leak)', () => {
 });
 
 const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
+const ARCHIVO_FOTO = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
 
 describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
   beforeEach(() => {
@@ -357,6 +359,96 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     });
 
     expect(result.current.estado?.motivoFallo).toBe('audio_muy_grande');
+    unmount();
+  });
+});
+
+describe('useChat -- enviarFoto (Gastos Fase 2, OCR de ticket)', () => {
+  beforeEach(() => {
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.sendFoto).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(deleteAsync).mockClear();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+  });
+
+  it('upload OK: agrega el mensaje optimista fijo (nunca hay transcript de una foto) y arranca el polling', async () => {
+    jest.mocked(api.sendFoto).mockResolvedValue({ wf_id: 'wf-f1', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarFoto(ARCHIVO_FOTO);
+    });
+
+    expect(result.current.estado?.messages).toEqual([
+      expect.objectContaining({ role: 'user', text: '📷 Foto del ticket enviada' }),
+    ]);
+    expect(result.current.estado?.sendStatus).toBe('waiting');
+    // `cliente_id` viaja SIEMPRE, vacío -- mismo criterio que `enviarAudio`, ver el docstring del módulo.
+    expect(api.sendFoto).toHaveBeenCalledWith(expect.any(String), ARCHIVO_FOTO, '');
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local tras un envío exitoso', async () => {
+    jest.mocked(api.sendFoto).mockResolvedValue({ wf_id: 'wf-f2', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarFoto(ARCHIVO_FOTO);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/ticket.jpg', { idempotent: true });
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local incluso si el upload falla -- el borrado no depende del éxito', async () => {
+    jest.mocked(api.sendFoto).mockRejectedValue(new Error('network down'));
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarFoto(ARCHIVO_FOTO);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/ticket.jpg', { idempotent: true });
+    expect(result.current.estado?.sendStatus).toBe('error');
+    expect(result.current.estado?.motivoFallo).toBe('red');
+    unmount();
+  });
+
+  it('🔴 un 422 mapea a foto_no_legible, NO a audio_no_entendido -- el origen importa', async () => {
+    const { ApiError } = jest.requireActual('@copiloto/core');
+    jest.mocked(api.sendFoto).mockRejectedValue(new ApiError(422, 'sin ticket reconocible'));
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarFoto(ARCHIVO_FOTO);
+    });
+
+    expect(result.current.estado?.motivoFallo).toBe('foto_no_legible');
+    expect(result.current.estado?.messages).toEqual([]);
+    unmount();
+  });
+
+  it('🔴 un 413 mapea a foto_muy_grande, NO a audio_muy_grande -- el origen importa', async () => {
+    const { ApiError } = jest.requireActual('@copiloto/core');
+    jest.mocked(api.sendFoto).mockRejectedValue(new ApiError(413, 'imagen muy pesada'));
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarFoto(ARCHIVO_FOTO);
+    });
+
+    expect(result.current.estado?.motivoFallo).toBe('foto_muy_grande');
     unmount();
   });
 });
