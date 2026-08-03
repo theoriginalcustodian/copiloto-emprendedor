@@ -514,6 +514,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    presupuestos_app: FastAPI | None = None,
                    gastos_app: FastAPI | None = None,
                    clientes_app: FastAPI | None = None,
+                   contabilidad_app: FastAPI | None = None,
                    actividad_app: FastAPI | None = None,
                    inteligencia_app: FastAPI | None = None,
                    mi_dia_app: FastAPI | None = None,
@@ -859,6 +860,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         app.include_router(gastos_app.router)
     if clientes_app is not None:
         app.include_router(clientes_app.router)
+    # `/contabilidad/resumen` (agregación de caja/gastos/facturado/clientes, hito-C). Mismo criterio
+    # opcional; sus rutas traen su propia barrera `Depends(require_tenant)`.
+    if contabilidad_app is not None:
+        app.include_router(contabilidad_app.router)
     # `/actividad` (feed unificado: "Recientes" + búsqueda por `funcion`/`q`, `actividad_web.py`
     # sobre la unión de `actividad_store`). Sus rutas traen su propia barrera `Depends(require_tenant)`.
     # ⚠️ HISTORIA (no re-introducir): hasta 2026-07-22 vivía acá arriba un stub `@app.get("/actividad")`

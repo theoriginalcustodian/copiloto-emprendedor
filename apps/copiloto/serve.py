@@ -69,6 +69,7 @@ from presupuesto_store import PresupuestoStore
 from presupuestos_web import create_presupuestos_app
 from gastos_web import create_gastos_app
 from clientes_web import create_clientes_app
+from contabilidad_web import create_contabilidad_app
 from actividad_web import create_actividad_app
 from clients.agent.providers.llm import LlmProvider
 from graphity_structured_client import GraphityStructuredClient
@@ -217,6 +218,13 @@ async def _serve() -> None:
         cliente_store_factory=lambda cid: ClienteStore(conn_factory, cid),
     )
 
+    contabilidad_app = create_contabilidad_app(
+        require_tenant=require_tenant,
+        cobro_store_factory=lambda cid: CobroStore(conn_factory, cid),
+        gasto_store_factory=lambda cid: GastoStore(conn_factory, cid),
+        afip_comprobante_store_factory=lambda cid: AfipComprobanteStore(conn_factory, cid),
+    )
+
     actividad_app = create_actividad_app(
         require_tenant=require_tenant,
         actividad_store_factory=lambda cid: ActividadStore(conn_factory, cid),
@@ -268,7 +276,7 @@ async def _serve() -> None:
         temporal_client=client, adapter=adapter, conn_factory=conn_factory,
         require_tenant=require_tenant, require_claims=require_claims, mp_app=mp_app,
         afip_app=afip_app, presupuestos_app=presupuestos_app, gastos_app=gastos_app,
-        clientes_app=clientes_app, actividad_app=actividad_app,
+        clientes_app=clientes_app, contabilidad_app=contabilidad_app, actividad_app=actividad_app,
         inteligencia_app=inteligencia_app,
         mi_dia_app=mi_dia_app,
         gotrue=gotrue,
