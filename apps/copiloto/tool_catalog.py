@@ -218,6 +218,31 @@ MARCAR_FACTURA_COBRADA_SCHEMA = {"type": "function", "function": {
                                                        "Omitilo si no lo dijo: se asume hoy."}},
         "required": []}}}
 
+# ── hito P — presupuesto por voz (contrato hito-P) ──────────────────────────────────────────────────
+
+REGISTRAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
+    "name": "registrar_presupuesto",
+    "description": "Arma un presupuesto dictado ('hacele un presupuesto a Juan por dos sillas a 8000 "
+                   "cada una', 'presupuestale a la panadería el service por 15000'). NO lo guarda: "
+                   "arma una propuesta para que él la revise y confirme. Necesita de qué se trata, a "
+                   "quién y al menos un ítem.",
+    "parameters": {"type": "object", "properties": {
+        "concepto": {"type": "string", "description": "de qué se trata el presupuesto, en pocas palabras"},
+        "cliente_nombre": {"type": "string", "description": "a quién se lo hace"},
+        "cliente_documento": {"type": "string", "description": "CUIT o DNI del cliente, si lo dijo"},
+        "cliente_tipo_doc": {"type": "string", "enum": ["CUIT", "DNI"],
+                             "description": "si dijo la palabra «CUIT» o «DNI». Omitilo si sólo dictó "
+                                            "el número o no dijo documento"},
+        "contacto": {"type": "string", "description": "teléfono o mail del cliente, si lo dijo"},
+        "items": {"type": "array", "description": "lo que le va a vender — al menos uno",
+                  "items": {"type": "object", "properties": {
+                      "descripcion": {"type": "string", "description": "qué le va a vender"},
+                      "cantidad": {"type": "string", "description": "cuántos, sólo el número. Si no "
+                                                                     "lo dijo, asumí 1"},
+                      "precio_unitario": {"type": "string", "description": "precio de cada uno, sólo "
+                                                                          "el número, si lo dijo"}}}}},
+        "required": ["concepto", "cliente_nombre", "items"]}}}
+
 MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
     "name": "marcar_presupuesto",
     "description": "Mueve el estado de un presupuesto cuando el emprendedor cuenta cómo salió ('me "
@@ -325,6 +350,7 @@ _CAPACIDADES = (
                                        "cobré 40 mil de la panadería en efectivo")),
     ("marcar_factura_cobrada", "Facturas", ("me pagaron la factura 42",)),
     ("marcar_presupuesto", "Presupuestos", ("me aprobaron el de la panadería",)),
+    ("registrar_presupuesto", "Presupuestos", ("hacele un presupuesto a Juan por dos sillas a 8000",)),
     ("registrar_cliente", "Clientes", ("anotá un cliente, Panadería Los Tilos",)),
     ("crear_tarjeta_mi_dia", "Mi día", ("recordame llamar a Juan",)),
     ("mover_tarjeta_mi_dia", "Mi día", ("ya llamé a Juan",)),
@@ -403,6 +429,7 @@ def build_tool_catalog() -> list[dict]:
                REGISTRAR_GASTO_SCHEMA, REGISTRAR_CLIENTE_SCHEMA,
                REGISTRAR_INGRESO_SCHEMA, COMPLETAR_INGRESO_SCHEMA,
                MARCAR_FACTURA_COBRADA_SCHEMA, MARCAR_PRESUPUESTO_SCHEMA,
+               REGISTRAR_PRESUPUESTO_SCHEMA,
                EMITIR_FACTURA_SCHEMA,
                CREAR_TARJETA_MI_DIA_SCHEMA, MOVER_TARJETA_MI_DIA_SCHEMA,
                BORRAR_TARJETA_MI_DIA_SCHEMA]
@@ -428,6 +455,9 @@ TOOL_INDEX = {**_service_index(), "calendar_book": ("calendar",), "mp_charge": (
               "registrar_ingreso": ("ingreso",), "completar_ingreso": ("ingreso_completar",),
               "marcar_factura_cobrada": ("factura_cobrada",),
               "marcar_presupuesto": ("presupuesto_estado",),
+              # Hito P — PROPONE, igual que `registrar_cliente`: el POST /presupuestos lo dispara el
+              # emprendedor al tocar Guardar desde la card, no la tool.
+              "registrar_presupuesto": ("presupuesto",),
               # Hito 7 — mismo criterio que arriba: PERSISTEN, sin gate (el riesgo es "¿a cuál
               # tarjeta?", cubierto por `_elegir_uno`, no "¿lo hago?").
               "crear_tarjeta_mi_dia": ("mi_dia_crear",),
@@ -764,6 +794,80 @@ def _run_registrar_cliente(arguments, ctx, idem_key):
                                f"\"Te armé un borrador de {nombre}, revisalo y confirmalo cuando "
                                f"quieras.\"{aviso}"},
         artifact=Artifact(kind="cliente_propuesto", data=cliente))
+
+
+def _run_registrar_presupuesto(arguments, ctx, idem_key):
+    """Propone un presupuesto dictado. NO persiste — mismo patrón que `registrar_gasto`/`registrar_cliente`
+    (contrato hito-P). El receptor reutiliza la MISMA inferencia de `doc_tipo` que `_run_registrar_cliente`:
+    lo dicho por la persona ("CUIT"/"DNI") gana sobre lo que el largo del número sugiere, y cuando
+    contradicen no gana ninguno — gana la pregunta (mismo caso medido en el vivo, documentado ahí).
+    """
+    concepto = str(arguments.get("concepto") or "").strip()[:200]
+    cliente_nombre = str(arguments.get("cliente_nombre") or "").strip()[:LIMITES_CLIENTE["nombre"]]
+    items_dictados = [it for it in (arguments.get("items") or []) if isinstance(it, dict)]
+
+    faltantes = []
+    if not concepto:
+        faltantes.append("de qué se trata")
+    if not cliente_nombre:
+        faltantes.append("a quién")
+    if not items_dictados:
+        faltantes.append("al menos un ítem")
+    if faltantes:
+        # `ok` y no `error` — mismo criterio que `_run_registrar_cliente`: no falló nada, falta un dato
+        # obligatorio. Emitir la card igual sería peor: el validador del kind la descarta en silencio
+        # (§2 del contrato) y el emprendedor ve una respuesta vacía sin saber por qué.
+        return ToolResult(tool_call_id=idem_key, is_write=False, status="ok",
+                          observation={"result": f"Falta {' y '.join(faltantes)} para armar el "
+                                                 f"presupuesto. Preguntáselo antes de seguir."})
+
+    doc = normalizar_documento(arguments.get("cliente_documento"))[:LIMITES_CLIENTE["doc_nro"]]
+    doc_tipo = inferir_doc_tipo(doc) if doc else None
+    if es_consumidor_final(doc_tipo):
+        doc_tipo, doc = None, ""
+
+    dicho = {"CUIT": DOC_CUIT, "DNI": DOC_DNI}.get(str(arguments.get("cliente_tipo_doc") or "").upper())
+    contradice = bool(doc) and dicho is not None and documento_incoherente(dicho, doc)
+    if contradice:
+        doc_tipo = None
+    elif dicho is not None:
+        doc_tipo = dicho
+
+    contacto = str(arguments.get("contacto") or "").strip()[:120] or None
+    receptor = {"nombre": cliente_nombre, "doc_tipo": doc_tipo, "doc_nro": doc or None,
+               "contacto": contacto}
+
+    items = []
+    for it in items_dictados:
+        # Un ítem sin descripción NO se descarta — decisión explícita del operador (§1 del contrato):
+        # viaja igual, vacío y editable, para que se corrija en la card en vez de desaparecer.
+        precio = _monto_dictado(it.get("precio_unitario"))
+        cantidad = _monto_dictado(it.get("cantidad")) or Decimal("1")
+        items.append({"descripcion": str(it.get("descripcion") or "").strip()[:200],
+                      "cantidad": dos_decimales(cantidad),
+                      # Sin precio dictado → "" (blanco en la card), NUNCA inventado (§2 del contrato).
+                      "precio_unitario": dos_decimales(precio) if precio is not None else ""})
+
+    aviso = ""
+    if contradice:
+        palabra = "CUIT" if dicho == DOC_CUIT else "DNI"
+        aviso = (f" OJO: dijo «{palabra}» pero {documento_incoherente(dicho, doc)}. Decíselo con esas "
+                 f"palabras y pedile el número completo; quedó en la tarjeta para que lo corrija.")
+    elif doc and doc_tipo is None:
+        aviso = (f" OJO: dictó «{doc}» como documento y eso no tiene forma de CUIT (11 dígitos) ni "
+                 f"de DNI (7 u 8). Pedile que lo confirme; puede corregirlo en la tarjeta.")
+
+    return ToolResult(
+        tool_call_id=idem_key, is_write=False, status="ok",
+        # spike (b) [[copiloto-narra-la-accion-sin-ejecutarla]]: mismo patrón que registrar_gasto/cliente
+        # — verbo prohibido explícito + frase exacta para relayar.
+        observation={"result": f"Propuse un presupuesto de «{concepto}» para {cliente_nombre} y se lo "
+                               f"muestro en una tarjeta para que la revise. TODAVÍA NO está guardado — "
+                               f"NO digas \"anoté\", \"listo\" ni \"guardado\" porque no es cierto. "
+                               f"Decile exactamente: \"Te armé un borrador de presupuesto para "
+                               f"{cliente_nombre}, revisalo y confirmalo cuando quieras.\"{aviso}"},
+        artifact=Artifact(kind="presupuesto_propuesto",
+                          data={"concepto": concepto, "receptor": receptor, "items": items}))
 
 
 def _plata(monto: str) -> str:
@@ -1444,6 +1548,9 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                                    cobro_store_factory)
             if kind == "presupuesto_estado":
                 return _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
+            # ── 1ra clase: hito P — presupuesto por voz (PROPONE, no persiste → sin gate) ───────────
+            if kind == "presupuesto":
+                return _run_registrar_presupuesto(arguments, ctx, idem_key)
             # ── 1ra clase: hito 9 — facturar por voz (PROPONE; ver TOOL_INDEX) ─────────────────────
             if kind == "factura_dictado":
                 return _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
