@@ -8,9 +8,10 @@ import type { ConDisponibilidad } from './afip';
  * `GET /contabilidad/resumen` — caja y facturación, **dos preguntas separadas**.
  *
  * Contrato: `coordinacion/abierto/2026-07-21_contrato_planificacion-a-todos_contabilidad.md` §4.
- * 🔴 **El endpoint todavía NO existe** (`dato_planificacion-a-frontend_ARRANCA-la-mitad-app-de-hito-C`,
- * 2026-07-24): este módulo se escribió contra la FORMA declarada, no contra el vivo — degrada a
- * `no_disponible` igual que cualquier ruta no montada (mismo criterio que `gastos.ts`).
+ * ✅ **El endpoint ya está desplegado** (PR#211, 2026-08-03) — verificado vivo por HTTP (`401`
+ * auth-gated, no el catch-all del SPA). Este módulo se escribió contra la FORMA declarada antes de
+ * que existiera; la degradación a `no_disponible` (405/501/catch-all) queda como red por si algún
+ * deploy futuro lo tumba, no como el camino esperado de hoy en más.
  *
  * 🔴 **Caja ≠ facturación, y por eso son dos secciones que nunca se mezclan.** `caja` sale de
  * ingresos−gastos; `facturado` sale de comprobantes AFIP. Sumarlas contaría la misma plata dos veces
@@ -27,10 +28,11 @@ export interface CategoriaResumenContabilidad {
 }
 
 /**
- * `[ASSUMED_PENDING_VERIFY]` — el contrato da `"mes_anterior": {…} | null` sin desglosar el objeto.
- * Se infiere el mismo trío que `caja` (única lectura consistente con "compará contra el mes pasado"),
- * cada campo parseado con default seguro si el backend manda otra forma — no rompe, y si la forma real
- * difiere hay que actualizar sólo este tipo.
+ * ✅ **CONFIRMADO 2026-08-03** contra `apps/copiloto/contabilidad_web.py` (PR#211, mergeado a
+ * `origin/main`): el trío es exactamente éste — `mes_anterior: {"entro", "salio", "queda"} | null`,
+ * `null` sólo si NINGÚN lado (cobros/gastos) tiene una fila el mes anterior. Era
+ * `[ASSUMED_PENDING_VERIFY]` hasta acá; ya no. Endpoint verificado vivo por HTTP (`401` auth-gated,
+ * no el catch-all del SPA — control negativo contra una ruta inexistente da `200` HTML, discrimina).
  */
 export interface CajaMesAnterior {
   entro: string;
@@ -53,10 +55,14 @@ export interface ResumenGastosContabilidad {
 }
 
 /**
- * `[ASSUMED_PENDING_VERIFY]` — el contrato §4.3 no desglosa `tope`, pero su propio texto lo implica:
- * *"sin escala vigente → tope: null, ... sin porcentaje ni semáforo"* — o sea que CON escala vigente,
- * `tope` trae al menos eso. `semaforo` es `string` abierto (como `EstadoComprobante` en `afip.ts`) para
- * que un valor no anticipado no rompa nada, sólo no matchee ningún caso de color.
+ * `[ASSUMED_PENDING_VERIFY]` — **sigue así, y no por falta de código: backend manda `tope: null`
+ * SIEMPRE hoy, a propósito.** Confirmado 2026-08-03 leyendo `contabilidad_web.py` (PR#211): sin
+ * escala de monotributo vigente configurada, es deuda declarada de BACKEND ("un tope viejo mostrado
+ * como vigente es peor que no mostrar ninguno"), condición de pago = cada publicación oficial de
+ * ARCA. La forma de acá abajo (`valor`/`porcentaje`/`semaforo`) sigue siendo la mejor lectura del
+ * contrato §4.3 pero **no hay ningún caso real contra el cual confirmarla todavía** — no se puede
+ * verificar lo que nunca se envía. `semaforo` es `string` abierto (como `EstadoComprobante` en
+ * `afip.ts`) para que un valor no anticipado no rompa nada, sólo no matchee ningún caso de color.
  */
 export interface TopeMonotributo {
   /** String decimal — el tope de la escala vigente. */
