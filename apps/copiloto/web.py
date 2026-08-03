@@ -50,6 +50,10 @@ from deposito_traumas import fabrica_desde
 from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
+from clients.agent.providers.vision import _API_ERRORS as _VISION_API_ERRORS
+from clients.agent.providers.vision import OpenAIVisionOCR
+from gasto_desde_foto import construir_gasto_desde_foto
+from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
 from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
@@ -74,6 +78,10 @@ MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 # tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
 # real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
 MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
+
+# Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
+# 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
+MAX_IMAGEN_BYTES = int(os.environ.get("MAX_IMAGEN_BYTES", 10 * 1024 * 1024))
 
 # Un copiloto es UNA conversación siempre viva, no una charla que se cierra a cada rato: la sesión es
 # efectivamente PERMANENTE. El history de Temporal lo acota el continue-as-new del ConversationWorkflow (se
@@ -494,6 +502,15 @@ def _default_transcribe(audio_bytes: bytes, content_type: str) -> str:
                                 content_type=content_type or "audio/ogg")
 
 
+def _default_extraer_ticket(imagen_bytes: bytes, content_type: str) -> dict:
+    """Extractor por default de `/chat/foto` (Gastos Fase 2 — OCR): `OpenAIVisionOCR` real, `gpt-4o`
+    (spike `spikes/ocr-tickets/RESULT.md`: 4/4 vs 2/4 de `gpt-4o-mini` al mismo costo). Construido ACÁ
+    DENTRO, mismo criterio import-safety que `_default_transcribe`: si falta `OPENAI_API_KEY`,
+    `OpenAIVisionOCR.leer_ticket` levanta `RuntimeError` explícito recién al primer request real."""
+    return OpenAIVisionOCR(categorias=_CATEGORIAS_GASTO).leer_ticket(
+        imagen_bytes, content_type=content_type or "image/jpeg")
+
+
 class SignupIn(BaseModel):
     email: str
     password: str
@@ -521,6 +538,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
+                   extraer_ticket: Callable[[bytes, str], dict] | None = None,
                    warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
@@ -546,6 +564,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
     transcribe = transcribe or _default_transcribe
+    extraer_ticket = extraer_ticket or _default_extraer_ticket
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
@@ -612,6 +631,52 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                           "engine_mode": COPILOTO_ENGINE_MODE},
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
+
+    @app.post("/chat/foto")
+    async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
+                        cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de OCR de tickets (Gastos Fase 2). A diferencia de `/chat`/`/chat/audio`, NO
+        pasa por `route_inbound`/el loop ReAct: la vision call YA decide los campos del gasto, y
+        bajarlos a texto libre para que el LLM los reinterprete perdería la distinción `monto` vacío /
+        `monto_sugerido` que es el punto central del addendum de la foto (spike
+        `spikes/ocr-tickets/RESULT.md` §3 — "legible" nunca es señal de confianza, no se usa acá para
+        nada). El reply se escribe por el MISMO `adapter.send(...)` que usa la activity
+        `send_channel_message` (mismo `reply_store`, mismo `/reply`): la app ve la card idéntica a como
+        la vería si hubiera llegado por voz. `wf_id` en la respuesta es SINTÉTICO (no hay workflow de
+        Temporal en este camino) -- ningún consumidor de `/chat`/`/chat/audio` lo lee hoy (grep vacío en
+        `apps/mobile`); se mantiene solo por paridad de shape con esos dos endpoints."""
+        if imagen.size is not None and imagen.size > MAX_IMAGEN_BYTES:
+            raise HTTPException(status_code=413, detail="imagen demasiado grande (máx 10 MB)")
+        imagen_bytes = await imagen.read()
+        if len(imagen_bytes) > MAX_IMAGEN_BYTES:
+            raise HTTPException(status_code=413, detail="imagen demasiado grande (máx 10 MB)")
+        content_type = imagen.content_type or ""
+        if content_type not in ("image/jpeg", "image/png"):
+            raise HTTPException(status_code=415, detail="formato de imagen no soportado (jpg/png)")
+        try:
+            extraido = await asyncio.to_thread(extraer_ticket, imagen_bytes, content_type)
+        except RuntimeError as e:
+            # OpenAIVisionOCR levanta RuntimeError explícito si falta OPENAI_API_KEY -- 503, NO 500:
+            # el resto del front-door sigue andando igual.
+            raise HTTPException(status_code=503, detail="OCR no configurado") from e
+        except _VISION_API_ERRORS as e:
+            raise HTTPException(status_code=502, detail="error del servicio de OCR") from e
+        # 🔴 El gate NO usa `legible` (el spike lo prohíbe explícitamente -- ver docstring de arriba):
+        # si el modelo no extrajo NINGÚN campo, no hay ticket reconocible; si extrajo aunque sea uno,
+        # se muestra la card (con `monto` siempre vacío, nunca pre-cargado).
+        if not extraido or not any(extraido.get(k) is not None
+                                   for k in ("monto", "fecha", "proveedor", "categoria")):
+            raise HTTPException(status_code=422, detail="no se reconoció un ticket en la imagen")
+        gasto = construir_gasto_desde_foto(extraido)
+        idem_key = f"foto:{uuid.uuid4().hex}"
+        sugerido = f" (leí ${gasto['monto_sugerido']})" if gasto["monto_sugerido"] else ""
+        # Mismo guardrail verbal que `_run_registrar_gasto` (ver `tool_catalog.py`):
+        # [[copiloto-narra-la-accion-sin-ejecutarla]] -- nunca "guardado"/"anoté"/"listo".
+        texto = (f"Te armé un borrador de gasto desde la foto{sugerido}. TODAVÍA NO está guardado "
+                f"-- revisalo y confirmalo cuando quieras.")
+        adapter.send(session_id, texto, None, cliente_id=cliente_id,
+                    card={"kind": "gasto_propuesto", "data": gasto}, idem_key=idem_key)
+        return {"wf_id": idem_key, "accepted": True}
 
     # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
     # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
