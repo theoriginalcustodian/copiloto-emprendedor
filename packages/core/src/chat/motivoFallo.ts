@@ -18,8 +18,10 @@ import type { MotivoFallo } from './chatMachine';
  * | Qué llegó | Motivo | Qué haría el usuario |
  * |---|---|---|
  * | 401 | `sesion_vencida` | Volver a entrar. Reintentar no sirve. |
- * | 413 | `audio_muy_grande` | Grabar más corto. Reintentar lo mismo tampoco sirve. |
- * | 422 | `audio_no_entendido` | Repetir el AUDIO — el mensaje sí se envió. |
+ * | 413 (`origen:'audio'`) | `audio_muy_grande` | Grabar más corto. Reintentar lo mismo tampoco sirve. |
+ * | 413 (`origen:'foto'`) | `foto_muy_grande` | Elegir/sacar una foto más liviana. |
+ * | 422 (`origen:'audio'`) | `audio_no_entendido` | Repetir el AUDIO — el mensaje sí se envió. |
+ * | 422 (`origen:'foto'`) | `foto_no_legible` | Repetir la FOTO — el mensaje sí se envió. |
  * | 500 con `diferido:true` | `servidor_diferido` | Nada — el sistema ya lo va a reintentar solo. |
  * | 5xx / otro `ApiError` | `servidor` | Reintentar más tarde. |
  * | No es `ApiError` | `red` | Revisar la conexión y reintentar. |
@@ -28,16 +30,22 @@ import type { MotivoFallo } from './chatMachine';
  * conexión": mandarlo ahí cuando el problema era del servidor le hace perder el tiempo en el lugar
  * equivocado — que es exactamente el fallo que este módulo existe para no repetir. Sólo se afirma
  * `red` cuando hay evidencia de que la request **nunca llegó a tener respuesta HTTP**.
+ *
+ * 🔴 **`origen` existe porque 413/422 SOLOS son ambiguos.** `/chat/audio` y `/chat/foto` comparten
+ * esos dos códigos con significados distintos (audio muy largo vs. imagen muy pesada; STT que no
+ * entendió vs. OCR que no vio ticket) — sin el parámetro, un 422 de una foto se leería como
+ * `audio_no_entendido` y el aviso mandaría al usuario a hablarle más cerca al micrófono. Default
+ * `'audio'` para no romper los call-sites existentes (texto/audio), que preceden a `/chat/foto`.
  */
-export function motivoDeError(e: unknown): MotivoFallo {
+export function motivoDeError(e: unknown, origen: 'audio' | 'foto' = 'audio'): MotivoFallo {
   if (!(e instanceof ApiError)) {
     // Sin status HTTP no hubo respuesta del servidor: el fallo es de transporte. Es el único caso en
     // el que afirmar "problema de conexión" está respaldado por algo.
     return 'red';
   }
   if (e.status === 401) return 'sesion_vencida';
-  if (e.status === 413) return 'audio_muy_grande';
-  if (e.status === 422) return 'audio_no_entendido';
+  if (e.status === 413) return origen === 'foto' ? 'foto_muy_grande' : 'audio_muy_grande';
+  if (e.status === 422) return origen === 'foto' ? 'foto_no_legible' : 'audio_no_entendido';
   // ítem 2.5 del DLQ: sólo el 500 de la costura C2 marca `diferido` — un 400/404/409 nunca lo trae,
   // así que no hace falta acotar por status además de leer el body.
   if (e.status === 500 && esDiferido(e.body)) return 'servidor_diferido';
@@ -69,5 +77,9 @@ export function textoDeMotivo(motivo: MotivoFallo): string {
       // Texto pedido literal por el contrato (§4 del ítem 2.5) — lo vinculante es que NO invite a
       // reintentar, porque reintentar acá duplica un efecto que el sistema ya va a reintentar solo.
       return 'Se cortó algo de nuestro lado. Lo estamos reintentando solo — no hace falta que lo repitas.';
+    case 'foto_no_legible':
+      return 'No pudimos leer el ticket en la foto. Probá con más luz o más cerca del papel.';
+    case 'foto_muy_grande':
+      return 'La foto pesa demasiado para enviarla. Elegí otra o sacala de nuevo con menos resolución.';
   }
 }

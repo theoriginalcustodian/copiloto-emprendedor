@@ -9,6 +9,7 @@ import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
+import { useCapturaFoto } from './useCapturaFoto';
 import { useChat } from './useChat';
 import { useVozComando } from './useVozComando';
 
@@ -70,8 +71,12 @@ function useTecladoVisible(): boolean {
  * devuelve `false` si el usuario no concedió el permiso; acá eso dispara un `Alert` nativo en vez de
  * dejar el toque sin ningún efecto visible (que el usuario leería como "el botón no funciona").
  *
- * Toda la lógica de envío/polling/durabilidad (texto Y voz) vive en `useChat`; este componente sólo
- * arma los callbacks que conectan la vista con esa máquina.
+ * 🔴 **Foto de ticket (Gastos Fase 2) — botón dentro del `Composer`, no overlay.** A diferencia de
+ * la voz, elegir una foto (`useCapturaFoto`) es una sola llamada async sin fases que animar -- ver
+ * el docstring de `Composer.onFoto` para el porqué de la excepción a "sin botones de acción propios".
+ *
+ * Toda la lógica de envío/polling/durabilidad (texto, voz Y foto) vive en `useChat`; este componente
+ * sólo arma los callbacks que conectan la vista con esa máquina.
  *
  * 🔴 **Sin fondo ni título propios.** Vive DENTRO del panel de vidrio (`PanelDeslizable`, fuera de
  * este ownership) que ya aporta el chrome — mismo criterio que `PantallaFacturacion`/`PantallaApps`
@@ -83,8 +88,9 @@ export function ChatView() {
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio } = useChat(me?.cliente_id ?? '');
+  const { estado, send, enviarAudio, enviarFoto } = useChat(me?.cliente_id ?? '');
   const voz = useVozComando();
+  const foto = useCapturaFoto();
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<ScrollView>(null);
   const [fijado, setFijado] = useState(false);
@@ -132,6 +138,16 @@ export function ChatView() {
     if (audio === null) return; // no llegó a grabar nada
     void enviarAudio(audio);
   }, [voz, enviarAudio]);
+
+  // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
+  // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
+  const alElegirFoto = useCallback(() => {
+    void (async () => {
+      const archivo = await foto.elegir();
+      if (archivo === null) return;
+      void enviarFoto(archivo);
+    })();
+  }, [foto, enviarFoto]);
 
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
@@ -199,6 +215,7 @@ export function ChatView() {
         sendStatus={estado?.sendStatus ?? 'idle'}
         onSend={manejarEnvio}
         disabled={estado === null}
+        onFoto={alElegirFoto}
       />
     </KeyboardAvoidingView>
   );

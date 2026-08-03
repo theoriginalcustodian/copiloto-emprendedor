@@ -138,6 +138,18 @@ jest.mock('expo-audio', () => ({
   RecordingPresets: { HIGH_QUALITY: {}, LOW_QUALITY: {} },
 }));
 
+// `expo-image-picker` toca su módulo nativo al importarse, igual que `expo-audio` arriba -- sin esto
+// CUALQUIER archivo que lo importe (`useCapturaFoto`, ChatView) revienta con "Cannot find native
+// module" antes de correr un test. Cancelado por default (`assets: null`): los tests que necesitan
+// una foto elegida declaran su propio `jest.mock('expo-image-picker', ...)`, que pisa este. Hueco del
+// ENTORNO de test, no del producto.
+jest.mock('expo-image-picker', () => ({
+  requestCameraPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
+  requestMediaLibraryPermissionsAsync: jest.fn().mockResolvedValue({ granted: true }),
+  launchCameraAsync: jest.fn().mockResolvedValue({ canceled: true, assets: null }),
+  launchImageLibraryAsync: jest.fn().mockResolvedValue({ canceled: true, assets: null }),
+}));
+
 // `useFonts` de `@expo-google-fonts/*` (que `app/_layout.tsx` usa para cargar Space Grotesk +
 // JetBrains Mono) hace un `setState` ASÍNCRONO al terminar la carga (`setLoaded`), fuera de `act()`.
 // En jest eso ensucia la consola con "environment not configured to support act(...)" y, peor,

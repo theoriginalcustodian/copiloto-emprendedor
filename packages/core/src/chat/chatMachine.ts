@@ -67,7 +67,14 @@ export type MotivoFallo =
   /** 🔴 500 con `diferido:true` (ítem 2.5 del DLQ): el trauma YA quedó depositado y el sistema lo
    *  reintenta solo. Distinto de `'servidor'` porque acá reintentar a mano no ayuda — **duplica** un
    *  efecto que ya va a correr de nuevo (un cobro, un gasto). El texto se lo dice explícitamente. */
-  | 'servidor_diferido';
+  | 'servidor_diferido'
+  /** 🔴 El envío SALIÓ BIEN y el modelo no reconoció ningún ticket en la foto (HTTP 422, contrato
+   *  `POST /chat/foto` §1). Mismo criterio que `audio_no_entendido`: lo que hay que repetir es la
+   *  FOTO, no la conexión. */
+  | 'foto_no_legible'
+  /** La imagen excede el máximo del servidor (HTTP 413 de `/chat/foto`). Reintentar la misma no
+   *  sirve: hay que elegir o sacar una foto más liviana. */
+  | 'foto_muy_grande';
 
 export interface EstadoChat {
   sessionId: string;
