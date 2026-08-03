@@ -352,3 +352,39 @@ DLQ está vacía (0 filas; la secuencia lleva 11 ids, o sea la tabla sí recibe 
 usuarios eso es lo esperable. El día que entre un trauma real, el camino `arreglo_demostrado = True`
 se ejercitará por primera vez en producción; hoy está probado en la suite (pytest real sobre un bug
 real) y por el banco, no por un caso de producción.
+
+---
+
+## 8. Reparto planificación→manejo-de-errores (2026-08-03, PR#209)
+
+**Contrato:** `coordinacion/cerrado/2026-08-03/2026-08-03_contrato_planificacion-a-manejo-de-errores_reparto-de-pendientes.md`.
+Auditadas las 5 piezas de "Lo que FALTA del ciclo" contra `origin/main` real (no contra un doc):
+
+| Pieza | Estado auditado |
+|---|---|
+| 1. Disparo por Schedule Temporal | ✅ ya implementado (`autosanacion_workflow.py`) |
+| 2. Contextualizar `prompt_de_forja` | ✅ ya implementado (`autosanacion_activities.py` ~285-333) |
+| 3. Sandbox + gate de tests | ✅ ya implementado (`probar_parche_en_sandbox`, `autosanacion_activities.py:388`) |
+| 4. **Zero-Mutation con test hostil** | 🔴 faltaba — **cerrado hoy**: `tests/test_zero_mutation_autosanacion.py` (6 tests, control positivo con `git merge` inyectado y cazado) |
+| 5. Contar reparaciones/día | ✅ ya implementado (`_reparaciones_de_hoy()`, `autosanacion_gates.py` ~203-217) |
+
+`DEUDA-AUTOSAN-1` (§7, arriba) **sin tocar** — su condición de pago (primer trauma real de usuario)
+sigue sin cumplirse.
+
+**Issue #204 cerrado** (aparte de las 5 piezas): el interceptor no declaraba tenant para activities
+con `cliente_id` **plano** como primer argumento (toda `afip_factura_activities.py` +
+`refresh_credential` de MP) — con RLS `FORCE`, lecturas/escrituras de 0 filas silenciosas y sin
+error visible. Fix en `interceptor_errores.py::_cliente_id_de_activity`: mira el nombre del primer
+parámetro de la firma real (`inspect.signature` vía `input.fn`), y sólo actúa si es literalmente
+`cliente_id` — deliberadamente no adivina por posición ni tipo. Test contra firmas reales importadas
+de `afip_factura_activities`/`mi_dia_schedule_activities`/`mp_refresh_activities`, con control
+negativo (activity sin `cliente_id` como primer parámetro no se toca).
+
+**Evidencia:** suite completa VPS + Postgres real, **1521 passed, 0 failed**. Mutation testing 2x —
+un bug propio de contigüidad en el detector de Zero-Mutation, y un rename real de `cliente_id` en
+`cargar_contexto_factura` en el VPS (revertido después): el guard de cobertura del extractor lo cazó
+por nombre de función exacto en ambos casos.
+
+**PR:** `fix/auditoria-ciclo-autosanacion` → **#209**. Cero archivos fuera del scope de esta sesión
+(`interceptor_errores.py`, `handler_errores_web.py`, `taxonomia_errores.py`, `trauma_store.py`,
+`deposito_traumas.py`, `fingerprint.py`, `autosanacion_*.py` + tests) tocados.
