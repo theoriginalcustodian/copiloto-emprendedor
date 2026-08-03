@@ -1,0 +1,113 @@
+---
+description: Arranque VERIFICADO de la sesión MANEJO DE ERRORES: cron + harness de buzón + contexto + qué arranca, con reporte binario
+allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
+---
+
+# Arrancar el monitoreo de la sesión MANEJO DE ERRORES
+
+Instalá el cron de heartbeat de ESTA sesión (manejo de errores). **Corré este comando EN LA VENTANA
+DE MANEJO DE ERRORES** — un cron no se puede crear para otra sesión.
+
+Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objetivo no es
+"instalar el cron", es dejar la sesión LISTA PARA TRABAJAR y poder demostrarlo.**
+
+1. **`CronList`** — mirá si ya existe un cron con schedule `*/3 * * * *` cuyo prompt arranque con
+   "Vigía de coordinación (sesión MANEJO DE ERRORES)". Si ya está → no crees nada, saltá al paso 3.
+2. **`CronCreate`** — si falta, crealo con el schedule y el prompt EXACTOS de abajo.
+3. **`CronList` de nuevo y CONFIRMÁ** que aparece. **Sin verlo en `CronList`, NO está instalado**
+   (raíz 2026-07-24: backend quedó 8½ h mudo porque instalar no confirmaba nada — ver
+   `coordinacion/CRONES.md` §Ritual de instalación).
+4. **Harness de buzón vivo** — `grep -c buzon_watcher ~/.claude/settings.json`. Ese hook
+   (PostToolUse) te empuja los mensajes nuevos en CADA tool call, sin depender del cron. Si da `0`,
+   el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
+5. **Contexto de coordinación** — leé `coordinacion/COORDINACION.md` y `coordinacion/PLAN.md`
+   (reglas vivas + COLA-VIVA). Son la fuente de qué te toca; sin esto arrancás adivinando.
+5.bis. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
+   cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
+   error. Si no existe en tu checkout, estás en una rama vieja — decilo.
+6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-manejo-de-errores_` y `-a-todos_`, **y
+   también** `coordinacion/cerrado/<hoy>/` (los `avance_`/`dato_` nacen archivados: ahí viven las
+   señales que destraban, tipo «el issue #204 ya tiene owner»). Contá cuántos te interpelan sin
+   acusar.
+7. **Checkout** — `git branch --show-current` y `git status --short | head`. Es checkout COMPARTIDO:
+   `git add` con rutas explícitas, y NUNCA `-A`/`--amend`/rebase/reset/checkout/pull/stash/clean.
+7.bis. **Scope de archivos** — recordá tu scope exacto (ver `COORDINACION.md` §0): dentro de
+   `apps/copiloto/` SOLO `interceptor_errores.py`, `handler_errores_web.py`, `taxonomia_errores.py`,
+   `trauma_store.py`, `deposito_traumas.py`, `fingerprint.py`, `autosanacion_*.py` + `docs/Errores/**`
+   + sus tests. El resto de `apps/copiloto/` es de BACKEND — no lo toques.
+
+**REPORTE de arranque — una línea por ítem, binario, sin prosa:**
+
+```
+✅/❌ cron MANEJO DE ERRORES vivo (schedule */3, próximo tick HH:MM)
+✅/❌ vigilancia-check.sh corre
+✅/❌ buzon_watcher registrado
+✅/❌ COORDINACION.md + PLAN.md leídos (COLA-VIVA: hito N «...»)
+📬 N mensajes dirigidos a mí sin acusar  → los listo
+🌿 rama <nombre> · <N> archivos modificados
+▶️  ARRANCO CON: <el ítem concreto que sigue>
+```
+
+La última línea **no es opcional**: si terminás el arranque sin nombrar qué vas a hacer, no arrancaste
+— quedaste esperando. Si tu cola está genuinamente vacía, escribilo así y **posteá un `avance_` de una
+línea al buzón**, porque planificación lee el buzón, no tus ticks.
+
+> Contexto: sesión MANEJO DE ERRORES del trabajo en 4 sesiones paralelas (planificación/backend/
+> frontend/manejo-de-errores) coordinadas por el buzón `coordinacion/`. El cron se pierde al abrir una
+> sesión NUEVA (sobrevive a `--continue`/`--resume`). Este command lo re-arma cuando hace falta.
+
+---
+
+## Cron — Vigía de coordinación (MANEJO DE ERRORES)
+
+- **Schedule (cron):** `*/3 * * * *`  (cada 3 minutos)
+- **Prompt:**
+
+```
+Vigía de coordinación (sesión MANEJO DE ERRORES).
+
+Buzón (ruta absoluta, NO relativa al cwd):
+C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
+
+0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero:
+   `bash scripts/vigilancia-check.sh --quiet`
+   Exit 1 = alarma global (cola arrancable, contrato_/pedido_/en-curso viejo sin acusar de
+   CUALQUIER sesión, o alguna sesión muda ≥30min) — su stdout ya es el reporte, no lo reconstruyas.
+   Exit 0 = nada de eso, pero **igual seguí al paso 1**: este gate sólo detecta lo VIEJO/estancado
+   (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
+   propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
+
+1. Listar `abierto/` y quedarte SÓLO con `-a-manejo-de-errores_` y `-a-todos_`. Descartar lo que
+   empiece por `manejo-de-errores-a-` (es tuyo). Mirar también `cerrado/<hoy>/` por los `avance_` y
+   `dato_`, que nacen archivados: ahí viven las señales que DESTRABAN trabajo.
+
+2. Abrir lo nuevo y ver si te interpela aunque el nombre diga otro destinatario.
+
+3. Releer `PLAN.md` y `COORDINACION.md` sólo si cambió su `mtime`.
+
+4. Reportar máximo 3 ítems accionables en 6 líneas, con qué te toca hacer.
+
+5. 🔴 SI NO HAY NOVEDADES, NO TE DUERMAS — SEGUÍ CON TU COLA.
+   «Sin novedades» describe el BUZÓN, no tu trabajo. Antes de cerrar el turno:
+   - Mirá `PLAN.md` y tu último `avance_`: ¿qué dejaste declarado como «lo mío que sigue abierto»?
+   - Si hay algo tomado y sin terminar, SEGUILO. No hace falta que nadie te lo pida: ya está
+     contratado.
+   - Si estás esperando algo de otra sesión, verificá que ese aviso EXISTA en el buzón. Si no
+     existe, no lo estás esperando: estás parado. Pedilo o seguí con otra cosa de tu cola.
+   - Sólo si tu cola está vacía Y hay una espera real con su aviso pendiente, reportá una línea
+     y terminá.
+   Lo prohibido es abrir un frente NO contratado, no trabajar. Avanzar en lo ya asignado nunca
+   necesita un mensaje que lo dispare.
+
+6. ⏱️ EL CRON NO ES TU ÚNICO CANAL — y es el que MENOS te llega cuando trabajás.
+   Medido 2026-07-24 (backend/frontend): un cron NO puede interrumpir un turno en curso, así que
+   dispara MÁS cuanto MENOS trabajás. Mientras trabajás estás SORDA al buzón — justo cuando leer
+   tarde cuesta más. Por eso:
+   - El hook `buzon_watcher` (PostToolUse) te avisa de mensajes nuevos en CADA tool call, sin cron.
+     Si ves un bloque `<buzon-nuevo>`, abrí lo dirigido a vos ANTES de seguir; `urgente_` y
+     `contrato_` interrumpen lo que estés haciendo.
+   - Y revisá el buzón vos misma en cada FRONTERA DE TRABAJO —terminar un PR, antes de un E2E o de
+     algo largo, al cerrar una sub-tarea—, no cuando el cron te despierte.
+   - Si un ciclo tuyo termina SIN NADA que hacer, decilo en el buzón con un `avance_` de una línea
+     («terminé X, sin frente propio»): planificación lee el buzón, no tus ticks.
+```
