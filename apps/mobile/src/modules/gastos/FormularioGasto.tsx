@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import {
   ApiError,
@@ -14,6 +14,7 @@ import {
 } from '@copiloto/core';
 
 import { CampoNumero, CampoSelect, CampoTexto, FilaBotones } from '../../theme/glass/campos';
+import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -124,14 +125,21 @@ export function FormularioGasto({
 
       {/* La sugerencia del OCR se muestra como CITA del ticket, sin ningún tratamiento que sugiera
           validación: nada de tilde verde ni "leído correctamente". Un checkmark al lado de un número
-          alucinado le presta la autoridad de la app a una lectura del modelo. */}
+          alucinado le presta la autoridad de la app a una lectura del modelo.
+          🔴 Es TOCABLE — llena el campo, no lo pre-carga sola. "Un toque para aceptar la sugerencia.
+          Cero fricción si está bien; imposible pasarlo de largo si está mal" (addendum Gastos Fase 2).
+          El monto sigue arrancando vacío: el toque es la acción del usuario, no un efecto automático. */}
       {iniciales?.montoSugerido != null && (
-        <Text
+        <Pressable
           testID="gasto-monto-sugerido"
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+          onPress={() => setMonto(iniciales.montoSugerido as string)}
+          style={pressableStyle(undefined, PRESS_FADE)}
+          hitSlop={8}
         >
-          Del ticket leímos: {iniciales.montoSugerido}
-        </Text>
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, textDecorationLine: 'underline' }}>
+            Del ticket leímos: {iniciales.montoSugerido} — tocá para usarlo
+          </Text>
+        </Pressable>
       )}
 
       <CampoSelect

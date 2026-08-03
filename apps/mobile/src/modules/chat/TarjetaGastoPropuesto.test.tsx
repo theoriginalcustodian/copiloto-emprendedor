@@ -118,4 +118,59 @@ describe('TarjetaGastoPropuesto', () => {
     expect(screen.getByTestId('gasto-propuesto-descartado')).toBeTruthy();
     expect(mockCrear).not.toHaveBeenCalled();
   });
+
+  describe('origen: "foto" — Gastos Fase 2, addendum de la foto', () => {
+    it('🔴 arranca con el monto VACÍO y Guardar deshabilitado — el diseño, no un dato roto', async () => {
+      const p = propuesta({ origen: 'foto', monto: '', monto_sugerido: '1076.21' });
+      await montar(p);
+
+      expect(screen.getByTestId('gasto-monto-input').props.value).toBe('');
+      expect(screen.getByTestId('gasto-guardar').props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('🔴 la sugerencia se muestra pero NO pre-carga el monto — hay que TOCARLA', async () => {
+      const p = propuesta({ origen: 'foto', monto: '', monto_sugerido: '1076.21' });
+      await montar(p);
+
+      expect(screen.getByTestId('gasto-monto-sugerido')).toHaveTextContent('Del ticket leímos: 1076.21 — tocá para usarlo');
+      expect(screen.getByTestId('gasto-monto-input').props.value).toBe('');
+    });
+
+    it('tocar la sugerencia llena el campo — recién ahí se puede guardar', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', gasto: gastoGuardado('1076.21') });
+      const p = propuesta({ origen: 'foto', monto: '', monto_sugerido: '1076.21' });
+      await montar(p);
+
+      await act(async () => { fireEvent.press(screen.getByTestId('gasto-monto-sugerido')); });
+
+      expect(screen.getByTestId('gasto-monto-input').props.value).toBe('1076.21');
+      await act(async () => { fireEvent.press(screen.getByTestId('gasto-guardar')); });
+      expect(mockCrear).toHaveBeenCalledWith(
+        expect.objectContaining({ monto: '1076.21', origen: 'foto', montoSugerido: '1076.21' }),
+      );
+    });
+
+    it('el usuario puede IGNORAR la sugerencia y tipear otro monto — nunca se le impone', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', gasto: gastoGuardado('500.00') });
+      const p = propuesta({ origen: 'foto', monto: '', monto_sugerido: '1076.21' });
+      await montar(p);
+
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('gasto-monto-input'), '500');
+      });
+      await act(async () => { fireEvent.press(screen.getByTestId('gasto-guardar')); });
+
+      // `montoSugerido` viaja igual (para poder medir que el usuario corrigió), pero `monto` es el suyo.
+      expect(mockCrear).toHaveBeenCalledWith(
+        expect.objectContaining({ monto: '500', montoSugerido: '1076.21' }),
+      );
+    });
+
+    it('sin `monto_sugerido` (el OCR no pudo leer nada) no muestra ninguna sugerencia', async () => {
+      const p = propuesta({ origen: 'foto', monto: '' });
+      await montar(p);
+
+      expect(screen.queryByTestId('gasto-monto-sugerido')).toBeNull();
+    });
+  });
 });

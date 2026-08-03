@@ -21,8 +21,22 @@ import { esCategoriaValida, type CategoriaGasto, type OrigenGasto } from '../api
  */
 
 export interface GastoPropuesto {
-  /** String decimal. **Nunca `Number()`** — el backend ya resolvió los miles (`"15.000"` = quince mil). */
+  /**
+   * String decimal. **Nunca `Number()`** — el backend ya resolvió los miles (`"15.000"` = quince mil).
+   *
+   * 🔴 **Puede venir `''` cuando `origen === 'foto'`, y NO es un dato roto.** Es la decisión de diseño
+   * del addendum de Gastos Fase 2 (`gastos-fase2-la-foto`): el monto **no se pre-carga** desde el OCR
+   * — un campo relleno con un número plausible se confirma sin leer, y ahí la revisión deja de ser un
+   * control. Ver `montoSugerido`.
+   */
   monto: string;
+  /**
+   * Lo que leyó el OCR de la foto del ticket, o `null` cuando no aplica (`origen` distinto de
+   * `'foto'`) o el modelo no pudo leer nada. Se ofrece **al lado** del campo vacío, como sugerencia
+   * que el usuario toca para aceptar — nunca se pre-carga en `monto`. Mismo campo que `Gasto.
+   * montoSugerido` (`gastos.ts`), acá leído de la card en vez de la respuesta de `GET /gastos`.
+   */
+  montoSugerido: string | null;
   /**
    * Ya resuelta por el backend: hoy, o lo que se dictó (*«ayer»*, *«el lunes»*).
    *
@@ -45,7 +59,8 @@ function texto(v: unknown): string | null {
 
 /**
  * Devuelve la propuesta, o `null` si esta card no es una — incluido el caso de una `gasto_propuesto`
- * **sin monto**, que no se puede pintar.
+ * de **voz/manual sin monto**, que no se puede pintar. **`origen: 'foto'` es la excepción**: ahí el
+ * monto vacío es el diseño (Gastos Fase 2, addendum de la foto), no un dato roto.
  *
  * `kind` se compara exacto porque el backend lo fija; el resto se valida porque lo llenó un LLM.
  */
@@ -55,15 +70,20 @@ export function leerGastoPropuesto(card: ReplyCard | undefined): GastoPropuesto 
   if (typeof data !== 'object' || data === null) return null;
 
   const d = data as Record<string, unknown>;
+  const origenCrudo = d.origen;
+  const origen = origenCrudo === 'foto' || origenCrudo === 'manual' ? origenCrudo : 'voz';
   const monto = texto(d.monto);
-  // Sin monto no hay card: es el único campo obligatorio del contrato y el único que el copiloto
-  // repregunta. Pintar un formulario vacío sería pedirle al emprendedor que tipee lo que ya dictó.
-  if (monto == null) return null;
+  // 🔴 Discrimina por `origen`, no relaja la regla para todos: un `gasto_propuesto` de VOZ sin monto
+  // sigue siendo un dato roto (nada que contrastar); uno de FOTO sin monto es la sugerencia esperada.
+  if (monto == null && origen !== 'foto') return null;
 
   const categoria = typeof d.categoria === 'string' ? d.categoria : '';
-  const origen = d.origen;
   return {
-    monto,
+    monto: monto ?? '',
+    // Gateado por origen, no sólo por presencia: es un campo del contrato de FOTO. Si un `voz`
+    // trajera este campo (no debería), mostrar "del ticket leímos" sobre un dictado sería la UI
+    // inventando una fuente que no existió.
+    montoSugerido: origen === 'foto' ? texto(d.monto_sugerido) : null,
     // `?? ''` y no la fecha de hoy calculada acá: si el backend no la mandó, el que sabe qué día es
     // "hoy" para este negocio es él (zona horaria argentina), no el teléfono. Un `''` hace que el
     // formulario omita el campo y el backend aplique su default, que es lo correcto.
@@ -75,6 +95,6 @@ export function leerGastoPropuesto(card: ReplyCard | undefined): GastoPropuesto 
     proveedor: texto(d.proveedor),
     medioPago: texto(d.medio_pago),
     descripcion: texto(d.descripcion),
-    origen: origen === 'foto' || origen === 'manual' ? origen : 'voz',
+    origen,
   };
 }
