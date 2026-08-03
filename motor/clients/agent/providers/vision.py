@@ -76,5 +76,5 @@ class OpenAIVisionOCR:
         try:
             parsed = json.loads(texto)
         except json.JSONDecodeError:
-            return {}
+            return {}     # el modelo no devolvió JSON -> dict vacío, nunca se pre-carga nada igual
         return parsed if isinstance(parsed, dict) else {}

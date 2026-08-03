@@ -22,7 +22,7 @@ def _fecha_leida(valor, *, ahora=None) -> str:
             date.fromisoformat(valor.strip())
             return valor.strip()
         except ValueError:
-            pass
+            pass          # el modelo mintió el formato -> cae al default de abajo, no es un fallo real
     return hoy_del_negocio(ahora).isoformat()
 
 
@@ -34,7 +34,7 @@ def _monto_leido(valor) -> str | None:
     try:
         Decimal(str(valor))
     except (InvalidOperation, ValueError, TypeError):
-        return None
+        return None       # el modelo leyó basura donde iba el monto -> None, no un 500 del endpoint
     return dos_decimales(valor)
 
 
