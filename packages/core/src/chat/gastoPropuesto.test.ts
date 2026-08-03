@@ -68,4 +68,39 @@ describe('leerGastoPropuesto', () => {
     // para este negocio es el backend (Argentina), no el dispositivo.
     expect(leerGastoPropuesto(card({ fecha: null }))?.fecha).toBe('');
   });
+
+  describe('origen: "foto" — Gastos Fase 2, addendum de la foto', () => {
+    it('🔴 monto vacío SÍ devuelve propuesta cuando origen es "foto" — es el diseño, no un dato roto', () => {
+      const p = leerGastoPropuesto(card({ origen: 'foto', monto: '', monto_sugerido: '1076.21' }));
+      expect(p).not.toBeNull();
+      expect(p?.monto).toBe('');
+      expect(p?.origen).toBe('foto');
+    });
+
+    it('monto ausente (null) también funciona para "foto" — mismo criterio que vacío', () => {
+      expect(leerGastoPropuesto(card({ origen: 'foto', monto: null }))?.monto).toBe('');
+    });
+
+    it('lee `monto_sugerido` de la card — antes se perdía, sólo vivía en `GET /gastos`', () => {
+      const p = leerGastoPropuesto(card({ origen: 'foto', monto: '', monto_sugerido: '1076.21' }));
+      expect(p?.montoSugerido).toBe('1076.21');
+    });
+
+    it('sin `monto_sugerido` (el modelo no pudo leer nada) queda `null`, no `undefined` ni `""`', () => {
+      const p = leerGastoPropuesto(card({ origen: 'foto', monto: '' }));
+      expect(p?.montoSugerido).toBeNull();
+    });
+
+    it('`monto_sugerido` en una card de VOZ se ignora silenciosamente — no es el contrato de voz', () => {
+      // No debería venir nunca, pero si el LLM lo agrega por las dudas, no tiene que romper nada.
+      const p = leerGastoPropuesto(card({ origen: 'voz', monto_sugerido: '999' }));
+      expect(p?.montoSugerido).toBeNull();
+    });
+
+    it('CONTROL — sigue sin pintar si es "foto" con monto vacío Y sin ningún otro dato usable', () => {
+      // No es un test nuevo de comportamiento: confirma que "foto" no relaja la validación de `data`
+      // en sí (objeto ausente/roto), sólo la del campo `monto`.
+      expect(leerGastoPropuesto({ kind: 'gasto_propuesto', data: 'no soy un objeto' })).toBeNull();
+    });
+  });
 });
