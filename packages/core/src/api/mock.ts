@@ -9,6 +9,7 @@ import type {
   OauthEnsureResponse,
   ReplyResponse,
   SendAudioResponse,
+  SendFotoResponse,
   WarmResponse,
 } from './types';
 
@@ -95,6 +96,22 @@ export const mockApi: CopilotApi = {
 
     await delay(undefined, 80);
     return { wf_id: wfId, accepted: true, transcript };
+  },
+
+  async sendFoto(sessionId: string, _archivo: ArchivoSubida, _clienteId: string): Promise<SendFotoResponse> {
+    // Sin transcript: a diferencia de `sendAudio`, acá no hay nada legible que mostrar como mensaje
+    // del usuario — mismo criterio que el transporte real (ver `SendFotoResponse`).
+    const wfId = `mock-wf-foto-${Date.now()}`;
+    const replyId = ++replyIdSeq;
+    const queue = repliesBySession.get(sessionId) ?? [];
+    repliesBySession.set(sessionId, queue);
+
+    setTimeout(() => {
+      queue.push({ id: replyId, text: mockReplyText('(mock) foto de un ticket') });
+    }, MOCK_REPLY_DELAY_MS);
+
+    await delay(undefined, 80);
+    return { wf_id: wfId, accepted: true };
   },
 
   async getReply(sessionId: string, afterId: number): Promise<ReplyResponse> {

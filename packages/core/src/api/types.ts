@@ -312,6 +312,23 @@ export interface SendAudioResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /chat/foto (Gastos Fase 2 — OCR de tickets, gpt-4o)
+// ---------------------------------------------------------------------------
+
+/**
+ * Respuesta de subir la foto de un ticket para que el motor la lea (OCR, `gpt-4o`) y arme la tool
+ * call `registrar_gasto` con `origen:'foto'` directamente — a diferencia de `/chat/audio`, **no hay
+ * transcript**: la vision call no pasa por texto libre, así que no hay nada legible que mostrar como
+ * mensaje del usuario. El caller arranca el mismo polling de `/reply` que espera un `gasto_propuesto`.
+ *
+ * Contrato: `coordinacion/abierto/2026-08-03_contrato_planificacion-a-backend_POST-chat-foto-gastos-fase2.md`.
+ */
+export interface SendFotoResponse {
+  wf_id: string;
+  accepted: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // GET /reply
 // ---------------------------------------------------------------------------
 
@@ -446,6 +463,10 @@ export interface CopilotApi {
     clienteId: string,
     modo?: ModoCopiloto | null,
   ): Promise<SendAudioResponse>;
+  /** Sube la foto de un ticket (multipart) para OCR — ver `SendFotoResponse`. Mismo criterio de
+   * `cliente_id` que `sendAudio`: se manda SIEMPRE, aunque venga vacío. `imagen` es OPACO al core
+   * (`ArchivoSubida`) — el adaptador de cada plataforma sabe cómo adjuntarla. */
+  sendFoto(sessionId: string, imagen: ArchivoSubida, clienteId: string): Promise<SendFotoResponse>;
   /** Long-poll de las respuestas del agente. Chat único `(session_id)` a secas — sin partición por
    * cliente en este hilo de lectura (el `cliente_id` de cada acción de negocio sigue viajando en
    * `/chat`/`/chat/audio` según corresponda). */

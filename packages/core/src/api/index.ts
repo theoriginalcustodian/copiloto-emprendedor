@@ -11,6 +11,7 @@
 import { sendAudio } from './audio';
 import { login } from './auth';
 import { sendChat } from './chat';
+import { sendFoto } from './foto';
 import { me } from './me';
 import { mockApi } from './mock';
 import { ensureOauthTenant } from './oauth';
@@ -24,6 +25,7 @@ export const apiReal: CopilotApi = {
   me,
   sendChat,
   sendAudio,
+  sendFoto,
   getReply,
   warm,
 };
