@@ -1,24 +1,29 @@
 """Una tool que FALLÓ no puede contar como "acción ejecutada" — item 0.5a del plan del frente de errores.
 
-El guardrail anti-narración ([[copiloto-narra-la-accion-sin-ejecutarla]]) rechaza un cierre tipo
-"Listo, ya lo anoté" cuando el turno NO ejecutó ninguna tool, y re-pregunta con `tool_choice="required"`
-para forzar la llamada real. Su condición de disparo es `not trace`.
+El guardrail anti-narración ([[copiloto-narra-la-accion-sin-ejecutarla]]) rechazaba un cierre tipo
+"Listo, ya lo anoté" cuando el turno NO ejecutó ninguna tool (o la ejecutó y falló), y re-preguntaba con
+`tool_choice="required"` para forzar la llamada real. Su condición de disparo era `not trace`.
 
-**El bug que estos tests miden:** `trace` se llenaba con CUALQUIER `execute_tool` que devolviera, sin
-mirar el `status`. Con el contrato `'ok' | 'error' | 'rejected' | 'needs_confirmation'`
-(`types.py:147`), una tool que devuelve `status="error"` entraba al trace igual que una exitosa →
-el guardrail quedaba **desactivado** justo en el caso que existe para cubrir: el LLM afirma haber hecho
-algo que en realidad falló, y nadie lo contradice.
+**RETIRO (backend, 2026-08-03):** el guardrail (`narra-guardrail-required-retry`) quedó retirado detrás
+de un patch nuevo (`narra-guardrail-retirado`, `conversation_workflow.py`) — replay-safe para las
+ejecuciones en vuelo (ver `test_narra_guardrail_retiro_replay.py`, Replayer contra history real). El
+retiro se autorizó con evidencia contra el LLM REAL, no contra este LLM guionado: 10/10 rondas honestas
+en `scripts/retest_narra_sin_hacer.py` (caso 1, sin tool_call) y `scripts/retest_narra_guardrail_caso2.py`
+(caso 2, tool confirmada y fallida) — y en las 10 rondas del caso 2, el guardrail NUNCA disparó (0/10
+`tool_choice='required'` verificado contra el history real de Temporal), es decir: el mecanismo mecánico
+que estos tests medían ya era redundante en producción antes de retirarlo.
 
-Dos sitios lo hacían, y el segundo es el que más duele:
+Estos tests con LLM guionado **no pueden verificar honestidad** (el script fuerza la mentira sin importar
+la evidencia) — su valor ahora es puramente MECÁNICO: confirmar que el retiro efectivamente apaga el
+retry forzado, para que nadie lo reintroduzca sin querer. La garantía de que el LLM real sigue narrando
+honesto vive en los scripts de retest de arriba, no acá.
+
+Dos sitios tenían el bug original, y el segundo era el que más dolía:
 
 1. `_react_loop` — la tool falla dentro del loop.
 2. El reingreso `action == "confirm"` — la tool que el usuario **confirmó explícitamente** falla. Acá
-   el daño es peor: el emprendedor apretó "Confirmar" para emitir/cobrar, la operación falló, y el
-   cierre le dice "Listo". Cree que se emitió.
-
-Por qué el assert mira `tool_choice` y no un texto: el efecto observable del guardrail es la SEGUNDA
-llamada al LLM forzando `required`. Medir eso mide el mecanismo; medir el texto mediría al LLM fake.
+   el daño era peor: el emprendedor apretó "Confirmar" para emitir/cobrar, la operación falló, y el
+   cierre le decía "Listo". Creía que se había emitido.
 """
 from __future__ import annotations
 
@@ -83,11 +88,14 @@ def _choice_value(sent_payload: dict, label: str) -> str:
 
 
 @pytest.mark.asyncio
-async def test_una_tool_con_status_error_no_desactiva_el_guardrail():
-    """La tool falla (`status='error'`) y el LLM igual cierra afirmando que la hizo.
+async def test_una_tool_con_status_error_ya_no_dispara_el_retry_retirado():
+    """RETIRO: la tool falla (`status='error'`) y el LLM guionado igual cierra afirmando que la hizo.
 
-    El guardrail DEBE disparar: segunda llamada con `tool_choice='required'`. Antes del fix, el nombre de
-    la tool fallida ya estaba en `trace` → `not trace` era False → el cierre mentiroso salía tal cual.
+    Antes del retiro, el guardrail forzaba una segunda llamada con `tool_choice='required'` acá. Hoy
+    (`narra-guardrail-retirado`) NO debe hacerlo más — para una ejecución NUEVA (esta, en
+    `WorkflowEnvironment.start_time_skipping()`), el patch nuevo siempre evalúa True. Esta mentira
+    guionada ya no la cachea este mecanismo; la cachea la cura estructural contra el LLM real, medida
+    en `scripts/retest_narra_guardrail_caso2.py` (10/10, ver docstring del módulo).
     """
     def exec_fn(p):
         return ToolResult(tool_call_id=p["idem_key"], is_write=False, status="error",
@@ -95,8 +103,7 @@ async def test_una_tool_con_status_error_no_desactiva_el_guardrail():
 
     llm = [
         _tc("registrar_gasto", {"monto": 5000}),   # 1) el LLM pide la tool
-        _TEXT("Listo, ya lo anoté."),              # 2) FALLÓ, y aun así afirma haberlo hecho
-        _TEXT("No pude registrarlo, falló el sistema."),   # 3) tras el `required`: cierre honesto
+        _TEXT("Listo, ya lo anoté."),              # 2) FALLÓ, y aun así afirma haberlo hecho (LLM guionado)
     ]
     tq = "tool-error-1"
     async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -110,9 +117,9 @@ async def test_una_tool_con_status_error_no_desactiva_el_guardrail():
             await h.result()
 
     choices = _tool_choices(calls)
-    assert "required" in choices, (
-        "el guardrail NO disparó tras una tool con status='error': el cierre mentiroso salió sin "
-        f"re-preguntar. tool_choice de cada llamada = {choices}")
+    assert "required" not in choices, (
+        "el guardrail retirado sigue disparando en una ejecución NUEVA: el patch inverso "
+        f"'narra-guardrail-retirado' no está apagando el retry. tool_choice de cada llamada = {choices}")
 
 
 @pytest.mark.asyncio
@@ -147,17 +154,15 @@ async def test_una_tool_ok_no_dispara_el_guardrail():
 
 
 @pytest.mark.asyncio
-async def test_la_tool_que_el_usuario_CONFIRMO_y_fallo_tampoco_cuenta():
-    """EL CASO QUE MÁS DUELE — hueco señalado por el revisor adversarial de este mismo fix.
+async def test_la_tool_confirmada_y_fallida_ya_no_dispara_el_retry_retirado():
+    """RETIRO del caso que más dolía — hueco señalado por el revisor adversarial del fix original.
 
-    El emprendedor apretó **Confirmar** para una acción con efecto real (emitir, cobrar). La tool
-    confirmada **falla**. El reingreso `action == 'confirm'` sembraba `tool_trace` con el nombre de esa
-    tool sin mirar el status → el guardrail quedaba desactivado y el cierre le decía "Listo": cree que
-    se emitió.
-
-    Este camino NO pasa por `_react_loop` en su primera vuelta, así que los otros dos tests no lo
-    cubrían — el fix del segundo sitio estaba escrito pero **no verificado**, que por la regla dura del
-    repo es indistinguible de ausente.
+    El emprendedor apretó **Confirmar** para una acción con efecto real (emitir, cobrar), la tool
+    confirmada **falla**, y el LLM guionado igual dice "Listo, ya la emití". Antes del retiro, el
+    guardrail forzaba acá una segunda llamada `required`. Este camino específico ("confirmada y
+    fallida") es el que `scripts/retest_narra_guardrail_caso2.py` midió contra el LLM real antes de
+    autorizar el retiro (10/10 honesto, el guardrail nunca disparó ni en producción) — acá se confirma
+    que, mecánicamente, el patch inverso también lo apaga para el LLM guionado de este test.
     """
     def exec_fn(p):
         # gateada: sin confirmar abre el gate; confirmada, FALLA.
@@ -169,8 +174,7 @@ async def test_la_tool_que_el_usuario_CONFIRMO_y_fallo_tampoco_cuenta():
 
     llm = [
         _tc("emitir_factura", {"monto": 5000}),   # 1) pide la tool → gate
-        _TEXT("Listo, ya la emití."),             # 2) tras confirmar FALLIDO, afirma haberlo hecho
-        _TEXT("No pude emitirla: AFIP no respondió."),   # 3) tras el `required`: honesto
+        _TEXT("Listo, ya la emití."),             # 2) tras confirmar FALLIDO, afirma haberlo hecho (guionado)
     ]
     tq = "tool-confirm-error-1"
     async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -191,6 +195,6 @@ async def test_la_tool_que_el_usuario_CONFIRMO_y_fallo_tampoco_cuenta():
     confirmadas = [c for c in calls["exec"] if c.get("confirmed")]
     assert len(confirmadas) == 1, f"el ciclo de confirmación no ocurrió: exec={calls['exec']}"
     choices = _tool_choices(calls)
-    assert "required" in choices, (
-        "la tool CONFIRMADA falló y el guardrail no disparó: el emprendedor lee 'Listo, ya la emití' "
-        f"sobre una emisión que no ocurrió. tool_choice de cada llamada = {choices}")
+    assert "required" not in choices, (
+        "el guardrail retirado sigue disparando tras una tool CONFIRMADA y fallida en una ejecución "
+        f"NUEVA. tool_choice de cada llamada = {choices}")
