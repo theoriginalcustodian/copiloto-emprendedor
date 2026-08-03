@@ -34,6 +34,29 @@ describe('motivoDeError', () => {
     // inventar una causa: hubo servidor, contestó. Mandarlo a mirar el WiFi le hace perder el tiempo.
     expect(motivoDeError(new ApiError(418, 'tetera'))).toBe('servidor');
   });
+
+  it('🔴 500 con diferido:true (ítem 2.5 DLQ) es "servidor_diferido", no "servidor"', () => {
+    // El caso que motiva el contrato: la activity falló transitorio, el trauma YA quedó en la DLQ
+    // pendiente de reintento, y reintentar a mano acá DUPLICA un efecto (cobro/gasto).
+    const err = new ApiError(500, 'error interno del servidor', undefined, {
+      detail: 'error interno del servidor',
+      codigo: 'a3f9c1e2',
+      diferido: true,
+    });
+    expect(motivoDeError(err)).toBe('servidor_diferido');
+  });
+
+  it('🔴 control negativo — diferido:false o ausente sigue siendo "servidor" (sin cambios)', () => {
+    const conFalse = new ApiError(500, 'boom', undefined, { codigo: 'x', diferido: false });
+    const sinCampo = new ApiError(500, 'boom', undefined, { codigo: 'x' });
+    expect(motivoDeError(conFalse)).toBe('servidor');
+    expect(motivoDeError(sinCampo)).toBe('servidor');
+  });
+
+  it('diferido:true en un status que NO es 500 no dispara servidor_diferido — el contrato lo fija a 500', () => {
+    const err = new ApiError(409, 'conflicto', undefined, { diferido: true });
+    expect(motivoDeError(err)).toBe('servidor');
+  });
 });
 
 describe('textoDeMotivo', () => {
@@ -47,6 +70,8 @@ describe('textoDeMotivo', () => {
 
   it('cada motivo dice qué hacer, no sólo qué pasó', () => {
     // Un aviso que sólo describe el fallo deja al usuario adivinando. Cada texto nombra una acción.
+    // 🔴 `servidor_diferido` queda AFUERA a propósito: su acción es "ninguna" — es el único motivo
+    // donde decirle al usuario qué hacer sería decirle que reintente, y eso es justo lo prohibido.
     const acciones = [/probá|revisá|grabá|volvé/i];
     const todos: MotivoFallo[] = [
       'red',
@@ -58,6 +83,13 @@ describe('textoDeMotivo', () => {
     for (const motivo of todos) {
       expect(acciones.some((re) => re.test(textoDeMotivo(motivo)))).toBe(true);
     }
+  });
+
+  it('🔴 "servidor_diferido" NO invita a reintentar — es lo único vinculante del contrato', () => {
+    const texto = textoDeMotivo('servidor_diferido').toLowerCase();
+    expect(texto).not.toMatch(/probá de nuevo|reintentá|volvé a intentar/);
+    expect(texto).toContain('no hace falta que lo repitas');
+    expect(textoDeMotivo('servidor_diferido')).not.toBe(textoDeMotivo('servidor'));
   });
 
   it('el de audio manda al micrófono y el de sesión a volver a entrar — no son intercambiables', () => {

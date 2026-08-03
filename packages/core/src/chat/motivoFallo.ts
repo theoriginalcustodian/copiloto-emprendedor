@@ -1,4 +1,4 @@
-import { ApiError } from '../api/errors';
+import { ApiError, esDiferido } from '../api/errors';
 import type { MotivoFallo } from './chatMachine';
 
 /**
@@ -20,6 +20,7 @@ import type { MotivoFallo } from './chatMachine';
  * | 401 | `sesion_vencida` | Volver a entrar. Reintentar no sirve. |
  * | 413 | `audio_muy_grande` | Grabar más corto. Reintentar lo mismo tampoco sirve. |
  * | 422 | `audio_no_entendido` | Repetir el AUDIO — el mensaje sí se envió. |
+ * | 500 con `diferido:true` | `servidor_diferido` | Nada — el sistema ya lo va a reintentar solo. |
  * | 5xx / otro `ApiError` | `servidor` | Reintentar más tarde. |
  * | No es `ApiError` | `red` | Revisar la conexión y reintentar. |
  *
@@ -37,6 +38,9 @@ export function motivoDeError(e: unknown): MotivoFallo {
   if (e.status === 401) return 'sesion_vencida';
   if (e.status === 413) return 'audio_muy_grande';
   if (e.status === 422) return 'audio_no_entendido';
+  // ítem 2.5 del DLQ: sólo el 500 de la costura C2 marca `diferido` — un 400/404/409 nunca lo trae,
+  // así que no hace falta acotar por status además de leer el body.
+  if (e.status === 500 && esDiferido(e.body)) return 'servidor_diferido';
   return 'servidor';
 }
 
@@ -61,5 +65,9 @@ export function textoDeMotivo(motivo: MotivoFallo): string {
       return 'Tu sesión venció. Volvé a entrar para seguir.';
     case 'servidor':
       return 'El servidor no pudo procesar tu mensaje. Probá de nuevo en un momento.';
+    case 'servidor_diferido':
+      // Texto pedido literal por el contrato (§4 del ítem 2.5) — lo vinculante es que NO invite a
+      // reintentar, porque reintentar acá duplica un efecto que el sistema ya va a reintentar solo.
+      return 'Se cortó algo de nuestro lado. Lo estamos reintentando solo — no hace falta que lo repitas.';
   }
 }
