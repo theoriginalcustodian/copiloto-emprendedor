@@ -13,9 +13,9 @@ averiguarlo.
    se tocan.
 2. **`CronCreate`** — creá SÓLO los que falten, con el schedule y prompt EXACTOS de abajo.
 3. **`CronList` de nuevo y CONFIRMÁ los tres.** Sin verlos, no están instalados.
-4. **Instrumentos** — `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`. Los dos tienen que
-   correr **sin error**: son la base de todos los ciclos. Si `no-ocio-check.sh` no existe en tu checkout,
-   estás en una rama vieja — `git log origin/main -1` y decilo.
+4. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Tiene que correr **sin error**: es la
+   base de todos los ciclos (compone `cola-check.sh` + `escaladores-buzon.sh` + mtime de transcripts).
+   Si no existe en tu checkout, estás en una rama vieja — `git log origin/main -1` y decilo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
    nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
 6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
@@ -26,7 +26,7 @@ averiguarlo.
 
 ```
 ✅/❌ 3 crones vivos (PARÁLISIS */3 · vigía 7,27,47 · ociosas 1-58/3)
-✅/❌ no-ocio-check + cola-check corren
+✅/❌ vigilancia-check.sh corre
 ✅/❌ buzon_watcher registrado
 📊 PRODUCCIÓN backend Nmin · frontend Nmin   (⚠️ VIDA fresca NO prueba trabajo: el cron también
      genera turnos — 2026-07-24, la sesión ociosa tuvo 42 disparos y la que implementaba 5)
@@ -38,9 +38,9 @@ averiguarlo.
 **La última línea no es opcional.** Y si el instrumento marca `🌀 GIRA EN VACÍO` en alguna sesión, eso
 es OCIO (no dead-man): reasignale algo en el MISMO ciclo, no lo difieras.
 
-> Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 3 sesiones paralelas (planificación/backend/
-> frontend) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir una sesión NUEVA
-> (sobreviven a `--continue`/`--resume`). Este command los re-arma cuando hace falta.
+> Contexto: esta es la sesión PLANIFICACIÓN del trabajo en 4 sesiones paralelas (planificación/backend/
+> frontend/manejo-de-errores) coordinadas por el buzón `coordinacion/`. Los crones se pierden al abrir
+> una sesión NUEVA (sobreviven a `--continue`/`--resume`). Este command los re-arma cuando hace falta.
 
 ---
 
@@ -56,19 +56,19 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 NO es el vigía de 20 min: éste no busca silencio, busca **espera mutua** — dos sesiones que se
 esperan sin que ninguna esté formalmente bloqueada, que es lo que el umbral de 90 min NO ve.
 
-0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO:
-   `bash scripts/no-ocio-check.sh` y `bash scripts/cola-check.sh`
-   Da DOS métricas y hay que leer las dos:
-   · **PRODUCCIÓN** = minutos desde el último `Write`/`Edit` (timestamp de la línea JSONL). **Ésta
-     es la que dice si TRABAJA.**
-   · **VIDA** = mtime del transcript. ⚠️ Un turno lo genera también el CRON, así que VIDA fresca
-     NO prueba trabajo: medido 2026-07-24, la sesión OCIOSA tuvo **42 disparos** de cron y la que
-     implementaba **5** — el cron dispara MÁS cuanto MENOS trabaja. VIDA fresca + PRODUCCIÓN vieja
-     = `🌀 GIRA EN VACÍO` (ocio, no dead-man): reasignar, no alarmar.
-   **PROHIBIDO afirmar que una sesión está muerta/parada sin ese output.** NUNCA leas un `.jsonl`
-   entero. Ver COORDINACION §4.2.sexies.
+0. 🔴 GATE DETERMINISTA — corré PRIMERO, antes de razonar nada:
+   `bash scripts/vigilancia-check.sh --quiet`
+   **Exit 0 = sin novedades. Cerrá el turno en UNA línea y NO sigas** — no releas no-ocio-check.sh
+   ni cola-check.sh a mano, `vigilancia-check.sh` ya los corre a los dos y decide.
+   **Exit 1 = alarma. Su stdout ES el reporte** — partí de ahí, no reconstruyas la medición vos.
+   Este script compone `cola-check.sh` (hito arrancable) + `escaladores-buzon.sh` (contrato/pedido
+   viejo) + mtime de transcripts (VIDA vs PRODUCCIÓN — VIDA fresca NO prueba trabajo, el cron
+   también genera turnos: medido 2026-07-24, la sesión OCIOSA tuvo 42 disparos y la que
+   implementaba 5). Ver su docstring para el detalle de cada pieza.
+   Si el script no existe en tu checkout (`vigilancia-check.sh: command not found`), estás en una
+   rama vieja — `git log origin/main -1` y decilo; mientras tanto, caé al modo manual de abajo.
 
-1. MEDIR, en un solo comando: hora actual · último commit de `origin/main` y su antigüedad ·
+1. SI HUBO ALARMA (o el script no existe): MEDIR, en un solo comando: hora actual · último commit de `origin/main` y su antigüedad ·
    último commit de la rama de la app y su antigüedad · `gh pr list --state open` ·
    `git rev-list --count origin/main..origin/feat/mobile-first-cascara-glass` ·
    los 3 archivos más recientes de `en-curso/` y `abierto/` con hora.
@@ -138,16 +138,17 @@ escapó al umbral de 25 min.
 
 Buzón (ruta absoluta): C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-0. 🔴 INSTRUMENTO OBLIGATORIO — corré PRIMERO: `bash scripts/no-ocio-check.sh`
-   Da DOS métricas y hay que leer las dos:
-   · **PRODUCCIÓN** = minutos desde el último `Write`/`Edit`. **Ésta dice si TRABAJA.**
-   · **VIDA** = mtime del transcript. ⚠️ El CRON también genera turnos, así que VIDA fresca NO
-     prueba trabajo (2026-07-24: la sesión ociosa tuvo 42 disparos; la que implementaba, 5).
-     VIDA fresca + PRODUCCIÓN vieja = `🌀 GIRA EN VACÍO` → es OCIO, reasignar; NO es dead-man.
-   **PROHIBIDO afirmar que una sesión está parada/muerta sin ese output** (2026-07-24 se reportó
-   "backend muerto 8½ h" mientras backend escribía código). NUNCA leas un `.jsonl` entero.
+0. 🔴 GATE DETERMINISTA — corré PRIMERO: `bash scripts/vigilancia-check.sh --quiet`
+   **Exit 0 = sin novedades, cerrá en UNA línea y NO sigas.** Exit 1 = alarma, su stdout ES el
+   reporte (ya trae PRODUCCIÓN vs VIDA de ambas sesiones + escaladores de buzón + cola). Si no
+   existe en tu checkout, caé al modo manual: `bash scripts/no-ocio-check.sh` — PRODUCCIÓN =
+   minutos desde el último `Write`/`Edit` (dice si TRABAJA); VIDA = mtime del transcript, que el
+   CRON también renueva (2026-07-24: sesión ociosa con 42 disparos vs 5 de la que implementaba) →
+   VIDA fresca + PRODUCCIÓN vieja = `🌀 GIRA EN VACÍO`, ocio, no dead-man. **PROHIBIDO afirmar
+   parada/muerte sin ese output** (2026-07-24: "backend muerto 8½h" mientras escribía código).
+   NUNCA leas un `.jsonl` entero.
 
-1. Con el output del paso 0, distinguí las DOS señales, que NO son lo mismo:
+1. SI HUBO ALARMA, con el output del paso 0 distinguí las DOS señales, que NO son lo mismo:
    - **VIDA (transcript fresco)** → la sesión está trabajando. Si además su buzón está viejo,
      eso es "trabaja sin reportar": recordale un `avance_` por hito. **NO es alarma de muerte.**
    - **Transcript viejo (≥30 min)** → ahí sí, sesión o heartbeat caídos → dead-man: push al
