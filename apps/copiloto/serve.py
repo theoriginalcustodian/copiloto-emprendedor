@@ -64,7 +64,6 @@ from concepto_store import ConceptoStore
 from trabajo_store import TrabajoStore
 from perfil_negocio_store import PerfilNegocioStore
 from presupuesto_doc import generar_doc as generar_doc_presupuesto
-from presupuesto_doc import registrar_en_sheet
 from presupuesto_store import PresupuestoStore
 from presupuestos_web import create_presupuestos_app
 from gastos_web import create_gastos_app
@@ -82,10 +81,6 @@ from mi_dia_web import create_mi_dia_app
 from actividad_store import ActividadStore
 from cliente_store import ClienteStore
 from gasto_store import GastoStore
-
-# Sheet de trazabilidad de presupuestos, por instancia. Vacío = no se registra la fila (el Doc y el
-# presupuesto se crean igual). Parametrizado y no hardcodeado: el id del spreadsheet es del usuario.
-PRESUPUESTOS_SHEET_ID = os.environ.get("COPILOTO_PRESUPUESTOS_SHEET_ID", "")
 
 # Todos con default -> el módulo importa sin reventar aunque el proceso no haya seteado nada
 # todavía (los env realmente OBLIGATORIOS -- DATABASE_URL, SUPABASE_JWT_SECRET, COPILOTO_FERNET_KEY,
@@ -177,18 +172,13 @@ async def _serve() -> None:
     )
 
     # Presupuestos + perfil del negocio. `generar_doc` corre en threadpool desde el endpoint (habla con
-    # Google por HTTP sync) y NUNCA hace fallar la creación: el presupuesto vive en Postgres, el Doc y
-    # la fila del Sheet son proyecciones.
-    def _generar_doc_y_fila(cid: str, presupuesto: dict) -> dict:
+    # Google por HTTP sync) y NUNCA hace fallar la creación: el presupuesto vive en Postgres, el Doc es
+    # una proyección.
+    def _generar_doc(cid: str, presupuesto: dict) -> dict:
         perfil = PerfilNegocioStore(conn_factory, cid).get()
         res = generar_doc_presupuesto(composio_gateway, user_id=str(cid), presupuesto=presupuesto,
                                       perfil_negocio=perfil)
-        salida = res.como_dict()
-        if res.doc_id and PRESUPUESTOS_SHEET_ID:
-            salida["sheet_fila"] = registrar_en_sheet(
-                composio_gateway, user_id=str(cid), spreadsheet_id=PRESUPUESTOS_SHEET_ID,
-                presupuesto=presupuesto, doc_link=res.doc_link)
-        return salida
+        return res.como_dict()
 
     presupuestos_app = create_presupuestos_app(
         require_tenant=require_tenant,
@@ -204,7 +194,7 @@ async def _serve() -> None:
         abrir_borrador=make_abrir_borrador_de_presupuesto(client),
         consultar_factura=make_consultar_factura(client),
         signal_factura=make_signal_factura(client),
-        generar_doc=_generar_doc_y_fila,
+        generar_doc=_generar_doc,
     )
 
     gastos_app = create_gastos_app(
