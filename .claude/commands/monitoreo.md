@@ -1,6 +1,6 @@
 ---
-description: Arranque VERIFICADO de la sesión PLANIFICACIÓN: 3 crones + instrumentos + estado de la cola, con reporte binario
-allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
+description: (Re)crea idempotente los TRES crones de monitoreo de la sesión PLANIFICACIÓN (PARÁLISIS + vigía v3 + sesiones ociosas)
+allowed-tools: CronList, CronCreate
 ---
 
 # Arrancar el monitoreo de la sesión PLANIFICACIÓN

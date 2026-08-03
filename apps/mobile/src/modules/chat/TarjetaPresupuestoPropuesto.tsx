@@ -10,15 +10,16 @@ import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropue
  * ítems editables **fila por fila** antes de guardar (hito 8, decisión de planificación en
  * `respuesta_..._base-es-precarga-no-esquema-y-la-card-de-presupuesto-es-lista-editable` §3).
  *
- * 🔴 **v1 = editar lo YA PARSEADO, no agregar/quitar filas desde la card.** `FormularioPresupuesto` sí
- * permite las dos cosas (son las mismas `agregarFila`/`quitarFila` del alta manual, no una versión
- * recortada) — la acotación es de ALCANCE del hito, no técnica: agregar/quitar es deuda GESTIONADA
- * (dueño: frontend; se paga si aparece el caso real de "el motor se olvidó un ítem"), anotada acá y no
- * silenciada.
+ * Reusa `FormularioPresupuesto` **entero** vía su prop `iniciales` (NO `corrige`): `corrige` es la
+ * corrección de un presupuesto YA EMITIDO (`reemplazaA`, "Corregir el N° X") — un concepto distinto de
+ * "esto es lo que entendí de tu dictado, todavía sin guardar", que es lo que esta card muestra.
  *
- * Reusa `FormularioPresupuesto` vía su prop `iniciales` (NO `corrige`): `corrige` es la corrección de
- * un presupuesto YA EMITIDO (`reemplazaA`, "Corregir el N° X") — un concepto distinto de "esto es lo
- * que entendí de tu dictado, todavía sin guardar", que es lo que esta card muestra.
+ * 🔴 **Agregar/quitar filas y el catálogo YA están activos acá**, porque `FormularioPresupuesto` no
+ * tiene un modo acotado que los oculte. Decisión del operador (2026-07-24,
+ * `respuesta_planificacion-a-todos_hito-P-decidido-por-el-operador...`): se quedan así — restringirlos
+ * sería construir algo nuevo para quitar una capacidad que nadie reportó como problema. "Corregir un
+ * ítem que el motor entendió mal" y "agregar el que se olvidó" son la misma corrección para quien
+ * dicta.
  */
 
 type Estado = 'editando' | 'guardado' | 'descartado';

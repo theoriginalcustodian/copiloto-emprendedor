@@ -46,9 +46,15 @@ describe('leerPresupuestoPropuesto', () => {
     expect(leerPresupuestoPropuesto(card({ receptor: { nombre: null } }))).toBeNull();
   });
 
-  it('sin ítems (o todos sin descripción) NO devuelve propuesta — nada que corregir', () => {
+  it('sin ítems NO devuelve propuesta — nada que corregir', () => {
     expect(leerPresupuestoPropuesto(card({ items: [] }))).toBeNull();
-    expect(leerPresupuestoPropuesto(card({ items: [{ descripcion: null, cantidad: '1' }] }))).toBeNull();
+  });
+
+  it('🔴 un ítem sin descripción NO se descarta — se muestra con la fila vacía, editable', () => {
+    const p = leerPresupuestoPropuesto(card({ items: [{ descripcion: null, cantidad: '1' }] }));
+
+    expect(p).not.toBeNull();
+    expect(p?.items).toEqual([{ descripcion: '', cantidad: '1', precioUnitario: '' }]);
   });
 
   it('un ítem sin cantidad/precio cae en los mismos defaults que el alta manual', () => {
