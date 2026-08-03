@@ -32,7 +32,8 @@ y el **`cliente_id`** que viaja en el payload.
 """
 from __future__ import annotations
 
-from typing import Any
+import inspect
+from typing import Any, Callable, Sequence
 
 from temporalio import activity
 from temporalio.worker import (
@@ -53,7 +54,12 @@ _RUTAS_CLIENTE_ID = (("conv", "cliente_id"), ("cliente_id",), ("ctx", "cliente_i
 
 
 def _cliente_id_de(payload: Any) -> str | None:
-    """Extrae el tenant del payload sin asumir un shape. Devuelve None si no lo encuentra."""
+    """Extrae el tenant del payload sin asumir un shape. Devuelve None si no lo encuentra.
+
+    Sólo cubre el caso dict (motor ReAct, `conv`/`ctx` anidados). El caso de payload PLANO —una
+    activity de dominio cuyo primer argumento es directamente el string del tenant, sin envoltorio—
+    lo resuelve `_cliente_id_de_activity`, que necesita la FIRMA de la activity y no sólo su primer
+    argumento (ver el docstring de esa función para el porqué)."""
     if not isinstance(payload, dict):
         return None
     for ruta in _RUTAS_CLIENTE_ID:
@@ -68,6 +74,46 @@ def _cliente_id_de(payload: Any) -> str | None:
     return None
 
 
+#: Nombre del parámetro que, si es el PRIMERO de la firma de la activity, autoriza a leer el tenant
+#: de `args[0]` sin envoltorio. Un solo nombre, exacto: aceptar "cualquier string suelto" como si
+#: fuera el tenant declararía un tenant FALSO para la primera activity que reciba, por ejemplo, un
+#: `workflow_id` como primer argumento — sería peor que no declarar ninguno.
+_PARAM_TENANT_PLANO = "cliente_id"
+
+
+def _cliente_id_de_activity(payload: Any, fn: Callable | None, args: Sequence[Any]) -> str | None:
+    """El extractor completo: primero el shape dict de siempre; si no hay nada, mira si la propia
+    FIRMA de la activity declara que su primer parámetro es el tenant.
+
+    **Por qué hace falta la firma y no alcanza con "el primer argumento es un string".** `_ACTIVITIES`
+    (el motor ReAct) también recibe activities con un string como único argumento que NO es un
+    tenant — y `interceptor_errores.py:51` documenta la razón de fondo: *"las activities no comparten
+    un shape único"*. Mirar el NOMBRE del parámetro, no su posición ni su tipo, es lo que distingue
+    `dar_de_alta_afip(cliente_id: str, cuit: str, ...)` de una activity cuyo primer argumento es, por
+    ejemplo, un `workflow_id`.
+
+    Hallazgo que motiva esto ([#204]): ~13 activities de dominio (facturación AFIP,
+    `refresh_credential` de MercadoPago) reciben `cliente_id` como primer argumento PLANO. El
+    interceptor las declaraba con `tenant(None)`, y con RLS `FORCE` eso son lecturas vacías y —el
+    caso peor— un `UPDATE` de refresh de MP que afecta 0 filas sin ningún error visible.
+    """
+    encontrado = _cliente_id_de(payload)
+    if encontrado is not None:
+        return encontrado
+    if fn is None or not args:
+        return None
+    try:
+        parametros = list(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        # Una firma que no se puede inspeccionar (builtin, C-extension) degrada a "sin tenant",
+        # nunca a adivinar por posición.
+        return None
+    if not parametros or parametros[0] != _PARAM_TENANT_PLANO:
+        return None
+    primero = args[0]
+    return primero if isinstance(primero, str) and primero else None
+
+
 class _CapturaInbound(ActivityInboundInterceptor):
     def __init__(self, next: ActivityInboundInterceptor,  # noqa: A002
                  traumas: FabricaDeTraumas | None = None) -> None:
@@ -80,7 +126,10 @@ class _CapturaInbound(ActivityInboundInterceptor):
         # falla. Es el mismo `cliente_id` que ya se extraía para el log: no hay una segunda fuente de
         # verdad del tenant, que es justo lo que haría falsificable el aislamiento.
         payload = input.args[0] if input.args else None
-        with tenant(_cliente_id_de(payload)):
+        # `getattr` y no `input.fn` directo: dobles de test más viejos (o de otro repo que reutilice
+        # esta costura) pueden no tener el atributo — el objeto REAL de Temporal siempre lo trae.
+        fn = getattr(input, "fn", None)
+        with tenant(_cliente_id_de_activity(payload, fn, input.args)):
             try:
                 return await self.next.execute_activity(input)
             except Exception as exc:
@@ -93,6 +142,7 @@ class _CapturaInbound(ActivityInboundInterceptor):
 
     def _registrar(self, exc: BaseException, input: ExecuteActivityInput) -> None:  # noqa: A002
         payload = input.args[0] if input.args else None
+        cliente_id = _cliente_id_de_activity(payload, getattr(input, "fn", None), input.args)
         try:
             categoria = categoria_de(exc)
         except ErrorSinCategoria:
@@ -103,7 +153,7 @@ class _CapturaInbound(ActivityInboundInterceptor):
         fingerprint = log_error(
             exc,
             workflow=info.activity_type,
-            cliente_id=_cliente_id_de(payload),
+            cliente_id=cliente_id,
             extra={
                 "categoria": categoria,
                 "costura": "activity_interceptor",
@@ -118,7 +168,7 @@ class _CapturaInbound(ActivityInboundInterceptor):
         # `depositar` no lanza (`deposito_traumas`), y además todo `_registrar` corre dentro del
         # `try/except` de `execute_activity` — dos redes, porque acá abajo está el turno del usuario.
         depositar(self._traumas, fingerprint=fingerprint, workflow=info.activity_type,
-                  error_type=type(exc).__name__, cliente_id=_cliente_id_de(payload),
+                  error_type=type(exc).__name__, cliente_id=cliente_id,
                   costura="activity_interceptor",
                   contexto={"categoria": categoria, "workflow_id": info.workflow_id,
                             "attempt": info.attempt,
