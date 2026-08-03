@@ -357,6 +357,55 @@ class CobroStore:
                 })
             return {"ingresos": filas, "total": dos_decimales(total)}
 
+    def total_periodo(self, periodo: str | None = None) -> dict:
+        """Total de TODOS los ingresos del período (contrato hito-C §1: `caja.entro` suma los tres
+        `origen` sin filtrar -- la caja no distingue de dónde vino la plata, sólo si entró) + el
+        total del mes anterior. Mismos límites de mes que `GastoStore.resumen()`
+        (gasto_store.py:135-172) -- no se reinventa el cálculo de fechas."""
+        hoy = hoy_del_negocio()
+        if periodo:
+            anio, mes = int(periodo[:4]), int(periodo[5:7])
+        else:
+            anio, mes = hoy.year, hoy.month
+        desde = datetime.date(anio, mes, 1)
+        hasta = datetime.date(anio + (mes == 12), (mes % 12) + 1, 1)
+        prev_desde = datetime.date(anio - (mes == 1), 12 if mes == 1 else mes - 1, 1)
+
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT sum(monto) FROM {_TABLE} WHERE cliente_id = %s "
+                        f"AND fecha >= %s AND fecha < %s", (self._cliente_id, desde, hasta))
+            total = cur.fetchone()[0]
+            cur.execute(f"SELECT sum(monto) FROM {_TABLE} WHERE cliente_id = %s "
+                        f"AND fecha >= %s AND fecha < %s", (self._cliente_id, prev_desde, desde))
+            anterior = cur.fetchone()[0]
+        return {"periodo": f"{anio:04d}-{mes:02d}", "total": dos_decimales(total),
+                # null, no "0.00": mismo criterio que `GastoStore.resumen` -- "no hay datos" y
+                # "el mes anterior entró cero" son cosas distintas.
+                "mes_anterior": dos_decimales(anterior) if anterior is not None else None}
+
+    def top_clientes(self, periodo: str | None = None, *, limite: int = 5) -> list[dict]:
+        """Ranking de clientes por ingresos del período (contrato master §4.4), sólo sobre cobros con
+        `cliente_ref` resuelto -- `registrar()` (cobro de una factura) no lo setea hoy, sólo
+        `registrar_suelto()` (ingreso dictado y linkeado a un cliente). Degradación declarada, no un
+        bug: ese vínculo factura↔cliente no existe en el modelo de datos todavía (ver avance_)."""
+        hoy = hoy_del_negocio()
+        if periodo:
+            anio, mes = int(periodo[:4]), int(periodo[5:7])
+        else:
+            anio, mes = hoy.year, hoy.month
+        desde = datetime.date(anio, mes, 1)
+        hasta = datetime.date(anio + (mes == 12), (mes % 12) + 1, 1)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT cliente_ref, max(cliente_nombre), sum(monto)
+                  FROM {_TABLE}
+                 WHERE cliente_id = %s AND fecha >= %s AND fecha < %s AND cliente_ref IS NOT NULL
+                 GROUP BY cliente_ref ORDER BY 3 DESC LIMIT %s
+            """, (self._cliente_id, desde, hasta, max(1, min(int(limite), 50))))
+            filas = cur.fetchall()
+        return [{"cliente_ref": ref, "nombre": nombre or "", "total": dos_decimales(total)}
+                for ref, nombre, total in filas]
+
     def posible_duplicado(self, *, monto, cliente_nombre: str = "", dias: int = 5) -> dict | None:
         """¿Ya hay un ingreso parecido en los últimos días? Devuelve el candidato, o `None`.
 

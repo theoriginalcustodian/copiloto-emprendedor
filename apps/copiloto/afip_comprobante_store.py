@@ -11,7 +11,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Callable
 
+from afip_rules import NOTAS_CREDITO
 from evento_store import registrar_evento
+from gasto_store import dos_decimales, hoy_del_negocio
 
 _TABLE = "uc_factory.afip_comprobantes"
 
@@ -152,6 +154,34 @@ class AfipComprobanteStore:
                 (self._cid, cuit, int(limite)))
             filas = cur.fetchall()
         return [self._fila(f, con_id=True) for f in filas if f]
+
+    def total_periodo(self, periodo: str | None = None) -> dict:
+        """Facturado del período + acumulado de los ÚLTIMOS 12 MESES contando hacia atrás desde el
+        período consultado (no año calendario — contrato hito-C §2). Las notas de crédito RESTAN:
+        contrato master §2, "afip_comprobantes − notas de crédito" — sin esto una NC infla el
+        facturado en vez de corregirlo. `NOTAS_CREDITO` (afip_rules.py) es la MISMA tupla de
+        `tipo_cbte` que ya usa `tipo_nota_credito()`; no se reinventa el criterio de qué es una NC.
+        Las anuladas no cuentan (mismo criterio que `impagos()` en cobro_store.py)."""
+        hoy = hoy_del_negocio()
+        if periodo:
+            anio, mes = int(periodo[:4]), int(periodo[5:7])
+        else:
+            anio, mes = hoy.year, hoy.month
+        desde = date(anio, mes, 1)
+        hasta = date(anio + (mes == 12), (mes % 12) + 1, 1)
+        # 12 meses hacia atrás CONTANDO el período consultado -- termina en `hasta` (excluyente).
+        m0 = anio * 12 + (mes - 1) - 11
+        desde_12 = date(m0 // 12, m0 % 12 + 1, 1)
+
+        sql = (f"SELECT sum(CASE WHEN tipo_cbte = ANY(%s) THEN -total ELSE total END) "
+              f"FROM {_TABLE} WHERE cliente_id = %s AND estado != %s "
+              f"AND fecha_emision >= %s AND fecha_emision < %s")
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(sql, (list(NOTAS_CREDITO), self._cid, ESTADO_ANULADA, desde, hasta))
+            del_periodo = cur.fetchone()[0]
+            cur.execute(sql, (list(NOTAS_CREDITO), self._cid, ESTADO_ANULADA, desde_12, hasta))
+            doce_meses = cur.fetchone()[0]
+        return {"periodo": dos_decimales(del_periodo), "doce_meses": dos_decimales(doce_meses)}
 
     def detalle_por_id(self, comprobante_id: int) -> dict | None:
         """Un comprobante por su **id de fila**, que es el único identificador que la app puede usar
