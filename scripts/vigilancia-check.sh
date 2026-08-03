@@ -104,7 +104,7 @@ $mail_out"
 # gancho se autosilencia en una semana por ruido — exactamente el fallo que el pendiente advierte.
 if [ -d "$TRANSCRIPTS" ]; then
   now="$(date +%s)"
-  mt_be=0; mt_fe=0; mt_pl=0; mt_sin_rol=0
+  mt_be=0; mt_fe=0; mt_pl=0; mt_me=0; mt_sin_rol=0
   while IFS= read -r -d '' f; do
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     # ⚠️ El rol se cuenta SÓLO dentro de las líneas que son el PROMPT DEL CRON que esta ventana
@@ -118,30 +118,35 @@ if [ -d "$TRANSCRIPTS" ]; then
     b=$( printf '%s' "$cron_txt" | grep -oc 'sesión BACKEND' || true)
     fr=$(printf '%s' "$cron_txt" | grep -oc 'sesión FRONTEND' || true)
     pl=$(printf '%s' "$cron_txt" | grep -oc 'sesión PLANIFICACIÓN' || true)
+    me=$(printf '%s' "$cron_txt" | grep -oc 'sesión MANEJO DE ERRORES' || true)
     # Sin marcador NO es "no es una sesión vigilada": puede ser una ventana viva cuyo cron está
     # apagado. Se registra aparte — abajo bloquea la alarma. Medido 2026-07-24: con los crones
     # borrados, la ventana de planificación que estaba ESCRIBIENDO quedó sin marcador y el script
     # rotuló como PLANIFICACION a una ventana vieja que sí lo tenía, alarmando en falso sobre una
     # sesión activa. La identidad sale del cron; sin cron no hay identidad, y "no sé" no se
     # resuelve eligiendo otro archivo.
-    if [ $((b + fr + pl)) -eq 0 ]; then
+    if [ $((b + fr + pl + me)) -eq 0 ]; then
       [ "$m" -gt "$mt_sin_rol" ] && mt_sin_rol="$m"
       continue
     fi
-    if   [ "$pl" -ge "$b" ] && [ "$pl" -ge "$fr" ]; then rol=PLANIFICACION
-    elif [ "$b" -ge "$fr" ];                        then rol=BACKEND
-    else                                                  rol=FRONTEND
+    # Máximo entre los 4 — mismo criterio que antes (gana el conteo más alto; PLANIFICACIÓN
+    # desempata primero por ser la que más se auto-nombra en contratos ajenos, ver nota arriba).
+    if   [ "$pl" -ge "$b" ] && [ "$pl" -ge "$fr" ] && [ "$pl" -ge "$me" ]; then rol=PLANIFICACION
+    elif [ "$b"  -ge "$fr" ] && [ "$b"  -ge "$me" ];                          then rol=BACKEND
+    elif [ "$fr" -ge "$me" ];                                                 then rol=FRONTEND
+    else                                                                          rol=MANEJO_DE_ERRORES
     fi
     case "$rol" in
-      BACKEND)       [ "$m" -gt "$mt_be" ] && mt_be="$m" ;;
-      FRONTEND)      [ "$m" -gt "$mt_fe" ] && mt_fe="$m" ;;
-      PLANIFICACION) [ "$m" -gt "$mt_pl" ] && mt_pl="$m" ;;
+      BACKEND)           [ "$m" -gt "$mt_be" ] && mt_be="$m" ;;
+      FRONTEND)          [ "$m" -gt "$mt_fe" ] && mt_fe="$m" ;;
+      PLANIFICACION)      [ "$m" -gt "$mt_pl" ] && mt_pl="$m" ;;
+      MANEJO_DE_ERRORES) [ "$m" -gt "$mt_me" ] && mt_me="$m" ;;
     esac
   # -newermt '-4 hours': mismo filtro que no-ocio-check.sh para ignorar transcripts de sesiones
   # cerradas hace días (ventanas viejas no son "sesión muda hoy", son ruido de fondo).
   done < <(find "$TRANSCRIPTS" -maxdepth 1 -name '*.jsonl' -newermt '-4 hours' -print0 2>/dev/null)
 
-  for par in "BACKEND:$mt_be" "FRONTEND:$mt_fe" "PLANIFICACION:$mt_pl"; do
+  for par in "BACKEND:$mt_be" "FRONTEND:$mt_fe" "PLANIFICACION:$mt_pl" "MANEJO_DE_ERRORES:$mt_me"; do
     rol="${par%%:*}"; mt="${par##*:}"
     [ "$mt" -eq 0 ] && continue   # sin transcript rotulado <4h para ese rol -> sin señal, no alarma
     edad=$(( (now - mt) / 60 ))
