@@ -44,9 +44,13 @@ hable el copiloto) se **inyecta en el system prompt** de cada turno.
    entrada (que decía "no re-litigar") y el handoff de diseño del 23 que marcaba los estados ✅ VIVO.
    Ganó el código. [[la-evidencia-vence-y-el-documento-no-lo-dice]]
 2. **El Sheet de trazabilidad se descartó** (2026-07-21): *«tenemos todo en nuestra base de datos»*.
-   `COPILOTO_PRESUPUESTOS_SHEET_ID` nunca se configuró y `sheet_fila` queda siempre `null`. Es código
-   muerto a limpiar; FRONTEND confirmó que el campo está tipado pero **no se pinta en ninguna
-   pantalla**, así que sacarlo no rompe nada. *(deuda menor, sin propietario asignado)*
+   `COPILOTO_PRESUPUESTOS_SHEET_ID` nunca se configuró y `sheet_fila` quedó siempre `null`.
+   **Maquinaria retirada (backend, 2026-08-03):** `registrar_en_sheet()` + `PRESUPUESTOS_SHEET_ID` +
+   el campo `sheet_fila` de `_COLS`/`adjuntar_doc()`/`ResultadoDoc` — todo fuera de
+   `apps/copiloto/**`. La columna `sheet_fila` de `copiloto_presupuestos` queda **huérfana** en la
+   base (mismo patrón que `contacto` en `provision.py`): el `DROP COLUMN` es irreversible sobre una
+   base viva y queda pendiente del OK del operador aunque hoy no haya ni una fila con dato adentro.
+   *(TODO `sheet-fila-drop`, propietario BACKEND, condición: OK del operador.)*
 3. **Las plantillas de email se descartaron** — perfil + soul ya resuelven "que suene a mí" para todos
    los mails, sin una capa más que mantener.
 

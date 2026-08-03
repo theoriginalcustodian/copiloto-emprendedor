@@ -59,7 +59,7 @@ class _FakePresupuestoStore:
         total = sum(float(i["cantidad"]) * float(i["precio_unitario"]) for i in items)
         p = {"id": pid, "numero": len(mios) + 1, "fecha": "2026-07-21T00:00:00Z",
              "concepto": concepto, "receptor": receptor, "total": f"{total:.2f}", "moneda": moneda,
-             "doc_id": None, "doc_link": None, "sheet_fila": None, "reemplaza_a": reemplaza_a,
+             "doc_id": None, "doc_link": None, "reemplaza_a": reemplaza_a,
              "reemplazado_por": None, "factura_id": None, "facturado": False,
              "cantidad_items": len(items),
              "estado": PENDIENTE, "estado_actualizado_en": None, "sin_respuesta": False,
@@ -79,10 +79,10 @@ class _FakePresupuestoStore:
             vivos = [p for p in vivos if p.get("reemplazado_por") is None]
         return vivos[:limit]
 
-    def adjuntar_doc(self, presupuesto_id, doc_id, doc_link, sheet_fila=None) -> None:
+    def adjuntar_doc(self, presupuesto_id, *, doc_id, doc_link) -> None:
         p = self._mios().get(presupuesto_id)
         if p:
-            p.update({"doc_id": doc_id, "doc_link": doc_link, "sheet_fila": sheet_fila})
+            p.update({"doc_id": doc_id, "doc_link": doc_link})
 
     def marcar_factura(self, presupuesto_id, factura_id) -> bool:
         self.marcadas.append((presupuesto_id, factura_id))
@@ -291,11 +291,9 @@ def test_el_presupuesto_se_crea_AUNQUE_falle_el_doc():
 
 
 def test_el_doc_cuando_funciona_queda_pegado_al_presupuesto():
-    cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x",
-                                               "sheet_fila": "Presupuestos!A2"})
+    cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
     p = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]
-    assert (p["doc_id"], p["doc_link"], p["sheet_fila"]) == ("doc-1", "https://docs/x",
-                                                             "Presupuestos!A2")
+    assert (p["doc_id"], p["doc_link"]) == ("doc-1", "https://docs/x")
 
 
 # --- presupuestos: lectura ----------------------------------------------------

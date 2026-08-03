@@ -234,8 +234,8 @@ def create_presupuestos_app(
                 doc = await _maybe_async(generar_doc, cliente_id, presupuesto)
                 if doc and doc.get("doc_id"):
                     await asyncio.to_thread(
-                        store.adjuntar_doc, presupuesto["id"],
-                        doc.get("doc_id"), doc.get("doc_link"), doc.get("sheet_fila"))
+                        lambda: store.adjuntar_doc(presupuesto["id"], doc_id=doc.get("doc_id"),
+                                                   doc_link=doc.get("doc_link")))
                     presupuesto = await asyncio.to_thread(store.detalle, presupuesto["id"])
             except Exception as exc:  # noqa: BLE001 — el Doc es una comodidad, no la fuente de verdad
                 # Degradar acá es correcto (el presupuesto ya existe; el Doc es accesorio), pero el

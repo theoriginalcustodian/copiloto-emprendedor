@@ -59,8 +59,16 @@ _COMPROBANTES = f"{_SCHEMA}.afip_comprobantes"
 
 _COLS = ("id", "numero", "fecha", "concepto", "receptor_nombre", "receptor_doc_tipo",
          "receptor_doc_nro", "receptor_condicion_iva", "receptor_domicilio", "receptor_contacto",
-         "total", "moneda", "doc_id", "doc_link", "sheet_fila", "reemplaza_a", "factura_id",
+         "total", "moneda", "doc_id", "doc_link", "reemplaza_a", "factura_id",
          "estado", "estado_actualizado_en")
+
+# TODO(sheet-fila-drop, backend, 2026-08-03): DEUDA DELIBERADA Y VISIBLE, paso 1 de 2 pagado -- mismo
+# patrón que `contacto` en `provision.py` (`_migrar_clientes_contacto_a_email_telefono`). La columna
+# `sheet_fila` de `copiloto_presupuestos` (uc_tables.json) queda HUÉRFANA acá (fuera de `_COLS`, ya no
+# se lee ni se escribe -- el Sheet de trazabilidad se descartó, `COPILOTO_PRESUPUESTOS_SHEET_ID` nunca
+# se configuró y la columna siempre fue null en todo tenant). El `DROP COLUMN` -- irreversible sobre
+# una base viva, aunque acá no haya NINGUNA fila con dato adentro -- queda pendiente del OK del
+# operador, no se hace unilateral. Propietario: BACKEND.
 
 # ── El estado del presupuesto (hueco 2 del hito 3) ───────────────────────────────────────────────
 #
@@ -182,7 +190,6 @@ def _fila_a_dict(fila: tuple) -> dict:
         "moneda": d["moneda"],
         "doc_id": d["doc_id"],
         "doc_link": d["doc_link"],
-        "sheet_fila": d["sheet_fila"],
         "reemplaza_a": d["reemplaza_a"],
         "reemplazado_por": d["reemplazado_por"],
         "factura_id": d["factura_id"],
@@ -259,9 +266,8 @@ class PresupuestoStore:
                                               for it in items]})
         return self.detalle(presupuesto_id) or {}
 
-    def adjuntar_doc(self, presupuesto_id: int, *, doc_id: str | None, doc_link: str | None,
-                     sheet_fila: str | None = None) -> None:
-        """Pega el Doc y la fila del Sheet a un presupuesto YA creado.
+    def adjuntar_doc(self, presupuesto_id: int, *, doc_id: str | None, doc_link: str | None) -> None:
+        """Pega el Doc a un presupuesto YA creado.
 
         Va aparte del alta a propósito: generar el Doc habla con Google y puede fallar o tardar, y el
         presupuesto NO puede depender de eso para existir (misma decisión que el archivado del PDF en
@@ -270,9 +276,9 @@ class PresupuestoStore:
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"UPDATE {_TABLE} SET doc_id=COALESCE(%s, doc_id), doc_link=COALESCE(%s, doc_link), "
-                f"sheet_fila=COALESCE(%s, sheet_fila) WHERE cliente_id=%s AND id=%s",
-                (doc_id, doc_link, sheet_fila, self._cid, presupuesto_id))
+                f"UPDATE {_TABLE} SET doc_id=COALESCE(%s, doc_id), doc_link=COALESCE(%s, doc_link) "
+                f"WHERE cliente_id=%s AND id=%s",
+                (doc_id, doc_link, self._cid, presupuesto_id))
 
     def marcar_factura(self, presupuesto_id: int, factura_id: str | None) -> bool:
         """Ata el presupuesto al BORRADOR de factura que se armó desde él.

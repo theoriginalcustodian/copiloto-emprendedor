@@ -1,8 +1,8 @@
-"""Genera el Google Doc del presupuesto y su fila de trazabilidad en Sheets.
+"""Genera el Google Doc del presupuesto.
 
 Aislado de FastAPI y de Temporal a propósito: se testea con un gateway falso, sin red.
 
-**Doc y Sheet son PROYECCIONES, no la fuente de verdad.** Si Google falla, si el emprendedor no tiene
+**El Doc es una PROYECCIÓN, no la fuente de verdad.** Si Google falla, si el emprendedor no tiene
 `googledocs` conectado, o si borra el documento después, el presupuesto sigue completo en Postgres y
 el botón Facturar sigue funcionando. Por eso nada de acá puede hacer fallar la creación — el caller
 loguea y sigue.
@@ -21,22 +21,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 SLUG_CREAR_DOC = "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN"
-SLUG_APPEND_SHEET = "GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND"
-
-HOJA_TRAZABILIDAD = "Presupuestos"
-CABECERA = ["Número", "Fecha", "Cliente", "Concepto", "Total", "Moneda", "Documento"]
 
 
 @dataclass(frozen=True)
 class ResultadoDoc:
     doc_id: str | None = None
     doc_link: str | None = None
-    sheet_fila: str | None = None
     motivo: str | None = None
 
     def como_dict(self) -> dict:
-        return {"doc_id": self.doc_id, "doc_link": self.doc_link,
-                "sheet_fila": self.sheet_fila, "motivo": self.motivo}
+        return {"doc_id": self.doc_id, "doc_link": self.doc_link, "motivo": self.motivo}
 
 
 def titulo_del_doc(presupuesto: dict) -> str:
@@ -123,35 +117,3 @@ def generar_doc(gateway, *, user_id: str, presupuesto: dict,
     link = _primer(res, "display_url", "webViewLink", "url") or \
         f"https://docs.google.com/document/d/{doc_id}/edit"
     return ResultadoDoc(doc_id=doc_id, doc_link=link)
-
-
-def registrar_en_sheet(gateway, *, user_id: str, spreadsheet_id: str, presupuesto: dict,
-                       doc_link: str | None) -> str | None:
-    """Appendea la fila de trazabilidad en el Sheet del emprendedor. Devuelve el rango escrito o None.
-
-    `VALUES_APPEND` resuelve la posición del lado de Google (después de la última fila con datos): no
-    hay que leer, contar y escribir, así que no hay carrera con lo que el usuario esté editando.
-
-    ⚠️ Los argumentos de este slug son **camelCase** (`spreadsheetId`, `valueInputOption`), a
-    diferencia de `GOOGLESHEETS_BATCH_UPDATE` que los usa en snake_case. El gateway pasa `arguments`
-    tal cual, así que equivocar el casing es un fallo silencioso.
-    """
-    if not spreadsheet_id:
-        return None
-    receptor = (presupuesto.get("receptor") or {}).get("nombre") or ""
-    fila = [str(presupuesto.get("numero") or ""), str(presupuesto.get("fecha") or ""), receptor,
-            presupuesto.get("concepto") or "", str(presupuesto.get("total") or ""),
-            presupuesto.get("moneda") or "", doc_link or ""]
-    try:
-        res = gateway.execute(SLUG_APPEND_SHEET, user_id=user_id, confirmed=True, arguments={
-            "spreadsheetId": spreadsheet_id,
-            "range": f"{HOJA_TRAZABILIDAD}!A1",
-            "valueInputOption": "USER_ENTERED",
-            "values": [fila]})
-    except Exception:  # noqa: BLE001 — la trazabilidad es una comodidad, no la fuente de verdad
-        return None
-    data = (res or {}).get("data") if isinstance(res, dict) else None
-    if isinstance(data, dict):
-        actualizado = data.get("updates") or {}
-        return actualizado.get("updatedRange") or data.get("tableRange")
-    return None
