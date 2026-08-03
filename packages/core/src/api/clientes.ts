@@ -333,6 +333,13 @@ export type ResultadoGuardarCliente =
  */
 export interface OpcionesGuardarCliente {
   forzar?: boolean;
+  /**
+   * Uuid **por gesto del usuario**, mismo patrón que `ingresos.ts`/`cobros.ts`: sin él, un reintento
+   * de red (o el paso de "crear igual" tras el 409 por nombre) puede dejar dos clientes idénticos. El
+   * caller lo retiene entre reintentos y lo descarta recién cuando el alta entra — ver
+   * `FormularioCliente.tsx`. Sólo tiene sentido en el alta: `editarCliente` puede omitirlo.
+   */
+  idemKey?: string;
 }
 
 async function guardar(
@@ -341,7 +348,9 @@ async function guardar(
   opciones: OpcionesGuardarCliente = {},
 ): Promise<ResultadoGuardarCliente> {
   try {
-    const cuerpo = opciones.forzar === true ? { ...aWire(datos), forzar: true } : aWire(datos);
+    const cuerpo: Record<string, unknown> = { ...aWire(datos) };
+    if (opciones.forzar === true) cuerpo.forzar = true;
+    if (opciones.idemKey !== undefined) cuerpo.idem_key = opciones.idemKey;
     const raw = await apiClient.post<unknown>(ruta, cuerpo);
     const cliente = clienteDeLaRespuesta(raw);
     // Un 200 con el HTML del SPA llega hasta acá como string: no es un cliente, y decirlo "no

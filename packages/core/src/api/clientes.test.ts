@@ -259,6 +259,23 @@ describe('clientes.ts', () => {
       expect(peticiones[1]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez', forzar: true });
     });
 
+    it('🔴 `idemKey` viaja como `idem_key` — sólo cuando vino, mismo criterio que `forzar`', async () => {
+      responder = () => respuesta(201, clienteCrudo({ id: 41 }));
+
+      await crearCliente({ nombre: 'Juan Pérez' }, { idemKey: 'abc-123' });
+      expect(peticiones[0]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez', idem_key: 'abc-123' });
+
+      await crearCliente({ nombre: 'Juan Pérez' });
+      expect(peticiones[1]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez' });
+    });
+
+    it('`idemKey` y `forzar` conviven — es el mismo gesto de alta confirmado tras el 409', async () => {
+      responder = () => respuesta(201, clienteCrudo({ id: 42 }));
+
+      await crearCliente({ nombre: 'Juan Pérez' }, { forzar: true, idemKey: 'abc-123' });
+      expect(peticiones[0]?.cuerpoJson).toEqual({ nombre: 'Juan Pérez', forzar: true, idem_key: 'abc-123' });
+    });
+
     it('editando, `forzar` no rompe la parcialidad: sólo el cambio + la confirmación', async () => {
       // Renombrar "Kiosco 2" a "Kiosco" tiene el mismo callejón que el alta, y el backend lo cubrió.
       responder = () => respuesta(200, clienteCrudo({ nombre: 'Kiosco' }));

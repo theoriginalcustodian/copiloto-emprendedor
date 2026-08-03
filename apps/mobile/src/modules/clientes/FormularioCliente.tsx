@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import {
@@ -13,6 +13,7 @@ import {
 
 import { CampoSelect, CampoTexto, FilaBotones, type OpcionSelect } from '../../theme/glass/campos';
 import { useTema } from '../../theme/ThemeProvider';
+import { generarId } from '../../util/id';
 
 /**
  * `FormularioCliente` — el alta a mano y la edición, que son **el mismo formulario**.
@@ -116,6 +117,17 @@ export function FormularioCliente({
   const [homonimo, setHomonimo] = useState<DuplicadoCliente | null>(null);
 
   /**
+   * 🔴 **La clave de idempotencia del ALTA — se guarda entre reintentos, se tira sólo cuando entró.**
+   * Mismo patrón que `SeccionCobro.tsx`: si la red se corta después de que el backend ya creó el
+   * cliente, el emprendedor ve un error y vuelve a tocar "Dar de alta". Con una clave nueva por toque
+   * eso deja dos clientes idénticos; con la misma clave el backend devuelve el que ya existe. Sigue
+   * siendo LA MISMA clave a través del paso "es otro, crearlo igual" (`forzar`): es el mismo gesto de
+   * alta confirmado, no uno nuevo. Nunca se usa en la edición — `editarCliente` es PATCH parcial,
+   * reintentar el mismo diff ya es seguro sin ella.
+   */
+  const claveAlta = useRef<string | null>(null);
+
+  /**
    * Lo tipeado, en la forma del contrato. Un campo vacío viaja como `null` ("no lo sé"), no como `""`:
    * el string vacío es un dato afirmado, y `doc_nro: ""` haría que la deduplicación por documento lo
    * trate distinto de "sin documento" (ver los índices parciales de §3.3).
@@ -173,11 +185,15 @@ export function FormularioCliente({
     setError(null);
     try {
       const datos = loTipeado();
-      const opciones = forzar ? { forzar: true } : undefined;
-      const res =
-        edita != null
-          ? await editarCliente(edita.id, cambiosDeCliente(edita, datos), opciones)
-          : await crearCliente(datos, opciones);
+      let res;
+      if (edita != null) {
+        res = await editarCliente(edita.id, cambiosDeCliente(edita, datos), forzar ? { forzar: true } : undefined);
+      } else {
+        // Se asigna una sola vez por gesto de alta: si ya hay una clave en vuelo (este es un
+        // reintento, o el paso "forzar" tras el 409), se reusa la misma.
+        if (claveAlta.current === null) claveAlta.current = generarId();
+        res = await crearCliente(datos, { ...(forzar ? { forzar: true } : {}), idemKey: claveAlta.current });
+      }
 
       if (res.status === 'no_disponible') {
         setError(
@@ -189,14 +205,18 @@ export function FormularioCliente({
       }
       if (res.status === 'duplicado') {
         // El choque por nombre NO sale de acá: es una pregunta, y cerrar el formulario le borraría al
-        // emprendedor lo que escribió sin darle ninguna salida.
+        // emprendedor lo que escribió sin darle ninguna salida. La clave NO se tira: "crear igual" es
+        // el mismo gesto, no uno nuevo.
         if (res.duplicado.por !== 'documento') {
           setHomonimo(res.duplicado);
           return;
         }
+        // Terminal: el gesto de alta termina acá (se redirige al dueño), la clave ya cumplió su rol.
+        claveAlta.current = null;
         onDuplicado(res.duplicado);
         return;
       }
+      claveAlta.current = null;
       setHomonimo(null);
       onGuardado(res.cliente);
     } catch (e) {

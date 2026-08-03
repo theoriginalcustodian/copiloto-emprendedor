@@ -243,11 +243,12 @@ describe('PantallaClientes', () => {
       await abrirAltaCon('Kiosco');
       await act(async () => { fireEvent.press(screen.getByTestId('formulario-cliente-guardar')); });
 
-      // El segundo argumento es `undefined`: `forzar` es una confirmacion del humano, nunca un
-      // default. Se asierta explicito para que agregarlo por comodidad rompa el test.
+      // `forzar` NO viaja sin la confirmacion del humano — sigue sin default. `idemKey` SI viaja
+      // siempre en el alta (ítem 2 del reparto, ver clientes.ts): es la clave de idempotencia del
+      // gesto, no una comodidad.
       expect(mockCrear).toHaveBeenCalledWith(
         expect.objectContaining({ nombre: 'Kiosco', docTipo: null, docNro: null }),
-        undefined,
+        { idemKey: expect.any(String) },
       );
     });
 
@@ -386,10 +387,16 @@ describe('PantallaClientes', () => {
 
       expect(mockCrear).toHaveBeenLastCalledWith(
         expect.objectContaining({ nombre: 'Juan Pérez' }),
-        { forzar: true },
+        { forzar: true, idemKey: expect.any(String) },
       );
-      // Y el primer intento NO llevaba forzar: la confirmacion es del humano, no un default.
-      expect(mockCrear.mock.calls[0]?.[1]).toBeUndefined();
+      // Y el primer intento NO llevaba forzar, pero SÍ una idemKey.
+      const primeraOpciones = mockCrear.mock.calls[0]?.[1] as { idemKey?: string } | undefined;
+      expect(primeraOpciones?.idemKey).toEqual(expect.any(String));
+      // 🔴 La invariante que importa: es LA MISMA clave en los dos toques -- "crear igual" es el
+      // mismo gesto de alta confirmado, no uno nuevo. Con claves distintas, un reintento de red justo
+      // en el medio dejaria dos clientes.
+      const segundasOpciones = mockCrear.mock.calls[1]?.[1] as { idemKey?: string } | undefined;
+      expect(segundasOpciones?.idemKey).toBe(primeraOpciones?.idemKey);
     });
 
     it('🔴 un choque por DOCUMENTO no ofrece "crearlo igual" - dos CUIT iguales son un tipeo', async () => {

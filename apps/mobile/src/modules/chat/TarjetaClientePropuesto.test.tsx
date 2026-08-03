@@ -119,7 +119,7 @@ describe('TarjetaClientePropuesto', () => {
 
     expect(mockCrear).toHaveBeenCalledWith(
       expect.objectContaining({ nombre: 'Ferretería El Tornillo SRL', origen: 'voz' }),
-      undefined,
+      { idemKey: expect.any(String) },
     );
   });
 
@@ -257,7 +257,7 @@ describe('TarjetaClientePropuesto', () => {
 
     expect(mockCrear).toHaveBeenLastCalledWith(
       expect.objectContaining({ nombre: 'Ferretería El Tornillo', origen: 'voz' }),
-      { forzar: true },
+      { forzar: true, idemKey: expect.any(String) },
     );
   });
 
