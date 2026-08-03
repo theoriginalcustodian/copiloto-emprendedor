@@ -1,0 +1,1170 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-08-03T18:47:51.094940956Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1382430",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "ConversationWorkflow"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjaGFubmVsIjoid2ViIiwiY2hhbm5lbF9yZWYiOiIwNjIwMDc1OS1iOWM5LTRmNzYtYjUyMy1kNTAxMDE0MTRmM2YiLCJjbGllbnRlX2lkIjoiNGYzZWNiNzgtMmUzNi00MDQ0LWE1NmUtMGU3ZWY2YzRhNjU1IiwiZG9tYWluIjoiZW1wcmVuZGVkb3IiLCJlbmdpbmVfbW9kZSI6InJlYWN0IiwiaWRsZV90aW1lb3V0X3NlY29uZHMiOjYwNDgwMCwibWVtb3J5IjpmYWxzZX0="
+            }
+          ]
+        },
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "1c81d535-68e5-4256-b6a2-aac6713e8c07",
+        "identity": "627752@unreal-copilot",
+        "firstExecutionRunId": "1c81d535-68e5-4256-b6a2-aac6713e8c07",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-06200759-b9c9-4f76-b523-d50101414f3f",
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-08-03T18:47:51.095024765Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED",
+      "taskId": "1382431",
+      "workflowExecutionSignaledEventAttributes": {
+        "signalName": "receive_message",
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjaGFubmVsIjoid2ViIiwiY2hhbm5lbF9yZWYiOiIwNjIwMDc1OS1iOWM5LTRmNzYtYjUyMy1kNTAxMDE0MTRmM2YiLCJraW5kIjoidGV4dCIsInRleHQiOiJoYWNlbGUgdW4gcHJlc3VwdWVzdG8gYSBKdWFuIHBvciBkb3Mgc2lsbGFzIGRlIG1hZGVyYSBhIDgwMDAgY2FkYSB1bmEgeSB1biBmbGV0ZSBhIDE1MDAifQ=="
+            }
+          ]
+        },
+        "identity": "627752@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-08-03T18:47:51.095028612Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382432",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-08-03T18:47:51.109322627Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382436",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "3",
+        "identity": "627737@unreal-copilot",
+        "requestId": "470ce3ad-83cb-4653-90c8-f874cfe36ae4",
+        "historySizeBytes": "853",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-08-03T18:47:51.122362697Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382440",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "3",
+        "startedEventId": "4",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {
+          "coreUsedFlags": [
+            1,
+            2,
+            3
+          ],
+          "sdkName": "temporal-python",
+          "sdkVersion": "1.28.0"
+        },
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-08-03T18:47:51.122407862Z",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "taskId": "1382441",
+      "markerRecordedEventAttributes": {
+        "markerName": "core_patch",
+        "details": {
+          "patch-data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJpZCI6InVuLXR1cm5vLXJvdG8tbm8tbWF0YS1sYS1zZXNpb24iLCJkZXByZWNhdGVkIjpmYWxzZX0="
+              }
+            ]
+          }
+        },
+        "workflowTaskCompletedEventId": "5"
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-08-03T18:47:51.122443039Z",
+      "eventType": "EVENT_TYPE_UPSERT_WORKFLOW_SEARCH_ATTRIBUTES",
+      "taskId": "1382442",
+      "upsertWorkflowSearchAttributesEventAttributes": {
+        "workflowTaskCompletedEventId": "5",
+        "searchAttributes": {
+          "indexedFields": {
+            "TemporalChangeVersion": {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg==",
+                "type": "S2V5d29yZExpc3Q="
+              },
+              "data": "WyJ1bi10dXJuby1yb3RvLW5vLW1hdGEtbGEtc2VzaW9uIl0="
+            }
+          }
+        }
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-08-03T18:47:51.122469981Z",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "taskId": "1382443",
+      "markerRecordedEventAttributes": {
+        "markerName": "core_patch",
+        "details": {
+          "patch-data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJpZCI6InJlYWN0LXN0cnVjdHVyYWwtdHJhbnNjcmlwdCIsImRlcHJlY2F0ZWQiOmZhbHNlfQ=="
+              }
+            ]
+          }
+        },
+        "workflowTaskCompletedEventId": "5"
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-08-03T18:47:51.122481532Z",
+      "eventType": "EVENT_TYPE_UPSERT_WORKFLOW_SEARCH_ATTRIBUTES",
+      "taskId": "1382444",
+      "upsertWorkflowSearchAttributesEventAttributes": {
+        "workflowTaskCompletedEventId": "5",
+        "searchAttributes": {
+          "indexedFields": {
+            "TemporalChangeVersion": {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg==",
+                "type": "S2V5d29yZExpc3Q="
+              },
+              "data": "WyJyZWFjdC1zdHJ1Y3R1cmFsLXRyYW5zY3JpcHQiLCJ1bi10dXJuby1yb3RvLW5vLW1hdGEtbGEtc2VzaW9uIl0="
+            }
+          }
+        }
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-08-03T18:47:51.122508193Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382445",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "1",
+        "activityType": {
+          "name": "call_llm_tools"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjbGllbnRlX2lkIjoiNGYzZWNiNzgtMmUzNi00MDQ0LWE1NmUtMGU3ZWY2YzRhNjU1IiwiZG9tYWluIjoiZW1wcmVuZGVkb3IiLCJtZXNzYWdlcyI6W3siY29udGVudCI6ImhhY2VsZSB1biBwcmVzdXB1ZXN0byBhIEp1YW4gcG9yIGRvcyBzaWxsYXMgZGUgbWFkZXJhIGEgODAwMCBjYWRhIHVuYSB5IHVuIGZsZXRlIGEgMTUwMCIsInJvbGUiOiJ1c2VyIn1dLCJzeXN0ZW1fZXh0cmEiOiIiLCJ0b29sX2Nob2ljZSI6ImF1dG8ifQ=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "5",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-08-03T18:47:51.129052324Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382451",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "10",
+        "identity": "627737@unreal-copilot",
+        "requestId": "5ecb808e-bd92-4859-955a-45acb823cb05",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "12",
+      "eventTime": "2026-08-03T18:47:53.476415989Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382452",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjb250ZW50IjoiTmVjZXNpdG8gcXVlIG1lIGNvbmZpcm1lcyBlbCBub21icmUgY29tcGxldG8gZGUgSnVhbiB5IHNpIHRlblx1MDBlOXMgc3UgQ1VJVCBvIEROSSBwYXJhIGluY2x1aXJsbyBlbiBlbCBwcmVzdXB1ZXN0by4iLCJmYWlsZWRfb3ZlciI6ZmFsc2UsImZpbmlzaF9yZWFzb24iOiJzdG9wIiwibW9kZWwiOiJncHQtNG8tbWluaSIsInRvb2xfY2FsbHMiOltdfQ=="
+            }
+          ]
+        },
+        "scheduledEventId": "10",
+        "startedEventId": "11",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "13",
+      "eventTime": "2026-08-03T18:47:53.476424976Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382453",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "14",
+      "eventTime": "2026-08-03T18:47:53.482787422Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382457",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "13",
+        "identity": "627737@unreal-copilot",
+        "requestId": "4824a970-9e5e-42cd-97d8-74775813b293",
+        "historySizeBytes": "2643",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "15",
+      "eventTime": "2026-08-03T18:47:53.493364830Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382461",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "13",
+        "startedEventId": "14",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "16",
+      "eventTime": "2026-08-03T18:47:53.493397172Z",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "taskId": "1382462",
+      "markerRecordedEventAttributes": {
+        "markerName": "core_patch",
+        "details": {
+          "patch-data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJpZCI6Im5hcnJhLWd1YXJkcmFpbC1yZXF1aXJlZC1yZXRyeSIsImRlcHJlY2F0ZWQiOmZhbHNlfQ=="
+              }
+            ]
+          }
+        },
+        "workflowTaskCompletedEventId": "15"
+      }
+    },
+    {
+      "eventId": "17",
+      "eventTime": "2026-08-03T18:47:53.493431317Z",
+      "eventType": "EVENT_TYPE_UPSERT_WORKFLOW_SEARCH_ATTRIBUTES",
+      "taskId": "1382463",
+      "upsertWorkflowSearchAttributesEventAttributes": {
+        "workflowTaskCompletedEventId": "15",
+        "searchAttributes": {
+          "indexedFields": {
+            "TemporalChangeVersion": {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg==",
+                "type": "S2V5d29yZExpc3Q="
+              },
+              "data": "WyJuYXJyYS1ndWFyZHJhaWwtcmVxdWlyZWQtcmV0cnkiLCJyZWFjdC1zdHJ1Y3R1cmFsLXRyYW5zY3JpcHQiLCJ1bi10dXJuby1yb3RvLW5vLW1hdGEtbGEtc2VzaW9uIl0="
+            }
+          }
+        }
+      }
+    },
+    {
+      "eventId": "18",
+      "eventTime": "2026-08-03T18:47:53.493474448Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382464",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "2",
+        "activityType": {
+          "name": "send_channel_message"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjYXJkIjp7fSwiY2hhbm5lbCI6IndlYiIsImNoYW5uZWxfcmVmIjoiMDYyMDA3NTktYjljOS00Zjc2LWI1MjMtZDUwMTAxNDE0ZjNmIiwiY2hvaWNlcyI6W10sImNsaWVudGVfaWQiOiI0ZjNlY2I3OC0yZTM2LTQwNDQtYTU2ZS0wZTdlZjZjNGE2NTUiLCJ0ZXh0IjoiTmVjZXNpdG8gcXVlIG1lIGNvbmZpcm1lcyBlbCBub21icmUgY29tcGxldG8gZGUgSnVhbiB5IHNpIHRlblx1MDBlOXMgc3UgQ1VJVCBvIEROSSBwYXJhIGluY2x1aXJsbyBlbiBlbCBwcmVzdXB1ZXN0by4ifQ=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "15",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "19",
+      "eventTime": "2026-08-03T18:47:53.499460057Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382470",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "18",
+        "identity": "627737@unreal-copilot",
+        "requestId": "d9e68bd6-157e-406a-aa1d-de7927040438",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "20",
+      "eventTime": "2026-08-03T18:47:53.689472213Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382471",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJzZW50Ijp0cnVlfQ=="
+            }
+          ]
+        },
+        "scheduledEventId": "18",
+        "startedEventId": "19",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "21",
+      "eventTime": "2026-08-03T18:47:53.689482694Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382472",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "22",
+      "eventTime": "2026-08-03T18:47:53.696382541Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382476",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "21",
+        "identity": "627737@unreal-copilot",
+        "requestId": "9a3a0561-730a-4388-94ab-19f9881f18a3",
+        "historySizeBytes": "3992",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "23",
+      "eventTime": "2026-08-03T18:47:53.704018326Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382480",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "21",
+        "startedEventId": "22",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "24",
+      "eventTime": "2026-08-03T18:47:53.704047632Z",
+      "eventType": "EVENT_TYPE_TIMER_STARTED",
+      "taskId": "1382481",
+      "timerStartedEventAttributes": {
+        "timerId": "2",
+        "startToFireTimeout": "604800s",
+        "workflowTaskCompletedEventId": "23"
+      }
+    },
+    {
+      "eventId": "25",
+      "eventTime": "2026-08-03T18:48:35.841032620Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED",
+      "taskId": "1382487",
+      "workflowExecutionSignaledEventAttributes": {
+        "signalName": "receive_message",
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjaGFubmVsIjoid2ViIiwiY2hhbm5lbF9yZWYiOiIwNjIwMDc1OS1iOWM5LTRmNzYtYjUyMy1kNTAxMDE0MTRmM2YiLCJraW5kIjoidGV4dCIsInRleHQiOiJubyB0ZW5nbyBlbCBDVUlULCBzb2xvIGVsIG5vbWJyZSwgZGFsZSBjb24gZXNvIn0="
+            }
+          ]
+        },
+        "identity": "627752@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "26",
+      "eventTime": "2026-08-03T18:48:35.841039713Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382488",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "27",
+      "eventTime": "2026-08-03T18:48:35.847983594Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382492",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "26",
+        "identity": "627737@unreal-copilot",
+        "requestId": "1cad1820-232d-4650-bd3e-cd6a10a0e43c",
+        "historySizeBytes": "4604",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "28",
+      "eventTime": "2026-08-03T18:48:35.856392130Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382496",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "26",
+        "startedEventId": "27",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "29",
+      "eventTime": "2026-08-03T18:48:35.856421194Z",
+      "eventType": "EVENT_TYPE_TIMER_CANCELED",
+      "taskId": "1382497",
+      "timerCanceledEventAttributes": {
+        "timerId": "2",
+        "startedEventId": "24",
+        "workflowTaskCompletedEventId": "28",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "30",
+      "eventTime": "2026-08-03T18:48:35.856446843Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382498",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "3",
+        "activityType": {
+          "name": "call_llm_tools"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjbGllbnRlX2lkIjoiNGYzZWNiNzgtMmUzNi00MDQ0LWE1NmUtMGU3ZWY2YzRhNjU1IiwiZG9tYWluIjoiZW1wcmVuZGVkb3IiLCJtZXNzYWdlcyI6W3siY29udGVudCI6ImhhY2VsZSB1biBwcmVzdXB1ZXN0byBhIEp1YW4gcG9yIGRvcyBzaWxsYXMgZGUgbWFkZXJhIGEgODAwMCBjYWRhIHVuYSB5IHVuIGZsZXRlIGEgMTUwMCIsInJvbGUiOiJ1c2VyIn0seyJjb250ZW50IjoiTmVjZXNpdG8gcXVlIG1lIGNvbmZpcm1lcyBlbCBub21icmUgY29tcGxldG8gZGUgSnVhbiB5IHNpIHRlblx1MDBlOXMgc3UgQ1VJVCBvIEROSSBwYXJhIGluY2x1aXJsbyBlbiBlbCBwcmVzdXB1ZXN0by4iLCJyb2xlIjoiYXNzaXN0YW50In0seyJjb250ZW50Ijoibm8gdGVuZ28gZWwgQ1VJVCwgc29sbyBlbCBub21icmUsIGRhbGUgY29uIGVzbyIsInJvbGUiOiJ1c2VyIn1dLCJzeXN0ZW1fZXh0cmEiOiIiLCJ0b29sX2Nob2ljZSI6ImF1dG8ifQ=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "28",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "31",
+      "eventTime": "2026-08-03T18:48:35.863046489Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382503",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "30",
+        "identity": "627737@unreal-copilot",
+        "requestId": "3872a2e6-b8af-4906-9dc0-a974fd661fd6",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "32",
+      "eventTime": "2026-08-03T18:48:37.430957968Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382504",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjb250ZW50IjpudWxsLCJmYWlsZWRfb3ZlciI6ZmFsc2UsImZpbmlzaF9yZWFzb24iOiJ0b29sX2NhbGxzIiwibW9kZWwiOiJncHQtNG8tbWluaSIsInRvb2xfY2FsbHMiOlt7ImFyZ3VtZW50cyI6eyJjbGllbnRlX25vbWJyZSI6Ikp1YW4iLCJjb25jZXB0byI6InByZXN1cHVlc3RvIGRlIHNpbGxhcyB5IGZsZXRlIiwiaXRlbXMiOlt7ImNhbnRpZGFkIjoiMiIsImRlc2NyaXBjaW9uIjoic2lsbGEgZGUgbWFkZXJhIiwicHJlY2lvX3VuaXRhcmlvIjoiODAwMCJ9LHsiY2FudGlkYWQiOiIxIiwiZGVzY3JpcGNpb24iOiJmbGV0ZSIsInByZWNpb191bml0YXJpbyI6IjE1MDAifV19LCJpZCI6ImNhbGxfdjVBVEN4MlpqU3hDWHhJck05TkVhbUdwIiwibmFtZSI6InJlZ2lzdHJhcl9wcmVzdXB1ZXN0byJ9XX0="
+            }
+          ]
+        },
+        "scheduledEventId": "30",
+        "startedEventId": "31",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "33",
+      "eventTime": "2026-08-03T18:48:37.430970712Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382505",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "34",
+      "eventTime": "2026-08-03T18:48:37.437719342Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382509",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "33",
+        "identity": "627737@unreal-copilot",
+        "requestId": "998aa786-743d-413a-9ed1-97321ef6d4aa",
+        "historySizeBytes": "6243",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "35",
+      "eventTime": "2026-08-03T18:48:37.447535864Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382513",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "33",
+        "startedEventId": "34",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "36",
+      "eventTime": "2026-08-03T18:48:37.447588614Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382514",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "4",
+        "activityType": {
+          "name": "execute_tool"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJhcmd1bWVudHMiOnsiY2xpZW50ZV9ub21icmUiOiJKdWFuIiwiY29uY2VwdG8iOiJwcmVzdXB1ZXN0byBkZSBzaWxsYXMgeSBmbGV0ZSIsIml0ZW1zIjpbeyJjYW50aWRhZCI6IjIiLCJkZXNjcmlwY2lvbiI6InNpbGxhIGRlIG1hZGVyYSIsInByZWNpb191bml0YXJpbyI6IjgwMDAifSx7ImNhbnRpZGFkIjoiMSIsImRlc2NyaXBjaW9uIjoiZmxldGUiLCJwcmVjaW9fdW5pdGFyaW8iOiIxNTAwIn1dfSwiY29uZmlybWVkIjpmYWxzZSwiY29udiI6eyJjaGFubmVsIjoid2ViIiwiY2hhbm5lbF9yZWYiOiIwNjIwMDc1OS1iOWM5LTRmNzYtYjUyMy1kNTAxMDE0MTRmM2YiLCJjbGllbnRlX2lkIjoiNGYzZWNiNzgtMmUzNi00MDQ0LWE1NmUtMGU3ZWY2YzRhNjU1In0sImRvbWFpbiI6ImVtcHJlbmRlZG9yIiwiaWRlbV9rZXkiOiJjb252LXdlYi00ZjNlY2I3OC0yZTM2LTQwNDQtYTU2ZS0wZTdlZjZjNGE2NTUtMDYyMDA3NTktYjljOS00Zjc2LWI1MjMtZDUwMTAxNDE0ZjNmLTItMCIsIm5hbWUiOiJyZWdpc3RyYXJfcHJlc3VwdWVzdG8ifQ=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "35",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "37",
+      "eventTime": "2026-08-03T18:48:37.454203700Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382519",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "36",
+        "identity": "627737@unreal-copilot",
+        "requestId": "f6ee867b-62f2-4526-b31a-f2ec1a7249dc",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "38",
+      "eventTime": "2026-08-03T18:48:37.646165162Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382520",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJhcnRpZmFjdCI6eyJkYXRhIjp7ImNvbmNlcHRvIjoicHJlc3VwdWVzdG8gZGUgc2lsbGFzIHkgZmxldGUiLCJpdGVtcyI6W3siY2FudGlkYWQiOiIyLjAwIiwiZGVzY3JpcGNpb24iOiJzaWxsYSBkZSBtYWRlcmEiLCJwcmVjaW9fdW5pdGFyaW8iOiI4MDAwLjAwIn0seyJjYW50aWRhZCI6IjEuMDAiLCJkZXNjcmlwY2lvbiI6ImZsZXRlIiwicHJlY2lvX3VuaXRhcmlvIjoiMTUwMC4wMCJ9XSwicmVjZXB0b3IiOnsiY29udGFjdG8iOm51bGwsImRvY19ucm8iOm51bGwsImRvY190aXBvIjpudWxsLCJub21icmUiOiJKdWFuIn19LCJraW5kIjoicHJlc3VwdWVzdG9fcHJvcHVlc3RvIn0sImlzX3dyaXRlIjpmYWxzZSwib2JzZXJ2YXRpb24iOnsicmVzdWx0IjoiUHJvcHVzZSB1biBwcmVzdXB1ZXN0byBkZSBcdTAwYWJwcmVzdXB1ZXN0byBkZSBzaWxsYXMgeSBmbGV0ZVx1MDBiYiBwYXJhIEp1YW4geSBzZSBsbyBtdWVzdHJvIGVuIHVuYSB0YXJqZXRhIHBhcmEgcXVlIGxhIHJldmlzZS4gVE9EQVZcdTAwY2RBIE5PIGVzdFx1MDBlMSBndWFyZGFkbyBcdTIwMTQgTk8gZGlnYXMgXCJhbm90XHUwMGU5XCIsIFwibGlzdG9cIiBuaSBcImd1YXJkYWRvXCIgcG9ycXVlIG5vIGVzIGNpZXJ0by4gRGVjaWxlIGV4YWN0YW1lbnRlOiBcIlRlIGFybVx1MDBlOSB1biBib3JyYWRvciBkZSBwcmVzdXB1ZXN0byBwYXJhIEp1YW4sIHJldmlzYWxvIHkgY29uZmlybWFsbyBjdWFuZG8gcXVpZXJhcy5cIiJ9LCJzdGF0dXMiOiJvayIsInRvb2xfY2FsbF9pZCI6ImNvbnYtd2ViLTRmM2VjYjc4LTJlMzYtNDA0NC1hNTZlLTBlN2VmNmM0YTY1NS0wNjIwMDc1OS1iOWM5LTRmNzYtYjUyMy1kNTAxMDE0MTRmM2YtMi0wIn0="
+            }
+          ]
+        },
+        "scheduledEventId": "36",
+        "startedEventId": "37",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "39",
+      "eventTime": "2026-08-03T18:48:37.646174940Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382521",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "40",
+      "eventTime": "2026-08-03T18:48:37.653364940Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382525",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "39",
+        "identity": "627737@unreal-copilot",
+        "requestId": "eaa40904-ab3f-4be5-ba5a-59f381159cd7",
+        "historySizeBytes": "8336",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "41",
+      "eventTime": "2026-08-03T18:48:37.663647838Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382529",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "39",
+        "startedEventId": "40",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "42",
+      "eventTime": "2026-08-03T18:48:37.663681452Z",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "taskId": "1382530",
+      "markerRecordedEventAttributes": {
+        "markerName": "core_patch",
+        "details": {
+          "patch-data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJpZCI6InRyYWNlLXNvbG8tY3VlbnRhLXRvb2xzLW9rIiwiZGVwcmVjYXRlZCI6ZmFsc2V9"
+              }
+            ]
+          }
+        },
+        "workflowTaskCompletedEventId": "41"
+      }
+    },
+    {
+      "eventId": "43",
+      "eventTime": "2026-08-03T18:48:37.663716809Z",
+      "eventType": "EVENT_TYPE_UPSERT_WORKFLOW_SEARCH_ATTRIBUTES",
+      "taskId": "1382531",
+      "upsertWorkflowSearchAttributesEventAttributes": {
+        "workflowTaskCompletedEventId": "41",
+        "searchAttributes": {
+          "indexedFields": {
+            "TemporalChangeVersion": {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg==",
+                "type": "S2V5d29yZExpc3Q="
+              },
+              "data": "WyJuYXJyYS1ndWFyZHJhaWwtcmVxdWlyZWQtcmV0cnkiLCJyZWFjdC1zdHJ1Y3R1cmFsLXRyYW5zY3JpcHQiLCJ0cmFjZS1zb2xvLWN1ZW50YS10b29scy1vayIsInVuLXR1cm5vLXJvdG8tbm8tbWF0YS1sYS1zZXNpb24iXQ=="
+            }
+          }
+        }
+      }
+    },
+    {
+      "eventId": "44",
+      "eventTime": "2026-08-03T18:48:37.663763848Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382532",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "5",
+        "activityType": {
+          "name": "call_llm_tools"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjbGllbnRlX2lkIjoiNGYzZWNiNzgtMmUzNi00MDQ0LWE1NmUtMGU3ZWY2YzRhNjU1IiwiZG9tYWluIjoiZW1wcmVuZGVkb3IiLCJtZXNzYWdlcyI6W3siY29udGVudCI6ImhhY2VsZSB1biBwcmVzdXB1ZXN0byBhIEp1YW4gcG9yIGRvcyBzaWxsYXMgZGUgbWFkZXJhIGEgODAwMCBjYWRhIHVuYSB5IHVuIGZsZXRlIGEgMTUwMCIsInJvbGUiOiJ1c2VyIn0seyJjb250ZW50IjoiTmVjZXNpdG8gcXVlIG1lIGNvbmZpcm1lcyBlbCBub21icmUgY29tcGxldG8gZGUgSnVhbiB5IHNpIHRlblx1MDBlOXMgc3UgQ1VJVCBvIEROSSBwYXJhIGluY2x1aXJsbyBlbiBlbCBwcmVzdXB1ZXN0by4iLCJyb2xlIjoiYXNzaXN0YW50In0seyJjb250ZW50Ijoibm8gdGVuZ28gZWwgQ1VJVCwgc29sbyBlbCBub21icmUsIGRhbGUgY29uIGVzbyIsInJvbGUiOiJ1c2VyIn0seyJjb250ZW50IjpudWxsLCJyb2xlIjoiYXNzaXN0YW50IiwidG9vbF9jYWxscyI6W3siZnVuY3Rpb24iOnsiYXJndW1lbnRzIjoie1wiY2xpZW50ZV9ub21icmVcIjogXCJKdWFuXCIsIFwiY29uY2VwdG9cIjogXCJwcmVzdXB1ZXN0byBkZSBzaWxsYXMgeSBmbGV0ZVwiLCBcIml0ZW1zXCI6IFt7XCJjYW50aWRhZFwiOiBcIjJcIiwgXCJkZXNjcmlwY2lvblwiOiBcInNpbGxhIGRlIG1hZGVyYVwiLCBcInByZWNpb191bml0YXJpb1wiOiBcIjgwMDBcIn0sIHtcImNhbnRpZGFkXCI6IFwiMVwiLCBcImRlc2NyaXBjaW9uXCI6IFwiZmxldGVcIiwgXCJwcmVjaW9fdW5pdGFyaW9cIjogXCIxNTAwXCJ9XX0iLCJuYW1lIjoicmVnaXN0cmFyX3ByZXN1cHVlc3RvIn0sImlkIjoiY2FsbF92NUFUQ3gyWmpTeENYeElyTTlORWFtR3AiLCJ0eXBlIjoiZnVuY3Rpb24ifV19LHsiY29udGVudCI6IntcInJlc3VsdFwiOiBcIlByb3B1c2UgdW4gcHJlc3VwdWVzdG8gZGUgXHUwMGFicHJlc3VwdWVzdG8gZGUgc2lsbGFzIHkgZmxldGVcdTAwYmIgcGFyYSBKdWFuIHkgc2UgbG8gbXVlc3RybyBlbiB1bmEgdGFyamV0YSBwYXJhIHF1ZSBsYSByZXZpc2UuIFRPREFWXHUwMGNkQSBOTyBlc3RcdTAwZTEgZ3VhcmRhZG8gXHUyMDE0IE5PIGRpZ2FzIFxcXCJhbm90XHUwMGU5XFxcIiwgXFxcImxpc3RvXFxcIiBuaSBcXFwiZ3VhcmRhZG9cXFwiIHBvcnF1ZSBubyBlcyBjaWVydG8uIERlY2lsZSBleGFjdGFtZW50ZTogXFxcIlRlIGFybVx1MDBlOSB1biBib3JyYWRvciBkZSBwcmVzdXB1ZXN0byBwYXJhIEp1YW4sIHJldmlzYWxvIHkgY29uZmlybWFsbyBjdWFuZG8gcXVpZXJhcy5cXFwiXCJ9Iiwicm9sZSI6InRvb2wiLCJ0b29sX2NhbGxfaWQiOiJjYWxsX3Y1QVRDeDJaalN4Q1h4SXJNOU5FYW1HcCJ9XSwic3lzdGVtX2V4dHJhIjoiIiwidG9vbF9jaG9pY2UiOiJhdXRvIn0="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "41",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "45",
+      "eventTime": "2026-08-03T18:48:37.672323280Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382538",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "44",
+        "identity": "627737@unreal-copilot",
+        "requestId": "d8a3d07e-7287-44c4-a78e-c6cdb909d178",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "46",
+      "eventTime": "2026-08-03T18:48:39.062283943Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382539",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjb250ZW50IjoiVGUgYXJtXHUwMGU5IHVuIGJvcnJhZG9yIGRlIHByZXN1cHVlc3RvIHBhcmEgSnVhbiwgcmV2aXNhbG8geSBjb25maXJtYWxvIGN1YW5kbyBxdWllcmFzLiIsImZhaWxlZF9vdmVyIjpmYWxzZSwiZmluaXNoX3JlYXNvbiI6InN0b3AiLCJtb2RlbCI6ImdwdC00by1taW5pIiwidG9vbF9jYWxscyI6W119"
+            }
+          ]
+        },
+        "scheduledEventId": "44",
+        "startedEventId": "45",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "47",
+      "eventTime": "2026-08-03T18:48:39.062292599Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382540",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "48",
+      "eventTime": "2026-08-03T18:48:39.068197816Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382544",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "47",
+        "identity": "627737@unreal-copilot",
+        "requestId": "af05c3aa-932c-4e0a-97b8-2fc47fe1b02a",
+        "historySizeBytes": "10973",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "49",
+      "eventTime": "2026-08-03T18:48:39.077126099Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382548",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "47",
+        "startedEventId": "48",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "50",
+      "eventTime": "2026-08-03T18:48:39.077164552Z",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "taskId": "1382549",
+      "markerRecordedEventAttributes": {
+        "markerName": "core_patch",
+        "details": {
+          "patch-data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJpZCI6Imhpc3RvcnktdG9vbC10cmFjZS1tYXJrZXIiLCJkZXByZWNhdGVkIjpmYWxzZX0="
+              }
+            ]
+          }
+        },
+        "workflowTaskCompletedEventId": "49"
+      }
+    },
+    {
+      "eventId": "51",
+      "eventTime": "2026-08-03T18:48:39.077196744Z",
+      "eventType": "EVENT_TYPE_UPSERT_WORKFLOW_SEARCH_ATTRIBUTES",
+      "taskId": "1382550",
+      "upsertWorkflowSearchAttributesEventAttributes": {
+        "workflowTaskCompletedEventId": "49",
+        "searchAttributes": {
+          "indexedFields": {
+            "TemporalChangeVersion": {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg==",
+                "type": "S2V5d29yZExpc3Q="
+              },
+              "data": "WyJoaXN0b3J5LXRvb2wtdHJhY2UtbWFya2VyIiwibmFycmEtZ3VhcmRyYWlsLXJlcXVpcmVkLXJldHJ5IiwicmVhY3Qtc3RydWN0dXJhbC10cmFuc2NyaXB0IiwidHJhY2Utc29sby1jdWVudGEtdG9vbHMtb2siLCJ1bi10dXJuby1yb3RvLW5vLW1hdGEtbGEtc2VzaW9uIl0="
+            }
+          }
+        }
+      }
+    },
+    {
+      "eventId": "52",
+      "eventTime": "2026-08-03T18:48:39.077240396Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1382551",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "6",
+        "activityType": {
+          "name": "send_channel_message"
+        },
+        "taskQueue": {
+          "name": "agent-emprendedor",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJjYXJkIjp7ImRhdGEiOnsiY29uY2VwdG8iOiJwcmVzdXB1ZXN0byBkZSBzaWxsYXMgeSBmbGV0ZSIsIml0ZW1zIjpbeyJjYW50aWRhZCI6IjIuMDAiLCJkZXNjcmlwY2lvbiI6InNpbGxhIGRlIG1hZGVyYSIsInByZWNpb191bml0YXJpbyI6IjgwMDAuMDAifSx7ImNhbnRpZGFkIjoiMS4wMCIsImRlc2NyaXBjaW9uIjoiZmxldGUiLCJwcmVjaW9fdW5pdGFyaW8iOiIxNTAwLjAwIn1dLCJyZWNlcHRvciI6eyJjb250YWN0byI6bnVsbCwiZG9jX25ybyI6bnVsbCwiZG9jX3RpcG8iOm51bGwsIm5vbWJyZSI6Ikp1YW4ifX0sImtpbmQiOiJwcmVzdXB1ZXN0b19wcm9wdWVzdG8ifSwiY2hhbm5lbCI6IndlYiIsImNoYW5uZWxfcmVmIjoiMDYyMDA3NTktYjljOS00Zjc2LWI1MjMtZDUwMTAxNDE0ZjNmIiwiY2hvaWNlcyI6W10sImNsaWVudGVfaWQiOiI0ZjNlY2I3OC0yZTM2LTQwNDQtYTU2ZS0wZTdlZjZjNGE2NTUiLCJ0ZXh0IjoiVGUgYXJtXHUwMGU5IHVuIGJvcnJhZG9yIGRlIHByZXN1cHVlc3RvIHBhcmEgSnVhbiwgcmV2aXNhbG8geSBjb25maXJtYWxvIGN1YW5kbyBxdWllcmFzLiJ9"
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "120s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "49",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 5,
+          "nonRetryableErrorTypes": [
+            "NonRetryableError"
+          ]
+        },
+        "useWorkflowBuildId": true,
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "53",
+      "eventTime": "2026-08-03T18:48:39.084287804Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1382557",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "52",
+        "identity": "627737@unreal-copilot",
+        "requestId": "33e9ca33-d773-46c5-880f-822e7bb316a1",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "54",
+      "eventTime": "2026-08-03T18:48:39.276206945Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1382558",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJzZW50Ijp0cnVlfQ=="
+            }
+          ]
+        },
+        "scheduledEventId": "52",
+        "startedEventId": "53",
+        "identity": "627737@unreal-copilot"
+      }
+    },
+    {
+      "eventId": "55",
+      "eventTime": "2026-08-03T18:48:39.276216123Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1382559",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "627737@unreal-copilot-631e8cc6ff8942cbb1bbdf7510d18809",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "agent-emprendedor"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "56",
+      "eventTime": "2026-08-03T18:48:39.282555624Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1382563",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "55",
+        "identity": "627737@unreal-copilot",
+        "requestId": "08d62e70-0248-4184-863f-5034dc297ea7",
+        "historySizeBytes": "12659",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        }
+      }
+    },
+    {
+      "eventId": "57",
+      "eventTime": "2026-08-03T18:48:39.291701342Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1382567",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "55",
+        "startedEventId": "56",
+        "identity": "627737@unreal-copilot",
+        "workerVersion": {
+          "buildId": "f8b51d3cc21c8ef98a9adeef904acdb0"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "58",
+      "eventTime": "2026-08-03T18:48:39.291733113Z",
+      "eventType": "EVENT_TYPE_TIMER_STARTED",
+      "taskId": "1382568",
+      "timerStartedEventAttributes": {
+        "timerId": "3",
+        "startToFireTimeout": "604800s",
+        "workflowTaskCompletedEventId": "57"
+      }
+    }
+  ]
+}

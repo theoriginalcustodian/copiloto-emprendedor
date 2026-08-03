@@ -559,7 +559,23 @@ class ConversationWorkflow:
                 # `not trace`: si el turno YA ejecutó una tool más temprano en este mismo loop, un cierre
                 # "Listo, ..." es VERDAD (hay tool_call real detrás, en trace) -- sin este guard, un cierre
                 # honesto tras una ejecución real dispararía un required espurio.
-                if workflow.patched("narra-guardrail-required-retry") and not trace and _narra_completitud(content):
+                #
+                # RETIRO (backend, 2026-08-03): `narra-guardrail-retirado` envuelve el bloque VIEJO en vez de
+                # borrarlo -- 34/81 ConversationWorkflow en vuelo tienen `narra-guardrail-required-retry`
+                # grabado en su historia (verificado: `temporal workflow count ... TemporalChangeVersion=
+                # 'narra-guardrail-required-retry'`), y borrar el `if workflow.patched(...)` de raíz les
+                # rompería el replay (NonDeterminismError). Retirar vía patch NUEVO que envuelve el viejo es
+                # replay-safe para AMBOS: al reproducir turnos VIEJOS (el marker `narra-guardrail-retirado`
+                # no existe en esa porción de la historia) devuelve False y el chequeo viejo se evalúa
+                # IDÉNTICO a como quedó grabado -- ningún turno pasado cambia. Para cualquier turno NUEVO
+                # (sesión vieja continuando o sesión nueva) devuelve True y el guardrail queda retirado.
+                # Evidencia de que retirarlo es seguro: `scripts/retest_narra_guardrail_caso2.py`, 10/10
+                # rondas honestas contra el LLM real Y el guardrail nunca disparó (verificado contando
+                # `call_llm_tools` en el history real de Temporal: 2/2, nunca 3) -- ver
+                # avance_backend-a-planificacion_retest-caso2-10-10-honesto-guardrail-nunca-disparo.md.
+                if (not workflow.patched("narra-guardrail-retirado")
+                        and workflow.patched("narra-guardrail-required-retry")
+                        and not trace and _narra_completitud(content)):
                     resp = await workflow.execute_activity(
                         "call_llm_tools",
                         {"domain": domain, "messages": messages, "tool_choice": "required",
