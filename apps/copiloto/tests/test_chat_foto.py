@@ -130,8 +130,10 @@ def test_chat_foto_writes_gasto_propuesto_card_with_empty_monto(monkeypatch):
     assert data["categoria"] == "mercaderia"
     assert data["origen"] == "foto"
     assert data["medio_pago"] is None                    # nunca se infiere de una foto
-    # el guardrail verbal (narra-sin-hacer): nunca "guardado"/"anoté"/"listo"
-    for verbo in ("guardado", "anoté", "listo"):
+    # el guardrail verbal (narra-sin-hacer, mismo patrón que `_run_registrar_gasto`): el texto
+    # ACLARA que no está guardado -- lo prohibido es afirmarlo como hecho ("anoté", "listo").
+    assert "todavía no está guardado" in sent["text"].lower()
+    for verbo in ("anoté", "listo"):
         assert verbo not in sent["text"].lower()
 
 
