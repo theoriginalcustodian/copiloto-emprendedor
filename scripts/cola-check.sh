@@ -46,9 +46,11 @@ while IFS='|' read -r id nombre disp estado; do
   estado=$(echo "$estado" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
   if [ "$estado" = "arrancando" ]; then
     arrancando="$id ($nombre)"
-  elif [ -z "$head_id" ]; then          # primer pendiente = cabeza de la cola
+  elif [ "$estado" = "pendiente" ] && [ -z "$head_id" ]; then   # primer PENDIENTE = cabeza de la cola
     head_id="$id"; head_nombre="$nombre"; head_disp="$disp"
   fi
+  # estados que NO son cabeza de cola: done (✅…), bloqueado, o cualquier otro texto libre —
+  # sólo "pendiente" literal es arrancable-sin-arrancar; el resto ya tiene su propio seguimiento.
 done <<< "$bloque"
 
 # ── Veredicto ────────────────────────────────────────────────────────────────
