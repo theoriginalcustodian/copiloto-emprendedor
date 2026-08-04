@@ -52,6 +52,7 @@ from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
 from clients.agent.providers.vision import _API_ERRORS as _VISION_API_ERRORS
 from clients.agent.providers.vision import OpenAIVisionOCR
+from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
@@ -82,6 +83,10 @@ MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
 # Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
 # 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
 MAX_IMAGEN_BYTES = int(os.environ.get("MAX_IMAGEN_BYTES", 10 * 1024 * 1024))
+
+# Contrato BETA1a-feedback-endpoint §1: 2000 caracteres alcanza de sobra para feedback in-app
+# (no es un campo de texto libre extenso como una nota de voz larga transcripta).
+MAX_FEEDBACK_TEXTO = 2000
 
 # Un copiloto es UNA conversación siempre viva, no una charla que se cierra a cada rato: la sesión es
 # efectivamente PERMANENTE. El history de Temporal lo acota el continue-as-new del ConversationWorkflow (se
@@ -484,6 +489,11 @@ class ChatIn(BaseModel):
     kind: str = "text"
 
 
+class FeedbackIn(BaseModel):
+    texto: str
+    contexto: str | None = None
+
+
 def _filename_for_content_type(content_type: str) -> str:
     """Deriva el filename (`audio.<ext>`) del Content-Type MIME real que sube el browser
     (`audio/webm`, `audio/ogg`, `audio/mp4`, ...) -- Groq valida el formato por la EXTENSIÓN del
@@ -631,6 +641,45 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                           "engine_mode": COPILOTO_ENGINE_MODE},
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
+
+    @app.post("/feedback")
+    def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Feedback in-app del emprendedor por texto (BETA-1a, contrato
+        `BETA1a-feedback-endpoint.md` §1). `def` (no `async def`, mismo criterio que las rutas
+        `def` de más abajo): la única I/O es psycopg2 bloqueante, FastAPI la corre en threadpool."""
+        texto = (body.texto or "").strip()
+        if not texto:
+            raise HTTPException(status_code=422, detail="feedback vacío")
+        if len(texto) > MAX_FEEDBACK_TEXTO:
+            raise HTTPException(status_code=422, detail="feedback demasiado largo (máx 2000 caracteres)")
+        feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
+            tipo="texto", texto=texto, contexto=body.contexto)
+        return {"id": feedback_id, "ok": True}
+
+    @app.post("/feedback/audio")
+    async def feedback_audio(audio: UploadFile = File(...), contexto: str | None = Form(None),
+                             cliente_id: str = Depends(require_tenant)) -> dict:
+        """Feedback in-app por voz -- MISMO patrón de error que `/chat/audio` (contrato §1: "copiar
+        la ruta, no reinventar manejo de errores"). NO persiste el audio, sólo el texto transcripto
+        (cero infraestructura nueva de storage, igual que `/chat/audio`)."""
+        if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        audio_bytes = await audio.read()
+        if len(audio_bytes) > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        content_type = audio.content_type or "audio/ogg"
+        try:
+            transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail="voz no configurada") from e
+        except _STT_API_ERRORS as e:
+            raise HTTPException(status_code=502, detail="error del servicio de transcripción") from e
+        transcript = (transcript or "").strip()
+        if not transcript:
+            raise HTTPException(status_code=422, detail="no se entendió el audio")
+        feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
+            tipo="voz", texto=transcript, contexto=contexto)
+        return {"id": feedback_id, "ok": True, "transcripcion": transcript}
 
     @app.post("/chat/foto")
     async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
