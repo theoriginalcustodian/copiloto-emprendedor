@@ -4,6 +4,7 @@ import { BottomSheet } from '../design-system';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
+import { GastosScreen } from '../modules/gastos';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -102,6 +103,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
           <ChatScreen onHideChange={setTabHidden} onSurfaceTap={toggleChrome} />
         )}
         {activeTab === 'connections' && <ConnectionsScreen />}
+        {activeTab === 'gastos' && <GastosScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />

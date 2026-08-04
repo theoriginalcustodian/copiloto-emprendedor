@@ -1,0 +1,235 @@
+/*
+ * Estilos del módulo Gastos (M-WEB spike 1) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que connections.css/account.css (cero color literal).
+ */
+
+.gastos-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.gastos-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gastos-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.gastos-screen__loading,
+.gastos-screen__body,
+.gastos-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gastos-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+.gastos-screen__total {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--mono);
+  text-align: center;
+  margin: 0;
+}
+
+/* ---------- ResumenMes ---------- */
+.gastos-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 15px;
+}
+
+.gastos-resumen__periodo,
+.gastos-resumen__mes-anterior {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.gastos-resumen__total {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 2px 0 4px;
+}
+
+.gastos-resumen__categorias {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gastos-resumen__fila {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gastos-resumen__encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.gastos-resumen__cat-label {
+  color: var(--text);
+  flex: 1;
+}
+
+.gastos-resumen__cat-total {
+  color: var(--label);
+}
+
+.gastos-resumen__barra-fondo {
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--label) 15%, transparent);
+}
+
+.gastos-resumen__barra {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--btn-bg);
+}
+
+/* ---------- TarjetaGasto ---------- */
+.tarjeta-gasto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  cursor: default;
+}
+
+.tarjeta-gasto__izquierda {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tarjeta-gasto__titulo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-gasto__sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-gasto__monto {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+/* ---------- FormularioGasto ---------- */
+.formulario-gasto {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-gasto__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulario-gasto__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.formulario-gasto__campo input,
+.formulario-gasto__campo select,
+.formulario-gasto__campo textarea {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.formulario-gasto__campo textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.formulario-gasto__campo input::placeholder {
+  color: var(--input-fg);
+}
+
+.formulario-gasto__campo input:focus-visible,
+.formulario-gasto__campo select:focus-visible,
+.formulario-gasto__campo textarea:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.formulario-gasto__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.formulario-gasto__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

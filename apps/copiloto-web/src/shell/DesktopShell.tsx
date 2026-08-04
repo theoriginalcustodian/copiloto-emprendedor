@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
+import { GastosScreen } from '../modules/gastos';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { Rail } from './Rail';
@@ -62,6 +63,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
       <main className="desktop-shell__content" data-testid="desktop-shell-content">
         {activeTab === 'chat' && <ChatScreen variant="desktop" />}
         {activeTab === 'connections' && <ConnectionsScreen />}
+        {activeTab === 'gastos' && <GastosScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>

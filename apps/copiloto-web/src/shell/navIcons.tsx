@@ -65,10 +65,24 @@ export function AccountIcon(): ReactNode {
   );
 }
 
+/** Billetera -- mismo lenguaje de trazo que el resto del set. Sin equivalente en el diseño
+ * original (M-WEB spike 1, `contrato_planificacion-a-frontend_MWEB-spike-gastos-portado-a-web.md`
+ * agrega el primer módulo de negocio al shell web, así que no hay SVG del mock para reusar). */
+export function GastosIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="6" width="18" height="13" rx="2" {...strokeProps} />
+      <path d="M3 10h18" {...strokeProps} />
+      <path d="M16 14.5h2" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
   apps: AppsIcon,
   connections: ConnectionsIcon,
+  gastos: GastosIcon,
   account: AccountIcon,
 };

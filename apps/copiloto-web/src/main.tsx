@@ -6,6 +6,8 @@ import './design-system/fonts-web.css';
 import './design-system/themes.css';
 import './design-system/global.css';
 
+import './adapters/plataforma';
+
 import { App } from './App';
 import { instalarCapturaGlobal } from './lib/errores-globales';
 
