@@ -29,7 +29,8 @@
       "expo-sharing",
       "expo-splash-screen",
       "expo-font",
-      "expo-navigation-bar"
+      "expo-navigation-bar",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},
