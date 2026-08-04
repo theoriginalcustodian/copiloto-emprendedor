@@ -7,12 +7,12 @@ import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { DesktopShell } from './DesktopShell';
 import { ModeProvider } from './modeStore';
 
-function renderDesktopShell() {
+function renderDesktopShell(initialTab?: 'chat' | 'connections' | 'account') {
   return render(
     <ThemeProvider>
       <SessionProvider>
         <ModeProvider>
-          <DesktopShell />
+          <DesktopShell initialTab={initialTab} />
         </ModeProvider>
       </SessionProvider>
     </ThemeProvider>,
@@ -31,6 +31,16 @@ describe('DesktopShell', () => {
     expect(screen.getByTestId('rail')).toBeInTheDocument();
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {
+    renderDesktopShell('connections');
+    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conexiones' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('setea data-shell="desktop" en la raíz (hook de tipografía web, ver fonts-web.css)', () => {

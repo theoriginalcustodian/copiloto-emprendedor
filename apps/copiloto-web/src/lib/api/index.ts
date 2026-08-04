@@ -3,7 +3,7 @@
  * debería importar — real por default, mock si `VITE_API_MOCK=1` (dev local sin backend).
  */
 import { sendAudio } from './audio';
-import { login } from './auth';
+import { login, signup } from './auth';
 import { catalog } from './catalog';
 import { sendChat } from './chat';
 import { getConnect } from './connect';
@@ -16,6 +16,7 @@ import { warm } from './warm';
 
 const realApi: CopilotApi = {
   login,
+  signup,
   ensureOauthTenant,
   me,
   catalog,

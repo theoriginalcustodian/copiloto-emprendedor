@@ -9,6 +9,7 @@ import type {
   OauthEnsureResponse,
   ReplyResponse,
   SendAudioResponse,
+  SignupResponse,
   WarmResponse,
 } from './types';
 
@@ -51,6 +52,11 @@ export const mockApi: CopilotApi = {
       refresh_token: 'mock-refresh-token',
       user: { email },
     };
+  },
+
+  async signup(email: string): Promise<SignupResponse> {
+    await delay(undefined);
+    return { cliente_id: 'mock-cliente-nuevo', auth_user_id: 'mock-auth-user-nuevo', email };
   },
 
   async ensureOauthTenant(): Promise<OauthEnsureResponse> {

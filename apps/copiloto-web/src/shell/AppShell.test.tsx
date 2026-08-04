@@ -20,7 +20,7 @@ function mockMatchMedia() {
   }));
 }
 
-function renderAppShell() {
+function renderAppShell(initialTab?: 'chat' | 'connections' | 'account') {
   return render(
     <ThemeProvider>
       <SessionProvider>
@@ -28,7 +28,7 @@ function renderAppShell() {
             leen `useMode()` — sin este wrapper el render tira "useMode debe usarse dentro de
             <ModeProvider>" (mismo criterio que `SessionProvider` acá arriba). */}
         <ModeProvider>
-          <AppShell />
+          <AppShell initialTab={initialTab} />
         </ModeProvider>
       </SessionProvider>
     </ThemeProvider>,
@@ -47,6 +47,16 @@ describe('AppShell', () => {
     expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {
+    renderAppShell('connections');
+    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conexiones' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('tocar "Apps" abre el bottom-sheet SOBRE el Chat (no navega, gap #1 del audit mobile)', () => {

@@ -1,6 +1,12 @@
 import { AppShell } from './AppShell';
 import { DesktopShell } from './DesktopShell';
+import type { TabKey } from './TabBar';
 import { useBreakpoint } from './useBreakpoint';
+
+export interface ResponsiveShellProps {
+  /** BETA-4b: propagado tal cual a `AppShell`/`DesktopShell` — ver su docstring. */
+  initialTab?: TabKey;
+}
 
 /**
  * Switch responsive único (DESIGN-SYSTEM-EXTRACT-WEB.md §6, recomendación #3): UN árbol, un hook
@@ -12,7 +18,11 @@ import { useBreakpoint } from './useBreakpoint';
  * componente es SOLO el switch de layout, ambos shells comparten la misma sesión/tema/modo sin
  * remontarlos al cruzar el breakpoint.
  */
-export function ResponsiveShell() {
+export function ResponsiveShell({ initialTab }: ResponsiveShellProps = {}) {
   const breakpoint = useBreakpoint();
-  return breakpoint === 'desktop' ? <DesktopShell /> : <AppShell />;
+  return breakpoint === 'desktop' ? (
+    <DesktopShell initialTab={initialTab} />
+  ) : (
+    <AppShell initialTab={initialTab} />
+  );
 }

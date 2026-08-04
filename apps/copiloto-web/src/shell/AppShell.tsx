@@ -35,8 +35,14 @@ const DEFAULT_TAB: TabKey = 'chat';
  * cierra el sheet y cambia `activeTab` (mismo mecanismo de navegación por estado local que el
  * resto del shell, cero acoplamiento nuevo).
  */
-export function AppShell() {
-  const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
+export interface AppShellProps {
+  /** BETA-4b: aterrizar en un tab distinto de Chat la PRIMERA vez (ej. 'connections' recién
+   * firmado) — ver `App.tsx`/`ResponsiveShell.tsx`. Sólo afecta el mount inicial. */
+  initialTab?: TabKey;
+}
+
+export function AppShell({ initialTab }: AppShellProps = {}) {
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? DEFAULT_TAB);
   // Show/hide del chrome (tab-bar + composer al borde): lo disparan el hide-on-scroll del chat (dedo
   // apoyado) y el tap en el área de chat (toggle). SIN auto-ocultado por inactividad — escondía la
   // barra sola y forzaba un doble-tap para abrir Apps (ver useChromeAutoHide). `hidden` baja a la
