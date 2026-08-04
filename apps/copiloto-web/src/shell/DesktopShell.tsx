@@ -27,8 +27,13 @@ const DEFAULT_TAB: TabKey = 'chat';
  * `activeTab` nunca vale `'apps'` — el ítem "Apps" del Rail abre `appsModalOpen` en vez de navegar,
  * y `chat`/`connections`/`account` siguen montados debajo sin interrupción.
  */
-export function DesktopShell() {
-  const [activeTab, setActiveTab] = useState<TabKey>(DEFAULT_TAB);
+export interface DesktopShellProps {
+  /** BETA-4b: mismo criterio que `AppShell.initialTab` — ver su docstring. */
+  initialTab?: TabKey;
+}
+
+export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? DEFAULT_TAB);
   const [appsModalOpen, setAppsModalOpen] = useState(false);
   // `AppsModal` queda SIEMPRE montado (necesario para animar el cierre) — sin este gate,
   // `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del shell

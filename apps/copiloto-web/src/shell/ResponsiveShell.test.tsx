@@ -22,12 +22,12 @@ function mockMatchMedia(matches: boolean) {
   }));
 }
 
-function renderResponsiveShell() {
+function renderResponsiveShell(initialTab?: 'chat' | 'connections' | 'account') {
   return render(
     <ThemeProvider>
       <SessionProvider>
         <ModeProvider>
-          <ResponsiveShell />
+          <ResponsiveShell initialTab={initialTab} />
         </ModeProvider>
       </SessionProvider>
     </ThemeProvider>,
@@ -67,5 +67,16 @@ describe('ResponsiveShell', () => {
     mockMatchMedia(true);
     renderResponsiveShell();
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+  });
+
+  it('BETA-4b: `initialTab` se propaga tal cual al shell montado en ambos breakpoints', () => {
+    mockMatchMedia(false);
+    const { unmount } = renderResponsiveShell('connections');
+    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
+    unmount();
+
+    mockMatchMedia(true);
+    renderResponsiveShell('connections');
+    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 });

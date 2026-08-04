@@ -186,3 +186,19 @@
   color: var(--concept);
   font-weight: 500;
 }
+
+/* SignupScreen (BETA-4b) usa el mismo hint como <button> real (toggle sin router) — reset de
+ * chrome nativo, el resto de la apariencia la hereda del selector de arriba. */
+button.login-screen__link-hint {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.login-screen__link-hint:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

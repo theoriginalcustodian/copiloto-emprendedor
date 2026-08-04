@@ -24,6 +24,24 @@ export interface LoginResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /auth/signup
+// ---------------------------------------------------------------------------
+
+export interface SignupRequest {
+  email: string;
+  password: string;
+}
+
+/** `apps/copiloto/web.py:767-773` -> `onboarding.signup_and_provision` — SIN tokens: el signup
+ * sólo crea el user+tenant, no loguea. El caller encadena `POST /auth/login` con las mismas
+ * credenciales para obtener sesión (ver `SignupScreen.tsx`). */
+export interface SignupResponse {
+  cliente_id: string;
+  auth_user_id: string;
+  email: string;
+}
+
+// ---------------------------------------------------------------------------
 // GET /me
 // ---------------------------------------------------------------------------
 
@@ -190,6 +208,8 @@ export interface OauthEnsureResponse {
 
 export interface CopilotApi {
   login(email: string, password: string): Promise<LoginResponse>;
+  /** Admin-mediado hoy (spec §5.1) — crea user+tenant, NO loguea (ver `SignupResponse`). */
+  signup(email: string, password: string): Promise<SignupResponse>;
   /** First-login OAuth (Google): provisiona el tenant. Idempotente en el backend. */
   ensureOauthTenant(): Promise<OauthEnsureResponse>;
   me(): Promise<MeResponse>;
