@@ -66,7 +66,19 @@ services:
       GOTRUE_API_PORT: "9999"
       # Sin SMTP: autoconfirm ON (el alta la media el backend por admin API; el
       # reset de password se cubre por OTP-WhatsApp — deuda diferida con TODO).
-      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: ${GOTRUE_MAILER_AUTOCONFIRM:-true}
+      # --- SMTP (BETA-2.b/2.c) — SLOT: vacío hasta que el operador cargue user/pass ---
+      # Gmail: host smtp.gmail.com puerto 587, GOTRUE_SMTP_USER = la cuenta Gmail dedicada del
+      # copiloto, GOTRUE_SMTP_PASS = un APP PASSWORD (myaccount.google.com/apppasswords — NO la
+      # contraseña normal, Gmail la rechaza para SMTP con 2FA activo). Al completar los 4 valores acá
+      # abajo, flipear GOTRUE_MAILER_AUTOCONFIRM=false en el env para que el flujo de reset/verify
+      # use el mail real en vez de autoconfirmar.
+      GOTRUE_SMTP_HOST: ${GOTRUE_SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${GOTRUE_SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${GOTRUE_SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${GOTRUE_SMTP_PASS:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${GOTRUE_SMTP_ADMIN_EMAIL:-}
+      GOTRUE_SMTP_SENDER_NAME: ${GOTRUE_SMTP_SENDER_NAME:-Copiloto del Emprendedor}
       # Self-signup bloqueado (paridad con fusion): alta = admin API del backend.
       GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP:-true}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
