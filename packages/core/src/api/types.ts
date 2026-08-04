@@ -312,6 +312,28 @@ export interface SendAudioResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /feedback | POST /feedback/audio (BETA-1a — feedback in-app)
+// ---------------------------------------------------------------------------
+
+/**
+ * Contrato: `coordinacion/abierto/2026-08-04_contrato_planificacion-a-todos_BETA1a-feedback-
+ * endpoint.md`. `cliente_id` sale de `Depends(require_tenant)` (Bearer), nunca del body — mismo
+ * criterio que TODA la API.
+ */
+export interface EnviarFeedbackResponse {
+  id: number;
+  ok: boolean;
+}
+
+/** `POST /feedback/audio` — mismo patrón que `SendAudioResponse`: transcribe server-side y
+ * devuelve el texto resultante para que el front lo muestre como confirmación. */
+export interface EnviarFeedbackAudioResponse {
+  id: number;
+  ok: boolean;
+  transcripcion: string;
+}
+
+// ---------------------------------------------------------------------------
 // POST /chat/foto (Gastos Fase 2 — OCR de tickets, gpt-4o)
 // ---------------------------------------------------------------------------
 

@@ -328,3 +328,6 @@ export type {
   RegistrarCobroRequest,
   ResultadoCobro,
 } from './cobros';
+
+/** `/feedback` — BETA-1a, feedback in-app (voz + texto). Ver el docstring de `feedback.ts`. */
+export { enviarFeedback, enviarFeedbackAudio } from './feedback';
