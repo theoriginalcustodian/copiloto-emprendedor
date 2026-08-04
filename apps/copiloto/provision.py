@@ -399,6 +399,20 @@ def _ensure_imputacion_de_gastos(conn) -> None:
           f"(imputación al trabajo, idempotente)", flush=True)
 
 
+def _ensure_metering_evento_column(conn) -> None:
+    """Migración aditiva de `copiloto_metering.evento text` (BETA-1b): distingue `'llm_turno'` de
+    `'tool_call:<status>'` -- ver `metering_store.py` y `queries/metering_dashboard.sql`.
+
+    Mismo criterio y ubicación que `_ensure_reply_card_column`: corre ANTES del pase estándar, que
+    hace CREATE TABLE IF NOT EXISTS -- nunca ALTER -- y cuyo guard anti-colisión aborta si una columna
+    declarada en `uc_tables.json` falta en la tabla viva (la tabla YA existía en prod desde antes de
+    BETA-1b, sin esta columna). `ADD COLUMN IF NOT EXISTS` -> idempotente, corrible N veces."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_metering "
+                f"ADD COLUMN IF NOT EXISTS evento text NOT NULL DEFAULT 'llm_turno';")
+    print(f"OK {SCHEMA}.copiloto_metering.evento (columna aditiva text, idempotente)", flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -454,6 +468,7 @@ def provision(conn) -> dict:
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
+    _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     sql_aplicados = _apply_sql_files(conn)
