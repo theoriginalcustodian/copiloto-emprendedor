@@ -78,11 +78,25 @@ export function GastosIcon(): ReactNode {
   );
 }
 
+/** Cartera -- dos personas, para distinguirse del ícono de una sola persona de "Cuenta" (M-WEB
+ * módulo 2, 2026-08-04). Mismo lenguaje de trazo que el resto del set; sin equivalente en el
+ * diseño original por la misma razón que `GastosIcon`. */
+export function ClientesIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M16 21a4 4 0 0 0-8 0" {...strokeProps} />
+      <circle cx="12" cy="12.5" r="3.2" {...strokeProps} />
+      <path d="M20.5 20a3.2 3.2 0 0 0-3.8-4.9M3.5 20a3.2 3.2 0 0 1 3.8-4.9" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
   apps: AppsIcon,
   connections: ConnectionsIcon,
   gastos: GastosIcon,
+  clientes: ClientesIcon,
   account: AccountIcon,
 };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
+import { generarId as generateId } from '../../util/id';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -48,19 +49,6 @@ function warmMemory(sessionId: string): void {
       // best-effort — ignorar cualquier fallo del warm
     }
   })();
-}
-
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback para entornos sin Web Crypto (no debería pasar en browsers modernos ni en jsdom
-  // reciente, pero no romper si pasa).
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
 }
 
 function readOrCreateSessionId(): string {

@@ -1,0 +1,365 @@
+/*
+ * Estilos del módulo Clientes (M-WEB módulo 2) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que gastos.css (cero color literal).
+ */
+
+.clientes-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+  position: relative;
+}
+
+.clientes-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clientes-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.clientes-screen__loading,
+.clientes-screen__body,
+.clientes-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.clientes-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+.clientes-screen__total {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--mono);
+  text-align: center;
+  margin: 0;
+}
+
+.clientes-screen__duplicado {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.clientes-screen__duplicado p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.clientes-screen__buscar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clientes-screen__buscar span {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.clientes-screen__buscar input {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.clientes-screen__buscar input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ---------- TarjetaCliente ---------- */
+.tarjeta-cliente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  cursor: pointer;
+}
+
+.tarjeta-cliente__izquierda {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tarjeta-cliente__nombre {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-cliente__sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-cliente__origen {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--label);
+}
+
+/* ---------- FormularioCliente ---------- */
+.formulario-cliente {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-cliente__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.formulario-cliente__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulario-cliente__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.formulario-cliente__campo input,
+.formulario-cliente__campo select,
+.formulario-cliente__campo textarea {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.formulario-cliente__campo textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.formulario-cliente__campo input::placeholder {
+  color: var(--input-fg);
+}
+
+.formulario-cliente__campo input:focus-visible,
+.formulario-cliente__campo select:focus-visible,
+.formulario-cliente__campo textarea:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.formulario-cliente__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.formulario-cliente__aviso {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.formulario-cliente__homonimo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.formulario-cliente__homonimo-texto {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.formulario-cliente__homonimo-acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.formulario-cliente__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ---------- FichaCliente ---------- */
+.ficha-cliente {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.ficha-cliente__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.ficha-cliente__nombre {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0;
+}
+
+.ficha-cliente__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ficha-cliente__aviso,
+.ficha-cliente__error {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--label);
+  margin: 0;
+}
+
+.ficha-cliente__error {
+  color: var(--danger-fg);
+}
+
+.ficha-cliente__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ficha-cliente__datos p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+.ficha-cliente__notas {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+}
+
+.ficha-cliente__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ficha-cliente__seccion-titulo {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--btn-bg);
+  margin: 0;
+}
+
+.ficha-cliente__seccion-vacio {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.ficha-cliente__operacion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ficha-cliente__operacion-detalle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.ficha-cliente__operacion-total {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+.ficha-cliente__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 8px;
+}
