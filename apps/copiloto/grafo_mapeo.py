@@ -518,3 +518,55 @@ def construir_datasets_estado(eventos, *, group_logico: str, negocio_key: str,
         if mapeador.edge_uuid_de(s.superado) is not None
     ]
     return mapeador.datasets(group_logico), invalidaciones
+
+
+# ── ontología (BETA-G0) — registrada por `GraphityStructuredClient.registrar_ontologia` ────────────────
+def _et(name: str, props: tuple[str, ...] = ()) -> dict:
+    return {"name": name, "description": f"Entidad {name} del grafo de negocio del copiloto.",
+            "properties": [{"name": p, "type": "Text", "description": p} for p in props]}
+
+
+def _edt(name: str, props: tuple[str, ...], source_targets: tuple[tuple[str, str], ...]) -> dict:
+    return {"name": name, "description": f"Arista {name} del grafo de negocio del copiloto.",
+            "properties": [{"name": p, "type": "Text", "description": p} for p in props],
+            "source_targets": [{"source": s, "target": t} for s, t in source_targets]}
+
+
+def ontologia() -> tuple[list[dict], list[dict]]:
+    """`(entity_types, edge_types)` listos para `PUT /api/v2/entity-types` (`docs/ontologia-grafo-
+    negocio-v1.md` §5.7: registrar con `graph_ids=[<grupo del tenant>]`, nunca scope vacío — la
+    instancia es compartida entre proyectos).
+
+    Usa los MISMOS nombres de tipo (`NEGOCIO`, `EMITIO`, ...) que `MapeadorEvento`/`MapeadorEstado` —
+    los identificadores no pueden divergir del mapeo real porque son las mismas constantes del módulo.
+    Las propiedades (`property_cols`/`target_property_cols`) sí se transcriben a mano una vez: verificado
+    contra el server real en el spike de BETA-G0 (2026-08-04), no inventado — todas `Text` porque el
+    repo nunca serializa dinero como float (`_dinero`/`dos_decimales`)."""
+    entity_types = [
+        _et(NEGOCIO), _et(CLIENTE), _et(PROVEEDOR), _et(CONCEPTO),
+        _et(COMPROBANTE, ("tipo", "pto", "nro", "total", "fecha")),
+        _et(GASTO, ("monto", "categoria")),
+        _et(PRESUPUESTO, ("numero", "total", "fecha")),
+        _et(COBRO, ("monto", "fecha", "medio", "origen")),
+        _et(ESTADO, ("estado", "fecha")),
+        _et(PRECIO, ("valor", "fecha")),
+        _et(IMPUTACION, ("fecha",)),
+    ]
+    edge_types = [
+        _edt(EMITIO, ("tipo", "pto", "nro", "total", "fecha"), ((NEGOCIO, COMPROBANTE),)),
+        _edt(FACTURADO_A, ("pto", "nro", "total", "fecha"), ((COMPROBANTE, CLIENTE),)),
+        _edt(REGISTRO_GASTO, ("monto", "categoria", "fecha"), ((NEGOCIO, GASTO),)),
+        _edt(PAGADO_A, ("monto", "categoria", "fecha"), ((GASTO, PROVEEDOR),)),
+        _edt(E_PRESUPUESTO, ("total", "concepto", "fecha"), ((NEGOCIO, PRESUPUESTO),)),
+        _edt(DIRIGIDO_A, ("numero", "total", "fecha"), ((PRESUPUESTO, CLIENTE),)),
+        _edt(INCLUYE, ("numero", "cantidad", "precio_unitario"), ((PRESUPUESTO, CONCEPTO),)),
+        _edt(E_COBRO, ("monto", "fecha", "medio", "origen"), ((NEGOCIO, COBRO),)),
+        _edt(REEMPLAZA_A, ("numero", "reemplazado_numero", "fecha"), ((PRESUPUESTO, PRESUPUESTO),)),
+        _edt(ESTADO_PRESUPUESTO, ("estado", "fecha"), ((PRESUPUESTO, ESTADO),)),
+        _edt(ESTADO_COMPROBANTE, ("estado", "fecha"), ((COMPROBANTE, ESTADO),)),
+        _edt(PRECIO_DE, ("valor", "fecha"), ((NEGOCIO, PRECIO),)),
+        _edt(DE_CONCEPTO, ("valor", "fecha"), ((PRECIO, CONCEPTO),)),
+        _edt(IMPUTADO_A, ("fecha",), ((GASTO, IMPUTACION),)),
+        _edt(AL_TRABAJO, (), ((IMPUTACION, COMPROBANTE), (IMPUTACION, PRESUPUESTO), (IMPUTACION, COBRO))),
+    ]
+    return entity_types, edge_types

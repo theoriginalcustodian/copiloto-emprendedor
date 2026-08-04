@@ -237,6 +237,22 @@ cd "$REMOTE/deploy/worker"
 PYTHONPATH="$REMOTE/apps/copiloto" "$VENV/bin/python" ensure_autosanacion_schedules.py
 REMOTE_AUTOSANACION_SCHEDULES
 
+echo "==> [4.7/7] ensure_grafo_sync_schedules.py (BETA-G0 — idempotente, fail-open como autosanación)"
+# Mismo criterio que el bloque de arriba: el sync incremental evento→grafo es una feature opcional
+# (Inteligencia de Negocio), no el camino crítico del chat. Un problema creando estos Schedules no
+# puede tumbar el deploy del copiloto.
+ssh "$HOST" bash -s -- "$REMOTE" "$ENVDIR" "$VENV" <<'REMOTE_GRAFO_SYNC_SCHEDULES' || \
+  echo "    (aviso: no se pudo asegurar el Schedule de sync del grafo; el deploy sigue)" >&2
+set -euo pipefail
+REMOTE="$1"; ENVDIR="$2"; VENV="$3"
+set -a
+. "$ENVDIR/fusion-pg.env"
+. "$ENVDIR/copiloto.env"
+set +a
+cd "$REMOTE/deploy/worker"
+"$VENV/bin/python" ensure_grafo_sync_schedules.py
+REMOTE_GRAFO_SYNC_SCHEDULES
+
 echo "==> [4.9/7] gate de import: los entrypoints DEBEN importar antes de reiniciar nada"
 # Por qué existe (incidente 2026-07-21, 15 x `ImportError: cannot import name 'make_consultar_anulacion'
 # from 'web'` en producción): el paso [6/7] valida el Caddyfile ANTES de aplicarlo y aborta sin tocar

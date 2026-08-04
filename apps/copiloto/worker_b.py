@@ -63,6 +63,8 @@ from web import (make_abrir_borrador_de_presupuesto, make_buscar_borrador_dictad
 from cliente_store import ClienteStore
 from mi_dia_schedule_activities import avanzar_tablero_mi_dia, set_mi_dia_deps
 from mi_dia_schedule_workflow import MiDiaDetectorWorkflow
+from grafo_sync_activities import set_grafo_sync_deps, sincronizar_grafo_negocio
+from grafo_sync_workflow import GrafoSyncWorkflow
 from mi_dia_tarjeta_store import TarjetaStore
 from cobro_store import CobroStore
 from presupuesto_store import PresupuestoStore
@@ -292,6 +294,12 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
     # los stores (regla 7: nunca uno nuevo por tenant, ver docstring de `set_mi_dia_deps`).
     set_mi_dia_deps(conn_factory)
 
+    # BETA-G0 — Schedule incremental de sync evento→grafo. Mismo `conn_factory` compartido (regla 7);
+    # `GRAPHITY_GRAFO_*` se resuelve recién DENTRO de la activity (`GraphityStructuredClient.from_env`)
+    # así que no hace falta chequearlo acá — si falta, el sync de ESE tenant falla visible en esa
+    # ejecución de Temporal, sin tumbar el worker entero (mismo criterio que autosanación abajo).
+    set_grafo_sync_deps(conn_factory)
+
     # Fase 3 — el ciclo de auto-reparación. El cliente es un `OpenAI()` crudo y NO el `LlmProvider`
     # del agente: `auditor_parches` y el forjador usan `client.chat.completions.create`, que es el
     # contrato que el banco C0 midió, y `LlmProvider` expone otro (`complete`/`complete_tools`).
@@ -326,14 +334,15 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
 
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
-                          AutosanacionWorkflow],
+                          AutosanacionWorkflow, GrafoSyncWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, reservar_numero_comprobante,
                                          emitir_comprobante,
                                          generar_pdf_comprobante, buscar_comprobante,
                                          listar_comprobantes, marcar_comprobante_anulado,
-                                         archivar_factura_en_drive, avanzar_tablero_mi_dia]
+                                         archivar_factura_en_drive, avanzar_tablero_mi_dia,
+                                         sincronizar_grafo_negocio]
                           + ACTIVITIES_AUTOSANACION,
             "context_factory": ctx_factory}
 
