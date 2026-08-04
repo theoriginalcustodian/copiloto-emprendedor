@@ -17,7 +17,14 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn() }));
+// `makeRedirectUri` real pasa por `expo-linking` -> `expo-constants` -> el manifest de app.json, que
+// jest-expo no resuelve en este entorno. El valor no importa para la lógica bajo test (sólo viaja
+// como parámetro a `openAuthSessionAsync`, que ya está mockeado arriba) -- se fija a un valor fijo.
+jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'copiloto://' }));
+
 import { apiReal as api, UnauthorizedError } from '@copiloto/core';
+import * as WebBrowser from 'expo-web-browser';
 
 import { almacenTokens } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -39,6 +46,39 @@ describe('PantallaLogin', () => {
     await almacenTokens.limpiar();
     jest.mocked(api.login).mockReset();
     jest.mocked(api.me).mockReset();
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockReset();
+    process.env.EXPO_PUBLIC_API_BASE = 'https://copilotoemprendedor.duckdns.org';
+  });
+
+  it('botón "Entrar con Google" visible, no interfiere con el camino email/password', async () => {
+    await montar();
+    expect(screen.getByTestId('login-google')).toBeTruthy();
+  });
+
+  it('login con Google exitoso persiste los tokens del fragment de retorno', async () => {
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
+      type: 'success',
+      url: 'copiloto://?x=1#access_token=tok-google&refresh_token=refresh-google',
+    });
+    jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
+
+    await montar();
+    await fireEvent.press(screen.getByTestId('login-google'));
+
+    await waitFor(async () => expect(await almacenTokens.leerToken()).toBe('tok-google'));
+    expect(await almacenTokens.leerRefresh()).toBe('refresh-google');
+    expect(screen.queryByTestId('login-alert')).toBeNull();
+  });
+
+  it('cancelar el consentimiento de Google no muestra alerta (no es un error)', async () => {
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({ type: 'cancel' });
+
+    await montar();
+    await fireEvent.press(screen.getByTestId('login-google'));
+
+    await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
+    expect(screen.queryByTestId('login-alert')).toBeNull();
+    expect(await almacenTokens.leerToken()).toBeNull();
   });
 
   it('login exitoso persiste el access_token y el refresh_token', async () => {

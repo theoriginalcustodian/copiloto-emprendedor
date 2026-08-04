@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { apiReal as api, ForbiddenError, UnauthorizedError, type MeResponse } from '@copiloto/core';
 
 import { almacenTokens } from '../../adapters/almacen';
+import { iniciarLoginGoogle } from './oauth';
 import {
   SessionContext,
   type LoginResult,
@@ -85,12 +86,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [validarSesion],
   );
 
+  const loginConGoogle = useCallback(async (): Promise<LoginResult> => {
+    const resultado = await iniciarLoginGoogle();
+    if (!resultado.ok) {
+      // 'sin-configurar' (build sin EXPO_PUBLIC_API_BASE) es un error de red real de cara al usuario;
+      // 'sin-tokens' -- GoTrue volvió sin token, contrato incumplido -- se trata igual.
+      const error = resultado.reason === 'cancelado' ? 'cancelado' : 'red';
+      return { ok: false, error };
+    }
+    await almacenTokens.guardarToken(resultado.tokens.access_token);
+    if (resultado.tokens.refresh_token) await almacenTokens.guardarRefresh(resultado.tokens.refresh_token);
+
+    const outcome = await validarSesion();
+    if (outcome === 'ok') return { ok: true };
+    if (outcome === 'forbidden') return { ok: false, error: 'no-habilitada' };
+    return { ok: false, error: 'red' };
+  }, [validarSesion]);
+
   const logout = useCallback(() => {
     void almacenTokens.limpiar();
     setMeData(null);
     setEstado('anon');
   }, []);
 
-  const value: UseSessionResult = { estado, me: meData, login, logout };
+  const value: UseSessionResult = { estado, me: meData, login, loginConGoogle, logout };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
