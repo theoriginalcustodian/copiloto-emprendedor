@@ -1,0 +1,188 @@
+/*
+ * Estilos del módulo Ingresos (M-WEB módulo 3) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que gastos.css/clientes.css (cero color literal).
+ */
+
+.ingresos-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.ingresos-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ingresos-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.ingresos-screen__loading,
+.ingresos-screen__body,
+.ingresos-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ingresos-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+.ingresos-screen__total {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.ingresos-screen__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+/* ---------- TarjetaIngreso ---------- */
+.tarjeta-ingreso {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  cursor: default;
+}
+
+.tarjeta-ingreso__izquierda {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tarjeta-ingreso__titulo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.tarjeta-ingreso__sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.tarjeta-ingreso__origen {
+  margin-top: 2px;
+}
+
+/* ---------- FormularioIngreso ---------- */
+.formulario-ingreso {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-ingreso__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulario-ingreso__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.formulario-ingreso__campo input {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.formulario-ingreso__campo input::placeholder {
+  color: var(--input-fg);
+}
+
+.formulario-ingreso__campo input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.formulario-ingreso__aviso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.formulario-ingreso__aviso p {
+  margin: 0;
+}
+
+.formulario-ingreso__aviso-candidato {
+  color: var(--label);
+  font-size: 12px;
+}
+
+.formulario-ingreso__completo {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ok-fg);
+  margin: 0;
+}
+
+.formulario-ingreso__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.formulario-ingreso__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
