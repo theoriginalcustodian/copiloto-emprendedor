@@ -223,19 +223,18 @@ def _ensure_clientes_email_telefono(conn) -> None:
     a las filas que todavía no se migraron** (`email = '' AND telefono = ''`), así que es idempotente
     y no pisa lo que el emprendedor haya editado después.
 
-    ⚠️ **DEUDA DELIBERADA Y VISIBLE, paso 1 de 2 PAGADO:** la columna `contacto` **no se borra acá**.
-    Su condición de pago —*el primer deploy posterior a que FRONTEND cierre su hito 9*— se cumplió
-    (hito 9 verificado en device el 2026-07-22), pero el `DROP COLUMN` **no es una línea**: esta misma
-    función lo rompería. Por eso va en dos pasos y en este orden:
+    ⚠️ **DEUDA DELIBERADA Y VISIBLE — paso 2 de 2 PAGADO 2026-08-04, con el OK explícito del operador.**
+    La columna `contacto` no se borra acá (esta misma función la rompería si corriera después del
+    `DROP`); el borrado vive en `_ensure_clientes_contacto_drop`, que corre DESPUÉS de ésta:
 
-    1. ✅ **hecho acá** — la migración se **saltea sola** cuando la columna ya no está (el bloque de
+    1. ✅ (2026-07-22) la migración se **saltea sola** cuando la columna ya no está (el bloque de
        abajo). Sin esto, el `DROP` dejaría el deploy siguiente en rojo.
-    2. ⏳ **pendiente** — `ALTER TABLE … DROP COLUMN contacto`, **irreversible sobre una base viva**:
-       requiere el OK del operador, aunque hoy no haya **ni una** fila con dato adentro (medido:
-       `contacto <> ''` → 0 en todos los tenants). **Propietario: BACKEND.**
+    2. ✅ (2026-08-04) `_ensure_clientes_contacto_drop` — re-verificado antes del OK: 0 filas con
+       `contacto <> ''` en los 19 tenants (control con `set_config('request.jwt.claims', …)` por
+       tenant, no una query ciega sin RLS).
 
-    Mientras tanto `contacto` queda **huérfana**: nadie la lee ni la escribe — `_COLS` del store ya no
-    la incluye—, así que no puede divergir en silencio.
+    Esta función queda como no-op permanente en todo entorno que ya migró y borró `contacto` — el
+    guard de abajo la hace inofensiva, no hace falta retirarla.
     """
     cur = conn.cursor()
     cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes "
@@ -281,6 +280,26 @@ def _ensure_clientes_email_telefono(conn) -> None:
                            f"contacto y sin ninguno de los dos campos nuevos — se perdió el dato")
     print(f"OK {SCHEMA}.copiloto_clientes.email/.telefono "
           f"(pendientes={pendientes} migradas={migradas} huérfanas=0)", flush=True)
+
+
+def _ensure_clientes_contacto_drop(conn) -> None:
+    """Paso 2 de 2 (2026-08-04, OK explícito del operador): `copiloto_clientes.contacto` se borra.
+
+    `contacto` quedó huérfana desde que `_ensure_clientes_email_telefono` la migró a `email`/
+    `telefono` (2026-07-22, hito 9 de frontend en verde): nadie la lee ni la escribe —`_COLS` de
+    `cliente_store.py` ya no la incluye—, y `_ensure_clientes_email_telefono` corre siempre ANTES
+    (mismo orden en `provision()`), así que ningún dato se pierde: si había algo sin migrar, ya se
+    migró antes de llegar acá.
+
+    `ALTER TABLE IF EXISTS … DROP COLUMN IF EXISTS` es idempotente en las dos puntas: no-op sobre
+    una base fresca (la columna ya no está en `uc_tables.json`, nunca se crea) y no-op en cualquier
+    entorno donde ya corrió. Verificado antes de este cambio: 0 filas con `contacto <> ''` en los
+    19 tenants de producción (control por tenant con `set_config('request.jwt.claims', …)`, no una
+    query sin contexto de RLS que daría 0 falso).
+    """
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_clientes DROP COLUMN IF EXISTS contacto;")
+    print(f"OK {SCHEMA}.copiloto_clientes.contacto (columna retirada, idempotente)", flush=True)
 
 
 def _ensure_presupuesto_estado(conn) -> None:
@@ -480,6 +499,7 @@ def provision(conn) -> dict:
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
+    _ensure_clientes_contacto_drop(conn)            # paso 2/2: borra `contacto` (OK operador 2026-08-04).
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.

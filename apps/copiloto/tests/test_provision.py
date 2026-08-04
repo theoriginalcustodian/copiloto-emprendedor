@@ -95,23 +95,27 @@ def test_CONTROL_con_la_columna_presente_la_migracion_SI_corre():
 
 
 @necesita_pg
-def test_la_consulta_del_guard_ENCUENTRA_la_columna_hoy(conn):
-    """El guard mira `information_schema` — si mirara mal, diría «no está» **siempre**."""
+def test_paso_2_de_2_contacto_ya_no_existe_tras_provision(conn):
+    """Paso 2 de 2 (2026-08-04, OK operador): `_ensure_clientes_contacto_drop` la borró de verdad.
+
+    Reemplaza a `test_la_consulta_del_guard_ENCUENTRA_la_columna_hoy`, que documentaba (a propósito)
+    que este assert iba a caer el día que el paso 2 se ejecutara — es ese día. Mismo patrón de
+    control: si la consulta al catálogo mirara mal, diría «no está» siempre, así que se verifica
+    contra una columna que SÍ existe (`nombre`) para descartar un guard roto disfrazado de éxito.
+    """
+    provision(conn)
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM information_schema.columns "
                     "WHERE table_schema = %s AND table_name = 'copiloto_clientes' "
                     "AND column_name = 'contacto'", (SCHEMA,))
         halla_contacto = cur.fetchone() is not None
-        # el control del control: la misma consulta contra una columna que SÍ o SÍ existe
         cur.execute("SELECT 1 FROM information_schema.columns "
                     "WHERE table_schema = %s AND table_name = 'copiloto_clientes' "
                     "AND column_name = 'nombre'", (SCHEMA,))
         halla_nombre = cur.fetchone() is not None
 
-    assert halla_nombre, "la consulta del guard no encuentra NI `nombre`: está mirando el lugar equivocado"
-    # Mientras el paso 2 no se ejecute, `contacto` sigue ahí. Cuando se ejecute, este assert cae —
-    # y ese día se borra junto con la migración, que es exactamente cuándo debe caer.
-    assert halla_contacto, "`contacto` ya no está: retirá también la migración y este assert"
+    assert halla_nombre, "la consulta no encuentra NI `nombre`: está mirando el lugar equivocado"
+    assert not halla_contacto, "`contacto` sigue en el catálogo — el DROP no corrió o no se aplicó"
 
 
 # ---------------------------------------------------------------------------
