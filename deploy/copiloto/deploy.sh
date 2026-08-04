@@ -71,10 +71,14 @@ echo "==> [1/7] sync worktree -> ${HOST}:${REMOTE} (clean; preserva apps/copilot
 # rm QUIRÚRGICO: `apps/copiloto` (backend) + `deploy` + `motor` (vendorizado), NUNCA todo `apps/` -> no borra el frontend
 # `apps/copiloto-web` (fix de la colisión histórica deploy.sh <-> sync-web.sh). Del frontend se limpia
 # solo el source (preservando node_modules+dist para no reinstalar/reconstruir de cero cada deploy).
+# `packages/core` (ADR-010): copiloto-web depende de @copiloto/core vía file:../../packages/core --
+# sin sincronizarlo, el `npm install` del paso [frontend] de abajo no resuelve el import (gap
+# detectado 2026-08-04, PR#237; mismo fix aplicado en sync-web.sh).
 tar -C "$LOCAL" \
     --exclude='apps/copiloto-web/node_modules' --exclude='apps/copiloto-web/dist' --exclude='apps/copiloto-web/.vite' \
-    -czf - apps/copiloto apps/copiloto-web "$MOTOR" "$WORKER" deploy/copiloto \
-  | ssh "$HOST" "mkdir -p '$REMOTE' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
+    --exclude='packages/core/node_modules' \
+    -czf - apps/copiloto apps/copiloto-web packages/core "$MOTOR" "$WORKER" deploy/copiloto \
+  | ssh "$HOST" "mkdir -p '$REMOTE' '$REMOTE/packages' && rm -rf '$REMOTE'/apps/copiloto '$REMOTE'/deploy '$REMOTE'/motor '$REMOTE'/packages/core && { [ -d '$REMOTE/apps/copiloto-web' ] && find '$REMOTE/apps/copiloto-web' -mindepth 1 -maxdepth 1 ! -name node_modules ! -name dist -exec rm -rf {} + || true; } && mkdir -p '$REMOTE' && tar -C '$REMOTE' -xzf -"
 
 # ---------------------------------------------------------------------------------------------
 # Sello de PROCEDENCIA (2026-07-31). El deploy es `tar | ssh`: en el VPS NO hay git, así que sin
@@ -90,7 +94,7 @@ tar -C "$LOCAL" \
 # un sello AUSENTE se leería como "no hay info" y uno que MIENTE se leería como verdad.
 echo "==> [1.bis] sello de procedencia -> ${REMOTE}/DEPLOY-MANIFEST.json"
 _sha="$(git -C "$LOCAL" rev-parse origin/main 2>/dev/null || echo indeterminado)"
-_sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
+_sucios="$(git -C "$LOCAL" status --porcelain -- apps/copiloto-web packages/core deploy/worker deploy/copiloto 2>/dev/null | wc -l | tr -d ' ')"
 if [ -n "${UC_SKIP_DRIFT_CHECK:-}" ]; then _gate="SALTEADO (UC_SKIP_DRIFT_CHECK)"; else _gate="aplicado"; fi
 _manifiesto="$(cat <<JSON
 {
@@ -98,7 +102,7 @@ _manifiesto="$(cat <<JSON
   "origin_main_sha": "${_sha}",
   "gate_de_drift": "${_gate}",
   "paths_anclados_a_origin_main": ["apps/copiloto", "motor"],
-  "paths_NO_verificados": ["apps/copiloto-web", "deploy/worker", "deploy/copiloto"],
+  "paths_NO_verificados": ["apps/copiloto-web", "packages/core", "deploy/worker", "deploy/copiloto"],
   "archivos_sucios_en_paths_no_verificados": ${_sucios:-null},
   "nota": "El backend esta anclado a origin_main_sha por el gate de drift (deploy.sh). Los paths NO verificados salieron del working tree y pueden diferir de ese commit. Quien consuma esto para decidir (autosanacion, auditoria, grafo) debe tratar SOLO los paths anclados como identificables por SHA."
 }
