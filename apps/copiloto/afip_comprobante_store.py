@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Callable
 
+from psycopg2.extras import Json
+
 from afip_rules import NOTAS_CREDITO
 from evento_store import registrar_evento
 from gasto_store import dos_decimales, hoy_del_negocio
@@ -82,7 +84,8 @@ class AfipComprobanteStore:
         return comprobante_id
 
     def adjuntar_pdf(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
-                     pdf_url: str, pdf_expira_at: datetime | None) -> None:
+                     pdf_url: str, pdf_expira_at: datetime | None,
+                     params_pdf: dict | None = None) -> None:
         """Adjunta el PDF a un comprobante YA registrado, sin tocar nada más.
 
         Existe porque usar `registrar()` para esto corrompía el estado: es un upsert completo y su
@@ -93,13 +96,20 @@ class AfipComprobanteStore:
 
         Una actualización parcial se escribe como UPDATE parcial. Un upsert "por reuso" es cómodo
         hasta que pisa una columna que otro camino acaba de escribir.
+
+        `params_pdf` (opcional, default `None` no pisa lo existente vía `COALESCE`): el `params`
+        COMPLETO que se le mandó al template de AfipSDK (items, receptor, emisor, totales). Sin esto
+        una anulación no puede reconstruir el PDF de la nota de crédito — ver
+        `_ensure_afip_comprobante_params_pdf_column` en `provision.py`.
         """
         conn = self._conn_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"UPDATE {_TABLE} SET pdf_url=%s, pdf_expira_at=%s "
+                f"UPDATE {_TABLE} SET pdf_url=%s, pdf_expira_at=%s, "
+                f"params_pdf_json=COALESCE(%s, params_pdf_json) "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
-                (pdf_url, pdf_expira_at, self._cid, cuit, tipo_cbte, punto_venta, nro))
+                (pdf_url, pdf_expira_at, Json(params_pdf) if params_pdf is not None else None,
+                 self._cid, cuit, tipo_cbte, punto_venta, nro))
 
     def adjuntar_drive(self, *, cuit: str, tipo_cbte: int, punto_venta: int, nro: int,
                        drive_file_id: str, drive_link: str | None) -> None:
@@ -118,11 +128,11 @@ class AfipComprobanteStore:
             cur.execute(
                 f"SELECT cuit, tipo_cbte, punto_venta, nro, cae, cae_vto, fecha_emision, total, "
                 f"estado, pdf_url, cbte_asoc_nro, drive_file_id, drive_link, "
-                f"doc_tipo, doc_nro, receptor_nombre FROM {_TABLE} "
+                f"doc_tipo, doc_nro, receptor_nombre, params_pdf_json FROM {_TABLE} "
                 f"WHERE cliente_id=%s AND cuit=%s AND tipo_cbte=%s AND punto_venta=%s AND nro=%s",
                 (self._cid, cuit, tipo_cbte, punto_venta, nro))
             row = cur.fetchone()
-        return self._fila(row)
+        return self._fila(row, con_params_pdf=True)
 
     def por_idem_key(self, idem_key: str) -> dict | None:
         """Dedup: ¿esta misma operación ya emitió un comprobante?
@@ -276,11 +286,15 @@ class AfipComprobanteStore:
                                  datos={"nota_credito_nro": nro_nota_credito})
 
     @staticmethod
-    def _fila(row, *, con_id: bool = False) -> dict | None:
+    def _fila(row, *, con_id: bool = False, con_params_pdf: bool = False) -> dict | None:
         """`con_id` es opt-in a propósito: las consultas que alimentan las activities de Temporal
         siguen devolviendo exactamente las mismas claves que antes. Agregar `id` a TODAS habría
         cambiado el payload que viaja por el workflow —y el shape del payload es parte del historial
-        de ejecución—, para beneficiar sólo a las dos consultas que la app consume."""
+        de ejecución—, para beneficiar sólo a las dos consultas que la app consume.
+
+        `con_params_pdf` (mismo criterio): sólo `get()` lo pide — es el `params` completo del PDF
+        (puede traer un `items` largo) y `listar()`/`por_idem_key()` no lo necesitan; agregarlo ahí
+        infla cada resultado de activity sin beneficio."""
         if not row:
             return None
         campos = ("cuit", "tipo_cbte", "punto_venta", "nro", "cae", "cae_vto", "fecha_emision",
@@ -288,6 +302,8 @@ class AfipComprobanteStore:
                   "doc_tipo", "doc_nro", "receptor_nombre")
         if con_id:
             campos = ("id",) + campos
+        if con_params_pdf:
+            campos = campos + ("params_pdf_json",)
         d = dict(zip(campos, row))
         # `total` viene como Decimal de psycopg2: a str para que sea serializable por Temporal sin
         # perder precisión (float rompería centavos).

@@ -839,6 +839,46 @@ def armar_payload_nota_credito(original: dict, *, hoy: date, fecha: date | None 
     return payload
 
 
+TEMPLATE_NOTA_CREDITO_POR_TIPO = {TipoComprobante.NOTA_CREDITO_C.value: "credit-note-c"}
+
+
+def armar_params_pdf_nota_credito(original: dict, *, numero: int, cae: str, cae_vto: date,
+                                  fecha_emision: date) -> dict:
+    """Params del template `credit-note-c` de AfipSDK, para el PDF de la NC que anula `original`.
+
+    **Por qué clonar en vez de reconstruir.** `armar_payload_nota_credito` (arriba) ya estableció que
+    la NC neutraliza SIEMPRE el importe TOTAL de `original` — no hay NC parcial en este producto. Eso
+    significa que el PDF de la NC es **idéntico** al de la factura original en todo lo que no cambia
+    con la anulación: mismos ítems, mismo receptor, mismo emisor, mismos totales. Lo único que cambia
+    es el número de comprobante, la fecha, el CAE y el template (`invoice-c` → `credit-note-c`).
+    Reconstruir esos campos desde cero —sin un `BorradorFactura` vivo, sólo con lo que persiste
+    `afip_comprobantes`— duplicaría `armar_params_pdf` con una fuente de datos más pobre; clonar el
+    `params` YA verificado de la factura original es la fuente de verdad correcta.
+
+    Verificado contra la doc real de AfipSDK (`docs.afipsdk.com/.../nota-de-credito-c`, 2026-08-04):
+    el template `credit-note-c` exige el MISMO `items` que `invoice-c` — no hay una versión "sin
+    itemizar". Por eso `original["params_pdf_json"]` (persistido en `_generar_pdf_sync` desde
+    2026-08-04) es imprescindible, no un nice-to-have.
+
+    Levanta `ValueError` si `original` no tiene `params_pdf_json` — comprobantes emitidos ANTES de
+    esta migración no lo tienen, y no hay forma de reconstruirlo (los ítems no se guardaban en
+    ningún otro lado). El caller decide qué hacer con eso (en `AnulacionWorkflow`, fallar BLANDO:
+    la NC ya tiene CAE, el PDF es un adjunto, no el comprobante fiscal en sí).
+    """
+    base = original.get("params_pdf_json")
+    if not base:
+        raise ValueError(
+            "el comprobante original no tiene params_pdf_json (se emitió antes de la migración "
+            "2026-08-04) — no se puede reconstruir el PDF de la nota de crédito")
+    return {
+        **base,
+        "voucher_number": numero,
+        "issue_date": fecha_emision.strftime("%d/%m/%Y"),
+        "cae": cae,
+        "cae_due_date": cae_vto.strftime("%d/%m/%Y"),
+    }
+
+
 def fecha_valida_para_afip(fecha: date, *, hoy: date) -> bool:
     """R4 expuesta como predicado, para que la UI pueda deshabilitar fechas antes de que el usuario tipee."""
     return abs((fecha - hoy).days) <= MARGEN_DIAS_FECHA_COMPROBANTE

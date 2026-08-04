@@ -413,6 +413,22 @@ def _ensure_metering_evento_column(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_metering.evento (columna aditiva text, idempotente)", flush=True)
 
 
+def _ensure_afip_comprobante_params_pdf_column(conn) -> None:
+    """Migración aditiva de `afip_comprobantes.params_pdf_json jsonb` (residuo AFIP, Bandeja
+    2026-08-04): persiste el `params` COMPLETO con el que se generó el PDF de la factura (items,
+    receptor, emisor, totales -- todo lo que pide el template de AfipSDK y que el resto de la tabla
+    NO guarda). Sin esto, `AnulacionWorkflow` no puede reconstruir el PDF de la nota de crédito: sólo
+    tiene `total`/`receptor_nombre`/`doc_tipo`/`doc_nro`, y el template de AfipSDK exige el `items`
+    completo (verificado contra la doc real de `credit-note-c`, no asumido).
+
+    Mismo criterio que `_ensure_metering_evento_column`: corre ANTES del pase estándar."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.afip_comprobantes "
+                f"ADD COLUMN IF NOT EXISTS params_pdf_json jsonb;")
+    print(f"OK {SCHEMA}.afip_comprobantes.params_pdf_json (columna aditiva jsonb, idempotente)",
+          flush=True)
+
+
 def _apply_sql_files(conn) -> list[str]:
     """🔴 Aplica **TODOS** los `.sql` de esta carpeta, por descubrimiento y en orden alfabético.
 
@@ -469,6 +485,7 @@ def provision(conn) -> dict:
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).
+    _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     sql_aplicados = _apply_sql_files(conn)

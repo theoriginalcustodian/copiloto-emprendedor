@@ -204,7 +204,7 @@ def _generar_pdf_sync(cliente_id: str, cuit: str, template: str, params: dict,
     # "emitida" al terminar su PDF.
     _comprobante_store_factory(cliente_id).adjuntar_pdf(
         cuit=cuit, tipo_cbte=tipo_cbte, punto_venta=punto_venta, nro=nro,
-        pdf_url=pdf.url, pdf_expira_at=pdf.expira_at)
+        pdf_url=pdf.url, pdf_expira_at=pdf.expira_at, params_pdf=params)
     return {"url": pdf.url, "nombre": pdf.nombre,
             "expira_at": pdf.expira_at.isoformat() if pdf.expira_at else None}
 

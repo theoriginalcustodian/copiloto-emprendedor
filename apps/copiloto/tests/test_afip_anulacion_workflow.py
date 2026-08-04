@@ -41,8 +41,16 @@ ORIGINAL = {"cuit": CUIT, "tipo_cbte": 11, "punto_venta": 1, "nro": 6, "cae": "C
             "nota_credito_nro": None}
 
 
-def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = None):
-    """Las tres activities que el workflow agenda, por nombre. `marcar` falla o no según el caso."""
+def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = None,
+                 pdfs: list | None = None, pdf_falla: bool = False):
+    """Las activities que el workflow agenda, por nombre. `marcar` falla o no según el caso.
+
+    `pdfs` (opt-in): si se pasa una lista, se registra `generar_pdf_comprobante` de verdad y cada
+    llamada se apila ahí — lo usa el test del PDF de la NC. Las demás pruebas de este archivo NUNCA
+    llegan a agendarla (su `ORIGINAL` no tiene `params_pdf_json`, así que
+    `armar_params_pdf_nota_credito` levanta ANTES de ejecutar la activity), así que no hace falta
+    registrarla para ellas.
+    """
 
     @activity.defn(name="buscar_comprobante")
     async def buscar_comprobante(cliente_id: str, cuit: str, tipo_cbte: int, punto_venta: int,
@@ -53,7 +61,7 @@ def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = 
     async def emitir_comprobante(cliente_id: str, cuit: str, payload: dict, idem_key: str,
                                  workflow_id: str) -> dict:
         return {"ok": True, "duplicado": False, "id": 99, "cae": "CAE-NC-7", "nro": 7,
-                "tipo_cbte": 13, "punto_venta": 1, "total": "200.00"}
+                "tipo_cbte": 13, "punto_venta": 1, "total": "200.00", "cae_vto": "2026-08-14"}
 
     @activity.defn(name="marcar_comprobante_anulado")
     async def marcar_comprobante_anulado(cliente_id: str, cuit: str, tipo_cbte: int,
@@ -63,7 +71,21 @@ def _actividades(*, marcar_falla: bool, marcados: list, original: dict | None = 
         marcados.append(nro)
         return {"ok": True}
 
-    return [buscar_comprobante, emitir_comprobante, marcar_comprobante_anulado]
+    actividades = [buscar_comprobante, emitir_comprobante, marcar_comprobante_anulado]
+
+    if pdfs is not None:
+        @activity.defn(name="generar_pdf_comprobante")
+        async def generar_pdf_comprobante(cliente_id: str, cuit: str, template: str, params: dict,
+                                          nro: int, tipo_cbte: int, punto_venta: int) -> dict:
+            if pdf_falla:
+                raise RuntimeError("AfipSDK no respondió")
+            pdfs.append({"template": template, "params": params, "nro": nro,
+                        "tipo_cbte": tipo_cbte, "punto_venta": punto_venta})
+            return {"url": "https://pdf/nc.pdf", "nombre": "nc.pdf", "expira_at": None}
+
+        actividades.append(generar_pdf_comprobante)
+
+    return actividades
 
 
 async def _correr_hasta_el_final(env, actividades) -> dict:
@@ -118,6 +140,48 @@ async def test_control_con_el_marcado_OK_no_hay_advertencia():
     assert estado["marcada"] is True
     assert estado["motivo"] is None
     assert marcados == [6], "la factura original tiene que quedar marcada"
+
+
+@pytest.mark.asyncio
+async def test_la_nota_de_credito_genera_su_pdf_cuando_el_original_tiene_params_pdf_json():
+    """Residuo AFIP (Bandeja 2026-08-04): con `params_pdf_json` disponible, la anulación agenda
+    `generar_pdf_comprobante` con el template `credit-note-c` y el número/CAE/fechas de la NC, no
+    los de la factura original."""
+    original_con_params = {**ORIGINAL, "params_pdf_json": {
+        "voucher_number": 6, "cae": "CAE-6", "items": [{"code": "001", "description": "x",
+        "quantity": 1.0, "unit_price": 200.0, "subtotal": 200.0}], "total_amount": 200.0}}
+    marcados: list = []
+    pdfs: list = []
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        estado = await _correr_hasta_el_final(env, _actividades(
+            marcar_falla=False, marcados=marcados, original=original_con_params, pdfs=pdfs))
+
+    assert estado["paso"] == "anulada"
+    assert len(pdfs) == 1, "tiene que agendar generar_pdf_comprobante exactamente una vez"
+    pdf = pdfs[0]
+    assert pdf["template"] == "credit-note-c"
+    assert pdf["nro"] == 7 and pdf["tipo_cbte"] == 13, "el PDF es el de la NC, no el de la factura"
+    assert pdf["params"]["voucher_number"] == 7, "no puede quedar el número de la factura original"
+    assert pdf["params"]["cae"] == "CAE-NC-7"
+    assert pdf["params"]["items"] == original_con_params["params_pdf_json"]["items"], \
+        "los ítems se clonan del original — es la NC neutralizando el importe TOTAL"
+
+
+@pytest.mark.asyncio
+async def test_si_falla_el_pdf_de_la_nota_de_credito_la_anulacion_TERMINA_igual():
+    """El PDF es un adjunto, no el comprobante fiscal: la NC ya tiene CAE ante AFIP cuando se intenta
+    generar el PDF, así que un fallo ahí no puede convertir una anulación exitosa en una fallida."""
+    original_con_params = {**ORIGINAL, "params_pdf_json": {"voucher_number": 6, "items": []}}
+    marcados: list = []
+    pdfs: list = []
+    async with await WorkflowEnvironment.start_time_skipping() as env:
+        estado = await _correr_hasta_el_final(env, _actividades(
+            marcar_falla=False, marcados=marcados, original=original_con_params,
+            pdfs=pdfs, pdf_falla=True))
+
+    assert estado["paso"] == "anulada", "el fallo del PDF NO puede tumbar una anulación con CAE"
+    assert estado["marcada"] is True, "el resto del flujo sigue intacto"
+    assert pdfs == [], "la activity se intentó pero falló antes de apilar nada"
 
 
 @pytest.mark.asyncio
