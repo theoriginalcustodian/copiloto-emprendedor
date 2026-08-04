@@ -184,7 +184,7 @@ def test_search_manda_el_body_correcto_y_devuelve_el_json():
 def test_listar_edges_del_graph_va_al_path_correcto():
     def handler(req: httpx.Request) -> httpx.Response:
         assert req.url.path == "/api/v2/graph/edge/graph/g1"
-        assert req.url.params.get("limit") == "500"
+        assert req.url.params.get("limit") == "100"
         return httpx.Response(200, json={"edges": [{"uuid": "e1"}, {"uuid": "e2"}]})
 
     edges = _cliente(handler).listar_edges_del_graph("g1")

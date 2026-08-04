@@ -190,18 +190,22 @@ class GraphityStructuredClient:
             return resp.json()
         raise GrafoIngestError(f"POST /graph/search: {resp.status_code} {resp.text[:300]}")
 
-    def listar_edges_del_graph(self, group_id: str, *, limit: int = 500) -> list[dict]:
+    def listar_edges_del_graph(self, group_id: str, *, limit: int = 100) -> list[dict]:
         """`GET /graph/edge/graph/{group_id}` — TODAS las aristas del graph (paginado por `limit`), con
         `invalid_at` en la raíz (no bajo `attributes` — mismo shape que `get_edge`). Sirve de sustituto
         de `traverse`: sin navegación por uuid, se trae el listado y se resuelve la relación en memoria
-        (el dataset de negocio es chico; ver el límite conocido en `inteligencia_chat.py`)."""
+        (el dataset de negocio es chico; ver el límite conocido en `inteligencia_chat.py`).
+
+        🔴 `limit` tope real del server: **100** (`le=100` en el schema de query, verificado 2026-08-04
+        contra el server vivo — un `limit=500` da 422, no trunca). Paginar de a 100 si el graph crece."""
         resp = self._request("GET", f"/graph/edge/graph/{group_id}?limit={limit}")
         if resp.status_code == 200:
             return (resp.json() or {}).get("edges") or []
         raise GrafoIngestError(f"GET /graph/edge/graph/{group_id}: {resp.status_code} {resp.text[:300]}")
 
-    def listar_nodes_del_graph(self, group_id: str, *, limit: int = 500) -> list[dict]:
-        """`GET /graph/node/graph/{group_id}` — todos los nodos del graph, paginado."""
+    def listar_nodes_del_graph(self, group_id: str, *, limit: int = 100) -> list[dict]:
+        """`GET /graph/node/graph/{group_id}` — todos los nodos del graph, paginado. Mismo tope real de
+        100 que `listar_edges_del_graph` (`le=100` en el server)."""
         resp = self._request("GET", f"/graph/node/graph/{group_id}?limit={limit}")
         if resp.status_code == 200:
             return (resp.json() or {}).get("nodes") or []
