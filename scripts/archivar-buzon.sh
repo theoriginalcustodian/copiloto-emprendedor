@@ -66,7 +66,8 @@ for f in "$ABIERTO"/*.md; do
   moved=$((moved+1))
 done
 
-abiertos_ahora=$(ls "$ABIERTO"/*.md 2>/dev/null | wc -l | tr -d ' ')
+abiertos_md=("$ABIERTO"/*.md)
+abiertos_ahora=${#abiertos_md[@]}
 if [ "$DRY_RUN" = "1" ]; then
   echo "[dry-run] archivaría $moved · obligaciones $kept_obl · frescos $kept_fresh · TTL ${TTL_MIN}min"
 else
