@@ -605,3 +605,13 @@ def test_oauth_ensure_tenant_endpoint_absent_without_require_claims():
     (405, no 404: el catch-all GET del SPA mount matchea el path pero no el método POST.)"""
     app, _ = _build_app(require_tenant=_require_tenant_401())  # require_claims=None por default
     assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code in (404, 405)
+
+
+def test_rate_limit_middleware_esta_cableado_en_el_front_door():
+    """BETA-2.d: el front-door completo (no sólo /chat) queda envuelto por RateLimitMiddleware —
+    la unidad del comportamiento (sliding-window, 429, IPs independientes) se prueba en
+    test_rate_limit.py; acá sólo importa que `create_web_app` lo instale de verdad."""
+    from rate_limit import RateLimitMiddleware
+
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    assert any(getattr(m, "cls", None) is RateLimitMiddleware for m in app.user_middleware)

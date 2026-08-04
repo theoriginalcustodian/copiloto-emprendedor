@@ -38,6 +38,7 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from backend.agent.inbound_router import route_inbound
 from catalog import build_catalog
+from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
 # el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
 # que es todo el punto — una segunda lista volvería a ser el catálogo estático que esto viene a matar.
@@ -578,6 +579,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
+
+    # BETA-2.d: rate-limit del front-door completo (protege costo LLM + abuso). Middleware ASGI puro
+    # -> envuelve TODO el stack, incluye los sub-apps montados (/mp, /afip, etc.) sin tocarlos. Ver
+    # docstring de `rate_limit.py` (asume proceso único, confirmado contra el systemd unit real).
+    app.add_middleware(RateLimitMiddleware)
 
     # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
     # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
