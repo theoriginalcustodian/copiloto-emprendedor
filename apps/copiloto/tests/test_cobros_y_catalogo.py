@@ -218,6 +218,30 @@ def test_ADVERSARIAL_A_no_puede_cobrar_ni_ver_lo_de_B(conn_de_tenant, tenants):
     assert CobroStore(conn_de_tenant(b), b).resumen(de_b)["estado_cobro"] == COBRADA
 
 
+@necesita_pg
+def test_ADVERSARIAL_A_no_puede_borrar_completar_ni_deshacer_lo_de_B(conn_de_tenant, tenants):
+    """Hallazgo 2026-08-04 (M-WEB RLS): `registrar`/`resumen`/`impagos` ya tenían adversarial —
+    `borrar_ingreso`, `completar` y `borrar` (deshacer cobro) no. Los tres son DELETE/UPDATE por id:
+    el filtro `cliente_id` está en el WHERE, pero sin este test era un control no verificado."""
+    a, b = tenants
+    de_b = CobroStore(conn_de_tenant(b), b).registrar_suelto(monto="777777.00",
+                                                              cliente_nombre="Secreto de B")
+    comp_b = _comprobante(conn_de_tenant, b, "1000.00", nro=30)
+    cobro_b, _ = CobroStore(conn_de_tenant(b), b).registrar(comp_b, monto="1000.00")
+
+    de_a = CobroStore(conn_de_tenant(a), a)
+    assert de_a.borrar_ingreso(de_b["id"]) is False
+    assert de_a.completar(de_b["id"], {"medio": "efectivo"}) is None
+    assert de_a.borrar(comp_b, cobro_b["id"]) is None
+
+    # los tres siguen intactos: el intento de A no pudo ni siquiera ensuciarlos
+    de_b_store = CobroStore(conn_de_tenant(b), b)
+    assert de_b_store.resumen(comp_b)["estado_cobro"] == COBRADA
+    ingresos_de_b = de_b_store.listar_ingresos()["ingresos"]
+    manual_de_b = next(i for i in ingresos_de_b if i["id"] == de_b["id"])
+    assert manual_de_b["cliente_nombre"] == "Secreto de B" and manual_de_b["medio"] == ""
+
+
 # ── catálogo ─────────────────────────────────────────────────────────────────────────────────────
 
 @necesita_pg
