@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { useSession } from '../auth';
+import { GlassIcon } from '../../theme/glass/GlassIcon';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
@@ -46,6 +48,28 @@ export function PantallaCuenta() {
             >
               {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
             </Text>
+          </View>
+        </Row>
+
+        {/* BETA-1a: fila, no tile propio — decisión del contrato (§3): la grilla de Ajustes recién
+            reforzó su disciplina "sin ícono repetido" (8→6-7 tiles, 2026-07-22), y sumar un tile
+            nuevo la rompería justo después de que se cuidó. Reversible: si nadie lo encuentra acá,
+            promoverlo a tile propio es un cambio chico. */}
+        <Row
+          testID="cuenta-feedback"
+          accessibilityLabel="Feedback"
+          onPress={() => router.push('/ajustes-feedback')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
+            <GlassIcon name="mic" size={22} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+                Feedback
+              </Text>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Contanos qué mejorarías, por texto o por voz.
+              </Text>
+            </View>
           </View>
         </Row>
 
