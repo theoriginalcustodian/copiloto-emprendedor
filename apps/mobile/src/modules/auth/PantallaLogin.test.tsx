@@ -17,7 +17,12 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
-jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn() }));
+// `WebBrowserResultType` (el enum real, ej. `.CANCEL`) se reexporta -- es un tipo nominal, un string
+// literal plano ("cancel") no es asignable a `WebBrowserResultType` (TS2322, lo que rompió el CI).
+jest.mock('expo-web-browser', () => {
+  const actual = jest.requireActual('expo-web-browser');
+  return { ...actual, openAuthSessionAsync: jest.fn() };
+});
 // `makeRedirectUri` real pasa por `expo-linking` -> `expo-constants` -> el manifest de app.json, que
 // jest-expo no resuelve en este entorno. El valor no importa para la lógica bajo test (sólo viaja
 // como parámetro a `openAuthSessionAsync`, que ya está mockeado arriba) -- se fija a un valor fijo.
@@ -71,7 +76,9 @@ describe('PantallaLogin', () => {
   });
 
   it('cancelar el consentimiento de Google no muestra alerta (no es un error)', async () => {
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({ type: 'cancel' });
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
+      type: WebBrowser.WebBrowserResultType.CANCEL,
+    });
 
     await montar();
     await fireEvent.press(screen.getByTestId('login-google'));
