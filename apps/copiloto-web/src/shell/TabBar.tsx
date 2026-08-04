@@ -2,7 +2,7 @@ import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import './shell.css';
 
-export type TabKey = 'chat' | 'apps' | 'connections' | 'account';
+export type TabKey = 'chat' | 'apps' | 'connections' | 'gastos' | 'account';
 
 export interface TabDefinition {
   key: TabKey;
@@ -13,11 +13,16 @@ export interface TabDefinition {
  * Registro declarativo de tabs (EXTRACT §2.3/§4: Chat · Apps · Conexiones · Cuenta). Sumar o
  * quitar un tab es editar este array — TabBar y AppShell son data-driven de acá, cero refactor.
  * El ícono sale de `NAV_ICONS[key]` (SVG verbatim del diseño), no de un glyph emoji.
+ *
+ * `gastos` sumado en M-WEB spike 1 (2026-08-04) -- primer módulo de negocio del shell web, sin
+ * equivalente en el diseño original de 4 tabs (EXTRACT). Va DESPUÉS de "Conexiones" a propósito:
+ * las 4 pantallas de cuenta/plataforma quedan agrupadas antes que el primer módulo de negocio.
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
   { key: 'apps', label: 'Apps' },
   { key: 'connections', label: 'Conexiones' },
+  { key: 'gastos', label: 'Gastos' },
   { key: 'account', label: 'Cuenta' },
 ];
 
