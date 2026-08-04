@@ -190,6 +190,20 @@ class GraphityStructuredClient:
             return resp.json()
         raise GrafoIngestError(f"POST /graph/search: {resp.status_code} {resp.text[:300]}")
 
+    # ── PUT /entity-types — ontología (BETA-G0) ──────────────────────────────────────────────────────
+    def registrar_ontologia(self, entity_types: list[dict], edge_types: list[dict], *,
+                            group_id: str) -> dict:
+        """`PUT /api/v2/entity-types`, scopeada a `graph_ids=[group_id]` — nunca scope vacío (v1 §5.7:
+        la instancia de Graphity es compartida entre proyectos; un scope vacío es *project-wide* y
+        pisaría/heredaría tipos de otro proyecto). Upsert idempotente: re-registrar la misma ontología
+        no rompe nada, así que llamarla en cada sync (autocura si algo la corrompió) es seguro."""
+        resp = self._request("PUT", "/entity-types", json={
+            "entity_types": entity_types, "edge_types": edge_types,
+            "user_ids": [], "graph_ids": [group_id]})
+        if resp.status_code == 200:
+            return resp.json()
+        raise GrafoIngestError(f"PUT /entity-types: {resp.status_code} {resp.text[:300]}")
+
     def listar_edges_del_graph(self, group_id: str, *, limit: int = 100) -> list[dict]:
         """`GET /graph/edge/graph/{group_id}` — TODAS las aristas del graph (paginado por `limit`), con
         `invalid_at` en la raíz (no bajo `attributes` — mismo shape que `get_edge`). Sirve de sustituto

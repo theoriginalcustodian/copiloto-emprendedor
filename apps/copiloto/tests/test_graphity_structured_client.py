@@ -207,6 +207,37 @@ def test_listar_nodes_del_graph_va_al_path_correcto():
     assert [n["uuid"] for n in nodes] == ["n1"]
 
 
+# ── PUT /entity-types (BETA-G0) ───────────────────────────────────────────────────────────────────
+
+def test_registrar_ontologia_manda_scope_graph_ids_nunca_vacio():
+    visto = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        import json as _j
+        assert req.method == "PUT"
+        assert req.url.path == "/api/v2/entity-types"
+        visto["body"] = _j.loads(req.content)
+        return httpx.Response(200, json={"success": True, "scopes_updated": 1})
+
+    et = [{"name": "Negocio", "description": "d", "properties": []}]
+    edt = [{"name": "EMITIO", "description": "d", "properties": [],
+           "source_targets": [{"source": "Negocio", "target": "Comprobante"}]}]
+    r = _cliente(handler).registrar_ontologia(et, edt, group_id="negocio-t1")
+    assert visto["body"]["graph_ids"] == ["negocio-t1"]
+    assert visto["body"]["user_ids"] == []
+    assert visto["body"]["entity_types"] == et
+    assert visto["body"]["edge_types"] == edt
+    assert r["success"] is True
+
+
+def test_registrar_ontologia_422_revienta_fail_closed():
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={"error": {"message": "tipo inválido"}})
+
+    with pytest.raises(GrafoIngestError):
+        _cliente(handler).registrar_ontologia([], [], group_id="negocio-t1")
+
+
 def test_search_error_no_200_revienta_fail_closed():
     def handler(req: httpx.Request) -> httpx.Response:
         return httpx.Response(500, json={"error": "x"})
