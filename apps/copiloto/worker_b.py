@@ -48,6 +48,9 @@ from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
 from autosanacion_activities import ACTIVITIES_AUTOSANACION, set_autosanacion_deps
 from autosanacion_workflow import AutosanacionWorkflow
+from soporte_feedback_activities import (
+    clasificar_y_encolar_feedback, procesar_feedback_pendiente_de_tenant, set_soporte_feedback_deps)
+from soporte_feedback_workflow import SoporteFeedbackWorkflow
 from afip_comprobante_store import AfipComprobanteStore
 from afip_credential_store import AfipCredentialStore, AfipPerfilStore, AfipSecretHandoff
 from afip_factura_activities import (
@@ -350,9 +353,14 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
               "cross-tenant; correr deploy/copiloto/provision-rol-autosanacion.sh)", flush=True)
     set_autosanacion_deps(_conn_dlq, llm_client=_autosanacion_llm)
 
+    # BETA-4a — clasificador de feedback (grafo de código) + enganche al ciclo de autosanación.
+    # `conn_factory` compartido (regla 7), igual que Mi día/grafo de negocio: el tenant se declara
+    # por-llamada dentro de la activity (ver `soporte_feedback_activities.py`).
+    set_soporte_feedback_deps(conn_factory)
+
     return {"workflows": [ConversationWorkflow, MpRefreshWorkflow, AfipOnboardingWorkflow,
                           FacturaWorkflow, AnulacionWorkflow, MiDiaDetectorWorkflow,
-                          AutosanacionWorkflow, GrafoSyncWorkflow],
+                          AutosanacionWorkflow, GrafoSyncWorkflow, SoporteFeedbackWorkflow],
             "activities": _ACTIVITIES + [refresh_credential, dar_de_alta_afip,
                                          verificar_habilitacion_afip, purgar_secretos_vencidos,
                                          cargar_contexto_factura, reservar_numero_comprobante,
@@ -360,7 +368,9 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                                          generar_pdf_comprobante, buscar_comprobante,
                                          listar_comprobantes, marcar_comprobante_anulado,
                                          archivar_factura_en_drive, avanzar_tablero_mi_dia,
-                                         sincronizar_grafo_negocio]
+                                         sincronizar_grafo_negocio,
+                                         clasificar_y_encolar_feedback,
+                                         procesar_feedback_pendiente_de_tenant]
                           + ACTIVITIES_AUTOSANACION,
             "context_factory": ctx_factory}
 
