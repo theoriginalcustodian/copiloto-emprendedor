@@ -149,6 +149,7 @@
     "idem_key text",
     "workflow_id text",
     "cbte_asoc_nro bigint",
+    "params_pdf_json jsonb",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_cobros": [

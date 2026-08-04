@@ -349,3 +349,37 @@ def test_registrar_devuelve_el_id_y_por_idem_key_lo_expone(conn_de_tenant, tenan
 
     # Idempotente por la tupla única: re-registrar devuelve el MISMO id (camino ON CONFLICT), no otra fila.
     assert store.registrar(**kw) == rid
+
+
+def test_adjuntar_pdf_persiste_params_pdf_json_y_get_lo_trae(conn_de_tenant, tenant_a):
+    """Residuo AFIP (Bandeja 2026-08-04): `params_pdf_json` es lo que le permite a una anulación
+    reconstruir el PDF de la nota de crédito sin un `BorradorFactura` vivo. Contra la base real
+    porque es una columna `jsonb` nueva — un fake no detecta un `ALTER TABLE` que faltó correr."""
+    from afip_comprobante_store import AfipComprobanteStore
+    store = AfipComprobanteStore(conn_de_tenant(tenant_a), tenant_a)
+    kw = dict(cuit="30712345678", tipo_cbte=11, punto_venta=1, nro=9001, cae="CAE-PDF",
+              cae_vto=None, fecha_emision=date(2026, 8, 4), doc_tipo=99, doc_nro="0",
+              total="500.00", idem_key="idem-pdf-json", workflow_id="wf-pdf")
+    store.registrar(**kw)
+
+    params = {"voucher_number": 9001, "items": [{"code": "001", "description": "algo",
+              "quantity": 1, "unit_price": 500.0, "subtotal": 500.0}], "total_amount": 500.0}
+    store.adjuntar_pdf(cuit="30712345678", tipo_cbte=11, punto_venta=1, nro=9001,
+                       pdf_url="https://x/a.pdf", pdf_expira_at=None, params_pdf=params)
+
+    fila = store.get(cuit="30712345678", tipo_cbte=11, punto_venta=1, nro=9001)
+    assert fila["params_pdf_json"] == params
+
+    # `params_pdf=None` (default) NO pisa lo ya guardado — es el camino que toma `adjuntar_pdf` cuando
+    # se llama SIN el kwarg (ningún caller de hoy lo hace para el PDF de una NC re-generado a mano,
+    # pero el contrato del COALESCE es lo que se está probando acá).
+    store.adjuntar_pdf(cuit="30712345678", tipo_cbte=11, punto_venta=1, nro=9001,
+                       pdf_url="https://x/a-v2.pdf", pdf_expira_at=None)
+    fila_v2 = store.get(cuit="30712345678", tipo_cbte=11, punto_venta=1, nro=9001)
+    assert fila_v2["params_pdf_json"] == params
+    assert fila_v2["pdf_url"] == "https://x/a-v2.pdf"
+
+    # Las otras lecturas (listar/por_idem_key) NO traen `params_pdf_json` — es opt-in sólo en `get()`
+    # (ver `_fila(con_params_pdf=...)`), para no inflar el resultado de la activity que las usa.
+    listado = store.listar(cuit="30712345678")
+    assert all("params_pdf_json" not in f for f in listado)

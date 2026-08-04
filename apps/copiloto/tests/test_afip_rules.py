@@ -29,6 +29,7 @@ from afip_rules import (
     TipoDoc,
     a_decimal,
     armar_params_pdf,
+    armar_params_pdf_nota_credito,
     receptor_desde_payload,
     armar_payload_wsfe,
     calcular_totales,
@@ -640,3 +641,47 @@ def test_receptor_desde_payload_respeta_los_datos_cargados():
                                 "nombre": "ACME SA", "domicilio": "Corrientes 1234"})
     assert (r.nombre, r.domicilio, r.nro_doc) == ("ACME SA", "Corrientes 1234", CUIT_RECEPTOR)
     assert r.condicion_iva is CondicionIVA.RESPONSABLE_INSCRIPTO
+
+
+# ---------------------------------------------------------------------------
+# PDF de la nota de crédito (Bandeja AFIP, 2026-08-04) — clona el params_pdf_json de la factura
+# original y sólo pisa lo que cambia con la anulación.
+# ---------------------------------------------------------------------------
+
+def _params_pdf_de_ejemplo() -> dict:
+    return {
+        "voucher_number": 555, "sales_point": 1, "issue_date": "20/07/2026",
+        "cae_due_date": "30/07/2026", "issuer_cuit": int(CUIT_EMISOR), "cae": "CAE-ORIGINAL",
+        "issuer_business_name": "Fulano SRL", "receiver_name": "Consumidor Final",
+        "items": [{"code": "001", "description": "Servicio", "quantity": 1.0,
+                   "unit_price": 500.0, "subtotal": 500.0}],
+        "total_amount": 500.0, "vat_amount": 0,
+    }
+
+
+def test_armar_params_pdf_nota_credito_clona_items_y_pisa_solo_lo_que_cambia():
+    original = {"tipo_cbte": int(TipoComprobante.FACTURA_C), "params_pdf_json": _params_pdf_de_ejemplo()}
+    params = armar_params_pdf_nota_credito(
+        original, numero=901, cae="CAE-NC", cae_vto=date(2026, 8, 14), fecha_emision=date(2026, 8, 4))
+
+    # Lo que cambia con la anulación:
+    assert params["voucher_number"] == 901
+    assert params["cae"] == "CAE-NC"
+    assert params["issue_date"] == "04/08/2026"
+    assert params["cae_due_date"] == "14/08/2026"
+    # Lo que NO cambia — clonado tal cual del original, ítem por ítem:
+    assert params["items"] == original["params_pdf_json"]["items"]
+    assert params["total_amount"] == 500.0
+    assert params["receiver_name"] == "Consumidor Final"
+    assert params["issuer_business_name"] == "Fulano SRL"
+
+
+def test_armar_params_pdf_nota_credito_sin_params_pdf_json_levanta_value_error():
+    """Comprobantes emitidos ANTES de la migración 2026-08-04 no tienen `params_pdf_json` — no hay
+    ítems que reconstruir. El caller (`AnulacionWorkflow`) lo atrapa y falla BLANDO: la NC ya tiene
+    CAE, sólo se queda sin PDF adjunto."""
+    original_viejo = {"tipo_cbte": int(TipoComprobante.FACTURA_C), "params_pdf_json": None}
+    with pytest.raises(ValueError, match="params_pdf_json"):
+        armar_params_pdf_nota_credito(
+            original_viejo, numero=901, cae="CAE-NC",
+            cae_vto=date(2026, 8, 14), fecha_emision=date(2026, 8, 4))

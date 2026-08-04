@@ -9,13 +9,20 @@ Mismo gate HITL que la emisión: anular es tan irreversible como facturar.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from afip_rules import armar_payload_nota_credito, validar_anulacion
+    from afip_rules import (
+        TEMPLATE_NOTA_CREDITO_POR_TIPO,
+        TipoComprobante,
+        armar_params_pdf_nota_credito,
+        armar_payload_nota_credito,
+        tipo_nota_credito,
+        validar_anulacion,
+    )
 
 TIMEOUT_EMISION = timedelta(minutes=3)
 # Latido de las activities LARGAS (item #12). 60 s con latido cada 20 s deja margen para dos
@@ -118,6 +125,25 @@ class AnulacionWorkflow:
 
         self._resultado = nc
 
+        # ⚠️ El PDF de la NC NO puede tumbar la anulación: la NC ya tiene CAE, existe ante AFIP.
+        # Mismo criterio de "éxito con advertencia" que `FacturaWorkflow`. Fail-soft explícito si el
+        # comprobante original se emitió ANTES de la migración 2026-08-04 (sin `params_pdf_json`) —
+        # ver el docstring de `armar_params_pdf_nota_credito`.
+        try:
+            tipo_nc = tipo_nota_credito(TipoComprobante(int(self._original["tipo_cbte"])))
+            params_pdf = armar_params_pdf_nota_credito(
+                self._original, numero=int(nc["nro"]), cae=str(nc["cae"]),
+                cae_vto=date.fromisoformat(nc["cae_vto"]) if nc.get("cae_vto") else hoy,
+                fecha_emision=hoy)
+            await workflow.execute_activity(
+                "generar_pdf_comprobante",
+                args=[cliente_id, cuit, TEMPLATE_NOTA_CREDITO_POR_TIPO.get(tipo_nc, "credit-note-c"),
+                      params_pdf, int(nc["nro"]), int(tipo_nc), punto_venta],
+                start_to_close_timeout=TIMEOUT_CORTO, retry_policy=REINTENTO_LECTURA)
+        except Exception as exc:  # noqa: BLE001
+            workflow.logger.error("la NC %s se emitió pero su PDF no se pudo generar: %s",
+                                  nc.get("nro"), exc)
+
         # La factura original queda marcada como anulada, con el puntero a la NC que la neutralizó.
         # Se hace DESPUÉS de que la NC tenga CAE: marcarla antes dejaría una factura "anulada" sin
         # nota de crédito que la respalde si la emisión fallara.
@@ -142,13 +168,9 @@ class AnulacionWorkflow:
                 f"La nota de crédito N° {nc.get('nro')} se emitió correctamente, pero no pudimos "
                 f"actualizar el estado de la factura original. La anulación ante AFIP es válida.")
 
-        # ⚠️ DEUDA GESTIONADA (2026-07-21): la nota de crédito NO genera su PDF. Es un comprobante
-        # fiscal con CAE igual que la factura, así que quien anula debería poder descargarla — hoy no
-        # puede. Verificado sobre 6 anulaciones reales: ninguna tiene `pdf_url`.
-        # No es una regresión (nunca existió) y no bloquea el sprint, pero es un hueco visible desde
-        # la primera anulación de un usuario real.
-        # Pago: una `generar_pdf_comprobante` acá con el template de NC, replicando el criterio de
-        # `FacturaWorkflow` — el fallo del PDF NO puede tumbar la anulación, la NC ya tiene CAE.
-        # Propietario: operador. Condición: antes de habilitar producción.
+        # ✅ RESUELTO 2026-08-04: la nota de crédito ahora genera su PDF (arriba, template
+        # `credit-note-c`). Comprobantes anulados que se emitieron ANTES de esta fecha no tienen
+        # `params_pdf_json` y quedan sin PDF de NC (fail-soft, logueado) — no hay forma de
+        # reconstruirlo retroactivamente, los ítems nunca se persistieron para ellos.
         self._paso = "anulada"
         return self.estado()
