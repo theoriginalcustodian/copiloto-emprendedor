@@ -78,6 +78,19 @@ lint_rc=$?
 [ "$lint_rc" -ne 0 ] && add "CONTRATOS SIN ARTEFACTO:
 $lint_out"
 
+# ── 2.ter) MAIL FRESCO para planificación: nadie lo mira hasta el vigía (cada 20min) ────────────
+# Causa raíz (2026-08-03, hallazgo del operador): ni este chequeo ni el de sesiones ociosas leían
+# abierto/ — sólo COLA/ESCALADORES/VIDA, ninguno es "¿hay correo nuevo dirigido a mí?". Un
+# avance_/cierre_ backend-a-planificacion podía esperar hasta 20min (la cadencia del vigía v3) sin
+# que el gate de 3min lo viera, porque un mensaje nuevo no es ociosidad ni parálisis — es lo
+# opuesto. Ventana de 5min (> intervalo del cron de 3min + margen de jitter): un archivo -a-
+# planificacion_/-a-todos_ más nuevo que eso es necesariamente correo que ningún ciclo previo pudo
+# haber visto. Se apaga solo pasados 5min (no hay estado "leído" que trackear) — alarma como mucho
+# una vez por archivo, en el ciclo inmediato siguiente a su llegada.
+mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname '*-a-planificacion_*' -o -iname '*-a-todos_*' \) -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
+[ -n "$mail_out" ] && add "MAIL FRESCO (sin ver aún, <5min):
+$mail_out"
+
 # ── 3) VIDA por transcript: mtime puro, sin inferir contenido ──────────────────────────────────
 # Rotula por el MARCADOR DEL PROMPT DEL CRON ("sesión BACKEND"/"FRONTEND"/"PLANIFICACIÓN"), la
 # misma técnica de etiqueta_transcript() en no-ocio-check.sh — validada (8/0/0, medido 2026-07-24,
