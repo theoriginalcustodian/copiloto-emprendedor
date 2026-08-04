@@ -8,7 +8,16 @@
 -- evento = 'tool_call:<status>' -> una tool ejecutada (model = 'tool:<nombre>', tokens = NULL;
 --                                  status ∈ ok|error|rejected|needs_confirmation, ver ToolResult)
 --
--- Uso (ejemplo, últimas 24h): psql "$DATABASE_URL" -f apps/copiloto/queries/metering_dashboard.sql
+-- ⚠️ RLS FORCE está activo en copiloto_metering (verificado 2026-08-04 contra prod). El rol de la app
+-- (PGUSER de fusion-pg.env) está sujeto a la policy tenant_isolation IGUAL que cualquier otro --
+-- FORCE anula la exención de dueño. `psql "$DATABASE_URL"` desnudo, SIN declarar
+-- request.jwt.claims, ve 0 FILAS SIEMPRE (ningún tenant, no "todavía no hay uso") -- así se
+-- descubrió: un turno de chat real no aparecía y casi se declaró "no está escribiendo" antes de
+-- correr el control (ver memoria/rls-activado-que-no-filtraba-el-dueno-esta-exento.md, mismo patrón).
+-- Para el agregado CROSS-TENANT que esta query necesita, correr desde una sesión que bypasee RLS
+-- (Supabase Studio → SQL Editor conecta como el superusuario `postgres`, que sí bypasea) -- NO desde
+-- el rol de la app. Si sólo hay el rol de la app a mano, declarar el tenant primero y aceptar que
+-- sólo se ve ESE tenant: `select set_config('request.jwt.claims', '{"cliente_id":"<uuid>"}', false);`
 
 -- 1) Gasto LLM + turnos por tenant (últimas 24h)
 select
