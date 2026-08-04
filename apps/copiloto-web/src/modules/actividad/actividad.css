@@ -1,0 +1,142 @@
+/*
+ * Estilos del módulo Actividad (M-WEB módulo 3) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que clientes.css (cero color literal).
+ */
+
+.actividad-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.actividad-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.actividad-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.actividad-screen__loading,
+.actividad-screen__body,
+.actividad-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actividad-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+.actividad-screen__buscar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.actividad-screen__buscar span {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.actividad-screen__buscar input {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.actividad-screen__buscar input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ---------- FilaActividad ---------- */
+.fila-actividad {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+}
+
+.fila-actividad[role='button'] {
+  cursor: pointer;
+}
+
+.fila-actividad__icono {
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.fila-actividad__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fila-actividad__titulo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-actividad__detalle {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-actividad__monto {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.fila-actividad__monto--entra {
+  color: var(--ok-fg);
+}
+
+.fila-actividad__monto--sale {
+  color: var(--danger-fg);
+}
