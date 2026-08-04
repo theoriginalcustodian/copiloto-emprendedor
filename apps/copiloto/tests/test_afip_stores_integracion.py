@@ -383,3 +383,23 @@ def test_adjuntar_pdf_persiste_params_pdf_json_y_get_lo_trae(conn_de_tenant, ten
     # (ver `_fila(con_params_pdf=...)`), para no inflar el resultado de la activity que las usa.
     listado = store.listar(cuit="30712345678")
     assert all("params_pdf_json" not in f for f in listado)
+
+
+def test_ADVERSARIAL_A_no_ve_el_listado_ni_el_detalle_de_los_comprobantes_de_B(conn_de_tenant,
+                                                                                tenant_a, tenant_b):
+    """Hallazgo 2026-08-04 (M-WEB RLS): `AfipComprobanteStore` sólo se ejercitaba con un único tenant
+    en este archivo — nunca con un actor A pidiendo activamente el comprobante de B. `listar` y
+    `detalle_por_id` alimentan `GET /afip/comprobantes` y `GET /afip/comprobantes/{id}`."""
+    from afip_comprobante_store import AfipComprobanteStore
+    de_b = AfipComprobanteStore(conn_de_tenant(tenant_b), tenant_b)
+    rid_b = de_b.registrar(cuit="30712345678", tipo_cbte=6, punto_venta=1, nro=5001,
+                           cae="CAE-SECRETO-B", cae_vto=None, fecha_emision=date(2026, 8, 4),
+                           doc_tipo=96, doc_nro="20222222223", total="777777.00",
+                           receptor_nombre="Secreto de B")
+
+    de_a = AfipComprobanteStore(conn_de_tenant(tenant_a), tenant_a)
+    assert de_a.listar(cuit="30712345678") == []
+    assert de_a.detalle_por_id(rid_b) is None
+
+    # y B sigue viendo lo suyo — si el fixture de alta fallara en silencio, todo daría vacío por igual
+    assert de_b.detalle_por_id(rid_b)["receptor_nombre"] == "Secreto de B"
