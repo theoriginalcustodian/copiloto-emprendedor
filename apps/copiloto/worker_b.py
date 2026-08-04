@@ -42,6 +42,7 @@ import tool_catalog
 from contexto_tenant import conexion_con_tenant
 from deposito_traumas import fabrica_desde
 from interceptor_errores import CapturaDeErroresInterceptor
+from metering_store import MeteringStore
 from perfil_negocio_prompt import bloque_de_contexto
 from perfil_negocio_store import PerfilNegocioStore
 from afip_anulacion_workflow import AnulacionWorkflow
@@ -112,6 +113,19 @@ def _perfil_provider(conn_factory: Callable) -> Callable:
             return ""
 
     return proveer
+
+
+def _metering_provider(conn_factory: Callable) -> Callable:
+    """`(cliente_id, session_id, model, tokens, evento) -> None`, boundary `metering_sink` (BETA-1b).
+
+    El try/except contra fallos de DB YA vive en `agent_activities._registrar_metering` (capa
+    PLANTILLA) -- acá sólo se instancia el store per-request, mismo criterio de aislamiento que el
+    resto de las fábricas de este archivo (regla 7: nunca un store compartido entre tenants)."""
+    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str) -> None:
+        MeteringStore(conn_factory, cliente_id).registrar(
+            session_id=session_id, model=model, tokens=tokens, evento=evento)
+
+    return registrar
 
 
 def _conn_dlq_factory(env: Mapping[str, str]) -> Callable | None:
@@ -256,7 +270,11 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
                     # workflow quedaría congelada para siempre y los cambios de Ajustes no tendrían
                     # efecto nunca. Un tenant sin perfil devuelve "" → el prompt queda byte a byte
                     # igual que antes de que este frente existiera.
-                    perfil_provider=_perfil_provider(conn_factory))
+                    perfil_provider=_perfil_provider(conn_factory),
+                    # Metering (BETA-1b): un evento por turno LLM y por tool ejecutada, a
+                    # copiloto_metering. Boundary best-effort igual que perfil_provider -- si la DB
+                    # falla, el turno sigue (`_registrar_metering` en el motor absorbe la excepción).
+                    metering_sink=_metering_provider(conn_factory))
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     set_refresh_deps(mp_gateway, lambda cliente_id: MpCredentialStore(conn_factory, cliente_id, crypto))

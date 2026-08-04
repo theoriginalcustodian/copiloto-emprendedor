@@ -115,8 +115,12 @@ class LlmProvider:
             except (ValueError, json.JSONDecodeError):
                 args = {}
             tool_calls.append({"id": tc.get("id"), "name": fn.get("name"), "arguments": args})
+        # `usage` (metering, BETA-1b): OpenRouter lo devuelve en el body top-level (mismo shape que
+        # OpenAI: prompt_tokens/completion_tokens/total_tokens). Antes se descartaba -- se pasa tal
+        # cual, sin normalizar, para que el caller decida qué campo usar; ausente -> {} (best-effort).
         return {"tool_calls": tool_calls, "content": msg.get("content"),
-                "finish_reason": choice.get("finish_reason") or "", "model": model, "failed_over": failed_over}
+                "finish_reason": choice.get("finish_reason") or "", "model": model, "failed_over": failed_over,
+                "usage": d.get("usage") or {}}
 
     # ── transporte (inyectable en test) ───────────────────────────────────────────────────────────
     def _post(self, url: str, body: bytes, timeout: float) -> dict:

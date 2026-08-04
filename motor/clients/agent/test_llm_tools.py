@@ -39,6 +39,22 @@ def test_complete_tools_forwards_tools_and_disables_parallel(monkeypatch):
     assert out["finish_reason"] == "tool_calls"
 
 
+def test_complete_tools_forwards_usage_for_metering(monkeypatch):
+    """BETA-1b: el `usage` de OpenRouter viaja tal cual en el dict de salida (antes se descartaba)."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    resp = {"choices": [{"finish_reason": "stop", "message": {"content": "ok", "tool_calls": None}}],
+           "usage": {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}}
+    out = _provider(_FakeTransport(resp)).complete_tools("sys", [{"role": "user", "content": "hola"}], tools=[])
+    assert out["usage"] == {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}
+
+
+def test_complete_tools_sin_usage_en_la_respuesta_devuelve_dict_vacio(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    resp = {"choices": [{"finish_reason": "stop", "message": {"content": "ok", "tool_calls": None}}]}
+    out = _provider(_FakeTransport(resp)).complete_tools("sys", [{"role": "user", "content": "hola"}], tools=[])
+    assert out["usage"] == {}
+
+
 def test_complete_tools_tool_choice_none_yields_text(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
     resp = {"choices": [{"finish_reason": "stop",

@@ -12,15 +12,16 @@ from backend.agent.agent_runtime import register_domain, reset_registry
 class _Prov:
     def complete_tools(self, system, messages, tools, *, tool_choice="auto", parallel_tool_calls=False):
         return {"tool_calls": [{"id": "c1", "name": "gmail_fetch", "arguments": {}}],
-                "content": None, "finish_reason": "tool_calls", "model": "m", "failed_over": False}
+                "content": None, "finish_reason": "tool_calls", "model": "m", "failed_over": False,
+                "usage": {"total_tokens": 123}}
 
 
-def _reg(tool_executor=None, memory_provider=None):
+def _reg(tool_executor=None, memory_provider=None, metering_sink=None):
     reset_registry()
     register_domain("d", system_prompt="SYS", llm_provider=_Prov(), dispatcher=lambda *a: None,
                     tool_schemas=[{"type": "function", "function": {"name": "gmail_fetch"}}],
                     tool_executor=tool_executor, context_factory=lambda conv: object(), engine_mode="react",
-                    memory_provider=memory_provider)
+                    memory_provider=memory_provider, metering_sink=metering_sink)
 
 
 def test_call_llm_tools_uses_registry_schemas():
@@ -74,3 +75,62 @@ def test_recall_memory_degrades_on_exception():
     _reg(memory_provider=_Mem())
     out = asyncio.run(A.recall_memory({"domain": "d", "cliente_id": "42", "thread_ref": "t", "query": "hola"}))
     assert out == {"context": ""}
+
+
+# --- metering_sink (BETA-1b) -------------------------------------------------------
+
+def test_call_llm_tools_sin_metering_sink_no_revienta():
+    """None (default) -> comportamiento actual, sin cambios."""
+    _reg(metering_sink=None)
+    out = asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "cliente_id": "42",
+                                        "session_id": "s1"}))
+    assert out["tool_calls"][0]["name"] == "gmail_fetch"
+
+
+def test_call_llm_tools_registra_evento_llm_turno():
+    seen = []
+    _reg(metering_sink=lambda *a: seen.append(a))
+    asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "cliente_id": "42", "session_id": "s1"}))
+    assert seen == [("42", "s1", "m", 123, "llm_turno")]
+
+
+def test_call_llm_tools_sin_cliente_id_no_registra():
+    """El sink existe pero no hay tenant que atribuirle el evento -- no se llama (mismo criterio que
+    perfil_provider: sin cliente_id no hay a quién cargarle nada)."""
+    seen = []
+    _reg(metering_sink=lambda *a: seen.append(a))
+    asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "session_id": "s1"}))
+    assert seen == []
+
+
+def test_call_llm_tools_metering_sink_que_revienta_no_rompe_el_turno():
+    def _sink(*a):
+        raise RuntimeError("db caida")
+    _reg(metering_sink=_sink)
+    out = asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "cliente_id": "42",
+                                        "session_id": "s1"}))
+    assert out["tool_calls"][0]["name"] == "gmail_fetch"   # el turno sigue andando
+
+
+def test_execute_tool_registra_evento_tool_call_ok():
+    seen = []
+    def _ex(name, arguments, ctx, *, confirmed, idem_key):
+        from backend.agent.types import ToolResult
+        return ToolResult(tool_call_id=idem_key, observation={"ok": True})
+    _reg(tool_executor=_ex, metering_sink=lambda *a: seen.append(a))
+    asyncio.run(A.execute_tool({"domain": "d", "name": "gmail_send", "arguments": {},
+                                "conv": {"cliente_id": "42", "channel_ref": "s1"},
+                                "confirmed": True, "idem_key": "r-1"}))
+    assert seen == [("42", "s1", "tool:gmail_send", None, "tool_call:ok")]
+
+
+def test_execute_tool_registra_evento_tool_call_error_para_dashboard_de_error_rate():
+    seen = []
+    def _ex(name, arguments, ctx, *, confirmed, idem_key):
+        from backend.agent.types import ToolResult
+        return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "boom"})
+    _reg(tool_executor=_ex, metering_sink=lambda *a: seen.append(a))
+    asyncio.run(A.execute_tool({"domain": "d", "name": "gmail_send", "arguments": {},
+                                "conv": {"cliente_id": "42", "channel_ref": "s1"},
+                                "confirmed": True, "idem_key": "r-1"}))
+    assert seen == [("42", "s1", "tool:gmail_send", None, "tool_call:error")]
