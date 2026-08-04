@@ -18,10 +18,10 @@ describe('LegalScreen', () => {
     expect(screen.getByText('Política de Privacidad')).toBeInTheDocument();
   });
 
-  it('siempre muestra el aviso de placeholder — nunca se confunde con texto legal final', () => {
+  it('siempre marca el texto como plantilla — nunca se confunde con revisión legal específica', () => {
     render(<LegalScreen kind="tos" onVolver={vi.fn()} />);
     expect(screen.getByTestId('legal-screen-placeholder-notice')).toHaveTextContent(
-      'Texto PLACEHOLDER',
+      'Plantilla estándar genérica',
     );
   });
 
