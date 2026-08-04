@@ -32,9 +32,9 @@ describe('Rail', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renderiza los 5 ítems del registro declarativo (Chat · Apps · Conexiones · Gastos · Cuenta)', () => {
+  it('renderiza los 6 ítems del registro declarativo (Chat · Apps · Conexiones · Gastos · Clientes · Cuenta)', () => {
     renderRail();
-    expect(TABS).toHaveLength(5);
+    expect(TABS).toHaveLength(6);
     for (const tab of TABS) {
       expect(screen.getByRole('button', { name: tab.label })).toBeInTheDocument();
     }

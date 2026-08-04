@@ -2,7 +2,7 @@ import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import './shell.css';
 
-export type TabKey = 'chat' | 'apps' | 'connections' | 'gastos' | 'account';
+export type TabKey = 'chat' | 'apps' | 'connections' | 'gastos' | 'clientes' | 'account';
 
 export interface TabDefinition {
   key: TabKey;
@@ -17,12 +17,16 @@ export interface TabDefinition {
  * `gastos` sumado en M-WEB spike 1 (2026-08-04) -- primer módulo de negocio del shell web, sin
  * equivalente en el diseño original de 4 tabs (EXTRACT). Va DESPUÉS de "Conexiones" a propósito:
  * las 4 pantallas de cuenta/plataforma quedan agrupadas antes que el primer módulo de negocio.
+ *
+ * `clientes` sumado en M-WEB módulo 2 (2026-08-04) -- mismo criterio: módulo de negocio, va
+ * después de `gastos` (orden de llegada de los módulos, no hay jerarquía declarada entre ellos).
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
   { key: 'apps', label: 'Apps' },
   { key: 'connections', label: 'Conexiones' },
   { key: 'gastos', label: 'Gastos' },
+  { key: 'clientes', label: 'Clientes' },
   { key: 'account', label: 'Cuenta' },
 ];
 

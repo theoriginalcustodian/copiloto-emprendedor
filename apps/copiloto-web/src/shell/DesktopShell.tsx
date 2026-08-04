@@ -4,6 +4,7 @@ import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
+import { ClientesScreen } from '../modules/clientes';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { Rail } from './Rail';
@@ -64,6 +65,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         {activeTab === 'chat' && <ChatScreen variant="desktop" />}
         {activeTab === 'connections' && <ConnectionsScreen />}
         {activeTab === 'gastos' && <GastosScreen />}
+        {activeTab === 'clientes' && <ClientesScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
