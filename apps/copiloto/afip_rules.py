@@ -113,10 +113,11 @@ ESTADOS_TERMINALES = frozenset(
 )
 
 # R5 — tope de importe para vender a consumidor final SIN identificar.
-# ⚠️ [PENDIENTE VERIFICAR contra normativa vigente] El competidor (Facturitas) usa 10.000.000, pero que
-# ellos usen ese número no prueba que sea el vigente hoy. Queda parametrizado a propósito: cuando se
-# confirme el valor real, se cambia acá y en ningún otro lado. NO hardcodear este número en la UI.
-# Propietario: equipo copiloto · Condición de pago: antes de habilitar producción.
+# ✅ VERIFICADO 2026-08-04 contra normativa real (no contra lo que usa el competidor): RG 5700/2025
+# (ARCA) fija $10.000.000 desde el 29/05/2025, uniforme sin importar el medio de pago — reemplazó los
+# umbrales viejos de RG 1415 ($250.000 efectivo / $400.000 otros medios). Coincide con el valor que ya
+# estaba acá. Queda parametrizado igual: si ARCA lo actualiza de nuevo, se cambia acá y en ningún otro
+# lado. NO hardcodear este número en la UI.
 TOPE_CONSUMIDOR_FINAL_SIN_IDENTIFICAR = Decimal("10000000")
 
 # R4 — AFIP acepta `CbteFch` dentro de ±10 días corridos de la fecha real.
