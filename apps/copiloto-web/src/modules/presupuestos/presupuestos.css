@@ -1,0 +1,373 @@
+/*
+ * Estilos del módulo Presupuestos (M-WEB módulo 5) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que clientes.css/gastos.css (cero color literal).
+ */
+
+.presupuestos-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+  position: relative;
+}
+
+.presupuestos-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.presupuestos-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.presupuestos-screen__loading,
+.presupuestos-screen__body,
+.presupuestos-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.presupuestos-screen__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+/* ---------- TarjetaPresupuesto ---------- */
+.tarjeta-presupuesto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 14px;
+  cursor: pointer;
+}
+
+.tarjeta-presupuesto__fila-superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tarjeta-presupuesto__nombre {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.tarjeta-presupuesto__total {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--btn-bg);
+  flex-shrink: 0;
+}
+
+.tarjeta-presupuesto__detalle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--mono);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tarjeta-presupuesto__badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* ---------- FormularioPresupuesto ---------- */
+.formulario-presupuesto {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-presupuesto__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.formulario-presupuesto__subtitulo {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+  margin: 0;
+}
+
+.formulario-presupuesto__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulario-presupuesto__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.formulario-presupuesto__campo input,
+.formulario-presupuesto__campo select {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.formulario-presupuesto__campo input::placeholder {
+  color: var(--input-fg);
+}
+
+.formulario-presupuesto__campo input:focus-visible,
+.formulario-presupuesto__campo select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.formulario-presupuesto__aviso {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.formulario-presupuesto__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.formulario-presupuesto__aproximado {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.formulario-presupuesto__catalogo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formulario-presupuesto__catalogo-etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+.formulario-presupuesto__catalogo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.formulario-presupuesto__items {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formulario-presupuesto__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 6%, transparent);
+}
+
+.formulario-presupuesto__item-numeros {
+  display: flex;
+  gap: 8px;
+}
+
+.formulario-presupuesto__item-numeros .formulario-presupuesto__campo {
+  flex: 1;
+}
+
+.formulario-presupuesto__acciones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ---------- DetallePresupuesto ---------- */
+.detalle-presupuesto {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-presupuesto__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.detalle-presupuesto__encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detalle-presupuesto__titulo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0;
+}
+
+.detalle-presupuesto__dato {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detalle-presupuesto__dato-etiqueta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.detalle-presupuesto__dato-valor {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.detalle-presupuesto__dato--destacado {
+  margin-top: 4px;
+}
+
+.detalle-presupuesto__dato-valor--destacado {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--btn-bg);
+}
+
+.detalle-presupuesto__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detalle-presupuesto__seccion-titulo {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.detalle-presupuesto__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detalle-presupuesto__item-descripcion {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.detalle-presupuesto__item-cantidad {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--label);
+  flex-shrink: 0;
+}
+
+.detalle-presupuesto__aviso {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
+.detalle-presupuesto__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.detalle-presupuesto__exito {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ok-fg);
+  margin: 0;
+}
+
+.detalle-presupuesto__acciones-doc {
+  display: flex;
+  gap: 10px;
+}
+
+.detalle-presupuesto__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 8px;
+}
