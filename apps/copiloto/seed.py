@@ -20,8 +20,6 @@ def main() -> None:
     db_url = os.environ["DATABASE_URL"]
     manifest = json.load(open(Path(__file__).resolve().parent / "uc_tables.json", encoding="utf-8"))
     conn = psycopg2.connect(db_url); conn.autocommit = True
-    # copiloto_metering se provisiona como placeholder forward (follow-up de metering/costo); aún SIN writers
-    # en este corte — no confundir filas con uso real.
     provision(manifest, conn)                                  # idempotente, namespacing copiloto_* (guard J27)
     print("OK tablas copiloto_* provisionadas", flush=True)
 

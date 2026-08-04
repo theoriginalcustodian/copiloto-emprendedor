@@ -11,6 +11,7 @@
     "session_id text NOT NULL",
     "model text NOT NULL",
     "tokens bigint",
+    "evento text NOT NULL DEFAULT 'llm_turno'",
     "created_at timestamptz DEFAULT now()"
   ],
   "mp_credentials": [

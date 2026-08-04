@@ -120,6 +120,19 @@ async def transcribe_voice(payload: dict) -> dict:
         return {"text": "", "error": str(exc)}
 
 
+async def _registrar_metering(dom: dict, *, cliente_id: str | None, session_id: str, model: str,
+                              tokens: int | None, evento: str) -> None:
+    """Best-effort (BETA-1b): el boundary `metering_sink` del dominio, si existe. Nunca rompe el turno
+    -- metering es telemetría, no correctitud, mismo criterio que `perfil_provider` arriba."""
+    sink = dom.get("metering_sink")
+    if sink is None or not cliente_id:
+        return
+    try:
+        await asyncio.to_thread(sink, cliente_id, session_id, model, tokens, evento)
+    except Exception as exc:  # noqa: BLE001
+        activity.logger.warning("metering_sink falló (cliente=%s, evento=%s): %s", cliente_id, evento, exc)
+
+
 def componer_system_extra(bloque_estable: str, contexto_del_turno: str) -> str:
     """Une el bloque ESTABLE del tenant (perfil) con el VARIABLE (memoria), en ESE orden.
 
@@ -133,7 +146,8 @@ def componer_system_extra(bloque_estable: str, contexto_del_turno: str) -> str:
 
 @activity.defn
 async def call_llm_tools(payload: dict) -> dict:
-    """payload = {domain, messages, tool_choice?, system_extra?, cliente_id?}. Tool-calling nativo ReAct.
+    """payload = {domain, messages, tool_choice?, system_extra?, cliente_id?, session_id?}. Tool-calling
+    nativo ReAct.
 
     Antepone al system: (1) el bloque ESTABLE del tenant vía `perfil_provider` del dominio, y (2) el
     Context Block de memoria que arma el workflow 1×/turno (`system_extra`). En ese orden — ver
@@ -162,9 +176,14 @@ async def call_llm_tools(payload: dict) -> dict:
     if extra:
         system = system + "\n\n" + extra
     tools = dom.get("tool_schemas") or []
-    return await asyncio.to_thread(
+    result = await asyncio.to_thread(
         provider.complete_tools, system, payload.get("messages") or [], tools,
         tool_choice=payload.get("tool_choice", "auto"))
+    await _registrar_metering(
+        dom, cliente_id=cliente_id, session_id=payload.get("session_id", ""),
+        model=result.get("model", ""), tokens=(result.get("usage") or {}).get("total_tokens"),
+        evento="llm_turno")
+    return result
 
 
 @activity.defn
@@ -181,7 +200,16 @@ async def execute_tool(payload: dict) -> dict:
     result = await asyncio.to_thread(
         executor, payload["name"], payload.get("arguments") or {}, ctx,
         confirmed=bool(payload.get("confirmed", False)), idem_key=payload["idem_key"])
-    return result.to_dict() if hasattr(result, "to_dict") else result
+    result_dict = result.to_dict() if hasattr(result, "to_dict") else result
+    conv = payload.get("conv") or {}
+    # `evento` lleva el status adentro ("tool_call:ok"/"tool_call:error"/...) -- es lo que le permite a
+    # la query de error-rate (BETA-1b DoD) filtrar `LIKE 'tool_call:%'` y agrupar por resultado, sin
+    # una columna nueva en `copiloto_metering`.
+    await _registrar_metering(
+        dom, cliente_id=conv.get("cliente_id"), session_id=conv.get("channel_ref", ""),
+        model=f"tool:{payload['name']}", tokens=None,
+        evento=f"tool_call:{result_dict.get('status', 'ok')}")
+    return result_dict
 
 
 @activity.defn
