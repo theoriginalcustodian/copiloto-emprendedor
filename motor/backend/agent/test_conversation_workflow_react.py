@@ -772,20 +772,22 @@ def test_narra_completitud_detecta_solo_palabras_de_cierre_exactas():
 
 
 @pytest.mark.asyncio
-async def test_react_guardrail_forces_required_retry_when_llm_lies():
-    """Parte 1 del fix v2: el LLM cierra el 1er intento SIN tool_call pero afirmando "Anoté..." (la mentira
-    medida 3/3 en device) -> el guardrail rechaza esa respuesta y re-pregunta UNA vez con
-    tool_choice="required". Esta vez el LLM sí llama la tool -> el turno la ejecuta de verdad."""
+async def test_react_guardrail_retirado_ya_no_reintenta_cuando_el_llm_narra_sin_ejecutar():
+    """Parte 1 del fix v2 -- RETIRADA (PR#218, 2026-08-03): el guardrail forced-retry
+    (`narra-guardrail-required-retry`) se retiró vía patch inverso replay-safe
+    (`narra-guardrail-retirado`, ver conversation_workflow.py ~L576) tras retest 10/10 honesto contra
+    el LLM real (el guardrail nunca disparó) + la cura estructural de Parte 2
+    (`self._react_transcript`, más abajo en este archivo) sostiene la honestidad sin necesitar el
+    parche. Con LLM scripteado ya no se puede verificar honestidad real -- este test sólo confirma
+    mecánicamente que el retry forzado no dispara más: una única llamada, `tool_choice='auto'`, el
+    turno cierra con lo que haya dicho el LLM en esa única vuelta. Evidencia del retiro:
+    `avance_backend-a-planificacion_retest-caso2-10-10-honesto-guardrail-nunca-disparo.md`."""
     payloads: list[dict] = []
 
     @activity.defn(name="call_llm_tools")
     async def flt(p):
         payloads.append(dict(p))
-        if len(payloads) == 1:
-            return _TEXT('Anoté el gasto de $141 en la categoría "otros"... revisalo y confirmame.')
-        if len(payloads) == 2:
-            return _tc("registrar_gasto", {"monto": 141})
-        return _TEXT("Listo, te armé el borrador.")
+        return _TEXT('Anoté el gasto de $141 en la categoría "otros"... revisalo y confirmame.')
 
     @activity.defn(name="recall_memory")
     async def frc(p):
@@ -816,11 +818,10 @@ async def test_react_guardrail_forces_required_retry_when_llm_lies():
             await h.signal(ConversationWorkflow.close)
             await h.result()
 
-    assert len(payloads) == 3, f"esperaba 3 llamadas (mentira, retry required, cierre) -> {len(payloads)}"
-    assert payloads[0]["tool_choice"] == "auto"                # intento normal, el que mintió
-    assert payloads[1]["tool_choice"] == "required"             # el guardrail forzó la re-llamada
-    assert len(exec_calls) == 1 and exec_calls[0]["name"] == "registrar_gasto"   # la tool SÍ se ejecutó
-    assert sent[-1]["text"] == "Listo, te armé el borrador."
+    assert len(payloads) == 1, f"guardrail retirado: no debe reintentar -> {len(payloads)}"
+    assert payloads[0]["tool_choice"] == "auto"
+    assert not exec_calls, "sin retry forzado la tool nunca se llama -- esperado tras el retiro"
+    assert sent[-1]["text"] == 'Anoté el gasto de $141 en la categoría "otros"... revisalo y confirmame.'
 
 
 @pytest.mark.asyncio
@@ -861,18 +862,20 @@ async def test_react_guardrail_no_dispara_en_aclaracion_honesta():
 
 
 @pytest.mark.asyncio
-async def test_react_guardrail_cierra_igual_si_el_required_tampoco_da_tool():
-    """Defensivo: si INCLUSO tras forzar tool_choice='required' el LLM sigue sin devolver tool_calls (caso
-    límite de la API real, a verificar empíricamente), el turno cierra igual con ese 2º contenido -- nunca
-    cuelga esperando un tool_call que no llega."""
+async def test_react_guardrail_retirado_no_reintenta_ni_con_texto_de_cierre_generico():
+    """RETIRADA (PR#218, 2026-08-03, ver docstring del test anterior). Antes del retiro este test
+    verificaba el caso defensivo "ni el retry required devuelve tool_calls" -- ese código (2º
+    `call_llm_tools` con `tool_choice='required'`) ya no se ejecuta NUNCA para un workflow nuevo
+    (`workflow.patched('narra-guardrail-retirado')` corta el `if` en conversation_workflow.py ~L576
+    antes de llegar ahí), así que el escenario que este test guardaba quedó sin código vivo detrás.
+    Se mantiene como segunda variante (texto de cierre genérico en vez de detallado) del mismo
+    regression-guard: una única llamada, sin retry, cierra con lo que haya dicho el LLM."""
     payloads: list[dict] = []
 
     @activity.defn(name="call_llm_tools")
     async def flt(p):
         payloads.append(dict(p))
-        if len(payloads) == 1:
-            return _TEXT("Listo, ya lo hice.")
-        return _TEXT("Perdón, no puedo hacerlo ahora.")   # ni con required devuelve tool_calls
+        return _TEXT("Listo, ya lo hice.")
 
     @activity.defn(name="recall_memory")
     async def frc(p):
@@ -899,8 +902,9 @@ async def test_react_guardrail_cierra_igual_si_el_required_tampoco_da_tool():
             await h.signal(ConversationWorkflow.close)
             await h.result()
 
-    assert len(payloads) == 2
-    assert sent[-1]["text"] == "Perdón, no puedo hacerlo ahora."   # cerró con el 2º contenido, no colgó
+    assert len(payloads) == 1, f"guardrail retirado: no debe reintentar -> {len(payloads)}"
+    assert payloads[0]["tool_choice"] == "auto"
+    assert sent[-1]["text"] == "Listo, ya lo hice."
 
 
 @pytest.mark.asyncio
