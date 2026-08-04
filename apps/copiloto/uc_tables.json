@@ -193,6 +193,12 @@
     "ultimo_orden bigint NOT NULL",
     "ultimo_edge_uuid text NOT NULL"
   ],
+  "copiloto_feedback": [
+    "tipo text NOT NULL",
+    "texto text NOT NULL",
+    "contexto text",
+    "created_at timestamptz DEFAULT now()"
+  ],
   "copiloto_avisos_emitidos": [
     "regla text NOT NULL",
     "entidad_tipo text NOT NULL",
