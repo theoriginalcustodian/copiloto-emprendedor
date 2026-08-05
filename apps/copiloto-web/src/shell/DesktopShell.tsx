@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import { Toast } from '../design-system';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
@@ -8,6 +9,7 @@ import { ClientesScreen } from '../modules/clientes';
 import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
+import { PresupuestosScreen } from '../modules/presupuestos';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { Rail } from './Rail';
@@ -44,6 +46,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   // `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del shell
   // aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no resetea.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
+  // Ver docstring equivalente en AppShell.tsx — mismo stub, mismo TODO(M-WEB-facturacion).
+  const [facturacionPendiente, setFacturacionPendiente] = useState(false);
 
   const handleTabChange = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -72,11 +76,20 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         {activeTab === 'contabilidad' && <ContabilidadScreen />}
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
+        {activeTab === 'presupuestos' && (
+          <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
+        )}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </AppsModal>
+      {facturacionPendiente && (
+        <Toast
+          message="Facturar desde la web todavía no está disponible — probalo desde la app por ahora."
+          onDismiss={() => setFacturacionPendiente(false)}
+        />
+      )}
     </div>
   );
 }

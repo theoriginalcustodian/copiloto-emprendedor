@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { BottomSheet } from '../design-system';
+import { BottomSheet, Toast } from '../design-system';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
@@ -9,6 +9,7 @@ import { ClientesScreen } from '../modules/clientes';
 import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
+import { PresupuestosScreen } from '../modules/presupuestos';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -59,6 +60,11 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
   // resetea, así el cierre sigue animando con el contenido ya cargado.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
+  // Facturación todavía no está portada a la web (M-WEB, próxima en la cola) — `onFacturar` de
+  // Presupuestos es obligatorio (mobile navega al gate de confirmación real), así que acá se
+  // avisa con un toast en vez de fallar en silencio. TODO(M-WEB-facturacion): reemplazar por la
+  // navegación real al gate cuando el módulo `facturacion` aterrice en copiloto-web.
+  const [facturacionPendiente, setFacturacionPendiente] = useState(false);
 
   const changeTab = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -112,12 +118,21 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {activeTab === 'contabilidad' && <ContabilidadScreen />}
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
+        {activeTab === 'presupuestos' && (
+          <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
+        )}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </BottomSheet>
+      {facturacionPendiente && (
+        <Toast
+          message="Facturar desde la web todavía no está disponible — probalo desde la app por ahora."
+          onDismiss={() => setFacturacionPendiente(false)}
+        />
+      )}
     </div>
   );
 }
