@@ -1,22 +1,26 @@
-import { makeRedirectUri } from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
 
 /**
- * Google OAuth nativo, contra el mismo GoTrue dedicado que ya usa `copiloto-web`
- * (`apps/copiloto-web/src/auth/oauth.ts` — mismo endpoint `/auth/v1/authorize?provider=google`,
- * mismo fragment de retorno). La diferencia es el transporte: la PWA navega el browser entero y
- * vuelve por `window.location`; acá no hay "browser entero" al que volver, así que se usa el patrón
- * oficial de Expo para proveedores OAuth custom (no el `Google.useAuthRequest` nativo, que habla
- * DIRECTO con Google — acá GoTrue es el intermediario):
- * `WebBrowser.openAuthSessionAsync(authUrl, redirectUrl)` — abre Custom Tabs (Android) / una sesión
- * `ASWebAuthenticationSession` (iOS), y la cierra sola apenas el navegador redirige al `redirectUrl`
- * (el deep link `copiloto://`, ya registrado vía `scheme` en `app.json`), devolviendo esa URL final
- * completa (con el fragment) a la app. Fuente: docs oficiales de Expo, `WebBrowser.openAuthSessionAsync`.
+ * Google Sign-In NATIVO (Credential Manager en Android, sin browser) — reemplaza el flujo anterior
+ * basado en `expo-web-browser` (BETA-4b, 2026-08-05). El pedido explícito del operador: en la app
+ * tiene que aparecer el selector de cuenta NATIVO del sistema (como cualquier app que usa el botón
+ * "Iniciar sesión con Google" de Android), no un navegador -- ni Custom Tabs forzando Chrome ni
+ * ningún otro. `@react-native-google-signin/google-signin` habla con la Credential Manager API de
+ * Android directo, sin abrir actividad de navegador alguna.
  *
- * `EXPO_PUBLIC_API_BASE` ya es la base de GoTrue en este backend (el OAuth vive en el MISMO dominio
- * del chat, no en un subdominio `auth.*` — mismo diseño que `sync-web.sh` documenta para la web).
+ * El `idToken` que devuelve Google se intercambia server-side por un token PROPIO en
+ * `POST /auth/google/id-token` (`apps/copiloto/web.py`) -- el device nunca habla directo con GoTrue
+ * (mismo criterio que `/auth/login` para email/password, ver `onboarding.GoTrueAdmin.id_token_grant`).
+ *
+ * Requiere, del lado de Google Cloud Console, un client OAuth tipo "Android" con el `package name` +
+ * SHA-1 del build EAS instalado (verificado 2026-08-05: SHA-1 del build `d8110bf9-...` coincide EXACTO
+ * con el registrado) Y del lado de GoTrue, que `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` incluya (comma-
+ * separated) tanto el client Web (el que ya usa la PWA) como este Android -- GoTrue acepta múltiples
+ * audiences por proveedor (mismo mecanismo documentado para Apple Web+iOS).
  */
-/** Se lee en cada llamada (no una constante top-level) -- mismo motivo que `oauth.ts` de la web: testeable. */
+const WEB_CLIENT_ID = '1027844636112-rr810q0l4ifi9mr7kqn870s178qh06d6.apps.googleusercontent.com';
+
+/** Se lee en cada llamada (no una constante top-level) -- testeable, mismo motivo que `oauth.ts` de la web. */
 function authBase(): string {
   return (process.env.EXPO_PUBLIC_API_BASE ?? '').replace(/\/+$/, '');
 }
@@ -30,34 +34,63 @@ export type OauthOutcome =
   | { ok: true; tokens: OauthTokens }
   | { ok: false; reason: 'cancelado' | 'sin-tokens' | 'sin-configurar' };
 
-/** Extrae `access_token`/`refresh_token` del fragment de la URL de retorno de GoTrue. */
-function extraerTokens(urlRetorno: string): OauthTokens | null {
-  const indiceFragment = urlRetorno.indexOf('#');
-  if (indiceFragment === -1) return null;
-  const params = new URLSearchParams(urlRetorno.slice(indiceFragment + 1));
-  const access = params.get('access_token');
-  if (!access) return null;
-  return { access_token: access, refresh_token: params.get('refresh_token') };
+/**
+ * `GoogleSignin.configure` debe correr una sola vez antes del primer `signIn` (lo exige la librería
+ * -- llamadas repetidas son inofensivas pero innecesarias). El flag de módulo alcanza: no hay
+ * concurrencia real dentro de una sesión de la app.
+ */
+let configurado = false;
+function asegurarConfigurado(): void {
+  if (configurado) return;
+  GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
+  configurado = true;
+}
+
+/** Intercambia el `idToken` de Google por el token propio del backend. `null` ante cualquier fallo
+ * de red/servidor -- el caller lo trata como 'sin-tokens' (mismo criterio que la respuesta vacía del
+ * fragment en el flujo anterior). */
+async function intercambiarIdToken(idToken: string, base: string): Promise<OauthTokens | null> {
+  let resp;
+  try {
+    resp = await fetch(`${base}/auth/google/id-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  } catch {
+    return null;
+  }
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  if (!data?.access_token) return null;
+  return { access_token: data.access_token, refresh_token: data.refresh_token ?? null };
 }
 
 /**
- * Abre el flujo de Google contra GoTrue y espera a que el usuario vuelva (clic humano real en el
- * consentimiento de Google — no automatizable, por diseño de Google contra abuso). Resuelve con los
- * tokens si el usuario completó el login, o con el motivo si canceló / el build no tiene auth
- * configurada.
+ * Abre el selector nativo de cuenta de Google y espera a que el usuario elija/confirme (clic humano
+ * real -- no automatizable). Resuelve con los tokens propios si el intercambio con el backend tuvo
+ * éxito, o con el motivo si el usuario canceló / el build no tiene auth configurada.
  */
 export async function iniciarLoginGoogle(): Promise<OauthOutcome> {
   const base = authBase();
   if (!base) return { ok: false, reason: 'sin-configurar' };
 
-  const redirectUrl = makeRedirectUri({ scheme: 'copiloto' });
-  const authUrl = `${base}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+  asegurarConfigurado();
 
-  const resultado = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const respuesta = await GoogleSignin.signIn();
+    if (!isSuccessResponse(respuesta)) return { ok: false, reason: 'cancelado' };
 
-  if (resultado.type !== 'success' || !resultado.url) return { ok: false, reason: 'cancelado' };
+    const idToken = respuesta.data.idToken;
+    if (!idToken) return { ok: false, reason: 'sin-tokens' };
 
-  const tokens = extraerTokens(resultado.url);
-  if (!tokens) return { ok: false, reason: 'sin-tokens' };
-  return { ok: true, tokens };
+    const tokens = await intercambiarIdToken(idToken, base);
+    if (!tokens) return { ok: false, reason: 'sin-tokens' };
+    return { ok: true, tokens };
+  } catch {
+    // PLAY_SERVICES_NOT_AVAILABLE / IN_PROGRESS / error de red del propio signIn -- ninguno es una
+    // cancelación del usuario (esa ya se maneja arriba vía isSuccessResponse), así que caen acá.
+    return { ok: false, reason: 'sin-tokens' };
+  }
 }

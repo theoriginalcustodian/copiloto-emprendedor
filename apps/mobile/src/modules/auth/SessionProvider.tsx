@@ -97,10 +97,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await almacenTokens.guardarToken(resultado.tokens.access_token);
     if (resultado.tokens.refresh_token) await almacenTokens.guardarRefresh(resultado.tokens.refresh_token);
 
-    const outcome = await validarSesion();
-    if (outcome === 'ok') return { ok: true };
-    if (outcome === 'forbidden') return { ok: false, error: 'no-habilitada' };
-    return { ok: false, error: 'red' };
+    const primerIntento = await validarSesion();
+    if (primerIntento === 'ok') return { ok: true };
+    if (primerIntento !== 'forbidden') return { ok: false, error: 'red' };
+
+    // 403 en el FIRST-LOGIN de un proveedor OAuth: el user ya existe en GoTrue (alta self-service)
+    // pero todavía no tiene fila de tenant -- a diferencia del login por email/password (donde el
+    // tenant se crea en el signup admin-mediado), acá hace falta este paso explícito. Idempotente en
+    // el backend (`provision_oauth_tenant`), así que llamarlo siempre que el probe da 403 es seguro:
+    // en logins subsiguientes del MISMO user simplemente no hace nada nuevo. Si esto falla, es un
+    // 403 genuino (cuenta no habilitada por otra vía) -- degradar al aviso normal.
+    try {
+      await api.ensureOauthTenant();
+    } catch {
+      return { ok: false, error: 'no-habilitada' };
+    }
+    const segundoIntento = await validarSesion();
+    if (segundoIntento === 'ok') return { ok: true };
+    return { ok: false, error: 'no-habilitada' };
   }, [validarSesion]);
 
   const logout = useCallback(() => {

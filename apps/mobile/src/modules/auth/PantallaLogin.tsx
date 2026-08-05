@@ -30,9 +30,11 @@ const ALTO_BOTON = 54;
  * Emprendedor (sin lenguaje clínico).
  *
  * **Botón de Google** (BETA-4b, portado tras el signup email/password): usa
- * `useSession().loginConGoogle`, que abre `expo-web-browser`/`expo-auth-session` contra el mismo
- * GoTrue dedicado que la PWA (`modules/auth/oauth.ts`). Camino independiente del de abajo -- no
- * comparte estado con el formulario de email/password salvo el `FormState` de la alerta.
+ * `useSession().loginConGoogle`, que abre el selector NATIVO de cuenta de Android (Credential
+ * Manager vía `@react-native-google-signin/google-signin`, sin browser) y después intercambia el
+ * `idToken` por un token propio en el backend (`modules/auth/oauth.ts`). Camino independiente del
+ * de abajo -- no comparte estado con el formulario de email/password salvo el `FormState` de la
+ * alerta.
  *
  * Vive en `modules/auth` (no en `app/login.tsx`) a propósito: el módulo es autocontenido y el parent
  * decide DÓNDE montarlo (la ruta de expo-router) y cómo cablear `<SessionProvider>` + el guard que,

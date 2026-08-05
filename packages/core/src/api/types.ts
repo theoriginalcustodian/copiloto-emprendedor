@@ -21,6 +21,11 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Body de `POST /auth/google/id-token` (sign-in nativo, Credential Manager). */
+export interface GoogleIdTokenRequest {
+  id_token: string;
+}
+
 /** El shape exacto de `user` no está confirmado más allá de existir — no inventar campos. */
 export type LoginUser = Record<string, unknown>;
 
@@ -466,6 +471,8 @@ export interface OauthEnsureResponse {
 
 export interface CopilotApi {
   login(email: string, password: string): Promise<LoginResponse>;
+  /** Sign-in nativo de Google (Credential Manager) — alternativa a `login` para el proveedor OAuth. */
+  loginWithGoogleIdToken(idToken: string): Promise<LoginResponse>;
   /** First-login OAuth (Google): provisiona el tenant. Idempotente en el backend. */
   ensureOauthTenant(): Promise<OauthEnsureResponse>;
   me: () => Promise<MeResponse>;
