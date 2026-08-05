@@ -497,6 +497,84 @@
   }
 }
 
+/* ---------- SeccionMeDeben (PR4) ---------- */
+.facturacion-me-deben {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.facturacion-me-deben__titulo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.facturacion-me-deben__aviso {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.facturacion-me-deben__total {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--btn-fg, var(--heading));
+  margin: 0;
+}
+
+.facturacion-me-deben__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.facturacion-me-deben__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.facturacion-me-deben__fila-textos {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.facturacion-me-deben__fila-nombre {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.facturacion-me-deben__fila-detalle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.facturacion-me-deben__fila-saldo {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+}
+
 /* ---------- SeccionMisComprobantes (PR3) ---------- */
 .mis-comprobantes {
   display: flex;
@@ -672,14 +750,6 @@
   font-weight: 700;
   font-size: 18px;
   color: var(--btn-fg, var(--heading));
-}
-
-.detalle-comprobante__placeholder-cobro {
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: var(--label);
-  margin: 0;
-  font-style: italic;
 }
 
 .detalle-comprobante__anulada-por {

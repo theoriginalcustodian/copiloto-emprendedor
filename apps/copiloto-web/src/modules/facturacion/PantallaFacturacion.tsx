@@ -13,6 +13,7 @@ import {
   setCliente,
   setDatosVenta,
   type AmbienteAfip,
+  type Comprobante,
   type ConfirmarResultado,
   type DatosVentaInput,
   type EstadoFacturaResp,
@@ -21,11 +22,14 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
+import { DetalleComprobante } from './DetalleComprobante';
 import { derivarPasoVisible, type PasoVisible } from './maquinaEstado';
 import { PasoCliente } from './PasoCliente';
 import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
+import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
+import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
 import './facturacion.css';
 
@@ -49,9 +53,15 @@ type EstadoGate =
 /**
  * `PantallaFacturacion` — port de `apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx` a
  * `copiloto-web`. **PR1: el wizard de creación** (gate + los 4 pasos). **PR2: comprobante emitido +
- * cobro** (`TarjetaComprobante` + `SeccionCobro`). Las secciones "Te deben" y "Mis comprobantes" son
- * PR3/PR4 — todavía no existen en este módulo, así que los estados terminales `rechazada`/`cancelada`
- * siguen con un placeholder simple hasta que esos PRs lleguen.
+ * cobro** (`TarjetaComprobante` + `SeccionCobro`). **PR3: "Mis comprobantes" + anulación**
+ * (`SeccionMisComprobantes`) + `DetalleComprobante` como overlay. **PR4 (este): "Te deben"**
+ * (`SeccionMeDeben`) montada como sección fija arriba del listado, y `DetalleComprobante` cableado como
+ * overlay que abre `PantallaFacturacion` al tocar una fila de `SeccionMisComprobantes` — mismo patrón
+ * que mobile: dos secciones fijas + el wizard/gate, no tabs separados.
+ *
+ * 🔴 **Sin el shell.** El wiring del tab de Facturación en el shell de `copiloto-web` (dónde vive esta
+ * pantalla dentro de la navegación general) es explícitamente NO-alcance de este PR — lo hace la sesión
+ * frontend por separado.
  *
  * 🔴 **El paso visible se DERIVA, nunca se cuenta.** `derivarPasoVisible` (`maquinaEstado.ts`) traduce
  * `EstadoFacturaResp.estado` a la pantalla correspondiente; esta pantalla NO mantiene un `useState` de
@@ -93,6 +103,12 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
   const [datosVentaLocal, setDatosVentaLocal] = useState<DatosVentaInput | null>(null);
   const [clienteLocal, setClienteLocal] = useState<ReceptorInput | null>(null);
   const [pasoEdicion, setPasoEdicion] = useState<PasoEditable | null>(null);
+  /** La fila cuyo detalle se está mirando -- vive acá porque el overlay se monta a nivel pantalla,
+   *  no dentro de `SeccionMisComprobantes` (mismo motivo que mobile: un solo lugar decide qué overlay
+   *  hay montado, y refrescar «Te deben» tras un cobro necesita llegar hasta acá de cualquier forma). */
+  const [detalleComprobante, setDetalleComprobante] = useState<Comprobante | null>(null);
+  const refComprobantes = useRef<SeccionMisComprobantesHandle>(null);
+  const refMeDeben = useRef<SeccionMeDebenHandle>(null);
 
   const vivo = useRef(true);
   useEffect(() => {
@@ -224,6 +240,17 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
     };
   }, [facturaId, estadoFacturaActual?.estado, estadoFacturaActual?.terminado]);
 
+  /**
+   * 6. La factura recién emitida entra en "Mis comprobantes".
+   *
+   * Corta por `terminado` y no por `estado === 'emitida'`, por la misma razón que el poll de arriba:
+   * entre el CAE y el PDF hay una ventana, y releer en el medio trae el comprobante a medio hacer.
+   */
+  useEffect(() => {
+    if (estadoFacturaActual?.terminado !== true) return;
+    void refComprobantes.current?.recargar();
+  }, [estadoFacturaActual?.terminado, estadoFacturaActual?.estado]);
+
   /** Relectura simple, sin esperar nada. Para refrescos que NO siguen a un signal. */
   const actualizarEstado = useCallback(async () => {
     if (!facturaId) return;
@@ -310,6 +337,8 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
     setErrorBorrador(false);
   }, []);
 
+  const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
+
   return (
     <div className="facturacion-screen" data-testid="pantalla-facturacion">
       <header className="facturacion-screen__header">
@@ -360,6 +389,33 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
           onEditar={setPasoEdicion}
           onVolverResumen={() => setPasoEdicion(null)}
           onNuevaFactura={nuevaFactura}
+          onCobroRegistrado={() => {
+            void refMeDeben.current?.recargar();
+            void refComprobantes.current?.recargar();
+          }}
+        />
+      )}
+
+      {/* «Te deben» + «Mis comprobantes»: dos secciones FIJAS de la pantalla, junto con el wizard/gate
+          de arriba -- mismo patrón que mobile, no tabs separados. «Te deben» ANTES del listado completo
+          porque es la pregunta que se hace primero al abrir Facturación. Se ocultan sin CUIT conocido:
+          preguntarle al backend por comprobantes de un tenant que ni siquiera pasó el gate no tiene
+          sentido y generaría llamadas condenadas a `no_disponible`. */}
+      {cuitConocido && (
+        <>
+          <SeccionMeDeben ref={refMeDeben} />
+          <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
+        </>
+      )}
+
+      {/* Overlay: se abre al tocar una fila de `SeccionMisComprobantes`. Estado LOCAL acá, no en la
+          sección -- mismo motivo que mobile: un solo lugar decide qué overlay hay montado, y refrescar
+          «Te deben» tras un cobro/anulación necesita llegar hasta acá de cualquier forma. */}
+      {detalleComprobante != null && (
+        <DetalleComprobante
+          comprobante={detalleComprobante}
+          onCerrar={() => setDetalleComprobante(null)}
+          onCobroCambiado={() => void refMeDeben.current?.recargar()}
         />
       )}
     </div>
@@ -402,14 +458,17 @@ interface PasoActivoProps {
   onEditar: (paso: PasoEditable) => void;
   onVolverResumen: () => void;
   onNuevaFactura: () => void;
+  /** Se registró/deshizo un cobro desde la card de éxito (`TarjetaComprobante`). Refresca «Te deben»
+   *  y «Mis comprobantes». */
+  onCobroRegistrado: () => void;
 }
 
 /** El `switch` del paso VISIBLE (backend, salvo que `pasoEdicion` lo override estando en resumen -- ver
  *  el docstring de `PantallaFacturacion`). Aislado en su propio componente para que el `switch` no viva
  *  mezclado con los `useState`/`useEffect` de arriba.
  *
- *  `comprobante` renderiza `TarjetaComprobante` (PR2, con `SeccionCobro` embebida). `rechazada` y
- *  `cancelada` siguen con un placeholder simple -- PR3/PR4. */
+ *  `comprobante` renderiza `TarjetaComprobante` (con `SeccionCobro` embebida). `rechazada` y
+ *  `cancelada` siguen con un placeholder simple. */
 function PasoActivo({
   pasoBackend,
   pasoEdicion,
@@ -426,6 +485,7 @@ function PasoActivo({
   onEditar,
   onVolverResumen,
   onNuevaFactura,
+  onCobroRegistrado,
 }: PasoActivoProps) {
   const enEdicionDesdeResumen = pasoBackend === 'resumen' && pasoEdicion != null;
   const pasoMostrado = enEdicionDesdeResumen ? pasoEdicion : pasoBackend;
@@ -478,7 +538,9 @@ function PasoActivo({
         </div>
       );
     case 'comprobante':
-      return <TarjetaComprobante estado={estado} onNuevaFactura={onNuevaFactura} />;
+      return (
+        <TarjetaComprobante estado={estado} onNuevaFactura={onNuevaFactura} onCobroRegistrado={onCobroRegistrado} />
+      );
     case 'configurar_rechazo':
       return <BloqueConfigurar />;
     case 'rechazada':
