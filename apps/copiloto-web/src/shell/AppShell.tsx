@@ -8,6 +8,7 @@ import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
 import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
+import { ActividadScreen } from '../modules/actividad';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -110,6 +111,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {activeTab === 'clientes' && <ClientesScreen />}
         {activeTab === 'contabilidad' && <ContabilidadScreen />}
         {activeTab === 'ingresos' && <IngresosScreen />}
+        {activeTab === 'actividad' && <ActividadScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
