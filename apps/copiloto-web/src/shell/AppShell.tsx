@@ -10,6 +10,7 @@ import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
+import { InteligenciaScreen } from '../modules/inteligencia';
 import { AccountScreen } from '../modules/account';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -121,6 +122,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {activeTab === 'presupuestos' && (
           <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
         )}
+        {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />

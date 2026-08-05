@@ -135,6 +135,16 @@ export function PresupuestosIcon(): ReactNode {
   );
 }
 
+/** Rayo -- lenguaje visual de "inteligencia/insight", distinto del resto del set
+ * (M-WEB, 2026-08-04). */
+export function InteligenciaIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z" {...strokeProps} strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -146,5 +156,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   ingresos: IngresosIcon,
   actividad: ActividadIcon,
   presupuestos: PresupuestosIcon,
+  inteligencia: InteligenciaIcon,
   account: AccountIcon,
 };

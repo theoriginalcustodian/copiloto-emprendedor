@@ -10,6 +10,7 @@ import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
+import { InteligenciaScreen } from '../modules/inteligencia';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { Rail } from './Rail';
@@ -79,6 +80,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         {activeTab === 'presupuestos' && (
           <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
         )}
+        {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
