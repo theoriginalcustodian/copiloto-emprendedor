@@ -158,6 +158,35 @@ export function MidiaIcon(): ReactNode {
   );
 }
 
+/** Grilla 3x3 -- lenguaje visual de "launcher de funciones", distinto del ícono 2x2 de Apps
+ * (M-WEB, 2026-08-04). */
+export function EscritorioIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <rect x="3.5" y="3.5" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="9.75" y="3.5" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="16" y="3.5" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="3.5" y="9.75" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="16" y="9.75" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="3.5" y="16" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="9.75" y="16" width="4.5" height="4.5" rx="1" {...strokeProps} />
+      <rect x="16" y="16" width="4.5" height="4.5" rx="1" {...strokeProps} />
+    </svg>
+  );
+}
+
+/** Flecha circular -- lenguaje visual de "lo último/historial", distinto del reloj de Actividad
+ * (M-WEB, 2026-08-04). */
+export function RecientesIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 12a9 9 0 1 1 3 6.7" {...strokeProps} />
+      <path d="M3 12V7M3 12h5" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -171,5 +200,7 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   presupuestos: PresupuestosIcon,
   inteligencia: InteligenciaIcon,
   midia: MidiaIcon,
+  escritorio: EscritorioIcon,
+  recientes: RecientesIcon,
   account: AccountIcon,
 };
