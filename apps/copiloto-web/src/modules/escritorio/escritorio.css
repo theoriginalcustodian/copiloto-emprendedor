@@ -1,0 +1,108 @@
+/*
+ * Estilos del módulo Escritorio (M-WEB módulo 7) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que actividad.css/connections.css (cero color literal).
+ */
+
+.escritorio-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.escritorio-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.escritorio-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+/* Grid PLANO de 3 columnas — 9 tiles entran sin scroll horizontal, a diferencia de mobile que
+   scrollea por ancho de pantalla acotado. Mismo criterio de grid que connections-screen__grid. */
+.escritorio-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+}
+
+.escritorio-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  font: inherit;
+}
+
+.escritorio-tile:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.escritorio-tile__icono {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.escritorio-tile__label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.escritorio-screen__encabezado-recientes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--heading);
+  text-align: left;
+}
+
+.escritorio-screen__encabezado-recientes:disabled {
+  cursor: default;
+}
+
+.escritorio-screen__encabezado-recientes:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.escritorio-screen__actividad {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.escritorio-screen__vacio {
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--label);
+  margin: 0;
+}
