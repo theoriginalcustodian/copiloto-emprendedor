@@ -102,6 +102,17 @@ export function ContabilidadIcon(): ReactNode {
   );
 }
 
+/** Flecha entrando a una bandeja -- lenguaje visual de "ingreso/depósito", distinto de la
+ * billetera de Gastos y de las barras de Contabilidad (M-WEB, 2026-08-04). */
+export function IngresosIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M12 3v12M7 10.5l5 5 5-5" {...strokeProps} />
+      <path d="M4 21h16" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -110,5 +121,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   gastos: GastosIcon,
   clientes: ClientesIcon,
   contabilidad: ContabilidadIcon,
+  ingresos: IngresosIcon,
   account: AccountIcon,
 };
