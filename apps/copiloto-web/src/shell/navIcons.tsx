@@ -201,6 +201,17 @@ export function AjustesIcon(): ReactNode {
   );
 }
 
+/** Recibo/factura -- distinto de la billetera de Gastos y del ícono de barras de Contabilidad
+ * (M-WEB, 2026-08-04). */
+export function FacturacionIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M6 3h9l3 3v15H6z" {...strokeProps} />
+      <path d="M9 8h6M9 12h6M9 16h3" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -217,5 +228,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   escritorio: EscritorioIcon,
   recientes: RecientesIcon,
   ajustes: AjustesIcon,
+  facturacion: FacturacionIcon,
   account: AccountIcon,
 };

@@ -15,6 +15,7 @@ import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
+import { PantallaFacturacion } from '../modules/facturacion';
 import { AccountScreen } from '../modules/account';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
@@ -66,14 +67,17 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
   // resetea, así el cierre sigue animando con el contenido ya cargado.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
-  // Funciones que Presupuestos/Escritorio piden navegar pero todavía no tienen tab propio en la
-  // web (facturación: PR2-4 en curso; ajustes: espera definición de UX) — se avisa con un toast en
-  // vez de fallar en silencio. TODO(M-WEB-facturacion): reemplazar por navegación real cuando
-  // facturación aterrice completa. Ver `funcionTabMap.ts` para el resto de los mapeos.
+  // Funciones sin tab propio en la web (ninguna hoy con los 9 tiles de Escritorio wireados, ver
+  // `funcionTabMap.ts` — se conserva por si un futuro tile llega sin tab todavía).
   const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
   const avisarNoDisponible = useCallback(() => {
     setAvisoPendiente('Esta función todavía no está disponible en la web — probala desde la app por ahora.');
   }, []);
+  // "Facturar" desde un presupuesto crea el borrador ANTES de navegar (mismo mecanismo que
+  // mobile) -- PantallaFacturacion lo adopta vía `facturaIdInicial` en vez de crear uno nuevo.
+  const [facturaIdDesdePresupuesto, setFacturaIdDesdePresupuesto] = useState<string | undefined>(
+    undefined,
+  );
 
   const changeTab = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -128,7 +132,12 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
         {activeTab === 'presupuestos' && (
-          <PresupuestosScreen onFacturar={avisarNoDisponible} />
+          <PresupuestosScreen
+            onFacturar={(facturaId) => {
+              setFacturaIdDesdePresupuesto(facturaId);
+              changeTab('facturacion');
+            }}
+          />
         )}
         {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'midia' && <MidiaScreen />}
@@ -149,6 +158,12 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         )}
         {activeTab === 'recientes' && <RecientesScreen />}
         {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
+        {activeTab === 'facturacion' && (
+          <PantallaFacturacion
+            facturaIdInicial={facturaIdDesdePresupuesto}
+            onConfigurar={() => changeTab('ajustes')}
+          />
+        )}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />

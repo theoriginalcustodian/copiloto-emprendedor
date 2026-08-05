@@ -15,6 +15,7 @@ import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
+import { PantallaFacturacion } from '../modules/facturacion';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
@@ -52,11 +53,14 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   // `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del shell
   // aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no resetea.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
-  // Ver docstring equivalente en AppShell.tsx — mismo stub, mismo TODO(M-WEB-facturacion).
+  // Ver docstring equivalente en AppShell.tsx.
   const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
   const avisarNoDisponible = useCallback(() => {
     setAvisoPendiente('Esta función todavía no está disponible en la web — probala desde la app por ahora.');
   }, []);
+  const [facturaIdDesdePresupuesto, setFacturaIdDesdePresupuesto] = useState<string | undefined>(
+    undefined,
+  );
 
   const handleTabChange = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -86,7 +90,12 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
         {activeTab === 'presupuestos' && (
-          <PresupuestosScreen onFacturar={avisarNoDisponible} />
+          <PresupuestosScreen
+            onFacturar={(facturaId) => {
+              setFacturaIdDesdePresupuesto(facturaId);
+              setActiveTab('facturacion');
+            }}
+          />
         )}
         {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'midia' && <MidiaScreen />}
@@ -107,6 +116,12 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         )}
         {activeTab === 'recientes' && <RecientesScreen />}
         {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
+        {activeTab === 'facturacion' && (
+          <PantallaFacturacion
+            facturaIdInicial={facturaIdDesdePresupuesto}
+            onConfigurar={() => setActiveTab('ajustes')}
+          />
+        )}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>

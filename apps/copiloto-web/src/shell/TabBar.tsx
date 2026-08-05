@@ -17,6 +17,7 @@ export type TabKey =
   | 'escritorio'
   | 'recientes'
   | 'ajustes'
+  | 'facturacion'
   | 'account';
 
 export interface TabDefinition {
@@ -37,7 +38,9 @@ export interface TabDefinition {
  * después de `gastos` (orden de llegada de los módulos, no hay jerarquía declarada entre ellos).
  *
  * `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia`, `midia`, `escritorio`,
- * `recientes` y `ajustes` sumados en M-WEB (2026-08-04) -- mismo criterio, orden de llegada.
+ * `recientes`, `ajustes` y `facturacion` sumados en M-WEB (2026-08-04) -- mismo criterio, orden de
+ * llegada. `facturacion` cierra el sprint M-WEB: fue el módulo más grande (4 sub-PRs) y el último
+ * en wirear -- por eso va al final del orden de llegada, no por jerarquía de producto.
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
@@ -54,6 +57,7 @@ export const TABS: readonly TabDefinition[] = [
   { key: 'escritorio', label: 'Funciones' },
   { key: 'recientes', label: 'Recientes' },
   { key: 'ajustes', label: 'Ajustes' },
+  { key: 'facturacion', label: 'Facturación' },
   { key: 'account', label: 'Cuenta' },
 ];
 
