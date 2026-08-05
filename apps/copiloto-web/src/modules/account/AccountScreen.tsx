@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { MonoLabel, PresenceOrb, Surface } from '../../design-system';
+import { Button, MonoLabel, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
 import { useTheme, type Theme } from '../../design-system/ThemeProvider';
 import './account.css';
@@ -14,14 +14,14 @@ const THEME_LABELS: Record<Theme, string> = {
   ai: 'IA',
 };
 
-function accountLabel(clienteId: string | undefined): string {
-  if (!clienteId) return 'Tu cuenta';
-  // ASUNCIÓN documentada (ver report): `/me` hoy NO trae nombre/email (solo `cliente_id`,
-  // `mp_connected`, `composio_connected` — confirmado en lib/api/types.ts). Mostramos un
-  // identificador abreviado en vez de inventar un nombre. Cuando `/me` sume `nombre`/`email`
-  // (backend, fuera de mi ownership), este helper pasa a preferir esos campos.
-  const trimmed = clienteId.trim();
-  return `Cuenta #${trimmed.slice(0, 8)}`;
+/** `email` sale de `/me` (`apps/copiloto/web.py:625-636`) — mismo claim ya validado por
+ * `require_tenant`, no una segunda fuente. `null`/ausente = login sin claim de email (teléfono,
+ * anónimo, o `require_claims` apagado): se dice, no se inventa un placeholder que parezca real
+ * (M-WEB módulo 13, confirmado contra el código del backend, no asumido). */
+function accountLabel(me: { cliente_id?: string; email?: string | null } | undefined): string {
+  if (me?.email) return me.email;
+  if (!me?.cliente_id) return 'Tu cuenta';
+  return 'Tu cuenta no tiene un email asociado.';
 }
 
 function initial(clienteId: string | undefined): string {
@@ -70,10 +70,19 @@ function NotificationsToggle() {
  * Header a 2 bloques (diseño `Copiloto App.dc.html:409-418` / `Copiloto Web.dc.html:330-337`,
  * mobile y desktop coinciden en estructura): H1 "Cuenta" solo arriba, fila identidad
  * (avatar+nombre+email) debajo — NO una sola fila horizontal con el H1 al lado del avatar.
+ *
+ * 🔴 **Fusión con `PantallaCuenta` de mobile (M-WEB módulo 13, 2026-08-04, decisión de
+ * planificación).** Mobile tenía una sola pantalla de cuenta; acá también, por "espejo total" —
+ * no dos superficies separadas. Lo que sumó esta fusión: email REAL (antes derivado de
+ * `cliente_id`), la fila "No molestar" (inerte, misma razón que mobile: es un ajuste GLOBAL del
+ * sistema operativo, requiere restaurador ante crash, se implementa en otra tarea) y la
+ * confirmación antes de cerrar sesión. Lo que YA tenía web y mobile no (temas/plan/idioma/
+ * notificaciones/privacidad/card de durabilidad) se queda — es unión, no reemplazo.
  */
 export function AccountScreen() {
   const { me, logout } = useSession();
   const { theme, setTheme, themes } = useTheme();
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false);
 
   return (
     <div className="account-screen" data-testid="account-screen">
@@ -83,10 +92,9 @@ export function AccountScreen() {
           <span className="account-screen__avatar" aria-hidden="true">
             {initial(me?.cliente_id)}
           </span>
-          {/* TODO backend: nombre/email real desde /me (hoy `MeResponse` solo trae `cliente_id`,
-              ver lib/api/types.ts). Usamos el mismo fallback derivado de `cliente_id` en la
-              posición de "nombre" del diseño; no fabricamos un email inexistente. */}
-          <p className="account-screen__name">{accountLabel(me?.cliente_id)}</p>
+          <p className="account-screen__name" data-testid="account-email">
+            {accountLabel(me)}
+          </p>
         </div>
       </header>
 
@@ -134,6 +142,18 @@ export function AccountScreen() {
           <span className="account-screen__row-label">Notificaciones</span>
           <NotificationsToggle />
         </div>
+        {/* "No molestar" muta un ajuste GLOBAL del sistema operativo -- necesita un restaurador
+            ante crash (si el copiloto lo prende y la app se cae antes de apagarlo, el teléfono
+            queda en silencio sin que nadie lo haya decidido). Eso es MAYOR y se resuelve en otra
+            tarea; sin `onClick` a propósito, mismo criterio que mobile (`PantallaCuenta.tsx`). */}
+        <div className="account-screen__row" data-testid="account-no-molestar">
+          <div className="account-screen__row-texts">
+            <span className="account-screen__row-label">No molestar</span>
+            <span className="account-screen__row-desc">
+              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="account-screen__list">
@@ -141,12 +161,42 @@ export function AccountScreen() {
           <span className="account-screen__row-label">Privacidad del historial</span>
           <ChevronIcon />
         </div>
-        <button type="button" className="account-screen__row" onClick={logout}>
-          <span className="account-screen__row-label account-screen__row-label--danger">
-            Cerrar sesión
-          </span>
-          <ChevronIcon color="var(--danger-fg)" />
-        </button>
+        {!confirmandoSalida ? (
+          <button
+            type="button"
+            className="account-screen__row"
+            data-testid="account-cerrar-sesion"
+            onClick={() => setConfirmandoSalida(true)}
+          >
+            <span className="account-screen__row-label account-screen__row-label--danger">
+              Cerrar sesión
+            </span>
+            <ChevronIcon color="var(--danger-fg)" />
+          </button>
+        ) : (
+          <div className="account-screen__confirmar-salida" data-testid="account-confirmar-salida">
+            <p>
+              Vas a tener que volver a entrar con tu usuario y contraseña. Tus datos y tus facturas
+              no se borran.
+            </p>
+            <div className="account-screen__confirmar-salida-botones">
+              <Button
+                variant="danger"
+                onClick={logout}
+                data-testid="account-cerrar-sesion-si"
+              >
+                Sí, cerrar sesión
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setConfirmandoSalida(false)}
+                data-testid="account-cerrar-sesion-no"
+              >
+                No
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Surface

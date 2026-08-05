@@ -50,7 +50,7 @@ describe('AccountScreen', () => {
     expect(screen.getByText('Tu cuenta')).toBeInTheDocument();
   });
 
-  it('con sesión resuelta muestra un identificador derivado de cliente_id', async () => {
+  it('con sesión resuelta pero sin email en el claim, dice explícitamente que no hay email asociado', async () => {
     setToken('tok-valido');
     vi.mocked(api.me).mockResolvedValueOnce({
       cliente_id: 'cliente-123',
@@ -60,8 +60,25 @@ describe('AccountScreen', () => {
 
     renderAccountScreen();
 
-    await waitFor(() => expect(screen.getByText(/Cuenta #/)).toBeInTheDocument());
-    expect(screen.getByText('Cuenta #cliente-')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText('Tu cuenta no tiene un email asociado.')).toBeInTheDocument(),
+    );
+  });
+
+  it('con email real en /me, lo muestra tal cual (no un identificador derivado)', async () => {
+    setToken('tok-valido');
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'cliente-123',
+      email: 'emprendedor@ejemplo.com',
+      mp_connected: false,
+      composio_connected: [],
+    });
+
+    renderAccountScreen();
+
+    await waitFor(() =>
+      expect(screen.getByText('emprendedor@ejemplo.com')).toBeInTheDocument(),
+    );
   });
 
   it('el selector de tema cambia el theme activo y persiste en localStorage', () => {
@@ -112,7 +129,33 @@ describe('AccountScreen', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Cerrar sesión llama a useSession().logout y limpia el token', async () => {
+  it('la fila "No molestar" está presente, inerte (sin onClick)', () => {
+    renderAccountScreen();
+    const fila = screen.getByTestId('account-no-molestar');
+    expect(fila).toBeInTheDocument();
+    expect(screen.getByText('No molestar')).toBeInTheDocument();
+    expect(fila.tagName).not.toBe('BUTTON');
+  });
+
+  it('Cerrar sesión pide confirmación antes de cerrar la sesión', async () => {
+    setToken('tok-valido');
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'cliente-123',
+      email: 'emprendedor@ejemplo.com',
+      mp_connected: false,
+      composio_connected: [],
+    });
+
+    renderAccountScreen();
+    await waitFor(() => expect(screen.getByText('emprendedor@ejemplo.com')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('account-cerrar-sesion'));
+
+    expect(screen.getByTestId('account-confirmar-salida')).toBeInTheDocument();
+    expect(getToken()).not.toBeNull();
+  });
+
+  it('"No" en la confirmación cancela sin cerrar sesión', async () => {
     setToken('tok-valido');
     vi.mocked(api.me).mockResolvedValueOnce({
       cliente_id: 'cliente-123',
@@ -121,9 +164,26 @@ describe('AccountScreen', () => {
     });
 
     renderAccountScreen();
-    await waitFor(() => expect(screen.getByText(/Cuenta #/)).toBeInTheDocument());
+    await waitFor(() => screen.getByTestId('account-cerrar-sesion'));
+    fireEvent.click(screen.getByTestId('account-cerrar-sesion'));
+    fireEvent.click(screen.getByTestId('account-cerrar-sesion-no'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    expect(screen.queryByTestId('account-confirmar-salida')).not.toBeInTheDocument();
+    expect(getToken()).not.toBeNull();
+  });
+
+  it('"Sí, cerrar sesión" llama a useSession().logout y limpia el token', async () => {
+    setToken('tok-valido');
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'cliente-123',
+      mp_connected: false,
+      composio_connected: [],
+    });
+
+    renderAccountScreen();
+    await waitFor(() => screen.getByTestId('account-cerrar-sesion'));
+    fireEvent.click(screen.getByTestId('account-cerrar-sesion'));
+    fireEvent.click(screen.getByTestId('account-cerrar-sesion-si'));
 
     expect(getToken()).toBeNull();
     await waitFor(() => expect(screen.getByText('Tu cuenta')).toBeInTheDocument());

@@ -214,6 +214,40 @@ button.account-screen__row:focus-visible {
   color: var(--label);
 }
 
+/* ---------- "No molestar" — fila de dos líneas (label + descripción tenue) ---------- */
+.account-screen__row-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-screen__row-desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+/* ---------- Confirmación de "Cerrar sesión" (M-WEB módulo 13, fusión con mobile) ---------- */
+.account-screen__confirmar-salida {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.account-screen__confirmar-salida p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.account-screen__confirmar-salida-botones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ---------- Toggle "Notificaciones" (visual, sin backend — ver docstring del componente) ---------- */
 .account-switch {
   position: relative;
