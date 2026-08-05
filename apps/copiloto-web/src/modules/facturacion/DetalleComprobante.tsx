@@ -9,14 +9,11 @@
  *
  * 🔴 **No pide datos FISCALES.** Todo lo del comprobante —número, CAE, total, receptor, estado— sale
  * de la fila que `listarComprobantes` ya trajo: sin spinner, sin error de red en el medio.
- *
- * ⚠️ **`SeccionCobro` todavía no existe en este worktree** (la trae PR2, en paralelo). Se deja un
- * placeholder simple documentado — NO se bloquea este PR esperando a PR2. Cuando `SeccionCobro` exista,
- * PR4 la cablea acá.
  */
 import type { Comprobante } from '@copiloto/core';
 
 import { nombreTipoComprobante } from './etiquetasComprobante';
+import { SeccionCobro } from './SeccionCobro';
 
 /**
  * Tipo 13 = nota de crédito. **No es una deuda de nadie**: es el papel que anula otra factura, así que
@@ -99,6 +96,7 @@ async function compartirONavegar(link: string) {
 export function DetalleComprobante({
   comprobante: c,
   onCerrar,
+  onCobroCambiado,
   testID = 'detalle-comprobante',
 }: DetalleComprobanteProps) {
   /**
@@ -163,13 +161,15 @@ export function DetalleComprobante({
 
         <Dato etiqueta="Estado" valor={ETIQUETA_ESTADO[c.estado] ?? c.estado} testID={`${testID}-estado`} />
 
-        {/* TODO(PR4): cablear `SeccionCobro` (la trae PR2, en paralelo en otro worktree) cuando esté
-            disponible en este módulo. Sólo se ofrece sobre una factura EMITIDA que no sea nota de
-            crédito -- una anulada o una NC no son plata que alguien deba. */}
+        {/* Sólo se ofrece sobre una factura EMITIDA que no sea nota de crédito -- una anulada o una NC
+            no son plata que alguien deba. */}
         {c.id != null && cobrable && (
-          <p className="detalle-comprobante__placeholder-cobro" data-testid={`${testID}-cobro-placeholder`}>
-            Registro de cobro: próximamente.
-          </p>
+          <SeccionCobro
+            comprobanteId={c.id}
+            cobrable={cobrable}
+            onCambio={onCobroCambiado}
+            testID={`${testID}-cobro`}
+          />
         )}
 
         {c.cbteAsocNro != null && (
