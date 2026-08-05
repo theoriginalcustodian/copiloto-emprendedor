@@ -5,13 +5,12 @@ import { useSession } from '../../auth/useSession';
 import { useTheme, type Theme } from '../../design-system/ThemeProvider';
 import './account.css';
 
-/** Nombres es-AR "lindos" del selector de tema (EXTRACT §2.12) — los IDs internos (`aurora` etc.)
- * son los mismos 4 de `ThemeProvider`, esto es solo la etiqueta visible. */
+/** Nombres es-AR del selector de tema — los IDs internos (`claro`/`oscuro`/`nocturno`) son los
+ * mismos 3 de `ThemeProvider`, esto es solo la etiqueta visible. */
 const THEME_LABELS: Record<Theme, string> = {
-  aurora: 'Aurora',
-  daylight: 'Amanecer',
-  refined: 'Refinado',
-  ai: 'IA',
+  claro: 'Claro',
+  oscuro: 'Oscuro',
+  nocturno: 'Nocturno',
 };
 
 /** `email` sale de `/me` (`apps/copiloto/web.py:625-636`) — mismo claim ya validado por
@@ -64,7 +63,7 @@ function NotificationsToggle() {
 }
 
 /**
- * Módulo Cuenta (Task 21, EXTRACT §2.9/§2.12/§3.4) — perfil + selector de 4 temas + card de
+ * Módulo Cuenta (Task 21, EXTRACT §2.9/§2.12/§3.4) — perfil + selector de 3 pieles ODOBI + card de
  * durabilidad + preferencias + logout. Reemplaza el placeholder de Task 9.
  *
  * Header a 2 bloques (diseño `Copiloto App.dc.html:409-418` / `Copiloto Web.dc.html:330-337`,

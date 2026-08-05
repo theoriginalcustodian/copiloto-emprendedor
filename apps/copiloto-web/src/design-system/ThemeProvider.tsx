@@ -8,12 +8,12 @@ import {
   type ReactNode,
 } from 'react';
 
-/** Los 4 temas soportados — orden estable, usado también como fuente del selector en Cuenta (Task 21). */
-export const THEMES = ['aurora', 'daylight', 'refined', 'ai'] as const;
+/** Las 3 pieles ODOBI — orden estable, usado también como fuente del selector en Cuenta (Task 21). */
+export const THEMES = ['claro', 'oscuro', 'nocturno'] as const;
 
 export type Theme = (typeof THEMES)[number];
 
-const DEFAULT_THEME: Theme = 'ai';
+const DEFAULT_THEME: Theme = 'claro';
 const STORAGE_KEY = 'copiloto-theme';
 
 function isTheme(value: unknown): value is Theme {

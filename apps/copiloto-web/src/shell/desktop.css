@@ -246,20 +246,16 @@
   border: 3px solid var(--core);
 }
 
-.rail__swatch--aurora {
-  background: var(--skin-preview-aurora);
+.rail__swatch--claro {
+  background: var(--skin-preview-claro);
 }
 
-.rail__swatch--daylight {
-  background: var(--skin-preview-daylight);
+.rail__swatch--oscuro {
+  background: var(--skin-preview-oscuro);
 }
 
-.rail__swatch--refined {
-  background: var(--skin-preview-refined);
-}
-
-.rail__swatch--ai {
-  background: var(--skin-preview-ai);
+.rail__swatch--nocturno {
+  background: var(--skin-preview-nocturno);
 }
 
 /* ---------- Bloque de usuario (dc.html:78, gap #11/#12) ---------- */

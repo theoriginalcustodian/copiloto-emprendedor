@@ -5,7 +5,7 @@ import { almacenClave } from '../adapters/almacen';
 import { SKINS, type NombreSkin, type Tokens } from './tokens';
 
 const CLAVE_SKIN = 'copiloto.tema.skin';
-const SKIN_DEFAULT: NombreSkin = 'cian';
+const SKIN_DEFAULT: NombreSkin = 'claro';
 
 interface ContextoTema {
   skin: NombreSkin;
@@ -15,10 +15,10 @@ interface ContextoTema {
 const ContextoTema = createContext<ContextoTema | null>(null);
 
 /**
- * Dueño del skin activo. Arranca en `cian` (default heredado 1:1 del rediseño de vidrio de DocuMed,
- * `docs/Implementacion_Desarrollo/2026-07-18_PLAN_rediseno-ui-panel-glass.md`: es el tema que la app
- * presenta a un emprendedor nuevo). Pinta ALGO antes de que la preferencia persistida, que llega async
- * por `AlmacenClave`, resuelva; y re-pinta si había otro skin guardado de una sesión previa.
+ * Dueño del skin activo. Arranca en `claro` (default de ODOBI — §1 del DoD, "Claro (default)"; es el
+ * tema que la app presenta a un emprendedor nuevo). Pinta ALGO antes de que la preferencia
+ * persistida, que llega async por `AlmacenClave`, resuelva; y re-pinta si había otro skin guardado
+ * de una sesión previa.
  *
  * El guard `guardado in SKINS` de abajo protege en general contra cualquier valor persistido que ya no
  * matchee ninguna clave de `SKINS` — típicamente tras remover o renombrar un skin en un rediseño futuro

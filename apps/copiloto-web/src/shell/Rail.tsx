@@ -17,10 +17,9 @@ export interface RailProps {
  * `modules/account/AccountScreen.tsx`, duplicado deliberadamente acá: no está exportado desde ahí
  * (es un detalle interno del componente) y el rail es una superficie de UI separada. */
 const THEME_SWATCH_TITLE: Record<Theme, string> = {
-  aurora: 'Aurora Glass',
-  daylight: 'Soft Daylight',
-  refined: 'Refined Dark',
-  ai: 'Tema AI',
+  claro: 'Claro',
+  oscuro: 'Oscuro',
+  nocturno: 'Nocturno',
 };
 
 /** Mismo helper que `accountLabel`/`initial` de AccountScreen.tsx (no exportados de ahí) — el
@@ -120,8 +119,8 @@ export function Rail({ active, onChange }: RailProps) {
             reparto separaba Skin de Usuario más de lo que el diseño pretende, ver gap #12). */}
         <div className="rail__bottom">
           {/* Selector de skin (EXTRACT §2.4) — real UI de producto dentro del rail, no chrome de
-              documentación: los 4 temas son elegibles en vivo acá, mismo `ThemeProvider`/`localStorage`
-              compartido con `AccountScreen` (Cuenta sigue teniendo su propio selector, mobile). */}
+              documentación: las 3 pieles ODOBI son elegibles en vivo acá, mismo
+              `ThemeProvider`/`localStorage` compartido con `AccountScreen`. */}
           <div className="rail__skin">
             <span className="rail__skin-label">Skin</span>
             <div className="rail__skin-swatches" role="group" aria-label="Selector de tema">

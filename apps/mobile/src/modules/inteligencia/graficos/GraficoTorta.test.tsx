@@ -61,7 +61,7 @@ describe('GraficoTorta', () => {
     });
     const colorConOtras = screen.getByTestId('t2-porcion-transporte').props.fill;
 
-    expect(colorConOtras).toBe(SKINS.cian.color.categorico[ORDEN.indexOf('transporte')]);
+    expect(colorConOtras).toBe(SKINS.claro.color.categorico[ORDEN.indexOf('transporte')]);
   });
 
   it('una sola categoría con el 100% dibuja el círculo completo (dos semicírculos), sin reventar', async () => {
