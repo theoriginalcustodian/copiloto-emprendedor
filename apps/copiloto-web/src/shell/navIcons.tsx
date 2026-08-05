@@ -124,6 +124,17 @@ export function ActividadIcon(): ReactNode {
   );
 }
 
+/** Documento con check -- lenguaje visual de "presupuesto/cotización", distinto del resto del set
+ * (M-WEB, 2026-08-04). */
+export function PresupuestosIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M6 3h9l3 3v15H6z" {...strokeProps} />
+      <path d="M9 12.5l2 2 4-4.5" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -134,5 +145,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   contabilidad: ContabilidadIcon,
   ingresos: IngresosIcon,
   actividad: ActividadIcon,
+  presupuestos: PresupuestosIcon,
   account: AccountIcon,
 };
