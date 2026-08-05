@@ -13,6 +13,7 @@ export type TabKey =
   | 'actividad'
   | 'presupuestos'
   | 'inteligencia'
+  | 'midia'
   | 'account';
 
 export interface TabDefinition {
@@ -32,8 +33,8 @@ export interface TabDefinition {
  * `clientes` sumado en M-WEB módulo 2 (2026-08-04) -- mismo criterio: módulo de negocio, va
  * después de `gastos` (orden de llegada de los módulos, no hay jerarquía declarada entre ellos).
  *
- * `contabilidad`, `ingresos`, `actividad`, `presupuestos` e `inteligencia` sumados en M-WEB
- * (2026-08-04) -- mismo criterio, orden de llegada.
+ * `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia` y `midia` sumados en
+ * M-WEB (2026-08-04) -- mismo criterio, orden de llegada.
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
@@ -46,6 +47,7 @@ export const TABS: readonly TabDefinition[] = [
   { key: 'actividad', label: 'Actividad' },
   { key: 'presupuestos', label: 'Presupuestos' },
   { key: 'inteligencia', label: 'Inteligencia' },
+  { key: 'midia', label: 'Mi día' },
   { key: 'account', label: 'Cuenta' },
 ];
 
