@@ -29,9 +29,9 @@ function ModeSetter({ label }: { label: string }) {
 }
 
 describe('TabBar', () => {
-  it('renderiza los 14 tabs del registro declarativo (Chat · Apps · Conexiones · Gastos · Clientes · Contabilidad · Ingresos · Actividad · Presupuestos · Inteligencia · Mi día · Funciones · Recientes · Cuenta)', () => {
+  it('renderiza los 15 tabs del registro declarativo (Chat · Apps · Conexiones · Gastos · Clientes · Contabilidad · Ingresos · Actividad · Presupuestos · Inteligencia · Mi día · Funciones · Recientes · Ajustes · Cuenta)', () => {
     renderTabBar();
-    expect(TABS).toHaveLength(14);
+    expect(TABS).toHaveLength(15);
     for (const tab of TABS) {
       expect(screen.getByRole('button', { name: tab.label })).toBeInTheDocument();
     }

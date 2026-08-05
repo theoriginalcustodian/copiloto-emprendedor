@@ -47,6 +47,10 @@ export interface SignupResponse {
 
 export interface MeResponse {
   cliente_id: string;
+  /** `apps/copiloto/web.py:625-636` -- sale del claim del token ya validado, no de una segunda
+   *  fuente. `null`/ausente si el token no lo trae (login por teléfono/anónimo, o si
+   *  `require_claims` no está activo) -- ausente, no inventado. */
+  email?: string | null;
   mp_connected: boolean;
   composio_connected: string[];
 }

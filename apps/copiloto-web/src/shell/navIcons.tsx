@@ -187,6 +187,20 @@ export function RecientesIcon(): ReactNode {
   );
 }
 
+/** Engranaje -- lenguaje visual estándar de "ajustes/configuración", distinto del resto del set
+ * (M-WEB, 2026-08-04). */
+export function AjustesIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="3.2" {...strokeProps} />
+      <path
+        d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M5.8 18.2l1.4-1.4M16.8 7.2l1.4-1.4"
+        {...strokeProps}
+      />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -202,5 +216,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   midia: MidiaIcon,
   escritorio: EscritorioIcon,
   recientes: RecientesIcon,
+  ajustes: AjustesIcon,
   account: AccountIcon,
 };

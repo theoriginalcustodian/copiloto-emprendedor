@@ -14,6 +14,7 @@ import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
+import { AjustesScreen } from '../modules/ajustes';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
@@ -105,6 +106,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
           />
         )}
         {activeTab === 'recientes' && <RecientesScreen />}
+        {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>

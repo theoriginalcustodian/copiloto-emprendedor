@@ -1,3 +1,4 @@
+export { AjustesScreen, type AjustesScreenProps } from './AjustesScreen';
 export { PantallaAjustes, type AjusteKey, type PantallaAjustesProps } from './PantallaAjustes';
 export { PantallaAndamiaje, type PantallaAndamiajeProps } from './PantallaAndamiaje';
 export { PantallaComoHablarle } from './PantallaComoHablarle';

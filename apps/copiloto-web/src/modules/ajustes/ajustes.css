@@ -65,6 +65,32 @@
   color: var(--text);
 }
 
+/* ---------- Sub-vista de Ajustes (AjustesScreen) — vuelta al menú ---------- */
+.ajustes-subvista {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ajustes-subvista__volver {
+  align-self: flex-start;
+  margin: 6px 16px 0;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--label);
+}
+
+.ajustes-subvista__volver:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .ajustes-andamiaje {
   flex: 1;
   min-height: 0;

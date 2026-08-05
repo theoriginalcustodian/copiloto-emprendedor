@@ -14,6 +14,7 @@ import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
+import { AjustesScreen } from '../modules/ajustes';
 import { AccountScreen } from '../modules/account';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
@@ -147,6 +148,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
           />
         )}
         {activeTab === 'recientes' && <RecientesScreen />}
+        {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
