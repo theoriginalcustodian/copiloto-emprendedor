@@ -89,9 +89,13 @@ export interface PantallaFacturacionProps {
    * igual porque el efecto de creación ya lo respeta).
    */
   facturaIdInicial?: string;
+  /** El CTA de `BloqueConfigurar` ("Configurar facturación") navega al tab Ajustes -- el wiring
+   *  final del shell (mismo criterio que el resto de M-WEB: quien monta decide el destino, no el
+   *  módulo). `undefined` = el botón queda deshabilitado (mismo estado que antes del wiring). */
+  onConfigurar?: () => void;
 }
 
-export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionProps = {}) {
+export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: PantallaFacturacionProps = {}) {
   const [gate, setGate] = useState<EstadoGate>({ tipo: 'verificando' });
   const [facturaId, setFacturaId] = useState<string | null>(facturaIdInicial ?? null);
   const [creandoBorrador, setCreandoBorrador] = useState(false);
@@ -351,7 +355,7 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
           <Skeleton height={64} radius={16} />
         </div>
       ) : gate.tipo === 'sin_cuit' || gate.tipo === 'bloqueado' ? (
-        <BloqueConfigurar />
+        <BloqueConfigurar onConfigurar={onConfigurar} />
       ) : gate.tipo === 'no_disponible' ? (
         <p className="facturacion-screen__empty" data-testid="facturacion-no-disponible">
           La facturación todavía no está disponible.
@@ -393,6 +397,7 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
             void refMeDeben.current?.recargar();
             void refComprobantes.current?.recargar();
           }}
+          onConfigurar={onConfigurar}
         />
       )}
 
@@ -426,15 +431,22 @@ export function PantallaFacturacion({ facturaIdInicial }: PantallaFacturacionPro
  *  false`, y el rechazo-red-de-seguridad de `maquinaEstado.ts`. Mismo componente, mismo copy, en los
  *  tres casos -- para el usuario es la misma situación.
  *
- *  El botón de mobile navega a `/ajustes-afip` vía `empujarUnaVez` (mecanismo propio de la navegación de
- *  RN). El wiring al shell de web (dónde vive Ajustes, cómo se navega) es explícitamente NO-alcance de
- *  PR1 — ver la nota en el prompt de la tarea; por ahora el CTA queda deshabilitado con el copy del
- *  destino, y se cablea cuando el shell lo resuelva. */
-function BloqueConfigurar({ testID = 'facturacion-cta-configurar' }: { testID?: string }) {
+ *  El botón de mobile navega a `/ajustes-afip` vía `empujarUnaVez`. En web navega al tab Ajustes
+ *  (`onConfigurar`, wireado por el shell) -- el menú de Ajustes tiene el tile "Facturación AFIP",
+ *  un toque más que un deep-link directo pero sin inventar navegación anidada nueva. Sin
+ *  `onConfigurar` (no debería pasar tras el wiring del shell, pero es un prop opcional) el botón
+ *  queda deshabilitado en vez de fallar en silencio. */
+function BloqueConfigurar({
+  testID = 'facturacion-cta-configurar',
+  onConfigurar,
+}: {
+  testID?: string;
+  onConfigurar?: () => void;
+}) {
   return (
     <div className="facturacion-screen__cta-configurar" data-testid={testID}>
       <p>Todavía no configuraste tu facturación AFIP. Vinculá tu cuenta para emitir comprobantes.</p>
-      <Button disabled data-testid={`${testID}-boton`}>
+      <Button disabled={onConfigurar == null} onClick={onConfigurar} data-testid={`${testID}-boton`}>
         Configurar facturación
       </Button>
     </div>
@@ -461,6 +473,8 @@ interface PasoActivoProps {
   /** Se registró/deshizo un cobro desde la card de éxito (`TarjetaComprobante`). Refresca «Te deben»
    *  y «Mis comprobantes». */
   onCobroRegistrado: () => void;
+  /** Ver docstring de `BloqueConfigurar` -- llega hasta acá para el caso `configurar_rechazo`. */
+  onConfigurar?: () => void;
 }
 
 /** El `switch` del paso VISIBLE (backend, salvo que `pasoEdicion` lo override estando en resumen -- ver
@@ -486,6 +500,7 @@ function PasoActivo({
   onVolverResumen,
   onNuevaFactura,
   onCobroRegistrado,
+  onConfigurar,
 }: PasoActivoProps) {
   const enEdicionDesdeResumen = pasoBackend === 'resumen' && pasoEdicion != null;
   const pasoMostrado = enEdicionDesdeResumen ? pasoEdicion : pasoBackend;
@@ -542,7 +557,7 @@ function PasoActivo({
         <TarjetaComprobante estado={estado} onNuevaFactura={onNuevaFactura} onCobroRegistrado={onCobroRegistrado} />
       );
     case 'configurar_rechazo':
-      return <BloqueConfigurar />;
+      return <BloqueConfigurar onConfigurar={onConfigurar} />;
     case 'rechazada':
       return (
         <div className="facturacion-screen__placeholder" data-testid="facturacion-rechazada">
