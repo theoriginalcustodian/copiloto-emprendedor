@@ -193,6 +193,28 @@ class GoTrueAdmin:
         resp.raise_for_status()
         return resp.json()
 
+    def id_token_grant(self, id_token: str) -> dict:
+        """POST /auth/v1/token?grant_type=id_token — sign-in nativo (Credential Manager Android, sin
+        browser): el `id_token` ya lo emitió Google nativamente en el device; GoTrue lo valida
+        (firma + audience contra `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID`, que acepta una lista
+        comma-separated -- el client_id Web Y el Android conviven ahí) y devuelve el token propio.
+        Sin `nonce`: el sign-in nativo vía Credential Manager no expone un hook de nonce custom en la
+        librería usada por el mobile -- requiere `GOTRUE_EXTERNAL_GOOGLE_SKIP_NONCE_CHECK=true`
+        server-side (flag de primera clase de GoTrue, no un workaround: documentado exactamente para
+        clientes nativos que no pueden hacer el round-trip de nonce). Mismos headers/manejo de error
+        que `password_grant`/`refresh_grant` (apikey exigido por el gateway; 400/401 -> credencial
+        inválida, nunca un `httpx.HTTPStatusError` crudo)."""
+        resp = self._client.post(
+            f"{self._base_url}/auth/v1/token",
+            headers=self._headers(),
+            params={"grant_type": "id_token"},
+            json={"id_token": id_token, "provider": "google"},
+        )
+        if resp.status_code in _INVALID_GRANT_STATUSES:
+            raise InvalidCredentials(f"id_token grant failed: {resp.status_code}")
+        resp.raise_for_status()
+        return resp.json()
+
 
 def _provision_tenant_row(*, auth_user_id: str, email: str, conn_factory: Callable) -> str:
     """INSERT idempotente de la fila de tenant (una sentencia atómica `ON CONFLICT (auth_user_id) DO

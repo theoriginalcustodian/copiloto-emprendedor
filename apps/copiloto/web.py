@@ -536,6 +536,10 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class GoogleIdTokenIn(BaseModel):
+    id_token: str
+
+
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    afip_app: FastAPI | None = None,
@@ -916,6 +920,23 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.refresh_grant(body.refresh_token)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="sesión expirada")
+
+    @app.post("/auth/google/id-token")
+    def google_id_token(body: GoogleIdTokenIn) -> dict:
+        """Sign-in nativo de Google (Credential Manager en Android, sin browser): la app manda el
+        `id_token` que ya emitió Google nativamente y este endpoint hace el id_token-grant
+        server-side contra GoTrue (mismo motivo que `/auth/login`: el cliente nunca habla directo con
+        GoTrue -- sin apikey en el device). SIN auth: el id_token de Google ES la credencial, igual
+        que el refresh_token en `/auth/refresh`. `def` (httpx sync -> threadpool, mismo criterio que
+        el resto de `/auth/*`).
+
+        Same contrato de respuesta que `/auth/login` (access_token/refresh_token de GoTrue, no de
+        Google) -- el cliente sigue el mismo camino post-login (incl. `POST /auth/oauth/ensure-tenant`
+        si el `/me` subsiguiente da 403 por ser first-login)."""
+        try:
+            return gotrue.id_token_grant(body.id_token)
+        except InvalidCredentials:
+            raise HTTPException(status_code=401, detail="id_token de Google inválido")
 
     # --- first-login OAuth externo (Google): self-provisioning del tenant (Fase 5) --------------
     # Requiere token VÁLIDO (mismo gate + iss propio que require_tenant) pero NO fila de tenant: el
