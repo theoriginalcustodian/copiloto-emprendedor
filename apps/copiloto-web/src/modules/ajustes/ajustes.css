@@ -1,0 +1,588 @@
+/*
+ * Estilos del módulo Ajustes (M-WEB módulo 13) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que escritorio.css (cero color literal), nombres BEM-ish.
+ */
+
+.ajustes-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.ajustes-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ajustes-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.ajustes-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+}
+
+.ajustes-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  font: inherit;
+}
+
+.ajustes-tile:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.ajustes-tile__icono {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.ajustes-tile__label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.ajustes-andamiaje {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.ajustes-andamiaje__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ajustes-andamiaje__icono {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.ajustes-andamiaje__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.ajustes-andamiaje__vacio {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--label);
+  margin: 0;
+}
+
+.como-hablarle-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.como-hablarle-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.como-hablarle-screen__intro {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.como-hablarle-screen__vacio,
+.como-hablarle-screen__no-disponible {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+  margin: 0;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.como-hablarle-screen__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.como-hablarle-screen__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.como-hablarle-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.como-hablarle-bloque__rotulo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent, var(--heading));
+}
+
+.como-hablarle-bloque__ejemplo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.como-hablarle-bloque__aviso {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+/* ---------- Mi negocio / catálogo (comparten formulario con clientes/facturación) ---------- */
+.perfil-negocio-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 6px 16px 24px;
+}
+
+.perfil-negocio-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.perfil-negocio-screen__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perfil-negocio-screen__empty,
+.perfil-negocio-screen__error {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+  text-align: center;
+  padding: 32px 16px;
+  margin: 0;
+}
+
+.perfil-negocio-screen__error {
+  color: var(--danger-fg);
+}
+
+.perfil-negocio-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perfil-negocio-seccion__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.perfil-negocio-seccion__ayuda {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.perfil-negocio-seccion__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perfil-negocio-seccion__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.perfil-negocio-seccion__campo input,
+.perfil-negocio-seccion__campo select,
+.perfil-negocio-seccion__campo textarea {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.perfil-negocio-seccion__campo textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.perfil-negocio-seccion__campo input:focus-visible,
+.perfil-negocio-seccion__campo select:focus-visible,
+.perfil-negocio-seccion__campo textarea:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.perfil-negocio-seccion__modo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.perfil-negocio-seccion__modo-detalle {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.perfil-negocio-screen__acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.perfil-negocio-screen__guardado {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--success-fg, var(--text));
+  margin: 0;
+}
+
+.perfil-negocio-screen__error-guardado {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.perfil-negocio-screen__nota {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.catalogo-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalogo-seccion__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0;
+}
+
+.catalogo-seccion__ayuda {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.catalogo-seccion__vacio,
+.catalogo-seccion__no-disponible {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
+.catalogo-seccion__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catalogo-seccion__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.catalogo-seccion__fila-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.catalogo-seccion__fila-nombre {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.catalogo-seccion__fila-precio {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.catalogo-seccion__fila-alternar {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent, var(--heading));
+  padding: 6px;
+}
+
+.catalogo-seccion__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalogo-seccion__aviso {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+/* ---------- Facturación AFIP — setup fiscal (bloques 1-4) ---------- */
+.afip-setup-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 6px 16px 24px;
+}
+
+.afip-setup-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.afip-setup-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.afip-setup-bloque__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.afip-setup-bloque__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.afip-setup-bloque__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.afip-setup-bloque__campo input,
+.afip-setup-bloque__campo select {
+  border-radius: 12px;
+  border: var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.afip-setup-bloque__campo input:focus-visible,
+.afip-setup-bloque__campo select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.afip-setup-bloque__error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.afip-setup-bloque__texto {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text);
+  margin: 0;
+}
+
+.afip-setup-bloque__texto--tenue {
+  color: var(--label);
+}
+
+.afip-setup-bloque__texto--exito {
+  color: var(--success-fg, var(--text));
+}
+
+.afip-setup-bloque__texto--peligro {
+  color: var(--danger-fg);
+}
+
+.afip-setup-bloque__acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.afip-setup-cuit-fijo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.afip-setup-cuit-fijo__valor {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.afip-setup-cuit-fijo__cambiar {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent, var(--heading));
+  padding: 4px;
+}
+
+.afip-setup-ambiente-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.afip-setup-ambiente-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  border-radius: 14px;
+  border: 1px solid var(--cancel-border, transparent);
+  padding: 10px 14px;
+}
+
+.afip-setup-ambiente-chip--activo {
+  border-color: var(--accent, var(--heading));
+}
+
+.afip-setup-ambiente-chip__nombre {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.afip-setup-ambiente-chip__estado {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--accent, var(--heading));
+}
+
+.afip-setup-ambiente-chip__accion {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent, var(--heading));
+  padding: 0;
+  text-align: left;
+}
