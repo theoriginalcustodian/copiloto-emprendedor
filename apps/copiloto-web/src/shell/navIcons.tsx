@@ -113,6 +113,17 @@ export function IngresosIcon(): ReactNode {
   );
 }
 
+/** Reloj -- lenguaje visual de "actividad reciente / historial", distinto del resto del set
+ * (M-WEB, 2026-08-04). */
+export function ActividadIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="9" {...strokeProps} />
+      <path d="M12 7v5l3.5 2" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -122,5 +133,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   clientes: ClientesIcon,
   contabilidad: ContabilidadIcon,
   ingresos: IngresosIcon,
+  actividad: ActividadIcon,
   account: AccountIcon,
 };
