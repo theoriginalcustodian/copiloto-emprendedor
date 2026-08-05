@@ -29,10 +29,12 @@ const ALTO_BOTON = 54;
  * vía `useSession().login`, mismos `testID`) sobre primitivos RN, rebrandeada al Copiloto del
  * Emprendedor (sin lenguaje clínico).
  *
- * 🔴 **Sin botón de Google.** Verificado contra el código antes de portar: el flujo Google vivo hoy es
- * 100% patrón navegador (extrae el token del fragment de la URL tras el redirect) y
- * `expo-auth-session`/`expo-web-browser` no están instaladas en `apps/mobile` — no hay forma
- * reproducible de portarlo a nativo en esta tarea. Sólo email/password, el camino verificado.
+ * **Botón de Google** (BETA-4b, portado tras el signup email/password): usa
+ * `useSession().loginConGoogle`, que abre el selector NATIVO de cuenta de Android (Credential
+ * Manager vía `@react-native-google-signin/google-signin`, sin browser) y después intercambia el
+ * `idToken` por un token propio en el backend (`modules/auth/oauth.ts`). Camino independiente del
+ * de abajo -- no comparte estado con el formulario de email/password salvo el `FormState` de la
+ * alerta.
  *
  * Vive en `modules/auth` (no en `app/login.tsx`) a propósito: el módulo es autocontenido y el parent
  * decide DÓNDE montarlo (la ruta de expo-router) y cómo cablear `<SessionProvider>` + el guard que,
@@ -40,7 +42,7 @@ const ALTO_BOTON = 54;
  */
 export function PantallaLogin() {
   const tema = useTema();
-  const { estado, login } = useSession();
+  const { estado, login, loginConGoogle } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
@@ -65,6 +67,19 @@ export function PantallaLogin() {
     if (resultado.ok) return;
     if (resultado.error === 'credenciales') setFormState('error-credenciales');
     else if (resultado.error === 'no-habilitada') setFormState('no-habilitada');
+    else setFormState('error-red');
+  }
+
+  // Spinner propio (no reusa `enviando`, que deshabilita los campos de email/password): los dos
+  // caminos son independientes y no deben bloquearse entre sí.
+  const [procesandoGoogle, setProcesandoGoogle] = useState(false);
+
+  async function manejarGoogle() {
+    setProcesandoGoogle(true);
+    const resultado = await loginConGoogle();
+    setProcesandoGoogle(false);
+    if (resultado.ok || resultado.error === 'cancelado') return; // cancelar no es error, es silencio
+    if (resultado.error === 'no-habilitada') setFormState('no-habilitada');
     else setFormState('error-red');
   }
 
@@ -173,6 +188,37 @@ export function PantallaLogin() {
             )}
           </Pressable>
 
+          <View style={[styles.divisor, { gap: tema.espacio.sm }]}>
+            <View style={[styles.divisorLinea, { backgroundColor: tema.color.borde }]} />
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>o</Text>
+            <View style={[styles.divisorLinea, { backgroundColor: tema.color.borde }]} />
+          </View>
+
+          <Pressable
+            testID="login-google"
+            disabled={procesandoGoogle}
+            onPress={manejarGoogle}
+            style={pressableStyle([
+              styles.boton,
+              {
+                borderWidth: 1,
+                borderColor: tema.color.borde,
+                backgroundColor: tema.color.superficie,
+                borderRadius: tema.radio.md,
+                height: ALTO_BOTON,
+                opacity: procesandoGoogle ? 0.7 : 1,
+              },
+            ])}
+          >
+            {procesandoGoogle ? (
+              <ActivityIndicator color={tema.color.texto} />
+            ) : (
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.grande, fontWeight: '700' }}>
+                Entrar con Google
+              </Text>
+            )}
+          </Pressable>
+
           {estadoEfectivo === 'error-credenciales' && (
             <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
               Email o contraseña incorrectos. Probá de nuevo.
@@ -204,5 +250,7 @@ const styles = StyleSheet.create({
   etiqueta: { fontWeight: '600' },
   input: { borderWidth: 1 },
   boton: { alignItems: 'center', justifyContent: 'center' },
+  divisor: { flexDirection: 'row', alignItems: 'center' },
+  divisorLinea: { flex: 1, height: 1 },
   alerta: { textAlign: 'center' },
 });

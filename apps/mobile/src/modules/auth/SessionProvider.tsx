@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { apiReal as api, ForbiddenError, UnauthorizedError, type MeResponse } from '@copiloto/core';
 
 import { almacenTokens } from '../../adapters/almacen';
+import { iniciarLoginGoogle } from './oauth';
 import {
   SessionContext,
   type LoginResult,
@@ -85,12 +86,43 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [validarSesion],
   );
 
+  const loginConGoogle = useCallback(async (): Promise<LoginResult> => {
+    const resultado = await iniciarLoginGoogle();
+    if (!resultado.ok) {
+      // 'sin-configurar' (build sin EXPO_PUBLIC_API_BASE) es un error de red real de cara al usuario;
+      // 'sin-tokens' -- GoTrue volvió sin token, contrato incumplido -- se trata igual.
+      const error = resultado.reason === 'cancelado' ? 'cancelado' : 'red';
+      return { ok: false, error };
+    }
+    await almacenTokens.guardarToken(resultado.tokens.access_token);
+    if (resultado.tokens.refresh_token) await almacenTokens.guardarRefresh(resultado.tokens.refresh_token);
+
+    const primerIntento = await validarSesion();
+    if (primerIntento === 'ok') return { ok: true };
+    if (primerIntento !== 'forbidden') return { ok: false, error: 'red' };
+
+    // 403 en el FIRST-LOGIN de un proveedor OAuth: el user ya existe en GoTrue (alta self-service)
+    // pero todavía no tiene fila de tenant -- a diferencia del login por email/password (donde el
+    // tenant se crea en el signup admin-mediado), acá hace falta este paso explícito. Idempotente en
+    // el backend (`provision_oauth_tenant`), así que llamarlo siempre que el probe da 403 es seguro:
+    // en logins subsiguientes del MISMO user simplemente no hace nada nuevo. Si esto falla, es un
+    // 403 genuino (cuenta no habilitada por otra vía) -- degradar al aviso normal.
+    try {
+      await api.ensureOauthTenant();
+    } catch {
+      return { ok: false, error: 'no-habilitada' };
+    }
+    const segundoIntento = await validarSesion();
+    if (segundoIntento === 'ok') return { ok: true };
+    return { ok: false, error: 'no-habilitada' };
+  }, [validarSesion]);
+
   const logout = useCallback(() => {
     void almacenTokens.limpiar();
     setMeData(null);
     setEstado('anon');
   }, []);
 
-  const value: UseSessionResult = { estado, me: meData, login, logout };
+  const value: UseSessionResult = { estado, me: meData, login, loginConGoogle, logout };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -44,6 +44,8 @@ from catalog import build_catalog
 import tool_catalog
 from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
+from deposito_traumas import fabrica_desde
+from handler_errores_web import registrar_captura_global
 from clients.agent.providers.stt import _API_ERRORS as _STT_API_ERRORS
 from clients.agent.providers.stt import GroqSTT
 from mp_credential_store import MpCredentialStore
@@ -260,15 +262,75 @@ def make_abrir_borrador_de_presupuesto(temporal_client, *,
     return abrir_borrador
 
 
+def _no_existe(exc: BaseException) -> bool:
+    """¿El workflow no existe, o es que no pudimos preguntar?
+
+    **La distinción no es cosmética.** Un `except Exception: return None` convierte los dos casos en
+    un 404 "no encontrada", y 404 es una respuesta *definitiva*: el cliente deja de reintentar y le
+    dice al usuario que su factura no existe. Si lo que pasó fue que Temporal estaba caído un
+    instante, esa factura existe, se está emitiendo, y acabamos de mentir de la peor forma posible —
+    con una respuesta que nadie va a volver a consultar.
+
+    Sólo `NOT_FOUND` significa "no existe". Todo lo demás —red, deadline, cluster caído, un fallo de
+    replay que rompe la query— es "no pude preguntar", y eso es un 503 que invita a reintentar. Ante
+    la duda se elige el 503: equivocarse hacia "volvé a intentar" es recuperable; hacia "no existe",
+    no.
+    """
+    from temporalio.service import RPCError, RPCStatusCode
+    return isinstance(exc, RPCError) and exc.status == RPCStatusCode.NOT_FOUND
+
+
+async def _estado_de_workflow(handle, que: str) -> dict | None:
+    """Query de estado con el 404 y el 503 separados. `que` es sólo para el mensaje y el log."""
+    try:
+        return await handle.query("estado")
+    except Exception as exc:  # noqa: BLE001
+        if _no_existe(exc):
+            return None
+        _log.error("no se pudo leer el estado de %s (%s): %s", que, type(exc).__name__, exc)
+        raise HTTPException(503, detail=f"estado de {que} no disponible: reintentá en unos segundos")
+
+
 def make_consultar_factura(temporal_client) -> Callable:
     async def consultar_factura(cliente_id: str, factura_id: str) -> dict | None:
-        try:
-            handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
-            return await handle.query("estado")
-        except Exception:  # noqa: BLE001 — no existe, o no es de este tenant: 404 desde el endpoint
-            return None
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        return await _estado_de_workflow(handle, "la factura")
 
     return consultar_factura
+
+
+async def _confirmar_por_update(handle, args: list, que: str) -> dict:
+    """Confirma vía Workflow Update y devuelve el resultado REAL, no un acuse de recibo.
+
+    Un signal es fire-and-forget: el endpoint contestaba `{"ok": true}` con el token vencido igual que
+    con el válido. Un update devuelve lo que el handler decidió. Verificado contra el cluster del VPS
+    (Temporal 1.29.7) antes de escribir esto: el update viaja, el rechazo vuelve, y un signal y un
+    update pueden compartir nombre de wire — por eso el signal sigue existiendo para los clientes
+    viejos y las ejecuciones en vuelo.
+    """
+    try:
+        return await handle.execute_update("confirmar", *args)
+    except Exception as exc:  # noqa: BLE001
+        if _no_existe(exc):
+            raise HTTPException(404, detail=f"{que} no encontrada") from exc
+        _log.error("no se pudo confirmar %s (%s): %s", que, type(exc).__name__, exc)
+        raise HTTPException(503, detail=f"no se pudo confirmar {que}: reintentá en unos segundos")
+
+
+def make_confirmar_factura(temporal_client) -> Callable:
+    async def confirmar_factura(cliente_id: str, factura_id: str, token: str) -> dict:
+        handle = temporal_client.get_workflow_handle(_wf_id_factura(cliente_id, factura_id))
+        return await _confirmar_por_update(handle, [token], "la factura")
+
+    return confirmar_factura
+
+
+def make_confirmar_anulacion(temporal_client) -> Callable:
+    async def confirmar_anulacion(cliente_id: str, anulacion_id: str) -> dict:
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        return await _confirmar_por_update(handle, [], "la anulación")
+
+    return confirmar_anulacion
 
 
 def make_signal_factura(temporal_client) -> Callable:
@@ -342,11 +404,8 @@ def make_iniciar_anulacion(temporal_client, *, task_queue: str = AGENT_B_TASK_QU
 
 def make_consultar_anulacion(temporal_client) -> Callable:
     async def consultar_anulacion(cliente_id: str, anulacion_id: str) -> dict | None:
-        try:
-            handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
-            return await handle.query("estado")
-        except Exception:  # noqa: BLE001
-            return None
+        handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+        return await _estado_de_workflow(handle, "la anulación")
 
     return consultar_anulacion
 
@@ -447,6 +506,10 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class GoogleIdTokenIn(BaseModel):
+    id_token: str
+
+
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    afip_app: FastAPI | None = None,
@@ -487,6 +550,14 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     crypto = FernetCrypto()
 
     app = FastAPI(title="Copiloto — front-door")
+
+    # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
+    # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
+    # `HTTPException` (404/409/400 son respuestas de negocio, no fallos) — ver `handler_errores_web`.
+    # La DLQ (Fase 2) se alimenta de esta costura: `conn_factory` ya viene envuelta con
+    # `conexion_con_tenant` desde `serve.py`, así que el trauma se escribe con el tenant que el borde
+    # declaró — nunca con uno que el llamador elija.
+    registrar_captura_global(app, traumas=fabrica_desde(conn_factory))
 
     # --- BFF: EXIGE tenant (auth per-request, spec §5.2) ------------------------
 
@@ -726,6 +797,23 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.refresh_grant(body.refresh_token)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="sesión expirada")
+
+    @app.post("/auth/google/id-token")
+    def google_id_token(body: GoogleIdTokenIn) -> dict:
+        """Sign-in nativo de Google (Credential Manager en Android, sin browser): la app manda el
+        `id_token` que ya emitió Google nativamente y este endpoint hace el id_token-grant
+        server-side contra GoTrue (mismo motivo que `/auth/login`: el cliente nunca habla directo con
+        GoTrue -- sin apikey en el device). SIN auth: el id_token de Google ES la credencial, igual
+        que el refresh_token en `/auth/refresh`. `def` (httpx sync -> threadpool, mismo criterio que
+        el resto de `/auth/*`).
+
+        Same contrato de respuesta que `/auth/login` (access_token/refresh_token de GoTrue, no de
+        Google) -- el cliente sigue el mismo camino post-login (incl. `POST /auth/oauth/ensure-tenant`
+        si el `/me` subsiguiente da 403 por ser first-login)."""
+        try:
+            return gotrue.id_token_grant(body.id_token)
+        except InvalidCredentials:
+            raise HTTPException(status_code=401, detail="id_token de Google inválido")
 
     # --- first-login OAuth externo (Google): self-provisioning del tenant (Fase 5) --------------
     # Requiere token VÁLIDO (mismo gate + iss propio que require_tenant) pero NO fila de tenant: el

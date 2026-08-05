@@ -9,8 +9,9 @@
  * móviles los clasificó `descartar`. `CopilotApi` (`types.ts`) ya NO declara esos tres métodos.
  */
 import { sendAudio } from './audio';
-import { login } from './auth';
+import { login, loginWithGoogleIdToken } from './auth';
 import { sendChat } from './chat';
+import { sendFoto } from './foto';
 import { me } from './me';
 import { mockApi } from './mock';
 import { ensureOauthTenant } from './oauth';
@@ -20,10 +21,12 @@ import { warm } from './warm';
 
 export const apiReal: CopilotApi = {
   login,
+  loginWithGoogleIdToken,
   ensureOauthTenant,
   me,
   sendChat,
   sendAudio,
+  sendFoto,
   getReply,
   warm,
 };
@@ -36,13 +39,14 @@ export type { ConfigApi } from './config';
 
 // Puertos — los tipos que cada plataforma implementa.
 export type { ArchivoSubida, HttpPort, PeticionHttp, RespuestaHttp } from './http';
+export { TIMEOUT_HTTP_MS } from './http';
 export type { AlmacenTokens } from './tokens';
 
 // Errores.
 // ⚠️ `DuplicadoProbableError`, `GeneroInvalidoError` y `MotivoDuplicado` se exportaban acá y se
 // BORRARON el 2026-07-22: eran de la app clínica y describían un `409` de `POST /clientes` con otro
 // significado que el de este producto. Ver el epitafio en `errors.ts`.
-export { ApiError, ForbiddenError, UnauthorizedError, codigoDeConflicto, mensajeDeConflicto } from './errors';
+export { ApiError, ForbiddenError, UnauthorizedError, codigoDeConflicto, mensajeDeConflicto, esDiferido } from './errors';
 // Todo `409` del backend trae `codigo` desde el 2026-07-22 (`errores_web.CODIGOS`). Es lo que permite
 // reconocer cada caso por algo que TRAE, en vez de por lo que le falta — ver el docstring allá.
 export type { CodigoConflicto } from './errors';
@@ -118,6 +122,20 @@ export type {
   OrigenGasto,
   ResumenGastos,
 } from './gastos';
+
+// `/contabilidad/resumen` — caja y facturación, dos preguntas separadas (§2 del contrato). El endpoint
+// todavía no existe: ver el docstring de `contabilidad.ts` para el estado de `[ASSUMED_PENDING_VERIFY]`.
+export { obtenerResumenContabilidad } from './contabilidad';
+export type {
+  CajaMesAnterior,
+  CategoriaResumenContabilidad,
+  ClienteRanking,
+  ResumenCaja,
+  ResumenContabilidad,
+  ResumenFacturado,
+  ResumenGastosContabilidad,
+  TopeMonotributo,
+} from './contabilidad';
 
 // `/clientes` — la cartera, DERIVADA de lo ya emitido. ⚠️ Archivo NUEVO: el anterior (cliente HTTP
 // de la app clínica, apuntando a un backend que nunca existió acá) se borró en `8761d54`.

@@ -20,6 +20,14 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+// Este archivo no ejercita el camino Google, pero `SessionProvider` importa `oauth.ts` -> el módulo
+// nativo de sign-in a nivel de módulo -- sin mockear, `TurboModuleRegistry.getEnforcing` explota en
+// el entorno de test (no hay binario nativo). Mismo mock mínimo que `oauth.test.ts`/`PantallaLogin.test.tsx`.
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: { configure: jest.fn(), hasPlayServices: jest.fn().mockResolvedValue(true), signIn: jest.fn() },
+  isSuccessResponse: (r: { type: string }) => r.type === 'success',
+}));
+
 import { apiReal as api, ForbiddenError, UnauthorizedError } from '@copiloto/core';
 
 import { almacenTokens } from '../../adapters/almacen';

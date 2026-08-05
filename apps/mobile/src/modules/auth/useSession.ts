@@ -19,7 +19,9 @@ import type { MeResponse } from '@copiloto/core';
  */
 export type SessionStatus = 'verificando' | 'anon' | 'autenticado' | 'no-habilitada';
 
-export type LoginErrorKind = 'credenciales' | 'no-habilitada' | 'red';
+// 'cancelado' es propio del camino Google: el usuario cerró el consentimiento sin completar. La UI
+// lo trata distinto de 'red' -- no es un error, es una decisión del usuario, así que no dispara alerta.
+export type LoginErrorKind = 'credenciales' | 'no-habilitada' | 'red' | 'cancelado';
 
 export interface LoginResult {
   ok: boolean;
@@ -31,6 +33,7 @@ export interface UseSessionResult {
   /** Identidad del tenant (`GET /me`). `null` mientras no hay sesión validada. */
   me: MeResponse | null;
   login: (email: string, password: string) => Promise<LoginResult>;
+  loginConGoogle: () => Promise<LoginResult>;
   logout: () => void;
 }
 
