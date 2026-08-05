@@ -91,6 +91,17 @@ export function ClientesIcon(): ReactNode {
   );
 }
 
+/** Gráfico de barras -- lenguaje visual estándar de "contabilidad/reportes". Mismo trazo que el
+ * resto del set (M-WEB, 2026-08-04). */
+export function ContabilidadIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 20V10M11 20V4M18 20v-7" {...strokeProps} />
+      <path d="M2.5 20h19" {...strokeProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -98,5 +109,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   connections: ConnectionsIcon,
   gastos: GastosIcon,
   clientes: ClientesIcon,
+  contabilidad: ContabilidadIcon,
   account: AccountIcon,
 };

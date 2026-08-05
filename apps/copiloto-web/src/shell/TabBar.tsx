@@ -2,7 +2,7 @@ import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import './shell.css';
 
-export type TabKey = 'chat' | 'apps' | 'connections' | 'gastos' | 'clientes' | 'account';
+export type TabKey = 'chat' | 'apps' | 'connections' | 'gastos' | 'clientes' | 'contabilidad' | 'account';
 
 export interface TabDefinition {
   key: TabKey;
@@ -20,6 +20,8 @@ export interface TabDefinition {
  *
  * `clientes` sumado en M-WEB módulo 2 (2026-08-04) -- mismo criterio: módulo de negocio, va
  * después de `gastos` (orden de llegada de los módulos, no hay jerarquía declarada entre ellos).
+ *
+ * `contabilidad` sumado en M-WEB (2026-08-04) -- mismo criterio, orden de llegada.
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
@@ -27,6 +29,7 @@ export const TABS: readonly TabDefinition[] = [
   { key: 'connections', label: 'Conexiones' },
   { key: 'gastos', label: 'Gastos' },
   { key: 'clientes', label: 'Clientes' },
+  { key: 'contabilidad', label: 'Contabilidad' },
   { key: 'account', label: 'Cuenta' },
 ];
 
