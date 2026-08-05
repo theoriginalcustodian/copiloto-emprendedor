@@ -26,6 +26,7 @@ import { PasoCliente } from './PasoCliente';
 import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
+import { TarjetaComprobante } from './TarjetaComprobante';
 import './facturacion.css';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
@@ -47,10 +48,10 @@ type EstadoGate =
 
 /**
  * `PantallaFacturacion` — port de `apps/mobile/src/modules/facturacion/PantallaFacturacion.tsx` a
- * `copiloto-web`. **PR1: sólo el wizard de creación** (gate + los 4 pasos). Las secciones "Te deben",
- * "Mis comprobantes", el detalle de comprobante y el registro de cobro son PR2/PR3/PR4 — todavía no
- * existen en este módulo, así que los estados terminales (`comprobante`/`rechazada`/`cancelada`) se
- * muestran acá con un placeholder simple hasta que esos PRs lleguen.
+ * `copiloto-web`. **PR1: el wizard de creación** (gate + los 4 pasos). **PR2: comprobante emitido +
+ * cobro** (`TarjetaComprobante` + `SeccionCobro`). Las secciones "Te deben" y "Mis comprobantes" son
+ * PR3/PR4 — todavía no existen en este módulo, así que los estados terminales `rechazada`/`cancelada`
+ * siguen con un placeholder simple hasta que esos PRs lleguen.
  *
  * 🔴 **El paso visible se DERIVA, nunca se cuenta.** `derivarPasoVisible` (`maquinaEstado.ts`) traduce
  * `EstadoFacturaResp.estado` a la pantalla correspondiente; esta pantalla NO mantiene un `useState` de
@@ -407,9 +408,8 @@ interface PasoActivoProps {
  *  el docstring de `PantallaFacturacion`). Aislado en su propio componente para que el `switch` no viva
  *  mezclado con los `useState`/`useEffect` de arriba.
  *
- *  🔴 **`comprobante` es un placeholder en PR1.** `TarjetaComprobante` (con la sección de cobro) es
- *  PR2/PR3/PR4 — todavía no existe en este módulo. Mostrar un mensaje simple acá evita bloquear el
- *  wizard de creación por una pieza fuera de alcance; se reemplaza cuando esos PRs lleguen. */
+ *  `comprobante` renderiza `TarjetaComprobante` (PR2, con `SeccionCobro` embebida). `rechazada` y
+ *  `cancelada` siguen con un placeholder simple -- PR3/PR4. */
 function PasoActivo({
   pasoBackend,
   pasoEdicion,
@@ -478,14 +478,7 @@ function PasoActivo({
         </div>
       );
     case 'comprobante':
-      return (
-        <div className="facturacion-screen__placeholder" data-testid="facturacion-paso-comprobante">
-          <p>Tu factura fue emitida. El detalle del comprobante llega en un próximo PR.</p>
-          <Button onClick={onNuevaFactura} data-testid="facturacion-comprobante-nueva">
-            Nueva factura
-          </Button>
-        </div>
-      );
+      return <TarjetaComprobante estado={estado} onNuevaFactura={onNuevaFactura} />;
     case 'configurar_rechazo':
       return <BloqueConfigurar />;
     case 'rechazada':

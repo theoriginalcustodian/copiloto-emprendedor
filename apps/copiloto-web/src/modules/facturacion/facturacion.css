@@ -328,3 +328,171 @@
   color: var(--danger-fg);
   margin: 0;
 }
+
+/* ---------- TarjetaComprobante (PR2) ---------- */
+.facturacion-comprobante {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.facturacion-comprobante__titulo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.facturacion-comprobante__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.facturacion-comprobante__linea {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.facturacion-comprobante__cae {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--heading);
+  margin: 0;
+}
+
+.facturacion-comprobante__vencimiento {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.facturacion-comprobante__sin-pdf,
+.facturacion-comprobante__aviso {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.facturacion-comprobante__acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.facturacion-comprobante__acciones .uc-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- SeccionCobro (PR2) ---------- */
+.seccion-cobro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+}
+
+.seccion-cobro__etiqueta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.seccion-cobro__fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.seccion-cobro__texto-tenue {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+}
+
+.seccion-cobro__estado {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.seccion-cobro__saldo {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.seccion-cobro__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.seccion-cobro__fila-cobro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.seccion-cobro__deshacer {
+  background: none;
+  border: none;
+  padding: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--heading);
+  cursor: pointer;
+}
+
+.seccion-cobro__deshacer:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.seccion-cobro__error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--danger-fg);
+  margin: 0;
+}
+
+.seccion-cobro__botones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.seccion-cobro__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--label) 35%, transparent);
+  border-top-color: var(--label);
+  animation: seccion-cobro-spin 0.8s linear infinite;
+}
+
+@keyframes seccion-cobro-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
