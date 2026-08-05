@@ -111,7 +111,7 @@ export function PantallaLogin() {
       >
         <View style={[styles.marca, { gap: tema.espacio.sm, marginBottom: tema.espacio.xl }]}>
           <Marca size={76} />
-          <Text style={[styles.titulo, { color: tema.color.texto, fontSize: HERO }]}>Copiloto</Text>
+          <Text style={[styles.titulo, { color: tema.color.texto, fontSize: HERO }]}>Odobi</Text>
           <Text style={[styles.tagline, { color: tema.color.textoTenue, fontSize: tema.tipo.grande }]}>
             tu copiloto de negocio
           </Text>
