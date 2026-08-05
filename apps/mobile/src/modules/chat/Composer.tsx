@@ -183,7 +183,7 @@ export function Composer({ sendStatus, motivoFallo = null, onSend, disabled = fa
           <TextInput
             testID="chat-composer"
             style={[styles.input, { color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.ui }]}
-            placeholder="Escribile a tu copiloto…"
+            placeholder="Escribí, o hablá…"
             placeholderTextColor={tema.color.textoTenue}
             value={borrador}
             onChangeText={setBorrador}

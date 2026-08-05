@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Copiloto del Emprendedor — cliente PWA mobile-first + desktop responsive.
+// Odobi — cliente PWA mobile-first + desktop responsive.
 export default defineConfig({
   base: '/',
   plugins: [
@@ -28,8 +28,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Copiloto del Emprendedor',
-        short_name: 'Copiloto',
+        name: 'Odobi',
+        short_name: 'Odobi',
         description: 'Tu copiloto de IA para el día a día del negocio.',
         lang: 'es-AR',
         start_url: '/',

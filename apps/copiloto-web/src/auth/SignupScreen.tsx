@@ -76,7 +76,7 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
         <div className="login-screen__brand">
           <div className="login-screen__brand-row">
             <PresenceOrb size={26} />
-            <span className="login-screen__brand-title">Copiloto del Emprendedor</span>
+            <span className="login-screen__brand-title">Odobi</span>
           </div>
           <p className="login-screen__tagline">creá tu cuenta</p>
         </div>
