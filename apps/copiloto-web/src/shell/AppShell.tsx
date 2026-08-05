@@ -12,7 +12,10 @@ import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
 import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
+import { EscritorioScreen } from '../modules/escritorio';
+import { RecientesScreen } from '../modules/recientes';
 import { AccountScreen } from '../modules/account';
+import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
 import { useChromeAutoHide } from './useChromeAutoHide';
@@ -62,11 +65,14 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // shell aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no
   // resetea, así el cierre sigue animando con el contenido ya cargado.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
-  // Facturación todavía no está portada a la web (M-WEB, próxima en la cola) — `onFacturar` de
-  // Presupuestos es obligatorio (mobile navega al gate de confirmación real), así que acá se
-  // avisa con un toast en vez de fallar en silencio. TODO(M-WEB-facturacion): reemplazar por la
-  // navegación real al gate cuando el módulo `facturacion` aterrice en copiloto-web.
-  const [facturacionPendiente, setFacturacionPendiente] = useState(false);
+  // Funciones que Presupuestos/Escritorio piden navegar pero todavía no tienen tab propio en la
+  // web (facturación: PR2-4 en curso; ajustes: espera definición de UX) — se avisa con un toast en
+  // vez de fallar en silencio. TODO(M-WEB-facturacion): reemplazar por navegación real cuando
+  // facturación aterrice completa. Ver `funcionTabMap.ts` para el resto de los mapeos.
+  const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
+  const avisarNoDisponible = useCallback(() => {
+    setAvisoPendiente('Esta función todavía no está disponible en la web — probala desde la app por ahora.');
+  }, []);
 
   const changeTab = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -121,21 +127,34 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
         {activeTab === 'presupuestos' && (
-          <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
+          <PresupuestosScreen onFacturar={avisarNoDisponible} />
         )}
         {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'midia' && <MidiaScreen />}
+        {activeTab === 'escritorio' && (
+          <EscritorioScreen
+            onFuncion={(key) => {
+              const tab = FUNCION_A_TAB[key];
+              if (tab == null) {
+                avisarNoDisponible();
+                return;
+              }
+              changeTab(tab);
+            }}
+            onAbrirGasto={() => changeTab('gastos')}
+            onAbrirCliente={() => changeTab('clientes')}
+            onVerRecientes={() => changeTab('recientes')}
+          />
+        )}
+        {activeTab === 'recientes' && <RecientesScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </BottomSheet>
-      {facturacionPendiente && (
-        <Toast
-          message="Facturar desde la web todavía no está disponible — probalo desde la app por ahora."
-          onDismiss={() => setFacturacionPendiente(false)}
-        />
+      {avisoPendiente != null && (
+        <Toast message={avisoPendiente} onDismiss={() => setAvisoPendiente(null)} />
       )}
     </div>
   );

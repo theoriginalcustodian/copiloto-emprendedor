@@ -12,8 +12,11 @@ import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
 import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
+import { EscritorioScreen } from '../modules/escritorio';
+import { RecientesScreen } from '../modules/recientes';
 import { AccountScreen } from '../modules/account';
 import { AppsModal } from './AppsModal';
+import { FUNCION_A_TAB } from './funcionTabMap';
 import { Rail } from './Rail';
 import { type TabKey } from './TabBar';
 import './desktop.css';
@@ -49,7 +52,10 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   // aunque el usuario nunca abra "Apps". Se vuelve `true` en la primera apertura y no resetea.
   const [appsEverOpened, setAppsEverOpened] = useState(false);
   // Ver docstring equivalente en AppShell.tsx — mismo stub, mismo TODO(M-WEB-facturacion).
-  const [facturacionPendiente, setFacturacionPendiente] = useState(false);
+  const [avisoPendiente, setAvisoPendiente] = useState<string | null>(null);
+  const avisarNoDisponible = useCallback(() => {
+    setAvisoPendiente('Esta función todavía no está disponible en la web — probala desde la app por ahora.');
+  }, []);
 
   const handleTabChange = useCallback((key: TabKey) => {
     if (key === 'apps') {
@@ -79,20 +85,33 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
         {activeTab === 'ingresos' && <IngresosScreen />}
         {activeTab === 'actividad' && <ActividadScreen />}
         {activeTab === 'presupuestos' && (
-          <PresupuestosScreen onFacturar={() => setFacturacionPendiente(true)} />
+          <PresupuestosScreen onFacturar={avisarNoDisponible} />
         )}
         {activeTab === 'inteligencia' && <InteligenciaScreen />}
         {activeTab === 'midia' && <MidiaScreen />}
+        {activeTab === 'escritorio' && (
+          <EscritorioScreen
+            onFuncion={(key) => {
+              const tab = FUNCION_A_TAB[key];
+              if (tab == null) {
+                avisarNoDisponible();
+                return;
+              }
+              setActiveTab(tab);
+            }}
+            onAbrirGasto={() => setActiveTab('gastos')}
+            onAbrirCliente={() => setActiveTab('clientes')}
+            onVerRecientes={() => setActiveTab('recientes')}
+          />
+        )}
+        {activeTab === 'recientes' && <RecientesScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </AppsModal>
-      {facturacionPendiente && (
-        <Toast
-          message="Facturar desde la web todavía no está disponible — probalo desde la app por ahora."
-          onDismiss={() => setFacturacionPendiente(false)}
-        />
+      {avisoPendiente != null && (
+        <Toast message={avisoPendiente} onDismiss={() => setAvisoPendiente(null)} />
       )}
     </div>
   );
