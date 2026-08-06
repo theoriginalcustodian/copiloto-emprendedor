@@ -49,6 +49,10 @@ if [ -n "${UC_TEST_DATABASE_URL:-}" ]; then
   PG_ENV="DATABASE_URL='${UC_TEST_DATABASE_URL}' UC_RLS_FORCE='${UC_RLS_FORCE:-1}' "
   [ -n "${UC_TEST_AUTOSANACION_URL:-}" ] && \
     PG_ENV="${PG_ENV}COPILOTO_AUTOSANACION_DSN='${UC_TEST_AUTOSANACION_URL}' "
+  # Mismo patrón que AUTOSANACION arriba, para el rol de lectura de la Consola (CONS0a). Emitido por
+  # `test-db.sh --export` como `UC_TEST_CONSOLA_URL` (rol `copiloto_consola`, BYPASSRLS, SELECT-only).
+  [ -n "${UC_TEST_CONSOLA_URL:-}" ] && \
+    PG_ENV="${PG_ENV}COPILOTO_CONSOLA_DSN='${UC_TEST_CONSOLA_URL}' "
   PG_AVISO="ON — los tests @necesita_pg CORREN y ESCRIBEN en la base apuntada (UC_RLS_FORCE=${UC_RLS_FORCE:-1})"
 else
   PG_ENV=""
