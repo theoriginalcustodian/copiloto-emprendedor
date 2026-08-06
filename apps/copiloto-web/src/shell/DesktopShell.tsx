@@ -62,6 +62,9 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     undefined,
   );
 
+  // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
+  // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
+  // grande, fuera de este contrato).
   const handleTabChange = useCallback((key: TabKey) => {
     if (key === 'apps') {
       setAppsModalOpen(true);

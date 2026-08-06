@@ -34,13 +34,11 @@ describe('DesktopShell', () => {
   });
 
   it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {
+    // `connections` salió de `TABS` (depuración 2026-08-06) -- sin botón "Conexiones" en el rail
+    // para asertar aria-current, pero `activeTab` sigue siendo una key válida.
     renderDesktopShell('connections');
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
     expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Conexiones' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
   });
 
   it('setea data-shell="desktop" en la raíz (hook de tipografía web, ver fonts-web.css)', () => {
@@ -48,47 +46,28 @@ describe('DesktopShell', () => {
     expect(screen.getByTestId('desktop-shell')).toHaveAttribute('data-shell', 'desktop');
   });
 
-  it('tocar "Apps" abre el modal centrado SOBRE el Chat (no navega, gap #1 del audit desktop)', () => {
+  it('DESKTOP GATE: el bloque de usuario (reemplazo de Ajustes) sigue presente en el rail', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-    // Chat sigue montado detrás del modal — Apps es un overlay, no una pantalla de tab.
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('rail-user')).toBeInTheDocument();
   });
 
-  it('cierra el modal de Apps al click en el botón X', () => {
+  it('navegar a Ajustes > Apps conectadas monta ConnectionsScreen (camino real post-depuración)', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(screen.getByTestId('apps-modal-root')).toHaveClass('apps-modal-root--open');
-
-    fireEvent.click(screen.getByTestId('apps-modal-close'));
-    expect(screen.getByTestId('apps-modal-root')).not.toHaveClass('apps-modal-root--open');
-  });
-
-  it('cierra el modal de Apps al click en el scrim', () => {
-    renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-
-    fireEvent.click(screen.getByTestId('apps-modal-scrim'));
-    expect(screen.getByTestId('apps-modal-root')).not.toHaveClass('apps-modal-root--open');
-  });
-
-  it('navegar a Conexiones monta ConnectionsScreen', () => {
-    renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Conexiones' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('ajuste-tile-apps'));
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 
-  it('navegar a Cuenta monta AccountScreen', () => {
+  it('navegar a Ajustes > Mi cuenta monta AccountScreen (camino real post-depuración)', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
   it('volver a Chat desde otro tab remonta ChatScreen', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
   });

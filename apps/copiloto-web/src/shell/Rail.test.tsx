@@ -4,9 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
-import { ModeProvider } from './modeStore';
 import { Rail } from './Rail';
-import { TABS } from './TabBar';
+import { TABS, type TabKey } from './TabBar';
 
 function renderRail(active: (typeof TABS)[number]['key'] = 'chat', onChange = vi.fn()) {
   return {
@@ -14,45 +13,56 @@ function renderRail(active: (typeof TABS)[number]['key'] = 'chat', onChange = vi
     ...render(
       <ThemeProvider>
         <SessionProvider>
-          <ModeProvider>
-            <Rail active={active} onChange={onChange} />
-          </ModeProvider>
+          <Rail active={active} onChange={onChange} />
         </SessionProvider>
       </ThemeProvider>,
     ),
   };
 }
 
+// Mismo guard que TabBar.test.tsx (2026-08-06): keys exactas, no cantidad.
+const KEYS_ESPERADAS: readonly TabKey[] = [
+  'chat',
+  'midia',
+  'actividad',
+  'ingresos',
+  'gastos',
+  'contabilidad',
+  'facturacion',
+  'presupuestos',
+  'clientes',
+  'inteligencia',
+  'escritorio',
+  'ajustes',
+];
+
 describe('Rail', () => {
-  // `setTheme` (test "cambia de tema al click") persiste en localStorage — limpiar entre tests
-  // evita que un test contamine el default `claro` del siguiente (mismo criterio que
-  // AppShell.test.tsx / ThemeProvider.test.tsx).
   beforeEach(() => {
     window.localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renderiza los 16 ítems del registro declarativo (Chat · Apps · Conexiones · Gastos · Clientes · Contabilidad · Ingresos · Actividad · Presupuestos · Inteligencia · Mi día · Funciones · Recientes · Ajustes · Facturación · Cuenta)', () => {
+  it('el registro TABS (compartido con TabBar) tiene exactamente las 12 keys esperadas', () => {
+    expect(TABS.map((t) => t.key)).toEqual(KEYS_ESPERADAS);
+  });
+
+  it('renderiza un botón por cada tab del registro', () => {
     renderRail();
-    expect(TABS).toHaveLength(16);
     for (const tab of TABS) {
       expect(screen.getByRole('button', { name: tab.label })).toBeInTheDocument();
     }
   });
 
   it('marca el ítem activo con aria-current="page"', () => {
-    renderRail('connections');
-    expect(screen.getByRole('button', { name: 'Conexiones' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    renderRail('gastos');
+    expect(screen.getByRole('button', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'Chat' })).not.toHaveAttribute('aria-current');
   });
 
   it('click en un ítem dispara onChange con su key', () => {
     const { onChange } = renderRail();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(onChange).toHaveBeenCalledWith('apps');
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    expect(onChange).toHaveBeenCalledWith('ajustes');
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 

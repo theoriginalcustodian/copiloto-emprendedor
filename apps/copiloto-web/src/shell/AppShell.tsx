@@ -79,6 +79,12 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     undefined,
   );
 
+  // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
+  // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
+  // `connections`/`account`/`recientes`, que `AjustesScreen`/`EscritorioScreen` siguen pidiendo).
+  // Se deja la rama viva a propósito: `AppsScreen`/`BottomSheet` tienen otros usos fuera de este
+  // shell (Composer, AccountScreen) y retirar el sheet entero es una decisión más grande que
+  // "depurar la barra" -- fuera de este contrato.
   const changeTab = useCallback((key: TabKey) => {
     if (key === 'apps') {
       setAppsSheetOpen(true);
