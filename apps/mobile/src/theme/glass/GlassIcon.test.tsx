@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react-native';
 
 // Jest (jest-expo) -- describe/it/expect son globales, no se importan de vitest.
 
+import { ThemeProvider } from '../ThemeProvider';
 import { CATALOGO_ICONOS } from './icons';
 import { GlassIcon } from './GlassIcon';
 
@@ -39,7 +40,11 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
   });
 
   it.each(NOMBRES)('renderiza "%s" sin crashear, con el viewBox 0 0 24 24', async (nombre) => {
-    await render(<GlassIcon name={nombre} />);
+    await render(
+      <ThemeProvider>
+        <GlassIcon name={nombre} />
+      </ThemeProvider>,
+    );
 
     // `react-native-svg` está mockeado a Views que REENVIAN sus props (ver `jest.setup.js` -- el svg
     // real es pesado y no asienta en el render de arbol completo de `shell.test`), así que el `<Svg>`
@@ -49,7 +54,11 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
   });
 
   it('respeta el `size` recibido (width/height del <Svg>)', async () => {
-    await render(<GlassIcon name="facturacion" size={40} />);
+    await render(
+      <ThemeProvider>
+        <GlassIcon name="facturacion" size={40} />
+      </ThemeProvider>,
+    );
 
     const svg = screen.getByTestId('glass-icon-facturacion');
     expect(svg.props.width).toBe(40);
@@ -57,7 +66,11 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
   });
 
   it('sin `size`, usa el default de 24', async () => {
-    await render(<GlassIcon name="grabar" />);
+    await render(
+      <ThemeProvider>
+        <GlassIcon name="grabar" />
+      </ThemeProvider>,
+    );
 
     const svg = screen.getByTestId('glass-icon-grabar');
     expect(svg.props.width).toBe(24);
