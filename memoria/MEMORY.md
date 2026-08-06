@@ -63,6 +63,7 @@
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo no choca con nada y se disfraza de prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá **sobre cuántos elementos miró**, no sólo si pasó.
 - [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — `project`. El escalador mide `mtime` (último toque), no "sin respuesta desde": ampliar un `pedido_` lo llevó de 95min a 1min sin que nadie respondiera. Premia el abandono. Preguntá **qué evento reinicia el contador**.
+- [🔬🙈 Probar que el instrumento miente NO te exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — `feedback`. Descarté 4 ciclos una alarma "ya probada falsa"; al 5º miré el archivo y su DoD estaba cumplido hacía 2h. Refutar una causa no refuta el hecho. Control: *suponiendo el detector roto como creo, ¿esto debería estar igual donde está?*
 - [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera ANTES de contar.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
