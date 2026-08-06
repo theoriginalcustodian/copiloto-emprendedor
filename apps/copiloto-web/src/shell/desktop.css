@@ -190,9 +190,10 @@
   transition: opacity 0.2s ease 0.08s;
 }
 
-/* ---------- Bloque inferior: Skin + Usuario (dc.html:66-84, gap #12) ----------
- * `margin-top:auto` acá (no en `.rail__skin`) empuja el bloque COMPLETO al fondo, pegado como una
- * sola unidad — reemplaza el `justify-content:space-between` de 3 grupos que separaba de más. */
+/* ---------- Bloque inferior: Usuario (dc.html:66-84, gap #12) ----------
+ * `margin-top:auto` empuja el bloque al fondo. El selector de skin que vivía acá (EXTRACT §2.4)
+ * se movió a Ajustes > Apariencia (2026-08-06, pedido del operador) — ver
+ * `modules/ajustes/PantallaApariencia.tsx` y su CSS en `ajustes.css`. */
 .rail__bottom {
   margin-top: auto;
   padding-top: 16px;
@@ -200,74 +201,11 @@
   flex-direction: column;
 }
 
-/* ---------- Selector de skin (EXTRACT §2.4) ---------- */
-.rail__skin {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rail__skin-label {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--label);
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-.rail--open .rail__skin-label {
-  opacity: 1;
-  transition: opacity 0.2s ease 0.08s;
-}
-
-.rail__skin-swatches {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.rail__swatch {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  /* Excepción documentada (ver banner del archivo): gris fijo, no theme-aware. */
-  border: 2px solid rgba(128, 128, 128, 0.25);
-  cursor: pointer;
-  padding: 0;
-}
-
-.rail__swatch:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.rail__swatch--active {
-  border: 3px solid var(--core);
-}
-
-.rail__swatch--claro {
-  background: var(--skin-preview-claro);
-}
-
-.rail__swatch--oscuro {
-  background: var(--skin-preview-oscuro);
-}
-
-.rail__swatch--nocturno {
-  background: var(--skin-preview-nocturno);
-}
-
 /* ---------- Bloque de usuario (dc.html:78, gap #11/#12) ---------- */
 .rail__user {
   display: flex;
   align-items: center;
   gap: 11px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: var(--row-border);
 }
 
 .rail__avatar {
@@ -438,14 +376,6 @@
   width: 62px;
   height: 62px;
   font-size: 24px;
-}
-
-/* #51 — en escritorio el selector de skin vive en el Rail (arriba); la sección "Elegí el tema"
-   propia de `AccountScreen` (heredada de mobile, que no tiene Rail) queda duplicada y no existe en
-   `Copiloto Web.dc.html` (330-337 no la lista). Se oculta por atributo (`aria-label="Tema"`, el
-   único `account-screen__section` que lo tiene, ver AccountScreen.tsx) — cero cambio al módulo. */
-.desktop-shell__content .account-screen__section[aria-label='Tema'] {
-  display: none;
 }
 
 /* #37 — el header de Conexiones en escritorio NO tiene avatar (dc.html:280-282: solo h1 + subtítulo).

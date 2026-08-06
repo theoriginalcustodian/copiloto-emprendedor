@@ -2,26 +2,29 @@ import { useState } from 'react';
 
 import { PantallaAjustes, type AjusteKey } from './PantallaAjustes';
 import { PantallaAndamiaje } from './PantallaAndamiaje';
+import { PantallaApariencia } from './PantallaApariencia';
 import { PantallaComoHablarle } from './PantallaComoHablarle';
 import { PantallaPerfilNegocio } from './negocio/PantallaPerfilNegocio';
 import { PantallaAfipSetup } from './afip/PantallaAfipSetup';
 import './ajustes.css';
 
-type SubVista = 'perfilNegocio' | 'facturacionAfip' | 'miPlan' | 'comoHablarle';
+type SubVista = 'perfilNegocio' | 'facturacionAfip' | 'miPlan' | 'comoHablarle' | 'apariencia';
 
 export interface AjustesScreenProps {
-  /** `cuenta` y `apariencia` (decisión de planificación, M-WEB módulo 13) ya viven fusionados en
-   *  `AccountScreen` -- navegan al tab `account`. `apps` ya es el tab `connections` existente.
-   *  Estas 3 keys salen del módulo; el resto queda en un sub-view interno (ver `SubVista`). */
+  /** `cuenta` navega al tab `account` existente (fusión con `AccountScreen`, M-WEB módulo 13).
+   *  `apps` navega al tab `connections`. `apariencia` tiene sub-vista propia (ver `SubVista`) --
+   *  revertido de "navega a account" el 2026-08-06 por pedido del operador: el selector de piel
+   *  vivía escondido ahí (en el Rail de escritorio), "Apariencia" no mostraba ningún ajuste de
+   *  apariencia. Ver `PantallaApariencia.tsx`. */
   onNavegarTab?: (tab: 'connections' | 'account') => void;
 }
 
 /**
- * Contenedor de `ajustes` (M-WEB módulo 13) — orquesta el menú (`PantallaAjustes`) y sus 4
- * sub-pantallas propias (`perfilNegocio`/`facturacionAfip`/`miPlan`/`comoHablarle`) con
- * navegación LOCAL (mismo criterio que `PresupuestosScreen`/`InteligenciaScreen`: `useState`, sin
- * router). Las otras 3 entradas del menú (`apps`/`cuenta`/`apariencia`) no tienen pantalla propia
- * en web -- ya existen como tabs del shell, así que delegan vía `onNavegarTab`.
+ * Contenedor de `ajustes` (M-WEB módulo 13) — orquesta el menú (`PantallaAjustes`) y sus 5
+ * sub-pantallas propias (`perfilNegocio`/`facturacionAfip`/`miPlan`/`comoHablarle`/`apariencia`)
+ * con navegación LOCAL (mismo criterio que `PresupuestosScreen`/`InteligenciaScreen`: `useState`,
+ * sin router). Las otras 2 entradas del menú (`apps`/`cuenta`) no tienen pantalla propia en web --
+ * ya existen como tabs del shell, así que delegan vía `onNavegarTab`.
  */
 export function AjustesScreen({ onNavegarTab }: AjustesScreenProps = {}) {
   const [vista, setVista] = useState<SubVista | null>(null);
@@ -32,7 +35,6 @@ export function AjustesScreen({ onNavegarTab }: AjustesScreenProps = {}) {
         onNavegarTab?.('connections');
         return;
       case 'cuenta':
-      case 'apariencia':
         onNavegarTab?.('account');
         return;
       default:
@@ -57,6 +59,7 @@ export function AjustesScreen({ onNavegarTab }: AjustesScreenProps = {}) {
       {vista === 'perfilNegocio' && <PantallaPerfilNegocio />}
       {vista === 'facturacionAfip' && <PantallaAfipSetup />}
       {vista === 'comoHablarle' && <PantallaComoHablarle />}
+      {vista === 'apariencia' && <PantallaApariencia />}
       {vista === 'miPlan' && (
         <PantallaAndamiaje
           titulo="Mi plan"

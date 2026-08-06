@@ -1,17 +1,8 @@
 import { useState } from 'react';
 
-import { Button, MonoLabel, PresenceOrb, Surface } from '../../design-system';
+import { Button, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
-import { useTheme, type Theme } from '../../design-system/ThemeProvider';
 import './account.css';
-
-/** Nombres es-AR del selector de tema — los IDs internos (`claro`/`oscuro`/`nocturno`) son los
- * mismos 3 de `ThemeProvider`, esto es solo la etiqueta visible. */
-const THEME_LABELS: Record<Theme, string> = {
-  claro: 'Claro',
-  oscuro: 'Oscuro',
-  nocturno: 'Nocturno',
-};
 
 /** `email` sale de `/me` (`apps/copiloto/web.py:625-636`) — mismo claim ya validado por
  * `require_tenant`, no una segunda fuente. `null`/ausente = login sin claim de email (teléfono,
@@ -63,8 +54,8 @@ function NotificationsToggle() {
 }
 
 /**
- * Módulo Cuenta (Task 21, EXTRACT §2.9/§2.12/§3.4) — perfil + selector de 3 pieles ODOBI + card de
- * durabilidad + preferencias + logout. Reemplaza el placeholder de Task 9.
+ * Módulo Cuenta (Task 21, EXTRACT §2.9/§3.4) — perfil + card de durabilidad + preferencias +
+ * logout. Reemplaza el placeholder de Task 9.
  *
  * Header a 2 bloques (diseño `Copiloto App.dc.html:409-418` / `Copiloto Web.dc.html:330-337`,
  * mobile y desktop coinciden en estructura): H1 "Cuenta" solo arriba, fila identidad
@@ -75,12 +66,17 @@ function NotificationsToggle() {
  * no dos superficies separadas. Lo que sumó esta fusión: email REAL (antes derivado de
  * `cliente_id`), la fila "No molestar" (inerte, misma razón que mobile: es un ajuste GLOBAL del
  * sistema operativo, requiere restaurador ante crash, se implementa en otra tarea) y la
- * confirmación antes de cerrar sesión. Lo que YA tenía web y mobile no (temas/plan/idioma/
+ * confirmación antes de cerrar sesión. Lo que YA tenía web y mobile no (plan/idioma/
  * notificaciones/privacidad/card de durabilidad) se queda — es unión, no reemplazo.
+ *
+ * 🔴 **El selector de tema SALIÓ de acá (2026-08-06, pedido directo del operador).** Vivía en una
+ * sección propia ("Elegí el tema") duplicando el selector del Rail de escritorio -- ahí quedaba
+ * oculto por CSS (`desktop.css`), así que en escritorio "Apariencia" (que navegaba a este mismo
+ * componente) no mostraba ningún control de apariencia. Movido a
+ * `modules/ajustes/PantallaApariencia.tsx`, con sub-vista propia.
  */
 export function AccountScreen() {
   const { me, logout } = useSession();
-  const { theme, setTheme, themes } = useTheme();
   const [confirmandoSalida, setConfirmandoSalida] = useState(false);
 
   return (
@@ -96,29 +92,6 @@ export function AccountScreen() {
           </p>
         </div>
       </header>
-
-      <section className="account-screen__section" aria-label="Tema">
-        <MonoLabel>Elegí el tema</MonoLabel>
-        <div className="account-screen__theme-grid" role="group" aria-label="Selector de tema">
-          {themes.map((t) => (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={t === theme}
-              data-testid={`theme-pill-${t}`}
-              className={[
-                'account-screen__theme-pill',
-                t === theme ? 'account-screen__theme-pill--active' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => setTheme(t)}
-            >
-              {THEME_LABELS[t]}
-            </button>
-          ))}
-        </div>
-      </section>
 
       <div className="account-screen__list">
         {/* TODO backend: plan real desde /me (hoy no hay campo de plan/suscripción en
