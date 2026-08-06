@@ -47,9 +47,12 @@ IMAGEN="${UC_TESTDB_IMAGE:-postgres:17-alpine}"   # pinneada: fusion corre 17.6,
 APP_USER="${UC_TESTDB_APP_USER:-copiloto_app}"
 #: El rol del ciclo de auto-reparación (BYPASSRLS), espejo del de producción. Ver el bootstrap.
 AUTOSAN_USER="${UC_TESTDB_AUTOSAN_USER:-copiloto_autosanacion}"
+#: El rol de lectura cross-tenant de la Consola de Operador (BYPASSRLS, SELECT-only). CONS0a.
+CONSOLA_USER="${UC_TESTDB_CONSOLA_USER:-copiloto_consola}"
 URL_ADMIN="postgres://postgres:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_APP="postgres://${APP_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_AUTOSAN="postgres://${AUTOSAN_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
+URL_CONSOLA="postgres://${CONSOLA_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 
 RECREAR=0; EXPORTAR=0; ADMIN=0
 for arg in "$@"; do
@@ -111,6 +114,13 @@ DO \$do\$ BEGIN
   -- (ver \`memoria/el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md\`).
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${AUTOSAN_USER}') THEN
     CREATE ROLE ${AUTOSAN_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER BYPASSRLS;
+  END IF;
+  -- El rol de lectura cross-tenant de la Consola de Operador (CONS0a, 2026-08-06), espejo del que
+  -- provisiona \`deploy/copiloto/provision-rol-consola.sh\` en producción: BYPASSRLS, sin GRANT de
+  -- escritura en ninguna tabla. Replicarlo acá permite que el test adversarial de
+  -- \`test_rls_invariantes.py\` corra contra el rol REAL, no contra el superuser.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${CONSOLA_USER}') THEN
+    CREATE ROLE ${CONSOLA_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER BYPASSRLS;
   END IF;
 END \$do\$;
 -- Dueño de su schema, como en producción: \`provision.py\` corre con este rol y necesita CREAR las
@@ -190,11 +200,19 @@ ssh "$HOST" "docker exec -i '${NOMBRE}' psql -U postgres -q -v ON_ERROR_STOP=1" 
 GRANT USAGE ON SCHEMA uc_factory TO ${AUTOSAN_USER};
 GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_traumas TO ${AUTOSAN_USER};
 GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_traumas_id_seq TO ${AUTOSAN_USER};
+
+-- Rol de la Consola (CONS0a): SELECT-only, mismas 3 tablas que en producción. Ningún GRANT de
+-- escritura -- un test que intente insertar/actualizar con este rol debe fallar, y falla.
+GRANT USAGE ON SCHEMA uc_factory TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_metering TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_feedback TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_traumas  TO ${CONSOLA_USER};
 SQL
 
 if [ "$EXPORTAR" -eq 1 ]; then
   echo "export UC_TEST_DATABASE_URL='${URL}'"
   echo "export UC_TEST_AUTOSANACION_URL='${URL_AUTOSAN}'"
+  echo "export UC_TEST_CONSOLA_URL='${URL_CONSOLA}'"
 else
   echo "==> LISTA: ${CREADAS} tablas en uc_factory (el manifiesto declara ${ESPERADAS})"
   if [ "$ADMIN" -eq 1 ]; then

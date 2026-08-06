@@ -117,4 +117,35 @@ else:
     print("   ❌ NINGÚN tenant ve gastos propios. Los ceros de arriba NO prueban aislamiento:")
     print("      con FORCE activo, esto es lo que se vería si la app hubiera dejado de ver sus")
     print("      propios datos. Revisar que el borde declare el tenant antes de sacar conclusiones.")
+
+# CONS0a (2026-08-06): el camino cross-tenant de la Consola de Operador es un rol nuevo con
+# BYPASSRLS (deploy/copiloto/provision-rol-consola.sh), no una policy ni una vista. Este verificador
+# tiene que conocer ese camino tan bien como conoce el de la app normal -- un rol BYPASSRLS mal
+# acotado es exactamente el agujero que RLS existe para tapar, y el catálogo lo delata sin
+# necesitar la contraseña del rol.
+print()
+print("=" * 78)
+print("5. ROL DE LA CONSOLA (copiloto_consola) — BYPASSRLS acotado, medido contra el catálogo")
+print("=" * 78)
+(existe,) = q("SELECT count(*) FROM pg_roles WHERE rolname = 'copiloto_consola'")[0]
+if not existe:
+    print("   ⚠️  el rol 'copiloto_consola' no existe todavía -- correr provision-rol-consola.sh")
+else:
+    (bypassa, es_super), = q(
+        "SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'copiloto_consola'")
+    print(f"   bypassrls={bypassa}  superuser={es_super}"
+          + ("" if bypassa and not es_super else "   ❌ atributos inesperados"))
+    grants = q("""SELECT c.relname, a.privilege_type
+                  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                  CROSS JOIN LATERAL aclexplode(c.relacl) AS a JOIN pg_roles r ON r.oid = a.grantee
+                  WHERE n.nspname = 'uc_factory' AND r.rolname = 'copiloto_consola'
+                  ORDER BY 1, 2""")
+    por_tabla: dict = {}
+    for tabla, permiso in grants:
+        por_tabla.setdefault(tabla, set()).add(permiso)
+    esperado = {"copiloto_metering": {"SELECT"}, "copiloto_feedback": {"SELECT"}, "copiloto_traumas": {"SELECT"}}
+    if por_tabla == esperado:
+        print(f"   grants={por_tabla}  ✔ exactamente SELECT en las 3 tablas declaradas, nada más")
+    else:
+        print(f"   grants={por_tabla}  ❌ no coincide con lo declarado: {esperado}")
 PY
