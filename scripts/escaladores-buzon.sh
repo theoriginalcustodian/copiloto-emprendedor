@@ -64,6 +64,30 @@ edad_min() {
   echo $(( (now - m) / 60 ))
 }
 
+# Fix (rescate de contrato_...rescatar-los-2-commits-de-monitoreo, ampliación 3): edad_min mide
+# ÚLTIMA MODIFICACIÓN, no "hace cuánto está sin respuesta". Para pedido_/urgente_ eso hace que
+# ampliar el archivo con más evidencia (agregar una ADENDA) BORRE la alarma en vez de sostenerla
+# — exactamente al revés de lo que se quiere. Opción 4 del contrato (sidecar): la primera vez que
+# ESTE escalador ve el archivo, graba su timestamp; edad se mide desde ahí, no desde el mtime.
+# Combinado con la fecha del propio nombre como piso barato para el caso "de un día anterior" (no
+# hace falta sidecar para saber que algo con fecha de ayer ya superó cualquier umbral en minutos).
+EDAD_STATE_DIR="$BUZON/.escalador-estado"
+mkdir -p "$EDAD_STATE_DIR" 2>/dev/null || true
+
+edad_desde_alta_min() {
+  local f="$1" b fecha_nombre primera_vez_file primera_vez
+  b="$(basename "$f")"
+  fecha_nombre="$(echo "$b" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}')"
+  if [ -n "$fecha_nombre" ] && [ "$fecha_nombre" != "$(date +%Y-%m-%d)" ]; then
+    echo 999999
+    return
+  fi
+  primera_vez_file="$EDAD_STATE_DIR/${b}.first-seen"
+  [ -e "$primera_vez_file" ] || date +%s > "$primera_vez_file" 2>/dev/null
+  primera_vez="$(cat "$primera_vez_file" 2>/dev/null || echo "$now")"
+  echo $(( (now - primera_vez) / 60 ))
+}
+
 # extrae el destinatario del nombre: fecha_tipo_de-a-para_slug.md -> "para"
 destinatario_de_nombre() {
   local b="$1"
@@ -102,7 +126,7 @@ done
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
 for f in "$ABIERTO"/*_pedido_*.md; do
   b="$(basename "$f")"
-  edad="$(edad_min "$f")"
+  edad="$(edad_desde_alta_min "$f")"
   [ "$edad" -ge "$UMBRAL_PEDIDO_MIN" ] || continue
   para="$(destinatario_de_nombre "$b")"
   alarma=1
@@ -110,16 +134,31 @@ for f in "$ABIERTO"/*_pedido_*.md; do
 done
 
 # ── Regla 3: en-curso/ sin actividad dentro del umbral declarado ───────────────
+# Fix (rescate de contrato_...rescatar-los-2-commits-de-monitoreo, ampliación 2): la edad NO
+# puede ser sólo el mtime del contrato — un frente que reporta avance_ (sin re-tocar el .md de
+# en-curso/, que es justamente el protocolo: "quien termina lo mueve", no "quien avanza lo toca")
+# quedaba marcado como "sin avance" igual, aunque acabara de reportar. Se toma el MÍNIMO entre la
+# edad del contrato y la del avance_ MÁS RECIENTE del mismo frente (patrón *_avance_<frente>-a-*.md
+# en cerrado/*/, dos niveles: cerrado/<fecha>/<archivo>).
 if [ -d "$ENCURSO" ]; then
+  CERRADO="$BUZON/cerrado"
   for f in "$ENCURSO"/*.md; do
     [ -e "$f" ] || continue
     b="$(basename "$f")"
     edad="$(edad_min "$f")"
+    para="$(destinatario_de_nombre "$b")"
+    if [ -n "${para:-}" ] && [ -d "$CERRADO" ]; then
+      mas_nuevo="$(find "$CERRADO" -maxdepth 2 -type f -iname "*_avance_${para}-a-*.md" -printf '%T@ %p\n' 2>/dev/null \
+        | sort -rn | head -1 | cut -d' ' -f2-)"
+      if [ -n "${mas_nuevo:-}" ]; then
+        edad_avance="$(edad_min "$mas_nuevo")"
+        [ "$edad_avance" -lt "$edad" ] && edad="$edad_avance"
+      fi
+    fi
     umbral="$UMBRAL_SILENCIO_DEFAULT_MIN"
     declarado="$(grep -m1 -oE 'UMBRAL_SILENCIO:[[:space:]]*[0-9]+' "$f" 2>/dev/null | grep -oE '[0-9]+' | head -1)"
     [ -n "${declarado:-}" ] && umbral="$declarado"
     [ "$edad" -ge "$umbral" ] || continue
-    para="$(destinatario_de_nombre "$b")"
     alarma=1
     echo "EN-CURSO SIN AVANCE (${edad}min >= ${umbral}): $b -> dueño del frente: ${para:-desconocido}"
   done

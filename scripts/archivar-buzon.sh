@@ -29,6 +29,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUZON="$REPO_ROOT/coordinacion"
 ABIERTO="$BUZON/abierto"
+ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
 TTL_MIN="${TTL_MIN:-90}"
 DRY_RUN=0
@@ -66,10 +67,38 @@ for f in "$ABIERTO"/*.md; do
   moved=$((moved+1))
 done
 
+# ── en-curso/: archiva ARTEFACTOS viejos (*.png, *.jpg, etc.), NUNCA .md ──────────
+# Rescate (contrato_...rescatar-los-2-commits-de-monitoreo, ampliación 4): el janitor sólo
+# miraba abierto/*.md — la evidencia adjunta a un trabajo ya cerrado (capturas de device) se
+# quedaba en en-curso/ para siempre, porque nadie la nombra como parte del trabajo. Los .md de
+# en-curso/ son trabajo VIVO y NUNCA se tocan por antigüedad (mover uno por tiempo haría
+# desaparecer un frente en curso, que es mucho peor que dejar capturas de más).
+moved_art=0
+if [ -d "$ENCURSO" ]; then
+  for f in "$ENCURSO"/*; do
+    [ -e "$f" ] || continue
+    [ -f "$f" ] || continue
+    b="$(basename "$f")"
+    case "$b" in
+      *.md) continue ;;
+    esac
+    [ -n "$(find "$f" -mmin "-$TTL_MIN" 2>/dev/null)" ] && continue
+    d="$(echo "$b" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)"
+    [ -n "$d" ] || d="$(date -r "$f" '+%Y-%m-%d' 2>/dev/null || date '+%Y-%m-%d')"
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "ARCHIVARÍA (en-curso, artefacto) → cerrado/$d/  $b"
+    else
+      mkdir -p "$CERRADO/$d"
+      mv "$f" "$CERRADO/$d/"
+    fi
+    moved_art=$((moved_art+1))
+  done
+fi
+
 abiertos_md=("$ABIERTO"/*.md)
 abiertos_ahora=${#abiertos_md[@]}
 if [ "$DRY_RUN" = "1" ]; then
-  echo "[dry-run] archivaría $moved · obligaciones $kept_obl · frescos $kept_fresh · TTL ${TTL_MIN}min"
+  echo "[dry-run] archivaría $moved (+ $moved_art artefacto(s) de en-curso/) · obligaciones $kept_obl · frescos $kept_fresh · TTL ${TTL_MIN}min"
 else
-  echo "archivados $moved · abiertos ahora $abiertos_ahora (obligaciones $kept_obl + frescos $kept_fresh) · TTL ${TTL_MIN}min"
+  echo "archivados $moved (+ $moved_art artefacto(s) de en-curso/) · abiertos ahora $abiertos_ahora (obligaciones $kept_obl + frescos $kept_fresh) · TTL ${TTL_MIN}min"
 fi
