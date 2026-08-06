@@ -68,18 +68,6 @@ describe('Rail', () => {
     expect(rail.className).not.toContain('rail--open');
   });
 
-  it('renderiza los 3 swatches de skin, marca el tema actual como activo y cambia de tema al click', () => {
-    renderRail();
-    for (const t of THEMES) {
-      expect(screen.getByTestId(`rail-swatch-${t}`)).toBeInTheDocument();
-    }
-    expect(screen.getByTestId('rail-swatch-claro')).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.click(screen.getByTestId('rail-swatch-oscuro'));
-    expect(screen.getByTestId('rail-swatch-oscuro')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('rail-swatch-claro')).toHaveAttribute('aria-pressed', 'false');
-  });
-
   it('renderiza el bloque de usuario', () => {
     renderRail();
     expect(screen.getByTestId('rail-user')).toBeInTheDocument();

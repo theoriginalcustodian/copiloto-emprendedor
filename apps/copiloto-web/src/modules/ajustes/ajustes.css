@@ -601,6 +601,73 @@
   color: var(--accent, var(--heading));
 }
 
+/* ---------- Apariencia (selector de piel — movido acá desde Rail.tsx/AccountScreen.tsx,
+   2026-08-06, pedido directo del operador: "Apariencia" mostraba datos de cuenta, no ajustes de
+   apariencia; el selector real vivía escondido en el rail de escritorio) ---------- */
+.apariencia-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.apariencia-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.apariencia-screen__intro {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+.apariencia-screen__theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.apariencia-screen__theme-pill {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--tile-bg);
+  border: var(--tile-border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.apariencia-screen__theme-pill:hover {
+  filter: brightness(1.08);
+}
+
+.apariencia-screen__theme-pill:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.apariencia-screen__theme-pill--active {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  box-shadow: var(--btn-shadow);
+  font-weight: 600;
+}
+
 .afip-setup-ambiente-chip__accion {
   background: transparent;
   border: none;

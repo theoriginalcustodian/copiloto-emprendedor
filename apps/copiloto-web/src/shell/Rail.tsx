@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { useSession } from '../auth/useSession';
-import { useTheme, type Theme } from '../design-system/ThemeProvider';
 import { useConnections } from '../modules/connections/useConnections';
 import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
@@ -12,15 +11,6 @@ export interface RailProps {
   active: TabKey;
   onChange: (key: TabKey) => void;
 }
-
-/** Título accesible de cada swatch (EXTRACT §2.4) — mismo criterio que `THEME_LABELS` de
- * `modules/account/AccountScreen.tsx`, duplicado deliberadamente acá: no está exportado desde ahí
- * (es un detalle interno del componente) y el rail es una superficie de UI separada. */
-const THEME_SWATCH_TITLE: Record<Theme, string> = {
-  claro: 'Claro',
-  oscuro: 'Oscuro',
-  nocturno: 'Nocturno',
-};
 
 /** Mismo helper que `accountLabel`/`initial` de AccountScreen.tsx (no exportados de ahí) — el
  * bloque de usuario del rail necesita el mismo fallback ("Tu cuenta" / iniciales) sin backend de
@@ -49,7 +39,6 @@ function initial(clienteId: string | undefined): string {
  */
 export function Rail({ active, onChange }: RailProps) {
   const [railOpen, setRailOpen] = useState(false);
-  const { theme, setTheme, themes } = useTheme();
   const { me } = useSession();
   const { mode } = useMode();
   const { connectedCount, totalCount } = useConnections();
@@ -114,36 +103,11 @@ export function Rail({ active, onChange }: RailProps) {
           })}
         </div>
 
-        {/* Bloque inferior (dc.html:66-84): Skin + Usuario agrupados como UNA unidad pegada al
-            fondo (`margin-top:auto` acá, no `justify-content:space-between` de 3 grupos — ese
-            reparto separaba Skin de Usuario más de lo que el diseño pretende, ver gap #12). */}
+        {/* Bloque inferior (dc.html:66-84): Usuario pegado al fondo (`margin-top:auto`). El
+            selector de skin que vivía acá se movió a Ajustes > Apariencia (2026-08-06, pedido del
+            operador): estaba escondido dentro del rail, sin relación visible con el tile
+            "Apariencia" del menú de Ajustes — ver `modules/ajustes/PantallaApariencia.tsx`. */}
         <div className="rail__bottom">
-          {/* Selector de skin (EXTRACT §2.4) — real UI de producto dentro del rail, no chrome de
-              documentación: las 3 pieles ODOBI son elegibles en vivo acá, mismo
-              `ThemeProvider`/`localStorage` compartido con `AccountScreen`. */}
-          <div className="rail__skin">
-            <span className="rail__skin-label">Skin</span>
-            <div className="rail__skin-swatches" role="group" aria-label="Selector de tema">
-              {themes.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={[
-                    'rail__swatch',
-                    `rail__swatch--${t}`,
-                    t === theme ? 'rail__swatch--active' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  title={THEME_SWATCH_TITLE[t]}
-                  aria-pressed={t === theme}
-                  data-testid={`rail-swatch-${t}`}
-                  onClick={() => setTheme(t)}
-                />
-              ))}
-            </div>
-          </div>
-
           <div className="rail__user" data-testid="rail-user">
             <span className="rail__avatar" aria-hidden="true">
               {initial(me?.cliente_id)}
