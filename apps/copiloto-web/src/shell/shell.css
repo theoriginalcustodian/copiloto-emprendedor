@@ -83,11 +83,10 @@
   border-radius: 26px;
   background: var(--nav-bg);
   border: 1px solid var(--nav-border);
-  backdrop-filter: blur(30px) saturate(1.5);
-  -webkit-backdrop-filter: blur(30px) saturate(1.5);
-  box-shadow:
-    0 14px 34px -12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  /* Nivel 4 · Flotante, variante "shell" (§2.4 — mismo token que el rail de escritorio,
+     `desktop.css`). Reemplaza el rgba(0,0,0,.5) fijo que tenía antes (no theme-aware) y el blur
+     (retirado, ODOBI hito 2 "sin glass"). */
+  box-shadow: var(--shadow-nivel4-shell);
   transition:
     transform 0.36s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.3s ease;

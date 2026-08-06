@@ -430,7 +430,6 @@ a.artifact:focus-visible {
   background: var(--input-bg);
   border: var(--input-border);
   box-shadow: var(--input-shadow);
-  backdrop-filter: var(--input-blur);
 }
 
 /* Mic 38×38 radio 14px (cuadrado redondeado, NO círculo) — verbatim diseño (Copiloto App.dc.html:186). */
@@ -530,13 +529,13 @@ a.artifact:focus-visible {
 
 /* ---------- Recording overlay (Task 19, EXTRACT §2.10 "estado grabando") ----------
  * Excepción documentada (mismo criterio que primitives.css §BottomSheet scrim): scrim fijo entre
- * los 4 temas, verbatim EXTRACT §2.10 (`rgba(3,4,10,.74)` + blur 7px). */
+ * las 3 pieles, verbatim EXTRACT §2.10 (`rgba(3,4,10,.74)`). Sin blur (ODOBI hito 2, "sin glass"). */
 .recording-overlay {
   position: fixed;
   inset: 0;
   /* Por encima de tab-bar (30) y sheet (60/61) — coincide con el z-index del overlay del diseño (70).
-     Se monta por PORTAL a <body> (MicButton) para que `fixed` cubra el viewport real y no quede
-     atrapado por el `backdrop-filter` del `.composer__row` (containing-block trap). */
+     Se monta por PORTAL a <body> (MicButton) para que `fixed` cubra el viewport real sin depender de
+     qué ancestro tenga en el futuro (ver el comentario del portal en `MicButton.tsx`). */
   z-index: 70;
   display: flex;
   flex-direction: column;
@@ -545,7 +544,6 @@ a.artifact:focus-visible {
   gap: 26px;
   padding: 0 24px;
   background: rgba(3, 4, 10, 0.74);
-  backdrop-filter: blur(7px);
 }
 
 /* Ventana de recorte 280×96 con el SVG de 420×96 corriendo por dentro (waveSlide) — verbatim

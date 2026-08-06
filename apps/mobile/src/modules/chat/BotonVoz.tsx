@@ -4,6 +4,7 @@ import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-
 import { runOnJS } from 'react-native-reanimated';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
+import { sombraNivel } from '../../theme/glass/relieve';
 import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -155,13 +156,8 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
               style={[
                 styles.boton,
                 { transform: [{ scale: pulso }], borderRadius: tema.radio.completo, borderColor: tema.glass.hi },
-                !disabled && {
-                  shadowColor: tema.color.acento,
-                  shadowOpacity: 0.9,
-                  shadowRadius: 18,
-                  shadowOffset: { width: 0, height: 8 },
-                  elevation: 14,
-                },
+                // Nivel 3 · Acento elevado (DoD §2.4: "botón primario, FAB de voz" — textual).
+                !disabled && sombraNivel(tema.glass.relieve.nivel3),
               ]}
             >
               {/* La esfera: degradado RADIAL `accent2 -> accent`. `expo-linear-gradient` sólo hace
