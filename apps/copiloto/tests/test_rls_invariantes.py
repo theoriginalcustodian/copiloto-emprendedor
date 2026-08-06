@@ -20,8 +20,9 @@ necesita_rol_consola = pytest.mark.skipif(
            "`test-db.sh --export` y pasá COPILOTO_CONSOLA_DSN a sync-test-backend.sh")
 
 SCHEMA = "uc_factory"
-#: Las 3 tablas que CONS0a decidió exponer cross-tenant al rol de la Consola. Sólo lectura.
-TABLAS_CONSOLA = ("copiloto_metering", "copiloto_feedback", "copiloto_traumas")
+#: Las tablas que la Consola decidió exponer cross-tenant a su rol de lectura. Sólo lectura.
+#: 3 de CONS0a + `copiloto_auditoria` de CONS1.
+TABLAS_CONSOLA = ("copiloto_metering", "copiloto_feedback", "copiloto_traumas", "copiloto_auditoria")
 #: La tabla que traduce `auth_user_id` (el `sub` del JWT) -> `cliente_id`. Ver el test de abajo.
 TABLA_DE_RESOLUCION = "tenants"
 
@@ -111,9 +112,9 @@ def test_toda_tabla_con_RLS_forzado_tiene_politica_de_LECTURA_y_de_ESCRITURA():
 
 
 @necesita_pg
-def test_rol_consola_tiene_EXACTAMENTE_SELECT_en_sus_3_tablas_ni_uno_mas():
-    """CONS0a: el rol `copiloto_consola` (BYPASSRLS, `deploy/copiloto/provision-rol-consola.sh`) sólo
-    puede LEER, y sólo esas 3 tablas. `aclexplode(relacl)` lee el catálogo directo — no depende de que
+def test_rol_consola_tiene_EXACTAMENTE_SELECT_en_sus_4_tablas_ni_uno_mas():
+    """CONS0a+CONS1: el rol `copiloto_consola` (BYPASSRLS, `deploy/copiloto/provision-rol-consola.sh`)
+    sólo puede LEER, y sólo esas tablas. `aclexplode(relacl)` lee el catálogo directo — no depende de que
     quien corre el test tenga permisos sobre `copiloto_consola` (a diferencia de
     `information_schema.role_table_grants`, que sólo muestra grants donde sos parte), así que esto
     corre con el rol normal de la app, sin necesitar `COPILOTO_CONSOLA_DSN`.
@@ -232,3 +233,45 @@ def test_rol_consola_ADVERSARIAL_no_puede_escribir():
                     cur.execute(f"DELETE FROM uc_factory.{tabla} WHERE false")
         finally:
             conn.close()
+
+
+@necesita_pg
+def test_copiloto_auditoria_es_append_only_NI_EL_DUENO_puede_mutarla():
+    """CONS1: `auditoria_append_only.sql` — deliberadamente un trigger, no un `REVOKE`.
+
+    La conexión de `DATABASE_URL` es el rol DUEÑO del schema (lo crea `provision.py`), así que un
+    `REVOKE UPDATE/DELETE` no la habría frenado (el dueño de una tabla ignora sus propios GRANT/REVOKE
+    — la misma trampa de `rls-activado-que-no-filtraba-el-dueno-esta-exento`). Este test corre
+    justamente con esa conexión — la más peligrosa, no una acotada — para probar que el trigger sí
+    dispara donde un GRANT no habría alcanzado.
+
+    Sin cleanup al final, a propósito: es append-only, no hay DELETE que valga y la base de test es
+    efímera (`test-db.sh --recreate`)."""
+    import psycopg2
+
+    tenant = "00000000-0000-0000-0000-000000000001"
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT set_config('request.jwt.claims', %s, false)",
+                        (json.dumps({"cliente_id": tenant}),))
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.copiloto_auditoria "
+                f"(cliente_id, admin_user_id, admin_email, accion) "
+                f"VALUES (%s, %s, %s, %s) RETURNING id",
+                (tenant, tenant, "admin@test.invalid", "test_append_only"))
+            (fila_id,) = cur.fetchone()
+
+        # `conn.autocommit = True`: cada `execute` es su propia transacción, así que un UPDATE/DELETE
+        # que el trigger aborta no deja la conexión en un estado que haga falta limpiar.
+        with pytest.raises(psycopg2.errors.RaiseException):
+            with conn.cursor() as cur:
+                cur.execute(f"UPDATE {SCHEMA}.copiloto_auditoria SET resultado = 'x' WHERE id = %s",
+                            (fila_id,))
+
+        with pytest.raises(psycopg2.errors.RaiseException):
+            with conn.cursor() as cur:
+                cur.execute(f"DELETE FROM {SCHEMA}.copiloto_auditoria WHERE id = %s", (fila_id,))
+    finally:
+        conn.close()
