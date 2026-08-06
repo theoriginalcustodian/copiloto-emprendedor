@@ -114,6 +114,11 @@ jobs:
         # Sin lista de archivos: todo lo que exista corre.
         run: python -m pytest tests ../../motor/backend/agent ../../motor/clients/agent -q
 
+  # Los 4 jobs de frontend NO definen su suite acá: invocan `scripts/ci/<job>.sh`, que es la
+  # definición ÚNICA (ADR-001). El porqué de cada paso —incluido que `apps/copiloto-web` no está en
+  # los `workspaces` del root y se instala aparte— vive en el comentario de cada script. Así lo que
+  # corre GitHub y lo que corre una sesión en su máquina son literalmente el mismo comando: mientras
+  # Actions esté caído, el gate local no es una aproximación al CI, es el CI.
   core:
     runs-on: ubuntu-latest
     steps:
@@ -121,13 +126,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - name: typecheck
-        working-directory: packages/core
-        run: npx tsc --noEmit
-      - name: tests
-        working-directory: packages/core
-        run: npx vitest run
+      - run: bash scripts/ci/core.sh
 
   mobile:
     runs-on: ubuntu-latest
@@ -136,13 +135,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - name: typecheck
-        working-directory: apps/mobile
-        run: npx tsc --noEmit
-      - name: tests
-        working-directory: apps/mobile
-        run: npx jest
+      - run: bash scripts/ci/mobile.sh
 
   web:
     runs-on: ubuntu-latest
@@ -151,23 +144,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # ⚠️ `apps/copiloto-web` NO está en los `workspaces` del root (sólo `apps/mobile` y
-      # `packages/*`), así que un `npm install` desde la raíz no instala sus dependencias. De ahí que
-      # sus 56 archivos de test (457 tests) no los corriera nadie, ni acá ni en local. Se instala en
-      # su propio directorio. Meterlo al workspace del root es lo correcto de fondo, pero toca estado
-      # compartido por las tres sesiones del repo → va aparte, no en este PR.
-      - name: install (aislado — la PWA no está en el workspace del root)
-        working-directory: apps/copiloto-web
-        run: npm install --no-audit --no-fund
-      - name: typecheck
-        working-directory: apps/copiloto-web
-        run: npx tsc --noEmit
-      - name: tests
-        working-directory: apps/copiloto-web
-        run: npx vitest run
-      - name: build (valida el frontend standalone)
-        working-directory: apps/copiloto-web
-        run: npm run build
+      - run: bash scripts/ci/web.sh
 
   lint:
     runs-on: ubuntu-latest
@@ -176,8 +153,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
-      # Sólo los ERRORES rompen. Los 11 avisos son directivas `eslint-disable` huérfanas de una config
-      # anterior: quedan a la vista para limpiarlas al pasar, sin bloquear a nadie por basura inofensiva.
-      - name: eslint (0 errores; los avisos no bloquean)
-        run: npx eslint packages/core/src apps/mobile/src apps/copiloto-web/src
+      - run: bash scripts/ci/lint.sh
