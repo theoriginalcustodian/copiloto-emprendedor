@@ -38,14 +38,19 @@ REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
 AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # default = dominio propio duckdns (no *.sslip.io, que redes de terceros bloquean). nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
 WEB_SUBDIR="apps/copiloto-web"
 CORE_SUBDIR="packages/core"   # ADR-010: copiloto-web depende de @copiloto/core vía file:../../packages/core -- sin sincronizarlo, npm install en el VPS no resuelve el import (gap detectado 2026-08-04, PR#237)
+# ODOBI hito 6: fetch-fonts.sh convierte este .otf a .woff2 (default UC_NEUE_EINSTELLUNG_SRC), pero
+# vive en docs/ -- que este script nunca sincronizaba. Gap detectado 2026-08-06 corriendo el DoD del
+# hito 6: fetch-fonts.sh falló ruidoso (sin fallback silencioso, por diseño) en vez de degradar la
+# tipografía sin avisar. Se sincroniza sólo el .otf puntual (no todo `docs/`, que no hace falta acá).
+NEUE_EINSTELLUNG_OTF="docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf"
 
-echo "==> [1/3] sync ${WEB_SUBDIR} + ${CORE_SUBDIR} + deploy/copiloto/fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
+echo "==> [1/3] sync ${WEB_SUBDIR} + ${CORE_SUBDIR} + fuente NeueEinstellung + fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
 tar -C "$LOCAL" \
   --exclude="${WEB_SUBDIR}/node_modules" \
   --exclude="${WEB_SUBDIR}/dist" \
   --exclude="${CORE_SUBDIR}/node_modules" \
-  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" deploy/copiloto/fetch-fonts.sh \
-  | ssh "$HOST" "mkdir -p '$REMOTE/apps' '$REMOTE/packages' '$REMOTE/deploy/copiloto' && rm -rf '$REMOTE/$WEB_SUBDIR' '$REMOTE/$CORE_SUBDIR' && tar -C '$REMOTE' -xzf -"
+  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" "$NEUE_EINSTELLUNG_OTF" deploy/copiloto/fetch-fonts.sh \
+  | ssh "$HOST" "mkdir -p '$REMOTE/apps' '$REMOTE/packages' '$REMOTE/docs/Imagen de marca/Neue_Einstellung' '$REMOTE/deploy/copiloto' && rm -rf '$REMOTE/$WEB_SUBDIR' '$REMOTE/$CORE_SUBDIR' && tar -C '$REMOTE' -xzf -"
 
 echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si ya está)"
 ssh "$HOST" "bash '$REMOTE/deploy/copiloto/fetch-fonts.sh'"
