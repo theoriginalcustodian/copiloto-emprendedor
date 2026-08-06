@@ -87,7 +87,16 @@ $lint_out"
 # planificacion_/-a-todos_ más nuevo que eso es necesariamente correo que ningún ciclo previo pudo
 # haber visto. Se apaga solo pasados 5min (no hay estado "leído" que trackear) — alarma como mucho
 # una vez por archivo, en el ciclo inmediato siguiente a su llegada.
-mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname '*-a-planificacion_*' -o -iname '*-a-todos_*' \) -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
+#
+# `! -iname '*_planificacion-a-*'` (2026-08-06, medido): sin esto el gate se alarmaba con los
+# broadcasts que ESTA MISMA sesión acababa de escribir — un `dato_planificacion-a-todos_…` matchea
+# `*-a-todos_*`. Cada mensaje propio quemaba el ciclo siguiente releyendo lo que uno mismo redactó
+# treinta segundos antes. El vigía v3 ya descartaba lo propio por esta razón ("son tuyos:
+# notificarlos es ruido disfrazado de novedad"); el gate de 3min nunca copió esa mitad de la regla.
+# Ojo con el patrón: `*_planificacion-a-*`, no `planificacion-a-*`, porque el nombre arranca con la
+# fecha (`2026-08-06_dato_planificacion-a-todos_…`) — anclar al principio no matchearía nunca, y ése
+# es el modo de fallar en silencio de este filtro: no rompe nada, sólo deja de filtrar.
+mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname '*-a-planificacion_*' -o -iname '*-a-todos_*' \) ! -iname '*_planificacion-a-*' -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
 [ -n "$mail_out" ] && add "MAIL FRESCO (sin ver aún, <5min):
 $mail_out"
 
