@@ -10,6 +10,29 @@
 # lo que el operador autorizó. Cada regla es un prefijo concreto y auditable, y las destructivas
 # quedan en deny EXPLÍCITO para que ningún allow ancho las arrastre.
 #
+# ⚠️ LAS REGLAS MATCHEAN POR PREFIJO — y por eso un `cd` adelante las ANULA TODAS (medido 2026-08-06)
+# ---------------------------------------------------------------------------------------------
+# Un comando que empieza con `cd <path>` tiene prefijo `cd`, no `git push`. Con estas reglas ya
+# aplicadas y verificadas una por una, la sesión de frontend igual recibió el cartel para:
+#     cd "…/.claude/worktrees/odobi-hito2-relieve-token"
+#     gh pr view 281 --json state
+# `Bash(gh pr view:*)` estaba en el allow y no sirvió de nada.
+#
+# Consecuencia real: las sesiones que trabajan en worktrees hacían `cd <wt> && git push …`, el push
+# quedaba esperando un cartel que nadie miraba, y se leyó durante horas como "el hook del grafo me
+# bloquea". Dos sesiones, 6 intentos, y una causa raíz falsa canonizada en PRs y memoria.
+#
+# LA FORMA CORRECTA — el path va como ARGUMENTO, nunca con `cd`:
+#     git -C "<worktree>" push …            en vez de   cd "<worktree>" && git push …
+#     gh pr view 281 --repo <owner>/<repo>  en vez de   cd "<worktree>" && gh pr view 281
+#
+# Y NO se agrega `Bash(cd:*)` al allow, aunque destrabaría todo hoy: el `deny` matchea por prefijo
+# igual, así que `cd X && rm -rf Y` tendría prefijo `cd` y NO matchearía `Bash(rm -rf:*)`. Sería
+# cambiar un estorbo por un agujero, justo en la clase de comando que el deny existe para frenar.
+#
+# LECCIÓN: este script verifica que cada regla QUEDÓ (`jq -e index($r)`), que es control positivo
+# del artefacto — y cero control del EFECTO. Una regla presente no es una regla que aplica.
+#
 # IDEMPOTENTE: correlo N veces, mismo resultado. Sólo agrega lo que falta.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
