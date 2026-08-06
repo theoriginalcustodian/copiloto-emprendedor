@@ -28,10 +28,11 @@
   font-display: swap;
 }
 
-/* ODOBI hito 3v — pipeline listo, token todavía SIN rewirear (eso es hito 3: retira Clash Display /
-   General Sans y pasa --font-display a esta familia). Declarado ahora para no bloquear hito 3 con
-   un @font-face faltante. Licencia: EULA propietaria (hanken.co/eula, 3 niveles) sin confirmación
-   de cobertura webfont -- deuda declarada, ver PR de este cambio; plan B si no cubre: Inter 700. */
+/* ODOBI hito 3 — rewireado: --font-display (abajo) apunta acá. Licencia: EULA propietaria
+   (hanken.co/eula, 3 niveles) sin confirmación de cobertura webfont -- deuda declarada (dueño:
+   operador, condición de pago: antes de abrir la beta a testers externos); plan B ya en el stack:
+   'Inter' como fallback nombrado (no autohosteado -- mismo criterio que el resto de los nombres de
+   fallback de este stack, que tampoco lo están). */
 @font-face {
   font-family: 'NeueEinstellung';
   src: url('./fonts/NeueEinstellung-Bold.woff2') format('woff2');
@@ -92,7 +93,7 @@
    pendiente de correr en VPS) o mientras carga (swap). Consumir SIEMPRE vía estos tokens, nunca
    nombrando la familia directo en un componente. */
 :root {
-  --font-display: 'Clash Display', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'NeueEinstellung', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-body: 'General Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
 }

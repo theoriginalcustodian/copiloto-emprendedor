@@ -98,6 +98,10 @@ export default function LayoutRaiz() {
     SpaceGrotesk_700Bold,
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
+    // ODOBI hito 3 (DoD §2.6, "Display / marca") — asset LOCAL, no un paquete `@expo-google-fonts/*`
+    // como las de arriba: el binario lo dejó el hito 3v (`assets/fonts/NeueEinstellung-Bold.otf`,
+    // PR#264). `useFonts` de Expo admite mezclar ambos orígenes en una sola llamada.
+    'NeueEinstellung-Bold': require('../assets/fonts/NeueEinstellung-Bold.otf'),
   });
 
   return (

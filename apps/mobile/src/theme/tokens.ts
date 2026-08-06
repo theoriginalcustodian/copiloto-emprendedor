@@ -132,10 +132,14 @@ export interface Tokens {
   espacio: { xs: number; sm: number; md: number; lg: number; xl: number };
   radio: { sm: number; md: number; lg: number; completo: number };
   tipo: { chico: number; base: number; grande: number; titulo: number };
-  /** Familias tipográficas del diseño (iguales en los 5 temas). Los valores son las CLAVES que
-   * `useFonts` registra en `app/_layout.tsx` (`@expo-google-fonts/*`), usables directo como
-   * `fontFamily`. `ui*` = Space Grotesk (UI general); `mono*` = JetBrains Mono (labels/meta/timestamps
-   * en mayúsculas). Ver `docs/Implementacion_Desarrollo/2026-07-18_PLAN...` Tarea 2.2. */
+  /** Familias tipográficas del diseño (iguales en las 3 pieles). Los valores son las CLAVES que
+   * `useFonts` registra en `app/_layout.tsx`, usables directo como `fontFamily`. `ui*` = Space
+   * Grotesk (UI general); `mono*` = JetBrains Mono (labels/meta/timestamps en mayúsculas); `display`
+   * = NeueEinstellung Bold (ODOBI hito 3, DoD §2.6: "Display / marca" — títulos y wordmark, NO
+   * cuerpo de texto). A diferencia de `ui*`/`mono*` (paquetes `@expo-google-fonts/*`), `display` es
+   * un asset LOCAL (`assets/fonts/NeueEinstellung-Bold.otf`, dejado por el hito 3v/PR#264) cargado
+   * vía `require()` en el mismo `useFonts` de `_layout.tsx` — Expo soporta mezclar ambas fuentes en
+   * una sola llamada. Ver `docs/Implementacion_Desarrollo/2026-07-18_PLAN...` Tarea 2.2. */
   fuente: {
     ui: string;
     uiMedium: string;
@@ -143,6 +147,7 @@ export interface Tokens {
     uiBold: string;
     mono: string;
     monoMedium: string;
+    display: string;
   };
 }
 
@@ -151,7 +156,7 @@ export type NombreSkin = 'claro' | 'oscuro' | 'nocturno';
 const espacio = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 const radio = { sm: 6, md: 12, lg: 20, completo: 999 };
 const tipo = { chico: 13, base: 15, grande: 18, titulo: 24 };
-/** Claves de `@expo-google-fonts/*` (ver `useFonts` en `app/_layout.tsx`). Compartidas por los 5 temas. */
+/** Claves de fuente (ver `useFonts` en `app/_layout.tsx`). Compartidas por las 3 pieles. */
 const fuente = {
   ui: 'SpaceGrotesk_400Regular',
   uiMedium: 'SpaceGrotesk_500Medium',
@@ -159,6 +164,7 @@ const fuente = {
   uiBold: 'SpaceGrotesk_700Bold',
   mono: 'JetBrainsMono_400Regular',
   monoMedium: 'JetBrainsMono_500Medium',
+  display: 'NeueEinstellung-Bold',
 };
 
 // ---------------------------------------------------------------------------------------------
