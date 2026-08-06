@@ -140,5 +140,45 @@ fi
 rm -rf "$LOCKDIR_OK"
 
 echo
+echo "== GIT_DIR HEREDADO: reproducido -- gana sobre -C sin neutralizarlo =="
+# $WT_RAMA (con rama real) y $WT_OK (detached, ya sincronizado) siguen vivos de las secciones
+# anteriores. Cada worktree tiene su propio git-dir: "rev-parse --absolute-git-dir" desde adentro
+# de uno da el path que git usa para identificarlo -- setear GIT_DIR a ESE path desde afuera es
+# exactamente lo que un hook hereda de quien pushea.
+GITDIR_DE_WTRAMA="$(git -C "$WT_RAMA" rev-parse --absolute-git-dir)"
+GITDIR_DE_WTOK="$(git -C "$WT_OK" rev-parse --absolute-git-dir)"
+rama_leida_sin_fix="$(GIT_DIR="$GITDIR_DE_WTRAMA" git -C "$WT_OK" symbolic-ref --quiet --short HEAD 2>/dev/null || echo '(vacío)')"
+if [ "$rama_leida_sin_fix" = "test-graphsync-rama" ]; then
+  ok "reproducido: con GIT_DIR ajeno seteado, -C NO alcanza -- leyó '$rama_leida_sin_fix' en vez del HEAD real de \$WT_OK (detached)"
+else
+  mal "no reprodujo (leyó '$rama_leida_sin_fix') -- GIT_DIR no ganó sobre -C acá, revisar el diagnóstico"
+fi
+
+echo
+echo "== GIT_DIR HEREDADO -- CONTROL POSITIVO: con el unset, el sync PASA aunque herede GIT_DIR ajeno =="
+# Simula el hook real: alguien pushea desde \$WT_RAMA (GIT_DIR de esa rama queda en el entorno) y
+# ESO dispara el sync sobre \$WT_OK (el worktree del grafo, detached). Con el unset del fix, el
+# script debe ignorar ese GIT_DIR heredado y sincronizar igual.
+GIT_DIR="$GITDIR_DE_WTRAMA" GIT_WORK_TREE="$WT_RAMA" correr "$WT_OK" >/dev/null 2>&1
+esperado3="$(git -C "$REPO" rev-parse origin/main)"
+real3="$(git -C "$WT_OK" rev-parse HEAD 2>/dev/null || echo _)"
+[ "$real3" = "$esperado3" ] && ok "sincronizó igual -- el GIT_DIR heredado no lo desvió" \
+                             || mal "el sync se desvió con GIT_DIR heredado -- el unset no cubre este camino"
+
+echo
+echo "== GIT_DIR HEREDADO -- CONTROL NEGATIVO: la guarda de rama SIGUE protegiendo aunque herede GIT_DIR ajeno =="
+# Mismo herencia simulada, pero ahora el hook (imaginario) dispara el sync sobre \$WT_RAMA -- que
+# SÍ tiene una rama real. La guarda tiene que seguir abortando: si el unset "arregla" tanto que
+# también apaga esta protección, cambiamos un falso positivo por una pérdida de datos real.
+salida_gitdir_guarda="$(GIT_DIR="$GITDIR_DE_WTOK" GIT_WORK_TREE="$WT_OK" correr "$WT_RAMA")"; rc_guarda=$?
+if [ $rc_guarda -ne 0 ] && echo "$salida_gitdir_guarda" | grep -q "tiene la rama"; then
+  ok "abortó nombrando la rama real de \$WT_RAMA (rc=$rc_guarda) -- la protección sigue viva"
+else
+  mal "NO abortó (rc=$rc_guarda) -- el fix rompió la guarda real, revisar"
+fi
+[ -f "$WT_RAMA/WIP-no-me-borres.txt" ] && ok "el WIP de \$WT_RAMA sigue intacto" \
+                                        || mal "💥 el WIP fue DESTRUIDO"
+
+echo
 [ "$fallos" = "0" ] && echo "RESULTADO: ✅ todo verde" || echo "RESULTADO: ❌ $fallos fallo(s)"
 exit "$fallos"

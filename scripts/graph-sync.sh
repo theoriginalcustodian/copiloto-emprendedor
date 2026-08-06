@@ -43,6 +43,14 @@
 # la línea del pipe antes de poder inspeccionar qué pasó.
 set -uo pipefail
 
+# Git EXPORTA GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE a los hooks, y esas variables GANAN sobre `-C`:
+# `-C "$WT"` cambia el cwd, no qué repositorio abre git cuando el entorno ya se lo dice. Sin este
+# unset, cada `git -C "$WT" …` de este script corre sobre el repo de QUIEN PUSHEA (el que disparó el
+# hook), no sobre el worktree del grafo — la guarda de la rama abortaba con la rama de quien pushea
+# (falso positivo del 100%, siempre que el script se use de verdad, vía hook), y si no hubiera
+# abortado, `reset --hard`/`clean -fd` habrían borrado cambios sin commitear ajenos. Medido 2026-08-06.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
 REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
 CKPT=".bridge/checkpoint-${REPO_NAME}.db"
