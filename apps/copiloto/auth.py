@@ -135,3 +135,36 @@ def make_require_claims(*, secret: str, issuer: str | None = None) -> Callable:
         return _bearer_claims(request, secret=secret, issuer=issuer)
 
     return require_claims
+
+
+#: Dónde vive el claim de administrador dentro del JWT (CONS0b). `app_metadata`, NUNCA
+#: `user_metadata`: verificado empíricamente contra GoTrue real (fusion) que `user_metadata` es
+#: auto-editable por el propio usuario vía `PUT /auth/v1/user` — un claim ahí sería
+#: auto-otorgable. `app_metadata` sólo se escribe con la Admin API (service_role_key), y un
+#: intento de escalada por las 3 rutas probadas (top-level, dentro de `data`, `data.app_metadata`
+#: anidado) no logró tocarlo. Ver docs/copiloto-emprendedor/2026-08-06-RESULT-CONS0b-claim-admin.md.
+_ADMIN_CLAIM_KEY = "copiloto_admin"
+
+
+def make_require_admin(*, secret: str, issuer: str | None = None) -> Callable:
+    """Fábrica de la dependencia `require_admin` (CONS0b): 401 si el Bearer falta/es inválido
+    (mismo gate que `require_tenant`/`require_claims`), **403** si el token es válido pero
+    `app_metadata.copiloto_admin` no es `True`.
+
+    Deliberadamente NO exige fila de tenant (a diferencia de `require_tenant`): el operador es
+    un actor de la APP, no de un tenant — specs §2, "la consola opera la app, no los datos de
+    negocio de los tenants". No toca Postgres ni el `ContextVar` de RLS: `sync def` alcanza,
+    igual que `require_claims`.
+
+    Mismo fail-closed al construir que las otras dos fábricas: sin secreto, el proceso no arranca
+    en vez de aceptar tokens forjados con clave vacía en runtime."""
+    if not secret or not isinstance(secret, str):
+        raise ValueError("SUPABASE_JWT_SECRET missing/empty")
+
+    def require_admin(request: Request) -> dict:
+        claims = _bearer_claims(request, secret=secret, issuer=issuer)
+        if claims.get("app_metadata", {}).get(_ADMIN_CLAIM_KEY) is not True:
+            raise HTTPException(status_code=403, detail="admin claim required")
+        return claims
+
+    return require_admin

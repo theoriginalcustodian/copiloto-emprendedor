@@ -550,6 +550,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    actividad_app: FastAPI | None = None,
                    inteligencia_app: FastAPI | None = None,
                    mi_dia_app: FastAPI | None = None,
+                   admin_app: FastAPI | None = None,
                    require_claims: Callable | None = None,
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
@@ -1015,6 +1016,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # guard de esa regresión exacta. Nunca vuelvas a definir `/actividad` directo sobre `app`.
     if actividad_app is not None:
         app.include_router(actividad_app.router)
+    # `/admin/*` — Consola de Operador (CONS0b). El módulo entero es opcional (None si el
+    # composition root no arma `require_admin`): "el módulo no se monta si el claim no está"
+    # (specs §7) empieza acá — sin `admin_app`, `/admin/*` ni siquiera existe como ruta.
+    if admin_app is not None:
+        app.include_router(admin_app.router)
     # `/inteligencia/*` (portada de negocio; gráficos y chat vienen después sobre la misma capa de
     # queries). Sus rutas traen su propia barrera `Depends(require_tenant)`. Mismo criterio opcional.
     if inteligencia_app is not None:

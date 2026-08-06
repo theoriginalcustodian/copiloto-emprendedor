@@ -145,6 +145,25 @@ class GoTrueAdmin:
         )
         resp.raise_for_status()
 
+    def find_user_by_email(self, email: str) -> dict | None:
+        """Lookup público — CONS0b (`deploy/copiloto/asignar-claim-admin.sh`) necesita resolver
+        `email -> id` sin pasar por el flujo de alta. Envoltorio fino sobre `_find_user_by_email`,
+        que existe hace más y se deja intacto (no renombrar, otros callers ya lo usan)."""
+        return self._find_user_by_email(email)
+
+    def admin_grant_operador(self, user_id: str) -> None:
+        """PUT /auth/v1/admin/users/{id} — setea `app_metadata.copiloto_admin = True` (CONS0b, el
+        gate de `/admin/*`). Verificado empíricamente contra GoTrue real que este PUT MERGEA
+        `app_metadata` en vez de reemplazarlo entero: no pisa `cliente_id` si el user ya lo tenía
+        (ver docs/copiloto-emprendedor/2026-08-06-RESULT-CONS0b-claim-admin.md, punto 2).
+        Idempotente: correrlo dos veces da el mismo estado final."""
+        resp = self._client.put(
+            f"{self._base_url}/auth/v1/admin/users/{user_id}",
+            headers=self._headers(),
+            json={"app_metadata": {"copiloto_admin": True}},
+        )
+        resp.raise_for_status()
+
     def password_grant(self, email: str, password: str) -> dict:
         """POST /auth/v1/token?grant_type=password — login real vía GoTrue self-host (Task 6, spec
         login proxy). Devuelve el JSON completo del token (`access_token`, `token_type`,
