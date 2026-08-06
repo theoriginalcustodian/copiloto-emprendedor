@@ -83,6 +83,34 @@ describe('Rail', () => {
     expect(screen.getByTestId('rail-user')).toBeInTheDocument();
   });
 
+  // Era un `<div>` informativo que no llevaba a ningún lado. Estos tres tests fijan que es la puerta
+  // a Ajustes: si alguien lo vuelve a un `div`, o le saca el onChange, la barra pierde el acceso que
+  // habilita discutir si `ajustes` sigue haciendo falta como entrada propia del registro.
+  it('el bloque de usuario es un botón, no un div decorativo', () => {
+    renderRail();
+    expect(screen.getByTestId('rail-user').tagName).toBe('BUTTON');
+  });
+
+  it('click en el bloque de usuario abre Ajustes', () => {
+    const { onChange } = renderRail();
+    fireEvent.click(screen.getByTestId('rail-user'));
+    expect(onChange).toHaveBeenCalledWith('ajustes');
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('con Ajustes activo, el bloque de usuario se marca como página actual', () => {
+    renderRail('ajustes');
+    expect(screen.getByTestId('rail-user')).toHaveAttribute('aria-current', 'page');
+  });
+
+  // Control negativo del test de arriba: sin esto, un `aria-current` puesto SIEMPRE lo haría pasar
+  // igual, y el guard mediría la constante en vez de la lógica.
+
+  it('con otra pantalla activa, el bloque de usuario NO se marca como página actual', () => {
+    renderRail('gastos');
+    expect(screen.getByTestId('rail-user')).not.toHaveAttribute('aria-current');
+  });
+
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     renderRail();

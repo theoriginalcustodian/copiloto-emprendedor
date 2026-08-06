@@ -78,7 +78,24 @@ export function Rail({ active, onChange }: RailProps) {
             operador): estaba escondido dentro del rail, sin relación visible con el tile
             "Apariencia" del menú de Ajustes — ver `modules/ajustes/PantallaApariencia.tsx`. */}
         <div className="rail__bottom">
-          <div className="rail__user" data-testid="rail-user">
+          {/* El bloque de usuario ES la puerta a Ajustes, no un adorno informativo. Era un `<div>`
+              muerto: mostraba la cuenta y no llevaba a ningún lado, mientras el único acceso a
+              Ajustes desde el shell eran su entrada en la barra y el tile del escritorio. Como
+              `<button>` cumple la convención que el usuario ya trae de cualquier app (tocar tu
+              avatar abre tu cuenta) y habilita evaluar sacar `ajustes` de `TABS`. */}
+          <button
+            type="button"
+            className={[
+              'rail__user',
+              active === 'ajustes' ? 'rail__user--active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            data-testid="rail-user"
+            aria-current={active === 'ajustes' ? 'page' : undefined}
+            aria-label="Tu cuenta y ajustes"
+            onClick={() => onChange('ajustes')}
+          >
             <span className="rail__avatar" aria-hidden="true">
               {initial(me?.cliente_id)}
             </span>
@@ -91,7 +108,7 @@ export function Rail({ active, onChange }: RailProps) {
                   exponga. */}
               <span className="rail__user-email">Sesión activa</span>
             </div>
-          </div>
+          </button>
         </div>
       </nav>
     </>

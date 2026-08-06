@@ -213,10 +213,32 @@
 }
 
 /* ---------- Bloque de usuario (dc.html:78, gap #11/#12) ---------- */
+/* Es un `<button>` (la puerta a Ajustes), así que necesita el mismo reset que `.rail__item`: sin
+   estos, el agente de usuario le mete borde, fondo, fuente propia y texto centrado, y el bloque deja
+   de verse como el del diseño. `width:100%` + `text-align:left` mantienen el bloque alineado con los
+   ítems de arriba en vez de encogerse a su contenido. */
 .rail__user {
   display: flex;
   align-items: center;
   gap: 11px;
+  width: 100%;
+  padding: 4px;
+  border: none;
+  border-radius: 13px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rail__user:hover {
+  background: var(--nav-active);
+}
+
+.rail__user--active {
+  background: var(--nav-active);
 }
 
 .rail__avatar {
