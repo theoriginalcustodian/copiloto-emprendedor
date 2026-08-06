@@ -41,6 +41,7 @@
 - [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — el próximo hito ya contratado es ejecución. Frené la fábrica 4 h.
 - [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — tu propio estado envejece; un estado falso da quietud, no bug.
 - [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — descomponé por disparador real antes de declararlo.
+- [🔧🤐 El workaround que usás de RUTINA deja de parecerte información](el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion.md) — `feedback`. Usé `--no-verify` en 4 PRs mientras frontend estaba parada por ese mismo hook. A la 4ª ya era tecla muscular, no hallazgo. Ante un bloqueo ajeno: *¿yo hice hoy algo parecido? ¿cómo lo resolví?* Y a la 3ª repetición, escribilo.
 - [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — contestada bajo otra pregunta o en el hilo de al lado.
 - [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando X esté listo" no ocurre: nadie mira.
 - [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantar lo independiente y no-conflictivo; ejecutar una fase futura no.
