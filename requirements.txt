@@ -47,3 +47,8 @@ websocket-client==1.9.0
 
 # Facturación electrónica AFIP/ARCA (SDK oficial de AfipSDK). Pineado: nada de latest.
 afip.py==1.2.0
+
+# Conversión de fuentes self-hosted en build-time (deploy/copiloto/fetch-fonts.sh) — no es
+# dependencia del runtime del servicio. brotli lo requiere fontTools para comprimir a woff2.
+fonttools==4.63.0
+brotli==1.2.0
