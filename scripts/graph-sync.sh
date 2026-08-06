@@ -98,6 +98,56 @@ if [ -d "$WT" ]; then
   fi
 fi
 
+# Lock: serializa corridas concurrentes sobre $WT y $BRIDGE/checkpoint, que son GLOBALES —
+# el mismo path físico para las 3 sesiones (Guarda 1 arriba ya distingue $WT de "mi" checkout, pero
+# no evita que dos sesiones corran esta sección AL MISMO TIEMPO sobre ese único $WT compartido).
+# Sin lock, un sync puede reingerir un árbol que otro sync está reescribiendo a mitad de camino.
+#
+# Sin flock (no disponible en este Git-Bash de Windows: `command -v flock` da vacío) el mecanismo es
+# `mkdir`, atómico en NTFS igual que en POSIX — de dos procesos que lo corran a la vez sólo uno
+# consigue crear el directorio. Antigüedad máxima + PID adentro para no quedar trabados si el dueño
+# del lock muere sin pasar por el trap (Ctrl-C, cierre de ventana): un lockfile plano sin esto deja
+# el sync bloqueado para siempre.
+LOCKDIR="${UC_GRAPH_LOCK:-${WT}.sync.lock}"
+LOCK_MAX_AGE="${UC_GRAPH_LOCK_MAX_AGE:-600}"
+LOCK_OWNED=0
+OUT=""
+
+cleanup_exit() {
+  [ -n "$OUT" ] && rm -f "$OUT"
+  [ "$LOCK_OWNED" = "1" ] && rm -rf "$LOCKDIR"
+}
+trap cleanup_exit EXIT
+
+adquirir_lock() {
+  if mkdir "$LOCKDIR" 2>/dev/null; then
+    echo "$$" > "$LOCKDIR/pid" 2>/dev/null || true
+    LOCK_OWNED=1
+    return 0
+  fi
+  local mtime edad
+  mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || echo 0)"
+  edad=$(( $(date +%s) - mtime ))
+  if [ "$edad" -gt "$LOCK_MAX_AGE" ]; then
+    echo "[graph-sync] lock huérfano (${edad}s > ${LOCK_MAX_AGE}s, pid=$(cat "$LOCKDIR/pid" 2>/dev/null || echo '?')) — lo tomo." >&2
+    rm -rf "$LOCKDIR"
+    if mkdir "$LOCKDIR" 2>/dev/null; then
+      echo "$$" > "$LOCKDIR/pid" 2>/dev/null || true
+      LOCK_OWNED=1
+      return 0
+    fi
+  fi
+  return 1
+}
+
+if ! adquirir_lock; then
+  # Salir 0, no 1: un lock ocupado NO es un fallo, es OTRO sync en curso que va a dejar el árbol
+  # en origin/main igual. Si abortáramos con error acá volveríamos a bloquear pushes ajenos —
+  # exactamente el problema que este repo viene arrastrando todo el día con el pre-push.
+  echo "[graph-sync] otro sync está corriendo ($LOCKDIR ocupado, pid=$(cat "$LOCKDIR/pid" 2>/dev/null || echo '?')) — salgo sin tocar el árbol."
+  exit 0
+fi
+
 echo "[graph-sync] actualizando el árbol del grafo a origin/main…"
 git -C "$REPO" fetch origin main --quiet
 if [ ! -d "$WT" ]; then
@@ -152,7 +202,6 @@ fi
 _ERROR_GREP='GraphityError|Traceback \(most recent call last\)|^abortado:|reconcile abortado:'
 
 OUT="$(mktemp)"
-trap 'rm -f "$OUT"' EXIT
 
 (
   cd "$BRIDGE"

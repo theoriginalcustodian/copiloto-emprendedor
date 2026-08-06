@@ -87,5 +87,58 @@ fi
                                        || mal "💥 el WIP fue DESTRUIDO — la guarda falló"
 
 echo
+echo "== LOCK: dos corridas concurrentes -- la segunda sale 0 SIN tocar el árbol =="
+LOCKDIR_OK="${WT_OK}.sync.lock"
+rm -rf "$LOCKDIR_OK"; mkdir -p "$LOCKDIR_OK"
+echo "99999999" > "$LOCKDIR_OK/pid"   # PID que casi seguro no existe -- el chequeo es por EDAD, no por vida del proceso
+echo "marca-de-que-no-me-tocaron" > "$WT_OK/marca-pre-lock.txt"
+antes="$(git -C "$WT_OK" rev-parse HEAD)"
+salida_lock="$(UC_GRAPH_LOCK="$LOCKDIR_OK" correr "$WT_OK")"; rc_lock=$?
+despues="$(git -C "$WT_OK" rev-parse HEAD)"
+if [ $rc_lock -eq 0 ] && echo "$salida_lock" | grep -q "otro sync está corriendo"; then
+  ok "salió 0 avisando que el lock está ocupado"
+else
+  mal "no detectó el lock ocupado (rc=$rc_lock): $salida_lock"
+fi
+[ "$antes" = "$despues" ] && ok "HEAD del árbol NO se movió (no tocó nada)" \
+                           || mal "el HEAD cambió igual -- el lock no frenó el sync"
+[ -f "$WT_OK/marca-pre-lock.txt" ] && ok "la marca de archivo sigue -- el árbol no fue saneado" \
+                                    || mal "el árbol fue saneado a pesar del lock ocupado"
+
+echo
+echo "== CONTROL NEGATIVO: sin el chequeo de lock, el saneo se ejecuta IGUAL con contención real =="
+# El lockdir de arriba sigue ocupado. Corremos las mismas 3 operaciones del script pero SIN pasar
+# por adquirir_lock -- si esto avanza igual, confirma que nada del filesystem frena la contención
+# por sí solo: es el chequeo explícito el que protege, no un efecto colateral. Si este control
+# también saliera "protegido", el control positivo de arriba no estaría midiendo el lock.
+git -C "$WT_OK" reset --hard --quiet
+git -C "$WT_OK" clean -qfd
+git -C "$WT_OK" checkout --detach origin/main --quiet
+despues_directo="$(git -C "$WT_OK" rev-parse HEAD)"
+esperado_directo="$(git -C "$REPO" rev-parse origin/main)"
+[ "$despues_directo" = "$esperado_directo" ] \
+  && ok "sin el chequeo, el saneo SÍ avanza con el lock ocupado -- el gate del script es lo que protege" \
+  || mal "el saneo directo no avanzó -- el negativo no reproduce, revisar el fixture"
+
+echo
+echo "== LOCK HUÉRFANO: proceso muerto no deja la corrida siguiente trabada =="
+rm -rf "$LOCKDIR_OK"; mkdir -p "$LOCKDIR_OK"
+echo "99999999" > "$LOCKDIR_OK/pid"
+sleep 2
+salida_huerfano="$(UC_GRAPH_LOCK="$LOCKDIR_OK" UC_GRAPH_LOCK_MAX_AGE=1 correr "$WT_OK")"
+esperado2="$(git -C "$REPO" rev-parse origin/main)"
+real2="$(git -C "$WT_OK" rev-parse HEAD 2>/dev/null || echo _)"
+if echo "$salida_huerfano" | grep -q "lock huérfano"; then
+  ok "detectó el lock huérfano por antigüedad"
+else
+  mal "no detectó el lock huérfano: $salida_huerfano"
+fi
+[ "$real2" = "$esperado2" ] && ok "la corrida siguiente NO quedó trabada -- sincronizó igual" \
+                             || mal "quedó trabada: HEAD en ${real2:0:12}, esperaba ${esperado2:0:12}"
+[ ! -d "$LOCKDIR_OK" ] && ok "el lockdir se liberó al terminar" \
+                        || mal "el lockdir quedó huérfano DE NUEVO tras la corrida"
+rm -rf "$LOCKDIR_OK"
+
+echo
 [ "$fallos" = "0" ] && echo "RESULTADO: ✅ todo verde" || echo "RESULTADO: ❌ $fallos fallo(s)"
 exit "$fallos"
