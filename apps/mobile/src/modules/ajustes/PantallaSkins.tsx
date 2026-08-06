@@ -7,10 +7,10 @@ import { useSkin, useTema } from '../../theme/ThemeProvider';
 import { ETIQUETA_SKIN, ORDEN_SKINS } from './skinsCatalogo';
 
 /**
- * Qué colores de la paleta cruda de cada skin se muestran como "muestra" en su card. Los 4 elegidos
- * son los que más varían entre los 5 temas (el acento define la identidad del skin; `accent2` es su
- * variante clara; `fondo`/`superficieAlta` muestran cómo se ve realmente el vidrio de esa paleta) --
- * mostrar sólo el acento dejaría "Blanco clínico" y "Negro" pareciendo casi el mismo chip celeste.
+ * Qué colores de la paleta cruda de cada skin se muestran como "muestra" en su card. ODOBI usa un
+ * solo acento en las 3 pieles (§1 del DoD) -- lo que las distingue es el LIENZO, no el acento --
+ * por eso se siguen mostrando los 4: `fondo`/`superficieAlta` son los que realmente varían entre
+ * `claro`/`oscuro`/`nocturno`, `acento`/`accent2` confirman visualmente que el acento es el mismo.
  */
 function muestrasDe(paleta: Tokens): string[] {
   return [paleta.color.acento, paleta.glass.accent2, paleta.color.fondo, paleta.color.superficieAlta];

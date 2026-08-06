@@ -33,56 +33,61 @@ describe('PantallaSkins (pantalla propia con cards de color, ex-selector dentro 
     jest.mocked(almacenClave.guardar).mockReset().mockResolvedValue(undefined);
   });
 
-  it('arranca en el tema "cian" (default) con su card marcada activa', async () => {
+  it('arranca en el tema "claro" (default de ODOBI) con su card marcada activa', async () => {
     await envolver();
-    await waitFor(() => expect(screen.getByTestId('skin-card-cian').props.accessibilityState.selected).toBe(true));
-    expect(screen.getByTestId('skin-card-violeta').props.accessibilityState.selected).toBe(false);
+    await waitFor(() => expect(screen.getByTestId('skin-card-claro').props.accessibilityState.selected).toBe(true));
+    expect(screen.getByTestId('skin-card-oscuro').props.accessibilityState.selected).toBe(false);
   });
 
   it('cambiar de skin PERSISTE la elección (almacenClave) y se APLICA al instante (la card pasa a activa)', async () => {
     await envolver();
-    // Se presiona un tema DISTINTO del default (`cian`) para ejercitar un cambio real.
-    await fireEvent.press(screen.getByTestId('skin-card-violeta'));
+    // Se presiona un tema DISTINTO del default (`claro`) para ejercitar un cambio real.
+    await fireEvent.press(screen.getByTestId('skin-card-oscuro'));
 
     // Persiste: mismo criterio que `ThemeProvider.tsx::setSkin` -- guarda vía `almacenClave`.
-    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), 'violeta'));
+    await waitFor(() => expect(almacenClave.guardar).toHaveBeenCalledWith(expect.any(String), 'oscuro'));
 
-    // Se aplica al instante: la card de "violeta" queda seleccionada y la de "cian" deja de estarlo
+    // Se aplica al instante: la card de "oscuro" queda seleccionada y la de "claro" deja de estarlo
     // -- sin esto, `setSkin` podría persistir sin re-renderizar nada (bug silencioso).
-    expect(screen.getByTestId('skin-card-violeta').props.accessibilityState.selected).toBe(true);
-    expect(screen.getByTestId('skin-card-cian').props.accessibilityState.selected).toBe(false);
+    expect(screen.getByTestId('skin-card-oscuro').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('skin-card-claro').props.accessibilityState.selected).toBe(false);
   });
 
   it('re-hidrata el skin guardado de una sesión previa al montar', async () => {
-    jest.mocked(almacenClave.leer).mockResolvedValueOnce('black');
+    jest.mocked(almacenClave.leer).mockResolvedValueOnce('nocturno');
     await envolver();
-    await waitFor(() => expect(screen.getByTestId('skin-card-black').props.accessibilityState.selected).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('skin-card-nocturno').props.accessibilityState.selected).toBe(true));
   });
 
-  it('las 5 etiquetas visibles son las del rediseño de vidrio -- no traducciones inventadas', async () => {
+  it('las 3 etiquetas visibles son las pieles de ODOBI -- no traducciones inventadas', async () => {
     await envolver();
-    expect(screen.getByText('Cian')).toBeTruthy();
-    expect(screen.getByText('Violeta')).toBeTruthy();
-    expect(screen.getByText('Ámbar')).toBeTruthy();
-    expect(screen.getByText('Blanco clínico')).toBeTruthy();
-    expect(screen.getByText('Negro')).toBeTruthy();
+    expect(screen.getByText('Claro')).toBeTruthy();
+    expect(screen.getByText('Oscuro')).toBeTruthy();
+    expect(screen.getByText('Nocturno')).toBeTruthy();
   });
 
   it('cada card muestra 4 chips de color -- la MUESTRA real, no sólo el nombre', async () => {
     await envolver();
     for (let i = 0; i < 4; i += 1) {
-      expect(screen.getByTestId(`skin-card-violeta-muestra-${i}`)).toBeTruthy();
+      expect(screen.getByTestId(`skin-card-oscuro-muestra-${i}`)).toBeTruthy();
     }
   });
 
-  it('los chips de una card pintan los colores REALES de SU paleta, no los del tema activo', async () => {
-    // Control: con "cian" activo (default de `envolver`), la card de "violeta" tiene que mostrar el
-    // acento de VIOLETA, no el de cian -- si esto fallara, las 5 cards se verían idénticas salvo la
-    // elegida, que es exactamente el bug que este diseño evita.
+  it('los chips de FONDO de una card pintan el color REAL de SU paleta, no el del tema activo', async () => {
+    // Control: con "claro" activo (default de `envolver`), la card de "oscuro" tiene que mostrar SU
+    // PROPIO fondo -- si esto fallara, las 3 cards se verían idénticas salvo la elegida, que es
+    // exactamente el bug que este diseño evita. Se usa `fondo` (no `acento`, chip índice 0) porque
+    // ODOBI comparte un solo acento entre las 3 pieles (§1 del DoD) -- el fondo es lo que las
+    // distingue.
     await envolver();
-    const chipAcentoVioleta = screen.getByTestId('skin-card-violeta-muestra-0');
-    const estiloAplanado = StyleSheet.flatten(chipAcentoVioleta.props.style);
-    expect(estiloAplanado.backgroundColor).toBe(SKINS.violeta.color.acento);
-    expect(SKINS.violeta.color.acento).not.toBe(SKINS.cian.color.acento);
+    const chipFondoOscuro = screen.getByTestId('skin-card-oscuro-muestra-2');
+    const estiloAplanado = StyleSheet.flatten(chipFondoOscuro.props.style);
+    expect(estiloAplanado.backgroundColor).toBe(SKINS.oscuro.color.fondo);
+    expect(SKINS.oscuro.color.fondo).not.toBe(SKINS.claro.color.fondo);
+  });
+
+  it('el acento es el MISMO en las 3 pieles -- identidad ODOBI, no un bug', async () => {
+    expect(SKINS.claro.color.acento).toBe(SKINS.oscuro.color.acento);
+    expect(SKINS.oscuro.color.acento).toBe(SKINS.nocturno.color.acento);
   });
 });

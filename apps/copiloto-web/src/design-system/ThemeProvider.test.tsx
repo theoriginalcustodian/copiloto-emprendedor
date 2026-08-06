@@ -40,23 +40,23 @@ describe('ThemeProvider / useTheme', () => {
     expect(screen.getByTestId('current-theme')).toBeInTheDocument();
   });
 
-  it('default es "ai" cuando no hay nada persistido', () => {
+  it('default es "claro" cuando no hay nada persistido', () => {
     render(
       <ThemeProvider>
         <ThemeProbe />
       </ThemeProvider>,
     );
-    expect(screen.getByTestId('current-theme')).toHaveTextContent('ai');
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('claro');
   });
 
   it('lee el tema persistido en localStorage al montar', () => {
-    window.localStorage.setItem(STORAGE_KEY, 'refined');
+    window.localStorage.setItem(STORAGE_KEY, 'oscuro');
     render(
       <ThemeProvider>
         <ThemeProbe />
       </ThemeProvider>,
     );
-    expect(screen.getByTestId('current-theme')).toHaveTextContent('refined');
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('oscuro');
   });
 
   it('ignora un valor corrupto/desconocido en localStorage y cae al default', () => {
@@ -66,7 +66,7 @@ describe('ThemeProvider / useTheme', () => {
         <ThemeProbe />
       </ThemeProvider>,
     );
-    expect(screen.getByTestId('current-theme')).toHaveTextContent('ai');
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('claro');
   });
 
   it('setTheme persiste en localStorage', async () => {
@@ -76,15 +76,15 @@ describe('ThemeProvider / useTheme', () => {
       </ThemeProvider>,
     );
     act(() => {
-      screen.getByTestId('set-daylight').click();
+      screen.getByTestId('set-nocturno').click();
     });
     await waitFor(() => {
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('daylight');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('nocturno');
     });
-    expect(screen.getByTestId('current-theme')).toHaveTextContent('daylight');
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('nocturno');
   });
 
-  it('cada uno de los 4 data-theme produce un --bg distinto (mínimo requerido por el plan)', () => {
+  it('cada uno de los 3 data-theme produce un --bg distinto (mínimo requerido por el plan)', () => {
     render(
       <ThemeProvider>
         <ThemeProbe />
@@ -114,8 +114,8 @@ describe('ThemeProvider / useTheme', () => {
       </ThemeProvider>,
     );
     act(() => {
-      screen.getByTestId('set-refined').click();
+      screen.getByTestId('set-oscuro').click();
     });
-    expect(document.documentElement.getAttribute('data-theme')).toBe('refined');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('oscuro');
   });
 });

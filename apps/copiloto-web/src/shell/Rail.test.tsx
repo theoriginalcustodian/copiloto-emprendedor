@@ -25,7 +25,7 @@ function renderRail(active: (typeof TABS)[number]['key'] = 'chat', onChange = vi
 
 describe('Rail', () => {
   // `setTheme` (test "cambia de tema al click") persiste en localStorage — limpiar entre tests
-  // evita que un test contamine el default `ai` del siguiente (mismo criterio que
+  // evita que un test contamine el default `claro` del siguiente (mismo criterio que
   // AppShell.test.tsx / ThemeProvider.test.tsx).
   beforeEach(() => {
     window.localStorage.clear();
@@ -68,16 +68,16 @@ describe('Rail', () => {
     expect(rail.className).not.toContain('rail--open');
   });
 
-  it('renderiza los 4 swatches de skin, marca el tema actual como activo y cambia de tema al click', () => {
+  it('renderiza los 3 swatches de skin, marca el tema actual como activo y cambia de tema al click', () => {
     renderRail();
     for (const t of THEMES) {
       expect(screen.getByTestId(`rail-swatch-${t}`)).toBeInTheDocument();
     }
-    expect(screen.getByTestId('rail-swatch-ai')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('rail-swatch-claro')).toHaveAttribute('aria-pressed', 'true');
 
-    fireEvent.click(screen.getByTestId('rail-swatch-refined'));
-    expect(screen.getByTestId('rail-swatch-refined')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('rail-swatch-ai')).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByTestId('rail-swatch-oscuro'));
+    expect(screen.getByTestId('rail-swatch-oscuro')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('rail-swatch-claro')).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('renderiza el bloque de usuario', () => {

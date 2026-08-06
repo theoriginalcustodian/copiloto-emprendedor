@@ -1,105 +1,116 @@
 /*
- * Tokens de los 4 temas del Copiloto del Emprendedor — verbatim del `Component.themes` en
- * `Copiloto App.dc.html`, transcriptos en
- * docs/copiloto-emprendedor/APP Copiloto Movil/DESIGN-SYSTEM-EXTRACT.md §1.3.
+ * Tokens de las 3 pieles ODOBI del Copiloto del Emprendedor — rebrand 2026-08-05
+ * (`docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md`). Reemplaza los 4 temas
+ * `aurora`/`daylight`/`refined`/`ai` heredados de `Copiloto App.dc.html`.
  *
- * NO editar valores a mano sin volver a la fuente (EXTRACT §1.3) — son verbatim por diseño,
- * para trazabilidad 1:1 con el mockup. Los nombres de variable son los reales del código
- * original (útil para el porteo, no una convención nuestra).
+ * Fuente primaria de valores: DoD §2.1 (claro) / §2.2 (oscuro) / §2.3 (aplanado de superficies) /
+ * §2.8 (nocturno, derivado). Un solo acento terracota (`#C2452E`→`#7E2417`) en las 3 pieles — no
+ * cambia entre temas (§1 del DoD: "se conserva variedad de lienzo, se unifica el acento").
  *
- * `:root` (sin `data-theme`) trae el default `ai` como fallback antes de que ThemeProvider
+ * Sin glass, color pleno (§1.3 del DoD): `*-blur`/`*-shadow`/`--core-glow`/`--halo` van a `none` —
+ * el relieve (sombras cálidas medidas en el hito 0) es tokens propios del **hito 2**, no de éste.
+ * No reintroducir blur/glow acá sin volver a planificación (§4 riesgos del DoD).
+ *
+ * Varios roles no tienen valor propio declarado en el DoD (chips, badges, botón cancelar, avatar,
+ * nav, tabs, danger-btn…) — se resuelven reusando un rol YA declarado en la MISMA piel (nunca un
+ * hex nuevo): superficie aplanada para fondos de card/tile/nav/avatar/burbuja, bordes declarados
+ * (`Borde de superficie`/`campo`/`fuerte`/`sutil`) según corresponda, texto secundario para labels
+ * mudos, y el par peligro/éxito ya validado de `apps/mobile/src/theme/tokens.ts`
+ * (`SEMANTICOS_CLARO`/`SEMANTICOS_OSCURO`) para semánticos sin declaración ODOBI propia. Cada
+ * reuso queda comentado en su primera aparición (bloque `claro`) — los otros dos bloques repiten
+ * el mismo criterio sin re-explicarlo.
+ *
+ * `--mono`/`--label`/`--concept`: el DoD declara "texto secundario" (`.55`) y "terciario" (`.42`)
+ * como rgba sobre el fondo — aplanados y medidos contra WCAG AA (4.5:1, script
+ * `scripts/../odobi_tokens2.py` de la sesión, no a ojo): en `claro` ambos niveles colapsan a UN
+ * mismo alfa ajustado (`.69`, el declarado da sólo 3.2:1) porque no queda margen entre los dos
+ * bajo AA; en `oscuro`/`nocturno` el secundario declarado ya pasa y el terciario se ajusta a `.53`
+ * (declarado da 3.5:1).
+ *
+ * `:root` (sin `data-theme`) trae el default `claro` como fallback antes de que ThemeProvider
  * monte y setee el atributo — evita FOUC a un tema sin estilar.
  */
 
 :root {
-  --bg: #020308;
-  --bg-layer: radial-gradient(46% 36% at 50% 42%, rgba(72, 130, 255, 0.36), transparent 62%),
-    radial-gradient(40% 30% at 14% 14%, rgba(96, 146, 255, 0.18), transparent 60%),
-    radial-gradient(46% 36% at 88% 86%, rgba(255, 142, 80, 0.15), transparent 60%),
-    radial-gradient(42% 36% at 86% 18%, rgba(150, 110, 255, 0.16), transparent 60%),
-    radial-gradient(130% 92% at 50% 45%, transparent 54%, rgba(0, 0, 0, 0.58));
-  --text: #f2f5ff;
-  --mono: #8fa0c8;
-  --status-fg: #eaf0ff;
-  --heading: #f5f8ff;
-  --label: #8fa0c8;
-  --concept: #9fb0d8;
-  --name-fg: #f5f8ff;
+  --bg: #EFE6D2;
+  --bg-layer: none;
+  --text: #2E2A20;
+  --mono: #6A6457;
+  --status-fg: #2E2A20;
+  --heading: #2E2A20;
+  --label: #6A6457;
+  --concept: #6A6457;
+  --name-fg: #2E2A20;
   --core-size: 18px;
-  --core: radial-gradient(circle at 35% 30%, #cfe6ff, #3b82f6 58%, #2563eb);
-  --core-glow: 0 0 22px 5px rgba(77, 140, 255, 0.9);
-  --halo: radial-gradient(circle, rgba(90, 150, 255, 0.6), transparent 70%);
+  --core: #C2452E;
+  --core-glow: none;
+  --halo: none;
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
-  --chip-fg: #9bc0ff;
-  --chip-bg: rgba(77, 140, 255, 0.12);
-  --chip-border: 1px solid rgba(120, 160, 255, 0.4);
-  --avatar-bg: rgba(40, 50, 80, 0.5);
-  --avatar-border: 1px solid rgba(130, 160, 255, 0.35);
-  --avatar-shadow: 0 0 16px rgba(77, 140, 255, 0.28);
-  --avatar-fg: #eaf0ff;
-  --bubble-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.4), rgba(14, 18, 34, 0.46));
-  --bubble-border: 1px solid rgba(150, 184, 255, 0.5);
-  --bubble-shadow: inset 0 1.5px 0 rgba(216, 230, 255, 0.7), 0 0 30px -6px rgba(74, 120, 255, 0.4),
-    0 22px 44px -20px rgba(0, 0, 0, 0.82);
-  --bubble-blur: blur(18px);
-  --bubble-fg: #dce4fa;
-  --user-bg: linear-gradient(140deg, rgba(96, 156, 255, 0.38), rgba(60, 100, 240, 0.3));
-  --user-border: 1px solid rgba(140, 175, 255, 0.55);
-  --user-fg: #edf2ff;
-  --card-bg: linear-gradient(150deg, rgba(48, 60, 100, 0.42), rgba(12, 16, 32, 0.5));
-  --card-border: 1px solid rgba(158, 192, 255, 0.58);
-  --card-shadow: inset 0 1.5px 0 rgba(226, 238, 255, 0.85), inset 0 0 26px rgba(90, 150, 255, 0.16),
-    inset 0 -20px 34px -16px rgba(255, 150, 90, 0.3), 0 0 44px -2px rgba(74, 120, 255, 0.5),
-    0 44px 80px -26px rgba(0, 0, 0, 0.92);
-  --card-blur: blur(24px);
+  --chip-fg: #2E2A20;
+  --chip-bg: rgba(194, 69, 46, 0.24);
+  --chip-border: 1px solid rgba(46, 42, 32, 0.22);
+  --avatar-bg: #F5EBD5;
+  --avatar-border: 1px solid rgba(255, 252, 244, 0.7);
+  --avatar-shadow: none;
+  --avatar-fg: #A5341F;
+  --bubble-bg: #F5EBD5;
+  --bubble-border: 1px solid rgba(255, 252, 244, 0.7);
+  --bubble-shadow: none;
+  --bubble-blur: none;
+  --bubble-fg: #4A4234;
+  --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
+  --user-border: none;
+  --user-fg: #FBEEE6;
+  --card-bg: #F5EBD5;
+  --card-border: 1px solid rgba(255, 252, 244, 0.7);
+  --card-shadow: none;
+  --card-blur: none;
   --amount-size: 46px;
-  --amount-fg: #ffffff;
-  --amount-sign: #5aa0ff;
-  --badge-fg: #ffc98a;
-  --badge-bg: rgba(255, 170, 80, 0.14);
-  --badge-border: 1px solid rgba(255, 170, 80, 0.42);
-  --btn-bg: linear-gradient(120deg, #4a93ff, #2a5fe0);
-  --btn-fg: #ffffff;
-  --btn-shadow: 0 12px 30px -8px rgba(77, 140, 255, 0.7);
-  --cancel-fg: #a9b6d8;
-  --cancel-bg: rgba(255, 255, 255, 0.04);
-  --cancel-border: 1px solid rgba(130, 150, 200, 0.26);
+  --amount-fg: #2E2A20;
+  --amount-sign: #A5341F;
+  --badge-fg: #C6952E;
+  --badge-bg: rgba(198, 149, 46, 0.14);
+  --badge-border: 1px solid rgba(198, 149, 46, 0.4);
+  --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --btn-fg: #FBF3E2;
+  --btn-shadow: none;
+  --cancel-fg: #6A6457;
+  --cancel-bg: transparent;
+  --cancel-border: 1px solid rgba(46, 42, 32, 0.22);
   --cancel-shadow: none;
-  --send-bg: linear-gradient(140deg, #4a93ff, #2a5fe0);
-  --send-fg: #ffffff;
-  --input-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.42), rgba(14, 18, 34, 0.48));
-  --input-border: 1px solid rgba(156, 190, 255, 0.54);
-  --input-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.72), 0 0 38px -6px rgba(74, 120, 255, 0.52),
-    0 20px 40px -20px rgba(0, 0, 0, 0.8);
-  --input-blur: blur(18px);
-  --input-fg: #8fa0c8;
-  --tab-active: #eaf0ff;
-  --tab-inactive: #5e6b8c;
-  --tab-border: 1px solid rgba(130, 160, 255, 0.14);
-  --nav-bg: rgba(18, 24, 46, 0.52);
-  --nav-border: rgba(130, 160, 255, 0.3);
-  --tile-bg: linear-gradient(150deg, rgba(46, 58, 96, 0.4), rgba(12, 16, 30, 0.48));
-  --tile-border: 1px solid rgba(156, 190, 255, 0.54);
-  --tile-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.75), inset 0 -16px 26px -14px rgba(255, 150, 90, 0.24),
-    0 0 36px -4px rgba(74, 120, 255, 0.46), 0 34px 60px -24px rgba(0, 0, 0, 0.88);
-  --tile-blur: blur(20px);
-  --ok-fg: #34e5a0;
-  --ok-bg: rgba(52, 229, 160, 0.14);
-  --ok-border: 1px solid rgba(52, 229, 160, 0.42);
-  --danger-fg: #ff8fa0;
-  --danger-bg: rgba(255, 90, 120, 0.14);
-  --danger-border: 1px solid rgba(255, 110, 130, 0.46);
-  --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
-  --danger-btn-fg: #2e0810;
-  --row-border: 1px solid rgba(130, 160, 255, 0.12);
-  /* Fondo del ítem de rail ACTIVO en el shell de escritorio (DESIGN-SYSTEM-EXTRACT-WEB.md §2.2) —
-     nuevo token, sin equivalente mobile (el rail no existe ahí). Base = mismo valor que el tema
-     `ai` (default), igual criterio que el resto de este bloque `:root` sin `data-theme`. */
-  --nav-active: rgba(96, 156, 255, 0.18);
+  --send-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --send-fg: #FBF3E2;
+  --input-bg: #FAF7EC;
+  --input-border: 1px solid rgba(46, 42, 32, 0.12);
+  --input-shadow: none;
+  --input-blur: none;
+  --input-fg: #6A6457;
+  --tab-active: #2E2A20;
+  --tab-inactive: #6A6457;
+  --tab-border: 1px solid rgba(46, 42, 32, 0.1);
+  --nav-bg: #F5EBD5;
+  --nav-border: rgba(255, 252, 244, 0.7);
+  --tile-bg: #F5EBD5;
+  --tile-border: 1px solid rgba(255, 252, 244, 0.7);
+  --tile-shadow: none;
+  --tile-blur: none;
+  --ok-fg: #3C8069;
+  --ok-bg: rgba(60, 128, 105, 0.14);
+  --ok-border: 1px solid rgba(60, 128, 105, 0.4);
+  --danger-fg: #c7455a;
+  --danger-bg: rgba(199, 69, 90, 0.1);
+  --danger-border: 1px solid rgba(199, 69, 90, 0.45);
+  --danger-btn-bg: #c7455a;
+  --danger-btn-fg: #F5EBD5;
+  --row-border: 1px solid rgba(46, 42, 32, 0.1);
+  --nav-active: rgba(194, 69, 46, 0.18);
+  --scrollbar-thumb: rgba(194, 69, 46, 0.24);
+  --scrollbar-thumb-hover: rgba(194, 69, 46, 0.44);
 
-  /* Colores de marca hardcodeados — iguales en los 4 temas, fuera del sistema de tokens
-     (un ícono de marca -Mercado Pago/Gmail/Calendar/HubSpot/Drive/Instagram- no se retematiza). */
+  /* Colores de marca hardcodeados — iguales en las 3 pieles, fuera del sistema de tokens (un
+     ícono de marca -Mercado Pago/Gmail/Calendar/HubSpot/Drive/Instagram- no se retematiza). Sin
+     cambios respecto de los 4 temas anteriores: no dependen del acento ni del lienzo. */
   --brand-mercadopago: linear-gradient(150deg, #00b7ea, #009ee3);
   --brand-google-blue: #4285f4;
   --brand-gmail-red: #ea4335;
@@ -109,363 +120,292 @@
   --brand-drive-yellow: #ffcd40;
   --brand-drive-blue: #4285f4;
 
-  /* Swatches del selector de "Skin" en el rail de escritorio (EXTRACT §2.4) — colores de
-     IDENTIDAD de cada tema, fijos entre los 4 temas por diseño (mismo criterio que --brand-* de
-     arriba): el rail muestra los 4 de una sola vez como preview, así que no pueden ser
-     theme-aware (no hay "el" valor reactivo de un tema que no es el activo). */
-  --skin-preview-aurora: linear-gradient(150deg, #c6a5ff, #7c5cff);
-  --skin-preview-daylight: linear-gradient(150deg, #e7e7f1, #8b82ff);
-  --skin-preview-refined: linear-gradient(150deg, #1b2440, #5ee0ff);
-  --skin-preview-ai: linear-gradient(150deg, #4a93ff, #2a5fe0);
+  /* Swatches del selector de "Skin" en el rail de escritorio — lienzo de cada piel (§2.1/§2.2/§2.8
+     del DoD), literal y fijo (no theme-aware por diseño: el rail muestra las 3 a la vez). */
+  --skin-preview-claro: #EFE6D2;
+  --skin-preview-oscuro: #1E1610;
+  --skin-preview-nocturno: #0C0805;
 
   /* Scrollbar glass, theme-aware (consumido por la regla global en global.css): thumb translúcido
-     con el tinte de la paleta, track transparente. Fallback `:root` = mismo valor que el tema `ai`. */
-  --scrollbar-thumb: rgba(156, 190, 255, 0.24);
-  --scrollbar-thumb-hover: rgba(156, 190, 255, 0.44);
+     con el acento, track transparente. Fallback `:root` = mismo valor que `claro` (default). */
 }
 
-/* aurora — Aurora Glass (violeta sobre fondo oscuro, vidrio esmerilado) */
-:root[data-theme='aurora'] {
-  --bg: #0d0a20;
-  --bg-layer: radial-gradient(120% 60% at 20% -5%, rgba(124, 92, 255, 0.55), transparent 60%),
-    radial-gradient(90% 50% at 100% 8%, rgba(199, 74, 255, 0.4), transparent 55%),
-    radial-gradient(80% 40% at 50% 108%, rgba(74, 120, 255, 0.35), transparent 60%);
-  --text: #f4f1ff;
-  --mono: #9f90d8;
-  --status-fg: #edebff;
-  --heading: #f4f1ff;
-  --label: #8e7fc4;
-  --concept: #a99ad8;
-  --name-fg: #f4f1ff;
-  --core-size: 20px;
-  --core: linear-gradient(150deg, #c6a5ff, #7c5cff);
-  --core-glow: 0 0 18px 3px rgba(140, 100, 255, 0.85);
-  --halo: radial-gradient(circle, rgba(160, 120, 255, 0.6), transparent 70%);
-  --presence-wrap-bg: transparent;
-  --presence-wrap-shadow: none;
-  --chip-fg: #b9a9ff;
-  --chip-bg: transparent;
-  --chip-border: 1px solid rgba(185, 169, 255, 0.35);
-  --avatar-bg: rgba(255, 255, 255, 0.1);
-  --avatar-border: 1px solid rgba(255, 255, 255, 0.16);
-  --avatar-shadow: none;
-  --avatar-fg: #edebff;
-  --bubble-bg: rgba(255, 255, 255, 0.08);
-  --bubble-border: 1px solid rgba(255, 255, 255, 0.1);
-  --bubble-shadow: none;
-  --bubble-blur: blur(14px);
-  --bubble-fg: #e8e4fb;
-  --user-bg: linear-gradient(140deg, rgba(160, 120, 255, 0.35), rgba(124, 92, 255, 0.22));
-  --user-border: 1px solid rgba(160, 120, 255, 0.4);
-  --user-fg: #f1ecff;
-  --card-bg: linear-gradient(165deg, rgba(38, 28, 74, 0.92), rgba(22, 16, 46, 0.96));
-  --card-border: 1px solid rgba(199, 165, 255, 0.28);
-  --card-shadow: 0 24px 50px -18px rgba(90, 50, 190, 0.7);
-  --card-blur: blur(20px);
-  --amount-size: 44px;
-  --amount-fg: #fff;
-  --amount-sign: #b9a9ff;
-  --badge-fg: #ffc98a;
-  --badge-bg: rgba(255, 180, 90, 0.14);
-  --badge-border: 1px solid rgba(255, 180, 90, 0.3);
-  --btn-bg: linear-gradient(120deg, #c6a5ff, #8c6bff);
-  --btn-fg: #1a0e3d;
-  --btn-shadow: 0 12px 26px -8px rgba(140, 100, 255, 0.75);
-  --cancel-fg: #c9beea;
-  --cancel-bg: transparent;
-  --cancel-border: 1px solid rgba(255, 255, 255, 0.14);
-  --cancel-shadow: none;
-  --send-bg: linear-gradient(140deg, #c6a5ff, #7c5cff);
-  --send-fg: #20114a;
-  --input-bg: rgba(255, 255, 255, 0.08);
-  --input-border: 1px solid rgba(255, 255, 255, 0.14);
-  --input-shadow: none;
-  --input-blur: blur(14px);
-  --input-fg: #8e7fc4;
-  --tab-active: #edebff;
-  --tab-inactive: #786ba6;
-  --tab-border: 1px solid rgba(255, 255, 255, 0.06);
-  --nav-bg: rgba(28, 20, 54, 0.55);
-  --nav-border: rgba(200, 180, 255, 0.2);
-  --tile-bg: rgba(255, 255, 255, 0.06);
-  --tile-border: 1px solid rgba(255, 255, 255, 0.1);
-  --tile-shadow: none;
-  --tile-blur: blur(12px);
-  --ok-fg: #8ce8b4;
-  --ok-bg: rgba(90, 220, 150, 0.16);
-  --ok-border: 1px solid rgba(90, 220, 150, 0.32);
-  --danger-fg: #ff9aaa;
-  --danger-bg: rgba(255, 90, 120, 0.14);
-  --danger-border: 1px solid rgba(255, 90, 120, 0.32);
-  --danger-btn-bg: linear-gradient(120deg, #ff9aaa, #ff6b85);
-  --danger-btn-fg: #3a0a14;
-  --row-border: 1px solid rgba(255, 255, 255, 0.07);
-  --nav-active: rgba(255, 255, 255, 0.09);
-  --scrollbar-thumb: rgba(199, 165, 255, 0.26);
-  --scrollbar-thumb-hover: rgba(199, 165, 255, 0.46);
-}
-
-/* daylight — Soft Daylight (neomorfismo lavanda, claro) */
-:root[data-theme='daylight'] {
-  --bg: #e7e7f1;
+/* claro — piel default de ODOBI (§2.1 del DoD, crema + acento terracota) */
+:root[data-theme='claro'] {
+  --bg: #EFE6D2;
   --bg-layer: none;
-  --text: #2a2a3e;
-  /* --mono se apartó del verbatim #8888a0 (2.81:1 sobre --bg) por AA — oscurecido a #65657f
-     (4.6:1), mismo hue/sat (240°/11%), solo -14.5pp de lightness. */
-  --mono: #65657f;
-  --status-fg: #41415a;
-  --heading: #2a2a3e;
-  /* --label se apartó del verbatim #9a9ab4 (2.23:1) por AA — oscurecido a #646487 (4.6:1),
-     mismo hue/sat (240°/15%), solo -20.8pp de lightness (era el token más comprometido). */
-  --label: #646487;
-  /* --concept se apartó del verbatim #7a7a92 (3.4:1) por AA — oscurecido a #66667c (4.55:1),
-     mismo hue/sat (240°/10%), solo -9.6pp de lightness. */
-  --concept: #66667c;
-  --name-fg: #2a2a3e;
-  --core-size: 16px;
-  --core: linear-gradient(150deg, #8b82ff, #5b4ae0);
-  --core-glow: 0 0 14px 2px rgba(99, 91, 255, 0.6);
-  --halo: radial-gradient(circle, rgba(99, 91, 255, 0.35), transparent 70%);
-  --presence-wrap-bg: #e7e7f1;
-  --presence-wrap-shadow: 6px 6px 12px #c6c6d6, -6px -6px 12px #ffffff;
-  /* --chip-fg se apartó del verbatim #6b62c4 por AA. Ojo: el chip se pinta sobre --chip-bg
-     (#dedeec, un poco más oscuro que --bg), no sobre --bg — contra la superficie REAL el
-     verbatim daba 3.78:1 (peor que el 4.1:1 medido contra --bg). Oscurecido a #5c52be
-     (4.63:1 vs --chip-bg real · 5.02:1 vs --bg), mismo tinte azul-violeta (245°/45%),
-     -4.3pp de lightness. */
-  --chip-fg: #5c52be;
-  --chip-bg: #dedeec;
-  --chip-border: none;
-  --avatar-bg: #e7e7f1;
-  --avatar-border: none;
-  --avatar-shadow: 5px 5px 10px #c6c6d6, -5px -5px 10px #ffffff;
-  --avatar-fg: #5b4ae0;
-  --bubble-bg: #e7e7f1;
-  --bubble-border: none;
-  --bubble-shadow: inset 3px 3px 7px #cacad9, inset -3px -3px 7px #ffffff;
-  --bubble-blur: none;
-  --bubble-fg: #4a4a62;
-  --user-bg: linear-gradient(140deg, #6b5bff, #5b4ae0);
-  --user-border: none;
-  --user-fg: #fff;
-  --card-bg: #e7e7f1;
-  --card-border: none;
-  --card-shadow: 9px 9px 22px #c4c4d6, -9px -9px 22px #ffffff;
-  --card-blur: none;
-  --amount-size: 44px;
-  --amount-fg: #2a2a3e;
-  --amount-sign: #8b82ff;
-  --badge-fg: #c77a2e;
-  --badge-bg: #f2e4d2;
-  --badge-border: none;
-  --btn-bg: linear-gradient(120deg, #6b5bff, #5b4ae0);
-  --btn-fg: #fff;
-  --btn-shadow: 0 12px 24px -8px rgba(91, 74, 224, 0.6);
-  --cancel-fg: #6a6a82;
-  --cancel-bg: #e7e7f1;
-  --cancel-border: none;
-  --cancel-shadow: 4px 4px 9px #c9c9d8, -4px -4px 9px #ffffff;
-  --send-bg: linear-gradient(140deg, #6b5bff, #5b4ae0);
-  --send-fg: #fff;
-  --input-bg: #e7e7f1;
-  --input-border: none;
-  --input-shadow: inset 3px 3px 7px #cacad9, inset -3px -3px 7px #ffffff;
-  --input-blur: none;
-  --input-fg: #9494ac;
-  --tab-active: #5b4ae0;
-  --tab-inactive: #9a9ab4;
-  --tab-border: none;
-  --nav-bg: rgba(238, 238, 247, 0.6);
-  --nav-border: rgba(255, 255, 255, 0.75);
-  --tile-bg: #e7e7f1;
-  --tile-border: none;
-  --tile-shadow: 6px 6px 14px #c7c7d6, -6px -6px 14px #ffffff;
-  --tile-blur: none;
-  --ok-fg: #2e9e68;
-  --ok-bg: #d8eee1;
-  --ok-border: none;
-  --danger-fg: #c7455a;
-  --danger-bg: #f3d9de;
-  --danger-border: none;
-  --danger-btn-bg: linear-gradient(120deg, #e4667a, #c7455a);
-  --danger-btn-fg: #fff;
-  --row-border: 1px solid rgba(0, 0, 0, 0.06);
-  --nav-active: rgba(91, 74, 224, 0.12);
-  /* daylight es tema CLARO (--bg #e7e7f1): thumb violeta (--user acento) para que se vea sobre el
-     fondo lavanda, no un translúcido claro que quedaría invisible. */
-  --scrollbar-thumb: rgba(91, 74, 224, 0.3);
-  --scrollbar-thumb-hover: rgba(91, 74, 224, 0.52);
-}
-
-/* refined — Refined Dark (editorial, negro neutro, acento aqua) */
-:root[data-theme='refined'] {
-  --bg: #0b0c0f;
-  --bg-layer: radial-gradient(90% 40% at 50% -8%, rgba(74, 216, 255, 0.1), transparent 60%);
-  --text: #f5f6f8;
-  /* --mono se apartó del verbatim #6e7480 (4.17:1 sobre --bg) por AA — aclarado a #747b88
-     (4.59:1), mismo hue/sat (~220°/8%), solo +3.9pp de lightness. */
-  --mono: #747b88;
-  --status-fg: #edeef2;
-  --heading: #f5f6f8;
-  /* --label se apartó del verbatim #5d636e (3.24:1) por AA — aclarado a #747c89 (4.65:1),
-     mismo hue/sat (~219°/8%), +11pp de lightness (era el token más comprometido; converge cerca
-     de --mono porque ambos deben superar el mismo piso AA con hue/sat casi idénticos). */
-  --label: #747c89;
-  --concept: #8b909b;
-  --name-fg: #f5f6f8;
-  --core-size: 14px;
-  --core: #5ee0ff;
-  --core-glow: 0 0 16px 3px rgba(74, 216, 255, 0.9);
-  --halo: radial-gradient(circle, rgba(74, 216, 255, 0.5), transparent 70%);
+  --text: #2E2A20;
+  /* Texto secundario/terciario del DoD (`rgba(46,42,32,.55)`/`.42`) dan 3.2:1/2.3:1 contra `--bg`
+     — bajo AA. Mismo rgb, alfa subido a `.69` (mínimo matemático .673 + margen) hasta 4.72:1; sin
+     margen para 2 niveles distintos bajo AA en este lienzo, así que `--mono`/`--label`/`--concept`
+     comparten el mismo valor acá (sí se distinguen en `oscuro`/`nocturno`, donde el declarado
+     alcanza para 2 niveles). */
+  --mono: #6A6457;
+  --status-fg: #2E2A20;
+  --heading: #2E2A20;
+  --label: #6A6457;
+  --concept: #6A6457;
+  --name-fg: #2E2A20;
+  --core-size: 18px;
+  /* El "orb" de presencia de IA (glow radial + halo) es del rediseño anterior — Mariposas no lo
+     trae, y "sin glass" (§1.3) retira los efectos ambiente. `--core` queda como punto sólido del
+     acento; `--core-glow`/`--halo` van a `none` en vez de inventar un glow cálido nuevo. */
+  --core: #C2452E;
+  --core-glow: none;
+  --halo: none;
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
-  --chip-fg: #79e4ff;
-  --chip-bg: transparent;
-  --chip-border: 1px solid rgba(94, 224, 255, 0.3);
-  --avatar-bg: #17191e;
-  --avatar-border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Chip: sin declaración propia en el DoD — se reusa el tinte de "Nav activo"
+     (`rgba(194,69,46,.24)`, §2.1) como fondo y el texto principal como fg (el acento sobre este
+     fondo pastel no llega a 4.5:1 — verificado, 3.97:1 — el texto principal sí, 8.4:1). */
+  --chip-fg: #2E2A20;
+  --chip-bg: rgba(194, 69, 46, 0.24);
+  --chip-border: 1px solid rgba(46, 42, 32, 0.22);
+  /* Avatar/burbuja/card/nav/tile comparten la superficie aplanada (§2.3: `#F5EBD5`) y su borde
+     declarado (`rgba(255,252,244,.7)`, §2.1) — es la misma "superficie" del DoD en sus distintos
+     usos, no fondos inventados por componente. */
+  --avatar-bg: #F5EBD5;
+  --avatar-border: 1px solid rgba(255, 252, 244, 0.7);
   --avatar-shadow: none;
-  --avatar-fg: #edeef2;
-  --bubble-bg: transparent;
-  --bubble-border: none;
+  --avatar-fg: #A5341F;
+  /* "Texto en burbuja" (§2.1) — distinto de "texto sobre acento": esta es la burbuja RECIBIDA
+     (sobre superficie), no la del usuario (sobre acento, ver `--user-fg`). */
+  --bubble-bg: #F5EBD5;
+  --bubble-border: 1px solid rgba(255, 252, 244, 0.7);
   --bubble-shadow: none;
   --bubble-blur: none;
-  --bubble-fg: #c3c7cf;
-  --user-bg: rgba(94, 224, 255, 0.12);
-  --user-border: 1px solid rgba(94, 224, 255, 0.22);
-  --user-fg: #ddf6ff;
-  --card-bg: #131519;
-  --card-border: 1px solid rgba(255, 255, 255, 0.07);
-  --card-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.8);
+  --bubble-fg: #4A4234;
+  /* Burbuja del usuario = "Acento (superficie)" del DoD (§2.1: "botones, burbuja del usuario, FAB
+     de voz"), sólida — no rgba, "sin glass" es opaco. */
+  --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
+  --user-border: none;
+  --user-fg: #FBEEE6;
+  --card-bg: #F5EBD5;
+  --card-border: 1px solid rgba(255, 252, 244, 0.7);
+  --card-shadow: none;
   --card-blur: none;
-  --amount-size: 50px;
-  --amount-fg: #fff;
-  --amount-sign: #5d636e;
-  --badge-fg: #e0a45e;
-  --badge-bg: transparent;
-  --badge-border: 1px solid rgba(224, 164, 94, 0.3);
-  --btn-bg: #5ee0ff;
-  --btn-fg: #04252e;
-  --btn-shadow: 0 10px 28px -8px rgba(94, 224, 255, 0.5);
-  --cancel-fg: #9aa0ab;
+  --amount-size: 46px;
+  --amount-fg: #2E2A20;
+  --amount-sign: #A5341F;
+  /* Badge reusa "Advertencia / ondas" (`#C6952E`, §2.1) — único color de advertencia declarado. */
+  --badge-fg: #C6952E;
+  --badge-bg: rgba(198, 149, 46, 0.14);
+  --badge-border: 1px solid rgba(198, 149, 46, 0.4);
+  /* "Acento confirmar" del DoD (§2.1) — variante del acento para el botón primario. */
+  --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --btn-fg: #FBF3E2;
+  --btn-shadow: none;
+  --cancel-fg: #6A6457;
   --cancel-bg: transparent;
-  --cancel-border: 1px solid rgba(255, 255, 255, 0.1);
+  /* "Borde fuerte" del DoD (§2.1) — declarado explícitamente para "botón secundario". */
+  --cancel-border: 1px solid rgba(46, 42, 32, 0.22);
   --cancel-shadow: none;
-  --send-bg: #5ee0ff;
-  --send-fg: #04252e;
-  --input-bg: #131519;
-  --input-border: 1px solid rgba(255, 255, 255, 0.08);
+  --send-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --send-fg: #FBF3E2;
+  /* Campo aplanado (§2.3) + "Borde de campo" (§2.1, `rgba(46,42,32,.12)` — distinto del borde de
+     superficie). */
+  --input-bg: #FAF7EC;
+  --input-border: 1px solid rgba(46, 42, 32, 0.12);
   --input-shadow: none;
   --input-blur: none;
-  --input-fg: #6e7480;
-  --tab-active: #f5f6f8;
-  --tab-inactive: #5d636e;
-  --tab-border: 1px solid rgba(255, 255, 255, 0.05);
-  --nav-bg: rgba(16, 18, 23, 0.6);
-  --nav-border: rgba(255, 255, 255, 0.09);
-  --tile-bg: #131519;
-  --tile-border: 1px solid rgba(255, 255, 255, 0.06);
+  --input-fg: #6A6457;
+  --tab-active: #2E2A20;
+  --tab-inactive: #6A6457;
+  /* "Borde sutil / barra vacía" del DoD (§2.1) — separadores. */
+  --tab-border: 1px solid rgba(46, 42, 32, 0.1);
+  --nav-bg: #F5EBD5;
+  --nav-border: rgba(255, 252, 244, 0.7);
+  --tile-bg: #F5EBD5;
+  --tile-border: 1px solid rgba(255, 252, 244, 0.7);
   --tile-shadow: none;
   --tile-blur: none;
-  --ok-fg: #5ee0a0;
-  --ok-bg: transparent;
-  --ok-border: 1px solid rgba(94, 224, 160, 0.3);
-  --danger-fg: #ff8090;
-  --danger-bg: transparent;
-  --danger-border: 1px solid rgba(255, 110, 130, 0.32);
-  --danger-btn-bg: #ff8090;
-  --danger-btn-fg: #2e0810;
-  --row-border: 1px solid rgba(255, 255, 255, 0.05);
-  --nav-active: rgba(94, 224, 255, 0.1);
-  /* refined es neutro: thumb gris frío en reposo, tinte aqua (--core) al hover. */
-  --scrollbar-thumb: rgba(160, 172, 190, 0.26);
-  --scrollbar-thumb-hover: rgba(94, 224, 255, 0.44);
+  /* Éxito con valor propio en el DoD (§2.1: `#3C8069`, fondo `rgba(60,128,105,.3)` — bajado a
+     `.14`/borde `.4` para que "caja" no tape el texto que pueda ir adentro, mismo patrón que el
+     resto de los semánticos de este archivo). */
+  --ok-fg: #3C8069;
+  --ok-bg: rgba(60, 128, 105, 0.14);
+  --ok-border: 1px solid rgba(60, 128, 105, 0.4);
+  /* Peligro NO tiene valor propio en el DoD de ODOBI — se reusa el par ya validado de
+     `SEMANTICOS_CLARO` (`apps/mobile/src/theme/tokens.ts`), calibrado para AA en su momento. */
+  --danger-fg: #c7455a;
+  --danger-bg: rgba(199, 69, 90, 0.1);
+  --danger-border: 1px solid rgba(199, 69, 90, 0.45);
+  --danger-btn-bg: #c7455a;
+  --danger-btn-fg: #F5EBD5;
+  --row-border: 1px solid rgba(46, 42, 32, 0.1);
+  /* "Nav activo" del DoD es un gradiente + inset (§2.1) — ese nivel de relieve es hito 2. Acá un
+     tinte plano del mismo acento/alfa, mismo criterio que el resto de este archivo para roles de
+     relieve no cubiertos por este hito. */
+  --nav-active: rgba(194, 69, 46, 0.18);
+  --scrollbar-thumb: rgba(194, 69, 46, 0.24);
+  --scrollbar-thumb-hover: rgba(194, 69, 46, 0.44);
 }
 
-/* ai — Tema AI (default; azul profundo + glow multicolor + "edge highlight" tipo vidrio) */
-:root[data-theme='ai'] {
-  --bg: #020308;
-  --bg-layer: radial-gradient(46% 36% at 50% 42%, rgba(72, 130, 255, 0.36), transparent 62%),
-    radial-gradient(40% 30% at 14% 14%, rgba(96, 146, 255, 0.18), transparent 60%),
-    radial-gradient(46% 36% at 88% 86%, rgba(255, 142, 80, 0.15), transparent 60%),
-    radial-gradient(42% 36% at 86% 18%, rgba(150, 110, 255, 0.16), transparent 60%),
-    radial-gradient(130% 92% at 50% 45%, transparent 54%, rgba(0, 0, 0, 0.58));
-  --text: #f2f5ff;
-  --mono: #8fa0c8;
-  --status-fg: #eaf0ff;
-  --heading: #f5f8ff;
-  --label: #8fa0c8;
-  --concept: #9fb0d8;
-  --name-fg: #f5f8ff;
+/* oscuro — §2.2 del DoD */
+:root[data-theme='oscuro'] {
+  --bg: #1E1610;
+  --bg-layer: none;
+  --text: #F1E4CC;
+  /* Secundario declarado (`.55`) ya pasa AA (5.07:1) — sin ajustar. Terciario declarado (`.42`)
+     da 3.49:1 — se sube a `.53` (4.80:1). A diferencia de `claro`, acá SÍ hay margen para 2
+     niveles distintos bajo AA. */
+  --mono: #928777;
+  --status-fg: #F1E4CC;
+  --heading: #F1E4CC;
+  --label: #928777;
+  --concept: #8E8374;
+  --name-fg: #F1E4CC;
   --core-size: 18px;
-  --core: radial-gradient(circle at 35% 30%, #cfe6ff, #3b82f6 58%, #2563eb);
-  --core-glow: 0 0 22px 5px rgba(77, 140, 255, 0.9);
-  --halo: radial-gradient(circle, rgba(90, 150, 255, 0.6), transparent 70%);
+  --core: #C2452E;
+  --core-glow: none;
+  --halo: none;
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
-  --chip-fg: #9bc0ff;
-  --chip-bg: rgba(77, 140, 255, 0.12);
-  --chip-border: 1px solid rgba(120, 160, 255, 0.4);
-  --avatar-bg: rgba(40, 50, 80, 0.5);
-  --avatar-border: 1px solid rgba(130, 160, 255, 0.35);
-  --avatar-shadow: 0 0 16px rgba(77, 140, 255, 0.28);
-  --avatar-fg: #eaf0ff;
-  --bubble-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.4), rgba(14, 18, 34, 0.46));
-  --bubble-border: 1px solid rgba(150, 184, 255, 0.5);
-  --bubble-shadow: inset 0 1.5px 0 rgba(216, 230, 255, 0.7), 0 0 30px -6px rgba(74, 120, 255, 0.4),
-    0 22px 44px -20px rgba(0, 0, 0, 0.82);
-  --bubble-blur: blur(18px);
-  --bubble-fg: #dce4fa;
-  --user-bg: linear-gradient(140deg, rgba(96, 156, 255, 0.38), rgba(60, 100, 240, 0.3));
-  --user-border: 1px solid rgba(140, 175, 255, 0.55);
-  --user-fg: #edf2ff;
-  --card-bg: linear-gradient(150deg, rgba(48, 60, 100, 0.42), rgba(12, 16, 32, 0.5));
-  --card-border: 1px solid rgba(158, 192, 255, 0.58);
-  --card-shadow: inset 0 1.5px 0 rgba(226, 238, 255, 0.85), inset 0 0 26px rgba(90, 150, 255, 0.16),
-    inset 0 -20px 34px -16px rgba(255, 150, 90, 0.3), 0 0 44px -2px rgba(74, 120, 255, 0.5),
-    0 44px 80px -26px rgba(0, 0, 0, 0.92);
-  --card-blur: blur(24px);
+  --chip-fg: #E67A5E;
+  --chip-bg: rgba(194, 69, 46, 0.24);
+  --chip-border: 1px solid rgba(241, 228, 204, 0.22);
+  --avatar-bg: #251B11;
+  --avatar-border: 1px solid rgba(241, 228, 204, 0.14);
+  --avatar-shadow: none;
+  --avatar-fg: #A5341F;
+  --bubble-bg: #251B11;
+  --bubble-border: 1px solid rgba(241, 228, 204, 0.14);
+  --bubble-shadow: none;
+  --bubble-blur: none;
+  --bubble-fg: #D8C6A8;
+  --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
+  --user-border: none;
+  --user-fg: #FBEEE6;
+  --card-bg: #251B11;
+  --card-border: 1px solid rgba(241, 228, 204, 0.14);
+  --card-shadow: none;
+  --card-blur: none;
   --amount-size: 46px;
-  --amount-fg: #ffffff;
-  --amount-sign: #5aa0ff;
-  --badge-fg: #ffc98a;
-  --badge-bg: rgba(255, 170, 80, 0.14);
-  --badge-border: 1px solid rgba(255, 170, 80, 0.42);
-  --btn-bg: linear-gradient(120deg, #4a93ff, #2a5fe0);
-  --btn-fg: #ffffff;
-  --btn-shadow: 0 12px 30px -8px rgba(77, 140, 255, 0.7);
-  --cancel-fg: #a9b6d8;
-  --cancel-bg: rgba(255, 255, 255, 0.04);
-  --cancel-border: 1px solid rgba(130, 150, 200, 0.26);
+  --amount-fg: #F1E4CC;
+  --amount-sign: #A5341F;
+  --badge-fg: #C6952E;
+  --badge-bg: rgba(198, 149, 46, 0.14);
+  --badge-border: 1px solid rgba(198, 149, 46, 0.4);
+  --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --btn-fg: #FBF3E2;
+  --btn-shadow: none;
+  --cancel-fg: #928777;
+  --cancel-bg: transparent;
+  --cancel-border: 1px solid rgba(241, 228, 204, 0.22);
   --cancel-shadow: none;
-  --send-bg: linear-gradient(140deg, #4a93ff, #2a5fe0);
-  --send-fg: #ffffff;
-  --input-bg: linear-gradient(150deg, rgba(44, 56, 94, 0.42), rgba(14, 18, 34, 0.48));
-  --input-border: 1px solid rgba(156, 190, 255, 0.54);
-  --input-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.72), 0 0 38px -6px rgba(74, 120, 255, 0.52),
-    0 20px 40px -20px rgba(0, 0, 0, 0.8);
-  --input-blur: blur(18px);
-  --input-fg: #8fa0c8;
-  --tab-active: #eaf0ff;
-  --tab-inactive: #5e6b8c;
-  --tab-border: 1px solid rgba(130, 160, 255, 0.14);
-  --nav-bg: rgba(18, 24, 46, 0.52);
-  --nav-border: rgba(130, 160, 255, 0.3);
-  --tile-bg: linear-gradient(150deg, rgba(46, 58, 96, 0.4), rgba(12, 16, 30, 0.48));
-  --tile-border: 1px solid rgba(156, 190, 255, 0.54);
-  --tile-shadow: inset 0 1.5px 0 rgba(222, 234, 255, 0.75), inset 0 -16px 26px -14px rgba(255, 150, 90, 0.24),
-    0 0 36px -4px rgba(74, 120, 255, 0.46), 0 34px 60px -24px rgba(0, 0, 0, 0.88);
-  --tile-blur: blur(20px);
+  --send-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --send-fg: #FBF3E2;
+  --input-bg: #1B120B;
+  --input-border: 1px solid rgba(241, 228, 204, 0.14);
+  --input-shadow: none;
+  --input-blur: none;
+  --input-fg: #928777;
+  --tab-active: #F1E4CC;
+  --tab-inactive: #928777;
+  --tab-border: 1px solid rgba(241, 228, 204, 0.1);
+  --nav-bg: #251B11;
+  --nav-border: rgba(241, 228, 204, 0.14);
+  --tile-bg: #251B11;
+  --tile-border: 1px solid rgba(241, 228, 204, 0.14);
+  --tile-shadow: none;
+  --tile-blur: none;
+  /* Ni éxito ni peligro tienen valor propio en el DoD para `oscuro` — se reusa el par de
+     `SEMANTICOS_OSCURO` (`apps/mobile/src/theme/tokens.ts`), con margen amplio sobre AA (≥8:1). */
   --ok-fg: #34e5a0;
   --ok-bg: rgba(52, 229, 160, 0.14);
   --ok-border: 1px solid rgba(52, 229, 160, 0.42);
   --danger-fg: #ff8fa0;
   --danger-bg: rgba(255, 90, 120, 0.14);
   --danger-border: 1px solid rgba(255, 110, 130, 0.46);
-  --danger-btn-bg: linear-gradient(120deg, #ff7a90, #f0455f);
+  --danger-btn-bg: #ff8fa0;
   --danger-btn-fg: #2e0810;
-  --row-border: 1px solid rgba(130, 160, 255, 0.12);
-  --nav-active: rgba(96, 156, 255, 0.18);
-  --scrollbar-thumb: rgba(156, 190, 255, 0.24);
-  --scrollbar-thumb-hover: rgba(156, 190, 255, 0.44);
+  --row-border: 1px solid rgba(241, 228, 204, 0.1);
+  --nav-active: rgba(194, 69, 46, 0.18);
+  --scrollbar-thumb: rgba(194, 69, 46, 0.24);
+  --scrollbar-thumb-hover: rgba(194, 69, 46, 0.44);
+}
+
+/* nocturno — §2.8 del DoD, derivado de `oscuro` (monocromo profundo, `[ASSUMED_PENDING_VERIFY]`
+   según el propio DoD: si no convence en device, se ajusta o descarta sin bloquear el sprint). */
+:root[data-theme='nocturno'] {
+  --bg: #0C0805;
+  --bg-layer: none;
+  --text: #F1E4CC;
+  /* Texto/secundario/terciario reusados de `oscuro` (§2.8: "texto idéntico al oscuro"; el DoD no
+     declara secundario/terciario propios para nocturno) — con el fondo más oscuro de esta piel
+     dan AÚN más contraste, siguen AA sin re-ajustar. */
+  --mono: #928777;
+  --status-fg: #F1E4CC;
+  --heading: #F1E4CC;
+  --label: #928777;
+  --concept: #8E8374;
+  --name-fg: #F1E4CC;
+  --core-size: 18px;
+  --core: #C2452E;
+  --core-glow: none;
+  --halo: none;
+  --presence-wrap-bg: transparent;
+  --presence-wrap-shadow: none;
+  --chip-fg: #E67A5E;
+  --chip-bg: rgba(194, 69, 46, 0.24);
+  --chip-border: 1px solid rgba(241, 228, 204, 0.18);
+  --avatar-bg: #141009;
+  --avatar-border: 1px solid rgba(241, 228, 204, 0.1);
+  --avatar-shadow: none;
+  --avatar-fg: #A5341F;
+  --bubble-bg: #141009;
+  --bubble-border: 1px solid rgba(241, 228, 204, 0.1);
+  --bubble-shadow: none;
+  --bubble-blur: none;
+  --bubble-fg: #D8C6A8;
+  --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
+  --user-border: none;
+  --user-fg: #FBEEE6;
+  --card-bg: #141009;
+  --card-border: 1px solid rgba(241, 228, 204, 0.1);
+  --card-shadow: none;
+  --card-blur: none;
+  --amount-size: 46px;
+  --amount-fg: #F1E4CC;
+  --amount-sign: #A5341F;
+  --badge-fg: #C6952E;
+  --badge-bg: rgba(198, 149, 46, 0.14);
+  --badge-border: 1px solid rgba(198, 149, 46, 0.4);
+  --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --btn-fg: #FBF3E2;
+  --btn-shadow: none;
+  --cancel-fg: #928777;
+  --cancel-bg: transparent;
+  --cancel-border: 1px solid rgba(241, 228, 204, 0.18);
+  --cancel-shadow: none;
+  --send-bg: linear-gradient(150deg, #C2452E, #94301F);
+  --send-fg: #FBF3E2;
+  /* Campo = `rgba(20,13,8,.5)` (mismo rgba de §2.3 que usa `oscuro`) aplanado sobre la superficie
+     PROPIA de nocturno (`#141009`, no la de oscuro) — misma técnica de composición, base distinta. */
+  --input-bg: #140E08;
+  --input-border: 1px solid rgba(241, 228, 204, 0.1);
+  --input-shadow: none;
+  --input-blur: none;
+  --input-fg: #928777;
+  --tab-active: #F1E4CC;
+  --tab-inactive: #928777;
+  --tab-border: 1px solid rgba(241, 228, 204, 0.08);
+  --nav-bg: #141009;
+  --nav-border: rgba(241, 228, 204, 0.1);
+  --tile-bg: #141009;
+  --tile-border: 1px solid rgba(241, 228, 204, 0.1);
+  --tile-shadow: none;
+  --tile-blur: none;
+  --ok-fg: #34e5a0;
+  --ok-bg: rgba(52, 229, 160, 0.14);
+  --ok-border: 1px solid rgba(52, 229, 160, 0.42);
+  --danger-fg: #ff8fa0;
+  --danger-bg: rgba(255, 90, 120, 0.14);
+  --danger-border: 1px solid rgba(255, 110, 130, 0.46);
+  --danger-btn-bg: #ff8fa0;
+  --danger-btn-fg: #2e0810;
+  --row-border: 1px solid rgba(241, 228, 204, 0.08);
+  --nav-active: rgba(194, 69, 46, 0.18);
+  --scrollbar-thumb: rgba(194, 69, 46, 0.24);
+  --scrollbar-thumb-hover: rgba(194, 69, 46, 0.44);
 }

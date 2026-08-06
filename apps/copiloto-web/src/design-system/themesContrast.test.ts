@@ -170,15 +170,14 @@ function extractBlock(css: string, selectorRe: RegExp): string {
   return match[1];
 }
 
-// Los 4 temas del cliente + el fallback `:root` sin `data-theme` (documentado como default `ai`
+// Las 3 pieles ODOBI + el fallback `:root` sin `data-theme` (documentado como default `claro`
 // antes de que ThemeProvider monte — ver comentario en themes.css). Se valida también por
-// separado para que un drift entre el fallback y el tema `ai` real no pase inadvertido.
+// separado para que un drift entre el fallback y el tema `claro` real no pase inadvertido.
 const THEME_BLOCKS: Record<string, RegExp> = {
-  'root-default (fallback ai)': /:root\s*\{([^}]*)\}/,
-  aurora: /:root\[data-theme=['"]aurora['"]\]\s*\{([^}]*)\}/,
-  daylight: /:root\[data-theme=['"]daylight['"]\]\s*\{([^}]*)\}/,
-  refined: /:root\[data-theme=['"]refined['"]\]\s*\{([^}]*)\}/,
-  ai: /:root\[data-theme=['"]ai['"]\]\s*\{([^}]*)\}/,
+  'root-default (fallback claro)': /:root\s*\{([^}]*)\}/,
+  claro: /:root\[data-theme=['"]claro['"]\]\s*\{([^}]*)\}/,
+  oscuro: /:root\[data-theme=['"]oscuro['"]\]\s*\{([^}]*)\}/,
+  nocturno: /:root\[data-theme=['"]nocturno['"]\]\s*\{([^}]*)\}/,
 };
 
 describe('temas — contraste WCAG AA (>=4.5:1) de tokens de texto sobre su superficie real', () => {

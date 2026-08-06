@@ -1,28 +1,38 @@
 /**
  * Los tokens del tema. **La única fuente de color de la app.** Ver el test `temaSinHex`.
  *
- * Los 5 temas (`cian` default, `violeta`, `ambar`, `medicalWhite`, `black`) son el rediseño Z-Depth de
- * DocuMed (panel de vidrio deslizable, ver `docs/Implementacion_Desarrollo/
- * 2026-07-18_PLAN_rediseno-ui-panel-glass.md`), heredado 1:1 vía el port — mapeo directo de las
- * variables `--dm-*` del diseño. En DocuMed reemplazaron una paleta anterior (`documed|aurora|daylight|
- * refined|ai`, ya descartada allá); el copiloto no tuvo esa paleta previa, nace directo con estos 5.
+ * Rebrand ODOBI (2026-08-05, `docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md`): reemplaza
+ * los 5 skins heredados del rediseño Z-Depth de DocuMed (`cian`/`violeta`/`ambar`/`medicalWhite`/
+ * `black`) por 3 pieles con un solo acento terracota — `claro` (default) · `oscuro` · `nocturno`.
+ * Decisión cerrada del sprint (§1.2/§1.3 del DoD): "sin glass, color pleno + relieve" — las
+ * superficies YA NO son vidrio translúcido, son color plano aplanado (§2.3). El shape `Tokens.glass`
+ * (heredado del rediseño anterior) se conserva porque `CristalVidrio.tsx` sigue consumiéndolo este
+ * hito (hito 1 es "sólo colores" — retirar el componente de vidrio es trabajo de un hito posterior);
+ * sus campos se rellenan con valores inertes/neutros (blur 0, sin glows) en vez de inventar un
+ * sistema de vidrio nuevo para un diseño que ya no lo usa.
  *
- * Cada tema define una paleta CRUDA (`PALETAS`, abajo) con los valores tal cual del diseño — 4 son
- * oscuros y comparten una base de vidrio (`BASE_OSCURO`: `s1/s2/bd/hi/pill/chip`), `medicalWhite` y
- * `black` la overridean porque su vidrio es distinto (claro y monocromo respectivamente).
- * `construirTokens` deriva de ahí las DOS superficies que consume el resto de la app:
+ * Cada tema define una paleta CRUDA (`PALETAS`, abajo). `oscuro` y `nocturno` comparten la base de
+ * vidrio oscura (`BASE_OSCURO`); `claro` trae la suya (vidrio claro, mismo criterio que la extinta
+ * `medicalWhite`). `construirTokens` deriva de ahí las DOS superficies que consume el resto de la app:
  *
  * - `color.*` — el shape YA existente (no cambia para no romper los ~20 componentes que lo consumen
  *   por `useTema()`). Derivación, misma técnica que la versión anterior de este archivo:
  *   - `fondo` ← `fondoBase` (directo) · `texto` ← `tx` (directo) · `textoTenue` ← `dim` (directo)
  *   - `acento` ← `accent` (directo) · `acentoTexto` ← `on` (directo)
- *   - `superficie`/`superficieAlta` ← elevation-overlay de Material: blend de `fondoBase` hacia `tx`
- *     al 6% / 12% (`mezclarHex`). No hay superficie plana en un diseño de vidrio; esto usa los DOS
- *     colores que el tema ya eligió, no un tercero inventado.
- *   - `borde` ← el `bd` (rgba del vidrio) aplanado (alpha-composite) sobre `fondoBase` a un sólido —
- *     `Tokens.color` no tiene canal alpha.
- *   - `peligro`/`exito` — semánticos comunes a los 4 temas oscuros (heredados del skin `cian`);
- *     `medicalWhite` usa el par legible-sobre-claro (mismo criterio: es el único tema claro).
+ *   - `superficie`/`superficieAlta` ← **`p.superficie`/`p.superficieAlta` si el tema los declara
+ *     (ODOBI); si no, cae al elevation-overlay de Material** (blend de `fondoBase` hacia `tx` al
+ *     6%/12%, `mezclarHex` — el comportamiento heredado de los 5 skins de vidrio que este rebrand
+ *     reemplaza). El override existe porque el blend-hacia-`tx` sólo puede OSCURECER: en un tema
+ *     oscuro blendear hacia un `tx` claro aclara la superficie (por eso servía ahí), pero en un tema
+ *     CLARO blendear hacia un `tx` oscuro la oscurece — la dirección opuesta a la superficie
+ *     aplanada §2.3 del DoD, que es más CLARA que el fondo. Matemáticamente no hay `fondoBase` válido
+ *     (0-255) que reproduzca `#F5EBD5` vía ese blend — se probó por despeje, el canal R exige
+ *     `fondoBase.r > 255`. `claro`/`oscuro`/`nocturno` declaran el valor exacto de §2.3 y saltean el
+ *     blend; ningún skin sigue dependiendo del blend viejo (los 5 anteriores se borraron con este
+ *     mismo cambio), así que no hay comportamiento previo que romper.
+ *   - `peligro`/`exito` — semánticos reusados sin cambio de `SEMANTICOS_CLARO`/`SEMANTICOS_OSCURO`
+ *     (no están en el DoD de ODOBI; no hay WCAG gate en mobile que los ejercite, así que reusar el
+ *     par ya validado es preferible a inventar uno nuevo). `nocturno` reusa el par de `oscuro`.
  * - `glass` — NUEVO sub-objeto para el vidrio del rediseño: mapeo 1:1 de `--dm-*`
  *   (`tint, tint2, bd, hi, s1, s2, chip, pill, glow, accent2, on, blur, esLight`).
  */
@@ -115,7 +125,7 @@ export interface Tokens {
   };
 }
 
-export type NombreSkin = 'cian' | 'violeta' | 'ambar' | 'medicalWhite' | 'black';
+export type NombreSkin = 'claro' | 'oscuro' | 'nocturno';
 
 const espacio = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 const radio = { sm: 6, md: 12, lg: 20, completo: 999 };
@@ -204,6 +214,13 @@ interface PaletaCruda extends Partial<VidrioCrudo> {
   tint2: string;
   fondoBase: string;
   /**
+   * Override explícito de `color.superficie`/`color.superficieAlta` — salta el blend-hacia-`tx` de
+   * `construirTokens` (ver docstring del módulo). ODOBI los declara siempre (§2.3 del DoD); queda
+   * opcional para no forzar un valor a un tema hipotético futuro que sí quiera el blend automático.
+   */
+  superficie?: string;
+  superficieAlta?: string;
+  /**
    * **Knob de luminosidad del skin — el ÚNICO número a tocar para aclarar u oscurecer un tema.**
    *
    * Cuánto del acento propio del skin se mezcla dentro de `fondoBase`: `0` = el fondo crudo del
@@ -256,18 +273,20 @@ const SEMANTICOS_OSCURO = {
   peligroFondo: 'rgba(255,90,90,.14)',
   peligroBorde: 'rgba(255,120,120,.45)',
 };
-/** Semánticos legibles sobre claro — para `medicalWhite`, el único tema claro de los 5. */
+/** Semánticos legibles sobre fondo claro — para `claro`, la única piel clara de ODOBI. Sin `exito`:
+ * `claro` lo pisa siempre con el valor propio del DoD (§2.1, `#3C8069`) — no tiene sentido declarar
+ * un valor que ningún caller termina usando. */
 const SEMANTICOS_CLARO = {
   peligro: '#c7455a',
-  exito: '#2e9e68',
   // Sobre fondo claro el mismo alfa quedaría invisible: se sube el borde y se tiñe con el rojo oscuro.
   peligroFondo: 'rgba(199,69,90,.10)',
   peligroBorde: 'rgba(199,69,90,.45)',
 };
 
 /**
- * Paleta categórica — ver el docstring de `Tokens.color.categorico`. Un solo set para los 5 skins
- * (validado contra el fondo más oscuro y el más claro de la familia).
+ * Paleta categórica — ver el docstring de `Tokens.color.categorico`. Un solo set para las 3 pieles
+ * (validado contra el fondo más oscuro y el más claro de la familia; no deriva del acento, así que
+ * el rebrand ODOBI no la toca).
  *
  * Orden = `CATEGORIAS_GASTO`: mercaderia, servicios, alquiler, sueldos, impuestos, transporte,
  * herramientas, otros.
@@ -283,67 +302,95 @@ const CATEGORICO: readonly string[] = [
   '#876bed', // otros
 ];
 
+// El acento (`#C2452E`→`#7E2417`) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
+// cambia entre claro y oscuro" — y nocturno deriva de oscuro). `accent2` (tinte pálido, sin
+// declaración propia en el DoD) sale de mezclar el acento hacia blanco al 78%, misma técnica que
+// ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
+// que ya está declarado.
+const ACCENT = '#C2452E';
+const ACCENT2 = '#F2D6D1';
+const ACCENT_ON = '#FBF3E2'; // texto sobre acento, §2.1
+const ACCENT_GLOW = 'rgba(194,69,46,.55)';
+// Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
+// extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
+// usuario" en la fila de acento.
+const UB1 = '#C2452E';
+const UB2 = '#7E2417';
+// Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
+// a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
+const TINT = 'rgba(194,69,46,.16)';
+const TINT2 = 'rgba(126,36,23,.10)';
+
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
-  cian: {
-    accent: '#4dd9ff', accent2: '#d6f6ff', on: '#04141c', glow: 'rgba(77,217,255,.6)',
-    ub1: 'rgba(77,217,255,.3)', ub2: 'rgba(40,120,170,.16)',
-    tx: '#ecfaff', dim: '#9fc9dd', tint: 'rgba(77,217,255,.16)', tint2: 'rgba(20,80,120,.12)',
-    fondoBase: '#050e18', luminosidad: 0.06, blur: 16, esLight: false, ...SEMANTICOS_OSCURO,
-    fondoLuz: [
-      { color: 'rgba(77,217,255,.24)', cx: 0.5, cy: 0, rx: 0.8, ry: 0.55 },
-      { color: 'rgba(40,140,200,.16)', cx: 0.5, cy: 1, rx: 0.75, ry: 0.6 },
-    ],
-    sombra: 'rgba(0,0,0,.5)',
-  },
-  violeta: {
-    accent: '#b98bff', accent2: '#e9d8ff', on: '#2a0a44', glow: 'rgba(185,139,255,.6)',
-    ub1: 'rgba(185,139,255,.32)', ub2: 'rgba(150,90,200,.18)',
-    tx: '#f4ecff', dim: '#c1a9e4', tint: 'rgba(150,110,220,.18)', tint2: 'rgba(60,30,110,.12)',
-    fondoBase: '#0e0722', luminosidad: 0.06, blur: 16, esLight: false, ...SEMANTICOS_OSCURO,
-    fondoLuz: [
-      { color: 'rgba(185,139,255,.28)', cx: 0.5, cy: 0, rx: 0.8, ry: 0.55 },
-      { color: 'rgba(255,110,190,.16)', cx: 0.5, cy: 1, rx: 0.75, ry: 0.6 },
-    ],
-    sombra: 'rgba(0,0,0,.5)',
-  },
-  ambar: {
-    accent: '#ffae3d', accent2: '#ffe0af', on: '#241503', glow: 'rgba(255,174,61,.5)',
-    ub1: 'rgba(255,174,61,.3)', ub2: 'rgba(180,110,30,.16)',
-    tx: '#fff4e4', dim: '#cbb08f', tint: 'rgba(255,174,61,.15)', tint2: 'rgba(120,70,20,.14)',
-    fondoBase: '#0f0b06', luminosidad: 0.06, blur: 16, esLight: false, ...SEMANTICOS_OSCURO,
-    fondoLuz: [
-      { color: 'rgba(255,174,61,.2)', cx: 0.5, cy: 1, rx: 0.65, ry: 0.48 },
-      { color: 'rgba(255,174,61,.14)', cx: 0.5, cy: 0, rx: 0.8, ry: 0.55 },
-    ],
-    sombra: 'rgba(0,0,0,.5)',
-  },
-  medicalWhite: {
-    accent: '#1f6feb', accent2: '#cfe0ff', on: '#ffffff', glow: 'rgba(31,111,235,.32)',
-    // El template overridea la burbuja de usuario del blanco a blanco puro → azul muy claro (no el
-    // celeste translúcido de los oscuros): es una card OPACA y levantada sobre el vidrio claro.
-    ub1: '#ffffff', ub2: '#eef4fc',
-    tx: '#132a47', dim: '#5f7692', tint: 'rgba(255,255,255,.16)', tint2: 'rgba(228,238,250,.08)',
-    // `luminosidad: 0` — ya es el skin claro; mezclarle su acento (azul) lo teñiría, que es
-    // exactamente lo que el operador sacó al pedir "blanco clínico" (2026-07-18).
-    fondoBase: '#eef3fa', luminosidad: 0, blur: 16, esLight: true, ...SEMANTICOS_CLARO,
-    s1: 'rgba(255,255,255,.92)', s2: 'rgba(255,255,255,.58)', bd: 'rgba(31,70,130,.14)',
-    hi: 'rgba(255,255,255,.95)', pill: 'rgba(60,90,140,.34)', chip: 'rgba(30,70,130,.06)',
-    // Blanco CLÍNICO: sin glow de fondo (el operador quitó el foco celeste/azul, 2026-07-18). La
-    // profundidad la dan las sombras de las cards, no el fondo.
+  claro: {
+    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    ub1: UB1, ub2: UB2,
+    tx: '#2E2A20',
+    // Texto secundario del DoD es `rgba(46,42,32,.55)` — aplanado sobre el fondo da 3.23:1, bajo el
+    // piso WCAG AA (4.5:1). Mismo alfa que `dim` necesita para textoTenue, así que se sube a `.69`
+    // (mínimo matemático .673 + margen), mismo rgb/hue que el DoD — no es un color nuevo, es el
+    // mismo texto un poco más oscuro para que siga siendo legible. Verificado con
+    // `scripts/../odobi_tokens2.py` (no a ojo): 4.72:1.
+    dim: '#6A6457',
+    tint: TINT, tint2: TINT2,
+    // `superficie`/`superficieAlta` explícitos (ver docstring del módulo) — §2.3 del DoD: superficie
+    // aplanada `#F5EBD5`, campo aplanado `#FAF7EC` (reusado como "superficie alta": el shape no tiene
+    // un tercer nivel de elevación declarado por el DoD, y campo es la superficie más elevada que sí
+    // lo está).
+    superficie: '#F5EBD5', superficieAlta: '#FAF7EC',
+    fondoBase: '#EFE6D2', luminosidad: 0, blur: 0, esLight: true,
+    // Éxito tiene valor propio en el DoD (§2.1); peligro no está en el DoD de ODOBI — se reusa el
+    // par ya validado de `SEMANTICOS_CLARO` (no hay WCAG gate en mobile que lo ejercite, así que
+    // reusar es preferible a inventar uno nuevo).
+    ...SEMANTICOS_CLARO, exito: '#3C8069',
+    // Vidrio claro — mismo criterio que la extinta `medicalWhite` (blancos para s1/s2/hi), pero
+    // `bd` usa el valor EXACTO del DoD ("Borde de superficie") y `pill`/`chip` se retiñen del azul
+    // de `medicalWhite` al neutro cálido de `tx` (misma técnica, mismo alfa, nuevo hue).
+    s1: 'rgba(255,255,255,.92)', s2: 'rgba(255,255,255,.58)', bd: 'rgba(255,252,244,.7)',
+    hi: 'rgba(255,255,255,.95)', pill: 'rgba(46,42,32,.34)', chip: 'rgba(46,42,32,.06)',
     fondoLuz: [],
-    sombra: 'rgba(31,70,130,.5)',
+    // Sombra cálida validada por el spike del hito 0 (nivel 1 · reposo, §2.4 del DoD).
+    sombra: 'rgba(110,75,44,.3)',
   },
-  black: {
-    accent: '#5cc8ff', accent2: '#d6f2ff', on: '#031018', glow: 'rgba(92,200,255,.5)',
-    ub1: 'rgba(92,200,255,.26)', ub2: 'rgba(50,120,180,.14)',
-    tx: '#eef4f8', dim: '#8298a8', tint: 'rgba(255,255,255,.06)', tint2: 'rgba(255,255,255,.02)',
-    // `luminosidad: 0` — el negro es negro por diseño. Subirle luz lo acerca al cian y deja de
-    // haber dos skins distintos.
-    fondoBase: '#050608', luminosidad: 0, blur: 16, esLight: false, ...SEMANTICOS_OSCURO,
-    s1: 'rgba(255,255,255,.08)', s2: 'rgba(255,255,255,.02)', bd: 'rgba(255,255,255,.1)',
-    hi: 'rgba(255,255,255,.4)', pill: 'rgba(255,255,255,.4)', chip: 'rgba(255,255,255,.07)',
-    fondoLuz: [{ color: 'rgba(92,200,255,.12)', cx: 0.5, cy: 0, rx: 0.8, ry: 0.5 }],
-    sombra: 'rgba(0,0,0,.6)',
+  oscuro: {
+    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    ub1: UB1, ub2: UB2,
+    tx: '#F1E4CC',
+    // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
+    dim: '#928777',
+    tint: TINT, tint2: TINT2,
+    superficie: '#251B11', superficieAlta: '#1B120B', // §2.3: superficie / campo aplanados
+    fondoBase: '#1E1610', luminosidad: 0, blur: 0, esLight: false,
+    // Ni éxito ni peligro tienen valor propio en el DoD para oscuro — se reusa el par de
+    // `SEMANTICOS_OSCURO` (ya validado, ≥8:1 contra este fondo — más margen del que exige AA).
+    ...SEMANTICOS_OSCURO,
+    bd: 'rgba(241,228,204,.14)', // §2.2, exacto
+    s1: BASE_OSCURO.s1, s2: BASE_OSCURO.s2, hi: BASE_OSCURO.hi,
+    pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
+    fondoLuz: [],
+    sombra: 'rgba(0,0,0,.6)', // §2.4, nivel 1 oscuro
+  },
+  nocturno: {
+    // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
+    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    ub1: UB1, ub2: UB2,
+    tx: '#F1E4CC',
+    dim: '#928777', // reuso del secundario ya ajustado de oscuro — con el fondo más oscuro de
+    // nocturno da AÚN más contraste (5.66:1), sigue AA sin re-ajustar.
+    tint: TINT, tint2: TINT2,
+    superficie: '#141009', superficieAlta: '#140E08', // §2.8 superficie; campo = rgba(20,13,8,.5)
+    // sobre la superficie nocturna (misma técnica §2.3, base = superficie del propio skin).
+    fondoBase: '#0C0805', luminosidad: 0, blur: 0, esLight: false,
+    ...SEMANTICOS_OSCURO, // reuso de oscuro, ver nota arriba
+    bd: 'rgba(241,228,204,.10)', // §2.8, exacto
+    s1: BASE_OSCURO.s1, s2: BASE_OSCURO.s2,
+    // `hi` (luz interna superior) reducida — §2.8 es explícito: "relieve nivel 1-2 con
+    // rgba(0,0,0,.75), SIN luz interna cálida". El resto del vidrio (s1/s2/pill/chip) no tiene esa
+    // instrucción explícita, así que se deja igual a `oscuro`.
+    hi: 'rgba(255,255,255,.15)',
+    pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
+    fondoLuz: [],
+    sombra: 'rgba(0,0,0,.75)', // §2.8, exacto
   },
 };
 
@@ -363,8 +410,8 @@ function construirTokens(p: PaletaCruda): Tokens {
   return {
     color: {
       fondo,
-      superficie: mezclarHex(fondo, p.tx, 0.06),
-      superficieAlta: mezclarHex(fondo, p.tx, 0.12),
+      superficie: p.superficie ?? mezclarHex(fondo, p.tx, 0.06),
+      superficieAlta: p.superficieAlta ?? mezclarHex(fondo, p.tx, 0.12),
       texto: p.tx,
       textoTenue: p.dim,
       acento: p.accent,
