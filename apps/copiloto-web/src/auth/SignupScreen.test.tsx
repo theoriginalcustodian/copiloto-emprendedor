@@ -54,7 +54,7 @@ describe('SignupScreen', () => {
   it('renderiza el form con marca y campos', async () => {
     renderSignupScreen();
     await waitFor(() => expect(screen.getByTestId('signup-screen')).toBeInTheDocument());
-    expect(screen.getByText('Copiloto del Emprendedor')).toBeInTheDocument();
+    expect(screen.getByText('Odobi')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
   });

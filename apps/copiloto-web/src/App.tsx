@@ -41,7 +41,7 @@ function AppRouter() {
       <div className="app-frame" data-testid="app-shell-splash">
         <main>
           <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--mono)', padding: 16 }}>
-            Copiloto del Emprendedor — cargando tu copiloto…
+            Odobi — cargando tu copiloto…
           </p>
         </main>
       </div>

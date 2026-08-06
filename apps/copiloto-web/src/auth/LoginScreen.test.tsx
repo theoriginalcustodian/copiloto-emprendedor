@@ -46,7 +46,7 @@ describe('LoginScreen', () => {
   it('renderiza el form in-theme con marca y campos', async () => {
     renderLoginScreen();
     await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
-    expect(screen.getByText('Copiloto del Emprendedor')).toBeInTheDocument();
+    expect(screen.getByText('Odobi')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
   });

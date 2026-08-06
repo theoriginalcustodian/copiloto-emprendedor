@@ -66,7 +66,7 @@ const CATEGORY_HINT: Record<string, string> = {
   publicacion: 'preparé un posteo para…',
 };
 const DEFAULT_HINT = 'contame qué necesitás…';
-const DEFAULT_PLACEHOLDER = 'Escribile a tu copiloto…';
+const DEFAULT_PLACEHOLDER = 'Escribí, o hablá…';
 
 /**
  * Composer de texto (Task 15, EXTRACT §2.10 — solo la parte texto-only; el mic/voz es Task 19,

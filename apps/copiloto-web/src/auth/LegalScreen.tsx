@@ -28,11 +28,11 @@ function CuerpoTos() {
   return (
     <>
       <p>
-        <strong>1. Aceptación.</strong> Al crear una cuenta y usar Copiloto del Emprendedor
+        <strong>1. Aceptación.</strong> Al crear una cuenta y usar Odobi
         ("el Servicio"), aceptás estos términos. Si no estás de acuerdo, no uses el Servicio.
       </p>
       <p>
-        <strong>2. El Servicio.</strong> Copiloto del Emprendedor es un asistente conversacional
+        <strong>2. El Servicio.</strong> Odobi es un asistente conversacional
         que ayuda a emprendedores a gestionar tareas de su negocio (facturación, gastos, ingresos,
         clientes, presupuestos e integraciones con terceros). Está en etapa beta: puede tener
         cambios frecuentes, interrupciones y funcionalidad incompleta.

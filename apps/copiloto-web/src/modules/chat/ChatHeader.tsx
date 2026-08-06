@@ -26,7 +26,7 @@ export function ChatHeader() {
         <PresenceOrb />
         <div className="chat-header__text">
           <div className="chat-header__title-row">
-            <span className="chat-header__title">Copiloto</span>
+            <span className="chat-header__title">Odobi</span>
             <span className="chat-header__lang-chip" aria-hidden="true">
               ES-AR
             </span>
