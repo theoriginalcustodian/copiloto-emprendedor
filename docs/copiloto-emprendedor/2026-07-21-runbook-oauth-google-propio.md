@@ -2,9 +2,33 @@
 
 > **Para:** el operador (los pasos 1-5 son en la consola de Google, no los puede hacer el agente).
 > **Fecha:** 2026-07-21 · **Estado:** listo para ejecutar.
+>
+> **✅ ACTUALIZADO 2026-08-03 — Antigravity (gcloud CLI conectado) verificó contra su acceso real
+> cuánto de esto puede automatizar:** pasos 1 (crear proyecto), 2 (habilitar 5 APIs) y 5 (crear el
+> Client ID + obtener credenciales) son automatizables por Antigravity. **El paso 3 (pantalla de
+> consentimiento) sigue siendo 100% manual — no existe API/gcloud para eso, por diseño de Google
+> contra abuso** (el mecanismo `gcloud iap oauth-brands` que parecía un atajo es de un producto
+> distinto, IAP, y está deprecado desde enero 2026 / apagado desde marzo 2026). Es el único paso
+> que necesita al operador, y toma ~3 minutos. Detalle: `coordinacion/Antigravity/2026-08-03_respuesta_antigravity-a-claude_alcance-real-gcloud-oauth.md`.
 > **Por qué existe:** hoy las apps de Google se conectan con la app OAuth **de Composio**, no con la
 > nuestra. Por eso "Conectar" lleva a una pantalla de Composio en vez de a Google, y por eso los
 > permisos que se piden son los que ellos eligieron: **acceso total al correo y a todo el Drive**.
+>
+> **✅ CERRADO 2026-08-03 — pasos 1-6 completos.** Proyecto GCP `copiloto-emprendedor`
+> (890375505063), 5 APIs habilitadas, consent screen externa (7 scopes, Testing) y 2 Client ID
+> creados por el operador vía Antigravity. Las 5 auth configs custom de Composio se crearon con
+> `scripts/composio_auth_configs.py` (ejecutado en el VPS, credenciales sólo como env efímero, nunca
+> escritas a disco): `gmail=ac_KqVdeZpJAJ7_` · `googledrive=ac_rbeINbwsZrOO` ·
+> `googledocs=ac_m6xF2RHXaypI` · `googlesheets=ac_wUwGSHG0Frie` · `googlecalendar=ac_cY75ezl1w4sN`,
+> conviviendo con las 5 gestionadas por Composio. **Verificado empíricamente contra la API real
+> antes de crear** (`composio.toolkits.get("gmail")`) que el `oauth_redirect_uri` default de
+> Composio sigue siendo `.../api/v1/auth-apps/add` — la doc pública muestra `.../v3.1/toolkits/auth/
+> callback` para otro contexto y habría sido el error equivocado si no se hubiese chequeado en vivo.
+> §7.1 (preferir la config propia) ya estaba resuelto en `origin/main` (`composio_gateway.py` +
+> `test_composio_auth_config.py`, commit `3724ccd`) — no hizo falta tocarlo. **Queda pendiente
+> únicamente §7.3: el spike de conectar una cuenta real y ejecutar una tool de cada toolkit** — eso
+> exige clickear el consentimiento de Google con el usuario `e2e-device@copiloto.test`, no es
+> automatizable sin esa interacción humana/de device.
 
 ---
 
