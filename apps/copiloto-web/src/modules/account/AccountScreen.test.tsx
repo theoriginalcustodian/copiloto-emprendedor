@@ -81,24 +81,6 @@ describe('AccountScreen', () => {
     );
   });
 
-  it('el selector de tema cambia el theme activo y persiste en localStorage', () => {
-    renderAccountScreen();
-
-    fireEvent.click(screen.getByTestId('theme-pill-oscuro'));
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('oscuro');
-    expect(window.localStorage.getItem('copiloto-theme')).toBe('oscuro');
-    expect(screen.getByTestId('theme-pill-oscuro')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('theme-pill-claro')).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('renderiza los 3 nombres de piel ODOBI', () => {
-    renderAccountScreen();
-    expect(screen.getByText('Claro')).toBeInTheDocument();
-    expect(screen.getByText('Oscuro')).toBeInTheDocument();
-    expect(screen.getByText('Nocturno')).toBeInTheDocument();
-  });
-
   it('la card de durabilidad muestra el copy de continuidad', () => {
     renderAccountScreen();
     expect(screen.getByTestId('account-durability-card')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 ---
 description: (Re)crea idempotente el cron de heartbeat de la sesión BACKEND (vigía del buzón cada 3 min) y CONFIRMA contra CronList
-allowed-tools: CronList, CronCreate
+allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
 ---
 
 # Arrancar el monitoreo de la sesión BACKEND
@@ -93,4 +93,18 @@ C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
      y terminá.
    Lo prohibido es abrir un frente NO contratado, no trabajar. Avanzar en lo ya asignado nunca
    necesita un mensaje que lo dispare.
+
+6. ⏱️ EL CRON NO ES TU ÚNICO CANAL — y es el que MENOS te llega cuando trabajás.
+   Medido 2026-07-24: un cron NO puede interrumpir un turno en curso, así que dispara MÁS cuanto
+   MENOS trabajás (la sesión ociosa tuvo 42 disparos; la que implementaba, 5, y después nada por
+   40 min). Mientras trabajás estás SORDA al buzón — justo cuando leer tarde cuesta más.
+   Por eso:
+   - El hook `buzon_watcher` (PostToolUse) te avisa de mensajes nuevos en CADA tool call, sin cron.
+     Si ves un bloque `<buzon-nuevo>`, abrí lo dirigido a vos ANTES de seguir; `urgente_` y
+     `contrato_` interrumpen lo que estés haciendo.
+   - Y revisá el buzón vos misma en cada FRONTERA DE TRABAJO —terminar un PR, antes de un E2E o de
+     algo largo, al cerrar una sub-tarea—, no cuando el cron te despierte.
+   - Si un ciclo tuyo termina SIN NADA que hacer, decilo en el buzón con un `avance_` de una línea
+     («terminé X, sin frente propio»): planificación lee el buzón, no tus ticks, y un tick que
+     repite «idéntico al anterior» te hace parecer ocupada.
 ```

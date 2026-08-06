@@ -69,12 +69,33 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-# Guarda dura: el worktree del grafo NO puede ser el checkout de trabajo. Si lo fuera, este script
+# Guarda dura 1: el worktree del grafo NO puede ser el checkout de trabajo. Si lo fuera, este script
 # haría `checkout --detach` sobre el árbol donde otra sesión está trabajando y le volaría el WIP.
 if [ "$(cd "$WT" 2>/dev/null && pwd || echo _)" = "$(cd "$REPO" && pwd)" ]; then
   echo "[graph-sync] ❌ UC_GRAPH_WORKTREE apunta al checkout de trabajo ('$REPO')." >&2
   echo "[graph-sync]    Este script hace 'checkout --detach' sobre él: pisaría el trabajo de otra sesión." >&2
   exit 1
+fi
+
+# Guarda dura 2 (2026-08-06): más abajo saneamos el árbol con `reset --hard`, que DESTRUYE cambios
+# sin commitear. La guarda 1 sólo conoce ESTE checkout — no ve los otros worktrees de trabajo del
+# repo (_wt-*, _documed-wt, .claude/worktrees/*), y apuntar `UC_GRAPH_WORKTREE` a uno de ellos por
+# error volaría trabajo real. La diferencia observable es simple: un worktree de TRABAJO siempre
+# tiene una rama checkouteada; el del grafo siempre está detached. Esa es la que decide si podemos
+# destruir. Sin esta guarda, el fix de abajo convierte un error de configuración en pérdida de datos.
+if [ -d "$WT" ]; then
+  if ! git -C "$WT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "[graph-sync] ❌ '$WT' existe pero no es un working tree de git." >&2
+    echo "[graph-sync]    No lo toco: no puedo distinguirlo de un directorio con datos." >&2
+    exit 1
+  fi
+  rama_wt="$(git -C "$WT" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [ -n "$rama_wt" ]; then
+    echo "[graph-sync] ❌ '$WT' tiene la rama '$rama_wt' checkouteada." >&2
+    echo "[graph-sync]    El worktree del grafo va SIEMPRE detached; con rama es un árbol de trabajo" >&2
+    echo "[graph-sync]    y este script lo sanearía con 'reset --hard'. Abortando antes de destruir." >&2
+    exit 1
+  fi
 fi
 
 echo "[graph-sync] actualizando el árbol del grafo a origin/main…"
@@ -83,10 +104,32 @@ if [ ! -d "$WT" ]; then
   echo "[graph-sync] (el worktree no existía — creándolo en '$WT')"
   git -C "$REPO" worktree add --detach "$WT" origin/main
 else
-  # Worktree DEDICADO y detached: acá `checkout --detach` es seguro (no es el checkout compartido,
-  # no hay rama que perder, no hay WIP). La regla de "nunca checkout" aplica al árbol de trabajo.
+  # El árbol del grafo es DESECHABLE por diseño: su contenido se reconstruye entero desde origin/main
+  # en cada corrida, y nadie trabaja acá (guardas 1 y 2 arriba). Por eso se sanea ANTES del checkout.
+  #
+  # QUÉ ARREGLA ESTO (2026-08-06, medido — no es lo que parecía a simple vista):
+  # El árbol del grafo quedó con dos archivos TRACKEADOS borrados y así siguió corrida tras corrida,
+  # porque ninguna de las dos operaciones que había podía restaurarlos:
+  #   · `checkout --detach origin/main` NO los restaura cuando el archivo es idéntico entre el HEAD
+  #     del árbol y origin/main: git no ve conflicto, mueve el HEAD y CONSERVA el borrado local.
+  #     Reproducido con el estado exacto del incidente (HEAD 86f3f823 + los 2 borrados): rc=0, HEAD
+  #     avanzó a origin/main, y `git status` seguía mostrando los mismos ` D`.
+  #   · `clean -fd` tampoco: sólo borra archivos UNTRACKED, nunca restaura trackeados. Verificado
+  #     con `clean -nd` sobre el árbol real: lista vacía.
+  # Consecuencia: graphify parsea el WORKING TREE, así que ingiere un árbol al que le FALTAN archivos
+  # y reporta éxito igual. El grafo queda describiendo un repo que no existe, sin dar síntoma — el
+  # modo de fallo exacto que este script fue escrito para evitar, entrando por otra puerta.
+  #
+  # `reset --hard` (restaura trackeados) + `clean -fd` (borra untracked) + checkout, en ese orden.
+  # `checkout --force` solo no bastaría: dejaría los untracked, que sí entrarían al grafo como
+  # código vivo.
+  #
+  # OJO — lo que esto NO explica: los pushes que fallaron ese día por el pre-push. Se atribuyeron a
+  # que este checkout abortaba, y la reproducción demuestra que NO aborta. La causa de esos fallos
+  # sigue SIN determinar: hace falta el mensaje de error real, no una hipótesis. [ASSUMED_PENDING_VERIFY]
+  git -C "$WT" reset --hard --quiet
+  git -C "$WT" clean -qfd
   git -C "$WT" checkout --detach origin/main --quiet
-  git -C "$WT" clean -qfd    # restos de un sync anterior no pueden entrar al grafo como código vivo
 fi
 
 SHA="$(git -C "$WT" rev-parse HEAD)"

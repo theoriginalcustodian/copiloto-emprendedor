@@ -74,52 +74,6 @@
   margin: 0;
 }
 
-/* ---------- Sections ---------- */
-.account-screen__section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* ---------- Selector de tema (EXTRACT §2.12) ---------- */
-.account-screen__theme-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.account-screen__theme-pill {
-  min-height: 44px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: var(--tile-bg);
-  border: var(--tile-border);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    filter 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.account-screen__theme-pill:hover {
-  filter: brightness(1.08);
-}
-
-.account-screen__theme-pill:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.account-screen__theme-pill--active {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  box-shadow: var(--btn-shadow);
-  font-weight: 600;
-}
-
 /* ---------- Card de durabilidad (EXTRACT §2.9 — reusa --bubble-*, no un token propio) ---------- */
 .account-screen__durability {
   display: flex;
