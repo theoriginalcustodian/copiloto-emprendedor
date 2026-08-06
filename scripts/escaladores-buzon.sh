@@ -49,6 +49,10 @@ if [ "${1:-}" = "--dry-run" ]; then DRY_RUN=1; shift; fi
 BUZON="${1:-${BUZON_DIR:-$REPO_ROOT/coordinacion}}"
 ABIERTO="$BUZON/abierto"
 ENCURSO="$BUZON/en-curso"
+CERRADO="$BUZON/cerrado"
+# Sidecar de la Regla 2 (ver edad_alta_min) — fuera de abierto/en-curso/cerrado para que ningún
+# otro escaneo del buzón lo confunda con un mensaje.
+SIDECAR_DIR="$BUZON/.escalador-estado"
 
 UMBRAL_CONTRATO_MIN="${UMBRAL_CONTRATO_MIN:-120}"          # 2h, del pendiente
 UMBRAL_PEDIDO_MIN="${UMBRAL_PEDIDO_MIN:-30}"                # 30min, del pendiente
@@ -68,6 +72,48 @@ edad_min() {
 destinatario_de_nombre() {
   local b="$1"
   echo "$b" | sed -nE 's/^[0-9-]+_[a-z]+_[a-z]+-a-([a-z]+)_.*/\1/p'
+}
+
+# edad_alta_min — para pedido_/urgente_: edad desde que ENTRÓ al buzón, no desde el último touch.
+# Causa raíz (medida 2026-08-06): ampliar un pedido_ con evidencia nueva (justo lo que hay que
+# hacer para que el operador pueda decidir) actualiza el mtime y lo borra del radar del escalador
+# — el incentivo queda invertido. `git log` no sirve (coordinacion/ está gitignoreado). La fecha
+# del propio nombre es un PISO barato: un archivo con fecha de un día anterior a hoy ya es viejo,
+# sin importar mtime ni sidecar. Para el caso del mismo día (donde el piso no alcanza), un sidecar
+# — la primera vez que este script VE el archivo, graba cuándo; toques posteriores no lo tocan.
+edad_alta_min() {
+  local f="$1" b fecha_archivo fecha_hoy sidecar_file primera
+  b="$(basename "$f")"
+  fecha_archivo="${b:0:10}"
+  fecha_hoy="$(date +%Y-%m-%d)"
+  if [[ "$fecha_archivo" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [ "$fecha_archivo" != "$fecha_hoy" ]; then
+    echo 999999   # de un día anterior: por encima de cualquier umbral en minutos, sin más cálculo
+    return
+  fi
+  sidecar_file="$SIDECAR_DIR/$b"
+  if [ -f "$sidecar_file" ]; then
+    primera="$(cat "$sidecar_file" 2>/dev/null || echo "$now")"
+  else
+    primera="$now"
+    if [ "$DRY_RUN" = "0" ]; then
+      mkdir -p "$SIDECAR_DIR" 2>/dev/null || true
+      printf '%s\n' "$now" > "$sidecar_file"
+    fi
+  fi
+  echo $(( (now - primera) / 60 ))
+}
+
+# epoch del avance_ MÁS RECIENTE que el frente <destinatario> mandó (patrón *_avance_<frente>-a-*),
+# nacen archivados en cerrado/<fecha>/. 0 si no hay ninguno.
+avance_mas_reciente_epoch() {
+  local frente="$1" mejor=0 f m
+  [ -n "$frente" ] || { echo 0; return; }
+  shopt -s nullglob
+  for f in "$CERRADO"/*/*_avance_"${frente}"-a-*.md; do
+    m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    [ "$m" -gt "$mejor" ] && mejor="$m"
+  done
+  echo "$mejor"
 }
 
 # ── Regla 1: contrato_ con disparador cumplido, viejo, sin tomar ───────────────
@@ -102,7 +148,7 @@ done
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
 for f in "$ABIERTO"/*_pedido_*.md; do
   b="$(basename "$f")"
-  edad="$(edad_min "$f")"
+  edad="$(edad_alta_min "$f")"
   [ "$edad" -ge "$UMBRAL_PEDIDO_MIN" ] || continue
   para="$(destinatario_de_nombre "$b")"
   alarma=1
@@ -114,12 +160,19 @@ if [ -d "$ENCURSO" ]; then
   for f in "$ENCURSO"/*.md; do
     [ -e "$f" ] || continue
     b="$(basename "$f")"
-    edad="$(edad_min "$f")"
+    para="$(destinatario_de_nombre "$b")"
+    # Edad = MÍNIMO entre el mtime del contrato y el del avance_ más reciente del mismo frente —
+    # si no se mira el avance_, un frente que SÍ reportó hace 13min sigue leyéndose como "sin
+    # avance" con el mtime del contrato de hace 100min (medido 2026-08-06, ver AMPLIACIÓN 2).
+    m_contrato="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
+    m_avance="$(avance_mas_reciente_epoch "${para:-desconocido}")"
+    m_mejor="$m_contrato"
+    [ "$m_avance" -gt "$m_mejor" ] && m_mejor="$m_avance"
+    edad=$(( (now - m_mejor) / 60 ))
     umbral="$UMBRAL_SILENCIO_DEFAULT_MIN"
     declarado="$(grep -m1 -oE 'UMBRAL_SILENCIO:[[:space:]]*[0-9]+' "$f" 2>/dev/null | grep -oE '[0-9]+' | head -1)"
     [ -n "${declarado:-}" ] && umbral="$declarado"
     [ "$edad" -ge "$umbral" ] || continue
-    para="$(destinatario_de_nombre "$b")"
     alarma=1
     echo "EN-CURSO SIN AVANCE (${edad}min >= ${umbral}): $b -> dueño del frente: ${para:-desconocido}"
   done
