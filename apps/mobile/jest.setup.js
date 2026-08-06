@@ -68,17 +68,6 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // Es un hueco del ENTORNO de test, no del producto: los tests que necesitan controlar el reproductor
 // o el grabador declaran su propio `jest.mock('expo-audio', ...)` y este queda pisado. Este mock solo
 // existe para que importar la libreria no sea, en si mismo, un error.
-// `BlurView` de expo-blur hace `setState` en `componentDidMount` (`_updateBlurTargetId`) leyendo su
-// modulo nativo de blur -- sin backend nativo eso tira/ensucia en jest, y en `renderRouter` (shell.test)
-// es fatal (el arbol no termina de montar). Lo mockeamos a un View plano que descarta las props de
-// blur (intensity/tint). El blur REAL se valida en el device. Hueco del ENTORNO de test, no del producto.
-jest.mock('expo-blur', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  // eslint-disable-next-line no-unused-vars
-  return { BlurView: ({ intensity, tint, ...rest }) => React.createElement(View, rest) };
-});
-
 // `react-native-svg` renderiza 11 iconos glass (Svg/Defs/RadialGradient/Filter/FeGaussianBlur/...) en
 // el escritorio de la Capa 0. Los componentes REALES son pesados y de backend nativo: en el render de
 // arbol completo (`shell.test.tsx` via `renderRouter`) el arbol NO ALCANZA A ASENTARSE y el test
