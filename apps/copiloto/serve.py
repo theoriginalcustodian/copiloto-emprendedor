@@ -225,7 +225,23 @@ async def _serve() -> None:
         actividad_store_factory=lambda cid: ActividadStore(conn_factory, cid),
     )
 
-    admin_app = create_admin_app(require_admin=require_admin)
+    # CONS2: mismo patrón que `_conn_dlq_factory` de `worker_b.py` -- cruda a propósito (cross-tenant
+    # por diseño, `BYPASSRLS`), `None` si el rol no está provisionado en este entorno (test-db.sh
+    # local sin `test-db.sh --export`, o un VPS donde `provision-rol-consola.sh` no corrió todavía).
+    _consola_dsn = os.environ.get("COPILOTO_CONSOLA_DSN")
+
+    def _consola_conn_factory():  # noqa: ANN202
+        conn = psycopg2.connect(_consola_dsn)
+        conn.autocommit = True
+        return conn
+
+    admin_app = create_admin_app(
+        require_admin=require_admin, temporal_client=client,
+        # Mismo nombre de env var que `worker_b.AGENT_B_TASK_QUEUE` -- no se importa de ahí porque
+        # `worker_b.py` es un proceso SEPARADO (ver su docstring); acoplar los dos módulos por un
+        # import cruzaría esa frontera por una sola constante.
+        temporal_task_queue=os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor"),
+        consola_conn_factory=_consola_conn_factory if _consola_dsn else None)
 
     # Chat de IN (§3): best-effort, igual que `memory_provider` — sin OPENAI_API_KEY o sin
     # GRAPHITY_GRAFO_* el endpoint sigue vivo (devuelve "No tengo ese dato.", nunca 500). El LLM es

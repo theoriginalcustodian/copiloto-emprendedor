@@ -26,11 +26,15 @@ def _client() -> TestClient:
 
 def test_admin_con_el_claim_entra():
     """CONTROL POSITIVO -- sin esto, un 403 en el resto de la suite no probaría el gate, probaría
-    que el endpoint está roto para todos (memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md)."""
+    que el endpoint está roto para todos (memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md).
+
+    503, no 200: `_client()` no conecta Temporal (CONS0b no lo necesitaba). El punto de este test es
+    el GATE (`require_admin`), no el contenido de A1 -- 503 prueba que se pasó el gate y se llegó al
+    cuerpo del endpoint, que es exactamente lo que un 403/401 impediría. Ver `test_admin_salud.py`
+    para el contenido real de A1, con Temporal mockeado."""
     tok = _tok({"app_metadata": {"copiloto_admin": True}})
     resp = _client().get("/admin/salud", headers={"Authorization": f"Bearer {tok}"})
-    assert resp.status_code == 200
-    assert resp.json() == {"ok": True}
+    assert resp.status_code == 503
 
 
 def test_usuario_normal_403():

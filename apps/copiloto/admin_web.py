@@ -1,22 +1,36 @@
-"""CONSOLA DE OPERADOR (capa CLIENTE). CONS0b: el sujeto de prueba del gate de autorización.
+"""CONSOLA DE OPERADOR (capa CLIENTE). CONS0b levantó `GET /admin/salud` como el sujeto de prueba
+mínimo del gate de autorización. CONS2 lo llena de contenido real (A1) y agrega A3.
 
-`GET /admin/salud` es el endpoint MÍNIMO que el contrato de CONS0b pide para tener algo real contra
-qué correr los 3 tests adversariales (control positivo, 403, no-autoasignación) — no adelanta A1-A6
-de las specs (docs/copiloto-emprendedor/2026-08-06-SPECS-consola-de-operador.md), que se implementan
-en el sprint siguiente sobre esta misma base.
+`temporal_client`/`consola_conn_factory` son `None` por default para no romper el composition root
+de ningún test que sólo ejercite el gate de `require_admin` (CONS0b) sin levantar Temporal/Postgres
+de verdad -- en ese caso los endpoints devuelven 503, no un traceback.
 """
 from __future__ import annotations
 
 from typing import Callable
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
+
+from admin_salud import estado_salud
+from admin_uso import resumen_uso
 
 
-def create_admin_app(*, require_admin: Callable) -> FastAPI:
+def create_admin_app(*, require_admin: Callable, temporal_client=None,
+                     temporal_namespace: str = "default", temporal_task_queue: str = "agent-emprendedor",
+                     consola_conn_factory: Callable | None = None) -> FastAPI:
     app = FastAPI(title="Copiloto Consola")
 
     @app.get("/admin/salud")
     async def salud(claims: dict = Depends(require_admin)) -> dict:
-        return {"ok": True}
+        if temporal_client is None:
+            raise HTTPException(status_code=503, detail="Temporal no conectado en este proceso")
+        return await estado_salud(
+            temporal_client, namespace=temporal_namespace, task_queue=temporal_task_queue)
+
+    @app.get("/admin/uso")
+    async def uso(horas: int = 24, claims: dict = Depends(require_admin)) -> dict:
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        return resumen_uso(consola_conn_factory, horas=horas)
 
     return app
