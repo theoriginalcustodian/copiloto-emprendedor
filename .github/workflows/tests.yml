@@ -110,18 +110,12 @@ jobs:
              -- real estos permisos vienen dados: acá hay que otorgarlos explícitamente.
              GRANT USAGE ON SCHEMA auth TO copiloto_app;
              GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA auth TO copiloto_app;"
-      - name: provisionar el schema (idempotente)
-        working-directory: apps/copiloto
-        run: python provision.py
-      - name: collect (valida imports/mount del motor)
-        working-directory: apps/copiloto
-        run: python -m pytest tests --co -q
-      - name: suite completa (backend + motor vendorizado)
-        working-directory: apps/copiloto
-        # Sin lista de archivos: todo lo que exista corre.
-        run: python -m pytest tests ../../motor/backend/agent ../../motor/clients/agent -q
+      # Provisiona + corre (collect y suite completa) -- la definición vive en scripts/ci/backend.sh,
+      # el mismo script que invoca `sync-test-backend.sh` en el VPS (ADR-001). Sin lista de archivos:
+      # todo lo que exista corre.
+      - run: bash scripts/ci/backend.sh
 
-  # Los 4 jobs de frontend NO definen su suite acá: invocan `scripts/ci/<job>.sh`, que es la
+  # Los 5 jobs NO definen su suite acá: invocan `scripts/ci/<job>.sh`, que es la
   # definición ÚNICA (ADR-001). El porqué de cada paso —incluido que `apps/copiloto-web` no está en
   # los `workspaces` del root y se instala aparte— vive en el comentario de cada script. Así lo que
   # corre GitHub y lo que corre una sesión en su máquina son literalmente el mismo comando: mientras
