@@ -39,6 +39,7 @@ El motor **nació** como copia vendorizada del arquetipo `conversational_agent` 
 
 1. **Cero secretos en repo.** `.env*` (salvo `.template`) gitignored. Verificar `git status` antes de commit.
 2. **Tests corren en el VPS**, no en la PC (la PC no tiene `temporalio`/`psycopg2`/etc.). Flujo: editar local → sync al VPS → `pytest` en el venv del VPS. **No declarar verde sin correrlo en el VPS.**
+2.bis **El gate es `scripts/gate.sh`; GitHub Actions es respaldo/atestación, no la fuente de la definición** (ADR-001, ver `docs/copiloto-emprendedor/adr/`). La suite vive en `scripts/ci/{backend,core,web,mobile,lint}.sh` — `tests.yml` sólo los invoca. `gate.sh` corre los 5 (core/web/mobile/lint local, backend vía `deploy/copiloto/test-db.sh`+`sync-test-backend.sh`) y escribe `.ci-recibos/<sha>.json`. Un merge cita el recibo del SHA que mergea; GitHub verde es la segunda confirmación, no la única.
 3. **Temporal es la columna.** ANTES de tocar cualquier workflow/activity/worker, invocar la skill `temporal-developer` (+ `temporal-ai-patterns` para ReAct/HITL/child-workflow). Los workflows NO pueden tener side effects ni no-determinismo.
 4. **Versiones pinned** (`requirements.txt`, imágenes Docker). Nada de `latest`.
 5. **PR + rama** — sin push directo a `main`. Conventional Commits en minúscula.

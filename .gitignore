@@ -1,3 +1,6 @@
+# CI propio (ADR-001) — recibos por SHA, locales a cada máquina que corrió el gate
+.ci-recibos/
+
 # Python
 __pycache__/
 *.py[cod]

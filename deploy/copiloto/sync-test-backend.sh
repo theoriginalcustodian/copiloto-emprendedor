@@ -32,9 +32,13 @@ MOTOR="motor"                                     # motor VENDORIZADO en el repo
 # producto: la orquestación durable es el moat.
 #
 # El motor es un FORK DURO vendorizado (CLAUDE.md §2): se evoluciona acá, así que sus tests son
-# nuestros y su rojo es nuestro problema. Con args explícitos manda lo que pida quien invoca — esto
-# sólo cambia el default, que es lo que corre cuando nadie eligió nada.
-if [ "$#" -gt 0 ]; then PYTEST_ARGS="$*"; else PYTEST_ARGS="tests ../../motor -q"; fi
+# nuestros y su rojo es nuestro problema. Con args explícitos manda lo que pida quien invoca; sin
+# args, el default lo decide `scripts/ci/backend.sh` (ADR-001) -- collect + `tests` +
+# `motor/backend/agent` + `motor/clients/agent`, el MISMO default que corre GitHub Actions. Antes
+# este script tenía su propio default (`tests ../../motor -q`, sin el paso de collect): divergía en
+# silencio del CI, aunque el resultado terminaba siendo el mismo conjunto de tests (verificado:
+# `motor/backend/agent` y `motor/clients/agent` son los únicos subdirectorios de `motor/` con tests).
+PYTEST_ARGS="$*"
 
 # Opt-in explícito: sólo viaja si la sesión la exportó a propósito.
 # `UC_RLS_FORCE` viaja con ella: los tests que provisionan tablas al vuelo (el adversarial de RLS)
@@ -72,10 +76,11 @@ tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cac
   -czf - apps/copiloto "$MOTOR" deploy/worker scripts \
   | ssh "$HOST" "rm -rf '$STAGE' && mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"
 
-echo "==> pytest en el venv del VPS: ${PYTEST_ARGS}"
+echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
 echo "==> Postgres: ${PG_AVISO}"
 set +e
-ssh "$HOST" "cd '$STAGE/apps/copiloto' && ${PG_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' '$VENV/bin/python' -m pytest -ra ${PYTEST_ARGS}"
+ssh "$HOST" "${PG_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' PYTHON_BIN='$VENV/bin/python' \
+  bash '$STAGE/scripts/ci/backend.sh' ${PYTEST_ARGS}"
 RC=$?
 set -e
 
