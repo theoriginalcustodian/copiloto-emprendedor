@@ -111,7 +111,16 @@ export function PantallaLogin() {
       >
         <View style={[styles.marca, { gap: tema.espacio.sm, marginBottom: tema.espacio.xl }]}>
           <Marca size={76} />
-          <Text style={[styles.titulo, { color: tema.color.texto, fontSize: HERO }]}>Odobi</Text>
+          {/* ODOBI hito 3 (DoD §2.6) — el wordmark es la marca en su forma más literal: usa
+              `fuente.display` (NeueEinstellung Bold), no `fuente.uiBold` como el resto de la UI. */}
+          <Text
+            style={[
+              styles.titulo,
+              { color: tema.color.texto, fontSize: HERO, fontFamily: tema.fuente.display },
+            ]}
+          >
+            Odobi
+          </Text>
           <Text style={[styles.tagline, { color: tema.color.textoTenue, fontSize: tema.tipo.grande }]}>
             tu copiloto de negocio
           </Text>
