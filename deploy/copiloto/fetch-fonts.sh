@@ -11,6 +11,11 @@
 #   Space Grotesk  500,600,700 -> Google Fonts CSS2   (desktop · idem, subset "latin")
 #   Manrope        400,500,600 -> Google Fonts CSS2   (desktop · idem, subset "latin")
 #   JetBrains Mono 400,500,700 -> mirror jsdelivr/fontsource (compartido, archivo woff2 directo, sin parseo)
+#   NeueEinstellung 700 (Bold) -> CONVERSIÓN local, no CDN (fuente propia, sin distribución pública
+#                                 vía Fontshare/Google) -- fuente .otf en el repo, convertida a
+#                                 .woff2 con fontTools (ver ODOBI hito 3v). Licencia: ver nota en
+#                                 docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md §2.6 y el
+#                                 PR de este cambio -- deuda declarada, no bloqueante para la beta.
 #
 # IDEMPOTENTE: si el archivo destino YA existe y pesa más que UC_FONT_MIN_BYTES (real woff2 ronda
 # los 15-40KB; un stub/placeholder committeado al repo pesa unos pocos bytes) NO vuelve a bajarlo.
@@ -24,6 +29,8 @@
 #   UC_FONTSHARE_API     base de la API CSS de Fontshare      (default: https://api.fontshare.com/v2/css)
 #   UC_GOOGLE_FONTS_API  base de la API CSS2 de Google Fonts  (default: https://fonts.googleapis.com/css2)
 #   UC_JETBRAINS_MIRROR  base del mirror woff2 de JetBrains Mono (default: https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest)
+#   UC_NEUE_EINSTELLUNG_SRC  .otf fuente de NeueEinstellung Bold (default: <repo>/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf)
+#   UC_PYTHON_BIN        intérprete con fontTools+brotli       (default: python3)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -32,6 +39,8 @@ MIN_BYTES="${UC_FONT_MIN_BYTES:-2048}"
 FONTSHARE_API="${UC_FONTSHARE_API:-https://api.fontshare.com/v2/css}"
 GOOGLE_FONTS_API="${UC_GOOGLE_FONTS_API:-https://fonts.googleapis.com/css2}"
 JETBRAINS_MIRROR="${UC_JETBRAINS_MIRROR:-https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest}"
+NEUE_EINSTELLUNG_SRC="${UC_NEUE_EINSTELLUNG_SRC:-$LOCAL/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf}"
+PYTHON_BIN="${UC_PYTHON_BIN:-python3}"
 
 mkdir -p "$FONTS_DIR"
 
@@ -147,6 +156,31 @@ declare -A JETBRAINS_MAP=(
 for weight in 400 500 700; do
   download_url "$JETBRAINS_MIRROR/latin-$weight-normal.woff2" "$FONTS_DIR/${JETBRAINS_MAP[$weight]}"
 done
+
+# --- NeueEinstellung Bold: CONVERSIÓN local (no hay CDN público para esta fuente) -----------------
+# A diferencia de las 3 familias de arriba, NeueEinstellung no está en Fontshare/Google Fonts: el
+# .otf vive en el repo (docs/Imagen de marca/Neue_Einstellung/) y se convierte a .woff2 con
+# fontTools. Mismo criterio de idempotencia que download_url (needs_download), pero sin red.
+echo "==> NeueEinstellung Bold: conversión local .otf -> .woff2 (sin CDN)"
+NEUE_DEST="$FONTS_DIR/NeueEinstellung-Bold.woff2"
+if needs_download "$NEUE_DEST"; then
+  if [ ! -f "$NEUE_EINSTELLUNG_SRC" ]; then
+    echo "  ! fuente .otf no encontrada: $NEUE_EINSTELLUNG_SRC" >&2
+    echo "  ! seteá UC_NEUE_EINSTELLUNG_SRC o restaurá el archivo -- no hay fallback silencioso" >&2
+    exit 1
+  fi
+  echo "  -> convirtiendo $(basename "$NEUE_EINSTELLUNG_SRC")"
+  "$PYTHON_BIN" -c '
+import sys
+from fontTools.ttLib import TTFont
+font = TTFont(sys.argv[1])
+font.flavor = "woff2"
+font.save(sys.argv[2])
+' "$NEUE_EINSTELLUNG_SRC" "$NEUE_DEST.tmp"
+  mv "$NEUE_DEST.tmp" "$NEUE_DEST"
+else
+  echo "  = $(basename "$NEUE_DEST") ya presente (idempotente, no-op)"
+fi
 
 echo "==> Fuentes en $FONTS_DIR:"
 ls -la "$FONTS_DIR"/*.woff2
