@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Sin esto, un run que se pierde (outage de Actions, race, rama con historia rara) queda sin
+  # medir PARA SIEMPRE: no hay forma de pedir una corrida a demanda, sólo de esperar un evento.
+  # Medido durante el outage del 2026-08-06: `gh run rerun` sobre un run `queued` lo deja en un
+  # limbo incancelable; `close`+`reopen` no dispara (GitHub deduplica por SHA); un commit vacío
+  # tampoco. `workflow_dispatch` es la única forma real de re-pedir la corrida:
+  #   gh workflow run tests.yml --ref <rama-o-sha>
+  workflow_dispatch:
 
 # G-2 del frente de manejo de errores. Lo que este CI corrige (medido el 2026-07-28):
 #
