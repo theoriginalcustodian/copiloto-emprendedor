@@ -24,11 +24,13 @@
 #   scripts/archivar-buzon.sh              # archiva (default TTL 90 min)
 #   scripts/archivar-buzon.sh --dry-run    # muestra qué haría, sin mover
 #   TTL_MIN=120 scripts/archivar-buzon.sh  # override del TTL en minutos
+#   BUZON_DIR=/ruta/a/buzon-test scripts/archivar-buzon.sh   # aislamiento para test, sin tocar el real
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUZON="$REPO_ROOT/coordinacion"
+BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
 ABIERTO="$BUZON/abierto"
+ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
 TTL_MIN="${TTL_MIN:-90}"
 DRY_RUN=0
@@ -66,10 +68,35 @@ for f in "$ABIERTO"/*.md; do
   moved=$((moved+1))
 done
 
+# ── en-curso/: sólo ARTEFACTOS (todo lo que no sea .md) más viejo que el TTL. ──────────────────
+# Los .md de en-curso/ son trabajos VIVOS (protocolo: "quien termina lo mueve") — archivarlos por
+# antigüedad haría desaparecer frentes en curso, el error opuesto al que este script arregla. La
+# evidencia adjunta (capturas de un hito ya cerrado) sí se acumula sin dueño que la mueva — medido
+# 2026-08-06: 10 archivos, 0 trabajos, el más viejo con 10h ahí.
+moved_artefactos=0
+if [ -d "$ENCURSO" ]; then
+  for f in "$ENCURSO"/*; do
+    [ -f "$f" ] || continue
+    b="$(basename "$f")"
+    case "$b" in *.md) continue ;; esac   # trabajo vivo, nunca por antigüedad
+    [ -n "$(find "$f" -mmin "-$TTL_MIN" 2>/dev/null)" ] && continue   # fresco, se queda
+
+    d="$(echo "$b" | grep -oE '^[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)"
+    [ -n "$d" ] || d="$(date -r "$f" '+%Y-%m-%d' 2>/dev/null || date '+%Y-%m-%d')"
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "ARCHIVARÍA (en-curso, artefacto) → cerrado/$d/  $b"
+    else
+      mkdir -p "$CERRADO/$d"
+      mv "$f" "$CERRADO/$d/"
+    fi
+    moved_artefactos=$((moved_artefactos+1))
+  done
+fi
+
 abiertos_md=("$ABIERTO"/*.md)
 abiertos_ahora=${#abiertos_md[@]}
 if [ "$DRY_RUN" = "1" ]; then
-  echo "[dry-run] archivaría $moved · obligaciones $kept_obl · frescos $kept_fresh · TTL ${TTL_MIN}min"
+  echo "[dry-run] archivaría $moved · obligaciones $kept_obl · frescos $kept_fresh · TTL ${TTL_MIN}min · en-curso/ artefactos $moved_artefactos"
 else
-  echo "archivados $moved · abiertos ahora $abiertos_ahora (obligaciones $kept_obl + frescos $kept_fresh) · TTL ${TTL_MIN}min"
+  echo "archivados $moved · abiertos ahora $abiertos_ahora (obligaciones $kept_obl + frescos $kept_fresh) · TTL ${TTL_MIN}min · en-curso/ artefactos archivados $moved_artefactos"
 fi
