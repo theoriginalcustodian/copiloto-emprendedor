@@ -9,7 +9,7 @@
  * móviles los clasificó `descartar`. `CopilotApi` (`types.ts`) ya NO declara esos tres métodos.
  */
 import { sendAudio } from './audio';
-import { login } from './auth';
+import { login, loginWithGoogleIdToken } from './auth';
 import { sendChat } from './chat';
 import { sendFoto } from './foto';
 import { me } from './me';
@@ -21,6 +21,7 @@ import { warm } from './warm';
 
 export const apiReal: CopilotApi = {
   login,
+  loginWithGoogleIdToken,
   ensureOauthTenant,
   me,
   sendChat,

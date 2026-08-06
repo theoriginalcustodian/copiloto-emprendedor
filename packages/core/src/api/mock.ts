@@ -58,6 +58,17 @@ export const mockApi: CopilotApi = {
     };
   },
 
+  async loginWithGoogleIdToken(): Promise<LoginResponse> {
+    await delay(undefined);
+    return {
+      access_token: 'mock-access-token-google',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'mock-refresh-token-google',
+      user: { email: 'demo-google@copiloto.test' },
+    };
+  },
+
   async ensureOauthTenant(): Promise<OauthEnsureResponse> {
     await delay(undefined);
     return { cliente_id: 'mock-cliente-1' };

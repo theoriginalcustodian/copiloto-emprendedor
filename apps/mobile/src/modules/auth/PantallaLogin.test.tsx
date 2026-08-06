@@ -3,8 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 // Jest (jest-expo) — describe/it/expect/jest son globales, no se importan de vitest.
 
 /** Partial mock de `@copiloto/core`: reusa las clases de error REALES (`UnauthorizedError`) para que
- * el `instanceof` de `SessionProvider` siga funcionando — sólo se reemplazan `login`/`me`. Mismo
- * patrón que `session.test.tsx`. */
+ * el `instanceof` de `SessionProvider` siga funcionando — sólo se reemplazan `login`/`me`/
+ * `ensureOauthTenant`. Mismo patrón que `session.test.tsx`. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
   return {
@@ -13,23 +13,20 @@ jest.mock('@copiloto/core', () => {
       ...actual.apiReal,
       login: jest.fn(),
       me: jest.fn(),
+      ensureOauthTenant: jest.fn(),
     },
   };
 });
 
-// `WebBrowserResultType` (el enum real, ej. `.CANCEL`) se reexporta -- es un tipo nominal, un string
-// literal plano ("cancel") no es asignable a `WebBrowserResultType` (TS2322, lo que rompió el CI).
-jest.mock('expo-web-browser', () => {
-  const actual = jest.requireActual('expo-web-browser');
-  return { ...actual, openAuthSessionAsync: jest.fn() };
-});
-// `makeRedirectUri` real pasa por `expo-linking` -> `expo-constants` -> el manifest de app.json, que
-// jest-expo no resuelve en este entorno. El valor no importa para la lógica bajo test (sólo viaja
-// como parámetro a `openAuthSessionAsync`, que ya está mockeado arriba) -- se fija a un valor fijo.
-jest.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'copiloto://' }));
+// Sign-in NATIVO (Credential Manager, sin browser) -- ver `oauth.test.ts` para el detalle de por qué
+// se reemplazó `expo-web-browser` (BETA-4b, 2026-08-05).
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: { configure: jest.fn(), hasPlayServices: jest.fn().mockResolvedValue(true), signIn: jest.fn() },
+  isSuccessResponse: (r: { type: string }) => r.type === 'success',
+}));
 
 import { apiReal as api, UnauthorizedError } from '@copiloto/core';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 import { almacenTokens } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -51,7 +48,10 @@ describe('PantallaLogin', () => {
     await almacenTokens.limpiar();
     jest.mocked(api.login).mockReset();
     jest.mocked(api.me).mockReset();
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockReset();
+    jest.mocked(api.ensureOauthTenant).mockReset();
+    jest.mocked(GoogleSignin.signIn).mockReset();
+    jest.mocked(GoogleSignin.hasPlayServices).mockReset().mockResolvedValue(true);
+    (global as any).fetch = jest.fn();
     process.env.EXPO_PUBLIC_API_BASE = 'https://copilotoemprendedor.duckdns.org';
   });
 
@@ -60,10 +60,14 @@ describe('PantallaLogin', () => {
     expect(screen.getByTestId('login-google')).toBeTruthy();
   });
 
-  it('login con Google exitoso persiste los tokens del fragment de retorno', async () => {
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
+  it('login con Google exitoso persiste los tokens que devuelve el backend tras el intercambio', async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
       type: 'success',
-      url: 'copiloto://?x=1#access_token=tok-google&refresh_token=refresh-google',
+      data: { idToken: 'google-id-token-real', user: {} },
+    } as any);
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ access_token: 'tok-google', refresh_token: 'refresh-google' }),
     });
     jest.mocked(api.me).mockResolvedValueOnce({ cliente_id: 'cli-1', email: 'emprendedor@copiloto.test' });
 
@@ -75,17 +79,41 @@ describe('PantallaLogin', () => {
     expect(screen.queryByTestId('login-alert')).toBeNull();
   });
 
-  it('cancelar el consentimiento de Google no muestra alerta (no es un error)', async () => {
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
-      type: WebBrowser.WebBrowserResultType.CANCEL,
-    });
+  it('cancelar el selector nativo de Google no muestra alerta (no es un error)', async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({ type: 'cancelled', data: null } as any);
 
     await montar();
     await fireEvent.press(screen.getByTestId('login-google'));
 
-    await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
+    await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
     expect(screen.queryByTestId('login-alert')).toBeNull();
     expect(await almacenTokens.leerToken()).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('first-login de Google (403 en /me) auto-provisiona el tenant y no muestra alerta', async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: 'success',
+      data: { idToken: 'google-id-token-nuevo', user: {} },
+    } as any);
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ access_token: 'tok-nuevo', refresh_token: 'refresh-nuevo' }),
+    });
+    // El probe /me da 403 la PRIMERA vez (user recién creado por Google, sin fila de tenant todavía)
+    // y 200 recién después de que `ensureOauthTenant` provisiona -- exactamente el gap que este test
+    // cubre (ver el fix en `SessionProvider.loginConGoogle`).
+    jest.mocked(api.me)
+      .mockRejectedValueOnce(new (jest.requireActual('@copiloto/core').ForbiddenError)('sin tenant'))
+      .mockResolvedValueOnce({ cliente_id: 'cli-nuevo', email: 'nuevo@gmail.com' });
+    jest.mocked(api.ensureOauthTenant).mockResolvedValueOnce({ cliente_id: 'cli-nuevo' });
+
+    await montar();
+    await fireEvent.press(screen.getByTestId('login-google'));
+
+    await waitFor(() => expect(api.ensureOauthTenant).toHaveBeenCalled());
+    await waitFor(() => expect(api.me).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('login-alert')).toBeNull();
   });
 
   it('login exitoso persiste el access_token y el refresh_token', async () => {
