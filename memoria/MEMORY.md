@@ -50,6 +50,10 @@
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?*; si no es "no por construcción", no terminó.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
+- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) — `feedback`. Expliqué 5 observaciones con una teoría inventada; la causa exacta estaba publicada. El **semáforo no alcanza**: leé el cuerpo del último update, no el color. Me sentí empírico midiendo mientras la conclusión salía de una suposición.
+- [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — `feedback`. Una parada "hasta las 14:21" tuvo la fábrica quieta hasta las 16:35. Su default al expirar es **seguir vigente**, y como ordena detenerse, cumplirla se ve igual que olvidarla. Toda orden con hora declara quién la levanta.
+- [📦⏪ Un rebuild desde OTRA base revierte un fix ya cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) — `project`. El APK del 05-08 pisó el fix del 03-08: `main` nunca retrocedió, retrocedió el **binario instalado**, que no vive en ninguna rama. 2 días sin síntoma. Control: `lastUpdateTime` + ejercitar la función, no leer el log del build.
+- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) — `project`. Vite cayó a 5187 y 5183 lo servía otra sesión con código pre-hito-3: 78 min midiendo el servidor equivocado, que responde 200 y no protesta. Cruzá el PID del puerto contra tu proceso.
 - [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada verbo de "dueño de qué" necesita su renglón.
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — acá es `coordinacion/PLAN.md`.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único, verificado que existe.
