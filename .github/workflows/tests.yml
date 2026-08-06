@@ -155,3 +155,15 @@ jobs:
         with:
           node-version: '22'
       - run: bash scripts/ci/lint.sh
+
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Primero el CONTROL POSITIVO: un guard que nunca vio un rojo no esta verificado.
+      # Su rotura se ve identica a su funcionamiento (silencio en ambos casos), asi que el
+      # verde del paso siguiente solo vale si antes probamos que sabe ponerse rojo.
+      - name: control positivo -- el guard sabe detectar
+        run: bash scripts/ci/no-drift.sh --self-test
+      - name: la suite se define en scripts/ci, no dentro de este archivo (ADR-001)
+        run: bash scripts/ci/no-drift.sh

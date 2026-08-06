@@ -1,7 +1,8 @@
 # ADR-001 — La definición de la suite sale de GitHub: gate propio local+VPS, GitHub como respaldo
 
 - **Fecha:** 2026-08-06
-- **Estado:** `PROPUESTO` → pasa a `ACCEPTED` cuando esté el control diferencial en rojo (ver §7)
+- **Estado:** ✅ **`ACCEPTED`** el 2026-08-06 — el DoD de §7 se cumplió **el mismo día**. Evidencia
+  medida en §11, incluido el control diferencial en rojo que era la condición.
 - **Decide:** operador (es MAYOR: cambia la arquitectura del gate del repo)
 - **Autor del borrador:** sesión de planificación
 - **Primer ADR del repo.** Convención heredada del `CLAUDE.md` global: `YYYY-MM-DD_ADR-XXX_slug.md`.
@@ -185,3 +186,47 @@ Por eso el criterio de aceptación es **diferencial**, no "corre y da verde":
 - `memoria/rls-activado-que-no-filtraba-el-dueno-esta-exento.md`
 - `memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md`
 - `memoria/instrumentos-que-confirman-en-vez-de-verificar.md`
+
+---
+
+## 11. Cierre — `ACCEPTED` el mismo día, con la evidencia medida
+
+El ADR se redactó a las ~19:00 y quedó cumplido a las ~21:00. Cada casilla, contra `origin/main`:
+
+| DoD (§7) | Estado | Evidencia |
+|---|---|---|
+| `scripts/ci/*.sh` con los 5 jobs | ✅ | `backend.sh` · `core.sh` · `mobile.sh` · `web.sh` · `lint.sh` (#296 frontend, #298 backend) |
+| Cada uno corre solo, control positivo | ✅ | `core` 0 · `mobile` 0 (75 suites / 686 tests) · `web` 0 · `lint` 0 (0 errores) |
+| `tests.yml` sin comandos inline | ✅ | verificado por el guard, no a ojo |
+| **Control diferencial en rojo** | ✅ | test roto a propósito ⇒ `core.sh` **EXIT 1** (`1 failed \| 434 passed`); test restaurado y confirmado **por hash** |
+| Guard anti-drift | ✅ | `scripts/ci/no-drift.sh` + job `drift` (este PR) |
+| `gate.sh` escribe `.ci-recibos/<sha>.json` | ✅ | `scripts/gate.sh:61` |
+| Mirror del repo en el VPS | ✅ | `scripts/setup-vps-mirror.sh` (#298) |
+
+### El guard tiene su propio control positivo, y no es adorno
+
+`no-drift.sh --self-test` corre **antes** que la auditoría real, en el mismo job. Verifica cuatro
+cosas sobre fixtures sintéticos: el sano pasa · un runner inline **se detecta** · un job que no delega
+**se detecta** · y una mención del runner **dentro de un comentario NO alarma**.
+
+Ese cuarto caso no es paranoia: el mismo día, frontend escribió un guard del scroll cuya regex
+encontraba la cadena buscada **en el comentario que explicaba por qué hacía falta** — pasaba en verde
+con el fix borrado. Un guard que se satisface con su propia documentación es indistinguible de uno
+que funciona, porque **nunca choca con nada**. Sólo el diferencial lo caza; la lectura no.
+
+### Lo que quedó demostrado, y era el argumento central
+
+El día que este ADR se escribió, GitHub Actions estuvo caído >5 h. Lo que dolió no fue la caída: fue
+**no tener ninguna palanca propia** — probé cuatro vías de relanzar y fallaron las cuatro, porque
+`tests.yml` ni siquiera tenía `workflow_dispatch`. Se identificó a las 17:35, se mergeó en `#292`, y
+a las 20:08 destrabó la re-verificación de `main` (5 jobs, 5 verdes).
+
+Una línea de YAML fue la diferencia entre esperar y decidir. Ése es el ADR en miniatura: **el
+problema nunca fue que el tercero fallara — fue depender de él sin alternativa.**
+
+### Lo que este ADR NO cerró
+
+- **v2** (runner propio automático vía `post-receive` en el mirror) sigue **diferido**, como se
+  decidió en §6(e). Ahora sí es barato: la definición ya está afuera.
+- El mirror está **scriptado pero no verificado con un push real** — `setup-vps-mirror.sh` existe;
+  falta correrlo. Deuda con dueño (backend) y visible acá, no invisible.
