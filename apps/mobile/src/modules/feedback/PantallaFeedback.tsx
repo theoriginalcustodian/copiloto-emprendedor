@@ -93,7 +93,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
   const grabando = voz.fase === 'grabando';
 
   return (
-    <MarcoGlass titulo="Feedback" icono="mic" testID="pantalla-feedback">
+    <MarcoGlass titulo="Feedback" icono="grabar" testID="pantalla-feedback">
       <ScrollFormulario
         testID="feedback-scroll"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
@@ -161,7 +161,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
                 backgroundColor: grabando ? tema.color.peligro : tema.color.acento,
               }}
             >
-              <GlassIcon name="mic" size={30} />
+              <GlassIcon name="grabar" size={30} />
             </View>
           </Pressable>
 

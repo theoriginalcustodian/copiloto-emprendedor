@@ -61,7 +61,7 @@ export function PantallaContabilidad() {
   }
 
   return (
-    <MarcoGlass titulo="Contabilidad" icono="folder" testID="pantalla-contabilidad">
+    <MarcoGlass titulo="Contabilidad" icono="contabilidad" testID="pantalla-contabilidad">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="contabilidad-cargando" color={tema.color.acento} />

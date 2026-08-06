@@ -202,7 +202,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   const clientesOrdenados = ordenarAlfabetico(clientes);
 
   return (
-    <MarcoGlass titulo="Clientes" icono="user" testID="pantalla-clientes">
+    <MarcoGlass titulo="Clientes" icono="clientes" testID="pantalla-clientes">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="clientes-cargando" color={tema.color.acento} />

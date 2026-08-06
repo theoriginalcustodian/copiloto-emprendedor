@@ -24,14 +24,17 @@ import { useTema } from '../../theme/ThemeProvider';
  * está»*. Quién tiene destino lo decide `destinoActividad.ts`, no esta fila.
  */
 
-/** Ícono por tipo. `clock` es el default: un tipo nuevo del backend se ve genérico, no roto. */
+/** Ícono por tipo. `actividadReciente` es el default: un tipo nuevo del backend se ve genérico, no
+ *  roto. `ingreso` usa el ícono de `contabilidad` -- no el de `ingresos` -- porque hoy ese tipo
+ *  navega a Contabilidad (ver el docstring del módulo), y el glifo tiene que decir A DÓNDE VA la
+ *  fila, no de qué signo es el monto. */
 const ICONO_POR_TIPO: Record<string, NombreIconoGlass> = {
-  factura: 'doc_search',
-  nota_credito: 'doc_search',
-  presupuesto: 'note',
-  gasto: 'wallet',
-  ingreso: 'chart',
-  cliente: 'user',
+  factura: 'facturacion',
+  nota_credito: 'facturacion',
+  presupuesto: 'presupuestos',
+  gasto: 'gastos',
+  ingreso: 'contabilidad',
+  cliente: 'clientes',
 };
 
 export interface FilaActividadProps {
@@ -43,7 +46,7 @@ export interface FilaActividadProps {
 
 export function FilaActividad({ item, onPress, testID }: FilaActividadProps) {
   const tema = useTema();
-  const icono = ICONO_POR_TIPO[item.tipo] ?? 'clock';
+  const icono = ICONO_POR_TIPO[item.tipo] ?? 'actividadReciente';
   const colorMonto =
     item.signo === 'entra'
       ? tema.color.exito
