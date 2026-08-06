@@ -23,7 +23,10 @@
 set -euo pipefail
 
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
-CKPT=".bridge/checkpoint-copiloto-emprendedor.db"
+# REPO_NAME overrideable (rescate de b3b6a881): permite testear el sync en aislamiento sin
+# escribir sobre el checkpoint/marcador real del proyecto.
+REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
+CKPT=".bridge/checkpoint-${REPO_NAME}.db"
 WT="${UC_GRAPH_WORKTREE:-C:/gfw-src/copiloto-main}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -60,13 +63,13 @@ echo "[graph-sync] árbol en origin/main @ ${SHA:0:12} ✓"
 cd "$BRIDGE"
 echo "[graph-sync] sincronizando (graphify + ingest + reconcile)…"
 if [ -n "${UC_GRAPH_FORCE:-}" ]; then
-  uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync --checkpoint "$CKPT" --force
+  uv run bridge --config config/repos.toml --repo "$REPO_NAME" sync --checkpoint "$CKPT" --force
 else
-  uv run bridge --config config/repos.toml --repo copiloto-emprendedor sync --checkpoint "$CKPT"
+  uv run bridge --config config/repos.toml --repo "$REPO_NAME" sync --checkpoint "$CKPT"
 fi
 # Marcador del ÚLTIMO SHA SINCRONIZADO CON ÉXITO. Se escribe recién acá, después del sync: si el
 # sync falla, el marcador queda viejo y el próximo push vuelve a intentar. Usar el HEAD del worktree
 # como marcador sería un instrumento que confirma — quedaría en main aunque el sync hubiera reventado.
 mkdir -p "$BRIDGE/.bridge"
-printf '%s\n' "$SHA" > "$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
+printf '%s\n' "$SHA" > "$BRIDGE/.bridge/last-synced-${REPO_NAME}.sha"
 echo "[graph-sync] ✅ grafo sincronizado desde origin/main @ ${SHA:0:12}"

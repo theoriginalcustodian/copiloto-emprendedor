@@ -17,6 +17,11 @@ REFS_STDIN="$(cat || true)"
 # unreal-copilot (.githooks/pre-push).
 ZERO="0000000000000000000000000000000000000000"
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
+# REPO_NAME overrideable (rescate de b3b6a881): permite testear el sync en aislamiento sin
+# escribir sobre el checkpoint/marcador real del proyecto. NO se trae MERGE_BASE_REF de esa
+# rama: origin/main está hardcodeado más abajo por decisión explícita del operador
+# (2026-07-31, ver comentario ahí) — no es un knob que deba existir.
+REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
 
 if [ ! -d "$BRIDGE" ]; then
   echo "[pre-push] ❌ no encuentro el bridge en '$BRIDGE'." >&2
@@ -43,7 +48,7 @@ fi
 # Bypass ante fallo transitorio: git push --no-verify.
 git fetch origin main --quiet 2>/dev/null || true
 MAIN_SHA="$(git rev-parse origin/main 2>/dev/null || echo desconocido)"
-MARCADOR="$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
+MARCADOR="$BRIDGE/.bridge/last-synced-${REPO_NAME}.sha"
 ULTIMO="$(cat "$MARCADOR" 2>/dev/null || echo ninguno)"
 if [ "$MAIN_SHA" = "$ULTIMO" ]; then
   echo "[pre-push] (grafo ya sincronizado con origin/main @ ${MAIN_SHA:0:12} — nada que hacer)"
