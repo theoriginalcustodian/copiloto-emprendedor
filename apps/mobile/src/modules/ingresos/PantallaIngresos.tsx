@@ -98,7 +98,7 @@ export function PantallaIngresos() {
   }
 
   return (
-    <MarcoGlass titulo="Ingresos" icono="ingreso" testID="pantalla-ingresos">
+    <MarcoGlass titulo="Ingresos" icono="ingresos" testID="pantalla-ingresos">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="ingresos-cargando" color={tema.color.acento} />

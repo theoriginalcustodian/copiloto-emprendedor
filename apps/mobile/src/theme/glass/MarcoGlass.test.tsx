@@ -25,7 +25,7 @@ jest.mock('expo-router', () => {
 async function montar() {
   return render(
     <ThemeProvider>
-      <MarcoGlass titulo="Ingresos" icono="ingreso" testID="marco-test">
+      <MarcoGlass titulo="Ingresos" icono="ingresos" testID="marco-test">
         <Text>contenido</Text>
       </MarcoGlass>
     </ThemeProvider>,

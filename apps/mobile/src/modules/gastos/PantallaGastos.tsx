@@ -128,7 +128,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   const hayGastos = gastos.length > 0;
 
   return (
-    <MarcoGlass titulo="Gastos" icono="wallet" testID="pantalla-gastos">
+    <MarcoGlass titulo="Gastos" icono="gastos" testID="pantalla-gastos">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="gastos-cargando" color={tema.color.acento} />

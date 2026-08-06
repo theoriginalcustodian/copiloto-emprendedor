@@ -481,7 +481,7 @@ export function PantallaFacturacion({ facturaIdInicial, comprobanteIdInicial }: 
   const cuitConocido = gate.tipo === 'listo' || gate.tipo === 'bloqueado' ? gate.cuit : null;
 
   return (
-    <MarcoGlass titulo="Facturación" icono="doc_search" testID="pantalla-facturacion">
+    <MarcoGlass titulo="Facturación" icono="facturacion" testID="pantalla-facturacion">
       <ScrollFormulario
         style={styles.scroll}
         testID="facturacion-lista"

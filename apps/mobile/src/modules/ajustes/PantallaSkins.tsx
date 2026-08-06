@@ -102,9 +102,9 @@ export function PantallaSkins() {
   const [skin, setSkin] = useSkin();
 
   return (
-    // Mismo ícono que el tile de entrada en el grid de Ajustes ('media') -- entrar por un ícono y
-    // llegar a otro desorienta.
-    <MarcoGlass titulo="Skins" icono="media" testID="pantalla-skins">
+    // Mismo ícono que el tile de entrada en el grid de Ajustes ('apariencia') -- entrar por un ícono
+    // y llegar a otro desorienta.
+    <MarcoGlass titulo="Skins" icono="apariencia" testID="pantalla-skins">
       <ScrollView
       // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
       // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo

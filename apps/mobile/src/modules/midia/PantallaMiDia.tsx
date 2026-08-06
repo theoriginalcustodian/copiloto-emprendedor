@@ -175,7 +175,7 @@ export function PantallaMiDia() {
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
 
   return (
-    <MarcoGlass titulo="Mi día" icono="clock" testID="pantalla-midia">
+    <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
       <View style={styles.raiz}>
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
 

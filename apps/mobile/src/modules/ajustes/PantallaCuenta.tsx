@@ -33,7 +33,7 @@ export function PantallaCuenta() {
   const [confirmando, setConfirmando] = useState(false);
 
   return (
-    <MarcoGlass titulo="Mi cuenta" icono="user" testID="pantalla-cuenta">
+    <MarcoGlass titulo="Mi cuenta" icono="cuenta" testID="pantalla-cuenta">
       <View style={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}>
         <Row testID="cuenta-identidad">
           <View style={{ gap: 2 }}>
@@ -61,7 +61,7 @@ export function PantallaCuenta() {
           onPress={() => router.push('/ajustes-feedback')}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
-            <GlassIcon name="mic" size={22} />
+            <GlassIcon name="grabar" size={22} />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
                 Feedback

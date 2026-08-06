@@ -94,36 +94,35 @@ export interface DefinicionTile {
  * del próximo que agregue una función. Una regla escrita sin test se degrada igual que ésta.
  *
  * **Íconos: ninguno se repite DENTRO de este grid** — entrar por un glifo y llegar a otra función
- * desorienta, y hay un test que lo impide. `midia→clock` (el día y sus horas, libre al salir
- * Recientes) y `contabilidad→folder` (los libros; libre al mudarse Apps a Ajustes) salieron del
- * catálogo existente; para **Ingresos hubo que agregar `ingreso`**, porque lo único libre era `mic`
- * —que no distingue nada, en esta app se dicta TODO— y `media`, que no significa plata.
+ * desorienta, y hay un test que lo impide. Desde ODOBI hito 5 cada tile usa el ícono de función que
+ * lleva su MISMO nombre en el set de 21 (`icons.ts`) — ya no hace falta pedir prestado un glifo de
+ * otra función ni agregar uno nuevo al catálogo compartido: el vocabulario alcanza.
  */
 export const TILES: readonly DefinicionTile[] = [
   // Las CUATRO OPERATIVAS — los cuatro verbos diarios: facturar, cobrar, gastar, presupuestar. Es lo
   // único que tiene que verse SIN SCROLLEAR, y ése es el criterio de aceptación real del orden.
-  { key: 'facturacion', label: 'Facturación', icono: 'doc_search' },
+  { key: 'facturacion', label: 'Facturación', icono: 'facturacion' },
   // 🆕 2026-07-22. Simétrica de Gastos, y **por eso va al lado**: si el emprendedor ve Gastos y no
   // ve Ingresos, asume que la plata que entra no se registra — y no la va a ir a buscar adentro de
   // otra pantalla. Hoy un cobro sólo existe si pasó por MercadoPago; el efectivo y las
   // transferencias no dejaban rastro, así que la caja daba números coherentes y falsos.
-  { key: 'ingresos', label: 'Ingresos', icono: 'ingreso' },
-  { key: 'gastos', label: 'Gastos', icono: 'wallet' },
-  { key: 'presupuestos', label: 'Presupuestos', icono: 'note' },
+  { key: 'ingresos', label: 'Ingresos', icono: 'ingresos' },
+  { key: 'gastos', label: 'Gastos', icono: 'gastos' },
+  { key: 'presupuestos', label: 'Presupuestos', icono: 'presupuestos' },
   // Baja al 5º: la cartera **se llena sola** a medida que se factura, así que casi no se entra a
   // mano. Los cuatro de arriba son los cuatro verbos diarios — facturar, cobrar, gastar, presupuestar.
-  { key: 'clientes', label: 'Clientes', icono: 'user' },
+  { key: 'clientes', label: 'Clientes', icono: 'clientes' },
   // Cascarón hasta que llegue su contrato (Kanban, hito 7 del sprint de Inteligencia de Negocio).
   // Va a un `MarcoGlass` que dice qué va a ser, NUNCA a una pantalla en blanco: un tile que abre el
   // vacío le enseña al emprendedor que hay funciones que no andan, y esa lección después se la
   // aplica a las que sí andan.
-  { key: 'midia', label: 'Mi día', icono: 'clock' },
+  { key: 'midia', label: 'Mi día', icono: 'miDia' },
   // Ex "Métricas". El módulo se REUSA —no se reescribe—, sólo cambia cómo se llama.
-  { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: 'chart' },
+  { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: 'inteligencia' },
   // Cascarón: su contrato ya está escrito y espera el cierre de Clientes.
-  { key: 'contabilidad', label: 'Contabilidad', icono: 'folder' },
+  { key: 'contabilidad', label: 'Contabilidad', icono: 'contabilidad' },
   // Último a propósito: se toca una vez por mes. Estaba segundo.
-  { key: 'ajustes', label: 'Ajustes', icono: 'settings' },
+  { key: 'ajustes', label: 'Ajustes', icono: 'ajustes' },
 ];
 
 /**

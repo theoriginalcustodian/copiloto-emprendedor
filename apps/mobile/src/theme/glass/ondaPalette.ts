@@ -1,13 +1,14 @@
 /**
- * Paleta de la onda de audio — **datos de color puros, sin lógica** (mismo criterio que
- * `iconPalette.ts`, y por eso está autorizado a tener hex en `temaSinHex.test.ts`).
+ * Paleta de la onda de audio — **datos de color puros, sin lógica**, por eso está autorizado a
+ * tener hex en `temaSinHex.test.ts` (ver el criterio ahí). Único archivo de color intrínseco que
+ * queda: `iconPalette.ts` se retiró en ODOBI hito 5 -- el set de íconos nuevo usa un acento único
+ * del tema, no paletas propias por ícono (ver `icons.ts`).
  *
  * 🔴 **Por qué NO sale de los tokens del tema.** La galería de referencia
  * (`App glass/DocuMed 3 — Skin Z-Depth HUD (exploración)/waves-gallery.js`) lo declara en su
  * encabezado: *«cada onda trae su propia paleta fija — sin skins»*. El degradé no decora la onda:
- * **es la onda**. Teñirla con el acento del skin activo la convertiría en cinco ondas distintas y
- * ninguna sería la del diseño. Es el mismo argumento por el que el ícono de carpeta es
- * magenta→naranja en los cinco skins.
+ * **es la onda**. Teñirla con el acento único de ODOBI la convertiría en una onda genérica y no
+ * sería la del diseño.
  *
  * Valores tomados literalmente de la variante `osc-gbp` («Oscilograma espectro»),
  * `waves-gallery.js:17-18`. No se ajustaron ni se redondearon.

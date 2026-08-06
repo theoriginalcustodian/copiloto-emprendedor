@@ -8,7 +8,7 @@ import { PantallaAndamiaje } from './PantallaAndamiaje';
 async function envolver(mensaje: string) {
   return render(
     <ThemeProvider>
-      <PantallaAndamiaje titulo="Datos personales" icono="note" mensaje={mensaje} testID="pantalla-datos-personales" />
+      <PantallaAndamiaje titulo="Datos personales" icono="cuenta" mensaje={mensaje} testID="pantalla-datos-personales" />
     </ThemeProvider>,
   );
 }

@@ -144,7 +144,7 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const hayPresupuestos = presupuestos.length > 0;
 
   return (
-    <MarcoGlass titulo="Presupuestos" icono="note" testID="pantalla-presupuestos">
+    <MarcoGlass titulo="Presupuestos" icono="presupuestos" testID="pantalla-presupuestos">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="presupuestos-cargando" color={tema.color.acento} />

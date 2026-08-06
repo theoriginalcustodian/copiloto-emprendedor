@@ -284,12 +284,10 @@ export function PantallaPerfilNegocio() {
 
   const enviando = estadoGuardado === 'enviando';
 
-  // `icono="chat"` y no `note`: `note` ya es "Datos personales" en el grid de Ajustes, y entrar por
-  // un ícono para llegar a otro desorienta (regla del grid). De los tres libres del catálogo
-  // (`mic`/`chat`/`clock`), `chat` es el defendible: la mitad de esta pantalla es literalmente cómo
-  // conversa el copiloto, y la otra mitad es el contexto que usa para conversar.
+  // `icono="miNegocio"`: el set de 21 tiene un glifo propio con este mismo nombre (local/vidriera),
+  // así que ya no hace falta pedir prestado `chat` del catálogo viejo.
   return (
-    <MarcoGlass titulo="Mi negocio" icono="chat" testID="pantalla-perfil-negocio">
+    <MarcoGlass titulo="Mi negocio" icono="miNegocio" testID="pantalla-perfil-negocio">
       {estadoCarga === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="perfil-negocio-cargando" color={tema.color.acento} />

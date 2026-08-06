@@ -44,36 +44,41 @@ interface DefinicionTileAjuste {
  *   conexiones que se tocan una vez. La pantalla no se reescribió — sólo cambió desde dónde se llega.
  *
  * 🔴 Ningún ícono se repite DENTRO de este grid -- elegir mal acá es entrar a la pantalla equivocada.
- * El catálogo de glifos (`icons.ts`) no tiene ninguno que signifique literalmente "paleta de colores"
- * -- para Apariencia se mantiene `media` (ojo/preview) en vez de agregar un ícono nuevo al catálogo
- * compartido. La MUESTRA de color real vive en la pantalla de destino (`PantallaSkins.tsx`).
+ * Desde ODOBI hito 5 cada tile usa el ícono de función que lleva su MISMO nombre en el set de 21
+ * (`icons.ts`) -- Apariencia ya tiene un glifo propio (semicírculo claro/oscuro) y Facturación AFIP
+ * dejó de compartir ícono con el tile de Facturación del escritorio (ver abajo). La MUESTRA de color
+ * real sigue viviendo en la pantalla de destino (`PantallaSkins.tsx`); acá sólo cambia el glifo.
  */
 const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
-  // Primero: es lo que hay que completar el día 1. `chat` porque la mitad de esa pantalla es
+  // Primero: es lo que hay que completar el día 1. `miNegocio` porque la mitad de esa pantalla es
   // literalmente cómo conversa el copiloto.
-  { key: 'perfilNegocio', label: 'Mi negocio', icono: 'chat' },
-  // Perfil fiscal + vínculo con ARCA + ambiente. Mismo ícono que el tile de Facturación del
-  // escritorio (`doc_search`) a propósito -- es la configuración de ESA función, y entrar por un
-  // ícono para llegar a otro desorienta (ver el docstring de `MarcoGlass`).
-  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'doc_search' },
-  // `folder` = la carpeta que agrupa, igual que acá se agrupan las integraciones conectadas. Es el
-  // mismo glifo que traía en el escritorio: la pantalla es la misma, sólo cambió la puerta.
-  { key: 'apps', label: 'Apps conectadas', icono: 'folder' },
-  { key: 'miPlan', label: 'Mi plan', icono: 'chart' },
-  { key: 'cuenta', label: 'Mi cuenta', icono: 'user' },
-  { key: 'apariencia', label: 'Apariencia', icono: 'media' },
+  { key: 'perfilNegocio', label: 'Mi negocio', icono: 'miNegocio' },
+  // Perfil fiscal + vínculo con ARCA + ambiente. Antes compartía ícono con el tile de Facturación del
+  // escritorio (`doc_search`, catálogo viejo de 11 nombres, sin uno propio para "trámite/alta ante
+  // ARCA"). El set de 21 SÍ tiene uno distinto (`perfilFiscal`, escudo con check) -- usarlo separa la
+  // función (Facturación) de su configuración (esta pantalla), que es más preciso que compartir.
+  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'perfilFiscal' },
+  // Antes `folder` (la carpeta que agrupa), heredado del escritorio. `appsConectadas` es el nombre
+  // propio del set de 21 para este mismo concepto -- la pantalla es la misma, sólo cambió el glifo.
+  { key: 'apps', label: 'Apps conectadas', icono: 'appsConectadas' },
+  { key: 'miPlan', label: 'Mi plan', icono: 'miPlan' },
+  { key: 'cuenta', label: 'Mi cuenta', icono: 'cuenta' },
+  // Antes `media` (ojo/preview) -- el catálogo viejo no tenía ningún glifo que significara
+  // literalmente "paleta de colores". El set de 21 sí: `apariencia` es un semicírculo claro/oscuro,
+  // dibujado para esto.
+  { key: 'apariencia', label: 'Apariencia', icono: 'apariencia' },
   /**
    * 🆕 2026-07-22 · La guía de uso: qué se le puede pedir al copiloto.
    *
-   * **`mic` y no otro**: en esta app se dicta todo, así que el micrófono no sirve para distinguir una
-   * *función* de otra —por eso Ingresos no lo usó—, pero acá el tema **es** hablarle. Es el único
-   * lugar donde ese glifo dice exactamente de qué se trata la pantalla, y no se repite en este grid.
+   * **`comoHablarle` y no `grabar`**: el set de 21 separa el glifo de "guía de uso" (burbuja con
+   * ecualizador) del de "grabar/mantené para hablar" (cápsula de micrófono) -- acá corresponde el
+   * primero, porque esta pantalla es la guía, no la acción de grabar.
    *
    * Va **última** por la misma regla de orden que el escritorio: se entra una vez, al principio. Y va
    * en Ajustes —no como tile del escritorio— porque no es un verbo diario: ponerla arriba empujaría
    * fuera de pantalla algo que se usa todos los días.
    */
-  { key: 'comoHablarle', label: 'Cómo hablarle', icono: 'mic' },
+  { key: 'comoHablarle', label: 'Cómo hablarle', icono: 'comoHablarle' },
 ];
 
 /** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
@@ -119,7 +124,7 @@ export function PantallaAjustes({ onAjuste }: PantallaAjustesProps) {
   const tema = useTema();
 
   return (
-    <MarcoGlass titulo="Ajustes" icono="settings" testID="pantalla-ajustes">
+    <MarcoGlass titulo="Ajustes" icono="ajustes" testID="pantalla-ajustes">
       <View style={[styles.contenedor, { padding: tema.espacio.md }]}>
         <View style={styles.grid}>
           {FILAS_TILES_AJUSTES.map((fila, iFila) => (
