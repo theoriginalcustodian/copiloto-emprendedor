@@ -14,7 +14,7 @@ export default function PantallaMiPlanRoute() {
   return (
     <PantallaAndamiaje
       titulo="Mi plan"
-      icono="chart"
+      icono="miPlan"
       mensaje="Acá vas a ver tu plan actual, qué incluye y cómo cambiarlo. Todavía no está conectado."
       testID="pantalla-mi-plan"
     />

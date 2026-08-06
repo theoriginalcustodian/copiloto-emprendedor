@@ -4,27 +4,26 @@ import { join } from 'node:path';
 // Jest (jest-expo) — `describe`/`it`/`expect` son globales, no se importan de `vitest`.
 
 /**
- * Los colores salen SIEMPRE de los tokens. Un `#00C896` suelto en un componente rompe los 5 skins
- * en silencio: se ve bien en el tema por defecto y mal en los otros cuatro. Este test lo impide.
+ * Los colores salen SIEMPRE de los tokens. Un `#00C896` suelto en un componente rompe las 3 pieles
+ * en silencio: se ve bien en la piel por defecto y mal en las otras dos. Este test lo impide.
  *
- * Archivos autorizados a tener hex (los ÚNICOS): `tokens.ts` (colores de los 5 temas),
- * `glass/iconPalette.ts` (las 8 paletas de los iconos glass) y `glass/ondaPalette.ts` (el degradé de
- * la onda de audio). Los dos últimos comparten el MISMO criterio, y es lo que los separa de un color
- * hardcodeado: son colores **INTRÍNSECOS del diseño**, no del tema — un icono de "carpeta" es
- * magenta→naranja en los 5 skins, y la galería de ondas declara explícitamente *«cada onda trae su
- * propia paleta fija — sin skins»*. Los tres son SÓLO-DATOS-DE-COLOR, sin lógica; quien los consume
- * (`GlassIcon.tsx`, `icons.ts`, `Onda.tsx`) queda cero-hex.
+ * Archivos autorizados a tener hex (los ÚNICOS): `tokens.ts` (colores de las 3 pieles) y
+ * `glass/ondaPalette.ts` (el degradé de la onda de audio) — la galería de ondas declara
+ * explícitamente *«cada onda trae su propia paleta fija — sin skins»*, un color **INTRÍNSECO del
+ * diseño**, no del tema. Es SÓLO-DATOS-DE-COLOR, sin lógica; quien lo consume (`Onda.tsx`) queda
+ * cero-hex.
+ *
+ * `glass/iconPalette.ts` (las 8 paletas de los iconos glass, con el mismo criterio) se RETIRÓ en
+ * ODOBI hito 5: el set de íconos nuevo (`icons.ts`) no tiene paleta propia por ícono, usa el acento
+ * único del tema (`tema.color.acento`, resuelto en `GlassIcon.tsx`) — ya no hay excepción que
+ * admitir para íconos.
  *
  * 🔴 Esta lista se extiende con argumento, nunca para destrabar un archivo. El criterio de admisión
  * es doble y hay que cumplir los dos: (a) el color es del DISEÑO del elemento y no puede cambiar con
  * el skin, y (b) el archivo es datos puros. Un componente con lógica NO entra acá: mueve sus colores
  * a un archivo de datos.
  */
-const ARCHIVOS_DE_COLOR = [
-  join('theme', 'tokens.ts'),
-  join('theme', 'glass', 'iconPalette.ts'),
-  join('theme', 'glass', 'ondaPalette.ts'),
-];
+const ARCHIVOS_DE_COLOR = [join('theme', 'tokens.ts'), join('theme', 'glass', 'ondaPalette.ts')];
 /**
  * `.test.ts` / `.test.tsx` (runner nativo) y `.test.web.ts` (runner web, proyecto Jest "web") son las
  * DOS convenciones de test del repo. Reconocer sólo la primera hacía que un test web contara como

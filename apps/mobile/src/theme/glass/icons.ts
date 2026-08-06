@@ -1,49 +1,29 @@
 /**
- * Catálogo de geometría de los iconos "glass": silueta (para clip + borde), blobs de color y glifo.
- * CERO color acá — los blobs referencian una paleta por NOMBRE (`iconPalette.ts`) y el glifo un
- * color por rol (`'blanco' | 'acentoCian' | 'acentoAmbar'`); quien resuelve el nombre a hex es
- * `GlassIcon.tsx`. Ver `temaSinHex.test.ts`.
+ * Catálogo de los 21 íconos de función Odobi: descriptores de datos puros (`GlassIcon.tsx` los
+ * traduce a primitivos `react-native-svg`). Verbatim del diseño (`Iconos Odobi.dc.html`, proyecto
+ * "Copiloto emprendedor Odobi") -- viewBox 24×24, trazo redondeado, `currentColor` por defecto.
  *
- * Port 1:1 del objeto `ICONS` de
- * `App glass/DocuMed 2 — Skin Z-Depth HUD (exploración)/glass-icons-v2.js` (fuente canónica del
- * prototipo), acotado a los 9 nombres semánticos que la app mobile necesita hoy. Los 9 existen tal
- * cual en el source (mapeo identidad, ver reporte de la tarea) — no fue necesario componer ninguno.
+ * CERO color acá -- cada elemento declara su ROL (`'estructura' | 'acento'`), nunca un hex; quien
+ * resuelve el rol a color es `GlassIcon.tsx` (`'estructura'` -> `currentColor`, `'acento'` -> el
+ * acento único del tema). Ver `temaSinHex.test.ts`.
  *
- * El `glyph` del source era markup SVG crudo (string); acá es una lista de descriptores de datos
- * puros (`ElementoGlifo`) que `GlassIcon.tsx` traduce a primitivos `react-native-svg` — un `.ts` de
- * sólo-datos no puede tener JSX.
+ * Reemplaza el catálogo "glass" (blobs radiales, 11 nombres semánticos, ver PR de ODOBI hito 5):
+ * ese lenguaje visual (frost + blur + gradientes de 8 paletas) es exactamente lo que ODOBI retira,
+ * misma familia que el `backdrop-filter`/`expo-blur` que hito 2 borra en paralelo. El acento único
+ * reemplaza las 8 paletas -- ver la decisión §3 documentada en el PR.
  */
-import type { NombrePaletaBlob } from './iconPalette';
 
-// ---- helpers de forma (idénticos a `rr`/`circ` del source — devuelven el `d` de un path) ----
+/** `'estructura'` (default) -> `currentColor`, hereda del contenedor. `'acento'` -> el acento único
+ *  del tema activo (mismo valor en las 3 pieles) -- nunca un hex propio. */
+export type ColorGlifo = 'estructura' | 'acento';
 
-/** Rectángulo redondeado centrado en `(x,y)` con ancho `w`, alto `h` y radio `r`. */
-function rr(x: number, y: number, w: number, h: number, r: number): string {
-  return (
-    `M${x + r},${y} h${w - 2 * r} a${r},${r} 0 0 1 ${r},${r} v${h - 2 * r} ` +
-    `a${r},${r} 0 0 1 ${-r},${r} h${-(w - 2 * r)} a${r},${r} 0 0 1 ${-r},${-r} ` +
-    `v${-(h - 2 * r)} a${r},${r} 0 0 1 ${r},${-r} z`
-  );
-}
-
-/** Círculo centrado en `(cx,cy)` de radio `r`, como path (para poder combinarlo con `extra`). */
-function circ(cx: number, cy: number, r: number): string {
-  return `M${cx - r},${cy} a${r},${r} 0 1 0 ${2 * r},0 a${r},${r} 0 1 0 ${-2 * r},0 z`;
-}
-
-// ---- descriptores del glifo (datos puros; `GlassIcon.tsx` los renderiza) ----
-
-export type ColorGlifo = 'blanco' | 'acentoCian' | 'acentoAmbar';
-
-export interface LineaGlifo {
-  tipo: 'linea';
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  color: ColorGlifo;
-  ancho: number;
-  opacidad?: number;
+export interface PathGlifo {
+  tipo: 'path';
+  d: string;
+  color?: ColorGlifo;
+  /** `true` = relleno sólido sin trazo (único caso: el semicírculo de `apariencia`). Default: sólo
+   *  trazo (`fill:none`), que es como está dibujado el resto del set. */
+  relleno?: boolean;
 }
 
 export interface CirculoGlifo {
@@ -51,11 +31,7 @@ export interface CirculoGlifo {
   cx: number;
   cy: number;
   r: number;
-  color: ColorGlifo;
-  /** `true` = relleno sólido (glifo tipo "punto"); `false` = sólo contorno (requiere `ancho`). */
-  relleno: boolean;
-  ancho?: number;
-  opacidad?: number;
+  color?: ColorGlifo;
 }
 
 export interface RectGlifo {
@@ -65,235 +41,218 @@ export interface RectGlifo {
   w: number;
   h: number;
   rx: number;
-  color: ColorGlifo;
-  opacidad?: number;
+  color?: ColorGlifo;
 }
 
-export interface PathGlifo {
-  tipo: 'path';
-  d: string;
-  color: ColorGlifo;
-  relleno: boolean;
-  ancho?: number;
-  opacidad?: number;
+export type ElementoGlifo = PathGlifo | CirculoGlifo | RectGlifo;
+
+export interface DefinicionIconoOdobi {
+  elementos: readonly ElementoGlifo[];
 }
 
-export type ElementoGlifo = LineaGlifo | CirculoGlifo | RectGlifo | PathGlifo;
-
-// ---- catálogo del icono completo ----
-
-export interface BlobIcono {
-  cx: number;
-  cy: number;
-  r: number;
-  paleta: NombrePaletaBlob;
-}
-
-export interface DefinicionIconoGlass {
-  /** Path de la silueta principal — recorta el clip y dibuja el borde de luz exterior. */
-  shape: string;
-  /** Trazo adicional opcional (ej. el "globo" de `chat`, o la base de `chart`) — mismo tratamiento
-   * que `shape` pero con el borde algo más tenue, igual que el source. */
-  extra?: string;
-  blobs: BlobIcono[];
-  glifo: ElementoGlifo[];
-}
-
-/** Los 10 nombres semánticos que la app mobile necesita hoy. */
+/** Los 21 nombres de función del set Odobi (`Iconos Odobi.dc.html`). */
 export type NombreIconoGlass =
-  | 'folder'
-  | 'note'
-  | 'doc_search'
-  | 'mic'
-  | 'chat'
-  | 'clock'
-  | 'settings'
-  | 'chart'
-  | 'media'
-  | 'user'
-  /**
-   * La billetera de "Gastos". **Se agregó en vez de reusar `chart`** (que ya es Métricas): dos tiles
-   * con el mismo glifo en el mismo grid no se distinguen de un vistazo, que es exactamente para lo
-   * que sirve un ícono. Cuando el catálogo cerrado no alcanza, la salida es ampliarlo, no repetir.
-   */
-  | 'wallet'
-  | 'ingreso';
+  | 'conversacion'
+  | 'facturacion'
+  | 'ingresos'
+  | 'gastos'
+  | 'presupuestos'
+  | 'clientes'
+  | 'miDia'
+  | 'inteligencia'
+  | 'contabilidad'
+  | 'cobros'
+  | 'appsConectadas'
+  | 'actividadReciente'
+  | 'memoria'
+  | 'grabar'
+  | 'comoHablarle'
+  | 'miNegocio'
+  | 'perfilFiscal'
+  | 'ajustes'
+  | 'apariencia'
+  | 'miPlan'
+  | 'cuenta';
 
-/**
- * Tipado explícito (`Record<NombreIconoGlass, DefinicionIconoGlass>`), NO `as const satisfies` —
- * con `as const` cada entrada sin `extra` queda tipada SIN esa propiedad (ni siquiera `undefined`),
- * y `CATALOGO_ICONOS[name].extra` deja de compilar para el resto de las entradas. El tipo explícito
- * le da a las 9 entradas la forma completa de `DefinicionIconoGlass` (con `extra?` real), que es lo
- * que `GlassIcon.tsx` necesita para leerlo de forma uniforme sin narrowing por nombre.
- */
-export const CATALOGO_ICONOS: Record<NombreIconoGlass, DefinicionIconoGlass> = {
-  folder: {
-    shape:
-      'M20,34 v-4 a5,5 0 0 1 5,-5 h13 l6,7 h26 a5,5 0 0 1 5,5 v33 a5,5 0 0 1 -5,5 h-45 a5,5 0 0 1 -5,-5 z',
-    blobs: [
-      { cx: 34, cy: 48, r: 24, paleta: 'amber' },
-      { cx: 68, cy: 66, r: 22, paleta: 'magOrange' },
-    ],
-    glifo: [],
-  },
-  note: {
-    shape: rr(26, 18, 48, 64, 10),
-    blobs: [
-      { cx: 40, cy: 34, r: 20, paleta: 'cyanBlue' },
-      { cx: 64, cy: 68, r: 20, paleta: 'purplePink' },
-    ],
-    glifo: [
-      { tipo: 'linea', x1: 37, y1: 38, x2: 63, y2: 38, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      { tipo: 'linea', x1: 37, y1: 50, x2: 63, y2: 50, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      { tipo: 'linea', x1: 37, y1: 62, x2: 55, y2: 62, color: 'blanco', ancho: 4, opacidad: 0.92 },
+export const CATALOGO_ICONOS: Record<NombreIconoGlass, DefinicionIconoOdobi> = {
+  conversacion: {
+    elementos: [
+      { tipo: 'path', d: 'M10 4.5a7.5 7.5 0 1 0 0 15' },
+      { tipo: 'path', d: 'M10 8a4 4 0 1 0 0 8' },
+      { tipo: 'path', d: 'M15.4 9.2a4.2 4.2 0 0 1 0 5.6', color: 'acento' },
+      { tipo: 'path', d: 'M18.4 7a8 8 0 0 1 0 10', color: 'acento' },
     ],
   },
-  doc_search: {
-    shape: rr(24, 20, 44, 56, 9),
-    blobs: [
-      { cx: 40, cy: 36, r: 20, paleta: 'cyanTeal' },
-      { cx: 60, cy: 66, r: 18, paleta: 'violet' },
-    ],
-    glifo: [
-      { tipo: 'linea', x1: 34, y1: 36, x2: 50, y2: 36, color: 'blanco', ancho: 4, opacidad: 0.9 },
-      { tipo: 'linea', x1: 34, y1: 46, x2: 46, y2: 46, color: 'blanco', ancho: 4, opacidad: 0.9 },
-      { tipo: 'circulo', cx: 60, cy: 62, r: 10, color: 'acentoCian', relleno: false, ancho: 5 },
-      { tipo: 'linea', x1: 68, y1: 70, x2: 78, y2: 80, color: 'acentoCian', ancho: 5 },
+  facturacion: {
+    elementos: [
+      { tipo: 'path', d: 'M6.5 3.5h7l4 4V20a.5.5 0 0 1-.5.5H6.5A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z' },
+      { tipo: 'path', d: 'M13 3.5V7.5h4' },
+      { tipo: 'path', d: 'M9 11.5h5' },
+      { tipo: 'path', d: 'M9 15.4l1.7 1.7L14.2 13.6', color: 'acento' },
     ],
   },
-  mic: {
-    shape:
-      'M50,18 a12,12 0 0 1 12,12 v14 a12,12 0 0 1 -24,0 v-14 a12,12 0 0 1 12,-12 z ' +
-      'M30,44 a20,20 0 0 0 40,0 M50,64 v14 M40,82 h20',
-    blobs: [
-      { cx: 50, cy: 34, r: 20, paleta: 'magOrange' },
-      { cx: 50, cy: 52, r: 16, paleta: 'yellowOrange' },
-    ],
-    glifo: [],
-  },
-  chat: {
-    shape:
-      'M22,30 a10,10 0 0 1 10,-10 h24 a10,10 0 0 1 10,10 v14 a10,10 0 0 1 -10,10 h-16 l-12,10 ' +
-      'v-10 a10,10 0 0 1 -6,-9 z',
-    extra: circ(70, 62, 15),
-    blobs: [
-      { cx: 40, cy: 34, r: 20, paleta: 'purplePink' },
-      { cx: 70, cy: 60, r: 16, paleta: 'yellowOrange' },
-    ],
-    glifo: [
-      { tipo: 'circulo', cx: 34, cy: 37, r: 3, color: 'blanco', relleno: true, opacidad: 0.9 },
-      { tipo: 'circulo', cx: 44, cy: 37, r: 3, color: 'blanco', relleno: true, opacidad: 0.9 },
-      { tipo: 'circulo', cx: 54, cy: 37, r: 3, color: 'blanco', relleno: true, opacidad: 0.9 },
+  ingresos: {
+    elementos: [
+      { tipo: 'path', d: 'M4 12.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6.5' },
+      { tipo: 'path', d: 'M12 3.5v9.5' },
+      { tipo: 'path', d: 'M8 9l4 4 4-4', color: 'acento' },
     ],
   },
-  clock: {
-    shape: circ(50, 50, 32),
-    blobs: [
-      { cx: 62, cy: 62, r: 22, paleta: 'cyanTeal' },
-      { cx: 40, cy: 38, r: 18, paleta: 'violet' },
-    ],
-    glifo: [
-      { tipo: 'linea', x1: 50, y1: 34, x2: 50, y2: 52, color: 'acentoCian', ancho: 5 },
-      { tipo: 'linea', x1: 50, y1: 52, x2: 63, y2: 60, color: 'acentoCian', ancho: 5 },
+  gastos: {
+    elementos: [
+      { tipo: 'path', d: 'M4 12.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6.5' },
+      { tipo: 'path', d: 'M12 13V3.5' },
+      { tipo: 'path', d: 'M8 7.5l4-4 4 4', color: 'acento' },
     ],
   },
-  settings: {
-    shape: rr(20, 26, 60, 48, 12),
-    blobs: [
-      { cx: 36, cy: 40, r: 18, paleta: 'cyanTeal' },
-      { cx: 64, cy: 60, r: 18, paleta: 'magOrange' },
-    ],
-    glifo: [
-      { tipo: 'linea', x1: 30, y1: 40, x2: 70, y2: 40, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      { tipo: 'linea', x1: 30, y1: 60, x2: 70, y2: 60, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      { tipo: 'circulo', cx: 58, cy: 40, r: 6, color: 'acentoAmbar', relleno: true },
-      { tipo: 'circulo', cx: 42, cy: 60, r: 6, color: 'acentoCian', relleno: true },
+  presupuestos: {
+    elementos: [
+      { tipo: 'path', d: 'M6.5 3.5h7l4 4V20a.5.5 0 0 1-.5.5H6.5A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5z' },
+      { tipo: 'path', d: 'M13 3.5V7.5h4', color: 'acento' },
+      { tipo: 'path', d: 'M9 11.5h6' },
+      { tipo: 'path', d: 'M9 14.5h6' },
+      { tipo: 'path', d: 'M9 17.5h3.5' },
     ],
   },
-  chart: {
-    shape: rr(20, 26, 60, 44, 8),
-    extra: 'M50,70 v8 M38,82 h24',
-    blobs: [
-      { cx: 38, cy: 42, r: 18, paleta: 'cyanBlue' },
-      { cx: 64, cy: 40, r: 16, paleta: 'magOrange' },
-    ],
-    glifo: [
-      { tipo: 'rect', x: 32, y: 48, w: 7, h: 14, rx: 2, color: 'blanco', opacidad: 0.92 },
-      { tipo: 'rect', x: 46, y: 40, w: 7, h: 22, rx: 2, color: 'blanco', opacidad: 0.92 },
-      { tipo: 'rect', x: 60, y: 52, w: 7, h: 10, rx: 2, color: 'blanco', opacidad: 0.92 },
+  clientes: {
+    elementos: [
+      { tipo: 'circulo', cx: 12, cy: 8.5, r: 3.5 },
+      { tipo: 'path', d: 'M5.5 20a6.5 6.5 0 0 1 13 0' },
     ],
   },
-  media: {
-    shape: circ(50, 50, 28),
-    blobs: [
-      { cx: 42, cy: 42, r: 18, paleta: 'magOrange' },
-      { cx: 60, cy: 60, r: 16, paleta: 'cyanTeal' },
-    ],
-    glifo: [{ tipo: 'path', d: 'M44,38 l20,12 l-20,12 z', color: 'blanco', relleno: true, opacidad: 0.95 }],
-  },
-  // Port 1:1 de `user` del source (`glass-icons-v2.js`, label "Paciente" en DocuMed): cabeza + hombros.
-  // Entró al catálogo cuando Pacientes pasó a tener su propio ícono de entrada en el escritorio de
-  // DocuMed (2026-07-18); acá se hereda igual, para el equivalente "Clientes". Los otros 9 ya estaban.
-  user: {
-    shape: circ(50, 50, 32),
-    blobs: [
-      { cx: 50, cy: 40, r: 22, paleta: 'cyanBlue' },
-      { cx: 50, cy: 74, r: 24, paleta: 'cyanTeal' },
-    ],
-    glifo: [
-      { tipo: 'circulo', cx: 50, cy: 42, r: 10, color: 'blanco', relleno: true, opacidad: 0.9 },
-      { tipo: 'path', d: 'M32,72 a18,16 0 0 1 36,0 z', color: 'blanco', relleno: true, opacidad: 0.9 },
+  miDia: {
+    elementos: [
+      { tipo: 'path', d: 'M4 17.5h16' },
+      { tipo: 'path', d: 'M7.5 17.5a4.5 4.5 0 0 1 9 0' },
+      { tipo: 'path', d: 'M12 5.5v2.5', color: 'acento' },
+      { tipo: 'path', d: 'M6.4 8.4l1.5 1.5', color: 'acento' },
+      { tipo: 'path', d: 'M17.6 8.4l-1.5 1.5', color: 'acento' },
     ],
   },
-  /**
-   * `wallet` — Gastos. Billetera cerrada con el broche a la derecha: la silueta se lee a 46px, que es
-   * el tamaño real del tile, sin depender del detalle interno.
-   *
-   * Paletas cálidas (`amber` / `yellowOrange`) a propósito, para que el tile de **lo que sale** no se
-   * confunda de un vistazo con los fríos de Presupuestos y Facturación, que son **lo que entra**.
-   */
-  wallet: {
-    shape: rr(20, 30, 60, 44, 10),
-    blobs: [
-      { cx: 38, cy: 44, r: 22, paleta: 'amber' },
-      { cx: 66, cy: 64, r: 20, paleta: 'yellowOrange' },
-    ],
-    glifo: [
-      // La solapa de cierre.
-      { tipo: 'linea', x1: 20, y1: 46, x2: 80, y2: 46, color: 'blanco', ancho: 4, opacidad: 0.9 },
-      // El broche.
-      { tipo: 'circulo', cx: 66, cy: 60, r: 6, color: 'blanco', relleno: true, opacidad: 0.92 },
+  inteligencia: {
+    elementos: [
+      {
+        tipo: 'path',
+        d: 'M8.8 15.8a5.5 5.5 0 1 1 6.4 0 2.2 2.2 0 0 0-.9 1.8v.4H9.7v-.4a2.2 2.2 0 0 0-.9-1.8z',
+      },
+      { tipo: 'path', d: 'M9.7 18.5h4.6' },
+      { tipo: 'path', d: 'M10.7 20.5h2.6' },
+      { tipo: 'path', d: 'M10.4 12.8a1.6 1.6 0 0 1 3.2 0', color: 'acento' },
+      { tipo: 'path', d: 'M12 1.2v1.5', color: 'acento' },
+      { tipo: 'path', d: 'M4.7 5.2l1 1', color: 'acento' },
+      { tipo: 'path', d: 'M19.3 5.2l-1 1', color: 'acento' },
     ],
   },
-  /**
-   * `ingreso` — plata que ENTRA: una flecha que baja hacia una bandeja.
-   *
-   * 🔴 **Se agregó al catálogo en vez de reusar uno libre**, y la alternativa era mala de las dos
-   * formas: quedaban `mic` y `media`. `mic` no distingue nada —en esta app se dicta TODO, no sólo los
-   * ingresos— y `media` (ojo/preview) no significa plata. Un tile con un glifo que no dice lo que hace
-   * manda a la pantalla equivocada, que es el mismo costo que ya se pagó eligiendo mal en Ajustes.
-   *
-   * 🔴 **Paleta FRÍA a propósito.** `wallet` (Gastos) es ámbar/naranja; si Ingresos usara los mismos
-   * tonos, las dos funciones simétricas —la plata que sale y la que entra— se verían iguales de un
-   * vistazo, que es justo cuando se mira un grid.
-   *
-   * La flecha apunta hacia ABAJO, no hacia arriba: una flecha ascendente se lee como crecimiento y
-   * eso ya es `chart` (Inteligencia de Negocio) en este mismo grid.
-   */
-  ingreso: {
-    shape: rr(20, 26, 60, 52, 12),
-    blobs: [
-      { cx: 40, cy: 42, r: 22, paleta: 'cyanTeal' },
-      { cx: 64, cy: 62, r: 20, paleta: 'cyanBlue' },
+  contabilidad: {
+    elementos: [
+      { tipo: 'path', d: 'M4 15.5h16' },
+      { tipo: 'path', d: 'M8 11V5', color: 'acento' },
+      { tipo: 'path', d: 'M5.5 7.5L8 5l2.5 2.5', color: 'acento' },
+      { tipo: 'path', d: 'M16 5v6', color: 'acento' },
+      { tipo: 'path', d: 'M13.5 8.5L16 11l2.5-2.5', color: 'acento' },
     ],
-    glifo: [
-      // El asta de la flecha.
-      { tipo: 'linea', x1: 50, y1: 36, x2: 50, y2: 59, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      // Las dos alas de la punta.
-      { tipo: 'linea', x1: 40, y1: 49, x2: 50, y2: 60, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      { tipo: 'linea', x1: 60, y1: 49, x2: 50, y2: 60, color: 'blanco', ancho: 4, opacidad: 0.92 },
-      // La bandeja donde cae.
-      { tipo: 'linea', x1: 30, y1: 68, x2: 70, y2: 68, color: 'blanco', ancho: 4, opacidad: 0.9 },
+  },
+  cobros: {
+    elementos: [
+      { tipo: 'path', d: 'M12 3.5v17', color: 'acento' },
+      {
+        tipo: 'path',
+        d: 'M15.8 7.6A3.5 3.5 0 0 0 12.4 5.6h-1.1a3 3 0 0 0-.5 5.95l2.7.5a3 3 0 0 1-.5 5.95h-1.1a3.5 3.5 0 0 1-3.4-2',
+      },
+    ],
+  },
+  appsConectadas: {
+    elementos: [
+      { tipo: 'circulo', cx: 12, cy: 12, r: 2.4, color: 'acento' },
+      { tipo: 'circulo', cx: 5.5, cy: 6, r: 1.8 },
+      { tipo: 'circulo', cx: 18.5, cy: 6, r: 1.8 },
+      { tipo: 'circulo', cx: 12, cy: 19.5, r: 1.8 },
+      { tipo: 'path', d: 'M10.3 10.5L7 7.4' },
+      { tipo: 'path', d: 'M13.7 10.5L17 7.4' },
+      { tipo: 'path', d: 'M12 14.4v3.3' },
+    ],
+  },
+  actividadReciente: {
+    elementos: [
+      { tipo: 'path', d: 'M20 12a8 8 0 1 1-2.3-5.6' },
+      { tipo: 'path', d: 'M20 4.5V8.5h-4', color: 'acento' },
+      { tipo: 'path', d: 'M12 8v4.2l2.8 1.7' },
+    ],
+  },
+  memoria: {
+    elementos: [
+      { tipo: 'path', d: 'M12 4a8 8 0 1 1-6 2.7' },
+      { tipo: 'path', d: 'M12 7.8a4.2 4.2 0 1 1-3 1.3' },
+      { tipo: 'circulo', cx: 12, cy: 12, r: 1.4, color: 'acento' },
+    ],
+  },
+  grabar: {
+    elementos: [
+      { tipo: 'rect', x: 9, y: 3, w: 6, h: 11, rx: 3 },
+      { tipo: 'path', d: 'M6 11a6 6 0 0 0 12 0' },
+      { tipo: 'path', d: 'M12 17v3.5' },
+      { tipo: 'path', d: 'M20 8.5a4.5 4.5 0 0 1 0 7', color: 'acento' },
+    ],
+  },
+  comoHablarle: {
+    elementos: [
+      {
+        tipo: 'path',
+        d: 'M5 5.5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-8l-4 3.5V15.5H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',
+      },
+      { tipo: 'path', d: 'M8.5 10.5v3', color: 'acento' },
+      { tipo: 'path', d: 'M11 8.8v6.4', color: 'acento' },
+      { tipo: 'path', d: 'M13.5 10v2.5', color: 'acento' },
+      { tipo: 'path', d: 'M16 11v1.5', color: 'acento' },
+    ],
+  },
+  miNegocio: {
+    elementos: [
+      { tipo: 'path', d: 'M5 9.5h14' },
+      { tipo: 'path', d: 'M6 9.5l1-4.5h10l1 4.5', color: 'acento' },
+      { tipo: 'path', d: 'M5 9.5V20a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5V9.5' },
+      { tipo: 'path', d: 'M10 20.5v-5h4v5' },
+    ],
+  },
+  perfilFiscal: {
+    elementos: [
+      {
+        tipo: 'path',
+        d: 'M12 3.5l6.5 2.3v5.2c0 4.3-2.9 7.4-6.5 9-3.6-1.6-6.5-4.7-6.5-9V5.8z',
+      },
+      { tipo: 'path', d: 'M9 12l2 2 4-4', color: 'acento' },
+    ],
+  },
+  ajustes: {
+    elementos: [
+      { tipo: 'path', d: 'M4 8h9' },
+      { tipo: 'circulo', cx: 16, cy: 8, r: 2.3, color: 'acento' },
+      { tipo: 'path', d: 'M18.3 8H20' },
+      { tipo: 'path', d: 'M4 16h3' },
+      { tipo: 'circulo', cx: 10, cy: 16, r: 2.3, color: 'acento' },
+      { tipo: 'path', d: 'M12.3 16H20' },
+    ],
+  },
+  /** Único ícono con relleno: la mitad derecha del círculo es sólida (acento), sin trazo -- "claro
+   *  · oscuro" como semicírculo, verbatim del diseño. */
+  apariencia: {
+    elementos: [
+      { tipo: 'circulo', cx: 12, cy: 12, r: 8 },
+      { tipo: 'path', d: 'M12 4v16a8 8 0 0 0 0-16z', color: 'acento', relleno: true },
+    ],
+  },
+  miPlan: {
+    elementos: [
+      { tipo: 'rect', x: 4, y: 6.5, w: 16, h: 11, rx: 2.2 },
+      { tipo: 'path', d: 'M4 10h16' },
+      { tipo: 'path', d: 'M7 14h4', color: 'acento' },
+    ],
+  },
+  cuenta: {
+    elementos: [
+      { tipo: 'circulo', cx: 12, cy: 12, r: 8.5 },
+      { tipo: 'circulo', cx: 12, cy: 10, r: 2.8 },
+      { tipo: 'path', d: 'M6.7 18.4a5.5 5.5 0 0 1 10.6 0' },
     ],
   },
 };

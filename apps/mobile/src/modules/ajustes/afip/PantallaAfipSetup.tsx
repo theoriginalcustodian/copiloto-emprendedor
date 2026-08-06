@@ -519,7 +519,7 @@ export function PantallaAfipSetup() {
   // Render.
   // -------------------------------------------------------------------------------------------
   return (
-    <MarcoGlass titulo="Facturación AFIP" icono="doc_search" testID="pantalla-afip-setup">
+    <MarcoGlass titulo="Facturación AFIP" icono="perfilFiscal" testID="pantalla-afip-setup">
       <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"

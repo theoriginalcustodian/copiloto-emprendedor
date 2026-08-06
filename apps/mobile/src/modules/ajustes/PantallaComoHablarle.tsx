@@ -66,7 +66,7 @@ export function PantallaComoHablarle() {
   const sinCapacidades = estado === 'ok' && (guia?.capacidades.length ?? 0) === 0;
 
   return (
-    <MarcoGlass titulo="Cómo hablarle" icono="mic" testID="pantalla-como-hablarle">
+    <MarcoGlass titulo="Cómo hablarle" icono="comoHablarle" testID="pantalla-como-hablarle">
       {estado === 'cargando' && (
         <View style={styles.centro}>
           <ActivityIndicator testID="como-hablarle-cargando" color={tema.color.acento} />

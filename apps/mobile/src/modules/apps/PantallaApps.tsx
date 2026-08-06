@@ -39,19 +39,22 @@ import type { NombreIconoGlass } from '../../theme/glass/icons';
  */
 
 /** Ícono por servicio — presentación pura del lado del cliente: el backend no manda íconos. Un
- *  servicio sin entrada acá cae en `plug` (fail-open a "aparece con un ícono genérico", nunca a
- *  "no se muestra": omitir un servicio real es peor que mostrarlo con el ícono equivocado). */
+ *  servicio sin entrada acá cae en `ICONO_POR_DEFECTO` (fail-open a "aparece con un ícono genérico",
+ *  nunca a "no se muestra": omitir un servicio real es peor que mostrarlo con el ícono equivocado).
+ *  Ninguno de los 21 nombres del set Odobi significa literalmente "Gmail"/"Drive"/etc. (son íconos
+ *  de FUNCIÓN, no de marca de terceros -- esos viven en `serviceIcons.tsx`, web, y no se tocan acá);
+ *  la asignación de abajo es la analogía visual más cercana, documentada, no un mapeo exacto. */
 const ICONO_POR_SERVICIO: Record<string, NombreIconoGlass> = {
-  gmail: 'note',
-  googledrive: 'folder',
-  googlesheets: 'chart',
-  googledocs: 'doc_search',
-  googlecalendar: 'clock',
-  hubspot: 'user',
-  instagram: 'media',
-  mercadopago: 'chart',
+  gmail: 'facturacion',
+  googledrive: 'presupuestos',
+  googlesheets: 'contabilidad',
+  googledocs: 'presupuestos',
+  googlecalendar: 'miDia',
+  hubspot: 'clientes',
+  instagram: 'grabar',
+  mercadopago: 'cobros',
 };
-const ICONO_POR_DEFECTO: NombreIconoGlass = 'folder';
+const ICONO_POR_DEFECTO: NombreIconoGlass = 'appsConectadas';
 
 type EstadoCatalogo = 'cargando' | 'ok' | 'error' | 'no_disponible';
 
@@ -196,7 +199,7 @@ export function PantallaApps() {
   return (
     // Mismo ícono que el tile de entrada en `EscritorioFunciones` ('folder') — ver docstring de
     // `MarcoGlass`: entrar por un ícono y llegar a otro desorienta.
-    <MarcoGlass titulo="Apps" icono="folder" testID="pantalla-apps">
+    <MarcoGlass titulo="Apps" icono="appsConectadas" testID="pantalla-apps">
       <ScrollView
         // 🔴 `flex:1` en el ScrollView MISMO, no sólo en su contenedor. Un ScrollView sin flex se
         // mide por su CONTENIDO: aunque el padre esté acotado, el hijo se estira más allá y lo

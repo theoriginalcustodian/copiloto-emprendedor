@@ -118,7 +118,7 @@ export function PantallaInteligencia() {
   const kpi = (v: string | null) => (v != null ? formatearImporte(v) : '—');
 
   return (
-    <MarcoGlass titulo="Inteligencia de Negocio" icono="chart" testID="pantalla-inteligencia">
+    <MarcoGlass titulo="Inteligencia de Negocio" icono="inteligencia" testID="pantalla-inteligencia">
       <View style={styles.raiz}>
         <Solapas vista={vista} onChange={setVista} />
 
