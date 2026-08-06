@@ -55,7 +55,9 @@
   padding: 22px 16px 18px;
   background: var(--nav-bg);
   border-right: 1px solid var(--nav-border);
-  backdrop-filter: blur(30px) saturate(1.5);
+  /* Nivel 4 · Flotante, variante "shell" (§2.4: "shell, modal, bottom sheet" — geometría propia de
+     escritorio, ver `themes.css`). Sin blur (ODOBI hito 2, "sin glass"). */
+  box-shadow: var(--shadow-nivel4-shell);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -474,9 +476,8 @@
   position: absolute;
   inset: 0;
   /* Excepción documentada (mismo criterio que `.uc-sheet-scrim` en primitives.css): scrim fijo,
-     no theme-aware, constante entre los 4 temas en el mock. */
+     no theme-aware, constante entre las 3 pieles en el mock. Sin blur (ODOBI hito 2, "sin glass"). */
   background: rgba(3, 4, 10, 0.55);
-  backdrop-filter: blur(3px);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -500,8 +501,9 @@
   border-radius: 24px;
   background: var(--card-bg);
   border: var(--card-border);
-  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7);
-  backdrop-filter: var(--card-blur);
+  /* Nivel 4 · Flotante (§2.4: "shell, modal, bottom sheet" — este panel ES un modal). Reemplaza el
+     rgba(0,0,0,.7) fijo que tenía antes (no theme-aware) por el token, ya cálido en claro. */
+  box-shadow: var(--shadow-nivel4);
   display: flex;
   flex-direction: column;
   overflow: hidden;

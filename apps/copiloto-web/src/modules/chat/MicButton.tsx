@@ -271,9 +271,11 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         </svg>
       </button>
 
-      {/* Overlay por PORTAL a <body>: escapa el containing-block que crea el `backdrop-filter` del
-          `.composer__row` (sin esto, `position:fixed` queda atrapado en la cajita del composer y el
-          overlay se ve como una ventanita chica — causa raíz del bug reportado). */}
+      {/* Overlay por PORTAL a <body>: `position:fixed` necesita no quedar atrapado dentro de un
+          ancestro que cree containing-block (transform/filter/el difuminado de fondo que llevaba
+          `.composer__row` hasta ODOBI hito 2, retirado — "sin glass"), y sin el portal el overlay se
+          veía como una ventanita chica en vez de cubrir el viewport. El portal se mantiene: es
+          robusto ante cualquier ancestro futuro, no sólo el que causó el bug original. */}
       {recording &&
         createPortal(
           <RecordingOverlay

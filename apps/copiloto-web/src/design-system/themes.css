@@ -7,9 +7,17 @@
  * §2.8 (nocturno, derivado). Un solo acento terracota (`#C2452E`→`#7E2417`) en las 3 pieles — no
  * cambia entre temas (§1 del DoD: "se conserva variedad de lienzo, se unifica el acento").
  *
- * Sin glass, color pleno (§1.3 del DoD): `*-blur`/`*-shadow`/`--core-glow`/`--halo` van a `none` —
- * el relieve (sombras cálidas medidas en el hito 0) es tokens propios del **hito 2**, no de éste.
- * No reintroducir blur/glow acá sin volver a planificación (§4 riesgos del DoD).
+ * Relieve (§2.4 del DoD, hito 2): `--card-shadow`/`--bubble-shadow` = nivel 1 (superficie en
+ * reposo) · `--tile-shadow` = nivel 2 (elemento chico) · `--btn-shadow` = nivel 3 (acento elevado)
+ * · `--shadow-nivel4`/`--shadow-nivel4-shell` = nivel 4 (flotante — modal / shell del rail y tab-
+ * bar, geometría propia por eso el nombre "-shell"). `nocturno` nivel 1/2 va SIN el `inset` de luz
+ * interna (§2.8: "sin luz interna cálida") — sólo la sombra proyectada. Roles sin valor propio en
+ * el DoD (`--avatar-shadow`/`--cancel-shadow`/`--input-shadow`/`--presence-wrap-shadow`) quedan en
+ * `none` — no se inventa relieve para un rol que el DoD no declaró. Nivel 5 (ring de foco/grabando)
+ * no tiene un consumidor identificado en el CSS de web hoy (sí en mobile, `BotonVoz`/`relieve.ts`
+ * `anilloFoco`) — no se wirea a nada para no inventar un elemento visual nuevo.
+ * `--core-glow`/`--halo` siguen en `none`: el "orb" de presencia es del rediseño anterior, Mariposas
+ * no lo trae — eso NO es relieve, es un efecto ambiente retirado en el hito 1.
  *
  * Varios roles no tienen valor propio declarado en el DoD (chips, badges, botón cancelar, avatar,
  * nav, tabs, danger-btn…) — se resuelven reusando un rol YA declarado en la MISMA piel (nunca un
@@ -56,7 +64,7 @@
   --avatar-fg: #A5341F;
   --bubble-bg: #F5EBD5;
   --bubble-border: 1px solid rgba(255, 252, 244, 0.7);
-  --bubble-shadow: none;
+  --bubble-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --bubble-blur: none;
   --bubble-fg: #4A4234;
   --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
@@ -64,7 +72,7 @@
   --user-fg: #FBEEE6;
   --card-bg: #F5EBD5;
   --card-border: 1px solid rgba(255, 252, 244, 0.7);
-  --card-shadow: none;
+  --card-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --card-blur: none;
   --amount-size: 46px;
   --amount-fg: #2E2A20;
@@ -74,7 +82,7 @@
   --badge-border: 1px solid rgba(198, 149, 46, 0.4);
   --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
   --btn-fg: #FBF3E2;
-  --btn-shadow: none;
+  --btn-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 10px 26px -6px rgba(126, 36, 23, 0.5);
   --cancel-fg: #6A6457;
   --cancel-bg: transparent;
   --cancel-border: 1px solid rgba(46, 42, 32, 0.22);
@@ -93,8 +101,10 @@
   --nav-border: rgba(255, 252, 244, 0.7);
   --tile-bg: #F5EBD5;
   --tile-border: 1px solid rgba(255, 252, 244, 0.7);
-  --tile-shadow: none;
+  --tile-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 3px 8px rgba(70, 50, 30, 0.32);
   --tile-blur: none;
+  --shadow-nivel4: 0 30px 60px -20px rgba(110, 75, 44, 0.4);
+  --shadow-nivel4-shell: 0 34px 70px -24px rgba(110, 75, 44, 0.4);
   --ok-fg: #3C8069;
   --ok-bg: rgba(60, 128, 105, 0.14);
   --ok-border: 1px solid rgba(60, 128, 105, 0.4);
@@ -172,7 +182,9 @@
      (sobre superficie), no la del usuario (sobre acento, ver `--user-fg`). */
   --bubble-bg: #F5EBD5;
   --bubble-border: 1px solid rgba(255, 252, 244, 0.7);
-  --bubble-shadow: none;
+  /* Nivel 1 · Superficie en reposo (§2.4) — luz interna cálida + sombra marrón, la que validó el
+     spike del hito 0. Mismo valor que `--card-shadow`: burbuja y card son la misma superficie. */
+  --bubble-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --bubble-blur: none;
   --bubble-fg: #4A4234;
   /* Burbuja del usuario = "Acento (superficie)" del DoD (§2.1: "botones, burbuja del usuario, FAB
@@ -182,7 +194,7 @@
   --user-fg: #FBEEE6;
   --card-bg: #F5EBD5;
   --card-border: 1px solid rgba(255, 252, 244, 0.7);
-  --card-shadow: none;
+  --card-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --card-blur: none;
   --amount-size: 46px;
   --amount-fg: #2E2A20;
@@ -194,7 +206,8 @@
   /* "Acento confirmar" del DoD (§2.1) — variante del acento para el botón primario. */
   --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
   --btn-fg: #FBF3E2;
-  --btn-shadow: none;
+  /* Nivel 3 · Acento elevado (§2.4: "botón primario, FAB de voz" — textual) — idéntico en las 3 pieles. */
+  --btn-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 10px 26px -6px rgba(126, 36, 23, 0.5);
   --cancel-fg: #6A6457;
   --cancel-bg: transparent;
   /* "Borde fuerte" del DoD (§2.1) — declarado explícitamente para "botón secundario". */
@@ -217,8 +230,13 @@
   --nav-border: rgba(255, 252, 244, 0.7);
   --tile-bg: #F5EBD5;
   --tile-border: 1px solid rgba(255, 252, 244, 0.7);
-  --tile-shadow: none;
+  /* Nivel 2 · Elemento chico (§2.4: "chips, tiles del escritorio" — textual). */
+  --tile-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 3px 8px rgba(70, 50, 30, 0.32);
   --tile-blur: none;
+  /* Nivel 4 · Flotante (§2.4: "shell, modal, bottom sheet"). `-shell` es la geometría propia que el
+     DoD declara para el rail/tab-bar de escritorio (offset/blur mayores que el modal genérico). */
+  --shadow-nivel4: 0 30px 60px -20px rgba(110, 75, 44, 0.4);
+  --shadow-nivel4-shell: 0 34px 70px -24px rgba(110, 75, 44, 0.4);
   /* Éxito con valor propio en el DoD (§2.1: `#3C8069`, fondo `rgba(60,128,105,.3)` — bajado a
      `.14`/borde `.4` para que "caja" no tape el texto que pueda ir adentro, mismo patrón que el
      resto de los semánticos de este archivo). */
@@ -270,7 +288,7 @@
   --avatar-fg: #A5341F;
   --bubble-bg: #251B11;
   --bubble-border: 1px solid rgba(241, 228, 204, 0.14);
-  --bubble-shadow: none;
+  --bubble-shadow: inset 0 1px 0 rgba(241, 228, 204, 0.1), 0 12px 28px -12px rgba(0, 0, 0, 0.6);
   --bubble-blur: none;
   --bubble-fg: #D8C6A8;
   --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
@@ -278,7 +296,7 @@
   --user-fg: #FBEEE6;
   --card-bg: #251B11;
   --card-border: 1px solid rgba(241, 228, 204, 0.14);
-  --card-shadow: none;
+  --card-shadow: inset 0 1px 0 rgba(241, 228, 204, 0.1), 0 12px 28px -12px rgba(0, 0, 0, 0.6);
   --card-blur: none;
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
@@ -288,7 +306,7 @@
   --badge-border: 1px solid rgba(198, 149, 46, 0.4);
   --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
   --btn-fg: #FBF3E2;
-  --btn-shadow: none;
+  --btn-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 10px 26px -6px rgba(126, 36, 23, 0.5);
   --cancel-fg: #928777;
   --cancel-bg: transparent;
   --cancel-border: 1px solid rgba(241, 228, 204, 0.22);
@@ -307,8 +325,10 @@
   --nav-border: rgba(241, 228, 204, 0.14);
   --tile-bg: #251B11;
   --tile-border: 1px solid rgba(241, 228, 204, 0.14);
-  --tile-shadow: none;
+  --tile-shadow: inset 0 1px 0 rgba(241, 228, 204, 0.1), 0 3px 8px rgba(0, 0, 0, 0.5);
   --tile-blur: none;
+  --shadow-nivel4: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+  --shadow-nivel4-shell: 0 34px 70px -24px rgba(0, 0, 0, 0.72);
   /* Ni éxito ni peligro tienen valor propio en el DoD para `oscuro` — se reusa el par de
      `SEMANTICOS_OSCURO` (`apps/mobile/src/theme/tokens.ts`), con margen amplio sobre AA (≥8:1). */
   --ok-fg: #34e5a0;
@@ -355,7 +375,9 @@
   --avatar-fg: #A5341F;
   --bubble-bg: #141009;
   --bubble-border: 1px solid rgba(241, 228, 204, 0.1);
-  --bubble-shadow: none;
+  /* Nivel 1 nocturno (§2.8: "relieve nivel 1-2 con rgba(0,0,0,.75), SIN luz interna cálida") — sin
+     `inset`, a diferencia de claro/oscuro. */
+  --bubble-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
   --bubble-blur: none;
   --bubble-fg: #D8C6A8;
   --user-bg: linear-gradient(150deg, #C2452E, #7E2417);
@@ -363,7 +385,7 @@
   --user-fg: #FBEEE6;
   --card-bg: #141009;
   --card-border: 1px solid rgba(241, 228, 204, 0.1);
-  --card-shadow: none;
+  --card-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
   --card-blur: none;
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
@@ -373,7 +395,8 @@
   --badge-border: 1px solid rgba(198, 149, 46, 0.4);
   --btn-bg: linear-gradient(150deg, #C2452E, #94301F);
   --btn-fg: #FBF3E2;
-  --btn-shadow: none;
+  /* Nivel 3 — no redeclarado en §2.8, hereda de oscuro (idéntico en las 3 pieles). */
+  --btn-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 10px 26px -6px rgba(126, 36, 23, 0.5);
   --cancel-fg: #928777;
   --cancel-bg: transparent;
   --cancel-border: 1px solid rgba(241, 228, 204, 0.18);
@@ -394,8 +417,12 @@
   --nav-border: rgba(241, 228, 204, 0.1);
   --tile-bg: #141009;
   --tile-border: 1px solid rgba(241, 228, 204, 0.1);
-  --tile-shadow: none;
+  /* Nivel 2 nocturno — misma opacidad `.75` que el nivel 1 (§2.8 los agrupa), sin `inset`. */
+  --tile-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
   --tile-blur: none;
+  /* Nivel 4 — no redeclarado en §2.8, hereda de oscuro. */
+  --shadow-nivel4: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+  --shadow-nivel4-shell: 0 34px 70px -24px rgba(0, 0, 0, 0.72);
   --ok-fg: #34e5a0;
   --ok-bg: rgba(52, 229, 160, 0.14);
   --ok-border: 1px solid rgba(52, 229, 160, 0.42);

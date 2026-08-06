@@ -1,50 +1,57 @@
 /**
- * `relieve` — las sombras proyectadas de las cards de vidrio (tiles del escritorio, filas de actividad
- * reciente). Fuente ÚNICA: si `Tile` y `Row` vuelven a llevar los valores copiados a mano, vuelven a
- * divergir — ya pasó con el marco del vidrio (ver `canonGlass.ts`).
+ * `relieve` — los 5 niveles de sombra/relieve de ODOBI (DoD §2.4), fuente ÚNICA consumida por
+ * nombre. Antes cada superficie (`CristalVidrio`, `Tile`, `Row`) repetía su propio
+ * `{shadowOffset, shadowRadius, shadowOpacity, elevation}` a mano — si vuelven a copiarse, vuelven
+ * a divergir (mismo error que ya se corrigió una vez en el marco del vidrio, ver `canonGlass.ts`).
  *
- * **Geometría del template canónico** (`App glass/DocuMed 3 …/DocuMed App.dc.html`, reglas `.dmt-w
- * .dm-tile` y `.dmt-w .dm-row`): `0 9px 18px -6px` para el tile y `0 7px 15px -6px` para la fila. El
- * color sale del token `glass.sombra` del tema, no del template (el template sólo declara la sombra
- * proyectada en el skin blanco; en los oscuros la pide el operador — 2026-07-19: *"todas deben tener
- * sombra también para lograr un efecto relieve y profundidad"*).
+ * Este módulo es un mapeador PURO: no declara ni un color ni un número de geometría propio. Cada
+ * nivel (color, opacidad, offset, radio, elevation) vive declarado por piel en `tokens.ts`
+ * (`Tokens.glass.relieve`, único archivo con hex fuera de acá — ver `temaSinHex.test.ts`) porque el
+ * DoD §2.4 declara geometría DISTINTA por piel en el nivel 1 (claro `10px/26px`, oscuro/nocturno
+ * `12px/28px`) — no es sólo el color el que cambia.
  *
- * 🔴 **Por qué `boxShadow` y no `elevation`.** La sombra por `elevation` de Android necesita que la
- * view tenga un fondo OPACO para calcular su outline; por eso `Tile`/`Row` llevaban
- * `backgroundColor: tema.color.fondo`, y ese fondo sólido era justamente lo que les mataba la
- * transparencia (una card de vidrio sobre un fondo opaco no es de vidrio: es una card). `boxShadow`
- * —CSS real, RN 0.76+ **con la nueva arquitectura**, que este proyecto tiene activa
- * (`app.json: newArchEnabled`)— dibuja la sombra FUERA de la caja y no exige fondo opaco: se puede
- * tener relieve y transparencia a la vez. Verificado contra
- * `react-native/Libraries/StyleSheet/StyleSheetTypes.d.ts:516` (`boxShadow`) y `:343` (`BoxShadowValue`).
+ * 🔴 **Por qué `{shadowColor,...}` clásico y no `boxShadow`** (reemplaza el mecanismo que usaban
+ * `sombraTile`/`sombraFila` acá mismo hasta el hito 1). Es EXACTAMENTE el shape que el spike del
+ * hito 0 verificó en device real (PIL sobre captura, `spikes/odobi-relieve/`): con `shadowColor`
+ * cálido sobre una View de fondo TRANSPARENTE, Android respeta el tinte marrón — no hace falta el
+ * fondo opaco que exigía la vieja `elevation` (este proyecto corre New Architecture, que aplica
+ * `shadowColor/shadowRadius/shadowOpacity` en Android igual que en iOS, no sólo `elevation` con su
+ * outline clásico). `boxShadow` (con `spreadDistance`) nunca se probó en device para tinte cálido —
+ * no se asume que se comporta igual sin esa evidencia; unificar todo al shape validado es más seguro
+ * que mantener dos mecanismos de sombra en paralelo, uno probado y otro no.
  *
- * **Dos capas, como el template.** La primera es la sombra difusa (volumen); la segunda es el *contact
- * shadow* pegado al canto inferior, que es la que de verdad "despega" la card. Sobre un fondo oscuro
- * la difusa sola casi no se percibe —medido: apenas 2-10 puntos RGB bajo el borde— porque un negro
- * sobre un fondo que ya es casi negro tiene poco recorrido. El canto es lo que da el relieve.
- *
- * 📐 Medición de referencia (device SM-A217M, skin cian, fondo plano `rgb(9,26,38)`), justo debajo del
- * borde inferior de un tile: **antes `(9,26,38)` — o sea, ninguna sombra**; con `boxShadow` de una
- * capa `(7,19,28)`; con las dos capas, el canto se oscurece más y se recupera antes.
+ * RN no tiene `spread`: el DoD ya lo absorbe en cada nivel aproximando `shadowRadius`/`elevation`
+ * contra la magnitud del spread negativo del diseño (mismo criterio que usó el spike, documentado
+ * en sus propios comentarios).
  */
 import type { ViewStyle } from 'react-native';
 
-/** Sombra del tile del escritorio (card cuadrada del grid de funciones). */
-export function sombraTile(color: string): ViewStyle {
+/** Un nivel de relieve declarado en `tokens.ts`: color+opacidad+geometría, ya resueltos por piel. */
+export interface NivelRelieve {
+  color: string;
+  opacity: number;
+  offsetY: number;
+  radius: number;
+  elevation: number;
+}
+
+type Sombra = Pick<ViewStyle, 'shadowColor' | 'shadowOffset' | 'shadowRadius' | 'shadowOpacity' | 'elevation'>;
+
+/** Traduce un `NivelRelieve` al shape de sombra de RN. `haciaArriba` invierte el signo del offset
+ *  para paneles anclados abajo que se levantan hacia arriba (conversación/grabación/takeover) — es
+ *  geometría de anclaje, no un valor de diseño distinto: color/radio/opacidad/elevation son los
+ *  mismos que hacia abajo, sólo cambia hacia qué lado cae la sombra. */
+export function sombraNivel(n: NivelRelieve, haciaArriba = false): Sombra {
   return {
-    boxShadow: [
-      { offsetX: 0, offsetY: 9, blurRadius: 18, spreadDistance: -6, color },
-      { offsetX: 0, offsetY: 2, blurRadius: 6, color },
-    ],
+    shadowColor: n.color,
+    shadowOffset: { width: 0, height: haciaArriba ? -n.offsetY : n.offsetY },
+    shadowRadius: n.radius,
+    shadowOpacity: n.opacity,
+    elevation: n.elevation,
   };
 }
 
-/** Sombra de la fila de actividad reciente — más chata que la del tile, como en el template. */
-export function sombraFila(color: string): ViewStyle {
-  return {
-    boxShadow: [
-      { offsetX: 0, offsetY: 7, blurRadius: 15, spreadDistance: -6, color },
-      { offsetX: 0, offsetY: 2, blurRadius: 5, color },
-    ],
-  };
+/** Nivel 5 · Foco / grabando (ring del mic activo) — no es sombra proyectada: es un anillo. */
+export function anilloFoco(colorConAlpha: string, ancho = 6): Pick<ViewStyle, 'borderWidth' | 'borderColor'> {
+  return { borderWidth: ancho, borderColor: colorConAlpha };
 }

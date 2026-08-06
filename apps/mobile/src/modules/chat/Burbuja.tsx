@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTema } from '../../theme/ThemeProvider';
+import { sombraNivel } from '../../theme/glass/relieve';
 
 export type RolBurbuja = 'user' | 'assistant';
 
@@ -24,6 +25,11 @@ export interface BurbujaProps {
  * `overflow:'hidden'` recorta el gradiente al radio; la sombra la proyecta el contenedor padre (que
  * no recorta), y `backgroundColor` translúcido (`s2`) le da a Android el outline que necesita para
  * dibujarla sin volver la burbuja opaca. Cero-hex: todo sale de `useTema()`.
+ *
+ * Relieve (ODOBI §2.4): la burbuja del ASISTENTE usa el nivel 1 neutro ("superficie en reposo");
+ * la del USUARIO usa la sombra auxiliar del acento (`glass.relieve.burbujaUsuario` — DoD "sombras
+ * auxiliares del acento", el mismo tono que UB2 a .4, distinta del nivel 1 neutro) porque es una
+ * superficie de acento, no una card neutra. Ver `relieve.ts`.
  */
 export function Burbuja({ role, text }: BurbujaProps) {
   const tema = useTema();
@@ -35,10 +41,10 @@ export function Burbuja({ role, text }: BurbujaProps) {
       <View
         style={[
           styles.burbuja,
+          sombraNivel(esUsuario ? g.relieve.burbujaUsuario : g.relieve.nivel1),
           {
             borderColor: esUsuario ? g.bd : g.s1,
             backgroundColor: g.s2,
-            shadowColor: g.sombra,
             // Cola direccional: la esquina "sin redondear" apunta a quién habla.
             borderTopLeftRadius: tema.radio.lg,
             borderTopRightRadius: tema.radio.lg,
@@ -69,10 +75,7 @@ const styles = StyleSheet.create({
   burbuja: {
     borderWidth: 1,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 5 },
-    shadowRadius: 12,
-    shadowOpacity: 0.7,
-    elevation: 6,
+    // La sombra proyectada la pone `sombraNivel(...)` — ver el docstring del módulo.
   },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
 });

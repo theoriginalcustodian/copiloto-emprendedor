@@ -209,17 +209,9 @@
   border-radius: 20px;
 }
 
-.uc-surface--blur.uc-surface--bubble {
-  backdrop-filter: var(--bubble-blur);
-}
-
-.uc-surface--blur.uc-surface--card {
-  backdrop-filter: var(--card-blur);
-}
-
-.uc-surface--blur.uc-surface--tile {
-  backdrop-filter: var(--tile-blur);
-}
+/* ODOBI hito 2: "sin glass, color pleno" retira el blur — `uc-surface--blur` sigue existiendo como
+   className (ver `Surface.tsx`, prop `blur`) pero ya no tiene efecto visual; el relieve real de
+   estas superficies lo dan `--card-shadow`/`--tile-shadow`/`--bubble-shadow` (§2.4). */
 
 /* ---------- Skeleton ---------- */
 .uc-skeleton {
@@ -291,9 +283,9 @@
 .uc-sheet-scrim {
   position: absolute;
   inset: 0;
-  /* Excepción documentada arriba: color de scrim fijo (no token), verbatim EXTRACT §2.11. */
+  /* Excepción documentada arriba: color de scrim fijo (no token), verbatim EXTRACT §2.11. Sin blur
+     (ODOBI hito 2, "sin glass") — el scrim opaco-parcial alcanza para separar el sheet del fondo. */
   background: rgba(3, 4, 10, 0.55);
-  backdrop-filter: blur(2px);
   opacity: 0;
   transition: opacity 0.3s ease;
 }

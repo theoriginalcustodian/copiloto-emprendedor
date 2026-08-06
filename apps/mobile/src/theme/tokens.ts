@@ -36,6 +36,8 @@
  * - `glass` — NUEVO sub-objeto para el vidrio del rediseño: mapeo 1:1 de `--dm-*`
  *   (`tint, tint2, bd, hi, s1, s2, chip, pill, glow, accent2, on, blur, esLight`).
  */
+import type { NivelRelieve } from './glass/relieve';
+
 /** Una zona de luz radial del fondo (mapeo de un `radial-gradient` de `--dm-phonebg` del diseño).
  *  `cx/cy` = centro y `rx/ry` = radios, TODO en fracción 0-1 del rectángulo de pantalla (equivale a
  *  `objectBoundingBox` en SVG). `color` es el rgba del centro; se desvanece a transparente en `~0.6`
@@ -103,10 +105,29 @@ export interface Tokens {
     esLight: boolean;
     /** Zonas de luz del fondo (mapeo de `--dm-phonebg`): 1-2 glows radiales sobre `color.fondo`. */
     fondoLuz: LuzFondo[];
-    /** Color de la sombra proyectada de las cards (relieve/profundidad). Lleva alpha (Android API 28+
-     *  la respeta) — por eso vive en `glass`, no en `color`. Blanco clínico usa un azul-gris (como el
-     *  template); los oscuros, negro. */
-    sombra: string;
+    /**
+     * Los 5 niveles de relieve de ODOBI (DoD §2.4) — luz interna + sombra proyectada, consumidos
+     * por nombre vía `relieve.ts` (`sombraNivel`/`anilloFoco`). Vive en `glass`, no en `color`,
+     * porque cada nivel lleva alpha (Android API 28+ la respeta, verificado en el spike del hito 0).
+     * `nivel1`..`nivel4`/`burbujaUsuario` traen geometría YA resuelta por piel (el DoD declara
+     * offset/radio distintos entre claro y oscuro en el nivel 1, no sólo el color); `nivel5` es el
+     * rgba completo del anillo de foco (no es una sombra proyectada, es un `borderColor`).
+     */
+    relieve: {
+      /** Superficie en reposo (cards, burbujas, paneles). */
+      nivel1: NivelRelieve;
+      /** Elemento chico (chips, tiles del escritorio). */
+      nivel2: NivelRelieve;
+      /** Acento elevado (botón primario, FAB de voz) — idéntico en las 3 pieles. */
+      nivel3: NivelRelieve;
+      /** Flotante (shell, modal, bottom sheet). */
+      nivel4: NivelRelieve;
+      /** Foco / grabando (ring del mic activo) — idéntico en las 3 pieles. */
+      nivel5: string;
+      /** Sombra auxiliar de la burbuja del USUARIO (acento, no neutra) — DoD §2.4 "sombras
+       *  auxiliares del acento". Idéntica en las 3 pieles (no deriva de la piel, deriva del acento). */
+      burbujaUsuario: NivelRelieve;
+    };
   };
   espacio: { xs: number; sm: number; md: number; lg: number; xl: number };
   radio: { sm: number; md: number; lg: number; completo: number };
@@ -253,8 +274,15 @@ interface PaletaCruda extends Partial<VidrioCrudo> {
   peligroBorde: string;
   /** Glows del fondo (mapeo directo de `--dm-phonebg` del skin en el template). */
   fondoLuz: LuzFondo[];
-  /** Color (con alpha) de la sombra de las cards. */
-  sombra: string;
+  /** Los 5 niveles de relieve de esta piel — ver el docstring de `Tokens.glass.relieve`. */
+  relieve: {
+    nivel1: NivelRelieve;
+    nivel2: NivelRelieve;
+    nivel3: NivelRelieve;
+    nivel4: NivelRelieve;
+    nivel5: string;
+    burbujaUsuario: NivelRelieve;
+  };
 }
 
 /**
@@ -321,6 +349,20 @@ const UB2 = '#7E2417';
 const TINT = 'rgba(194,69,46,.16)';
 const TINT2 = 'rgba(126,36,23,.10)';
 
+// Relieve (DoD §2.4) — geometría/elevation por NIVEL (no por piel: sólo el nivel 1 declara offset/
+// radio distintos entre claro y oscuro, ver `RELIEVE_NIVEL1_*` abajo). `elevation` no lo declara el
+// DoD (es un detalle de compositing de Android, no visual) — se deriva proporcional al `radius` de
+// cada nivel, mismo criterio que usó el spike del hito 0 para sus propios niveles.
+const RELIEVE_NIVEL2_GEOM = { offsetY: 3, radius: 8, elevation: 6 };
+const RELIEVE_NIVEL3_GEOM = { offsetY: 10, radius: 26, elevation: 16 };
+const RELIEVE_NIVEL4_GEOM = { offsetY: 30, radius: 60, elevation: 24 };
+// Acento — nivel 3 (botón primario, FAB de voz) y la sombra auxiliar de la burbuja del usuario
+// comparten color/opacidad de ACENTO §2.4: idénticos en las 3 pieles, no derivan del lienzo.
+const RELIEVE_NIVEL3: NivelRelieve = { color: UB2, opacity: 0.5, ...RELIEVE_NIVEL3_GEOM };
+const RELIEVE_BURBUJA_USUARIO: NivelRelieve = { color: UB2, opacity: 0.4, offsetY: 10, radius: 22, elevation: 12 };
+// Nivel 5 (ring de foco/grabando) — idéntico en las 3 pieles, es literalmente `TINT` (acento a .16).
+const RELIEVE_NIVEL5 = TINT;
+
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   claro: {
     accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
@@ -349,8 +391,16 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     s1: 'rgba(255,255,255,.92)', s2: 'rgba(255,255,255,.58)', bd: 'rgba(255,252,244,.7)',
     hi: 'rgba(255,255,255,.95)', pill: 'rgba(46,42,32,.34)', chip: 'rgba(46,42,32,.06)',
     fondoLuz: [],
-    // Sombra cálida validada por el spike del hito 0 (nivel 1 · reposo, §2.4 del DoD).
-    sombra: 'rgba(110,75,44,.3)',
+    // Sombra cálida validada por el spike del hito 0 (nivel 1 · reposo, §2.4 del DoD) — geometría
+    // 10px/26px, distinta de la de oscuro/nocturno (12px/28px, ver más abajo).
+    relieve: {
+      nivel1: { color: '#6E4B2C', opacity: 0.3, offsetY: 10, radius: 26, elevation: 14 },
+      nivel2: { color: '#46321E', opacity: 0.32, ...RELIEVE_NIVEL2_GEOM },
+      nivel3: RELIEVE_NIVEL3,
+      nivel4: { color: '#6E4B2C', opacity: 0.4, ...RELIEVE_NIVEL4_GEOM },
+      nivel5: RELIEVE_NIVEL5,
+      burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
+    },
   },
   oscuro: {
     accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
@@ -368,7 +418,15 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     s1: BASE_OSCURO.s1, s2: BASE_OSCURO.s2, hi: BASE_OSCURO.hi,
     pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
     fondoLuz: [],
-    sombra: 'rgba(0,0,0,.6)', // §2.4, nivel 1 oscuro
+    // §2.4: nivel 1 oscuro es NEGRO (no cálido) — geometría 12px/28px, distinta de claro (10px/26px).
+    relieve: {
+      nivel1: { color: '#000000', opacity: 0.6, offsetY: 12, radius: 28, elevation: 14 },
+      nivel2: { color: '#000000', opacity: 0.5, ...RELIEVE_NIVEL2_GEOM }, // "idem" geometría, §2.4
+      nivel3: RELIEVE_NIVEL3,
+      nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
+      nivel5: RELIEVE_NIVEL5,
+      burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
+    },
   },
   nocturno: {
     // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
@@ -390,7 +448,17 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     hi: 'rgba(255,255,255,.15)',
     pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
     fondoLuz: [],
-    sombra: 'rgba(0,0,0,.75)', // §2.8, exacto
+    // §2.8, exacto: "relieve nivel 1-2 con rgba(0,0,0,.75)" — nocturno sube la opacidad de AMBOS
+    // niveles a .75 (oscuro los tenía separados en .6/.5); geometría y nivel3/4/5 heredan de oscuro
+    // sin cambio, el DoD no declara valor propio para ellos en nocturno.
+    relieve: {
+      nivel1: { color: '#000000', opacity: 0.75, offsetY: 12, radius: 28, elevation: 14 },
+      nivel2: { color: '#000000', opacity: 0.75, ...RELIEVE_NIVEL2_GEOM },
+      nivel3: RELIEVE_NIVEL3,
+      nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
+      nivel5: RELIEVE_NIVEL5,
+      burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
+    },
   },
 };
 
@@ -426,7 +494,7 @@ function construirTokens(p: PaletaCruda): Tokens {
     glass: {
       tint: p.tint, tint2: p.tint2, bd, hi, s1, s2, chip, pill,
       glow: p.glow, accent2: p.accent2, on: p.on, blur: p.blur, esLight: p.esLight,
-      fondoLuz: p.fondoLuz, sombra: p.sombra, ub1: p.ub1, ub2: p.ub2,
+      fondoLuz: p.fondoLuz, relieve: p.relieve, ub1: p.ub1, ub2: p.ub2,
     },
     espacio, radio, tipo, fuente,
   };
