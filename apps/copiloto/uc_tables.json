@@ -230,5 +230,13 @@
     "ultimo_intento_en timestamptz",
     "created_at timestamptz DEFAULT now()",
     "updated_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_auditoria": [
+    "admin_user_id uuid NOT NULL",
+    "admin_email text NOT NULL",
+    "accion text NOT NULL",
+    "detalle jsonb",
+    "resultado text NOT NULL DEFAULT 'exitoso'",
+    "created_at timestamptz DEFAULT now()"
   ]
 }

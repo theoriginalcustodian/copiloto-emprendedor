@@ -143,9 +143,10 @@ else:
     por_tabla: dict = {}
     for tabla, permiso in grants:
         por_tabla.setdefault(tabla, set()).add(permiso)
-    esperado = {"copiloto_metering": {"SELECT"}, "copiloto_feedback": {"SELECT"}, "copiloto_traumas": {"SELECT"}}
+    esperado = {"copiloto_metering": {"SELECT"}, "copiloto_feedback": {"SELECT"}, "copiloto_traumas": {"SELECT"},
+                "copiloto_auditoria": {"SELECT"}}
     if por_tabla == esperado:
-        print(f"   grants={por_tabla}  ✔ exactamente SELECT en las 3 tablas declaradas, nada más")
+        print(f"   grants={por_tabla}  ✔ exactamente SELECT en las 4 tablas declaradas, nada más")
     else:
         print(f"   grants={por_tabla}  ❌ no coincide con lo declarado: {esperado}")
 PY

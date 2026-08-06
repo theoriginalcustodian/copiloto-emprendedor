@@ -201,12 +201,13 @@ GRANT USAGE ON SCHEMA uc_factory TO ${AUTOSAN_USER};
 GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_traumas TO ${AUTOSAN_USER};
 GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_traumas_id_seq TO ${AUTOSAN_USER};
 
--- Rol de la Consola (CONS0a): SELECT-only, mismas 3 tablas que en producción. Ningún GRANT de
--- escritura -- un test que intente insertar/actualizar con este rol debe fallar, y falla.
+-- Rol de la Consola (CONS0a, extendido en CONS1): SELECT-only, mismas 4 tablas que en producción.
+-- Ningún GRANT de escritura -- un test que intente insertar/actualizar con este rol debe fallar, y falla.
 GRANT USAGE ON SCHEMA uc_factory TO ${CONSOLA_USER};
-GRANT SELECT ON uc_factory.copiloto_metering TO ${CONSOLA_USER};
-GRANT SELECT ON uc_factory.copiloto_feedback TO ${CONSOLA_USER};
-GRANT SELECT ON uc_factory.copiloto_traumas  TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_metering  TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_feedback  TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_traumas   TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_auditoria TO ${CONSOLA_USER};
 SQL
 
 if [ "$EXPORTAR" -eq 1 ]; then
