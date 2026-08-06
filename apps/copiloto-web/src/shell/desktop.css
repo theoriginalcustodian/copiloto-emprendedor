@@ -69,6 +69,17 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* La lista de funciones scrollea sola cuando no entra en la ventana (pantalla baja, zoom 125%,
+     portátil de 768px, o simplemente una función más). El `min-height:0` NO es opcional: un hijo
+     flex tiene `min-height:auto`, que le impide encogerse por debajo de su contenido — sin él el
+     `overflow-y` nunca se activa y la lista se desborda igual.
+     El scroll va acá y NO en `.rail`: ese `overflow:hidden` recorta `.rail__label` durante la
+     animación de ancho, y además arrastraría `.rail__bottom` (Skin + Usuario) con el scroll, que
+     es justo la puerta a Ajustes y tiene que quedar fija al fondo.
+     La barra en sí ya la estiliza el design system (fina y theme-aware, `global.css`
+     "Scrollbars glass"): no se repite nada acá. */
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .rail__item {
