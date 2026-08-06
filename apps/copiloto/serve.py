@@ -41,7 +41,7 @@ from clients.agent.providers.crypto import FernetCrypto
 from clients.agent.providers.mercadopago_gateway import MercadoPagoGateway
 
 import services
-from auth import make_require_claims, make_require_tenant
+from auth import make_require_admin, make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
 from contexto_tenant import conexion_con_tenant
@@ -70,6 +70,7 @@ from gastos_web import create_gastos_app
 from clientes_web import create_clientes_app
 from contabilidad_web import create_contabilidad_app
 from actividad_web import create_actividad_app
+from admin_web import create_admin_app
 from clients.agent.providers.llm import LlmProvider
 from graphity_structured_client import GraphityStructuredClient
 from inteligencia_chat import InteligenciaChat, group_id_negocio
@@ -139,6 +140,10 @@ async def _serve() -> None:
     # Mismo secreto+issuer, SIN exigir tenant: para el first-login OAuth (Google) donde el user ya
     # existe en GoTrue pero aún no tiene fila de tenant (POST /auth/oauth/ensure-tenant).
     require_claims = make_require_claims(secret=os.environ["SUPABASE_JWT_SECRET"], issuer=issuer)
+    # CONS0b: gate de `/admin/*` (Consola de Operador). Mismo secreto+issuer que los otros dos;
+    # el claim vive en `app_metadata.copiloto_admin` (ver docstring en auth.py). Sin fila de
+    # tenant -- el operador es un actor de la app, no de un tenant (specs §2).
+    require_admin = make_require_admin(secret=os.environ["SUPABASE_JWT_SECRET"], issuer=issuer)
     gotrue = GoTrueAdmin.from_env()
 
     mp_app = create_mp_app(
@@ -220,6 +225,8 @@ async def _serve() -> None:
         actividad_store_factory=lambda cid: ActividadStore(conn_factory, cid),
     )
 
+    admin_app = create_admin_app(require_admin=require_admin)
+
     # Chat de IN (§3): best-effort, igual que `memory_provider` — sin OPENAI_API_KEY o sin
     # GRAPHITY_GRAFO_* el endpoint sigue vivo (devuelve "No tengo ese dato.", nunca 500). El LLM es
     # el MISMO del motor (`gpt-4o-mini`, decisión backend-a-planificacion 2026-07-23 02:04): cero
@@ -269,6 +276,7 @@ async def _serve() -> None:
         clientes_app=clientes_app, contabilidad_app=contabilidad_app, actividad_app=actividad_app,
         inteligencia_app=inteligencia_app,
         mi_dia_app=mi_dia_app,
+        admin_app=admin_app,
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),

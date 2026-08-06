@@ -276,3 +276,65 @@ def test_make_require_claims_empty_secret_raises():
     from auth import make_require_claims
     with pytest.raises(ValueError):
         make_require_claims(secret="")
+
+
+# --- make_require_admin (CONS0b) — el claim vive en app_metadata, ver docstring en auth.py ------
+
+def _admin_app(issuer: str | None = None) -> FastAPI:
+    from auth import make_require_admin
+    app = FastAPI()
+    require_admin = make_require_admin(secret=SECRET, issuer=issuer)
+
+    @app.get("/admin/whoami")
+    def _a(claims: dict = Depends(require_admin)):
+        return {"sub": claims["sub"]}
+
+    return app
+
+
+def test_require_admin_con_el_claim_pasa():
+    tok = _tok({"app_metadata": {"copiloto_admin": True}})
+    resp = TestClient(_admin_app()).get("/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 200
+
+
+def test_require_admin_SIN_el_claim_da_403():
+    """ADVERSARIAL: usuario normal (token válido, sin el claim) → 403. Regla dura del repo:
+    control de acceso sin este test = no verificado."""
+    tok = _tok({})
+    resp = TestClient(_admin_app()).get("/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 403
+
+
+def test_require_admin_claim_en_FALSE_da_403():
+    """No alcanza con que la clave exista -- tiene que ser exactamente True."""
+    tok = _tok({"app_metadata": {"copiloto_admin": False}})
+    resp = TestClient(_admin_app()).get("/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 403
+
+
+def test_require_admin_claim_en_USER_METADATA_no_alcanza():
+    """El claim en el lugar EQUIVOCADO (user_metadata, auto-editable por el propio usuario) no
+    debe otorgar acceso -- si esto pasara, el boundary de seguridad no estaría donde el código
+    dice que está. Ver docs/copiloto-emprendedor/2026-08-06-RESULT-CONS0b-claim-admin.md."""
+    tok = _tok({"user_metadata": {"copiloto_admin": True}})
+    resp = TestClient(_admin_app()).get("/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 403
+
+
+def test_require_admin_missing_header_401():
+    resp = TestClient(_admin_app()).get("/admin/whoami")
+    assert resp.status_code == 401
+
+
+def test_require_admin_wrong_issuer_401():
+    tok = _tok({"iss": "https://fusion.other/auth/v1", "app_metadata": {"copiloto_admin": True}})
+    resp = TestClient(_admin_app(issuer=ISSUER)).get(
+        "/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert resp.status_code == 401
+
+
+def test_make_require_admin_empty_secret_raises():
+    from auth import make_require_admin
+    with pytest.raises(ValueError):
+        make_require_admin(secret="")

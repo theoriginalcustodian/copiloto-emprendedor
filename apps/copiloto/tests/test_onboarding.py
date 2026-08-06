@@ -194,3 +194,38 @@ def test_admin_create_user_422_but_email_not_found_propagates_error():
     admin = _admin_with_transport(handler)
     with pytest.raises(httpx.HTTPStatusError):
         admin.admin_create_user("ghost@test.com", "pw")
+
+
+# --- CONS0b: admin_grant_operador + find_user_by_email ---------------------------------------
+
+def test_admin_grant_operador_manda_el_claim_correcto():
+    """PUT con exactamente app_metadata.copiloto_admin=True -- nada más en el body (el merge del
+    lado del server es lo que preserva otros claims, verificado empíricamente contra GoTrue real;
+    acá sólo se prueba que ESTE cliente manda lo que dice mandar)."""
+    visto = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "PUT"
+        visto["body"] = httpx.Request("PUT", request.url, content=request.content).content
+        return httpx.Response(200, json={"id": "uid-1", "app_metadata": {"copiloto_admin": True}})
+
+    admin = _admin_with_transport(handler)
+    admin.admin_grant_operador("uid-1")
+    assert b'"copiloto_admin": true' in visto["body"] or b'"copiloto_admin":true' in visto["body"]
+
+
+def test_find_user_by_email_encuentra_match_exacto():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"users": [{"id": "uid-9", "email": "op@test.com"}]})
+
+    admin = _admin_with_transport(handler)
+    user = admin.find_user_by_email("op@test.com")
+    assert user == {"id": "uid-9", "email": "op@test.com"}
+
+
+def test_find_user_by_email_sin_match_devuelve_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"users": []})
+
+    admin = _admin_with_transport(handler)
+    assert admin.find_user_by_email("nadie@test.com") is None
