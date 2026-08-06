@@ -1,8 +1,6 @@
 import { useState } from 'react';
 
 import { useSession } from '../auth/useSession';
-import { useConnections } from '../modules/connections/useConnections';
-import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import { TABS, type TabKey } from './TabBar';
 import './desktop.css';
@@ -40,8 +38,6 @@ function initial(clienteId: string | undefined): string {
 export function Rail({ active, onChange }: RailProps) {
   const [railOpen, setRailOpen] = useState(false);
   const { me } = useSession();
-  const { mode } = useMode();
-  const { connectedCount, totalCount } = useConnections();
 
   return (
     <>
@@ -58,14 +54,6 @@ export function Rail({ active, onChange }: RailProps) {
         <div className="rail__items">
           {TABS.map((tab) => {
             const isActive = tab.key === active;
-            // Badge-dot en "Apps" cuando hay un modo activo — mismo dato (`useMode()`) que ya lee
-            // `Composer`/`AppsScreen`; el mobile `TabBar.tsx` lo dejó deliberadamente fuera de su
-            // pase (ver docstring ahí), pero acá es un componente NUEVO sin ese deuda previa.
-            const showModeBadge = tab.key === 'apps' && mode !== null;
-            // Contador "3/6" (dc.html:58) — mismo `useConnections()` que `ConnectionsScreen`,
-            // solo en el ítem "Conexiones", visible con el rail abierto (mismo fade que el resto
-            // del texto del ítem).
-            const showConnectionsCount = tab.key === 'connections';
             return (
               <button
                 key={tab.key}
@@ -78,26 +66,8 @@ export function Rail({ active, onChange }: RailProps) {
               >
                 <span className="rail__icon-wrap" aria-hidden="true">
                   <span className="rail__icon">{NAV_ICONS[tab.key]()}</span>
-                  {showModeBadge && <span className="rail__dot" data-testid="rail-mode-dot" />}
                 </span>
                 <span className="rail__label">{tab.label}</span>
-                {showModeBadge && (
-                  <span className="rail__mode-badge" data-testid="rail-mode-badge">
-                    {mode?.label}
-                  </span>
-                )}
-                {showConnectionsCount && (
-                  // `aria-hidden` (mismo criterio que `rail__icon-wrap`/dot): puramente visual, no
-                  // debe alterar el accessible name del botón ("Conexiones" a secas para
-                  // lectores de pantalla/tests de rol — el conteo es un refuerzo visual).
-                  <span
-                    className="rail__connections-count"
-                    aria-hidden="true"
-                    data-testid="rail-connections-count"
-                  >
-                    {connectedCount}/{totalCount}
-                  </span>
-                )}
               </button>
             );
           })}

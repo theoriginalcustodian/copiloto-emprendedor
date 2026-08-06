@@ -1,4 +1,3 @@
-import { useMode } from './modeStore';
 import { NAV_ICONS } from './navIcons';
 import './shell.css';
 
@@ -26,39 +25,38 @@ export interface TabDefinition {
 }
 
 /**
- * Registro declarativo de tabs (EXTRACT §2.3/§4: Chat · Apps · Conexiones · Cuenta). Sumar o
- * quitar un tab es editar este array — TabBar y AppShell son data-driven de acá, cero refactor.
- * El ícono sale de `NAV_ICONS[key]` (SVG verbatim del diseño), no de un glyph emoji.
+ * Registro declarativo de tabs (EXTRACT §2.3/§4). Sumar o quitar un tab es editar este array —
+ * TabBar y AppShell son data-driven de acá, cero refactor. El ícono sale de `NAV_ICONS[key]` (SVG
+ * verbatim del diseño), no de un glyph emoji.
  *
- * `gastos` sumado en M-WEB spike 1 (2026-08-04) -- primer módulo de negocio del shell web, sin
- * equivalente en el diseño original de 4 tabs (EXTRACT). Va DESPUÉS de "Conexiones" a propósito:
- * las 4 pantallas de cuenta/plataforma quedan agrupadas antes que el primer módulo de negocio.
+ * **Depuración 2026-08-06** (pedido del operador, *"sólo las funciones de la app"*): `apps`,
+ * `connections`, `recientes` y `account` salieron de este array — sus pantallas siguen existiendo
+ * y son alcanzables por otro camino (`apps`/`account` vía `TILES_AJUSTES` en Ajustes, `recientes`
+ * vía "ver recientes" de Escritorio), así que sus valores de `TabKey` NO se tocan, sólo se retiran
+ * de la barra visible. `ajustes` **no** salió pese a estar en el pedido original: el reemplazo
+ * ("se entra por el ícono del usuario") no existe en el shell mobile — `ChatHeader` (que tendría
+ * el avatar) está deliberadamente sin montar ahí desde 2026-07-04 (ver AppShell.tsx) — y el único
+ * otro camino (Facturación → "Configurar") es un atajo incidental, no una puerta real. Mismo
+ * criterio que el contrato pide para este caso: si el reemplazo no existe, el tab se queda.
  *
- * `clientes` sumado en M-WEB módulo 2 (2026-08-04) -- mismo criterio: módulo de negocio, va
- * después de `gastos` (orden de llegada de los módulos, no hay jerarquía declarada entre ellos).
- *
- * `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia`, `midia`, `escritorio`,
- * `recientes`, `ajustes` y `facturacion` sumados en M-WEB (2026-08-04) -- mismo criterio, orden de
- * llegada. `facturacion` cierra el sprint M-WEB: fue el módulo más grande (4 sub-PRs) y el último
- * en wirear -- por eso va al final del orden de llegada, no por jerarquía de producto.
+ * `gastos`, `clientes`, `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia`,
+ * `midia`, `escritorio` y `facturacion` sumados en M-WEB (2026-08-04), orden de llegada. Reordenados
+ * acá por agrupación temática (pedido del operador, *"mal ubicados"*): día a día · la plata · con
+ * quién · herramientas.
  */
 export const TABS: readonly TabDefinition[] = [
   { key: 'chat', label: 'Chat' },
-  { key: 'apps', label: 'Apps' },
-  { key: 'connections', label: 'Conexiones' },
-  { key: 'gastos', label: 'Gastos' },
-  { key: 'clientes', label: 'Clientes' },
-  { key: 'contabilidad', label: 'Contabilidad' },
-  { key: 'ingresos', label: 'Ingresos' },
-  { key: 'actividad', label: 'Actividad' },
-  { key: 'presupuestos', label: 'Presupuestos' },
-  { key: 'inteligencia', label: 'Inteligencia' },
   { key: 'midia', label: 'Mi día' },
-  { key: 'escritorio', label: 'Funciones' },
-  { key: 'recientes', label: 'Recientes' },
-  { key: 'ajustes', label: 'Ajustes' },
+  { key: 'actividad', label: 'Actividad' },
+  { key: 'ingresos', label: 'Ingresos' },
+  { key: 'gastos', label: 'Gastos' },
+  { key: 'contabilidad', label: 'Contabilidad' },
   { key: 'facturacion', label: 'Facturación' },
-  { key: 'account', label: 'Cuenta' },
+  { key: 'presupuestos', label: 'Presupuestos' },
+  { key: 'clientes', label: 'Clientes' },
+  { key: 'inteligencia', label: 'Inteligencia' },
+  { key: 'escritorio', label: 'Funciones' },
+  { key: 'ajustes', label: 'Ajustes' },
 ];
 
 export interface TabBarProps {
@@ -78,7 +76,6 @@ export interface TabBarProps {
  * baja acá + al composer (shift en espejo).
  */
 export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
-  const { mode } = useMode();
   const navClasses = ['tab-bar', hidden ? 'tab-bar--hidden' : ''].filter(Boolean).join(' ');
   return (
     <nav className={navClasses} data-testid="tab-bar" aria-label="Navegación principal">
@@ -88,10 +85,6 @@ export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
           .filter(Boolean)
           .join(' ');
         const Icon = NAV_ICONS[tab.key];
-        // Badge-dot sobre "Apps" con modo activo (dc.html:202-205, gap #18) — deuda ya
-        // documentada en el diseño previo, se cierra acá con el mismo dato (`useMode()`) que ya
-        // usa el `Rail` de escritorio.
-        const showModeBadge = tab.key === 'apps' && mode !== null;
         return (
           <button
             key={tab.key}
@@ -101,14 +94,7 @@ export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
             onClick={() => onChange(tab.key)}
           >
             <span className="tab-bar__icon" aria-hidden="true">
-              {showModeBadge ? (
-                <span className="tab-bar__icon-wrap">
-                  {Icon()}
-                  <span className="tab-bar__dot" data-testid="tab-bar-mode-dot" />
-                </span>
-              ) : (
-                Icon()
-              )}
+              {Icon()}
             </span>
             <span className="tab-bar__label">{tab.label}</span>
           </button>

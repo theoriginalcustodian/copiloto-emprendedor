@@ -50,70 +50,48 @@ describe('AppShell', () => {
   });
 
   it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {
+    // `connections` salió de `TABS` (depuración 2026-08-06, absorbido por Ajustes > Apps
+    // conectadas) -- ya no hay botón "Conexiones" en la barra para asertar aria-current, pero
+    // `activeTab` sigue siendo una key válida: la pantalla debe montar igual.
     renderAppShell('connections');
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
     expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Conexiones' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
   });
 
-  it('tocar "Apps" abre el bottom-sheet SOBRE el Chat (no navega, gap #1 del audit mobile)', () => {
+  it('MOBILE GATE: Ajustes sigue en la barra -- el reemplazo por "ícono del usuario" no existe en mobile (ChatHeader sin montar)', () => {
+    // Contrato depuración-barra 2026-08-06, control positivo: si esto alguna vez deja de fallar
+    // (porque alguien monta ChatHeader o agrega otro camino a Ajustes en mobile), recién ahí
+    // `ajustes` puede salir de `TABS` sin dejar la pantalla inalcanzable en el teléfono.
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-    // Chat sigue montado detrás del sheet — Apps es un overlay, no una pantalla de tab.
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ajustes' })).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-header')).not.toBeInTheDocument();
   });
 
-  it('cierra el sheet de Apps al click en el scrim', () => {
+  it('navegar a Ajustes > Apps conectadas muestra ConnectionsScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('bottom-sheet-scrim'));
-    expect(screen.getByTestId('bottom-sheet-scrim').parentElement).not.toHaveClass(
-      'uc-sheet-root--open',
-    );
-  });
-
-  it('navegar a Conexiones muestra ConnectionsScreen', () => {
-    renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Conexiones' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('ajuste-tile-apps'));
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 
-  it('navegar a Cuenta muestra AccountScreen', () => {
+  it('navegar a Ajustes > Mi cuenta muestra AccountScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
   it('volver a Chat desde otro tab remonta ChatScreen', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Cuenta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
   });
 
-  it('el botón atrás cierra el sheet de Apps en vez de salir de la app', () => {
-    renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Apps' }));
-    expect(screen.getByTestId('apps-screen')).toBeInTheDocument();
-
-    act(() => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
-    });
-    expect(screen.getByTestId('bottom-sheet-scrim').parentElement).not.toHaveClass(
-      'uc-sheet-root--open',
-    );
-  });
-
   it('el botón atrás desde otro tab vuelve a Chat en vez de salir', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Conexiones' }));
-    expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
 
     act(() => {
       window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
