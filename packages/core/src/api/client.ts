@@ -47,6 +47,33 @@ async function doRefresh(): Promise<boolean> {
   }
 }
 
+/**
+ * El Bearer para una request autenticada, **renovando si el access token FALTA pero hay refresh**.
+ *
+ * Antes se leía el token y listo: sin access token se mandaba la request pelada, el backend
+ * respondía `missing or malformed Authorization header`, y como no habíamos mandado Bearer no se
+ * intentaba ninguna renovación — el 401 caía derecho al logout. O sea que la recuperación cubría el
+ * token *vencido* y no el token *perdido*, y perdido es lo que le pasó a la sesión del operador
+ * (2026-08-07). El supuesto enterrado era «sin access token ⇒ no logueado», y son dos cosas
+ * distintas: con refresh token guardado hay sesión, sólo falta el access.
+ *
+ * `sesionMuerta` distingue las tres situaciones que antes se confundían en una:
+ *   - hay token (o se renovó)      → `{ token, sesionMuerta: false }`
+ *   - no hay NADA guardado          → `{ null, false }` — nunca hubo sesión: no hay qué salvar NI qué borrar
+ *   - hay refresh pero no renueva   → `{ null, true }`  — la sesión SÍ murió: acá corresponde limpiar
+ */
+async function bearerVigente(): Promise<{ token: string | null; sesionMuerta: boolean }> {
+  const { tokens } = config();
+  const token = await tokens.leerToken();
+  if (token) return { token, sesionMuerta: false };
+
+  const refresh = await tokens.leerRefresh();
+  if (!refresh) return { token: null, sesionMuerta: false };
+
+  const ok = await refreshSession(); // single-flight: N requests sin token disparan UN solo refresh
+  return { token: ok ? await tokens.leerToken() : null, sesionMuerta: !ok };
+}
+
 async function safeJson(res: RespuestaHttp): Promise<unknown> {
   try {
     return await res.json();
@@ -123,9 +150,14 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { tokens } = config();   // el `http` lo toma `enviarConCorte`, que envuelve el envío
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
+  // `sesionMuerta` es lo ÚNICO que autoriza a borrar los tokens. Arranca en false y sólo se
+  // enciende si una renovación con refresh guardado falló: ahí la sesión murió de verdad.
+  let sesionMuerta = false;
+
   if (auth) {
-    const token = await tokens.leerToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const bearer = await bearerVigente();
+    if (bearer.token) headers.Authorization = `Bearer ${bearer.token}`;
+    sesionMuerta = bearer.sesionMuerta;
   }
 
   const peticion: PeticionHttp = { metodo: method, path, headers, cuerpoJson: body };
@@ -145,6 +177,8 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       const fresh = await tokens.leerToken();
       if (fresh) headers.Authorization = `Bearer ${fresh}`;
       res = await enviarConCorte({ ...peticion, headers });
+    } else {
+      sesionMuerta = true; // había sesión y no se pudo renovar: esto SÍ es logout
     }
   }
 
@@ -154,7 +188,12 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   const errorBody = await safeJson(res);
-  return mapearError(res.status, errorBody, { limpiarTokens: auth });
+  // Antes era `limpiarTokens: auth` — o sea, CUALQUIER 401 de CUALQUIER endpoint autenticado
+  // destruía la sesión, aunque el 401 no fuera por la sesión y aunque el refresh estuviera sano.
+  // Ahora sólo se limpia cuando la renovación falló, que es la única prueba de sesión muerta que
+  // tiene el cliente. Un 401 tras un refresh EXITOSO deja los tokens en paz: el access es de hace
+  // un instante, así que el problema es del endpoint, no de la credencial.
+  return mapearError(res.status, errorBody, { limpiarTokens: sesionMuerta });
 }
 
 export const apiClient = {
@@ -197,8 +236,11 @@ export async function postMultipart<T>(
 ): Promise<T> {
   const { http, tokens } = config();
   const headers: Record<string, string> = {};
-  const token = await tokens.leerToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  // Mismo criterio que `request()`: el access token puede faltar sin que la sesión esté muerta.
+  // Acá pesa el doble — un dictado ya grabado se perdería por no intentar la renovación.
+  const bearer = await bearerVigente();
+  let sesionMuerta = bearer.sesionMuerta;
+  if (bearer.token) headers.Authorization = `Bearer ${bearer.token}`;
   const sentBearer = headers.Authorization !== undefined;
 
   const peticion = {
@@ -223,13 +265,15 @@ export async function postMultipart<T>(
       const fresh = await tokens.leerToken();
       if (fresh) headers.Authorization = `Bearer ${fresh}`;
       res = await http.enviar({ ...peticion, headers });
+    } else {
+      sesionMuerta = true;
     }
   }
 
   if (res.ok) return (await res.json()) as T;
 
   const errorBody = await safeJson(res);
-  return mapearError(res.status, errorBody);
+  return mapearError(res.status, errorBody, { limpiarTokens: sesionMuerta });
 }
 
 export { safeJson, stringDetail };
