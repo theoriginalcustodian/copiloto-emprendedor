@@ -35,6 +35,7 @@ copiloto-emprendedor/
 ├── deploy/copiloto/        # scripts de deploy (deploy.sh, sync-web.sh, GoTrue, Caddy snippet)
 ├── deploy/worker/          # provision_tables.py (infra de tablas, RLS + policy)
 ├── docs/copiloto-emprendedor/
+│   └── Auditorias/         # 🔍 TODO lo de auditorías vive ACÁ (loop Fable, mapas de clases, re-verificaciones)
 ├── scripts/sync-motor.sh   # RETIRADO (fork duro 2026-07-07) — el motor ya no se sincroniza con la fábrica
 └── requirements.txt        # deps python pinneadas (del venv de prod)
 ```
@@ -175,6 +176,7 @@ El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquest
   con tres nombres · `actividad` nombra **dos sistemas sin relación** (el feed SQL de negocio y la
   memoria conversacional) · `cliente` es a quien le vende el emprendedor, **nunca** el tenant.
 - **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md` + 113 entradas); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
+- **🔍 Auditorías → [`docs/copiloto-emprendedor/Auditorias/`](docs/copiloto-emprendedor/Auditorias/)** (regla del operador, 2026-08-06). **TODO lo relacionado con auditorías se guarda ACÁ**, nunca suelto en `docs/`: el loop Fable (`eval-fable5-*`), los mapas de clases de error, las re-verificaciones, los handoffs de auditoría. Índice + estado vigente en su `README.md`. Doc maestro actual: `Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md` (11 problemas re-verificados + fixes de raíz + decisiones). Loop reutilizable: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 - Plan de graduación (Fase 0/1/2): `docs/copiloto-emprendedor/2026-07-06-graduacion-plan-fase0-fase1.md`.
 - Dominio propio + auth Google: `docs/copiloto-emprendedor/` + config en `deploy/copiloto/`.
 - Assets de diseño/voz (fuera del repo): `docs/ASSETS-EXTERNAL.md`.
