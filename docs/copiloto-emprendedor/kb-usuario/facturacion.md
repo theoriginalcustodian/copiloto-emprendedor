@@ -54,6 +54,8 @@ Ese PDF queda disponible para descargar por 24 horas desde el link directo. Pero
 
 Si por algún motivo el PDF no se pudo generar en el momento, no te preocupes: la factura ya quedó emitida y con CAE válido — el PDF se puede volver a generar más tarde, la parte fiscal ya está resuelta.
 
+### Guardar y compartir el comprobante
+
 Desde el detalle de cada comprobante emitido tenés dos botones:
 
 - **Guardar** — abre el PDF (prioriza siempre el que está guardado en tu Drive, para que no dependas del link de 24 horas).
@@ -89,29 +91,49 @@ Es importante que sepas cómo funciona esto: **el Copiloto nunca emite la factur
 
 Si no dijiste el documento del cliente, el Copiloto asume que es venta a consumidor final —que, como vimos, no necesita documento salvo montos muy altos.
 
+### Avisar un cobro por chat
+
 También podés avisarle por chat cuando te pagan una factura ya emitida, con algo como *"me pagaron la factura de la panadería"* o *"cobré la 42"* — eso queda anotado como cobro (ver la sección de Ingresos para más detalle).
 
 ## Errores y confusiones frecuentes
 
-**"No me deja facturar, dice que faltan datos fiscales"** — Todavía no cargaste tu CUIT y el resto de los datos en Ajustes → Facturación AFIP. Es el primer paso obligatorio.
+### "No me deja facturar, dice que faltan datos fiscales"
 
-**"Me dice que la fecha está fuera de rango"** — AFIP solo permite facturar con una fecha dentro de los diez días corridos antes o después de hoy. Si necesitás facturar algo más viejo, no vas a poder hacerlo con esa fecha exacta.
+Todavía no cargaste tu CUIT y el resto de los datos en Ajustes → Facturación AFIP. Es el primer paso obligatorio.
 
-**"Cargué el CUIT de mi cliente pero me marca la condición de IVA como sospechosa"** — Es un aviso preventivo: pusiste un CUIT válido pero dejaste la condición del cliente en "Consumidor Final", que normalmente no lleva CUIT. Revisá si el cliente es en realidad Responsable Inscripto o Monotributista.
+### "Me dice que la fecha está fuera de rango"
 
-**"Emití la factura pero no puedo descargar el PDF, dice que expiró"** — El link directo de AFIP vence a las 24 horas. Buscá el comprobante en el detalle: ahí el botón "Guardar" te lleva a la copia que quedó archivada en tu Google Drive, que no vence.
+AFIP solo permite facturar con una fecha dentro de los diez días corridos antes o después de hoy. Si necesitás facturar algo más viejo, no vas a poder hacerlo con esa fecha exacta.
 
-**"¿Puedo hacer una Factura A o B con IVA discriminado?"** — Todavía no. Hoy el Copiloto solo emite Factura C (sin discriminar IVA), pensada para monotributistas y exentos; si sos Responsable Inscripto y necesitás facturar con IVA discriminado, esa opción no está disponible por el momento.
+### "Cargué el CUIT de mi cliente pero me marca la condición de IVA como sospechosa"
 
-**"¿Por qué el botón dice 'Emitir factura real' y no 'Confirmar y emitir'?"** — Estás en el ambiente de producción: la próxima factura que emitas es fiscalmente válida de verdad, no una prueba. Revisá bien el resumen antes de confirmar.
+Es un aviso preventivo: pusiste un CUIT válido pero dejaste la condición del cliente en "Consumidor Final", que normalmente no lleva CUIT. Revisá si el cliente es en realidad Responsable Inscripto o Monotributista.
 
-**"Facturé desde un presupuesto y no pasó nada"** — Al tocar "Facturar" desde un presupuesto, el Copiloto arma el borrador con los datos de ese presupuesto y te lleva directo al resumen para que lo revises y confirmes vos — todavía no se emitió nada, es el mismo paso de revisión que si facturás manualmente.
+### "Emití la factura pero no puedo descargar el PDF, dice que expiró"
 
-**"¿Qué letra de factura me corresponde?"** — No la elegís vos: el Copiloto la calcula solo a partir de tu condición frente al IVA y la de tu cliente. Si sos monotributista o exento, siempre va a ser Factura C.
+El link directo de AFIP vence a las 24 horas. Buscá el comprobante en el detalle: ahí el botón "Guardar" te lleva a la copia que quedó archivada en tu Google Drive, que no vence.
 
-**"Me rechazó la factura AFIP con un código de error"** — Cuando AFIP rechaza un comprobante, el motivo que te muestra el Copiloto es el mismo texto que devuelve AFIP, tal cual. No siempre es fácil de entender a simple vista; si no lográs interpretarlo, pegale una consulta al Copiloto por chat con el código que te apareció.
+### "¿Puedo hacer una Factura A o B con IVA discriminado?"
 
-**"Le pedí por chat que facture y no me confirmó que la mandó"** — Es el comportamiento esperado: el Copiloto nunca te va a decir "listo, la emití" desde el chat, porque hasta que vos no confirmás desde la tarjeta o la pantalla de resumen, la factura no se mandó. Buscá la tarjeta de la propuesta para terminar el paso.
+Todavía no. Hoy el Copiloto solo emite Factura C (sin discriminar IVA), pensada para monotributistas y exentos; si sos Responsable Inscripto y necesitás facturar con IVA discriminado, esa opción no está disponible por el momento.
+
+"¿Qué letra de factura me corresponde?" — No la elegís vos: el Copiloto la calcula solo a partir de tu condición frente al IVA y la de tu cliente. Si sos monotributista o exento, siempre va a ser Factura C.
+
+### "¿Por qué el botón dice 'Emitir factura real' y no 'Confirmar y emitir'?"
+
+Estás en el ambiente de producción: la próxima factura que emitas es fiscalmente válida de verdad, no una prueba. Revisá bien el resumen antes de confirmar.
+
+### "Facturé desde un presupuesto y no pasó nada"
+
+Al tocar "Facturar" desde un presupuesto, el Copiloto arma el borrador con los datos de ese presupuesto y te lleva directo al resumen para que lo revises y confirmes vos — todavía no se emitió nada, es el mismo paso de revisión que si facturás manualmente.
+
+### "Me rechazó la factura AFIP con un código de error"
+
+Cuando AFIP rechaza un comprobante, el motivo que te muestra el Copiloto es el mismo texto que devuelve AFIP, tal cual. No siempre es fácil de entender a simple vista; si no lográs interpretarlo, pegale una consulta al Copiloto por chat con el código que te apareció.
+
+### "Le pedí por chat que facture y no me confirmó que la mandó"
+
+Es el comportamiento esperado: el Copiloto nunca te va a decir "listo, la emití" desde el chat, porque hasta que vos no confirmás desde la tarjeta o la pantalla de resumen, la factura no se mandó. Buscá la tarjeta de la propuesta para terminar el paso.
 
 ## Preguntas frecuentes
 

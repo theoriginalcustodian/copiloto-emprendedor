@@ -74,23 +74,41 @@ Es normal abrir la cartera y encontrar clientes que no diste de alta a mano. El 
 
 ## Errores y confusiones frecuentes
 
-**"No me deja guardar el cliente"** — Revisá que hayas puesto un nombre; es el único dato obligatorio, pero sin él no se puede guardar.
+### "No me deja guardar el cliente"
 
-**"Me dice que ese documento ya es de otro cliente"** — Ya tenés un cliente cargado con ese mismo CUIT, CUIL o DNI. El Copiloto asume que es la misma persona o negocio y te lleva a su ficha en vez de crear un duplicado.
+Revisá que hayas puesto un nombre; es el único dato obligatorio, pero sin él no se puede guardar.
 
-**"Cargué un cliente por voz y no aparece en mi lista"** — Puede ser que la tarjeta con la propuesta todavía esté esperando que la confirmes. Fijate si tenés que tocar "Dar de alta" para que quede guardado de verdad.
+### "Me dice que ese documento ya es de otro cliente"
 
-**"¿Por qué no puedo elegir un cliente de mi lista al facturar?"** — Hoy la facturación pide los datos del cliente directamente en el formulario de la factura, sin conectarse con tu cartera de Clientes. La cartera se completa después, con lo que ya facturaste.
+Ya tenés un cliente cargado con ese mismo CUIT, CUIL o DNI. El Copiloto asume que es la misma persona o negocio y te lleva a su ficha en vez de crear un duplicado.
 
-**"No encuentro cómo borrar un cliente que cargué mal"** — Por ahora no hay opción de eliminar clientes. Podés editarlo y corregir los datos, pero no borrarlo del todo.
+### "Cargué un cliente por voz y no aparece en mi lista"
 
-**"Le pregunté al Copiloto cuánto le facturé a un cliente y me dice que no lo sabe"** — Pasa cuando ese cliente no tiene documento cargado: sin CUIT, CUIL o DNI, el Copiloto no puede vincular con certeza sus facturas, así que prefiere avisarte en vez de arriesgar un número que puede estar mal.
+Puede ser que la tarjeta con la propuesta todavía esté esperando que la confirmes. Fijate si tenés que tocar "Dar de alta" para que quede guardado de verdad.
 
-**"Cargué mal un dato del cliente, ¿lo puedo corregir?"** — Sí, a diferencia de los gastos o las facturas, los datos de un cliente sí se pueden editar en cualquier momento desde su ficha, las veces que necesites.
+### "¿Por qué no puedo elegir un cliente de mi lista al facturar?"
 
-**"Busco un cliente y no aparece en la lista"** — Puede ser que todavía no lo hayas dado de alta ni facturado a su nombre. Recordá que la cartera se completa tanto con lo que cargás vos como con lo que el Copiloto detecta de tus facturas y presupuestos.
+Hoy la facturación pide los datos del cliente directamente en el formulario de la factura, sin conectarse con tu cartera de Clientes. La cartera se completa después, con lo que ya facturaste.
 
-**"¿Puedo cargar un cliente que es una empresa, no una persona?"** — Sí, el campo nombre acepta tanto el nombre de una persona como una razón social; no hay distinción de tipo de cliente en la carga.
+### "No encuentro cómo borrar un cliente que cargué mal"
+
+Por ahora no hay opción de eliminar clientes. Podés editarlo y corregir los datos, pero no borrarlo del todo.
+
+### "Le pregunté al Copiloto cuánto le facturé a un cliente y me dice que no lo sabe"
+
+Pasa cuando ese cliente no tiene documento cargado: sin CUIT, CUIL o DNI, el Copiloto no puede vincular con certeza sus facturas, así que prefiere avisarte en vez de arriesgar un número que puede estar mal.
+
+### "Cargué mal un dato del cliente, ¿lo puedo corregir?"
+
+Sí, a diferencia de los gastos o las facturas, los datos de un cliente sí se pueden editar en cualquier momento desde su ficha, las veces que necesites.
+
+### "Busco un cliente y no aparece en la lista"
+
+Puede ser que todavía no lo hayas dado de alta ni facturado a su nombre. Recordá que la cartera se completa tanto con lo que cargás vos como con lo que el Copiloto detecta de tus facturas y presupuestos.
+
+### "¿Puedo cargar un cliente que es una empresa, no una persona?"
+
+Sí, el campo nombre acepta tanto el nombre de una persona como una razón social; no hay distinción de tipo de cliente en la carga.
 
 ## Preguntas frecuentes
 
