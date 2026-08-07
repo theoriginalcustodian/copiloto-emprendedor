@@ -265,6 +265,50 @@ export function adminCambiarEstadoTenant(
   );
 }
 
+// ---------------------------------------------------------------------------
+// CTA1 — listar las cuentas que la consola gestiona
+// ---------------------------------------------------------------------------
+
+/**
+ * Fila de `uc_factory.tenants`. Las columnas salen del contrato de CTA1, que a su vez las sacó de
+ * la tabla viva — no de una convención de naming.
+ *
+ * **`composio_user_id` NO está, y su ausencia es parte del contrato**, no un olvido: es el
+ * identificador con el que se opera contra un tercero y no tiene función en esta pantalla. Si algún
+ * día el endpoint lo mandara igual, este tipo NO lo expone: el boundary se respeta en el borde.
+ */
+export interface FilaTenant {
+  cliente_id: string;
+  email: string | null;
+  status: string;
+  created_at: string;
+}
+
+/**
+ * CTA1 — las cuentas que la consola gestiona. `limite` lo **topea el backend** en 500 (mismo
+ * criterio que A6): mandarlo más alto no es un error, simplemente devuelve menos.
+ *
+ * ⚠️ **Escrito contra la forma del contrato, no contra un endpoint corriendo.** Al momento de
+ * escribirlo `GET /admin/tenants` NO existe en `main` (`admin_tenants.py` tiene una sola función y
+ * es la que muta), así que esto vale exactamente lo que valga el contrato — y en A6 el handler y el
+ * contrato ya discreparon una vez. Por eso el guard de forma de abajo NO es decorativo: si el
+ * backend manda otra clave, esto tira `AdminNoDisponibleError` en vez de devolver `undefined` y que
+ * la pantalla explote lejos de la causa. La verificación contra el entorno vivo es parte del DoD y
+ * está pendiente hasta que backend publique el endpoint.
+ */
+export function adminTenants(
+  opts: { estado?: string; limite?: number } = {},
+): Promise<{ tenants: FilaTenant[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (opts.estado) qs.set('estado', opts.estado);
+  if (opts.limite !== undefined) qs.set('limite', String(opts.limite));
+  const query = qs.toString();
+  return getAdmin<{ tenants: FilaTenant[]; total: number }>(
+    `/admin/tenants${query ? `?${query}` : ''}`,
+    tieneClave('tenants'),
+  );
+}
+
 /** Respuesta de `POST /admin/errores/{id}/reintentar` — `admin_web.py:134`. */
 export interface ReintentoTrauma {
   trauma_id: number;

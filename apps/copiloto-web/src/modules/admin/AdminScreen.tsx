@@ -9,6 +9,7 @@ import {
   adminReintentarError,
   adminSalud,
   adminSoporte,
+  adminTenants,
   adminUso,
 } from '../../lib/api/admin';
 import type {
@@ -17,6 +18,7 @@ import type {
   EstadoTenant,
   FilaAuditoria,
   FilaError,
+  FilaTenant,
   FilaTicket,
 } from '../../lib/api/admin';
 import { ForbiddenError } from '../../lib/api';
@@ -92,6 +94,10 @@ export function AdminScreen() {
 
   // ---- CONS7a: suspender / reactivar un tenant ----
   const [tenantId, setTenantId] = useState('');
+  // CTA1 — la lista tiene su propio estado de carga, separado del `estado` general de la pantalla.
+  const [tenants, setTenants] = useState<FilaTenant[]>([]);
+  const [tenantsEstado, setTenantsEstado] = useState<'cargando' | 'ok' | 'no_disponible'>('cargando');
+  const [filtroTenant, setFiltroTenant] = useState('');
   // `enviando` guarda QUÉ acción está en vuelo, no un booleano: con dos botones sobre el mismo
   // campo, un `true` pelado deshabilitaría los dos sin decir cuál se está ejecutando.
   const [enviando, setEnviando] = useState<EstadoTenant | null>(null);
@@ -157,14 +163,54 @@ export function AdminScreen() {
   }, [cargar, horas]);
 
   /**
+   * CTA1 — el listado de cuentas se carga APARTE del `Promise.all` de arriba, y no es una cuestión
+   * de estilo: `GET /admin/tenants` todavía no existe en `main`, así que sumarlo a esa promesa haría
+   * que su 404 tirara `AdminNoDisponibleError` y **la consola entera** —Salud, Uso, Errores,
+   * Soporte, Auditoría— se apagara por un área que falta. Un área ausente no puede voltear a las
+   * cinco que sí funcionan.
+   *
+   * Por eso además se traga cualquier error: esta sección degrada al campo manual de abajo, que es
+   * exactamente lo que había antes de CTA1. Sin lista no se pierde nada; con lista se gana.
+   */
+  const cargarTenants = useCallback(async () => {
+    setTenantsEstado('cargando');
+    try {
+      const r = await adminTenants();
+      if (!vivo.current) return;
+      setTenants(r.tenants);
+      setTenantsEstado('ok');
+    } catch {
+      if (!vivo.current) return;
+      setTenants([]);
+      setTenantsEstado('no_disponible');
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargarTenants();
+  }, [cargarTenants]);
+
+  // Filtro por email, en el cliente: son 19 cuentas hoy y el endpoint no ofrece búsqueda. Si esto
+  // creciera a miles, el filtro se muda al backend — no antes, que sería inventar un parámetro que
+  // el contrato no tiene.
+  const filtroNormalizado = filtroTenant.trim().toLowerCase();
+  const tenantsFiltrados = filtroNormalizado
+    ? tenants.filter((t) => (t.email ?? '').toLowerCase().includes(filtroNormalizado))
+    : tenants;
+
+  /**
    * CONS7a. Patrón de `PasoResumen.tsx:56-80`, que es el canónico del repo: `enviando` deshabilita
    * y cambia el label, `try/finally` para no dejar el botón colgado si algo lanza, y el error de
    * negocio **inline como aviso**, no como excepción. No se crea un modal de confirmación genérico:
    * el contrato lo prohíbe explícitamente y no existe uno en `copiloto-web`.
    */
   const cambiarEstado = useCallback(
-    async (status: EstadoTenant) => {
-      const id = tenantId.trim();
+    async (status: EstadoTenant, idExplicito?: string) => {
+      // CTA1: la fila de la lista pasa su `cliente_id`; el campo manual sigue usando el tipeado.
+      // El id viaja como ARGUMENTO y no por estado: apretar el boton de una fila y que la accion
+      // saliera contra lo ultimo que quedo escrito en el input seria un disparo al tenant
+      // equivocado, sin sintoma.
+      const id = (idExplicito ?? tenantId).trim();
       if (!id || enviando) return;
       setEnviando(status);
       setErrorTenant(null);
@@ -179,6 +225,8 @@ export function AdminScreen() {
         // La acción quedó auditada del lado del backend; recargar trae la fila nueva a A6 sin que
         // el operador tenga que refrescar para comprobar que su acción dejó rastro.
         void cargar(horas);
+        // CTA1: y recargar la lista, para que la fila muestre el estado nuevo (DoD del contrato).
+        void cargarTenants();
       } catch (err) {
         if (!vivo.current) return;
         // El texto sale del backend (el `detail` del 404/422, o el `mensaje` de un 409), no se
@@ -190,7 +238,7 @@ export function AdminScreen() {
         if (vivo.current) setEnviando(null);
       }
     },
-    [tenantId, enviando, cargar, horas],
+    [tenantId, enviando, cargar, cargarTenants, horas],
   );
 
   /**
@@ -557,11 +605,87 @@ export function AdminScreen() {
                 en cada pedido mientras dure. Reactivar lo devuelve. Queda registrado en Auditoría.
               </p>
 
-              {/* Se pide el id a mano en vez de listar cuentas: no existe `GET /admin/tenants`, y
-                  una cuenta suspendida deja de aparecer en «Uso y costo» (no tiene actividad), así
-                  que una lista derivada de ahí permitiría suspender pero NO reactivar. Los ids se
-                  ven en Uso, Soporte y Auditoría. El POST es idempotente, así que reintentar es
-                  inofensivo. */}
+              {/* ---- CTA1: la lista de cuentas ---- */}
+              {tenantsEstado === 'ok' && tenants.length > 0 && (
+                <>
+                  <div className="admin-tenant__form">
+                    <label className="admin-tenant__label" htmlFor="admin-tenant-filtro">
+                      Buscar por email
+                    </label>
+                    <input
+                      id="admin-tenant-filtro"
+                      className="admin-tenant__input"
+                      data-testid="admin-tenant-filtro"
+                      value={filtroTenant}
+                      onChange={(e) => setFiltroTenant(e.target.value)}
+                      placeholder={`${tenants.length} cuentas`}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <table className="admin-tabla" data-testid="admin-tenant-tabla">
+                    <thead>
+                      <tr>
+                        <th scope="col">Cuenta</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Alta</th>
+                        <th scope="col">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tenantsFiltrados.map((t) => (
+                        <tr key={t.cliente_id} data-testid={`admin-tenant-fila-${t.cliente_id}`}>
+                          {/* El email es lo que el operador reconoce; el id es lo que se opera. Se
+                              muestran los dos: sin el id, un email repetido o vacío deja la fila sin
+                              forma de saber sobre qué cuenta se está actuando. */}
+                          <td title={t.cliente_id}>
+                            <span className="admin-tabla__texto-recorte">{t.email ?? '—'}</span>
+                          </td>
+                          <td>
+                            <Badge variant={t.status === 'active' ? 'ok' : 'danger'}>{t.status}</Badge>
+                          </td>
+                          <td>{fechaCorta(t.created_at)}</td>
+                          <td className="admin-dlq__accion">
+                            {/* Se ofrece la acción CONTRARIA a su estado. No es un guard —el POST es
+                                idempotente y el backend audita el intento igual— es no ofrecer lo
+                                que no hace nada. Un `status` desconocido cae en "Suspender", que es
+                                lo conservador. */}
+                            <Button
+                              variant="ghost"
+                              data-testid={`admin-tenant-accion-${t.cliente_id}`}
+                              disabled={enviando != null}
+                              onClick={() =>
+                                void cambiarEstado(
+                                  t.status === 'active' ? 'suspended' : 'active',
+                                  t.cliente_id,
+                                )
+                              }
+                            >
+                              {t.status === 'active' ? 'Suspender' : 'Reactivar'}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {tenantsFiltrados.length === 0 && (
+                    <p className="admin-screen__vacio" data-testid="admin-tenant-sin-match">
+                      Ningún email coincide con «{filtroTenant}».
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* El campo manual NO se borra cuando hay lista: es el camino que funciona si
+                  `GET /admin/tenants` no está desplegado todavía (hoy, de hecho, no existe en
+                  `main`). Sacarlo antes que el endpoint exista dejaría la sección sin NINGÚN control
+                  usable — cambiar una capacidad rota por otra rota no es avanzar.
+                  Y sigue sirviendo con lista: una cuenta cuyo id se conoce se opera sin buscarla. */}
+              {tenantsEstado === 'no_disponible' && (
+                <p className="admin-screen__ventana-activa" data-testid="admin-tenant-lista-no-disp">
+                  El listado de cuentas todavía no está disponible en este backend. Se opera por id.
+                </p>
+              )}
               <div className="admin-tenant__form">
                 <label className="admin-tenant__label" htmlFor="admin-tenant-id">
                   Id de la cuenta

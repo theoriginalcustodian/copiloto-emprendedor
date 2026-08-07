@@ -14,6 +14,7 @@ vi.mock('../../lib/api/admin', async (importOriginal) => {
     adminSoporte: vi.fn(),
     adminAuditoria: vi.fn(),
     adminCambiarEstadoTenant: vi.fn(),
+    adminTenants: vi.fn(),
     adminReintentarError: vi.fn(),
   };
 });
@@ -29,6 +30,7 @@ import {
   adminReintentarError,
   adminSalud,
   adminSoporte,
+  adminTenants,
   adminUso,
 } from '../../lib/api/admin';
 import { AdminScreen } from './AdminScreen';
@@ -141,6 +143,9 @@ describe('AdminScreen (CONS5 — A1 Salud + A3 Uso)', () => {
     vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [] });
     vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
+    // CTA1: por default la lista NO esta disponible — es el estado real de `main` hoy (el GET no
+    // existe). Un test que quiera lista la mockea.
+    vi.mocked(adminTenants).mockReset().mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('muestra los datos de salud y de uso cuando ambos endpoints responden', async () => {
@@ -232,6 +237,7 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     vi.mocked(adminErrores).mockReset().mockResolvedValue(ERRORES);
     vi.mocked(adminSoporte).mockReset().mockResolvedValue(SOPORTE);
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue(AUDITORIA);
+    vi.mocked(adminTenants).mockReset().mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('A5: muestra el error agrupado, con "veces" y "cuentas" SEPARADOS', async () => {
@@ -610,5 +616,78 @@ describe('AdminScreen — CONS7b (reintentar un error)', () => {
     expect(textos.filter((t) => /todos|lote|masiv|seleccionad/i.test(t))).toEqual([]);
     // Y no hay checkboxes de selección múltiple.
     expect(screen.queryAllByRole('checkbox')).toEqual([]);
+  });
+});
+
+describe('AdminScreen (CTA1 — listar las cuentas que gestiona)', () => {
+  const TENANTS = {
+    tenants: [
+      { cliente_id: 'c-uno', email: 'ana@test', status: 'active', created_at: '2026-08-01T10:00:00Z' },
+      { cliente_id: 'c-dos', email: 'bruno@test', status: 'suspended', created_at: '2026-08-02T10:00:00Z' },
+    ],
+    total: 2,
+  };
+
+  beforeEach(() => {
+    vi.mocked(adminSalud).mockReset().mockResolvedValue(SALUD_SANA);
+    vi.mocked(adminUso).mockReset().mockResolvedValue(USO);
+    vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [] });
+    vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
+    vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
+    vi.mocked(adminCambiarEstadoTenant).mockReset();
+    vi.mocked(adminTenants).mockReset().mockResolvedValue(TENANTS);
+  });
+
+  it('lista las cuentas con su email y su estado', async () => {
+    renderAdmin();
+    expect(await screen.findByTestId('admin-tenant-tabla')).toBeTruthy();
+    expect(screen.getByText('ana@test')).toBeTruthy();
+    expect(screen.getByText('bruno@test')).toBeTruthy();
+  });
+
+  it('la fila ofrece la accion CONTRARIA a su estado', async () => {
+    renderAdmin();
+    await screen.findByTestId('admin-tenant-tabla');
+    // Activa -> se ofrece suspender; suspendida -> reactivar. Ofrecer la accion que no hace nada es
+    // ruido, aunque el backend la acepte por idempotencia.
+    expect(screen.getByTestId('admin-tenant-accion-c-uno').textContent).toContain('Suspender');
+    expect(screen.getByTestId('admin-tenant-accion-c-dos').textContent).toContain('Reactivar');
+  });
+
+  it('el boton de la fila opera SOBRE ESA FILA, no sobre lo que quedo en el campo manual', async () => {
+    // El bug que este test existe para cazar: si el id saliera del estado del input, apretar una
+    // fila dispararia contra OTRA cuenta y no habria ningun sintoma — la respuesta seria 200 igual.
+    vi.mocked(adminCambiarEstadoTenant).mockResolvedValue({ cliente_id: 'c-dos', de: 'suspended', a: 'active' });
+    renderAdmin();
+    await screen.findByTestId('admin-tenant-tabla');
+    fireEvent.change(screen.getByTestId('admin-tenant-input'), { target: { value: 'OTRA-CUENTA' } });
+    fireEvent.click(screen.getByTestId('admin-tenant-accion-c-dos'));
+    await waitFor(() => expect(vi.mocked(adminCambiarEstadoTenant)).toHaveBeenCalled());
+    expect(vi.mocked(adminCambiarEstadoTenant).mock.calls[0]).toEqual(['c-dos', 'active']);
+  });
+
+  it('filtra por email y avisa cuando nada coincide', async () => {
+    renderAdmin();
+    await screen.findByTestId('admin-tenant-tabla');
+    fireEvent.change(screen.getByTestId('admin-tenant-filtro'), { target: { value: 'ana' } });
+    expect(screen.getByText('ana@test')).toBeTruthy();
+    expect(screen.queryByText('bruno@test')).toBeNull();
+    fireEvent.change(screen.getByTestId('admin-tenant-filtro'), { target: { value: 'zzz' } });
+    expect(screen.getByTestId('admin-tenant-sin-match')).toBeTruthy();
+  });
+
+  it('sin endpoint: degrada al campo manual y NO apaga el resto de la consola', async () => {
+    // El caso de HOY. Si `adminTenants` estuviera en el `Promise.all` general, este 404 dejaria la
+    // consola entera en "no disponible" — cinco areas sanas apagadas por una que falta.
+    vi.mocked(adminTenants).mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    renderAdmin();
+    expect(await screen.findByTestId('admin-tenant-lista-no-disp')).toBeTruthy();
+    expect(screen.queryByTestId('admin-tenant-tabla')).toBeNull();
+    // El campo manual sigue ahi...
+    expect(screen.getByTestId('admin-tenant-input')).toBeTruthy();
+    // ...y el resto de la consola tambien: control positivo de que no se apago nada.
+    expect(screen.getByTestId('admin-salud-badge')).toBeTruthy();
+    expect(screen.getByTestId('admin-auditoria')).toBeTruthy();
+    expect(screen.queryByTestId('admin-no-disponible')).toBeNull();
   });
 });
