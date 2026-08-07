@@ -14,7 +14,7 @@ Uso (en el VPS):
 Parametrizable por env: SMOKE_BASE (default http://127.0.0.1:8099) · SMOKE_CHAT_TIMEOUT (default 120).
 Hace 2 chats con LLM real (COGS ~centavos). Correr antes de abrir la app a testers / tras cada deploy.
 """
-import os, sys, time, uuid
+import os, re, sys, time, uuid
 import httpx
 
 BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8099")
@@ -304,6 +304,51 @@ else:
                 "POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b)",
                 "GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto"):
         rec(f"reintento: {step}", False, "sin admin_token (falló el grant o el re-login)")
+
+# 11) ARTEFACTO DE LA WEB -- CTA4, contrato `..._CTA4-un-deploy-puede-salir-verde-y-apagar-una-
+# funcion.md`. Un deploy exitoso puede hornear VITE_AUTH_URL vacío y apagar el botón "Entrar con
+# Google" sin que nada avise -- ningún bloque anterior mira el ARTEFACTO servido, sólo la API.
+# `web.py::_mount_spa` sirve `index.html`/`assets/*` mismo-origen en `BASE` (127.0.0.1:8099) --
+# mismo `client` que el resto del smoke, sin CORS ni vhost aparte.
+AUTH_URL_ESPERADA = os.environ.get("SMOKE_AUTH_URL", "https://copilotoemprendedor.duckdns.org")
+AUTH_DOMINIO = AUTH_URL_ESPERADA.split("://", 1)[-1].rstrip("/")
+try:
+    r_index = client.get("/index.html")
+    m = re.search(r'src="(/assets/[^"]+\.js)"', r_index.text)
+    if r_index.status_code != 200 or not m:
+        rec("artefacto: index.html sirve un <script> de /assets", False,
+            f"status={r_index.status_code} match={bool(m)}")
+    else:
+        bundle_path = m.group(1)
+        rec("artefacto: index.html sirve un <script> de /assets", True, bundle_path)
+        r_bundle = client.get(bundle_path)
+        bundle = r_bundle.text
+        ocurrencias_dominio = bundle.count(AUTH_DOMINIO)
+        rec(f"artefacto: el bundle contiene la base de auth horneada ({AUTH_DOMINIO})",
+            r_bundle.status_code == 200 and ocurrencias_dominio > 0,
+            f"status={r_bundle.status_code} ocurrencias={ocurrencias_dominio}")
+
+        # Control NEGATIVO en la MISMA corrida -- un grep roto que matchea todo pasaría como verde
+        # sin esto (memoria: un-mecanismo-roto-hacia-el-no-no-da-sintoma).
+        imposible = f"dominio-imposible-{uuid.uuid4().hex}.invalid"
+        rec("artefacto: control negativo -- string imposible da 0 ocurrencias",
+            bundle.count(imposible) == 0, f"ocurrencias={bundle.count(imposible)}")
+except Exception as e:
+    rec("artefacto: el bundle contiene la base de auth horneada", False, repr(e))
+
+# 11b) Opcional, barato -- punta a punta contra el vhost PÚBLICO (Caddy -> GoTrue, NO 127.0.0.1:8099
+# -- `Caddyfile.snippet`: `handle /auth/v1/authorize* { reverse_proxy 127.0.0.1:9997 }`). Ya
+# verificado a mano el día del hallazgo; acá queda automatizado.
+try:
+    r_auth = httpx.get(f"{AUTH_URL_ESPERADA}/auth/v1/authorize",
+                       params={"provider": "google", "redirect_to": f"{AUTH_URL_ESPERADA}/"},
+                       follow_redirects=False, timeout=15)
+    location = r_auth.headers.get("location", "")
+    rec("artefacto: GET /auth/v1/authorize?provider=google → 302 a accounts.google.com",
+        r_auth.status_code == 302 and "accounts.google.com" in location,
+        f"status={r_auth.status_code} location={location[:120]}")
+except Exception as e:
+    rec("artefacto: GET /auth/v1/authorize?provider=google → 302 a accounts.google.com", False, repr(e))
 
 # CLEANUP (best-effort)
 try:
