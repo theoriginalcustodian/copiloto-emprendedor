@@ -170,12 +170,13 @@ ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/depl
 
 ### 5.4 Smoke / verificación
 ```bash
-ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # 30/30 = BETA-READY
+ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # 36/36 = BETA-READY
 ```
 
 > El `10/10` que decía acá quedó viejo en CONS8: el smoke incorporó el bloque `consola` (6 adversariales
-> con control positivo + los dos ciclos mutar→auditar), y hoy son **30 checks**. Un número esperado que
-> envejece es peor que ninguno — te hace leer `26/30` como "sobran 20" en vez de "faltan 4".
+> con control positivo + los dos ciclos mutar→auditar), y pasó a **30 checks**. CTA4 (2026-08-07) sumó
+> el bloque 11 (artefacto de la web servida, 4 checks) → **36**. Un número esperado que envejece es
+> peor que ninguno — te hace leer `26/30` como "sobran 20" en vez de "faltan 4".
 
 ### 5.5 Entrar a la Consola de operador
 

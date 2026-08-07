@@ -19,6 +19,8 @@
 #   UC_COPILOTO_SUBDOMAIN subdominio nuevo del front-door      (default: copiloto)
 #   UC_MP_SUBDOMAIN       subdominio existente de MercadoPago  (default: mp)
 #   UC_SKIP_DRIFT_CHECK   saltea el guard de checkout-vs-main   (default: sin setear = guard activo)
+#   UC_AUTH_URL           base pública de auth para el botón Google (VITE_AUTH_URL en el build de
+#                         frontend) (default: https://copilotoemprendedor.duckdns.org)
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -62,6 +64,7 @@ WEB_PORT="${COPILOTO_WEB_PORT:-8099}"
 BASE_DOMAIN="${UC_BASE_DOMAIN:-178-105-191-1.sslip.io}"
 COPILOTO_SUBDOMAIN="${UC_COPILOTO_SUBDOMAIN:-copiloto}"
 MP_SUBDOMAIN="${UC_MP_SUBDOMAIN:-mp}"
+AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # `-` (no `:-`): permite UC_AUTH_URL="" explícito. Mismo default que sync-web.sh:38.
 MOTOR="motor"                                     # motor VENDORIZADO en el repo (Fase 2 graduación; antes: deploy/skeleton_kit/.../reference)
 WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
@@ -111,15 +114,19 @@ JSON
 printf '%s\n' "$_manifiesto" | ssh "$HOST" "cat > '$REMOTE/DEPLOY-MANIFEST.json'" \
   || echo "    (aviso: no se pudo escribir el sello de procedencia; el deploy sigue)" >&2
 
-echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build) -> dist servido mismo-origen por _mount_spa (web.py)"
-ssh "$HOST" bash -s -- "$REMOTE" <<'REMOTE_WEB'
+echo "==> [frontend] build PWA en el VPS (fetch-fonts + npm install + vite build, VITE_AUTH_URL=${AUTH_URL:-<vacío→sin botón Google>}) -> dist servido mismo-origen por _mount_spa (web.py)"
+ssh "$HOST" bash -s -- "$REMOTE" "$AUTH_URL" <<'REMOTE_WEB'
 set -euo pipefail
-REMOTE="$1"
+REMOTE="$1"; AUTH_URL="$2"
 cd "$REMOTE/apps/copiloto-web"
 # fuentes self-hosted reales (idempotente por tamaño -> reemplaza placeholders <2KB por los woff2 reales)
 bash "$REMOTE/deploy/copiloto/fetch-fonts.sh"
 npm install --no-audit --no-fund --loglevel=error
-npm run build
+# Vite hornea las VITE_* del entorno al bundle -- sin esto, VITE_AUTH_URL queda sin definir y
+# `oauth.ts::googleAuthUrl()` devuelve null (botón "Entrar con Google" oculto). CTA4: este deploy
+# tiene su PROPIO paso de build, separado de sync-web.sh -- pasar AUTH_URL acá también, no alcanza
+# con que sync-web.sh lo haga bien.
+VITE_AUTH_URL="$AUTH_URL" npm run build
 test -f dist/index.html
 echo "frontend build OK -> $REMOTE/apps/copiloto-web/dist ($(du -sh dist | cut -f1))"
 REMOTE_WEB

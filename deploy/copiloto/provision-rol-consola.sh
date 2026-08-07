@@ -11,10 +11,13 @@
 # POR QUÉ ESTE PATRÓN (reutilizado, no inventado). Es EXACTAMENTE `provision-rol-autosanacion.sh`
 # — mismo mecanismo (`BYPASSRLS` + GRANT acotado), mismo control diferencial — aplicado a otro
 # consumidor. `BYPASSRLS` saltea las policies; NO otorga permisos. Lo que el rol puede tocar lo deciden
-# los GRANT de abajo — hoy, SELECT en 4 tablas, ninguna de escritura.
+# los GRANT de abajo — hoy, SELECT en 5 tablas, ninguna de escritura.
 #
 # CONS1 (2026-08-06) agregó `copiloto_auditoria` a la lista: la consola necesita leer el registro de
-# auditoría cross-tenant (A6), igual que ya lee metering/feedback/traumas.
+# auditoría cross-tenant (A6), igual que ya lee metering/feedback/traumas. CTA1 (2026-08-07) agregó
+# `tenants`: el listado de cuentas (`GET /admin/tenants`) también lee cross-tenant vía este rol -- sin
+# este GRANT el endpoint da 500 (lección de CONS8, repetida: un GRANT nuevo en este script no se
+# propaga solo a un rol que ya existe, hay que re-correrlo).
 #
 # POR QUÉ UN ROL PROPIO Y NO REUSAR `copiloto_autosanacion` (que ya lee `copiloto_traumas`). Separación
 # de superficie: `copiloto_autosanacion` es un credential de WORKER, nunca pensado para quedar detrás
@@ -30,7 +33,7 @@
 # declarativos, la línea del env se reemplaza.
 #
 # CONTROL DIFERENCIAL. Un rol que no llega a conectar, o que conecta pero sigue sujeto a RLS,
-# devolvería "0 filas" en las 3 tablas — indistinguible de "no hay datos todavía". Por eso el final no
+# devolvería "0 filas" en las tablas — indistinguible de "no hay datos todavía". Por eso el final no
 # pregunta "¿anduvo?" sino "¿ve algo de ≥2 tenants a la vez que la conexión normal, sin tenant, no ve?".
 #
 # Parametrizable (cero hardcoding):
@@ -49,7 +52,7 @@ CONTAINER="${UC_FUSION_DB_CONTAINER:-supabase-db}"
 SUPERUSER="${UC_FUSION_DB_SUPERUSER:-supabase_admin}"
 ROL="${UC_CONSOLA_ROLE:-copiloto_consola}"
 
-echo "==> Provisionando el rol '$ROL' (BYPASSRLS, SELECT-only en 3 tablas) vía $HOST -> $FUSION"
+echo "==> Provisionando el rol '$ROL' (BYPASSRLS, SELECT-only en 5 tablas) vía $HOST -> $FUSION"
 
 ssh "$HOST" bash -s -- "$FUSION" "$ENVDIR" "$CONTAINER" "$SUPERUSER" "$ROL" <<'REMOTO'
 set -euo pipefail
@@ -87,13 +90,14 @@ END
 ALTER ROLE ${ROL} LOGIN BYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
       PASSWORD '${CLAVE}';
 
--- El radio de daño real: SELECT, en 4 tablas, ninguna de escritura. Si mañana la consola necesita
+-- El radio de daño real: SELECT, en 5 tablas, ninguna de escritura. Si mañana la consola necesita
 -- otra tabla de lectura, se agrega acá y se ve en el diff.
 GRANT USAGE ON SCHEMA ${PGSCHEMA} TO ${ROL};
 GRANT SELECT ON ${PGSCHEMA}.copiloto_metering  TO ${ROL};
 GRANT SELECT ON ${PGSCHEMA}.copiloto_feedback  TO ${ROL};
 GRANT SELECT ON ${PGSCHEMA}.copiloto_traumas   TO ${ROL};
 GRANT SELECT ON ${PGSCHEMA}.copiloto_auditoria TO ${ROL};
+GRANT SELECT ON ${PGSCHEMA}.tenants            TO ${ROL};
 
 REVOKE ALL ON SCHEMA public FROM ${ROL};
 SQL
