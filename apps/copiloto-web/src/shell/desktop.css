@@ -82,6 +82,32 @@
   min-height: 0;
 }
 
+/* Con el rail REPLEGADO la barra no debe reservar ancho — no es cosmética, le roba el ancho al
+   contenido. Medido en Chromium con la lista desbordando (12 funciones, ventana de 600px de alto):
+   `.rail__items` pasaba de `offsetWidth 39` a `clientWidth 16`, o sea **23px robados de 39**, y el
+   `.rail__item` quedaba en 27px: con `padding: 11px 12px` eso deja 3px de content box para un ícono
+   de 21px con `flex-shrink: 0`. Por eso el ícono desborda su ítem y el thumb se le pinta encima.
+
+   Se apaga SÓLO replegado, no siempre: desplegado (244px) la barra sí tiene lugar y es la señal de
+   que la lista sigue. Y se apaga la BARRA, no el scroll — `overflow-y: hidden` también arreglaría lo
+   visual pero deshace la mitad del PR del scroll del rail (deja las últimas funciones inalcanzables
+   mientras está replegado, que es justo el bug que ese PR arregló). Con `width: 0` la rueda y el
+   teclado siguen scrolleando.
+
+   (Sin el número de PR a propósito: el guard `desktopNoHexLiterals` lee `almohadilla + 3 dígitos`
+   como un color hex y frena el CI. Ya pasó dos veces — el gate cazando a su propio autor.)
+
+   Gana por especificidad al `*::-webkit-scrollbar { width: 10px }` global de `global.css` (0,2,0 vs
+   0,0,0), y `scrollbar-width: none` pisa el `thin` que `html` le hereda a Firefox. */
+.rail:not(.rail--open) .rail__items {
+  scrollbar-width: none;
+}
+
+.rail:not(.rail--open) .rail__items::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .rail__item {
   position: relative;
   display: flex;

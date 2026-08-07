@@ -196,7 +196,7 @@
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild.
 - [🌳🕳️ El working tree COMPARTIDO guarda trabajo que no está en ninguna rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — el control es el **blob**, no `git status`.
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) — regla del operador. Nunca sueltas en `docs/`.
-- [📱🔀 Metro sirve el bundle del CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — confirmá de dónde sirve ANTES de buscar el bug.
+- [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) — `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
 - [🎨🕳️ Un token con DOS definiciones — tocar la equivocada no da síntoma](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — contá **definiciones**, no usos.
 - [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.

@@ -53,3 +53,61 @@ describe('rail — la lista de funciones scrollea sin arrastrar el bloque inferi
     expect(bloqueRail).not.toMatch(/overflow-y:/);
   });
 });
+
+/**
+ * Guard anti-regresión de la barra que ROBA ANCHO con el rail replegado (2026-08-07).
+ *
+ * ⚠️ Mismo alcance que el bloque de arriba: es un guard de TEXTO, no un gate de layout. jsdom no
+ * pinta scrollbars ni reparte ancho, así que ningún test de esta suite puede ver el bug. La medición
+ * real se hizo en Chromium con la lista desbordando (12 funciones, ventana de 600px de alto), y el
+ * diferencial quedó en el PR:
+ *
+ *     ANTES  `.rail__items` offsetWidth 39 · clientWidth 16 → 23px robados · `.rail__item` de 27px
+ *     DESPUÉS offsetWidth 39 · clientWidth 39 → 0px robados · `.rail__item` de 39px
+ *     (en ambos casos `scrollHeight 584 > clientHeight` → el desborde EXISTÍA: sin esa precondición
+ *      el gate mide 0 robado por no haber barra, y da verde sin haber mirado nada)
+ *
+ * Por qué hace falta el guard: 23px robados de 39 dejan al `.rail__item` en 27px, y con
+ * `padding: 11px 12px` eso son 3px de content box para un ícono de 21px con `flex-shrink: 0`. Y como
+ * el síntoma sólo aparece cuando la lista desborda, borrar estas reglas NO da error en ninguna
+ * ventana alta: vuelve en silencio la próxima vez que se agregue una función al rail (fue el 12º tab,
+ * `Consola`, el que lo destapó).
+ */
+describe('rail — con el rail replegado la barra no reserva ancho', () => {
+  const css = sinComentarios(desktopCss);
+  const bloqueBarra =
+    css.match(/\.rail:not\(\.rail--open\)\s+\.rail__items::-webkit-scrollbar\s*\{([^}]*)\}/)?.[1] ?? '';
+  const bloqueLista =
+    css.match(/\.rail:not\(\.rail--open\)\s+\.rail__items\s*\{([^}]*)\}/)?.[1] ?? '';
+
+  it('las dos reglas del estado replegado existen (control positivo del guard)', () => {
+    // Sin esto, un renombre del selector dejaría los asserts de abajo corriendo sobre strings
+    // vacíos: pasarían siempre y el guard sería mudo — el mismo modo de falla que ya se cazó con
+    // `min-height: 0` escondido en un comentario.
+    expect(bloqueBarra.trim()).not.toBe('');
+    expect(bloqueLista.trim()).not.toBe('');
+  });
+
+  it('Chromium/WebKit: la barra se declara con width 0 en estado replegado', () => {
+    expect(bloqueBarra).toMatch(/width:\s*0/);
+  });
+
+  it('Firefox: `scrollbar-width: none` pisa el `thin` que hereda de `html`', () => {
+    // `global.css` pone `scrollbar-width: thin` en `html`, y esa propiedad SE HEREDA — no alcanza con
+    // apagar `::-webkit-scrollbar`, que Firefox ignora.
+    expect(bloqueLista).toMatch(/scrollbar-width:\s*none/);
+  });
+
+  it('el fix apaga la BARRA, no el scroll — `.rail__items` sigue en overflow-y: auto', () => {
+    // `overflow-y: hidden` también sacaría la barra, pero deshace la mitad del PR#295: deja las
+    // últimas funciones inalcanzables mientras el rail está replegado. Este assert es lo único que
+    // distingue el fix correcto del atajo que "también se ve bien".
+    expect(bloqueRailItemsDelScroll(css)).toMatch(/overflow-y:\s*auto/);
+    expect(bloqueLista).not.toMatch(/overflow-y:\s*hidden/);
+  });
+});
+
+/** El bloque base de `.rail__items` (el que trae el `overflow-y`), sin el prefijo del estado. */
+function bloqueRailItemsDelScroll(css: string): string {
+  return css.match(/(?:^|\n)\.rail__items\s*\{([^}]*)\}/)?.[1] ?? '';
+}
