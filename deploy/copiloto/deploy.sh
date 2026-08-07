@@ -69,6 +69,7 @@ MOTOR="motor"                                     # motor VENDORIZADO en el repo
 WORKER="deploy/worker"
 WEB_UNIT="uc-copiloto-web.service"
 WORKER_UNIT="uc-copiloto-worker.service"
+WORKER_SOPORTE_UNIT="uc-copiloto-worker-soporte.service"   # SOP4 -- task_queue propio (agent-soporte)
 
 echo "==> [1/7] sync worktree -> ${HOST}:${REMOTE} (clean; preserva apps/copiloto-web/{node_modules,dist} entre deploys)"
 # rm QUIRÚRGICO: `apps/copiloto` (backend) + `deploy` + `motor` (vendorizado), NUNCA todo `apps/` -> no borra el frontend
@@ -286,7 +287,7 @@ for f in "$ENVDIR/copiloto.env" "$ENVDIR/fusion-pg.env" "$ENVDIR/fusion-supabase
   [ -f "$f" ] && . "$f"
 done
 set +a
-for m in serve worker_b; do
+for m in serve worker_b worker_soporte; do
   if "$VENV/bin/python" -c "import $m" 2>/tmp/import-gate.err; then
     echo "import $m: OK"
   else
@@ -298,20 +299,22 @@ done
 REMOTE_IMPORT_GATE
 
 echo "==> [5/7] instalar units systemd (idempotente: copy+daemon-reload+enable --now, no duplica)"
-ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" <<'REMOTE_UNITS'
+ssh "$HOST" bash -s -- "$REMOTE" "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" <<'REMOTE_UNITS'
 set -euo pipefail
-REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"
+REMOTE="$1"; WEB_UNIT="$2"; WORKER_UNIT="$3"; WORKER_SOPORTE_UNIT="$4"
 install -m 644 "$REMOTE/deploy/copiloto/$WEB_UNIT" "/etc/systemd/system/$WEB_UNIT"
 install -m 644 "$REMOTE/deploy/copiloto/$WORKER_UNIT" "/etc/systemd/system/$WORKER_UNIT"
+install -m 644 "$REMOTE/deploy/copiloto/$WORKER_SOPORTE_UNIT" "/etc/systemd/system/$WORKER_SOPORTE_UNIT"
 systemctl daemon-reload
-systemctl enable "$WEB_UNIT" "$WORKER_UNIT"
+systemctl enable "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT"
 # restart (NO solo enable --now): en un REDEPLOY los servicios YA corren, y `enable --now` no reinicia
 # un servicio activo -> el código nuevo NO se cargaría. `restart` arranca si está parado y reinicia si
 # está activo -> un redeploy siempre carga el código sincronizado. (Breve downtime por reinicio; OK para deploy.)
-systemctl restart "$WEB_UNIT" "$WORKER_UNIT"
+systemctl restart "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT"
 echo "--- systemctl is-active (post restart) ---"
 systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
+systemctl is-active "$WORKER_SOPORTE_UNIT"
 REMOTE_UNITS
 
 echo "==> [6/7] Caddy: agregar vhost ${COPILOTO_SUBDOMAIN}.* + rewrite /callback en ${MP_SUBDOMAIN}.* (idempotente; valida ANTES de reload; aborta sin tocar si no valida)"
@@ -378,12 +381,13 @@ ssh "$HOST" systemctl reload caddy
 echo "Caddy recargado."
 
 echo "==> [7/7] Smoke (evidencia real, no autoevaluación)"
-ssh "$HOST" bash -s -- "$WEB_UNIT" "$WORKER_UNIT" "$WEB_PORT" "$BASE_DOMAIN" <<'REMOTE_SMOKE'
+ssh "$HOST" bash -s -- "$WEB_UNIT" "$WORKER_UNIT" "$WORKER_SOPORTE_UNIT" "$WEB_PORT" "$BASE_DOMAIN" <<'REMOTE_SMOKE'
 set -euo pipefail
-WEB_UNIT="$1"; WORKER_UNIT="$2"; WEB_PORT="$3"; BASE_DOMAIN="$4"
+WEB_UNIT="$1"; WORKER_UNIT="$2"; WORKER_SOPORTE_UNIT="$3"; WEB_PORT="$4"; BASE_DOMAIN="$5"
 echo "--- systemctl is-active ---"
 systemctl is-active "$WEB_UNIT"
 systemctl is-active "$WORKER_UNIT"
+systemctl is-active "$WORKER_SOPORTE_UNIT"
 echo "--- curl /healthz (127.0.0.1:$WEB_PORT) ---"
 curl -sf "http://127.0.0.1:${WEB_PORT}/healthz"; echo
 echo "--- curl / (SPA index servido mismo-origen por _mount_spa) ---"
