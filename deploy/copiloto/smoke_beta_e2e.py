@@ -233,8 +233,80 @@ else:
                 "GET /admin/auditoria → el evento de la mutación aparece, detalle intacto"):
         rec(f"consola: {step}", False, "sin admin_token (falló el grant o el re-login)")
 
+# 10d) CICLO DEL REINTENTO -- 7b, la acción que muta IRREVERSIBLE de las dos (CONS7b). Nada la
+# ejercitaba contra el entorno vivo -- mismo patrón que el 500 de auditoría y el deploy stale: un
+# gap de entorno, no de código, invisible a la suite. Si el entorno vivo no tiene ningún trauma
+# reintentable, NO se saltea el paso: se fabrica uno (mismo patrón que el resto del script, que ya
+# fabrica el tenant sintético) -- saltear por falta de dato daría un smoke verde que no probó nada.
+trauma_id_reintento = None
+if admin_token:
+    fp_reintento = f"smoke-reintento-{uuid.uuid4().hex[:8]}"
+    try:
+        import json as _json
+        import psycopg2 as _psycopg2
+        dsn_fab = os.environ.get("DATABASE_URL")
+        conn = _psycopg2.connect(dsn_fab); conn.autocommit = True
+        with conn.cursor() as cur:
+            # copiloto_traumas tiene FORCE RLS -- hay que declarar el tenant ANTES del INSERT
+            # (mismo mecanismo que contexto_tenant.declarar_en_conexion) o la policy lo rechaza.
+            cur.execute("SELECT set_config('request.jwt.claims', %s, false)",
+                       (_json.dumps({"cliente_id": cliente_id}),))
+            cur.execute(
+                """INSERT INTO uc_factory.copiloto_traumas
+                        (cliente_id, fingerprint, workflow, error_type, costura, estado, dedupe_count)
+                    VALUES (%s, %s, %s, %s, %s, %s, 1) RETURNING id""",
+                (cliente_id, fp_reintento, "SmokeTestWorkflow", "SmokeError", "smoke_test", "pendiente"))
+            trauma_id_reintento = cur.fetchone()[0]
+        conn.close()
+        rec("reintento: trauma fabricado (dominio permitido)", trauma_id_reintento is not None,
+            f"id={trauma_id_reintento} fingerprint={fp_reintento}")
+    except Exception as e:
+        rec("reintento: trauma fabricado (dominio permitido)", False, repr(e))
+
+    try:
+        r = client.get("/admin/errores", headers=AH, params={"cliente_id": cliente_id})
+        filas = r.json().get("errores", []) if r.status_code == 200 else []
+        fila = next((f for f in filas if f.get("fingerprint") == fp_reintento), None)
+        ok = (fila is not None and fila.get("id") == trauma_id_reintento
+              and fila.get("motivo_prohibido") is None)
+        rec("reintento: GET /admin/errores trae el trauma con motivo_prohibido=null", ok,
+            f"status={r.status_code} fila={fila}")
+    except Exception as e:
+        rec("reintento: GET /admin/errores trae el trauma con motivo_prohibido=null", False, repr(e))
+
+    if trauma_id_reintento is not None:
+        try:
+            r = client.post(f"/admin/errores/{trauma_id_reintento}/reintentar", headers=AH)
+            rec("reintento: POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b)",
+                r.status_code == 200, f"status={r.status_code} body={r.text[:120]}")
+        except Exception as e:
+            rec("reintento: POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b)", False, repr(e))
+
+        try:
+            r = client.get("/admin/auditoria", headers=AH, params={"cliente_id": cliente_id})
+            eventos = r.json().get("eventos", []) if r.status_code == 200 else []
+            fila = next((e for e in eventos if e.get("accion") == "trauma.reintento"
+                        and e.get("detalle", {}).get("trauma_id") == trauma_id_reintento), None)
+            ok = fila is not None and fila.get("detalle", {}).get("fingerprint") == fp_reintento
+            rec("reintento: GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto",
+                ok, f"status={r.status_code} fila={fila}")
+        except Exception as e:
+            rec("reintento: GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto",
+                False, repr(e))
+    else:
+        for step in ("POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b)",
+                    "GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto"):
+            rec(f"reintento: {step}", False, "sin trauma reintentable: no se pudo ejercitar")
+else:
+    for step in ("trauma fabricado (dominio permitido)",
+                "GET /admin/errores trae el trauma con motivo_prohibido=null",
+                "POST /admin/errores/{id}/reintentar → 200 (MUTA, 7b)",
+                "GET /admin/auditoria → el evento del REINTENTO aparece, detalle intacto"):
+        rec(f"reintento: {step}", False, "sin admin_token (falló el grant o el re-login)")
+
 # CLEANUP (best-effort)
 try:
+    import json as _json
     import psycopg2
     dsn = os.environ.get("DATABASE_URL")
     sup = (os.environ.get("SUPABASE_URL") or os.environ.get("COPILOTO_SUPABASE_URL") or "").rstrip("/")
@@ -246,6 +318,12 @@ try:
         row = cur.fetchone(); auth_id = row[0] if row else None
         cur.execute("delete from uc_factory.tenants where email=%s", (EMAIL,))
         print(f"[cleanup] tenant rows borrados={cur.rowcount}")
+        if trauma_id_reintento is not None:
+            # FORCE RLS -- declarar el tenant antes de borrar, mismo mecanismo que el INSERT de arriba.
+            cur.execute("SELECT set_config('request.jwt.claims', %s, false)",
+                       (_json.dumps({"cliente_id": cliente_id}),))
+            cur.execute("delete from uc_factory.copiloto_traumas where id = %s", (trauma_id_reintento,))
+            print(f"[cleanup] trauma fabricado borrado={cur.rowcount}")
     if auth_id and sup and sr:
         httpx.request("DELETE", f"{sup}/auth/v1/admin/users/{auth_id}",
                       headers={"Authorization": f"Bearer {sr}", "apikey": sr}, timeout=15)
