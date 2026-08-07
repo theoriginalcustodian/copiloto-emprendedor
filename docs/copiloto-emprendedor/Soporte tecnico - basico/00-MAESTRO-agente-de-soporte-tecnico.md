@@ -274,3 +274,90 @@ sistema adivina: ruido, no señal.
 
 **Lo que NO bloquea a nada y se puede adelantar ya:** las dos tablas (§8.3) y el destrabe de `CTA3`
 (la entrada de soporte en la web) — su forma ya está decidida: es la ventana de chat.
+
+---
+
+# 9. TRES FUNCIONES, UN SOLO CHAT (decisión del operador, 2026-08-07)
+
+> «hay que dividir funciones… una es soporte técnico, otra es feedback y otra es cómo usar la app…
+> debemos separar esto en funciones diferentes dentro del mismo chat de soporte»
+
+## 9.1 Por qué la separación no es cosmética
+
+**Los tres terminan en lugares distintos y tienen un «terminado» distinto:**
+
+| Función | Destino | ¿Ticket con código? | Cierra cuando |
+|---|---|---|---|
+| **Soporte técnico** | trauma → grafo → cola de autosanación → issue si no se resuelve | **sí** | el error se repara o el issue se cierra |
+| **Feedback** | `copiloto_feedback` (ya existe) — se registra, **no se repara** | no | se registró |
+| **Cómo usar la app** | base de conocimiento — se responde y termina | no | el usuario entendió |
+
+**Protege de dos errores caros y opuestos:** un bug entrado como *feedback* muere en silencio en una
+tabla que nadie repara; una idea de mejora entrada como *soporte técnico* entra a la cola de
+autosanación y quema presupuesto del forjador buscando un bug que no existe.
+
+**El ticket es SÓLO de soporte técnico.** Si todo genera número, el número deja de significar
+«alguien se va a hacer cargo». Feedback y how-to no prometen resolución ⇒ no prometen seguimiento.
+
+## 9.2 Elige el usuario, no adivina el agente
+
+Tres opciones al abrir el chat. **No** clasificación automática desde el texto: en este repo ya está
+**medido** que eso falla (§2.2 — la queja en lenguaje natural no resuelve nada). Preguntar cuesta un
+toque y es determinista.
+
+**Excepción explícita:** si el usuario eligió mal, el agente **lo propone en voz alta** («esto parece
+un error, ¿lo reporto como soporte técnico?») y **nunca reclasifica en silencio**.
+
+## 9.3 Persistencia por función — DEFAULT de planificación
+
+`[ASSUMED_PENDING_VERIFY]` — el operador no lo confirmó todavía; se implementa así salvo que diga
+otra cosa:
+
+- **Soporte técnico** → hilo completo (tickets + mensajes, §8.3)
+- **Feedback** → como hoy: una fila en `copiloto_feedback`, sin hilo
+- **Cómo usar la app** → **no persiste** más allá de la conversación
+
+Si el operador quiere las tres como hilos con historial, es **otra tabla** y cambia §8.3.
+
+# 10. El salto que hace funcionar el acceso al grafo
+
+> Pedido del operador: «al agente de soporte también hay que darle acceso al grafo del repositorio…
+> y a errores del usuario y de la app… puede citar dónde está el problema al escalar el ticket».
+
+## 10.1 Eso ya existe — y ya se midió que NO alcanza
+
+`soporte_clasificador.py` **ya** consulta `graphity-code` para resolver el origen de una queja, y
+`clasificar_y_encolar_feedback` **ya** encola a autosanación. El flujo pedido está construido.
+
+Lo que el spike del 04-08 midió (§2.2): **la queja en lenguaje natural no encuentra el archivo.** Ni
+con vocabulario de dominio. Sólo acierta cuando el texto menciona el símbolo o el archivo literal.
+Por eso hoy casi todo cae a `necesita_humano=True`.
+
+## 10.2 El arreglo: al grafo no se le da la QUEJA, se le da el TRAUMA
+
+`copiloto_traumas` tiene `workflow`, `error_type` y `costura` — **vocabulario técnico exacto**, que es
+justo lo que el grafo sí resuelve (el caso 1 del spike: símbolo literal → top-1 exacto).
+
+```
+queja del usuario  ──►  encontrar el TRAUMA de ESE tenant   (cliente_id + ventana temporal)
+                          └─►  workflow / error_type / costura   ← vocabulario técnico
+                                └─►  grafo del repo  ──►  archivo:línea
+                                      └─►  se cita al escalar el ticket
+```
+
+**La queja sirve para encontrar el trauma, no para encontrar el código.** Ese salto intermedio es lo
+que hoy no existe, y es lo que convierte el pedido del operador en viable — por un camino distinto
+del que se planteó.
+
+## 10.3 Autosanación primero — con dos reparos
+
+El operador: «este ticket tendría que pasar por autohealing primero… si se puede resolver se resuelve
+y si no se escala a issue como está configurado». Correcto, **y ya es el flujo**. Dos condiciones:
+
+1. **Sólo entra a la cola lo clasificado como falla técnica.** «¿Cómo cargo un gasto?» no es un bug:
+   si entra, ensucia el loop y gasta forjador. Lo garantiza §9.2 (el usuario elige la función).
+2. **El usuario NO espera al loop.** Autosanación tarda; alguien que escribió «no me anda» necesita
+   respuesta ahora. El agente contesta **de inmediato** con lo que ve —«hay un error registrado en tu
+   cuenta del martes en facturación, ya está en reparación, tu ticket es `SOP-…`»— y el ticket sigue
+   su camino **en paralelo**. Bloquear la respuesta detrás del loop reinstala el silencio que este
+   sprint existe para eliminar.
