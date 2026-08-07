@@ -92,6 +92,16 @@ soporte.
       4. **El control que decide si además es un bug de CTA7** — avión OFF + arranque en frío ⇒
          **entra solo, sin credenciales**. La sesión **sobrevive**: sin red no se puede *validar*,
          pero no se *destruye*.
+      **Confirmado del lado del SERVIDOR, no sólo por la pantalla** (`journalctl -u
+      uc-copiloto-web.service`, IP del device `181.93.120.21`; ojo que el VPS loguea en **UTC** —
+      pedir la ventana en hora local devuelve vacío y parece un hallazgo):
+      - ventana del avión (19:16:20→19:17:13 UTC): **0** peticiones — el corte fue real;
+      - ventana con red (19:17:40→19:18:10 UTC): **5** peticiones, `GET /me` · `/perfil-negocio` ·
+        `/actividad?limit=20` · `/conceptos`, todas **200**.
+      Ese `/actividad?limit=20` es la prueba directa de lo que el corpus ahora afirma: **la actividad
+      reciente se trae del servidor cada vez**, no de un caché local. Y de yapa cierra el cabo suelto
+      de **ODOBI6** (dueña: frontend): el standalone **sin Metro** habla con producción ⇒
+      `EXPO_PUBLIC_API_BASE` **sí quedó horneada** en el bundle.
       ⚠️ **Lo que este binario NO puede responder:** si un corte de red fabrica un falso «Tu sesión
       expiró». `f3b0f79f` **no contiene** el código del aviso (`grep MENSAJE_SESION_EXPIRADA` → 0, con
       control positivo → 1 en `c583f0ec`), así que observar su ausencia sería **vacuo**. Se re-corre
