@@ -170,7 +170,49 @@ ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/depl
 
 ### 5.4 Smoke / verificación
 ```bash
-ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # 10/10 = BETA-READY
+ssh unreal-copilot "/opt/uc-copiloto-venv/bin/python /opt/uc-repos/copiloto/deploy/copiloto/smoke_beta_e2e.py"  # 30/30 = BETA-READY
+```
+
+> El `10/10` que decía acá quedó viejo en CONS8: el smoke incorporó el bloque `consola` (6 adversariales
+> con control positivo + los dos ciclos mutar→auditar), y hoy son **30 checks**. Un número esperado que
+> envejece es peor que ninguno — te hace leer `26/30` como "sobran 20" en vez de "faltan 4".
+
+### 5.5 Entrar a la Consola de operador
+
+**La consola NO tiene URL propia**: es un tab dentro de la app web (`Consola`), que sólo aparece si tu
+token trae el claim de administrador. No existe en mobile.
+
+```bash
+# 1) Otorgar el claim (idempotente — PUT que MERGEA app_metadata, no un toggle).
+#    Requiere que la cuenta YA exista en GoTrue: esto otorga el claim, no crea usuarios.
+bash deploy/copiloto/asignar-claim-admin.sh <tu-email>
+
+# 2) RE-LOGIN OBLIGATORIO en https://copilotoemprendedor.duckdns.org
+#    El JWT es un snapshot del momento en que se emitió: el token viejo NO refleja el claim nuevo.
+#    Sin este paso el grant parece haber fallado, y no falló.
+
+# 3) Aparece el tab «Consola» (TabBar.tsx, único con `soloAdmin: true`).
+```
+
+**Por qué el claim vive en `app_metadata` y no en `user_metadata`** (CONS0b, `auth.py:171`): se verificó
+contra la GoTrue real que `user_metadata` es auto-editable por el propio usuario vía `PUT /auth/v1/user`
+— un claim ahí sería **auto-otorgable**. `app_metadata` sólo se escribe con la Admin API, y los 3 intentos
+de escalada probados fallaron los 3.
+
+**Esconder el tab es cosmética, no es el control.** El gate real es `require_admin` server-side: 401 sin
+Bearer, **403** con token válido sin el claim, en los 6 endpoints. Por eso el shell igual valida
+`activeTab === 'admin' && esAdmin` al renderizar — si el claim se pierde, el contenido no queda colgado.
+
+Para auditar quién es admin hoy (read-only, no muta nada):
+
+```bash
+ssh unreal-copilot 'set -a; . /etc/unreal-copilot/fusion-supabase.env; set +a; \
+  curl -s "$SUPABASE_URL/auth/v1/admin/users?per_page=100" -H "apikey: $SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" | python3 -c "
+import sys,json
+for u in json.load(sys.stdin).get(\"users\",[]):
+    if (u.get(\"app_metadata\") or {}).get(\"copiloto_admin\"): print(u[\"email\"])
+"'
 ```
 
 ---
