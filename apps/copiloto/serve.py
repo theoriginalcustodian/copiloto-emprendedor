@@ -241,7 +241,12 @@ async def _serve() -> None:
         # `worker_b.py` es un proceso SEPARADO (ver su docstring); acoplar los dos módulos por un
         # import cruzaría esa frontera por una sola constante.
         temporal_task_queue=os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor"),
-        consola_conn_factory=_consola_conn_factory if _consola_dsn else None)
+        consola_conn_factory=_consola_conn_factory if _consola_dsn else None,
+        # CONS7: las acciones que MUTAN (suspender/reactivar tenant, reintentar trauma) necesitan
+        # escribir `tenants`/`copiloto_auditoria` -- `consola_conn_factory` es `SELECT`-only. El
+        # MISMO `conn_factory` (rol dueño, ya envuelto con `conexion_con_tenant`) que usa el resto
+        # de la app; cero conexión nueva.
+        conn_factory=conn_factory)
 
     # Chat de IN (§3): best-effort, igual que `memory_provider` — sin OPENAI_API_KEY o sin
     # GRAPHITY_GRAFO_* el endpoint sigue vivo (devuelve "No tengo ese dato.", nunca 500). El LLM es

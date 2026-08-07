@@ -52,10 +52,14 @@ SIN_PERFIL_FISCAL = "sin_perfil_fiscal"
 # un código nuevo por cada motivo del workflow — esos los define el workflow, no este catálogo.
 CONFIRMACION_NO_TOMADA = "confirmacion_no_tomada"
 
+# CONS7b: reintentar un trauma de dominio `DIAGNOSTIC_ONLY` (AFIP/MP -- efecto irreversible y
+# externo). El `dominio` viaja como campo extra para que el front muestre CUÁL, no sólo "no se puede".
+TRAUMA_DOMINIO_PROHIBIDO = "trauma_dominio_prohibido"
+
 CODIGOS = frozenset({PRESUPUESTO_YA_FACTURADO, FALTA_CUIT, PRESUPUESTO_NO_FACTURABLE,
                      TRANSICION_INVALIDA, CONCEPTO_DUPLICADO, INGRESO_DUPLICADO_PROBABLE,
                      DOCUMENTO_DE_OTRO_CLIENTE, SIN_CERTIFICADO_AFIP, AMBIENTE_NO_VINCULADO,
-                     SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA})
+                     SIN_PERFIL_FISCAL, CONFIRMACION_NO_TOMADA, TRAUMA_DOMINIO_PROHIBIDO})
 
 
 def conflicto(codigo: str, mensaje: str, **extra) -> HTTPException:
