@@ -113,18 +113,41 @@ def test_crear_ticket_y_listarlo_para_el_mismo_tenant(tenants, conn_de_tenant):
 
     mensajes = store.listar_mensajes(ticket_id=creado["id"])
     assert len(mensajes) == 1
-    assert mensajes[0]["contenido"] == "AFIP me tira un error raro"
+    assert mensajes[0]["texto"] == "AFIP me tira un error raro"
     assert mensajes[0]["autor"] == "usuario"
 
 
 @necesita_pg
-def test_ADVERSARIAL_un_tenant_no_ve_los_tickets_del_otro(tenants, conn_de_tenant):
+def test_H1_ADVERSARIAL_B_no_ve_el_ticket_de_A_pero_A_SI_lo_ve_MISMO_TEST(tenants, conn_de_tenant):
+    """H1 del contrato de SOP3, con control positivo en la MISMA corrida -- sin el positivo, un
+    error de conexión daría el mismo resultado ("no veo nada") y parecería aislamiento."""
     a, b = tenants
-    _store(conn_de_tenant, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="ticket de A",
-                                           primer_mensaje="mensaje de A")
+    creado = _store(conn_de_tenant, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="ticket de A",
+                                                     primer_mensaje="mensaje de A")
 
-    tickets_de_b = _store(conn_de_tenant, b).listar_tickets()
-    assert tickets_de_b == []
+    # --- positivo: A ve su propio ticket y su mensaje.
+    tickets_de_a = _store(conn_de_tenant, a).listar_tickets()
+    assert len(tickets_de_a) == 1 and tickets_de_a[0]["codigo"] == creado["codigo"]
+    mensajes_de_a = _store(conn_de_tenant, a).listar_mensajes(ticket_id=creado["id"])
+    assert len(mensajes_de_a) == 1
+
+    # --- negativo: B no ve NADA de A, ni el ticket ni sus mensajes.
+    store_b = _store(conn_de_tenant, b)
+    assert store_b.listar_tickets() == []
+    assert store_b.listar_mensajes(ticket_id=creado["id"]) == []
+
+
+@necesita_pg
+def test_H1_ADVERSARIAL_responder_como_B_el_ticket_de_A_es_rechazado(tenants, conn_de_tenant):
+    """"Responder" el ticket ajeno = escribir en `copiloto_mensajes` con el `ticket_id` de A. El
+    `WITH CHECK` de la policy lo rechaza -- no es una validación de Python, es la base."""
+    a, b = tenants
+    creado = _store(conn_de_tenant, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="ticket de A",
+                                                     primer_mensaje="mensaje de A")
+
+    with pytest.raises(Exception):  # noqa: PT011 -- psycopg2 crudo, no un tipo propio
+        _store(conn_de_tenant, b).agregar_mensaje(ticket_id=creado["id"], autor="usuario",
+                                                   texto="intento responder el ticket de A")
 
 
 @necesita_pg
@@ -139,7 +162,7 @@ def test_ADVERSARIAL_escribir_un_mensaje_con_el_cliente_id_de_otro_tenant_es_rec
             with pytest.raises(Exception):  # noqa: PT011 -- psycopg2 crudo, no un tipo propio
                 cur.execute(
                     """INSERT INTO uc_factory.copiloto_mensajes
-                           (cliente_id, ticket_id, autor, contenido)
+                           (cliente_id, ticket_id, autor, texto)
                        VALUES (%s, 0, 'usuario', 'intento cross-tenant')""",
                     (b,))
         conn.rollback()

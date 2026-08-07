@@ -250,7 +250,7 @@
   "copiloto_mensajes": [
     "ticket_id bigint NOT NULL",
     "autor text NOT NULL",
-    "contenido text NOT NULL",
+    "texto text NOT NULL",
     "created_at timestamptz DEFAULT now()"
   ]
 }

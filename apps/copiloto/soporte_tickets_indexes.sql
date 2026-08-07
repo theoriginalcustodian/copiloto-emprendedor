@@ -20,3 +20,30 @@ CREATE INDEX IF NOT EXISTS copiloto_mensajes_tenant_ticket
 -- Para la Consola (A4/A6, más adelante): "los tickets más recientes primero", cross-tenant.
 CREATE INDEX IF NOT EXISTS copiloto_tickets_tenant_estado
   ON uc_factory.copiloto_tickets (cliente_id, estado, created_at);
+
+-- ⚠️ H1 real, no teórico (control adversarial, 2026-08-07): la policy `tenant_isolation` de
+-- `copiloto_mensajes` sólo valida que `cliente_id` sea el propio -- NO que `ticket_id` pertenezca a
+-- UN TICKET de ese mismo tenant. Sin esto, el tenant B puede insertar un mensaje con su propio
+-- `cliente_id` y el `ticket_id` de un ticket de A: la fila pasa el `WITH CHECK` (cliente_id es
+-- correcto) y "responde" un ticket ajeno sin que RLS lo note -- RLS filtra POR FILA, no valida
+-- relaciones entre tablas. La FK compuesta es la que ata ambas columnas: el `ticket_id` que B
+-- declara tiene que existir como fila de copiloto_tickets con ESE MISMO cliente_id, o la base
+-- rechaza el INSERT antes de que la policy tenga oportunidad de aceptarlo.
+--
+-- `ADD CONSTRAINT` no tiene `IF NOT EXISTS` en Postgres -- mismo patrón que
+-- `inteligencia_migrations.sql`.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'copiloto_tickets_cliente_id_id_key')
+  THEN
+    ALTER TABLE uc_factory.copiloto_tickets
+      ADD CONSTRAINT copiloto_tickets_cliente_id_id_key UNIQUE (cliente_id, id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'copiloto_mensajes_ticket_del_mismo_tenant')
+  THEN
+    ALTER TABLE uc_factory.copiloto_mensajes
+      ADD CONSTRAINT copiloto_mensajes_ticket_del_mismo_tenant
+        FOREIGN KEY (cliente_id, ticket_id)
+        REFERENCES uc_factory.copiloto_tickets (cliente_id, id);
+  END IF;
+END $$;

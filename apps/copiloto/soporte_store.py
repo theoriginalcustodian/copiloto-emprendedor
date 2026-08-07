@@ -86,7 +86,7 @@ class TicketStore:
                     (self._cid, codigo, canal, ABIERTO, asunto))
                 ticket_id, created_at = cur.fetchone()
                 cur.execute(
-                    f"""INSERT INTO {TABLA_MENSAJES} (cliente_id, ticket_id, autor, contenido)
+                    f"""INSERT INTO {TABLA_MENSAJES} (cliente_id, ticket_id, autor, texto)
                         VALUES (%s, %s, %s, %s)""",
                     (self._cid, ticket_id, autor, primer_mensaje))
             conn.commit()
@@ -95,7 +95,7 @@ class TicketStore:
         finally:
             conn.close()
 
-    def agregar_mensaje(self, *, ticket_id: int, autor: str, contenido: str) -> int:
+    def agregar_mensaje(self, *, ticket_id: int, autor: str, texto: str) -> int:
         """Agrega un mensaje a un ticket existente. Devuelve el `id` de la fila creada. El `WITH
         CHECK` de la policy de `copiloto_mensajes` rechaza escribir con el `cliente_id` de otro
         tenant; no hace falta verificar acá que el ticket pertenece a este tenant."""
@@ -103,10 +103,10 @@ class TicketStore:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"""INSERT INTO {TABLA_MENSAJES} (cliente_id, ticket_id, autor, contenido)
+                    f"""INSERT INTO {TABLA_MENSAJES} (cliente_id, ticket_id, autor, texto)
                         VALUES (%s, %s, %s, %s)
                         RETURNING id""",
-                    (self._cid, ticket_id, autor, contenido))
+                    (self._cid, ticket_id, autor, texto))
                 (mensaje_id,) = cur.fetchone()
             conn.commit()
             return mensaje_id
@@ -143,11 +143,11 @@ class TicketStore:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"""SELECT id, autor, contenido, created_at FROM {TABLA_MENSAJES}
+                    f"""SELECT id, autor, texto, created_at FROM {TABLA_MENSAJES}
                         WHERE cliente_id = %s AND ticket_id = %s
                         ORDER BY created_at ASC""",
                     (self._cid, ticket_id))
-                cols = ("id", "autor", "contenido", "created_at")
+                cols = ("id", "autor", "texto", "created_at")
                 return [dict(zip(cols, fila)) for fila in cur.fetchall()]
         finally:
             conn.close()
