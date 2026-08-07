@@ -70,11 +70,14 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
     async def auditoria(cliente_id: str | None = None, admin_user_id: str | None = None,
                         limite: int = 50, claims: dict = Depends(require_admin)) -> dict:
         """A6. `AuditoriaStore.listar()` ya existe desde CONS1 -- este endpoint sólo la expone;
-        CONS6 (web) es quien la consume."""
+        CONS6 (web) es quien la consume. Shape fijado por el contrato de planificación
+        (`{"eventos": [...], "total": N}`) -- el tope de `limite` vive ACÁ, no en el store, porque
+        el store sirve a más llamadores que este endpoint HTTP."""
         if consola_conn_factory is None:
             raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
-        return {"auditoria": AuditoriaStore(consola_conn_factory).listar(
-            cliente_id=cliente_id, admin_user_id=admin_user_id, limite=limite)}
+        eventos = AuditoriaStore(consola_conn_factory).listar(
+            cliente_id=cliente_id, admin_user_id=admin_user_id, limite=min(limite, 500))
+        return {"eventos": eventos, "total": len(eventos)}
 
     @app.post("/admin/tenants/{cliente_id}/estado")
     async def tenants_estado(cliente_id: str, body: _CambiarEstadoTenantBody,
