@@ -53,7 +53,36 @@ Si todavía no cargaste ningún movimiento, el Escritorio te lo dice con un mens
 mostrarte una lista vacía sin explicación — es el estado normal de una cuenta recién empezada, no un
 error.
 
+## Qué pasa si te quedás sin conexión
+
+El Escritorio necesita internet. Tanto los accesos directos como la actividad reciente se traen del
+servidor cada vez, así que la app no tiene un "modo sin conexión" que te deje seguir trabajando
+offline.
+
+En concreto, según cómo te agarre el corte:
+
+- **Si abrís la app sin conexión**, no vas a llegar al Escritorio: la app te muestra la pantalla de
+  entrada (la de "Entrar" / "Entrar con Google"). Desde ahí tampoco vas a poder entrar hasta que
+  vuelva la señal, porque entrar también necesita conexión.
+- **Si ya la tenías abierta** y se te cae la señal, lo que estaba en pantalla se queda como estaba.
+  No se borra ni se cierra sola, pero tampoco se actualiza: lo que ves es la última información que
+  alcanzó a bajar.
+
+**Lo importante: quedarte sin señal no te cierra la sesión.** Aunque la app te muestre la pantalla de
+entrada, tu sesión sigue guardada en el teléfono. Cuando vuelve la conexión y abrís la app de nuevo,
+entrás directo a lo tuyo, sin tener que escribir el mail y la contraseña otra vez.
+
 ## Errores y confusiones frecuentes
+
+**"Abrí la app y me pide entrar de nuevo, ¿perdí mi cuenta?"**
+Fijate primero si tenés señal o wifi. Sin conexión la app no puede confirmar tu sesión y te muestra la
+pantalla de entrada, pero no te cerró la sesión: cuando vuelva internet, abrila otra vez y vas a estar
+adentro sin escribir nada. Si ya tenés conexión y aun así te pide entrar, ahí sí es otra cosa —
+escribinos.
+
+**"Se me cortó internet y el Escritorio quedó mostrando datos viejos"**
+Es lo esperado: sin conexión la app no puede traer novedades, así que te deja lo último que bajó.
+Cuando vuelva la señal, volvé al Escritorio y se actualiza solo.
 
 **"No encuentro el Escritorio, la app se abre siempre en el chat"**
 Es el comportamiento esperado: la app arranca en el chat. Deslizá el panel hacia abajo para revelar el
@@ -84,6 +113,11 @@ gastar, presupuestar) al principio.
 **¿La actividad que veo en el Escritorio es la misma que en Recientes?**
 Sí, es un adelanto corto de lo mismo — Recientes te muestra el historial completo con scroll, el
 Escritorio te muestra sólo lo más nuevo.
+
+**¿Puedo ver mi Escritorio sin internet?**
+No. Los accesos directos y la actividad reciente se traen del servidor, así que sin conexión la app te
+deja en la pantalla de entrada. Tu sesión no se pierde: al volver la señal entrás directo, sin
+escribir tus datos de nuevo.
 
 **¿Puedo usar el Escritorio y el chat al mismo tiempo?**
 Podés alternar entre ambos deslizando en cualquier momento; el chat sigue disponible con tu

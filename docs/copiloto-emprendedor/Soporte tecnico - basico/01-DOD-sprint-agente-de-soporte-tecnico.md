@@ -74,11 +74,28 @@ soporte.
       que justifica el trabajo.*
 - [ ] **A7** `FUS` · Ratio anti-alucinación medido sobre el corpus del copiloto y **reportado con su
       denominador** (cuántas preguntas, cuáles). Un porcentaje sin denominador no es una medición.
-- [ ] **A8** `FE` · **Comportamiento sin conexión, verificado en device** (modo avión): qué pasa con
+- [x] **A8** `FE` · **Comportamiento sin conexión, verificado en device** (modo avión): qué pasa con
       el Escritorio, los accesos directos y la actividad reciente. Salió como pregunta al escribir el
       corpus y **no se puede resolver leyendo código**. Mientras no esté probado, el corpus **no lo
       afirma** — se le quitó la pregunta en vez de contestarla de memoria. **Evidencia:** el resultado
       real observado, y con eso se agrega la sección al documento.
+      **✅ MEDIDO 2026-08-07 16:13-16:18 en `RF8R50N2WGR`** (APK `preview` standalone, commit
+      `f3b0f79f`). Modo avión por `cmd connectivity airplane-mode`, con **control de red real**
+      (`ping` al backend ⇒ `unknown host`) — no confié en el flag `airplane_mode_on`. Cuatro
+      resultados, con captura y volcado de UI cada uno:
+      1. **Línea base online** — Escritorio con sus 8 accesos + «Actividad reciente» poblada (29
+         textos).
+      2. **App ya abierta y se cae la red** → pantalla **idéntica**, `diff` de textos vacío (29/29).
+         Lo renderizado se sostiene; no se actualiza.
+      3. **Arranque en frío sin red** → **cae a la pantalla de entrada** (7 textos): ni Escritorio, ni
+         accesos, ni actividad reciente. **No hay caché offline.**
+      4. **El control que decide si además es un bug de CTA7** — avión OFF + arranque en frío ⇒
+         **entra solo, sin credenciales**. La sesión **sobrevive**: sin red no se puede *validar*,
+         pero no se *destruye*.
+      ⚠️ **Lo que este binario NO puede responder:** si un corte de red fabrica un falso «Tu sesión
+      expiró». `f3b0f79f` **no contiene** el código del aviso (`grep MENSAJE_SESION_EXPIRADA` → 0, con
+      control positivo → 1 en `c583f0ec`), así que observar su ausencia sería **vacuo**. Se re-corre
+      sobre el build `db0747d3` y se anota acá.
 - [ ] **A9** `PLA` · Al cerrar el sprint, **actualizar `entrar-y-tu-cuenta.md`**: hoy dice que para
       recuperar el acceso hay que escribirle al equipo, sin nombrar un canal — porque **el canal es
       justamente lo que este sprint construye**. Cuando el chat de soporte exista, el documento debe
