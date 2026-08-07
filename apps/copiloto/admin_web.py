@@ -1,5 +1,6 @@
 """CONSOLA DE OPERADOR (capa CLIENTE). CONS0b levantó `GET /admin/salud` como el sujeto de prueba
 mínimo del gate de autorización. CONS2 lo llena de contenido real (A1) y agrega A3. CONS3 agrega A5.
+CONS4 agrega A4.
 
 `temporal_client`/`consola_conn_factory` son `None` por default para no romper el composition root
 de ningún test que sólo ejercite el gate de `require_admin` (CONS0b) sin levantar Temporal/Postgres
@@ -13,6 +14,7 @@ from fastapi import Depends, FastAPI, HTTPException
 
 from admin_errores import resumen_errores
 from admin_salud import estado_salud
+from admin_soporte import resumen_soporte
 from admin_uso import resumen_uso
 
 
@@ -40,5 +42,11 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
         if consola_conn_factory is None:
             raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
         return {"errores": resumen_errores(consola_conn_factory, estado=estado, limite=limite)}
+
+    @app.get("/admin/soporte")
+    async def soporte(limite: int = 50, claims: dict = Depends(require_admin)) -> dict:
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        return {"tickets": resumen_soporte(consola_conn_factory, limite=limite)}
 
     return app
