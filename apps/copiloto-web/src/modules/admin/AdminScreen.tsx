@@ -6,6 +6,7 @@ import {
   adminAuditoria,
   adminCambiarEstadoTenant,
   adminErrores,
+  adminReintentarError,
   adminSalud,
   adminSoporte,
   adminUso,
@@ -97,6 +98,14 @@ export function AdminScreen() {
   const [resultadoTenant, setResultadoTenant] = useState<string | null>(null);
   const [errorTenant, setErrorTenant] = useState<string | null>(null);
 
+  // ---- CONS7b: reintentar UN error ----
+  // Guarda el `id` en vuelo, no un booleano: la tabla tiene un botón por fila y hay que bloquear
+  // sólo el que se apretó (bloquear todos sería mentir sobre qué está pasando).
+  const [reintentando, setReintentando] = useState<number | null>(null);
+  const [avisoReintento, setAvisoReintento] = useState<{ id: number; texto: string; ok: boolean } | null>(
+    null,
+  );
+
   // Mismo guard que ActividadScreen: no tocar estado tras desmontar.
   const vivo = useRef(true);
   useEffect(() => {
@@ -182,6 +191,40 @@ export function AdminScreen() {
       }
     },
     [tenantId, enviando, cargar, horas],
+  );
+
+  /**
+   * CONS7b. Uno por vez y sin confirmación modal (el contrato prohíbe crear uno): el copy del botón
+   * nombra lo que va a pasar, que es el patrón del repo.
+   *
+   * No se pide confirmación pese a ser irreversible porque el gate real ya corrió **antes**: si el
+   * trauma fuera reintentable-prohibido, el botón está deshabilitado con el motivo a la vista. Una
+   * confirmación sobre algo que el sistema ya validó entrena a apretar "sí" sin leer.
+   */
+  const reintentar = useCallback(
+    async (fila: FilaError) => {
+      if (fila.motivo_prohibido != null || reintentando != null) return;
+      setReintentando(fila.id);
+      setAvisoReintento(null);
+      try {
+        const r = await adminReintentarError(fila.id);
+        if (!vivo.current) return;
+        setAvisoReintento({ id: fila.id, texto: `vuelve a la cola (${r.estado})`, ok: true });
+        void cargar(horas);
+      } catch (err) {
+        if (!vivo.current) return;
+        // El 409 del backend trae el motivo en `detail.mensaje`; `client.ts` ya lo extrae. Se muestra
+        // tal cual: acá tampoco se redacta el texto de un rechazo.
+        setAvisoReintento({
+          id: fila.id,
+          texto: err instanceof Error && err.message ? err.message : 'No se pudo reintentar.',
+          ok: false,
+        });
+      } finally {
+        if (vivo.current) setReintentando(null);
+      }
+    },
+    [reintentando, cargar, horas],
   );
 
   return (
@@ -384,6 +427,7 @@ export function AdminScreen() {
                       <th scope="col">Veces</th>
                       <th scope="col">Cuentas</th>
                       <th scope="col">Último intento</th>
+                      <th scope="col">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -402,6 +446,45 @@ export function AdminScreen() {
                           {f.tenants_afectados}
                         </td>
                         <td>{f.ultima_nota ?? 'sin intentos'}</td>
+                        <td className="admin-dlq__accion">
+                          <Button
+                            variant="ghost"
+                            data-testid={`admin-reintentar-${f.id}`}
+                            disabled={f.motivo_prohibido != null || reintentando != null}
+                            onClick={() => void reintentar(f)}
+                          >
+                            {/* El copy dice qué hace DE VERDAD: la fila está agrupada por firma y
+                                puede mostrar N cuentas afectadas, pero el `id` es el de UN
+                                representante — "Reintentar" a secas sobre una fila que dice "5
+                                cuentas" haría creer que se reintentaron las 5. */}
+                            {reintentando === f.id
+                              ? 'Reintentando…'
+                              : f.tenants_afectados > 1
+                                ? `Reintentar (1 de ${f.tenants_afectados})`
+                                : 'Reintentar'}
+                          </Button>
+                          {/* El motivo del bloqueo va como TEXTO VISIBLE, no como `title`: un
+                              tooltip no existe en touch y un lector de pantalla no lo anuncia en el
+                              mismo flujo. El texto sale del backend, tal cual. */}
+                          {f.motivo_prohibido != null && (
+                            <span
+                              className="admin-dlq__motivo"
+                              data-testid={`admin-motivo-${f.id}`}
+                            >
+                              {f.motivo_prohibido}
+                            </span>
+                          )}
+                          {avisoReintento?.id === f.id && (
+                            <span
+                              className={
+                                avisoReintento.ok ? 'admin-tenant__ok' : 'admin-tenant__error'
+                              }
+                              data-testid={`admin-reintento-aviso-${f.id}`}
+                            >
+                              {avisoReintento.texto}
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

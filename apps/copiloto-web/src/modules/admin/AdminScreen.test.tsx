@@ -14,6 +14,7 @@ vi.mock('../../lib/api/admin', async (importOriginal) => {
     adminSoporte: vi.fn(),
     adminAuditoria: vi.fn(),
     adminCambiarEstadoTenant: vi.fn(),
+    adminReintentarError: vi.fn(),
   };
 });
 
@@ -25,6 +26,7 @@ import {
   adminAuditoria,
   adminCambiarEstadoTenant,
   adminErrores,
+  adminReintentarError,
   adminSalud,
   adminSoporte,
   adminUso,
@@ -60,6 +62,8 @@ const USO_VACIO = { horas: 24, gasto_llm: [], uso_tools: [], error_rate_tools: [
 const ERRORES = {
   errores: [
     {
+      id: 42,
+      motivo_prohibido: null,
       fingerprint: 'fp-abc',
       workflow: 'FacturaWorkflow',
       error_type: 'TimeoutError',
@@ -481,5 +485,130 @@ describe('AdminScreen — CONS7a (suspender / reactivar una cuenta)', () => {
     await montarYEscribir('cliente-uno');
     const botones = screen.getAllByRole('button').map((b) => b.textContent ?? '');
     expect(botones.filter((t) => /todos|lote|masiv|seleccionad/i.test(t))).toEqual([]);
+  });
+});
+
+/**
+ * CONS7b — reintentar UN error. Desbloqueado el 2026-08-07 cuando `GET /admin/errores` empezó a
+ * devolver `id` y `motivo_prohibido` (pedido → contrato → sustrato, todo por el buzón).
+ *
+ * Es la acción de más riesgo del sprint y **no reversible**, así que los dos sentidos del gate se
+ * testean por separado: un botón siempre habilitado pasa el caso permitido, y uno siempre
+ * deshabilitado pasa el caso prohibido. Sólo el par prueba que discrimina.
+ */
+describe('AdminScreen — CONS7b (reintentar un error)', () => {
+  const ERROR_PERMITIDO = { ...ERRORES.errores[0]!, id: 42, motivo_prohibido: null };
+  const ERROR_PROHIBIDO = {
+    ...ERRORES.errores[0]!,
+    id: 99,
+    fingerprint: 'fp-afip',
+    workflow: 'AfipFacturaWorkflow',
+    tenants_afectados: 1,
+    motivo_prohibido: 'dominio DIAGNOSTIC_ONLY: afip_gateway -- efecto irreversible y externo',
+  };
+
+  beforeEach(() => {
+    vi.mocked(adminSalud).mockReset().mockResolvedValue(SALUD_SANA);
+    vi.mocked(adminUso).mockReset().mockResolvedValue(USO);
+    vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
+    vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
+    vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [ERROR_PERMITIDO] });
+    vi.mocked(adminReintentarError).mockReset();
+  });
+
+  it('un error reintentable tiene el botón ACTIVO y no muestra motivo', async () => {
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeInTheDocument());
+    expect(screen.getByTestId('admin-reintentar-42')).toBeEnabled();
+    expect(screen.queryByTestId('admin-motivo-42')).not.toBeInTheDocument();
+  });
+
+  it('un dominio prohibido lo deshabilita CON el motivo del backend visible en el DOM', async () => {
+    vi.mocked(adminErrores).mockResolvedValue({ errores: [ERROR_PROHIBIDO] });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-99')).toBeDisabled());
+    // Visible como texto, NO como `title`: un tooltip no existe en touch ni lo lee un lector de
+    // pantalla en el mismo flujo (DoD del contrato).
+    const motivo = screen.getByTestId('admin-motivo-99');
+    expect(motivo).toBeInTheDocument();
+    expect(motivo).toHaveTextContent('afip_gateway');
+    expect(motivo).not.toHaveAttribute('title');
+  });
+
+  it('el texto del motivo NO lo redacta el front: es el string del backend, tal cual', async () => {
+    vi.mocked(adminErrores).mockResolvedValue({
+      errores: [{ ...ERROR_PROHIBIDO, motivo_prohibido: 'un motivo completamente distinto' }],
+    });
+    renderAdmin();
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-motivo-99')).toHaveTextContent(
+        'un motivo completamente distinto',
+      ),
+    );
+  });
+
+  it('el copy dice "1 de N" cuando el error afecta a varias cuentas', async () => {
+    // La fila está agrupada por firma; el `id` es de UN representante. "Reintentar" a secas sobre
+    // una fila que dice "3 cuentas" haría creer que se reintentaron las 3.
+    vi.mocked(adminErrores).mockResolvedValue({
+      errores: [{ ...ERROR_PERMITIDO, tenants_afectados: 3 }],
+    });
+    renderAdmin();
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-reintentar-42')).toHaveTextContent('Reintentar (1 de 3)'),
+    );
+  });
+
+  it('con UNA sola cuenta afectada, el copy es "Reintentar" a secas — control del anterior', async () => {
+    vi.mocked(adminErrores).mockResolvedValue({
+      errores: [{ ...ERROR_PERMITIDO, tenants_afectados: 1 }],
+    });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeInTheDocument());
+    expect(screen.getByTestId('admin-reintentar-42').textContent).toBe('Reintentar');
+  });
+
+  it('reintentar manda el `id` del trauma, no el fingerprint', async () => {
+    vi.mocked(adminReintentarError).mockResolvedValue({ trauma_id: 42, estado: 'pendiente' });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('admin-reintentar-42'));
+    await waitFor(() => expect(adminReintentarError).toHaveBeenCalledWith(42));
+  });
+
+  it('un 409 del backend se muestra inline con su motivo, y no tumba la pantalla', async () => {
+    // La UI no debería llegar acá (el botón está deshabilitado si hay motivo), pero el listado
+    // puede estar desactualizado respecto del gate — y el guard real es el backend, no la pantalla.
+    vi.mocked(adminReintentarError).mockRejectedValue(
+      new Error('dominio DIAGNOSTIC_ONLY: afip_gateway'),
+    );
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('admin-reintentar-42'));
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-reintento-aviso-42')).toHaveTextContent('afip_gateway'),
+    );
+    expect(screen.getByTestId('admin-workers')).toBeInTheDocument();
+  });
+
+  it('tras reintentar recarga, para que el estado nuevo y la auditoría se vean', async () => {
+    vi.mocked(adminReintentarError).mockResolvedValue({ trauma_id: 42, estado: 'pendiente' });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeEnabled());
+    const antes = vi.mocked(adminAuditoria).mock.calls.length;
+    fireEvent.click(screen.getByTestId('admin-reintentar-42'));
+    await waitFor(() => expect(vi.mocked(adminAuditoria).mock.calls.length).toBeGreaterThan(antes));
+  });
+
+  it('NO hay ningún control de reintento en LOTE — la ausencia es parte del diseño', async () => {
+    vi.mocked(adminErrores).mockResolvedValue({
+      errores: [ERROR_PERMITIDO, { ...ERROR_PERMITIDO, id: 43, fingerprint: 'fp-dos' }],
+    });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-reintentar-42')).toBeInTheDocument());
+    const textos = screen.getAllByRole('button').map((b) => b.textContent ?? '');
+    expect(textos.filter((t) => /todos|lote|masiv|seleccionad/i.test(t))).toEqual([]);
+    // Y no hay checkboxes de selección múltiple.
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
   });
 });
