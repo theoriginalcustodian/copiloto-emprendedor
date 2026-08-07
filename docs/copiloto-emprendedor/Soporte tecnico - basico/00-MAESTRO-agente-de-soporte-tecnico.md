@@ -182,6 +182,7 @@ que el hilo del usuario reciba el mensaje. Es la pieza más chica de las tres, p
 | **A** | El agente se alimenta de **datos del sistema + base de conocimiento del producto** | Cubre las 3 categorías de consulta. La KB es el trabajo de contenido nuevo |
 | **A.bis** | Cuando no sabe: **lo dice, escala a soporte humano y entrega un IDENTIFICADOR DE TICKET** | «le da el número de operación, un identificador del ticket, y deriva a humano» |
 | **KB** | Vive como **RAG en fusion** (preferencia del operador) | Ver §8.4 — el RAG **existe y es maduro**; falta sólo el CONTENIDO |
+| **Modelo** | **GPT-4o-mini** para las dos funciones conversacionales: **soporte técnico** y **cómo uso la app** | Decisión del operador, 2026-08-07. Ver §8.4.bis — barato y coherente con el proveedor del RAG, pero **un modelo chico exige MÁS gates, no menos** |
 
 **A.bis no es un matiz: cambia la arquitectura.** «Derivar» sería un flag; **un ticket con
 identificador es un objeto con estado, nombrable por el usuario y buscable por el operador.** Eso
@@ -314,6 +315,65 @@ alucine.
 
 **Canal vivo:** `coordinacion/Supabase fusion Rag/` ↔ `supabase-self-host-blueprint/Coordinacion/
 Copiloto emprendedor/` (`COORDINACION.md` §8).
+
+## 8.4.bis El modelo: **GPT-4o-mini** — decisión del operador (2026-08-07)
+
+> Textual: *«para el soporte usa gpt 4o mini… agente de cómo uso y de soporte técnico»*.
+
+Aplica a las **dos funciones conversacionales**: soporte técnico y cómo usar la app. (Feedback no
+conversa — es one-shot con la frase fija de §9.3, así que no consume modelo.)
+
+**Lo que juega a favor, y no es menor:**
+
+- **Mismo proveedor que el RAG.** El vault de fusion ya guarda `<cliente_id>/embeddings/openai_api_key`
+  para los embeddings → **una sola credencial**, un solo proveedor que auditar y rotar. Elegir otro
+  vendor para el redactor habría duplicado esa superficie sin ganancia.
+- **Costo por consulta bajísimo**, que es lo que vuelve viable contestar *toda* consulta con el agente
+  antes de escalar — la filosofía declarada por el operador: la app se autogestiona lo máximo posible
+  y el HITL humano queda para lo que de verdad lo necesita.
+
+**El contrapunto que hay que diseñar contra, no ignorar:** un modelo chico es **más** propenso a
+sostener con seguridad algo que el contexto no dice. Eso no invalida la elección — la condiciona:
+**con 4o-mini los gates de sufficiency y grounding dejan de ser un refinamiento y pasan a ser la
+pieza que hace funcionar el conjunto.** Un modelo grande perdona un gate flojo; éste no.
+
+→ **Refuerza la recomendación C** de la decisión MAYOR de arriba: si el ratio ya medido en fusion
+(FPR 8,2 %) sale del pipeline con gates y no del modelo, heredarlo por HTTP es más seguro que
+replicar los gates acá y confiar en que 4o-mini se porte igual. Si el operador elige A+gates, los
+gates hay que **medirlos**, no copiarlos — y con el hueco del eval-set (no hay preguntas reales) eso
+es precisamente lo que hoy no se puede hacer.
+
+**No decidido todavía y hay que decidirlo antes de implementar:** qué modelo hace el *clasificador*
+de las tres funciones (§9.2). Puede no hacer falta ninguno — el enrutado por elección explícita del
+usuario es determinista y gratis.
+
+## 8.4.ter 🔴 DoD: E2E en la app, no en la suite — orden del operador
+
+> Textual, 2026-08-07: *«recordá que todo debe estar probado y funcionando E2E, listo para usar en la
+> app»*.
+
+Es la compuerta 3 de `COORDINACION.md` §6.2 aplicada a este sprint. **Nada de esto se declara
+terminado con tests verdes.** Verde en la suite prueba que el código hace lo que el test dice; no
+prueba que un emprendedor obtenga una respuesta útil.
+
+El sprint cierra cuando, **en la app corriendo** (device para mobile, navegador para web):
+
+- [ ] El usuario abre el chat de soporte desde la app y **el primer mensaje es del agente**,
+      respondiendo su consulta concreta (requisito explícito del operador, §1).
+- [ ] Una pregunta de **«cómo uso la app»** se responde **con contenido del RAG**, y la respuesta
+      es correcta — verificado contra el corpus, no contra la impresión de que suena bien.
+- [ ] Una consulta que el agente **no puede sostener** termina en: lo dice · entrega el código
+      `SOP-XXXX` · el ticket queda creado y visible en la consola. Sin improvisar una respuesta.
+- [ ] El **feedback** devuelve la frase fija y **no** abre hilo.
+- [ ] La respuesta del operador desde la consola **llega al usuario** y le aparece la notificación
+      en Actividad, enlazada al mensaje.
+- [ ] **Control negativo:** con el RAG/orquestador caído, el agente contesta honestamente y escala —
+      no alucina un fallback. Se prueba **apagándolo a propósito**, no razonándolo.
+- [ ] Aislamiento: un tenant **no** ve el ticket de otro (test adversarial, regla dura del repo).
+
+El último control negativo no es celo: es el único que distingue *«funciona»* de *«funcionó la vez
+que lo miré»*. Un gate que sólo se ejercita con el camino feliz aprueba igual un sistema roto hacia
+el «no» ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
 
 ## 8.5 El flujo, punta a punta
 
