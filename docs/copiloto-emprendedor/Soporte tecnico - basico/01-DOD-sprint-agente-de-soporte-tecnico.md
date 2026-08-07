@@ -74,6 +74,16 @@ soporte.
       que justifica el trabajo.*
 - [ ] **A7** `FUS` · Ratio anti-alucinación medido sobre el corpus del copiloto y **reportado con su
       denominador** (cuántas preguntas, cuáles). Un porcentaje sin denominador no es una medición.
+- [ ] **A8** `FE` · **Comportamiento sin conexión, verificado en device** (modo avión): qué pasa con
+      el Escritorio, los accesos directos y la actividad reciente. Salió como pregunta al escribir el
+      corpus y **no se puede resolver leyendo código**. Mientras no esté probado, el corpus **no lo
+      afirma** — se le quitó la pregunta en vez de contestarla de memoria. **Evidencia:** el resultado
+      real observado, y con eso se agrega la sección al documento.
+- [ ] **A9** `PLA` · Al cerrar el sprint, **actualizar `entrar-y-tu-cuenta.md`**: hoy dice que para
+      recuperar el acceso hay que escribirle al equipo, sin nombrar un canal — porque **el canal es
+      justamente lo que este sprint construye**. Cuando el chat de soporte exista, el documento debe
+      decir cómo llegar a él. *Es el caso circular del corpus: no se inventó un canal para no dejar
+      un hueco, y el hueco quedó anotado en vez de tapado.*
 
 ### B · Persistencia y dominio — `BE`
 
