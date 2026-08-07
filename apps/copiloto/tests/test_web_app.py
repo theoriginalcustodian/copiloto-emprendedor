@@ -464,13 +464,15 @@ def test_me_with_token_reports_mp_connected_true():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
     r = TestClient(app).get("/me")
     assert r.status_code == 200
-    assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": []}
+    assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
+                        "es_admin": False}
 
 
 def test_me_without_mp_connection_reports_false():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     r = TestClient(app).get("/me")
-    assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": []}
+    assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
+                        "es_admin": False}
 
 
 def test_me_two_tenants_do_not_leak_mp_state():
@@ -488,6 +490,43 @@ def test_me_sin_require_claims_no_trae_email():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-C"))
     r = TestClient(app).get("/me")
     assert "email" not in r.json()
+
+
+def test_me_sin_require_claims_es_admin_False_fail_closed():
+    """Sin token que leer, `es_admin` no puede afirmarse -- fail-closed, no ausente ni error.
+    Contrato `es_admin en /me`: rama sin `require_claims` (web.py sin claims inyectado)."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-C"))
+    r = TestClient(app).get("/me")
+    assert r.json()["es_admin"] is False
+
+
+def test_me_con_claim_de_admin_es_admin_True():
+    """Contrato `es_admin en /me`: el MISMO predicado que usa `require_admin` (CONS0b)."""
+    app, _ = _build_app(
+        require_tenant=_require_tenant_fixed("cid-F"),
+        require_claims=_require_claims_fixed(
+            {"sub": "auth-f", "app_metadata": {"copiloto_admin": True}}))
+    r = TestClient(app).get("/me")
+    assert r.json()["es_admin"] is True
+
+
+def test_me_con_claims_pero_sin_el_claim_de_admin_es_admin_False():
+    app, _ = _build_app(
+        require_tenant=_require_tenant_fixed("cid-G"),
+        require_claims=_require_claims_fixed({"sub": "auth-g", "email": "g@x.test"}))
+    r = TestClient(app).get("/me")
+    assert r.json()["es_admin"] is False
+
+
+def test_me_con_el_claim_en_user_metadata_NO_otorga_es_admin_True():
+    """ADVERSARIAL -- `user_metadata` es auto-editable por el propio usuario (verificado en CONS0b);
+    un claim ahí NO puede otorgar `es_admin`. Mismo criterio que `require_admin`."""
+    app, _ = _build_app(
+        require_tenant=_require_tenant_fixed("cid-H"),
+        require_claims=_require_claims_fixed(
+            {"sub": "auth-h", "user_metadata": {"copiloto_admin": True}}))
+    r = TestClient(app).get("/me")
+    assert r.json()["es_admin"] is False
 
 
 def test_me_con_require_claims_trae_el_email_del_MISMO_token():
@@ -543,7 +582,8 @@ def test_sync_routes_still_respond_correctly(monkeypatch):
                                                                    "choices": None, "created_at": "t"}])
     client = TestClient(app)
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
-    assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": []}
+    assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
+                                        "composio_connected": [], "es_admin": False}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw"}).json()["auth_user_id"] == "auth-user-X"
 
 

@@ -338,3 +338,26 @@ def test_make_require_admin_empty_secret_raises():
     from auth import make_require_admin
     with pytest.raises(ValueError):
         make_require_admin(secret="")
+
+
+# --- es_admin() -- predicado extraído para /me (contrato `es_admin en /me`, 2026-08-06) ---------
+# `require_admin` (arriba) y `es_admin` son la MISMA función por dentro: `require_admin` la llama,
+# no la reimplementa. Estos tests verifican eso mismo -- el mismo claim da el mismo veredicto en
+# los dos lugares -- para que un futuro cambio no pueda desalinearlos en silencio.
+
+@pytest.mark.parametrize("claims,esperado", [
+    ({"app_metadata": {"copiloto_admin": True}}, True),
+    ({}, False),
+    ({"app_metadata": {"copiloto_admin": False}}, False),
+    ({"user_metadata": {"copiloto_admin": True}}, False),  # ADVERSARIAL: lugar equivocado
+])
+def test_es_admin_es_el_MISMO_predicado_que_usa_require_admin(claims, esperado):
+    from auth import es_admin
+
+    assert es_admin(claims) is esperado
+
+    # Control cruzado: el MISMO dict de claims, contra el guard HTTP real -- si algún día
+    # `require_admin` dejara de llamar a `es_admin()`, este test es el que lo detecta.
+    tok = _tok(claims)
+    resp = TestClient(_admin_app()).get("/admin/whoami", headers={"Authorization": f"Bearer {tok}"})
+    assert (resp.status_code == 200) is esperado
