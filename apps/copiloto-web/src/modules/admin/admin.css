@@ -155,3 +155,13 @@
   border-top: 1px solid var(--card-border);
   white-space: nowrap;
 }
+
+/* Columnas de texto libre (lo que escribió el emprendedor en Soporte, el `detalle` arbitrario de
+   Auditoría). El `nowrap` de arriba es correcto para métricas cortas y desastroso acá: una frase
+   larga empujaría el ancho de la tabla sin límite y todas las demás columnas se comprimirían.
+   `max-width` + `ellipsis` acotan la celda; el texto completo queda en `title` para el hover. */
+.admin-tabla__texto {
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

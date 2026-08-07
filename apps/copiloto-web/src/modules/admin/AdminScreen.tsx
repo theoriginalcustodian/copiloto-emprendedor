@@ -1,8 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge, Button, Skeleton, Surface } from '../../design-system';
-import { AdminNoDisponibleError, adminSalud, adminUso } from '../../lib/api/admin';
-import type { AdminSalud, AdminUso } from '../../lib/api/admin';
+import {
+  AdminNoDisponibleError,
+  adminAuditoria,
+  adminErrores,
+  adminSalud,
+  adminSoporte,
+  adminUso,
+} from '../../lib/api/admin';
+import type {
+  AdminSalud,
+  AdminUso,
+  FilaAuditoria,
+  FilaError,
+  FilaTicket,
+} from '../../lib/api/admin';
 import { ForbiddenError } from '../../lib/api';
 import './admin.css';
 
@@ -33,10 +46,44 @@ function formatearErrorRate(pct: number | null): string {
   return pct == null ? 'sin llamadas' : `${pct}%`;
 }
 
+/** Fecha corta y local. Si el backend manda algo que `Date` no entiende, se muestra el crudo en vez
+ *  de "Invalid Date": un dato ilegible es información, un cartel de error no. */
+function fechaCorta(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * `detalle` de auditoría es un objeto ARBITRARIO — hoy `tenant.estado` manda `{de, a}`, mañana otra
+ * acción mandará otras claves. Se renderiza recorriendo lo que venga (DoD del contrato A6:
+ * "renderizarlo sin asumir claves fijas"); asumir `{de, a}` haría que la próxima acción se muestre
+ * vacía sin que nadie se entere.
+ */
+function formatearDetalle(detalle: Record<string, unknown> | null): string {
+  if (!detalle || Object.keys(detalle).length === 0) return '—';
+  return Object.entries(detalle)
+    .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+    .join(' · ');
+}
+
+/** El estado de un trauma decide el color del chip. Desconocido -> neutral, nunca "ok": inventarle
+ *  buena salud a un estado que no conocemos es exactamente el instrumento que confirma. */
+function variantePorEstado(estado: string | null): 'ok' | 'warning' | 'danger' | 'neutral' {
+  if (estado === 'reparado' || estado === 'resuelto') return 'ok';
+  if (estado === 'pendiente' || estado === 'en_curso') return 'warning';
+  if (estado === 'fallido' || estado === 'descartado') return 'danger';
+  return 'neutral';
+}
+
 export function AdminScreen() {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [salud, setSalud] = useState<AdminSalud | null>(null);
   const [uso, setUso] = useState<AdminUso | null>(null);
+  const [errores, setErrores] = useState<FilaError[]>([]);
+  const [tickets, setTickets] = useState<FilaTicket[]>([]);
+  const [auditoria, setAuditoria] = useState<FilaAuditoria[]>([]);
   const [horas, setHoras] = useState<number>(24);
   const [detalle, setDetalle] = useState<string>('');
 
@@ -52,11 +99,23 @@ export function AdminScreen() {
   const cargar = useCallback(async (ventana: number) => {
     setEstado('cargando');
     try {
-      // En paralelo: son dos áreas independientes y no tiene sentido serializarlas.
-      const [s, u] = await Promise.all([adminSalud(), adminUso(ventana)]);
+      // En paralelo: son áreas independientes y no tiene sentido serializarlas.
+      // A5/A4/A6 no dependen de `ventana` -- se recargan igual al cambiarla, y eso es deseable
+      // (refresca), no un descuido: la alternativa es un segundo efecto y dos estados de carga
+      // para ahorrar tres GET baratos contra una consola que mira una persona.
+      const [s, u, e, t, a] = await Promise.all([
+        adminSalud(),
+        adminUso(ventana),
+        adminErrores(),
+        adminSoporte(),
+        adminAuditoria(),
+      ]);
       if (!vivo.current) return;
       setSalud(s);
       setUso(u);
+      setErrores(e.errores);
+      setTickets(t.tickets);
+      setAuditoria(a.auditoria);
       setEstado('ok');
     } catch (err) {
       if (!vivo.current) return;
@@ -245,6 +304,161 @@ export function AdminScreen() {
                         <td>{f.llamadas_totales}</td>
                         <td data-testid={`admin-rate-${f.cliente_id}`}>
                           {formatearErrorRate(f.error_rate_pct)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Surface>
+          </section>
+
+          {/* ---- A5 Errores (DLQ agrupada por fingerprint) — CONS6 ---- */}
+          <section className="admin-screen__seccion" aria-labelledby="admin-dlq-titulo">
+            <div className="admin-screen__seccion-head">
+              <h2 id="admin-dlq-titulo">Errores del sistema</h2>
+              <span className="admin-screen__ventana-activa">
+                agrupados por firma · {errores.length}
+              </span>
+            </div>
+
+            <Surface variant="card" className="admin-card" data-testid="admin-dlq">
+              {errores.length === 0 ? (
+                <p className="admin-screen__vacio" data-testid="admin-dlq-vacio">
+                  No hay errores registrados.
+                </p>
+              ) : (
+                <table className="admin-tabla">
+                  <thead>
+                    <tr>
+                      <th scope="col">Dónde</th>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Veces</th>
+                      <th scope="col">Cuentas</th>
+                      <th scope="col">Último intento</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {errores.map((f) => (
+                      <tr key={f.fingerprint} data-testid={`admin-dlq-fila-${f.fingerprint}`}>
+                        <td>{f.workflow ?? f.costura ?? '—'}</td>
+                        <td>{f.error_type ?? '—'}</td>
+                        <td>
+                          <Badge variant={variantePorEstado(f.estado)}>{f.estado}</Badge>
+                        </td>
+                        {/* `dedupe_count` es cuántas veces pasó lo MISMO; `tenants_afectados`, a
+                            cuántas cuentas distintas. Se muestran separados a propósito: 40 veces
+                            en 1 cuenta y 40 en 40 cuentas piden respuestas opuestas. */}
+                        <td>{f.dedupe_count}</td>
+                        <td data-testid={`admin-dlq-tenants-${f.fingerprint}`}>
+                          {f.tenants_afectados}
+                        </td>
+                        <td>{f.ultima_nota ?? 'sin intentos'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Surface>
+          </section>
+
+          {/* ---- A4 Soporte (feedback entrante y su clasificación) — CONS6 ---- */}
+          <section className="admin-screen__seccion" aria-labelledby="admin-soporte-titulo">
+            <div className="admin-screen__seccion-head">
+              <h2 id="admin-soporte-titulo">Soporte</h2>
+              <span className="admin-screen__ventana-activa">{tickets.length} mensajes</span>
+            </div>
+
+            <Surface variant="card" className="admin-card" data-testid="admin-soporte">
+              {tickets.length === 0 ? (
+                <p className="admin-screen__vacio" data-testid="admin-soporte-vacio">
+                  Nadie escribió todavía.
+                </p>
+              ) : (
+                <table className="admin-tabla">
+                  <thead>
+                    <tr>
+                      <th scope="col">Cuándo</th>
+                      <th scope="col">Cuenta</th>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Qué dijo</th>
+                      <th scope="col">Reparación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.map((t) => (
+                      <tr key={t.id} data-testid={`admin-ticket-${t.id}`}>
+                        <td>{fechaCorta(t.created_at)}</td>
+                        <td>{t.cliente_id.slice(0, 8)}</td>
+                        <td>{t.tipo ?? '—'}</td>
+                        <td className="admin-tabla__texto" title={t.texto ?? undefined}>
+                          {t.texto ?? '—'}
+                        </td>
+                        <td data-testid={`admin-ticket-reparacion-${t.id}`}>
+                          {/* Sin trauma asociado NO se puede distinguir "esperando" de "el
+                              clasificador dijo que no": esa clasificación es efímera y no deja
+                              rastro durable. Se dice lo que se sabe, no lo que se supone. */}
+                          {t.derivo_en_autosanacion ? (
+                            <Badge variant={variantePorEstado(t.estado_reparacion)}>
+                              {t.estado_reparacion ?? 'derivado'}
+                            </Badge>
+                          ) : (
+                            <span className="admin-screen__ventana-activa">sin derivar</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Surface>
+          </section>
+
+          {/* ---- A6 Auditoría (append-only: quién hizo qué en la consola) — CONS6 ---- */}
+          <section className="admin-screen__seccion" aria-labelledby="admin-auditoria-titulo">
+            <div className="admin-screen__seccion-head">
+              <h2 id="admin-auditoria-titulo">Auditoría</h2>
+              <span className="admin-screen__ventana-activa">
+                {auditoria.length} acciones registradas
+              </span>
+            </div>
+
+            <Surface variant="card" className="admin-card" data-testid="admin-auditoria">
+              {auditoria.length === 0 ? (
+                <p className="admin-screen__vacio" data-testid="admin-auditoria-vacia">
+                  Todavía no se registró ninguna acción de operador.
+                </p>
+              ) : (
+                <table className="admin-tabla">
+                  <thead>
+                    <tr>
+                      <th scope="col">Cuándo</th>
+                      <th scope="col">Quién</th>
+                      <th scope="col">Qué hizo</th>
+                      <th scope="col">Sobre</th>
+                      <th scope="col">Detalle</th>
+                      <th scope="col">Resultado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditoria.map((ev) => (
+                      <tr key={ev.id} data-testid={`admin-auditoria-fila-${ev.id}`}>
+                        <td>{fechaCorta(ev.created_at)}</td>
+                        <td>{ev.admin_email ?? ev.admin_user_id?.slice(0, 8) ?? '—'}</td>
+                        <td>{ev.accion}</td>
+                        <td>{ev.cliente_id?.slice(0, 8) ?? '—'}</td>
+                        <td
+                          className="admin-tabla__texto"
+                          data-testid={`admin-auditoria-detalle-${ev.id}`}
+                          title={formatearDetalle(ev.detalle)}
+                        >
+                          {formatearDetalle(ev.detalle)}
+                        </td>
+                        <td>
+                          <Badge variant={ev.resultado === 'exitoso' ? 'ok' : 'danger'}>
+                            {ev.resultado ?? '—'}
+                          </Badge>
                         </td>
                       </tr>
                     ))}
