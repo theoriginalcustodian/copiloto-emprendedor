@@ -9,6 +9,10 @@
 
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
+- **🌐 EL REPO ES PÚBLICO** desde 2026-08-06 (Actions ilimitado). Cambia el COSTO de un error, no la regla: un `.env` mal commiteado es público al instante. Auditoría de toda la historia: 0 secretos. `CLAUDE.md` §cabecera.
+- **🟢 BETA y M-WEB cerrados** (2026-08-05). Los 2 gates de BETA-5 satisfechos: falta sólo que el operador mande las invitaciones. **🔥 En curso: sprint CONSOLA DE OPERADOR** — estado real en `coordinacion/PLAN.md`, no acá. [[copiloto-beta-sprint-cerrado]]
+- **⚙️ CI PROPIO (ADR-001)** — la definición de la suite ya NO vive en GitHub: `scripts/ci/*.sh` + `scripts/gate.sh` (recibo `.ci-recibos/<sha>.json`) + guard `no-drift.sh`. Actions es respaldo. Deuda con dueño (backend): el mirror del VPS nunca corrió con un push real.
+- **🌳 El checkout compartido está 237 commits detrás de `main`** — docs y memoria escritos ahí NO llegan a `main` ni al grafo. Escribilos en un worktree desde `origin/main`. [[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]]
 - **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
 - **🛡️ Manejo de errores — frente COMPLETO, fases 0→3 en prod** (#151→#185) + **autohealing global** E2E: uno para toda la app, `BYPASSRLS`, abre PRs solo, gate que distingue *arregla* de *no rompe*. → `Manejo de errores/07-ESTADO-…-08-01.md` · [[no-romper-no-es-arreglar]]
 - **⚠️ Ese frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
