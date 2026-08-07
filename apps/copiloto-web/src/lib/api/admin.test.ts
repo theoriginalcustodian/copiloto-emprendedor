@@ -9,6 +9,7 @@ import {
   adminReintentarError,
   adminSalud,
   adminSoporte,
+  adminTenants,
   adminUso,
 } from './admin';
 import { ForbiddenError, UnauthorizedError } from './client';
@@ -343,5 +344,63 @@ describe('api admin (CONS7b — reintentar un error)', () => {
   it('un 404 (trauma inexistente) conserva su detail', async () => {
     fetchMock.mockResolvedValueOnce(mockResponse(404, { detail: 'trauma no encontrado' }));
     await expect(adminReintentarError(1)).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('api admin (CTA1 — listar las cuentas que la consola gestiona)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    setToken('t-admin');
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const FILA = { cliente_id: 'c1', email: 'uno@test', status: 'active', created_at: '2026-08-01T10:00:00Z' };
+
+  it('devuelve las filas y el total', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { tenants: [FILA], total: 19 }));
+    await expect(adminTenants()).resolves.toEqual({ tenants: [FILA], total: 19 });
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('/admin/tenants');
+    // Sin opciones NO se manda query string: un `?` pelado o `limite=undefined` es basura que el
+    // backend tiene que tolerar por nada.
+    expect(url).not.toContain('?');
+  });
+
+  it('pasa estado y limite como query params', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { tenants: [], total: 0 }));
+    await adminTenants({ estado: 'suspended', limite: 50 });
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('estado=suspended');
+    expect(url).toContain('limite=50');
+  });
+
+  it('un 200 con OTRA clave NO se acepta — es el drift que ya pasó en A6', () => {
+    // A6 devolvió `auditoria` cuando el contrato decía `eventos`, y sin este guard la pantalla
+    // habría recibido `undefined` y explotado lejos de la causa. `GET /admin/tenants` todavía no
+    // existe en `main`: este assert es lo único que hoy separa "el backend cumplió el contrato" de
+    // "el front se adapta a lo que venga".
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { cuentas: [FILA], total: 1 }));
+    return expect(adminTenants()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+  });
+
+  it('el catch-all de la SPA (200 con HTML) se traduce a no-disponible, no a error de parseo', () => {
+    // Es EXACTAMENTE el caso de hoy: el endpoint no está montado y el front-door devuelve el
+    // index.html con 200. La pantalla degrada al campo manual gracias a esto.
+    fetchMock.mockResolvedValueOnce(mockCatchAllHtml());
+    return expect(adminTenants()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+  });
+
+  it('un 403 sigue siendo ForbiddenError, no "no disponible"', () => {
+    // No tener el claim de admin y que el endpoint no exista son cosas distintas y la consola las
+    // muestra distinto.
+    fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'no sos admin' }));
+    return expect(adminTenants()).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
