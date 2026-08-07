@@ -108,7 +108,7 @@
   --ok-fg: #3C8069;
   --ok-bg: rgba(60, 128, 105, 0.14);
   --ok-border: 1px solid rgba(60, 128, 105, 0.4);
-  --danger-fg: #c7455a;
+  --danger-fg: #b03549;
   --danger-bg: rgba(199, 69, 90, 0.1);
   --danger-border: 1px solid rgba(199, 69, 90, 0.45);
   --danger-btn-bg: #c7455a;
@@ -245,7 +245,7 @@
   --ok-border: 1px solid rgba(60, 128, 105, 0.4);
   /* Peligro NO tiene valor propio en el DoD de ODOBI — se reusa el par ya validado de
      `SEMANTICOS_CLARO` (`apps/mobile/src/theme/tokens.ts`), calibrado para AA en su momento. */
-  --danger-fg: #c7455a;
+  --danger-fg: #b03549;
   --danger-bg: rgba(199, 69, 90, 0.1);
   --danger-border: 1px solid rgba(199, 69, 90, 0.45);
   --danger-btn-bg: #c7455a;
