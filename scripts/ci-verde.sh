@@ -32,17 +32,26 @@ json=$(gh pr view "$PR" --json statusCheckRollup --jq '[.statusCheckRollup[]|{na
 
 falta=0
 for j in $ESPERADOS; do
-  # `.conclusion // "SIN-CONCLUSION"` sólo se evalúa si el job EXISTE en el rollup; si no
-  # existe, el select no devuelve nada y $c queda vacío — que es justamente el caso que engaña.
-  c=$(echo "$json" | jq -r --arg n "$j" '.[]|select(.name==$n)|.conclusion // "SIN-CONCLUSION"')
-  if [ -z "$c" ]; then
-    echo "❌ $j: NO ESTÁ en el rollup todavía (no se encoló) — esto NO es 'pasó'"; falta=1
-  elif [ "$c" = "SIN-CONCLUSION" ]; then
-    echo "❌ $j: encolado pero sin conclusión (corriendo)"; falta=1
-  elif [ "$c" != "SUCCESS" ]; then
-    echo "❌ $j: $c"; falta=1
-  else
+  # Se preguntan por separado PRESENCIA y CONCLUSIÓN, y no se usa `//` para el default.
+  #
+  # Por qué: en jq, `//` sustituye sólo `null` y `false` — NO la cadena vacía. Un job
+  # `IN_PROGRESS` viene con `conclusion: ""` (cadena vacía, no null), así que
+  # `.conclusion // "SIN-CONCLUSION"` devolvía "" y el script lo reportaba como
+  # "no se encoló" cuando en realidad estaba corriendo. El veredicto salía bien por
+  # accidente (los dos casos son NO-VERDE) y el diagnóstico era falso — exactamente el
+  # tipo de error que este guard existe para no cometer. Cazado el 2026-08-07 en el PR #315.
+  presente=$(echo "$json" | jq -r --arg n "$j" '[.[]|select(.name==$n)]|length')
+  if [ "$presente" -eq 0 ]; then
+    echo "❌ $j: NO ESTÁ en el rollup (no se encoló) — esto NO es 'pasó'"; falta=1; continue
+  fi
+  c=$(echo "$json" | jq -r --arg n "$j" '.[]|select(.name==$n)|.conclusion')
+  st=$(echo "$json" | jq -r --arg n "$j" '.[]|select(.name==$n)|.status')
+  if [ "$c" = "SUCCESS" ]; then
     echo "✅ $j: SUCCESS"
+  elif [ -z "$c" ] || [ "$c" = "null" ]; then
+    echo "❌ $j: sin conclusión todavía (status=$st) — está CORRIENDO, no pasó"; falta=1
+  else
+    echo "❌ $j: $c"; falta=1
   fi
 done
 
