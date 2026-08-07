@@ -155,3 +155,21 @@
   border-top: 1px solid var(--card-border);
   white-space: nowrap;
 }
+
+/* Columnas de texto libre (lo que escribió el emprendedor en Soporte, el `detalle` arbitrario de
+   Auditoría). El `nowrap` de arriba es correcto para métricas cortas y desastroso acá: una frase
+   larga empuja el ancho de la tabla y comprime todas las demás columnas.
+
+   El recorte va en un `<span>` INTERNO, no en el `<td>`: el algoritmo de tabla (`table-layout:auto`)
+   reparte el ancho según el contenido e **ignora el `max-width` de una celda**. Medido en el gate
+   visual — con `max-width:34ch` puesto en el `td`, la celda terminaba en 860px y `scrollWidth ===
+   clientWidth` (o sea, cero recorte). La otra salida sería `table-layout: fixed`, pero eso cambia el
+   reparto de TODAS las columnas y revierte el fix del PR 316.
+   El texto completo queda en el `title` del `td`, para el hover. */
+.admin-tabla__texto-recorte {
+  display: block;
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
