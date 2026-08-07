@@ -58,3 +58,32 @@ pérdida no habría dado síntoma hasta que alguien buscara una lección que ya 
 Hermana de [[instrumentos-que-confirman-en-vez-de-verificar]]: un espejo con `--delete` no falla
 ruidosamente, *confirma* — termina en exit 0 diciendo cuántos archivos sembró, sin mencionar los que
 borró.
+
+## 📏 Los dos `MEMORY.md` también divergen — y el que se CARGA es el del slug (2026-08-07)
+
+No son sólo los topic files: **el índice mismo diverge, y por 15.000 caracteres**.
+
+| Archivo | Tamaño medido | Quién lo usa |
+|---|---|---|
+| `memoria/MEMORY.md` (repo) | **31.206 chars** | Lo que ves en un `git diff`, lo que valida `scripts/medir-indice-memoria.py` |
+| `~/.claude/projects/<slug>/memory/MEMORY.md` | **46.114 bytes** | **El que el harness carga en cada sesión** |
+
+**Consecuencias prácticas, las tres contraintuitivas:**
+
+1. **El warning de truncamiento que ves al arrancar** (*"MEMORY.md is 214 lines and 43.4KB. Only part
+   of it was loaded"*) habla del **slug**, no del repo. Podar el del repo no lo apaga.
+2. **Un sub-agente al que le das el repo puede medir el del slug igual** y devolverte un análisis
+   entero sobre el archivo equivocado, con cifras verosímiles. Pasó el 2026-08-07: reportó 44.080
+   chars y 12 entradas a bajar; **7 de las 12 no existían en el índice del repo**. El reporte de un
+   agente es **testimonio, no medición** — contrastalo antes de ejecutarlo
+   ([[no-lo-vi-no-distingue-no-llego-de-no-lo-procese]]).
+3. **El control barato que los separa:** correr `scripts/medir-indice-memoria.py` (mide el del repo,
+   con su techo) y `wc -c` sobre el del slug, y comparar. Si difieren, decí **cuál** estás mirando
+   antes de sacar conclusiones.
+
+**Deuda visible, con dueño (planificación):** el índice del repo está **6.528 chars sobre el techo de
+24.000** aun después de la poda del 2026-08-07 (bajé 5 hitos cerrados a `HISTORIA.md`, −678). Lo que
+falta no es poda editorial: la mayoría de lo que queda es doctrina viva y trampas vigentes, y bajar
+una trampa que todavía muerde es peor que el truncamiento. Las salidas reales son **comprimir las
+líneas** (muchas pasan de 300 chars cuando el techo por línea son 160) o **subir el presupuesto** —
+las dos son decisión, no limpieza.

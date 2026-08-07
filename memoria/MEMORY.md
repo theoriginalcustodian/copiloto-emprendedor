@@ -1,7 +1,7 @@
 # Memoria — Copiloto del Emprendedor
 
 > **Una línea = un gancho, no un resumen** (≤160 chars): el detalle vive en el topic file.
-> **Techo duro: 25.000 caracteres** — lo que pase de ahí se trunca y no existe para la sesión
+> **Techo duro: 24.000 caracteres** (el que aplica el gate; el texto decía 25.000) — lo que pase de ahí se trunca y no existe para la sesión
 > ([[el-indice-truncado-fabrica-duplicados]]). Al llegar al techo no se comprime más: se baja a
 > [HISTORIA.md](HISTORIA.md) (no se carga; buscable). Control: `scripts/medir-indice-memoria.py`.
 
@@ -172,7 +172,6 @@
 
 - [🟢 Copiloto DESPLEGADO VIVO + multitenant real](copiloto-deploy-multitenant-vivo.md) — **leer primero al retomar.** systemd web+worker, JWT, cross-tenant [VERIFIED].
 - [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) — **antes de tocar `motor/`.** `sync-motor.sh` retirado; el fix se hace ACÁ.
-- [🔗 Motor ReAct tareas concatenadas — VIVO y CERRADO](copiloto-motor-react-concatenadas.md) — **NO re-abrir.** Flag `COPILOTO_ENGINE_MODE`.
 - [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) — **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
 - [🌐 Dominio duckdns + Google OAuth](copiloto-dominio-duckdns.md) — `copilotoemprendedor.duckdns.org` → VPS.
 - [🧠🧱 MemoryProvider — memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) — **al tocar la memoria.** warm+recall+remember, gate `config['memory']`.
@@ -181,13 +180,9 @@
 - [💰 Presupuestos + perfil del negocio](copiloto-presupuestos-y-perfil-negocio.md) — el perfil se lee por turno, ANTES de la memoria.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) — nunca se pregunta 2 veces; a la 2ª manda la card.
 - [🔑 OAuth de Google: hoy es el de COMPOSIO](copiloto-oauth-google-propio.md) — bloquea Apps. Los scopes por defecto son los CAROS.
-- [🔌 Composio — ladrillo + runbook](composio-gateway-ladrillo.md) — boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
-- [🔌 7 servicios Composio plug-in](copiloto-servicios-composio-plugin.md) — módulo-plug-in + confirm-gate HITL.
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) — incluye borrado permanente. No heredarlo a agentes autónomos.
-- [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — OAuth Auth-Code (180 d), webhook HMAC. ✅ spike E2E.
 - [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — instancia COMPARTIDA → ontología con `graph_ids` o fuga.
 - [📡 Ingesta real al grafo por tenant — FRENTE ABIERTO (MAYOR)](copiloto-ingesta-grafo-por-tenant-real-frente-abierto.md) — sólo existe la demo sintética del hito 5.
-- [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — barrido adversarial → batch por tests.
 - [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — el **dueño está exento** sin `FORCE`. Control: conectarse sin tenant y contar.
 - [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md) — `tenants` con `FORCE` daría 403 a todos.
 - [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — cero usuarios; "prod-beta" desvía a migraciones defensivas.

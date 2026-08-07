@@ -111,3 +111,14 @@ metadata:
 - [BOM rompe el "set model" del plugin](bom-rompe-settings-plugin-claude-code.md) — reescribir `settings.json` sin BOM.
 - [🔑✅ Graphity: la key COMÚN alcanza (admin no se necesita)](graphity-copiloto-sin-admin-provisioning-gap.md) — único borde = project scope en la key (400, no 403).
 - [🧠✅ Graphity aislamiento cross-tenant RESUELTO (ADR-040)](graphity-aislamiento-cross-tenant-verificado.md) — **NO re-abrir.** `tenant_aisla_DURO=true`. Bajadas del índice el 2026-08-02 por presupuesto; siguen vigentes.
+
+## Movidos del índice el 2026-08-07 (el índice superaba el techo de 24.000 chars)
+
+Hitos cerrados y ladrillos ya construidos: su valor es histórico, no operativo. Siguen
+buscables acá.
+
+- [🔗 Motor ReAct tareas concatenadas — VIVO y CERRADO](copiloto-motor-react-concatenadas.md) — **NO re-abrir.** Flag `COPILOTO_ENGINE_MODE`.
+- [🔌 Composio — ladrillo + runbook](composio-gateway-ladrillo.md) — boundary fail-closed; `validate_toolkit.py` ANTES de la policy.
+- [🔌 7 servicios Composio plug-in](copiloto-servicios-composio-plugin.md) — módulo-plug-in + confirm-gate HITL.
+- [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — OAuth Auth-Code (180 d), webhook HMAC. ✅ spike E2E.
+- [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — barrido adversarial → batch por tests.
