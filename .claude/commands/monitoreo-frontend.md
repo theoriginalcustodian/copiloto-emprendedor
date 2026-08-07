@@ -1,5 +1,5 @@
 ---
-description: (Re)crea idempotente el cron de heartbeat de la sesión FRONTEND (vigía del buzón cada 3 min) y CONFIRMA contra CronList
+description: Arranque VERIFICADO de la sesión FRONTEND: cron + harness de buzón + contexto + qué arranca, con reporte binario
 allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
 ---
 
@@ -8,15 +8,15 @@ allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
 Instalá el cron de heartbeat de ESTA sesión (frontend). **Corré este comando EN LA VENTANA DE
 FRONTEND** — un cron no se puede crear para otra sesión.
 
-Pasos, en orden (idempotente + auto-verificado):
+Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objetivo no es
+"instalar el cron", es dejar la sesión LISTA PARA TRABAJAR y poder demostrarlo.**
 
 1. **`CronList`** — mirá si ya existe un cron con schedule `*/3 * * * *` cuyo prompt arranque con
    "Vigía de coordinación (sesión FRONTEND)". Si ya está → no crees nada, saltá al paso 3.
 2. **`CronCreate`** — si falta, crealo con el schedule y el prompt EXACTOS de abajo.
-3. **`CronList` de nuevo y CONFIRMÁ** — verificá que el cron aparece. Reportá UNA línea:
-   `✅ FRONTEND cron vivo — schedule */3, próximo tick HH:MM` **o** `❌ no aparece, reintento`.
-   **Sin verlo en `CronList`, NO está instalado** (raíz 2026-07-24 — ver `coordinacion/CRONES.md`
-   §Ritual de instalación).
+3. **`CronList` de nuevo y CONFIRMÁ** que aparece. **Sin verlo en `CronList`, NO está instalado**
+   (raíz 2026-07-24: backend quedó 8½ h mudo porque instalar no confirmaba nada — ver
+   `coordinacion/CRONES.md` §Ritual de instalación).
 4. **Harness de buzón vivo** — `grep -c buzon_watcher ~/.claude/settings.json`. Ese hook
    (PostToolUse) te empuja los mensajes nuevos en CADA tool call, sin depender del cron. Si da `0`,
    el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
