@@ -83,7 +83,8 @@ def build_worker_config(env, conn_factory) -> dict:
         try:
             graphity_code_client = SoporteClasificador.from_env()
         except RuntimeError:
-            graphity_code_client = None
+            graphity_code_client = None  # apagado explícito (mismo criterio que abajo): C9 degrada a
+            # "no encontré dónde está" en vez de tumbar el worker por una feature opcional
     print("SOPORTE grafo de código: ON" if graphity_code_client is not None
           else "SOPORTE grafo de código: OFF (faltan GRAPHITY_CODE_BASE_URL/_API_KEY -- C9 degrada "
                "a 'no encontré dónde está' en vez de citar)", flush=True)

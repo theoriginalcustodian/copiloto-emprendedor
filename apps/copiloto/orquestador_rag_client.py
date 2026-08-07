@@ -67,7 +67,7 @@ class OrquestadorRagClient:
             resp = self._client.get(self._base + "/healthz")
             return resp.status_code == 200
         except (httpx.TimeoutException, httpx.TransportError):
-            return False
+            return False  # liveness: caído = False, no una excepción que tumbe al que pregunta si está vivo
 
     def answer(self, query: str, *, cliente_id: str | None = None) -> RagRespuesta:
         """`cliente_id=None` a propósito por default: el contrato de fusion lo declara así para
@@ -78,6 +78,8 @@ class OrquestadorRagClient:
         try:
             resp = self._client.post(self._base + "/rag/answer", headers=headers, json=body)
         except (httpx.TimeoutException, httpx.TransportError):
+            # timeout/conexión caída = UNAVAILABLE real (contrato SOP4): el agente lo dice y escala,
+            # nunca propaga la excepción hacia el loop react (colgaría el turno, no el fail-safe pedido).
             return RagRespuesta(outcome=UNAVAILABLE, reason="timeout_o_conexion_caida")
 
         if resp.status_code == 503:
@@ -103,7 +105,8 @@ def _es_json(resp: httpx.Response) -> bool:
         resp.json()
         return True
     except ValueError:
-        return False
+        return False  # sondeo puro: un 503 sin body JSON (proxy/gateway caído devuelve HTML) no es
+        # un error a reportar -- el llamador ya degrada a `reason` default en ese caso
 
 
 def build_rag_client_factory(namespace: str, env: dict | None = None) -> Callable[[], OrquestadorRagClient | None]:
@@ -114,6 +117,7 @@ def build_rag_client_factory(namespace: str, env: dict | None = None) -> Callabl
         try:
             return OrquestadorRagClient.from_env(namespace=namespace, env=env)
         except RuntimeError:
-            return None
+            return None  # apagado explícito (falta config del vault) -- el tool_executor lo trata
+            # como UNAVAILABLE, ver `_run_consultar_kb`
 
     return factory
