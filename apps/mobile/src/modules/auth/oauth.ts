@@ -13,12 +13,31 @@ import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/goo
  * (mismo criterio que `/auth/login` para email/password, ver `onboarding.GoTrueAdmin.id_token_grant`).
  *
  * Requiere, del lado de Google Cloud Console, un client OAuth tipo "Android" con el `package name` +
- * SHA-1 del build EAS instalado (verificado 2026-08-05: SHA-1 del build `d8110bf9-...` coincide EXACTO
- * con el registrado) Y del lado de GoTrue, que `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` incluya (comma-
- * separated) tanto el client Web (el que ya usa la PWA) como este Android -- GoTrue acepta múltiples
- * audiences por proveedor (mismo mecanismo documentado para Apple Web+iOS).
+ * SHA-1 del build EAS instalado, Y del lado de GoTrue, que `GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID` incluya
+ * (comma-separated) tanto este client Web como el Android -- GoTrue acepta múltiples audiences por
+ * proveedor (mismo mecanismo documentado para Apple Web+iOS).
+ *
+ * 🔴 **El `DEVELOPER_ERROR` que rompía el login en device era ESTO, y no el certificado** (CTA6,
+ * 2026-08-07). El prefijo numérico de un `client_id` de Google **es el número de proyecto**: la app
+ * pedía el login con un Web del proyecto de **Composio** (prestado) mientras el client Android vivía
+ * en `890375505063` (`copiloto-emprendedor`) desde el 3 de agosto. Google exige
+ * que los dos estén en el MISMO proyecto: *"Android clients and Web clients (server client ID) must
+ * be in the same project"*. Nada que ver con la huella de firma — cuando se intentó registrar el
+ * SHA-1, Google contestó que **ya estaba en uso**, o sea que el certificado del APK ya era el bueno.
+ *
+ * ⚠️ **Este docstring afirmaba antes que el SHA-1 "coincide EXACTO con el registrado", verificado
+ * contra el build `d8110bf9`. Ese no es el build instalado**, así que la frase daba por probado algo
+ * que nadie había medido sobre el binario real. La verificación que vale queda atada a su build en el
+ * `cierre_` de CTA6, no acá: un docstring que fecha mal una verificación es peor que no tenerla
+ * ([[el-contrato-afirma-el-mecanismo-que-no-opero]]).
+ *
+ * Y el drift que lo mantuvo vivo: `memoria/copiloto-google-signin-nativo-credential-manager.md` daba
+ * este fix por hecho el 2026-08-05 — pero `git log -L21,21` muestra que la constante **nació** con el
+ * client de Composio y no cambió nunca. El E2E de ese día pasó en verde porque en ese momento el
+ * Android registrado y el Web pertenecían al mismo proyecto prestado: el instrumento no falló,
+ * respondía otra pregunta.
  */
-const WEB_CLIENT_ID = '1027844636112-rr810q0l4ifi9mr7kqn870s178qh06d6.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '890375505063-a2tim63uf5advkp19atf6seqat9ogjbj.apps.googleusercontent.com';
 
 /** Se lee en cada llamada (no una constante top-level) -- testeable, mismo motivo que `oauth.ts` de la web. */
 function authBase(): string {

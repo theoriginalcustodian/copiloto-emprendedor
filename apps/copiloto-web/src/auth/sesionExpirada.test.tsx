@@ -18,6 +18,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { marcarSesionViva } from '@copiloto/core';
+
 import { ApiError, apiClient } from '../lib/api/client';
 import { LoginScreen } from './LoginScreen';
 import { getRefreshToken, setRefreshToken } from './session';
@@ -45,6 +47,10 @@ describe('CTA5 — una sesión que se cae sola termina en el login, en castellan
     window.localStorage.clear();
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    // 🔴 El candado de "una muerte, un aviso" es estado de MÓDULO. Sin rearmarlo acá, el primer test
+    // que dispara una muerte deja mudos a los siguientes — y los controles negativos («no avisa»)
+    // pasarían por el candado, no por el discriminador que dicen medir. Verde sin significado.
+    marcarSesionViva();
   });
 
   afterEach(() => {

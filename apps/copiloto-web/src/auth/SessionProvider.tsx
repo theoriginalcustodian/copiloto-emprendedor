@@ -1,4 +1,4 @@
-import { alExpirarSesion, MENSAJE_SESION_EXPIRADA } from '@copiloto/core';
+import { alExpirarSesion, marcarSesionViva, MENSAJE_SESION_EXPIRADA } from '@copiloto/core';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
@@ -37,6 +37,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const meResponse = await api.me();
       setMe(meResponse);
       setStatus('authed');
+      // Sesión viva confirmada ⇒ rearmar el aviso, o la SEGUNDA muerte saldría muda (CTA5). Va acá y
+      // no en `login` porque los tres caminos de entrada —email, el callback OAuth y el probe del
+      // arranque— pasan por esta función: un solo punto, en vez de tres que se desincronizan.
+      marcarSesionViva();
       return 'ok';
     } catch (err) {
       if (err instanceof ForbiddenError) {
@@ -115,7 +119,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: 'red' };
       }
 
-      const outcome = await fetchMe();
+      const outcome = await fetchMe(); // rearma el aviso al confirmar sesión viva (ver `fetchMe`)
       if (outcome === 'ok') return { ok: true };
       if (outcome === 'forbidden') return { ok: false, error: 'no-habilitada' };
       return { ok: false, error: 'red' };

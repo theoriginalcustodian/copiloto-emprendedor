@@ -42,7 +42,12 @@ export { mockApi };
 // necesitara tres PR en vez de uno. Mientras exista, el gemelo tiene que poder avisar sobre el MISMO
 // registro de suscriptores — si no, la web tendría su propio `Set` y el aviso del core no le llegaría
 // nunca. Un solo registro es lo que evita que las dos plataformas diverjan.
-export { alExpirarSesion, notificarSesionExpirada, MENSAJE_SESION_EXPIRADA } from './sesion';
+export {
+  alExpirarSesion,
+  notificarSesionExpirada,
+  marcarSesionViva,
+  MENSAJE_SESION_EXPIRADA,
+} from './sesion';
 
 // Inyección de plataforma (HttpPort/AlmacenTokens) — ver `config.ts`.
 export { configurarApi, config } from './config';

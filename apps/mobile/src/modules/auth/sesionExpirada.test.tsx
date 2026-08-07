@@ -11,8 +11,9 @@ import { act, render, renderHook, screen, waitFor } from '@testing-library/react
  *
  * **Qué cubre cada test, para que el reparto no quede implícito:** el eslabón «un 401 que mata la
  * sesión dispara el aviso» es del cliente HTTP del core y está probado en
- * `packages/core/src/api/sesion.test.ts` (5 tests, con los dos controles negativos: el 401 del login
- * —`auth:false`— y un 403 NO avisan). Lo que ningún test cubría hasta acá es lo de abajo: que el
+ * `packages/core/src/api/sesion.test.ts` (8 tests: los dos controles negativos —el 401 del login
+ * `auth:false` y un 403 NO avisan— más la tormenta de 401 concurrentes, que tiene que producir **un
+ * solo** aviso). Lo que ningún test cubría hasta acá es lo de abajo: que el
  * `SessionProvider` de mobile reaccione a ese aviso y que la pantalla lo muestre. Por eso estos tests
  * disparan `notificarSesionExpirada()` REAL —no un mock— sobre el registro REAL del core.
  *
@@ -31,7 +32,12 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
   isSuccessResponse: (r: { type: string }) => r.type === 'success',
 }));
 
-import { apiReal as api, MENSAJE_SESION_EXPIRADA, notificarSesionExpirada } from '@copiloto/core';
+import {
+  apiReal as api,
+  marcarSesionViva,
+  MENSAJE_SESION_EXPIRADA,
+  notificarSesionExpirada,
+} from '@copiloto/core';
 
 import { almacenTokens } from '../../adapters/almacen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -62,6 +68,10 @@ async function montar() {
 describe('CTA5 mobile — la sesión que se cae sola avisa en castellano', () => {
   beforeEach(async () => {
     await almacenTokens.limpiar();
+    // 🔴 El candado de «una muerte, un aviso» es estado de MÓDULO: sin rearmarlo, el primer test que
+    // dispara deja mudos a los siguientes y los controles pasarían por el candado, no por lo que dicen
+    // medir.
+    marcarSesionViva();
     jest.mocked(api.login).mockReset();
     jest.mocked(api.me).mockReset();
   });
