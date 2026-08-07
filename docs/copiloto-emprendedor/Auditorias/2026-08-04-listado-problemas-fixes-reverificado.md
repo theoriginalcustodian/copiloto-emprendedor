@@ -90,7 +90,7 @@
 
 ## Decisiones del operador (RESUELTAS 2026-08-04)
 
-1. **C4.1 — `/auth/signup`** → ✅ **Dos puertas:** (a) **Google OAuth self-service abierto** (ya vive en `/auth/oauth/ensure-tenant` con gate de provider); (b) **email/password gateado con invite-token de env (fail-closed)** — sin token, rechaza. Ambas bajo el rate-limit #229. *Punto de atención (no bloqueante): Google abierto deja el vector de costo-por-abuso parcialmente vivo (cuenta Google gratis → chat → COGS), mitigado por rate-limit + fricción de Google; palancas futuras si aparece abuso: allow-list de dominios, cuota de mensajes free por tenant nuevo, verificación extra.*
+1. **C4.1 — `/auth/signup`** → ✅ **Dos puertas, AMBAS con allow-list:** (a) **Google OAuth** con **allow-list de emails del lado de la app** en `/auth/oauth/ensure-tenant` (comparar el email del token Google contra lista de env; fuera de la lista → rechaza). **NO usar "Test users" de Google Console** — verificado contra doc oficial (2026-08-06): modo Testing expira los refresh tokens a **7 días** (rompe la sesión durable) y topa en 100 users; la allow-list app-side lo evita y deja la app en Production. (b) **email/password gateado con invite-token de env (fail-closed)**. Ambas bajo el rate-limit #229. Mismo mecanismo conceptual (lista de autorizados en env) para las dos puertas.
 2. **C1 — pool** → ✅ **Las dos cosas.** PgBouncer delante de Postgres (destraba el techo de conexiones, cero código) **+** pool en código tras `conn_factory` (fix de raíz app-side; requiere normalizar antes ~5 conexiones bare).
 3. **C5 — vínculo** → ✅ **Alternativa liviana.** Extender el test-canario a los 2 sitios de `trabajo_store.py`. NO se escala la FK (se difiere; el riesgo real es menor de lo estimado). Sin tocar la tabla productiva.
 
