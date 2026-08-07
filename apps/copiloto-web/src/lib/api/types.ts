@@ -53,6 +53,22 @@ export interface MeResponse {
   email?: string | null;
   mp_connected: boolean;
   composio_connected: string[];
+  /** ¿Este usuario ve la Consola de operador? Sale del MISMO predicado que el guard real
+   *  (`apps/copiloto/auth.py:171` `es_admin`, que `require_admin` también llama) — a propósito: dos
+   *  lecturas del claim divergen en silencio el día que el claim se mueva.
+   *
+   *  **Esto NO es control de acceso.** `require_admin` sigue siendo el único guard; acá sólo se
+   *  decide si se muestra la puerta. Un usuario que forzara `es_admin` en el cliente vería la
+   *  pantalla pedir datos y recibir 403 de todos modos.
+   *
+   *  Obligatorio, no opcional: `es_admin?: boolean` dejaría que un fixture desactualizado se
+   *  compilara como "sin definir" y la ausencia se leería igual que `false`, tapando el día que el
+   *  backend deje de mandarlo. Sin el campo, no compila. Va SÓLO acá y no en `packages/core`: la
+   *  consola es de la web, y ese paquete lo comparte mobile (contrato `es_admin en /me`, 2026-08-07).
+   *
+   *  El backend lo manda en las dos ramas de `/me` — con `require_claims` sale del token, sin él es
+   *  `False` fail-closed (`apps/copiloto/web.py:766` y `:778`). */
+  es_admin: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 
+import { useSession } from '../auth/useSession';
 import { BottomSheet, Toast } from '../design-system';
+import { AdminScreen } from '../modules/admin';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
@@ -56,6 +58,10 @@ export interface AppShellProps {
 
 export function AppShell({ initialTab }: AppShellProps = {}) {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? DEFAULT_TAB);
+  // Ver el mismo comentario en `DesktopShell.tsx`: la condición se deriva UNA vez y alimenta la
+  // entrada de la barra y el montaje de la pantalla, que tienen que coincidir.
+  const { me } = useSession();
+  const esAdmin = me?.es_admin === true;
   // Show/hide del chrome (tab-bar + composer al borde): lo disparan el hide-on-scroll del chat (dedo
   // apoyado) y el tap en el área de chat (toggle). SIN auto-ocultado por inactividad — escondía la
   // barra sola y forzaba un doble-tap para abrir Apps (ver useChromeAutoHide). `hidden` baja a la
@@ -170,9 +176,12 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
             onConfigurar={() => changeTab('ajustes')}
           />
         )}
+        {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que
+            `activeTab` quedó en 'admin' y el claim ya no está. */}
+        {activeTab === 'admin' && esAdmin && <AdminScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </div>
-      <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} />
+      <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} esAdmin={esAdmin} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
       </BottomSheet>

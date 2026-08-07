@@ -17,11 +17,15 @@ export type TabKey =
   | 'recientes'
   | 'ajustes'
   | 'facturacion'
+  | 'admin'
   | 'account';
 
 export interface TabDefinition {
   key: TabKey;
   label: string;
+  /** El tab sólo existe para un operador (`me.es_admin`). **Ergonomía, no control de acceso**: el
+   *  guard real es `require_admin` en el backend. Ver `tabsVisibles`. */
+  soloAdmin?: boolean;
 }
 
 /**
@@ -33,11 +37,17 @@ export interface TabDefinition {
  * `connections`, `recientes` y `account` salieron de este array — sus pantallas siguen existiendo
  * y son alcanzables por otro camino (`apps`/`account` vía `TILES_AJUSTES` en Ajustes, `recientes`
  * vía "ver recientes" de Escritorio), así que sus valores de `TabKey` NO se tocan, sólo se retiran
- * de la barra visible. `ajustes` **no** salió pese a estar en el pedido original: el reemplazo
- * ("se entra por el ícono del usuario") no existe en el shell mobile — `ChatHeader` (que tendría
- * el avatar) está deliberadamente sin montar ahí desde 2026-07-04 (ver AppShell.tsx) — y el único
- * otro camino (Facturación → "Configurar") es un atajo incidental, no una puerta real. Mismo
- * criterio que el contrato pide para este caso: si el reemplazo no existe, el tab se queda.
+ * de la barra visible.
+ *
+ * **`ajustes` salió el 2026-08-07**, completando aquel pedido. Antes se había quedado porque su
+ * reemplazo no existía; ahora hay DOS puertas verificadas, una por shell — el tile "Ajustes" del
+ * escritorio (`EscritorioScreen.tsx:57`, alcanzable en el teléfono porque `escritorio` sigue en
+ * este array) y el bloque de usuario del rail, que dejó de ser un `<div>` muerto en el PR 299. El
+ * criterio no cambió: el tab sale cuando el reemplazo existe, no cuando se pide.
+ * (El número de PR va escrito sin almohadilla a propósito: `shellNoHexLiterals.test.ts` toma
+ * almohadilla + 3 dígitos hex como un color literal, y un PR de 3 cifras la dispara.)
+ *
+ * `admin` (la Consola de operador) es el único con `soloAdmin` — ver `tabsVisibles`.
  *
  * `gastos`, `clientes`, `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia`,
  * `midia`, `escritorio` y `facturacion` sumados en M-WEB (2026-08-04), orden de llegada. Reordenados
@@ -56,12 +66,29 @@ export const TABS: readonly TabDefinition[] = [
   { key: 'clientes', label: 'Clientes' },
   { key: 'inteligencia', label: 'Inteligencia' },
   { key: 'escritorio', label: 'Funciones' },
-  { key: 'ajustes', label: 'Ajustes' },
+  { key: 'admin', label: 'Consola', soloAdmin: true },
 ];
+
+/**
+ * Los tabs que este usuario ve. **Única** implementación del filtro — Rail (escritorio) y TabBar
+ * (teléfono) la comparten para que la puerta no pueda aparecer en un shell y no en el otro.
+ *
+ * Fail-closed por defecto: `esAdmin` es `false` salvo prueba en contrario, así que un shell que se
+ * olvidara de pasarlo esconde la consola en vez de mostrarla. El tab **no se renderiza** (no es un
+ * `display:none`): sin el claim, la palabra "Consola" no existe en el DOM.
+ *
+ * Y lo que esto NO es: control de acceso. El guard real es `require_admin` del backend, con su test
+ * adversarial propio. Esconder la entrada es ergonomía — que nadie lea este filtro como la defensa.
+ */
+export function tabsVisibles(esAdmin: boolean): readonly TabDefinition[] {
+  return TABS.filter((tab) => !tab.soloAdmin || esAdmin);
+}
 
 export interface TabBarProps {
   active: TabKey;
   onChange: (key: TabKey) => void;
+  /** ¿Mostrar los tabs `soloAdmin`? Lo baja el shell desde `me.es_admin`. Default `false`. */
+  esAdmin?: boolean;
   /** `true` oculta la barra (translateY) — hide-on-scroll del chat (EXTRACT §2.3). Default `false`. */
   hidden?: boolean;
 }
@@ -75,11 +102,11 @@ export interface TabBarProps {
  * (`translateY`), reaparece al subir. `AppShell` calcula `hidden` desde el scroll del chat y lo
  * baja acá + al composer (shift en espejo).
  */
-export function TabBar({ active, onChange, hidden = false }: TabBarProps) {
+export function TabBar({ active, onChange, hidden = false, esAdmin = false }: TabBarProps) {
   const navClasses = ['tab-bar', hidden ? 'tab-bar--hidden' : ''].filter(Boolean).join(' ');
   return (
     <nav className={navClasses} data-testid="tab-bar" aria-label="Navegación principal">
-      {TABS.map((tab) => {
+      {tabsVisibles(esAdmin).map((tab) => {
         const isActive = tab.key === active;
         const classes = ['tab-bar__item', isActive ? 'tab-bar__item--active' : '']
           .filter(Boolean)

@@ -51,23 +51,33 @@ describe('DesktopShell', () => {
     expect(screen.getByTestId('rail-user')).toBeInTheDocument();
   });
 
+  // `ajustes` salió de `TABS` el 2026-08-07: en escritorio la puerta es el bloque de usuario del
+  // rail (`rail-user`, PR 299), no un ítem de la lista. Estos tests navegan por esa puerta real --
+  // si alguien la vuelve a romper, se ponen rojos acá y no recién en producción.
+  it('ESCRITORIO: Ajustes es alcanzable sin ítem propio -- el bloque de usuario del rail lo abre', () => {
+    renderDesktopShell();
+    expect(screen.queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('rail-user'));
+    expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
+  });
+
   it('navegar a Ajustes > Apps conectadas monta ConnectionsScreen (camino real post-depuración)', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('rail-user'));
     fireEvent.click(screen.getByTestId('ajuste-tile-apps'));
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 
   it('navegar a Ajustes > Mi cuenta monta AccountScreen (camino real post-depuración)', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('rail-user'));
     fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
   it('volver a Chat desde otro tab remonta ChatScreen', () => {
     renderDesktopShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByTestId('rail-user'));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
   });

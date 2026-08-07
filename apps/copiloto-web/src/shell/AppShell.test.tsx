@@ -58,39 +58,47 @@ describe('AppShell', () => {
     expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
   });
 
-  it('MOBILE GATE: Ajustes sigue en la barra -- el reemplazo por "ícono del usuario" no existe en mobile (ChatHeader sin montar)', () => {
-    // Contrato depuración-barra 2026-08-06, control positivo: si esto alguna vez deja de fallar
-    // (porque alguien monta ChatHeader o agrega otro camino a Ajustes en mobile), recién ahí
-    // `ajustes` puede salir de `TABS` sin dejar la pantalla inalcanzable en el teléfono.
+  // Reemplaza al "MOBILE GATE" que exigía `ajustes` en la barra (contrato depuración-barra
+  // 2026-08-06). Aquel gate pedía un reemplazo y sólo contemplaba uno: montar `ChatHeader`. El
+  // camino que SÍ existe es otro -- Funciones (que sigue en la barra) → tile Ajustes -- y este test
+  // lo EJERCITA en vez de afirmarlo. Mientras pase, `ajustes` puede estar fuera de `TABS` sin dejar
+  // la pantalla inalcanzable en el teléfono; si alguien rompe el wireo (`FUNCION_A_TAB.ajustes`) o
+  // saca el tile, esto se pone rojo y la decisión se revisa.
+  it('MOBILE: Ajustes es alcanzable sin tab propio -- Funciones > tile Ajustes abre la pantalla', () => {
     renderAppShell();
-    expect(screen.getByRole('button', { name: 'Ajustes' })).toBeInTheDocument();
-    expect(screen.queryByTestId('chat-header')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('tile-ajustes'));
+    expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
   });
 
   it('navegar a Ajustes > Apps conectadas muestra ConnectionsScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('tile-ajustes'));
     fireEvent.click(screen.getByTestId('ajuste-tile-apps'));
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 
   it('navegar a Ajustes > Mi cuenta muestra AccountScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('tile-ajustes'));
     fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
   it('volver a Chat desde otro tab remonta ChatScreen', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
   });
 
   it('el botón atrás desde otro tab vuelve a Chat en vez de salir', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('tile-ajustes'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
 
     act(() => {

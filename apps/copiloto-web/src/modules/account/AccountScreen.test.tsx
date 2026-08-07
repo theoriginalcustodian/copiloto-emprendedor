@@ -56,6 +56,7 @@ describe('AccountScreen', () => {
       cliente_id: 'cliente-123',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderAccountScreen();
@@ -72,6 +73,7 @@ describe('AccountScreen', () => {
       email: 'emprendedor@ejemplo.com',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderAccountScreen();
@@ -125,6 +127,7 @@ describe('AccountScreen', () => {
       email: 'emprendedor@ejemplo.com',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderAccountScreen();
@@ -142,6 +145,7 @@ describe('AccountScreen', () => {
       cliente_id: 'cliente-123',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderAccountScreen();
@@ -159,6 +163,7 @@ describe('AccountScreen', () => {
       cliente_id: 'cliente-123',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderAccountScreen();
