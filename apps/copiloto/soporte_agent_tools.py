@@ -82,6 +82,13 @@ def _run_consultar_kb(arguments: dict, idem_key: str, rag_client_factory: Callab
         obs["refusal_reason"] = r.refusal_reason
     else:
         obs["reason"] = r.reason
+    # I1: el propio RAG ya mide esto -- se agrega SÓLO si vino (getattr tolerante: los fakes de test no
+    # necesitan declararlo), nunca pisa el shape mínimo que ya esperan los tests existentes.
+    rc, lat = getattr(r, "retrieved_count", None), getattr(r, "latency_ms", None)
+    if rc is not None:
+        obs["retrieved_count"] = rc
+    if lat is not None:
+        obs["latency_ms"] = lat
     return ToolResult(tool_call_id=idem_key, is_write=False, status="ok", observation=obs)
 
 

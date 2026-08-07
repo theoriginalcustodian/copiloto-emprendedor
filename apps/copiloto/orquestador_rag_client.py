@@ -31,8 +31,14 @@ _READ_TIMEOUT_S = 20.0  # el RAG puede tardar (retrieval + rerank + gates); más
 class RagRespuesta:
     outcome: str                    # answered | refused | unavailable
     answer: str | None = None       # sólo si outcome == answered
-    refusal_reason: str | None = None   # sólo si outcome == refused
+    refusal_reason: str | None = None   # sólo si outcome == refused (el contrato NO fija un enum
+    #                                     cerrado -- verificado contra el servicio real 2026-08-07:
+    #                                     "insufficient_context" no estaba en el ejemplo original)
     reason: str | None = None       # sólo si outcome == unavailable
+    # I1 (observabilidad) -- el servicio los da GRATIS en cada respuesta 200; no vale la pena volver a
+    # medir latencia del lado del agente cuando el propio RAG ya la reporta.
+    retrieved_count: int | None = None
+    latency_ms: int | None = None
 
 
 class OrquestadorRagClient:
@@ -92,10 +98,13 @@ class OrquestadorRagClient:
 
         data = resp.json()
         outcome = data.get("outcome")
+        rc, lat = data.get("retrieved_count"), data.get("latency_ms")
         if outcome == ANSWERED:
-            return RagRespuesta(outcome=ANSWERED, answer=data.get("answer"))
+            return RagRespuesta(outcome=ANSWERED, answer=data.get("answer"),
+                                retrieved_count=rc, latency_ms=lat)
         if outcome == REFUSED:
-            return RagRespuesta(outcome=REFUSED, refusal_reason=data.get("refusal_reason"))
+            return RagRespuesta(outcome=REFUSED, refusal_reason=data.get("refusal_reason"),
+                                retrieved_count=rc, latency_ms=lat)
         # outcome ausente o desconocido con HTTP 200 -- el contrato sólo define estos dos para 200.
         return RagRespuesta(outcome=UNAVAILABLE, reason=f"outcome_inesperado:{outcome!r}")
 
