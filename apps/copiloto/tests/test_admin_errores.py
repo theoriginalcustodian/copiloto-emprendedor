@@ -78,6 +78,7 @@ def test_resumen_errores_agrupa_por_fingerprint_cross_tenant(conn_de_tenant, nue
     assert fila["dedupe_count"] == 2  # el representante es el tenant con más ocurrencias
     assert fila["workflow"] == "AfipFacturaWorkflow"
     assert fila["estado"] == "pendiente"
+    assert isinstance(fila["id"], int)  # CONS7b lo necesita para POST /admin/errores/{id}/reintentar
 
 
 @necesita_pg
@@ -97,6 +98,7 @@ def test_resumen_errores_NO_expone_contexto_completo_ni_sintoma_no_tecnico(conn_
     filas = resumen_errores(_factory_consola, estado="pendiente")
     fila = next(f for f in filas if f["fingerprint"] == fp)
     assert "contexto" not in fila
+    assert "origen_archivo" not in fila  # fracción interna usada para calcular motivo_prohibido, se descarta
     assert "sintoma_no_tecnico" not in fila
     assert secreto not in "".join(str(v) for v in fila.values())
 
@@ -148,6 +150,27 @@ def test_resumen_errores_filtra_por_estado(conn_de_tenant, nuevo_tenant):
 
     filas_resueltas = resumen_errores(_factory_consola, estado="resuelto")
     assert any(f["fingerprint"] == fp_resuelto for f in filas_resueltas)
+
+
+@necesita_pg
+@necesita_rol_consola
+def test_resumen_errores_trae_motivo_prohibido_permitido_y_prohibido_MISMA_CORRIDA(conn_de_tenant, nuevo_tenant):
+    """Pedido de frontend (CONS7b no se puede construir sin esto): `null` -> botón activo; con texto
+    -> deshabilitado y visible. Los dos casos en la MISMA corrida -- si sólo se prueba el prohibido,
+    un cálculo que siempre devuelve texto pasa igual (mismo criterio que CONS7b)."""
+    tenant = nuevo_tenant()
+    fp_permitido = f"test-fp-{uuid.uuid4().hex[:8]}"
+    fp_prohibido = f"test-fp-{uuid.uuid4().hex[:8]}"
+    store = TraumaStore(conn_de_tenant(tenant), tenant)
+    store.depositar(fingerprint=fp_permitido, workflow="w", error_type="E", costura="c")
+    store.depositar(fingerprint=fp_prohibido, workflow="w", error_type="E",
+                    costura="mp_credential_store")
+
+    filas = resumen_errores(_factory_consola, estado="pendiente")
+    fila_permitida = next(f for f in filas if f["fingerprint"] == fp_permitido)
+    fila_prohibida = next(f for f in filas if f["fingerprint"] == fp_prohibido)
+    assert fila_permitida["motivo_prohibido"] is None
+    assert fila_prohibida["motivo_prohibido"] == "mp_credential_store"
 
 
 @necesita_pg
