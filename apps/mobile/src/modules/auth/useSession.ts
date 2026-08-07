@@ -32,6 +32,12 @@ export interface UseSessionResult {
   estado: SessionStatus;
   /** Identidad del tenant (`GET /me`). `null` mientras no hay sesión validada. */
   me: MeResponse | null;
+  /**
+   * Por qué la sesión terminó, cuando terminó sola (CTA5). `undefined` en todos los demás casos.
+   * Gemelo exacto del campo del provider web — ver su docstring para por qué es dato y no un
+   * `SessionStatus` nuevo.
+   */
+  avisoSesion?: string;
   login: (email: string, password: string) => Promise<LoginResult>;
   loginConGoogle: () => Promise<LoginResult>;
   logout: () => void;

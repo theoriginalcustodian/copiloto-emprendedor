@@ -1,3 +1,5 @@
+import { notificarSesionExpirada } from '@copiloto/core';
+
 import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from '../../auth/session';
 
 /** Vacío = mismo-origen (la SPA se sirve desde el dominio del backend); ver vite-env.d.ts. */
@@ -164,7 +166,15 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     // la sesión — incluido el 401 por header ausente, que de paso se llevaba el refresh token que
     // podía salvarla. Ahora sólo se limpia cuando una renovación con refresh guardado falló, que es
     // la única prueba de sesión muerta que tiene el cliente.
-    if (sesionMuerta) clearToken();
+    //
+    // El aviso (CTA5) va PEGADO al `clearToken()` y bajo la misma condición: el punto donde se
+    // destruye la sesión es el único que sabe con certeza que murió. Si el aviso viviera en la
+    // pantalla que atrapa el `UnauthorizedError`, cada pantalla tendría que acordarse — y la que se
+    // olvide deja al usuario deslogueado creyéndose adentro, que es exactamente el defecto de CTA5.
+    if (sesionMuerta) {
+      clearToken();
+      notificarSesionExpirada();
+    }
     throw new UnauthorizedError(detail);
   }
   if (res.status === 403) {
@@ -218,7 +228,12 @@ export async function postMultipart<T>(path: string, form: FormData): Promise<T>
   const detail = await readErrorDetail(res);
 
   if (res.status === 401) {
-    if (sesionMuerta) clearToken();
+    // Mismo par que en `request()` — si el aviso viviera sólo allá, un dictado sería el único camino
+    // de la app capaz de dejar la sesión muerta sin que nadie se entere.
+    if (sesionMuerta) {
+      clearToken();
+      notificarSesionExpirada();
+    }
     throw new UnauthorizedError(detail);
   }
   if (res.status === 403) {

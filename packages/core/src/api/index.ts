@@ -35,7 +35,14 @@ export { mockApi };
 
 // Aviso de sesión muerta (CTA5): la app se suscribe y lleva al login con un mensaje en castellano,
 // en vez de mostrar el `detail` crudo del backend en la pantalla donde el usuario estaba.
-export { alExpirarSesion } from './sesion';
+//
+// `notificarSesionExpirada` se exporta —aunque «lo llama sólo el core»— por un motivo medido, no por
+// comodidad: `copiloto-web` NO usa este cliente HTTP, usa una COPIA propia
+// (`apps/copiloto-web/src/lib/api/client.ts`). Esa duplicación es la que hizo que el fix de CTA7
+// necesitara tres PR en vez de uno. Mientras exista, el gemelo tiene que poder avisar sobre el MISMO
+// registro de suscriptores — si no, la web tendría su propio `Set` y el aviso del core no le llegaría
+// nunca. Un solo registro es lo que evita que las dos plataformas diverjan.
+export { alExpirarSesion, notificarSesionExpirada, MENSAJE_SESION_EXPIRADA } from './sesion';
 
 // Inyección de plataforma (HttpPort/AlmacenTokens) — ver `config.ts`.
 export { configurarApi, config } from './config';

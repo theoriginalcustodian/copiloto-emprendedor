@@ -42,7 +42,7 @@ const ALTO_BOTON = 54;
  */
 export function PantallaLogin() {
   const tema = useTema();
-  const { estado, login, loginConGoogle } = useSession();
+  const { estado, avisoSesion, login, loginConGoogle } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
@@ -228,6 +228,17 @@ export function PantallaLogin() {
             )}
           </Pressable>
 
+          {/* CTA5 — la sesión se cayó sola. Sólo mientras el formulario no tenga nada propio que
+              decir: en cuanto el usuario reintenta, lo que importa es el resultado de ESE intento.
+              `textoTenue` y no `peligro`: expirar es lo normal, no una falla del emprendedor. */}
+          {avisoSesion !== undefined && estadoEfectivo === 'idle' && (
+            <Text
+              testID="login-aviso-sesion"
+              style={[styles.alerta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}
+            >
+              {avisoSesion}
+            </Text>
+          )}
           {estadoEfectivo === 'error-credenciales' && (
             <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
               Email o contraseña incorrectos. Probá de nuevo.

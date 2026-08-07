@@ -24,6 +24,18 @@ export interface LoginResult {
 export interface UseSessionResult {
   status: SessionStatus;
   me?: MeResponse;
+  /**
+   * Por qué la sesión terminó, cuando terminó sola (CTA5). `undefined` en todos los demás casos —
+   * arranque limpio, logout a pedido, credenciales mal tipeadas.
+   *
+   * Es **dato, no estado**: el estado real de una sesión expirada ya es `'anon'`, y lo que cambia es
+   * el motivo, que sólo sirve para mostrarlo. Modelarlo como un `SessionStatus` nuevo obligaría a
+   * cada `switch` de los dos shells a aprender un quinto valor para terminar comportándose igual que
+   * con `'anon'` — más superficie tocada para expresar lo mismo. Decisión táctica de frontend,
+   * reversible: si algún día el motivo tiene que cambiar el COMPORTAMIENTO y no sólo el texto, ahí
+   * sí corresponde un status propio.
+   */
+  avisoSesion?: string;
   login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }

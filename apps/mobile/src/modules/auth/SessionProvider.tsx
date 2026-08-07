@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { apiReal as api, ForbiddenError, UnauthorizedError, type MeResponse } from '@copiloto/core';
+import {
+  alExpirarSesion,
+  apiReal as api,
+  ForbiddenError,
+  MENSAJE_SESION_EXPIRADA,
+  UnauthorizedError,
+  type MeResponse,
+} from '@copiloto/core';
 
 import { almacenTokens } from '../../adapters/almacen';
 import { iniciarLoginGoogle } from './oauth';
@@ -28,6 +35,7 @@ type ValidateOutcome = 'ok' | 'forbidden' | 'failed';
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<SessionStatus>('verificando');
   const [meData, setMeData] = useState<MeResponse | null>(null);
+  const [avisoSesion, setAvisoSesion] = useState<string | undefined>(undefined);
 
   // Valida el token actual contra el probe `GET /me` (mismo gate `require_tenant`: 401 token
   // inválido / 403 sin tenant) y, de paso, trae la identidad del tenant.
@@ -52,6 +60,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // CTA5 — el aviso de sesión muerta, idéntico al del provider web y sobre el MISMO registro del
+  // core. Acá es donde el defecto se vio: el operador tocó «Enviar» en Feedback con la sesión ya
+  // caducada y leyó `missing or malformed Authorization header` sin ningún camino de vuelta al login.
+  useEffect(
+    () =>
+      alExpirarSesion(() => {
+        setMeData(null);
+        setEstado('anon');
+        setAvisoSesion(MENSAJE_SESION_EXPIRADA);
+      }),
+    [],
+  );
+
   useEffect(() => {
     let vivo = true;
     void (async () => {
@@ -73,6 +94,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<LoginResult> => {
+      // El aviso habla de la sesión anterior; el intento nuevo tiene su propio resultado que mostrar.
+      setAvisoSesion(undefined);
       try {
         const response = await api.login(email, password);
         await almacenTokens.guardarToken(response.access_token);
@@ -91,6 +114,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const loginConGoogle = useCallback(async (): Promise<LoginResult> => {
+    setAvisoSesion(undefined);
     const resultado = await iniciarLoginGoogle();
     if (!resultado.ok) {
       // 'sin-configurar' (build sin EXPO_PUBLIC_API_BASE) es un error de red real de cara al usuario;
@@ -125,8 +149,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void almacenTokens.limpiar();
     setMeData(null);
     setEstado('anon');
+    // Salir a propósito no es que se te haya caído la sesión.
+    setAvisoSesion(undefined);
   }, []);
 
-  const value: UseSessionResult = { estado, me: meData, login, loginConGoogle, logout };
+  const value: UseSessionResult = {
+    estado,
+    me: meData,
+    avisoSesion,
+    login,
+    loginConGoogle,
+    logout,
+  };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -37,3 +37,35 @@ existe para prevenir, ahora en su variante más filosa: el `-- .` toca TODO, y e
 3. **Cambios de memoria: commitealos pronto.** Un puntero de `MEMORY.md` sin commit es exactamente el
    working-tree-only que se pierde. `memoria/` es trackeado — un `git add memoria/... && commit` cierra
    la ventana. No lo dejes colgando entre ciclos de monitor.
+
+## La variante que muerde sin que nadie escriba `checkout`: el script que RESTAURA (2026-08-07)
+
+Un **control diferencial** es un script que rompe el fix a propósito, corre el test esperando rojo, y
+después restaura. Escribí el restaurador así:
+
+```bash
+restaurar() { git -C "$WT" checkout -- "<los dos archivos del fix>"; }
+trap restaurar EXIT
+```
+
+Se comió el fix entero. El control **sí** dio su veredicto (rojo en los dos eslabones), y al terminar
+`trap` "restauró" los archivos… **a `HEAD`** — o sea, a la versión SIN el fix, porque el trabajo
+todavía no estaba commiteado. Hubo que reescribir los dos archivos de cero.
+
+**Por qué se cuela.** Nadie tipeó un comando destructivo: se tipeó un comando de **restauración**, y
+la palabra tapa lo que hace. `git checkout -- <path>` restaura *desde git*, así que es correcto
+exactamente cuando el estado bueno **ya está en git** — y un control diferencial corre, por
+definición, **antes del commit**, que es el único momento en que no lo está. La herramienta es la
+correcta para el 90 % de la vida de un archivo y la equivocada justo en la ventana donde se usa.
+Peor: como el script **funcionó** (imprimió los rojos esperados), el resultado se lee como éxito.
+
+**How to apply:** un script de rollback snapshotea al **disco**, no a git —
+`SNAP=$(mktemp -d); cp "$F" "$SNAP/"; trap 'cp "$SNAP/$(basename $F)" "$F"' EXIT` — y termina
+**imprimiendo el contador de verificación** (`grep -c` de la línea del fix, con el número esperado al
+lado). Sin esa última línea no sabés si restauró: un archivo vacío y un archivo restaurado se ven
+igual desde el prompt. Vale para cualquier script que "deshaga" algo, no sólo para tests.
+
+Hermana en el mismo script y del mismo día: una **reversión que no matchea** (mi `perl` multilínea
+contra un comentario con acentos) imprime el mismo verde que un fix que funciona — por eso cada lever
+verifica con `grep -c` **antes** de creerle al test. Es [[instrumento-que-no-mira-nunca-falla]]
+aplicado al instrumento que mide al instrumento.
