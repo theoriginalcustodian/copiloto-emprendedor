@@ -2,12 +2,18 @@ import { useState } from 'react';
 
 import { useSession } from '../auth/useSession';
 import { NAV_ICONS } from './navIcons';
-import { TABS, type TabKey } from './TabBar';
+import { tabsVisibles, type TabKey } from './TabBar';
 import './desktop.css';
 
 export interface RailProps {
   active: TabKey;
   onChange: (key: TabKey) => void;
+  /** ¿Mostrar los tabs `soloAdmin` (la Consola)? Lo baja `DesktopShell` desde `me.es_admin`.
+   *  Default `false` — fail-closed. Se recibe por prop y no se lee de `useSession()` acá aunque el
+   *  componente ya lo tenga a mano: el shell calcula la condición UNA vez y la usa para las dos
+   *  cosas que tienen que coincidir (mostrar la entrada / montar la pantalla). Derivarla dos veces
+   *  es exactamente cómo se desincronizan. */
+  esAdmin?: boolean;
 }
 
 /** Mismo helper que `accountLabel`/`initial` de AccountScreen.tsx (no exportados de ahí) — el
@@ -35,7 +41,7 @@ function initial(clienteId: string | undefined): string {
  * Data-driven del MISMO registro `TABS` que `TabBar.tsx` (mobile) — sumar/quitar un tab es editar
  * un solo array, ambos shells lo reflejan sin tocar este componente.
  */
-export function Rail({ active, onChange }: RailProps) {
+export function Rail({ active, onChange, esAdmin = false }: RailProps) {
   const [railOpen, setRailOpen] = useState(false);
   const { me } = useSession();
 
@@ -52,7 +58,7 @@ export function Rail({ active, onChange }: RailProps) {
         onPointerLeave={() => setRailOpen(false)}
       >
         <div className="rail__items">
-          {TABS.map((tab) => {
+          {tabsVisibles(esAdmin).map((tab) => {
             const isActive = tab.key === active;
             return (
               <button

@@ -243,6 +243,23 @@ export function FacturacionIcon(): ReactNode {
   );
 }
 
+/**
+ * Consola de operador -- monitor con pulso (acento). Como `AppsIcon`/`EscritorioIcon`, NO sale del
+ * set de 21: es un ícono de navegación a una herramienta interna, no de una función del negocio del
+ * emprendedor. Mismo trazo 1.7 y misma regla de acento que el resto: la señal es `var(--core)`, sin
+ * hex propio.
+ */
+export function AdminIcon(): ReactNode {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="4.5" width="18" height="12" rx="1.6" {...strokeProps} />
+      <path d="M9 20h6" {...strokeProps} />
+      <path d="M12 16.5V20" {...strokeProps} />
+      <path d="M6.5 11.2h2.2l1.6-2.6 2 5 1.5-2.4h3.7" {...acentoProps} />
+    </svg>
+  );
+}
+
 /** Map declarativo key→ícono, alineado con el registro `TABS` de `TabBar` (data-driven). */
 export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   chat: ChatIcon,
@@ -260,5 +277,6 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   recientes: RecientesIcon,
   ajustes: AjustesIcon,
   facturacion: FacturacionIcon,
+  admin: AdminIcon,
   account: AccountIcon,
 };

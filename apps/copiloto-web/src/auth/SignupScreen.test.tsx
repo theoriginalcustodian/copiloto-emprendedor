@@ -76,6 +76,7 @@ describe('SignupScreen', () => {
       cliente_id: 'c-nuevo',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     const { onSignupExitoso } = renderSignupScreen();

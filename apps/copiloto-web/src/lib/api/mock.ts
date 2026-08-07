@@ -70,6 +70,9 @@ export const mockApi: CopilotApi = {
       cliente_id: 'mock-cliente-1',
       mp_connected: false,
       composio_connected: ['gmail', 'googlecalendar'],
+      // El emprendedor del mock NO es operador: el modo demo muestra la app que ve un usuario real,
+      // no la consola interna. Para ver la Consola en desarrollo se cambia acá a mano.
+      es_admin: false,
     };
   },
 

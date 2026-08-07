@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 
+import { useSession } from '../auth/useSession';
 import { Toast } from '../design-system';
+import { AdminScreen } from '../modules/admin';
 import { ChatScreen } from '../modules/chat';
 import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
@@ -48,6 +50,12 @@ export interface DesktopShellProps {
 
 export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? DEFAULT_TAB);
+  // La condición de la Consola se deriva UNA vez acá y alimenta las dos cosas que tienen que
+  // coincidir: la entrada en el Rail y el montaje de la pantalla. `=== true` y no un truthy: si el
+  // backend dejara de mandar el campo, `undefined` cae en `false` (fail-closed) en vez de propagar
+  // un `undefined` que cualquier `&&` de abajo leería como "no", pero un `!` leería como "sí".
+  const { me } = useSession();
+  const esAdmin = me?.es_admin === true;
   const [appsModalOpen, setAppsModalOpen] = useState(false);
   // `AppsModal` queda SIEMPRE montado (necesario para animar el cierre) — sin este gate,
   // `AppsScreen` (y su `useConnections()`/fetch a `/catalog`) montaría en cada carga del shell
@@ -83,7 +91,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
 
   return (
     <div className="desktop-shell" data-shell="desktop" data-testid="desktop-shell">
-      <Rail active={activeTab} onChange={handleTabChange} />
+      <Rail active={activeTab} onChange={handleTabChange} esAdmin={esAdmin} />
       <main className="desktop-shell__content" data-testid="desktop-shell-content">
         {activeTab === 'chat' && <ChatScreen variant="desktop" />}
         {activeTab === 'connections' && <ConnectionsScreen />}
@@ -125,6 +133,10 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             onConfigurar={() => setActiveTab('ajustes')}
           />
         )}
+        {/* El `&& esAdmin` no es redundante con esconder el tab: si el claim se pierde (logout y
+            login como otro, refresh del token) `activeTab` puede seguir valiendo 'admin' de antes.
+            Sin este gate la pantalla quedaría montada pidiendo `/admin/*` y mostrando 403s. */}
+        {activeTab === 'admin' && esAdmin && <AdminScreen />}
         {activeTab === 'account' && <AccountScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>

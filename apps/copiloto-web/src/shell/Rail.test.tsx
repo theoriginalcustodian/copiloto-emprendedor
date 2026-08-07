@@ -5,22 +5,27 @@ import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { Rail } from './Rail';
-import { TABS, type TabKey } from './TabBar';
+import { TABS, tabsVisibles, type TabKey } from './TabBar';
 
-function renderRail(active: (typeof TABS)[number]['key'] = 'chat', onChange = vi.fn()) {
+function renderRail(
+  active: (typeof TABS)[number]['key'] = 'chat',
+  onChange = vi.fn(),
+  esAdmin?: boolean,
+) {
   return {
     onChange,
     ...render(
       <ThemeProvider>
         <SessionProvider>
-          <Rail active={active} onChange={onChange} />
+          <Rail active={active} onChange={onChange} esAdmin={esAdmin} />
         </SessionProvider>
       </ThemeProvider>,
     ),
   };
 }
 
-// Mismo guard que TabBar.test.tsx (2026-08-06): keys exactas, no cantidad.
+// Mismo guard que TabBar.test.tsx: keys exactas, no cantidad. Es el registro COMPLETO -- `admin`
+// es `soloAdmin`, y lo que un usuario ve de verdad se testea abajo con `tabsVisibles`.
 const KEYS_ESPERADAS: readonly TabKey[] = [
   'chat',
   'midia',
@@ -33,7 +38,7 @@ const KEYS_ESPERADAS: readonly TabKey[] = [
   'clientes',
   'inteligencia',
   'escritorio',
-  'ajustes',
+  'admin',
 ];
 
 describe('Rail', () => {
@@ -46,9 +51,9 @@ describe('Rail', () => {
     expect(TABS.map((t) => t.key)).toEqual(KEYS_ESPERADAS);
   });
 
-  it('renderiza un botón por cada tab del registro', () => {
+  it('renderiza un botón por cada tab visible del registro', () => {
     renderRail();
-    for (const tab of TABS) {
+    for (const tab of tabsVisibles(false)) {
       expect(screen.getByRole('button', { name: tab.label })).toBeInTheDocument();
     }
   });
@@ -61,8 +66,8 @@ describe('Rail', () => {
 
   it('click en un ítem dispara onChange con su key', () => {
     const { onChange } = renderRail();
-    fireEvent.click(screen.getByRole('button', { name: 'Ajustes' }));
-    expect(onChange).toHaveBeenCalledWith('ajustes');
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    expect(onChange).toHaveBeenCalledWith('escritorio');
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
@@ -115,5 +120,28 @@ describe('Rail', () => {
     document.documentElement.setAttribute('data-theme', theme);
     renderRail();
     expect(screen.getByTestId('rail')).toBeInTheDocument();
+  });
+});
+
+// El mismo par de casos que TabBar.test.tsx, a propósito: el filtro es compartido, pero que los DOS
+// shells lo apliquen no se deduce de que la función exista -- un shell que se olvidara de pasar el
+// prop mostraría la Consola a cualquiera, y el test del otro shell seguiría verde.
+describe('Rail -- la Consola sólo existe para un operador', () => {
+  it('sin el claim, el rail no muestra "Consola"', () => {
+    renderRail('chat', vi.fn(), false);
+    expect(screen.queryByRole('button', { name: 'Consola' })).not.toBeInTheDocument();
+  });
+
+  it('el default es fail-closed: sin pasar `esAdmin` tampoco aparece', () => {
+    renderRail();
+    expect(screen.queryByRole('button', { name: 'Consola' })).not.toBeInTheDocument();
+  });
+
+  it('control positivo: con el claim, el botón está y navega a la consola', () => {
+    const { onChange } = renderRail('chat', vi.fn(), true);
+    const boton = screen.getByRole('button', { name: 'Consola' });
+    expect(boton).toBeInTheDocument();
+    fireEvent.click(boton);
+    expect(onChange).toHaveBeenCalledWith('admin');
   });
 });

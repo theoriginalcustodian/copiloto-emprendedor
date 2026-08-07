@@ -63,6 +63,7 @@ describe('LoginScreen', () => {
       cliente_id: 'c1',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
 
     renderLoginScreen();
