@@ -40,23 +40,33 @@ revela dos botones:
 
 ## Qué detecta el Copiloto automáticamente
 
-Estas son las situaciones que hacen aparecer una tarjeta sola, sin que vos hagas nada:
+Estas son las situaciones que hacen aparecer una tarjeta sola, sin que vos hagas nada.
+
+### Plata que está esperando respuesta o cobro
 
 - **Un presupuesto que se enfría:** pasaron más de 30 días sin que el cliente responda.
 - **Facturas impagas viejas:** comprobantes vencidos hace bastante tiempo y que todavía nadie te
   pagó.
+- **Un comprobante próximo a vencer:** cuando el código de autorización de una factura (CAE) está por
+  vencer en las próximas dos semanas.
+
+### Trabajos y gastos que se salen de lo normal
+
 - **Un trabajo con pérdida:** cuando lo que gastaste en un trabajo superó lo que cobraste por él. Esta
   alerta aparece una sola vez, porque es un hecho ya cerrado, no algo que cambie con el tiempo.
 - **Un trabajo con gastos pero sin ningún ingreso:** cuando pasaron más de 15 días desde el último
   movimiento de ese trabajo y todavía no le registraste ningún cobro.
 - **Un mes con gastos muy por encima de lo normal:** cuando gastaste bastante más (un 50% o más) que
   el mes anterior.
-- **Un comprobante próximo a vencer:** cuando el código de autorización de una factura (CAE) está por
-  vencer en las próximas dos semanas.
-- **Tu certificado de AFIP por vencer:** este es el aviso más importante de todos, porque si el
-  certificado vence, se te cae la facturación entera de golpe. Por eso el Copiloto te avisa con hasta
-  30 días de anticipación, y también te avisa si el certificado ya venció o si por algún motivo no se
-  puede leer correctamente — nunca se queda callado ante un problema con este certificado.
+
+### Tu certificado de AFIP por vencer
+
+Este es el aviso más importante de todos, porque si el certificado vence, se te cae la facturación
+entera de golpe. Por eso el Copiloto te avisa con hasta 30 días de anticipación, y también te avisa
+si el certificado ya venció o si por algún motivo no se puede leer correctamente — nunca se queda
+callado ante un problema con este certificado.
+
+### Cuándo desaparece una tarjeta automática
 
 Una tarjeta generada automáticamente **desaparece sola** cuando el motivo que la generó deja de
 existir (por ejemplo, si cobrás la factura vencida, esa tarjeta se cierra sin que tengas que borrarla

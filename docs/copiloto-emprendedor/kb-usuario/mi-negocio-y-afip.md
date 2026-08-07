@@ -61,7 +61,9 @@ Una vez que tenés el perfil fiscal cargado, el siguiente paso es vincular tu cu
 
 La app es explícita sobre tu clave fiscal: **no la guarda**. Al lado del campo vas a ver la aclaración: *"Tu clave fiscal no se guarda. Se usa una sola vez para vincular tu cuenta con ARCA y se descarta."* Es literal — la clave se usa un instante para hacer el trámite ante AFIP y después se elimina; el Copiloto no la conserva en ningún lado, ni siquiera para volver a mostrártela.
 
-Mientras se procesa la vinculación vas a ver mensajes que se van actualizando: primero "Iniciando la vinculación con ARCA…", después "Dando de alta tu cuenta en el portal de ARCA. Esto puede tardar varios minutos." y por último "Verificando que el alta se haya completado…". Es normal que tarde — puede llevar varios minutos porque el trámite se hace contra AFIP en tiempo real. Si pasan más de 10 minutos sin resolverse, la app te avisa que está tardando más de lo normal y te da la opción de reintentar.
+#### Mientras se procesa la vinculación
+
+Vas a ver mensajes que se van actualizando: primero "Iniciando la vinculación con ARCA…", después "Dando de alta tu cuenta en el portal de ARCA. Esto puede tardar varios minutos." y por último "Verificando que el alta se haya completado…". Es normal que tarde — puede llevar varios minutos porque el trámite se hace contra AFIP en tiempo real. Si pasan más de 10 minutos sin resolverse, la app te avisa que está tardando más de lo normal y te da la opción de reintentar.
 
 Si ya tenías tu cuenta vinculada y un reintento posterior falla, no te preocupes: tu vinculación anterior sigue funcionando — el aviso te lo aclara para que no pienses que perdiste el acceso.
 
@@ -82,25 +84,32 @@ También podés activar un interruptor para que el Copiloto guarde automáticame
 
 ## Errores y confusiones frecuentes
 
-**"Falta cargar tus datos fiscales en Ajustes antes de poder facturar."**
+### "Falta cargar tus datos fiscales en Ajustes antes de poder facturar."
+
 Este mensaje aparece si intentás facturar sin haber completado el perfil fiscal (Paso 1). Andá a Ajustes → Facturación AFIP y completá los campos que falten.
 
-**El CUIT no se puede editar.**
+### El CUIT no se puede editar.
+
 Es a propósito: una vez guardado, el CUIT queda bloqueado para evitar errores en tus facturas ya emitidas. Si necesitás cambiarlo, hay un botón específico para eso — no es un campo de texto libre que se pueda tocar sin querer.
 
-**No sé si estoy en Homologación o en Producción.**
+### No sé si estoy en Homologación o en Producción.
+
 Fijate en Facturación AFIP, en la sección de ambientes: el que dice "Activo" es el que se está usando en este momento para facturar. Si tenés dudas antes de emitir una factura real, el botón de emisión en la pantalla de Facturación también te lo aclara — dice explícitamente "Emitir factura real" cuando estás en Producción.
 
-**Cargué mal mi usuario o clave fiscal y la vinculación falló.**
+### Cargué mal mi usuario o clave fiscal y la vinculación falló.
+
 Podés reintentar el Paso 2 las veces que necesites — no hay límite. Cada intento vuelve a pedirte la clave fiscal (porque, como se explicó arriba, nunca queda guardada).
 
-**La vinculación se cortó a mitad de camino y no sé si quedó a medias.**
+### La vinculación se cortó a mitad de camino y no sé si quedó a medias.
+
 No queda a medias. El Copiloto genera tu certificado con AFIP en un solo trámite automático; si algo se corta en el medio, el sistema lo detecta y te lo hace saber con un mensaje claro en vez de dejarte en un estado ambiguo. Si ya tenías una cuenta funcionando y un reintento posterior falla, tu vinculación anterior sigue activa — no se pierde por un intento fallido de actualizarla.
 
-**¿Por qué me pide usuario y clave fiscal si yo ya tengo Clave Fiscal en la web de AFIP?**
+### ¿Por qué me pide usuario y clave fiscal si yo ya tengo Clave Fiscal en la web de AFIP?
+
 Es el mismo usuario y clave que usás para entrar al portal de AFIP/ARCA por tu cuenta. El Copiloto los necesita una única vez para hacer el trámite de vinculación en tu nombre — no crea una cuenta nueva ni un usuario distinto del que ya tenés con AFIP.
 
-**Mi certificado con AFIP venció, ¿qué hago?**
+### Mi certificado con AFIP venció, ¿qué hago?
+
 El Copiloto te avisa de forma proactiva antes de que llegue a vencer: cuando falta menos de un mes, te llega un aviso —desde "Mi día"— diciéndote que tu certificado vence pronto y que conviene renovarlo antes de esa fecha para no quedarte sin poder facturar. Si ya venció, el aviso te lo dice igual de directo: mientras no lo renueves, no vas a poder facturar. Para renovarlo, repetís el trámite de vinculación del Paso 2 con tu usuario y clave fiscal de ARCA.
 
 ## Preguntas frecuentes

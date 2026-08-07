@@ -83,37 +83,67 @@ Si notás que siempre presupuestás cosas parecidas —los mismos servicios, los
 
 ## Errores y confusiones frecuentes
 
-**"Quiero editar un presupuesto viejo y no encuentro cómo"** — Los presupuestos no se editan: se corrigen creando una versión nueva. Buscá la opción de corregir desde el detalle; el original va a quedar en tu historial.
+### "Quiero editar un presupuesto viejo y no encuentro cómo"
 
-**"Toqué Facturar y no pasó nada visible"** — Sí pasó algo: se armó el borrador de la factura y te llevó a la pantalla de revisión. Ahí tenés que confirmar para que se emita de verdad — nada se emite automáticamente al tocar "Facturar" desde el presupuesto.
+Los presupuestos no se editan: se corrigen creando una versión nueva. Buscá la opción de corregir desde el detalle; el original va a quedar en tu historial.
 
-**"Me dice que el presupuesto está desestimado y no puedo facturarlo"** — Un presupuesto que marcaste como "no me lo tomaron" no se puede facturar directamente. Si el cliente cambió de opinión, hacé un presupuesto nuevo.
+### "Toqué Facturar y no pasó nada visible"
 
-**"Me dice que falta el CUIT antes de facturar"** — Necesitás cargar tus datos fiscales en Ajustes → Facturación AFIP antes de poder convertir cualquier presupuesto en factura.
+Sí pasó algo: se armó el borrador de la factura y te llevó a la pantalla de revisión. Ahí tenés que confirmar para que se emita de verdad — nada se emite automáticamente al tocar "Facturar" desde el presupuesto.
 
-**"No tengo botón para compartir el presupuesto"** — Puede ser que todavía no conectaste Google Docs desde Apps. El presupuesto existe y funciona igual, pero el documento para compartir se genera solo cuando esa app está conectada.
+### "Me dice que el presupuesto está desestimado y no puedo facturarlo"
 
-**"Volví a tocar Facturar y sigue en el mismo borrador de antes"** — Es esperado: si ya habías empezado a facturar ese presupuesto y no confirmaste, el Copiloto te lleva de nuevo a ese mismo borrador en lugar de duplicarlo.
+Un presupuesto que marcaste como "no me lo tomaron" no se puede facturar directamente. Si el cliente cambió de opinión, hacé un presupuesto nuevo.
 
-**"Hice un presupuesto por chat y los montos de los ítems no me cierran"** — Cuando el Copiloto arma un presupuesto por voz, siempre te lo muestra en una tarjeta editable antes de guardarlo, línea por línea, justamente porque el monto es lo que más fácil se transcribe mal al dictarlo. Revisalo ahí antes de confirmar.
+### "Me dice que falta el CUIT antes de facturar"
 
-**"El cliente me aprobó el presupuesto mucho después, ¿lo tengo que buscar en algún lado especial?"** — No, sigue estando en tu lista de Presupuestos en estado "Pendiente" hasta que vos lo marques o lo factures; no hay un tiempo límite que lo cambie de estado solo.
+Necesitás cargar tus datos fiscales en Ajustes → Facturación AFIP antes de poder convertir cualquier presupuesto en factura.
+
+### "No tengo botón para compartir el presupuesto"
+
+Puede ser que todavía no conectaste Google Docs desde Apps. El presupuesto existe y funciona igual, pero el documento para compartir se genera solo cuando esa app está conectada.
+
+### "Volví a tocar Facturar y sigue en el mismo borrador de antes"
+
+Es esperado: si ya habías empezado a facturar ese presupuesto y no confirmaste, el Copiloto te lleva de nuevo a ese mismo borrador en lugar de duplicarlo.
+
+### "Hice un presupuesto por chat y los montos de los ítems no me cierran"
+
+Cuando el Copiloto arma un presupuesto por voz, siempre te lo muestra en una tarjeta editable antes de guardarlo, línea por línea, justamente porque el monto es lo que más fácil se transcribe mal al dictarlo. Revisalo ahí antes de confirmar.
+
+### "El cliente me aprobó el presupuesto mucho después, ¿lo tengo que buscar en algún lado especial?"
+
+No, sigue estando en tu lista de Presupuestos en estado "Pendiente" hasta que vos lo marques o lo factures; no hay un tiempo límite que lo cambie de estado solo.
 
 ## Preguntas frecuentes
 
-**¿Un presupuesto tiene algún valor fiscal?** No, ninguno. Es un documento comercial entre vos y tu cliente; el único paso que genera un comprobante ante AFIP es facturarlo.
+### ¿Un presupuesto tiene algún valor fiscal?
 
-**¿Puedo hacer un presupuesto sin saber el documento del cliente?** Sí, el tipo de documento puede quedar como "Sin identificar" — no es un dato obligatorio para crear el presupuesto, solo para facturarlo si en algún momento se requiere identificar al cliente.
+No, ninguno. Es un documento comercial entre vos y tu cliente; el único paso que genera un comprobante ante AFIP es facturarlo.
 
-**¿Qué pasa con los presupuestos que corregí, quedan guardados en algún lado?** Sí, las versiones anteriores no se borran: quedan en tu historial, aunque el listado activo solo te muestre la versión vigente para no confundirte con cuál es la última.
+### ¿Puedo hacer un presupuesto sin saber el documento del cliente?
 
-**¿Puedo tener varios presupuestos pendientes para el mismo cliente al mismo tiempo?** Sí, no hay límite. Cada presupuesto es independiente, aunque compartan el mismo nombre de cliente.
+Sí, el tipo de documento puede quedar como "Sin identificar" — no es un dato obligatorio para crear el presupuesto, solo para facturarlo si en algún momento se requiere identificar al cliente.
 
-**¿El presupuesto reserva stock o compromete algo automáticamente?** No, es solo una cotización. No mueve ítems de ningún inventario ni genera ninguna obligación hasta que decidas facturarlo.
+### ¿Qué pasa con los presupuestos que corregí, quedan guardados en algún lado?
 
-**¿Puedo usar el catálogo de conceptos guardados en cualquier presupuesto?** Sí, los chips de conceptos frecuentes que cargaste en Ajustes están disponibles para agregar con un toque en cualquier presupuesto nuevo que hagas, para no tener que volver a tipear los mismos ítems de siempre.
+Sí, las versiones anteriores no se borran: quedan en tu historial, aunque el listado activo solo te muestre la versión vigente para no confundirte con cuál es la última.
 
-**¿Qué pasa si el cliente pide cambios después de que le mandé el presupuesto?** Corregí el presupuesto —lo que crea una versión nueva, como vimos— y volvé a compartir el documento actualizado. El cliente va a recibir el link con los datos corregidos.
+### ¿Puedo tener varios presupuestos pendientes para el mismo cliente al mismo tiempo?
+
+Sí, no hay límite. Cada presupuesto es independiente, aunque compartan el mismo nombre de cliente.
+
+### ¿El presupuesto reserva stock o compromete algo automáticamente?
+
+No, es solo una cotización. No mueve ítems de ningún inventario ni genera ninguna obligación hasta que decidas facturarlo.
+
+### ¿Puedo usar el catálogo de conceptos guardados en cualquier presupuesto?
+
+Sí, los chips de conceptos frecuentes que cargaste en Ajustes están disponibles para agregar con un toque en cualquier presupuesto nuevo que hagas, para no tener que volver a tipear los mismos ítems de siempre.
+
+### ¿Qué pasa si el cliente pide cambios después de que le mandé el presupuesto?
+
+Corregí el presupuesto —lo que crea una versión nueva, como vimos— y volvé a compartir el documento actualizado. El cliente va a recibir el link con los datos corregidos.
 
 ## Cómo saber en qué estado está cada presupuesto de un vistazo
 

@@ -78,23 +78,41 @@ Puede parecer una limitación incómoda al principio, pero tiene una razón conc
 
 ## Errores y confusiones frecuentes
 
-**"No me deja guardar el gasto"** — Revisá que hayas puesto un monto mayor a cero; es el único dato realmente obligatorio.
+### "No me deja guardar el gasto"
 
-**"Me equivoqué al cargar un gasto y no encuentro cómo corregirlo"** — Los gastos ya guardados no se pueden editar ni borrar. Si necesitás corregir algo, revisá bien la tarjeta antes de confirmarla la próxima vez —esa es la única instancia donde se puede ajustar.
+Revisá que hayas puesto un monto mayor a cero; es el único dato realmente obligatorio.
 
-**"Le saqué una foto al ticket pero el monto salió en blanco"** — Es el comportamiento esperado: el monto leído de la foto nunca se carga solo, aparece como sugerencia aparte para que la confirmes tocándola. Si el ticket estaba borroso o el número no se lee bien, puede que directamente no haya sugerencia y tengas que cargarlo a mano.
+### "Me equivoqué al cargar un gasto y no encuentro cómo corregirlo"
 
-**"La categoría no coincide con lo que esperaba"** — Solo existen ocho categorías fijas. Si tu gasto no encaja claramente en ninguna, va a quedar (o lo podés dejar vos) en "Otros".
+Los gastos ya guardados no se pueden editar ni borrar. Si necesitás corregir algo, revisá bien la tarjeta antes de confirmarla la próxima vez —esa es la única instancia donde se puede ajustar.
 
-**"¿Puedo asignar un gasto viejo a un trabajo?"** — Sí, esa es la única acción que se puede hacer sobre un gasto después de guardado: asignarlo a un trabajo para calcular su margen. Sus datos (monto, categoría, etc.) no se pueden tocar.
+### "Le saqué una foto al ticket pero el monto salió en blanco"
 
-**"El porcentaje del resumen mensual no suma exactamente 100%"** — Puede pasar por redondeo cuando hay varias categorías con montos chicos; no es un error de cálculo, es una diferencia mínima de presentación.
+Es el comportamiento esperado: el monto leído de la foto nunca se carga solo, aparece como sugerencia aparte para que la confirmes tocándola. Si el ticket estaba borroso o el número no se lee bien, puede que directamente no haya sugerencia y tengas que cargarlo a mano.
 
-**"Le dicté un gasto por chat y no aparece en mi lista todavía"** — Fijate si te quedó pendiente la tarjeta de confirmación: hasta que no la revisás y tocás "Guardar", el gasto no está anotado de verdad.
+### "La categoría no coincide con lo que esperaba"
 
-**"Saqué la foto de un ticket arrugado o borroso"** — El Copiloto va a intentar leerlo igual, pero si no logra identificar el monto con claridad, es posible que no te muestre ninguna sugerencia tocable. En ese caso, cargá el monto vos mismo a mano, mirando el ticket.
+Solo existen ocho categorías fijas. Si tu gasto no encaja claramente en ninguna, va a quedar (o lo podés dejar vos) en "Otros".
 
-**"¿Por qué el medio de pago nunca se completa solo con la foto?"** — Porque una foto de ticket no incluye esa información —no hay forma de que el Copiloto la infiera de la imagen—, así que ese campo siempre queda para que lo completes vos si te interesa dejarlo registrado.
+### "¿Puedo asignar un gasto viejo a un trabajo?"
+
+Sí, esa es la única acción que se puede hacer sobre un gasto después de guardado: asignarlo a un trabajo para calcular su margen. Sus datos (monto, categoría, etc.) no se pueden tocar.
+
+### "El porcentaje del resumen mensual no suma exactamente 100%"
+
+Puede pasar por redondeo cuando hay varias categorías con montos chicos; no es un error de cálculo, es una diferencia mínima de presentación.
+
+### "Le dicté un gasto por chat y no aparece en mi lista todavía"
+
+Fijate si te quedó pendiente la tarjeta de confirmación: hasta que no la revisás y tocás "Guardar", el gasto no está anotado de verdad.
+
+### "Saqué la foto de un ticket arrugado o borroso"
+
+El Copiloto va a intentar leerlo igual, pero si no logra identificar el monto con claridad, es posible que no te muestre ninguna sugerencia tocable. En ese caso, cargá el monto vos mismo a mano, mirando el ticket.
+
+### "¿Por qué el medio de pago nunca se completa solo con la foto?"
+
+Porque una foto de ticket no incluye esa información —no hay forma de que el Copiloto la infiera de la imagen—, así que ese campo siempre queda para que lo completes vos si te interesa dejarlo registrado.
 
 ## Preguntas frecuentes
 

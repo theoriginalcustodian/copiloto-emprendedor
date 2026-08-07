@@ -113,5 +113,31 @@ if [ "$TOTAL_HALLAZGOS" -gt 0 ]; then
   exit 1
 fi
 
-echo "${VERDE}✓ corpus apto para ingest.${FIN} Siguiente paso del DoD: A5 — spike de retrieval ANTES del ingest masivo."
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Segundo eje: TRUNCADO al chunkear — otro gate, sobre el mismo corpus
+# ─────────────────────────────────────────────────────────────────────────────
+# 2026-08-07: este script dijo «corpus apto para ingest» con 0 hallazgos, y fusion encontró que
+# 8 de 17 documentos PERDÍAN contenido al ingestar (6.563 chars) porque secciones acumulativas
+# —«Preguntas frecuentes», «Errores frecuentes»— pasan el cap de 1800 del chunker.
+#
+# Los tres ejes de arriba (headers, PII, marcadores) estaban impecables. El truncado es OTRO eje,
+# y el gate no lo miraba: afirmaba más de lo que medía. Un instrumento que no mira un eje no falla
+# en ese eje — CONFIRMA. Por eso el veredicto final ahora exige los dos.
+VALIDADOR="$(dirname "$0")/validar_chunking_kb.py"
+if [ ! -f "$VALIDADOR" ]; then
+  echo "${ROJO}✗ falta $VALIDADOR${FIN} — sin el eje de truncado este gate NO puede declarar el corpus apto."
+  echo "  (Ese es justamente el fallo del 2026-08-07: declarar 'apto' midiendo sólo tres ejes.)"
+  exit 1
+fi
+
+echo
+echo "── Segundo eje: truncado al chunkear ──"
+if ! python "$VALIDADOR" "$CORPUS"; then
+  echo "${ROJO}✗ el corpus pierde contenido al ingestar.${FIN} Partí las secciones largas antes del ingest."
+  exit 1
+fi
+
+echo
+echo "${VERDE}✓ corpus apto para ingest — los DOS ejes en verde${FIN} (forma + truncado)."
+echo "  Siguiente paso del DoD: A5 — spike de retrieval ANTES del ingest masivo."
 exit 0

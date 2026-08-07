@@ -42,6 +42,41 @@ condición y reportan verde, linters con un `exclude` que se comió el directori
 sobre un glob equivocado, gates de CI que pasan porque el job no corrió. El patrón es el mismo:
 **el filtro vacía la muestra, y el resultado vacío se pinta del color del éxito.**
 
+## 🆕 La variante que muerde a un gate BIEN hecho: el veredicto más ancho que la medición
+
+*Caso 2026-08-07, corpus de la KB.* Se escribió un gate para el corpus del RAG con todo lo que esta
+entrada pide: **canario horneado** (4 defectos sembrados, los cazaba 4/4), **denominador impreso**
+(«17 documentos auditados»), y el corpus vacío tratado como error y no como ausencia de hallazgos.
+Salida: `0 hallazgos` → **`✓ corpus apto para ingest`**.
+
+Fusion corrió su propio validador sobre el mismo corpus: **8 de 17 documentos perdían contenido al
+ingestar** — 6.563 caracteres, porque las secciones acumulativas («Preguntas frecuentes», «Errores
+frecuentes») cruzaban el tope de 1800 del chunker y **el final se truncaba en silencio**.
+
+**Los tres ejes que el gate medía estaban impecables.** No falló en nada de lo que miraba. El defecto
+está un nivel más arriba: **midió headers, PII y marcadores, y concluyó "apto para ingest"** — un
+veredicto que abarca *todos* los ejes que importan para ingestar, no los tres que sabía mirar.
+
+> **Un gate riguroso dentro de su eje puede emitir un veredicto que no le corresponde.** El canario y
+> el denominador protegen de medir mal; **no** protegen de concluir de más.
+
+**La pregunta que lo caza** (distinta de «¿sobre cuántos miró?»):
+
+> **¿Mi veredicto usa palabras más anchas que mis ejes?** «Apto para ingest» ⊃ «pasa los 3 chequeos
+> que escribí». Si la conclusión es más general que la medición, o se angosta la conclusión, o se
+> agregan los ejes que faltan.
+
+**El arreglo fue de raíz, y reutilizando:** el validador de chunking no se reimplementó — se
+incorporó al gate (`scripts/validar_chunking_kb.py`, invocado por `kb-corpus-check.sh`), y el gate
+**se niega a declarar el corpus apto si ese validador no está**, con su propio control probado
+(sacar el archivo ⇒ exit 1). El veredicto ahora nombra los dos ejes: *«los DOS ejes en verde (forma
++ truncado)»*.
+
+**Y el detalle que lo hacía indetectable desde adentro:** el truncado **no produce error**. El
+documento se ingesta, los chunks existen, el retrieval devuelve algo. Lo que falta son *las últimas
+preguntas de cada FAQ* — que en un corpus de soporte son las que se agregaron con el uso, o sea las
+más buscadas. Un fallo que se lleva justo lo más valioso sin levantar la mano.
+
 Relacionadas: [[vacio-no-es-hallazgo-correr-el-control]] (el vacío es una pregunta) ·
 [[el-pipe-se-come-el-exit-code]] (la otra forma de leer verde sin medir) ·
 [[bucle-canonico-dos-auditorias-y-el-enganche]] (§12, la ley de los instrumentos).

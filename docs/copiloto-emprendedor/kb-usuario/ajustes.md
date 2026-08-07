@@ -24,9 +24,13 @@ Desde acá conectás el Copiloto con las herramientas que ya usás en tu día a 
 
 Cada app conectada le da al Copiloto una capacidad concreta: por ejemplo, con Gmail puede mandar mails por vos, con Google Drive puede guardar tus facturas automáticamente, y con MercadoPago puede generarte links de cobro para mandarle a tus clientes desde el chat.
 
-**Para conectar una app**, la tocás y elegís **Conectar**: se abre el navegador del teléfono para que autorices el acceso con tu cuenta de esa app —es el mismo tipo de pantalla de autorización que verías si conectaras esa cuenta desde cualquier otra aplicación—. Cuando volvés al Copiloto, la pantalla se fija sola si la conexión se completó y actualiza el estado; no hace falta que la refresques a mano ni que confirmes nada más de tu lado.
+#### Cómo conectar una app
 
-**Para desconectar una app**, tocás **Desconectar** y, antes de confirmar, la app te muestra concretamente qué vas a dejar de poder hacer con el Copiloto a partir de ese momento —no un aviso genérico, sino la lista real de cosas que perdés—. Por ejemplo, si desconectás Google Drive y tenías activado el guardado automático de facturas, te avisa que esas facturas van a dejar de archivarse ahí; si desconectás MercadoPago, te avisa que vas a dejar de poder generar links de cobro desde el chat. Recién después de que confirmás, se desconecta de verdad.
+La tocás y elegís **Conectar**: se abre el navegador del teléfono para que autorices el acceso con tu cuenta de esa app —es el mismo tipo de pantalla de autorización que verías si conectaras esa cuenta desde cualquier otra aplicación—. Cuando volvés al Copiloto, la pantalla se fija sola si la conexión se completó y actualiza el estado; no hace falta que la refresques a mano ni que confirmes nada más de tu lado.
+
+#### Cómo desconectar una app
+
+Tocás **Desconectar** y, antes de confirmar, la app te muestra concretamente qué vas a dejar de poder hacer con el Copiloto a partir de ese momento —no un aviso genérico, sino la lista real de cosas que perdés—. Por ejemplo, si desconectás Google Drive y tenías activado el guardado automático de facturas, te avisa que esas facturas van a dejar de archivarse ahí; si desconectás MercadoPago, te avisa que vas a dejar de poder generar links de cobro desde el chat. Recién después de que confirmás, se desconecta de verdad.
 
 Si algo falla en el camino —no se pudo abrir el navegador, no se pudo pedir el link, o la app todavía no soporta conectar cierto servicio en este momento— vas a ver un aviso claro explicando qué pasó, nunca un estado ambiguo ni una conexión que "parece" hecha sin estarlo.
 
@@ -81,41 +85,47 @@ Volvé a la pantalla de Apps conectadas después de autorizar en el navegador; e
 
 ## Preguntas frecuentes
 
-**¿Dónde cargo el CUIT de mi negocio?**
+### ¿Dónde cargo el CUIT de mi negocio?
+
 En Ajustes → Facturación AFIP. Ver el documento **Mi negocio y tus datos fiscales AFIP** para el detalle completo.
 
-**¿Puedo usar varios estilos visuales a la vez, por ejemplo uno de día y otro de noche?**
+¿Por qué "Mi negocio" y "Facturación AFIP" son pantallas separadas si las dos hablan de mi negocio? Porque cumplen funciones distintas: "Mi negocio" es tu perfil comercial (qué vendés, cómo te gusta que te hablen) y no tiene efecto fiscal; "Facturación AFIP" son tus datos legales ante AFIP, necesarios para que una factura sea válida. Separarlas evita que confundas un dato opcional de presentación con uno obligatorio para poder facturar.
+
+### ¿Puedo usar varios estilos visuales a la vez, por ejemplo uno de día y otro de noche?
+
 No. Apariencia no cambia sola según la hora del día ni sigue el modo claro/oscuro del sistema
 operativo de tu teléfono: es siempre una elección manual tuya, y se queda fija en el estilo que
 elegiste hasta que vos la cambies.
 
-**¿Qué pasa si desconecto una app por error?**
+### ¿Qué pasa si desconecto una app por error?
+
 Podés volver a conectarla en cualquier momento repitiendo el mismo paso desde Apps conectadas — no perdés datos ya cargados en el Copiloto por desconectar una app, sólo dejás de tener esa integración activa hasta que la reconectes.
 
-**¿"Cómo hablarle" cambia si conecto o desconecto apps?**
+¿Qué pasa si toco "Conectar" y me arrepiento a mitad de camino, en el navegador? Podés cerrar el navegador sin autorizar nada. Al volver al Copiloto, la pantalla se va a fijar sola de que la conexión no se completó y va a seguir mostrando esa app como no conectada — no queda ningún estado a medias.
+
+### ¿"Cómo hablarle" cambia si conecto o desconecto apps?
+
 Sí, puede cambiar: los ejemplos que ves ahí reflejan las funciones que tu copiloto tiene disponibles en este momento, así que si conectás una app nueva es posible que aparezcan ejemplos relacionados con ella.
 
-**¿Puedo enviar feedback por voz en vez de escribirlo?**
+### ¿Puedo enviar feedback por voz en vez de escribirlo?
+
 Sí, la opción de Feedback dentro de Mi cuenta acepta tanto texto como voz, para que se lo cuentes al Copiloto de la forma que te resulte más cómoda.
 
-**¿Necesito conectar todas las apps para poder usar el Copiloto?**
+### ¿Necesito conectar todas las apps para poder usar el Copiloto?
+
 No. Ninguna de las conexiones de Apps conectadas es obligatoria para usar las funciones centrales del Copiloto, como facturar o cargar movimientos. Conectás sólo las que te sirven — por ejemplo, si no usás HubSpot, simplemente no la conectás y el resto de la app sigue funcionando igual.
 
-**¿Qué pasa si toco "Conectar" y me arrepiento a mitad de camino, en el navegador?**
-Podés cerrar el navegador sin autorizar nada. Al volver al Copiloto, la pantalla se va a fijar sola de que la conexión no se completó y va a seguir mostrando esa app como no conectada — no queda ningún estado a medias.
+### ¿Ajustes tiene alguna opción para borrar mi cuenta?
 
-**¿Por qué "Mi negocio" y "Facturación AFIP" son pantallas separadas si las dos hablan de mi negocio?**
-Porque cumplen funciones distintas: "Mi negocio" es tu perfil comercial (qué vendés, cómo te gusta que te hablen) y no tiene efecto fiscal; "Facturación AFIP" son tus datos legales ante AFIP, necesarios para que una factura sea válida. Separarlas evita que confundas un dato opcional de presentación con uno obligatorio para poder facturar.
-
-**¿Ajustes tiene alguna opción para borrar mi cuenta?**
 No, hoy no hay una función de baja o eliminación de cuenta dentro de la app. Si necesitás dar de baja
 tu cuenta, la vía es escribirle al equipo del Copiloto.
 
-**¿El orden de las opciones en Ajustes es siempre el mismo?**
+### ¿El orden de las opciones en Ajustes es siempre el mismo?
+
 Sí. Vas a encontrar siempre las mismas siete opciones en el mismo orden: Mi negocio, Facturación AFIP, Apps conectadas, Mi plan, Mi cuenta, Apariencia y Cómo hablarle. No cambia según lo que hayas configurado antes.
 
-**¿Tengo que completar todas las secciones de Ajustes antes de poder usar el Copiloto?**
-No. Sólo Facturación AFIP tiene datos obligatorios, y únicamente si querés emitir facturas —el resto de la app funciona sin que la hayas completado. Las demás secciones (Mi negocio, Apps conectadas, Apariencia, Cómo hablarle) son configuración que podés ir completando cuando quieras, a tu ritmo.
+¿Cómo vuelvo a la pantalla principal de la app desde Ajustes? Cada pantalla dentro de Ajustes tiene un botón para volver, y desde la grilla principal de Ajustes volvés al menú principal del Copiloto de la misma forma que entraste — no hay un camino distinto según qué sección hayas abierto.
 
-**¿Cómo vuelvo a la pantalla principal de la app desde Ajustes?**
-Cada pantalla dentro de Ajustes tiene un botón para volver, y desde la grilla principal de Ajustes volvés al menú principal del Copiloto de la misma forma que entraste — no hay un camino distinto según qué sección hayas abierto.
+### ¿Tengo que completar todas las secciones de Ajustes antes de poder usar el Copiloto?
+
+No. Sólo Facturación AFIP tiene datos obligatorios, y únicamente si querés emitir facturas —el resto de la app funciona sin que la hayas completado. Las demás secciones (Mi negocio, Apps conectadas, Apariencia, Cómo hablarle) son configuración que podés ir completando cuando quieras, a tu ritmo.
