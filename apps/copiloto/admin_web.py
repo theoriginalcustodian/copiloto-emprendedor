@@ -2,6 +2,8 @@
 mínimo del gate de autorización. CONS2 lo llena de contenido real (A1) y agrega A3. CONS3 agrega A5.
 CONS4 agrega A4. CONS7 agrega las 2 primeras acciones que MUTAN (7a suspender/reactivar, 7b
 reintentar trauma) -- 7c (cambiar tier) queda fuera de v1, sin sustrato (ver el contrato).
+`GET /admin/auditoria` (A6) expone `AuditoriaStore.listar()` (ya existía desde CONS1, sin ruta HTTP
+propia) -- desbloquea CONS6 (web), que la necesita junto con A5/A4 ya servidas.
 
 `temporal_client`/`consola_conn_factory` son `None` por default para no romper el composition root
 de ningún test que sólo ejercite el gate de `require_admin` (CONS0b) sin levantar Temporal/Postgres
@@ -63,6 +65,16 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
         if consola_conn_factory is None:
             raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
         return {"tickets": resumen_soporte(consola_conn_factory, limite=limite)}
+
+    @app.get("/admin/auditoria")
+    async def auditoria(cliente_id: str | None = None, admin_user_id: str | None = None,
+                        limite: int = 50, claims: dict = Depends(require_admin)) -> dict:
+        """A6. `AuditoriaStore.listar()` ya existe desde CONS1 -- este endpoint sólo la expone;
+        CONS6 (web) es quien la consume."""
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        return {"auditoria": AuditoriaStore(consola_conn_factory).listar(
+            cliente_id=cliente_id, admin_user_id=admin_user_id, limite=limite)}
 
     @app.post("/admin/tenants/{cliente_id}/estado")
     async def tenants_estado(cliente_id: str, body: _CambiarEstadoTenantBody,
