@@ -6,6 +6,9 @@
 >
 > **Antes de diseñar, leé §2.** Ahí está el supuesto que parecía obvio y resultó falso; si lo das por
 > bueno, todo lo que apoyes encima se cae.
+>
+> **Actualizado 2026-08-07 (+3 h): las 3 decisiones abiertas de §4 están CERRADAS.** El diseño que
+> sale de ellas está en **§8**. §4 queda como registro del razonamiento, no como pendiente.
 
 ---
 
@@ -138,6 +141,9 @@ Sin decidir. Depende de A: cuanto más acotado el agente, más barato reusar.
 Hoy no entra por ningún lado. Implica: una acción que muta en la consola + su fila en auditoría +
 que el hilo del usuario reciba el mensaje. Es la pieza más chica de las tres, pero **no es gratis**.
 
+> ✅ **Las tres están cerradas desde el 2026-08-07 (+3 h). El resultado, en §8.** Lo de arriba queda
+> como registro del razonamiento — no lo vuelvas a decidir.
+
 ## 5. Lo que NO hay que hacer (trampas ya identificadas)
 
 - ❌ **Portar `PantallaFeedback` a la web.** El operador decidió chat; portar el formulario de una
@@ -164,3 +170,107 @@ que el hilo del usuario reciba el mensaje. Es la pieza más chica de las tres, p
 - Trifecta del clasificador actual (BETA-4a): `docs/copiloto-emprendedor/Manejo de errores/08-TRIFECTA-agente-soporte-BETA4a.md`
 - Autosanación, a donde deriva el clasificador: `docs/copiloto-emprendedor/Manejo de errores/06-RUNBOOK-autosanacion.md`
 - Glosario del dominio (antes de nombrar entidades nuevas): `CONTEXT.md`
+
+---
+
+# 8. DECISIONES CERRADAS (2026-08-07) y el diseño que sale de ellas
+
+## 8.1 Lo que decidió el operador
+
+| # | Decisión | Textual / consecuencia |
+|---|---|---|
+| **A** | El agente se alimenta de **datos del sistema + base de conocimiento del producto** | Cubre las 3 categorías de consulta. La KB es el trabajo de contenido nuevo |
+| **A.bis** | Cuando no sabe: **lo dice, escala a soporte humano y entrega un IDENTIFICADOR DE TICKET** | «le da el número de operación, un identificador del ticket, y deriva a humano» |
+| **KB** | Vive como **RAG en fusion** (preferencia del operador) | Ver §8.4 — la plomería **no existe**, medido |
+
+**A.bis no es un matiz: cambia la arquitectura.** «Derivar» sería un flag; **un ticket con
+identificador es un objeto con estado, nombrable por el usuario y buscable por el operador.** Eso
+obliga a persistencia propia (§8.3), no a un campo más en `copiloto_feedback`.
+
+## 8.2 Lo que decidió planificación (táctico, criterio: reutilizar)
+
+**B — monta sobre el motor, con cerebro propio.** `ConversationWorkflow` está declarado capa
+PLANTILLA cosechable y el canal web ya resuelve `session_id = channel_ref` + long-poll de `/reply`:
+la durabilidad (el moat) sale gratis. Pero con **workflow, system prompt, toolset y `task_queue`
+propios** — si comparte el cerebro del copiloto, el «chat distinto» que pidió el operador es
+cosmético y hereda una superficie de herramientas que en soporte no se quiere.
+
+**C — la respuesta del operador entra por la consola**, sección Soporte, como **acción que muta** con
+su fila en `copiloto_auditoria`. Mismo patrón que `tenant.estado` y `trauma.reintento`; no se inventa
+un canal nuevo. Precondición ya satisfecha: CONS1.
+
+## 8.3 Persistencia — lo que hay que crear
+
+`copiloto_feedback` (4 columnas: `tipo · texto · contexto · created_at`) **no alcanza y no se
+extiende a la fuerza**: un hilo con autor, estado e identificador no es un feedback con campos extra.
+
+Dos tablas nuevas, con RLS por `cliente_id` como el resto:
+
+- **tickets** — `cliente_id`, **código legible** (el «número de operación» que ve el usuario),
+  `estado`, `created_at`, `updated_at`
+- **mensajes** — `ticket_id`, `autor` (`usuario` | `agente` | `operador`), `texto`, `created_at`
+
+El **código legible** es requisito del operador, no adorno: el usuario lo dicta por teléfono y el
+operador lo busca. Legible ⇒ no un UUID. Y **no** derivarlo de un contador global: continue-as-new
+reinicia números y dos tenants colisionan
+([[derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload]]).
+
+`copiloto_feedback` **no se toca ni se migra**: sigue siendo el buzón de una dirección que ya
+funciona, y la consola lo sigue leyendo. Lo nuevo convive.
+
+## 8.4 La base de conocimiento — MEDIDO, no supuesto
+
+El operador dijo *«tenemos RAG en el VPS para los agentes, pero hay que construir la base de
+conocimiento primero»*. **La segunda mitad es cierta; la primera no.** Verificado 2026-08-07:
+
+| Chequeo | Resultado |
+|---|---|
+| `pgvector` en fusion | ✅ instalado, `vector 0.8.0` |
+| Tablas con columna `vector` | ❌ **ninguna** |
+| Contenedor de vector store en el VPS | ❌ ninguno (`qdrant`/`chroma`/`weaviate`/`milvus`) |
+| Código de embeddings/RAG en el repo | ❌ **cero** (control positivo corrido: el mismo grep sí encuentra `graphity`) |
+
+**No falta el contenido: falta el pipeline entero** — schema + chunking + embeddings + búsqueda por
+similitud + evaluación. Cinco piezas, no una.
+
+### Recomendación de planificación (voltéala en una línea si no la compartís)
+
+**Contenido primero, RAG después.** Un producto como éste tiene 20-40 «cómo hago X»: eso entra en el
+prompt sin ninguna recuperación. El RAG se agrega **cuando el contenido no entre**, y recién ahí se
+puede evaluar bien — para medir si recupera el chunk correcto hacen falta los chunks. Diseñar la
+recuperación antes de tener qué recuperar es el orden inverso, y es sobreingeniería medible: 5 piezas
+construidas contra un corpus que no existe.
+
+Si el operador prefiere el RAG desde el día 0, se hace — pero **entonces el RAG es un hito propio con
+su DoD** (¿recupera el chunk correcto para N preguntas reales?), no un detalle del sprint de soporte.
+
+## 8.5 El flujo, punta a punta
+
+```
+usuario escribe en el chat de soporte (ventana discreta, dentro de la app)
+   └─> agente responde PRIMERO, con:
+         · traumas del propio tenant  (¿hay un error registrado suyo? workflow, fecha, estado)
+         · su actividad / datos de cuenta
+         · la base de conocimiento del producto
+   └─> ¿puede sostener la respuesta con esas fuentes?
+         SÍ  -> responde
+         NO  -> lo DICE + crea el ticket + entrega el CÓDIGO + escala a humano
+                   └─> el operador responde desde la consola (acción que muta -> auditoría)
+                         └─> el mensaje aparece en el hilo del usuario
+```
+
+**La regla dura del agente:** no improvisa. Una respuesta falsa en soporte es peor que ninguna,
+porque el usuario **actúa** sobre ella. El spike del 04-08 (§2.2) ya midió qué pasa cuando este
+sistema adivina: ruido, no señal.
+
+## 8.6 Primer paso al retomar — reemplaza a §6
+
+1. **Escribir la KB** — es el camino crítico y no depende de ninguna decisión técnica pendiente.
+   Empezar por las 10 preguntas que un emprendedor haría la primera semana.
+2. **Spike con quejas reales** (§6.2 sigue vigente): con la KB escrita y las fuentes de datos
+   enchufadas, probar contra las quejas que ya están en `copiloto_feedback` si la primera respuesta
+   es una que el operador firmaría. Si no, el diseño cambia **antes** de escribirse.
+3. Recién con eso: trifecta + contratos por capa.
+
+**Lo que NO bloquea a nada y se puede adelantar ya:** las dos tablas (§8.3) y el destrabe de `CTA3`
+(la entrada de soporte en la web) — su forma ya está decidida: es la ventana de chat.
