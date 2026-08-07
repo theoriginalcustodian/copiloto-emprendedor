@@ -166,6 +166,67 @@
    clientWidth` (o sea, cero recorte). La otra salida sería `table-layout: fixed`, pero eso cambia el
    reparto de TODAS las columnas y revierte el fix del PR 316.
    El texto completo queda en el `title` del `td`, para el hover. */
+/* CONS7a — el único formulario de la consola. Sin color literal: todo por tokens theme-aware. */
+.admin-tenant__form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-tenant__label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--label);
+  margin-bottom: 4px;
+}
+
+/* `--input-*`, no `--card-*`: son los tokens que el design-system define para campos, y existen en
+   los 3 temas. `--font-mono` vive en fonts.css (es el único font-token compartido con mobile) y va
+   acá porque lo que se tipea es un id, donde distinguir O de 0 importa. */
+.admin-tenant__input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--input-fg);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 26ch;
+}
+
+.admin-tenant__input:focus-visible {
+  outline: 2px solid var(--core);
+  outline-offset: 1px;
+}
+
+.admin-tenant__acciones {
+  display: flex;
+  gap: 8px;
+}
+
+/* El resultado y el error son texto VISIBLE, no un `title` ni un toast que se va: el contrato pide
+   que el motivo que manda el backend se pueda leer en el DOM (un tooltip no existe en touch y un
+   lector de pantalla no lo anuncia en el mismo flujo). */
+.admin-tenant__ok,
+.admin-tenant__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  margin: 0;
+}
+
+.admin-tenant__ok {
+  color: var(--text);
+}
+
+/* `--danger-fg` (existe en los 3 temas), no `--danger` (que NO existe: un `var(--danger, var(--text))`
+   compila igual y pinta el error del mismo color que el texto normal — el aviso se vuelve invisible
+   sin que nada falle). */
+.admin-tenant__error {
+  color: var(--danger-fg);
+}
+
 .admin-tabla__texto-recorte {
   display: block;
   max-width: 34ch;

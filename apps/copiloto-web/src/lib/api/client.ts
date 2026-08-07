@@ -79,6 +79,15 @@ async function readErrorDetail(res: Response): Promise<string | undefined> {
     if (data && typeof data === 'object' && 'detail' in data) {
       const detail = (data as { detail?: unknown }).detail;
       if (typeof detail === 'string') return detail;
+      // `detail` OBJETO: es la forma de `errores_web.conflicto()` —
+      // `{codigo, mensaje, ...extra}`. Su docstring dice que `mensaje` "sigue siendo el texto que
+      // el emprendedor puede leer: el código es para la app, no para la persona". Hasta el
+      // 2026-08-07 acá se caía al piso y la UI mostraba el texto genérico del status en su lugar,
+      // que no explica nada. Aditivo: sólo agrega un caso que antes devolvía `undefined`.
+      if (detail && typeof detail === 'object' && 'mensaje' in detail) {
+        const mensaje = (detail as { mensaje?: unknown }).mensaje;
+        if (typeof mensaje === 'string') return mensaje;
+      }
     }
   } catch {
     // body no-JSON o vacío — sin detail, se usa el mensaje genérico del status.

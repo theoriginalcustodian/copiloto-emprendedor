@@ -4,6 +4,7 @@ import { setToken } from '../../auth/session';
 import {
   AdminNoDisponibleError,
   adminAuditoria,
+  adminCambiarEstadoTenant,
   adminErrores,
   adminSalud,
   adminSoporte,
@@ -211,5 +212,88 @@ describe('api admin (CONS6 — A5 errores + A4 soporte + A6 auditoría)', () => 
       fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'no sos admin' }));
       await expect(llamar()).rejects.toBeInstanceOf(ForbiddenError);
     }
+  });
+});
+
+/** CONS7a — la única acción que MUTA. Acá se prueba el borde del wire; la UI, en AdminScreen. */
+describe('api admin (CONS7a — suspender / reactivar tenant)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('manda POST con el body {status} y devuelve el cambio', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(200, { cliente_id: 'c1', de: 'active', a: 'suspended' }),
+    );
+    await expect(adminCambiarEstadoTenant('c1', 'suspended')).resolves.toEqual({
+      cliente_id: 'c1',
+      de: 'active',
+      a: 'suspended',
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/admin/tenants/c1/estado');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({ status: 'suspended' });
+  });
+
+  it('escapa el cliente_id en la ruta', async () => {
+    // Un id con `/` partiría la ruta y pegaría a otro endpoint sin que nadie lo note.
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { cliente_id: 'a/b', de: 'active', a: 'active' }));
+    await adminCambiarEstadoTenant('a/b', 'active');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/admin/tenants/a%2Fb/estado');
+  });
+
+  it('un 404 llega con el detail del backend, NO como AdminNoDisponible', async () => {
+    // Una mutación no puede reportar "la consola no está montada" cuando el backend contestó que
+    // ese tenant no existe: mandaría a buscar el problema al lugar equivocado. Por eso esta función
+    // no pasa por `getAdmin`.
+    fetchMock.mockResolvedValueOnce(mockResponse(404, { detail: 'tenant no encontrado' }));
+    await expect(adminCambiarEstadoTenant('fantasma', 'suspended')).rejects.toMatchObject({
+      status: 404,
+      detail: 'tenant no encontrado',
+    });
+    await expect(adminCambiarEstadoTenant('fantasma', 'suspended')).rejects.not.toBeInstanceOf(
+      AdminNoDisponibleError,
+    );
+  });
+
+  it('un 422 conserva su detail (status inválido)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(422, { detail: "status debe ser uno de {'active', 'suspended'}, recibí 'x'" }),
+    );
+    await expect(adminCambiarEstadoTenant('c1', 'active')).rejects.toMatchObject({ status: 422 });
+  });
+
+  it('un 409 con `detail` OBJETO expone su `mensaje` — no el texto genérico del status', async () => {
+    // `errores_web.conflicto()` manda `{codigo, mensaje, ...}`. Hasta el 2026-08-07 `client.ts`
+    // sólo leía `detail` cuando era string y este mensaje se caía al piso, así que la UI mostraba
+    // "Conflicto" en vez del motivo real. Este test fija el arreglo.
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(409, {
+        detail: { codigo: 'TRAUMA_DOMINIO_PROHIBIDO', mensaje: 'dominio DIAGNOSTIC_ONLY: afip_gateway', dominio: 'afip_gateway' },
+      }),
+    );
+    await expect(adminCambiarEstadoTenant('c1', 'suspended')).rejects.toMatchObject({
+      status: 409,
+      detail: 'dominio DIAGNOSTIC_ONLY: afip_gateway',
+    });
+  });
+
+  it('un `detail` objeto SIN `mensaje` no inventa texto — cae al genérico', async () => {
+    // Control del anterior: si cualquier objeto devolviera algo, un `{detail: {}}` produciría
+    // `undefined`/"[object Object]" en la UI. Sin `mensaje` string, no hay detail.
+    fetchMock.mockResolvedValueOnce(mockResponse(409, { detail: { codigo: 'X' } }));
+    await expect(adminCambiarEstadoTenant('c1', 'suspended')).rejects.toMatchObject({
+      status: 409,
+      detail: undefined,
+    });
   });
 });

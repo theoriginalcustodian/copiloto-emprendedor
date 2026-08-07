@@ -4,6 +4,7 @@ import { Badge, Button, Skeleton, Surface } from '../../design-system';
 import {
   AdminNoDisponibleError,
   adminAuditoria,
+  adminCambiarEstadoTenant,
   adminErrores,
   adminSalud,
   adminSoporte,
@@ -12,6 +13,7 @@ import {
 import type {
   AdminSalud,
   AdminUso,
+  EstadoTenant,
   FilaAuditoria,
   FilaError,
   FilaTicket,
@@ -87,6 +89,14 @@ export function AdminScreen() {
   const [horas, setHoras] = useState<number>(24);
   const [detalle, setDetalle] = useState<string>('');
 
+  // ---- CONS7a: suspender / reactivar un tenant ----
+  const [tenantId, setTenantId] = useState('');
+  // `enviando` guarda QUÉ acción está en vuelo, no un booleano: con dos botones sobre el mismo
+  // campo, un `true` pelado deshabilitaría los dos sin decir cuál se está ejecutando.
+  const [enviando, setEnviando] = useState<EstadoTenant | null>(null);
+  const [resultadoTenant, setResultadoTenant] = useState<string | null>(null);
+  const [errorTenant, setErrorTenant] = useState<string | null>(null);
+
   // Mismo guard que ActividadScreen: no tocar estado tras desmontar.
   const vivo = useRef(true);
   useEffect(() => {
@@ -136,6 +146,43 @@ export function AdminScreen() {
   useEffect(() => {
     void cargar(horas);
   }, [cargar, horas]);
+
+  /**
+   * CONS7a. Patrón de `PasoResumen.tsx:56-80`, que es el canónico del repo: `enviando` deshabilita
+   * y cambia el label, `try/finally` para no dejar el botón colgado si algo lanza, y el error de
+   * negocio **inline como aviso**, no como excepción. No se crea un modal de confirmación genérico:
+   * el contrato lo prohíbe explícitamente y no existe uno en `copiloto-web`.
+   */
+  const cambiarEstado = useCallback(
+    async (status: EstadoTenant) => {
+      const id = tenantId.trim();
+      if (!id || enviando) return;
+      setEnviando(status);
+      setErrorTenant(null);
+      setResultadoTenant(null);
+      try {
+        const r = await adminCambiarEstadoTenant(id, status);
+        if (!vivo.current) return;
+        // Se muestra `de → a` y no "listo": el endpoint es idempotente, así que suspender algo ya
+        // suspendido responde 200 igual. Un "listo" pelado no distinguiría "lo cambié" de "ya
+        // estaba así", y esas dos cosas le importan a quien está mirando.
+        setResultadoTenant(`${r.cliente_id}: ${r.de} → ${r.a}`);
+        // La acción quedó auditada del lado del backend; recargar trae la fila nueva a A6 sin que
+        // el operador tenga que refrescar para comprobar que su acción dejó rastro.
+        void cargar(horas);
+      } catch (err) {
+        if (!vivo.current) return;
+        // El texto sale del backend (el `detail` del 404/422, o el `mensaje` de un 409), no se
+        // redacta acá: si lo escribiera el front, el día que cambie el criterio la UI mentiría.
+        setErrorTenant(
+          err instanceof Error && err.message ? err.message : 'No se pudo cambiar el estado.',
+        );
+      } finally {
+        if (vivo.current) setEnviando(null);
+      }
+    },
+    [tenantId, enviando, cargar, horas],
+  );
 
   return (
     <div className="admin-screen" data-testid="admin-screen">
@@ -411,6 +458,70 @@ export function AdminScreen() {
                     ))}
                   </tbody>
                 </table>
+              )}
+            </Surface>
+          </section>
+
+          {/* ---- CONS7a: suspender / reactivar un tenant ---- */}
+          <section className="admin-screen__seccion" aria-labelledby="admin-tenant-titulo">
+            <div className="admin-screen__seccion-head">
+              <h2 id="admin-tenant-titulo">Estado de una cuenta</h2>
+            </div>
+
+            <Surface variant="card" className="admin-card" data-testid="admin-tenant">
+              <p className="admin-screen__ventana-activa">
+                Suspender corta el acceso de esa cuenta a la app: el guard del backend responde 403
+                en cada pedido mientras dure. Reactivar lo devuelve. Queda registrado en Auditoría.
+              </p>
+
+              {/* Se pide el id a mano en vez de listar cuentas: no existe `GET /admin/tenants`, y
+                  una cuenta suspendida deja de aparecer en «Uso y costo» (no tiene actividad), así
+                  que una lista derivada de ahí permitiría suspender pero NO reactivar. Los ids se
+                  ven en Uso, Soporte y Auditoría. El POST es idempotente, así que reintentar es
+                  inofensivo. */}
+              <div className="admin-tenant__form">
+                <label className="admin-tenant__label" htmlFor="admin-tenant-id">
+                  Id de la cuenta
+                </label>
+                <input
+                  id="admin-tenant-id"
+                  className="admin-tenant__input"
+                  data-testid="admin-tenant-input"
+                  value={tenantId}
+                  onChange={(e) => setTenantId(e.target.value)}
+                  placeholder="lo ves en Uso, Soporte o Auditoría"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <div className="admin-tenant__acciones">
+                  <Button
+                    variant="ghost"
+                    data-testid="admin-tenant-suspender"
+                    disabled={!tenantId.trim() || enviando != null}
+                    onClick={() => void cambiarEstado('suspended')}
+                  >
+                    {enviando === 'suspended' ? 'Suspendiendo…' : 'Suspender'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    data-testid="admin-tenant-reactivar"
+                    disabled={!tenantId.trim() || enviando != null}
+                    onClick={() => void cambiarEstado('active')}
+                  >
+                    {enviando === 'active' ? 'Reactivando…' : 'Reactivar'}
+                  </Button>
+                </div>
+              </div>
+
+              {resultadoTenant != null && (
+                <p className="admin-tenant__ok" data-testid="admin-tenant-ok">
+                  {resultadoTenant}
+                </p>
+              )}
+              {errorTenant != null && (
+                <p className="admin-tenant__error" data-testid="admin-tenant-error">
+                  {errorTenant}
+                </p>
               )}
             </Surface>
           </section>

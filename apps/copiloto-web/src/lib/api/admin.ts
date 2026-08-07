@@ -209,3 +209,44 @@ export function adminAuditoria(
   const qs = q.toString();
   return getAdmin(`/admin/auditoria${qs ? `?${qs}` : ''}`, tieneClave('eventos'));
 }
+
+// ---------------------------------------------------------------------------
+// CONS7a — la única acción que MUTA que se puede construir hoy
+// ---------------------------------------------------------------------------
+
+/** Los dos únicos valores que el backend acepta (`ESTADOS_VALIDOS`); cualquier otro → 422. */
+export type EstadoTenant = 'active' | 'suspended';
+
+/** Respuesta de `POST /admin/tenants/{id}/estado` — `admin_web.py:103`. */
+export interface CambioEstadoTenant {
+  cliente_id: string;
+  de: string;
+  a: EstadoTenant;
+}
+
+/**
+ * Suspende o reactiva un tenant. **POST**, no PATCH: `apiClient` sólo tipa `'GET' | 'POST'`
+ * (`client.ts:36`) y el contrato es explícito en no agregar un verbo por esto.
+ *
+ * Es **idempotente** por diseño del backend: poner el estado que ya tenía responde 200 y audita
+ * igual — "el intento es el hecho auditable". Por eso la UI no necesita saber el estado previo para
+ * ofrecer la acción, y por eso alcanza un campo de `cliente_id` para reactivar algo que ya no
+ * aparece en ninguna lista.
+ *
+ * ⚠️ Esto **no es** el control de acceso: el punto de aplicación real es `require_tenant`
+ * (`auth.py:114`), que devuelve 403 cuando el `status` no es `active`. Acá sólo se escribe la
+ * columna. Un tenant suspendido deja de operar por ese guard, no por esta pantalla.
+ *
+ * No pasa por `getAdmin`: ese helper traduce cualquier fallo a `AdminNoDisponibleError`, que para
+ * una MUTACIÓN sería mentir — un 409/422/404 del backend tiene que llegar con su mensaje, que es
+ * justamente lo que la UI muestra.
+ */
+export function adminCambiarEstadoTenant(
+  clienteId: string,
+  status: EstadoTenant,
+): Promise<CambioEstadoTenant> {
+  return apiClient.post<CambioEstadoTenant>(
+    `/admin/tenants/${encodeURIComponent(clienteId)}/estado`,
+    { status },
+  );
+}
