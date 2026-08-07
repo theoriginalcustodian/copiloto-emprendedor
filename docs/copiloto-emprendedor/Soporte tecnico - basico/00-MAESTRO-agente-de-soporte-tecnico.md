@@ -181,7 +181,8 @@ que el hilo del usuario reciba el mensaje. Es la pieza más chica de las tres, p
 |---|---|---|
 | **A** | El agente se alimenta de **datos del sistema + base de conocimiento del producto** | Cubre las 3 categorías de consulta. La KB es el trabajo de contenido nuevo |
 | **A.bis** | Cuando no sabe: **lo dice, escala a soporte humano y entrega un IDENTIFICADOR DE TICKET** | «le da el número de operación, un identificador del ticket, y deriva a humano» |
-| **KB** | Vive como **RAG en fusion** (preferencia del operador) | Ver §8.4 — la plomería **no existe**, medido |
+| **KB** | Vive como **RAG en fusion** (preferencia del operador) | Ver §8.4 — el RAG **existe y es maduro**; falta sólo el CONTENIDO |
+| **Modelo** | **GPT-4o-mini** para las dos funciones conversacionales: **soporte técnico** y **cómo uso la app** | Decisión del operador, 2026-08-07. Ver §8.4.bis — barato y coherente con el proveedor del RAG, pero **un modelo chico exige MÁS gates, no menos** |
 
 **A.bis no es un matiz: cambia la arquitectura.** «Derivar» sería un flag; **un ticket con
 identificador es un objeto con estado, nombrable por el usuario y buscable por el operador.** Eso
@@ -218,31 +219,161 @@ reinicia números y dos tenants colisionan
 `copiloto_feedback` **no se toca ni se migra**: sigue siendo el buzón de una dirección que ya
 funciona, y la consola lo sigue leyendo. Lo nuevo convive.
 
-## 8.4 La base de conocimiento — MEDIDO, no supuesto
+## 8.4 La base de conocimiento — CORREGIDO 2026-08-07: **el RAG existe, y es maduro**
 
-El operador dijo *«tenemos RAG en el VPS para los agentes, pero hay que construir la base de
-conocimiento primero»*. **La segunda mitad es cierta; la primera no.** Verificado 2026-08-07:
+> ⚠️ **Esta sección afirmaba lo contrario, y era falso.** Se conserva el error visible porque la
+> forma en que se produjo vale más que el dato: es el modo de fallo que esta constitución más
+> persigue.
+
+**Lo que decía:** «Tablas con columna `vector`: ❌ ninguna · Código de embeddings/RAG: ❌ cero → no
+falta el contenido: falta el pipeline entero, cinco piezas». **El operador lo corrigió dos veces**
+(*«vps fusion tiene un rag… ya te lo dije… lo construí yo»*), y la sesión del repo
+`supabase-self-host-blueprint` llegó al mismo sitio por su cuenta.
+
+**Por qué el chequeo salió limpio estando equivocado:** consultó `information_schema`, que **filtra
+por privilegios** — el rol usado no tiene permisos sobre el schema `rag`, así que sus 18 tablas
+simplemente no aparecían. `pg_catalog` **no** filtra y las mostró todas a la primera. El instrumento
+no decía «no hay»: decía **«no veo»**, y se leyó como lo primero. Se sumó un segundo sesgo: se buscó
+el tipo `vector`, no `tsvector`/`halfvec`. Ver [[vacio-no-es-hallazgo-correr-el-control]] y
+[[un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo]] — misma familia: un vacío que no
+protesta.
+
+### Lo que hay realmente (verificado read-only por la sesión de fusion, 2026-08-07)
 
 | Chequeo | Resultado |
 |---|---|
-| `pgvector` en fusion | ✅ instalado, `vector 0.8.0` |
-| Tablas con columna `vector` | ❌ **ninguna** |
-| Contenedor de vector store en el VPS | ❌ ninguno (`qdrant`/`chroma`/`weaviate`/`milvus`) |
-| Código de embeddings/RAG en el repo | ❌ **cero** (control positivo corrido: el mismo grep sí encuentra `graphity`) |
+| `rag_health_check` | ✅ healthy (5/5) |
+| Schema `rag` en fusion | ✅ **18 tablas** — `documents`, `chunks`, `embeddings`, `configs`, `query_logs`, `eval_sets`, `routing_decisions`, `embedding_cache`, `hype_questions_v076`, … |
+| Índice vectorial | ✅ HNSW `halfvec` inner-product, construido (+ IVFFlat y GIN sobre `tsvector`) |
+| RPCs disponibles | ✅ `rag.rag_query(...)` · `rag.hybrid_search(...)` · `rag.rag_health()` |
+| Namespaces vivos | 5 — `arca-docs`, `arca-suite`, `soporte`, `test-sql`, `default` |
+| Vault de keys | ✅ `<cliente_id>/embeddings/openai_api_key` |
+| Ratio anti-alucinación ya medido ahí | FPR 8,2 % · RA 100 % · HR 3,0 % (sobre `arca-suite`) |
 
-**No falta el contenido: falta el pipeline entero** — schema + chunking + embeddings + búsqueda por
-similitud + evaluación. Cinco piezas, no una.
+Es la **misma base** que usa la app (`deploy/copiloto/deploy.sh` sourcea `fusion-pg.env`). Chunking
+header-aware, búsqueda híbrida con RRF, telemetría de costo y pipeline de evaluación **ya están en
+producción**.
 
-### Recomendación de planificación (voltéala en una línea si no la compartís)
+**De las «5 piezas», falta exactamente una: el contenido.**
 
-**Contenido primero, RAG después.** Un producto como éste tiene 20-40 «cómo hago X»: eso entra en el
-prompt sin ninguna recuperación. El RAG se agrega **cuando el contenido no entre**, y recién ahí se
-puede evaluar bien — para medir si recupera el chunk correcto hacen falta los chunks. Diseñar la
-recuperación antes de tener qué recuperar es el orden inverso, y es sobreingeniería medible: 5 piezas
-construidas contra un corpus que no existe.
+⚠️ **Trampa de nombre:** el namespace `soporte` que ya existe **NO es de copiloto** — tiene docs de
+arquitectura de otro sistema. No reusarlo; el namespace de la KB lo nombra la sesión de fusion.
 
-Si el operador prefiere el RAG desde el día 0, se hace — pero **entonces el RAG es un hito propio con
-su DoD** (¿recupera el chunk correcto para N preguntas reales?), no un detalle del sprint de soporte.
+### Qué cambia esto en el plan (y qué no)
+
+**Se cae el argumento de sobreingeniería.** «RAG después» se apoyaba en no construir 5 piezas contra
+un corpus inexistente. **No hay nada que construir**, así que el costo de usarlo desde el día 1 es
+ingestar, no desarrollar.
+
+**Sigue en pie el orden: contenido primero.** No por costo de infra, sino porque **el corpus de
+usuario no existe** — 0 documentos, verificado sobre `origin/main` @ `4438b0ff` (barrido por
+`manual|guía|faq|onboarding|tutorial|cómo-` en `docs/`: 1 hit, y es un falso positivo de un doc de
+research). Lo que cambia es qué significa «primero»: ya no *«escribir y ver si hace falta RAG»*, sino
+**escribir el corpus con la forma que el pipeline premia** — Markdown con jerarquía de headers real,
+un tema por documento, prosa antes que bullets sueltos. Escribirlo sin esa forma sería tener que
+rehacerlo.
+
+### El inventario ya entregado a fusion (2026-08-07)
+
+| Punto | Respuesta medida |
+|---|---|
+| **Son dos corpus, con materia prima opuesta** | «Cómo usar la app»: **0 docs, hay que escribirlo**. Soporte interno: **349 `.md` · ~2,4 MB** (`docs/` 105 · 1.570 KB; `memoria/` 244 · 886 KB) |
+| Índice del corpus de usuario | Las **17 funciones** de la app (rutas reales); ~1 doc por función |
+| Formato | **100 % Markdown**; en `docs/` los únicos no-`.md` son 9 `.otf` + 5 `.svg`. Cero PDF/HTML |
+| Jerarquía de headers | ✅ real y consistente (`##` 6-13, `###` 0-14 por doc) |
+| ¿Por tenant? | **Común a todos** → un namespace por corpus. **Los datos del negocio NO van al RAG jamás** — viven en Postgres con RLS y se consultan por SQL. «Que sepa mis facturas» se resuelve con una tool, no ingestando |
+| Idioma | Español rioplatense (BM25 `spanish`) |
+| PII | Corpus de usuario: no. Corpus interno: **sí, filtrar** (emails de prueba, IPs, hostnames, rutas). De clientes reales, nada — no hay clientes |
+
+### 🔴 El hueco duro: no hay preguntas reales, y no se inventan
+
+El eval-set necesita 10-20 preguntas reales con ground truth. **No existen: la app tiene cero
+usuarios** — está desplegada y verificada, pero las invitaciones no se mandaron; `copiloto_feedback`
+tiene 2 filas y salieron del E2E. Fabricarlas y presentarlas como reales contaminaría **la única
+medición que justifica el trabajo**. Se entregan **etiquetadas como sintéticas** (sirven para el
+spike de retrieval: *¿trae el chunk correcto?*), la fuente real más cercana es **el operador**, y el
+ratio que se mida antes de la beta se declara **provisional** hasta re-medirlo con tickets reales.
+
+### 🔺 Decisión MAYOR abierta — la lleva el operador
+
+El objetivo *«el mismo ratio anti-alucinación»* **no se hereda con el camino A tal como estaba
+confirmado** (redactor propio de la app sintetizando sobre los chunks): A hereda el *retrieval*, no
+las *defensas* — los gates de sufficiency y grounding viven en el orquestador `pipeline_v2`
+(`/opt/v070`), que hoy no expone HTTP.
+
+| | Qué implica | Costo |
+|---|---|---|
+| **A+gates** | El redactor de la app replica sufficiency + grounding | Barato en infra, pero **hay que re-medir el ratio acá** — con el corpus del hueco de arriba, o sea sin ground truth |
+| **C** | Exponer el orquestador v2 por HTTP; la app consume respuesta ya verificada | Infra nueva en fusion, pero **el ratio ya está medido y no se re-litiga** |
+
+**Recomendación de planificación: C.** A+gates hereda la promesa sin la prueba, que es
+[[no-codificar-la-esperanza-principio-raiz]] con otro nombre. **Contrapunto honesto:** C agrega una
+dependencia viva más, y si el orquestador cae, cae el chat de soporte — justo adonde va el usuario
+cuando algo falla. Si se elige C, **hay que definir qué contesta el agente con el orquestador caído**,
+y que sea honesto («no puedo consultar la base ahora, escalo tu ticket»), nunca un fallback que
+alucine.
+
+**Canal vivo:** `coordinacion/Supabase fusion Rag/` ↔ `supabase-self-host-blueprint/Coordinacion/
+Copiloto emprendedor/` (`COORDINACION.md` §8).
+
+## 8.4.bis El modelo: **GPT-4o-mini** — decisión del operador (2026-08-07)
+
+> Textual: *«para el soporte usa gpt 4o mini… agente de cómo uso y de soporte técnico»*.
+
+Aplica a las **dos funciones conversacionales**: soporte técnico y cómo usar la app. (Feedback no
+conversa — es one-shot con la frase fija de §9.3, así que no consume modelo.)
+
+**Lo que juega a favor, y no es menor:**
+
+- **Mismo proveedor que el RAG.** El vault de fusion ya guarda `<cliente_id>/embeddings/openai_api_key`
+  para los embeddings → **una sola credencial**, un solo proveedor que auditar y rotar. Elegir otro
+  vendor para el redactor habría duplicado esa superficie sin ganancia.
+- **Costo por consulta bajísimo**, que es lo que vuelve viable contestar *toda* consulta con el agente
+  antes de escalar — la filosofía declarada por el operador: la app se autogestiona lo máximo posible
+  y el HITL humano queda para lo que de verdad lo necesita.
+
+**El contrapunto que hay que diseñar contra, no ignorar:** un modelo chico es **más** propenso a
+sostener con seguridad algo que el contexto no dice. Eso no invalida la elección — la condiciona:
+**con 4o-mini los gates de sufficiency y grounding dejan de ser un refinamiento y pasan a ser la
+pieza que hace funcionar el conjunto.** Un modelo grande perdona un gate flojo; éste no.
+
+→ **Refuerza la recomendación C** de la decisión MAYOR de arriba: si el ratio ya medido en fusion
+(FPR 8,2 %) sale del pipeline con gates y no del modelo, heredarlo por HTTP es más seguro que
+replicar los gates acá y confiar en que 4o-mini se porte igual. Si el operador elige A+gates, los
+gates hay que **medirlos**, no copiarlos — y con el hueco del eval-set (no hay preguntas reales) eso
+es precisamente lo que hoy no se puede hacer.
+
+**No decidido todavía y hay que decidirlo antes de implementar:** qué modelo hace el *clasificador*
+de las tres funciones (§9.2). Puede no hacer falta ninguno — el enrutado por elección explícita del
+usuario es determinista y gratis.
+
+## 8.4.ter 🔴 DoD: E2E en la app, no en la suite — orden del operador
+
+> Textual, 2026-08-07: *«recordá que todo debe estar probado y funcionando E2E, listo para usar en la
+> app»*.
+
+Es la compuerta 3 de `COORDINACION.md` §6.2 aplicada a este sprint. **Nada de esto se declara
+terminado con tests verdes.** Verde en la suite prueba que el código hace lo que el test dice; no
+prueba que un emprendedor obtenga una respuesta útil.
+
+El sprint cierra cuando, **en la app corriendo** (device para mobile, navegador para web):
+
+- [ ] El usuario abre el chat de soporte desde la app y **el primer mensaje es del agente**,
+      respondiendo su consulta concreta (requisito explícito del operador, §1).
+- [ ] Una pregunta de **«cómo uso la app»** se responde **con contenido del RAG**, y la respuesta
+      es correcta — verificado contra el corpus, no contra la impresión de que suena bien.
+- [ ] Una consulta que el agente **no puede sostener** termina en: lo dice · entrega el código
+      `SOP-XXXX` · el ticket queda creado y visible en la consola. Sin improvisar una respuesta.
+- [ ] El **feedback** devuelve la frase fija y **no** abre hilo.
+- [ ] La respuesta del operador desde la consola **llega al usuario** y le aparece la notificación
+      en Actividad, enlazada al mensaje.
+- [ ] **Control negativo:** con el RAG/orquestador caído, el agente contesta honestamente y escala —
+      no alucina un fallback. Se prueba **apagándolo a propósito**, no razonándolo.
+- [ ] Aislamiento: un tenant **no** ve el ticket de otro (test adversarial, regla dura del repo).
+
+El último control negativo no es celo: es el único que distingue *«funciona»* de *«funcionó la vez
+que lo miré»*. Un gate que sólo se ejercita con el camino feliz aprueba igual un sistema roto hacia
+el «no» ([[un-mecanismo-roto-hacia-el-no-no-da-sintoma]]).
 
 ## 8.5 El flujo, punta a punta
 
