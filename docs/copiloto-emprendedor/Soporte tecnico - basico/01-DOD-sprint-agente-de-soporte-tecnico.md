@@ -97,8 +97,23 @@ soporte.
       **Evidencia:** test de colisión con dos tenants generando en paralelo.
 - [ ] **B4** `copiloto_feedback` **intacta**: mismas 4 columnas, la consola la sigue leyendo, cero
       migración. **Evidencia:** schema antes/después idéntico.
-- [ ] **B5** Toda acción que muta escribe su fila en `copiloto_auditoria`. **Evidencia:** una acción
-      real → la fila correspondiente.
+- [x] **B5** Toda acción que muta **hecha por un administrador** escribe su fila en
+      `copiloto_auditoria`. **Evidencia:** una acción real → la fila correspondiente.
+      **Se satisface en `E2` (SOP6), NO en este bloque** — verificado 2026-08-07.
+
+      > ⚠️ **Esta línea decía «toda acción que muta», sin distinguir quién la hace, y chocó contra el
+      > schema real.** `copiloto_auditoria` (CONS1) exige `admin_user_id uuid NOT NULL` +
+      > `admin_email text NOT NULL`: es el registro de acciones **de administrador**, precondición de
+      > CONS7. Un tenant creando su propio ticket **no tiene un admin en el camino**, así que
+      > satisfacer la línea tal como estaba escrita obligaba a inventar un valor — una fila que
+      > **miente sobre quién hizo qué**. Eso es peor que no tener la fila: una auditoría con datos
+      > fabricados se cita después como si fuera cierta.
+      >
+      > Backend cazó el choque leyendo el schema en vez de forzar el campo, y resolvió táctico tras
+      > ~5 h sin respuesta de planificación (decisión correcta: era reversible y estaba documentada).
+      > El defecto era **de este DoD**, no de la implementación. Si en algún momento hace falta un
+      > registro de eventos de **dominio** (los del tenant), el lugar es `copiloto_eventos`, que ya
+      > existe — no ensanchar el de auditoría.
 
 ### C · El agente — `BE`
 
@@ -174,6 +189,47 @@ soporte.
 
 ### F · El chat en la app — `FE`
 
+#### 🔗 La costura `BE ↔ FE` — decidida 2026-08-07, **no la reinvente ninguno de los dos lados**
+
+Backend llegó a este punto con un *«probablemente un endpoint o un parámetro en el `POST /chat`
+existente»*. Ese «probablemente» es el agujero donde cada lado verifica su mitad y la junta no es de
+nadie. Queda fijado así:
+
+```
+POST /soporte/chat    body: {"session_id": str, "text": str, "kind": "text"}   (reusa ChatIn, web.py:488)
+                      → {"wf_id": str|null, "accepted": bool}                  (mismo shape que /chat)
+GET  /reply           SIN CAMBIOS — mismo endpoint, misma firma (web.py:748)
+```
+
+**Ruta dedicada, y el dominio NO lo elige el cliente.** `domain="soporte_tecnico"` y la `task_queue`
+son constantes **del servidor** (parametrizadas por env, mismo patrón que `web.py:67`), igual que
+`/chat` fija hoy `emprendedor`/`agent-emprendedor`. Las tres razones, la primera es dura:
+
+1. **🔴 Un parámetro que elige `task_queue` es superficie de ataque.** Con `{"dominio": "..."}` en el
+   body, el cuerpo del request decidiría **qué workflow y qué cola** arrancan. El `cliente_id` sale
+   del token (bien), pero el *destino* saldría del cliente. La regla que este repo ya sigue:
+   **el tenant viaja en el token; el destino lo fija la ruta.**
+2. **Separación de costo** — un turno de soporte no es un turno de negocio; con rutas distintas el
+   metering los diferencia sin desambiguar por el body.
+3. **La config no es la misma** — `/chat` va con `memory: False` y el `engine_mode` del copiloto;
+   soporte corre `react`, toolset propio y acceso al grafo. Dos configuraciones en un `if` del mismo
+   handler es como una hereda el default de la otra sin que nadie lo note.
+
+**`session_id` con prefijo `sop:`**, generado por el cliente y **estable durante la conversación**
+(`/reply` filtra por él: si se regenera por turno, cada respuesta se pierde). No es un control de
+seguridad —el aislamiento lo da `cliente_id` del token— sino la convención que evita que las dos
+conversaciones del mismo usuario colisionen.
+
+⚠️ **Control negativo obligatorio, porque este fallo es MUDO:** un turno a `/soporte/chat` y otro a
+`/chat` **con el mismo `session_id`** → las respuestas no se mezclan. Un cruce de conversaciones no
+tira ningún error; sólo aparece un mensaje raro en la pantalla equivocada.
+
+**Fuera de alcance:** voz en soporte (v1 es texto; `/chat/audio` no se replica todavía) y la
+respuesta del operador desde la consola (eso es `E`/SOP6).
+
+- [ ] **F0** El cliente consume **exactamente** el contrato de arriba. Si al integrar algo no
+      coincide, **el que no coincide es el código, no el contrato**: se reporta, no se adapta. (Así
+      cazó frontend el shape equivocado de A6 en CONS6.)
 - [ ] **F1** **Mobile:** chat de soporte accesible desde su entrada, con las tres funciones.
       **Probado en device.**
 - [ ] **F2** **Web: paridad.** Esto **cierra CTA3**, que está frenado esperando este diseño. Si la web
@@ -187,6 +243,13 @@ soporte.
 - [ ] **F6** Estados de error en **castellano**: sesión caída → login; red caída → mensaje honesto.
       Nunca un error interno en inglés.
 - [ ] **F7** Gate visual en los 3 temas, mobile y web.
+- [ ] **F8** **`refused` y `unavailable` NO pueden verse iguales.** *«No sé la respuesta, te abro un
+      ticket»* y *«el servicio no está disponible ahora»* son estados distintos, y el usuario tiene
+      que poder distinguirlos: del primero se sigue esperando una respuesta humana; del segundo, que
+      vuelva a intentar. El agente los discrimina por el campo `outcome`, **nunca por el texto**
+      (fusion diseñó `refused` con `answer: null` justamente para que el texto rechazado no exista
+      del lado del cliente: lo que no viaja no se puede filtrar). Si la app los colapsa en un solo
+      cartel, tira abajo esa decisión de diseño desde el otro extremo.
 
 ### G · Notificaciones — `BE` + `FE`
 
