@@ -12,13 +12,13 @@
 - **🌐 EL REPO ES PÚBLICO** desde 2026-08-06. Cambia el COSTO de un error, no la regla: un `.env` commiteado es público al instante. Historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
 - **🟢 BETA y M-WEB cerrados** (2026-08-05); falta que el operador mande las invitaciones. **🔥 En curso: CONSOLA DE OPERADOR** — estado real en `coordinacion/PLAN.md`. [[copiloto-beta-sprint-cerrado]]
 - **⚙️ CI PROPIO (ADR-001)** — la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
-- **🌳 Checkout compartido: 237 commits detrás de `main`** — lo escrito ahí no llega a `main` ni al grafo. Worktree desde `origin/main`. [[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]]
+- **🌳 Checkout compartido: 237 commits atrás** — lo escrito ahí no llega a `main` ni al grafo. Worktree desde `origin/main`.
 - **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
 - **🛡️ Manejo de errores — COMPLETO en prod** (#151→#185) + autohealing que abre PRs solo, con gate que distingue *arregla* de *no rompe*. [[no-romper-no-es-arreglar]]
 - **⚠️ Ese frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **✅ Cerrados:** AFIP E2E en device · presupuestos + perfil · clientes (falta voz) · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · ingesta real al grafo (MAYOR). [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
-- **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal) · [[copiloto-emprendedor-roadmap]]. [[coordinacion-tres-sesiones-buzon]] · [[factory-identidad-automatizacion-ia]]
+- **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras — se cumplen, no se evalúan)
 
@@ -49,7 +49,7 @@
 - [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — buscá antes de reabrir.
 - [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando esté listo" no ocurre.
 - [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente; nunca una fase futura.
-- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde para construir" ≠ "fase validada".
+- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde" ≠ "fase validada".
 - [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — no cierra hasta desplegado y probado.
 - [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?*; si no, no terminó.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
@@ -67,7 +67,7 @@
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
-- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica.
+- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?*
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
@@ -107,7 +107,7 @@
 
 ### Diagnóstico: leer el contrato antes de explicar
 
-- [Raíz, no parche](raiz-no-parche.md) — hook `root_cause_suggester`.
+- [Raíz, no parche](raiz-no-parche.md) — hook `root_cause_suggester`
 - [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío primero.
 - [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — leé el `WHERE`, no el nombre.
 - [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) — otra capa puede sobreescribirla.
@@ -127,13 +127,14 @@
 - [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — leer antes de DR/staging.
 - [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — no cubre tabla ni permisos.
 - [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX.
+- [🧬🔁 El MISMO defecto vivía DOS veces — el fix del core no llegaba a la web](el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo.md) — ¿qué capa usa la UI?
 - [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en comentario.
 - [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — "al final" borra la prueba.
 - [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — continue-as-new reinicia números.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró".
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie.
 - [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — de un sistema: leé su código.
-- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas; tokens theme-aware.
+- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas, tokens theme-aware
 - [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) — "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
@@ -147,7 +148,7 @@
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — sin cargar completo ⇒ duplicados.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — leer antes. Escribí en `memoria/` del repo.
-- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — failure mode espejo: pesimismo performativo.
+- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo.
 
 ### Coordinación entre sesiones
 
@@ -165,13 +166,13 @@
 
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — usá `merge-base`.
-- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja = scripts viejos.
-- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa en silencio.
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja, scripts viejos.
+- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa mudo.
 - [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual.
 - [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`.
 - [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama en prod.
-- [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`.
-- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `gh`; MCP sólo si no está.
+- [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`
+- [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — MCP sólo si no está.
 
 ## 🏭 El producto — LEER antes de tocar
 
@@ -195,7 +196,7 @@
 - [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
 - [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — 404 al bundlear; `tsc`/`jest` sí los siguen.
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild.
-- [🌳🕳️ El working tree COMPARTIDO guarda trabajo que no está en ninguna rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — el control es el **blob**, no `git status`.
+- [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — el control es el **blob**, no `git status`.
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) — regla del operador. Nunca sueltas en `docs/`.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) — `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
