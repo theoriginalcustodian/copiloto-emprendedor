@@ -9,9 +9,10 @@ import uuid
 
 import pytest
 
+import soporte_feedback_activities
 from soporte_agent_tools import make_soporte_tool_executor
 from soporte_context import SoporteCtx
-from soporte_store import SOPORTE_TECNICO
+from soporte_store import COMO_USO_LA_APP, SOPORTE_TECNICO
 from trauma_store import TraumaStore
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
@@ -50,6 +51,16 @@ def _executor(*, rag=None, trauma_factory=None, ticket_factory=None, grafo=None)
         trauma_store_factory=trauma_factory or (lambda cid: None),
         ticket_store_factory=ticket_factory or (lambda cid: None),
         graphity_code_client=grafo)
+
+
+@pytest.fixture(autouse=True)
+def _reset_soporte_feedback_deps():
+    """`_conn_factory`/`_clasificador` de `soporte_feedback_activities` son globals de MÓDULO (D1
+    los reusa desde `_run_crear_ticket`) -- sin resetear, un test contaminaría el siguiente."""
+    antes = (soporte_feedback_activities._conn_factory, soporte_feedback_activities._clasificador)
+    soporte_feedback_activities.set_soporte_feedback_deps(None, None)
+    yield
+    soporte_feedback_activities._conn_factory, soporte_feedback_activities._clasificador = antes
 
 
 # ======================================================================================
@@ -214,6 +225,63 @@ def test_crear_ticket_canal_invalido_es_error_no_excepcion(conn_de_tenant, tenan
           {"canal": "feedback", "asunto": "x", "resumen_para_el_operador": "y"},
           SoporteCtx(cliente_id=tenant_tickets), confirmed=False, idem_key="t1")
     assert r.status == "error"
+
+
+class _ClasificadorFalso:
+    def __init__(self, origen):
+        self._origen = origen
+        self.llamado_con = []
+
+    def resolver_origen(self, texto):
+        self.llamado_con.append(texto)
+        return self._origen
+
+
+@necesita_pg
+def test_D1_ticket_de_SOPORTE_TECNICO_encola_a_autosanacion_si_el_clasificador_resuelve(
+        conn_de_tenant, tenant_tickets):
+    """D1: "un ticket técnico entra primero en la cola de autosanación". El clasificador acá está
+    mockeado (su propio spike/tests ya cubren `resolver_origen` real) -- lo que se prueba es que
+    `_run_crear_ticket` lo INVOCA y deposita el trauma, no la calidad del match."""
+    from soporte_store import TicketStore
+
+    falso = _ClasificadorFalso(origen={"archivo": "afip_gateway.py", "linea": 10, "funcion": "x"})
+    soporte_feedback_activities.set_soporte_feedback_deps(conn_de_tenant(tenant_tickets), falso)
+    ex = _executor(ticket_factory=lambda cid: TicketStore(conn_de_tenant(cid), cid))
+    r = ex("crear_ticket_de_soporte",
+          {"canal": SOPORTE_TECNICO, "asunto": "no puedo facturar",
+           "resumen_para_el_operador": "afip_gateway tira timeout"},
+          SoporteCtx(cliente_id=tenant_tickets), confirmed=False, idem_key="t1")
+    assert r.observation["autosanacion"] == "encolado_para_reparacion"
+    assert falso.llamado_con == ["afip_gateway tira timeout"]
+
+    conn = conn_de_tenant(tenant_tickets)()
+    with conn.cursor() as cur:
+        cur.execute("SELECT fingerprint, workflow FROM uc_factory.copiloto_traumas "
+                    "WHERE cliente_id = %s", (tenant_tickets,))
+        filas = cur.fetchall()
+    conn.close()
+    assert filas and filas[0][0].startswith("soporte_ticket:") and filas[0][1] == "soporte_agente"
+    with conn_de_tenant(tenant_tickets)() as c2:
+        with c2.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_traumas WHERE cliente_id = %s", (tenant_tickets,))
+        c2.commit()
+
+
+@necesita_pg
+def test_D1_ticket_de_COMO_USO_LA_APP_NUNCA_encola_a_autosanacion(conn_de_tenant, tenant_tickets):
+    """D1, nota 1 del MAESTRO: "¿cómo cargo un gasto?" no es un bug -- sólo falla TÉCNICA entra a la
+    cola. Un duda de uso no debe gastar presupuesto del forjador buscando un bug que no existe."""
+    from soporte_store import TicketStore
+
+    falso = _ClasificadorFalso(origen={"archivo": "x.py", "linea": 1, "funcion": "f"})
+    soporte_feedback_activities.set_soporte_feedback_deps(conn_de_tenant(tenant_tickets), falso)
+    ex = _executor(ticket_factory=lambda cid: TicketStore(conn_de_tenant(cid), cid))
+    r = ex("crear_ticket_de_soporte",
+          {"canal": COMO_USO_LA_APP, "asunto": "cómo cargo un gasto", "resumen_para_el_operador": "x"},
+          SoporteCtx(cliente_id=tenant_tickets), confirmed=False, idem_key="t1")
+    assert "autosanacion" not in r.observation
+    assert falso.llamado_con == []
 
 
 def test_tool_desconocida_es_error_no_excepcion():

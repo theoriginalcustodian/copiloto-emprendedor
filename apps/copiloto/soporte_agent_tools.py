@@ -19,7 +19,8 @@ from typing import Callable
 
 from backend.agent.types import ToolResult
 
-from soporte_store import CANALES_VALIDOS, TicketStore
+from soporte_feedback_activities import clasificar_y_depositar
+from soporte_store import CANALES_VALIDOS, SOPORTE_TECNICO, TicketStore
 from trauma_store import TraumaStore
 from soporte_clasificador import SoporteClasificador
 
@@ -128,8 +129,20 @@ def _run_crear_ticket(arguments: dict, ctx, idem_key: str, ticket_store_factory:
     except ValueError as exc:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="error",
                           observation={"error": str(exc)})
-    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
-                      observation={"codigo": ticket["codigo"], "estado": ticket["estado"]})
+
+    obs = {"codigo": ticket["codigo"], "estado": ticket["estado"]}
+    # D1: sólo falla TÉCNICA entra a la cola de autosanación -- "¿cómo cargo un gasto?" (como_uso_la_app)
+    # no es un bug, y encolarlo gastaría presupuesto del forjador buscando uno que no existe (MAESTRO
+    # §10.3.1). El usuario NO espera este paso (§10.3.2): ya tiene su código en `obs` diga lo que diga
+    # `autosanacion` -- esto sólo AGREGA si ya hay reparación en curso, nunca bloquea la respuesta.
+    if canal == SOPORTE_TECNICO:
+        autosanacion = clasificar_y_depositar(
+            texto=resumen, cliente_id=ctx.cliente_id, fingerprint=f"soporte_ticket:{ticket['id']}",
+            workflow="soporte_agente", error_type="TicketDeSoporte", costura="chat_soporte_tecnico",
+            contexto_extra={"categoria": "business_error", "ticket_codigo": ticket["codigo"],
+                            "ticket_id": ticket["id"]})
+        obs["autosanacion"] = autosanacion["resultado"]
+    return ToolResult(tool_call_id=idem_key, is_write=True, status="ok", observation=obs)
 
 
 def make_soporte_tool_executor(*, rag_client_factory: Callable, trauma_store_factory: Callable,

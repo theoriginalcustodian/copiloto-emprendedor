@@ -35,6 +35,7 @@ from reply_store import make_pg_reply_sink
 from soporte_agent_tools import TOOL_SCHEMAS_SOPORTE, make_soporte_tool_executor
 from soporte_clasificador import SoporteClasificador
 from soporte_context import make_soporte_context_factory
+from soporte_feedback_activities import set_soporte_feedback_deps
 from soporte_store import COMO_USO_LA_APP, SOPORTE_TECNICO, TicketStore
 from soporte_system_prompts import SYSTEM_PROMPT_COMO_USO_LA_APP, SYSTEM_PROMPT_SOPORTE_TECNICO
 from orquestador_rag_client import build_rag_client_factory
@@ -88,6 +89,12 @@ def build_worker_config(env, conn_factory) -> dict:
     print("SOPORTE grafo de código: ON" if graphity_code_client is not None
           else "SOPORTE grafo de código: OFF (faltan GRAPHITY_CODE_BASE_URL/_API_KEY -- C9 degrada "
                "a 'no encontré dónde está' en vez de citar)", flush=True)
+
+    # D1: `_run_crear_ticket` (soporte_agent_tools) llama `clasificar_y_depositar` -- necesita ESTE
+    # `conn_factory` seteado en el módulo de `soporte_feedback_activities`, proceso propio (task_queue
+    # separado de worker_b): sus globals de módulo NO se comparten entre procesos. Reusa el MISMO
+    # `graphity_code_client` que arriba -- una sola conexión HTTP al grafo, no dos.
+    set_soporte_feedback_deps(conn_factory, graphity_code_client)
 
     tool_executor = make_soporte_tool_executor(
         rag_client_factory=rag_client_factory, trauma_store_factory=_trauma_store_factory,

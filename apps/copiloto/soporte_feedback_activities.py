@@ -60,6 +60,41 @@ def _clasificador_activo() -> SoporteClasificador | None:
     return _clasificador
 
 
+def clasificar_y_depositar(*, texto: str, cliente_id: str | None, fingerprint: str, workflow: str,
+                           error_type: str, costura: str, contexto_extra: dict) -> dict[str, Any]:
+    """Núcleo SÍNCRONO reusado por `clasificar_y_encolar_feedback` (activity async, BETA-4a) y por
+    `soporte_agent_tools._run_crear_ticket` (SOP4, D1) -- éste corre dentro de un `tool_executor`
+    síncrono (invocado vía `asyncio.to_thread` por `execute_tool`, no puede `await` una activity).
+    `fingerprint` distingue el ORIGEN (feedback vs ticket de soporte) para no colisionar dedupe entre
+    los dos sistemas -- son dos entradas al mismo `TraumaStore`, nunca el mismo trauma."""
+    texto = (texto or "").strip()
+    clasificador = _clasificador_activo()
+    origen = clasificador.resolver_origen(texto) if (clasificador and texto) else None
+
+    if origen is None:
+        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto)}
+
+    if _conn_factory is None:
+        # Sin conexión configurada no se puede depositar — degrada a necesita_humano en vez de
+        # perder el ticket en silencio (mismo fail-safe que un origen no resuelto).
+        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto),
+                "motivo": "sin conexión de tenant configurada"}
+
+    # `tenant(cid)` + `conexion_con_tenant` por-llamada — mismo patrón que
+    # `grafo_sync_activities.sincronizar_tenant`, no una costura automática (no existe para activities).
+    with tenant(cliente_id):
+        conn_tenant = conexion_con_tenant(_conn_factory)
+        resultado_deposito = TraumaStore(conn_tenant, cliente_id).depositar(
+            fingerprint=fingerprint, workflow=workflow, error_type=error_type, costura=costura,
+            contexto={**contexto_extra, "origen": origen})
+    if resultado_deposito is None:
+        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto),
+                "motivo": "no se pudo depositar el trauma"}
+
+    return {"resultado": "encolado_para_reparacion", "origen": origen,
+            "dedupe_count": resultado_deposito["dedupe_count"]}
+
+
 @activity.defn
 async def clasificar_y_encolar_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
     """Un ticket → `{"resultado": "encolado_para_reparacion", "origen": {...}}` o
@@ -69,35 +104,11 @@ async def clasificar_y_encolar_feedback(feedback: dict[str, Any]) -> dict[str, A
     texto = (feedback.get("texto") or "").strip()
     cid = feedback.get("cliente_id")
     fid = feedback.get("id")
-
-    clasificador = _clasificador_activo()
-    origen = clasificador.resolver_origen(texto) if (clasificador and texto) else None
-
-    if origen is None:
-        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto),
-                "feedback_id": fid}
-
-    if _conn_factory is None:
-        # Sin conexión configurada no se puede depositar — degrada a necesita_humano en vez de
-        # perder el ticket en silencio (mismo fail-safe que un origen no resuelto).
-        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto),
-                "feedback_id": fid, "motivo": "sin conexión de tenant configurada"}
-
-    # `tenant(cid)` + `conexion_con_tenant` por-llamada — mismo patrón que
-    # `grafo_sync_activities.sincronizar_tenant`, no una costura automática (no existe para activities).
-    with tenant(cid):
-        conn_tenant = conexion_con_tenant(_conn_factory)
-        resultado_deposito = TraumaStore(conn_tenant, cid).depositar(
-            fingerprint=f"feedback:{fid}", workflow="soporte_feedback", error_type="TicketDeSoporte",
-            costura="feedback_intake",
-            contexto={"categoria": "business_error", "sintoma_no_tecnico": texto, "origen": origen,
-                      "feedback_id": fid})
-    if resultado_deposito is None:
-        return {"resultado": "necesita_humano", "respuesta": respuesta_para_necesita_humano(texto),
-                "feedback_id": fid, "motivo": "no se pudo depositar el trauma"}
-
-    return {"resultado": "encolado_para_reparacion", "origen": origen, "feedback_id": fid,
-            "dedupe_count": resultado_deposito["dedupe_count"]}
+    r = clasificar_y_depositar(
+        texto=texto, cliente_id=cid, fingerprint=f"feedback:{fid}", workflow="soporte_feedback",
+        error_type="TicketDeSoporte", costura="feedback_intake",
+        contexto_extra={"categoria": "business_error", "sintoma_no_tecnico": texto, "feedback_id": fid})
+    return {**r, "feedback_id": fid}
 
 
 @activity.defn
