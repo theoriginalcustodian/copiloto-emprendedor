@@ -20,6 +20,27 @@ TABLA = f"{SCHEMA}.tenants"
 ESTADOS_VALIDOS = ("active", "suspended")
 
 
+def listar_tenants(conn_factory, *, estado: str | None = None, limite: int = 50) -> list[dict]:
+    """CTA1 -- `conn_factory` es la de `copiloto_consola` (`BYPASSRLS`, `SELECT`-only), cross-tenant
+    por diseño, igual que `admin_uso.resumen_uso`. `composio_user_id` NO se selecciona: es el
+    identificador con el que se opera contra un tercero, sin función en este listado (contrato CTA1)."""
+    conn = conn_factory()
+    try:
+        with conn.cursor() as cur:
+            if estado is None:
+                cur.execute(
+                    f"SELECT cliente_id::text, email, status, created_at FROM {TABLA} "
+                    f"ORDER BY created_at DESC LIMIT %s", (limite,))
+            else:
+                cur.execute(
+                    f"SELECT cliente_id::text, email, status, created_at FROM {TABLA} "
+                    f"WHERE status = %s ORDER BY created_at DESC LIMIT %s", (estado, limite))
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, fila)) for fila in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def cambiar_estado(conn_factory, *, cliente_id: str, nuevo_estado: str) -> str | None:
     """Cambia el `status` del tenant. Devuelve el estado ANTERIOR (para la auditoría), o `None` si
     `cliente_id` no existe (404 para quien llama). Idempotente: cambiar al mismo estado que ya tenía

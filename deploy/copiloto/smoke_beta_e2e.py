@@ -140,7 +140,8 @@ except Exception as e:
 # 10) CONSOLA -- CONS8, contrato `abierto/..._CONS8-el-cierre-que-prueba-la-consola-contra-el-
 # entorno-vivo.md`. 7a (suspender/reactivar) en este bloque; 7b (reintentar) en el bloque 10d,
 # más abajo -- los dos ciclos mutar->auditar quedan cubiertos.
-ADMIN_ENDPOINTS = ("/admin/salud", "/admin/uso", "/admin/errores", "/admin/soporte", "/admin/auditoria")
+ADMIN_ENDPOINTS = ("/admin/salud", "/admin/uso", "/admin/errores", "/admin/soporte", "/admin/auditoria",
+                   "/admin/tenants")
 
 # 10a) ADVERSARIAL HOSTIL -- con el token SIN el claim admin (capturado en el paso 2, ANTES de
 # otorgar nada abajo). Un JWT ya emitido no cambia si GoTrue actualiza app_metadata después --

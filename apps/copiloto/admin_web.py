@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from admin_errores import buscar_por_id, motivo_prohibido, resumen_errores
 from admin_salud import estado_salud
 from admin_soporte import resumen_soporte
-from admin_tenants import ESTADOS_VALIDOS, cambiar_estado
+from admin_tenants import ESTADOS_VALIDOS, cambiar_estado, listar_tenants
 from admin_uso import resumen_uso
 from auditoria_store import AuditoriaStore
 from contexto_tenant import tenant
@@ -78,6 +78,16 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
         eventos = AuditoriaStore(consola_conn_factory).listar(
             cliente_id=cliente_id, admin_user_id=admin_user_id, limite=min(limite, 500))
         return {"eventos": eventos, "total": len(eventos)}
+
+    @app.get("/admin/tenants")
+    async def tenants(estado: str | None = None, limite: int = 50,
+                      claims: dict = Depends(require_admin)) -> dict:
+        """CTA1. `composio_user_id` no se expone (contrato) -- `listar_tenants` ni lo selecciona,
+        el boundary se respeta en el borde. `limite` topeado ACÁ, mismo criterio que A6."""
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        filas = listar_tenants(consola_conn_factory, estado=estado, limite=min(limite, 500))
+        return {"tenants": filas, "total": len(filas)}
 
     @app.post("/admin/tenants/{cliente_id}/estado")
     async def tenants_estado(cliente_id: str, body: _CambiarEstadoTenantBody,
