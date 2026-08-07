@@ -43,10 +43,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setEstado('no-habilitada');
         return 'forbidden';
       }
-      // 401 (el core ya limpió el token en `client.ts`) u otro error (red/servidor): degradar a
-      // anónimo y limpiar igual — un error de red con un token que después resulta inválido no debe
-      // dejar al emprendedor "logueado" en apariencia.
-      await almacenTokens.limpiar();
+      // Degradar a anónimo, sí; **borrar la sesión, sólo si el 401 la mató de verdad** (CTA7). El
+      // core ya limpia en ese caso; acá limpiar ante CUALQUIER error convertía un corte de red en un
+      // logout permanente: se iba también el refresh token, que era lo único capaz de recuperarla.
+      if (err instanceof UnauthorizedError) await almacenTokens.limpiar();
       setEstado('anon');
       return 'failed';
     }
@@ -55,8 +55,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let vivo = true;
     void (async () => {
+      // "Sin access token" NO es "sin sesión" (CTA7): con refresh guardado la sesión está viva y
+      // sólo falta renovar — y de eso ya se encarga el `apiClient` al hacer el probe. Declarar
+      // 'anon' acá cortaba el camino ANTES de que nadie pudiera intentarlo.
       const token = await almacenTokens.leerToken();
-      if (!token) {
+      const refresh = token ? null : await almacenTokens.leerRefresh();
+      if (!token && !refresh) {
         if (vivo) setEstado('anon');
         return;
       }
