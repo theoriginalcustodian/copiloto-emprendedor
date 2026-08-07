@@ -17,7 +17,8 @@ Detalle: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 | 2026-07-23 | `2026-07-23-HANDOFF-consultar-el-grafo-de-codigo.md` | Cómo consultar el grafo de código (MCP graphity-code) para auditar |
 | 2026-07-23 | `2026-07-23-mapa-clases-error-insumo-fable-v2.md` | Mapa de 9 clases de error + 5 dimensiones (barrido de instancias) |
 | 2026-07-23 | `2026-07-23-eval-fable5-v2-dirigida.md` | 2ª pasada de Fable dirigida por el mapa (confirma/refuta/rankea) |
-| 2026-08-04 | `2026-08-04-listado-problemas-fixes-reverificado.md` | **Listado maestro vigente:** 11 problemas re-verificados vs código pusheado + fix de raíz + decisiones del operador |
+| 2026-08-04 | `2026-08-04-listado-problemas-fixes-reverificado.md` | **Listado maestro:** 11 problemas re-verificados vs código pusheado + fix de raíz + decisiones del operador |
+| 2026-08-06 | `2026-08-06-plan-de-implementacion.md` | **Plan accionable vigente:** los 11 ítems con qué/por qué/fix/ubicación/esfuerzo + estado de ejecución |
 
 ## Estado vigente
 El documento maestro es **`2026-08-04-listado-problemas-fixes-reverificado.md`**: 11 problemas (2 resueltos,
