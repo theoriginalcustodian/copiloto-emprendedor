@@ -115,7 +115,7 @@ export function AdminScreen() {
       setUso(u);
       setErrores(e.errores);
       setTickets(t.tickets);
-      setAuditoria(a.auditoria);
+      setAuditoria(a.eventos);
       setEstado('ok');
     } catch (err) {
       if (!vivo.current) return;

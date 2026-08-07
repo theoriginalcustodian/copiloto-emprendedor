@@ -103,7 +103,8 @@ const SOPORTE = {
 };
 
 const AUDITORIA = {
-  auditoria: [
+  total: 1,
+  eventos: [
     {
       id: 12,
       cliente_id: 'cliente-uno',
@@ -133,7 +134,7 @@ describe('AdminScreen (CONS5 — A1 Salud + A3 Uso)', () => {
     // promesa sin mockear, y un test que necesita datos los pisa con su propio `mockResolvedValue`.
     vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [] });
     vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
-    vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ auditoria: [] });
+    vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
   });
 
   it('muestra los datos de salud y de uso cuando ambos endpoints responden', async () => {
@@ -277,9 +278,10 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     // arriba y mostraría vacío en la próxima acción que se agregue. El DoD del contrato pide
     // justamente esto: renderizar sin asumir la forma.
     vi.mocked(adminAuditoria).mockResolvedValue({
-      auditoria: [
+      total: 1,
+      eventos: [
         {
-          ...AUDITORIA.auditoria[0]!,
+          ...AUDITORIA.eventos[0]!,
           accion: 'error.reintentar',
           detalle: { trauma_id: 42, motivo: 'manual' },
         },
@@ -292,9 +294,23 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     expect(screen.getByTestId('admin-auditoria-detalle-12')).toHaveTextContent('motivo: manual');
   });
 
+  it('A6: la pantalla lee `eventos`, la clave que manda el handler', async () => {
+    // Guard de la costura, no del render. El 2026-08-07 el handler devolvía `{auditoria: [...]}` y
+    // se alineó a `{eventos, total}` unas horas después; el cliente se rompió como corresponde
+    // (`AdminNoDisponibleError`), pero nada en la suite fijaba la clave. Esto lo fija: si vuelve a
+    // cambiar, falla acá con el nombre del problema en el título, no en producción con una tabla
+    // que parece "no hay eventos todavía".
+    vi.mocked(adminAuditoria).mockResolvedValue(AUDITORIA);
+    renderAdmin();
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-auditoria-fila-12')).toBeInTheDocument(),
+    );
+  });
+
   it('A6: sin detalle, muestra un guion en vez de "{}" o "null"', async () => {
     vi.mocked(adminAuditoria).mockResolvedValue({
-      auditoria: [{ ...AUDITORIA.auditoria[0]!, detalle: null }],
+      total: 1,
+      eventos: [{ ...AUDITORIA.eventos[0]!, detalle: null }],
     });
     renderAdmin();
     await waitFor(() =>
@@ -305,7 +321,7 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
   it('las tres áreas vacías dicen qué falta, en vez de mostrar una tabla sin filas', async () => {
     vi.mocked(adminErrores).mockResolvedValue({ errores: [] });
     vi.mocked(adminSoporte).mockResolvedValue({ tickets: [] });
-    vi.mocked(adminAuditoria).mockResolvedValue({ auditoria: [] });
+    vi.mocked(adminAuditoria).mockResolvedValue({ eventos: [], total: 0 });
     renderAdmin();
     await waitFor(() => expect(screen.getByTestId('admin-dlq-vacio')).toBeInTheDocument());
     expect(screen.getByTestId('admin-soporte-vacio')).toBeInTheDocument();

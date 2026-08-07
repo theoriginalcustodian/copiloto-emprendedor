@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setToken } from '../../auth/session';
-import { AdminNoDisponibleError, adminSalud, adminUso } from './admin';
+import {
+  AdminNoDisponibleError,
+  adminAuditoria,
+  adminErrores,
+  adminSalud,
+  adminSoporte,
+  adminUso,
+} from './admin';
 import { ForbiddenError, UnauthorizedError } from './client';
 
 /** Mismo helper que `client.test.ts` — respuesta JSON normal. */
@@ -116,5 +123,93 @@ describe('api admin (CONS5 — A1 salud + A3 uso)', () => {
       status: 503,
       detail: 'Temporal no conectado en este proceso',
     });
+  });
+});
+
+/**
+ * CONS6 — A5/A4/A6 en la capa de TRANSPORTE.
+ *
+ * Estos tests van acá y no en `AdminScreen.test.tsx` por una razón medida: la pantalla mockea
+ * `lib/api/admin`, así que el guard de forma (`tieneClave`) **nunca corre** en sus tests. Se
+ * comprobó — cambiar `tieneClave('eventos')` por `tieneClave('auditoria')` deja los 23 tests de la
+ * pantalla en verde. El borde del wire sólo se ejercita mockeando `fetch`, que es lo que hace este
+ * archivo. Ver `memoria/tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire`.
+ */
+describe('api admin (CONS6 — A5 errores + A4 soporte + A6 auditoría)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('adminErrores acepta la forma real y pasa los filtros por querystring', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { errores: [] }));
+    await adminErrores({ estado: 'pendiente', limite: 10 });
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain('estado=pendiente');
+    expect(url).toContain('limite=10');
+  });
+
+  it('adminErrores sin filtros no manda querystring vacío', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { errores: [] }));
+    await adminErrores();
+    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('?');
+  });
+
+  it('adminSoporte acepta la forma real', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { tickets: [] }));
+    await expect(adminSoporte()).resolves.toEqual({ tickets: [] });
+  });
+
+  // ---- El guard de forma de A6, que es donde ya nos mordió una vez ----
+
+  it('adminAuditoria acepta `{eventos, total}` — la clave que manda el handler', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { eventos: [], total: 0 }));
+    await expect(adminAuditoria()).resolves.toEqual({ eventos: [], total: 0 });
+  });
+
+  it('adminAuditoria RECHAZA `{auditoria: [...]}` — el shape viejo se rompe ruidoso', async () => {
+    // El 2026-08-07 el handler devolvía esta forma y se alineó al contrato unas horas después. Que
+    // el cliente la rechace es lo QUERIDO: si la aceptara "por las dudas", un backend que vuelva
+    // atrás mostraría un registro de auditoría vacío, indistinguible de "todavía no hubo acciones".
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { auditoria: [{ id: 1 }] }));
+    await expect(adminAuditoria()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+  });
+
+  it('adminAuditoria rechaza un `eventos` que no es lista', async () => {
+    // Control del guard: `'eventos' in d` a secas dejaría pasar `{eventos: "algo"}` y el `.map` de
+    // la pantalla explotaría con un error que no dice nada del problema real.
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { eventos: 'no soy una lista' }));
+    await expect(adminAuditoria()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+  });
+
+  it('adminAuditoria pasa sus tres filtros por querystring', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { eventos: [], total: 0 }));
+    await adminAuditoria({ clienteId: 'c1', adminUserId: 'a1', limite: 500 });
+    const url = String(fetchMock.mock.calls[0]?.[0]);
+    expect(url).toContain('cliente_id=c1');
+    expect(url).toContain('admin_user_id=a1');
+    expect(url).toContain('limite=500');
+  });
+
+  it('las tres rutas nuevas también traducen el catch-all de la SPA', async () => {
+    // Mismo modo de fallo que A1/A3: 200 con el index.html cuando `/admin/*` no está montado.
+    for (const llamar of [adminErrores, adminSoporte, adminAuditoria]) {
+      fetchMock.mockResolvedValueOnce(mockCatchAllHtml());
+      await expect(llamar()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+    }
+  });
+
+  it('un 403 en las tres sigue siendo ForbiddenError, no "no está montado"', async () => {
+    for (const llamar of [adminErrores, adminSoporte, adminAuditoria]) {
+      fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'no sos admin' }));
+      await expect(llamar()).rejects.toBeInstanceOf(ForbiddenError);
+    }
   });
 });
