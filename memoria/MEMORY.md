@@ -79,6 +79,7 @@
 - [🔬🙈 Probar que el instrumento miente NO te exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar una causa no refuta el hecho. Descarté 4 ciclos una alarma que era real.
 - [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera ANTES de contar.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
+- [📄🕳️ Un control a nivel ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Medí «archivos sólo-en-destino = 0» y sembré: el reconciliador pisó la poda del día. Un **cero verdadero a la pregunta equivocada** se siente igual que luz verde. Medí las dos granularidades y las dos direcciones. **`seed-memory.sh` NO se corre** hasta reconciliar los índices a mano.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
 - [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op es lo que MEJOR puntúa en un gate de no-regresión.
 - [🔌🙈 El test que NO usa el camino de producción no puede verlo fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — 8 adversariales verdes y ciegos.
