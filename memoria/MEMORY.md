@@ -9,12 +9,12 @@
 
 **"¿en qué estábamos?"** → [`HANDOFF.md`](../HANDOFF.md) · detalle → `CLAUDE.md §4-5` · frentes → `coordinacion/PLAN.md`.
 
-- **🌐 EL REPO ES PÚBLICO** desde 2026-08-06 (Actions ilimitado). Cambia el COSTO de un error, no la regla: un `.env` mal commiteado es público al instante. Auditoría de toda la historia: 0 secretos. `CLAUDE.md` §cabecera.
-- **🟢 BETA y M-WEB cerrados** (2026-08-05). Los 2 gates de BETA-5 satisfechos: falta sólo que el operador mande las invitaciones. **🔥 En curso: sprint CONSOLA DE OPERADOR** — estado real en `coordinacion/PLAN.md`, no acá. [[copiloto-beta-sprint-cerrado]]
-- **⚙️ CI PROPIO (ADR-001)** — la definición de la suite ya NO vive en GitHub: `scripts/ci/*.sh` + `scripts/gate.sh` (recibo `.ci-recibos/<sha>.json`) + guard `no-drift.sh`. Actions es respaldo. Deuda con dueño (backend): el mirror del VPS nunca corrió con un push real.
-- **🌳 El checkout compartido está 237 commits detrás de `main`** — docs y memoria escritos ahí NO llegan a `main` ni al grafo. Escribilos en un worktree desde `origin/main`. [[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]]
+- **🌐 EL REPO ES PÚBLICO** desde 2026-08-06. Cambia el COSTO de un error, no la regla: un `.env` commiteado es público al instante. Historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
+- **🟢 BETA y M-WEB cerrados** (2026-08-05); falta que el operador mande las invitaciones. **🔥 En curso: CONSOLA DE OPERADOR** — estado real en `coordinacion/PLAN.md`. [[copiloto-beta-sprint-cerrado]]
+- **⚙️ CI PROPIO (ADR-001)** — la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
+- **🌳 Checkout compartido: 237 commits detrás de `main`** — lo escrito ahí no llega a `main` ni al grafo. Worktree desde `origin/main`. [[el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama]]
 - **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
-- **🛡️ Manejo de errores — frente COMPLETO, fases 0→3 en prod** (#151→#185) + **autohealing global** E2E: uno para toda la app, `BYPASSRLS`, abre PRs solo, gate que distingue *arregla* de *no rompe*. → `Manejo de errores/07-ESTADO-…-08-01.md` · [[no-romper-no-es-arreglar]]
+- **🛡️ Manejo de errores — COMPLETO en prod** (#151→#185) + autohealing que abre PRs solo, con gate que distingue *arregla* de *no rompe*. [[no-romper-no-es-arreglar]]
 - **⚠️ Ese frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
 - **✅ Cerrados:** AFIP E2E en device · presupuestos + perfil · clientes (falta voz) · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]]
 - **🚧 Abiertos:** OAuth Google (es de Composio) · ingesta real al grafo (MAYOR). [[copiloto-oauth-google-propio]] · [[copiloto-ingesta-grafo-por-tenant-real-frente-abierto]]
@@ -71,8 +71,8 @@
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?*
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
-- [🈳🟢 El chequeo de tipos que compilaba el proyecto VACÍO](el-chequeo-de-tipos-que-compilaba-el-proyecto-vacio.md) — `project`. `tsc --noEmit` sobre un tsconfig de referencias (`"files":[]`) sale **exit 0 sin mirar un archivo**: el job web nunca chequeó tipos. Diferencial: con 10 errores reales, `--noEmit` dio 0 y `--build --noEmit` dio 2. Preguntá el DENOMINADOR, no si pasó.
-- [📐🚫 Una tabla IGNORA el `max-width` de su celda (y `display:block` le saca el reparto)](una-tabla-ignora-el-max-width-de-su-celda.md) — `project`. Dos defectos en dos PRs, suite verde en ambos: **jsdom no hace layout**. El recorte va en un `<span>` interno; el `overflow-x`, en la tarjeta. Receta del gate visual + la trampa del puerto ajeno.
+- [🈳🟢 El chequeo de tipos compilaba el proyecto VACÍO](el-chequeo-de-tipos-que-compilaba-el-proyecto-vacio.md) — `tsc --noEmit` con `"files":[]` = exit 0 sin mirar nada. Preguntá el DENOMINADOR.
+- [📐🚫 Una tabla IGNORA el `max-width` de su celda](una-tabla-ignora-el-max-width-de-su-celda.md) — **jsdom no hace layout**: 2 defectos, suite verde. Recorte en un `<span>`; `overflow-x` en la tarjeta.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
 - [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
