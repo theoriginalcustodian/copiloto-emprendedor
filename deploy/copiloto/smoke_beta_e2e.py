@@ -138,8 +138,8 @@ except Exception as e:
     rec("/auth/refresh (sesión persistente)", False, repr(e))
 
 # 10) CONSOLA -- CONS8, contrato `abierto/..._CONS8-el-cierre-que-prueba-la-consola-contra-el-
-# entorno-vivo.md`. Sólo ejercita 7a (suspender/reactivar) -- 7b (reintentar) no aparece en el
-# contrato de este bloque, así que no depende de él.
+# entorno-vivo.md`. 7a (suspender/reactivar) en este bloque; 7b (reintentar) en el bloque 10d,
+# más abajo -- los dos ciclos mutar->auditar quedan cubiertos.
 ADMIN_ENDPOINTS = ("/admin/salud", "/admin/uso", "/admin/errores", "/admin/soporte", "/admin/auditoria")
 
 # 10a) ADVERSARIAL HOSTIL -- con el token SIN el claim admin (capturado en el paso 2, ANTES de
