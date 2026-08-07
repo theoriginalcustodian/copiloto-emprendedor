@@ -1,0 +1,153 @@
+/*
+ * Estilos del módulo Consola / admin (CONS5) — theme-aware vía CSS vars de themes.css, mismo
+ * criterio que actividad.css/contabilidad.css (cero color literal).
+ *
+ * `.admin-screen` cumple el MISMO contrato que las otras 19 pantallas (`flex:1; min-height:0;
+ * overflow-y:auto`): así encaja en `.app-shell__content` / `.desktop-shell__content` sin tocar el
+ * shell. El `min-height: 0` no es opcional — un hijo flex no se encoge bajo su contenido sin él, y
+ * el `overflow-y` nunca se activaría (ver `memoria/el-guard-se-satisface-con-su-propio-comentario`
+ * y el fix del rail, PR #295).
+ */
+
+.admin-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 16px 24px;
+}
+
+.admin-screen__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-screen__titulo {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.admin-screen__ventanas {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-screen__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-screen__seccion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-screen__seccion-head h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+.admin-screen__ventana-activa {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.admin-screen__aviso,
+.admin-screen__vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--label);
+}
+
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.admin-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-card h3 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading);
+  margin: 0;
+}
+
+/* Métricas en fila, envolviendo en pantallas angostas (la consola se mira también desde el teléfono). */
+.admin-metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 0;
+}
+
+.admin-metricas dt {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--label);
+}
+
+.admin-metricas dd {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 2px 0 0;
+}
+
+/* La tabla scrollea SOLA en horizontal: sin esto, en un teléfono la página entera se desplaza de
+   costado y el resto de la consola se desalinea. */
+.admin-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+
+.admin-tabla th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--label);
+  padding: 6px 10px 6px 0;
+  white-space: nowrap;
+}
+
+.admin-tabla td {
+  padding: 7px 10px 7px 0;
+  color: var(--text);
+  border-top: 1px solid var(--card-border);
+  white-space: nowrap;
+}
