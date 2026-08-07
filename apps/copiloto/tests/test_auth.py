@@ -62,8 +62,16 @@ class _FakeCursor:
 
     def execute(self, sql: str, params: tuple) -> None:
         auth_user_id = params[0]
-        cliente_id = self._registry.get(auth_user_id)
-        self._result = (cliente_id,) if cliente_id is not None else None
+        entrada = self._registry.get(auth_user_id)
+        if entrada is None:
+            self._result = None
+            return
+        # `entrada` es `cliente_id` (string, default 'active') o `(cliente_id, status)` para los
+        # tests de CONS7a (suspender/reactivar). La query real trae `status` sólo cuando
+        # `resolve_cliente_id_y_estado` la ejecuta -- se detecta por el texto del SQL para no
+        # tener que distinguir "qué función llamó" desde el fake.
+        cliente_id, status = entrada if isinstance(entrada, tuple) else (entrada, "active")
+        self._result = (cliente_id, status) if "status" in sql else (cliente_id,)
 
     def fetchone(self):
         return self._result
@@ -109,6 +117,21 @@ def _build_app(registry: dict, issuer: str | None = None) -> FastAPI:
 def test_require_tenant_valid_token_with_tenant_returns_cliente_id():
     client = TestClient(_build_app({"u-1": "cid-abc"}))
     resp = client.get("/whoami", headers={"Authorization": f"Bearer {_tok({})}"})
+    assert resp.status_code == 200
+    assert resp.json()["cliente_id"] == "cid-abc"
+
+
+def test_require_tenant_suspendido_da_403_y_activo_da_200_MISMO_TEST():
+    """ADVERSARIAL CONS7a -- regla dura del repo: control de acceso sin este test = no verificado.
+    Control positivo Y negativo en la MISMA corrida: si sólo se probara el 403, un `require_tenant`
+    que rechazara a TODOS pasaría igual."""
+    client_suspendido = TestClient(_build_app({"u-1": ("cid-abc", "suspended")}))
+    resp = client_suspendido.get("/whoami", headers={"Authorization": f"Bearer {_tok({})}"})
+    assert resp.status_code == 403
+    assert "suspend" in resp.json()["detail"]
+
+    client_activo = TestClient(_build_app({"u-1": ("cid-abc", "active")}))
+    resp = client_activo.get("/whoami", headers={"Authorization": f"Bearer {_tok({})}"})
     assert resp.status_code == 200
     assert resp.json()["cliente_id"] == "cid-abc"
 

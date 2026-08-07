@@ -259,6 +259,22 @@ class TraumaStore:
         finally:
             conn.close()
 
+    def reabrir(self, trauma_id: int) -> bool:
+        """Vuelve un trauma a `pendiente` sea cual sea su estado actual (CONS7b: reintentar desde
+        la Consola). Incondicional a propósito -- a diferencia de `depositar()`, que sólo reabre
+        `resuelto` como efecto colateral de una ocurrencia nueva, esto es una acción EXPLÍCITA del
+        operador: "quiero que el ciclo lo vuelva a intentar", sin importar si estaba `resuelto`,
+        `descartado` o `reparacion_propuesta`."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE {TABLA} SET estado = %s, updated_at = now() WHERE id = %s",
+                    (PENDIENTE, trauma_id))
+                return cur.rowcount == 1
+        finally:
+            conn.close()
+
     def rescatar_colgados(self, *, minutos: int = 30) -> int:
         """Devuelve a `pendiente` los `en_proceso` que quedaron viejos, y dice cuántos.
 

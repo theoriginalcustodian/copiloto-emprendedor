@@ -66,6 +66,22 @@ def resolve_cliente_id(conn_factory: Callable, auth_user_id: str) -> str | None:
     return row[0] if row else None
 
 
+def resolve_cliente_id_y_estado(conn_factory: Callable, auth_user_id: str) -> tuple[str, str] | None:
+    """Como `resolve_cliente_id`, pero trae también `status` (CONS7a: suspender/reactivar tenant).
+
+    Función separada, no un cambio de firma de `resolve_cliente_id` -- ese helper tiene otros
+    llamadores (`onboarding.py`) que sólo necesitan el id y no deberían cargar con una tupla que no
+    usan."""
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT cliente_id::text, status FROM {_TENANTS_TABLE} WHERE auth_user_id=%s",
+            (auth_user_id,),
+        )
+        row = cur.fetchone()
+    return (row[0], row[1]) if row else None
+
+
 def _bearer_claims(request: Request, *, secret: str, issuer: str | None) -> dict:
     """Extrae el Bearer del header y lo valida (mismo gate 401 que require_tenant). Devuelve los
     claims. Compartido por `require_tenant` (que además exige fila de tenant) y `require_claims`
@@ -91,7 +107,9 @@ def make_require_tenant(*, secret: str, conn_factory: Callable, issuer: str | No
 
     Devuelve `cliente_id: str` inyectable vía `Depends(...)`.
     `HTTPException(401)` si el header falta o el token es inválido/expirado/aud o iss incorrecto.
-    `HTTPException(403)` si el token es válido pero no hay fila de tenant (sin onboarding).
+    `HTTPException(403)` si el token es válido pero no hay fila de tenant (sin onboarding), o si
+    la fila existe pero `status != 'active'` (CONS7a: suspender/reactivar tenant -- el guard va
+    ACÁ, no en cada endpoint, para que no haya una ruta N+1 que se olvide de chequearlo).
 
     Fail-closed en el arranque: si el secreto falta o está vacío, aborta AL CONSTRUIR (el
     servicio muere al bootear) en vez de aceptar tokens forjados con clave vacía en runtime —
@@ -107,11 +125,15 @@ def make_require_tenant(*, secret: str, conn_factory: Callable, issuer: str | No
     # SUS PROPIOS datos —0 filas en todo— sin ningún error que lo delate.
     async def require_tenant(request: Request) -> str:
         claims = _bearer_claims(request, secret=secret, issuer=issuer)
-        # `to_thread` porque `resolve_cliente_id` hace I/O de DB síncrono: llamarlo directo acá
-        # bloquearía el event loop en CADA request autenticado.
-        cliente_id = await asyncio.to_thread(resolve_cliente_id, conn_factory, claims["sub"])
-        if cliente_id is None:
+        # `to_thread` porque resolve_cliente_id_y_estado hace I/O de DB síncrono: llamarlo directo
+        # acá bloquearía el event loop en CADA request autenticado.
+        resuelto = await asyncio.to_thread(resolve_cliente_id_y_estado, conn_factory, claims["sub"])
+        if resuelto is None:
             raise HTTPException(status_code=403, detail="tenant not provisioned for this user")
+        cliente_id, status = resuelto
+        if status != "active":
+            # El token es VÁLIDO -- por eso 403, no 401: la credencial anda, la cuenta no opera.
+            raise HTTPException(status_code=403, detail="tenant suspended")
         # El borde declara el tenant: de acá en adelante, toda conexión que se abra en este request
         # se lo dice a la base. Ver `contexto_tenant.py`.
         declarar_tenant(cliente_id)
