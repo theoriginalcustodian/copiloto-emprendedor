@@ -1,3 +1,4 @@
+import { alExpirarSesion, MENSAJE_SESION_EXPIRADA } from '@copiloto/core';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
@@ -27,6 +28,7 @@ type MeOutcome = 'ok' | 'forbidden' | 'failed';
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('checking');
   const [me, setMe] = useState<MeResponse | undefined>(undefined);
+  const [avisoSesion, setAvisoSesion] = useState<string | undefined>(undefined);
 
   // Valida el token actual contra /me y deja el estado consistente. Se reusa en el chequeo de
   // montaje y después de un login exitoso.
@@ -50,6 +52,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return 'failed';
     }
   }, []);
+
+  // CTA5 — la sesión murió sola: el core ya limpió los tokens, y sin esto nadie se enteraba. La app
+  // quedaba SIN sesión pero MOSTRÁNDOSE logueada, y el usuario seguía tocando botones que fallaban
+  // todos igual, leyendo el `detail` crudo del backend («missing or malformed Authorization header»).
+  // Acá se cierra el circuito: al login, con un motivo en castellano.
+  //
+  // Se suscribe una sola vez (deps `[]`) y devuelve la desuscripción como cleanup — el provider
+  // envuelve la app entera, así que su ciclo de vida ES el de la sesión.
+  useEffect(
+    () =>
+      alExpirarSesion(() => {
+        setMe(undefined);
+        setStatus('anon');
+        setAvisoSesion(MENSAJE_SESION_EXPIRADA);
+      }),
+    [],
+  );
 
   useEffect(() => {
     // 1) ¿Volvemos de un callback OAuth (Google)? GoTrue deja los tokens en el fragment de la URL.
@@ -84,6 +103,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<LoginResult> => {
+      // El aviso describe la sesión ANTERIOR: dejarlo puesto mientras se reintenta haría convivir
+      // «tu sesión expiró» con el error del intento nuevo, y el usuario no sabría cuál leer.
+      setAvisoSesion(undefined);
       try {
         const response = await api.login(email, password);
         setToken(response.access_token);
@@ -105,8 +127,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     clearToken();
     setMe(undefined);
     setStatus('anon');
+    // Salir a propósito no es que se te haya caído la sesión: el aviso no corresponde.
+    setAvisoSesion(undefined);
   }, []);
 
-  const value: UseSessionResult = { status, me, login, logout };
+  const value: UseSessionResult = { status, me, avisoSesion, login, logout };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

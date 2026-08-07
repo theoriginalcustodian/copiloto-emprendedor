@@ -20,6 +20,17 @@ type Escucha = () => void;
 const escuchas = new Set<Escucha>();
 
 /**
+ * El texto que ve el emprendedor cuando su sesión murió. Vive acá —y no en cada pantalla de login—
+ * porque el contrato de CTA5 pide **el mismo comportamiento en mobile y web**, y dos literales
+ * separados divergen en silencio: el día que alguien mejore la redacción va a mejorarla en una sola
+ * plataforma y nadie se va a enterar.
+ *
+ * Es lo único de este módulo que es copy de UI. Va junto al aviso, no en el design-system, porque su
+ * razón de existir es este evento y no un estilo compartido.
+ */
+export const MENSAJE_SESION_EXPIRADA = 'Tu sesión expiró. Entrá de nuevo.';
+
+/**
  * Suscribe un aviso de «la sesión murió». Devuelve la función para desuscribir —pensada para
  * devolverla tal cual desde un `useEffect`, que es como la consumen los dos `SessionProvider`.
  */

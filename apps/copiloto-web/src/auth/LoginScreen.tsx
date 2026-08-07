@@ -15,7 +15,7 @@ import { useSession } from './useSession';
 type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 'error-red';
 
 export function LoginScreen() {
-  const { status, login } = useSession();
+  const { status, avisoSesion, login } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
@@ -99,6 +99,15 @@ export function LoginScreen() {
             </Button>
           </form>
 
+          {/* CTA5 — la sesión se cayó sola. Va ANTES de los errores del formulario y sólo mientras
+              el formulario no tenga nada propio que decir: en cuanto el usuario reintenta, lo que
+              importa es el resultado de ESE intento, no por qué llegó acá. `--warning` y no
+              `--danger` a propósito: expirar es lo normal, no una falla. */}
+          {avisoSesion && effectiveState === 'idle' && (
+            <p role="alert" className="login-screen__alert login-screen__alert--warning">
+              {avisoSesion}
+            </p>
+          )}
           {effectiveState === 'error-credenciales' && (
             <p role="alert" className="login-screen__alert login-screen__alert--danger">
               Email o contraseña incorrectos. Probá de nuevo.
