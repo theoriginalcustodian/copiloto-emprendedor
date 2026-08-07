@@ -207,8 +207,41 @@ soporte.
 
 ### E · Consola del operador — `BE` + `FE`
 
+#### 🔗 La costura `BE ↔ FE` — decidida 2026-08-07
+
+```
+GET  /admin/soporte/tickets?estado=&codigo=&limite=   → {"tickets":[...], "total": N}
+GET  /admin/soporte/tickets/{ticket_id}               → {"ticket": {...}, "mensajes":[...]}
+POST /admin/soporte/tickets/{ticket_id}/responder     {"texto": str, "cerrar": bool=false}
+                                                      → {"mensaje_id": int, "estado": str}
+```
+
+Las tres con `Depends(require_admin)`, **mismo patrón** que `POST /admin/tenants/{cliente_id}/estado`
+(`admin_web.py:92`). `limite` topeado del lado del servidor en 500 — un `limite` sin techo es una
+denegación de servicio con un parámetro (lección de A6/CONS6, PR#321).
+
+**🔴 `copiloto_consola` es `BYPASSRLS` pero `SELECT`-only** (`admin_soporte.py:41`). La consola **lee**
+los tickets de todos los tenants y **no escribe** la respuesta con ese rol: backend resuelve el
+`cliente_id` **del ticket** (lectura cross-tenant) y con él instancia `TicketStore` por el camino
+normal, con la conexión del **tenant dueño**. El `cliente_id` nunca se acepta del body.
+
+*Por qué, y no dándole `INSERT` al rol de la consola:* el día que la consola escriba en las tablas de
+todos los tenants sin pasar por RLS, el aislamiento deja de tener un punto único de verdad y pasa a
+depender de que cada handler se acuerde de filtrar. La escritura sigue pagando el peaje del tenant.
+
+**Falta un verbo en `TicketStore`**: hoy tiene `crear_ticket` y `agregar_mensaje`, ninguno cambia
+`estado` (nace `'abierto'`). Vocabulario cerrado, tres valores: `abierto → respondido → cerrado`.
+Un estado más obliga a todos los `switch` de la consola y de la app a aprenderlo → se escala, no se
+agrega.
+
 - [ ] **E1** El operador **responde** desde la consola (hoy es read-only). **Evidencia:** respuesta
       enviada y recibida en la app.
+- [ ] **E1b** **Adversarial, precondición de cierre:** no-admin con token válido → **403** en las tres
+      rutas, **con control positivo en la misma corrida** (un admin obtiene 200). Sin el positivo, el
+      403 podría venir de que la ruta no existe.
+- [ ] **E1c** **Segundo adversarial:** un admin responde el ticket de un tenant → la fila queda con
+      **ese** `cliente_id` y el mensaje **no** aparece en el feed de otro. Un control declarado sin
+      test hostil es indistinguible de uno ausente.
 - [ ] **E2** La acción de responder es **acción que muta**: fila en `copiloto_auditoria` con autor.
 - [ ] **E3** Los tickets se listan con estado, código y última actividad; **se puede buscar por
       `SOP-XXXX`** — que es para lo que existe el código legible.
@@ -279,6 +312,13 @@ respuesta del operador desde la consola (eso es `E`/SOP6).
       cartel, tira abajo esa decisión de diseño desde el otro extremo.
 
 ### G · Notificaciones — `BE` + `FE`
+
+> ⚠️ **Trampa de nombre, avisada por [`CONTEXT.md`](../../../CONTEXT.md): «actividad» nombra DOS
+> sistemas sin relación** en este repo — el **feed SQL de negocio** y la **memoria conversacional**.
+> El de este bloque es **el feed SQL**: `actividad_store`, expuesto por `actividad_web.py` y montado
+> en `web.py:1023`. **No crear una tabla de notificaciones nueva**, y si te encontrás escribiendo en
+> la memoria del grafo, te equivocaste de sistema — no te lo va a avisar ningún error: el `write`
+> tiene éxito, la notificación simplemente no aparece nunca.
 
 - [ ] **G1** Cuando el operador responde, al usuario le llega **notificación en Actividad**,
       **enlazada al mensaje** dentro de la función. **Evidencia:** en device, tocando la notificación
