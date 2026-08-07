@@ -131,6 +131,7 @@ def test_reintentar_dominio_permitido_vuelve_a_pendiente(conn_de_tenant, nuevo_t
 
 
 @necesita_pg
+@necesita_rol_consola
 def test_reintentar_trauma_inexistente_da_404():
     resp = _client().post("/admin/errores/999999999/reintentar",
                           headers={"Authorization": f"Bearer {_tok_admin()}"})
