@@ -4,6 +4,7 @@ import {
   alExpirarSesion,
   apiReal as api,
   ForbiddenError,
+  marcarSesionViva,
   MENSAJE_SESION_EXPIRADA,
   UnauthorizedError,
   type MeResponse,
@@ -44,6 +45,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const identidad = await api.me();
       setMeData(identidad);
       setEstado('autenticado');
+      // Sesión viva confirmada ⇒ rearmar el aviso, o la SEGUNDA muerte saldría muda (CTA5). Va acá y
+      // no en `login` porque los tres caminos de entrada —email, Google, y el probe del arranque—
+      // pasan por esta función: uno solo en el punto común, en vez de tres que se pueden desincronizar.
+      marcarSesionViva();
       return 'ok';
     } catch (err) {
       setMeData(null);

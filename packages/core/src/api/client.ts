@@ -1,6 +1,6 @@
 import { config } from './config';
 import { ApiError, ForbiddenError, UnauthorizedError } from './errors';
-import { notificarSesionExpirada } from './sesion';
+import { marcarSesionViva, notificarSesionExpirada } from './sesion';
 import type { ArchivoSubida, PeticionHttp, RespuestaHttp } from './http';
 
 interface RequestOptions {
@@ -42,6 +42,8 @@ async function doRefresh(): Promise<boolean> {
     const data = (await res.json()) as { access_token: string; refresh_token: string };
     await tokens.guardarToken(data.access_token);
     await tokens.guardarRefresh(data.refresh_token); // GoTrue ROTA -> persistir el nuevo
+    // Hay sesión viva otra vez: rearma el aviso para que una muerte POSTERIOR no salga muda (CTA5).
+    marcarSesionViva();
     return true;
   } catch {
     return false; // error de red/parseo -> tratar como refresh fallido

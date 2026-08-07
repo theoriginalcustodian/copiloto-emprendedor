@@ -1,4 +1,4 @@
-import { notificarSesionExpirada } from '@copiloto/core';
+import { marcarSesionViva, notificarSesionExpirada } from '@copiloto/core';
 
 import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from '../../auth/session';
 
@@ -69,6 +69,8 @@ async function doRefresh(): Promise<boolean> {
     const data = (await res.json()) as { access_token: string; refresh_token: string };
     setToken(data.access_token);
     setRefreshToken(data.refresh_token); // GoTrue ROTA -> persistir el nuevo
+    // Hay sesión viva otra vez: rearma el aviso para que una muerte POSTERIOR no salga muda (CTA5).
+    marcarSesionViva();
     return true;
   } catch {
     return false; // error de red/parseo -> tratar como refresh fallido
