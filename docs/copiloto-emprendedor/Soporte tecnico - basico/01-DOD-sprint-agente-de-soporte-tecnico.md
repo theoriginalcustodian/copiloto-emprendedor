@@ -286,6 +286,13 @@ respuesta del operador desde la consola (eso es `E`/SOP6).
 
 ### G · Notificaciones — `BE` + `FE`
 
+> ⚠️ **Trampa de nombre, avisada por [`CONTEXT.md`](../../../CONTEXT.md): «actividad» nombra DOS
+> sistemas sin relación** en este repo — el **feed SQL de negocio** y la **memoria conversacional**.
+> El de este bloque es **el feed SQL**: `actividad_store`, expuesto por `actividad_web.py` y montado
+> en `web.py:1023`. **No crear una tabla de notificaciones nueva**, y si te encontrás escribiendo en
+> la memoria del grafo, te equivocaste de sistema — no te lo va a avisar ningún error: el `write`
+> tiene éxito, la notificación simplemente no aparece nunca.
+
 - [ ] **G1** Cuando el operador responde, al usuario le llega **notificación en Actividad**,
       **enlazada al mensaje** dentro de la función. **Evidencia:** en device, tocando la notificación
       y llegando al mensaje.
