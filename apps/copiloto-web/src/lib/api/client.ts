@@ -73,6 +73,24 @@ async function doRefresh(): Promise<boolean> {
   }
 }
 
+/**
+ * Bearer para una request autenticada, **renovando si el access token FALTA pero hay refresh**.
+ *
+ * Gemelo de `bearerVigente()` en `@copiloto/core` (CTA7). Va acá también porque este cliente es el
+ * que usan chat, conexiones y cuenta: arreglar sólo el del core dejaba la web con el defecto vivo, y
+ * se verificó en el navegador — con el access borrado a mano, la app terminaba en el login.
+ *
+ * `sesionMuerta` separa tres situaciones que antes se confundían: hay token (o se renovó) · no hay
+ * NADA guardado (nunca hubo sesión: nada que borrar) · hay refresh y no renovó (ahí sí murió).
+ */
+async function bearerVigente(): Promise<{ token: string | null; sesionMuerta: boolean }> {
+  const token = getToken();
+  if (token) return { token, sesionMuerta: false };
+  if (!getRefreshToken()) return { token: null, sesionMuerta: false };
+  const ok = await refreshSession(); // single-flight: N requests sin token = UN solo /auth/refresh
+  return { token: ok ? getToken() : null, sesionMuerta: !ok };
+}
+
 async function readErrorDetail(res: Response): Promise<string | undefined> {
   try {
     const data: unknown = await res.json();
@@ -99,9 +117,13 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true } = opts;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
+  // Sólo `sesionMuerta` autoriza a borrar los tokens (ver `bearerVigente`).
+  let sesionMuerta = false;
+
   if (auth) {
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const bearer = await bearerVigente();
+    if (bearer.token) headers.Authorization = `Bearer ${bearer.token}`;
+    sesionMuerta = bearer.sesionMuerta;
   }
 
   const init: RequestInit = {
@@ -125,6 +147,8 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       const fresh = getToken();
       if (fresh) headers.Authorization = `Bearer ${fresh}`;
       res = await fetch(`${API_BASE}${path}`, init);
+    } else {
+      sesionMuerta = true; // había sesión y no se pudo renovar: esto SÍ es logout
     }
   }
 
@@ -136,10 +160,11 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const detail = await readErrorDetail(res);
 
   if (res.status === 401) {
-    // El token propio (si lo había) ya no sirve — limpiarlo para que useSession vuelva a 'anon'.
-    // No aplica cuando `auth:false` (ej. /auth/login con credenciales mal escritas: no hay
-    // sesión propia que invalidar).
-    if (auth) clearToken();
+    // Antes era `if (auth) clearToken()`: CUALQUIER 401 de CUALQUIER endpoint autenticado destruía
+    // la sesión — incluido el 401 por header ausente, que de paso se llevaba el refresh token que
+    // podía salvarla. Ahora sólo se limpia cuando una renovación con refresh guardado falló, que es
+    // la única prueba de sesión muerta que tiene el cliente.
+    if (sesionMuerta) clearToken();
     throw new UnauthorizedError(detail);
   }
   if (res.status === 403) {
@@ -168,8 +193,11 @@ export const apiClient = {
  */
 export async function postMultipart<T>(path: string, form: FormData): Promise<T> {
   const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  // Mismo criterio que `request()`: acá pesa el doble — un dictado ya grabado se perdería por no
+  // intentar renovar cuando el access token simplemente falta.
+  const bearer = await bearerVigente();
+  let sesionMuerta = bearer.sesionMuerta;
+  if (bearer.token) headers.Authorization = `Bearer ${bearer.token}`;
   const sentBearer = headers.Authorization !== undefined;
 
   let res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
@@ -180,6 +208,8 @@ export async function postMultipart<T>(path: string, form: FormData): Promise<T>
       const fresh = getToken();
       if (fresh) headers.Authorization = `Bearer ${fresh}`;
       res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
+    } else {
+      sesionMuerta = true;
     }
   }
 
@@ -188,7 +218,7 @@ export async function postMultipart<T>(path: string, form: FormData): Promise<T>
   const detail = await readErrorDetail(res);
 
   if (res.status === 401) {
-    if (sentBearer) clearToken();
+    if (sesionMuerta) clearToken();
     throw new UnauthorizedError(detail);
   }
   if (res.status === 403) {
