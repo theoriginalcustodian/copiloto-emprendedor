@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { api, ForbiddenError, UnauthorizedError, type MeResponse } from '../lib/api';
 import { consumeOauthCallback } from './oauth';
-import { clearToken, getToken, setRefreshToken, setToken } from './session';
+import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from './session';
 import {
   SessionContext,
   type LoginResult,
@@ -41,8 +41,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setStatus('no-habilitada');
         return 'forbidden';
       }
-      // 401 (client.ts ya limpió el token) u otro error (red/servidor): degradar a anónimo.
-      clearToken();
+      // Degradar a anónimo, sí; **borrar la sesión, sólo si el 401 la mató de verdad** (CTA7).
+      // `client.ts` ya limpia en ese caso; limpiar acá ante CUALQUIER error convertía un corte de
+      // red en un logout permanente, llevándose el refresh token que podía recuperarla.
+      if (err instanceof UnauthorizedError) clearToken();
       setMe(undefined);
       setStatus('anon');
       return 'failed';
@@ -69,9 +71,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 2) Sesión normal: validar el token persistido contra /me.
-    const token = getToken();
-    if (!token) {
+    // 2) Sesión normal: validar contra /me. "Sin access token" NO es "sin sesión" (CTA7): con
+    // refresh guardado la sesión está viva y sólo falta renovar — de eso ya se encarga el cliente
+    // HTTP al hacer el probe. Cortar acá declarando 'anon' impedía que nadie llegara a intentarlo,
+    // y era la razón por la que el fix del cliente no se veía en el navegador.
+    if (!getToken() && !getRefreshToken()) {
       setStatus('anon');
       return;
     }
