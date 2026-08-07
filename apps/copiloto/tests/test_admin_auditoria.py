@@ -157,11 +157,15 @@ def _client() -> TestClient:
     return TestClient(app)
 
 
+@necesita_pg
+@necesita_rol_consola
 def test_http_usuario_normal_403_y_admin_200_MISMO_TEST():
     """ADVERSARIAL propio del endpoint -- el DoD del contrato lo pide explícito (a diferencia de
     CONS2-4, que reusan el genérico de `test_admin_web.py`). Control positivo y negativo en la
     MISMA corrida: sin el positivo, un 403 no probaría el gate, probaría un endpoint roto para
-    todos (memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md)."""
+    todos (memoria/un-mecanismo-roto-hacia-el-no-no-da-sintoma.md). El positivo (200) sí toca
+    Postgres via `consola_conn_factory` -- decorado igual que CONS7ab: `test_reintentar_trauma_
+    inexistente_da_404` pisó CI la primera vez por este mismo olvido."""
     client = _client()
     resp_normal = client.get("/admin/auditoria", headers={"Authorization": f"Bearer {_tok(admin=False)}"})
     assert resp_normal.status_code == 403
