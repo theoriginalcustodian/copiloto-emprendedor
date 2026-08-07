@@ -60,12 +60,17 @@ from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
 from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
+from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 
 import services
 from calendar_policy import CALENDAR_POLICY
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
+# SOP4/C1 — chat de soporte, worker + task_queue PROPIOS (mismo nombre de env que `worker_soporte.py`,
+# nunca hardcodeado dos veces). `route_inbound` es agnóstico del dominio (`inbound_router.py`): un
+# `task_queue`/`domain` distintos alcanzan, no hace falta un router nuevo.
+SOPORTE_TASK_QUEUE = os.environ.get("SOPORTE_TASK_QUEUE", "agent-soporte")
 
 _log = logging.getLogger("copiloto.web")
 
@@ -491,6 +496,13 @@ class ChatIn(BaseModel):
     kind: str = "text"
 
 
+class ChatSoporteIn(BaseModel):
+    session_id: str
+    text: str
+    funcion: str   # 'soporte_tecnico' | 'como_uso_la_app' -- ver soporte_store.CANALES_VALIDOS
+    kind: str = "text"
+
+
 class FeedbackIn(BaseModel):
     texto: str
     contexto: str | None = None
@@ -653,6 +665,31 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                           "engine_mode": COPILOTO_ENGINE_MODE},
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
+
+    @app.post("/soporte/chat")
+    async def soporte_chat(msg: ChatSoporteIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door del chat de soporte (SOP4/C1+C4). Worker + task_queue PROPIOS (`SOPORTE_TASK_QUEUE`,
+        proceso separado de `worker_b`) -- `route_inbound` es agnóstico del dominio, no hace falta un
+        router nuevo. `funcion` la elige el usuario en la app, NUNCA un clasificador (C4: "determinista,
+        sin modelo") -- acá se valida contra la lista cerrada, 400 si no matchea ninguna.
+
+        `channel_ref` NAMESPACED por función (`soporte:{funcion}:{session_id}`, no el `session_id`
+        crudo): el `workflow_id` sale de `(channel, cliente_id, channel_ref)` únicamente
+        (`inbound_router.workflow_id_for`) -- sin este prefijo, abrir soporte con el MISMO `session_id`
+        que ya usa `/chat` reusaría (`USE_EXISTING`) el workflow del dominio 'emprendedor' en vez de
+        arrancar uno nuevo. El `session_id` efectivo vuelve en la respuesta: el frontend lo re-usa
+        para los mensajes siguientes de ESTE hilo y para pollear `/reply` (genérico por `session_id`,
+        no distingue dominio -- no hace falta tocarlo)."""
+        if msg.funcion not in SOPORTE_FUNCIONES_VALIDAS:
+            raise HTTPException(status_code=400,
+                                detail=f"función inválida: {msg.funcion!r} (válidas: {SOPORTE_FUNCIONES_VALIDAS})")
+        channel_ref = f"soporte:{msg.funcion}:{msg.session_id}"
+        wf_id = await route_inbound(
+            temporal_client, adapter=adapter, cliente_id=cliente_id, domain=msg.funcion,
+            task_queue=SOPORTE_TASK_QUEUE,
+            extra_config={"engine_mode": "react"},   # el domain de soporte SIEMPRE es react (worker_soporte.py)
+            raw_update={"session_id": channel_ref, "text": msg.text, "kind": msg.kind})
+        return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref}
 
     @app.post("/feedback")
     def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:

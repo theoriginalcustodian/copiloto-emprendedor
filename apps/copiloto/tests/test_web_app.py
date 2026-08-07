@@ -655,3 +655,58 @@ def test_rate_limit_middleware_esta_cableado_en_el_front_door():
 
     app, _ = _build_app(require_tenant=_require_tenant_401())
     assert any(getattr(m, "cls", None) is RateLimitMiddleware for m in app.user_middleware)
+
+
+# --- /soporte/chat (SOP4/C1+C4) -------------------------------------------------
+
+def test_soporte_chat_without_token_returns_401(monkeypatch):
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
+    assert r.status_code == 401
+
+
+def test_soporte_chat_funcion_invalida_es_400_C4_no_hay_clasificador_que_se_equivoque(monkeypatch):
+    """C4: las tres funciones se enrutan por elección EXPLÍCITA -- un valor que no matchea la lista
+    cerrada es 400, no un intento de adivinar a qué función se refería."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "atencion_al_cliente"})
+    assert r.status_code == 400
+
+
+def test_soporte_chat_devuelve_el_session_id_NAMESPACED_por_funcion(monkeypatch):
+    """El workflow_id sale de (channel, cliente_id, channel_ref) sin domain -- sin namespacing, abrir
+    soporte con el mismo session_id que ya usa /chat reusaría el workflow de 'emprendedor'."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["accepted"] is True
+    assert body["session_id"] == "soporte:soporte_tecnico:s1"
+    assert body["wf_id"] == "conv-web-cid-A-soporte:soporte_tecnico:s1"
+
+
+def test_soporte_chat_las_DOS_funciones_del_MISMO_session_id_NO_colisionan(monkeypatch):
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    client = TestClient(app)
+    r1 = client.post("/soporte/chat",
+                     json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
+    r2 = client.post("/soporte/chat",
+                     json={"session_id": "s1", "text": "hola", "funcion": "como_uso_la_app"})
+    assert r1.json()["wf_id"] != r2.json()["wf_id"]
+
+
+def test_soporte_chat_NO_colisiona_con_el_chat_del_copiloto_mismo_session_id(monkeypatch):
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    client = TestClient(app)
+    r_copiloto = client.post("/chat", json={"session_id": "s1", "text": "hola"})
+    r_soporte = client.post("/soporte/chat",
+                            json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
+    assert r_copiloto.json()["wf_id"] != r_soporte.json()["wf_id"]
