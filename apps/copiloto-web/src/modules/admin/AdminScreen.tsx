@@ -392,8 +392,8 @@ export function AdminScreen() {
                         <td>{fechaCorta(t.created_at)}</td>
                         <td>{t.cliente_id.slice(0, 8)}</td>
                         <td>{t.tipo ?? '—'}</td>
-                        <td className="admin-tabla__texto" title={t.texto ?? undefined}>
-                          {t.texto ?? '—'}
+                        <td title={t.texto ?? undefined}>
+                          <span className="admin-tabla__texto-recorte">{t.texto ?? '—'}</span>
                         </td>
                         <td data-testid={`admin-ticket-reparacion-${t.id}`}>
                           {/* Sin trauma asociado NO se puede distinguir "esperando" de "el
@@ -449,11 +449,12 @@ export function AdminScreen() {
                         <td>{ev.accion}</td>
                         <td>{ev.cliente_id?.slice(0, 8) ?? '—'}</td>
                         <td
-                          className="admin-tabla__texto"
                           data-testid={`admin-auditoria-detalle-${ev.id}`}
                           title={formatearDetalle(ev.detalle)}
                         >
-                          {formatearDetalle(ev.detalle)}
+                          <span className="admin-tabla__texto-recorte">
+                            {formatearDetalle(ev.detalle)}
+                          </span>
                         </td>
                         <td>
                           <Badge variant={ev.resultado === 'exitoso' ? 'ok' : 'danger'}>
