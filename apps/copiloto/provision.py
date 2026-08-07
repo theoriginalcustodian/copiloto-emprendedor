@@ -104,6 +104,47 @@ def _provision_tenants(conn) -> None:
     print(f"OK {SCHEMA}.{TENANTS_TABLE} (auth_user_id PK, cliente_id UNIQUE, RLS+policy+grants)", flush=True)
 
 
+TICKET_SECUENCIA_TABLE = "copiloto_ticket_secuencia"
+
+
+def _provision_ticket_secuencia(conn) -> None:
+    """DDL bespoke de `copiloto_ticket_secuencia` (SOP3/B3): un contador POR TENANT para el código
+    `SOP-XXXX`. Bespoke y no en uc_tables.json por el mismo motivo que `tenants` -- su PK es
+    `cliente_id`, no `id bigserial`.
+
+    Por qué un contador propio y no `id bigserial` de `copiloto_tickets` directamente: el código debe
+    ser legible y estable de cara al usuario ("tu ticket es el #3"), y un `id` global salta de
+    tenant en tenant (el primer ticket de un tenant nuevo podría nacer "SOP-00847"). El contador
+    aparte, con `ON CONFLICT ... DO UPDATE SET ultimo = ultimo + 1 RETURNING ultimo`, es la reserva
+    ATÓMICA que `soporte_store.reservar_codigo` usa dentro de la activity -- un solo UPSERT, sin
+    `SELECT` previo ni ventana de carrera para dos tickets del MISMO tenant en paralelo
+    ([[derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload]]: el contador vive en la base,
+    nunca en memoria de workflow/activity, así que sobrevive a un continue-as-new).
+
+    A diferencia de `tenants`, esta tabla SÍ lleva `FORCE`: no resuelve el tenant, está keyed POR un
+    `cliente_id` ya resuelto por el borde, así que el mecanismo estándar de RLS aplica sin la
+    excepción que `tenants` necesita."""
+    cur = conn.cursor()
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS {SCHEMA}.{TICKET_SECUENCIA_TABLE} (
+            cliente_id uuid PRIMARY KEY,
+            ultimo bigint NOT NULL DEFAULT 0
+        );
+    """)
+    cur.execute(f"ALTER TABLE {SCHEMA}.{TICKET_SECUENCIA_TABLE} ENABLE ROW LEVEL SECURITY;")
+    cur.execute(f"ALTER TABLE {SCHEMA}.{TICKET_SECUENCIA_TABLE} FORCE ROW LEVEL SECURITY;")
+    cur.execute(f"DROP POLICY IF EXISTS tenant_isolation ON {SCHEMA}.{TICKET_SECUENCIA_TABLE};")
+    cur.execute(
+        f"CREATE POLICY tenant_isolation ON {SCHEMA}.{TICKET_SECUENCIA_TABLE} "
+        f"FOR ALL USING (cliente_id = ((auth.jwt() ->> 'cliente_id')::uuid)) "
+        f"WITH CHECK (cliente_id = ((auth.jwt() ->> 'cliente_id')::uuid));"
+    )
+    for grantee in ("anon", "authenticated", "service_role"):
+        cur.execute(
+            f"GRANT SELECT, INSERT, UPDATE ON {SCHEMA}.{TICKET_SECUENCIA_TABLE} TO {grantee};")
+    print(f"OK {SCHEMA}.{TICKET_SECUENCIA_TABLE} (cliente_id PK, RLS FORCE+policy+grants)", flush=True)
+
+
 def _ensure_reply_card_column(conn) -> None:
     """Migración aditiva de `copiloto_web_replies.card jsonb` (metadata de presentación del reply, ej HITL
     {'service','label'} → el frontend muestra el ícono+nombre de la app real). Va SEPARADA del pase estándar:
@@ -508,9 +549,10 @@ def provision(conn) -> dict:
     _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
+    _provision_ticket_secuencia(conn)  # SOP3/B3: contador atómico por tenant del código SOP-XXXX.
     sql_aplicados = _apply_sql_files(conn)
     return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,
-            "sql_aplicados": sql_aplicados}
+            "ticket_secuencia": TICKET_SECUENCIA_TABLE, "sql_aplicados": sql_aplicados}
 
 
 def main() -> None:

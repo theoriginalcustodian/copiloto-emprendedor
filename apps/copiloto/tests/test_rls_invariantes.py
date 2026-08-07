@@ -21,8 +21,11 @@ necesita_rol_consola = pytest.mark.skipif(
 
 SCHEMA = "uc_factory"
 #: Las tablas que la Consola decidió exponer cross-tenant a su rol de lectura. Sólo lectura.
-#: 3 de CONS0a + `copiloto_auditoria` de CONS1.
-TABLAS_CONSOLA = ("copiloto_metering", "copiloto_feedback", "copiloto_traumas", "copiloto_auditoria")
+#: 3 de CONS0a + `copiloto_auditoria` de CONS1 + `tenants` de CTA1 (`provision-rol-consola.sh`).
+#: Esta tupla quedó atrás cuando CTA1 agregó el 5º GRANT -- mismo patrón que el gap de
+#: `test-db.sh` que frontend cazó el 2026-08-07 (ver PR #344): los GRANT no se propagan solos.
+TABLAS_CONSOLA = ("copiloto_metering", "copiloto_feedback", "copiloto_traumas", "copiloto_auditoria",
+                 "tenants")
 #: La tabla que traduce `auth_user_id` (el `sub` del JWT) -> `cliente_id`. Ver el test de abajo.
 TABLA_DE_RESOLUCION = "tenants"
 

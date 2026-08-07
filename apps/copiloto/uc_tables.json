@@ -238,5 +238,19 @@
     "detalle jsonb",
     "resultado text NOT NULL DEFAULT 'exitoso'",
     "created_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_tickets": [
+    "codigo text NOT NULL",
+    "canal text NOT NULL",
+    "estado text NOT NULL DEFAULT 'abierto'",
+    "asunto text NOT NULL DEFAULT ''",
+    "created_at timestamptz DEFAULT now()",
+    "updated_at timestamptz DEFAULT now()"
+  ],
+  "copiloto_mensajes": [
+    "ticket_id bigint NOT NULL",
+    "autor text NOT NULL",
+    "texto text NOT NULL",
+    "created_at timestamptz DEFAULT now()"
   ]
 }
