@@ -74,11 +74,38 @@ soporte.
       que justifica el trabajo.*
 - [ ] **A7** `FUS` · Ratio anti-alucinación medido sobre el corpus del copiloto y **reportado con su
       denominador** (cuántas preguntas, cuáles). Un porcentaje sin denominador no es una medición.
-- [ ] **A8** `FE` · **Comportamiento sin conexión, verificado en device** (modo avión): qué pasa con
+- [x] **A8** `FE` · **Comportamiento sin conexión, verificado en device** (modo avión): qué pasa con
       el Escritorio, los accesos directos y la actividad reciente. Salió como pregunta al escribir el
       corpus y **no se puede resolver leyendo código**. Mientras no esté probado, el corpus **no lo
       afirma** — se le quitó la pregunta en vez de contestarla de memoria. **Evidencia:** el resultado
       real observado, y con eso se agrega la sección al documento.
+      **✅ MEDIDO 2026-08-07 16:13-16:18 en `RF8R50N2WGR`** (APK `preview` standalone, commit
+      `f3b0f79f`). Modo avión por `cmd connectivity airplane-mode`, con **control de red real**
+      (`ping` al backend ⇒ `unknown host`) — no confié en el flag `airplane_mode_on`. Cuatro
+      resultados, con captura y volcado de UI cada uno:
+      1. **Línea base online** — Escritorio con sus 8 accesos + «Actividad reciente» poblada (29
+         textos).
+      2. **App ya abierta y se cae la red** → pantalla **idéntica**, `diff` de textos vacío (29/29).
+         Lo renderizado se sostiene; no se actualiza.
+      3. **Arranque en frío sin red** → **cae a la pantalla de entrada** (7 textos): ni Escritorio, ni
+         accesos, ni actividad reciente. **No hay caché offline.**
+      4. **El control que decide si además es un bug de CTA7** — avión OFF + arranque en frío ⇒
+         **entra solo, sin credenciales**. La sesión **sobrevive**: sin red no se puede *validar*,
+         pero no se *destruye*.
+      **Confirmado del lado del SERVIDOR, no sólo por la pantalla** (`journalctl -u
+      uc-copiloto-web.service`, IP del device `181.93.120.21`; ojo que el VPS loguea en **UTC** —
+      pedir la ventana en hora local devuelve vacío y parece un hallazgo):
+      - ventana del avión (19:16:20→19:17:13 UTC): **0** peticiones — el corte fue real;
+      - ventana con red (19:17:40→19:18:10 UTC): **5** peticiones, `GET /me` · `/perfil-negocio` ·
+        `/actividad?limit=20` · `/conceptos`, todas **200**.
+      Ese `/actividad?limit=20` es la prueba directa de lo que el corpus ahora afirma: **la actividad
+      reciente se trae del servidor cada vez**, no de un caché local. Y de yapa cierra el cabo suelto
+      de **ODOBI6** (dueña: frontend): el standalone **sin Metro** habla con producción ⇒
+      `EXPO_PUBLIC_API_BASE` **sí quedó horneada** en el bundle.
+      ⚠️ **Lo que este binario NO puede responder:** si un corte de red fabrica un falso «Tu sesión
+      expiró». `f3b0f79f` **no contiene** el código del aviso (`grep MENSAJE_SESION_EXPIRADA` → 0, con
+      control positivo → 1 en `c583f0ec`), así que observar su ausencia sería **vacuo**. Se re-corre
+      sobre el build `db0747d3` y se anota acá.
 - [ ] **A9** `PLA` · Al cerrar el sprint, **actualizar `entrar-y-tu-cuenta.md`**: hoy dice que para
       recuperar el acceso hay que escribirle al equipo, sin nombrar un canal — porque **el canal es
       justamente lo que este sprint construye**. Cuando el chat de soporte exista, el documento debe
