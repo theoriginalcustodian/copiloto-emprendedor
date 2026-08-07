@@ -37,157 +37,149 @@
 
 ### Cadencia, cierre y ocio
 
-- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — **marco de todo sprint**. A1 audita el plan y puede rechazarlo; A2, el resultado.
-- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — si el operador puede preguntar "¿y cómo seguimos?", cerraste mal. Canon 8a.
-- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — reordená por impacto÷costo y despachá YA. Enumerar y no ejecutar ES el error. Canon 8b.
-- [🚫💤 CERO ocio — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — único no-trabajar válido: terminó todo y reportó.
-- [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — 9 h ociosas con 3 monitores. El blocker suele ser un grep MÍO.
-- [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — el próximo hito ya contratado es ejecución. Frené la fábrica 4 h.
-- [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — tu propio estado envejece; un estado falso da quietud, no bug.
-- [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — descomponé por disparador real antes de declararlo.
-- [🔧🤐 El workaround que usás de RUTINA deja de parecerte información](el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion.md) — ante un bloqueo ajeno: *¿yo hice hoy algo parecido?* A la 3ª repetición, escribilo.
-- [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — contestada bajo otra pregunta o en el hilo de al lado.
-- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando X esté listo" no ocurre: nadie mira.
-- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantar lo independiente y no-conflictivo; ejecutar una fase futura no.
+- [🔁 EL BUCLE CANÓNICO — dos auditorías y el enganche](bucle-canonico-dos-auditorias-y-el-enganche.md) — marco de todo sprint.
+- [🚫📋 NUNCA cierres el turno con un REPORTE](nunca-cerrar-el-turno-con-un-reporte.md) — si el operador puede preguntar "¿cómo seguimos?", fallaste.
+- [⏳💥 ESCASEZ = ejecutar, NO preguntar](escasez-de-recurso-dispara-ejecucion-no-consulta.md) — reordená por impacto÷costo y despachá YA.
+- [🚫💤 CERO ocio — tres estados, uno prohibido](cero-tiempo-ocioso-tres-estados.md) — único válido: terminó todo y reportó.
+- [🛑💤 Detectar la parálisis y sólo reportarla es ocio PASIVO](deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo.md) — el blocker suele ser tuyo.
+- [🚦 Ejecutar la COLA acordada no es decisión de scope](ejecutar-la-cola-acordada-no-es-una-decision-de-scope.md) — hito contratado = ejecución.
+- [⏳🚧 Una espera sin disparador NOMBRABLE es parálisis](una-espera-sin-disparador-nombrable-es-paralisis.md) — el estado falso da quietud, no bug.
+- [🚧🔀 Un frente PARCIALMENTE bloqueado no es bloqueado](frente-parcialmente-bloqueado-no-es-bloqueado.md) — descomponé por disparador real.
+- [🔧🤐 El workaround de RUTINA deja de parecer información](el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion.md) — 3ª vez, escribilo.
+- [🕵️ Una sesión parada puede tener la respuesta ENTERRADA](sesion-parada-la-respuesta-existe-pero-enterrada.md) — buscá antes de reabrir.
+- [⏱️➡️ Atar la acción a un MOMENTO, no a un estado](atar-la-accion-a-un-momento-no-a-un-estado.md) — "cuando esté listo" no ocurre.
+- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente; nunca una fase futura.
 - [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde para construir" ≠ "fase validada".
-- [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — un hito no cierra hasta desplegado; el `avance_` sale DESPUÉS del deploy.
-- [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?*; si no es "no por construcción", no terminó.
+- [🚀📱 Entrega progresiva por hito + E2E en device](entrega-progresiva-y-e2e-en-device.md) — no cierra hasta desplegado y probado.
+- [🎓 Cierre del aprendizaje no es opcional](cierre-del-aprendizaje-no-opcional.md) — test *¿puede volver?*; si no, no terminó.
 - [♻️ Cero deuda de MEJORA — implementar TODAS al cerrar](cero-deuda-de-mejora.md) — sólo se difiere no-código + MAYOR.
 - [Cero deuda NO-GESTIONADA](cero-deuda-no-gestionada.md) — deliberada + visible OK; impaga o invisible, prohibida.
-- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) — el **semáforo no alcanza**: leé el cuerpo del último update, no el color. Medir no salva si la conclusión sale de una suposición.
-- [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — su default al expirar es **seguir vigente**. Toda orden con hora declara quién la levanta.
-- [📦⏪ Un rebuild desde OTRA base revierte un fix ya cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) — retrocede el **binario instalado**, que no vive en ninguna rama. Control: ejercitar la función, no leer el log del build.
-- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) — 78 min midiendo el servidor equivocado, que responde 200 y no protesta. Cruzá el PID del puerto contra tu proceso.
-- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada verbo de "dueño de qué" necesita su renglón.
+- [📄 El parte del proveedor EXISTE y no lo leí](el-parte-del-proveedor-existe-y-no-lo-lei.md) — leé el cuerpo, no el semáforo.
+- [⏰ Una orden con vencimiento vence en el RELOJ, no en el buzón](orden-con-vencimiento-no-se-retira-sola.md) — default: sigue vigente.
+- [📦⏪ Un rebuild desde OTRA base revierte un fix cerrado](un-rebuild-desde-otra-base-revierte-un-fix-ya-cerrado.md) — ejercitá la función, no el log.
+- [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) — cruzá el PID contra tu proceso.
+- [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada dueño necesita su renglón.
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — acá es `coordinacion/PLAN.md`.
-- [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único, verificado que existe.
+- [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
-- [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — 0 errores HTTP en la DLQ por 4 días. Grepeá quién ESCRIBE el campo, no sólo quién lo lee.
-- [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — cuanto mejor el sistema, menos dice su silencio. Inyectá el caso a propósito.
+- [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
+- [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
-- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica a escala.
-- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué devolvería si lo que mido estuviera roto?* Catálogo de 11+ casos.
-- [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo no choca con nada y se disfraza de prudencia.
-- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá **sobre cuántos elementos miró**, no sólo si pasó.
-- [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — pasaba con la línea BORRADA: el comentario que la explica contiene la cadena buscada. Descartá comentarios; diferencial en cada dirección.
-- [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — 4 keys estaban en el TIPO, no en el registro; erré 3× en una hora. Contá la FORMA, y diferencial contra el artefacto previo.
-- [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — cité la señal que confirmaba mi sospecha y saltée la otra de la MISMA corrida. `COORDINACION.md` §4.2.nonies.
-- [🗂️🕳️ Una sesión en WORKTREE es invisible para el monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el slug sale del `cwd`: `9999min` = "no encontré dónde mirar", no "no trabaja". El buzón es fuente primaria.
-- [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — el escalador mide `mtime`, no "sin respuesta desde": premia el abandono. Preguntá **qué evento reinicia el contador**.
-- [🔬🙈 Probar que el instrumento miente NO te exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar una causa no refuta el hecho. Descarté 4 ciclos una alarma que era real.
-- [🕶️ Un instrumento CIEGO por RLS dice "no hay" en vez de "no veo"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera ANTES de contar.
-- [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — fail-closed rompe idéntico a como funciona. Todo gate necesita control POSITIVO.
-- [📄🕳️ Un control a nivel ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Un **cero verdadero a la pregunta equivocada** se siente igual que luz verde.
-- [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — corré el control; horneálo en el script.
-- [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op es lo que MEJOR puntúa en un gate de no-regresión.
-- [🔌🙈 El test que NO usa el camino de producción no puede verlo fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — 8 adversariales verdes y ciegos.
-- [🧪🔌 Tests que mockean la serialización son CIEGOS al borde del wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `curl`/device lo caza en 30 s.
-- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — `test-db.sh` con rol NO-superuser. El CI es gate final, no consola.
-- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado. Probar en device.
-- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base; `comm -23` sobre slugs > contar líneas.
-- [🔢 El DEFAULT de la herramienta devuelve más de lo que asumís](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — un número que confirma tu hipótesis no dispara ningún control.
-- [🎯📏 La regla que te obliga a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — 6 errores seguidos: el prompt mandaba a la fuente derivada.
-- [📋❌ El DoD que escribí estaba mal y la evidencia lo corrigió](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — cierre como **propiedad**: «92/92» envejece en silencio.
-- [🎯 Un supuesto cuya falla parece un estado LEGÍTIMO es una pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
+- [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica.
+- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?*
+- [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
+- [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
+- [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
+- [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
+- [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
+- [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el buzón manda.
+- [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — preguntá qué evento reinicia el contador.
+- [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar causa no refuta hecho.
+- [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
+- [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
+- [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
+- [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — horneá el control en el script.
+- [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op puntúa mejor en un gate de no-regresión.
+- [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — composition root.
+- [🧪🔌 Tests que mockean serialización son CIEGOS al wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `curl` lo caza rápido.
+- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — el CI es gate final, no consola.
+- [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
+- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base antes de comparar.
+- [🔢 El DEFAULT devuelve más de lo asumido](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — confirmar no dispara control.
+- [🎯📏 La regla que manda a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — qué regla te desvía.
+- [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — el cierre envejece en silencio.
+- [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 
 ### Guards, gates y jueces
 
-- [🛡️💥 Un guard que grita en el caso NORMAL se desarma solo](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltearlo.
-- [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR, no si el guard existe.
-- [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona. Decir "verde" sin decir **dónde** oculta el hueco.
-- [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — rechazó 3/3 el parche correcto. Un juez sin contexto rechaza, y parece prudencia.
-- [🔨🎯 El forjador NO acierta siempre — 11/12](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto. El cuello: `SEARCH/REPLACE` ✅ vs diff ❌.
-- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA de lo que protege](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — el canario tapaba la cola; declará si el rechazo es permanente.
-- [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — cada test miraba UNA bandera; el hueco vive en el par.
-- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — `monkeypatch.setenv` mide el módulo, no el despliegue. Apagar = pausar el Schedule.
+- [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
+- [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR.
+- [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona.
+- [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — sin contexto rechaza, y parece prudencia.
+- [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto.
+- [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — declará si el rechazo es permanente.
+- [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — el hueco vive en el par.
+- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — apagar = pausar el Schedule.
 
 ### Diagnóstico: leer el contrato antes de explicar
 
 - [Raíz, no parche](raiz-no-parche.md) — hook `root_cause_suggester`.
-- [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío: toda regla restrictiva default a no-hacer.
-- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — `copiloto_cobros` ES la tabla de ingresos. Leé el `WHERE`, no el identificador.
-- [🎛️ Verificar la COMPOSICIÓN ROOT, no la capa que declara el default](verificar-la-composicion-root-no-el-default.md) — `worker_b.py` sobreescribe `llm.py`.
-- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream; spike dirigido para la raíz.
-- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — `cmd | tail` devuelve el status de `tail`. El veredicto es la SALIDA.
+- [🎯🕳️ Diseñar contra el riesgo TEMIDO ciega al caso NORMAL](disenar-contra-el-riesgo-temido-ciega-al-caso-normal.md) — corré el caso vacío primero.
+- [🏷️ El NOMBRE es una hipótesis sobre el contenido](el-nombre-es-una-hipotesis-sobre-el-contenido.md) — leé el `WHERE`, no el nombre.
+- [🎛️ Verificar la COMPOSICIÓN ROOT, no el default](verificar-la-composicion-root-no-el-default.md) — otra capa puede sobreescribirla.
+- [🏭 No pelear con un generador flaky — hand-fix + E2E primero](no-pelear-con-la-fabrica-hand-fix-primero.md) — snapshot, no stream.
+- [🪠 El pipe se come el exit code](el-pipe-se-come-el-exit-code.md) — el veredicto es la SALIDA, no el pipe.
 
 ### Diseño y arquitectura
 
-- [♻️🔒 Reutilizar es REGLA — el inventario va ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — "X no encaja en Y" invita a construir de cero. Todo `contrato_` abre con §0.
-- [🛠️🔁 La consola se construye con las piezas de la APP](la-consola-se-construye-con-las-piezas-de-la-app.md) — orden del operador. Reusá la pieza; lo propio de tu módulo, en tu módulo (no en el compartido).
-- [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — la restricción de ACCESO eligió la arquitectura, y era MAYOR.
-- [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente es el atajo que *colapsa* el problema.
-- [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?* Separá lo que converge de lo que se respeta.
-- [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — facturar 2× → 2 CAE. Medí el EFECTO.
-- [⏱️🕳️ Un campo que cambia con el RELOJ dentro del hash anula el cache](una-columna-global-mutante-vuelve-inerte-al-cache.md) — 20 min/push. Invalidar de más no rompe: tarda.
-- [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — **leer antes de levantar DR/staging**. Idempotente ≠ reproducible.
-- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — habla del objeto, no de su tabla ni de los permisos. Preguntá al catálogo.
-- [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX, no del bug. Nada lo propaga solo.
-- [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en un COMENTARIO en el punto de decisión.
-- [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — guardar "al final" borra la única prueba (CAE, certificado).
-- [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — `activity_id`+`run_id`; el continue-as-new reinicia la numeración.
-- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — sin documento, `$0` dice "no compró" cuando es "no lo sé".
-- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — cada lado verificó su mitad y la junta no era de nadie.
-- [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — **MACRO.** Setup de una persona: preguntar. Mecanismo de un sistema: leer su código.
-- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas; colores = tokens theme-aware.
-- [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) — "portar del canónico" importa en silencio la respuesta de ESA app.
+- [♻️🔒 Reutilizar es REGLA — inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — todo `contrato_` abre con §0.
+- [🛠️🔁 La consola se construye con las piezas de la APP](la-consola-se-construye-con-las-piezas-de-la-app.md) — reusá; lo propio, en su módulo.
+- [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — el ACCESO elige la arquitectura.
+- [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente colapsa el problema.
+- [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?*
+- [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — medí el EFECTO.
+- [⏱️🕳️ Un campo que cambia con el RELOJ anula el cache](una-columna-global-mutante-vuelve-inerte-al-cache.md) — invalidar de más no rompe.
+- [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — leer antes de DR/staging.
+- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — no cubre tabla ni permisos.
+- [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX.
+- [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en comentario.
+- [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — "al final" borra la prueba.
+- [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — continue-as-new reinicia números.
+- [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró".
+- [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie.
+- [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — de un sistema: leé su código.
+- [🎨 Gate visual multi-tema + tokens](gate-visual-multi-tema-tokens.md) — gate en AMBOS temas; tokens theme-aware.
+- [✏️ Definición delgada de UX = decisión abierta](definicion-delgada-de-ux-se-llena-con-el-port-del-canonico.md) — "portar" importa la ajena.
 
 ### Delegación, contexto y herramientas
 
-- [🔒⚡ 3 gates que FRENAN — script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — nivel 1, global. `ask` + fail-open.
-- [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth Max (NO tarifa API).
-- [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`, `group_id=code-copiloto-emprendedor`. Ahorra greps.
-- [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del último SYNC, no `valid_at`.
-- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — feedback localizado baja regresiones -70% (TDAD).
-- [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — ownership exclusiva; verificar estado real, no el reporte bg.
-- [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable pedido por el operador.
-- [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — 48% del índice no se cargaba ⇒ 3 archivos para el mismo hecho. Presupuesto + control.
-- [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — **leer antes de correrlo**. Escribí en `memoria/` del repo.
-- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — failure mode espejo: pesimismo performativo. Afinar, no rebajar.
+- [🔒⚡ 3 gates que FRENAN — script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — nivel 1.
+- [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth.
+- [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`.
+- [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del SYNC.
+- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — baja regresiones ~70%.
+- [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — verificar estado real, no el reporte.
+- [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable.
+- [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — sin cargar completo ⇒ duplicados.
+- [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — leer antes. Escribí en `memoria/` del repo.
+- [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — failure mode espejo: pesimismo performativo.
 
 ### Coordinación entre sesiones
 
-- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — **leer al arrancar**. Estado = ubicación del archivo.
-- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — NO es cuarta sesión. Reglas: COORDINACION.md §7.
-- [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — el `avance_` nacía en `cerrado/`. Probá el cable.
-- [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — `abierto/` 32→136 con regla manual.
-- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno por cron mide OCIO. Revisar en cada frontera de trabajo.
-- [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — la sesión viva ACTÚA (git log/PR) aunque no autoree.
-- [📱🛑 El TELÉFONO exige dueño único — y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) — dos ADB fabrican evidencia falsa; un dictado creó un gasto real.
-- [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — gestos exactos escritos, no ventana viva.
+- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — leer al arrancar.
+- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — NO es cuarta sesión.
+- [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — probá el cable.
+- [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — no confíes en lo manual.
+- [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno mide OCIO.
+- [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — la sesión viva ACTÚA aunque no autoree.
+- [📱🛑 El TELÉFONO exige dueño único — y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) — dos ADB fabrican evidencia falsa.
+- [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — gestos escritos, no ventana viva.
 
 ### Git, deploy y checkout compartido
 
-- [🩹 `--amend`/rebase/reset en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — mensaje feo → commit `docs:` nuevo.
-- [💥 `git checkout <ref> -- .` PISA lo que sólo vive en el working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — irrecuperable. Usá `merge-base --is-ancestor`.
-- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja = hooks y scripts viejos, sin aviso.
-- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa en silencio. Chequeo `grep -c`.
-- [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual: regresiona en silencio.
-- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base correcta: `merge-base origin/main`.
-- [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama que corre en prod.
-- [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`. Fabricó un handoff externo falso.
+- [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — commit `docs:` nuevo.
+- [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — usá `merge-base`.
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja = scripts viejos.
+- [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa en silencio.
+- [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual.
+- [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`.
+- [🔀 El orden de merge se elige por el estado INTERMEDIO de main](orden-de-merge-por-el-estado-intermedio.md) — primero la rama en prod.
+- [🪟💥 Git Bash mangla paths con punto](git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos.md) — `MSYS_NO_PATHCONV=1`.
 - [Preferir gh CLI, no el MCP de github](preferir-gh-cli-no-mcp-github.md) — `gh`; MCP sólo si no está.
 
 ## 🏭 El producto — LEER antes de tocar
 
-- [🟢 Copiloto DESPLEGADO VIVO + multitenant real](copiloto-deploy-multitenant-vivo.md) — **leer primero al retomar.** systemd web+worker, JWT, cross-tenant [VERIFIED].
 - [🔱 Motor en FORK DURO + fix del buffer de corto plazo](motor-fork-duro-fix-buffer-corto.md) — **antes de tocar `motor/`.** `sync-motor.sh` retirado; el fix se hace ACÁ.
 - [🔐 Auth = GoTrue DEDICADA (cutover vivo)](copiloto-gotrue-dedicada-cutover.md) — **al tocar auth/OAuth.** Google OAuth LIVE. Deuda: passwords temporales.
-- [🌐 Dominio duckdns + Google OAuth](copiloto-dominio-duckdns.md) — `copilotoemprendedor.duckdns.org` → VPS.
 - [🧠🧱 MemoryProvider — memoria conversacional CABLEADA](copiloto-memoria-provider-ladrillo.md) — **al tocar la memoria.** warm+recall+remember, gate `config['memory']`.
 - [🕰️ Recall temporal — "qué hice ayer"](copiloto-recall-temporal.md) — `consultar_actividad`; `valid_at` naive→UTC; anti-injection.
-- [🧾 Facturación AFIP — backend y frontend TERMINADOS](copiloto-facturacion-afip.md) — **primero al retomar facturación.** Determinista; la clave fiscal no se almacena.
-- [💰 Presupuestos + perfil del negocio](copiloto-presupuestos-y-perfil-negocio.md) — el perfil se lee por turno, ANTES de la memoria.
 - [🎙️🃏 Mecanismo canónico de las cards por voz](mecanismo-canonico-de-las-cards-por-voz.md) — nunca se pregunta 2 veces; a la 2ª manda la card.
-- [🔑 OAuth de Google: hoy es el de COMPOSIO](copiloto-oauth-google-propio.md) — bloquea Apps. Los scopes por defecto son los CAROS.
 - [⚠️ El MCP de Composio da acceso TOTAL al Gmail del operador](composio-mcp-gmail-acceso-completo.md) — incluye borrado permanente. No heredarlo a agentes autónomos.
 - [🕸️ Grafo: tenant dedicado + structured 0-LLM + ontología scoped](graphity-tenant-dedicado-y-ontologia-scoped.md) — instancia COMPARTIDA → ontología con `graph_ids` o fuga.
-- [📡 Ingesta real al grafo por tenant — FRENTE ABIERTO (MAYOR)](copiloto-ingesta-grafo-por-tenant-real-frente-abierto.md) — sólo existe la demo sintética del hito 5.
-- [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — el **dueño está exento** sin `FORCE`. Control: conectarse sin tenant y contar.
-- [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md) — `tenants` con `FORCE` daría 403 a todos.
+- [🔑🚪 La tabla que RESUELVE el control no puede estar sujeta al control](la-tabla-que-resuelve-el-control-no-puede-estar-sujeta-al-control.md) — `tenants` con `FORCE` = 403 a todos.
 - [🧪 DESPLEGADO ≠ con clientes — los datos se fabrican](desplegado-no-significa-con-clientes.md) — cero usuarios; "prod-beta" desvía a migraciones defensivas.
-- [🧭 IDENTIDAD = automatización/agentes durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — moat = orquestación DURABLE.
 - [🔐 Deuda de secretos a rotar (pre-prod)](deuda-secretos-rotar.md) — keys que pasaron por chat. grep-first + restart al rotar.
 
 ### Frontend móvil
@@ -199,19 +191,15 @@
 - [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
 - [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — 404 al bundlear; `tsc`/`jest` sí los siguen.
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild.
-- [🌳🕳️ El working tree COMPARTIDO guarda trabajo que no está en ninguna rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — `project`. Pierde hacia adelante y hacia atrás. `??` NO es perdible: el control es el **blob**.
-- [🔍 Auditorías van en carpeta `Auditorias/`](auditorias-van-en-carpeta-auditorias.md) — `project`. **Regla operador 2026-08-06.** TODO doc de auditoría en `docs/copiloto-emprendedor/Auditorias/`, nunca suelto. Índice en su `README.md`.
-- [🔁 Re-verificación auditoría Fable 2026-08-04](reverificacion-auditoria-fable-2026-08-04.md) — `project`. Los 11 hallazgos re-verificados vs código pusheado: 2 resueltos, 3 parciales, 6 vivos. Doc maestro en `Auditorias/`.
-- [📱🔀 Metro sirve el bundle del CHECKOUT COMPARTIDO, no del worktree](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — `project`. Confirmá de dónde sirve ANTES de buscar el bug.
-- [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) — `project`. `--ours`/`--theirs` descarta una mitad por construcción y el CI repite el error (4 rounds, PR#265). Un grep por CADA mitad, no uno solo.
-- [🎨🕳️ Un token con DOS definiciones — tocar la equivocada no da síntoma](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — `project`. Compila, suite verde, cero cambio visible. Contá **definiciones**, no usos.
-- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — `project`. Taps simples y drags de 600px sí; el de 0-2px nunca.
-- [📦🔌 Metro no resuelve `node_modules` symlinked en un worktree (Windows)](metro-no-resuelve-node_modules-symlinked-worktree.md) — `project`. 404 aunque exista y `tsc`/`jest` resuelvan.
-- [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — `project`. 03:30/09:30/15:30/21:30 local: el `pre-push` fail-closed aborta con 503.
-- [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — `project`. WAL-G + B2 listos. Deuda diferida, no gap.
-- [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — `project`. GoTrue con `MAILER_AUTOCONFIRM=true`; slot cableado para Gmail SMTP.
-- [🟢 Sprint BETA cerrado (2026-08-05)](copiloto-beta-sprint-cerrado.md) — `project`. Los dos gates de BETA-5 satisfechos; sólo falta que el operador mande las invitaciones.
-- [🔑 Google Sign-In nativo (Credential Manager)](copiloto-google-signin-nativo-credential-manager.md) — `project`. Endpoint propio `/auth/google/id-token` sobre GoTrue `id_token` grant. Reemplazó el login por browser.
+- [🌳🕳️ El working tree COMPARTIDO guarda trabajo que no está en ninguna rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md) — el control es el **blob**, no `git status`.
+- [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) — regla del operador. Nunca sueltas en `docs/`.
+- [📱🔀 Metro sirve el bundle del CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — confirmá de dónde sirve ANTES de buscar el bug.
+- [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) — `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
+- [🎨🕳️ Un token con DOS definiciones — tocar la equivocada no da síntoma](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — contá **definiciones**, no usos.
+- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.
+- [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
+- [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — deuda diferida, no gap.
+- [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — GoTrue `MAILER_AUTOCONFIRM=true`; slot para Gmail SMTP.
 
 ## 📚 Referencia
 

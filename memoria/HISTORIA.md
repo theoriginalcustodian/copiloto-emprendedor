@@ -122,3 +122,22 @@ buscables acá.
 - [🔌 7 servicios Composio plug-in](copiloto-servicios-composio-plugin.md) — módulo-plug-in + confirm-gate HITL.
 - [💳 MercadoPago — integración directa multi-tenant](mercadopago-integracion-research.md) — OAuth Auth-Code (180 d), webhook HMAC. ✅ spike E2E.
 - [🛡️ Agente conversacional — hardening 3 lentes + 6 defensas](agente-conversacional-hardening-3-lentes.md) — barrido adversarial → batch por tests.
+
+## Movidos del índice el 2026-08-07 (2ª tanda — el índice se pasaba 6.009 chars del techo)
+
+Ocho de estas ya vivían en la sección **Estado vivo** del índice: tenían línea propia *además*
+de estar mencionadas ahí, o sea el mismo hecho se pagaba dos veces en cada sesión. Una es un
+**duplicado real** de otra entrada. Siguen buscables acá.
+
+- [🧾 Facturación AFIP — backend y frontend TERMINADOS](copiloto-facturacion-afip.md) — **primero al retomar facturación.** Determinista; la clave fiscal no se almacena.  ← _bajada: ya está en §Estado vivo (✅ Cerrados)_
+- [💰 Presupuestos + perfil del negocio](copiloto-presupuestos-y-perfil-negocio.md) — el perfil se lee por turno, ANTES de la memoria.  ← _bajada: ya está en §Estado vivo (✅ Cerrados)_
+- [🟢 Copiloto DESPLEGADO VIVO + multitenant real](copiloto-deploy-multitenant-vivo.md) — **leer primero al retomar.** systemd web+worker, JWT, cross-tenant [VERIFIED].  ← _bajada: ya está en §Estado vivo_
+- [🔑 OAuth de Google: hoy es el de COMPOSIO](copiloto-oauth-google-propio.md) — bloquea Apps. Los scopes por defecto son los CAROS.  ← _bajada: ya está en §Estado vivo (🚧 Abiertos)_
+- [📡 Ingesta real al grafo por tenant — FRENTE ABIERTO (MAYOR)](copiloto-ingesta-grafo-por-tenant-real-frente-abierto.md) — sólo existe la demo sintética del hito 5.  ← _bajada: ya está en §Estado vivo (🚧 Abiertos)_
+- [🔓 RLS activado en 77 tablas y filtrando en NINGUNA](rls-activado-que-no-filtraba-el-dueno-esta-exento.md) — el **dueño está exento** sin `FORCE`. Control: conectarse sin tenant y contar.  ← _bajada: ya está en §Estado vivo; la lección vive en otras dos entradas_
+- [🟢 Sprint BETA cerrado (2026-08-05)](copiloto-beta-sprint-cerrado.md) — `project`. Los dos gates de BETA-5 satisfechos; sólo falta que el operador mande las invitaciones.  ← _bajada: ya está en §Estado vivo_
+- [🔑 Google Sign-In nativo (Credential Manager)](copiloto-google-signin-nativo-credential-manager.md) — `project`. Endpoint propio `/auth/google/id-token` sobre GoTrue `id_token` grant. Reemplazó el login por browser.  ← _bajada: hito cerrado 2026-08-05_
+- [🧭 IDENTIDAD = automatización/agentes durables, NO frontend-pesado](factory-identidad-automatizacion-ia.md) — moat = orquestación DURABLE.  ← _bajada: ya está en §Estado vivo y en CLAUDE.md_
+- [🌐 Dominio duckdns + Google OAuth](copiloto-dominio-duckdns.md) — `copilotoemprendedor.duckdns.org` → VPS.  ← _bajada: dato de infra estable, no es trampa_
+- [📦🔌 Metro no resuelve `node_modules` symlinked en un worktree (Windows)](metro-no-resuelve-node_modules-symlinked-worktree.md) — `project`. 404 aunque exista y `tsc`/`jest` resuelvan.  ← _bajada: DUPLICADO de metro-en-windows-no-sigue-links-de-node-modules-en-worktrees (mismo hallazgo, 2026-07-23)_
+- [🔁 Re-verificación auditoría Fable 2026-08-04](reverificacion-auditoria-fable-2026-08-04.md) — `project`. Los 11 hallazgos re-verificados vs código pusheado: 2 resueltos, 3 parciales, 6 vivos. Doc maestro en `Auditorias/`.  ← _bajada: hito de auditoría ya consolidado; doc maestro en Auditorias/_
