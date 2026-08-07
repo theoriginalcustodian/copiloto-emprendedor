@@ -71,6 +71,10 @@ DOMAIN = "emprendedor"
 # nunca hardcodeado dos veces). `route_inbound` es agnóstico del dominio (`inbound_router.py`): un
 # `task_queue`/`domain` distintos alcanzan, no hace falta un router nuevo.
 SOPORTE_TASK_QUEUE = os.environ.get("SOPORTE_TASK_QUEUE", "agent-soporte")
+# SOP4/C7: texto FIJO, literal del DoD -- feedback no conversa (one-shot, sin hilo). No es un mensaje
+# del agente (no pasa por el motor conversacional): backend lo devuelve directo en la respuesta HTTP.
+MENSAJE_FEEDBACK_FIJO = ("Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… "
+                        "¡Gracias por tu aporte!")
 
 _log = logging.getLogger("copiloto.web")
 
@@ -703,7 +707,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=422, detail="feedback demasiado largo (máx 2000 caracteres)")
         feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
             tipo="texto", texto=texto, contexto=body.contexto)
-        return {"id": feedback_id, "ok": True}
+        return {"id": feedback_id, "ok": True, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
     @app.post("/feedback/audio")
     async def feedback_audio(audio: UploadFile = File(...), contexto: str | None = Form(None),
@@ -728,7 +732,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=422, detail="no se entendió el audio")
         feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
             tipo="voz", texto=transcript, contexto=contexto)
-        return {"id": feedback_id, "ok": True, "transcripcion": transcript}
+        return {"id": feedback_id, "ok": True, "transcripcion": transcript, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
     @app.post("/chat/foto")
     async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),

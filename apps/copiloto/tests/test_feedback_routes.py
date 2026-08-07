@@ -99,9 +99,17 @@ def test_feedback_texto_guarda_y_devuelve_id():
     app, rows = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
     r = TestClient(app).post("/feedback", json={"texto": "che, agreguen dark mode", "contexto": "mi-cuenta"})
     assert r.status_code == 200
-    assert r.json() == {"id": 1, "ok": True}
+    assert r.json()["id"] == 1 and r.json()["ok"] is True
     assert rows == [{"id": 1, "cliente_id": "cid-A", "tipo": "texto",
                      "texto": "che, agreguen dark mode", "contexto": "mi-cuenta"}]
+
+
+def test_feedback_devuelve_la_FRASE_FIJA_SOP4_C7():
+    """C7: "feedback devuelve la frase fija ... y no abre hilo" -- exacta, no una aproximación."""
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/feedback", json={"texto": "che, agreguen dark mode"})
+    assert r.json()["mensaje"] == (
+        "Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… ¡Gracias por tu aporte!")
 
 
 def test_feedback_sin_contexto_es_opcional():
@@ -145,7 +153,10 @@ def test_feedback_audio_transcribe_y_guarda(monkeypatch):
     r = _post_audio(app, contexto="mi-cuenta")
     assert r.status_code == 200
     body = r.json()
-    assert body == {"id": 1, "ok": True, "transcripcion": "el buscador de clientes tarda mucho"}
+    assert body["id"] == 1 and body["ok"] is True
+    assert body["transcripcion"] == "el buscador de clientes tarda mucho"
+    assert body["mensaje"] == (
+        "Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… ¡Gracias por tu aporte!")
     assert rows[0]["tipo"] == "voz"
     assert rows[0]["texto"] == "el buscador de clientes tarda mucho"
     assert rows[0]["contexto"] == "mi-cuenta"
