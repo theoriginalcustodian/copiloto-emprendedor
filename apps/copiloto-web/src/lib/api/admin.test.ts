@@ -6,6 +6,7 @@ import {
   adminAuditoria,
   adminCambiarEstadoTenant,
   adminErrores,
+  adminReintentarError,
   adminSalud,
   adminSoporte,
   adminUso,
@@ -295,5 +296,52 @@ describe('api admin (CONS7a — suspender / reactivar tenant)', () => {
       status: 409,
       detail: undefined,
     });
+  });
+});
+
+/** CONS7b — el reintento, en el borde del wire. */
+describe('api admin (CONS7b — reintentar un error)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('manda POST a la ruta del id, sin body', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { trauma_id: 42, estado: 'pendiente' }));
+    await expect(adminReintentarError(42)).resolves.toEqual({ trauma_id: 42, estado: 'pendiente' });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/admin/errores/42/reintentar');
+    expect(init.method).toBe('POST');
+    // Sin body a propósito: el endpoint no acepta ninguno, y mandar `{}` invitaría a que alguien
+    // le agregue un `ids: [...]` mañana. El lote no existe y su ausencia es parte del diseño.
+    expect(init.body).toBeUndefined();
+  });
+
+  it('el 409 de dominio prohibido llega con el MENSAJE del backend, no con el genérico', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(409, {
+        detail: {
+          codigo: 'TRAUMA_DOMINIO_PROHIBIDO',
+          mensaje: 'dominio DIAGNOSTIC_ONLY: afip_gateway -- efecto irreversible y externo',
+          dominio: 'afip_gateway',
+        },
+      }),
+    );
+    await expect(adminReintentarError(99)).rejects.toMatchObject({
+      status: 409,
+      detail: 'dominio DIAGNOSTIC_ONLY: afip_gateway -- efecto irreversible y externo',
+    });
+  });
+
+  it('un 404 (trauma inexistente) conserva su detail', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(404, { detail: 'trauma no encontrado' }));
+    await expect(adminReintentarError(1)).rejects.toMatchObject({ status: 404 });
   });
 });

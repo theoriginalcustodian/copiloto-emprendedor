@@ -118,6 +118,10 @@ export function adminUso(horas = 24): Promise<AdminUso> {
 
 /** Fila de `admin_errores.resumen_errores` — UNA por `fingerprint` (DISTINCT ON), cross-tenant. */
 export interface FilaError {
+  /** `id` del trauma REPRESENTANTE que eligió el `DISTINCT ON`, no del grupo. Es con lo que se
+   *  llama a `POST /admin/errores/{id}/reintentar`, y por eso el reintento afecta a UNA ocurrencia
+   *  aunque la fila muestre `tenants_afectados: N` — ver el copy del botón. */
+  id: number;
   fingerprint: string;
   workflow: string | null;
   error_type: string | null;
@@ -133,6 +137,16 @@ export interface FilaError {
   updated_at: string;
   /** Cuántos tenants distintos sufrieron ESTE mismo fingerprint. */
   tenants_afectados: number;
+  /**
+   * `null` → se puede reintentar. Con texto → NO, y ese texto es el motivo, calculado por el
+   * backend con `dominio_prohibido` (la MISMA fuente que usa el ciclo automático).
+   *
+   * El frontend **no lo redacta ni lo interpreta**: lo muestra tal cual. Si lo redactara acá, el día
+   * que cambie el criterio del gate la UI mentiría con cara de verdad. Y no podría calcularlo
+   * aunque quisiera: `motivo_prohibido()` necesita `contexto.origen.archivo`, y traer `contexto` al
+   * cliente está prohibido por el boundary de A5 (arrastraría el texto que tipeó el emprendedor).
+   */
+  motivo_prohibido: string | null;
 }
 
 /** Fila de `admin_soporte.resumen_soporte` — feedback entrante y si derivó en autosanación. */
@@ -248,5 +262,32 @@ export function adminCambiarEstadoTenant(
   return apiClient.post<CambioEstadoTenant>(
     `/admin/tenants/${encodeURIComponent(clienteId)}/estado`,
     { status },
+  );
+}
+
+/** Respuesta de `POST /admin/errores/{id}/reintentar` — `admin_web.py:134`. */
+export interface ReintentoTrauma {
+  trauma_id: number;
+  estado: string;
+}
+
+/**
+ * Reintenta **UN** trauma. La acción de más riesgo del sprint y **no reversible**: el efecto ya
+ * ocurrió o no ocurrió, y reintentar algo que sí se ejecutó lo duplica — en este repo eso ya costó
+ * dos CAE por una factura.
+ *
+ * **No existe reintento en lote, y su ausencia es parte del diseño**: no hay endpoint, no hay
+ * selección múltiple, y no se agrega "por comodidad".
+ *
+ * Un dominio `DIAGNOSTIC_ONLY` responde **409** y NO cambia el estado del trauma. La UI no debería
+ * llegar a ese 409 (deshabilita el botón con `motivo_prohibido`), pero se maneja igual: el listado
+ * puede estar desactualizado respecto del criterio del gate, y esconder el botón es ergonomía —
+ * el guard real es el backend.
+ *
+ * Sin `getAdmin`, por lo mismo que la otra mutación: un 409/404 tiene que llegar con su mensaje.
+ */
+export function adminReintentarError(traumaId: number): Promise<ReintentoTrauma> {
+  return apiClient.post<ReintentoTrauma>(
+    `/admin/errores/${encodeURIComponent(traumaId)}/reintentar`,
   );
 }

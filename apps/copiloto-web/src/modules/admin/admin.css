@@ -227,6 +227,30 @@
   color: var(--danger-fg);
 }
 
+/* CONS7b — la celda de acción de A5. El motivo del bloqueo es una frase, no un dato corto, así que
+   tiene que envolver.
+
+   El selector va calificado con `.admin-tabla td` A PROPÓSITO: `.admin-dlq__accion` sola (0,1,0)
+   PIERDE contra `.admin-tabla td` (0,1,1), que declara `white-space: nowrap`. Medido en el gate
+   visual — con la clase sin calificar, `getComputedStyle(td).whiteSpace` seguía dando `nowrap` y el
+   texto del motivo ocupaba 486px dentro de una celda de 210. Compilaba, la suite pasaba y el CSS no
+   hacía nada: la misma forma que el `max-width` sobre un `<td>` de más arriba en este archivo. */
+.admin-tabla td.admin-dlq__accion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  white-space: normal;
+  max-width: 30ch;
+}
+
+.admin-dlq__motivo {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--label);
+  line-height: 1.35;
+}
+
 .admin-tabla__texto-recorte {
   display: block;
   max-width: 34ch;
