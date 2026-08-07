@@ -68,7 +68,15 @@ fe="$(ult_actividad frontend)"; min_fe="$(min_desde "$fe")"
 # 8½ h" mientras backend estaba escribiendo código. La prueba de vida es que la sesión ACTÚE, y eso se
 # ve en su transcript JSONL, que Claude Code escribe en cada turno.
 # Ver [[silencio-del-buzon-no-prueba-repl-muerta]].
-PROJ="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")" 2>/dev/null | head -1)"
+# 🔴 Raíz 2026-08-07 (cuarto fallo del mismo sensor). Este glob terminaba en el basename del repo y
+# sin `| head -1` ni siquiera eso: veía UN solo slug, el del checkout compartido. Una sesión que
+# trabaja desde un worktree escribe en OTRO slug (`…-copiloto-emprendedor--claude-worktrees-<x>`),
+# que no termina con el basename → el sensor no la ve NUNCA, `vida_fe` queda vacío y el bloque
+# dead-man cae al sensor del buzón y declara MUERTA a una sesión que está mergeando PRs.
+# Medido: frontend reportada "DEAD-MAN muda 96min" mientras mergeaba el #316 y abría el #320 verde.
+# Es `[[una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd]]` mordiendo a este
+# script. El `*` de cierre incluye los slugs de worktree; se escanean TODOS, no el primero.
+PROJS="$(ls -d "$HOME/.claude/projects/"*"$(basename "$REPO_ROOT")"* 2>/dev/null)"
 etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identidad ASIGNADA, no inferida
   # 🔴 Señal primaria: el PROMPT DEL CRON que la sesión RECIBE ("Vigía de coordinación (sesión X)").
   # Cada ventana recibe únicamente el heartbeat de su propio rol, así que el rótulo no depende ni de
@@ -105,7 +113,7 @@ etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identid
   else echo '?'; fi
 }
 vida_be=""; vida_fe=""; ambiguos=""; mt_be=0; mt_fe=0
-if [ -n "$PROJ" ]; then
+if [ -n "$PROJS" ]; then
   while IFS= read -r -d '' f; do
     m="$(stat --format=%Y "$f" 2>/dev/null || echo 0)"
     [ $(( (now - m) / 60 )) -gt 240 ] && continue      # ignorar transcripts viejos (>4 h)
@@ -120,7 +128,7 @@ if [ -n "$PROJ" ]; then
       FRONTEND) tfs_fe="${tfs_fe:-} $f"; [ "$m" -gt "${mt_fe:-0}" ] && { mt_fe="$m"; tf_fe="$f"; } ;;
       '?')      ambiguos="$ambiguos $(basename "$f" | cut -c1-8)" ;;
     esac
-  done < <(find "$PROJ" -maxdepth 1 -name '*.jsonl' -print0 2>/dev/null)
+  done < <(find $PROJS -maxdepth 1 -name '*.jsonl' -print0 2>/dev/null)
 fi
 [ "$mt_be" -gt 0 ] && vida_be="$(min_desde "$mt_be")"
 [ "$mt_fe" -gt 0 ] && vida_fe="$(min_desde "$mt_fe")"
@@ -221,6 +229,23 @@ for par in "backend:$min_be:$vida_be" "frontend:$min_fe:$vida_fe"; do
   # TRABAJANDO aunque no postee — eso NO es dead-man, es "trabaja y no reporta" (señal mucho más leve).
   if [ -n "$v" ] && [ "$v" -lt "$UMBRAL_MUERTA" ]; then
     [ "$m" -ge 90 ] && echo "ℹ️  $s VIVO (transcript ${v}min) pero sin postear al buzón hace ${m}min — trabaja sin reportar. Recordale un \`avance_\` por hito; NO es dead-man."
+    continue
+  fi
+  # 🔴 CEGUERA ≠ MUERTE. Si no encontré NINGÚN transcript suyo, lo que medí es la ausencia de mi
+  # propia señal, no la ausencia de trabajo: un vacío es una PREGUNTA, no un hallazgo. Sin este
+  # corte el bloque de abajo cae al sensor del buzón y afirma dead-man sobre una sesión que puede
+  # estar mergeando PRs (medido 2×, 2026-08-07). El control positivo es barato y externo al
+  # transcript — que la sesión ACTÚE en el remoto — así que se exige ANTES de declarar nada.
+  if [ -z "$v" ]; then
+    echo "🕶️  $s SIN SEÑAL: no veo ningún transcript suyo (buzón mudo ${m}min). Eso es CEGUERA, no muerte."
+    echo "    → CORRÉ EL CONTROL antes de afirmar nada: \`gh pr list --state all -L 5\` y \`git log origin/main -3\`."
+    echo "       Si abrió/mergeó algo hace poco, está VIVA y este sensor no la alcanza (¿corre en un worktree?)."
+    # El rótulo sale del prompt del CRON que la sesión recibe — así que una sesión SIN cron instalado
+    # es literalmente irrotulable, y sus turnos caen en `ambiguos`. Ese es el caso que fabricó los dos
+    # falsos dead-man del 2026-08-07: había un transcript vivo a la vista, contado como "sin rotular",
+    # mientras el bloque de abajo declaraba muerta a la única sesión que podía ser. Atarlos es lo que
+    # convierte dos señales sueltas en una respuesta.
+    [ -n "$ambiguos" ] && echo "    → ⚠️  Y hay transcript(s) vivo(s) SIN rotular ($ambiguos): PUEDE SER ÉSTA, trabajando sin cron. Miralos antes de declarar nada."
     continue
   fi
   if [ "$m" -ge "$UMBRAL_MUERTA" ]; then
