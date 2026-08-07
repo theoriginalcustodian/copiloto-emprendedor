@@ -111,9 +111,9 @@ export function adminUso(horas = 24): Promise<AdminUso> {
 // ---------------------------------------------------------------------------
 // CONS6 — A5 Errores · A4 Soporte · A6 Auditoría
 //
-// Los tipos salen del SELECT de cada módulo, columna por columna, NO del contrato: en A6 el
-// contrato anunciaba `{"eventos": [...], "total": N}` y el handler devuelve `{"auditoria": [...]}`
-// sin `total` (`admin_web.py:76`). Se tipa lo que el servidor manda; la divergencia va al buzón.
+// Los tipos de las FILAS salen del SELECT de cada módulo, columna por columna. La ENVOLTURA sale
+// del handler (`admin_web.py`), que es el que decide la clave — y en A6 los dos discreparon durante
+// unas horas; ver el docstring de `adminAuditoria`.
 // ---------------------------------------------------------------------------
 
 /** Fila de `admin_errores.resumen_errores` — UNA por `fingerprint` (DISTINCT ON), cross-tenant. */
@@ -188,19 +188,65 @@ export function adminSoporte(limite?: number): Promise<{ tickets: FilaTicket[] }
 /**
  * A6 — Registro de auditoría de la consola.
  *
- * ⚠️ La clave de la respuesta es `auditoria`, NO `eventos`: el contrato del 2026-08-07 anunciaba
- * `{"eventos": [...], "total": N}` y el handler que se mergeó devuelve `{"auditoria": [...]}`, sin
- * `total`. Verificado leyendo `admin_web.py:69-77` en `origin/main`, no el documento. Si el backend
- * alinea el handler al contrato, `tieneClave('auditoria')` lo caza como `AdminNoDisponibleError` en
- * vez de mostrar una tabla vacía — un cambio de forma se rompe ruidoso, que es lo que se quiere.
+ * La respuesta es `{eventos, total}`. **Fue `{auditoria}` durante unas horas** el 2026-08-07: el
+ * handler que se mergeó primero no seguía a su propio contrato, lo reporté al buzón, y backend
+ * alineó el handler (`admin_web.py:69-80`, ahora también con el tope `min(limite, 500)` que el DoD
+ * pedía). Se deja escrito porque explica por qué el guard de forma de acá no es paranoia: ese cambio
+ * de shape convirtió esta llamada en `AdminNoDisponibleError` — la consola dijo "no está montada"
+ * en vez de mostrar una tabla vacía, que es exactamente el modo de fallo que se quería. Un registro
+ * de auditoría vacío es indistinguible de uno que no se está leyendo.
+ *
+ * `total` viene del backend y hoy es `len(eventos)`; se tipa igual porque es parte del contrato y
+ * el día que el backend pagine, `eventos.length` dejaría de ser el total.
  */
 export function adminAuditoria(
   opts: { clienteId?: string; adminUserId?: string; limite?: number } = {},
-): Promise<{ auditoria: FilaAuditoria[] }> {
+): Promise<{ eventos: FilaAuditoria[]; total: number }> {
   const q = new URLSearchParams();
   if (opts.clienteId) q.set('cliente_id', opts.clienteId);
   if (opts.adminUserId) q.set('admin_user_id', opts.adminUserId);
   if (opts.limite != null) q.set('limite', String(opts.limite));
   const qs = q.toString();
-  return getAdmin(`/admin/auditoria${qs ? `?${qs}` : ''}`, tieneClave('auditoria'));
+  return getAdmin(`/admin/auditoria${qs ? `?${qs}` : ''}`, tieneClave('eventos'));
+}
+
+// ---------------------------------------------------------------------------
+// CONS7a — la única acción que MUTA que se puede construir hoy
+// ---------------------------------------------------------------------------
+
+/** Los dos únicos valores que el backend acepta (`ESTADOS_VALIDOS`); cualquier otro → 422. */
+export type EstadoTenant = 'active' | 'suspended';
+
+/** Respuesta de `POST /admin/tenants/{id}/estado` — `admin_web.py:103`. */
+export interface CambioEstadoTenant {
+  cliente_id: string;
+  de: string;
+  a: EstadoTenant;
+}
+
+/**
+ * Suspende o reactiva un tenant. **POST**, no PATCH: `apiClient` sólo tipa `'GET' | 'POST'`
+ * (`client.ts:36`) y el contrato es explícito en no agregar un verbo por esto.
+ *
+ * Es **idempotente** por diseño del backend: poner el estado que ya tenía responde 200 y audita
+ * igual — "el intento es el hecho auditable". Por eso la UI no necesita saber el estado previo para
+ * ofrecer la acción, y por eso alcanza un campo de `cliente_id` para reactivar algo que ya no
+ * aparece en ninguna lista.
+ *
+ * ⚠️ Esto **no es** el control de acceso: el punto de aplicación real es `require_tenant`
+ * (`auth.py:114`), que devuelve 403 cuando el `status` no es `active`. Acá sólo se escribe la
+ * columna. Un tenant suspendido deja de operar por ese guard, no por esta pantalla.
+ *
+ * No pasa por `getAdmin`: ese helper traduce cualquier fallo a `AdminNoDisponibleError`, que para
+ * una MUTACIÓN sería mentir — un 409/422/404 del backend tiene que llegar con su mensaje, que es
+ * justamente lo que la UI muestra.
+ */
+export function adminCambiarEstadoTenant(
+  clienteId: string,
+  status: EstadoTenant,
+): Promise<CambioEstadoTenant> {
+  return apiClient.post<CambioEstadoTenant>(
+    `/admin/tenants/${encodeURIComponent(clienteId)}/estado`,
+    { status },
+  );
 }
