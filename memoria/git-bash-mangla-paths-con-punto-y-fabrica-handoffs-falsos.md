@@ -59,3 +59,35 @@ la clave, y `git rev-list --count origin/main..origin/<rama>` — si da 0, no ha
 
 Corolario para el otro lado: si **vos** entregás un handoff medido en Windows y afirma que algo
 falta, verificalo con `MSYS_NO_PATHCONV=1` antes de mandarlo. [[no-codificar-la-esperanza-principio-raiz]]
+
+## No es sólo `git`: mordió en **adb**, y el éxito reportado traía la prueba adentro (2026-08-07)
+
+Midiendo A8 en el teléfono, para leer la pantalla:
+
+```bash
+adb shell uiautomator dump /sdcard/a8.xml     # el path es del DEVICE, no de Windows
+adb shell cat /sdcard/a8.xml > local.xml      # → 0 bytes
+```
+
+Git Bash tradujo `/sdcard/a8.xml` a una ruta de Windows **antes de que llegara al teléfono**, así que
+el volcado se escribió en un lugar que en el device no existe, y el `cat` no encontró nada. **Cualquier
+path absoluto del lado remoto sufre esto** — `/sdcard`, `/data`, `/tmp` de un contenedor, un `ssh
+host "cat /var/log/..."`. La regla del punto inicial era un caso particular de algo más grande.
+
+**Lo que me hizo perder el primer intento:** el XML de 0 bytes se lee como *«la app no expone textos»*
+—una hipótesis perfectamente razonable sobre React Native y accesibilidad— o sea, otra vez un
+**hallazgo sobre el sujeto** en vez de una falla del instrumento. Lo que lo delató fue barato y es el
+control de siempre: la **captura de pantalla del mismo instante pesaba 269 KB**. Si un instrumento
+devuelve nada y otro devuelve todo, lo roto es el primero.
+
+**Y el detalle que más vale la pena robarle a este caso:** el comando **no falló**. Salió con éxito e
+imprimió `UI hierchary dumped to: /Files/Git/sdcard/a8-b.xml` — la ruta manglada estaba **escrita en
+el propio mensaje de éxito**. La primera vez no la vi porque yo mismo había mandado la salida a
+`/dev/null` por prolijidad. **Silenciar la salida de un instrumento te saca la única pista que iba a
+tener**, y encima deja un exit code 0 que parece confirmación. Hermana de
+[[el-pipe-se-come-el-exit-code]]: allá el veredicto se pierde en la tubería, acá se pierde por
+higiene.
+
+Antídoto operativo: en comandos que cruzan a otra máquina, `export MSYS_NO_PATHCONV=1` una vez al
+principio del script — y **no silenciar** la salida del comando de instrumentación hasta haber visto
+una corrida completa.
