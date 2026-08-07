@@ -23,16 +23,31 @@ sí; frontend-pesado-como-producto, no.
 
 ---
 
-## 1. Estado actual (2026-07-06)
+## 1. Estado actual (2026-08-07)
+
+> **El tablero de frentes vivo es `coordinacion/PLAN.md`** (COLA-VIVA + `scripts/cola-check.sh`), no
+> esta tabla: acá va lo estructural, que cambia poco. Si los dos discrepan, **gana el tablero**.
 
 | Frente | Estado |
 |---|---|
-| **Graduación Fase 0+1+2** | ✅ Hecha. Repo propio `github.com/theoriginalcustodian/copiloto-emprendedor` (privado), 123 commits con historia preservada (filter-repo). Motor vendorizado en `motor/`. CI verde. |
+| **🌐 El repo es PÚBLICO** | Desde el **2026-08-06**, por decisión del operador (Actions gratis e ilimitado; el CI se había vuelto cuello de botella). **Cambia el costo de un error, no la regla:** un `.env` mal commiteado es público en el instante del push. Auditoría de toda la historia: **0 secretos**. Ver `CLAUDE.md` §cabecera. |
+| **Sprint BETA + sprint M-WEB** | ✅ **Cerrados el 2026-08-05**, verificados independientemente. Los dos gates de BETA-5 satisfechos — falta sólo que el operador mande las invitaciones a los 10-15 testers. |
+| **CI propio (ADR-001)** | ✅ **Cerrado 2026-08-06**, ADR `ACCEPTED`. La definición de la suite ya **no vive en GitHub**: `scripts/ci/{backend,core,web,mobile,lint}.sh` + `scripts/gate.sh` (escribe recibo `.ci-recibos/<sha>.json`) + guard `no-drift.sh`. Actions es respaldo/atestación. Nació de un outage `critical` de 5 h con los webhooks al 15%. **Deuda con dueño (backend): `setup-vps-mirror.sh` está scriptado pero nunca corrió con un push real.** |
+| **Sprint CONSOLA DE OPERADOR** | 🔥 **En curso.** CONS0a/0b/1/2/3/4 y CONS5 cerrados; CONS6 arrancable; CONS7 con contrato bajado. Estado real → `coordinacion/PLAN.md`. |
+| **Graduación Fase 0+1+2** | ✅ Hecha. Repo propio `github.com/theoriginalcustodian/copiloto-emprendedor`, 123 commits con historia preservada (filter-repo). Motor vendorizado en `motor/` (**fork duro** desde 2026-07-07: no se sincroniza más con la fábrica). |
 | **Copiloto vivo (prod-beta)** | ✅ Desplegado en el VPS, multitenant real, smoke E2E 10/10 (BETA-READY). Corre desde `/opt/uc-repos/copiloto`, **deployado desde ESTE repo** (cutover hecho 2026-07-06). |
 | **Fase 2.5 — cutover del deploy** | ✅ **Hecho (2026-07-06).** El servicio vivo corre desde este repo (layout `motor/`; PYTHONPATH del proceso verificado en `/proc/PID/environ`; `reference` viejo eliminado). Smoke E2E **10/10 BETA-READY** post-switch. Backup del origen previo: `/opt/uc-repos/copiloto.bak-pre-graduacion-20260706T141252Z`. |
 | **Fase 3 — infra 3 nodos dedicados** | ⏳ Diferida (hoy comparte VPS con la fábrica). Ver `memoria/copiloto-arquitectura-prod-3-nodos.md`. |
 
-**Deudas abiertas relevantes:** secretos a rotar pre-prod (`memoria/deuda-secretos-rotar.md`) · passwords temporales de GoTrue · `dispatcher_emprendedor` divergente del genérico R1 (deuda visible, registrada).
+**Deudas abiertas relevantes:** secretos a rotar pre-prod (`memoria/deuda-secretos-rotar.md`) · passwords temporales de GoTrue · `dispatcher_emprendedor` divergente del genérico R1 (deuda visible, registrada) · el mirror del VPS del CI propio sin correr con un push real (dueño: backend).
+
+> ⚠️ **Si trabajás en el checkout compartido de las tres sesiones, leé esto antes de commitear.**
+> Esa rama (`docs/production-readiness-brief`) tiene merge-base con `main` en el **24 de julio**: 237
+> commits y 697 archivos de retraso. Pierde en las dos direcciones — lo que commiteás ahí **no llega
+> a `main`** (ni al grafo de código, que ingesta `main`), y las herramientas que sirve el cwd (hooks,
+> slash commands, scripts) son las de entonces. **Docs y memoria: escribilos en un worktree desde
+> `origin/main` y abrí PR.** Detalle y controles en
+> `memoria/el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md`.
 
 ---
 
@@ -44,7 +59,7 @@ git clone git@github.com:theoriginalcustodian/copiloto-emprendedor.git
 cd copiloto-emprendedor
 
 # 2) Sembrá la memoria del proyecto en el slug de auto-memory de Claude Code
-#    (idempotente; deja las 113 entradas + índice donde el harness las levanta)
+#    (idempotente; deja el índice + las ~163 entradas vivas donde el harness las levanta)
 ./scripts/seed-memory.sh
 
 # 3) Apuntá a la fábrica para poder sincronizar el motor vendorizado (ver §4)
@@ -111,7 +126,7 @@ copiloto-emprendedor/
 │   ├── seed-memory.sh      ← siembra memoria/ en el slug de auto-memory (init)
 │   └── sync-motor.sh       ← reconcilia motor/ con la fábrica (check|sync)
 ├── docs/                   ← diseño, planes, decisiones (incl. copiloto-emprendedor/)
-├── memoria/                ← memoria del proyecto migrada (índice MEMORY.md + 113 entradas + checkpoints)
+├── memoria/                ← memoria del proyecto (MEMORY.md ~163 vivas + HISTORIA.md 66 bajadas + checkpoints)
 ├── requirements.txt        ← pin de deps del venv de prod (fuente: pip freeze del VPS)
 └── .github/workflows/      ← CI (backend: colección+unit; frontend: build)
 ```
