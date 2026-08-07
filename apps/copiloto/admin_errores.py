@@ -1,5 +1,9 @@
 """CONS3 · A5 — DLQ agrupada por `fingerprint`, cross-tenant, vía `copiloto_consola`. Read-only.
 CONS7b agrega `buscar_por_id` + `motivo_prohibido`, el sustrato de lectura para "reintentar".
+Pedido de frontend (`..._CONS7b-no-se-puede-construir-A5-no-da-el-id-ni-el-motivo`): sin `id` no hay
+qué mandarle a `POST /admin/errores/{id}/reintentar`, y sin `motivo_prohibido` no se puede deshabilitar
+el botón ANTES de apretarlo. `resumen_errores` ahora trae los dos, calculados acá -- el frontend no
+puede calcularlos sin violar el boundary de abajo.
 
 Reutiliza el MISMO patrón de selección de representante que ya usa
 `TraumaStore.tomar_un_bug_distinto` (`DISTINCT ON (fingerprint) ... ORDER BY dedupe_count DESC`,
@@ -35,8 +39,9 @@ def resumen_errores(conn_factory, *, estado: str | None = None, limite: int = 50
         with conn.cursor() as cur:
             cur.execute(
                 f"""SELECT DISTINCT ON (fingerprint)
-                        fingerprint, workflow, error_type, costura, estado,
+                        id, fingerprint, workflow, error_type, costura, estado,
                         contexto ->> 'ultima_nota' AS ultima_nota,
+                        contexto -> 'origen' ->> 'archivo' AS origen_archivo,
                         dedupe_count, intentos, created_at, updated_at,
                         count(*) OVER (PARTITION BY fingerprint) AS tenants_afectados
                     FROM {TABLA}
@@ -52,7 +57,18 @@ def resumen_errores(conn_factory, *, estado: str | None = None, limite: int = 50
     # poder deduplicar); el orden que le importa al operador -- lo que más duele primero -- se
     # aplica acá, en Python, sobre el resultado ya deduplicado.
     filas.sort(key=lambda f: (f["dedupe_count"], f["updated_at"]), reverse=True)
-    return filas[:limite]
+    filas = filas[:limite]
+
+    # `motivo_prohibido` exige `contexto.origen.archivo`, pero esta consulta NUNCA trae `contexto`
+    # completo (boundary de arriba) -- `origen_archivo` es la única fracción extraída vía JSON path,
+    # se arma un trauma sintético con ella y se descarta antes de responder: no sale de esta función.
+    for fila in filas:
+        archivo = fila.pop("origen_archivo")
+        fila["motivo_prohibido"] = motivo_prohibido({
+            "workflow": fila["workflow"], "costura": fila["costura"],
+            "contexto": {"origen": {"archivo": archivo}} if archivo else {},
+        })
+    return filas
 
 
 def buscar_por_id(conn_factory, trauma_id: int) -> dict | None:
