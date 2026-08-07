@@ -1,5 +1,6 @@
 import { config } from './config';
 import { ApiError, ForbiddenError, UnauthorizedError } from './errors';
+import { notificarSesionExpirada } from './sesion';
 import type { ArchivoSubida, PeticionHttp, RespuestaHttp } from './http';
 
 interface RequestOptions {
@@ -104,7 +105,12 @@ export async function mapearError(status: number, body: unknown, opts: { limpiar
   const detail = stringDetail(body);
 
   if (status === 401) {
-    if (limpiarTokens) await config().tokens.limpiar();
+    if (limpiarTokens) {
+      await config().tokens.limpiar();
+      // La sesión acaba de morir de verdad (no cualquier 401 llega acá: ver `sesionMuerta`). El
+      // aviso va JUNTO al limpiado, no en cada pantalla: si no, cada una tendría que acordarse.
+      notificarSesionExpirada();
+    }
     throw new UnauthorizedError(detail, body);
   }
   if (status === 403) {

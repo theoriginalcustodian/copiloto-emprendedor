@@ -33,6 +33,10 @@ export const apiReal: CopilotApi = {
 
 export { mockApi };
 
+// Aviso de sesión muerta (CTA5): la app se suscribe y lleva al login con un mensaje en castellano,
+// en vez de mostrar el `detail` crudo del backend en la pantalla donde el usuario estaba.
+export { alExpirarSesion } from './sesion';
+
 // Inyección de plataforma (HttpPort/AlmacenTokens) — ver `config.ts`.
 export { configurarApi, config } from './config';
 export type { ConfigApi } from './config';

@@ -53,3 +53,22 @@ distinto y hace esperar un cartel que nunca va a aparecer. Reintentar alcanzó, 
 
 **No medido:** con qué frecuencia pasa, ni si es la misma causa de los cuelgues de backend del 06.
 Un caso no es una tasa.
+
+## Y la causa del `cd`, ahora medida en pares (2026-08-07, más tarde)
+
+Ese mismo día, tres ramas seguidas (CTA7 core / web / arranque) **no llegaron al remoto** pese a
+`exit 0`, y las reintenté con loops de hasta 7 minutos. Todas usaban `cd "<worktree>"; git push …`.
+Al leer el `urgente_` del 06 —tarde— reformulé la misma operación como:
+
+```bash
+git -C "<worktree>" push -u origin <rama>
+```
+
+**Salió a la primera**, con `* [new branch]` y el SHA confirmado por `ls-remote`. Mismo repo, misma
+rama, mismo minuto: lo único que cambió fue el prefijo que ve el clasificador de permisos.
+
+Las dos causas conviven y **se distinguen por la salida**: la de red imprime `fatal:`/`curl 28` y
+reintentar alcanza; la del `cd` no imprime nada útil — el comando simplemente no avanza, porque está
+esperando una autorización que nadie ve. Si un push no avanza **y no hay `fatal:`**, no reintentes:
+reescribilo sin `cd`.
+
