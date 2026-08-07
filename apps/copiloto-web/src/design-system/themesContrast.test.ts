@@ -47,6 +47,15 @@ const TEXT_TOKENS = [
   '--chip-fg',
   '--user-fg',
   '--bubble-fg',
+  // Sumados por CONS8 (2026-08-07): los usa la consola de operador y NINGUNO estaba cubierto.
+  // Al agregarlos, `--danger-fg` del tema claro apareció en 4.00:1 contra `--card-bg` — por debajo
+  // de AA, en el texto que el DoD de CONS7a exige que el operador pueda leer. Se corrigió el token
+  // (`#c7455a` → `#b03549`, mismo tono H=350.3 y misma saturación, sólo menos luminosidad).
+  // El fix tocó DOS definiciones, no una: `:root` y `:root[data-theme='claro']` tenían el mismo
+  // valor, y arreglar sólo la segunda dejaba el default —lo que se ve antes de elegir tema— bajo AA
+  // sin dar síntoma (`memoria/un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma`).
+  '--danger-fg',
+  '--input-fg',
 ] as const;
 
 /** Token de fondo dedicado de cada fg (confirmado por grep de uso real en los componentes). */
@@ -54,6 +63,18 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   '--chip-fg': '--chip-bg',
   '--user-fg': '--user-bg',
   '--bubble-fg': '--bubble-bg',
+  // Un campo de formulario tiene su propio fondo, siempre. Medir `--input-fg` contra `--bg` daría
+  // un número que ningún píxel de la pantalla tiene.
+  '--input-fg': '--input-bg',
+  // `--danger-fg` NO tiene fondo propio: se pinta sobre lo que haya debajo, y aparece tanto suelto
+  // como dentro de una card. Queda con el default (`--bg`), pero eso NO es "la superficie más
+  // exigente": cuál de las dos exige más depende del tema, porque `--card-bg` es más claro que
+  // `--bg` en los tres y el texto es oscuro en claro y claro en oscuro/nocturno. Medido:
+  //     claro     bg 4.90  ·  card 5.14   → el fondo exige más
+  //     oscuro    bg 8.23  ·  card 7.79   → la card exige más
+  //     nocturno  bg 9.20  ·  card 8.75   → la card exige más
+  // Con el valor corregido las seis combinaciones pasan AA, así que medir contra `--bg` alcanza
+  // acá. Si alguna vez el margen se achica, este comentario dice dónde mirar: la card, no el fondo.
 };
 
 type Rgb = { r: number; g: number; b: number };
