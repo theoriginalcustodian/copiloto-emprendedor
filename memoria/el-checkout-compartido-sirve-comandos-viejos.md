@@ -29,3 +29,25 @@ propio instrumental**, no el destino.
 
 Relacionadas: [[la-evidencia-vence-y-el-documento-no-lo-dice]] ·
 [[verificar-la-composicion-root-no-el-default]].
+
+## La combinación que hace RE-IMPLEMENTAR lo que ya existe (2026-08-07)
+
+Fui a tomar un hito del tablero (`RAILz`: sacar `ajustes` de `TABS`, estado **pendiente**, disparador
+cumplido). Grepeé `TABS` en el checkout: **5 entradas y ningún `ajustes`**. La lectura inmediata fue
+«este no es el archivo». Era el archivo correcto **en la versión de hace 237 commits**. En
+`origin/main` el hito estaba **hecho desde hacía horas**, con las dos puertas de reemplazo nombradas
+en el propio docstring.
+
+**Por qué muerde más que el caso de arriba.** Ahí el checkout viejo producía un hallazgo falso —algo
+que uno va a intentar arreglar y descubre—. Acá produce **trabajo duplicado que sale limpio**: el
+tablero dice «pendiente», el archivo efectivamente no tiene el cambio, la implementación compila, los
+tests pasan y el PR se ve impecable. Nada en el camino contradice la premisa. El conflicto recién
+aparece al mergear, o nunca — si el diff es equivalente, se pisa solo y queda como si nada.
+
+Es un **caso de dos evidencias viejas que se confirman entre sí**: el tablero envejece por un lado, el
+checkout por el otro, y coinciden. Dos fuentes desactualizadas de forma independiente se leen como
+corroboración.
+
+**How to apply:** antes de tomar un hito de `PLAN.md`, verificá su condición contra
+`git show origin/main:<archivo>`, no contra el disco. Si el hito ya está hecho, el trabajo es un
+`dato_` al dueño del tablero — no el hito.
