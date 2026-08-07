@@ -71,6 +71,8 @@
 - [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?*
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
+- [🈳🟢 El chequeo de tipos que compilaba el proyecto VACÍO](el-chequeo-de-tipos-que-compilaba-el-proyecto-vacio.md) — `project`. `tsc --noEmit` sobre un tsconfig de referencias (`"files":[]`) sale **exit 0 sin mirar un archivo**: el job web nunca chequeó tipos. Diferencial: con 10 errores reales, `--noEmit` dio 0 y `--build --noEmit` dio 2. Preguntá el DENOMINADOR, no si pasó.
+- [📐🚫 Una tabla IGNORA el `max-width` de su celda (y `display:block` le saca el reparto)](una-tabla-ignora-el-max-width-de-su-celda.md) — `project`. Dos defectos en dos PRs, suite verde en ambos: **jsdom no hace layout**. El recorte va en un `<span>` interno; el `overflow-x`, en la tarjeta. Receta del gate visual + la trampa del puerto ajeno.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
 - [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
