@@ -137,6 +137,102 @@ try:
 except Exception as e:
     rec("/auth/refresh (sesión persistente)", False, repr(e))
 
+# 10) CONSOLA -- CONS8, contrato `abierto/..._CONS8-el-cierre-que-prueba-la-consola-contra-el-
+# entorno-vivo.md`. Sólo ejercita 7a (suspender/reactivar) -- 7b (reintentar) no aparece en el
+# contrato de este bloque, así que no depende de él.
+ADMIN_ENDPOINTS = ("/admin/salud", "/admin/uso", "/admin/errores", "/admin/soporte", "/admin/auditoria")
+
+# 10a) ADVERSARIAL HOSTIL -- con el token SIN el claim admin (capturado en el paso 2, ANTES de
+# otorgar nada abajo). Un JWT ya emitido no cambia si GoTrue actualiza app_metadata después --
+# por eso este token, tomado antes del grant, es un no-admin genuino para este control.
+if token:
+    for path in ADMIN_ENDPOINTS:
+        try:
+            r = client.get(path, headers=H)
+            rec(f"adversarial: no-admin GET {path} → 403", r.status_code == 403, f"status={r.status_code}")
+        except Exception as e:
+            rec(f"adversarial: no-admin GET {path} → 403", False, repr(e))
+    try:
+        r = client.post(f"/admin/tenants/{cliente_id}/estado", headers=H, json={"status": "suspended"})
+        rec("adversarial: no-admin POST /admin/tenants/{id}/estado → 403", r.status_code == 403, f"status={r.status_code}")
+    except Exception as e:
+        rec("adversarial: no-admin POST /admin/tenants/{id}/estado → 403", False, repr(e))
+else:
+    for path in (*ADMIN_ENDPOINTS, "/admin/tenants/{id}/estado"):
+        rec(f"adversarial: no-admin {path} → 403", False, "sin token (falló el login del paso 2)")
+
+# 10b) otorgar el claim -- mismo PUT que `asignar-claim-admin.sh`/`onboarding.GoTrueAdmin.
+# admin_grant_operador` ya verificaron empíricamente: MERGEA app_metadata, no lo reemplaza
+# (docs/copiloto-emprendedor/2026-08-06-RESULT-CONS0b-claim-admin.md). Llamado directo, mismo
+# estilo que ya usa el CLEANUP de abajo -- este script se mantiene sin depender de `apps/copiloto`.
+admin_token = None
+sup = (os.environ.get("SUPABASE_URL") or os.environ.get("COPILOTO_SUPABASE_URL") or "").rstrip("/")
+sr = os.environ.get("SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
+try:
+    if not (sup and sr and cliente_id):
+        rec("consola: otorgar claim admin", False, "faltan SUPABASE_URL/SERVICE_ROLE_KEY/cliente_id")
+    else:
+        gh = {"apikey": sr, "Authorization": f"Bearer {sr}"}
+        lookup = httpx.get(f"{sup}/auth/v1/admin/users", headers=gh, params={"filter": EMAIL}, timeout=15)
+        lookup.raise_for_status()
+        payload = lookup.json()
+        users = payload.get("users", []) if isinstance(payload, dict) else payload
+        user = next((u for u in (users or []) if (u.get("email") or "").lower() == EMAIL.lower()), None)
+        if user is None:
+            rec("consola: otorgar claim admin", False, f"'{EMAIL}' no aparece en el lookup de GoTrue")
+        else:
+            put = httpx.put(f"{sup}/auth/v1/admin/users/{user['id']}", headers=gh,
+                            json={"app_metadata": {"copiloto_admin": True}}, timeout=15)
+            put.raise_for_status()
+            rec("consola: otorgar claim admin", True, f"user_id={user['id']}")
+            # re-login: el token viejo no refleja el claim nuevo (snapshot al momento de emitirse).
+            r2 = client.post("/auth/login", json={"email": EMAIL, "password": PASSWORD})
+            admin_token = r2.json().get("access_token") if r2.status_code == 200 else None
+            rec("consola: re-login post-grant", bool(admin_token), f"status={r2.status_code}")
+except Exception as e:
+    rec("consola: otorgar claim admin", False, repr(e))
+
+# 10c) el camino admin, con control positivo -- el mismo listado que el adversarial de arriba
+# rechazó, ahora debe dar 200. El último paso es el que vale: cierra mutar→auditar por HTTP real.
+if admin_token:
+    AH = {"Authorization": f"Bearer {admin_token}"}
+    try:
+        r = client.get("/me", headers=AH)
+        rec("consola: GET /me → es_admin true", r.status_code == 200 and r.json().get("es_admin") is True,
+            f"status={r.status_code} body={r.json() if r.status_code == 200 else r.text[:120]}")
+    except Exception as e:
+        rec("consola: GET /me → es_admin true", False, repr(e))
+
+    for path in ADMIN_ENDPOINTS:
+        try:
+            r = client.get(path, headers=AH)
+            rec(f"consola: admin GET {path} → 200", r.status_code == 200, f"status={r.status_code}")
+        except Exception as e:
+            rec(f"consola: admin GET {path} → 200", False, repr(e))
+
+    try:
+        r = client.post(f"/admin/tenants/{cliente_id}/estado", headers=AH, json={"status": "suspended"})
+        rec("consola: admin POST /admin/tenants/{id}/estado → 200 (MUTA, 7a)",
+            r.status_code == 200, f"status={r.status_code} body={r.text[:120]}")
+    except Exception as e:
+        rec("consola: admin POST /admin/tenants/{id}/estado → 200 (MUTA, 7a)", False, repr(e))
+
+    try:
+        r = client.get("/admin/auditoria", headers=AH, params={"cliente_id": cliente_id})
+        eventos = r.json().get("eventos", []) if r.status_code == 200 else []
+        fila = next((e for e in eventos if e.get("accion") == "tenant.estado"), None)
+        ok = (fila is not None and fila.get("detalle", {}).get("cliente_id") == cliente_id
+              and fila.get("detalle", {}).get("a") == "suspended")
+        rec("consola: GET /admin/auditoria → el evento de la mutación aparece, detalle intacto",
+            ok, f"status={r.status_code} fila={fila}")
+    except Exception as e:
+        rec("consola: GET /admin/auditoria → el evento de la mutación aparece, detalle intacto", False, repr(e))
+else:
+    for step in ("GET /me → es_admin true", *[f"admin GET {p} → 200" for p in ADMIN_ENDPOINTS],
+                "admin POST /admin/tenants/{id}/estado → 200 (MUTA, 7a)",
+                "GET /admin/auditoria → el evento de la mutación aparece, detalle intacto"):
+        rec(f"consola: {step}", False, "sin admin_token (falló el grant o el re-login)")
+
 # CLEANUP (best-effort)
 try:
     import psycopg2
