@@ -37,6 +37,7 @@ from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 
 from backend.agent.inbound_router import route_inbound
+from auth import es_admin
 from catalog import build_catalog
 from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
@@ -761,15 +762,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
                                   if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
-                    "mp_connected": seller is not None, "composio_connected": composio_connected}
+                    "mp_connected": seller is not None, "composio_connected": composio_connected,
+                    "es_admin": es_admin(claims)}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
             seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
             composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
                                   if (c["status"] or "").upper() == "ACTIVE"]
+            # Sin `require_claims` no hay token que leer: `es_admin=False` es fail-closed y
+            # deliberado, no un bug -- sin claims no se puede AFIRMAR que sea admin, y esconder la
+            # puerta de la consola nunca es un agujero de seguridad (el guard real es
+            # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected}
+                    "composio_connected": composio_connected, "es_admin": False}
 
     @app.post("/warm")
     def warm(cliente_id: str = Depends(require_tenant)) -> dict:

@@ -146,6 +146,15 @@ def make_require_claims(*, secret: str, issuer: str | None = None) -> Callable:
 _ADMIN_CLAIM_KEY = "copiloto_admin"
 
 
+def es_admin(claims: dict) -> bool:
+    """¿Este token trae el claim de administrador? ÚNICA implementación de la pregunta.
+
+    `require_admin` (el guard) y `/me` (la ergonomía del front, contrato `es_admin en /me`) la
+    comparten a propósito: dos lecturas del mismo claim divergen en silencio el día que el claim
+    se mueva de lugar."""
+    return claims.get("app_metadata", {}).get(_ADMIN_CLAIM_KEY) is True
+
+
 def make_require_admin(*, secret: str, issuer: str | None = None) -> Callable:
     """Fábrica de la dependencia `require_admin` (CONS0b): 401 si el Bearer falta/es inválido
     (mismo gate que `require_tenant`/`require_claims`), **403** si el token es válido pero
@@ -163,7 +172,7 @@ def make_require_admin(*, secret: str, issuer: str | None = None) -> Callable:
 
     def require_admin(request: Request) -> dict:
         claims = _bearer_claims(request, secret=secret, issuer=issuer)
-        if claims.get("app_metadata", {}).get(_ADMIN_CLAIM_KEY) is not True:
+        if not es_admin(claims):
             raise HTTPException(status_code=403, detail="admin claim required")
         return claims
 
