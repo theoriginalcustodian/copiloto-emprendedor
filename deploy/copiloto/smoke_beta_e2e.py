@@ -138,13 +138,8 @@ except Exception as e:
     rec("/auth/refresh (sesión persistente)", False, repr(e))
 
 # 10) CONSOLA -- CONS8, contrato `abierto/..._CONS8-el-cierre-que-prueba-la-consola-contra-el-
-# entorno-vivo.md`. Ejercita las DOS acciones que mutan: 7a (suspender/reactivar) en 10c y 7b
-# (reintentar un trauma) en 10d, cada una con su ciclo mutar->auditar.
-#
-# Este comentario decía "sólo ejercita 7a -- 7b no aparece en el contrato de este bloque", y era
-# cierto cuando se escribió: el bloque 10d se agregó después (PR#332), y el comentario de arriba
-# quedó negando lo que el código de abajo hace. Envejeció hasta mentir -- si volvés a ampliar el
-# bloque, ampliá esta cabecera en el mismo commit.
+# entorno-vivo.md`. Sólo ejercita 7a (suspender/reactivar) -- 7b (reintentar) no aparece en el
+# contrato de este bloque, así que no depende de él.
 ADMIN_ENDPOINTS = ("/admin/salud", "/admin/uso", "/admin/errores", "/admin/soporte", "/admin/auditoria")
 
 # 10a) ADVERSARIAL HOSTIL -- con el token SIN el claim admin (capturado en el paso 2, ANTES de
