@@ -86,6 +86,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
+  /* Contiene el scroll lateral de las tablas anchas (ver `.admin-tabla`). */
+  overflow-x: auto;
 }
 
 .admin-card__head {
@@ -125,15 +127,17 @@
   margin: 2px 0 0;
 }
 
-/* La tabla scrollea SOLA en horizontal: sin esto, en un teléfono la página entera se desplaza de
-   costado y el resto de la consola se desalinea. */
+/* El scroll horizontal va en la TARJETA, no en la tabla. Ponerlo en la tabla obliga a
+   `display:block`, y una tabla en modo bloque deja de repartir el ancho entre sus columnas: se
+   apelmazan a la izquierda con media tarjeta vacía al lado. Se vio en el gate visual, no en los
+   tests — jsdom no hace layout y la suite pasaba igual.
+   En la tarjeta se consigue lo mismo (en un teléfono no se desplaza la página entera de costado)
+   sin sacar a la tabla de su modo de tabla. */
 .admin-tabla {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-body);
   font-size: 13px;
-  display: block;
-  overflow-x: auto;
 }
 
 .admin-tabla th {
