@@ -92,8 +92,11 @@ def test_un_cursor_mal_formado_es_400_y_no_se_ignora(cursor, por_que):
 
 
 def test_los_tipos_declarados_son_los_del_contrato():
-    """La app pinta ícono y color por tipo; la lista tiene que ser cerrada y la misma de los dos lados."""
-    assert TIPOS == ("factura", "nota_credito", "presupuesto", "gasto", "ingreso", "cliente")
+    """La app pinta ícono y color por tipo; la lista tiene que ser cerrada y la misma de los dos lados.
+    `ticket_respuesta` (SOP6/S6-8) es una adición intencional -- este test debe reventar cuando cambia,
+    no evitar que cambie: es la señal para que frontend sepa que hay un tipo nuevo que pintar (S6-11)."""
+    assert TIPOS == ("factura", "nota_credito", "presupuesto", "gasto", "ingreso", "cliente",
+                     "ticket_respuesta")
 
 
 # --- `q` (búsqueda) y `funcion` (filtro por función) — contrato recientes/buscar ---

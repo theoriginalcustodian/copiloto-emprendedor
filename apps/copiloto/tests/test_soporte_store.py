@@ -12,7 +12,7 @@ import uuid
 
 import pytest
 
-from soporte_store import (ABIERTO, COMO_USO_LA_APP, SOPORTE_TECNICO, TicketStore)
+from soporte_store import (ABIERTO, CERRADO, COMO_USO_LA_APP, RESPONDIDO, SOPORTE_TECNICO, TicketStore)
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres real (DATABASE_URL)")
@@ -115,6 +115,45 @@ def test_crear_ticket_y_listarlo_para_el_mismo_tenant(tenants, conn_de_tenant):
     assert len(mensajes) == 1
     assert mensajes[0]["texto"] == "AFIP me tira un error raro"
     assert mensajes[0]["autor"] == "usuario"
+
+
+@necesita_pg
+def test_cambiar_estado_actualiza_y_devuelve_el_ANTERIOR(tenants, conn_de_tenant):
+    """SOP6 §0: el verbo que faltaba. Devuelve el estado ANTERIOR -- es lo que la auditoría
+    (`admin_web.py`) necesita para `detalle={"de": ..., "a": ...}`, mismo criterio que
+    `admin_tenants.cambiar_estado`."""
+    a, _ = tenants
+    store = _store(conn_de_tenant, a)
+    creado = store.crear_ticket(canal=SOPORTE_TECNICO, asunto="x", primer_mensaje="y")
+    anterior = store.cambiar_estado(ticket_id=creado["id"], nuevo_estado=RESPONDIDO)
+    assert anterior == ABIERTO
+    assert store.listar_tickets()[0]["estado"] == RESPONDIDO
+
+
+@necesita_pg
+def test_cambiar_estado_ticket_inexistente_devuelve_None(tenants, conn_de_tenant):
+    a, _ = tenants
+    assert _store(conn_de_tenant, a).cambiar_estado(ticket_id=999999999, nuevo_estado=CERRADO) is None
+
+
+def test_cambiar_estado_invalido_lanza_ValueError():
+    """Falla temprano (antes de tocar la base), mismo criterio que `crear_ticket` con `canal`
+    inválido -- no hace falta Postgres para probar esto."""
+    with pytest.raises(ValueError):
+        TicketStore(lambda: None, "x").cambiar_estado(ticket_id=1, nuevo_estado="archivado")
+
+
+@necesita_pg
+def test_H1_ADVERSARIAL_cambiar_estado_como_B_el_ticket_de_A_no_hace_nada(tenants, conn_de_tenant):
+    """B "cambia" el estado de un ticket de A -- el `WHERE cliente_id = %s` de la propia conexión de
+    B hace que la fila de A ni siquiera exista desde su punto de vista: `None`, y A no ve el cambio."""
+    a, b = tenants
+    creado = _store(conn_de_tenant, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="x", primer_mensaje="y")
+
+    resultado = _store(conn_de_tenant, b).cambiar_estado(ticket_id=creado["id"], nuevo_estado=CERRADO)
+    assert resultado is None
+
+    assert _store(conn_de_tenant, a).listar_tickets()[0]["estado"] == ABIERTO  # A: intacto
 
 
 @necesita_pg

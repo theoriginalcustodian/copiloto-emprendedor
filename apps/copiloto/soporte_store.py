@@ -137,6 +137,31 @@ class TicketStore:
         finally:
             conn.close()
 
+    def cambiar_estado(self, *, ticket_id: int, nuevo_estado: str) -> str | None:
+        """El verbo que faltaba (SOP6 §0): `abierto → respondido → cerrado`, vocabulario cerrado.
+        Devuelve el estado ANTERIOR (para la auditoría del caller) o `None` si `ticket_id` no
+        existe EN ESTE TENANT -- el `WHERE cliente_id = %s` es lo que hace que "no existe" y "es de
+        otro tenant" se vean exactamente igual, que es la propiedad que RLS/multi-tenant necesita."""
+        if nuevo_estado not in (ABIERTO, RESPONDIDO, CERRADO):
+            raise ValueError(f"estado inválido: {nuevo_estado!r} (válidos: abierto/respondido/cerrado)")
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT estado FROM {TABLA_TICKETS} WHERE cliente_id = %s AND id = %s",
+                           (self._cid, ticket_id))
+                fila = cur.fetchone()
+                if fila is None:
+                    return None
+                anterior = fila[0]
+                cur.execute(
+                    f"UPDATE {TABLA_TICKETS} SET estado = %s, updated_at = now() "
+                    f"WHERE cliente_id = %s AND id = %s",
+                    (nuevo_estado, self._cid, ticket_id))
+            conn.commit()
+            return anterior
+        finally:
+            conn.close()
+
     def listar_mensajes(self, *, ticket_id: int) -> list[dict[str, Any]]:
         """Mensajes de UN ticket de este tenant, en orden cronológico."""
         conn = self._conn_factory()

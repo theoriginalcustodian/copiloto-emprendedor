@@ -201,18 +201,21 @@ GRANT USAGE ON SCHEMA uc_factory TO ${AUTOSAN_USER};
 GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_traumas TO ${AUTOSAN_USER};
 GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_traumas_id_seq TO ${AUTOSAN_USER};
 
--- Rol de la Consola (CONS0a, extendido en CONS1 y CTA1): SELECT-only, mismas 5 tablas que en
+-- Rol de la Consola (CONS0a, extendido en CONS1, CTA1 y SOP6): SELECT-only, mismas tablas que en
 -- produccion (provision-rol-consola.sh). Los GRANT no se propagan solos -- CTA1 agrego el GRANT
 -- sobre tenants alla y esta base efimera quedo atras hasta que el gate local lo cazo en rojo
 -- (aviso de frontend, 2026-08-07: mismo commit, GH verde por camino de permisos distinto, local
--- rojo por InsufficientPrivilege). Ningun GRANT de escritura -- un test que intente
--- insertar o actualizar con este rol debe fallar, y falla.
+-- rojo por InsufficientPrivilege). SOP6 (2026-08-10) repite la MISMA leccion con copiloto_tickets/
+-- copiloto_mensajes -- cazado aca antes de mergear, no en produccion. Ningun GRANT de escritura --
+-- un test que intente insertar o actualizar con este rol debe fallar, y falla.
 GRANT USAGE ON SCHEMA uc_factory TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_metering  TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_feedback  TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_traumas   TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_auditoria TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.tenants            TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_tickets   TO ${CONSOLA_USER};
+GRANT SELECT ON uc_factory.copiloto_mensajes  TO ${CONSOLA_USER};
 SQL
 
 if [ "$EXPORTAR" -eq 1 ]; then

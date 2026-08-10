@@ -24,8 +24,10 @@ SCHEMA = "uc_factory"
 #: 3 de CONS0a + `copiloto_auditoria` de CONS1 + `tenants` de CTA1 (`provision-rol-consola.sh`).
 #: Esta tupla quedó atrás cuando CTA1 agregó el 5º GRANT -- mismo patrón que el gap de
 #: `test-db.sh` que frontend cazó el 2026-08-07 (ver PR #344): los GRANT no se propagan solos.
+#: SOP6 (2026-08-10) repitió la MISMA lección con copiloto_tickets/copiloto_mensajes -- cazado por
+#: este mismo test, que es exactamente para lo que existe.
 TABLAS_CONSOLA = ("copiloto_metering", "copiloto_feedback", "copiloto_traumas", "copiloto_auditoria",
-                 "tenants")
+                 "tenants", "copiloto_tickets", "copiloto_mensajes")
 #: La tabla que traduce `auth_user_id` (el `sub` del JWT) -> `cliente_id`. Ver el test de abajo.
 TABLA_DE_RESOLUCION = "tenants"
 
@@ -115,7 +117,7 @@ def test_toda_tabla_con_RLS_forzado_tiene_politica_de_LECTURA_y_de_ESCRITURA():
 
 
 @necesita_pg
-def test_rol_consola_tiene_EXACTAMENTE_SELECT_en_sus_4_tablas_ni_uno_mas():
+def test_rol_consola_tiene_EXACTAMENTE_SELECT_en_sus_tablas_ni_una_mas():
     """CONS0a+CONS1: el rol `copiloto_consola` (BYPASSRLS, `deploy/copiloto/provision-rol-consola.sh`)
     sólo puede LEER, y sólo esas tablas. `aclexplode(relacl)` lee el catálogo directo — no depende de que
     quien corre el test tenga permisos sobre `copiloto_consola` (a diferencia de
