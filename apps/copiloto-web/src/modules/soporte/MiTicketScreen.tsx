@@ -38,11 +38,10 @@ export interface MiTicketScreenProps {
  * chat de soporte (SOP5), no desde acá; este hito sólo pide "que se vea la respuesta", no un
  * composer nuevo.
  *
- * 🔴 **[ASSUMED_PENDING_VERIFY]** — consume `obtenerMiTicket` (`@copiloto/core`), que pega contra
- * `GET /soporte/tickets/{id}`, un endpoint que TODAVÍA no existe en `main` al escribir esto (ver
- * `coordinacion/abierto/2026-08-10_pedido_frontend-a-todos_S6-11-...md`). Mientras no esté
- * desplegado, `estado` cae en `no_disponible` — no es un error de esta pantalla, es el estado
- * honesto de "todavía no". Mismo criterio que `ActividadScreen`/`listarActividad`.
+ * ✅ **VERIFICADO** (2026-08-10, PR #372) — `obtenerMiTicket` (`@copiloto/core`) pega contra
+ * `GET /soporte/tickets/{id}`, ya desplegado en `main`. El estado `no_disponible` queda como
+ * degradación honesta ante un despliegue parcial/rollback, no como el camino esperado — mismo
+ * criterio que `ActividadScreen`/`listarActividad`.
  */
 export function MiTicketScreen({ ticketId, onVolver }: MiTicketScreenProps) {
   const [estado, setEstado] = useState<Estado>('cargando');

@@ -30,11 +30,10 @@ export interface PantallaTicketProps {
  * `PantallaTicket` — S6-11: a dónde lleva tocar una fila `ticket_respuesta` de Actividad. Hilo
  * COMPLETO de sólo lectura (responder de nuevo es por el chat de soporte de SOP5, no desde acá).
  *
- * 🔴 **[ASSUMED_PENDING_VERIFY]** — mismo aviso que `MiTicketScreen` (web): consume
- * `obtenerMiTicket` (`@copiloto/core`) contra `GET /soporte/tickets/{id}`, endpoint que TODAVÍA no
- * existe en `main` (ver `coordinacion/abierto/2026-08-10_pedido_frontend-a-todos_S6-11-...md`).
- * Mientras no esté desplegado, `estado` cae en `no_disponible` — estado honesto, no un error de
- * esta pantalla.
+ * ✅ **VERIFICADO** (2026-08-10, PR #372) — mismo endpoint que `MiTicketScreen` (web): consume
+ * `obtenerMiTicket` (`@copiloto/core`) contra `GET /soporte/tickets/{id}`, ya desplegado en `main`.
+ * `no_disponible` queda como degradación honesta ante un despliegue parcial/rollback, no como el
+ * camino esperado.
  */
 export function PantallaTicket({ ticketId }: PantallaTicketProps) {
   const tema = useTema();

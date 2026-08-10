@@ -4,13 +4,11 @@ import { ApiError } from './errors';
 /**
  * `GET /soporte/tickets/{id}` — el hilo de UN ticket propio, del lado del USUARIO (no admin).
  *
- * 🔴 **[ASSUMED_PENDING_VERIFY]** — este endpoint todavía NO existe en `main` al escribir esto
- * (S6-11, ver `coordinacion/abierto/2026-08-10_pedido_frontend-a-todos_S6-11-falta-endpoint-de-usuario-para-leer-su-propio-ticket.md`).
- * La forma la propuso frontend calcando el patrón ya vivo de `GET /admin/soporte/tickets/{id}`
- * (`apps/copiloto-web/src/lib/api/admin.ts`) con `require_tenant` en vez de `require_admin`, sin
- * `cliente_id` en la respuesta (ya lo sabe el token, no hace falta exponerlo). Si backend entrega
- * una forma distinta, **el que no coincide es este archivo, no el contrato** — mismo criterio que
- * SOP5 (`respuesta_planificacion-a-backend_SOP5-va-la-B...md`).
+ * ✅ **VERIFICADO** (2026-08-10, PR #372) — backend entregó el endpoint calcando la forma que
+ * frontend propuso en `pedido_frontend-a-todos_S6-11-falta-endpoint-de-usuario-para-leer-su-propio-ticket.md`:
+ * `require_tenant` en vez de `require_admin` de `GET /admin/soporte/tickets/{id}`, sin `cliente_id`
+ * en la respuesta (ya lo sabe el token). Columnas de `TicketStore.obtener_ticket` (`apps/copiloto/soporte_store.py`)
+ * confirmadas 1:1 contra `TicketPropio` leyendo el commit real (`77769c2c`), no autoevaluación.
  *
  * Se valida por FORMA, no por status — mismo motivo que `listarActividad`: una ruta no desplegada
  * cae en el catch-all del SPA (`200` + HTML), nunca en un 404 limpio (COORDINACION.md §3.bis).
