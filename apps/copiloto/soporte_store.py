@@ -162,6 +162,27 @@ class TicketStore:
         finally:
             conn.close()
 
+    def obtener_ticket(self, *, ticket_id: int) -> dict[str, Any] | None:
+        """Un ticket completo de ESTE tenant, o `None` si `ticket_id` no existe EN ESTE TENANT --
+        mismo `WHERE cliente_id = %s` que `cambiar_estado`, así que "no existe" y "es de otro
+        tenant" devuelven exactamente lo mismo (S6-11: el endpoint del usuario final usa esto para
+        que un 404 no distinga entre las dos causas)."""
+        conn = self._conn_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""SELECT id, codigo, canal, estado, asunto, created_at, updated_at
+                        FROM {TABLA_TICKETS}
+                        WHERE cliente_id = %s AND id = %s""",
+                    (self._cid, ticket_id))
+                fila = cur.fetchone()
+                if fila is None:
+                    return None
+                cols = ("id", "codigo", "canal", "estado", "asunto", "created_at", "updated_at")
+                return dict(zip(cols, fila))
+        finally:
+            conn.close()
+
     def listar_mensajes(self, *, ticket_id: int) -> list[dict[str, Any]]:
         """Mensajes de UN ticket de este tenant, en orden cronológico."""
         conn = self._conn_factory()

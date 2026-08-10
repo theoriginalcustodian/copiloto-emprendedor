@@ -77,6 +77,8 @@ class _FakeTenantsDB:
         self.tenants: dict[str, dict] = {}     # auth_user_id -> {cliente_id, email, composio_user_id}
         self.mp_sellers: dict[str, str] = {}   # cliente_id -> seller_user_id (más reciente)
         self.replies: list[dict] = []          # [{id, cliente_id, session_id, reply_text, choices}]
+        self.tickets: dict[tuple[str, int], dict] = {}   # (cliente_id, id) -> fila de copiloto_tickets
+        self.mensajes: list[dict] = []                   # [{cliente_id, ticket_id, id, autor, texto, created_at}]
 
 
 class _FakeCursor:
@@ -126,6 +128,16 @@ class _FakeCursor:
             self._rows = [(r["id"], r["reply_text"], r["choices"], r.get("card"), r["created_at"])
                          for r in self._db.replies
                          if r["cliente_id"] == cliente_id and r["session_id"] == session_id and r["id"] > after_id]
+        elif s.startswith("SELECT ID, CODIGO, CANAL, ESTADO, ASUNTO, CREATED_AT, UPDATED_AT "
+                          "FROM UC_FACTORY.COPILOTO_TICKETS"):
+            cliente_id, ticket_id = params
+            fila = self._db.tickets.get((cliente_id, ticket_id))
+            self._result = ((fila["id"], fila["codigo"], fila["canal"], fila["estado"], fila["asunto"],
+                             fila["created_at"], fila["updated_at"]) if fila else None)
+        elif s.startswith("SELECT ID, AUTOR, TEXTO, CREATED_AT FROM UC_FACTORY.COPILOTO_MENSAJES"):
+            cliente_id, ticket_id = params
+            self._rows = [(m["id"], m["autor"], m["texto"], m["created_at"]) for m in self._db.mensajes
+                         if m["cliente_id"] == cliente_id and m["ticket_id"] == ticket_id]
         else:
             raise NotImplementedError(f"SQL no soportado por el fake: {sql}")
 
@@ -142,6 +154,15 @@ class _FakeConn:
 
     def cursor(self):
         return _FakeCursor(self._db)
+
+    def commit(self) -> None:
+        pass
+
+    def close(self) -> None:
+        # `TicketStore` (a diferencia del resto de los stores de este archivo) abre/cierra la
+        # conexión a mano en vez de context manager -- sin este no-op, `obtener_ticket`/
+        # `listar_mensajes` revientan con AttributeError en vez de ejercitar el fake.
+        pass
 
 
 def _fake_conn_factory(db: _FakeTenantsDB):
@@ -710,3 +731,53 @@ def test_soporte_chat_NO_colisiona_con_el_chat_del_copiloto_mismo_session_id(mon
     r_soporte = client.post("/soporte/chat",
                             json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
     assert r_copiloto.json()["wf_id"] != r_soporte.json()["wf_id"]
+
+
+# --- GET /soporte/tickets/{ticket_id} (S6-11) -----------------------------------
+# `pedido_frontend-a-todos_S6-11-falta-endpoint-de-usuario-para-leer-su-propio-ticket.md`: el
+# usuario final necesita leer el hilo de SU ticket. El aislamiento cross-tenant (H1) ya está
+# probado contra Postgres real en test_soporte_store.py -- acá sólo importa que la RUTA delegue en
+# `TicketStore` con el `cliente_id` de `require_tenant`, nunca de la URL.
+
+def _seed_ticket(db: _FakeTenantsDB, *, cliente_id: str, ticket_id: int = 1,
+                 codigo: str = "SOP-0001") -> None:
+    db.tickets[(cliente_id, ticket_id)] = {
+        "id": ticket_id, "codigo": codigo, "canal": "soporte_tecnico", "estado": "abierto",
+        "asunto": "no puedo facturar", "created_at": "t1", "updated_at": "t1"}
+    db.mensajes.append({"cliente_id": cliente_id, "ticket_id": ticket_id, "id": 1,
+                        "autor": "usuario", "texto": "AFIP me tira un error raro", "created_at": "t1"})
+
+
+def test_soporte_ticket_propio_sin_token_401():
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).get("/soporte/tickets/1")
+    assert r.status_code == 401
+
+
+def test_soporte_ticket_propio_200_con_el_hilo_completo():
+    db = _FakeTenantsDB()
+    _seed_ticket(db, cliente_id="cid-A")
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    r = TestClient(app).get("/soporte/tickets/1")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ticket"]["codigo"] == "SOP-0001"
+    assert body["ticket"]["estado"] == "abierto"
+    assert len(body["mensajes"]) == 1
+    assert body["mensajes"][0]["texto"] == "AFIP me tira un error raro"
+
+
+def test_soporte_ticket_propio_404_si_no_existe():
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=_FakeTenantsDB())
+    r = TestClient(app).get("/soporte/tickets/999")
+    assert r.status_code == 404
+
+
+def test_soporte_ticket_propio_404_si_es_de_otro_tenant():
+    """El mismo 404 que 'no existe' -- H1: no hay una segunda respuesta que delate que el ticket sí
+    existe pero es ajeno."""
+    db = _FakeTenantsDB()
+    _seed_ticket(db, cliente_id="cid-A")
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
+    r = TestClient(app).get("/soporte/tickets/1")
+    assert r.status_code == 404

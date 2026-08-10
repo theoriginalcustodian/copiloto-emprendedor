@@ -61,6 +61,7 @@ from mp_credential_store import MpCredentialStore
 from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
+from soporte_store import TicketStore
 
 import services
 from calendar_policy import CALENDAR_POLICY
@@ -701,6 +702,22 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             extra_config={"engine_mode": "react"},   # el domain de soporte SIEMPRE es react (worker_soporte.py)
             raw_update={"session_id": channel_ref, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref}
+
+    @app.get("/soporte/tickets/{ticket_id}")
+    def soporte_ticket_propio(ticket_id: int, cliente_id: str = Depends(require_tenant)) -> dict:
+        """S6-11 (pedido de frontend, `pedido_frontend-a-todos_S6-11-...`): el usuario final necesita
+        leer el hilo de SU PROPIO ticket para que la notificación de Actividad tenga a dónde llevar
+        -- hasta acá sólo existía el camino cross-tenant de la consola (`admin_web.py`,
+        `require_admin`). `TicketStore` por el camino normal (NO el rol `copiloto_consola`, que es
+        SELECT-only cross-tenant y no aplica acá): mismo mecanismo que `cambiar_estado`, el `WHERE
+        cliente_id = %s` hace que "no existe" y "es de otro tenant" devuelvan el mismo 404 -- no
+        hace falta un segundo chequeo de ownership."""
+        store = TicketStore(conn_factory, cliente_id)
+        ticket = store.obtener_ticket(ticket_id=ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="ticket no encontrado")
+        mensajes = store.listar_mensajes(ticket_id=ticket_id)
+        return {"ticket": ticket, "mensajes": mensajes}
 
     @app.post("/feedback")
     def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:

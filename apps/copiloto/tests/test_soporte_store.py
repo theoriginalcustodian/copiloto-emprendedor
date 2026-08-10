@@ -118,6 +118,41 @@ def test_crear_ticket_y_listarlo_para_el_mismo_tenant(tenants, conn_de_tenant):
 
 
 @necesita_pg
+def test_obtener_ticket_devuelve_el_ticket_completo_del_mismo_tenant(tenants, conn_de_tenant):
+    """S6-11: el usuario final necesita leer su propio ticket completo (mismas columnas que
+    `listar_tickets`), no sólo la lista."""
+    a, _ = tenants
+    store = _store(conn_de_tenant, a)
+    creado = store.crear_ticket(canal=SOPORTE_TECNICO, asunto="no puedo facturar",
+                                primer_mensaje="AFIP me tira un error raro")
+    ticket = store.obtener_ticket(ticket_id=creado["id"])
+    assert ticket is not None
+    assert ticket["codigo"] == "SOP-0001"
+    assert ticket["asunto"] == "no puedo facturar"
+    assert ticket["estado"] == ABIERTO
+
+
+@necesita_pg
+def test_obtener_ticket_inexistente_devuelve_None(tenants, conn_de_tenant):
+    a, _ = tenants
+    assert _store(conn_de_tenant, a).obtener_ticket(ticket_id=999999999) is None
+
+
+@necesita_pg
+def test_H1_ADVERSARIAL_obtener_ticket_como_B_el_de_A_devuelve_None_pero_A_SI_lo_ve(
+        tenants, conn_de_tenant):
+    """Control positivo en la MISMA corrida (H1): sin él, un error de conexión daría el mismo `None`
+    y parecería aislamiento."""
+    a, b = tenants
+    creado = _store(conn_de_tenant, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="ticket de A",
+                                                     primer_mensaje="mensaje de A")
+
+    assert _store(conn_de_tenant, b).obtener_ticket(ticket_id=creado["id"]) is None  # negativo
+    assert _store(conn_de_tenant, a).obtener_ticket(ticket_id=creado["id"])["codigo"] == \
+        creado["codigo"]  # positivo
+
+
+@necesita_pg
 def test_cambiar_estado_actualiza_y_devuelve_el_ANTERIOR(tenants, conn_de_tenant):
     """SOP6 §0: el verbo que faltaba. Devuelve el estado ANTERIOR -- es lo que la auditoría
     (`admin_web.py`) necesita para `detalle={"de": ..., "a": ...}`, mismo criterio que
