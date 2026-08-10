@@ -109,6 +109,56 @@ def test_kb_sin_pregunta_es_error():
     assert r.status == "error"
 
 
+class _TraumaStoreFalso:
+    """Espía de `TraumaStore.depositar` -- I3 no necesita Postgres real para verificar QUE se llamó."""
+    def __init__(self):
+        self.depositados = []
+
+    def depositar(self, *, fingerprint, workflow, error_type, costura, contexto=None):
+        self.depositados.append({"fingerprint": fingerprint, "workflow": workflow,
+                                 "error_type": error_type, "costura": costura, "contexto": contexto})
+        return {"ok": True}
+
+
+def test_kb_unavailable_deposita_trauma_I3():
+    """Trauma Empaquetado: un fallo real del RAG (UNAVAILABLE) se serializa con fingerprint, no se
+    pierde -- mismo mecanismo que ya usan las costuras C2/C3."""
+    store = _TraumaStoreFalso()
+    rag = _RagClientFalso(_RagRespuestaFalsa("unavailable", reason="timeout_o_conexion_caida"))
+    ex = _executor(rag=rag, trauma_factory=lambda cid: store)
+    ex("consultar_base_de_conocimiento", {"pregunta": "algo"},
+      SoporteCtx(cliente_id="tenant-x"), confirmed=False, idem_key="t1")
+    assert len(store.depositados) == 1
+    d = store.depositados[0]
+    assert d["workflow"] == "soporte_agente" and d["error_type"] == "RagUnavailable"
+    assert d["costura"] == "consultar_base_de_conocimiento"
+    assert d["contexto"] == {"reason": "timeout_o_conexion_caida"}
+
+
+def test_kb_answered_NO_deposita_trauma_solo_UNAVAILABLE_es_fallo_real():
+    """REFUSED es una respuesta legítima del sistema (el corpus no tiene la respuesta), no un fallo de
+    infra -- I3 no lo trata como trauma. Sólo UNAVAILABLE es lo que hay que reintentar."""
+    store = _TraumaStoreFalso()
+    rag = _RagClientFalso(_RagRespuestaFalsa("refused", refusal_reason="low_cluster_coherence"))
+    ex = _executor(rag=rag, trauma_factory=lambda cid: store)
+    ex("consultar_base_de_conocimiento", {"pregunta": "algo"},
+      SoporteCtx(cliente_id="tenant-x"), confirmed=False, idem_key="t1")
+    assert store.depositados == []
+
+
+def test_kb_loguea_RAG_CONSULTA_I1_sin_pregunta_ni_answer_crudos(capsys):
+    """I1: se puede medir frecuencia/latencia por consulta. H3: la línea logueada NO lleva el texto de
+    la pregunta ni el de la respuesta -- sólo metadata (outcome/retrieved_count/latency_ms)."""
+    rag = _RagClientFalso(_RagRespuestaFalsa("answered", answer="CONTENIDO-SECRETO-DE-LA-RESPUESTA"))
+    ex = _executor(rag=rag)
+    ex("consultar_base_de_conocimiento", {"pregunta": "PREGUNTA-LITERAL-DEL-USUARIO"},
+      SoporteCtx(cliente_id="tenant-x"), confirmed=False, idem_key="t1")
+    salida = capsys.readouterr().out
+    assert "RAG_CONSULTA" in salida and '"outcome": "answered"' in salida
+    assert "PREGUNTA-LITERAL-DEL-USUARIO" not in salida
+    assert "CONTENIDO-SECRETO-DE-LA-RESPUESTA" not in salida
+
+
 # ======================================================================================
 # buscar_mis_errores -- C9+C10, el TRAUMA nunca la queja del usuario (MAESTRO 10.2)
 # ======================================================================================

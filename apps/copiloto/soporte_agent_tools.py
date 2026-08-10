@@ -12,13 +12,32 @@ búsqueda semántica sobre prosa de usuario devuelve resultados no relacionados.
 del tenant (`workflow`/`error_type`/`costura`, vocabulario técnico), y sólo si hay uno reciente, usa
 ESE vocabulario para citar archivo:línea. Sin trauma reciente, no hay grafo que consultar -- se
 devuelve honesto, nunca una cita falsa con aire de certeza (control negativo obligatorio del DoD).
+
+## H3 -- qué PII viaja al modelo, declarado explícito (no un `[TODO]`)
+
+Verificado contra el código real de cada fuente, no asumido:
+
+- **El texto del propio usuario** (su turno de chat) -- es SU dato, describiéndose a sí mismo; no es
+  "PII de más", es lo mínimo necesario para responder.
+- **`buscar_mis_errores`** manda `workflow`/`error_type`/`estado`/`created_at` de SUS PROPIOS traumas
+  (`TraumaStore.listar`, RLS-scoped a `ctx.cliente_id` -- ver `trauma_store.py:297-311`). Metadata
+  técnica, no PII: el `error_message` de la excepción original NUNCA se guarda en `copiloto_traumas`
+  (`log_estructurado.py`, regla 2 del módulo) y por lo tanto no puede viajar de acá para arriba.
+- **`consultar_base_de_conocimiento`** manda contenido del corpus de producto (documentación pública
+  de la app) -- cero datos de usuario, cero PII por diseño (MAESTRO: "los datos del negocio NO van al
+  RAG jamás").
+- **Nunca viaja:** datos de OTRO tenant (RLS lo impide en la fuente, antes de que exista el dict a
+  mandar) ni el mensaje crudo de una excepción (excluido en el origen, no filtrado acá).
 """
 from __future__ import annotations
 
+import json
 from typing import Callable
 
 from backend.agent.types import ToolResult
 
+from deposito_traumas import depositar as depositar_trauma
+from fingerprint import fingerprint_de_error
 from soporte_feedback_activities import clasificar_y_depositar
 from soporte_store import CANALES_VALIDOS, SOPORTE_TECNICO, TicketStore
 from trauma_store import TraumaStore
@@ -62,7 +81,8 @@ CREAR_TICKET_SCHEMA = {"type": "function", "function": {
 TOOL_SCHEMAS_SOPORTE = [CONSULTAR_KB_SCHEMA, BUSCAR_MIS_ERRORES_SCHEMA, CREAR_TICKET_SCHEMA]
 
 
-def _run_consultar_kb(arguments: dict, idem_key: str, rag_client_factory: Callable) -> ToolResult:
+def _run_consultar_kb(arguments: dict, ctx, idem_key: str, rag_client_factory: Callable,
+                      trauma_store_factory: Callable) -> ToolResult:
     cliente = rag_client_factory()
     if cliente is None:
         # Apagado explícito (falta config de vault) -- mismo trato que UNAVAILABLE del contrato: el
@@ -89,6 +109,22 @@ def _run_consultar_kb(arguments: dict, idem_key: str, rag_client_factory: Callab
         obs["retrieved_count"] = rc
     if lat is not None:
         obs["latency_ms"] = lat
+    # I1: observabilidad de cada consulta -- mismo patrón que `LLM_TURNO`/`STT_TRANSCRIPT` (print, no
+    # activity.logger: sin `basicConfig` sólo `warning+` llega a journald). NUNCA la `pregunta` cruda
+    # ni el `answer` (podrían traer lo que el usuario escribió) -- sólo metadata de la consulta (H3).
+    print("RAG_CONSULTA " + json.dumps(
+        {"cliente_id": ctx.cliente_id, "outcome": r.outcome, "retrieved_count": rc, "latency_ms": lat},
+        ensure_ascii=False), flush=True)
+    # I3 (Trauma Empaquetado): un fallo del RAG/orquestador se serializa con fingerprint para no
+    # perderse -- mismo mecanismo que ya usan las costuras C2/C3 (`deposito_traumas.depositar`), no uno
+    # nuevo. Sólo UNAVAILABLE es un fallo real de infra; REFUSED es una respuesta legítima del sistema
+    # (el corpus no tiene la respuesta) y no es lo que I3 pide reintentar.
+    if r.outcome == "unavailable":
+        fp = fingerprint_de_error(workflow="soporte_agente", error_type="RagUnavailable",
+                                  error_message=r.reason)
+        depositar_trauma(trauma_store_factory, fingerprint=fp, workflow="soporte_agente",
+                         error_type="RagUnavailable", cliente_id=ctx.cliente_id,
+                         costura="consultar_base_de_conocimiento", contexto={"reason": r.reason})
     return ToolResult(tool_call_id=idem_key, is_write=False, status="ok", observation=obs)
 
 
@@ -164,7 +200,7 @@ def make_soporte_tool_executor(*, rag_client_factory: Callable, trauma_store_fac
         if ctx is None:
             raise ValueError("tool_executor de soporte requiere ctx (context_factory)")
         if name == "consultar_base_de_conocimiento":
-            return _run_consultar_kb(arguments, idem_key, rag_client_factory)
+            return _run_consultar_kb(arguments, ctx, idem_key, rag_client_factory, trauma_store_factory)
         if name == "buscar_mis_errores":
             return _run_buscar_mis_errores(ctx, idem_key, trauma_store_factory, graphity_code_client)
         if name == "crear_ticket_de_soporte":
