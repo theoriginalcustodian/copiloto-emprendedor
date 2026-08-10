@@ -94,6 +94,26 @@ def test_call_llm_tools_registra_evento_llm_turno():
     assert seen == [("42", "s1", "m", 123, "llm_turno")]
 
 
+class _ProvCortadoPorLength:
+    """`finish_reason='length'` -- el LLM cortó por max_tokens (pedido planificación 2026-08-09)."""
+    def complete_tools(self, system, messages, tools, *, tool_choice="auto", parallel_tool_calls=False):
+        return {"tool_calls": [], "content": "respuesta a mitad de frase", "finish_reason": "length",
+                "model": "m", "failed_over": False, "usage": {"total_tokens": 1500}}
+
+
+def test_call_llm_tools_loguea_finish_reason_para_medir_cortes_por_length(capsys):
+    """DoD del pedido: un grep sobre el journal del worker devuelve líneas con `finish_reason` tras un
+    turno real. `print` (no `activity.logger`) -- mismo criterio que `STT_TRANSCRIPT`: sin `basicConfig`
+    sólo `warning+` llega a journald, y esto es una métrica de cada turno, no un warning."""
+    reset_registry()
+    register_domain("d", system_prompt="SYS", llm_provider=_ProvCortadoPorLength(),
+                    dispatcher=lambda *a: None, tool_schemas=[], tool_executor=None,
+                    context_factory=lambda conv: object(), engine_mode="react")
+    asyncio.run(A.call_llm_tools({"domain": "d", "messages": [], "cliente_id": "42", "session_id": "s1"}))
+    salida = capsys.readouterr().out
+    assert "LLM_TURNO" in salida and '"finish_reason": "length"' in salida
+
+
 def test_call_llm_tools_sin_cliente_id_no_registra():
     """El sink existe pero no hay tenant que atribuirle el evento -- no se llama (mismo criterio que
     perfil_provider: sin cliente_id no hay a quién cargarle nada)."""

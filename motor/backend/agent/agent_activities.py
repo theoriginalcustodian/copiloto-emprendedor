@@ -179,6 +179,16 @@ async def call_llm_tools(payload: dict) -> dict:
     result = await asyncio.to_thread(
         provider.complete_tools, system, payload.get("messages") or [], tools,
         tool_choice=payload.get("tool_choice", "auto"))
+    # Observabilidad de `finish_reason` (pedido planificación 2026-08-09): viaja en el dict de
+    # `complete_tools` pero nadie lo miraba -- si el LLM corta por max_tokens ("length"), `content`
+    # es una respuesta a mitad de frase y el loop la trataba como cierre normal. Paso 1 (medir, no
+    # arreglar): mismo patrón que `STT_TRANSCRIPT` arriba -- `print` directo, no `activity.logger`,
+    # porque sólo `warning+` llega a journald sin `basicConfig` (ver `log_estructurado.py`) y esto no
+    # es un warning, es una métrica de cada turno.
+    print("LLM_TURNO " + json.dumps(
+        {"domain": payload["domain"], "cliente_id": cliente_id, "session_id": payload.get("session_id", ""),
+         "model": result.get("model", ""), "finish_reason": result.get("finish_reason", "")},
+        ensure_ascii=False), flush=True)
     await _registrar_metering(
         dom, cliente_id=cliente_id, session_id=payload.get("session_id", ""),
         model=result.get("model", ""), tokens=(result.get("usage") or {}).get("total_tokens"),
