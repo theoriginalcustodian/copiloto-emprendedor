@@ -1,10 +1,14 @@
-"""Composition root + worker del Agente de Soporte (SOP4, C1) -- capa CLIENTE.
+"""Composition root + worker del Agente de Soporte (SOP4/SOP5, C1) -- capa CLIENTE.
 
-Registra DOS dominios ('soporte_tecnico' y 'como_uso_la_app'), ambos `engine_mode='react'` sobre el
-MISMO motor durable (`ConversationWorkflow`) que usa 'emprendedor' (worker_b.py) -- pero con system
-prompt y toolset PROPIOS (C1: "no comparte el cerebro del copiloto"). `feedback` NO es un tercer
-dominio: sigue el camino ya existente (`soporte_feedback_workflow`/`_activities`, one-shot, sin hilo
--- MAESTRO §9.3), corre en el worker de 'emprendedor', no acá.
+Registra UN dominio ('soporte_tecnico'), `engine_mode='react'` sobre el MISMO motor durable
+(`ConversationWorkflow`) que usa 'emprendedor' (worker_b.py) -- pero con system prompt y toolset
+PROPIOS (C1: "no comparte el cerebro del copiloto"). Un solo dominio y no dos, porque el DoD
+versionado (PR #357, `01-DOD-...md` §F0) fija `domain`/`task_queue` como constantes DEL SERVIDOR en
+`POST /soporte/chat` -- no hay parámetro de "función" que decida cuál de dos dominios arrancar; la
+distinción soporte-técnico-vs-cómo-uso-la-app (MAESTRO §9.1) la hace el propio agente al elegir
+`canal` en `crear_ticket_de_soporte`, no el wiring de Temporal (ver `soporte_system_prompts.py`).
+`feedback` NO es un tercer dominio: sigue el camino ya existente (`soporte_feedback_workflow`/
+`_activities`, one-shot, sin hilo -- MAESTRO §9.3), corre en el worker de 'emprendedor', no acá.
 
 Proceso SEPARADO (task_queue propio `SOPORTE_TASK_QUEUE`, C1 lo exige) -- mismo criterio que A/B: el
 registry de `agent_runtime` es singleton de MÓDULO, así que un proceso propio es la única forma de que
@@ -36,8 +40,8 @@ from soporte_agent_tools import TOOL_SCHEMAS_SOPORTE, make_soporte_tool_executor
 from soporte_clasificador import SoporteClasificador
 from soporte_context import make_soporte_context_factory
 from soporte_feedback_activities import set_soporte_feedback_deps
-from soporte_store import COMO_USO_LA_APP, SOPORTE_TECNICO, TicketStore
-from soporte_system_prompts import SYSTEM_PROMPT_COMO_USO_LA_APP, SYSTEM_PROMPT_SOPORTE_TECNICO
+from soporte_store import SOPORTE_TECNICO, TicketStore
+from soporte_system_prompts import SYSTEM_PROMPT_SOPORTE
 from orquestador_rag_client import build_rag_client_factory
 from trauma_store import TraumaStore
 
@@ -103,11 +107,9 @@ def build_worker_config(env, conn_factory) -> dict:
     llm = build_llm()
     # `dispatcher=None`: este domain no tiene fallback a engine_mode='dispatch' (siempre react, a
     # diferencia de 'emprendedor' que preserva el dispatcher legacy). `register_domain` lo acepta.
-    for nombre, prompt in ((SOPORTE_TECNICO, SYSTEM_PROMPT_SOPORTE_TECNICO),
-                           (COMO_USO_LA_APP, SYSTEM_PROMPT_COMO_USO_LA_APP)):
-        register_domain(nombre, system_prompt=prompt, llm_provider=llm, dispatcher=None,
-                        context_factory=ctx_factory, memory_provider=None, engine_mode="react",
-                        tool_schemas=TOOL_SCHEMAS_SOPORTE, tool_executor=tool_executor)
+    register_domain(SOPORTE_TECNICO, system_prompt=SYSTEM_PROMPT_SOPORTE, llm_provider=llm,
+                    dispatcher=None, context_factory=ctx_factory, memory_provider=None,
+                    engine_mode="react", tool_schemas=TOOL_SCHEMAS_SOPORTE, tool_executor=tool_executor)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     return {"workflows": [ConversationWorkflow], "activities": _ACTIVITIES,

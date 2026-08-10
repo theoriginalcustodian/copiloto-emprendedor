@@ -7,7 +7,7 @@ import pytest
 from backend.agent.agent_runtime import get_channel, get_domain, reset_registry  # noqa: E402
 
 import worker_soporte  # noqa: E402
-from soporte_store import COMO_USO_LA_APP, SOPORTE_TECNICO  # noqa: E402
+from soporte_store import SOPORTE_TECNICO  # noqa: E402
 
 
 class _FakeConn:
@@ -26,37 +26,27 @@ def _reset():
     reset_registry()
 
 
-def test_build_worker_config_registra_los_DOS_dominios():
+def test_build_worker_config_registra_UN_dominio():
+    """DoD versionado (PR #357, §F0): `domain`/`task_queue` son constantes DEL SERVIDOR -- un solo
+    domain 'soporte_tecnico', no dos. La distinción soporte-técnico-vs-cómo-uso-la-app (MAESTRO §9.1)
+    la resuelve el agente al elegir `canal` en `crear_ticket_de_soporte`, no el wiring de Temporal."""
     worker_soporte.build_worker_config({}, _fake_conn_factory())
-    dom_tec = get_domain(SOPORTE_TECNICO)
-    dom_app = get_domain(COMO_USO_LA_APP)
-    assert dom_tec["engine_mode"] == "react"
-    assert dom_app["engine_mode"] == "react"
-    assert dom_tec["tool_schemas"] and dom_app["tool_schemas"]
-    assert dom_tec["tool_executor"] is not None
+    dom = get_domain(SOPORTE_TECNICO)
+    assert dom["engine_mode"] == "react"
+    assert dom["tool_schemas"]
+    assert dom["tool_executor"] is not None
     assert get_channel("web") is not None
-
-
-def test_los_DOS_dominios_comparten_tool_schemas_pero_NO_system_prompt():
-    """C1: task_queue/workflow/toolset propios -- pero cada función tiene SU prompt (soporte técnico
-    ofrece `buscar_mis_errores` como primer paso, cómo-uso-la-app no lo menciona)."""
-    worker_soporte.build_worker_config({}, _fake_conn_factory())
-    dom_tec = get_domain(SOPORTE_TECNICO)
-    dom_app = get_domain(COMO_USO_LA_APP)
-    assert dom_tec["system_prompt"] != dom_app["system_prompt"]
-    assert dom_tec["tool_schemas"] == dom_app["tool_schemas"]
 
 
 def test_system_prompt_de_soporte_NO_comparte_una_letra_con_el_de_emprendedor():
     """C1, evidencia literal del DoD: "un grep que muestre que no comparte prompt"."""
     import system_prompt as prompt_emprendedor
-    from soporte_system_prompts import SYSTEM_PROMPT_COMO_USO_LA_APP, SYSTEM_PROMPT_SOPORTE_TECNICO
+    from soporte_system_prompts import SYSTEM_PROMPT_SOPORTE
 
     frases_emprendedor = {
         frase.strip() for frase in prompt_emprendedor.SYSTEM_PROMPT_REACT.split(".") if len(frase.strip()) > 20}
-    for prompt_soporte in (SYSTEM_PROMPT_SOPORTE_TECNICO, SYSTEM_PROMPT_COMO_USO_LA_APP):
-        for frase in frases_emprendedor:
-            assert frase not in prompt_soporte, f"frase compartida con 'emprendedor': {frase!r}"
+    for frase in frases_emprendedor:
+        assert frase not in SYSTEM_PROMPT_SOPORTE, f"frase compartida con 'emprendedor': {frase!r}"
 
 
 def test_dispatcher_es_None_este_domain_nunca_corre_engine_mode_dispatch():
