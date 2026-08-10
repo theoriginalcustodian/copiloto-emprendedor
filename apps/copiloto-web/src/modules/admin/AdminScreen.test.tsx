@@ -16,6 +16,9 @@ vi.mock('../../lib/api/admin', async (importOriginal) => {
     adminCambiarEstadoTenant: vi.fn(),
     adminTenants: vi.fn(),
     adminReintentarError: vi.fn(),
+    adminListarTicketsSoporte: vi.fn(),
+    adminDetalleTicketSoporte: vi.fn(),
+    adminResponderTicketSoporte: vi.fn(),
   };
 });
 
@@ -26,13 +29,17 @@ import {
   AdminNoDisponibleError,
   adminAuditoria,
   adminCambiarEstadoTenant,
+  adminDetalleTicketSoporte,
   adminErrores,
+  adminListarTicketsSoporte,
   adminReintentarError,
+  adminResponderTicketSoporte,
   adminSalud,
   adminSoporte,
   adminTenants,
   adminUso,
 } from '../../lib/api/admin';
+import type { TicketSoporte } from '../../lib/api/admin';
 import { AdminScreen } from './AdminScreen';
 
 const SALUD_SANA = {
@@ -146,6 +153,12 @@ describe('AdminScreen (CONS5 — A1 Salud + A3 Uso)', () => {
     // CTA1: por default la lista NO esta disponible — es el estado real de `main` hoy (el GET no
     // existe). Un test que quiera lista la mockea.
     vi.mocked(adminTenants).mockReset().mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    // SOP6: mismo criterio — sección con estado propio, default no-disponible (el endpoint tampoco
+    // existe en `main` hoy). No pertenece al alcance de A1/A3, sólo se mockea para no dejar una
+    // promesa sin resolver.
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('muestra los datos de salud y de uso cuando ambos endpoints responden', async () => {
@@ -238,6 +251,9 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     vi.mocked(adminSoporte).mockReset().mockResolvedValue(SOPORTE);
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue(AUDITORIA);
     vi.mocked(adminTenants).mockReset().mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('A5: muestra el error agrupado, con "veces" y "cuentas" SEPARADOS', async () => {
@@ -374,6 +390,9 @@ describe('AdminScreen — CONS7a (suspender / reactivar una cuenta)', () => {
     vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
     vi.mocked(adminCambiarEstadoTenant).mockReset();
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   async function montarYEscribir(id: string) {
@@ -520,6 +539,9 @@ describe('AdminScreen — CONS7b (reintentar un error)', () => {
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
     vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [ERROR_PERMITIDO] });
     vi.mocked(adminReintentarError).mockReset();
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('un error reintentable tiene el botón ACTIVO y no muestra motivo', async () => {
@@ -636,6 +658,9 @@ describe('AdminScreen (CTA1 — listar las cuentas que gestiona)', () => {
     vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
     vi.mocked(adminCambiarEstadoTenant).mockReset();
     vi.mocked(adminTenants).mockReset().mockResolvedValue(TENANTS);
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
   });
 
   it('lista las cuentas con su email y su estado', async () => {
@@ -689,5 +714,215 @@ describe('AdminScreen (CTA1 — listar las cuentas que gestiona)', () => {
     expect(screen.getByTestId('admin-salud-badge')).toBeTruthy();
     expect(screen.getByTestId('admin-auditoria')).toBeTruthy();
     expect(screen.queryByTestId('admin-no-disponible')).toBeNull();
+  });
+});
+
+/**
+ * SOP6 — tickets de soporte, respondidos desde la consola. Mismo criterio que CTA1: sección con
+ * estado de carga PROPIO (el endpoint tampoco existe en `main` hoy), que degrada sin apagar el
+ * resto — y aparte, el "master-detail" de abrir un ticket y responderlo.
+ */
+describe('AdminScreen (SOP6 — tickets de soporte)', () => {
+  const TICKET_ABIERTO: TicketSoporte = {
+    id: 7, codigo: 'SOP-0007', canal: 'soporte_tecnico', estado: 'abierto',
+    asunto: 'no puedo emitir la factura', created_at: '2026-08-10T10:00:00Z',
+    updated_at: '2026-08-10T10:00:00Z',
+  };
+  const TICKET_RESPONDIDO: TicketSoporte = {
+    id: 8, codigo: 'SOP-0008', canal: 'como_uso_la_app', estado: 'respondido',
+    asunto: 'cómo cambio el tema', created_at: '2026-08-09T10:00:00Z',
+    updated_at: '2026-08-09T11:00:00Z',
+  };
+  const MENSAJE_USUARIO = { id: 1, autor: 'usuario', texto: 'no puedo emitir', created_at: '2026-08-10T10:00:00Z' };
+
+  beforeEach(() => {
+    vi.mocked(adminSalud).mockReset().mockResolvedValue(SALUD_SANA);
+    vi.mocked(adminUso).mockReset().mockResolvedValue(USO);
+    vi.mocked(adminErrores).mockReset().mockResolvedValue({ errores: [] });
+    vi.mocked(adminSoporte).mockReset().mockResolvedValue({ tickets: [] });
+    vi.mocked(adminAuditoria).mockReset().mockResolvedValue({ eventos: [], total: 0 });
+    vi.mocked(adminTenants).mockReset().mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    vi.mocked(adminListarTicketsSoporte)
+      .mockReset()
+      .mockResolvedValue({ tickets: [TICKET_ABIERTO, TICKET_RESPONDIDO], total: 2 });
+    vi.mocked(adminDetalleTicketSoporte).mockReset();
+    vi.mocked(adminResponderTicketSoporte).mockReset();
+  });
+
+  it('lista los tickets con código, función, estado y asunto', async () => {
+    renderAdmin();
+    const fila = await screen.findByTestId('admin-ticket-fila-7');
+    expect(fila).toHaveTextContent('SOP-0007');
+    expect(fila).toHaveTextContent('Soporte técnico');
+    expect(fila).toHaveTextContent('Abierto');
+    expect(fila).toHaveTextContent('no puedo emitir la factura');
+  });
+
+  it('los TRES estados se distinguen por Badge, no sólo por texto (S6-13)', async () => {
+    vi.mocked(adminListarTicketsSoporte).mockResolvedValue({
+      tickets: [TICKET_ABIERTO, TICKET_RESPONDIDO, { ...TICKET_ABIERTO, id: 9, codigo: 'SOP-0009', estado: 'cerrado' }],
+      total: 3,
+    });
+    renderAdmin();
+    await screen.findByTestId('admin-ticket-fila-7');
+    // Tres estados, tres variantes de Badge -- si dos cayeran en la misma variante, un cambio real
+    // de estado no se notaría a la vista (que es exactamente lo que S6-13 pide evitar).
+    const variantes = new Set(
+      ['7', '8', '9'].map((id) => {
+        const fila = screen.getByTestId(`admin-ticket-fila-${id}`);
+        return fila.querySelector('[class*="badge"]')?.className ?? fila.textContent;
+      }),
+    );
+    expect(variantes.size).toBe(3);
+  });
+
+  it('filtra por código y estado, y los manda al backend', async () => {
+    renderAdmin();
+    await screen.findByTestId('admin-ticket-fila-7');
+    fireEvent.change(screen.getByTestId('admin-tickets-filtro-codigo'), { target: { value: 'SOP-0007' } });
+    await waitFor(() =>
+      expect(adminListarTicketsSoporte).toHaveBeenCalledWith(
+        expect.objectContaining({ codigo: 'SOP-0007' }),
+      ),
+    );
+    fireEvent.change(screen.getByTestId('admin-tickets-filtro-estado'), { target: { value: 'respondido' } });
+    await waitFor(() =>
+      expect(adminListarTicketsSoporte).toHaveBeenCalledWith(
+        expect.objectContaining({ estado: 'respondido' }),
+      ),
+    );
+  });
+
+  it('click en una fila abre el detalle con el hilo de mensajes', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({
+      ticket: TICKET_ABIERTO, mensajes: [MENSAJE_USUARIO],
+    });
+    renderAdmin();
+    const fila = await screen.findByTestId('admin-ticket-fila-7');
+    fireEvent.click(fila);
+    await waitFor(() => expect(adminDetalleTicketSoporte).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('admin-ticket-detalle-7')).toHaveTextContent('no puedo emitir');
+  });
+
+  it('click de nuevo en la MISMA fila cierra el detalle — es un toggle', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({
+      ticket: TICKET_ABIERTO, mensajes: [MENSAJE_USUARIO],
+    });
+    renderAdmin();
+    const fila = await screen.findByTestId('admin-ticket-fila-7');
+    fireEvent.click(fila);
+    await screen.findByTestId('admin-ticket-detalle-7');
+    fireEvent.click(fila);
+    await waitFor(() => expect(screen.queryByTestId('admin-ticket-detalle-7')).not.toBeInTheDocument());
+  });
+
+  it('mensajes de usuario y operador se distinguen visualmente (clase distinta)', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({
+      ticket: TICKET_ABIERTO,
+      mensajes: [MENSAJE_USUARIO, { id: 2, autor: 'operador', texto: 'ya lo revisamos', created_at: '2026-08-10T11:00:00Z' }],
+    });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    expect(screen.getByText('ya lo revisamos').closest('li')?.className).toContain('operador');
+    expect(screen.getByText('no puedo emitir').closest('li')?.className).not.toContain('operador');
+  });
+
+  it('responder manda {texto, cerrar: false} por default', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({ ticket: TICKET_ABIERTO, mensajes: [] });
+    vi.mocked(adminResponderTicketSoporte).mockResolvedValue({ mensaje_id: 99, estado: 'respondido' });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    fireEvent.change(screen.getByTestId('admin-ticket-respuesta-input'), {
+      target: { value: 'ya lo estamos revisando' },
+    });
+    fireEvent.click(screen.getByTestId('admin-ticket-responder'));
+    await waitFor(() =>
+      expect(adminResponderTicketSoporte).toHaveBeenCalledWith(7, 'ya lo estamos revisando', false),
+    );
+  });
+
+  it('"Responder y cerrar" manda cerrar: true — la vuelta existe, no sólo "responder"', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({ ticket: TICKET_ABIERTO, mensajes: [] });
+    vi.mocked(adminResponderTicketSoporte).mockResolvedValue({ mensaje_id: 99, estado: 'cerrado' });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    fireEvent.change(screen.getByTestId('admin-ticket-respuesta-input'), { target: { value: 'resuelto' } });
+    fireEvent.click(screen.getByTestId('admin-ticket-responder-cerrar'));
+    await waitFor(() => expect(adminResponderTicketSoporte).toHaveBeenCalledWith(7, 'resuelto', true));
+  });
+
+  it('los dos botones de responder están deshabilitados con el campo vacío', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({ ticket: TICKET_ABIERTO, mensajes: [] });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    expect(screen.getByTestId('admin-ticket-responder')).toBeDisabled();
+    expect(screen.getByTestId('admin-ticket-responder-cerrar')).toBeDisabled();
+  });
+
+  it('el estado que se muestra tras responder es el que devuelve el SERVIDOR', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({ ticket: TICKET_ABIERTO, mensajes: [] });
+    // El servidor decide 'respondido' (no lo asume la UI a partir de cerrar:false).
+    vi.mocked(adminResponderTicketSoporte).mockResolvedValue({ mensaje_id: 99, estado: 'respondido' });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    fireEvent.change(screen.getByTestId('admin-ticket-respuesta-input'), { target: { value: 'ya está' } });
+    fireEvent.click(screen.getByTestId('admin-ticket-responder'));
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-ticket-respuesta-aviso')).toHaveTextContent('respondido'),
+    );
+  });
+
+  it('un ticket CERRADO no ofrece la caja de respuesta', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({
+      ticket: { ...TICKET_ABIERTO, estado: 'cerrado' }, mensajes: [MENSAJE_USUARIO],
+    });
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-cerrado-aviso');
+    expect(screen.queryByTestId('admin-ticket-respuesta-input')).not.toBeInTheDocument();
+  });
+
+  it('un error del backend al responder se muestra inline, no como excepción', async () => {
+    vi.mocked(adminDetalleTicketSoporte).mockResolvedValue({ ticket: TICKET_ABIERTO, mensajes: [] });
+    vi.mocked(adminResponderTicketSoporte).mockRejectedValue(new Error('ticket no encontrado'));
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-fila-7'));
+    await screen.findByTestId('admin-ticket-detalle-7');
+    fireEvent.change(screen.getByTestId('admin-ticket-respuesta-input'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByTestId('admin-ticket-responder'));
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-ticket-respuesta-aviso')).toHaveTextContent('ticket no encontrado'),
+    );
+    // La consola sigue en pie -- un error de negocio no tumba la pantalla entera.
+    expect(screen.getByTestId('admin-workers')).toBeInTheDocument();
+  });
+
+  it('sin endpoint: la sección degrada y NO apaga el resto de la consola', async () => {
+    vi.mocked(adminListarTicketsSoporte).mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    renderAdmin();
+    expect(await screen.findByTestId('admin-tickets-no-disp')).toBeTruthy();
+    expect(screen.queryByTestId('admin-tickets-tabla')).toBeNull();
+    // Control positivo: el resto sigue sano.
+    expect(screen.getByTestId('admin-salud-badge')).toBeTruthy();
+    expect(screen.getByTestId('admin-auditoria')).toBeTruthy();
+    expect(screen.queryByTestId('admin-no-disponible')).toBeNull();
+  });
+
+  it('sin tickets, dice que ninguno coincide en vez de una tabla vacía', async () => {
+    vi.mocked(adminListarTicketsSoporte).mockResolvedValue({ tickets: [], total: 0 });
+    renderAdmin();
+    expect(await screen.findByTestId('admin-tickets-vacio')).toBeTruthy();
+  });
+
+  it.each(THEMES)('la sección renderiza bajo el tema "%s" sin romper', async (theme) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    renderAdmin();
+    await waitFor(() => expect(screen.getByTestId('admin-tickets')).toBeInTheDocument());
+    expect(screen.getByTestId('admin-ticket-fila-7')).toBeInTheDocument();
   });
 });

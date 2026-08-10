@@ -258,3 +258,75 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* SOP6 — tickets de soporte. La fila clicable necesita señalizar que es interactiva (no hay
+   `<button>` alrededor: una fila de tabla completa como target de click, mismo patrón que las filas
+   de `admin-tenant-fila-*` NO usa, pero acá SÍ hace falta el cursor porque el click cae en `<tr>`,
+   no en un control con affordance propio). */
+.admin-tickets__fila-clicable {
+  cursor: pointer;
+}
+
+.admin-tickets__fila-clicable:hover {
+  background: var(--card-hover-bg, var(--card-bg));
+}
+
+/* Selector calificado A PROPÓSITO, mismo motivo que `.admin-tabla td.admin-dlq__accion` de arriba:
+   `.admin-tabla td` (0,1,1) pisa una clase sin calificar (0,1,0) y el `white-space: normal` no
+   aplicaría — medido ahí, no repetido a ciegas acá. */
+.admin-tabla td.admin-ticket-hilo__celda {
+  white-space: normal;
+}
+
+.admin-ticket-hilo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.admin-ticket-hilo__mensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/* Burbuja por mensaje, distinguible por AUTOR (S6-13: los estados/roles se ven, no sólo se leen).
+   `--card-bg`/`--card-border` para "usuario" (tono neutro, mismo que el resto de la consola);
+   `--core` con baja opacidad para "operador" — reusa el token de acento de la app en vez de
+   inventar un color nuevo sólo para esto. */
+.admin-ticket-hilo__msj {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  max-width: 60ch;
+}
+
+.admin-ticket-hilo__msj p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.admin-ticket-hilo__msj--operador {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--core) 12%, var(--card-bg));
+  border-color: var(--core);
+}
+
+.admin-ticket-hilo__autor {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--label);
+}
