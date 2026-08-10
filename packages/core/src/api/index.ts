@@ -354,3 +354,8 @@ export { enviarFeedback, enviarFeedbackAudio } from './feedback';
  * negocio, mismo criterio que separó `enviarFeedback` de esa interfaz. */
 export { sendSoporteChat } from './soporte';
 export type { FuncionSoporte, SoporteChatRequest, SoporteChatResponse } from './soporte';
+
+/** `GET /soporte/tickets/{id}` — S6-11, el hilo de un ticket propio del lado del usuario. Ver el
+ * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */
+export { obtenerMiTicket } from './soporteTicket';
+export type { EstadoTicketPropio, MensajeTicketPropio, MiTicketResult, TicketPropio } from './soporteTicket';

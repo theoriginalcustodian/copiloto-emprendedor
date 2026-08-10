@@ -62,4 +62,26 @@ describe('destinoDe', () => {
       params: { gastoId: '7' },
     });
   });
+
+  describe('ticket_respuesta (S6-11)', () => {
+    it('rutea al hilo del ticket, con el TICKET_ID — no el mensaje_id', () => {
+      // El id trae TRES partes: "ticket_respuesta:<ticket_id>:<mensaje_id>". `numeroDelId`
+      // (corte por el ÚLTIMO ':') daría el mensaje_id acá — la trampa real que este caso prueba.
+      expect(destinoDe(item({ id: 'ticket_respuesta:12:987', tipo: 'ticket_respuesta' }))).toEqual({
+        pathname: '/soporte-ticket',
+        params: { ticketId: '12' },
+      });
+    });
+
+    it('un id que no tiene exactamente 3 partes no rutea', () => {
+      expect(destinoDe(item({ id: 'ticket_respuesta:12', tipo: 'ticket_respuesta' }))).toBeNull();
+      expect(
+        destinoDe(item({ id: 'ticket_respuesta:12:987:extra', tipo: 'ticket_respuesta' })),
+      ).toBeNull();
+    });
+
+    it('la parte del medio no numérica no rutea', () => {
+      expect(destinoDe(item({ id: 'ticket_respuesta:abc:987', tipo: 'ticket_respuesta' }))).toBeNull();
+    });
+  });
 });

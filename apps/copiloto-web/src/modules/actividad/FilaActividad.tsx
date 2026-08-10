@@ -10,6 +10,7 @@ const ICONO_POR_TIPO: Record<string, string> = {
   gasto: '💸',
   ingreso: '📈',
   cliente: '👤',
+  ticket_respuesta: '💬',
 };
 
 /**
@@ -24,9 +25,10 @@ export interface FilaActividadProps {
   item: ActividadItem;
   onAbrirGasto?: (id: number) => void;
   onAbrirCliente?: (id: number) => void;
+  onAbrirTicket?: (id: number) => void;
 }
 
-export function FilaActividad({ item, onAbrirGasto, onAbrirCliente }: FilaActividadProps) {
+export function FilaActividad({ item, onAbrirGasto, onAbrirCliente, onAbrirTicket }: FilaActividadProps) {
   const icono = ICONO_POR_TIPO[item.tipo] ?? '🕐';
   const destino = destinoDe(item);
 
@@ -37,6 +39,9 @@ export function FilaActividad({ item, onAbrirGasto, onAbrirCliente }: FilaActivi
     }
     if (destino.pathname === '/clientes' && onAbrirCliente != null) {
       return () => onAbrirCliente(Number(destino.params.clienteId));
+    }
+    if (destino.pathname === '/soporte-ticket' && onAbrirTicket != null) {
+      return () => onAbrirTicket(Number(destino.params.ticketId));
     }
     return undefined;
   })();

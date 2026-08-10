@@ -1,0 +1,91 @@
+/* S6-11 — hilo de UN ticket propio, del lado del usuario. Burbuja por autor: mismo patrón visual
+   que `.admin-ticket-hilo__msj` de la consola (AdminScreen.tsx), sin compartir el archivo — son dos
+   módulos sin dependencia entre sí (uno admin, otro usuario final). */
+
+.mi-ticket-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.mi-ticket-screen__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mi-ticket-screen__titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.mi-ticket-screen__asunto {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.mi-ticket-screen__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mi-ticket-screen__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.mi-ticket-screen__mensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mi-ticket-screen__msj {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  max-width: 60ch;
+  align-self: flex-start;
+}
+
+.mi-ticket-screen__msj p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.mi-ticket-screen__msj--operador {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--core) 12%, var(--card-bg));
+  border-color: var(--core);
+}
+
+.mi-ticket-screen__autor {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--label);
+}

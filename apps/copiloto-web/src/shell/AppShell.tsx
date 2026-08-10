@@ -20,7 +20,7 @@ import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
-import { SoporteScreen } from '../modules/soporte';
+import { MiTicketScreen, SoporteScreen } from '../modules/soporte';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -90,6 +90,11 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   // valor ('soporte'); esto es estado adicional que el shell recuerda, no un TabKey nuevo (evita
   // ensanchar el union y todo lo que lo consume exhaustivamente, ver `navIcons.tsx`).
   const [funcionSoporte, setFuncionSoporte] = useState<FuncionSoporte>('soporte_tecnico');
+  // S6-11 — el ticket abierto desde una fila de Actividad. Mismo criterio que `funcionSoporte`:
+  // estado adicional, NO un `TabKey` nuevo (no es un destino de la barra, sólo se llega tocando
+  // una fila). `!= null` reemplaza el contenido del tab activo, como un drill-down de pantalla
+  // completa; `onVolver` lo cierra y vuelve a mostrar lo que el tab activo tenía.
+  const [ticketIdAbierto, setTicketIdAbierto] = useState<number | null>(null);
 
   // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
   // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
@@ -104,6 +109,9 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
       return;
     }
     setTabHidden(false);
+    // S6-11: cambiar de tab con un ticket abierto tiene que CERRARLO — si no, `ticketIdAbierto`
+    // sigue ganándole al `activeTab` nuevo y el usuario ve el mismo ticket detrás de la barra.
+    setTicketIdAbierto(null);
     setActiveTab(key);
   }, [setTabHidden]);
 
@@ -124,17 +132,23 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   }, [setTabHidden]);
 
   // Botón "atrás" del navegador/OS (2026-07-04): pelar los overlays abiertos (sheet primero, luego
-  // un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas capas hay abiertas.
+  // el ticket de S6-11, luego un tab != Chat) antes de dejar salir de la app. `backDepth` = cuántas
+  // capas hay abiertas.
   const handleBack = useCallback(() => {
     if (appsSheetOpen) {
       setAppsSheetOpen(false);
       return;
     }
+    if (ticketIdAbierto != null) {
+      setTicketIdAbierto(null);
+      return;
+    }
     if (activeTab !== DEFAULT_TAB) {
       setActiveTab(DEFAULT_TAB);
     }
-  }, [appsSheetOpen, activeTab]);
-  const backDepth = (appsSheetOpen ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
+  }, [appsSheetOpen, ticketIdAbierto, activeTab]);
+  const backDepth =
+    (appsSheetOpen ? 1 : 0) + (ticketIdAbierto != null ? 1 : 0) + (activeTab !== DEFAULT_TAB ? 1 : 0);
   useBackGuard(backDepth, handleBack);
 
   // El auto-hide del chrome (barra + composer al borde) es SÓLO del Chat: en Conexiones/Cuenta no hay
@@ -148,55 +162,70 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   return (
     <div className={shellClasses} data-testid="app-shell">
       <div className="app-shell__content" data-testid="app-shell-content">
-        {activeTab === 'chat' && (
-          <ChatScreen onHideChange={setTabHidden} onSurfaceTap={toggleChrome} />
+        {/* S6-11: el ticket abierto reemplaza el contenido del tab activo, drill-down de pantalla
+            completa — mismo criterio que `PantallaGastosRoute` en mobile, sin ruta propia porque acá
+            no hay router. `onVolver` restaura lo que el tab activo ya tenía montado. */}
+        {ticketIdAbierto != null ? (
+          <MiTicketScreen ticketId={ticketIdAbierto} onVolver={() => setTicketIdAbierto(null)} />
+        ) : (
+          <>
+            {activeTab === 'chat' && (
+              <ChatScreen onHideChange={setTabHidden} onSurfaceTap={toggleChrome} />
+            )}
+            {activeTab === 'connections' && <ConnectionsScreen />}
+            {activeTab === 'gastos' && <GastosScreen />}
+            {activeTab === 'clientes' && <ClientesScreen />}
+            {activeTab === 'contabilidad' && <ContabilidadScreen />}
+            {activeTab === 'ingresos' && <IngresosScreen />}
+            {activeTab === 'actividad' && (
+              <ActividadScreen
+                onAbrirGasto={() => changeTab('gastos')}
+                onAbrirCliente={() => changeTab('clientes')}
+                onAbrirTicket={setTicketIdAbierto}
+              />
+            )}
+            {activeTab === 'presupuestos' && (
+              <PresupuestosScreen
+                onFacturar={(facturaId) => {
+                  setFacturaIdDesdePresupuesto(facturaId);
+                  changeTab('facturacion');
+                }}
+              />
+            )}
+            {activeTab === 'inteligencia' && <InteligenciaScreen />}
+            {activeTab === 'midia' && <MidiaScreen />}
+            {activeTab === 'escritorio' && (
+              <EscritorioScreen
+                onFuncion={(key) => {
+                  const tab = FUNCION_A_TAB[key];
+                  if (tab == null) {
+                    avisarNoDisponible();
+                    return;
+                  }
+                  changeTab(tab);
+                }}
+                onAbrirGasto={() => changeTab('gastos')}
+                onAbrirCliente={() => changeTab('clientes')}
+                onVerRecientes={() => changeTab('recientes')}
+              />
+            )}
+            {activeTab === 'recientes' && <RecientesScreen />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
+            {activeTab === 'facturacion' && (
+              <PantallaFacturacion
+                facturaIdInicial={facturaIdDesdePresupuesto}
+                onConfigurar={() => changeTab('ajustes')}
+              />
+            )}
+            {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que
+                `activeTab` quedó en 'admin' y el claim ya no está. */}
+            {activeTab === 'admin' && esAdmin && <AdminScreen />}
+            {activeTab === 'account' && (
+              <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
+            )}
+            {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
+          </>
         )}
-        {activeTab === 'connections' && <ConnectionsScreen />}
-        {activeTab === 'gastos' && <GastosScreen />}
-        {activeTab === 'clientes' && <ClientesScreen />}
-        {activeTab === 'contabilidad' && <ContabilidadScreen />}
-        {activeTab === 'ingresos' && <IngresosScreen />}
-        {activeTab === 'actividad' && <ActividadScreen />}
-        {activeTab === 'presupuestos' && (
-          <PresupuestosScreen
-            onFacturar={(facturaId) => {
-              setFacturaIdDesdePresupuesto(facturaId);
-              changeTab('facturacion');
-            }}
-          />
-        )}
-        {activeTab === 'inteligencia' && <InteligenciaScreen />}
-        {activeTab === 'midia' && <MidiaScreen />}
-        {activeTab === 'escritorio' && (
-          <EscritorioScreen
-            onFuncion={(key) => {
-              const tab = FUNCION_A_TAB[key];
-              if (tab == null) {
-                avisarNoDisponible();
-                return;
-              }
-              changeTab(tab);
-            }}
-            onAbrirGasto={() => changeTab('gastos')}
-            onAbrirCliente={() => changeTab('clientes')}
-            onVerRecientes={() => changeTab('recientes')}
-          />
-        )}
-        {activeTab === 'recientes' && <RecientesScreen />}
-        {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
-        {activeTab === 'facturacion' && (
-          <PantallaFacturacion
-            facturaIdInicial={facturaIdDesdePresupuesto}
-            onConfigurar={() => changeTab('ajustes')}
-          />
-        )}
-        {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que
-            `activeTab` quedó en 'admin' y el claim ya no está. */}
-        {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && (
-          <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
-        )}
-        {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} esAdmin={esAdmin} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">
