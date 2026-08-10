@@ -657,64 +657,56 @@ def test_rate_limit_middleware_esta_cableado_en_el_front_door():
     assert any(getattr(m, "cls", None) is RateLimitMiddleware for m in app.user_middleware)
 
 
-# --- /soporte/chat (SOP4/SOP5, C1+C4) --------------------------------------------
-# DoD versionado (PR #357, §F0): reusa `ChatIn` TAL CUAL -- sin campo de "función", `domain`/
-# `task_queue` son constantes del servidor. El aislamiento entre `/chat` y `/soporte/chat` depende de
-# que el cliente use `session_id` DISTINTOS (convención `sop:` prefix), no de nada que valide acá.
+# --- /soporte/chat (SOP4/C1+C4) -------------------------------------------------
 
 def test_soporte_chat_without_token_returns_401(monkeypatch):
     monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     app, _ = _build_app(require_tenant=_require_tenant_401())
-    r = TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
     assert r.status_code == 401
 
 
-def test_soporte_chat_mismo_shape_de_respuesta_que_chat(monkeypatch):
-    """DoD §F0: `{"wf_id", "accepted"}`, igual que `/chat` -- nada extra (no hay `funcion` que
-    namespacear del lado del servidor)."""
+def test_soporte_chat_funcion_invalida_es_400_C4_no_hay_clasificador_que_se_equivoque(monkeypatch):
+    """C4: las tres funciones se enrutan por elección EXPLÍCITA -- un valor que no matchea la lista
+    cerrada es 400, no un intento de adivinar a qué función se refería."""
     monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    r = TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "atencion_al_cliente"})
+    assert r.status_code == 400
+
+
+def test_soporte_chat_devuelve_el_session_id_NAMESPACED_por_funcion(monkeypatch):
+    """El workflow_id sale de (channel, cliente_id, channel_ref) sin domain -- sin namespacing, abrir
+    soporte con el mismo session_id que ya usa /chat reusaría el workflow de 'emprendedor'."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/soporte/chat",
+                             json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
     assert r.status_code == 200
-    assert set(r.json().keys()) == {"wf_id", "accepted"}
-    assert r.json()["accepted"] is True
-    assert r.json()["wf_id"] == "conv-web-cid-A-sop:s1"
+    body = r.json()
+    assert body["accepted"] is True
+    assert body["session_id"] == "soporte:soporte_tecnico:s1"
+    assert body["wf_id"] == "conv-web-cid-A-soporte:soporte_tecnico:s1"
 
 
-def test_soporte_chat_domain_y_task_queue_son_constantes_del_servidor(monkeypatch):
-    """El body no tiene ningún campo que pueda elegir domain/task_queue (superficie de ataque que
-    SOP5 §1 descarta explícitamente) -- lo verificamos capturando los kwargs reales de `route_inbound`."""
-    llamadas = []
-
-    async def _capturar(client, *, adapter, cliente_id, domain, task_queue, raw_update, extra_config=None):
-        llamadas.append({"domain": domain, "task_queue": task_queue})
-        return await _fake_route_inbound(client, adapter=adapter, cliente_id=cliente_id, domain=domain,
-                                         task_queue=task_queue, raw_update=raw_update, extra_config=extra_config)
-
-    monkeypatch.setattr(web_module, "route_inbound", _capturar)
+def test_soporte_chat_las_DOS_funciones_del_MISMO_session_id_NO_colisionan(monkeypatch):
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
-    assert llamadas == [{"domain": "soporte_tecnico", "task_queue": web_module.SOPORTE_TASK_QUEUE}]
+    client = TestClient(app)
+    r1 = client.post("/soporte/chat",
+                     json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
+    r2 = client.post("/soporte/chat",
+                     json={"session_id": "s1", "text": "hola", "funcion": "como_uso_la_app"})
+    assert r1.json()["wf_id"] != r2.json()["wf_id"]
 
 
-def test_soporte_chat_con_prefijo_sop_NO_colisiona_con_el_chat_del_copiloto(monkeypatch):
-    """Caso correcto (F0 es responsabilidad del cliente): `session_id` distintos -> `wf_id` distintos."""
+def test_soporte_chat_NO_colisiona_con_el_chat_del_copiloto_mismo_session_id(monkeypatch):
     monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
     client = TestClient(app)
     r_copiloto = client.post("/chat", json={"session_id": "s1", "text": "hola"})
-    r_soporte = client.post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    r_soporte = client.post("/soporte/chat",
+                            json={"session_id": "s1", "text": "hola", "funcion": "soporte_tecnico"})
     assert r_copiloto.json()["wf_id"] != r_soporte.json()["wf_id"]
-
-
-def test_soporte_chat_control_negativo_MISMO_session_id_literal_SI_colisiona(monkeypatch):
-    """Control negativo obligatorio del DoD (§SOP5, "este fallo es MUDO"): si el cliente NO respeta la
-    convención `sop:` y reusa el mismo `session_id` crudo en las dos rutas, el backend no lo detecta
-    -- ambas resuelven al MISMO `wf_id` (`USE_EXISTING`). Documentado a propósito, no es un bug de
-    acá: la responsabilidad de diferenciar `session_id` es del cliente (F0)."""
-    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
-    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
-    client = TestClient(app)
-    r_copiloto = client.post("/chat", json={"session_id": "s1", "text": "hola"})
-    r_soporte = client.post("/soporte/chat", json={"session_id": "s1", "text": "hola"})
-    assert r_copiloto.json()["wf_id"] == r_soporte.json()["wf_id"]
