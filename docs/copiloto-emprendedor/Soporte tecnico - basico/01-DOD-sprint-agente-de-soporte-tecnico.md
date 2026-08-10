@@ -249,34 +249,42 @@ agrega.
 
 ### F · El chat en la app — `FE`
 
-#### 🔗 La costura `BE ↔ FE` — decidida 2026-08-07, **no la reinvente ninguno de los dos lados**
+#### 🔗 La costura `BE ↔ FE` — decidida 2026-08-07, **corregida 2026-08-10** (el shape debajo es el vigente)
 
 Backend llegó a este punto con un *«probablemente un endpoint o un parámetro en el `POST /chat`
 existente»*. Ese «probablemente» es el agujero donde cada lado verifica su mitad y la junta no es de
-nadie. Queda fijado así:
+nadie. Primera versión fijó un solo `domain` hardcoded — backend, que ya había construido el endpoint,
+señaló el choque contra el código real y quedó **corregido 2026-08-10**:
 
 ```
-POST /soporte/chat    body: {"session_id": str, "text": str, "kind": "text"}   (reusa ChatIn, web.py:488)
+POST /soporte/chat    body: {"session_id": str, "text": str, "kind": "text",
+                              "funcion": "soporte_tecnico" | "como_uso_la_app"}
                       → {"wf_id": str|null, "accepted": bool}                  (mismo shape que /chat)
 GET  /reply           SIN CAMBIOS — mismo endpoint, misma firma (web.py:748)
 ```
 
-**Ruta dedicada, y el dominio NO lo elige el cliente.** `domain="soporte_tecnico"` y la `task_queue`
-son constantes **del servidor** (parametrizadas por env, mismo patrón que `web.py:67`), igual que
-`/chat` fija hoy `emprendedor`/`agent-emprendedor`. Las tres razones, la primera es dura:
+**Ruta dedicada. El `task_queue` NO lo elige el cliente; el `domain` sí, pero acotado.**
+`task_queue="agent-soporte"` es constante **del servidor** (parametrizada por env, mismo patrón que
+`web.py:67`). `domain=funcion` viene del body, **validado contra `CANALES_VALIDOS`** — el enum cerrado
+que **ya existe en `main` desde SOP3** (`soporte_store.py:37-39`: `soporte_tecnico` /
+`como_uso_la_app`, el mismo vocabulario que usa `canal` en los tickets), 400 si no matchea. Las tres
+razones, la primera es dura:
 
-1. **🔴 Un parámetro que elige `task_queue` es superficie de ataque.** Con `{"dominio": "..."}` en el
-   body, el cuerpo del request decidiría **qué workflow y qué cola** arrancan. El `cliente_id` sale
-   del token (bien), pero el *destino* saldría del cliente. La regla que este repo ya sigue:
-   **el tenant viaja en el token; el destino lo fija la ruta.**
+1. **🔴 Lo que sigue siendo superficie de ataque es un STRING LIBRE eligiendo `task_queue`**, no un
+   enum cerrado de 2 valores eligiendo `domain` dentro de la MISMA cola. `{"dominio": "..."}` sin
+   validar redirigiría a *cualquier* workflow; `funcion` sólo elige entre 2 dominios ya registrados en
+   ESE worker, siempre en `agent-soporte`. El `cliente_id` sale del token; el *task_queue* lo fija la
+   ruta — eso no cambió. Lo que se corrigió fue confundir "el body no puede elegir destino" con "el
+   body no puede elegir nada".
 2. **Separación de costo** — un turno de soporte no es un turno de negocio; con rutas distintas el
    metering los diferencia sin desambiguar por el body.
 3. **La config no es la misma** — `/chat` va con `memory: False` y el `engine_mode` del copiloto;
    soporte corre `react`, toolset propio y acceso al grafo. Dos configuraciones en un `if` del mismo
    handler es como una hereda el default de la otra sin que nadie lo note.
 
-**`session_id` con prefijo `sop:`**, generado por el cliente y **estable durante la conversación**
-(`/reply` filtra por él: si se regenera por turno, cada respuesta se pierde). No es un control de
+**`session_id`: prefijo `soporte:{funcion}:` generado del lado del SERVIDOR** (`channel_ref`,
+implementación real de backend) — no del cliente como decía la versión anterior. Logra el mismo
+aislamiento anti-colisión y de paso codifica la función en el propio ref. No es un control de
 seguridad —el aislamiento lo da `cliente_id` del token— sino la convención que evita que las dos
 conversaciones del mismo usuario colisionen.
 
