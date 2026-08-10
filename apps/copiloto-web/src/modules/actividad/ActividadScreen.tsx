@@ -25,16 +25,17 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
  * `FlatList`+`onEndReached` (scroll infinito táctil) → botón "Cargar más" explícito, mismo criterio
  * que el botón "Actualizar" de `ClientesScreen` reemplazando `RefreshControl`.
  *
- * `onAbrirGasto`/`onAbrirCliente`: callbacks de navegación a destino (ver `destinoActividad.ts`).
- * El shell los conecta después — acá sólo se propagan a `FilaActividad`, que decide con ellos si el
- * ítem es tappable.
+ * `onAbrirGasto`/`onAbrirCliente`/`onAbrirTicket`: callbacks de navegación a destino (ver
+ * `destinoActividad.ts`). El shell los conecta después — acá sólo se propagan a `FilaActividad`,
+ * que decide con ellos si el ítem es tappable.
  */
 export interface ActividadScreenProps {
   onAbrirGasto?: (id: number) => void;
   onAbrirCliente?: (id: number) => void;
+  onAbrirTicket?: (id: number) => void;
 }
 
-export function ActividadScreen({ onAbrirGasto, onAbrirCliente }: ActividadScreenProps = {}) {
+export function ActividadScreen({ onAbrirGasto, onAbrirCliente, onAbrirTicket }: ActividadScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [items, setItems] = useState<ActividadItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -185,6 +186,7 @@ export function ActividadScreen({ onAbrirGasto, onAbrirCliente }: ActividadScree
                 item={item}
                 onAbrirGasto={onAbrirGasto}
                 onAbrirCliente={onAbrirCliente}
+                onAbrirTicket={onAbrirTicket}
               />
             ))}
           </div>

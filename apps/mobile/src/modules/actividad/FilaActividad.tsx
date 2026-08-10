@@ -35,6 +35,7 @@ const ICONO_POR_TIPO: Record<string, NombreIconoGlass> = {
   gasto: 'gastos',
   ingreso: 'contabilidad',
   cliente: 'clientes',
+  ticket_respuesta: 'conversacion',
 };
 
 export interface FilaActividadProps {

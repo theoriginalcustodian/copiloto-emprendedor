@@ -20,7 +20,7 @@ import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
-import { SoporteScreen } from '../modules/soporte';
+import { MiTicketScreen, SoporteScreen } from '../modules/soporte';
 import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { Rail } from './Rail';
@@ -73,6 +73,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   );
   // Ver el mismo comentario en `AppShell.tsx`: estado adicional, no un `TabKey` nuevo.
   const [funcionSoporte, setFuncionSoporte] = useState<FuncionSoporte>('soporte_tecnico');
+  // S6-11 — ver el mismo comentario en `AppShell.tsx`.
+  const [ticketIdAbierto, setTicketIdAbierto] = useState<number | null>(null);
 
   // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
   // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
@@ -83,6 +85,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
       setAppsEverOpened(true);
       return;
     }
+    // Ver el mismo comentario en `AppShell.tsx`: cambiar de tab con un ticket abierto lo cierra.
+    setTicketIdAbierto(null);
     setActiveTab(key);
   }, []);
 
@@ -102,54 +106,67 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     <div className="desktop-shell" data-shell="desktop" data-testid="desktop-shell">
       <Rail active={activeTab} onChange={handleTabChange} esAdmin={esAdmin} />
       <main className="desktop-shell__content" data-testid="desktop-shell-content">
-        {activeTab === 'chat' && <ChatScreen variant="desktop" />}
-        {activeTab === 'connections' && <ConnectionsScreen />}
-        {activeTab === 'gastos' && <GastosScreen />}
-        {activeTab === 'clientes' && <ClientesScreen />}
-        {activeTab === 'contabilidad' && <ContabilidadScreen />}
-        {activeTab === 'ingresos' && <IngresosScreen />}
-        {activeTab === 'actividad' && <ActividadScreen />}
-        {activeTab === 'presupuestos' && (
-          <PresupuestosScreen
-            onFacturar={(facturaId) => {
-              setFacturaIdDesdePresupuesto(facturaId);
-              setActiveTab('facturacion');
-            }}
-          />
+        {/* Ver el mismo comentario en `AppShell.tsx`: S6-11 reemplaza el contenido del tab activo. */}
+        {ticketIdAbierto != null ? (
+          <MiTicketScreen ticketId={ticketIdAbierto} onVolver={() => setTicketIdAbierto(null)} />
+        ) : (
+          <>
+            {activeTab === 'chat' && <ChatScreen variant="desktop" />}
+            {activeTab === 'connections' && <ConnectionsScreen />}
+            {activeTab === 'gastos' && <GastosScreen />}
+            {activeTab === 'clientes' && <ClientesScreen />}
+            {activeTab === 'contabilidad' && <ContabilidadScreen />}
+            {activeTab === 'ingresos' && <IngresosScreen />}
+            {activeTab === 'actividad' && (
+              <ActividadScreen
+                onAbrirGasto={() => setActiveTab('gastos')}
+                onAbrirCliente={() => setActiveTab('clientes')}
+                onAbrirTicket={setTicketIdAbierto}
+              />
+            )}
+            {activeTab === 'presupuestos' && (
+              <PresupuestosScreen
+                onFacturar={(facturaId) => {
+                  setFacturaIdDesdePresupuesto(facturaId);
+                  setActiveTab('facturacion');
+                }}
+              />
+            )}
+            {activeTab === 'inteligencia' && <InteligenciaScreen />}
+            {activeTab === 'midia' && <MidiaScreen />}
+            {activeTab === 'escritorio' && (
+              <EscritorioScreen
+                onFuncion={(key) => {
+                  const tab = FUNCION_A_TAB[key];
+                  if (tab == null) {
+                    avisarNoDisponible();
+                    return;
+                  }
+                  setActiveTab(tab);
+                }}
+                onAbrirGasto={() => setActiveTab('gastos')}
+                onAbrirCliente={() => setActiveTab('clientes')}
+                onVerRecientes={() => setActiveTab('recientes')}
+              />
+            )}
+            {activeTab === 'recientes' && <RecientesScreen />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
+            {activeTab === 'facturacion' && (
+              <PantallaFacturacion
+                facturaIdInicial={facturaIdDesdePresupuesto}
+                onConfigurar={() => setActiveTab('ajustes')}
+              />
+            )}
+            {/* El `&& esAdmin` no es redundante con esconder el tab: si el claim se pierde (logout y
+                login como otro, refresh del token) `activeTab` puede seguir valiendo 'admin' de antes.
+                Sin este gate la pantalla quedaría montada pidiendo `/admin/*` y mostrando 403s. */}
+            {activeTab === 'admin' && esAdmin && <AdminScreen />}
+            {activeTab === 'account' && (
+              <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
+            )}
+            {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
+          </>
         )}
-        {activeTab === 'inteligencia' && <InteligenciaScreen />}
-        {activeTab === 'midia' && <MidiaScreen />}
-        {activeTab === 'escritorio' && (
-          <EscritorioScreen
-            onFuncion={(key) => {
-              const tab = FUNCION_A_TAB[key];
-              if (tab == null) {
-                avisarNoDisponible();
-                return;
-              }
-              setActiveTab(tab);
-            }}
-            onAbrirGasto={() => setActiveTab('gastos')}
-            onAbrirCliente={() => setActiveTab('clientes')}
-            onVerRecientes={() => setActiveTab('recientes')}
-          />
-        )}
-        {activeTab === 'recientes' && <RecientesScreen />}
-        {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
-        {activeTab === 'facturacion' && (
-          <PantallaFacturacion
-            facturaIdInicial={facturaIdDesdePresupuesto}
-            onConfigurar={() => setActiveTab('ajustes')}
-          />
-        )}
-        {/* El `&& esAdmin` no es redundante con esconder el tab: si el claim se pierde (logout y
-            login como otro, refresh del token) `activeTab` puede seguir valiendo 'admin' de antes.
-            Sin este gate la pantalla quedaría montada pidiendo `/admin/*` y mostrando 403s. */}
-        {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && (
-          <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
-        )}
-        {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
