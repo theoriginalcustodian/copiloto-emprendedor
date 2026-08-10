@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import type { ActividadItem } from '@copiloto/core';
 
 import { destinoDe } from './destinoActividad';
