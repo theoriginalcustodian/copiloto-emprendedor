@@ -2,8 +2,6 @@
 
 **Hablale como a un socio. Te contesta con tus números reales.**
 
-*(Anteriormente conocido como Copiloto del Emprendedor)*
-
 No es un chatbot con acceso a tu contabilidad. Es un copiloto que factura ante ARCA, anota lo que entra y lo que sale, arma presupuestos, y a la mañana te dice qué se te está pasando — sin que vos tengas que acordarte de abrir nada.
 
 > 🇦🇷 Pensado para el emprendedor argentino: monotributista, estudio chico, oficio, servicio.
