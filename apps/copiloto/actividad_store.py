@@ -129,6 +129,24 @@ SELECT created_at,
        'neutro'
   FROM {_SCHEMA}.copiloto_clientes
  WHERE cliente_id = %(cid)s AND origen <> 'derivado'
+
+UNION ALL
+
+-- SOP6/S6-8: la respuesta del operador a un ticket, en el feed del usuario -- reusa `copiloto_mensajes`
+-- TAL CUAL (ya lo escribe `TicketStore.agregar_mensaje` con autor='operador' desde el front-door de
+-- SOP6), no una tabla de notificaciones nueva. El `item_id` lleva el `ticket_id` adentro
+-- (`ticket_respuesta:<ticket_id>:<mensaje_id>`) para que el frontend arme el link al hilo (S6-11) sin
+-- una segunda consulta.
+SELECT m.created_at,
+       ('ticket_respuesta:' || m.ticket_id::text || ':' || m.id::text),
+       'ticket_respuesta',
+       ('Respuesta a tu ticket ' || t.codigo),
+       coalesce(nullif(t.asunto, ''), ''),
+       NULL,
+       'neutro'
+  FROM {_SCHEMA}.copiloto_mensajes m
+  JOIN {_SCHEMA}.copiloto_tickets t ON t.id = m.ticket_id AND t.cliente_id = m.cliente_id
+ WHERE m.cliente_id = %(cid)s AND m.autor = 'operador'
 """
 
 _COLS = ("fecha", "id", "tipo", "titulo", "detalle", "monto", "signo")

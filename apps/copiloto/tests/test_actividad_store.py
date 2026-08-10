@@ -15,6 +15,7 @@ import pytest
 
 from actividad_store import ActividadStore
 from actividad_web import parsear_cursor
+from soporte_store import SOPORTE_TECNICO, TicketStore
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres del VPS (DATABASE_URL)")
@@ -28,7 +29,8 @@ def tenants(conn_de_tenant):
         conn = conn_de_tenant(cid)()
         with conn.cursor() as cur:
             for t in ("afip_comprobantes", "copiloto_presupuestos", "copiloto_gastos",
-                      "copiloto_clientes", "copiloto_cobros", "copiloto_eventos"):
+                      "copiloto_clientes", "copiloto_cobros", "copiloto_eventos",
+                      "copiloto_mensajes", "copiloto_tickets", "copiloto_ticket_secuencia"):
                 cur.execute(f"DELETE FROM uc_factory.{t} WHERE cliente_id = %s", (cid,))
         conn.close()
 
@@ -171,3 +173,48 @@ def test_aislamiento_A_no_ve_la_actividad_de_B(conn_de_tenant, tenants):
     cf_a = conn_de_tenant(a)
     assert ActividadStore(cf_a, a).listar()["items"] == []
     assert ActividadStore(cf_a, a).listar(q="secreto")["items"] == []
+
+
+# ── SOP6/S6-8 -- la respuesta del operador entra al feed, reusando copiloto_mensajes tal cual ──────
+
+@necesita_pg
+def test_S6_8_la_respuesta_del_operador_aparece_como_ticket_respuesta_en_el_feed(conn_de_tenant, tenants):
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    store = TicketStore(cf, a)
+    creado = store.crear_ticket(canal=SOPORTE_TECNICO, asunto="no puedo facturar", primer_mensaje="x")
+    mensaje_id = store.agregar_mensaje(ticket_id=creado["id"], autor="operador", texto="ya lo vemos")
+
+    items = ActividadStore(cf, a).listar()["items"]
+    respuestas = [i for i in items if i["tipo"] == "ticket_respuesta"]
+    assert len(respuestas) == 1
+    assert respuestas[0]["id"] == f"ticket_respuesta:{creado['id']}:{mensaje_id}"
+    assert respuestas[0]["titulo"] == f"Respuesta a tu ticket {creado['codigo']}"
+
+
+@necesita_pg
+def test_S6_8_el_mensaje_del_USUARIO_no_aparece_en_el_feed_solo_el_del_operador(conn_de_tenant, tenants):
+    """El primer mensaje de `crear_ticket` es `autor='usuario'` -- si apareciera en el feed, el
+    usuario vería notificado su propio mensaje como si alguien le hubiera respondido."""
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    TicketStore(cf, a).crear_ticket(canal=SOPORTE_TECNICO, asunto="x", primer_mensaje="mi propio mensaje")
+    items = ActividadStore(cf, a).listar()["items"]
+    assert [i for i in items if i["tipo"] == "ticket_respuesta"] == []
+
+
+@necesita_pg
+def test_S6_8_sin_funcion_propia_aparece_igual_en_el_feed_general(conn_de_tenant, tenants):
+    """`ticket_respuesta` no pertenece a ninguna `_FUNCION_TIPOS` (mismo criterio que `cliente`: no
+    es una función de negocio filtrable) -- pero el feed SIN filtro lo trae igual, junto al resto."""
+    a, _ = tenants
+    cf = conn_de_tenant(a)
+    store = TicketStore(cf, a)
+    creado = store.crear_ticket(canal=SOPORTE_TECNICO, asunto="x", primer_mensaje="y")
+    store.agregar_mensaje(ticket_id=creado["id"], autor="operador", texto="respuesta")
+    _gasto(cf, a, "100.00")
+
+    from actividad_store import _FUNCION_TIPOS
+    assert "ticket_respuesta" not in {t for tipos in _FUNCION_TIPOS.values() for t in tipos}
+    todos = ActividadStore(cf, a).listar()["items"]
+    assert {i["tipo"] for i in todos} == {"ticket_respuesta", "gasto"}

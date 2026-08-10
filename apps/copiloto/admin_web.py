@@ -21,17 +21,24 @@ from pydantic import BaseModel
 
 from admin_errores import buscar_por_id, motivo_prohibido, resumen_errores
 from admin_salud import estado_salud
-from admin_soporte import resumen_soporte
+from admin_soporte import (
+    listar_mensajes_admin, listar_tickets_admin, obtener_ticket_admin, resumen_soporte)
 from admin_tenants import ESTADOS_VALIDOS, cambiar_estado, listar_tenants
 from admin_uso import resumen_uso
 from auditoria_store import AuditoriaStore
 from contexto_tenant import tenant
 from errores_web import TRAUMA_DOMINIO_PROHIBIDO, conflicto
+from soporte_store import CERRADO, RESPONDIDO, TicketStore
 from trauma_store import TraumaStore
 
 
 class _CambiarEstadoTenantBody(BaseModel):
     status: str
+
+
+class _ResponderTicketBody(BaseModel):
+    texto: str
+    cerrar: bool = False
 
 
 def create_admin_app(*, require_admin: Callable, temporal_client=None,
@@ -144,5 +151,56 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
                 admin_user_id=admin_user_id, admin_email=admin_email,
                 accion="trauma.reintento", detalle=detalle)
         return {"trauma_id": trauma_id, "estado": "pendiente"}
+
+    @app.get("/admin/soporte/tickets")
+    async def soporte_tickets(estado: str | None = None, codigo: str | None = None, limite: int = 50,
+                              claims: dict = Depends(require_admin)) -> dict:
+        """S6-1+S6-2. `limite` topeado ACÁ, mismo criterio que A6/CTA1 (un `limite` sin techo es DoS
+        con un parámetro)."""
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        tickets = listar_tickets_admin(consola_conn_factory, estado=estado, codigo=codigo,
+                                       limite=min(limite, 500))
+        return {"tickets": tickets, "total": len(tickets)}
+
+    @app.get("/admin/soporte/tickets/{ticket_id}")
+    async def soporte_ticket_detalle(ticket_id: int, claims: dict = Depends(require_admin)) -> dict:
+        """S6-1. Detalle + hilo completo -- ambos cross-tenant (`copiloto_consola`)."""
+        if consola_conn_factory is None:
+            raise HTTPException(status_code=503, detail="rol copiloto_consola no configurado")
+        ticket = obtener_ticket_admin(consola_conn_factory, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="ticket no encontrado")
+        mensajes = listar_mensajes_admin(consola_conn_factory, ticket_id)
+        return {"ticket": ticket, "mensajes": mensajes}
+
+    @app.post("/admin/soporte/tickets/{ticket_id}/responder")
+    async def soporte_ticket_responder(ticket_id: int, body: _ResponderTicketBody,
+                                       claims: dict = Depends(require_admin)) -> dict:
+        """S6-3..S6-5. `cliente_id` se RESUELVE del ticket (lectura cross-tenant, rol consola) --
+        nunca se acepta del body (§0 del contrato: la consola no puede escribir con su propio rol,
+        `BYPASSRLS` pero `SELECT`-only; la respuesta se escribe con la conexión del TENANT DUEÑO)."""
+        if consola_conn_factory is None or conn_factory is None:
+            raise HTTPException(status_code=503, detail="conn_factory no configurado")
+        texto = (body.texto or "").strip()
+        if not texto:
+            raise HTTPException(status_code=422, detail="texto vacío")
+        ticket = obtener_ticket_admin(consola_conn_factory, ticket_id)
+        if ticket is None:
+            raise HTTPException(status_code=404, detail="ticket no encontrado")
+        cliente_id = ticket["cliente_id"]
+        nuevo_estado = CERRADO if body.cerrar else RESPONDIDO
+        admin_user_id, admin_email = claims["sub"], claims.get("email") or ""
+        with tenant(cliente_id):
+            store = TicketStore(conn_factory, cliente_id)
+            mensaje_id = store.agregar_mensaje(ticket_id=ticket_id, autor="operador", texto=texto)
+            store.cambiar_estado(ticket_id=ticket_id, nuevo_estado=nuevo_estado)
+            # S6-4, B5: ANTES de responder al operador que la mutación quedó (docstring del módulo) --
+            # si esto lanza, no se confirma como exitosa. `accion` legible según qué pasó de verdad.
+            AuditoriaStore(conn_factory, cliente_id).registrar(
+                admin_user_id=admin_user_id, admin_email=admin_email,
+                accion="soporte.cerrar" if body.cerrar else "soporte.responder",
+                detalle={"ticket_id": ticket_id, "codigo": ticket["codigo"], "mensaje_id": mensaje_id})
+        return {"mensaje_id": mensaje_id, "estado": nuevo_estado}
 
     return app

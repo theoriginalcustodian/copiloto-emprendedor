@@ -27,7 +27,7 @@ LIMITE_MAX = 100
 
 # Los tipos que puede devolver la unión (§3.2). Declarados desde el hito 1 para que la app tenga la
 # lista cerrada contra la cual pintar íconos y colores, aunque todavía no llegue ninguno.
-TIPOS = ("factura", "nota_credito", "presupuesto", "gasto", "ingreso", "cliente")
+TIPOS = ("factura", "nota_credito", "presupuesto", "gasto", "ingreso", "cliente", "ticket_respuesta")
 SIGNOS = ("entra", "sale", "neutro")
 
 

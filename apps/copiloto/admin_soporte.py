@@ -35,6 +35,8 @@ from __future__ import annotations
 SCHEMA = "uc_factory"
 TABLA_FEEDBACK = f"{SCHEMA}.copiloto_feedback"
 TABLA_TRAUMAS = f"{SCHEMA}.copiloto_traumas"
+TABLA_TICKETS = f"{SCHEMA}.copiloto_tickets"
+TABLA_MENSAJES = f"{SCHEMA}.copiloto_mensajes"
 
 
 def resumen_soporte(conn_factory, *, limite: int = 50) -> list[dict]:
@@ -56,6 +58,71 @@ def resumen_soporte(conn_factory, *, limite: int = 50) -> list[dict]:
                     ORDER BY f.created_at DESC
                     LIMIT %s""",
                 (limite,))
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, fila)) for fila in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def listar_tickets_admin(conn_factory, *, estado: str | None = None, codigo: str | None = None,
+                         limite: int = 50) -> list[dict]:
+    """SOP6/S6-1+S6-2. Cross-tenant (`copiloto_consola`, `BYPASSRLS` `SELECT`-only), igual que
+    `resumen_soporte`. `codigo` busca por `ILIKE` parcial (S6-2, "es para lo que existe el código
+    legible") -- comodines de LIKE escapados, mismo criterio que `actividad_store.listar`."""
+    conn = conn_factory()
+    try:
+        with conn.cursor() as cur:
+            sql = (f"SELECT id, cliente_id::text, codigo, canal, estado, asunto, created_at, "
+                   f"updated_at FROM {TABLA_TICKETS}")
+            condiciones: list[str] = []
+            params: list = []
+            if estado:
+                condiciones.append("estado = %s")
+                params.append(estado)
+            if codigo:
+                patron = codigo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                condiciones.append("codigo ILIKE %s")
+                params.append(f"%{patron}%")
+            if condiciones:
+                sql += " WHERE " + " AND ".join(condiciones)
+            sql += " ORDER BY updated_at DESC LIMIT %s"
+            params.append(limite)
+            cur.execute(sql, tuple(params))
+            cols = [d[0] for d in cur.description]
+            return [dict(zip(cols, fila)) for fila in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def obtener_ticket_admin(conn_factory, ticket_id: int) -> dict | None:
+    """UN ticket completo (`cliente_id` INCLUIDO) -- igual que `admin_errores.buscar_por_id`, es el
+    insumo interno de S6-3 (responder: necesita `cliente_id` para declarar el tenant al escribir) Y
+    lo que sirve la ruta de detalle (S6-1). Cross-tenant (`copiloto_consola`)."""
+    conn = conn_factory()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT id, cliente_id::text, codigo, canal, estado, asunto, created_at, updated_at
+                    FROM {TABLA_TICKETS} WHERE id = %s""",
+                (ticket_id,))
+            fila = cur.fetchone()
+            if fila is None:
+                return None
+            cols = [d[0] for d in cur.description]
+            return dict(zip(cols, fila))
+    finally:
+        conn.close()
+
+
+def listar_mensajes_admin(conn_factory, ticket_id: int) -> list[dict]:
+    """Mensajes de UN ticket, cross-tenant (`copiloto_consola`) -- para la ruta de detalle (S6-1)."""
+    conn = conn_factory()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT id, autor, texto, created_at FROM {TABLA_MENSAJES}
+                    WHERE ticket_id = %s ORDER BY created_at ASC""",
+                (ticket_id,))
             cols = [d[0] for d in cur.description]
             return [dict(zip(cols, fila)) for fila in cur.fetchall()]
     finally:
