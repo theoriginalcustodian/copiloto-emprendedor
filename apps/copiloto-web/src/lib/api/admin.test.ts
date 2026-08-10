@@ -5,8 +5,11 @@ import {
   AdminNoDisponibleError,
   adminAuditoria,
   adminCambiarEstadoTenant,
+  adminDetalleTicketSoporte,
   adminErrores,
+  adminListarTicketsSoporte,
   adminReintentarError,
+  adminResponderTicketSoporte,
   adminSalud,
   adminSoporte,
   adminTenants,
@@ -402,5 +405,128 @@ describe('api admin (CTA1 — listar las cuentas que la consola gestiona)', () =
     // muestra distinto.
     fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'no sos admin' }));
     return expect(adminTenants()).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+/**
+ * SOP6 — tickets del agente de soporte, consola. Mismo criterio que CTA1 arriba: al escribir esto
+ * `/admin/soporte/tickets*` todavía no existe en `main` — estos tests fijan el contrato, no un
+ * endpoint corriendo.
+ */
+describe('api admin (SOP6 — tickets de soporte respondidos desde la consola)', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    setToken('t-admin');
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const TICKET = {
+    id: 7, codigo: 'SOP-0007', canal: 'soporte_tecnico' as const, estado: 'abierto' as const,
+    asunto: 'no puedo emitir la factura', created_at: '2026-08-10T10:00:00Z',
+    updated_at: '2026-08-10T10:00:00Z',
+  };
+
+  describe('adminListarTicketsSoporte', () => {
+    it('devuelve tickets y total', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { tickets: [TICKET], total: 1 }));
+      await expect(adminListarTicketsSoporte()).resolves.toEqual({ tickets: [TICKET], total: 1 });
+      expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('?');
+    });
+
+    it('pasa estado, codigo y limite como query params', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { tickets: [], total: 0 }));
+      await adminListarTicketsSoporte({ estado: 'abierto', codigo: 'SOP-0007', limite: 20 });
+      const url = String(fetchMock.mock.calls[0]?.[0]);
+      expect(url).toContain('/admin/soporte/tickets?');
+      expect(url).toContain('estado=abierto');
+      expect(url).toContain('codigo=SOP-0007');
+      expect(url).toContain('limite=20');
+    });
+
+    it('un 200 con OTRA clave no se acepta — mismo guard que ya mordió en A6', () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { resultados: [TICKET], total: 1 }));
+      return expect(adminListarTicketsSoporte()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+    });
+
+    it('el catch-all de la SPA se traduce a no-disponible, no a error de parseo', () => {
+      fetchMock.mockResolvedValueOnce(mockCatchAllHtml());
+      return expect(adminListarTicketsSoporte()).rejects.toBeInstanceOf(AdminNoDisponibleError);
+    });
+
+    it('un 403 sigue siendo ForbiddenError, no "no disponible"', () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(403, { detail: 'no sos admin' }));
+      return expect(adminListarTicketsSoporte()).rejects.toBeInstanceOf(ForbiddenError);
+    });
+  });
+
+  describe('adminDetalleTicketSoporte', () => {
+    const MENSAJE = { id: 1, autor: 'usuario', texto: 'no puedo emitir', created_at: '2026-08-10T10:00:00Z' };
+
+    it('devuelve el ticket y su hilo de mensajes', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { ticket: TICKET, mensajes: [MENSAJE] }));
+      await expect(adminDetalleTicketSoporte(7)).resolves.toEqual({ ticket: TICKET, mensajes: [MENSAJE] });
+      expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/admin/soporte/tickets/7');
+    });
+
+    it('escapa el ticketId en la ruta', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { ticket: TICKET, mensajes: [] }));
+      // El id es numérico en el tipo, pero la ruta se arma con encodeURIComponent igual que las
+      // otras mutaciones de este archivo — control de que no se rompe si algún día deja de serlo.
+      await adminDetalleTicketSoporte(7);
+      expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('..');
+    });
+
+    it('una respuesta sin `mensajes` no se acepta', () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { ticket: TICKET }));
+      return expect(adminDetalleTicketSoporte(7)).rejects.toBeInstanceOf(AdminNoDisponibleError);
+    });
+
+    it('el catch-all de la SPA se traduce a no-disponible', () => {
+      fetchMock.mockResolvedValueOnce(mockCatchAllHtml());
+      return expect(adminDetalleTicketSoporte(7)).rejects.toBeInstanceOf(AdminNoDisponibleError);
+    });
+  });
+
+  describe('adminResponderTicketSoporte', () => {
+    it('manda POST con {texto, cerrar} y devuelve mensaje_id + estado', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { mensaje_id: 42, estado: 'respondido' }));
+      await expect(adminResponderTicketSoporte(7, 'ya lo revisamos')).resolves.toEqual({
+        mensaje_id: 42, estado: 'respondido',
+      });
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/admin/soporte/tickets/7/responder');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(String(init.body))).toEqual({ texto: 'ya lo revisamos', cerrar: false });
+    });
+
+    it('cerrar: true viaja en el body cuando se pide cerrar', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(200, { mensaje_id: 43, estado: 'cerrado' }));
+      await adminResponderTicketSoporte(7, 'resuelto', true);
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(String(init.body))).toEqual({ texto: 'resuelto', cerrar: true });
+    });
+
+    it('un 404 (ticket inexistente) llega con el detail del backend, NO como AdminNoDisponible', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(404, { detail: 'ticket no encontrado' }));
+      await expect(adminResponderTicketSoporte(999, 'x')).rejects.toMatchObject({
+        status: 404,
+        detail: 'ticket no encontrado',
+      });
+      await expect(
+        adminResponderTicketSoporte(999, 'x'),
+      ).rejects.not.toBeInstanceOf(AdminNoDisponibleError);
+    });
+
+    it('un 422 (texto vacío / body inválido) conserva su detail', async () => {
+      fetchMock.mockResolvedValueOnce(mockResponse(422, { detail: 'texto no puede estar vacío' }));
+      await expect(adminResponderTicketSoporte(7, '')).rejects.toMatchObject({ status: 422 });
+    });
   });
 });

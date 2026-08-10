@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge, Button, Skeleton, Surface } from '../../design-system';
 import {
   AdminNoDisponibleError,
   adminAuditoria,
   adminCambiarEstadoTenant,
+  adminDetalleTicketSoporte,
   adminErrores,
+  adminListarTicketsSoporte,
   adminReintentarError,
+  adminResponderTicketSoporte,
   adminSalud,
   adminSoporte,
   adminTenants,
@@ -15,11 +18,15 @@ import {
 import type {
   AdminSalud,
   AdminUso,
+  CanalTicketSoporte,
   EstadoTenant,
+  EstadoTicketSoporte,
   FilaAuditoria,
   FilaError,
   FilaTenant,
   FilaTicket,
+  MensajeTicketSoporte,
+  TicketSoporte,
 } from '../../lib/api/admin';
 import { ForbiddenError } from '../../lib/api';
 import './admin.css';
@@ -82,6 +89,27 @@ function variantePorEstado(estado: string | null): 'ok' | 'warning' | 'danger' |
   return 'neutral';
 }
 
+/** SOP6/S6-13 — estados del ticket en castellano, DISTINGUIBLES a la vista (Badge con color
+ * propio), no sólo por texto chico. Función DEDICADA, no reuso de `variantePorEstado`: ese mapa es
+ * del dominio de traumas ('reparado'/'pendiente'/'fallido'...) — mismo string 'pendiente' en otro
+ * dominio no significaría lo mismo, y reusarlo sería la trampa de "el nombre es una hipótesis". */
+const ETIQUETA_ESTADO_TICKET: Record<EstadoTicketSoporte, string> = {
+  abierto: 'Abierto',
+  respondido: 'Respondido',
+  cerrado: 'Cerrado',
+};
+
+const ETIQUETA_CANAL_TICKET: Record<CanalTicketSoporte, string> = {
+  soporte_tecnico: 'Soporte técnico',
+  como_uso_la_app: 'Cómo uso la app',
+};
+
+function variantePorEstadoTicket(estado: EstadoTicketSoporte): 'ok' | 'warning' | 'neutral' {
+  if (estado === 'abierto') return 'warning'; // pendiente de respuesta del operador
+  if (estado === 'respondido') return 'ok';
+  return 'neutral'; // cerrado
+}
+
 export function AdminScreen() {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [salud, setSalud] = useState<AdminSalud | null>(null);
@@ -111,6 +139,30 @@ export function AdminScreen() {
   const [avisoReintento, setAvisoReintento] = useState<{ id: number; texto: string; ok: boolean } | null>(
     null,
   );
+
+  // ---- SOP6: tickets de soporte (hilo con el usuario), respondidos desde acá ----
+  // Mismo criterio que CTA1: estado de carga PROPIO, separado del `Promise.all` general — al
+  // escribir esto `/admin/soporte/tickets*` todavía no existe en `main`, y su ausencia no puede
+  // apagar Salud/Uso/Errores/Soporte(feedback)/Auditoría, que sí funcionan.
+  const [ticketsAdmin, setTicketsAdmin] = useState<TicketSoporte[]>([]);
+  const [ticketsAdminEstado, setTicketsAdminEstado] = useState<'cargando' | 'ok' | 'no_disponible'>(
+    'cargando',
+  );
+  const [filtroEstadoTicket, setFiltroEstadoTicket] = useState<EstadoTicketSoporte | ''>('');
+  const [filtroCodigoTicket, setFiltroCodigoTicket] = useState('');
+  // El seleccionado y su detalle van separados: seleccionar es instantáneo (resalta la fila),
+  // el detalle tarda un GET — sin esto el click parecería no responder hasta que la red vuelva.
+  const [ticketSeleccionado, setTicketSeleccionado] = useState<number | null>(null);
+  const [detalleTicket, setDetalleTicket] = useState<{
+    ticket: TicketSoporte;
+    mensajes: MensajeTicketSoporte[];
+  } | null>(null);
+  const [detalleTicketEstado, setDetalleTicketEstado] = useState<'cargando' | 'ok' | 'error'>('ok');
+  const [textoRespuesta, setTextoRespuesta] = useState('');
+  // Guarda CUÁL acción está en vuelo (responder vs. responder-y-cerrar), mismo motivo que
+  // `enviando` de CTA1: dos botones sobre el mismo campo, un booleano pelado no diría cuál corre.
+  const [respondiendo, setRespondiendo] = useState<'responder' | 'cerrar' | null>(null);
+  const [avisoRespuesta, setAvisoRespuesta] = useState<{ texto: string; ok: boolean } | null>(null);
 
   // Mismo guard que ActividadScreen: no tocar estado tras desmontar.
   const vivo = useRef(true);
@@ -189,6 +241,96 @@ export function AdminScreen() {
   useEffect(() => {
     void cargarTenants();
   }, [cargarTenants]);
+
+  /** SOP6/S6-9 — lista de tickets, filtrable por estado/código (el backend hace el filtro, no el
+   * cliente: `limite` está topeado del lado del servidor y un filtro local mentiría sobre cuántos
+   * hay en total). Mismo `try/catch` que traga y degrada de `cargarTenants` — sin lista, la
+   * sección no desaparece: sólo pierde el filtro. */
+  const cargarTicketsAdmin = useCallback(async () => {
+    setTicketsAdminEstado('cargando');
+    try {
+      const r = await adminListarTicketsSoporte({
+        estado: filtroEstadoTicket || undefined,
+        codigo: filtroCodigoTicket.trim() || undefined,
+      });
+      if (!vivo.current) return;
+      setTicketsAdmin(r.tickets);
+      setTicketsAdminEstado('ok');
+    } catch {
+      if (!vivo.current) return;
+      setTicketsAdmin([]);
+      setTicketsAdminEstado('no_disponible');
+    }
+  }, [filtroEstadoTicket, filtroCodigoTicket]);
+
+  useEffect(() => {
+    void cargarTicketsAdmin();
+  }, [cargarTicketsAdmin]);
+
+  /** Abre (o cierra, si ya estaba abierto) el detalle de un ticket. Selección optimista +
+   * detalle async, ver comentario de los estados. */
+  const abrirDetalleTicket = useCallback(async (id: number) => {
+    if (ticketSeleccionado === id) {
+      setTicketSeleccionado(null);
+      setDetalleTicket(null);
+      return;
+    }
+    setTicketSeleccionado(id);
+    setDetalleTicket(null);
+    setTextoRespuesta('');
+    setAvisoRespuesta(null);
+    setDetalleTicketEstado('cargando');
+    try {
+      const r = await adminDetalleTicketSoporte(id);
+      if (!vivo.current) return;
+      setDetalleTicket(r);
+      setDetalleTicketEstado('ok');
+    } catch {
+      if (!vivo.current) return;
+      setDetalleTicketEstado('error');
+    }
+  }, [ticketSeleccionado]);
+
+  /**
+   * S6-10 — responder (y opcionalmente cerrar) el ticket abierto. El `estado` que se muestra
+   * después de responder es el que **devuelve el servidor** (`r.estado`), nunca uno asumido por la
+   * UI — mismo criterio que `cambiarEstado` de CTA1 con `de → a`.
+   */
+  const responderTicketAdmin = useCallback(
+    async (cerrar: boolean) => {
+      const id = ticketSeleccionado;
+      const texto = textoRespuesta.trim();
+      if (id == null || !texto || respondiendo) return;
+      setRespondiendo(cerrar ? 'cerrar' : 'responder');
+      setAvisoRespuesta(null);
+      try {
+        const r = await adminResponderTicketSoporte(id, texto, cerrar);
+        if (!vivo.current) return;
+        setAvisoRespuesta({ texto: `Respondido — el ticket quedó "${r.estado}".`, ok: true });
+        setTextoRespuesta('');
+        // Recarga DIRECTA, no vía `abrirDetalleTicket`: esa función togglea (cierra) cuando el id
+        // ya está seleccionado, que es justo el caso acá — llamarla cerraría el panel en vez de
+        // refrescarlo. La lista (S6-10: "el estado que se ve es el que devolvió el servidor")
+        // también se recarga, para que la fila cambie de Badge sin que el operador refresque.
+        try {
+          const fresco = await adminDetalleTicketSoporte(id);
+          if (vivo.current) setDetalleTicket(fresco);
+        } catch {
+          /* el aviso de éxito ya se mostró; un refresh fallido del detalle no lo invalida */
+        }
+        void cargarTicketsAdmin();
+      } catch (err) {
+        if (!vivo.current) return;
+        setAvisoRespuesta({
+          texto: err instanceof Error && err.message ? err.message : 'No se pudo responder.',
+          ok: false,
+        });
+      } finally {
+        if (vivo.current) setRespondiendo(null);
+      }
+    },
+    [ticketSeleccionado, textoRespuesta, respondiendo, cargarTicketsAdmin],
+  );
 
   // Filtro por email, en el cliente: son 19 cuentas hoy y el endpoint no ofrece búsqueda. Si esto
   // creciera a miles, el filtro se muda al backend — no antes, que sería inventar un parámetro que
@@ -589,6 +731,195 @@ export function AdminScreen() {
                     ))}
                   </tbody>
                 </table>
+              )}
+            </Surface>
+          </section>
+
+          {/* ---- SOP6: tickets de soporte (hilo con el usuario, responder desde acá) ---- */}
+          <section className="admin-screen__seccion" aria-labelledby="admin-tickets-titulo">
+            <div className="admin-screen__seccion-head">
+              <h2 id="admin-tickets-titulo">Tickets de soporte</h2>
+              <span className="admin-screen__ventana-activa">{ticketsAdmin.length} tickets</span>
+            </div>
+
+            <Surface variant="card" className="admin-card" data-testid="admin-tickets">
+              {ticketsAdminEstado === 'no_disponible' && (
+                <p className="admin-screen__ventana-activa" data-testid="admin-tickets-no-disp">
+                  Los tickets de soporte todavía no están disponibles en este backend.
+                </p>
+              )}
+
+              {ticketsAdminEstado !== 'no_disponible' && (
+                <>
+                  <div className="admin-tenant__form">
+                    <label className="admin-tenant__label" htmlFor="admin-tickets-codigo">
+                      Buscar por código
+                    </label>
+                    <input
+                      id="admin-tickets-codigo"
+                      className="admin-tenant__input"
+                      data-testid="admin-tickets-filtro-codigo"
+                      value={filtroCodigoTicket}
+                      onChange={(e) => setFiltroCodigoTicket(e.target.value)}
+                      placeholder="SOP-0007"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <label className="admin-tenant__label" htmlFor="admin-tickets-estado">
+                      Estado
+                    </label>
+                    <select
+                      id="admin-tickets-estado"
+                      className="admin-tenant__input"
+                      data-testid="admin-tickets-filtro-estado"
+                      value={filtroEstadoTicket}
+                      onChange={(e) => setFiltroEstadoTicket(e.target.value as EstadoTicketSoporte | '')}
+                    >
+                      <option value="">Todos</option>
+                      <option value="abierto">Abierto</option>
+                      <option value="respondido">Respondido</option>
+                      <option value="cerrado">Cerrado</option>
+                    </select>
+                  </div>
+
+                  {ticketsAdminEstado === 'ok' && ticketsAdmin.length === 0 && (
+                    <p className="admin-screen__vacio" data-testid="admin-tickets-vacio">
+                      Ningún ticket coincide con el filtro.
+                    </p>
+                  )}
+
+                  {ticketsAdmin.length > 0 && (
+                    <table className="admin-tabla" data-testid="admin-tickets-tabla">
+                      <thead>
+                        <tr>
+                          <th scope="col">Código</th>
+                          <th scope="col">Función</th>
+                          <th scope="col">Estado</th>
+                          <th scope="col">Asunto</th>
+                          <th scope="col">Última actividad</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ticketsAdmin.map((t) => (
+                          <Fragment key={t.id}>
+                            <tr
+                              key={t.id}
+                              data-testid={`admin-ticket-fila-${t.id}`}
+                              className="admin-tickets__fila-clicable"
+                              onClick={() => void abrirDetalleTicket(t.id)}
+                              aria-expanded={ticketSeleccionado === t.id}
+                            >
+                              <td>{t.codigo}</td>
+                              <td>{ETIQUETA_CANAL_TICKET[t.canal]}</td>
+                              <td>
+                                <Badge variant={variantePorEstadoTicket(t.estado)}>
+                                  {ETIQUETA_ESTADO_TICKET[t.estado]}
+                                </Badge>
+                              </td>
+                              <td title={t.asunto}>
+                                <span className="admin-tabla__texto-recorte">{t.asunto}</span>
+                              </td>
+                              <td>{fechaCorta(t.updated_at)}</td>
+                            </tr>
+                            {ticketSeleccionado === t.id && (
+                              <tr key={`${t.id}-detalle`} data-testid={`admin-ticket-detalle-${t.id}`}>
+                                <td colSpan={5} className="admin-ticket-hilo__celda">
+                                  {detalleTicketEstado === 'cargando' && (
+                                    <p className="admin-screen__vacio">Cargando el hilo…</p>
+                                  )}
+                                  {detalleTicketEstado === 'error' && (
+                                    <p className="admin-tenant__error">No se pudo cargar el hilo.</p>
+                                  )}
+                                  {detalleTicketEstado === 'ok' && detalleTicket && (
+                                    <div className="admin-ticket-hilo">
+                                      <ul className="admin-ticket-hilo__mensajes">
+                                        {detalleTicket.mensajes.map((m) => (
+                                          <li
+                                            key={m.id}
+                                            className={
+                                              m.autor === 'operador'
+                                                ? 'admin-ticket-hilo__msj admin-ticket-hilo__msj--operador'
+                                                : 'admin-ticket-hilo__msj'
+                                            }
+                                          >
+                                            <span className="admin-ticket-hilo__autor">
+                                              {m.autor === 'operador' ? 'Operador' : 'Usuario'} ·{' '}
+                                              {fechaCorta(m.created_at)}
+                                            </span>
+                                            <p>{m.texto}</p>
+                                          </li>
+                                        ))}
+                                      </ul>
+
+                                      {detalleTicket.ticket.estado !== 'cerrado' ? (
+                                        <div className="admin-tenant__form">
+                                          <label
+                                            className="admin-tenant__label"
+                                            htmlFor="admin-ticket-respuesta"
+                                          >
+                                            Respuesta
+                                          </label>
+                                          <textarea
+                                            id="admin-ticket-respuesta"
+                                            className="admin-tenant__input"
+                                            data-testid="admin-ticket-respuesta-input"
+                                            value={textoRespuesta}
+                                            onChange={(e) => setTextoRespuesta(e.target.value)}
+                                            rows={3}
+                                          />
+                                          <div className="admin-tenant__acciones">
+                                            <Button
+                                              variant="ghost"
+                                              data-testid="admin-ticket-responder"
+                                              disabled={!textoRespuesta.trim() || respondiendo != null}
+                                              onClick={() => void responderTicketAdmin(false)}
+                                            >
+                                              {respondiendo === 'responder' ? 'Enviando…' : 'Responder'}
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              data-testid="admin-ticket-responder-cerrar"
+                                              disabled={!textoRespuesta.trim() || respondiendo != null}
+                                              onClick={() => void responderTicketAdmin(true)}
+                                            >
+                                              {respondiendo === 'cerrar'
+                                                ? 'Enviando…'
+                                                : 'Responder y cerrar'}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p
+                                          className="admin-screen__ventana-activa"
+                                          data-testid="admin-ticket-cerrado-aviso"
+                                        >
+                                          Este ticket está cerrado.
+                                        </p>
+                                      )}
+
+                                      {avisoRespuesta != null && (
+                                        <p
+                                          className={
+                                            avisoRespuesta.ok
+                                              ? 'admin-tenant__ok'
+                                              : 'admin-tenant__error'
+                                          }
+                                          data-testid="admin-ticket-respuesta-aviso"
+                                        >
+                                          {avisoRespuesta.texto}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
               )}
             </Surface>
           </section>

@@ -315,6 +315,102 @@ export interface ReintentoTrauma {
   estado: string;
 }
 
+// ---------------------------------------------------------------------------
+// SOP6 — tickets del agente de soporte, respondidos desde la consola
+//
+// ⚠️ **Trampa de nombre real, no hipotética**: `FilaTicket`/`adminSoporte()` de arriba (A4) son
+// **feedback** (`copiloto_feedback`, una línea, sin hilo) — un sistema sin relación con esto.
+// `TicketSoporte` acá es SOP3/SOP6 (`copiloto_tickets`/`copiloto_mensajes`, con hilo y estado
+// `abierto → respondido → cerrado`). Mismo nombre de dominio ("ticket"), dos tablas, dos módulos
+// de backend (`soporte_store.py` vs `admin_soporte.py`). Ver `CONTEXT.md`.
+//
+// **Escrito contra la forma del contrato** (`SOP6-el-operador-responde-el-ticket-desde-la-
+// consola.md`), mismo criterio que `adminTenants` (CTA1) de arriba: al momento de escribir esto
+// backend todavía no publicó `/admin/soporte/tickets*` — el guard de forma (`getAdmin`) traduce
+// cualquier discrepancia a `AdminNoDisponibleError` en vez de que la pantalla explote lejos de la
+// causa. La verificación contra el entorno vivo queda pendiente hasta que backend despliegue.
+// ---------------------------------------------------------------------------
+
+/** Vocabulario cerrado del backend (`soporte_store.CANALES_VALIDOS`, SOP3) — mismo enum que
+ * `packages/core/src/api/soporte.ts` define del lado del chat. */
+export type CanalTicketSoporte = 'soporte_tecnico' | 'como_uso_la_app';
+
+/** `TicketStore` sólo conoce estos tres — `soporte_store.py` (`ABIERTO`/`RESPONDIDO`/`CERRADO`). */
+export type EstadoTicketSoporte = 'abierto' | 'respondido' | 'cerrado';
+
+/** Fila de `TicketStore.listar_tickets` / `crear_ticket` — `apps/copiloto/soporte_store.py:116`. */
+export interface TicketSoporte {
+  id: number;
+  codigo: string;
+  canal: CanalTicketSoporte;
+  estado: EstadoTicketSoporte;
+  asunto: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fila de `TicketStore.listar_mensajes` — `apps/copiloto/soporte_store.py:140`. `autor` es
+ * `'usuario' | 'operador'` (`crear_ticket`/`responder` los únicos dos que escriben), sin enum
+ * cerrado en el cliente porque el contrato no lo cierra tampoco. */
+export interface MensajeTicketSoporte {
+  id: number;
+  autor: string;
+  texto: string;
+  created_at: string;
+}
+
+/** `GET /admin/soporte/tickets?estado=&codigo=&limite=` — contrato SOP6 §BACKEND. `limite` lo
+ * topea el backend en 500 (mismo criterio que A6/CTA1); pedir más no es error, devuelve menos. */
+export function adminListarTicketsSoporte(
+  opts: { estado?: EstadoTicketSoporte; codigo?: string; limite?: number } = {},
+): Promise<{ tickets: TicketSoporte[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (opts.estado) qs.set('estado', opts.estado);
+  if (opts.codigo) qs.set('codigo', opts.codigo);
+  if (opts.limite !== undefined) qs.set('limite', String(opts.limite));
+  const query = qs.toString();
+  return getAdmin<{ tickets: TicketSoporte[]; total: number }>(
+    `/admin/soporte/tickets${query ? `?${query}` : ''}`,
+    tieneClave('tickets'),
+  );
+}
+
+function esDetalleTicket(d: unknown): boolean {
+  return typeof d === 'object' && d !== null && 'ticket' in d && 'mensajes' in d;
+}
+
+/** `GET /admin/soporte/tickets/{id}` — contrato SOP6 §BACKEND. */
+export function adminDetalleTicketSoporte(
+  ticketId: number,
+): Promise<{ ticket: TicketSoporte; mensajes: MensajeTicketSoporte[] }> {
+  return getAdmin(`/admin/soporte/tickets/${encodeURIComponent(ticketId)}`, esDetalleTicket);
+}
+
+/** Respuesta de `POST /admin/soporte/tickets/{id}/responder` — contrato SOP6 §BACKEND. */
+export interface RespuestaTicketSoporte {
+  mensaje_id: number;
+  estado: EstadoTicketSoporte;
+}
+
+/**
+ * Responde un ticket (y opcionalmente lo cierra) desde la consola. `cerrar: true` ⇒ el ticket
+ * pasa a `cerrado`; si no, a `respondido` (lo decide el backend, no la UI — el `estado` que se
+ * muestra después es el que devuelve ESTA respuesta, nunca uno asumido).
+ *
+ * Sin `getAdmin`, mismo criterio que `adminCambiarEstadoTenant`/`adminReintentarError`: es una
+ * MUTACIÓN, y un 404/422 real tiene que llegar con su mensaje, no disfrazarse de "no disponible".
+ */
+export function adminResponderTicketSoporte(
+  ticketId: number,
+  texto: string,
+  cerrar = false,
+): Promise<RespuestaTicketSoporte> {
+  return apiClient.post<RespuestaTicketSoporte>(
+    `/admin/soporte/tickets/${encodeURIComponent(ticketId)}/responder`,
+    { texto, cerrar },
+  );
+}
+
 /**
  * Reintenta **UN** trauma. La acción de más riesgo del sprint y **no reversible**: el efecto ya
  * ocurrió o no ocurrió, y reintentar algo que sí se ejecutó lo duplica — en este repo eso ya costó
