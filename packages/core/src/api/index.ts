@@ -353,4 +353,4 @@ export { enviarFeedback, enviarFeedbackAudio } from './feedback';
  * sobre por qué NO se une a `CopilotApi`/`apiReal`: es una acción de otro dominio, no del chat de
  * negocio, mismo criterio que separó `enviarFeedback` de esa interfaz. */
 export { sendSoporteChat } from './soporte';
-export type { SoporteChatRequest, SoporteChatResponse } from './soporte';
+export type { FuncionSoporte, SoporteChatRequest, SoporteChatResponse } from './soporte';
