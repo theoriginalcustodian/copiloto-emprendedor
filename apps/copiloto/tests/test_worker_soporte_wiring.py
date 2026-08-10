@@ -37,6 +37,20 @@ def test_build_worker_config_registra_los_DOS_dominios():
     assert get_channel("web") is not None
 
 
+def test_los_DOS_dominios_tienen_metering_sink_wireado():
+    """I2 del DoD (SOP4): "costo por consulta medido sobre corridas reales". Antes de este fix los
+    dos dominios se registraban con `metering_sink=None` (default de `register_domain`), así que
+    ningún turno del agente de soporte dejaba fila en `copiloto_metering` -- mismo boundary que
+    `worker_b` ya usa para 'emprendedor' (BETA-1b), sólo faltaba wireado acá."""
+    worker_soporte.build_worker_config({}, _fake_conn_factory())
+    dom_tec = get_domain(SOPORTE_TECNICO)
+    dom_app = get_domain(COMO_USO_LA_APP)
+    assert dom_tec["metering_sink"] is not None
+    assert dom_app["metering_sink"] is not None
+    # los DOS dominios comparten el MISMO sumidero (un solo `conn_factory`, igual que el LLM)
+    assert dom_tec["metering_sink"] is dom_app["metering_sink"]
+
+
 def test_los_DOS_dominios_comparten_tool_schemas_pero_NO_system_prompt():
     """C1: task_queue/workflow/toolset propios -- pero cada función tiene SU prompt (soporte técnico
     ofrece `buscar_mis_errores` como primer paso, cómo-uso-la-app no lo menciona)."""

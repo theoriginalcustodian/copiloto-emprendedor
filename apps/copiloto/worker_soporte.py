@@ -31,6 +31,7 @@ from clients.agent.providers.llm import LlmProvider
 from contexto_tenant import conexion_con_tenant
 from interceptor_errores import CapturaDeErroresInterceptor
 from deposito_traumas import fabrica_desde
+from metering_store import MeteringStore
 from reply_store import make_pg_reply_sink
 from soporte_agent_tools import TOOL_SCHEMAS_SOPORTE, make_soporte_tool_executor
 from soporte_clasificador import SoporteClasificador
@@ -61,6 +62,20 @@ def build_llm() -> LlmProvider:
     return LlmProvider(primary_model="gpt-4o-mini", failover_model="gpt-4o-mini",
                        api_key_env=OPENAI_API_KEY_ENV, url="https://api.openai.com/v1/chat/completions",
                        quantizations=())
+
+
+def _metering_provider(conn_factory):
+    """`(cliente_id, session_id, model, tokens, evento) -> None`, boundary `metering_sink` (BETA-1b),
+    mismo patrón que `worker_b._metering_provider` -- I2 del DoD de SOP4 ("costo por consulta medido,
+    no estimado") no tenía sumidero acá: los dos dominios de soporte se registraban con
+    `metering_sink=None` (default), así que ningún turno del agente de soporte dejaba fila en
+    `copiloto_metering`. El try/except contra fallos de DB ya vive en
+    `agent_activities._registrar_metering` (capa PLANTILLA)."""
+    def registrar(cliente_id: str, session_id: str, model: str, tokens, evento: str) -> None:
+        MeteringStore(conn_factory, cliente_id).registrar(
+            session_id=session_id, model=model, tokens=tokens, evento=evento)
+
+    return registrar
 
 
 def build_worker_config(env, conn_factory) -> dict:
@@ -101,13 +116,15 @@ def build_worker_config(env, conn_factory) -> dict:
         ticket_store_factory=_ticket_store_factory, graphity_code_client=graphity_code_client)
 
     llm = build_llm()
+    metering_sink = _metering_provider(conn_factory)
     # `dispatcher=None`: este domain no tiene fallback a engine_mode='dispatch' (siempre react, a
     # diferencia de 'emprendedor' que preserva el dispatcher legacy). `register_domain` lo acepta.
     for nombre, prompt in ((SOPORTE_TECNICO, SYSTEM_PROMPT_SOPORTE_TECNICO),
                            (COMO_USO_LA_APP, SYSTEM_PROMPT_COMO_USO_LA_APP)):
         register_domain(nombre, system_prompt=prompt, llm_provider=llm, dispatcher=None,
                         context_factory=ctx_factory, memory_provider=None, engine_mode="react",
-                        tool_schemas=TOOL_SCHEMAS_SOPORTE, tool_executor=tool_executor)
+                        tool_schemas=TOOL_SCHEMAS_SOPORTE, tool_executor=tool_executor,
+                        metering_sink=metering_sink)
     register_channel("web", WebChannelAdapter(reply_sink=reply_sink))
 
     return {"workflows": [ConversationWorkflow], "activities": _ACTIVITIES,
