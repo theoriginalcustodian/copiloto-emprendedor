@@ -1,0 +1,21 @@
+[Unit]
+Description=Copiloto del Emprendedor - worker Temporal del agente de soporte (SOP4, ConversationWorkflow, task_queue agent-soporte)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/uc-repos/copiloto/apps/copiloto
+Environment=PYTHONPATH=/opt/uc-repos/copiloto/motor:/opt/uc-repos/copiloto/deploy/worker
+EnvironmentFile=/etc/unreal-copilot/copiloto.env
+EnvironmentFile=/etc/unreal-copilot/fusion-pg.env
+EnvironmentFile=/etc/unreal-copilot/fusion-supabase.env
+ExecStart=/opt/uc-copiloto-venv/bin/python worker_soporte.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

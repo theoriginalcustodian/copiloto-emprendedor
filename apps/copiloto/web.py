@@ -66,6 +66,17 @@ from calendar_policy import CALENDAR_POLICY
 
 AGENT_B_TASK_QUEUE = os.environ.get("AGENT_B_TASK_QUEUE", "agent-emprendedor")
 DOMAIN = "emprendedor"
+# SOP4/SOP5/C1 — chat de soporte, worker + task_queue PROPIOS (mismo nombre de env que
+# `worker_soporte.py`, nunca hardcodeado dos veces). `route_inbound` es agnóstico del dominio
+# (`inbound_router.py`): un `task_queue`/`domain` distintos alcanzan, no hace falta un router nuevo.
+# `domain` es constante DEL SERVIDOR (DoD §F0) -- mismo criterio que `DOMAIN` de 'emprendedor' arriba,
+# nunca un valor que el body del request pueda elegir.
+SOPORTE_TASK_QUEUE = os.environ.get("SOPORTE_TASK_QUEUE", "agent-soporte")
+SOPORTE_DOMAIN = "soporte_tecnico"
+# SOP4/C7: texto FIJO, literal del DoD -- feedback no conversa (one-shot, sin hilo). No es un mensaje
+# del agente (no pasa por el motor conversacional): backend lo devuelve directo en la respuesta HTTP.
+MENSAJE_FEEDBACK_FIJO = ("Tu mensaje quedó anotado. Estas ideas son las que ayudan a mejorar… "
+                        "¡Gracias por tu aporte!")
 
 _log = logging.getLogger("copiloto.web")
 
@@ -654,6 +665,31 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": session_id, "text": transcript, "kind": "text"})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "transcript": transcript}
 
+    @app.post("/soporte/chat")
+    async def soporte_chat(msg: ChatIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door del chat de soporte (SOP4/SOP5, C1+C4). Worker + task_queue PROPIOS
+        (`SOPORTE_TASK_QUEUE`, proceso separado de `worker_b`) -- `route_inbound` es agnóstico del
+        dominio, no hace falta un router nuevo. `domain`/`task_queue` son constantes DEL SERVIDOR
+        (DoD versionado, PR #357, §F0) -- el body reusa `ChatIn` tal cual, sin campo de "función": el
+        cliente NUNCA elige qué dominio/cola arranca (esa elección en el body sería superficie de
+        ataque -- el tenant viaja en el token, el destino lo fija la ruta). La distinción de MAESTRO
+        §9.1 (soporte técnico vs cómo-uso-la-app) la resuelve el propio agente al crear el ticket
+        (`soporte_agent_tools`), no el wiring de acá.
+
+        `session_id` viaja TAL CUAL del cliente al `channel_ref` (`WebChannelAdapter.normalize_inbound`,
+        `channel_ref = session_id` crudo) -- el `workflow_id` sale de `(channel, cliente_id,
+        channel_ref)` únicamente, SIN el dominio. Por eso el contrato exige que el cliente genere el
+        `session_id` de este chat con el prefijo `sop:` (`sop:<uuid>`, distinto del que usa en `/chat`):
+        sin esa distinción, un mismo `session_id` en las dos rutas reusaría (`USE_EXISTING`) el MISMO
+        workflow -- no es un control de seguridad, es la convención que evita el cruce. Ver el control
+        negativo en `tests/test_web_app.py`."""
+        wf_id = await route_inbound(
+            temporal_client, adapter=adapter, cliente_id=cliente_id, domain=SOPORTE_DOMAIN,
+            task_queue=SOPORTE_TASK_QUEUE,
+            extra_config={"engine_mode": "react"},   # el domain de soporte SIEMPRE es react (worker_soporte.py)
+            raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
+        return {"wf_id": wf_id, "accepted": wf_id is not None}
+
     @app.post("/feedback")
     def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:
         """Feedback in-app del emprendedor por texto (BETA-1a, contrato
@@ -666,7 +702,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=422, detail="feedback demasiado largo (máx 2000 caracteres)")
         feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
             tipo="texto", texto=texto, contexto=body.contexto)
-        return {"id": feedback_id, "ok": True}
+        return {"id": feedback_id, "ok": True, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
     @app.post("/feedback/audio")
     async def feedback_audio(audio: UploadFile = File(...), contexto: str | None = Form(None),
@@ -691,7 +727,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=422, detail="no se entendió el audio")
         feedback_id = FeedbackStore(conn_factory, cliente_id).crear(
             tipo="voz", texto=transcript, contexto=contexto)
-        return {"id": feedback_id, "ok": True, "transcripcion": transcript}
+        return {"id": feedback_id, "ok": True, "transcripcion": transcript, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
     @app.post("/chat/foto")
     async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),

@@ -655,3 +655,66 @@ def test_rate_limit_middleware_esta_cableado_en_el_front_door():
 
     app, _ = _build_app(require_tenant=_require_tenant_401())
     assert any(getattr(m, "cls", None) is RateLimitMiddleware for m in app.user_middleware)
+
+
+# --- /soporte/chat (SOP4/SOP5, C1+C4) --------------------------------------------
+# DoD versionado (PR #357, §F0): reusa `ChatIn` TAL CUAL -- sin campo de "función", `domain`/
+# `task_queue` son constantes del servidor. El aislamiento entre `/chat` y `/soporte/chat` depende de
+# que el cliente use `session_id` DISTINTOS (convención `sop:` prefix), no de nada que valide acá.
+
+def test_soporte_chat_without_token_returns_401(monkeypatch):
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_401())
+    r = TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    assert r.status_code == 401
+
+
+def test_soporte_chat_mismo_shape_de_respuesta_que_chat(monkeypatch):
+    """DoD §F0: `{"wf_id", "accepted"}`, igual que `/chat` -- nada extra (no hay `funcion` que
+    namespacear del lado del servidor)."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    r = TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    assert r.status_code == 200
+    assert set(r.json().keys()) == {"wf_id", "accepted"}
+    assert r.json()["accepted"] is True
+    assert r.json()["wf_id"] == "conv-web-cid-A-sop:s1"
+
+
+def test_soporte_chat_domain_y_task_queue_son_constantes_del_servidor(monkeypatch):
+    """El body no tiene ningún campo que pueda elegir domain/task_queue (superficie de ataque que
+    SOP5 §1 descarta explícitamente) -- lo verificamos capturando los kwargs reales de `route_inbound`."""
+    llamadas = []
+
+    async def _capturar(client, *, adapter, cliente_id, domain, task_queue, raw_update, extra_config=None):
+        llamadas.append({"domain": domain, "task_queue": task_queue})
+        return await _fake_route_inbound(client, adapter=adapter, cliente_id=cliente_id, domain=domain,
+                                         task_queue=task_queue, raw_update=raw_update, extra_config=extra_config)
+
+    monkeypatch.setattr(web_module, "route_inbound", _capturar)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    TestClient(app).post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    assert llamadas == [{"domain": "soporte_tecnico", "task_queue": web_module.SOPORTE_TASK_QUEUE}]
+
+
+def test_soporte_chat_con_prefijo_sop_NO_colisiona_con_el_chat_del_copiloto(monkeypatch):
+    """Caso correcto (F0 es responsabilidad del cliente): `session_id` distintos -> `wf_id` distintos."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    client = TestClient(app)
+    r_copiloto = client.post("/chat", json={"session_id": "s1", "text": "hola"})
+    r_soporte = client.post("/soporte/chat", json={"session_id": "sop:s1", "text": "hola"})
+    assert r_copiloto.json()["wf_id"] != r_soporte.json()["wf_id"]
+
+
+def test_soporte_chat_control_negativo_MISMO_session_id_literal_SI_colisiona(monkeypatch):
+    """Control negativo obligatorio del DoD (§SOP5, "este fallo es MUDO"): si el cliente NO respeta la
+    convención `sop:` y reusa el mismo `session_id` crudo en las dos rutas, el backend no lo detecta
+    -- ambas resuelven al MISMO `wf_id` (`USE_EXISTING`). Documentado a propósito, no es un bug de
+    acá: la responsabilidad de diferenciar `session_id` es del cliente (F0)."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    client = TestClient(app)
+    r_copiloto = client.post("/chat", json={"session_id": "s1", "text": "hola"})
+    r_soporte = client.post("/soporte/chat", json={"session_id": "s1", "text": "hola"})
+    assert r_copiloto.json()["wf_id"] == r_soporte.json()["wf_id"]
