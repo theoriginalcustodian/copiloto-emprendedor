@@ -10,6 +10,7 @@ import {
   type ChatMessage,
   type ChatMessageKind,
   type EstadoChat,
+  type FuncionSoporte,
 } from '@copiloto/core';
 
 import { almacenClave } from '../../adapters/almacen';
@@ -27,11 +28,19 @@ import { generarId } from '../../util/id';
  * Deliberadamente SIN `enviarAudio`/`enviarFoto`: el contrato SOP5 declara la voz fuera de alcance
  * de v1 ("si al probarlo resulta que se necesita, es un hito aparte, no un agregado silencioso").
  *
- * Claves de storage y `session_id` **separados** de los del chat de negocio (nunca comparten
- * prefijo) — dos conversaciones del mismo usuario que compartieran `session_id` harían que
- * `GET /reply` mezcle las respuestas de un dominio en el chat del otro (ver el "Control negativo
- * obligatorio" del contrato SOP5). Prefijo `sop:` en el `session_id` que viaja al servidor, como
- * pide el contrato — es convención, no el control de aislamiento real (ese es `cliente_id`).
+ * 🔴 **`funcion` es FIJA por instancia del hook, no por `send()`** — corregido 2026-08-10 junto con
+ * el shape (`respuesta_planificacion-a-backend_SOP5-va-la-B`). Una conversación entera pertenece a
+ * UNA función: el servidor arma `channel_ref = f"soporte:{funcion}:{session_id}"` en el primer
+ * mensaje, así que cambiar de función a mitad de charla no tiene equivalente semántico del lado del
+ * servidor — sería otro hilo, no un giro de la misma conversación. Storage y `session_id` locales
+ * están scoped por `(clienteId, funcion)`: "soporte técnico" y "cómo uso la app" son DOS hilos
+ * persistidos por separado, nunca comparten historial ni cursor de polling.
+ *
+ * 🔴 **El `session_id` que vuelve en la RESPUESTA del POST no es el que mandó el cliente.** El
+ * servidor namespacea (`channel_ref`) y lo devuelve — hay que adoptarlo ANTES de arrancar a pollear,
+ * o `GET /reply` consulta con un id que el servidor no reconoce y el chat se queda mudo para
+ * siempre, sin ningún error que lo delate (el fallo MUDO que el propio DoD advierte). Por eso `send`
+ * migra `sessionId` (estado + storage) apenas la respuesta llega, antes de `iniciarEsperaDeRespuesta`.
  */
 const PREFIJO_SESSION = 'copiloto-soporte-session-id';
 const PREFIJO_MENSAJES = 'copiloto-soporte-msgs';
@@ -39,20 +48,22 @@ const POLL_INTERVAL_MS = 1500;
 const POLL_INTERVAL_LENTO_MS = 10_000;
 const WAIT_TIMEOUT_MS = 60_000;
 
-function claveSession(clienteId: string): string {
-  return `${PREFIJO_SESSION}:${clienteId}`;
+function claveSession(clienteId: string, funcion: FuncionSoporte): string {
+  return `${PREFIJO_SESSION}:${clienteId}:${funcion}`;
 }
 
-function claveMensajes(clienteId: string, sessionId: string): string {
-  return `${PREFIJO_MENSAJES}:${clienteId}:${sessionId}`;
+function claveMensajes(clienteId: string, funcion: FuncionSoporte, sessionId: string): string {
+  return `${PREFIJO_MENSAJES}:${clienteId}:${funcion}:${sessionId}`;
 }
 
-/** Lee (o crea) el `session_id` de SOPORTE para este `clienteId` — con el prefijo `sop:` que pide
- * el contrato. Best-effort: si `AlmacenClave` falla, degrada a una sesión nueva en memoria. */
-export async function leerOCrearSessionIdSoporte(clienteId: string): Promise<string> {
+/** Lee (o crea) el `session_id` LOCAL de arranque para `(clienteId, funcion)` — con el prefijo
+ * `sop:` que el cliente propone al servidor. El servidor puede devolver otro (`channel_ref`) en la
+ * respuesta del primer envío; ver el docstring del módulo. Best-effort: si `AlmacenClave` falla,
+ * degrada a una sesión nueva en memoria. */
+export async function leerOCrearSessionIdSoporte(clienteId: string, funcion: FuncionSoporte): Promise<string> {
   if (clienteId === '') return `sop:${generarId()}`;
   try {
-    const clave = claveSession(clienteId);
+    const clave = claveSession(clienteId, funcion);
     const existente = await almacenClave.leer(clave);
     if (existente) return existente;
     const creado = `sop:${generarId()}`;
@@ -63,9 +74,13 @@ export async function leerOCrearSessionIdSoporte(clienteId: string): Promise<str
   }
 }
 
-async function leerMensajesPersistidos(clienteId: string, sessionId: string): Promise<ChatMessage[]> {
+async function leerMensajesPersistidos(
+  clienteId: string,
+  funcion: FuncionSoporte,
+  sessionId: string,
+): Promise<ChatMessage[]> {
   try {
-    const raw = await almacenClave.leer(claveMensajes(clienteId, sessionId));
+    const raw = await almacenClave.leer(claveMensajes(clienteId, funcion, sessionId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
@@ -74,9 +89,14 @@ async function leerMensajesPersistidos(clienteId: string, sessionId: string): Pr
   }
 }
 
-function persistirMensajes(clienteId: string, sessionId: string, messages: ChatMessage[]): void {
+function persistirMensajes(
+  clienteId: string,
+  funcion: FuncionSoporte,
+  sessionId: string,
+  messages: ChatMessage[],
+): void {
   if (clienteId === '') return;
-  void almacenClave.guardar(claveMensajes(clienteId, sessionId), JSON.stringify(messages));
+  void almacenClave.guardar(claveMensajes(clienteId, funcion, sessionId), JSON.stringify(messages));
 }
 
 export interface SendOptionsSoporte {
@@ -90,8 +110,10 @@ export interface UseChatSoporteResult {
 }
 
 /** `clienteId` — `MeResponse.cliente_id` del tenant autenticado, mismo criterio de scoping que
- * `useChat` de negocio: aísla DÓNDE se persiste, no decide nada del lado del servidor. */
-export function useChatSoporte(clienteId: string): UseChatSoporteResult {
+ * `useChat` de negocio: aísla DÓNDE se persiste, no decide nada del lado del servidor.
+ * `funcion` — `'soporte_tecnico' | 'como_uso_la_app'`, fija para toda la vida de esta instancia
+ * (ver el docstring del módulo sobre por qué no es un argumento de `send`). */
+export function useChatSoporte(clienteId: string, funcion: FuncionSoporte): UseChatSoporteResult {
   const [estado, setEstado] = useState<EstadoChat | null>(null);
   const estadoRef = useRef<EstadoChat | null>(null);
   const montadoRef = useRef(true);
@@ -139,26 +161,26 @@ export function useChatSoporte(clienteId: string): UseChatSoporteResult {
       if (next.messages.length > base.messages.length) {
         detenerPolling();
       }
-      persistirMensajes(clienteId, next.sessionId, next.messages);
+      persistirMensajes(clienteId, funcion, next.sessionId, next.messages);
       actualizarEstado(next);
     } catch {
       // Error transitorio: el intervalo sigue reintentando — mismo criterio que el chat de negocio.
     } finally {
       pollingRef.current = false;
     }
-  }, [actualizarEstado, detenerPolling, clienteId]);
+  }, [actualizarEstado, detenerPolling, clienteId, funcion]);
 
   useEffect(() => {
     void (async () => {
-      const sessionId = await leerOCrearSessionIdSoporte(clienteId);
-      const persistidos = await leerMensajesPersistidos(clienteId, sessionId);
+      const sessionId = await leerOCrearSessionIdSoporte(clienteId, funcion);
+      const persistidos = await leerMensajesPersistidos(clienteId, funcion, sessionId);
       if (!montadoRef.current) return;
       actualizarEstado(hidratarEstado(sessionId, persistidos));
       void poll();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite a propósito, mismo
     // criterio documentado en `modules/chat/useChat.ts`.
-  }, [clienteId]);
+  }, [clienteId, funcion]);
 
   const iniciarEsperaDeRespuesta = useCallback(() => {
     pollTimerRef.current = setInterval(() => {
@@ -198,26 +220,39 @@ export function useChatSoporte(clienteId: string): UseChatSoporteResult {
       const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: trimmed };
       let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_iniciado' });
-      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      persistirMensajes(clienteId, funcion, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
 
+      let sessionIdEfectivo = siguiente.sessionId;
       try {
-        await sendSoporteChat({
+        const res = await sendSoporteChat({
           session_id: siguiente.sessionId,
           text: trimmed,
+          funcion,
           kind: opts?.kind ?? 'text',
         });
+        sessionIdEfectivo = res.session_id;
       } catch (e) {
         const conError = estadoRef.current ?? siguiente;
         actualizarEstado(reducirChat(conError, { tipo: 'envio_fallo', motivo: motivoDeError(e) }));
         return;
       }
 
-      const enviado = estadoRef.current ?? siguiente;
-      actualizarEstado(reducirChat(enviado, { tipo: 'envio_ok' }));
+      let enviado = estadoRef.current ?? siguiente;
+      if (sessionIdEfectivo !== enviado.sessionId) {
+        // El servidor namespaceó (`channel_ref`) -- adoptarlo ANTES de pollear (ver docstring del
+        // módulo) y persistir la migración: la PRÓXIMA vez que se abra este chat, `leerOCrear
+        // SessionIdSoporte` tiene que devolver el channel_ref real, no el `sop:` local que ya quedó
+        // desconectado del hilo.
+        enviado = { ...enviado, sessionId: sessionIdEfectivo };
+        await almacenClave.guardar(claveSession(clienteId, funcion), sessionIdEfectivo);
+        persistirMensajes(clienteId, funcion, sessionIdEfectivo, enviado.messages);
+      }
+      enviado = reducirChat(enviado, { tipo: 'envio_ok' });
+      actualizarEstado(enviado);
       iniciarEsperaDeRespuesta();
     },
-    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
+    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId, funcion],
   );
 
   return { estado, send };

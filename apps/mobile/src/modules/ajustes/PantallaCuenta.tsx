@@ -73,22 +73,40 @@ export function PantallaCuenta() {
           </View>
         </Row>
 
-        {/* SOP5 — mismo criterio que Feedback arriba: fila, no tile, misma razón de disciplina de
-            grilla. Distinto de Feedback en propósito: acá el agente RESPONDE (chat de soporte
-            técnico), Feedback es un buzón de una sola vía. */}
+        {/* SOP5 — DOS filas, no una: `funcion` es fija por conversación (ver docstring de
+            useChatSoporte), así que la elección pasa ACÁ, antes de abrir el chat, no con un
+            selector adentro. Mismo criterio de disciplina de grilla que Feedback (fila, no tile). */}
         <Row
-          testID="cuenta-soporte"
-          accessibilityLabel="Soporte"
-          onPress={() => router.push('/ajustes-soporte')}
+          testID="cuenta-soporte-tecnico"
+          accessibilityLabel="Soporte técnico"
+          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
             <GlassIcon name="conversacion" size={22} />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                Soporte
+                Soporte técnico
               </Text>
               <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Preguntale al agente de soporte, o contanos si algo no funciona.
+                Algo no funciona como debería — contale al agente qué pasó.
+              </Text>
+            </View>
+          </View>
+        </Row>
+
+        <Row
+          testID="cuenta-como-uso-la-app"
+          accessibilityLabel="Cómo uso la app"
+          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'como_uso_la_app' } })}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
+            <GlassIcon name="conversacion" size={22} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+                Cómo uso la app
+              </Text>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Preguntale al agente cómo hacer algo puntual.
               </Text>
             </View>
           </View>

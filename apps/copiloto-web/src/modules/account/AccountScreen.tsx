@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import type { FuncionSoporte } from '../../lib/api';
 import { Button, PresenceOrb, Surface } from '../../design-system';
 import { useSession } from '../../auth/useSession';
 import './account.css';
@@ -78,8 +79,10 @@ function NotificationsToggle() {
 export interface AccountScreenProps {
   /** SOP5 — navega al chat de soporte, que vive como `TabKey` fuera de `TABS` (mismo mecanismo que
    * `AjustesScreen.onNavegarTab`: unión angosta, no el `TabKey` completo del shell, para no atar
-   * este módulo al registro entero). Opcional para no romper usos/tests que aún no lo pasan. */
-  onNavegarTab?: (tab: 'soporte') => void;
+   * este módulo al registro entero). `funcion` fija cuál de las DOS conversaciones se abre — el
+   * shell la recuerda en su propio estado, ver `AppShell.tsx`/`DesktopShell.tsx`. Opcional para no
+   * romper usos/tests que aún no lo pasan. */
+  onNavegarTab?: (tab: 'soporte', funcion: FuncionSoporte) => void;
 }
 
 export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
@@ -139,14 +142,26 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
         {/* SOP5 — `<button>`, no `<div>`: el rail ya aprendió esa lección (PR 299, "bloque de
             usuario MUERTO"). `onNavegarTab` es opcional para no romper contextos sin shell (tests,
             o un futuro consumidor que no navegue tabs); sin él la fila queda visible pero inerte,
-            nunca oculta — visibilidad y funcionamiento son cosas distintas. */}
+            nunca oculta — visibilidad y funcionamiento son cosas distintas. DOS filas, no una: cada
+            conversación pertenece a una `funcion` fija (ver `useChatSoporte`), así que la elección
+            pasa ACÁ, antes de abrir el chat, no con un selector adentro — mismo criterio que mobile
+            (`PantallaCuenta.tsx`, 2026-08-10). */}
         <button
           type="button"
           className="account-screen__row"
-          data-testid="account-soporte"
-          onClick={() => onNavegarTab?.('soporte')}
+          data-testid="account-soporte-tecnico"
+          onClick={() => onNavegarTab?.('soporte', 'soporte_tecnico')}
         >
-          <span className="account-screen__row-label">Soporte</span>
+          <span className="account-screen__row-label">Soporte técnico</span>
+          <ChevronIcon />
+        </button>
+        <button
+          type="button"
+          className="account-screen__row"
+          data-testid="account-como-uso-la-app"
+          onClick={() => onNavegarTab?.('soporte', 'como_uso_la_app')}
+        >
+          <span className="account-screen__row-label">Cómo uso la app</span>
           <ChevronIcon />
         </button>
         <div className="account-screen__row">

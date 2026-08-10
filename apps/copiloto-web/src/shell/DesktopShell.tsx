@@ -18,6 +18,7 @@ import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
+import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
 import { SoporteScreen } from '../modules/soporte';
 import { AppsModal } from './AppsModal';
@@ -70,6 +71,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const [facturaIdDesdePresupuesto, setFacturaIdDesdePresupuesto] = useState<string | undefined>(
     undefined,
   );
+  // Ver el mismo comentario en `AppShell.tsx`: estado adicional, no un `TabKey` nuevo.
+  const [funcionSoporte, setFuncionSoporte] = useState<FuncionSoporte>('soporte_tecnico');
 
   // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
   // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
@@ -81,6 +84,11 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
       return;
     }
     setActiveTab(key);
+  }, []);
+
+  const abrirSoporte = useCallback((funcion: FuncionSoporte) => {
+    setFuncionSoporte(funcion);
+    setActiveTab('soporte');
   }, []);
 
   const closeAppsModal = useCallback(() => setAppsModalOpen(false), []);
@@ -138,8 +146,10 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             login como otro, refresh del token) `activeTab` puede seguir valiendo 'admin' de antes.
             Sin este gate la pantalla quedaría montada pidiendo `/admin/*` y mostrando 403s. */}
         {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && <AccountScreen onNavegarTab={setActiveTab} />}
-        {activeTab === 'soporte' && <SoporteScreen />}
+        {activeTab === 'account' && (
+          <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
+        )}
+        {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}
