@@ -18,7 +18,8 @@ export type TabKey =
   | 'ajustes'
   | 'facturacion'
   | 'admin'
-  | 'account';
+  | 'account'
+  | 'soporte';
 
 export interface TabDefinition {
   key: TabKey;
@@ -48,6 +49,11 @@ export interface TabDefinition {
  * almohadilla + 3 dígitos hex como un color literal, y un PR de 3 cifras la dispara.)
  *
  * `admin` (la Consola de operador) es el único con `soloAdmin` — ver `tabsVisibles`.
+ *
+ * `soporte` (SOP5) es `TabKey` pero deliberadamente NO entra a este array — mismo mecanismo que
+ * `account`/`connections`/`recientes` (depuración 2026-08-06): se llega por una fila de
+ * `AccountScreen`, no por la barra. Es "paridad con mobile" (`PantallaCuenta` reusa el mismo
+ * patrón), no una omisión.
  *
  * `gastos`, `clientes`, `contabilidad`, `ingresos`, `actividad`, `presupuestos`, `inteligencia`,
  * `midia`, `escritorio` y `facturacion` sumados en M-WEB (2026-08-04), orden de llegada. Reordenados

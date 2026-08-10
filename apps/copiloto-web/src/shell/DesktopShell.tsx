@@ -19,6 +19,7 @@ import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import { AccountScreen } from '../modules/account';
+import { SoporteScreen } from '../modules/soporte';
 import { AppsModal } from './AppsModal';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { Rail } from './Rail';
@@ -137,7 +138,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             login como otro, refresh del token) `activeTab` puede seguir valiendo 'admin' de antes.
             Sin este gate la pantalla quedaría montada pidiendo `/admin/*` y mostrando 403s. */}
         {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && <AccountScreen />}
+        {activeTab === 'account' && <AccountScreen onNavegarTab={setActiveTab} />}
+        {activeTab === 'soporte' && <SoporteScreen />}
       </main>
       <AppsModal open={appsModalOpen} onClose={closeAppsModal}>
         {appsEverOpened && <AppsScreen onGoToConnections={goToConnectionsFromApps} />}

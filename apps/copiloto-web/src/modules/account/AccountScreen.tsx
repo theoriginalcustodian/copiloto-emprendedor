@@ -75,7 +75,14 @@ function NotificationsToggle() {
  * componente) no mostraba ningún control de apariencia. Movido a
  * `modules/ajustes/PantallaApariencia.tsx`, con sub-vista propia.
  */
-export function AccountScreen() {
+export interface AccountScreenProps {
+  /** SOP5 — navega al chat de soporte, que vive como `TabKey` fuera de `TABS` (mismo mecanismo que
+   * `AjustesScreen.onNavegarTab`: unión angosta, no el `TabKey` completo del shell, para no atar
+   * este módulo al registro entero). Opcional para no romper usos/tests que aún no lo pasan. */
+  onNavegarTab?: (tab: 'soporte') => void;
+}
+
+export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
   const { me, logout } = useSession();
   const [confirmandoSalida, setConfirmandoSalida] = useState(false);
 
@@ -129,6 +136,19 @@ export function AccountScreen() {
       </div>
 
       <div className="account-screen__list">
+        {/* SOP5 — `<button>`, no `<div>`: el rail ya aprendió esa lección (PR 299, "bloque de
+            usuario MUERTO"). `onNavegarTab` es opcional para no romper contextos sin shell (tests,
+            o un futuro consumidor que no navegue tabs); sin él la fila queda visible pero inerte,
+            nunca oculta — visibilidad y funcionamiento son cosas distintas. */}
+        <button
+          type="button"
+          className="account-screen__row"
+          data-testid="account-soporte"
+          onClick={() => onNavegarTab?.('soporte')}
+        >
+          <span className="account-screen__row-label">Soporte</span>
+          <ChevronIcon />
+        </button>
         <div className="account-screen__row">
           <span className="account-screen__row-label">Privacidad del historial</span>
           <ChevronIcon />

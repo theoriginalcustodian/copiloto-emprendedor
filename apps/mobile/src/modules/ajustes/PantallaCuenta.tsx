@@ -73,6 +73,27 @@ export function PantallaCuenta() {
           </View>
         </Row>
 
+        {/* SOP5 — mismo criterio que Feedback arriba: fila, no tile, misma razón de disciplina de
+            grilla. Distinto de Feedback en propósito: acá el agente RESPONDE (chat de soporte
+            técnico), Feedback es un buzón de una sola vía. */}
+        <Row
+          testID="cuenta-soporte"
+          accessibilityLabel="Soporte"
+          onPress={() => router.push('/ajustes-soporte')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
+            <GlassIcon name="conversacion" size={22} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
+                Soporte
+              </Text>
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+                Preguntale al agente de soporte, o contanos si algo no funciona.
+              </Text>
+            </View>
+          </View>
+        </Row>
+
         {/* 🔴 Llegó de "Configuración del sistema", y sigue SIN `onPress` a propósito. «No molestar»
             muta un ajuste GLOBAL del teléfono y necesita un restaurador ante crash: si el copiloto lo
             prende y la app se cae antes de apagarlo, el teléfono queda en silencio sin que nadie lo
