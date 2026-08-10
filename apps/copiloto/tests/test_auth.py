@@ -154,6 +154,20 @@ def test_require_tenant_invalid_token_returns_401():
     assert resp.status_code == 401
 
 
+def test_require_tenant_invalid_token_NO_filtra_el_texto_crudo_de_la_excepcion():
+    """Hallazgo E2E SOP7 (2026-08-10): un token con bytes no-UTF8 hacía que PyJWT devolviera un
+    mensaje de decode de librería ("Invalid header string: 'utf-8' codec can't decode byte...") y
+    viajaba TAL CUAL en el `detail` del 401 -- info de implementación que no debería salir del
+    server. El `detail` ahora es genérico; la excepción real sólo va al log."""
+    client = TestClient(_build_app({"u-1": "cid-abc"}))
+    # bytes inválidos como UTF-8 en el header -- el caso real que lo disparó en producción
+    resp = client.get("/whoami", headers={"Authorization": b"Bearer \xcb\x01\x02"})
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "invalid token"
+    assert "utf-8" not in resp.json()["detail"].lower()
+    assert "codec" not in resp.json()["detail"].lower()
+
+
 # --- H1: adversarial — pin de algoritmo (alg-confusion / alg:none) -----------
 # Regla dura del proyecto: control sin test adversarial = no verificado. El validador
 # fija algorithms=["HS256"]; cualquier otro alg (o none) DEBE ser rechazado fail-closed.

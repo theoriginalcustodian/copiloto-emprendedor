@@ -11,12 +11,15 @@ resolución es por query a `tenants`, no por config)."""
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Callable
 
 import jwt
 from fastapi import HTTPException, Request
 
 from contexto_tenant import declarar_tenant
+
+_log = logging.getLogger("copiloto.auth")
 
 _SCHEMA = "uc_factory"
 _TENANTS_TABLE = f"{_SCHEMA}.tenants"
@@ -93,7 +96,12 @@ def _bearer_claims(request: Request, *, secret: str, issuer: str | None) -> dict
     try:
         return decode_supabase_jwt(token, secret=secret, issuer=issuer)
     except InvalidToken as exc:
-        raise HTTPException(status_code=401, detail=f"invalid token: {exc}") from exc
+        # El detalle NUNCA lleva `{exc}` crudo -- un token corrupto (no-JWT, bytes no-UTF8, etc.)
+        # hace que la excepción de PyJWT/nuestro decode traiga texto de implementación (mensajes de
+        # decode de librería) que no aporta nada al cliente y no debería viajar fuera del server.
+        # El detalle real queda en el log, no en la respuesta (hallazgo E2E de SOP7, 2026-08-10).
+        _log.warning("token inválido rechazado (%s): %s", type(exc).__name__, exc)
+        raise HTTPException(status_code=401, detail="invalid token") from exc
 
 
 def make_require_tenant(*, secret: str, conn_factory: Callable, issuer: str | None = None) -> Callable:
