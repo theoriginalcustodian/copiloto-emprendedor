@@ -18,6 +18,7 @@ import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
+import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
 import { SoporteScreen } from '../modules/soporte';
 import { FUNCION_A_TAB } from './funcionTabMap';
@@ -85,6 +86,10 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
   const [facturaIdDesdePresupuesto, setFacturaIdDesdePresupuesto] = useState<string | undefined>(
     undefined,
   );
+  // SOP5 — cuál de las DOS conversaciones de soporte está activa. `TabKey` sigue siendo un solo
+  // valor ('soporte'); esto es estado adicional que el shell recuerda, no un TabKey nuevo (evita
+  // ensanchar el union y todo lo que lo consume exhaustivamente, ver `navIcons.tsx`).
+  const [funcionSoporte, setFuncionSoporte] = useState<FuncionSoporte>('soporte_tecnico');
 
   // `key === 'apps'` (2026-08-06): sin caller real desde la depuración de la barra -- `apps`
   // salió de `TABS` y ningún otro lugar del shell navega a esta key (a diferencia de
@@ -101,6 +106,14 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     setTabHidden(false);
     setActiveTab(key);
   }, [setTabHidden]);
+
+  const abrirSoporte = useCallback(
+    (funcion: FuncionSoporte) => {
+      setFuncionSoporte(funcion);
+      changeTab('soporte');
+    },
+    [changeTab],
+  );
 
   const closeAppsSheet = useCallback(() => setAppsSheetOpen(false), []);
 
@@ -180,8 +193,10 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que
             `activeTab` quedó en 'admin' y el claim ya no está. */}
         {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && <AccountScreen onNavegarTab={changeTab} />}
-        {activeTab === 'soporte' && <SoporteScreen />}
+        {activeTab === 'account' && (
+          <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
+        )}
+        {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} esAdmin={esAdmin} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">

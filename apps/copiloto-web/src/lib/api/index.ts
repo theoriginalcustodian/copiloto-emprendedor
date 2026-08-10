@@ -35,4 +35,4 @@ export * from './types';
 /** `/soporte/chat` (SOP5) — fuera de `CopilotApi`/`realApi`/`mockApi` a propósito, mismo criterio
  * que separa `sendChat` del dominio de negocio: es otra ruta, otro dominio. Ver `soporteChat.ts`. */
 export { sendSoporteChat } from './soporteChat';
-export type { SoporteChatRequest, SoporteChatResponse } from './soporteChat';
+export type { FuncionSoporte, SoporteChatRequest, SoporteChatResponse } from './soporteChat';

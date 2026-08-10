@@ -13,7 +13,9 @@ vi.mock('../../lib/api', async (importOriginal) => {
 import { api, sendSoporteChat } from '../../lib/api';
 import { useChatSoporte } from './useChatSoporte';
 
-describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', () => {
+const FUNCION = 'soporte_tecnico' as const;
+
+describe('useChatSoporte (SOP5, web) — shape corregido 2026-08-10 (funcion + session_id del servidor)', () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.mocked(api.getReply).mockReset();
@@ -28,7 +30,7 @@ describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', (
     // así que ni el nombre de la clave puede coincidir.
     window.localStorage.setItem('copiloto-chat-session-id', 'sesion-de-negocio');
 
-    const { unmount } = renderHook(() => useChatSoporte('cli-1'));
+    const { unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
     await waitFor(() => expect(api.getReply).toHaveBeenCalled());
 
     const clavesSoporte = Object.keys(window.localStorage).filter((k) => k.startsWith('copiloto-soporte-session-id'));
@@ -39,11 +41,33 @@ describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', (
     unmount();
   });
 
-  it('send llama a sendSoporteChat (POST /soporte/chat) — NUNCA a api.sendChat', async () => {
+  it('la clave de storage está scoped por función — soporte_tecnico y como_uso_la_app son DOS hilos', async () => {
+    // Control diferencial: si el hook no scopeara por `funcion`, "soporte técnico" y "cómo uso la
+    // app" del mismo usuario compartirían storage y se pisarían entre sí.
     vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
-    vi.mocked(sendSoporteChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
 
-    const { result, unmount } = renderHook(() => useChatSoporte('cli-1'));
+    const { unmount: unmountTecnico } = renderHook(() => useChatSoporte('cli-1', 'soporte_tecnico'));
+    await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+    unmountTecnico();
+
+    const { unmount: unmountComoUso } = renderHook(() => useChatSoporte('cli-1', 'como_uso_la_app'));
+    await waitFor(() => expect(api.getReply).toHaveBeenCalledTimes(2));
+    unmountComoUso();
+
+    const claveTecnico = window.localStorage.getItem('copiloto-soporte-session-id:cli-1:soporte_tecnico');
+    const claveComoUso = window.localStorage.getItem('copiloto-soporte-session-id:cli-1:como_uso_la_app');
+    expect(claveTecnico).not.toBeNull();
+    expect(claveComoUso).not.toBeNull();
+    expect(claveTecnico).not.toBe(claveComoUso);
+  });
+
+  it('send manda funcion en el body — el 422 real del backend es justamente por su ausencia', async () => {
+    vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    vi.mocked(sendSoporteChat).mockResolvedValue({
+      wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc',
+    });
+
+    const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
     await waitFor(() => expect(api.getReply).toHaveBeenCalled());
 
     await act(async () => {
@@ -52,8 +76,32 @@ describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', (
 
     expect(sendSoporteChat).toHaveBeenCalledTimes(1);
     expect(sendSoporteChat).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'no puedo emitir la factura', kind: 'text' }),
+      expect.objectContaining({ text: 'no puedo emitir la factura', funcion: 'soporte_tecnico', kind: 'text' }),
     );
+    unmount();
+  });
+
+  it('tras el 1er envío, el polling usa el session_id que devolvió el SERVIDOR, no el local', async () => {
+    // Control diferencial del bug real: si `send` no migrara el session_id, este assert falla
+    // porque `getReply` se sigue llamando con el `sop:<uuid>` local -- el chat quedaría mudo para
+    // siempre sin ningún error que lo delate.
+    vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    vi.mocked(sendSoporteChat).mockResolvedValue({
+      wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:DEL-SERVIDOR',
+    });
+
+    const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
+    await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+
+    await act(async () => {
+      await result.current.send('hola');
+    });
+
+    await waitFor(() =>
+      expect(api.getReply).toHaveBeenCalledWith('soporte:soporte_tecnico:sop:DEL-SERVIDOR', expect.any(Number)),
+    );
+    const claveSesion = window.localStorage.getItem('copiloto-soporte-session-id:cli-1:soporte_tecnico');
+    expect(claveSesion).toBe('soporte:soporte_tecnico:sop:DEL-SERVIDOR');
     unmount();
   });
 
@@ -61,7 +109,7 @@ describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', (
     vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     vi.mocked(sendSoporteChat).mockReturnValue(new Promise(() => {})); // nunca resuelve
 
-    const { result, unmount } = renderHook(() => useChatSoporte('cli-1'));
+    const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
     await waitFor(() => expect(api.getReply).toHaveBeenCalled());
 
     await act(async () => {
@@ -79,9 +127,11 @@ describe('useChatSoporte (SOP5, web) — hermano de useChat, otro transporte', (
         replies: [{ id: 1, text: 'Te abro un ticket', choices: undefined, card: undefined }],
         next_id: 1,
       });
-    vi.mocked(sendSoporteChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
+    vi.mocked(sendSoporteChat).mockResolvedValue({
+      wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc',
+    });
 
-    const { result, unmount } = renderHook(() => useChatSoporte('cli-1'));
+    const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
     await waitFor(() => expect(api.getReply).toHaveBeenCalledTimes(1));
 
     await act(async () => {
