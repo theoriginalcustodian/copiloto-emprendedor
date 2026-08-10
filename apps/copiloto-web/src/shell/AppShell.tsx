@@ -19,6 +19,7 @@ import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import { AccountScreen } from '../modules/account';
+import { SoporteScreen } from '../modules/soporte';
 import { FUNCION_A_TAB } from './funcionTabMap';
 import { TabBar, type TabKey } from './TabBar';
 import { useBackGuard } from './useBackGuard';
@@ -179,7 +180,8 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
         {/* Ver el mismo comentario en `DesktopShell.tsx`: el `&& esAdmin` cubre el caso en que
             `activeTab` quedó en 'admin' y el claim ya no está. */}
         {activeTab === 'admin' && esAdmin && <AdminScreen />}
-        {activeTab === 'account' && <AccountScreen />}
+        {activeTab === 'account' && <AccountScreen onNavegarTab={changeTab} />}
+        {activeTab === 'soporte' && <SoporteScreen />}
       </div>
       <TabBar active={activeTab} onChange={changeTab} hidden={chromeHidden} esAdmin={esAdmin} />
       <BottomSheet open={appsSheetOpen} onClose={closeAppsSheet} ariaLabel="Tus apps">

@@ -279,4 +279,8 @@ export const NAV_ICONS: Record<TabKey, () => ReactNode> = {
   facturacion: FacturacionIcon,
   admin: AdminIcon,
   account: AccountIcon,
+  // SOP5: sin glifo propio (mismo criterio que mobile reusando 'conversacion') — no inventar un
+  // asset visual nuevo sin el diseño. `soporte` no está en `TABS`, así que esto no se renderiza en
+  // ninguna barra hoy; existe sólo para satisfacer `Record<TabKey, ...>` exhaustivo.
+  soporte: ChatIcon,
 };

@@ -348,3 +348,9 @@ export type {
 
 /** `/feedback` — BETA-1a, feedback in-app (voz + texto). Ver el docstring de `feedback.ts`. */
 export { enviarFeedback, enviarFeedbackAudio } from './feedback';
+
+/** `/soporte/chat` — SOP5, ruta dedicada del agente de soporte. Ver el docstring de `soporte.ts`
+ * sobre por qué NO se une a `CopilotApi`/`apiReal`: es una acción de otro dominio, no del chat de
+ * negocio, mismo criterio que separó `enviarFeedback` de esa interfaz. */
+export { sendSoporteChat } from './soporte';
+export type { SoporteChatRequest, SoporteChatResponse } from './soporte';
