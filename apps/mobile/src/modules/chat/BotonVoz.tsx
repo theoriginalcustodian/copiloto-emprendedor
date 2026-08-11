@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { sombraNivel } from '../../theme/glass/relieve';
@@ -94,52 +94,73 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
     return () => loop.stop();
   }, [disabled, movimientoReducido, pulso]);
 
-  function comenzar() {
+  // 🔴 **`useCallback`, no funciones planas.** El gesto de abajo las captura por closure dentro de un
+  // `useMemo` — si estas tres se recrearan en cada render (como antes), el `useMemo` tendría que
+  // invalidarse en cada render también, y quedaríamos en el mismo problema que el `useMemo` existe
+  // para evitar (ver su comentario).
+  const comenzar = useCallback(() => {
     fijadoRef.current = false;
     onIniciar();
-  }
+  }, [onIniciar]);
 
-  function fijar() {
+  const fijar = useCallback(() => {
     if (fijadoRef.current) return; // idempotente: no reavisa dos veces por el mismo cruce de umbral
     fijadoRef.current = true;
     onFijar();
-  }
+  }, [onFijar]);
 
-  function soltar() {
+  const soltar = useCallback(() => {
     if (fijadoRef.current) return; // fijado: soltar el dedo YA NO detiene (contrato §1, fila 4)
     onSoltarSinFijar();
-  }
+  }, [onSoltarSinFijar]);
 
-  // 🔴 `simultaneousWithExternalGesture` vive en `BaseGesture` (cada gesto individual), NO en el
-  // resultado de `Gesture.Simultaneous(...)` (`ComposedGesture` no lo expone) — hay que declarar la
-  // relación con el scroll en CADA sub-gesto antes de componerlos. Es la composición que arregla el
-  // bug de device (contrato §2): sin esto, el gesto del botón y el scroll de `ListaMensajes` compiten
-  // por el mismo toque en vez de convivir.
-  const gestoMantener = Gesture.LongPress()
-    .enabled(!disabled)
-    .minDuration(0)
-    // Sin tope de distancia: quien decide si el arrastre "fija" es el `Pan` de abajo, no éste — si
-    // `LongPress` cancelara por moverse, el deslizar-para-fijar nunca llegaría a activarlo.
-    .maxDistance(100000)
-    .simultaneousWithExternalGesture(scrollRef)
-    .onStart(() => {
-      runOnJS(comenzar)();
-    })
-    .onEnd(() => {
-      runOnJS(soltar)();
-    });
+  /**
+   * 🔴 **BUG real de device (backend, ODOBI8 §C, 2026-08-11): el micrófono quedaba grabando para
+   * siempre.** Causa raíz confirmada con logcat instrumentado, NO hipótesis: `onEnd` SÍ disparaba
+   * `soltar()` (cruce UI→JS normal, ~50ms), pero la función que terminaba ejecutándose leía
+   * `voz.fase` desactualizado ('inactivo' en vez de 'grabando') — un closure obsoleto.
+   *
+   * Causa: el gesto compuesto se reconstruía en CADA render de este componente (no estaba en
+   * `useMemo`), violando la regla de `swmansion-rn-gestures` para RNGH v2: *"without useMemo, gesture
+   * objects recreate on every render, causing recognizers to re-attach and lose state"*. Mientras se
+   * graba, `PantallaSoporte`/`ChatView` re-renderizan ~10 veces por segundo (`voz.niveles` alimenta la
+   * onda), así que el recognizer se re-ataba constantemente durante el propio `LongPress` activo.
+   *
+   * `enabled(!disabled)` NO es la causa (troubleshooting oficial de RNGH: cambiar `enabled` a mitad de
+   * un gesto en curso no lo cancela, "by design") — pero SÍ dispara una reconstrucción más del objeto
+   * gesto si éste no está memoizado, sumándose al resto.
+   *
+   * `simultaneousWithExternalGesture` vive en `BaseGesture` (cada gesto individual), NO en el
+   * resultado de `Gesture.Simultaneous(...)` (`ComposedGesture` no lo expone) — hay que declarar la
+   * relación con el scroll en CADA sub-gesto antes de componerlos.
+   */
+  const gesto = useMemo(() => {
+    const gestoMantener = Gesture.LongPress()
+      .enabled(!disabled)
+      .minDuration(0)
+      // Sin tope de distancia: quien decide si el arrastre "fija" es el `Pan` de abajo, no éste — si
+      // `LongPress` cancelara por moverse, el deslizar-para-fijar nunca llegaría a activarlo.
+      .maxDistance(100000)
+      .simultaneousWithExternalGesture(scrollRef)
+      .onStart(() => {
+        scheduleOnRN(comenzar);
+      })
+      .onEnd(() => {
+        scheduleOnRN(soltar);
+      });
 
-  const gestoDeslizar = Gesture.Pan()
-    .enabled(!disabled)
-    .simultaneousWithExternalGesture(scrollRef)
-    .onUpdate((e) => {
-      // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
-      if (-e.translationY > UMBRAL_FIJAR_PX) {
-        runOnJS(fijar)();
-      }
-    });
+    const gestoDeslizar = Gesture.Pan()
+      .enabled(!disabled)
+      .simultaneousWithExternalGesture(scrollRef)
+      .onUpdate((e) => {
+        // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
+        if (-e.translationY > UMBRAL_FIJAR_PX) {
+          scheduleOnRN(fijar);
+        }
+      });
 
-  const gesto = Gesture.Simultaneous(gestoMantener, gestoDeslizar);
+    return Gesture.Simultaneous(gestoMantener, gestoDeslizar);
+  }, [disabled, scrollRef, comenzar, fijar, soltar]);
 
   const etiqueta = disabled
     ? 'Grabando — ya hay una captura en curso'

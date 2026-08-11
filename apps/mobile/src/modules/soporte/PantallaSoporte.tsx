@@ -69,6 +69,15 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const scrollRef = useRef<ScrollView>(null);
   const [fijado, setFijado] = useState(false);
 
+  // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
+  // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
+  // `useMemo` del gesto compuesto de `BotonVoz` (causa raíz real de ODOBI8-C: sin esa estabilidad,
+  // el recognizer se re-ataca en pleno LongPress y pierde el estado -- ver hallazgo2 en
+  // `coordinacion/`). Mismo patrón que `estadoRef` en `useChatSoporte`: un ref espejo, actualizado
+  // síncronamente en cada render, para leer el valor vigente sin declarar `voz` como dependencia.
+  const vozRef = useRef(voz);
+  vozRef.current = voz;
+
   // Misma puerta que ChatView: al volver `voz.fase` a `inactivo`, la próxima grabación arranca sin
   // fijar.
   useEffect(() => {
@@ -87,7 +96,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
 
   const alIniciarVoz = useCallback(() => {
     void (async () => {
-      const ok = await voz.iniciar();
+      const ok = await vozRef.current.iniciar();
       if (!ok) {
         Alert.alert(
           'Sin acceso al micrófono',
@@ -95,18 +104,24 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
         );
       }
     })();
-  }, [voz]);
+  }, []);
 
   // Mismo criterio que `alEnviarVoz` de ChatView: un solo lugar decide qué es "mandar el audio",
-  // sea por soltar sin fijar o por el botón Enviar de los controles flotantes.
+  // sea por soltar sin fijar o por el botón Enviar de los controles flotantes. Lee todo vía
+  // `vozRef` (no `voz` directo) para que esta función quede referencialmente ESTABLE -- ver el
+  // comentario de `vozRef` arriba.
   const alEnviarVoz = useCallback(async () => {
-    if (voz.fase === 'grabando' || voz.fase === 'pausado') {
-      await voz.detener();
+    const actual = vozRef.current;
+    if (actual.fase === 'grabando' || actual.fase === 'pausado') {
+      await actual.detener();
     }
-    const audio = voz.tomar();
+    const audio = actual.tomar();
     if (audio === null) return; // no llegó a grabar nada
     void enviarAudio(audio);
-  }, [voz, enviarAudio]);
+  }, [enviarAudio]);
+
+  const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
+  const onFijarVoz = useCallback(() => setFijado(true), []);
 
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
@@ -128,8 +143,8 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
             )}
             <BotonVoz
               onIniciar={alIniciarVoz}
-              onSoltarSinFijar={() => void alEnviarVoz()}
-              onFijar={() => setFijado(true)}
+              onSoltarSinFijar={onSoltarSinFijarVoz}
+              onFijar={onFijarVoz}
               disabled={voz.fase !== 'inactivo'}
               scrollRef={scrollRef}
             />
