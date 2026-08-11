@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+// `deleteAsync` de la misma familia `/legacy` que `modules/chat/useChat.ts` -- consistencia de
+// versión del SDK, no una preferencia (ver el porqué de `/legacy` en ese archivo).
+import { deleteAsync } from 'expo-file-system/legacy';
 
 import {
   apiReal as api,
   hidratarEstado,
   motivoDeError,
   reducirChat,
+  sendSoporteAudio,
   sendSoporteChat,
+  type ArchivoSubida,
   type ChatMessage,
   type ChatMessageKind,
   type EstadoChat,
@@ -25,8 +30,12 @@ import { generarId } from '../../util/id';
  * `/chat`. `GET /reply` es el MISMO endpoint que ya usa el chat de negocio (contrato SOP5: sin
  * cambios), así que se reusa `getReply` tal cual.
  *
- * Deliberadamente SIN `enviarAudio`/`enviarFoto`: el contrato SOP5 declara la voz fuera de alcance
- * de v1 ("si al probarlo resulta que se necesita, es un hito aparte, no un agregado silencioso").
+ * `enviarAudio` (ODOBI8 §C2) — mismo patrón que `enviarAudio` de `modules/chat/useChat.ts`
+ * (negocio): sube a `sendSoporteAudio` (`/soporte/chat/audio`, namespaced por `funcion`, NO
+ * `/chat/audio`), borra el archivo local SIEMPRE (CERO retención, D6) y adopta el `session_id`
+ * efectivo que devuelve el servidor antes de pollear -- mismo cuidado que `send()` más abajo. La
+ * voz estaba deliberadamente fuera de alcance en SOP5 v1 ("si al probarlo resulta que se necesita,
+ * es un hito aparte") -- este es ese hito. Sigue SIN `enviarFoto`: nadie pidió foto en soporte.
  *
  * 🔴 **`funcion` es FIJA por instancia del hook, no por `send()`** — corregido 2026-08-10 junto con
  * el shape (`respuesta_planificacion-a-backend_SOP5-va-la-B`). Una conversación entera pertenece a
@@ -99,6 +108,17 @@ function persistirMensajes(
   void almacenClave.guardar(claveMensajes(clienteId, funcion, sessionId), JSON.stringify(messages));
 }
 
+/** Best-effort: borra el audio del filesystem tras usarlo. Nunca lanza -- mismo criterio (y mismo
+ * porqué) que `borrarArchivoLocal` de `modules/chat/useChat.ts`. */
+async function borrarArchivoLocal(archivo: ArchivoSubida): Promise<void> {
+  if (typeof archivo.datos !== 'string') return;
+  try {
+    await deleteAsync(archivo.datos, { idempotent: true });
+  } catch {
+    // Best-effort -- ver el docstring del módulo sobre CERO retención.
+  }
+}
+
 export interface SendOptionsSoporte {
   kind?: ChatMessageKind;
 }
@@ -107,6 +127,8 @@ export interface UseChatSoporteResult {
   /** `null` mientras la sesión/historial todavía no terminaron de hidratarse desde `AlmacenClave`. */
   estado: EstadoChat | null;
   send: (text: string, opts?: SendOptionsSoporte) => Promise<void>;
+  /** Sube un dictado corto (`useVozComando`) al soporte -- ver el docstring de `enviarAudio` abajo. */
+  enviarAudio: (audio: ArchivoSubida) => Promise<void>;
 }
 
 /** `clienteId` — `MeResponse.cliente_id` del tenant autenticado, mismo criterio de scoping que
@@ -255,5 +277,60 @@ export function useChatSoporte(clienteId: string, funcion: FuncionSoporte): UseC
     [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId, funcion],
   );
 
-  return { estado, send };
+  /**
+   * VOZ (ODOBI8 §C2). A diferencia de `send`, no hay mensaje optimista: hasta que el servidor no
+   * devuelve el transcript, no sabemos qué dijo el usuario -- mismo criterio que `enviarAudio` de
+   * `modules/chat/useChat.ts`. `funcion` namespacea igual que `send` (ver docstring del módulo).
+   */
+  const enviarAudio = useCallback(
+    async (audio: ArchivoSubida) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+
+      detenerPolling();
+      actualizarEstado(reducirChat(actual, { tipo: 'envio_iniciado' }));
+
+      let transcript: string;
+      let sessionIdEfectivo = actual.sessionId;
+      try {
+        try {
+          const respuesta = await sendSoporteAudio(actual.sessionId, audio, funcion);
+          transcript = respuesta.transcript.trim();
+          sessionIdEfectivo = respuesta.session_id;
+        } finally {
+          await borrarArchivoLocal(audio);
+        }
+      } catch (e) {
+        const conError = estadoRef.current ?? actual;
+        actualizarEstado(reducirChat(conError, { tipo: 'envio_fallo', motivo: motivoDeError(e) }));
+        return;
+      }
+
+      if (transcript === '') {
+        // El servidor respondió OK y el STT no entendió nada -- el envío FUNCIONÓ, mismo criterio
+        // que el chat de negocio: no se agrega un mensaje vacío ni se espera una respuesta que no viene.
+        const vacio = estadoRef.current ?? actual;
+        actualizarEstado(reducirChat(vacio, { tipo: 'envio_fallo', motivo: 'audio_no_entendido' }));
+        return;
+      }
+
+      let base = estadoRef.current ?? actual;
+      if (sessionIdEfectivo !== base.sessionId) {
+        // El servidor namespaceó (`channel_ref`) -- adoptarlo ANTES de pollear, mismo cuidado que `send`.
+        base = { ...base, sessionId: sessionIdEfectivo };
+        await almacenClave.guardar(claveSession(clienteId, funcion), sessionIdEfectivo);
+      }
+
+      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: transcript };
+      let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
+      siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });
+      persistirMensajes(clienteId, funcion, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+
+      iniciarEsperaDeRespuesta();
+    },
+    [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId, funcion],
+  );
+
+  return { estado, send, enviarAudio };
 }

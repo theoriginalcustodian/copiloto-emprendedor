@@ -36,3 +36,8 @@ export * from './types';
  * que separa `sendChat` del dominio de negocio: es otra ruta, otro dominio. Ver `soporteChat.ts`. */
 export { sendSoporteChat } from './soporteChat';
 export type { FuncionSoporte, SoporteChatRequest, SoporteChatResponse } from './soporteChat';
+
+/** `/soporte/chat/audio` (ODOBI8 §C1) — mismo criterio que separa `sendAudio` de `sendChat` del
+ * lado de negocio. Ver `soporteAudio.ts`. */
+export { sendSoporteAudio } from './soporteAudio';
+export type { SoporteAudioResponse } from './soporteAudio';

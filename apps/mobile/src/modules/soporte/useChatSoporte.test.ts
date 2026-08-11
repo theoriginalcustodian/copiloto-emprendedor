@@ -21,11 +21,20 @@ jest.mock('@copiloto/core', () => {
   return {
     ...actual,
     sendSoporteChat: jest.fn(),
+    sendSoporteAudio: jest.fn(),
     apiReal: { ...actual.apiReal, getReply: jest.fn() },
   };
 });
 
-import { apiReal as api, sendSoporteChat } from '@copiloto/core';
+/** `deleteAsync` -- el borrado de `enviarAudio` es best-effort, así que los tests lo espían para
+ *  verificar que se INTENTA, no para que el resultado del envío dependa de él. Mismo molde que
+ *  `modules/chat/useChat.test.ts`. */
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+import { apiReal as api, sendSoporteAudio, sendSoporteChat } from '@copiloto/core';
+import { deleteAsync } from 'expo-file-system/legacy';
 
 import { almacenClave } from '../../adapters/almacen';
 import { leerOCrearSessionIdSoporte, useChatSoporte } from './useChatSoporte';
@@ -144,6 +153,109 @@ describe('useChatSoporte (SOP5, mobile) — shape corregido 2026-08-10 (funcion 
 
     expect(result.current.estado?.sendStatus).toBe('error');
     expect(result.current.estado?.motivoFallo).toBe('red');
+    unmount();
+  });
+});
+
+const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
+
+describe('useChatSoporte -- enviarAudio (ODOBI8 §C2, voz en el chat de soporte)', () => {
+  beforeEach(() => {
+    jest.mocked(almacenClave.leer).mockReset().mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockReset().mockResolvedValue(undefined);
+    jest.mocked(sendSoporteAudio).mockReset();
+    jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
+    jest.mocked(deleteAsync).mockClear();
+  });
+
+  it('transcript OK: manda (sessionId, archivo, funcion) a sendSoporteAudio -- NO /chat/audio', async () => {
+    jest.mocked(sendSoporteAudio).mockResolvedValue({
+      wf_id: 'wf-a1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc', transcript: 'no me deja facturar',
+    });
+
+    const { result, unmount } = await renderHook(() => useChatSoporte('cli-test', FUNCION));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.messages).toEqual([
+      expect.objectContaining({ role: 'user', text: 'no me deja facturar' }),
+    ]);
+    expect(result.current.estado?.sendStatus).toBe('waiting');
+    expect(sendSoporteAudio).toHaveBeenCalledWith(expect.any(String), ARCHIVO_VOZ, 'soporte_tecnico');
+    unmount();
+  });
+
+  it('adopta el session_id que devuelve el SERVIDOR, mismo cuidado que send() -- si no, /reply pega mudo', async () => {
+    jest.mocked(sendSoporteAudio).mockResolvedValue({
+      wf_id: 'wf-a2', accepted: true, session_id: 'soporte:soporte_tecnico:sop:DEL-SERVIDOR', transcript: 'hola',
+    });
+
+    const { result, unmount } = await renderHook(() => useChatSoporte('cli-test', FUNCION));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+    const sessionIdLocal = result.current.estado!.sessionId;
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.sessionId).toBe('soporte:soporte_tecnico:sop:DEL-SERVIDOR');
+    expect(result.current.estado?.sessionId).not.toBe(sessionIdLocal);
+    await waitFor(() =>
+      expect(api.getReply).toHaveBeenCalledWith('soporte:soporte_tecnico:sop:DEL-SERVIDOR', expect.any(Number)),
+    );
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local tras un envío exitoso', async () => {
+    jest.mocked(sendSoporteAudio).mockResolvedValue({
+      wf_id: 'wf-a3', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc', transcript: 'listo',
+    });
+
+    const { result, unmount } = await renderHook(() => useChatSoporte('cli-test', FUNCION));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
+    unmount();
+  });
+
+  it('CERO retención: borra el archivo local incluso si el upload falla', async () => {
+    jest.mocked(sendSoporteAudio).mockRejectedValue(new Error('network down'));
+
+    const { result, unmount } = await renderHook(() => useChatSoporte('cli-test', FUNCION));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
+    expect(result.current.estado?.sendStatus).toBe('error');
+    expect(result.current.estado?.motivoFallo).toBe('red');
+    unmount();
+  });
+
+  it('transcript vacío (STT no entendió): el envío SALIÓ BIEN, motivo audio_no_entendido, sin mensaje fantasma', async () => {
+    jest.mocked(sendSoporteAudio).mockResolvedValue({
+      wf_id: 'wf-a4', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc', transcript: '   ',
+    });
+
+    const { result, unmount } = await renderHook(() => useChatSoporte('cli-test', FUNCION));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.enviarAudio(ARCHIVO_VOZ);
+    });
+
+    expect(result.current.estado?.sendStatus).toBe('error');
+    expect(result.current.estado?.motivoFallo).toBe('audio_no_entendido');
+    expect(result.current.estado?.messages).toEqual([]);
     unmount();
   });
 });

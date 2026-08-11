@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   api,
+  sendSoporteAudio,
   sendSoporteChat,
   type ChatMessageKind,
   type FuncionSoporte,
@@ -19,8 +20,17 @@ import { generarId } from '../../util/id';
  *
  * Lo que SÍ se deja afuera a propósito, a diferencia del chat de negocio:
  *  - `mode` (`useMode()`) — es un concepto de negocio ("Modo Mail"), sin sentido en soporte.
- *  - `sendAudio`/`warmMemory` — voz fuera de alcance de SOP5 v1; `warmMemory` precalienta la
- *    memoria de Graphity del EMPRENDEDOR, que el agente de soporte no consulta.
+ *  - `warmMemory` — precalienta la memoria de Graphity del EMPRENDEDOR, que el agente de soporte
+ *    no consulta.
+ *
+ * `sendAudio` (ODOBI8 §C3) — mismo patrón que `sendAudio` de `modules/chat/useChat.ts` (negocio,
+ * blob de `MicButton`, sin mensaje optimista: recién sabemos qué dijo el usuario cuando el
+ * servidor devuelve el transcript), MÁS la migración de `session_id` que `send()` ya hace acá
+ * arriba (el servidor namespacea el `channel_ref` también en la respuesta de `/soporte/chat/audio`
+ * — sin adoptarlo antes de pollear, el chat queda mudo, mismo riesgo documentado arriba). Voz
+ * estaba deliberadamente fuera de alcance en SOP5 v1 ("si al probarlo resulta que se necesita, es
+ * un hito aparte") -- este es ese hito. Un transcript vacío (STT no entendió nada) es un envío
+ * EXITOSO sin mensaje, no un error -- mismo criterio que mobile (`packages/core`'s docstring).
  *
  * Claves de storage y `session_id` separados del chat de negocio Y scoped por `(clienteId, funcion)`
  * (a diferencia del `useChat` de negocio, que usa una clave global) — mismo criterio que mobile
@@ -139,6 +149,8 @@ export interface UseChatSoporteResult {
   messages: ChatMessageSoporte[];
   sendStatus: SendStatusSoporte;
   send: (text: string, opts?: SendOptionsSoporte) => Promise<void>;
+  /** Sube un dictado grabado por `MicButton` (ODOBI8 §C3) -- ver el docstring de la función. */
+  sendAudio: (blob: Blob) => Promise<void>;
 }
 
 /** `clienteId` — `MeResponse.cliente_id` del tenant autenticado. `''` mientras la sesión no
@@ -253,5 +265,39 @@ export function useChatSoporte(clienteId: string, funcion: FuncionSoporte): UseC
     [startWaitingForReply, stopPolling, clienteId, funcion],
   );
 
-  return { messages, sendStatus, send };
+  const sendAudio = useCallback(
+    async (blob: Blob) => {
+      stopPolling();
+      setSendStatus('sending');
+
+      let transcript: string;
+      try {
+        const res = await sendSoporteAudio(sessionIdRef.current, blob, funcion);
+        transcript = res.transcript.trim();
+        if (res.session_id !== sessionIdRef.current) {
+          // Mismo cuidado que `send()`: adoptar el channel_ref del servidor ANTES de pollear.
+          sessionIdRef.current = res.session_id;
+          persistSessionId(clienteId, funcion, res.session_id);
+        }
+      } catch {
+        setSendStatus('error');
+        return;
+      }
+
+      if (transcript === '') {
+        // El servidor respondió OK y el STT no entendió nada -- el envío FUNCIONÓ, mismo criterio
+        // que mobile: no se agrega un mensaje vacío ni se espera una respuesta que no viene.
+        setSendStatus('idle');
+        return;
+      }
+
+      const userMessage: ChatMessageSoporte = { id: `user-${generarId()}`, role: 'user', text: transcript };
+      setMessages((prev) => [...prev, userMessage]);
+
+      startWaitingForReply();
+    },
+    [startWaitingForReply, stopPolling, clienteId, funcion],
+  );
+
+  return { messages, sendStatus, send, sendAudio };
 }

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
-import { sendSoporteChat } from './soporte';
+import { sendSoporteAudio, sendSoporteChat } from './soporte';
 import type { AlmacenTokens } from './tokens';
 
 /** Molde: `feedback.test.ts` — `HttpPort` FAKE, sin `fetch` real. */
@@ -83,5 +83,64 @@ describe('soporte.ts (SOP5, shape corregido 2026-08-10 — funcion pasó a ser o
       // @ts-expect-error -- el 400 es la red de seguridad server-side; el tipo ya lo impide en compile-time
       sendSoporteChat({ session_id: 'sop:x', text: 'y', funcion: 'otra_cosa', kind: 'text' }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('sendSoporteAudio (ODOBI8 §C1) — espejo de sendAudio (audio.ts), namespaced por funcion', () => {
+  let peticiones: PeticionHttp[];
+  let responder: (p: PeticionHttp) => RespuestaHttp;
+
+  const AUDIO_FAKE = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///tmp/voz.m4a' };
+
+  beforeEach(() => {
+    peticiones = [];
+    responder = () =>
+      respuesta(200, {
+        wf_id: 'wf-1',
+        accepted: true,
+        session_id: 'soporte:soporte_tecnico:sop:abc',
+        transcript: 'no me deja facturar',
+      });
+    const http: HttpPort = {
+      async enviar(p) {
+        peticiones.push(p);
+        return responder(p);
+      },
+    };
+    configurarApi({ http, tokens: crearTokensFake() });
+  });
+
+  it('manda POST /soporte/chat/audio — NO /chat/audio', async () => {
+    await sendSoporteAudio('sop:abc', AUDIO_FAKE, 'soporte_tecnico');
+    expect(peticiones).toHaveLength(1);
+    expect(peticiones[0]!.metodo).toBe('POST');
+    expect(peticiones[0]!.path).toBe('/soporte/chat/audio');
+  });
+
+  it('el multipart lleva {session_id, funcion} como campos y el archivo bajo "audio" — NO cliente_id/modo', async () => {
+    await sendSoporteAudio('sop:abc', AUDIO_FAKE, 'como_uso_la_app');
+    expect(peticiones[0]!.multipart).toEqual({
+      campos: { session_id: 'sop:abc', funcion: 'como_uso_la_app' },
+      campoArchivo: 'audio',
+      archivo: AUDIO_FAKE,
+    });
+  });
+
+  it('devuelve {wf_id, accepted, session_id, transcript} — session_id es el channel_ref del SERVIDOR', async () => {
+    const res = await sendSoporteAudio('sop:abc', AUDIO_FAKE, 'soporte_tecnico');
+    expect(res).toEqual({
+      wf_id: 'wf-1',
+      accepted: true,
+      session_id: 'soporte:soporte_tecnico:sop:abc',
+      transcript: 'no me deja facturar',
+    });
+    expect(res.session_id).not.toBe('sop:abc');
+  });
+
+  it('propaga un error del servidor (5xx) sin tragarlo', async () => {
+    responder = () => respuesta(500, { detail: 'error interno' });
+    await expect(sendSoporteAudio('sop:abc', AUDIO_FAKE, 'soporte_tecnico')).rejects.toMatchObject({
+      status: 500,
+    });
   });
 });
