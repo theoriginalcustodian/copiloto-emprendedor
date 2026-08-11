@@ -7,11 +7,12 @@ import { join } from 'node:path';
  * Los colores salen SIEMPRE de los tokens. Un `#00C896` suelto en un componente rompe las 3 pieles
  * en silencio: se ve bien en la piel por defecto y mal en las otras dos. Este test lo impide.
  *
- * Archivos autorizados a tener hex (los ÚNICOS): `tokens.ts` (colores de las 3 pieles) y
+ * Archivos autorizados a tener hex (los ÚNICOS): `tokens.ts` (colores de las 3 pieles),
  * `glass/ondaPalette.ts` (el degradé de la onda de audio) — la galería de ondas declara
  * explícitamente *«cada onda trae su propia paleta fija — sin skins»*, un color **INTRÍNSECO del
  * diseño**, no del tema. Es SÓLO-DATOS-DE-COLOR, sin lógica; quien lo consume (`Onda.tsx`) queda
- * cero-hex.
+ * cero-hex. Y `glass/ecualizadorPalette.ts` (ODOBI8 §B): mismo criterio — el degradé
+ * dorado→terracota del ecualizador estático del botón de voz es fijo del mock, no del tema.
  *
  * `glass/iconPalette.ts` (las 8 paletas de los iconos glass, con el mismo criterio) se RETIRÓ en
  * ODOBI hito 5: el set de íconos nuevo (`icons.ts`) no tiene paleta propia por ícono, usa el acento
@@ -23,7 +24,11 @@ import { join } from 'node:path';
  * el skin, y (b) el archivo es datos puros. Un componente con lógica NO entra acá: mueve sus colores
  * a un archivo de datos.
  */
-const ARCHIVOS_DE_COLOR = [join('theme', 'tokens.ts'), join('theme', 'glass', 'ondaPalette.ts')];
+const ARCHIVOS_DE_COLOR = [
+  join('theme', 'tokens.ts'),
+  join('theme', 'glass', 'ondaPalette.ts'),
+  join('theme', 'glass', 'ecualizadorPalette.ts'),
+];
 /**
  * `.test.ts` / `.test.tsx` (runner nativo) y `.test.web.ts` (runner web, proyecto Jest "web") son las
  * DOS convenciones de test del repo. Reconocer sólo la primera hacía que un test web contara como
