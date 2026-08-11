@@ -352,8 +352,8 @@ export { enviarFeedback, enviarFeedbackAudio } from './feedback';
 /** `/soporte/chat` — SOP5, ruta dedicada del agente de soporte. Ver el docstring de `soporte.ts`
  * sobre por qué NO se une a `CopilotApi`/`apiReal`: es una acción de otro dominio, no del chat de
  * negocio, mismo criterio que separó `enviarFeedback` de esa interfaz. */
-export { sendSoporteChat } from './soporte';
-export type { FuncionSoporte, SoporteChatRequest, SoporteChatResponse } from './soporte';
+export { sendSoporteAudio, sendSoporteChat } from './soporte';
+export type { FuncionSoporte, SoporteAudioResponse, SoporteChatRequest, SoporteChatResponse } from './soporte';
 
 /** `GET /soporte/tickets/{id}` — S6-11, el hilo de un ticket propio del lado del usuario. Ver el
  * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */

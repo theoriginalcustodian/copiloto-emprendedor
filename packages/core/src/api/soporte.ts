@@ -1,4 +1,5 @@
-import { apiClient } from './client';
+import { apiClient, postMultipart } from './client';
+import type { ArchivoSubida } from './http';
 import type { ChatMessageKind } from './types';
 
 /**
@@ -51,4 +52,37 @@ export interface SoporteChatResponse {
  */
 export function sendSoporteChat(payload: SoporteChatRequest): Promise<SoporteChatResponse> {
   return apiClient.post<SoporteChatResponse>('/soporte/chat', payload);
+}
+
+/**
+ * `session_id` en la respuesta: MISMO criterio que `SoporteChatResponse` — es el `channel_ref` que
+ * arma el servidor, no el que mandó el cliente; hay que adoptarlo antes del próximo `GET /reply`
+ * (ver su docstring). `transcript` puede venir `''` si Groq no entendió nada — el caller decide qué
+ * hacer con eso (mismo criterio que `SendAudioResponse` de `audio.ts`, no un caso nuevo).
+ */
+export interface SoporteAudioResponse {
+  wf_id: string | null;
+  accepted: boolean;
+  session_id: string;
+  transcript: string;
+}
+
+/**
+ * POST /soporte/chat/audio (multipart/form-data) — Bearer requerido. Espejo de `sendAudio`
+ * (`audio.ts`) fusionado con el namespacing de `sendSoporteChat`: mismo `postMultipart`, mismo
+ * mapeo de errores 401/403 (vive una sola vez en `client.ts`), pero `funcion` en vez de
+ * `cliente_id`/`modo` — ODOBI8 §C1 (`apps/copiloto/web.py::soporte_chat_audio`). `audio` es OPACO
+ * al core (`ArchivoSubida`, ver `http.ts`).
+ */
+export function sendSoporteAudio(
+  sessionId: string,
+  audio: ArchivoSubida,
+  funcion: FuncionSoporte,
+): Promise<SoporteAudioResponse> {
+  return postMultipart<SoporteAudioResponse>(
+    '/soporte/chat/audio',
+    { session_id: sessionId, funcion },
+    'audio',
+    audio,
+  );
 }
