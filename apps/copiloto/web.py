@@ -709,6 +709,43 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": channel_ref, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref}
 
+    @app.post("/soporte/chat/audio")
+    async def soporte_chat_audio(session_id: str = Form(...), funcion: str = Form(...),
+                                 audio: UploadFile = File(...),
+                                 cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de voz del chat de soporte (ODOBI8 §C1) -- fusiona `/chat/audio` (STT: cap de
+        tamaño, transcripción, manejo de errores) con `/soporte/chat` (validación de `funcion` +
+        namespacing idempotente de `channel_ref`); ver los docstrings de ambos para el WHY de cada
+        mitad, no se repite acá. `Form` (no `ChatSoporteIn` por JSON) porque el audio viaja
+        multipart, igual que `/chat/audio` ya resuelve `session_id` por `Form`."""
+        if funcion not in SOPORTE_FUNCIONES_VALIDAS:
+            raise HTTPException(status_code=400,
+                                detail=f"función inválida: {funcion!r} (válidas: {SOPORTE_FUNCIONES_VALIDAS})")
+        if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        audio_bytes = await audio.read()
+        if len(audio_bytes) > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
+        content_type = audio.content_type or "audio/ogg"
+        try:
+            transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail="voz no configurada") from e
+        except _STT_API_ERRORS as e:
+            raise HTTPException(status_code=502, detail="error del servicio de transcripción") from e
+        transcript = (transcript or "").strip()
+        if not transcript:
+            raise HTTPException(status_code=422, detail="no se entendió el audio")
+        prefijo = f"soporte:{funcion}:"
+        channel_ref = session_id if session_id.startswith(prefijo) else f"{prefijo}{session_id}"
+        wf_id = await route_inbound(
+            temporal_client, adapter=adapter, cliente_id=cliente_id, domain=funcion,
+            task_queue=SOPORTE_TASK_QUEUE,
+            extra_config={"engine_mode": "react"},
+            raw_update={"session_id": channel_ref, "text": transcript, "kind": "text"})
+        return {"wf_id": wf_id, "accepted": wf_id is not None, "session_id": channel_ref,
+                "transcript": transcript}
+
     @app.get("/soporte/tickets/{ticket_id}")
     def soporte_ticket_propio(ticket_id: int, cliente_id: str = Depends(require_tenant)) -> dict:
         """S6-11 (pedido de frontend, `pedido_frontend-a-todos_S6-11-...`): el usuario final necesita
