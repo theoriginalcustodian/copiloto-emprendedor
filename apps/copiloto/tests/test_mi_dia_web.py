@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import Header, HTTPException
 from fastapi.testclient import TestClient
 
+from clients.agent.providers.composio_gateway import ConnectionRequired
 from mi_dia_tarjeta_store import ESTADOS, HACIENDO, PARA_HOY
 from mi_dia_web import create_mi_dia_app
 
@@ -54,6 +55,21 @@ def _fabrica_de_tarjetas() -> callable:
     (alcanza para estos tests, que sólo usan `cid-A`)."""
     tarjetas, seq = {}, [0]
     return lambda cliente_id: _TarjetaStoreFake(tarjetas, seq, cliente_id)
+
+
+class _ComposioGatewayFake:
+    """Mismo estilo que `_GatewaySpy` de `test_dispatcher.py`: registra cada llamada a `execute` y
+    devuelve/lanza lo que el test le configure — no pega a Composio real."""
+
+    def __init__(self, resultado=None, excepcion=None):
+        self.calls: list[dict] = []
+        self._resultado, self._excepcion = resultado, excepcion
+
+    def execute(self, slug, *, user_id, arguments, confirmed):
+        self.calls.append({"slug": slug, "user_id": user_id, "arguments": arguments, "confirmed": confirmed})
+        if self._excepcion is not None:
+            raise self._excepcion
+        return self._resultado
 
 
 def _app(**kw):
@@ -141,3 +157,47 @@ def test_crear_mover_y_borrar_de_punta_a_punta():
 def test_sin_token_da_401_antes_de_tocar_ningun_store():
     r = _app(require_tenant=_tenant_401()).get("/mi-dia/tablero")
     assert r.status_code == 401
+
+
+# --- GET /mi-dia/calendario (CAL1) — sólo lectura, degradación con gracia si no está conectado ---
+
+def test_sin_composio_gateway_calendario_da_conectado_false_sin_pegarle_a_nada():
+    r = _app().get("/mi-dia/calendario")
+    assert r.status_code == 200
+    assert r.json() == {"conectado": False, "eventos": []}
+
+
+def test_calendario_no_conectado_da_conectado_false_no_500():
+    """ConnectionRequired (googlecalendar sin conectar para este user) -- degradación con gracia,
+    el mismo camino 100% real que confirmó `spikes/calendar-find-event/RESULT.md` contra Composio."""
+    gw = _ComposioGatewayFake(excepcion=ConnectionRequired("googlecalendar"))
+    r = _app(composio_gateway=gw).get("/mi-dia/calendario")
+    assert r.status_code == 200
+    assert r.json() == {"conectado": False, "eventos": []}
+
+
+def test_calendario_conectado_devuelve_eventos_parseados():
+    """[ASSUMED_PENDING_VERIFY] shape de ejemplo -- sólo `id`/`summary`/`start`, los únicos campos
+    que `test_e2e.py::_events()` ya ejercitó contra Composio real (ver docstring de `_eventos_de`)."""
+    resultado = {"data": {"items": [
+        {"id": "evt1", "summary": "Reunión con cliente", "start": {"dateTime": "2026-08-11T15:00:00-03:00"}},
+    ]}}
+    gw = _ComposioGatewayFake(resultado=resultado)
+    r = _app(composio_gateway=gw).get("/mi-dia/calendario")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["conectado"] is True
+    assert body["eventos"] == [{"id": "evt1", "titulo": "Reunión con cliente",
+                               "inicio": {"dateTime": "2026-08-11T15:00:00-03:00"}}]
+
+
+def test_calendario_le_pasa_el_cliente_id_como_user_id_a_composio():
+    """Barrera de tenant a nivel de wiring: el `user_id` que llega a Composio es SIEMPRE el
+    `cliente_id` resuelto por `require_tenant`, nunca otro -- mismo criterio que el resto del
+    catálogo de tools (ver `test_adversarial_multitenant.py` para el caso cross-tenant con DB real)."""
+    gw = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    r = _app(require_tenant=_tenant_fijo("cid-B"), composio_gateway=gw).get("/mi-dia/calendario")
+    assert r.status_code == 200
+    assert len(gw.calls) == 1
+    assert gw.calls[0]["user_id"] == "cid-B"
+    assert gw.calls[0]["confirmed"] is False

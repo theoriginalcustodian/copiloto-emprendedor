@@ -32,6 +32,7 @@ from auth import resolve_cliente_id  # noqa: E402
 from clients.agent.providers.crypto import FernetCrypto  # noqa: E402
 from context_factory import make_context_factory  # noqa: E402
 from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
+from mi_dia_web import create_mi_dia_app  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
 from mp_web import create_mp_app  # noqa: E402
@@ -275,16 +276,25 @@ class _NoopMpGateway:
 
 class _SpyComposioGateway:
     """`connections`: cliente_id -> lista de conexiones ACTIVE (para probar que /me no filtra
-    composio_connected de un tenant hacia otro)."""
+    composio_connected de un tenant hacia otro). `eventos_por_user`: cliente_id -> resultado crudo
+    de FIND_EVENT (para CAL1: cada tenant tiene SUS propios eventos "reales" en Composio, y el test
+    adversarial verifica que A nunca reciba los de B)."""
 
-    def __init__(self, connections: dict[str, list] | None = None) -> None:
+    def __init__(self, connections: dict[str, list] | None = None,
+                eventos_por_user: dict[str, dict] | None = None) -> None:
         self._connections = connections or {}
+        self._eventos_por_user = eventos_por_user or {}
+        self.execute_calls: list[dict] = []
 
     def list_connections(self, user_id: str) -> list:
         return self._connections.get(user_id, [])
 
     def authorize(self, user_id: str, toolkit: str) -> str:
         return f"https://composio.example/connect?user={user_id}&toolkit={toolkit}"
+
+    def execute(self, slug: str, *, user_id: str, arguments: dict, confirmed: bool) -> dict:
+        self.execute_calls.append({"slug": slug, "user_id": user_id, "arguments": arguments})
+        return self._eventos_por_user.get(user_id, {"data": {"items": []}})
 
 
 def _build_http_app(two_tenants, crypto, *, composio_connections=None):
@@ -304,6 +314,44 @@ def _build_http_app(two_tenants, crypto, *, composio_connections=None):
         mp_app=mp_app, gotrue=None, mp_gateway=_NoopMpGateway(),
         composio_gateway=_SpyComposioGateway(composio_connections))
     return app
+
+
+def _build_mi_dia_http_app(two_tenants, *, gw: _SpyComposioGateway):
+    """Mismo criterio que `_build_http_app`: UNA instancia de `mi_dia_app`, distinguida sólo por el
+    Bearer token, para que un `require_tenant` roto (closure/global en vez de `Depends`) se delate
+    con los dos tenants golpeando el mismo proceso -- acá aplicado a `/mi-dia/calendario` (CAL1)."""
+    a, b = two_tenants
+    token_to_cid = {a.token: a.cliente_id, b.token: b.cliente_id}
+    return create_mi_dia_app(require_tenant=_RequireTenantByToken(token_to_cid), composio_gateway=gw)
+
+
+def test_adversarial_http_calendario_a_cannot_read_b_events(two_tenants):
+    """CAL1: A y B tienen cada uno sus propios eventos "reales" en Composio (simulados por
+    `_SpyComposioGateway.eventos_por_user`, indexados por cliente_id). Con el token de A, el
+    endpoint NUNCA debe devolver ni pedirle a Composio los eventos de B -- si `/mi-dia/calendario`
+    derivara el `user_id` de otra fuente que no fuera `Depends(require_tenant)`, este test lo cazaría
+    (mismo patrón que `test_adversarial_http_reply_endpoint_a_cannot_read_b_session`)."""
+    a, b = two_tenants
+    eventos_por_user = {
+        a.cliente_id: {"data": {"items": [{"id": "evt-a", "summary": "Evento de A", "start": {}}]}},
+        b.cliente_id: {"data": {"items": [{"id": "evt-b", "summary": "Evento de B", "start": {}}]}},
+    }
+    gw = _SpyComposioGateway(eventos_por_user=eventos_por_user)
+    client = TestClient(_build_mi_dia_http_app(two_tenants, gw=gw))
+
+    r_a = client.get("/mi-dia/calendario", headers={"Authorization": f"Bearer {a.token}"})
+    assert r_a.status_code == 200
+    assert [e["id"] for e in r_a.json()["eventos"]] == ["evt-a"]
+
+    # control positivo (mismo proceso, token distinto): B ve SUS propios eventos, no los de A ni una
+    # respuesta vacía por accidente -- sin esto, un endpoint que siempre devolviera [] pasaría el
+    # assert de arriba por la razón equivocada.
+    r_b = client.get("/mi-dia/calendario", headers={"Authorization": f"Bearer {b.token}"})
+    assert r_b.status_code == 200
+    assert [e["id"] for e in r_b.json()["eventos"]] == ["evt-b"]
+
+    assert [c["user_id"] for c in gw.execute_calls] == [a.cliente_id, b.cliente_id]
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
 def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, crypto):
