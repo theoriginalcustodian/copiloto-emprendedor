@@ -129,6 +129,8 @@ def create_mi_dia_app(*, require_tenant: Callable,
                           "order_by": "startTime", "max_results": 50},
                 confirmed=False)
         except ConnectionRequired:
+            # sin conectar no es un error: degrada a "conectado: false", mismo trato que el
+            # resto del catálogo Composio (ver dispatcher_emprendedor.dispatch)
             return {"conectado": False, "eventos": []}
         return {"conectado": True, "eventos": _eventos_de(res)}
 
