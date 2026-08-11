@@ -34,6 +34,19 @@ app falla con un error de red genérico ("No pudimos conectarnos"), que se confu
 credenciales. **Checklist de un worktree que va a servir Metro a un device:** `node_modules` real (no
 linkeado) + copiar `.env` + `--clear` al reiniciar Metro.
 
+**Reincidencia (2026-08-11, ODOBI8, backend):** el checklist de arriba estaba documentado y de todos
+modos no se aplicó al arrancar Metro en un worktree nuevo (`odobi8-c1-soporte-audio`) — costó una
+ronda completa de login fallido en device, diagnosticado erróneamente al principio como error de
+tapeo/contraseña. Documentar el checklist no alcanzó porque depende de que el agente lo recuerde
+proactivamente; la segunda vez que muerde el mismo gotcha es la señal de que hace falta un guardarraíl
+mecánico, no más prosa. **Fix estructural:** `scripts/mobile/start-metro.sh` — wrapper que resuelve el
+checkout compartido a partir de `.claude/worktrees/<n>` en el path, copia `.env` automáticamente si
+falta (con `--clear` forzado esa vez), y si no puede resolverlo aborta con el motivo exacto en vez de
+dejar arrancar con la config vacía en silencio. Corre ANTES de `expo start` a propósito: el loader de
+Expo (`env: load .env`) lee el archivo al arrancar el proceso, antes de que `metro.config.js` llegue a
+ejecutarse, así que un check dentro de `metro.config.js` llega tarde para la corrida en curso. **Usar
+este script en vez de `npx expo start` directo en cualquier worktree nuevo.**
+
 **Cuándo aparece:** cualquier device/Metro corriendo desde un git worktree en Windows (nuestro caso, por
 las 3 sesiones con checkouts/worktrees separados). Con un checkout normal (node_modules real) no pasa.
 Costó dos rondas de device: el 404 real venía enmascarado por los crash/ANR previos que no dejaban leer
