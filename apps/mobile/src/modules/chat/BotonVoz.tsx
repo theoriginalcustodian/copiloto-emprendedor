@@ -5,8 +5,20 @@ import { runOnJS } from 'react-native-reanimated';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { sombraNivel } from '../../theme/glass/relieve';
+import { ECUALIZADOR_BARRAS } from '../../theme/glass/ecualizadorPalette';
 import { useMovimientoReducido } from '../../theme/movimientoReducido';
 import { useTema } from '../../theme/ThemeProvider';
+
+/** `viewBox` nativo del isotipo (`docs/Imagen de marca/isotipo-odobi/isotipo-odobi-positivo.svg`) y
+ *  el tamaño al que se renderiza dentro del botón (DoD ODOBI línea 352: "el del botón de voz es el
+ *  de 34", no 22 como el resto de los íconos inline). */
+const ISOTIPO_VIEWBOX = 24;
+const ISOTIPO_TAMANO_BOTON = 34;
+/** `logoScale` (mecanismo de ODOBI7/DoD líneas 346-349): al escalar el glifo × k, el `stroke-width`
+ *  se divide por la misma k para que el trazo se vea igual de fino a cualquier tamaño — el `<G
+ *  transform="scale(k)">` ya multiplica todo lo de adentro por k, así que predividir lo cancela. */
+const ISOTIPO_ESCALA = ISOTIPO_TAMANO_BOTON / ISOTIPO_VIEWBOX;
+const ISOTIPO_STROKE_WIDTH = 1.7 / ISOTIPO_ESCALA;
 
 /** Cuánto hay que deslizar hacia arriba (px) antes de "fijar" la grabación — mismo umbral y misma
  *  razón que documed (`modules/captura/BotonVoz.tsx`, fuente canónica del gesto): un temblor
@@ -135,6 +147,18 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
 
   return (
     <View style={styles.contenedor}>
+      {/* Ecualizador estático (ODOBI8 §B) — decorativo, SIN reactividad al audio real (excluido
+          explícitamente por el DoD del sprint ODOBI, línea 358). `pointerEvents="none"`: no compite
+          con el gesto del botón que tiene debajo. */}
+      <View testID="boton-voz-ecualizador" style={styles.ecualizador} pointerEvents="none">
+        {ECUALIZADOR_BARRAS.map((barra, indice) => (
+          <View
+            key={indice}
+            testID={`boton-voz-ecualizador-barra-${indice}`}
+            style={[styles.barraEcualizador, { height: barra.altura, backgroundColor: barra.color }]}
+          />
+        ))}
+      </View>
       <GestureDetector gesture={gesto}>
         <View
           testID="boton-voz"
@@ -171,14 +195,47 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
                   </RadialGradient>
                 </Defs>
                 <Circle cx="40" cy="40" r="40" fill="url(#esferaVoz)" />
-                {/* El micrófono. */}
-                <G transform="translate(16.7 16.7) scale(1.94)" opacity={disabled ? 0.45 : 1}>
-                  <Path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z" fill={tema.color.acentoTexto} />
+                {/* El isotipo ODOBI (ODOBI8 §A) — reemplaza el micrófono genérico heredado de antes
+                    del sprint de marca. Centrado: (80 - 34) / 2 = 23. */}
+                <G
+                  testID="boton-voz-isotipo"
+                  transform={`translate(23 23) scale(${ISOTIPO_ESCALA})`}
+                  opacity={disabled ? 0.45 : 1}
+                >
                   <Path
-                    d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"
+                    testID="boton-voz-isotipo-trazo-1"
+                    d="M11 3.5a8.5 8.5 0 1 0 0 17"
                     stroke={tema.color.acentoTexto}
-                    strokeWidth={2}
+                    strokeWidth={ISOTIPO_STROKE_WIDTH}
                     strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                  <Path
+                    testID="boton-voz-isotipo-trazo-2"
+                    d="M11 7.5a4.5 4.5 0 1 0 0 9"
+                    stroke={tema.color.acentoTexto}
+                    strokeWidth={ISOTIPO_STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                  <Path
+                    testID="boton-voz-isotipo-trazo-3"
+                    d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"
+                    stroke={tema.color.acentoTexto}
+                    strokeWidth={ISOTIPO_STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                  <Path
+                    testID="boton-voz-isotipo-trazo-4"
+                    d="M19.5 6.5a9 9 0 0 1 0 11"
+                    stroke={tema.color.acentoTexto}
+                    strokeWidth={ISOTIPO_STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     fill="none"
                   />
                 </G>
@@ -205,4 +262,6 @@ const styles = StyleSheet.create({
   },
   aro: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 1.5 },
   boton: { width: DIAMETRO_BOTON, height: DIAMETRO_BOTON, borderWidth: 1, overflow: 'hidden' },
+  ecualizador: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 26 },
+  barraEcualizador: { width: 3, borderRadius: 2 },
 });

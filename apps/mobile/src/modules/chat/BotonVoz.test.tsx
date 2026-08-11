@@ -4,6 +4,7 @@ import type { ScrollView } from 'react-native-gesture-handler';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
+import { ECUALIZADOR_BARRAS } from '../../theme/glass/ecualizadorPalette';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { BotonVoz, type BotonVozProps } from './BotonVoz';
 
@@ -60,5 +61,55 @@ describe('BotonVoz -- hold-graba/soltar-envía/deslizar-fija (gesto verificado e
     // este test lo cazaría por la ausencia de la prop en el tipo (`BotonVozProps` ya no la declara,
     // ver el error de tsc que este archivo dejó de tener tras el contrato de reescritura).
     expect(screen.getByTestId('boton-voz').props.onPress).toBeUndefined();
+  });
+});
+
+describe('BotonVoz -- isotipo ODOBI (ODOBI8 §A, reemplaza el micrófono heredado)', () => {
+  it('renderiza los 4 trazos del isotipo, con el stroke-width compensado por logoScale (34/24)', async () => {
+    await montar();
+    // `react-native-svg` está mockeado a Views que REENVIAN sus props (ver `jest.setup.js`), así que
+    // `d`/`strokeWidth` quedan legibles tal cual se los pasamos -- mismo patrón que `GlassIcon.test`.
+    const trazo1 = screen.getByTestId('boton-voz-isotipo-trazo-1');
+    const trazo2 = screen.getByTestId('boton-voz-isotipo-trazo-2');
+    const trazo3 = screen.getByTestId('boton-voz-isotipo-trazo-3');
+    const trazo4 = screen.getByTestId('boton-voz-isotipo-trazo-4');
+
+    expect(trazo1.props.d).toBe('M11 3.5a8.5 8.5 0 1 0 0 17');
+    expect(trazo2.props.d).toBe('M11 7.5a4.5 4.5 0 1 0 0 9');
+    expect(trazo3.props.d).toBe('M16.5 8.8a4.8 4.8 0 0 1 0 6.4');
+    expect(trazo4.props.d).toBe('M19.5 6.5a9 9 0 0 1 0 11');
+
+    // 1.7 (stroke-width base del mock, viewBox 24) / (34/24) = 1.2 -- si alguien cambia el tamaño del
+    // botón (34) o el viewBox (24) sin actualizar el otro, este número se mueve y el test lo caza.
+    expect(trazo1.props.strokeWidth).toBeCloseTo(1.2);
+  });
+
+  it('deshabilitado atenúa el isotipo igual que atenuaba el micrófono (opacity 0.45)', async () => {
+    await montar({ disabled: true });
+    expect(screen.getByTestId('boton-voz-isotipo').props.opacity).toBe(0.45);
+  });
+
+  it('sin `disabled`, el isotipo va a opacidad plena', async () => {
+    await montar();
+    expect(screen.getByTestId('boton-voz-isotipo').props.opacity).toBe(1);
+  });
+});
+
+describe('BotonVoz -- ecualizador estático (ODOBI8 §B, decorativo, sin reactividad a audio real)', () => {
+  it('renderiza exactamente las 7 barras del contrato, con las alturas/colores de ecualizadorPalette', async () => {
+    await montar();
+    expect(ECUALIZADOR_BARRAS).toHaveLength(7);
+
+    ECUALIZADOR_BARRAS.forEach((barra, indice) => {
+      const nodo = screen.getByTestId(`boton-voz-ecualizador-barra-${indice}`);
+      const estilo = Array.isArray(nodo.props.style) ? Object.assign({}, ...nodo.props.style) : nodo.props.style;
+      expect(estilo.height).toBe(barra.altura);
+      expect(estilo.backgroundColor).toBe(barra.color);
+    });
+  });
+
+  it('es puramente decorativo -- no compite con el gesto del botón que tiene debajo', async () => {
+    await montar();
+    expect(screen.getByTestId('boton-voz-ecualizador').props.pointerEvents).toBe('none');
   });
 });
