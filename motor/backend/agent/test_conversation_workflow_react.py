@@ -13,6 +13,9 @@ Deterministas (WorkflowEnvironment time-skipping, sin cluster ni LLM real). Corr
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 from temporalio import activity
 from temporalio.testing import WorkflowEnvironment
@@ -1011,3 +1014,51 @@ async def test_turn_ix_sobrevive_continue_as_new_contra_temporal_real():
     assert run_id_final != run_id_inicial, "el CAN nunca ocurrió -- el test no está probando lo que dice probar"
     assert turn_ix_2 > turn_ix_1          # monótono A TRAVÉS del CAN -- nunca resetea
     assert idem_1 != idem_2               # dos "facturas" dictadas en turnos distintos NUNCA comparten id
+
+
+# ═══════════════════ CTXW1: ventana ampliada — C3 sobre dataset real E5 ═══════════════════
+# Fixture: fixtures/e5_react_transcript_full.json -- 41 entradas reales (21 role=user) del
+# `_react_transcript` de la sesión E5 (21 turnos, SIN tool-calls a propósito -- aisla la variable
+# "memoria"), reconstruidas leyendo el event history de Temporal (payload real de cada
+# ActivityTaskScheduled de `call_llm_tools`, decodificado con el data converter del cliente) y
+# mergeando las ventanas sucesivas por solape -- mismo dataset que sustentó
+# `coordinacion/cerrado/2026-08-11/2026-08-11_dato_backend-a-planificacion_spike-costo-ventana-contexto.md`.
+# Para renovarlo (workflow_id `conv-web-4f3ecb78-2e36-4044-a56e-0e7ef6c4a655-soporte:soporte_tecnico:
+# sop:2db7153a-f1a4-40a4-8faa-82ed6feb7dc6`, run_id `af3c1734-9ee7-4220-a39b-556e6a991622`): correr
+# el script de reconstrucción (overlap-merge de las ventanas de `call_llm_tools`, no
+# `temporal workflow show` -- ese CLI no reconstruye el transcript lógico, solo vuelca el history
+# crudo) contra el mismo venv/env del worker de soporte en el VPS.
+E5_FIXTURE = Path(__file__).parent / "fixtures" / "e5_react_transcript_full.json"
+
+
+def _load_e5_dataset() -> list[dict]:
+    return json.loads(E5_FIXTURE.read_text(encoding="utf-8"))
+
+
+def test_react_tail_80_c3_turno_1_sobrevive_hasta_turno_21_con_dataset_real():
+    """C3 (hallazgo de raíz que motivó CTXW1): con el REACT_TAIL viejo (30) el turno 1 ("mi color
+    favorito es turquesa") queda AFUERA de la ventana que siembra el turno 21 sobre el dataset REAL
+    de E5 -- el caso concreto que disparó el contrato. Con REACT_TAIL=80 (importado del módulo real,
+    no hardcodeado acá -- si drifiara, este test lo marca) la ventana completa (41 entradas) entra
+    sin recortar, y el turno 1 sobrevive.
+
+    Slicing IDÉNTICO al de producción (`conversation_workflow.py`, `self._react_transcript[-REACT_TAIL:]`
+    que siembra `_run_react_turn`), aplicado a datos reales de Temporal -- no una estimación de código."""
+    from backend.agent.conversation_workflow import REACT_TAIL
+
+    full = _load_e5_dataset()
+    assert len(full) == 41 and sum(1 for m in full if m["role"] == "user") == 21   # dataset intacto
+    turno_1_texto = full[0]["content"]
+    assert "turquesa" in turno_1_texto   # ancla de identidad del fixture
+
+    OLD_REACT_TAIL = 30   # valor pre-CTXW1 (ver conversation_workflow.py antes de este PR)
+    contenidos_ventana_vieja = [m["content"] for m in full[-OLD_REACT_TAIL:]]
+    contenidos_ventana_nueva = [m["content"] for m in full[-REACT_TAIL:]]
+
+    assert REACT_TAIL == 80, f"CTXW1 esperaba REACT_TAIL=80, el módulo real tiene {REACT_TAIL} -- avisar drift"
+    assert turno_1_texto not in contenidos_ventana_vieja, (
+        "con REACT_TAIL=30 el turno 1 YA debería quedar afuera -- si esto falla, el caso que motivó "
+        "CTXW1 dejó de reproducirse con este dataset y hay que revisar el fixture")
+    assert turno_1_texto in contenidos_ventana_nueva, (
+        "C3 sigue roto: con REACT_TAIL=80 el turno 1 debería sobrevivir hasta el turno 21")
+    assert full[-REACT_TAIL:] == full   # 41 <= 80: la ventana nueva cubre TODO el dataset, sin recortar
