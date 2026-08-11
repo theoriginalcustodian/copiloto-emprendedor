@@ -45,15 +45,15 @@ with workflow.unsafe.imports_passed_through():
 # activo y solo se cierra si nadie la toca por mucho tiempo. NO es "cerrar la charla cada rato": el history
 # lo acota continue-as-new, no el idle-timeout.
 IDLE_TIMEOUT_DEFAULT_S = 30 * 60
-CARRY_TAIL = 40                             # mensajes recientes que arrastra el continue-as-new (contexto del LLM)
-HISTORY_TAIL = 20                           # mensajes del buffer de corto plazo que el turno react inyecta al prompt (<= CARRY_TAIL)
+CARRY_TAIL = 107                            # mensajes recientes que arrastra el continue-as-new (contexto del LLM)
+HISTORY_TAIL = 54                           # mensajes del buffer de corto plazo que el turno react inyecta al prompt (<= CARRY_TAIL)
 # `self._react_transcript` (fix narra-sin-hacer v2, Parte 2 -- [[copiloto-narra-la-accion-sin-ejecutarla]]):
 # durable, paralelo a self._history pero con el shape NATIVO de OpenAI (assistant tool_calls / role='tool'),
 # no texto plano. self._history sigue siendo SOLO texto (alimenta memoria/Graphity, que filtra por content
 # str -- ver memory_provider.remember); react_transcript alimenta el SEED de `messages` de cada turno react,
 # para que el LLM vea la EVIDENCIA estructural de sus propias tool_calls pasadas, no solo su relato en texto.
-REACT_TAIL = 30                             # entradas del transcript estructural que siembran un turno react
-REACT_CARRY_TAIL = 60                       # entradas que arrastra el continue-as-new (>= REACT_TAIL, mismo ratio 2x que CARRY_TAIL/HISTORY_TAIL)
+REACT_TAIL = 80                             # entradas del transcript estructural que siembran un turno react
+REACT_CARRY_TAIL = 160                      # entradas que arrastra el continue-as-new (>= REACT_TAIL, mismo ratio 2x que CARRY_TAIL/HISTORY_TAIL)
 MAX_TURNS_PER_RUN = 200                     # backstop de continue-as-new si is_continue_as_new_suggested no dispara
 STAFF_TIMEOUT = timedelta(hours=4)          # espera de decision humana (HITL) antes de seguir
 ACTIVITY_TIMEOUT = timedelta(seconds=120)   # LLM puede tardar (reasoning) -> margen amplio
