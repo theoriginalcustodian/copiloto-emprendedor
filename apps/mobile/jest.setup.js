@@ -28,6 +28,19 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
+// `react-native-worklets` instala su modulo nativo AL IMPORTARSE, igual que reanimated arriba --
+// pero como paquete APARTE: el stub de `react-native-reanimated` de arriba no lo cubre porque ese
+// mock nunca re-importa el indice real de worklets (por eso funciona). El hueco es que `BotonVoz.tsx`
+// ahora importa `scheduleOnRN` DIRECTO desde `react-native-worklets` (no via reanimated) para
+// despachar los callbacks del gesto al hilo JS -- sin este stub, ESE import ejecuta
+// `NativeWorklets.native.ts` real y revienta con "Cannot read properties of undefined (reading
+// 'loadUnpackers')". Mismo criterio que `runOnJS` arriba: en test no hay hilo UI real que cruzar, asi
+// que ejecutar la funcion directo (sincronico) es equivalente para lo que los tests ejercitan (el
+// gesto en si se valida en el device). Hueco del ENTORNO de test, no del producto.
+jest.mock('react-native-worklets', () => ({
+  scheduleOnRN: (fn, ...args) => fn(...args),
+}));
+
 // `GestureDetector` de gesture-handler consume, AL RENDERIZAR, ~10 internals de la integracion
 // reanimated↔gesture-handler (`useEvent`/`useHandler`/`runOnUI`/`NativeEventsManager`/...), que el
 // stub de reanimated de arriba no reproduce (y stubbearlos todos seria whack-a-mole fragil). En test

@@ -95,6 +95,15 @@ export function ChatView() {
   const scrollRef = useRef<ScrollView>(null);
   const [fijado, setFijado] = useState(false);
 
+  // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
+  // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
+  // `useMemo` del gesto compuesto de `BotonVoz` (causa raíz real de ODOBI8-C: sin esa estabilidad,
+  // el recognizer se re-ataca en pleno LongPress y pierde el estado -- ver hallazgo2 en
+  // `coordinacion/`). Mismo patrón que `estadoRef` en `useChat`: un ref espejo, actualizado
+  // síncronamente en cada render, para leer el valor vigente sin declarar `voz` como dependencia.
+  const vozRef = useRef(voz);
+  vozRef.current = voz;
+
   // Una vez que la captura vuelve a `inactivo` (Enviar/Eliminar ya terminaron su ciclo), la puerta de
   // `fijado` se reabre sola — sin esto, la SEGUNDA grabación de la sesión arrancaría ya "fijada" sin
   // que el usuario haya deslizado nada.
@@ -114,7 +123,7 @@ export function ChatView() {
 
   const alIniciarVoz = useCallback(() => {
     void (async () => {
-      const ok = await voz.iniciar();
+      const ok = await vozRef.current.iniciar();
       if (!ok) {
         Alert.alert(
           'Sin acceso al micrófono',
@@ -122,22 +131,28 @@ export function ChatView() {
         );
       }
     })();
-  }, [voz]);
+  }, []);
 
   /**
    * Enviar corta (si todavía graba o está en pausa) y manda en un solo toque -- mismo criterio que
    * documed (2026-07-20): sin fase intermedia "detenida, esperando Enviar" de la que no se puede
    * volver a Pausar. Es el mismo camino para "soltar sin fijar" (contrato §1, fila 2) y para el botón
    * "Enviar" de los controles flotantes (fila 3) — un solo lugar que decide qué es "mandar el audio".
+   * Lee todo vía `vozRef` (no `voz` directo) para quedar referencialmente ESTABLE -- ver el
+   * comentario de `vozRef` arriba.
    */
   const alEnviarVoz = useCallback(async () => {
-    if (voz.fase === 'grabando' || voz.fase === 'pausado') {
-      await voz.detener();
+    const actual = vozRef.current;
+    if (actual.fase === 'grabando' || actual.fase === 'pausado') {
+      await actual.detener();
     }
-    const audio = voz.tomar();
+    const audio = actual.tomar();
     if (audio === null) return; // no llegó a grabar nada
     void enviarAudio(audio);
-  }, [voz, enviarAudio]);
+  }, [enviarAudio]);
+
+  const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
+  const onFijarVoz = useCallback(() => setFijado(true), []);
 
   // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
   // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
@@ -182,8 +197,8 @@ export function ChatView() {
           )}
           <BotonVoz
             onIniciar={alIniciarVoz}
-            onSoltarSinFijar={() => void alEnviarVoz()}
-            onFijar={() => setFijado(true)}
+            onSoltarSinFijar={onSoltarSinFijarVoz}
+            onFijar={onFijarVoz}
             disabled={voz.fase !== 'inactivo'}
             scrollRef={scrollRef}
           />
