@@ -1,21 +1,24 @@
 import { useState, type KeyboardEvent } from 'react';
 
+import { MicButton } from '../chat/MicButton';
 import type { SendStatusSoporte } from './useChatSoporte';
 import '../chat/chat.css';
 
 export interface ComposerSoporteProps {
   sendStatus: SendStatusSoporte;
   onSend: (text: string) => void;
+  /** Blob grabado por `MicButton` (ODOBI8 §C3) -- el caller lo reenvía a `useChatSoporte().sendAudio`. */
+  onSendAudio: (blob: Blob) => void;
 }
 
 /**
  * Composer del chat de SOPORTE — NO reusa `modules/chat/Composer.tsx` a propósito: ese componente
- * exige `onSendAudio` (no opcional, monta `MicButton` siempre) y llama `useMode()` internamente
- * (el chip "Modo Mail…" de negocio) — dos acoplamientos de negocio que no aplican acá y que forzar
- * con props opcionales convertiría el componente compartido en un `if` de dos dominios (la misma
- * trampa que el propio contrato SOP5 evita del lado del servidor). Reusa las clases CSS de
- * `chat.css` (`composer`/`composer__row`/`composer__input`/`composer__send`) para la MISMA
- * apariencia — es sólo la lógica de negocio la que no encaja, no el estilo.
+ * llama `useMode()` internamente (el chip "Modo Mail…" de negocio), un acoplamiento que no aplica
+ * acá y que forzar con una prop opcional convertiría el componente compartido en un `if` de dos
+ * dominios (la misma trampa que el propio contrato SOP5 evita del lado del servidor). `MicButton`
+ * en cambio SÍ se reusa tal cual (ODOBI8 §C3, opción (a) del contrato): es genérico del gesto, no
+ * sabe de negocio ni de soporte. Reusa las clases CSS de `chat.css`
+ * (`composer`/`composer__row`/`composer__input`/`composer__send`) para la MISMA apariencia.
  */
 function textoEstado(sendStatus: SendStatusSoporte): string | null {
   switch (sendStatus) {
@@ -32,7 +35,7 @@ function textoEstado(sendStatus: SendStatusSoporte): string | null {
   }
 }
 
-export function ComposerSoporte({ sendStatus, onSend }: ComposerSoporteProps) {
+export function ComposerSoporte({ sendStatus, onSend, onSendAudio }: ComposerSoporteProps) {
   const [draft, setDraft] = useState('');
   const canSend = draft.trim() !== '' && sendStatus !== 'sending';
   const hint = textoEstado(sendStatus);
@@ -79,6 +82,7 @@ export function ComposerSoporte({ sendStatus, onSend }: ComposerSoporteProps) {
           rows={1}
           disabled={sendStatus === 'sending'}
         />
+        <MicButton onSendAudio={onSendAudio} disabled={sendStatus === 'sending'} />
         <button type="submit" className="composer__send" disabled={!canSend} aria-label="Enviar mensaje">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path

@@ -7,10 +7,11 @@ vi.mock('../../lib/api', async (importOriginal) => {
     ...actual,
     api: { ...actual.api, getReply: vi.fn() },
     sendSoporteChat: vi.fn(),
+    sendSoporteAudio: vi.fn(),
   };
 });
 
-import { api, sendSoporteChat } from '../../lib/api';
+import { api, sendSoporteAudio, sendSoporteChat } from '../../lib/api';
 import { useChatSoporte } from './useChatSoporte';
 
 const FUNCION = 'soporte_tecnico' as const;
@@ -20,6 +21,7 @@ describe('useChatSoporte (SOP5, web) — shape corregido 2026-08-10 (funcion + s
     window.localStorage.clear();
     vi.mocked(api.getReply).mockReset();
     vi.mocked(sendSoporteChat).mockReset();
+    vi.mocked(sendSoporteAudio).mockReset();
   });
 
   it('el session_id lleva prefijo sop: y su clave de storage es DISTINTA de la del chat de negocio', async () => {
@@ -143,5 +145,82 @@ describe('useChatSoporte (SOP5, web) — shape corregido 2026-08-10 (funcion + s
     );
     expect(result.current.sendStatus).toBe('idle');
     unmount();
+  });
+
+  describe('sendAudio (ODOBI8 §C3) — espejo de send(), namespaced por funcion', () => {
+    const AUDIO_FAKE = new Blob(['fake-audio-bytes'], { type: 'audio/webm' });
+
+    it('manda el blob por sendSoporteAudio con la funcion fija del hook', async () => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+      vi.mocked(sendSoporteAudio).mockResolvedValue({
+        wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc', transcript: 'no me deja facturar',
+      });
+
+      const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
+      await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+
+      await act(async () => {
+        await result.current.sendAudio(AUDIO_FAKE);
+      });
+
+      expect(sendSoporteAudio).toHaveBeenCalledWith(expect.any(String), AUDIO_FAKE, 'soporte_tecnico');
+      expect(result.current.messages.some((m) => m.text === 'no me deja facturar')).toBe(true);
+      unmount();
+    });
+
+    it('tras el envío, el polling usa el session_id del SERVIDOR, no el local -- mismo riesgo que send()', async () => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+      vi.mocked(sendSoporteAudio).mockResolvedValue({
+        wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:DEL-SERVIDOR', transcript: 'hola',
+      });
+
+      const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
+      await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+
+      await act(async () => {
+        await result.current.sendAudio(AUDIO_FAKE);
+      });
+
+      await waitFor(() =>
+        expect(api.getReply).toHaveBeenCalledWith('soporte:soporte_tecnico:sop:DEL-SERVIDOR', expect.any(Number)),
+      );
+      const claveSesion = window.localStorage.getItem('copiloto-soporte-session-id:cli-1:soporte_tecnico');
+      expect(claveSesion).toBe('soporte:soporte_tecnico:sop:DEL-SERVIDOR');
+      unmount();
+    });
+
+    it('transcript vacío (STT no entendió) es un envío EXITOSO sin mensaje -- vuelve a idle, no error', async () => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+      vi.mocked(sendSoporteAudio).mockResolvedValue({
+        wf_id: 'wf-1', accepted: true, session_id: 'soporte:soporte_tecnico:sop:abc', transcript: '   ',
+      });
+
+      const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
+      await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+      const mensajesPrevios = result.current.messages.length;
+
+      await act(async () => {
+        await result.current.sendAudio(AUDIO_FAKE);
+      });
+
+      expect(result.current.messages).toHaveLength(mensajesPrevios);
+      expect(result.current.sendStatus).toBe('idle');
+      unmount();
+    });
+
+    it('un error de red deja sendStatus en error, sin agregar mensaje', async () => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+      vi.mocked(sendSoporteAudio).mockRejectedValue(new Error('network down'));
+
+      const { result, unmount } = renderHook(() => useChatSoporte('cli-1', FUNCION));
+      await waitFor(() => expect(api.getReply).toHaveBeenCalled());
+
+      await act(async () => {
+        await result.current.sendAudio(AUDIO_FAKE);
+      });
+
+      expect(result.current.sendStatus).toBe('error');
+      unmount();
+    });
   });
 });
