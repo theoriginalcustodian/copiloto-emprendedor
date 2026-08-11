@@ -712,6 +712,31 @@ def test_soporte_chat_devuelve_el_session_id_NAMESPACED_por_funcion(monkeypatch)
     assert body["wf_id"] == "conv-web-cid-A-soporte:soporte_tecnico:s1"
 
 
+def test_soporte_chat_session_id_ya_namespaced_NO_se_duplica(monkeypatch):
+    """Regresión (hallazgo backend 2026-08-11, device real, conversación de 15+ turnos): el
+    frontend re-envía como `session_id` el valor NAMESPACED que esta misma ruta le devolvió en el
+    turno anterior (así está diseñado -- ver docstring de la ruta). Sin idempotencia, cada turno
+    sumaba OTRO prefijo hasta que el workflow_id excedía el límite de Temporal
+    (`RPCError: WorkflowId length exceeds limit`) y el hilo quedaba roto para siempre."""
+    monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
+    client = TestClient(app)
+    r1 = client.post("/soporte/chat",
+                     json={"session_id": "s1", "text": "turno 1", "funcion": "soporte_tecnico"})
+    session_id_devuelto = r1.json()["session_id"]
+    assert session_id_devuelto == "soporte:soporte_tecnico:s1"
+
+    r2 = client.post("/soporte/chat",
+                     json={"session_id": session_id_devuelto, "text": "turno 2",
+                           "funcion": "soporte_tecnico"})
+    assert r2.json()["session_id"] == "soporte:soporte_tecnico:s1"
+
+    r3 = client.post("/soporte/chat",
+                     json={"session_id": r2.json()["session_id"], "text": "turno 3",
+                           "funcion": "soporte_tecnico"})
+    assert r3.json()["session_id"] == "soporte:soporte_tecnico:s1"
+
+
 def test_soporte_chat_las_DOS_funciones_del_MISMO_session_id_NO_colisionan(monkeypatch):
     monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"))
