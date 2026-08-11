@@ -695,7 +695,13 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if msg.funcion not in SOPORTE_FUNCIONES_VALIDAS:
             raise HTTPException(status_code=400,
                                 detail=f"función inválida: {msg.funcion!r} (válidas: {SOPORTE_FUNCIONES_VALIDAS})")
-        channel_ref = f"soporte:{msg.funcion}:{msg.session_id}"
+        # Namespacing IDEMPOTENTE: el frontend re-envía el `session_id` efectivo (ya namespaced) que
+        # esta misma ruta le devolvió en el turno anterior (docstring arriba) -- sin este chequeo, cada
+        # turno le suma OTRO prefijo (`soporte:x:soporte:x:soporte:x:...`) hasta que el workflow_id
+        # excede el límite de Temporal y el hilo entero queda roto (RPCError: WorkflowId length
+        # exceeds limit, hallazgo backend 2026-08-11 con conversación real de 15+ turnos en device).
+        prefijo = f"soporte:{msg.funcion}:"
+        channel_ref = msg.session_id if msg.session_id.startswith(prefijo) else f"{prefijo}{msg.session_id}"
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=msg.funcion,
             task_queue=SOPORTE_TASK_QUEUE,
