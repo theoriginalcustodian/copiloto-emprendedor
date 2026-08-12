@@ -261,7 +261,8 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         abrir_borrador_dictado=abrir_borrador_dictado,
         consultar_factura_dictado=consultar_factura_dictado,
         signal_factura_dictado=signal_factura_dictado,
-        buscar_borrador_dictado=buscar_borrador_dictado)
+        buscar_borrador_dictado=buscar_borrador_dictado,
+        trauma_store_factory=fabrica_desde(conn_factory))
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
                     dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
                     context_factory=ctx_factory, memory_provider=memory_provider,

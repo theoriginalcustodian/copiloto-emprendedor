@@ -1,10 +1,16 @@
 """make_tool_executor (Task 6): ejecuta UNA tool -> ToolResult, con gate write/read + artifact + then/resolve.
 
 Los tests de `mp_charge` (dedup + artifact payment_link, Task 8) están al final de este archivo."""
+import os
+import uuid
+
 import pytest
 
 import tool_catalog
 from backend.agent.types import ToolResult
+
+necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
+                                 reason="requiere Postgres real (DATABASE_URL)")
 
 
 class _FakeGateway:
@@ -227,6 +233,50 @@ def test_unexpected_exception_in_executor_returns_error_not_propagates():
     ex = tool_catalog.make_tool_executor(_BoomGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
     tr = ex("gmail_send", {"to": "a@b.com", "subject": "s", "body": "hola"}, _Ctx(), confirmed=True, idem_key="run1-3")
     assert tr.status == "error"
+
+
+@necesita_pg
+def test_unexpected_exception_deposita_en_copiloto_traumas(conn_de_tenant):
+    """D-A / C2 (lote higiene, 2026-08-12): control POSITIVO contra Postgres real, no un mock -- un
+    mock probaría que se llama a `depositar_trauma`, que no es lo que está en duda. Se provoca el
+    MISMO fallo no-previsto que `test_unexpected_exception_in_executor_returns_error_not_propagates`
+    y se verifica que el trauma aparece efectivamente en `copiloto_traumas`. Sin ver la fila, el
+    catch-all sigue siendo el punto ciego que la auditoría encontró."""
+    from deposito_traumas import fabrica_desde
+    from trauma_store import TraumaStore
+
+    class _BoomGateway:
+        def execute(self, *a, **k):
+            raise KeyError("shape inesperado de Composio")
+
+    class _CtxTenant:
+        composio_user_id = "42"
+        mp_gateway = None
+        mp_cred_store = None
+        mp_seller_user_id = None
+        mp_webhook_base = None
+
+    cid = str(uuid.uuid4())
+    conn_factory = conn_de_tenant(cid)
+    ctx = _CtxTenant()
+    ctx.cliente_id = cid
+    ex = tool_catalog.make_tool_executor(
+        _BoomGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00",
+        trauma_store_factory=fabrica_desde(conn_factory))
+
+    tr = ex("gmail_send", {"to": "a@b.com", "subject": "s", "body": "hola"}, ctx,
+           confirmed=True, idem_key="run-dlq-1")
+    assert tr.status == "error"
+
+    traumas = TraumaStore(conn_factory, cid).listar()
+    assert len(traumas) == 1
+    assert traumas[0]["workflow"] == "tool_executor"
+    assert traumas[0]["error_type"] == "KeyError"
+
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM uc_factory.copiloto_traumas WHERE cliente_id = %s", (cid,))
+    conn.close()
 
 
 def test_ctx_none_still_raises_outside_the_catch_all():

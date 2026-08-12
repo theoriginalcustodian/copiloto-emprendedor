@@ -34,6 +34,8 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+from deposito_traumas import depositar as depositar_trauma  # noqa: E402
+from fingerprint import fingerprint_de_error  # noqa: E402
 # La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
 # el LLM y lo que la base acepta tienen que ser la MISMA lista o el modelo propone `stock`, el `POST`
 # devuelve 400, y el emprendedor ve fallar algo que el copiloto le ofreció.
@@ -1499,10 +1501,16 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                        presupuesto_store_factory=None, tarjeta_store_factory=None,
                        afip_cred_store_factory=None, afip_perfil_store_factory=None,
                        abrir_borrador_dictado=None, consultar_factura_dictado=None,
-                       signal_factura_dictado=None, buscar_borrador_dictado=None):
+                       signal_factura_dictado=None, buscar_borrador_dictado=None,
+                       trauma_store_factory=None):
     """Ejecuta UNA tool y devuelve ToolResult. El gate lo abre el propio executor (write sin confirmed →
     needs_confirmation SIN ejecutar). Errores de negocio → status='error' (nunca excepción → retry ∞).
     `llm` (opcional): el LlmProvider compartido que usa `consultar_actividad` para resumir la actividad.
+
+    `trauma_store_factory` (opcional, D-A/C2 lote higiene): `(cliente_id) -> TraumaStore | None`,
+    mismo boundary que ya usan `interceptor_errores.py`/`soporte_agent_tools.py` (`deposito_traumas`).
+    `None` (default, tests/wiring puro) = el catch-all sigue devolviendo el error de negocio pero no
+    deposita nada -- `depositar_trauma` ya tolera `fabrica=None` (ver `deposito_traumas.depositar`).
 
     Los últimos 6 params (hito 9) son las 4 factories de Temporal + 2 de Postgres que necesita
     `emitir_factura`. Sin `client` en el composition root (tests, wiring puro) quedan en `None` y la
@@ -1596,13 +1604,23 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             # (el contrato del executor promete "nunca excepción → retry ∞"; alinea con la regla dura PR #114).
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "no pude generar el cobro ahora; probá de nuevo en un rato"})
-        except Exception:
+        except Exception as exc:
             # FIX LOW (review final, contrato "nunca excepción → observación"): cualquier excepción NO prevista
             # (bug de un módulo de servicio, KeyError de un shape inesperado de Composio, etc.) NO debe propagar
             # -- un raise acá dispararía los 5 retries de LOOP_RETRY contra la MISMA excepción determinística
             # (no la arregla reintentar) y, sin try/except en el workflow que la contenga, tumbaría la sesión
             # entera (regla dura PR #114). `ctx is None` queda AFUERA de este try a propósito: es error de
             # PROGRAMACIÓN (context_factory mal cableado), debe fallar fuerte, no degradar silencioso.
+            #
+            # D-A / C2 (lote higiene, 2026-08-12): esto era mudo -- ningún fallo de tool no-previsto
+            # llegaba a `copiloto_traumas` ni al autohealing, el punto ciego del executor más caliente
+            # de la app. Se loguea con fingerprint (agrupa ocurrencias del MISMO bug) y se deposita en
+            # la DLQ -- `depositar_trauma` nunca lanza (ver `deposito_traumas.py`), así que esto no puede
+            # convertirse en un segundo fallo encima del primero.
+            fp = fingerprint_de_error(workflow="tool_executor", exc=exc)
+            depositar_trauma(trauma_store_factory, fingerprint=fp, workflow="tool_executor",
+                             error_type=type(exc).__name__, cliente_id=getattr(ctx, "cliente_id", None),
+                             costura=f"tool:{name}", contexto={"tool": name})
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "no pude completar la acción; probá de nuevo"})
 

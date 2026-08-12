@@ -8,6 +8,8 @@ una orden como orden — lo pidió planificación como precondición del "listo"
 """
 from __future__ import annotations
 
+import json
+import logging
 import os
 
 import pytest
@@ -175,6 +177,44 @@ def test_fallo_del_grafo_degrada_sin_lanzar():
     g = _GrafoFake(revienta=True)
     r = _chat(llm, grafo=g).responder("¿algo del grafo?")
     assert r == {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
+
+
+# ── D-A (lote higiene, 2026-08-12): los dos `except` de arriba degradaban MUDOS -- control negativo:
+# sin `log_error` adentro, estos dos tests fallan porque no queda ningún registro del fallo real.
+
+def test_fallo_del_planner_deja_log_estructurado(caplog):
+    with caplog.at_level(logging.WARNING, logger="copiloto"):
+        _chat(_LlmQueRevienta(), graph_id="negocio-cid-log").responder("¿cuánto me queda?")
+    assert caplog.records, "el fallo del planner quedó mudo -- D-A"
+    registro = json.loads(caplog.records[-1].getMessage())
+    assert registro["workflow"] == "inteligencia_chat.planner"
+    assert registro["error_type"] == "RuntimeError"
+
+
+class _LlmRevientaEnElSegundoLlamado:
+    """Planner OK, redactor revienta -- para ejercitar el `except` de la redacción sin tocar el del
+    planner (que ya tiene su propio test, arriba)."""
+    def __init__(self, primera_respuesta):
+        self._primera = primera_respuesta
+        self.llamadas = 0
+
+    def complete(self, system, user, *, json_mode=True, history=None):
+        self.llamadas += 1
+        if self.llamadas == 1:
+            return self._primera
+        raise RuntimeError("redactor caído")
+
+
+def test_fallo_del_redactor_deja_log_estructurado(caplog):
+    llm = _LlmRevientaEnElSegundoLlamado(
+        {"parsed": {"herramienta": "portada", "args": {}, "fuente": "sql", "es_orden": False}})
+    with caplog.at_level(logging.WARNING, logger="copiloto"):
+        r = _chat(llm).responder("¿cuánto me queda?")
+    assert r == {"respuesta": "No tengo ese dato.", "fuente": "no-se"}
+    assert caplog.records, "el fallo del redactor quedó mudo -- D-A"
+    registro = json.loads(caplog.records[-1].getMessage())
+    assert registro["workflow"] == "inteligencia_chat.redactor"
+    assert registro["error_type"] == "RuntimeError"
 
 
 def test_fallo_del_redactor_degrada_sin_lanzar():
