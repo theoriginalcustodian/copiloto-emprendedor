@@ -241,10 +241,22 @@ for par in "backend:$mt_be" "frontend:$mt_fe" "auditoria:0" "manejo-de-errores:$
   senal="$(senal_rol "$rol" "$mt_main")"
   # Destinatarios compuestos incluidos (`-a-backend-y-frontend_`). El `-a-` ancla la dirección:
   # un `backend-a-planificacion_` NO matchea como contrato PARA backend, que es el error obvio.
+  # GRACIA (2026-08-12, tarde): un contrato emitido hace 4 minutos NO es un contrato sin dueño --
+  # es un contrato que nadie tuvo tiempo de leer. Sin esta ventana, el criterio relacional dispara
+  # sobre CADA mensaje que uno mismo acaba de escribir, y una alarma que suena siempre enseña a
+  # saltearla por reflejo: es el mismo modo de falla que el guard de drift del deploy documenta
+  # ("un falso positivo no es ruido: desarma el guard"). Se cazó en vivo -- el `listo_` que
+  # destrababa el lote B salió alarmado 4 min después de escribirlo.
+  #
+  # 15 min es el piso de lo que tarda un ciclo de cron + una lectura de buzón. Por debajo de eso no
+  # se puede afirmar "no hay ventana"; por encima, la afirmación se sostiene.
+  GRACIA_SEG="${VIGILANCIA_GRACIA_SEG:-900}"
+  ahora_ts="$(date +%s)"
   huerfanos=()
   while IFS= read -r nombre; do
     [ -z "$nombre" ] && continue
     mt_c="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+    [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
   done < <(ls -1 "$BUZON/abierto" 2>/dev/null \
            | grep -iE "_(contrato|urgente)_[a-z-]*-a-([a-z-]+-y-)?${rol}(-y-[a-z-]+)?_")
