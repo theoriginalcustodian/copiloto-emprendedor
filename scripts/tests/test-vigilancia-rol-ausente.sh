@@ -143,9 +143,33 @@ else
   fail "esperaba el texto de cero señal. Salida: $out"
 fi
 
+echo "── 6. CONTROL NEGATIVO: el contrato es recién nacido (nadie pudo leerlo todavía) ──"
+# Mismo escenario que el caso 5 —rol sin ninguna señal, contrato abierto— cambiando SÓLO la edad del
+# contrato: 5 min en vez de 30. Sin la ventana de gracia el criterio relacional dispara sobre cada
+# mensaje que uno acaba de escribir, y una alarma que suena siempre se saltea por reflejo. Se cazó
+# en vivo: el `listo_` que destrababa el lote B salió alarmado 4 min después de escribirlo.
+b="$(nuevo_buzon 6)"; r="$(nuevo_slug_root 6)"
+msg "$b/abierto/2026-08-12_contrato_planificacion-a-backend_lote-B-higiene.md" 5
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO"; then
+  fail "acusó por un contrato de 5 minutos: nadie tuvo ventana para leerlo aún. Salida: $out"
+else
+  ok "no acusa por un contrato más nuevo que la ventana de gracia"
+fi
+
+# Y el control positivo del control: el MISMO contrato, envejecido más allá de la gracia, SÍ alarma.
+# Sin esto, un bug que apagara la regla entera pasaría el caso 6 en verde.
+touch -d "$(hace 30)" "$b/abierto/2026-08-12_contrato_planificacion-a-backend_lote-B-higiene.md"
+correr "$b" "$r"
+if printf '%s' "$out" | grep -q "SIN DUEÑO"; then
+  ok "el mismo contrato, pasada la gracia, sí alarma (la gracia demora, no apaga)"
+else
+  fail "la gracia apagó la regla en vez de demorarla. Salida: $out"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-vigilancia-rol-ausente: 7/7"
+  echo "✅ test-vigilancia-rol-ausente: 9/9"
   exit 0
 fi
 echo "❌ test-vigilancia-rol-ausente: $fallos fallo(s)"
