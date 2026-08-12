@@ -129,6 +129,40 @@ y la de C4.1 que reabrió esta fila), **1 de 3 mostró el flake** — consistent
 ya estimado. La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar
 el log completo antes de re-correr.
 
+### Evidencia nueva (2026-08-12 18:12, planificación): el flake **no existe en Actions**
+
+Barrido de los últimos 40 runs del workflow `tests.yml` — cubre las tres apariciones:
+
+```bash
+gh run list --workflow=tests.yml --limit 40 --json databaseId,conclusion,headSha,createdAt,headBranch
+# 40 listados · 1 en curso · 39 completados → 38 success + 1 failure
+
+gh run view 31551563024 --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
+# web  failure   ← el ÚNICO rojo de los 39, y NO es mobile
+# mobile  success
+```
+
+**`mobile` está 39/39 verde en GitHub Actions.** Las tres apariciones ocurrieron **todas** en el gate
+local (`scripts/gate.sh` en la PC); **cero** en el runner.
+
+**Esto reorienta el diagnóstico.** La hipótesis "el test tiene un timing marginal propio" predice
+fallos en ambos lados, y no es lo que se observa: lo que discrimina no es el test, es **dónde corre**.
+Quedan dos hipótesis, y son distintas:
+
+| | Hipótesis | Cómo se distingue |
+|---|---|---|
+| **H1** | **Contención de recursos en la PC** — el 2026-08-12 hubo 17 worktrees, varias sesiones y gates concurrentes. Un `setTimeout(15000)` que sobra en un runner ocioso puede no alcanzar en una máquina saturada | correr `mobile` **aislado y sin carga**, N veces. Falla sólo con carga ⇒ H1 |
+| **H2** | **Diferencia de plataforma** — Actions corre Linux; el gate local, Windows (timers, `fs`, paths, resolución de reloj difieren) | falla aislado en Windows **sin** carga ⇒ H2 |
+
+**No se elige entre las dos sin más evidencia** — elegir ahora sería exactamente el atajo que reabrió
+esta fila. Pero cualquiera de las dos implica que **buscar el defecto dentro del test puede no
+encontrar nada**, y explica por qué `jest.setTimeout(15000)` bajó la frecuencia sin eliminar la causa:
+trató un síntoma cuya causa no estaba en el test.
+
+**Dato que se pierde si no se anota en el momento:** cuando salga el próximo rojo, registrar **si la
+PC estaba cargada** (otros gates, Metro, worktrees activos). Es lo único que separa H1 de H2 y no se
+puede reconstruir después.
+
 ---
 
 ## Lo que se descartó — no vuelve a auditarse
