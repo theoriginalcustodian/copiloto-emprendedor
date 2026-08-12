@@ -39,6 +39,16 @@ export interface FormularioIngresoProps {
   origen?: OrigenIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
+  /**
+   * Botón "Así está bien" del aviso post-guardado (`ingreso-listo`) — se pisa APARTE de `onCancelar`
+   * porque, a diferencia de éste, se dispara con el ingreso YA guardado (sólo declina completar los
+   * datos opcionales). Tratarlo como cancelar es lo que hacía mobile (mismo botón → `onCancelar`) y
+   * es un bug real: un caller con estado terminal propio (la card web) mostraba "no se guardó" sobre
+   * un ingreso que sí estaba en la base — medido en vivo contra prod, 2026-08-12. Opcional: sin
+   * proveerlo cae a `onCancelar`, que es lo que ya hacía `IngresosScreen` (ahí "así está bien" y
+   * "cancelar" llevan al mismo lugar — el listado — así que el default preserva su comportamiento).
+   */
+  onListo?: () => void;
 }
 
 /**
@@ -47,7 +57,7 @@ export interface FormularioIngresoProps {
  * lo que faltó se avisa DESPUÉS con el ingreso ya guardado y se completa con `completarIngreso`
  * (PATCH sobre el mismo registro, nunca uno nuevo). Ver ese archivo para el porqué de cada regla.
  */
-export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar }: FormularioIngresoProps) {
+export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar, onListo }: FormularioIngresoProps) {
   const [monto, setMonto] = useState(iniciales?.monto ?? '');
   const [cliente, setCliente] = useState(iniciales?.cliente ?? '');
   const [medio, setMedio] = useState(iniciales?.medio ?? '');
@@ -218,7 +228,7 @@ export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar }:
             <Button onClick={() => void completar()} disabled={enviando} data-testid="ingreso-completar">
               {enviando ? 'Guardando…' : 'Completar'}
             </Button>
-            <Button variant="cancel" onClick={onCancelar} data-testid="ingreso-listo">
+            <Button variant="cancel" onClick={onListo ?? onCancelar} data-testid="ingreso-listo">
               Así está bien
             </Button>
           </div>
