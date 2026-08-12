@@ -4,7 +4,11 @@ import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
   formatearImporte,
+  horaDeEvento,
+  leerCalendario,
   leerTablero,
+  type CalendarioMiDia,
+  type EventoCalendario,
   type IdSolapa,
   type TarjetaMiDia,
   type TableroMiDia,
@@ -49,6 +53,8 @@ export function MidiaScreen() {
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
   const [expandida, setExpandida] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
+  const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -66,12 +72,32 @@ export function MidiaScreen() {
     }
   }, []);
 
+  // Panel aparte, independiente del Kanban (contrato CAL1 §3) — degrada en su propio estado.
+  const cargarCalendario = useCallback(async () => {
+    try {
+      const res = await leerCalendario();
+      if (!vivo.current) return;
+      if (res.status === 'ok') {
+        setCalendario(res.calendario);
+        setEstadoCalendario('ok');
+        return;
+      }
+      setEstadoCalendario('no_disponible');
+    } catch {
+      if (vivo.current) setEstadoCalendario('no_disponible');
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
+    void cargarCalendario();
 
     function alVolverElFoco() {
-      if (document.visibilityState === 'visible') void cargar();
+      if (document.visibilityState === 'visible') {
+        void cargar();
+        void cargarCalendario();
+      }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
 
@@ -79,7 +105,7 @@ export function MidiaScreen() {
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar]);
+  }, [cargar, cargarCalendario]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -112,6 +138,8 @@ export function MidiaScreen() {
       <header className="midia-screen__header">
         <h1 className="midia-screen__title">Mi día</h1>
       </header>
+
+      <PanelCalendario estado={estadoCalendario} calendario={calendario} />
 
       <div className="midia-screen__solapas" data-testid="midia-solapas">
         {OPCIONES_SOLAPA.map((o) => {
@@ -181,6 +209,42 @@ export function MidiaScreen() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** Panel de sólo lectura de eventos de hoy (CAL1 §3) — mismo criterio que la versión mobile: sin
+ *  acciones, sin swipe, un evento sin hora reconocible se muestra igual sólo con el título. */
+function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+  if (estado !== 'ok' || calendario == null) return null;
+
+  if (!calendario.conectado) {
+    return (
+      <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-no-conectado">
+        Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
+      </p>
+    );
+  }
+
+  if (calendario.eventos.length === 0) {
+    return (
+      <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-vacio">
+        Sin eventos en tu calendario hoy.
+      </p>
+    );
+  }
+
+  return (
+    <div className="midia-screen__calendario" data-testid="midia-calendario">
+      {calendario.eventos.map((ev: EventoCalendario) => {
+        const hora = horaDeEvento(ev.inicioCrudo);
+        return (
+          <div key={ev.id} className="midia-screen__calendario-evento" data-testid={`midia-calendario-evento-${ev.id}`}>
+            {hora != null && <span className="midia-screen__calendario-hora">{hora}</span>}
+            <span className="midia-screen__calendario-titulo">{ev.titulo}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

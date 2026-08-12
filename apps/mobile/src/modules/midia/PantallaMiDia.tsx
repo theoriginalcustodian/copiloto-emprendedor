@@ -10,7 +10,11 @@ import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
   formatearImporte,
+  horaDeEvento,
+  leerCalendario,
   leerTablero,
+  type CalendarioMiDia,
+  type EventoCalendario,
   type IdSolapa,
   type TarjetaMiDia,
   type TableroMiDia,
@@ -121,6 +125,8 @@ export function PantallaMiDia() {
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
   const [expandida, setExpandida] = useState<string | null>(null);
+  const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
+  const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -138,14 +144,32 @@ export function PantallaMiDia() {
     }
   }, []);
 
+  // Panel aparte, independiente del Kanban (contrato CAL1 §3): un calendario caído no puede tapar
+  // ni bloquear el tablero, así que carga y degrada en su propio estado, nunca comparte `estado`.
+  const cargarCalendario = useCallback(async () => {
+    try {
+      const res = await leerCalendario();
+      if (!vivo.current) return;
+      if (res.status === 'ok') {
+        setCalendario(res.calendario);
+        setEstadoCalendario('ok');
+        return;
+      }
+      setEstadoCalendario('no_disponible');
+    } catch {
+      if (vivo.current) setEstadoCalendario('no_disponible');
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
       void cargar();
+      void cargarCalendario();
       return () => {
         vivo.current = false;
       };
-    }, [cargar]),
+    }, [cargar, cargarCalendario]),
   );
 
   async function avanzar(t: TarjetaMiDia) {
@@ -177,6 +201,8 @@ export function PantallaMiDia() {
   return (
     <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
       <View style={styles.raiz}>
+        <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
 
         {estado === 'cargando' && (
@@ -227,6 +253,59 @@ export function PantallaMiDia() {
         )}
       </View>
     </MarcoGlass>
+  );
+}
+
+/**
+ * Panel de sólo lectura de eventos de hoy (CAL1 §3) — FUERA del Kanban, sin swipe, sin acciones:
+ * "información para mostrar", como fija el contrato (§0, decisión de arquitectura ya cerrada). Un
+ * evento sin hora reconocible (`horaDeEvento` → `null`, ver `@copiloto/core`) igual se muestra, sólo
+ * con el título — no se descarta ni se inventa una hora.
+ */
+function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+  const tema = useTema();
+
+  // `cargando`/`no_disponible` no tienen su propio texto: un calendario que no está listo (o que
+  // falló) no puede competir por atención con el Kanban, que sí tiene evidencia real detrás — se
+  // omite en silencio, mismo criterio que el resto de los paneles "no disponible" del escritorio.
+  if (estado !== 'ok' || calendario == null) return null;
+
+  if (!calendario.conectado) {
+    return (
+      <View style={styles.calendario} testID="midia-calendario-no-conectado">
+        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+          Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
+        </Text>
+      </View>
+    );
+  }
+
+  if (calendario.eventos.length === 0) {
+    return (
+      <View style={styles.calendario} testID="midia-calendario-vacio">
+        <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Sin eventos en tu calendario hoy.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.calendario} testID="midia-calendario">
+      {calendario.eventos.map((ev: EventoCalendario) => {
+        const hora = horaDeEvento(ev.inicioCrudo);
+        return (
+          <View key={ev.id} style={styles.calendarioEvento} testID={`midia-calendario-evento-${ev.id}`}>
+            {hora != null && (
+              <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                {hora}
+              </Text>
+            )}
+            <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flexShrink: 1 }} numberOfLines={1}>
+              {ev.titulo}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -328,6 +407,8 @@ function TarjetaMiDiaRow({
 
 const styles = StyleSheet.create({
   raiz: { flex: 1 },
+  calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
+  calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
   solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   solapaPresionable: { flexGrow: 1 },
   solapa: {

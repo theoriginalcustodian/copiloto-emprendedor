@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, crearTarjetaMiDia, leerTablero } from './miDia';
+import {
+  borrarTarjetaMiDia,
+  cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
+  horaDeEvento,
+  leerCalendario,
+  leerTablero,
+} from './miDia';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -205,5 +212,82 @@ describe('borrarTarjetaMiDia', () => {
   it('🔴 tarjeta inexistente → `no_encontrado`', async () => {
     responder = () => respuesta(404, { detail: 'no existe' });
     expect((await borrarTarjetaMiDia('fantasma')).status).toBe('no_encontrado');
+  });
+});
+
+/**
+ * `/mi-dia/calendario` (CAL1) — sólo lectura, panel aparte del Kanban. `inicio` viaja crudo
+ * (`inicioCrudo`) porque el shape real todavía no está confirmado contra Composio (bloqueado por el
+ * OAuth del tenant canónico, ver `mi_dia_web.py`) — estos tests fijan lo que SÍ está confirmado
+ * (`conectado`/`id`/`titulo`) y que `horaDeEvento` nunca revienta con formas que no reconoce.
+ */
+describe('leerCalendario', () => {
+  it('`conectado: false` con `eventos: []` es un estado válido, no un error', async () => {
+    responder = () => respuesta(200, { conectado: false, eventos: [] });
+    const res = await leerCalendario();
+    expect(res.status).toBe('ok');
+    if (res.status === 'ok') {
+      expect(res.calendario.conectado).toBe(false);
+      expect(res.calendario.eventos).toEqual([]);
+    }
+  });
+
+  it('trae id/título de cada evento y transporta `inicio` crudo sin parsearlo', async () => {
+    responder = () =>
+      respuesta(200, {
+        conectado: true,
+        eventos: [{ id: 'ev1', titulo: 'Reunión con proveedor', inicio: { dateTime: '2026-08-12T15:00:00-03:00' } }],
+      });
+    const res = await leerCalendario();
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(res.calendario.conectado).toBe(true);
+    const ev = res.calendario.eventos[0];
+    expect(ev.id).toBe('ev1');
+    expect(ev.titulo).toBe('Reunión con proveedor');
+    expect(ev.inicioCrudo).toEqual({ dateTime: '2026-08-12T15:00:00-03:00' });
+  });
+
+  it('🔴 un evento sin `titulo` se descarta — mismo criterio que una tarjeta sin `texto`', async () => {
+    responder = () =>
+      respuesta(200, { conectado: true, eventos: [{ id: 'sin-titulo' }, { id: 'ok', titulo: 'Con título' }] });
+    const res = await leerCalendario();
+    if (res.status === 'ok') expect(res.calendario.eventos.map((e) => e.id)).toEqual(['ok']);
+  });
+
+  it('🔴 un `200` con el HTML del SPA es `no_disponible`, no un calendario vacío', async () => {
+    responder = () => respuesta(200, '<!doctype html><html><body>app</body></html>');
+    expect((await leerCalendario()).status).toBe('no_disponible');
+  });
+
+  it('pega a `/mi-dia/calendario`', async () => {
+    let ruta = '';
+    responder = (p) => {
+      ruta = p.path;
+      return respuesta(200, { conectado: false, eventos: [] });
+    };
+    await leerCalendario();
+    expect(ruta).toContain('/mi-dia/calendario');
+  });
+});
+
+describe('horaDeEvento — sólo muestra lo que reconoce con certeza', () => {
+  it('un string ISO se formatea', () => {
+    expect(horaDeEvento('2026-08-12T15:00:00-03:00')).not.toBeNull();
+  });
+
+  it('`{dateTime}` (evento con hora) se formatea', () => {
+    expect(horaDeEvento({ dateTime: '2026-08-12T15:00:00-03:00' })).not.toBeNull();
+  });
+
+  it('🔴 `{date}` (evento de día completo) no tiene hora que mostrar — `null`, no medianoche inventada', () => {
+    expect(horaDeEvento({ date: '2026-08-12' })).toBeNull();
+  });
+
+  it('🔴 una forma que no reconoce no revienta — `null`', () => {
+    expect(horaDeEvento({ algo: 'raro' })).toBeNull();
+    expect(horaDeEvento(null)).toBeNull();
+    expect(horaDeEvento(undefined)).toBeNull();
+    expect(horaDeEvento(42)).toBeNull();
   });
 });
