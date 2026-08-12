@@ -126,8 +126,46 @@ carga" sigue siendo la única disponible y no es falsable.
 no repetir el error de instrumento de la corrida #1) — **5/5 limpio, sin fallo que cazar**. No aporta
 el `it`+stack todavía, sólo suma al conteo: de las 3 corridas de `gate.sh` completo post-fix (#3, #4
 y la de C4.1 que reabrió esta fila), **1 de 3 mostró el flake** — consistente con el "1 de cada 3"
-ya estimado. La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar
-el log completo antes de re-correr.
+ya estimado.
+
+### Reorientación — planificación, 39/39 verde en GitHub Actions
+
+Barrido de los últimos 40 runs de `tests.yml` en Actions (≈17h, cubre las 3 apariciones): **`mobile`
+está 39/39 verde en el runner** (el único rojo de la serie fue `web` en un run ajeno a mobile). Las
+**3 apariciones del flake fueron todas en el gate LOCAL** (PC Windows), cero en Linux/Actions. Esto
+descarta que el propio test esté mal escrito de forma plataforma-agnóstica y deja dos hipótesis
+distintas, no una:
+
+- **H1 — contención de recursos en la PC** (múltiples worktrees/gates/Metro concurrentes): un
+  `setTimeout(15000)` que sobra en un runner ocioso puede no alcanzar bajo carga real.
+- **H2 — diferencia de plataforma** (Windows vs Linux: fake timers, `fs`, paths, resolución del
+  reloj). Se distingue corriendo `mobile` aislado en Windows **sin carga** — si falla igual, es H2.
+
+El plan (log completo, extraer `it`+stack antes de re-correr) sigue siendo el paso 1. Lo que se
+agrega: **anotar si la PC estaba cargada** en la corrida que capture el fallo (worktrees/gates/Metro
+activos en simultáneo) — es el dato que separa H1 de H2 y se pierde si no se anota en el momento. Si
+el `it` que falla es de timing (`waitFor`, timers, animación) sube H1; si es de filesystem/paths,
+sube H2.
+
+**Corrida #5 (frontend):** relanzada deliberadamente bajo carga real medida — **26 procesos `node.exe`,
+2 `git`, 17 worktrees activos** al momento de arrancar (`Get-Process` + `git worktree list`, 15:15:38).
+Log íntegro a archivo (`gate-d9-corrida5-3df508ce.log`). **5/5 limpio de nuevo, `mobile` ok (35s)** —
+ni siquiera bajo esta carga reprodujo. No descarta H1 (la contención que importa puede ser un pico de
+CPU/IO en el instante exacto del test, no el conteo de procesos en reposo), pero tampoco lo confirma.
+
+**Freno deliberado, no abandono:** van 2 corridas de `gate.sh` completo forzadas por frontend (#4, #5),
+ambas limpias — sumado a #3 y al PR #403 de planificación, son **4 limpias consecutivas post-fix**
+contra **1 rojo** (la reapertura original). Forzar más corridas completas (3-5 min c/u) para cazar un
+flake P2/instrumento tiene retorno decreciente frente al resto de la cola. Se deja de forzar acá: la
+próxima captura será **oportunista** — cuando `mobile` salga rojo en un gate real de trabajo (no uno
+lanzado sólo para cazarlo), ese es el momento de aplicar la instrucción de arriba (log completo +
+carga de PC anotada) antes de re-correr nada.
+
+**Sumado al conteo (planificación, PR #403, SHA `49c2f16e`):** `mobile` verde, 1m20s — otra corrida
+limpia en Actions, no cambia el 39/39.
+
+La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar el log
+completo antes de re-correr, y anotar la carga de la PC en ese momento.
 
 ---
 
