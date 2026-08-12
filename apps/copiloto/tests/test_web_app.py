@@ -423,11 +423,29 @@ def test_healthz_without_token_returns_ok():
 
 
 # --- /auth/signup ------------------------------------------------------------------
+# C4.1: el alta quedó FAIL-CLOSED. Los tests de camino feliz piden explícitamente `alta_habilitada`
+# en vez de que una fixture autouse les setee el env por debajo: si el gate se rompiera, quiero que
+# fallen los tests del camino feliz, no que un autouse los mantenga verdes tapando el agujero.
 
-def test_signup_without_token_creates_tenant_and_returns_cliente_id():
+INVITE_TOKEN_TEST = "token-de-prueba-c41"
+
+
+@pytest.fixture
+def alta_habilitada(monkeypatch):
+    """Habilita el alta para el camino feliz. Sin esto NADIE se registra (fail-closed), y ése es el
+    comportamiento correcto — los tests adversariales de más abajo se apoyan justo en su ausencia."""
+    monkeypatch.setenv(web_module.INVITE_TOKEN_ENV, INVITE_TOKEN_TEST)
+    monkeypatch.setenv(web_module.SIGNUP_ALLOWLIST_ENV,
+                       "a@test.com, b@test.com, x@test.com, new@gmail.com, dup@gmail.com")
+    return INVITE_TOKEN_TEST
+
+
+def test_signup_sin_bearer_crea_tenant_y_devuelve_cliente_id(alta_habilitada):
+    """Camino feliz: sin Bearer (todavía no hay tenant) pero CON invite-token válido."""
     gotrue = _FakeGoTrue({"a@test.com": "auth-user-A"})
     app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
-    r = TestClient(app).post("/auth/signup", json={"email": "a@test.com", "password": "pw"})
+    r = TestClient(app).post("/auth/signup", json={"email": "a@test.com", "password": "pw",
+                                                  "invite_token": alta_habilitada})
     assert r.status_code == 200
     body = r.json()
     assert body["auth_user_id"] == "auth-user-A"
@@ -435,13 +453,63 @@ def test_signup_without_token_creates_tenant_and_returns_cliente_id():
     assert db.tenants["auth-user-A"]["composio_user_id"] == body["cliente_id"]
 
 
-def test_signup_idempotent_same_email_returns_same_cliente_id():
+def test_signup_idempotent_same_email_returns_same_cliente_id(alta_habilitada):
     gotrue = _FakeGoTrue({"b@test.com": "auth-user-B"})
     app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
     client = TestClient(app)
-    r1 = client.post("/auth/signup", json={"email": "b@test.com", "password": "pw"})
-    r2 = client.post("/auth/signup", json={"email": "b@test.com", "password": "pw"})
+    cuerpo = {"email": "b@test.com", "password": "pw", "invite_token": alta_habilitada}
+    r1 = client.post("/auth/signup", json=cuerpo)
+    r2 = client.post("/auth/signup", json=cuerpo)
     assert r1.json()["cliente_id"] == r2.json()["cliente_id"]
+
+
+# --- C4.1 · tests ADVERSARIALES del alta -------------------------------------------
+# `CLAUDE.md` §Seguridad, regla dura: un control de autorización sin test adversarial es un control
+# NO VERIFICADO. El happy-path verde de arriba pasa igual si el gate no existe — sólo estos casos
+# distinguen "el gate está" de "el gate se especificó".
+
+def test_signup_sin_invite_token_rechaza(alta_habilitada):
+    """El caso que motivó C4.1: cualquiera con `curl` creaba un tenant facturable."""
+    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+    app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
+    r = TestClient(app).post("/auth/signup", json={"email": "intruso@test.com", "password": "pw"})
+    assert r.status_code == 403
+    assert db.tenants == {}, "no se debe haber creado ninguna fila de tenant"
+
+
+def test_signup_con_invite_token_equivocado_rechaza(alta_habilitada):
+    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+    app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
+    r = TestClient(app).post("/auth/signup", json={"email": "intruso@test.com", "password": "pw",
+                                                  "invite_token": "no-es-el-token"})
+    assert r.status_code == 403
+    assert db.tenants == {}
+
+
+def test_signup_con_env_ausente_rechaza_incluso_con_token(monkeypatch):
+    """FAIL-CLOSED, el caso que de verdad importa: si el deploy se olvida la env, el endpoint
+    RECHAZA. Un default permisivo acá reintroduce el agujero entero y falla ABIERTO — o sea, sin
+    que nadie se entere hasta que aparezca un tenant desconocido."""
+    monkeypatch.delenv(web_module.INVITE_TOKEN_ENV, raising=False)
+    gotrue = _FakeGoTrue({"intruso@test.com": "auth-user-I"})
+    app, db = _build_app(require_tenant=_require_tenant_401(), gotrue=gotrue)
+    for cuerpo in ({"email": "intruso@test.com", "password": "pw"},
+                   {"email": "intruso@test.com", "password": "pw", "invite_token": ""},
+                   {"email": "intruso@test.com", "password": "pw", "invite_token": INVITE_TOKEN_TEST}):
+        assert TestClient(app).post("/auth/signup", json=cuerpo).status_code == 403
+    assert db.tenants == {}
+
+
+def test_signup_con_env_vacia_rechaza(monkeypatch):
+    """Una env seteada pero VACÍA es el mismo agujero con otra cara: `COPILOTO_INVITE_TOKEN=` en un
+    `.env` mal editado no puede volver el gate permisivo, ni matchear un `invite_token` vacío."""
+    monkeypatch.setenv(web_module.INVITE_TOKEN_ENV, "   ")
+    app, db = _build_app(require_tenant=_require_tenant_401(),
+                         gotrue=_FakeGoTrue({"intruso@test.com": "auth-user-I"}))
+    assert TestClient(app).post("/auth/signup",
+                                json={"email": "intruso@test.com", "password": "pw",
+                                      "invite_token": ""}).status_code == 403
+    assert db.tenants == {}
 
 
 # --- /actividad: aislamiento estructural -------------------------------------------
@@ -592,7 +660,7 @@ def test_blocking_io_routes_are_sync_def_not_coroutine():
     assert inspect.iscoroutinefunction(_route_endpoint(app, "/chat", "POST")), "/chat debe seguir siendo async"
 
 
-def test_sync_routes_still_respond_correctly(monkeypatch):
+def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     """Las 3 rutas convertidas a `def` responden IGUAL vía TestClient (paridad funcional tras el fix)."""
     monkeypatch.setattr(web_module, "route_inbound", _fake_route_inbound)
     db = _FakeTenantsDB()
@@ -605,7 +673,8 @@ def test_sync_routes_still_respond_correctly(monkeypatch):
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
                                         "composio_connected": [], "es_admin": False}
-    assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw"}).json()["auth_user_id"] == "auth-user-X"
+    assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
+                                             "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 
 
 # --- /auth/oauth/ensure-tenant (Fase 5: first-login Google, self-provisioning del tenant) ------
@@ -615,8 +684,8 @@ def _google_claims(sub: str = "g-sub-1", email: str = "new@gmail.com") -> dict:
             "app_metadata": {"provider": "google", "providers": ["google"]}}
 
 
-def test_oauth_ensure_tenant_google_provisions_and_returns_cliente_id():
-    """Token de Google (provider != email) sin tenant → provisiona la fila y devuelve cliente_id."""
+def test_oauth_ensure_tenant_google_provisions_and_returns_cliente_id(alta_habilitada):
+    """Token de Google (provider != email) sin tenant, y EN la allow-list → provisiona y devuelve cliente_id."""
     db = _FakeTenantsDB()
     gotrue = _FakeGoTrue({})
     claims = _google_claims(sub="g-sub-1", email="new@gmail.com")
@@ -630,7 +699,7 @@ def test_oauth_ensure_tenant_google_provisions_and_returns_cliente_id():
     assert gotrue.claims["g-sub-1"] == cid                     # claim de paridad seteado
 
 
-def test_oauth_ensure_tenant_idempotent():
+def test_oauth_ensure_tenant_idempotent(alta_habilitada):
     """2ª llamada con el mismo sub → mismo cliente_id, sin duplicar la fila."""
     db = _FakeTenantsDB()
     claims = _google_claims(sub="g-sub-2", email="dup@gmail.com")
@@ -659,6 +728,46 @@ def test_oauth_ensure_tenant_missing_email_400():
     app, _ = _build_app(require_tenant=_require_tenant_401(),
                         require_claims=_require_claims_fixed(claims))
     assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 400
+
+
+def test_oauth_ensure_tenant_email_fuera_de_allowlist_rechaza(alta_habilitada):
+    """C4.1 · ADVERSARIAL: token de Google perfectamente válido, de un email que nadie invitó.
+
+    Éste es el agujero real que tenía `ensure-tenant`: el chequeo de "provider OAuth externo" que ya
+    existía sólo dice POR DÓNDE entró la persona, no si está invitada — así que cualquier cuenta de
+    Google del planeta se autoprovisionaba un tenant. El test de arriba (`google_provisions`) pasa
+    igual con o sin allow-list; sólo éste distingue el control de su ausencia."""
+    db = _FakeTenantsDB()
+    claims = _google_claims(sub="g-sub-intruso", email="cualquiera@gmail.com")
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db, gotrue=_FakeGoTrue({}),
+                        require_claims=_require_claims_fixed(claims))
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 403
+    assert db.tenants == {}, "no se debe haber provisionado ningún tenant"
+
+
+def test_oauth_ensure_tenant_sin_allowlist_rechaza_incluso_al_invitado(monkeypatch):
+    """FAIL-CLOSED de la segunda vía: sin `COPILOTO_SIGNUP_ALLOWLIST` seteada no entra NADIE, ni
+    siquiera un email que estaría en la lista si la lista existiera. Mismo criterio que el
+    invite-token, y por el mismo motivo: el deploy que se olvida la env no puede abrir el alta."""
+    monkeypatch.delenv(web_module.SIGNUP_ALLOWLIST_ENV, raising=False)
+    db = _FakeTenantsDB()
+    claims = _google_claims(sub="g-sub-4", email="new@gmail.com")
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db, gotrue=_FakeGoTrue({}),
+                        require_claims=_require_claims_fixed(claims))
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 403
+    assert db.tenants == {}
+
+
+def test_oauth_ensure_tenant_allowlist_normaliza_mayusculas_y_espacios(monkeypatch):
+    """La lista la escribe una persona en una variable de entorno: `A@Test.com , b@test.com` tiene
+    que funcionar. Si no normalizáramos, el fail-closed se volvería un bloqueo misterioso del
+    usuario legítimo — y el reflejo ante eso es aflojar el gate, que es peor que el bug."""
+    monkeypatch.setenv(web_module.SIGNUP_ALLOWLIST_ENV, "  Otro@Ejemplo.com ,  NEW@Gmail.COM  ")
+    db = _FakeTenantsDB()
+    claims = _google_claims(sub="g-sub-5", email="new@gmail.com")
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db, gotrue=_FakeGoTrue({}),
+                        require_claims=_require_claims_fixed(claims))
+    assert TestClient(app).post("/auth/oauth/ensure-tenant").status_code == 200
 
 
 def test_oauth_ensure_tenant_endpoint_absent_without_require_claims():
