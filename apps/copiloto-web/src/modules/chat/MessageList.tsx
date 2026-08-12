@@ -1,12 +1,15 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-import { leerPresupuestoPropuesto } from '@copiloto/core';
+import { leerClientePropuesto, leerGastoPropuesto, leerIngresoPropuesto, leerPresupuestoPropuesto } from '@copiloto/core';
 
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
 import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
+import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
+import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
+import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
 import type { ChatMessage } from './useChat';
 import './chat.css';
@@ -179,10 +182,25 @@ function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
     return <Bubble role="user" text={message.text} />;
   }
 
-  // `presupuesto_propuesto` NO lleva `choices` (mismo motivo que el resto de las cards `*_propuesto`
-  // de mobile): `classifyChoices` la ignoraría y esto caería en `Bubble` lisa — el emprendedor vería
-  // sólo el texto y ningún lugar donde corregir el monto antes de guardar. Se chequea ANTES del gate
-  // HITL, igual que `apps/mobile/src/modules/chat/ListaMensajes.tsx`.
+  // Ninguna card `*_propuesto` lleva `choices` (mismo motivo en las 4: `classifyChoices` las
+  // ignoraría y caerían en `Bubble` lisa — el emprendedor vería sólo el texto y ningún lugar donde
+  // corregir antes de guardar). Se chequean ANTES del gate HITL, igual que
+  // `apps/mobile/src/modules/chat/ListaMensajes.tsx` (mismo orden: gasto → cliente → presupuesto).
+  const gastoPropuesto = leerGastoPropuesto(message.card);
+  if (gastoPropuesto) {
+    return <TarjetaGastoPropuesto propuesta={gastoPropuesto} mensajeId={message.id} />;
+  }
+
+  const clientePropuesto = leerClientePropuesto(message.card);
+  if (clientePropuesto) {
+    return <TarjetaClientePropuesto propuesta={clientePropuesto} texto={message.text} mensajeId={message.id} />;
+  }
+
+  const ingresoPropuesto = leerIngresoPropuesto(message.card);
+  if (ingresoPropuesto) {
+    return <TarjetaIngresoPropuesto propuesta={ingresoPropuesto} mensajeId={message.id} />;
+  }
+
   const presupuestoPropuesto = leerPresupuestoPropuesto(message.card);
   if (presupuestoPropuesto) {
     return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} mensajeId={message.id} />;

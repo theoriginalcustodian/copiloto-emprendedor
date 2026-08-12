@@ -19,19 +19,35 @@ import { Button } from '../../design-system';
  * obligatorio, la condición de habilitado replica la del backend a propósito, ver ese archivo) y
  * MISMO body armado (opcionales vacíos no se mandan). Sólo cambia la capa de presentación:
  * `<input>`/`<select>` nativos de HTML en vez de los primitivos glass de RN.
+ *
+ * `iniciales` (contrato `cards-propuesto-web`, 2026-08-12): precarga desde `gasto_propuesto` —
+ * mismo mecanismo que `ValoresInicialesPresupuesto` de `FormularioPresupuesto`. `montoSugerido` es
+ * la lectura del OCR (origen `'foto'`): se muestra como cita tocable, NUNCA precarga sola el campo
+ * `monto` — ver el docstring del mobile para el porqué (no prestarle autoridad a un número alucinado).
  */
+export interface ValoresInicialesGasto {
+  monto?: string;
+  categoria?: CategoriaGasto;
+  proveedor?: string;
+  medioPago?: string;
+  descripcion?: string;
+  fecha?: string;
+  montoSugerido?: string;
+}
+
 export interface FormularioGastoProps {
   origen: OrigenGasto;
+  iniciales?: ValoresInicialesGasto;
   onCreado: (gasto: Gasto) => void;
   onCancelar: () => void;
 }
 
-export function FormularioGasto({ origen, onCreado, onCancelar }: FormularioGastoProps) {
-  const [monto, setMonto] = useState('');
-  const [categoria, setCategoria] = useState<CategoriaGasto>('otros');
-  const [proveedor, setProveedor] = useState('');
-  const [medioPago, setMedioPago] = useState('');
-  const [descripcion, setDescripcion] = useState('');
+export function FormularioGasto({ origen, iniciales, onCreado, onCancelar }: FormularioGastoProps) {
+  const [monto, setMonto] = useState(iniciales?.monto ?? '');
+  const [categoria, setCategoria] = useState<CategoriaGasto>(iniciales?.categoria ?? 'otros');
+  const [proveedor, setProveedor] = useState(iniciales?.proveedor ?? '');
+  const [medioPago, setMedioPago] = useState(iniciales?.medioPago ?? '');
+  const [descripcion, setDescripcion] = useState(iniciales?.descripcion ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +66,8 @@ export function FormularioGasto({ origen, onCreado, onCancelar }: FormularioGast
         ...(proveedor.trim() !== '' ? { proveedor: proveedor.trim() } : {}),
         ...(medioPago.trim() !== '' ? { medioPago: medioPago.trim() } : {}),
         ...(descripcion.trim() !== '' ? { descripcion: descripcion.trim() } : {}),
+        ...(iniciales?.fecha !== undefined ? { fecha: iniciales.fecha } : {}),
+        ...(iniciales?.montoSugerido !== undefined ? { montoSugerido: iniciales.montoSugerido } : {}),
       });
       if (res.status === 'no_disponible') {
         setError('Los gastos todavía no están disponibles en tu copiloto.');
@@ -78,6 +96,21 @@ export function FormularioGasto({ origen, onCreado, onCancelar }: FormularioGast
           disabled={guardando}
         />
       </label>
+
+      {/* La sugerencia del OCR (origen 'foto') se muestra como CITA del ticket, sin tratamiento que
+          sugiera validación — ver el docstring de arriba y el de `apps/mobile/.../FormularioGasto.tsx`.
+          Es TOCABLE: llena el campo, no lo precarga sola. */}
+      {iniciales?.montoSugerido != null && (
+        <button
+          type="button"
+          className="formulario-gasto__sugerido"
+          data-testid="gasto-monto-sugerido"
+          onClick={() => setMonto(iniciales.montoSugerido as string)}
+          disabled={guardando}
+        >
+          Del ticket leímos: {iniciales.montoSugerido} — tocá para usarlo
+        </button>
+      )}
 
       <label className="formulario-gasto__campo">
         <span className="formulario-gasto__etiqueta">Categoría</span>

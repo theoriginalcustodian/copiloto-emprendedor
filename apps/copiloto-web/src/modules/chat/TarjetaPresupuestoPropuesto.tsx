@@ -4,6 +4,7 @@ import type { PresupuestoPropuesto } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
+import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -38,32 +39,19 @@ type Resolucion = { estado: 'guardado'; numero: number | null } | { estado: 'des
 
 const RESOLUCION_STORAGE_PREFIX = 'copiloto-presupuesto-propuesto-resuelto';
 
-/** Best-effort, igual criterio que `useChat.ts`: si `localStorage` falla (privado/cuota/SSR), se
- * degrada a `null` — la card vuelve a mostrarse editable, que es el comportamiento de HOY sin el
- * guard, nunca un crash. */
+/** Valida lo que vino de `localStorage` — la parte genérica (lectura/escritura best-effort) vive en
+ * `resolucionCardPropuesta.ts`, compartida con las demás cards `*_propuesto`. */
 function leerResolucion(mensajeId: string): Resolucion | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(`${RESOLUCION_STORAGE_PREFIX}:${mensajeId}`);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || !('estado' in parsed)) return null;
-    const p = parsed as Record<string, unknown>;
-    if (p.estado === 'guardado') return { estado: 'guardado', numero: typeof p.numero === 'number' ? p.numero : null };
-    if (p.estado === 'descartado') return { estado: 'descartado' };
-    return null;
-  } catch {
-    return null;
-  }
+  const parsed = leerResolucionCardCruda(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId));
+  if (typeof parsed !== 'object' || parsed === null || !('estado' in parsed)) return null;
+  const p = parsed as Record<string, unknown>;
+  if (p.estado === 'guardado') return { estado: 'guardado', numero: typeof p.numero === 'number' ? p.numero : null };
+  if (p.estado === 'descartado') return { estado: 'descartado' };
+  return null;
 }
 
 function guardarResolucion(mensajeId: string, resolucion: Resolucion): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(`${RESOLUCION_STORAGE_PREFIX}:${mensajeId}`, JSON.stringify(resolucion));
-  } catch {
-    // best-effort — que falle la marca local no puede tumbar un guardado que sí ocurrió en el backend.
-  }
+  guardarResolucionCard(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId), resolucion);
 }
 
 export interface TarjetaPresupuestoPropuestoProps {
