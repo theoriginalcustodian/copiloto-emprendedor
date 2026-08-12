@@ -184,6 +184,55 @@ else
 fi
 REMOTE_GROQ
 
+echo "==> [3.6/7] alta por invitación (C4.1): COPILOTO_INVITE_TOKEN + COPILOTO_SIGNUP_ALLOWLIST, idempotente"
+# El gate de alta de `web.py` es FAIL-CLOSED: sin estas dos variables NADIE se registra (ni por
+# `/auth/signup` ni por first-login de Google). Eso es deliberado —un gate que "no aplica si falta la
+# env" falla abierto y nadie se entera—, pero significa que el deploy TIENE que provisionarlas o el
+# alta queda rota. Por eso va acá y no en un runbook manual.
+#
+# ⚠️ Ninguno de los dos valores se pisa si ya existe. Re-correr el deploy NO rota el token (invalidaría
+# las invitaciones ya repartidas y tumbaría el smoke) ni borra emails que el operador agregó a mano.
+# Agregar un tester es editar la variable en el VPS; este paso sólo garantiza que EXISTA.
+#
+# El alta de los tenants YA provisionados no depende de esto: el web llama `ensure-tenant` en cada
+# callback pero se traga el 403, y mobile sólo lo llama cuando `/me` da 403 (o sea, first-login real).
+# Verificado en SessionProvider.tsx de ambos clientes antes de encender el gate.
+ssh "$HOST" bash -s -- "$ENVDIR" <<'REMOTE_INVITE'
+set -euo pipefail
+ENVDIR="$1"
+DST="$ENVDIR/copiloto.env"
+[ -f "$DST" ] || { echo "FALTA $DST" >&2; exit 1; }
+
+# Token: se genera una sola vez, server-side, y NUNCA se imprime. Para repartirlo:
+#   ssh <host> "grep '^COPILOTO_INVITE_TOKEN=' /etc/unreal-copilot/copiloto.env"
+if grep -q '^COPILOTO_INVITE_TOKEN=.\+$' "$DST"; then
+  echo "COPILOTO_INVITE_TOKEN: ya existe (NO se rota, valor NO impreso)"
+else
+  TOKEN="$(openssl rand -hex 32)"
+  if grep -q '^COPILOTO_INVITE_TOKEN=' "$DST"; then
+    sed -i "s|^COPILOTO_INVITE_TOKEN=.*|COPILOTO_INVITE_TOKEN=${TOKEN}|" "$DST"
+  else
+    printf 'COPILOTO_INVITE_TOKEN=%s\n' "$TOKEN" >> "$DST"
+  fi
+  unset TOKEN
+  echo "COPILOTO_INVITE_TOKEN: GENERADO (valor NO impreso; leerlo con grep en el VPS para repartirlo)"
+fi
+
+# Allow-list: se siembra SOLO con el usuario canónico de prueba. Sembrarla con más sería adivinar a
+# quién invitó el operador; dejarla vacía sería fail-closed total y rompería el smoke E2E, que es el
+# control positivo de este mismo fix.
+if grep -q '^COPILOTO_SIGNUP_ALLOWLIST=' "$DST"; then
+  N="$(grep '^COPILOTO_SIGNUP_ALLOWLIST=' "$DST" | head -1 | cut -d= -f2- | tr ',' '\n' | grep -c '[^[:space:]]' || true)"
+  echo "COPILOTO_SIGNUP_ALLOWLIST: ya existe con $N email(s) habilitado(s) — no se toca"
+else
+  printf 'COPILOTO_SIGNUP_ALLOWLIST=%s\n' 'e2e-device@copiloto.test' >> "$DST"
+  echo "COPILOTO_SIGNUP_ALLOWLIST: SEMBRADA con el usuario canónico de prueba ÚNICAMENTE."
+  echo "  ⚠️ Ningún tester nuevo de Google va a poder darse de alta hasta que lo agregues:"
+  echo "     ssh <host> \"sed -i 's|^COPILOTO_SIGNUP_ALLOWLIST=.*|&,tester@gmail.com|' $DST\" && systemctl restart uc-copiloto-web"
+fi
+chmod 600 "$DST"
+REMOTE_INVITE
+
 echo "==> [4/7] provision.py (idempotente: CREATE ... IF NOT EXISTS / DROP+CREATE policy / GRANT repetible)"
 # ⚠️ `UC_RLS_FORCE=1` va acá y no es opcional (2026-07-31). Sin él, `provision.py` crea las tablas con
 # RLS pero SIN `FORCE`, y la app se conecta con el rol DUEÑO — que Postgres exime de sus propias
