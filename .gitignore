@@ -51,6 +51,11 @@ Factura/
 _evidencia/
 code/
 
+# Volcados crudos de spikes contra APIs reales (p.ej. Calendar) -- pueden traer datos del tenant
+# (títulos de eventos, asistentes) o tokens de capacidad de un solo uso. El RESULT.md sí se versiona
+# (es la síntesis curada); el volcado crudo, no.
+spikes/*/out/
+
 # Mobile
 apps/mobile/.expo/
 apps/mobile/android/

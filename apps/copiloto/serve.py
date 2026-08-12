@@ -276,6 +276,7 @@ async def _serve() -> None:
         require_tenant=require_tenant,
         tarjeta_store_factory=lambda cid: TarjetaStore(conn_factory, cid),
         avanzar_tablero_fn=lambda cid: avanzar_tablero(conn_factory, cid),
+        composio_gateway=composio_gateway,
     )
 
     # Solo para normalize_inbound del /chat (route_inbound); el reply_sink real que sirve /reply es
