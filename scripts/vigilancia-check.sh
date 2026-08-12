@@ -173,6 +173,89 @@ if [ -d "$TRANSCRIPTS" ]; then
   done
 fi
 
+# ── 3.bis) ROL AUSENTE: hay contrato abierto para un rol que NO TIENE VENTANA ─────────────────
+# CAUSA RAÍZ (medido 2026-08-12, en modo autónomo sin operador): el bloque 3 de arriba sólo sabe
+# juzgar a un rol que ESCRIBIÓ ALGUNA VEZ — su propia línea lo dice:
+#
+#     [ "$mt" -eq 0 ] && continue   # sin transcript rotulado <4h para ese rol -> sin señal, no alarma
+#
+# Es un fail-open de manual: detecta la sesión TARDE, nunca la sesión AUSENTE. Ese día C4.1 —el P0
+# que bloquea la beta— se contrató 11:57 y a las 13:40 seguía sin dueño: backend no tenía ventana,
+# `mt_be` valía 0, el `continue` se lo comió, y `vigilancia-check --quiet` devolvió exit 0
+# ("sin novedades") durante ~100 minutos. Auditoría era todavía peor: corre desde SU worktree, así
+# que su transcript ni siquiera vive en el slug principal — invisible por construcción.
+# La ausencia de señal se estaba leyendo como ausencia de problema.
+#
+# Por qué se puede alarmar sin fabricar falsos positivos (el riesgo que el bloque 3 documenta: un
+# watchdog que grita de más se apaga solo en una semana): NO se alarma porque un rol no esté vivo
+# —una sesión puede legítimamente no estar corriendo—, sino porque **el buzón dice que se lo
+# espera**. La expectativa ya está codificada en el nombre del archivo (`contrato_…-a-<rol>_`), así
+# que el chequeo se deriva del estado real y no hardcodea ninguna lista de quién debería existir.
+# Cero contratos abiertos para un rol ⇒ silencio absoluto.
+#
+# La señal de vida se busca en DOS lugares, porque el rótulo por marcador de cron no alcanza:
+#   a) el slug principal, ya rotulado arriba por el prompt del cron;
+#   b) los slugs hermanos, donde el rol viaja en el NOMBRE del directorio — una sesión lanzada
+#      desde su propio worktree tiene slug propio (`…--claude-worktrees-auditoria`) y jamás
+#      aparece en (a). Ése es exactamente el caso que dejó a auditoría fuera del radar.
+SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
+# Los mt_* nacen dentro del `if [ -d "$TRANSCRIPTS" ]` de arriba: si ese directorio no existe
+# quedan sin definir y `set -u` abortaría el script justo en el chequeo que existe para el caso
+# en que NO hay transcripts. Default explícito antes de tocarlos.
+: "${mt_be:=0}"; : "${mt_fe:=0}"; : "${mt_me:=0}"
+
+senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
+  local rol="$1" mejor="${2:-0}" m
+  # (b) transcript en un slug hermano — el rol viaja en el nombre del directorio.
+  while IFS= read -r -d '' f; do
+    m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    [ "$m" -gt "$mejor" ] && mejor="$m"
+  done < <(find "$SLUGS_ROOT" -maxdepth 2 -name '*.jsonl' -newermt '-8 hours' -ipath "*${rol}*" -print0 2>/dev/null)
+  # (c) lo que el rol ESCRIBIÓ en el buzón. Es la mejor señal de las tres y la única que no
+  # depende del rótulo del cron: un archivo `*_<rol>-a-*` sólo lo pudo escribir esa sesión, y es
+  # producto de trabajo, no latido. Medido 2026-08-12: las dos ventanas de C6 vivas NO tenían
+  # marcador de cron (mt_fe=0) y por transcript parecían ausentes — el buzón las mostró al día.
+  while IFS= read -r -d '' f; do
+    m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    [ "$m" -gt "$mejor" ] && mejor="$m"
+  done < <(find "$BUZON" -type f -iname "*_${rol}-a-*" -newermt '-8 hours' -print0 2>/dev/null)
+  printf '%s' "$mejor"
+}
+
+# PLANIFICACION queda fuera a propósito: es quien corre este script — si no estuviera viva, no
+# habría nadie leyendo la alarma.
+#
+# El criterio NO es "hace cuánto que no se lo ve" (eso pide un umbral arbitrario y produce la
+# acusación falsa que mató al primer intento de este bloque: frontend estaba trabajando y el
+# script lo dio por ausente porque su ventana no tenía marcador de cron). El criterio es
+# RELACIONAL y no tiene umbral que elegir:
+#
+#     ¿el contrato es MÁS NUEVO que la última señal de vida de su destinatario?
+#
+# Si lo es, nadie de ese rol estuvo vivo en ningún momento desde que el contrato se emitió — por
+# construcción no lo leyó nadie. Verificado contra el estado real de ese día: backend firmó por
+# última vez 11:55 y C4.1 se emitió 11:57 (alarma correcta, llevaba ~100 min sin dueño), frontend
+# firmó 13:01 con su contrato emitido antes (silencio correcto, estaba trabajando).
+for par in "backend:$mt_be" "frontend:$mt_fe" "auditoria:0" "manejo-de-errores:$mt_me"; do
+  rol="${par%%:*}"; mt_main="${par##*:}"
+  senal="$(senal_rol "$rol" "$mt_main")"
+  # Destinatarios compuestos incluidos (`-a-backend-y-frontend_`). El `-a-` ancla la dirección:
+  # un `backend-a-planificacion_` NO matchea como contrato PARA backend, que es el error obvio.
+  huerfanos=()
+  while IFS= read -r nombre; do
+    [ -z "$nombre" ] && continue
+    mt_c="$(stat -c %Y "$BUZON/abierto/$nombre" 2>/dev/null || echo 0)"
+    [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
+  done < <(ls -1 "$BUZON/abierto" 2>/dev/null \
+           | grep -iE "_(contrato|urgente)_[a-z-]*-a-([a-z-]+-y-)?${rol}(-y-[a-z-]+)?_")
+  [ "${#huerfanos[@]}" -eq 0 ] && continue
+  if [ "$senal" -eq 0 ]; then desde="nunca dio señal de vida (<8h)"
+  else                        desde="no da señal desde las $(date -d "@$senal" '+%H:%M')"; fi
+  add "SIN DUEÑO: ${rol^^} $desde, y estos contratos se emitieron DESPUÉS.
+Nadie de ese rol estuvo vivo para leerlos — no es 'va lento', es que no hay ventana:
+$(printf '%s\n' "${huerfanos[@]}" | sed 's/^/  · /')"
+done
+
 # ── Veredicto ────────────────────────────────────────────────────────────────────────────────
 if [ "$alarma" = "1" ]; then
   printf '%s\n' "${reporte[@]}"
