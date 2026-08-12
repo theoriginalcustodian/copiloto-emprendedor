@@ -143,3 +143,56 @@ de estar mencionadas ahí, o sea el mismo hecho se pagaba dos veces en cada sesi
 - [🔁 Re-verificación auditoría Fable 2026-08-04](reverificacion-auditoria-fable-2026-08-04.md) — `project`. Los 11 hallazgos re-verificados vs código pusheado: 2 resueltos, 3 parciales, 6 vivos. Doc maestro en `Auditorias/`.  ← _bajada: hito de auditoría ya consolidado; doc maestro en Auditorias/_
 
 - [🔇 El silencio del buzón NO prueba REPL muerta](silencio-del-buzon-no-prueba-repl-muerta.md) — la sesión viva ACTÚA sin autorear. Bajada del índice el 2026-08-07: su lección está cubierta por [[mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo]], que es más general (mide REPORTE vs TRABAJO en cualquier contexto, no sólo el buzón).
+
+## Movidos del índice el 2026-08-12 (el índice se pasaba ~1.540 chars del techo — contrato de planificación)
+
+Criterio: **duplicados reales** (ya cubiertos por un wikilink en §Estado vivo de `MEMORY.md`) y
+**casos particulares narrow** (una lección técnica de un incidente puntual, no un principio de alta
+recurrencia). Los principios de alta frecuencia —cadencia/ocio, guards, coordinación del buzón,
+checkout compartido, "El producto"— quedaron intactos en el índice activo.
+
+### Duplicados reales — ya cubiertos por wikilink en §Estado vivo
+
+- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?* ← _bajada: ya está en §Estado vivo (⚠️ instrumentos que mentían)_
+- [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op puntúa mejor en un gate de no-regresión. ← _bajada: ya está en §Estado vivo (🛡️ manejo de errores)_
+- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — leer al arrancar. ← _bajada: ya está en §Estado vivo (🔀 tres sesiones)_
+
+### Casos particulares — "el instrumento antes que el resultado"
+
+- [🈳🟢 El chequeo de tipos compilaba el proyecto VACÍO](el-chequeo-de-tipos-que-compilaba-el-proyecto-vacio.md) — preguntá el DENOMINADOR.
+- [📐🚫 Una tabla IGNORA el `max-width` de su celda](una-tabla-ignora-el-max-width-de-su-celda.md) — jsdom no hace layout.
+- [🧪🔌 Tests que mockean serialización son CIEGOS al wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `curl` lo caza rápido.
+- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — el CI es gate final, no consola.
+- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base antes de comparar.
+- [🔢 El DEFAULT devuelve más de lo asumido](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — confirmar no dispara control.
+- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — apagar = pausar el Schedule.
+
+### Casos particulares — diseño y arquitectura
+
+- [🛠️🔁 La consola se construye con las piezas de la APP](la-consola-se-construye-con-las-piezas-de-la-app.md) — reusá; lo propio, en su módulo. ← _CONSOLA ya cerrada (§Estado vivo)_
+- [⏱️🕳️ Un campo que cambia con el RELOJ anula el cache](una-columna-global-mutante-vuelve-inerte-al-cache.md) — invalidar de más no rompe.
+- [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — leer antes de DR/staging.
+- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — no cubre tabla ni permisos.
+- [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — "al final" borra la prueba.
+- [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — continue-as-new reinicia números.
+- [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del SYNC.
+
+### Casos particulares — coordinación (bajo uso)
+
+- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — no es 4ª sesión.
+
+### Casos particulares — frontend móvil (bugs puntuales ya resueltos o cubiertos por guard automático)
+
+- [📱 Estado del frontend móvil — chrome auto-hide y sus regresiones](copiloto-frontend-movil-ux-estado.md) — snapshot de UX puntual, no doctrina.
+- [🧊 App "bloqueada" al volver de una función → glass APILADO](glass-apilado-empujar-una-vez.md) — doble toque apila 2 `transparentModal`; lock por FOCO. Bug ya resuelto.
+- [🧭 Un `*.test.tsx` en `app/` tumba la app](test-en-carpeta-app-es-una-ruta.md) — expo-router lo carga como RUTA. Ya cubierto por guard automático `appSoloRutas.test.ts`.
+- [⌨️ El teclado tapa los campos del glass Y mata el scroll](teclado-tapa-campos-cascara-glass.md) — `KeyboardAvoidingView padding` + revelar el campo enfocado. Bug ya resuelto.
+- [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
+- [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md) — ya hay un duplicado bajado el 2026-08-07 arriba.
+- [🎨🕳️ Un token con DOS definiciones](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — tocar la equivocada no da síntoma: contá **definiciones**, no usos.
+- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.
+
+### Deuda diferida ya trackeada (deliberada + visible, sólo baja de frecuencia de carga)
+
+- [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — deuda diferida, no gap.
+- [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — GoTrue `MAILER_AUTOCONFIRM=true`; slot para Gmail SMTP.
