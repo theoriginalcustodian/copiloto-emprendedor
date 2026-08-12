@@ -24,6 +24,7 @@ from typing import Callable
 
 from graphity_structured_client import GrafoIngestError, GraphityStructuredClient
 from inteligencia_queries import InteligenciaQueries
+from log_estructurado import log_error
 
 # Las 15 preguntas de §9, con la herramienta que cada una dispara. Es el catálogo del planner — no
 # una lista de ejemplos: el DoD (§5) exige contestar al menos 10/15 con el número correcto.
@@ -101,11 +102,15 @@ def _facts_vigentes(edges: list[dict]) -> list[str]:
 
 class InteligenciaChat:
     def __init__(self, *, queries: InteligenciaQueries, llm, grafo_client: GraphityStructuredClient,
-                 graph_id: str) -> None:
+                 graph_id: str, cliente_id: str | None = None) -> None:
         self._queries = queries
         self._llm = llm
         self._grafo = grafo_client
         self._graph_id = graph_id
+        # D-A (lote higiene, 2026-08-12): sólo para el `log_error` de `responder()` -- no cambia
+        # ninguna decisión de negocio. `None` (default, tests/wiring puro) = se loguea sin tenant,
+        # igual que `log_error` ya tolera en cualquier otro caller.
+        self._cliente_id = cliente_id
 
     def _ejecutar_herramienta(self, herramienta: str, args: dict) -> dict | list | None:
         if herramienta in HERRAMIENTAS_SQL:
@@ -141,7 +146,11 @@ class InteligenciaChat:
 
         try:
             plan = self._llm.complete(_SYSTEM_PLANNER, pregunta, json_mode=True)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 — best-effort (docstring): degrada, nunca tumba el chat
+            # D-A (lote higiene, 2026-08-12): esto quedaba mudo -- "no tengo ese dato" es indistinguible
+            # para el usuario entre "no hay dato" y "el LLM está caído", y sin log tampoco lo distinguía
+            # nadie del lado nuestro. `log_error` no cambia el degradado, sólo deja rastro.
+            log_error(exc, workflow="inteligencia_chat.planner", cliente_id=self._cliente_id)
             return {"respuesta": _MSG_NO_SE, "fuente": "no-se"}
         parsed = plan.get("parsed") or {}
 
@@ -165,7 +174,8 @@ class InteligenciaChat:
                 _SYSTEM_REDACTOR,
                 f"Pregunta: {pregunta}\n\nDatos: {json.dumps(datos, ensure_ascii=False)}",
                 json_mode=False)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 — mismo criterio que el except del planner, arriba
+            log_error(exc, workflow="inteligencia_chat.redactor", cliente_id=self._cliente_id)
             return {"respuesta": _MSG_NO_SE, "fuente": "no-se"}
         respuesta = (redaccion.get("raw") or "").strip() or _MSG_NO_SE
         return {"respuesta": respuesta, "fuente": fuente}

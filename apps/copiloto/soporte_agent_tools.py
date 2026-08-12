@@ -31,9 +31,9 @@ Verificado contra el código real de cada fuente, no asumido:
 """
 from __future__ import annotations
 
-import json
 from typing import Callable
 
+from backend.agent.observabilidad import log_evento
 from backend.agent.types import ToolResult
 
 from deposito_traumas import depositar as depositar_trauma
@@ -109,12 +109,11 @@ def _run_consultar_kb(arguments: dict, ctx, idem_key: str, rag_client_factory: C
         obs["retrieved_count"] = rc
     if lat is not None:
         obs["latency_ms"] = lat
-    # I1: observabilidad de cada consulta -- mismo patrón que `LLM_TURNO`/`STT_TRANSCRIPT` (print, no
-    # activity.logger: sin `basicConfig` sólo `warning+` llega a journald). NUNCA la `pregunta` cruda
-    # ni el `answer` (podrían traer lo que el usuario escribió) -- sólo metadata de la consulta (H3).
-    print("RAG_CONSULTA " + json.dumps(
-        {"cliente_id": ctx.cliente_id, "outcome": r.outcome, "retrieved_count": rc, "latency_ms": lat},
-        ensure_ascii=False), flush=True)
+    # I1: observabilidad de cada consulta -- mismo patrón que `LLM_TURNO`/`STT_TRANSCRIPT`
+    # (`log_evento`, capa motor). NUNCA la `pregunta` cruda ni el `answer` (podrían traer lo que el
+    # usuario escribió) -- sólo metadata de la consulta (H3).
+    log_evento("RAG_CONSULTA", {
+        "cliente_id": ctx.cliente_id, "outcome": r.outcome, "retrieved_count": rc, "latency_ms": lat})
     # I3 (Trauma Empaquetado): un fallo del RAG/orquestador se serializa con fingerprint para no
     # perderse -- mismo mecanismo que ya usan las costuras C2/C3 (`deposito_traumas.depositar`), no uno
     # nuevo. Sólo UNAVAILABLE es un fallo real de infra; REFUSED es una respuesta legítima del sistema

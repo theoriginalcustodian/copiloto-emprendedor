@@ -7,12 +7,20 @@ loop del worker — mismo patron que `infer` en la fabrica.
 from __future__ import annotations
 
 import asyncio
-import json
+import os
 
 from temporalio import activity
 
 from backend.agent.agent_runtime import get_channel, get_domain, get_staff_notifier, get_stt_provider
+from backend.agent.observabilidad import log_evento
 from backend.agent.types import DispatchResult, Intent
+
+def _log_stt_text_habilitado() -> bool:
+    """Gatea el TEXTO transcripto crudo en `STT_TRANSCRIPT` — puede traer PII/PHI (datos del cliente
+    hablados). Default OFF: sin la env, el evento sólo lleva `chars` (longitud), nunca el contenido.
+    Se lee la env EN CADA LLAMADA (no se cachea a nivel de módulo) para que un test pueda flipearla
+    con `monkeypatch.setenv` sin depender del orden de import."""
+    return os.environ.get("COPILOTO_LOG_STT_TEXT", "").strip().lower() in ("1", "true", "on")
 
 
 @activity.defn
@@ -109,11 +117,12 @@ async def transcribe_voice(payload: dict) -> dict:
         adapter = get_channel(payload["channel"])
         audio = await asyncio.to_thread(adapter.download_file, payload["file_id"])
         text = await asyncio.to_thread(stt.transcribe, audio)
-        # observabilidad de voz: el transcript queda en el log (journalctl) para auditar qué entendió el STT.
-        # NOTA: en producción real con PHI sensible, gatear por env (un transcript puede traer datos del paciente).
-        print("STT_TRANSCRIPT " + json.dumps(
-            {"file_id": str(payload.get("file_id"))[:14], "bytes": len(audio), "text": text},
-            ensure_ascii=False), flush=True)
+        # observabilidad de voz: queda en journalctl para auditar qué entendió el STT. El texto crudo
+        # sólo viaja con `COPILOTO_LOG_STT_TEXT=1` (puede traer PII/PHI) -- por default sólo la longitud.
+        campos = {"file_id": str(payload.get("file_id"))[:14], "bytes": len(audio), "chars": len(text or "")}
+        if _log_stt_text_habilitado():
+            campos["text"] = text
+        log_evento("STT_TRANSCRIPT", campos)
         return {"text": text or ""}
     except Exception as exc:  # noqa: BLE001 -- un fallo de STT NO debe romper el hilo: el motor pide texto
         activity.logger.warning(f"[transcribe_voice] fallo STT: {exc}")
@@ -181,14 +190,11 @@ async def call_llm_tools(payload: dict) -> dict:
         tool_choice=payload.get("tool_choice", "auto"))
     # Observabilidad de `finish_reason` (pedido planificación 2026-08-09): viaja en el dict de
     # `complete_tools` pero nadie lo miraba -- si el LLM corta por max_tokens ("length"), `content`
-    # es una respuesta a mitad de frase y el loop la trataba como cierre normal. Paso 1 (medir, no
-    # arreglar): mismo patrón que `STT_TRANSCRIPT` arriba -- `print` directo, no `activity.logger`,
-    # porque sólo `warning+` llega a journald sin `basicConfig` (ver `log_estructurado.py`) y esto no
-    # es un warning, es una métrica de cada turno.
-    print("LLM_TURNO " + json.dumps(
-        {"domain": payload["domain"], "cliente_id": cliente_id, "session_id": payload.get("session_id", ""),
-         "model": result.get("model", ""), "finish_reason": result.get("finish_reason", "")},
-        ensure_ascii=False), flush=True)
+    # es una respuesta a mitad de frase y el loop la trataba como cierre normal. Métrica de cada
+    # turno, no un error -- por eso `log_evento` (INFO) y no `activity.logger` (warning-only).
+    log_evento("LLM_TURNO", {
+        "domain": payload["domain"], "cliente_id": cliente_id, "session_id": payload.get("session_id", ""),
+        "model": result.get("model", ""), "finish_reason": result.get("finish_reason", "")})
     await _registrar_metering(
         dom, cliente_id=cliente_id, session_id=payload.get("session_id", ""),
         model=result.get("model", ""), tokens=(result.get("usage") or {}).get("total_tokens"),
