@@ -40,8 +40,20 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D5 | 8 endpoints AFIP/presupuestos con guard probado sólo a nivel helper/store, no por endpoint HTTP hostil | P1 H-2 | backend | tras el lote C | Es la **misma clase** que C3 del lote C. Al escribir esos tests, extender el patrón a estos 8 |
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent | P1 H-4 | backend | junto con D-A del lote B | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
-| D8 | `apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile | C6(b) | frontend | **próximo ítem de frontend al cerrar C6(c)/(d)** | El defecto real de C6 (crecimiento sin techo) **ya está cerrado en las dos copias**. Lo que queda es duplicación, y converger 348 líneas del hook de chat de producción sin revisor en vivo tiene peor relación riesgo/beneficio que diferirlo |
+| D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
 | D9 | ~~Flake del job `mobile` dentro de `gate.sh` completo~~ — **CERRADO 2026-08-12, mismo ciclo que C6** | campo (frontend, 2026-08-12) | frontend | resuelto | Ver abajo: quedó en 5/5 falla completa antes del fix, causa confirmada, fix aplicado y verificado |
+
+**Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
+C6(b), la duplicación **no se convergió** — se protegió con un **test de equivalencia**
+(`apps/copiloto-web/src/modules/chat/useChat.equivalencia.test.ts`): la MISMA secuencia de eventos
+(crecimiento de mensajes de usuario más allá de `MAX_MENSAJES_HISTORIAL`, y un poll de rehidratación
+con un id repetido + uno nuevo) corre contra el reducer real de `@copiloto/core`
+(`reducirChat`/`hidratarEstado`) y contra el hook real `useChat` (web), y se afirma el mismo
+`messages` final en las dos copias. Control negativo: revertir la poda de `acotarMensajes` en
+`useChat.ts` hace caer 2/2 tests. Esto compra la misma protección que la convergencia le compraría al
+invariante (drift silencioso entre las dos copias), sin el riesgo de reescribir 348 líneas del hook de
+chat de producción sin revisor en vivo. La duplicación en sí queda — es deuda de prolijidad, no de
+correctitud, y no vuelve a esta tabla salvo que alguien decida converger por otra razón.
 
 **D9 no es de la misma clase que D1–D8.** Las otras ocho son deuda de **producto**: postergarlas
 cuesta latencia, observabilidad o duplicación. D9 es deuda de **instrumento**, y su costo es que
