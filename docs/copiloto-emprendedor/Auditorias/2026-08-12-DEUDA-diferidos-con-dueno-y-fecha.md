@@ -44,6 +44,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
 | D11 | **Los 2 adversariales de C3 (lote C) NO aíslan el guard app-side** — al remover el filtro `WHERE cliente_id` del `UPDATE`, el test sigue **verde** porque RLS `FORCE` lo tapa como 2ª barrera. Verifican el sistema (A no toca B), no cuál capa lo garantiza | Fase D lote C (auditoría, 2026-08-12) | backend + auditoría | **al modificar `FORCE ROW LEVEL SECURITY` o la policy de cualquier tabla con guard app-side** | Defense-in-depth = seguro hoy; deuda de **cobertura**, no de función. Ver abajo |
+| D12 | **Web sólo tiene 1 de las 5 cards `*_propuesto` que mobile tiene desde el hito 8** (`presupuesto_propuesto`, cerrada en e2e §G6; faltan `gasto_propuesto`/`cliente_propuesto`/`ingreso_propuesto`/`factura_propuesto`) | e2e §G6 (frontend, 2026-08-12) | frontend | **cuando se confirme que backend emite `card: {kind: '<x>_propuesto', ...}` hacia web para alguna de las 4 restantes** (grep de `card.kind` en una respuesta real de `/reply`, no suposición) | No hay evidencia de que backend ya mande esas 4 a web — expandir sin esa confirmación es trabajo especulativo. `presupuesto_propuesto` sólo se supo roto porque el smoke lo ejercitó; el mismo método (no inspección de código) decide si esto es deuda real o no aplica |
 
 **Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
 C6(b), la duplicación **no se convergió** — se protegió con un **test de equivalencia**
@@ -284,6 +285,15 @@ Es una base **fuerte**, no un smoke de "levanta el server". Los huecos son puntu
 evidencia estructural es buena. Es un hueco de *demostración*, no de *función*. Pero queda anotado
 porque "nuestro diferencial anda" es exactamente la clase de afirmación que no se sostiene con
 autoevaluación.
+
+**Confirmación independiente de E1 (frontend, e2e §G6, 2026-08-12):** el mismo hueco aparece del lado
+del browser, no sólo del lado de `ensure-tenant`. El link `Entrar con Google` de
+`apps/copiloto-web/src/auth/LoginScreen.tsx` se verificó **sólo estructuralmente** contra prod
+(`https://copilotoemprendedor.duckdns.org/auth/v1/authorize?provider=google&redirect_to=...` — GoTrue
+real, redirect correcto) — un browser headless no tiene forma limpia de pasar el challenge/2FA de una
+cuenta Google real. Cerrar esto de punta a punta exige una **cuenta Google de prueba dedicada** +
+correrlo con un browser no-headless a mano; ninguna de las dos cosas la puede decidir una sesión sola.
+`decision_` pidiéndola: `coordinacion/…decision_frontend-a-todos_pedido-cuenta-google-de-prueba-para-e2e-oauth.md`.
 
 ---
 

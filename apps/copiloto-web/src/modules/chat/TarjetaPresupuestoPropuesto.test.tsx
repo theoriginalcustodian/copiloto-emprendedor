@@ -64,17 +64,22 @@ function presupuestoGuardado(numero: number): Presupuesto {
   } as unknown as Presupuesto;
 }
 
+const MENSAJE_ID = 'assistant-1';
+
 describe('TarjetaPresupuestoPropuesto', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear(); // guard cross-reload vive en localStorage — aislar entre tests
+  });
 
   it('dice explícitamente que TODAVÍA no se guardó', async () => {
-    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} />);
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(await screen.findByText(/todavía no lo anoté/)).toBeInTheDocument();
   });
 
   it('precarga el concepto, el receptor y cada fila de ítems — editables', async () => {
-    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} />);
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(await screen.findByTestId('presupuesto-concepto')).toHaveValue('Instalación eléctrica');
     expect(screen.getByTestId('presupuesto-nombre')).toHaveValue('Juan Pérez');
@@ -84,7 +89,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
 
   it('NO es una corrección — no muestra "Corregir el N°" ni manda reemplazaA', async () => {
     mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
-    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} />);
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(screen.queryByText(/Corregir el N°/)).toBeNull();
 
@@ -96,7 +101,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
 
   it('al guardar se convierte en confirmación con el número asignado — no persiste en automático', async () => {
     mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
-    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} />);
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     expect(mockCrear).not.toHaveBeenCalled();
 
@@ -108,11 +113,65 @@ describe('TarjetaPresupuestoPropuesto', () => {
   });
 
   it('descartar no guarda nada', () => {
-    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} />);
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 
     fireEvent.click(screen.getByTestId('presupuesto-cancelar'));
 
     expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeInTheDocument();
     expect(mockCrear).not.toHaveBeenCalled();
+  });
+});
+
+describe('TarjetaPresupuestoPropuesto — guard cross-reload (caso hostil)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('card ya GUARDADA + reload (remount) + no hay botón Guardar posible ⇒ no se puede duplicar', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    fireEvent.click(screen.getByTestId('presupuesto-guardar'));
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeInTheDocument());
+    expect(mockCrear).toHaveBeenCalledTimes(1);
+
+    unmount(); // simula el reload: React se remonta desde cero, sólo `localStorage` sobrevive
+
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    // Va DIRECTO al estado terminal — nunca pasa por el formulario editable.
+    expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent('Presupuesto anotado — N° 7');
+    expect(screen.queryByTestId('presupuesto-guardar')).toBeNull();
+    expect(screen.queryByTestId('presupuesto-concepto')).toBeNull();
+    // Control negativo del guard: sin él, este segundo render volvería a 'editando' y un click acá
+    // habría llamado a `crearPresupuesto` una 2ª vez (duplicado). Sigue en 1 con el guard puesto.
+    expect(mockCrear).toHaveBeenCalledTimes(1);
+  });
+
+  it('card ya DESCARTADA + reload (remount) ⇒ sigue descartada, no reaparece editable', () => {
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+    fireEvent.click(screen.getByTestId('presupuesto-cancelar'));
+    expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeInTheDocument();
+
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    expect(screen.getAllByTestId('presupuesto-propuesto-descartado').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('presupuesto-guardar')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('dos mensajes distintos (`mensajeId` distinto) NO comparten resolución — la marca es por card, no global', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    const { unmount } = render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-1" />);
+    fireEvent.click(screen.getByTestId('presupuesto-guardar'));
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeInTheDocument());
+    unmount();
+
+    render(<TarjetaPresupuestoPropuesto propuesta={propuesta()} mensajeId="assistant-2" />);
+
+    // `findBy` (no `getBy`): deja asentar el efecto async de `listarConceptos` del 2º render antes de
+    // que el test termine — evita un warning de act() por un `setState` que cae después del `expect`.
+    expect(await screen.findByTestId('presupuesto-concepto')).toBeInTheDocument(); // el 2º sigue editable
   });
 });
