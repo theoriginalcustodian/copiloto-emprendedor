@@ -219,6 +219,30 @@ def test_ADVERSARIAL_A_no_puede_cobrar_ni_ver_lo_de_B(conn_de_tenant, tenants):
 
 
 @necesita_pg
+def test_ADVERSARIAL_A_no_puede_editar_ni_desactivar_el_concepto_de_B(conn_de_tenant, tenants):
+    """C3 (auditoría, lote C): PATCH/DELETE `/conceptos/{id}` filtran por `cliente_id` en el SQL,
+    pero sin este test el guard era código sin ejercitar — la regla dura del repo (control de acceso
+    sin test adversarial = no verificado). `editar`/`desactivar` devuelven `None` si el `id` no es del
+    tenant que pide; la web traduce ese `None` a 404 (`presupuestos_web.py`).
+    """
+    a, b = tenants
+    concepto_de_b = ConceptoStore(conn_de_tenant(b), b).crear("Pintura de living", "50000")
+
+    de_a = ConceptoStore(conn_de_tenant(a), a)
+    assert de_a.editar(concepto_de_b["id"], {"nombre": "Robado"}) is None
+    assert de_a.desactivar(concepto_de_b["id"]) is None
+
+    # el de B sigue intacto y activo: el intento de A no pudo ni siquiera ensuciarlo
+    intacto = ConceptoStore(conn_de_tenant(b), b).obtener(concepto_de_b["id"])
+    assert intacto["nombre"] == "Pintura de living" and intacto["activo"] is True
+
+    # control positivo: A SÍ puede editar/desactivar lo suyo — el guard filtra por tenant, no rompe todo
+    concepto_de_a = de_a.crear("Poda de árbol", "8000")
+    assert de_a.editar(concepto_de_a["id"], {"nombre": "Poda de árbol grande"})["nombre"] == "Poda de árbol grande"
+    assert de_a.desactivar(concepto_de_a["id"])["activo"] is False
+
+
+@necesita_pg
 def test_ADVERSARIAL_A_no_puede_borrar_completar_ni_deshacer_lo_de_B(conn_de_tenant, tenants):
     """Hallazgo 2026-08-04 (M-WEB RLS): `registrar`/`resumen`/`impagos` ya tenían adversarial —
     `borrar_ingreso`, `completar` y `borrar` (deshacer cobro) no. Los tres son DELETE/UPDATE por id:

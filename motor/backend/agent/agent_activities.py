@@ -48,10 +48,15 @@ async def call_llm(payload: dict) -> dict:
 
 @activity.defn
 async def dispatch_intent(payload: dict) -> dict:
-    """payload = {domain, intent, state, conv}. Ejecuta el dispatcher del dominio (tools) -> DispatchResult dict."""
+    """payload = {domain, intent, state, conv}. Ejecuta el dispatcher del dominio (tools) -> DispatchResult dict.
+
+    `idem_key` (C1, doble cobro) se agrega a `conv` ACÁ, no en el workflow -- mismo motivo que
+    `_idem_key_de_la_activity` abajo: sumarla a `payload` tocaría el input de un `ScheduleActivityTask`
+    con ejecuciones vivas. El dispatcher del dominio la ve vía `ctx.idem_key` (TenantCtx)."""
     dom = get_domain(payload["domain"])
     intent = Intent.from_dict(payload["intent"])
-    ctx = dom["context_factory"](payload["conv"]) if dom["context_factory"] else None
+    conv = {**payload["conv"], "idem_key": _idem_key_de_la_activity()}
+    ctx = dom["context_factory"](conv) if dom["context_factory"] else None
     result = await asyncio.to_thread(dom["dispatcher"], intent, payload.get("state") or {}, ctx)
     return result.to_dict() if isinstance(result, DispatchResult) else result
 
