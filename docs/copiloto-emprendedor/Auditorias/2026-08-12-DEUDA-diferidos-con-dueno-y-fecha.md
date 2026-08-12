@@ -41,7 +41,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent | P1 H-4 | backend | junto con D-A del lote B | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
-| D9 | ~~Flake del job `mobile` dentro de `gate.sh` completo~~ — **CERRADO 2026-08-12, mismo ciclo que C6** | campo (frontend, 2026-08-12) | frontend | resuelto | Ver abajo: quedó en 5/5 falla completa antes del fix, causa confirmada, fix aplicado y verificado |
+| D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
 
 **Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
 C6(b), la duplicación **no se convergió** — se protegió con un **test de equivalencia**
@@ -88,6 +88,38 @@ es un cambio de *tipo*, `ScrollView`→`FlatList`, cero efecto en runtime). Apli
 propuesto arriba: `jest.setTimeout(15000)` en ambos describes gemelos. Gate completo re-corrido
 después del fix: **5/5 verde** (`.ci-recibos/bd25b9b7...json`, PR de C6). No vuelve a aparecer desde
 entonces en este ciclo.
+
+### ⚠️ REAPERTURA — 2026-08-12 ~16:50 (planificación, corriendo el gate de C4.1)
+
+**Volvió a aparecer, con el fix ya presente en el HEAD gateado.** Verificado por ancestría, no por
+supuesto: `git merge-base --is-ancestor 8d7e8cff HEAD` → sí, `jest.setTimeout(15000)` estaba puesto.
+
+Lo que se midió, en el orden en que ocurrió:
+
+| # | Corrida | Resultado |
+|---|---|---|
+| 1 | `gate.sh` completo, SHA `1b299a7c` | `mobile` **failed** (recibo con `"mobile":"failed"`) |
+| 2 | `scripts/ci/mobile.sh` **aislado** | **80 suites / 730 tests, 0 fallos** |
+| 3 | `gate.sh` completo, SHA `9160900f` | `mobile` **ok (32s)** |
+
+Aplicada la mitigación de esta misma fila: aislado pasa ⇒ **es el flake, no una regresión** — y el
+cambio de C4.1 no toca **ningún** archivo de `apps/mobile/`. Lo anoto porque anotarlo es lo que
+permite contar: **van 3 apariciones**, y la tercera es la primera *después* del fix.
+
+**Qué cambia el diagnóstico:** el `testTimeout` de 5000ms era un número equivocado y subirlo mejoró
+algo real, pero **la conclusión "causa confirmada, resuelto" no se sostiene** — un fix que baja la
+frecuencia sin eliminar la causa deja la fila abierta, porque el costo de D9 nunca fue la falla en sí
+sino que *enseña a re-correr hasta verde*, y eso lo hace igual apareciendo 1 de cada 3 veces.
+
+**Error de instrumento propio, que se paga acá:** la corrida #1 se lanzó en background con la salida
+pipeada a `tail -40`, así que **el texto del fallo se perdió** y no puedo decir qué `it` falló. Un
+gate largo se captura entero a archivo, nunca truncado — si el instrumento no guarda la evidencia, la
+corrida siguiente en verde borra la anterior en rojo y la deuda desaparece sola. Es la misma familia
+de *instrumentos que confirman en vez de verificar*.
+
+**Para quien la tome (frontend):** el próximo `mobile` rojo hay que capturarlo con el log COMPLETO
+antes de re-correr nada. Sin el nombre del `it` y su stack, la hipótesis de "timing marginal bajo
+carga" sigue siendo la única disponible y no es falsable.
 
 ---
 
