@@ -84,6 +84,15 @@ Es la columna del producto: si falla acá, falla la promesa entera.
 - Timeouts: `start_to_close` y `heartbeat` en las activities largas (AFIP, Composio, LLM).
 - Tamaño de payload: el claim-check para historiales grandes, ¿está aplicado donde hace falta?
 
+**F-C8 — señales que descartan su `payload` (hallazgo YA confirmado, no hay que buscarlo).**
+`make_signal_anulacion` en `apps/copiloto/web.py` acepta `payload` y llama `handle.signal(nombre)`
+sin reenviarlo; `make_signal_factura`, su gemelo, sí lo reenvía. Hoy no da síntoma **sólo** porque
+todos los callers pasan `None`. Trabajo concreto: (a) arreglar la firma para que reenvíe como el
+gemelo; (b) test que señale con payload no-`None` y verifique que **llega al workflow** (si el test
+sólo comprueba que no explota, no prueba nada — [[no-romper-no-es-arreglar]]); (c) **barrido de la
+clase**: `git grep -n "handle.signal("` y confirmar que ninguna otra señal descarta argumentos.
+*Corregido el 2026-08-12: este hallazgo estaba mal clasificado como seguridad en la Pasada 1.*
+
 ### F4 — Caminos de error y DLQ (hereda C3)
 
 El frente de manejo de errores está cerrado en prod y hay autohealing global — **por eso mismo** hay

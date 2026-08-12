@@ -25,7 +25,7 @@ El sprint de beta **no cerró ningún ítem**. Detalle y asignación a pasadas, 
 | ID | Estado | Destino |
 |---|---|---|
 | **C4.1** `/auth/signup` abierto | 🔴 VIVO, **bloqueante de beta** | **P0 fuera de banda** — no espera a ninguna pasada |
-| C8 firma que ignora `payload` | 🔴 VIVO | **P0/Pasada 1** — es seguridad; hoy sin efecto observable porque el caller pasa `None`, pero es una bomba armada |
+| C8 firma **de función** que descarta `payload` | 🔴 VIVO | **Pasada 2 / F3** — es *corrección*, no seguridad (ver corrección abajo) |
 | Print PHI (`agent_activities.py`) | 🔴 VIVO | **Pasada 1** — fuga de datos personales a logs |
 | C1 pool / N+1 | 🔴 VIVO | Pasada 2 |
 | C2 idempotencia · C7 cache Composio · D-B timeout | 🔴/⚠️/🟢 | Pasada 2 |
@@ -96,8 +96,27 @@ sin un gate que lo fuerce, la deuda no se paga sola.
 - [ ] **C4.1 cerrado** (P0 fuera de banda): invite-token fail-closed + allow-list app-side en
       `ensure-tenant`, **con test adversarial** que ejercite el caso hostil (alguien sin invite intenta
       registrarse → denegado). Sin ese test el control queda `[UNVERIFIED]` y no cierra.
-- [ ] **C8** arreglado y con test — hoy sin efecto observable porque el caller pasa `None`, pero es
-      una verificación de firma inerte: una bomba armada, no un problema teórico.
+> ### ⚠️ Corrección de este documento (2026-08-12, planificación)
+>
+> La primera versión clasificó **C8** como *seguridad* (verificación de firma criptográfica en
+> `POST /mp/webhook`) y lo mandó a la Pasada 1. **Era un error mío de lectura.** Verificado contra
+> `origin/main`, C8 es una **firma de función** Python en `apps/copiloto/web.py`:
+>
+> ```python
+> def make_signal_anulacion(temporal_client):
+>     async def signal_anulacion(cliente_id, anulacion_id, nombre, payload) -> None:
+>         handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
+>         await handle.signal(nombre)          # ← acepta `payload` y LO DESCARTA
+> ```
+>
+> Su gemelo sano `make_signal_factura` **sí** reenvía el `payload`. O sea: **pérdida silenciosa de
+> datos en una señal de Temporal**, no una vulnerabilidad criptográfica. Reasignado a
+> **Pasada 2 / F3 (durabilidad de Temporal)**. La verificación de firma HMAC del webhook de
+> MercadoPago **sigue siendo objetivo legítimo de la Pasada 1**, pero es un asunto distinto y aún
+> no verificado — no arrastra la etiqueta "confirmado VIVO" de C8.
+>
+> *Por qué queda escrito en vez de borrado:* un plan corregido en silencio no enseña nada, y las
+> otras sesiones ya leyeron la versión vieja.
 - [ ] Secret scanning corriendo en el gate y fallando ante un secreto plantado (**control positivo
       obligatorio**: probar que el gate rompe con un secreto de prueba; un scanner que nunca falló es
       un scanner no verificado).

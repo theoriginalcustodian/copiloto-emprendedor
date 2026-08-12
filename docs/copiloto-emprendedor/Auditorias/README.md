@@ -25,6 +25,7 @@ Detalle: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 | 2026-08-12 | `2026-08-12-pasada-1-seguridad.md` | Pasada 1 — seguridad (`/claude-security`, scope backend), mapa BOLA de los ~30 endpoints con ID en ruta |
 | 2026-08-12 | `2026-08-12-pasada-2-robustez.md` | Pasada 2 — robustez: lo que rompe con datos reales, concurrencia y fallos parciales |
 | 2026-08-12 | `2026-08-12-pasada-3-pulido-y-eficiencia.md` | Pasada 3 — pulido y eficiencia (va última: es la que muta el código) |
+| 2026-08-12 | `2026-08-12-DoD-cierre-auditorias-y-fixes.md` | **🎯 NORMATIVO:** criterio binario de "terminado" para auditorías **+ fixes + e2e**, reparto por sesión y reglas de autonomía sin operador. Los contratos del buzón lo citan. |
 
 ## Estado vigente
 

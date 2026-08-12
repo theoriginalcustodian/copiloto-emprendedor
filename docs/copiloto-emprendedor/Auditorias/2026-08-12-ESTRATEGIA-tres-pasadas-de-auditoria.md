@@ -45,7 +45,7 @@ cerró ningún ítem del backlog de auditoría.**
 | C1 | Postgres sin pool / N+1 | 🔴 VIVO | 🔴 VIVO (propagado a 5 stores nuevos) |
 | C6 | Chat/listas sin cota (frontend) | 🔴 VIVO | 🔴 VIVO (reducer duplicado en web) |
 | C7 | Composio síncrono sin cache | 🔴 VIVO | 🔴 VIVO |
-| C8 | Firma que ignora `payload` | 🔴 VIVO | 🔴 VIVO (caller pasa `None`, sin efecto observable **aún**) |
+| C8 | Firma **de función** que descarta `payload` (señal de Temporal, **no** cripto — corregido) | 🔴 VIVO | 🔴 VIVO (caller pasa `None`, sin efecto observable **aún**) → **Pasada 2/F-C8** |
 | D-A | 4 errores tragados | 🔴 VIVO | 🔴 VIVO (+ comentarios que justifican el mutismo) |
 | Print PHI | `agent_activities.py` | 🔴 VIVO | 🔴 VIVO |
 | C2 | Writes externos no idempotentes | 🔴 VIVO | ⚠️ PARCIAL ↑ (`mp_dedup_store` tapa 1 de 2 rutas) |
