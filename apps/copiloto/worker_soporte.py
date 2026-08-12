@@ -28,6 +28,7 @@ from backend.agent.conversation_workflow import ConversationWorkflow
 from clients.agent.channels.web import WebChannelAdapter
 from clients.agent.providers.llm import LlmProvider
 
+from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from interceptor_errores import CapturaDeErroresInterceptor
 from deposito_traumas import fabrica_desde
@@ -132,12 +133,10 @@ def build_worker_config(env, conn_factory) -> dict:
 
 
 async def main() -> None:
-    import psycopg2
-
     db_url = os.environ["DATABASE_URL"]
-
-    def _conn_crudo():
-        c = psycopg2.connect(db_url); c.autocommit = True; return c
+    minconn = int(os.environ.get("COPILOTO_DB_POOL_MIN", "1"))
+    maxconn = int(os.environ.get("COPILOTO_DB_POOL_MAX", "10"))
+    _conn_crudo = pool_de_conexiones(db_url, minconn=minconn, maxconn=maxconn)
 
     conn_factory = conexion_con_tenant(_conn_crudo)
     cfg = build_worker_config(os.environ, conn_factory)

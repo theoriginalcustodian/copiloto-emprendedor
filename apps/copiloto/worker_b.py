@@ -39,6 +39,7 @@ from clients.agent.providers.mp_refresh_workflow import MpRefreshWorkflow
 
 import services
 import tool_catalog
+from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from deposito_traumas import fabrica_desde
 from interceptor_errores import CapturaDeErroresInterceptor
@@ -380,12 +381,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
 
 
 async def main() -> None:
-    import psycopg2
-
     db_url = os.environ["DATABASE_URL"]
-
-    def _conn_crudo():
-        c = psycopg2.connect(db_url); c.autocommit = True; return c
+    minconn = int(os.environ.get("COPILOTO_DB_POOL_MIN", "1"))
+    maxconn = int(os.environ.get("COPILOTO_DB_POOL_MAX", "10"))
+    _conn_crudo = pool_de_conexiones(db_url, minconn=minconn, maxconn=maxconn)
 
     # Igual que en el front-door: la conexión declara el tenant del contexto. En el worker ese tenant
     # lo pone la costura C3 (`interceptor_errores`) a partir del payload de la activity.

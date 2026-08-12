@@ -44,6 +44,7 @@ import services
 from auth import make_require_admin, make_require_claims, make_require_tenant
 from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
+from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
 from mp_credential_store import MpCredentialStore
 from mp_payment_store import MpPaymentStore
@@ -94,15 +95,14 @@ WEB_PORT = int(os.environ.get("COPILOTO_WEB_PORT", "8099"))
 
 
 def _conn_factory_from_env():
-    """Mismo patrón que `worker_b.py::main`: una conexión psycopg2 autocommit por invocación. Lazy
-    a propósito -- `DATABASE_URL` recién se lee cuando el proceso real arranca `_serve()`, nunca al
-    importar el módulo (import-safety, ver docstring)."""
+    """Mismo patrón que `worker_b.py::main`: una conexión psycopg2 autocommit por préstamo, ahora
+    detrás de un pool (C4, auditoría lote C — ver `conn_pool.py`) en vez de un `psycopg2.connect`
+    directo por llamada. Lazy a propósito -- `DATABASE_URL` recién se lee cuando el proceso real
+    arranca `_serve()`, nunca al importar el módulo (import-safety, ver docstring)."""
     db_url = os.environ["DATABASE_URL"]
-
-    def conn_factory():
-        conn = psycopg2.connect(db_url)
-        conn.autocommit = True
-        return conn
+    minconn = int(os.environ.get("COPILOTO_DB_POOL_MIN", "1"))
+    maxconn = int(os.environ.get("COPILOTO_DB_POOL_MAX", "10"))
+    conn_factory = pool_de_conexiones(db_url, minconn=minconn, maxconn=maxconn)
 
     # Toda conexión nace declarándole a la base de qué tenant es la operación en curso. Sin esto, el
     # RLS con `FORCE` no tendría cómo filtrar y la app vería 0 filas. Ver `contexto_tenant.py`.
