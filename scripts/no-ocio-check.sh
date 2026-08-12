@@ -92,11 +92,20 @@ etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identid
   #     hits de `coordinacion/` y pasa por planificación; backend que lee `apps/mobile` para entender
   #     la costura suma del lado de frontend. La conducta describe la TAREA DEL MOMENTO, no la identidad.
   # El cron, en cambio, se lo asigna otro y no cambia con lo que la sesión esté haciendo.
-  local f="$1" tail_txt b fr pl
-  tail_txt=$(tail -c 400000 "$f" 2>/dev/null || true)
-  b=$( printf '%s' "$tail_txt" | grep -oc 'sesión BACKEND')
-  fr=$(printf '%s' "$tail_txt" | grep -oc 'sesión FRONTEND')
-  pl=$(printf '%s' "$tail_txt" | grep -oc 'sesión PLANIFICACIÓN')
+  #
+  # 🔴 Se escanea el archivo ENTERO, no una ventana del final. La versión anterior miraba
+  # `tail -c 400000` y eso invertía el instrumento: la marca del cron queda atrás a medida que la
+  # sesión produce, así que **cuanto más trabaja una sesión, antes se vuelve invisible** — justo la
+  # que más falta hace ver. Medido 2026-08-12 sobre los transcripts vivos: backend (128 MB) daba
+  # `0/0/0` por ventana y `217/5/5` entero; frontend (23 MB) daba `0/0/0` y `8/381/6`. Las DOS
+  # sesiones vigiladas estaban sin rotular al mismo tiempo, a minutos de un dead-man falso.
+  # El costo que ahorraba la ventana no existía: grep sobre esos 24 MB tarda 25 ms, y el barrido ya
+  # descarta los transcripts de más de 4 h antes de llegar acá.
+  local f="$1" b fr pl
+  b=$( grep -c 'sesión BACKEND'        "$f" 2>/dev/null || true)
+  fr=$(grep -c 'sesión FRONTEND'       "$f" 2>/dev/null || true)
+  pl=$(grep -c 'sesión PLANIFICACIÓN'  "$f" 2>/dev/null || true)
+  b="${b:-0}"; fr="${fr:-0}"; pl="${pl:-0}"
   if [ $((b + fr + pl)) -gt 0 ]; then
     if   [ "$pl" -ge "$b" ] && [ "$pl" -ge "$fr" ]; then echo PLANIFICACION
     elif [ "$b"  -ge "$fr" ];                       then echo BACKEND
@@ -106,6 +115,10 @@ etiqueta_transcript() {   # imprime BACKEND|FRONTEND|PLANIFICACION|? — identid
   fi
   # Fallback por conducta: sólo para una ventana SIN cron todavía (recién abierta, o heartbeat caído).
   # Que caiga acá ya es información: una sesión sin cron no está siendo vigilada por nadie.
+  # Acá SÍ se mira una ventana del final, y a propósito: la conducta describe la tarea del momento,
+  # no la identidad — un barrido entero acumularía los paths de todo lo que la sesión tocó en horas.
+  local tail_txt
+  tail_txt=$(tail -c 400000 "$f" 2>/dev/null || true)
   b=$( printf '%s' "$tail_txt" | grep -oE 'apps[\\/]+copiloto|motor[\\/]+backend|deploy[\\/]+worker' | wc -l)
   fr=$(printf '%s' "$tail_txt" | grep -oE 'apps[\\/]+mobile|packages[\\/]+core'                      | wc -l)
   if   [ "$b" -gt "$fr" ] && [ "$b" -gt 0 ]; then echo BACKEND
