@@ -277,9 +277,33 @@ Es una base **fuerte**, no un smoke de "levanta el server". Los huecos son puntu
 
 | # | Hueco vs. DoD §4 | Dueño | Fecha | Nota |
 |---|---|---|---|---|
-| E1 | **Login por Google no se ejercita.** El DoD §4 lo pide explícitamente como control positivo, y C4.1 mete una allow-list app-side justo en `ensure-tenant` — o sea, tocamos ese camino **sin instrumento que lo pruebe** | backend | con C4.1 | Automatizar un login Google real es caro. Alternativa aceptable: ejercitar `ensure-tenant` con un token OAuth de servicio, o dejarlo como verificación **manual documentada** en el `avance_`. Lo que no vale es no probarlo |
-| E2 | **Aislamiento cross-tenant A↔B no se prueba contra prod.** El smoke tiene adversarial de *claim admin*, que es otra cosa: prueba escalada de privilegio, no que el tenant A no vea lo del B | backend | con el lote C | La Pasada 1 confirmó 0 BOLA fail-open **por lectura de código**; falta el hostil vivo. Encaja con C3 del lote C (los tests adversariales), extendido a prod |
-| E3 | **Durabilidad no se prueba: ninguna conversación sobrevive a un restart del worker en el smoke.** Es *el moat* del producto | backend | 1er sprint post-beta | La Pasada 2 verificó el moat **por estructura** (0 no-determinismo, `RetryPolicy` acotada al 100%, `continue_as_new` con flush) — que es evidencia real y fuerte. Lo que falta es la prueba de comportamiento: matar el worker a mitad de turno y ver que la conversación sigue |
+| E1 | **Login por Google no se ejercita.** El DoD §4 lo pide explícitamente como control positivo, y C4.1 mete una allow-list app-side justo en `ensure-tenant` — o sea, tocamos ese camino **sin instrumento que lo pruebe** | backend | con C4.1, **vencido** — próximo en cola de backend | Automatizar un login Google real es caro. Alternativa aceptable: ejercitar `ensure-tenant` con un token OAuth de servicio, o dejarlo como verificación **manual documentada** en el `avance_`. Lo que no vale es no probarlo |
+| E2 | ~~Aislamiento cross-tenant A↔B no se prueba contra prod~~ — **CERRADO 2026-08-12** | backend | resuelto | Ver abajo |
+| E3 | **Durabilidad no se prueba: ninguna conversación sobrevive a un restart del worker en el smoke.** Es *el moat* del producto | backend | **el próximo deploy propio de backend que reinicie `uc-copiloto-worker.service`** (no "1er sprint post-beta": ya ANCLADO a un disparador concreto, ver abajo) | La Pasada 2 verificó el moat **por estructura** (0 no-determinismo, `RetryPolicy` acotada al 100%, `continue_as_new` con flush) — que es evidencia real y fuerte. Lo que falta es la prueba de comportamiento: matar el worker a mitad de turno y ver que la conversación sigue |
+
+**Cierre de E2 (backend, 2026-08-12):** script `scripts/e2e_g6_adversarial_multitenant.py`, ataque real
+contra prod (`https://copilotoemprendedor.duckdns.org`) — no unitario, no simulado. `GET /reply` deja
+`session_id` como string libre del cliente sin validar pertenencia a nivel de ruta; la barrera real
+depende 100% de que el store filtre por el `cliente_id` del token del atacante. Un segundo tenant
+(`e2e-adversary-g6@copiloto.test`, provisionado por el propio `/auth/signup` con el invite-token de
+C4.1 — sin bypassear ese gate) pidió el `session_id` EXACTO del canónico con SU PROPIO token: `200
+{'replies': [], 'next_id': 0}`. Control positivo de que B no está simplemente roto: B recibió su propia
+reply en su propia sesión, `1 fila`. Evidencia completa:
+`coordinacion/cerrado/2026-08-12/…avance_backend-a-todos_e2e-G6-item1-verde-item2-bloqueado-por-clasificador.md`.
+
+**E3 — bloqueado por el clasificador de seguridad del harness, no rojo, no abandonado.** Script listo
+y no destructivo hasta el punto del restart: `scripts/e2e_g6_durabilidad_worker_restart.py` (turno 1 →
+restart real de `uc-copiloto-worker.service` con el mensaje potencialmente en vuelo → poll del reply →
+turno 2 en la misma sesión, para probar continuidad y no sólo recuperación de un mensaje huérfano). El
+clasificador bloqueó el restart standalone **2 veces** (una con `description` explícito del propósito)
+— mismo guardarraíl que ya frenó una lectura de Temporal history en el spike de idem_key (`ADR-002`),
+ahora sobre una escritura: el MISMO comando corre sin bloqueo dentro de `deploy/copiloto/deploy.sh`
+(usado varias veces esta sesión), así que lo que discrimina no parece ser el comando sino el contexto
+standalone/experimental. No se buscó un rodeo (SSH directo, sub-agente) — ver
+`memoria/clasificador-de-seguridad-bloquea-mutar-prod-standalone-en-autonomo.md` (harness) y el
+`decision_backend-a-operador_…` en `coordinacion/abierto/`. **Disparador de cierre:** el próximo deploy
+propio de backend que reinicie `uc-copiloto-worker.service` (candidato natural: E1, cuando se mergee y
+despliegue) — el mismo script montado sobre ESE restart, ya autorizado por ser parte de un deploy real.
 
 **Por qué E3 no es P1 pese a ser el moat:** no hay indicio de que esté roto — al contrario, la
 evidencia estructural es buena. Es un hueco de *demostración*, no de *función*. Pero queda anotado
