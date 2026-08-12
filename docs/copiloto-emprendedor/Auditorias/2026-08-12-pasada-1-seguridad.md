@@ -120,10 +120,14 @@ proyecto, un `print` crudo con datos de cliente es doblemente un defecto.
 
 ### O4 — Webhooks, callbacks y uploads
 
-- `POST /mp/webhook` — **verificación de firma**. **C8 está confirmado VIVO** (2026-08-12): la firma
-  ignora el `payload`. Hoy no tiene efecto observable *sólo* porque el caller pasa `None` — es una
-  verificación inerte esperando el primer caller que sí mande datos. Se cierra en P0/Pasada 0; acá se
-  verifica el fix y se busca la clase (¿otras firmas/HMAC que no cubran todo lo que autentican?).
+- `POST /mp/webhook` — **verificación de firma HMAC**: que exista, que cubra el body completo y que
+  se compare en tiempo constante.
+  > ⚠️ **Corrección (2026-08-12).** Una versión previa de este plan afirmaba que **C8** era esta
+  > verificación de firma. **Es falso y fue error mío (planificación).** C8 es una *firma de función*
+  > Python: `make_signal_anulacion` (`apps/copiloto/web.py`) acepta `payload` y **no lo reenvía** a
+  > `handle.signal(nombre)`; su gemelo sano `make_signal_factura` sí lo hace. Es un **bug latente de
+  > corrección de datos en una señal de Temporal, no una vulnerabilidad criptográfica** → se trata en
+  > **Pasada 2 / F-C8**. No gasten tokens buscando C8 acá.
 - `GET /mp/callback` y `GET /composio/connect` — OAuth: validación de `state` (CSRF), `redirect_uri`,
   y fijación de sesión.
 - Uploads: `POST /chat/audio`, `/chat/foto`, `/feedback/audio`, `/soporte/chat/audio` — límite de
