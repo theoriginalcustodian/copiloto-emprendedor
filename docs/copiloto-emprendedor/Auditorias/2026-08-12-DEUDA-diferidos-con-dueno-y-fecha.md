@@ -56,6 +56,35 @@ Confirmado **seguro** por la Pasada 1. Está acá para que nadie vuelva a gastar
 
 ---
 
+## Anexo — huecos del instrumento de verificación e2e (§G6)
+
+Detectado por planificación el 2026-08-12 al cotejar el DoD §4 contra los scripts reales. **No son
+hallazgos de auditoría: son huecos de lo que nos permite *comprobar* que la app anda.** Importan porque
+§G6 no se cierra con un smoke que no ejercita lo que el DoD declara.
+
+**Lo que el instrumento SÍ cubre hoy** — `deploy/copiloto/smoke_beta_e2e.py`, 58 checks black-box
+contra la API viva: alta · login email/password · `/me` · `/catalog` · chat simple · **chat ReAct
+multi-paso** · connect URLs · refresh · consola con **adversarial hostil de claim admin** (no-admin →
+403, luego se otorga el claim y el mismo path da 200) · ciclo de reintento que muta irreversible ·
+artefacto de la web · punta a punta contra el vhost público. Más, por separado:
+`e2e_facturacion_http.py` (emitir → PDF → consultar → anular con nota de crédito),
+`smoke_afip_http.py`, `e2e_autosanacion_trauma_real.py`.
+
+Es una base **fuerte**, no un smoke de "levanta el server". Los huecos son puntuales:
+
+| # | Hueco vs. DoD §4 | Dueño | Fecha | Nota |
+|---|---|---|---|---|
+| E1 | **Login por Google no se ejercita.** El DoD §4 lo pide explícitamente como control positivo, y C4.1 mete una allow-list app-side justo en `ensure-tenant` — o sea, tocamos ese camino **sin instrumento que lo pruebe** | backend | con C4.1 | Automatizar un login Google real es caro. Alternativa aceptable: ejercitar `ensure-tenant` con un token OAuth de servicio, o dejarlo como verificación **manual documentada** en el `avance_`. Lo que no vale es no probarlo |
+| E2 | **Aislamiento cross-tenant A↔B no se prueba contra prod.** El smoke tiene adversarial de *claim admin*, que es otra cosa: prueba escalada de privilegio, no que el tenant A no vea lo del B | backend | con el lote C | La Pasada 1 confirmó 0 BOLA fail-open **por lectura de código**; falta el hostil vivo. Encaja con C3 del lote C (los tests adversariales), extendido a prod |
+| E3 | **Durabilidad no se prueba: ninguna conversación sobrevive a un restart del worker en el smoke.** Es *el moat* del producto | backend | 1er sprint post-beta | La Pasada 2 verificó el moat **por estructura** (0 no-determinismo, `RetryPolicy` acotada al 100%, `continue_as_new` con flush) — que es evidencia real y fuerte. Lo que falta es la prueba de comportamiento: matar el worker a mitad de turno y ver que la conversación sigue |
+
+**Por qué E3 no es P1 pese a ser el moat:** no hay indicio de que esté roto — al contrario, la
+evidencia estructural es buena. Es un hueco de *demostración*, no de *función*. Pero queda anotado
+porque "nuestro diferencial anda" es exactamente la clase de afirmación que no se sostiene con
+autoevaluación.
+
+---
+
 ## Regla para cerrar una fila
 
 Una fila sale de esta tabla con el mismo criterio que cualquier hallazgo: **§Fase D del DoD** —
