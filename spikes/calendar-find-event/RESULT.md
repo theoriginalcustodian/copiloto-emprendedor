@@ -100,3 +100,61 @@ en nombre de alguien es una decisión de confianza que le corresponde a un human
 ssh unreal-copilot "cd /opt/uc-repos/copiloto && set -a && . /etc/unreal-copilot/copiloto.env && set +a && /opt/uc-copiloto-venv/bin/python spikes/calendar-find-event/spike.py"
 ```
 Un solo comando, sin volver a armar nada — el bloqueo es 100% la conexión, no el script.
+
+---
+
+## Actualización 2026-08-12 ~00:35 — desbloqueado, shape real confirmado
+
+El operador conectó `341lin@gmail.com` al tenant canónico (agregó el test user en GCP + completó el
+consentimiento OAuth; Composio confirmó `"Successfully connected"`, `connectedAccountId=ca_Ozwwpucuh5Bn`).
+Re-corrida de `spike.py` contra Composio real, mismo tenant:
+
+```
+[1] connection_status('googlecalendar') = ACTIVE
+[2] FIND rango HOY    -> successful=True
+[3] FIND rango amplio -> successful=True, 3 eventos reales encontrados (no hizo falta crear sintéticos)
+```
+
+**Nota de alcance:** los 3 eventos son del calendario personal real del operador (`341lin@gmail.com`,
+ahora conectado) — este documento vuelca la ESTRUCTURA (claves, shape de fechas), nunca el contenido
+(`summary`/`description`/`attendees`/`location` reales). El volcado crudo completo sigue sólo en
+`out/resultado.json` (gitignored).
+
+### Envelope de la respuesta
+
+```json
+{"data": {...}, "error": null, "successful": true}
+```
+
+### Shape de cada evento (claves reales, Google Calendar API estándar)
+
+```
+attachments, attendees, conferenceData, created, creator, description, end, etag, eventType,
+guestsCanModify, hangoutLink, htmlLink, iCalUID, id, kind, location, organizer, reminders,
+sequence, start, status, summary, updated
+```
+
+### `start`/`end` — el campo que estaba `[ASSUMED_PENDING_VERIFY]`
+
+```json
+{"dateTime": "2026-08-13T08:30:00-03:00", "timeZone": "America/Argentina/Cordoba"}
+```
+
+**Confirma la asunción que ya estaba implementada**: `mi_dia_web.py::_eventos_de()` pasa el objeto
+`start` crudo sin tocar como `inicio` — coincide exactamente con este shape real (`dateTime` ISO con
+offset + `timeZone` IANA). **Sin cambios de código necesarios en el endpoint ya mergeado (PR #383).**
+El `[ASSUMED_PENDING_VERIFY]` del contrato queda levantado: la forma es final, verificada.
+
+### Recurrencias — sigue sin verificar con datos reales, y es una decisión consciente
+
+Ninguno de los 3 eventos reales tenía `recurrence`/`recurringEventId`, así que la rama del spike que
+crea un evento sintético con `RRULE` no se disparó (sólo corre si el tenant está vacío). **No se
+forzó** creando uno a mano: el tenant ahora tiene el calendario PERSONAL real del operador conectado
+— a diferencia del tenant "limpio" original, escribir ahí ya no es un sintético inocuo, es una entrada
+real en su agenda. No vale la intrusión para cerrar un punto que, en la práctica, no bloquea nada: el
+endpoint pasa `start`/`end` crudo sea cual sea el origen del evento, con o sin `recurringEventId` —
+si algún día se necesita EXPANDIR recurrencias del lado del cliente (fuera del alcance de CAL1 v1,
+que es sólo lectura de hoy), ahí sí hace falta un evento recurrente real para verificarlo.
+
+**Veredicto final: 🟢 CAL1 §1 cerrado.** Shape de datos confirmado con evidencia real, sin deuda
+bloqueante. DoD del contrato (spike con evidencia real) puede tildarse.
