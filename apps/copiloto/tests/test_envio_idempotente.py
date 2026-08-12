@@ -18,7 +18,8 @@ from types import SimpleNamespace
 import pytest
 
 import backend.agent.agent_activities as act
-from backend.agent.agent_runtime import register_channel, register_staff_notifier
+from backend.agent.agent_runtime import register_channel, register_domain, register_staff_notifier
+from backend.agent.types import DispatchResult
 
 
 def _info(workflow_id="wf-1", run_id="run-1", activity_id="5"):
@@ -118,3 +119,52 @@ def test_un_canal_que_no_entiende_la_clave_no_rompe_el_envio(monkeypatch):
     asyncio.run(act.send_channel_message({**_payload(), "channel": "viejo"}))
 
     assert canal.veces == 1
+
+
+def test_dispatch_intent_le_pasa_al_dominio_la_misma_clave_de_la_activity(monkeypatch):
+    """C1 (doble cobro): `dispatch_intent` arma `idem_key` con el MISMO mecanismo que `send_channel_message`
+    /`notify_staff` (activity_id, estable entre reintentos) y lo agrega a `conv` -- de ahí lo lee
+    `context_factory` para armar el `ctx` que el dispatcher del dominio usa para deduplicar (ej. MP)."""
+    conv_visto = []
+
+    def _context_factory(conv):
+        conv_visto.append(conv)
+        return conv   # el dispatcher fake de abajo sólo necesita ver qué le llegó
+
+    def _dispatcher_fake(intent, state, ctx):
+        return DispatchResult(reply_text="ok", done=True)
+
+    register_domain("dom-idem-test", system_prompt="", llm_provider=None,
+                    dispatcher=_dispatcher_fake, context_factory=_context_factory)
+    monkeypatch.setattr(act.activity, "info", lambda: _info(activity_id="5"))
+
+    payload = {"domain": "dom-idem-test", "intent": {"action": "clarify", "entities": {}, "reply_es": ""},
+              "state": {}, "conv": {"cliente_id": "cid-A"}}
+    asyncio.run(act.dispatch_intent(dict(payload)))
+    asyncio.run(act.dispatch_intent(dict(payload)))   # el reintento: mismo activity_id
+
+    assert conv_visto[0]["idem_key"] == conv_visto[1]["idem_key"] == "wf-1:run-1:5"
+    assert conv_visto[0]["cliente_id"] == "cid-A", "no puede pisar lo que ya venía en conv"
+
+
+def test_dispatch_intent_agendamientos_distintos_llevan_idem_keys_distintas(monkeypatch):
+    """Control diferencial: si la clave fuera la misma para dos turnos legítimos distintos, el 2do cobro
+    real del emprendedor se descartaría como si fuera el reintento del 1ro."""
+    conv_visto = []
+
+    def _context_factory(conv):
+        conv_visto.append(conv)
+        return conv
+
+    register_domain("dom-idem-test-2", system_prompt="", llm_provider=None,
+                    dispatcher=lambda intent, state, ctx: DispatchResult(reply_text="ok", done=True),
+                    context_factory=_context_factory)
+
+    payload = {"domain": "dom-idem-test-2", "intent": {"action": "clarify", "entities": {}, "reply_es": ""},
+              "state": {}, "conv": {"cliente_id": "cid-A"}}
+    monkeypatch.setattr(act.activity, "info", lambda: _info(activity_id="5"))
+    asyncio.run(act.dispatch_intent(dict(payload)))
+    monkeypatch.setattr(act.activity, "info", lambda: _info(activity_id="9"))
+    asyncio.run(act.dispatch_intent(dict(payload)))
+
+    assert conv_visto[0]["idem_key"] != conv_visto[1]["idem_key"]

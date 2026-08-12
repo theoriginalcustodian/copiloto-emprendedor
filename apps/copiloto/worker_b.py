@@ -264,7 +264,10 @@ def build_worker_config(env: Mapping[str, str], conn_factory: Callable, client=N
         buscar_borrador_dictado=buscar_borrador_dictado,
         trauma_store_factory=fabrica_desde(conn_factory))
     register_domain("emprendedor", system_prompt=system_prompt_react, llm_provider=llm,
-                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm),
+                    dispatcher=make_dispatcher(gateway, now_iso_provider=_now_iso, llm=llm,
+                                               mp_dedup_factory=_mp_dedup_factory),  # C1: mismo dedup que
+                    # el tool_executor react -- el dispatcher es el fallback si `engine_mode` volviera a
+                    # 'dispatch' (worker_b.py:247), y hasta ahora se quedaba sin protección.
                     context_factory=ctx_factory, memory_provider=memory_provider,
                     engine_mode="react", tool_schemas=tool_catalog.build_tool_catalog(),
                     tool_executor=tool_executor,

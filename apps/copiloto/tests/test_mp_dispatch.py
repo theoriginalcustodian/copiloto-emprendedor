@@ -17,15 +17,29 @@ class _FakeMpCred:
 
 
 def _ctx(*, mp_gateway=None, mp_cred_store=None, mp_seller_user_id="146",
-         composio_user_id="u", cliente_id="cli-A"):
+         composio_user_id="u", cliente_id="cli-A", idem_key=None):
     """TenantCtx real (no un doble) — así el test ejercita el mismo contrato que arma context_factory.py."""
     return TenantCtx(cliente_id=cliente_id, composio_user_id=composio_user_id, mp_gateway=mp_gateway,
                      mp_cred_store=mp_cred_store, mp_seller_user_id=mp_seller_user_id,
-                     mp_webhook_base="https://mp.example")
+                     mp_webhook_base="https://mp.example", idem_key=idem_key)
 
 
-def _dispatch():
-    return make_dispatcher(gateway=None, now_iso_provider=lambda: "2026-07-02T10:00:00")
+def _dispatch(*, mp_dedup_factory=None):
+    return make_dispatcher(gateway=None, now_iso_provider=lambda: "2026-07-02T10:00:00",
+                           mp_dedup_factory=mp_dedup_factory)
+
+
+def _dedup_factory():
+    """Mismo idioma que `tests/test_execute_tool.py::_dedup_factory` (la gemela protegida) — un dict en
+    memoria keyed por (cliente_id, idem_key), SELECT-then-INSERT."""
+    store = {}
+    class _S:
+        def __init__(self, cid): self._cid = cid
+        def get(self, k): return store.get((self._cid, k))
+        def save(self, k, *, preference_id, init_point, external_reference):
+            store.setdefault((self._cid, k), {"preference_id": preference_id, "init_point": init_point,
+                                              "external_reference": external_reference})
+    return (lambda cid: _S(cid))
 
 
 def test_mp_charge_proposes_then_confirm_returns_link():
@@ -93,3 +107,93 @@ def test_dispatcher_lee_recursos_de_ctx_no_del_closure_horneado():
     d(Intent(action="callback", entities={"value": "confirm"}), {"pending": r_b.state_patch["pending"]}, ctx_b)
 
     assert calls == ["tenant-A", "tenant-B"]       # cada ejecución usó el composio_user_id de SU tenant
+
+
+# ═══════════════════ C1 (doble cobro) — dedup app-side alineado a la gemela protegida ═══════════════════
+# `tool_catalog._run_mp_charge` ya estaba protegida (Spike C, mp_dedup_store); esta ruta (`dispatch`,
+# fallback si `engine_mode` volviera de 'react' a 'dispatch') no lo estaba — H-2 de la pasada 2 de auditoría.
+
+class _CountingMpGateway:
+    def __init__(self):
+        self.calls = 0
+
+    def create_payment_link(self, at, *, amount, external_reference, notification_url, title="Cobro"):
+        self.calls += 1
+        return {"id": f"pref-{self.calls}", "init_point": f"https://mp/redirect?pref_id=pref-{self.calls}",
+                "external_reference": external_reference}
+
+
+def test_mp_charge_retry_mismo_idem_key_no_crea_un_segundo_link():
+    """EL TEST QUE IMPORTA (control negativo): sin el fix, cada confirm llama a create_payment_link de
+    nuevo -- un retry at-least-once de Temporal con el mismo idem_key (mismo activity_id, ver
+    `_idem_key_de_la_activity`) generaría un 2do link real con `ext_ref` distinto. Con el fix, el 2do
+    intento cachea y el gateway se llama UNA sola vez."""
+    gw = _CountingMpGateway()
+    d = _dispatch(mp_dedup_factory=_dedup_factory())
+    ctx = _ctx(mp_gateway=gw, mp_cred_store=_FakeMpCred(), idem_key="wf-1:run-1:5")
+    pending = {"provider": "mercadopago", "amount": 150, "concept": "Sesión"}
+
+    r1 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+          {"pending": pending}, ctx)
+    r2 = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""),
+          {"pending": pending}, ctx)                 # el reintento: mismo idem_key
+
+    assert gw.calls == 1, "el reintento creó un segundo link real"
+    assert r1.reply_text == r2.reply_text
+    assert "pref-1" in r2.reply_text
+
+
+def test_mp_charge_idem_keys_distintos_crean_links_distintos():
+    """Control diferencial: si la dedup colapsara cobros de turnos LEGÍTIMOS distintos, el emprendedor
+    no podría cobrar dos veces al mismo cliente en la misma sesión."""
+    gw = _CountingMpGateway()
+    dedup = _dedup_factory()
+    d = _dispatch(mp_dedup_factory=dedup)
+    pending = {"provider": "mercadopago", "amount": 150, "concept": "Sesión"}
+
+    ctx_1 = _ctx(mp_gateway=gw, mp_cred_store=_FakeMpCred(), idem_key="wf-1:run-1:5")
+    ctx_2 = _ctx(mp_gateway=gw, mp_cred_store=_FakeMpCred(), idem_key="wf-1:run-1:9")
+    d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx_1)
+    d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx_2)
+
+    assert gw.calls == 2
+
+
+def test_mp_charge_sin_mp_dedup_factory_funciona_como_antes():
+    """Backward-compat: `mp_dedup_factory=None` (default) -- ningún caller viejo que no lo pase se rompe;
+    el dedup queda desactivado, mismo comportamiento que antes del fix."""
+    gw = _CountingMpGateway()
+    d = _dispatch()   # sin mp_dedup_factory
+    ctx = _ctx(mp_gateway=gw, mp_cred_store=_FakeMpCred(), idem_key="wf-1:run-1:5")
+    pending = {"provider": "mercadopago", "amount": 150, "concept": "Sesión"}
+
+    d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx)
+    d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx)
+
+    assert gw.calls == 2   # sin factory, no hay con qué deduplicar -- conducta previa al fix
+
+
+def test_mp_charge_missing_init_point_no_llama_dedup_save():
+    """Mismo candado que la gemela: un 200/201 sin `init_point` no puede llegar a `dedup.save` (columna
+    NOT NULL -> IntegrityError -> Temporal reintentaría el POST completo con un ext_ref nuevo)."""
+    class _NoInitPointGw:
+        def create_payment_link(self, *a, **k):
+            return {"id": "prefX"}   # sin init_point
+
+    save_calls = []
+
+    def _spy_dedup_factory():
+        class _S:
+            def __init__(self, cid): pass
+            def get(self, k): return None
+            def save(self, k, **kw): save_calls.append((k, kw))
+        return lambda cid: _S(cid)
+
+    d = _dispatch(mp_dedup_factory=_spy_dedup_factory())
+    ctx = _ctx(mp_gateway=_NoInitPointGw(), mp_cred_store=_FakeMpCred(), idem_key="wf-1:run-1:5")
+    pending = {"provider": "mercadopago", "amount": 150, "concept": "Sesión"}
+
+    r = d(Intent(action="confirm_pending", entities={"value": "confirm"}, reply_es=""), {"pending": pending}, ctx)
+
+    assert "no devolvió un link válido" in r.reply_text
+    assert not save_calls

@@ -73,7 +73,8 @@ def _dig(obj, path):
 
 
 def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
-                    tz: str = DEFAULT_TZ, llm=None) -> Callable[[Intent, dict, object], DispatchResult]:
+                    tz: str = DEFAULT_TZ, llm=None,
+                    mp_dedup_factory=None) -> Callable[[Intent, dict, object], DispatchResult]:
     """Multitenant-only (Task 8b): los recursos por-tenant (composio_user_id, mp_*, cliente_id) se LEEN
     SIEMPRE de `ctx` (un `TenantCtx` armado por `context_factory(conv)` desde `conv["cliente_id"]`,
     per-request — cero fuga entre tenants, ver `context_factory.py`). Sin fallback single-tenant: `ctx`
@@ -81,12 +82,16 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
     en producción `ctx` nunca es `None`. Si un caller no lo pasa, `dispatch` falla claro (`ValueError`) en
     vez de degradar en silencio a un tenant fantasma."""
 
-    def _execute_pending(pending: dict, *, comp_uid, mpgw, mpcred, mpseller, mpwebhook, cid) -> DispatchResult:
+    def _execute_pending(pending: dict, *, comp_uid, mpgw, mpcred, mpseller, mpwebhook, cid,
+                        idem_key=None) -> DispatchResult:
         """Ejecuta el write pendiente con confirmed=True (doble candado). Fail-closed: sin successful=True NO
         declaramos éxito. Común a Calendar y a todo servicio nuevo.
 
         MercadoPago (pending['provider']=='mercadopago') se rutea al mpgw ANTES de tocar el
-        ComposioGateway — es un boundary distinto (2º proveedor de writes del Copiloto).
+        ComposioGateway — es un boundary distinto (2º proveedor de writes del Copiloto). Dedup app-side
+        (C1, alineado a la gemela protegida `tool_catalog._run_mp_charge`): MP /checkout/preferences NO
+        deduplica, así que un retry at-least-once de Temporal con el mismo `idem_key` cachea (SELECT)
+        antes de volver a llamar a la gateway (POST) — nunca un 2do link para el mismo paso del workflow.
 
         Soporta tools de 2 pasos vía pending['then'] (patrón create->publish, ej Instagram): tras el paso 1,
         extrae un id del resultado (then['id_key']) y ejecuta then['slug'] pasándolo como then['id_arg'].
@@ -99,11 +104,28 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
             if not creds:
                 return DispatchResult(reply_text="Primero conectá tu cuenta de MercadoPago y volvé a pedirlo.",
                                       done=False, state_patch={"pending": None})
+            dedup = mp_dedup_factory(cid) if mp_dedup_factory else None
+            if dedup and idem_key:
+                cached = dedup.get(idem_key)
+                if cached:
+                    return DispatchResult(
+                        reply_text=f"Listo, acá está el link de cobro por ${pending['amount']} 👉 "
+                                   f"{cached['init_point']}",
+                        done=True, state_patch={"pending": None})
             ext_ref = f"copiloto-{secrets.token_hex(4)}"
             notif = f"{mpwebhook}/mp/webhook?cid={cid}&seller={mpseller}"
             link = mpgw.create_payment_link(
                 creds["access_token"], amount=pending["amount"],
                 external_reference=ext_ref, notification_url=notif, title=pending.get("concept", "Cobro"))
+            # Un 200/201 sin `init_point` NO puede llegar al dedup.save -- la columna es NOT NULL (mismo
+            # candado que la gemela): cortamos ANTES del save, error de negocio y no una excepción que
+            # Temporal reintentaría con un ext_ref nuevo cada vez.
+            if not link.get("init_point"):
+                return DispatchResult(reply_text="El cobro no devolvió un link válido; probá de nuevo.",
+                                      done=False, state_patch={"pending": None})
+            if dedup and idem_key:
+                dedup.save(idem_key, preference_id=link.get("id"), init_point=link["init_point"],
+                          external_reference=ext_ref)
             return DispatchResult(
                 reply_text=f"Listo, acá está el link de cobro por ${pending['amount']} 👉 {link['init_point']}",
                 done=True, state_patch={"pending": None})
@@ -159,7 +181,8 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
                 return DispatchResult(reply_text="Listo, lo cancelé. ¿Algo más?", done=True, state_patch={"pending": None})
             if said_confirm:
                 return _execute_pending(pending, comp_uid=comp_uid, mpgw=mpgw, mpcred=mpcred,
-                                        mpseller=mpseller, mpwebhook=mpwebhook, cid=cid)
+                                        mpseller=mpseller, mpwebhook=mpwebhook, cid=cid,
+                                        idem_key=ctx.idem_key)
             return DispatchResult(reply_text="¿Confirmás o cancelás?", choices=list(_CONFIRM_CHOICES))
 
         # ── Calendar: verbo 'book' (path probado E2E #97, INTACTO) ───────────────────────────────────────
