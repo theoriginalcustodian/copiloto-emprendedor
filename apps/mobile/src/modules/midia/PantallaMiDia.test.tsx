@@ -20,7 +20,13 @@
  */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, leerTablero: jest.fn(), cambiarEstadoTarjetaMiDia: jest.fn(), borrarTarjetaMiDia: jest.fn() };
+  return {
+    ...actual,
+    leerTablero: jest.fn(),
+    cambiarEstadoTarjetaMiDia: jest.fn(),
+    borrarTarjetaMiDia: jest.fn(),
+    leerCalendario: jest.fn(),
+  };
 });
 
 jest.mock('expo-router', () => {
@@ -45,7 +51,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, leerTablero } from '@copiloto/core';
+import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, leerCalendario, leerTablero } from '@copiloto/core';
 
 import { PantallaMiDia } from './PantallaMiDia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -53,6 +59,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
 const cambiarEstadoMock = cambiarEstadoTarjetaMiDia as jest.MockedFunction<typeof cambiarEstadoTarjetaMiDia>;
 const borrarMock = borrarTarjetaMiDia as jest.MockedFunction<typeof borrarTarjetaMiDia>;
+const leerCalendarioMock = leerCalendario as jest.MockedFunction<typeof leerCalendario>;
 
 const TABLERO = {
   solapas: [
@@ -107,6 +114,7 @@ beforeEach(() => {
   leerMock.mockResolvedValue({ status: 'ok', tablero: TABLERO });
   cambiarEstadoMock.mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockResolvedValue({ status: 'ok' });
+  leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
 });
 
 describe('PantallaMiDia — las 3 solapas', () => {
@@ -232,5 +240,55 @@ describe('PantallaMiDia — lo que NO inventa', () => {
 
     await waitFor(() => expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeTruthy());
     expect(screen.queryByText('Tarjeta Que No Existe')).toBeNull();
+  });
+});
+
+describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', () => {
+  it('sin conectar: invita a conectar, no rompe el resto de la pantalla', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeTruthy());
+    expect(screen.getByText(/Conectá Google Calendar/)).toBeTruthy();
+    // El Kanban sigue vivo al lado — el calendario no le pisa el estado.
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+  });
+
+  it('conectado sin eventos hoy: lo dice, no lista vacía silenciosa', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-vacio')).toBeTruthy());
+  });
+
+  it('conectado con eventos: pinta título + hora reconocible; un evento sin hora reconocible igual se ve', async () => {
+    leerCalendarioMock.mockResolvedValue({
+      status: 'ok',
+      calendario: {
+        conectado: true,
+        eventos: [
+          { id: 'ev1', titulo: 'Reunión con proveedor', inicioCrudo: { dateTime: '2026-08-12T15:00:00-03:00' } },
+          { id: 'ev2', titulo: 'Cumpleaños (todo el día)', inicioCrudo: { date: '2026-08-12' } },
+        ],
+      },
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-evento-ev1')).toBeTruthy());
+    expect(screen.getByText('Reunión con proveedor')).toBeTruthy();
+    expect(screen.getByText('Cumpleaños (todo el día)')).toBeTruthy();
+  });
+
+  it('🔴 calendario `no_disponible` no rompe ni tapa el Kanban — se omite en silencio', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'no_disponible' });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-calendario')).toBeNull();
+    expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
   });
 });

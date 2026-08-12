@@ -202,3 +202,75 @@ export async function borrarTarjetaMiDia(
     throw err;
   }
 }
+
+/**
+ * `GET /mi-dia/calendario` (contrato CAL1) — eventos de HOY de Google Calendar, sólo lectura, panel
+ * aparte del Kanban (decisión de arquitectura ya cerrada: nunca se importan como tarjetas). Con
+ * gracia si el toolkit no está conectado: `conectado: false` no es un error, es un estado a mostrar
+ * ("conectá tu Calendar"). Ver `mi_dia_web.py` para el detalle del lado backend.
+ *
+ * 🔴 **`inicio` es `[ASSUMED_PENDING_VERIFY]`** (docstring de `mi_dia_web.py`): backend pasa crudo lo
+ * que devuelve Composio en `start`, sin shape confirmado contra datos reales (bloqueado por el OAuth
+ * del tenant canónico). Por eso NO se parsea acá — se transporta como `inicioCrudo: unknown` y
+ * `horaDeEvento` (abajo) sólo intenta mostrarlo si reconoce una de las 2 formas públicas y documentadas
+ * de la API de Calendar (string ISO, o `{dateTime}`/`{date}`); cualquier otra forma se omite en vez de
+ * inventarse un parseo. Corregir acá el día que el spike se re-corra con conexión real.
+ */
+export interface EventoCalendario {
+  id: string;
+  titulo: string;
+  inicioCrudo: unknown;
+}
+
+export interface CalendarioMiDia {
+  conectado: boolean;
+  eventos: readonly EventoCalendario[];
+}
+
+interface CalendarioRaw {
+  conectado?: unknown;
+  eventos?: unknown;
+}
+
+function eventoCalendario(v: unknown): EventoCalendario | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r.id !== 'string' || r.id.trim() === '') return null;
+  const tit = texto(r.titulo);
+  if (tit == null) return null;
+  return { id: r.id, titulo: tit, inicioCrudo: r.inicio ?? null };
+}
+
+export async function leerCalendario(): Promise<ConDisponibilidad<{ calendario: CalendarioMiDia }>> {
+  try {
+    const raw = await apiClient.get<CalendarioRaw>('/mi-dia/calendario');
+    if (typeof raw !== 'object' || raw === null) return { status: 'no_disponible' };
+    const eventosRaw = Array.isArray(raw.eventos) ? raw.eventos : [];
+    return {
+      status: 'ok',
+      calendario: {
+        conectado: raw.conectado === true,
+        eventos: eventosRaw.map(eventoCalendario).filter((e): e is EventoCalendario => e !== null),
+      },
+    };
+  } catch {
+    return { status: 'no_disponible' };
+  }
+}
+
+/** Ver el docstring de `EventoCalendario` arriba — sólo reconoce las 2 formas públicas de la API de
+ *  Google Calendar; `null` si no puede mostrar una hora con certeza (evento de día completo incluido:
+ *  `{date}` sin `dateTime` es "todo el día", no una hora que valga la pena mostrar). */
+export function horaDeEvento(inicioCrudo: unknown): string | null {
+  let iso: string | null = null;
+  if (typeof inicioCrudo === 'string') {
+    iso = inicioCrudo;
+  } else if (typeof inicioCrudo === 'object' && inicioCrudo !== null) {
+    const r = inicioCrudo as Record<string, unknown>;
+    if (typeof r.dateTime === 'string') iso = r.dateTime;
+  }
+  if (iso == null) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}

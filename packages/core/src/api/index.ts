@@ -270,8 +270,18 @@ export type {
  * mutaciones manuales (crear/cambiar estado/borrar). **[CONNECT]** — endpoint todavía no vivo (PR#96
  * con CI corriendo); degrada a `no_disponible`. Ver el docstring.
  */
-export { IDS_SOLAPA, borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, crearTarjetaMiDia, leerTablero } from './miDia';
+export {
+  IDS_SOLAPA,
+  borrarTarjetaMiDia,
+  cambiarEstadoTarjetaMiDia,
+  crearTarjetaMiDia,
+  horaDeEvento,
+  leerCalendario,
+  leerTablero,
+} from './miDia';
 export type {
+  CalendarioMiDia,
+  EventoCalendario,
   IdSolapa,
   SolapaMiDia,
   TableroMiDia,

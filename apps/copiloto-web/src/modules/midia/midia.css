@@ -92,6 +92,40 @@
   margin: 0;
 }
 
+/* ---------- Calendario (CAL1 §3) ---------- */
+.midia-screen__calendario-invitacion {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
+.midia-screen__calendario {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.midia-screen__calendario-evento {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.midia-screen__calendario-hora {
+  font-weight: 600;
+  color: var(--core);
+}
+
+.midia-screen__calendario-titulo {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---------- Tarjeta ---------- */
 .midia-tarjeta {
   display: flex;
