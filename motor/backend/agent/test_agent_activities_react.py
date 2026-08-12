@@ -161,9 +161,15 @@ class _CanalFake:
         return b"audio-bytes-simulados"
 
 
+# El aserto de longitud sale de acá, no de un número escrito a mano: el test original afirmaba
+# `"chars": 38` sobre un texto de 36 y rompió `main` en el merge de #407. Un literal duplicado se
+# desincroniza en cuanto alguien toca la frase; derivarlo del dato no puede.
+_TEXTO_STT_FAKE = "quiero cancelar mi pedido del martes"
+
+
 class _SttFake:
     def transcribe(self, audio):
-        return "quiero cancelar mi pedido del martes"
+        return _TEXTO_STT_FAKE
 
 
 def test_transcribe_voice_no_expone_texto_crudo_por_default(capsys, monkeypatch):
@@ -177,7 +183,7 @@ def test_transcribe_voice_no_expone_texto_crudo_por_default(capsys, monkeypatch)
     salida = capsys.readouterr().out
     assert "STT_TRANSCRIPT" in salida
     assert "cancelar mi pedido" not in salida
-    assert '"chars": 38' in salida
+    assert f'"chars": {len(_TEXTO_STT_FAKE)}' in salida
 
 
 def test_transcribe_voice_expone_texto_con_env_explicita(capsys, monkeypatch):
