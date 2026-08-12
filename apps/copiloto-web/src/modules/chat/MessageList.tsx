@@ -185,7 +185,7 @@ function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
   // HITL, igual que `apps/mobile/src/modules/chat/ListaMensajes.tsx`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(message.card);
   if (presupuestoPropuesto) {
-    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} />;
+    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} mensajeId={message.id} />;
   }
 
   const kind = classifyChoices(message.choices);

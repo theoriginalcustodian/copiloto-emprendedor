@@ -17,16 +17,68 @@ import './chat.css';
  * Reusa `FormularioPresupuesto` entero vía su prop `iniciales` (NO `corrige`): `corrige` es la
  * corrección de un presupuesto YA EMITIDO — un concepto distinto de "esto es lo que entendí de tu
  * dictado, todavía sin guardar".
+ *
+ * **Guard cross-reload (contrato `planificacion-a-frontend_guard-cross-reload-de-cards-propuesto`,
+ * 2026-08-12):** `estado`/`numero` vivían sólo en memoria de React — un reload de página remonta la
+ * MISMA card histórica ya guardada de vuelta en `'editando'`, y un click en "Guardar" ahí generaba un
+ * presupuesto duplicado en prod. Inventario primero (mobile, misma fecha): `TarjetaPresupuestoPropuesto`
+ * de `apps/mobile` tiene el MISMO gap (mismo `useState` sin persistencia) — no es exclusivo de web, es
+ * deuda compartida; queda anotada para mobile, no se toca acá (fuera del dueño de este contrato).
+ *
+ * Opción elegida de las 3 que planteó el contrato: **marca local** (no depende de un contrato nuevo
+ * con backend = MAYOR; no depende de heurística contra `/presupuestos` = frágil). Se persiste en
+ * `localStorage`, con la MISMA clave que ya identifica a este mensaje en el chat: `mensajeId`
+ * (`assistant-<reply.id>`, estable entre reload y rehidratación — ver `useChat.ts`). Limitación
+ * conocida y aceptada: no cruza dispositivos (si el emprendedor guarda en el celu y abre la PWA en la
+ * PC, ve la card editable de nuevo ahí) — el propio contrato la da por buena para este alcance.
  */
 type Estado = 'editando' | 'guardado' | 'descartado';
 
-export interface TarjetaPresupuestoPropuestoProps {
-  propuesta: PresupuestoPropuesto;
+type Resolucion = { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
+
+const RESOLUCION_STORAGE_PREFIX = 'copiloto-presupuesto-propuesto-resuelto';
+
+/** Best-effort, igual criterio que `useChat.ts`: si `localStorage` falla (privado/cuota/SSR), se
+ * degrada a `null` — la card vuelve a mostrarse editable, que es el comportamiento de HOY sin el
+ * guard, nunca un crash. */
+function leerResolucion(mensajeId: string): Resolucion | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`${RESOLUCION_STORAGE_PREFIX}:${mensajeId}`);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || !('estado' in parsed)) return null;
+    const p = parsed as Record<string, unknown>;
+    if (p.estado === 'guardado') return { estado: 'guardado', numero: typeof p.numero === 'number' ? p.numero : null };
+    if (p.estado === 'descartado') return { estado: 'descartado' };
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-export function TarjetaPresupuestoPropuesto({ propuesta }: TarjetaPresupuestoPropuestoProps) {
-  const [estado, setEstado] = useState<Estado>('editando');
-  const [numero, setNumero] = useState<number | null>(null);
+function guardarResolucion(mensajeId: string, resolucion: Resolucion): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`${RESOLUCION_STORAGE_PREFIX}:${mensajeId}`, JSON.stringify(resolucion));
+  } catch {
+    // best-effort — que falle la marca local no puede tumbar un guardado que sí ocurrió en el backend.
+  }
+}
+
+export interface TarjetaPresupuestoPropuestoProps {
+  propuesta: PresupuestoPropuesto;
+  /** El `id` del `ChatMessage` que trae esta card (`assistant-<reply.id>`, ver `useChat.ts`) — clave
+   *  del guard cross-reload de arriba. Estable entre reload/rehidratación; distinto por cada dictado. */
+  mensajeId: string;
+}
+
+export function TarjetaPresupuestoPropuesto({ propuesta, mensajeId }: TarjetaPresupuestoPropuestoProps) {
+  const [estado, setEstado] = useState<Estado>(() => leerResolucion(mensajeId)?.estado ?? 'editando');
+  const [numero, setNumero] = useState<number | null>(() => {
+    const previa = leerResolucion(mensajeId);
+    return previa?.estado === 'guardado' ? previa.numero : null;
+  });
 
   if (estado === 'guardado') {
     return (
@@ -66,10 +118,14 @@ export function TarjetaPresupuestoPropuesto({ propuesta }: TarjetaPresupuestoPro
             items: propuesta.items,
           }}
           onCreado={(p) => {
+            guardarResolucion(mensajeId, { estado: 'guardado', numero: p.numero });
             setNumero(p.numero);
             setEstado('guardado');
           }}
-          onCancelar={() => setEstado('descartado')}
+          onCancelar={() => {
+            guardarResolucion(mensajeId, { estado: 'descartado' });
+            setEstado('descartado');
+          }}
         />
       </Surface>
     </div>
