@@ -112,9 +112,18 @@ class MercadoPagoGateway:
         if not (secret and x_signature and data_id):
             return False
         try:
-            from mercadopago.webhook import WebhookSignatureValidator
+            from mercadopago.webhook import InvalidWebhookSignatureError, WebhookSignatureValidator
             WebhookSignatureValidator.validate(x_signature=x_signature, x_request_id=x_request_id,
                                                data_id=data_id, secret=secret, tolerance_seconds=300)
             return True
-        except Exception:  # noqa: BLE001 (InvalidWebhookSignatureError u otra → inválida)
+        except Exception as exc:  # noqa: BLE001 (InvalidWebhookSignatureError u otra → inválida)
+            # D7 (registro de deuda, 2026-08-12): esto quedaba mudo -- una firma inválida por *secret
+            # rotado* y una por *ataque* producían exactamente el mismo silencio. El fail-closed
+            # (`return False`) es correcto y NO cambia acá; sólo se deja rastro. `reason` (del SDK,
+            # cuando la excepción es la propia del validador) es la señal que más distingue la causa:
+            # SIGNATURE_MISMATCH sostenido desde una IP sugiere ataque, TIMESTAMP_OUT_OF_TOLERANCE
+            # sugiere reloj desincronizado, y así — sin necesitar el x-signature crudo en el log.
+            from backend.agent.observabilidad import log_error_evento
+            extra = {"reason": exc.reason.value} if isinstance(exc, InvalidWebhookSignatureError) else {}
+            log_error_evento(exc, workflow="mercadopago_gateway.verify_webhook", extra=extra)
             return False
