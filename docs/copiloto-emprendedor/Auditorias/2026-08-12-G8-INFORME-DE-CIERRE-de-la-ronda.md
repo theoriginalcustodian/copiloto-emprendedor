@@ -4,10 +4,15 @@
 > único que consolida las 3 pasadas, el estado final de los 11 hallazgos del backlog histórico y los
 > hallazgos nuevos. Sustituye a leer 19 archivos sueltos.
 >
-> **Estado:** 🟡 **PARCIAL — G2/G3 abiertos.** Este documento se completa cuando backend mergee los
-> lotes B y C; sus filas están marcadas y **no se declaran cerradas por anticipado**. Un informe de
-> cierre que se escribe antes de que el trabajo termine es exactamente el "aprobar por ritual" que el
-> canon prohíbe.
+> **Estado (actualizado 2026-08-12 20:45):** 🟡 **G2/G3 abiertos por UN solo ítem.** Los lotes B
+> (#407) y C (#412 · #415) **mergearon y se verificaron en Fase D**. Al reconciliar fila por fila
+> quedó vivo exactamente uno: el **5º `except` mudo de D-A** (`mercadopago_gateway.py:119`), que se
+> difirió dos veces —primero "junto con D-A del lote B", después "a lote C" en el propio mensaje de
+> #407— y **ambos disparadores se cumplieron sin que nadie lo mirara**. Ver §2 y §6.
+>
+> No se declara cerrado por anticipado. Un informe de cierre escrito antes de que el trabajo termine
+> es el "aprobar por ritual" que el canon prohíbe — y redondear 4/5 a "hecho" es la misma operación
+> con menos ruido.
 
 ---
 
@@ -20,6 +25,12 @@ desde el 2026-08-04**, esperando una decisión del operador que ya estaba tomada
 
 Esa es la conclusión que importa y no es cómoda: **el riesgo real no estaba escondido, estaba
 registrado y sin dueño.** La auditoría no lo descubrió; lo que faltaba era ejecución.
+
+**La reconciliación final (20:45) repitió el patrón, más chico y más rápido.** Con los lotes B y C
+mergeados y verificados, quedó una sola fila roja: un `except` de dos líneas que se difirió a dos
+disparadores distintos y **los dos se cumplieron el mismo día** sin que nadie lo notara. Otra vez: no
+estaba escondido, estaba escrito. El ciclo encontró **cero P0 nuevos** y **dos veces** el mismo modo
+de falla organizativo — que es, medido en horas, el hallazgo más caro de la ronda.
 
 ---
 
@@ -45,7 +56,7 @@ positivo. Está acá para que nadie vuelva a gastar tokens en ellas.
 
 ---
 
-## 2. Los 11 del backlog histórico (G2 — 🟡 parcial)
+## 2. Los 11 del backlog histórico (G2 — 🟡 abierto por una fila)
 
 Estado consolidado contra la [tabla maestra del 2026-08-04](2026-08-04-listado-problemas-fixes-reverificado.md).
 **Ningún ⚠️ PARCIAL puede sobrevivir**: parcial no es terminal, es un pendiente disfrazado.
@@ -54,21 +65,48 @@ Estado consolidado contra la [tabla maestra del 2026-08-04](2026-08-04-listado-p
 |---|---|---|---|---|
 | C9 | Secretos/PII en el árbol | ✅ RESUELTO | ✅ **RESUELTO** | — |
 | C4.2 | `/auth/*` sin rate-limit | ✅ RESUELTO | ✅ **RESUELTO** | #229 |
-| D-E | Logging / fingerprint / DLQ / autohealing | ✅ núcleo | ✅ **núcleo en prod**; el resto "print PHI" → B1 | lote B |
+| D-E | Logging / fingerprint / DLQ / autohealing | ✅ núcleo | ✅ **CERRADO** — B1 mergeado: `print()` con PHI → `log_evento()`, gate `COPILOTO_LOG_STT_TEXT` (default OFF), barrido de clase 44 sitios | **#407** |
 | **C4.1** | **`/auth/signup` abierto** | ⚠️ PARCIAL | ✅ **CERRADO Y VERIFICADO EN PROD** | **#399** — §3 |
 | **C6** | Chat/listas sin cota (frontend) | 🔴 VIVO | ✅ **CERRADO Y VERIFICADO EN `main`** | #393 |
-| C5 | Acoplamiento por string (no FK) | ⚠️ PARCIAL | 🟡 **B4** (canario a `trabajo_store.py`); la FK real es **MAYOR**, escalada | lote B |
+| C5 | Acoplamiento por string (no FK) | ⚠️ PARCIAL | ✅ **CERRADO como canario** — B4 llevó `trabajo_store.py` a 5/5 sitios cubiertos. La FK real sigue **MAYOR, escalada al operador** (no es deuda silenciosa: es una decisión pendiente) | **#407** |
 | C3 | Doc de presupuesto fuera de Temporal | ⚠️ PARCIAL | 🟡 **D2** — diferido con dueño y fecha | deuda |
-| C8 | Firma que ignora `payload` | 🔴 VIVO | 🟡 **B3** (~1 línea, clase CERRADA: 1 instancia) | lote B |
-| D-A | 4 errores tragados sin log | 🔴 1/5 | 🟡 **B2** | lote B |
-| C1 | Postgres sin pool / N+1 | 🔴 VIVO | 🟡 **C4** — va último, es el más grande | lote C |
-| C2 | Writes externos no idempotentes | 🔴 VIVO | 🟡 **C1 del lote** — va primero: **es plata** | lote C |
+| C8 | Firma que ignora `payload` | 🔴 VIVO | ✅ **CERRADO** — B3: `make_signal_anulacion` alineado con su gemelo; barrido de clase confirmó 2 sitios no-test, ambos sanos | **#407** |
+| **D-A** | **4 errores tragados sin log** | 🔴 1/5 | 🔴 **4 de 5 `except` cerrados con fingerprint** (`tool_catalog.py:1599` además deposita en `copiloto_traumas` — cerró de paso C2 del lote C). **Falta `mercadopago_gateway.py:119`** → §2.bis | **#407** + pendiente |
+| C1 | Postgres sin pool / N+1 | 🔴 VIVO | ✅ **CERRADO** — C4: pool detrás de `conn_factory`; Fase D lo re-verificó **sin matices** | **#415** |
+| C2 | Writes externos no idempotentes | 🔴 VIVO | ✅ **CERRADO** — C1 del lote: `idem_key` en la ruta de cobro MP, con control negativo (`gw.calls == 1`); 16 tests | **#412** |
 | C7 | Composio síncrono sin cache | 🔴 VIVO | 🟡 **D1** — diferido con dueño y fecha | deuda |
 | D-B | Timeout Composio | 🟢 BAJO | 🟢 **BAJO** — SDK ya trae 60s | — |
 
-**Movimiento del ciclo: 2 filas pasaron a cerradas-y-verificadas (C4.1 y C6), y ningún ⚠️ PARCIAL
-quedó como tal** — cada uno se convirtió en ítem de lote con dueño o en fila de deuda con fecha.
-**G2 cierra cuando los lotes B y C mergeen.**
+**Movimiento del ciclo: de 11 filas, 9 quedan cerradas-y-verificadas** (7 con PR + evidencia, C9 y
+C4.2 ya lo estaban), **2 son deuda con dueño y fecha** (C3→D2, C7→D1) y **1 sigue roja: D-A.**
+
+### 2.bis · La única fila que no cierra, y por qué importa más que su tamaño
+
+`motor/clients/agent/providers/mercadopago_gateway.py:119` — verificado contra `origin/main` el
+2026-08-12 20:39, **sigue vivo**:
+
+```python
+except Exception:  # noqa: BLE001 (InvalidWebhookSignatureError u otra → inválida)
+    return False
+```
+
+**El fix es de líneas.** Lo que vale es cómo sobrevivió: el registro de deuda le puso como disparador
+*«junto con D-A del lote B»*, y el mensaje de commit de #407 lo re-difirió *«a lote C»*. **Los dos
+disparadores se cumplieron** —lote B mergeó a las 15:40, lote C cerró a las 18:12— y el ítem no se
+movió, porque un disparador cumplido **no avisa**: hay que ir a buscarlo. Backend cerró su ciclo §G6
+declarando la cola vacía de buena fe; la cola de `abierto/`+`en-curso/` estaba vacía, la del registro
+versionado no.
+
+Se detectó al reconciliar este informe y bajó como contrato a backend
+(`contrato_planificacion-a-backend_tu-cola-no-esta-vacia-D5-y-D7…`, 20:39).
+
+⚠️ **Corrección de etiqueta detectada en la misma reconciliación.** El registro de deuda anota a **D5**
+(8 endpoints AFIP sin caso hostil HTTP) y a **D7** (este `except`) como **P1**; los informes de origen
+los clasifican a ambos como **P2** de la Pasada 1 (H-2 y H-4). El registro está mal etiquetado. La
+consecuencia práctica: **D5 es P2 con dueño ⇒ NO bloquea G3**; D7 sí lo bloquea, pero **no por su
+etiqueta propia (P2), sino porque es una instancia de D-A, que es P1 (Pasada 2, H-3)**. Vale
+distinguirlo: es exactamente el error de
+[[clasificar-un-hallazgo-por-su-etiqueta-y-no-por-su-codigo]], y esta vez se cazó antes de propagarse.
 
 ---
 
@@ -109,15 +147,17 @@ emails** a `COPILOTO_SIGNUP_ALLOWLIST`. Está declarado en la salida del paso 3.
 | Gate | Estado | Evidencia |
 |---|---|---|
 | **G1** — 3 pasadas con informe | ✅ | §1 |
-| **G2** — los 11 en estado terminal | 🟡 | §2 — cierra con lotes B/C |
-| **G3** — hallazgos nuevos P0/P1 arreglados, P2 con dueño | 🟡 | los 10 P2 + 1 P3 **ya tienen dueño y fecha** en el [registro de deuda](2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md); los 5 P1 están en lotes B/C |
+| **G2** — los 11 en estado terminal | 🔴 | §2 — **9 cerradas · 2 deuda con dueño · 1 roja (D-A, 4/5)** |
+| **G3** — hallazgos nuevos P0/P1 arreglados, P2 con dueño | 🔴 | **4 de los 5 P1 cerrados con evidencia**: H-1 P1 (adversariales concepto/trabajo) #412 · C1 pool #415 · C2 idempotencia MP #412 · F-C8 #407. **El 5º (D-A, P2 de Pasada 2 H-3) está 4/5.** Los 10 P2 + 1 P3 tienen dueño y fecha en el [registro de deuda](2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md) |
 | **G4** — C4.1 cerrado | ✅ | §3 |
-| **G5** — gate propio verde con recibo | ✅ | `9160900f…json` (C4.1) · `c54ae83d` en `main` |
-| **G6** — desplegado + smoke e2e contra prod | ✅ | 34/35 BETA-READY con el usuario canónico |
+| **G5** — gate propio verde con recibo | ✅ | `9160900f…json` (C4.1) · `c54ae83d` en `main` · lote C con gate 5/5 **dos veces** (rama + worktree limpio post-merge) y Actions 6/6 |
+| **G6** — desplegado + smoke e2e contra prod | ✅ | 34/35 BETA-READY con el usuario canónico · e2e §G6 del ciclo cerrado **5/6**, el 6º (durabilidad, E3) anclado en el registro con disparador ejecutable |
 | **G7** — cero regresión funcional | ✅ | smoke completo verde: login, `/me`, chat, ReAct, MP, Composio, refresh |
-| **G8** — este informe | 🟡 | se completa con G2/G3 |
+| **G8** — este informe | 🟡 | se completa cuando cierre D-A |
 
-**5 de 8 cerrados. Los 3 abiertos dependen del mismo disparador: que backend mergee los lotes B y C.**
+**5 de 8 cerrados, y los 3 abiertos ya no dependen de "los lotes B y C": dependen de un `except` de
+dos líneas.** Ese es el resultado útil de reconciliar — pasar de "faltan dos lotes" a "falta esto,
+en este archivo, en esta línea, de este dueño".
 
 ---
 
@@ -145,21 +185,38 @@ ciclo: el gate y el deploy se lanzaron en background con la salida truncada, y e
 `mobile` se perdió — la corrida verde siguiente borró a la roja. Un gate largo va a **archivo
 completo**.
 
-Las tres son la misma familia: **instrumentos que confirman en vez de verificar**, que ya costó un
+**4. Un disparador que se cumple no avisa a nadie.** (Añadida al reconciliar, 20:45.) El registro de
+deuda es bueno guardando *qué* falta, *de quién* es y *cuándo* arranca — y no tiene **ningún**
+mecanismo que grite cuando el "cuándo" ocurre. D-A quedó 4/5 con su resto difiriéndose dos veces a
+disparadores que **ambos se cumplieron el mismo día**; D5 igual (*«tras el lote C»*, cumplido a las
+18:12). Nadie falló: backend miró su cola —`abierto/` + `en-curso/`— y estaba vacía. **La cola vive en
+dos lugares y sólo uno se mira solo.** Barato de arreglar: al cerrar un lote, releer el registro
+filtrando por disparadores cumplidos, como paso del DoD del lote — no como buena voluntad. Es la misma
+familia que las tres de arriba, en su versión más silenciosa: acá el instrumento **ni siquiera
+confirma**, directamente no se ejecuta.
+
+Las cuatro son la misma familia: **instrumentos que confirman en vez de verificar**, que ya costó un
 frente entero en este repo.
 
 ---
 
 ## 6. Qué falta, con dueño y disparador
 
-| Qué | Dueño | Disparador |
-|---|---|---|
-| **Lote B** (B1 print PHI · B2 D-A · B3 C8 · B4 canario C5) | **backend** | ✅ desbloqueado — C4.1 en prod |
-| **Lote C** (doble cobro · catch-all ReAct · tests adversariales · pool) | **backend** | lote B mergeado |
-| **Fase D** — re-verificar los fixes con control negativo | **auditoría** | lote B mergeado (ya está armada, esperando) |
-| **D9** — flake del `mobile` | **frontend** | próximo ítem suyo |
-| **Agregar testers a la allow-list** | **operador** | cuando quiera abrir la beta |
-| **Completar este informe (G2/G3/G8)** | **planificación** | lotes B y C mergeados |
+Actualizada 2026-08-12 20:45. Lo tachado cerró en el ciclo.
+
+| Qué | Dueño | Disparador | Estado |
+|---|---|---|---|
+| ~~**Lote B** (B1 · B2 · B3 · B4)~~ | backend | — | ✅ **#407**, Fase D verificada |
+| ~~**Lote C** (doble cobro · catch-all ReAct · adversariales · pool)~~ | backend | — | ✅ **#412 + #415**, Fase D verificada (C4 «sin matices») |
+| ~~**Fase D** — re-verificar con control negativo~~ | auditoría | — | ✅ corrida sobre B y C; produjo **D11** (RLS `FORCE` enmascara el control negativo de C3) |
+| **D-A, el 5º `except`** (`mercadopago_gateway.py:119`) | **backend** | ✅ **cumplido dos veces** — contrato bajado 20:39 | 🔴 **lo único que bloquea G2/G3/G8** |
+| **D5** — 8 endpoints AFIP/presupuestos sin caso hostil HTTP | **backend** | ✅ cumplido (cierre de lote C, 18:12) | 🟡 P2 con dueño — no bloquea G3 |
+| **ADR-002** — `idem_key` en `composio_gateway.execute` | **operador** → backend | aprobación del ADR (**MAYOR**) | ⏸️ spike hecho (#418), decisión pendiente |
+| **E3** — durabilidad ante restart del worker | **backend** | próximo deploy de código real, por su propio mérito | ⏸️ anclada, sin atajo |
+| **Las 3 cards `*_propuesto` de web** (gasto · cliente · ingreso) | **frontend** | ✅ cumplido — emisión confirmada en `tool_catalog.py:725/798/1072` | 🟡 en curso |
+| **D9** — flake del `mobile` | frontend | próximo ítem suyo | 🟡 reabierta |
+| **Agregar testers a la allow-list** | **operador** | cuando quiera abrir la beta | ⏸️ 1 solo email hoy |
+| **Cerrar este informe** | planificación | que D-A cierre | 🟡 §2/§3 ya reconciliados |
 
 ---
 
