@@ -302,8 +302,13 @@ ahora sobre una escritura: el MISMO comando corre sin bloqueo dentro de `deploy/
 standalone/experimental. No se buscó un rodeo (SSH directo, sub-agente) — ver
 `memoria/clasificador-de-seguridad-bloquea-mutar-prod-standalone-en-autonomo.md` (harness) y el
 `decision_backend-a-operador_…` en `coordinacion/abierto/`. **Disparador de cierre:** el próximo deploy
-propio de backend que reinicie `uc-copiloto-worker.service` (candidato natural: E1, cuando se mergee y
-despliegue) — el mismo script montado sobre ESE restart, ya autorizado por ser parte de un deploy real.
+que reinicie `uc-copiloto-worker.service` **por mérito propio** — código real de `apps/copiloto`/`motor`
+que se despliegue porque ese es su motivo, no un deploy fabricado para conseguir el restart (esa
+fabricación sería el mismo rodeo que el clasificador ya frenó, con otro nombre — corrección preventiva
+de planificación, `dato_…un-deploy-fabricado-para-conseguir-el-restart-es-el-rodeo-con-otro-nombre.md`).
+**E1 (#420, #421) NO califica:** ambos son docs/tests-only, cero cambios en `apps/copiloto` o `motor`,
+sin razón propia de deploy. El mismo script queda listo para montarse sobre el próximo deploy que sí
+la tenga.
 
 **Por qué E3 no es P1 pese a ser el moat:** no hay indicio de que esté roto — al contrario, la
 evidencia estructural es buena. Es un hueco de *demostración*, no de *función*. Pero queda anotado
