@@ -25,7 +25,7 @@ Las pasadas 1 y 2 cerraron con **0 P0**. Lo que está en ejecución, y por lo ta
 
 ---
 
-## Las 9 filas de deuda
+## Las 10 filas de deuda
 
 Fecha por defecto: **primer sprint post-beta**. No es una fecha de calendario porque la beta todavía no
 abrió; es un **disparador binario y verificable** — el sprint que arranca después del primer tester
