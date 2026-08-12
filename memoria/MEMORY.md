@@ -98,6 +98,8 @@
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) — C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
 - [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real. Discriminá antes de atribuir.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — señal cero se cuela por el `continue`. Medir contra la expectativa, no contra el reloj. Costó ~100 min de P0 sin dueño.
+- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: un corte de créditos apagó los 3 sin que sonara nada. `CronList` al reanudar, antes de retomar.
+- [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la corrida verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
 
 ### Guards, gates y jueces
 

@@ -6,42 +6,56 @@
 
 ---
 
-## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12, act. 14:45)
+## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12, act. 18:05)
 
 > Este bloque existe porque **`coordinacion/` NO está versionada**: el buzón con los contratos vivos
 > no viaja con el repo, así que una sesión nueva no tiene forma de enterarse de esto salvo acá.
-> Cuando la ronda cierre (G8), se borra.
+> Cuando la ronda cierre del todo (G2/G3/G8), se borra.
 
-**Estado binario de la ronda** — normativa en
-[`Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md):
+**🏁 Leé primero el informe de cierre:**
+[`Auditorias/2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md)
+(#401) — consolida las 3 pasadas, los 11 del backlog y los nuevos. Sustituye a leer 19 archivos.
+Está marcado **🟡 PARCIAL a propósito**: se completa cuando backend mergee los lotes B y C.
+
+**Titular de la ronda: 0 P0 nuevos en las tres pasadas.** Lo más grave del ciclo —C4.1— no fue un
+hallazgo: era una fila del backlog marcada ⚠️ PARCIAL desde el 2026-08-04. **El riesgo no estaba
+escondido, estaba registrado y sin dueño.** Faltaba ejecución, no auditoría.
 
 | | Estado |
 |---|---|
-| Pasadas 1 (seguridad) y 2 (robustez) | ✅ cerradas, **0 P0** cada una. Triadas: 4 P1 al lote C, 8 P2 al registro de deuda |
-| **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393): cota en el reducer canónico podando `messages` **y** `seenIds`, web importando la misma constante, virtualización en ambas listas, scroll fuera del hilo JS |
-| **D9** — flake del `mobile` en `gate.sh` | ✅ cerrado mismo ciclo (`jest.setTimeout(15000)`, gate 5/5 verde) |
-| Pasada 3 (pulido y eficiencia) | ✅ **cerrada y mergeada** (#396): **0 P0 · 0 P1 · 3 P2 · 1 P3**. Con esto **las tres pasadas están hechas → G1 cumplido** |
-| **C4.1** — `/auth/signup` abierto (**P0, bloquea la beta**) | 🟡 **en curso, lo ejecuta PLANIFICACIÓN** (rama `fix/c4-1-invite-gate`) — ver abajo |
+| Pasadas 1, 2 y 3 | ✅ **las tres cerradas → G1 cumplido**. Balance nuevo: **0 P0 · 5 P1 · 10 P2 · 1 P3** |
+| **C4.1** — `/auth/signup` abierto (**era el P0 que bloqueaba la beta**) | ✅ **CERRADO Y VERIFICADO EN PROD** (#399) — ver ⚠️ abajo, tiene una consecuencia viva |
+| **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393) |
+| **D9** — flake del `mobile` en `gate.sh` | 🔴 **REABIERTA.** Se declaró cerrada con `jest.setTimeout(15000)` y **volvió a fallar con el fix ya aplicado**. Dueño: frontend |
+| Lotes B y C (backend) | 🟡 **B en curso** (B1: los 3 `print()` con PII). C en cola, arranca al cerrar B |
+| Fase D — re-verificar con control negativo | ⏳ **auditoría**, armada y esperando que lote B mergee |
 
-**C4.1 lo tomó planificación, no backend, y eso está declarado.** Backend estuvo 2 h fuera del buzón
-haciendo trabajo táctil en device pedido por el operador en vivo (no fue ocio); el P0 quedó sin dueño
-en el ínterin y se rompió la separación de roles a propósito, con aviso en el buzón
-(`decision_…tomo-C4-1`). **Lote B y lote C siguen siendo de backend** y su contrato ya declara el gate
-de orden: no arrancan hasta que C4.1 esté cerrado **y verificado en prod**.
+**⚠️ Consecuencia viva de C4.1 — leé esto antes de intentar crear un usuario.** El alta ahora exige
+**invitación** y el gate es **fail-closed**: sin la env, no entra nadie. Prod tiene **un solo email
+habilitado** (`e2e-device@copiloto.test`, el canónico). **Ningún tester nuevo puede darse de alta**
+—ni por password ni por Google, `ensure-tenant` también quedó detrás de la allow-list— hasta que el
+operador defina la lista. Está estacionado como `decision_` en el buzón; **no lo decidas por él**.
+
+**⚠️ D9 estaba marcada cerrada acá y era falso.** El flake volvió **con su fix presente**, así que un
+`mobile` rojo **se discrimina** (re-correr aislado, log completo a archivo), **no se atribuye** por
+parecido. Una vez que "es el flake conocido" queda instalado como explicación disponible, la próxima
+regresión real pasa con la misma frase.
 
 Si estás abriendo una sesión, lo que queda es, en este orden:
 
-1. **Esperar el cierre de C4.1** (no re-implementarlo: está tomado). Su gate fail-closed **tumba
-   `deploy/copiloto/smoke_beta_e2e.py`** si no se actualiza — el paso 1 crea el tenant del que
-   dependen los pasos 2-11, y ese smoke es el **control positivo del propio fix**, así que viaja en
-   el MISMO PR. El deploy además tiene que provisionar `COPILOTO_INVITE_TOKEN` y
-   `COPILOTO_SIGNUP_ALLOWLIST`, o el fail-closed deja a todos afuera (paso 3.6 de `deploy.sh`).
-2. **Lote B** (higiene) y **lote C** (los 4 P1 de las auditorías, ordenados por consecuencia: el
-   riesgo de cobro doble va primero) — **backend**, disparados por el aviso de C4.1 cerrado.
-3. **Fase D del DoD** — re-verificar los fixes de backend con control negativo. **Auditoría** ya la
-   tiene armada y esperando input; sin lote B/C mergeado no tiene qué verificar.
+1. **Lote B** (higiene: `print()` con PII, errores tragados, C8, canario de C5) — **backend**, en
+   curso. Ojo con B1: `motor/**` **no puede** importar de `apps/copiloto/**` (dirección invertida a
+   `CLAUDE.md §2`); si hace falta logging estructurado en el motor, es por **inyección**.
+2. **Lote C** (los 4 P1, ordenados por consecuencia: el riesgo de cobro doble va primero) —
+   **backend**, arranca al mergear B.
+3. **Fase D del DoD** — re-verificar los fixes con control negativo. **Auditoría**; sin lote B/C
+   mergeado no tiene qué verificar.
+4. **D9** — **frontend**. Capturar el log **completo** del próximo `mobile` rojo (a archivo, nunca
+   pipeado por `tail`) en vez de dejar "timing marginal" como única hipótesis no falsable.
 
-Deuda viva con dueño y fecha:
+Normativa del ciclo:
+[`Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md)
+· Deuda viva con dueño y fecha:
 [`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md).
 
 ---
