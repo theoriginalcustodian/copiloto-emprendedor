@@ -9,10 +9,11 @@ import type { ReplyCard } from '../api/types';
  * (`concepto`, `receptor: {nombre, doc_tipo, doc_nro, condicion_iva, domicilio, contacto}`,
  * `items: [{descripcion, cantidad, precio_unitario, codigo}]`).
  *
- * 🔴 **`[ASSUMED_PENDING_VERIFY]` sólo en el `kind`, no en `data`.** Que backend efectivamente mande
- * ESTE `kind` en un reply de voz es lo único sin confirmar — mismo motivo que `ingreso_propuesto`, y
- * mismo colchón: `ReplyCard.kind` es `string` abierto, así que si backend elige otro nombre esta
- * función sigue devolviendo `null` (cae a `Burbuja`) sin romper nada.
+ * ✅ **CONFIRMADO vivo contra el backend** — e2e del ciclo de auditorías (§G6, 2026-08-12, prod
+ * `copilotoemprendedor.duckdns.org`): `GET /reply` mandó `card: {kind: 'presupuesto_propuesto',
+ * data: {concepto, receptor, items}}` byte a byte con esta forma. El único gap que quedaba era la web
+ * (mobile ya lo tenía desde el hito 8) — `apps/copiloto-web/src/modules/chat/
+ * TarjetaPresupuestoPropuesto.tsx` la agrega.
  *
  * 🔴 **`items` es una LISTA editable, no campos sueltos.** Es la razón de ser de esta card (contrato de
  * modos §1): el error de transcripción más caro de un presupuesto vive en el monto de CADA ítem, así

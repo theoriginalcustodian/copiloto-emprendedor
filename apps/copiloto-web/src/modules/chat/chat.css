@@ -235,6 +235,37 @@ a.artifact:focus-visible {
   color: var(--name-fg);
 }
 
+/* ---------- Cards "propuesta editable" (presupuesto/gasto/... dictados, hito 8) ----------
+ * Cáscara común a toda card "esto entendí, revisalo antes de guardar" — mismos tokens que
+ * `.hitl-card`/`.artifact`, sin duplicar valores. Reusa las clases `formulario-presupuesto__*`
+ * (`presupuestos.css`) para el form embebido: cero estilos nuevos ahí. */
+.propuesta-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 92%;
+  padding: 18px 18px 16px;
+}
+
+.propuesta-card__aviso {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
+}
+
+.propuesta-card--terminal {
+  max-width: 88%;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.propuesta-card--exito {
+  color: var(--ok-fg);
+  font-weight: 600;
+}
+
 /* ---------- Chips de desambiguación (Task 14, EXTRACT §2.7) ---------- */
 .disambiguation-chips {
   display: flex;

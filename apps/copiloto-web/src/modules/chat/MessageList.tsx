@@ -1,10 +1,13 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
+import { leerPresupuestoPropuesto } from '@copiloto/core';
+
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
 import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
+import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
 import type { ChatMessage } from './useChat';
 import './chat.css';
 
@@ -174,6 +177,15 @@ interface FilaMensajeProps {
 function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
   if (message.role === 'user') {
     return <Bubble role="user" text={message.text} />;
+  }
+
+  // `presupuesto_propuesto` NO lleva `choices` (mismo motivo que el resto de las cards `*_propuesto`
+  // de mobile): `classifyChoices` la ignoraría y esto caería en `Bubble` lisa — el emprendedor vería
+  // sólo el texto y ningún lugar donde corregir el monto antes de guardar. Se chequea ANTES del gate
+  // HITL, igual que `apps/mobile/src/modules/chat/ListaMensajes.tsx`.
+  const presupuestoPropuesto = leerPresupuestoPropuesto(message.card);
+  if (presupuestoPropuesto) {
+    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} />;
   }
 
   const kind = classifyChoices(message.choices);
