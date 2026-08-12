@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 import { useRef } from 'react';
-import type { ScrollView } from 'react-native-gesture-handler';
+import type { FlatList } from 'react-native-gesture-handler';
 
 // Jest (jest-expo) -- describe/it/expect/jest son globales, no se importan de vitest.
 
@@ -19,7 +19,7 @@ import { BotonVoz, type BotonVozProps } from './BotonVoz';
  * contra un `scrollRef` real).
  */
 function ArnesConScrollRef(props: Partial<Omit<BotonVozProps, 'scrollRef'>>) {
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList>(null);
   return (
     <ThemeProvider>
       <BotonVoz

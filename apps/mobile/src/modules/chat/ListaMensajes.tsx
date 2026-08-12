@@ -1,6 +1,7 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Pressable, ScrollView } from 'react-native-gesture-handler';
+import { FlatList, Pressable } from 'react-native-gesture-handler';
+import type { ListRenderItemInfo } from 'react-native';
 
 import {
   leerClientePropuesto,
@@ -105,9 +106,79 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
   );
 }
 
+interface FilaMensajeProps {
+  mensaje: ChatMessage;
+  onChoice: ListaMensajesProps['onChoice'];
+}
+
+/**
+ * Una fila de la lista — el mismo árbol de decisión que antes (gasto/cliente/ingreso/presupuesto/
+ * factura propuestos -> gate confirmar/cancelar -> burbuja lisa), ahora aislado en su propio
+ * componente memoizado. Con `ScrollView` + `.map` daba igual: React re-renderizaba las 300 filas
+ * en cada mensaje nuevo porque todas vivían en un solo árbol. `FlatList` sólo re-renderiza lo que
+ * cambia SI el `renderItem` no es una arrow function inline (si lo fuera, `React.memo` no podría
+ * comparar props y memoizar no serviría de nada) — de ahí que viva afuera, no inline en el JSX.
+ */
+const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensajeProps) {
+  if (mensaje.role === 'user') {
+    return <Burbuja role="user" text={mensaje.text} />;
+  }
+
+  // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que
+  // `mapearGate` la ignoraría y caería en `Burbuja` — el emprendedor vería el texto del
+  // copiloto y ningún lugar donde corregir el monto.
+  const propuesta = leerGastoPropuesto(mensaje.card);
+  if (propuesta) {
+    return <TarjetaGastoPropuesto propuesta={propuesta} />;
+  }
+
+  // Mismo motivo que el gasto: `cliente_propuesto` no lleva `choices`, así que `mapearGate` la
+  // ignoraría y esto caería en `Burbuja` — se vería el texto del copiloto y ningún lugar donde
+  // corregir el nombre que el LLM entendió mal.
+  const clientePropuesto = leerClientePropuesto(mensaje.card);
+  if (clientePropuesto) {
+    // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
+    // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
+    return <TarjetaClientePropuesto propuesta={clientePropuesto} texto={mensaje.text} />;
+  }
+
+  // `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112).
+  const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
+  if (ingresoPropuesto) {
+    return <TarjetaIngresoPropuesto propuesta={ingresoPropuesto} />;
+  }
+
+  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
+  // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
+  const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
+  if (presupuestoPropuesto) {
+    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} />;
+  }
+
+  // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
+  // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
+  const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
+  if (facturaPropuesta) {
+    return <TarjetaFacturaPropuesta propuesta={facturaPropuesta} />;
+  }
+
+  const gate = mapearGate(mensaje);
+  if (gate) {
+    return (
+      <TarjetaConfirmacion
+        gate={gate}
+        onConfirm={() => onChoice(gate.confirmValue)}
+        onCancel={() => onChoice(gate.cancelValue)}
+      />
+    );
+  }
+
+  return <Burbuja role="assistant" text={mensaje.text} />;
+});
+
 /**
  * Lista de mensajes — fork mobile de `ListaMensajes.tsx` de DocuMed. Por mensaje decide qué
- * renderizar:
+ * renderizar (ver `FilaMensaje`):
  *  - usuario -> `Burbuja` simple.
  *  - asistente cuyo `choices` es el par confirmar/cancelar (`mapearGate`, `@copiloto/core/chat`) ->
  *    `TarjetaConfirmacion`, NUNCA `Burbuja` — es el único HITL de este sprint.
@@ -119,127 +190,79 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
  * Auto-scroll al último mensaje en cada cambio (best-effort: `scrollToEnd` puede no existir bajo el
  * test-renderer).
  *
- * 🔴 **`ScrollView` de `react-native-gesture-handler`, no de `react-native` — y el `ref` se expone
+ * 🟢 **C6 (cotas de chat y listas):** `ScrollView` + `.map()` montaba TODOS los mensajes del
+ * historial (hasta `MAX_MENSAJES_HISTORIAL = 300`, ver `chatMachine.ts`) como vistas nativas vivas,
+ * sin importar cuántas entraran en pantalla. `FlatList` virtualiza: sólo monta lo visible + el
+ * colchón de `windowSize`, y recicla vistas fuera de rango.
+ *
+ * 🔴 **`FlatList` de `react-native-gesture-handler`, no de `react-native` — y el `ref` se expone
  * hacia afuera.** Convención del repo (`ScrollFormulario`/`Tile`): mezclar el responder system de RN
  * con gestos de RNGH dentro del mismo árbol dejó un toque sin dueño (ver `contrato_..._dictado-por-
  * voz-sin-glass...`, el bug real de device). `BotonVoz` flota ENCIMA de esta lista con un gesto RNGH
  * propio (mantener apretado / deslizar); para que conviva con el scroll sin comerse el toque, su Pan
  * necesita `simultaneousWithExternalGesture(refDeEstaLista)` — por eso el `ref` que este componente
- * recibe apunta DIRECTO al `ScrollView` nativo de RNGH, el mismo que ya usa para su propio
+ * recibe apunta DIRECTO al `FlatList` nativo de RNGH, el mismo que ya usa para su propio
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
-export const ListaMensajes = forwardRef<ScrollView, ListaMensajesProps>(function ListaMensajes(
-  { messages, onChoice },
-  refExterno,
-) {
-  const tema = useTema();
-  const scrollRef = useRef<ScrollView>(null);
-  useImperativeHandle(refExterno, () => scrollRef.current as ScrollView, []);
+export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
+  function ListaMensajes({ messages, onChoice }, refExterno) {
+    const tema = useTema();
+    const listRef = useRef<FlatList<ChatMessage>>(null);
+    useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
 
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd?.({ animated: true });
-  }, [messages.length]);
+    useEffect(() => {
+      listRef.current?.scrollToEnd?.({ animated: true });
+    }, [messages.length]);
 
-  return (
-    <ScrollView
-      testID="lista-mensajes"
-      ref={scrollRef}
-      contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: tema.espacio.sm }]}
-    >
-      {messages.length === 0 && (
-        <View testID="chat-vacio" style={styles.vacio}>
-          <Marca size={64} tono="superficie" />
-          <Text
-            style={{
-              color: tema.color.texto,
-              fontSize: tema.tipo.titulo,
-              fontWeight: '700',
-              textAlign: 'center',
-              marginTop: tema.espacio.md,
-            }}
-          >
-            ¿En qué te ayudo?
-          </Text>
-          <Text
-            style={{
-              color: tema.color.textoTenue,
-              fontSize: tema.tipo.base,
-              lineHeight: Math.round(tema.tipo.base * 1.5),
-              textAlign: 'center',
-              marginTop: tema.espacio.sm,
-            }}
-          >
-            {TEXTO_VACIO}
-          </Text>
-        </View>
-      )}
+    const renderItem = useCallback(
+      ({ item }: ListRenderItemInfo<ChatMessage>) => <FilaMensaje mensaje={item} onChoice={onChoice} />,
+      [onChoice],
+    );
+    const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
-      {messages.map((mensaje) => {
-        if (mensaje.role === 'user') {
-          return <Burbuja key={mensaje.id} role="user" text={mensaje.text} />;
+    return (
+      <FlatList
+        testID="lista-mensajes"
+        ref={listRef}
+        data={messages}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={[styles.contenido, { padding: tema.espacio.md, gap: tema.espacio.sm }]}
+        removeClippedSubviews
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        ListEmptyComponent={
+          <View testID="chat-vacio" style={styles.vacio}>
+            <Marca size={64} tono="superficie" />
+            <Text
+              style={{
+                color: tema.color.texto,
+                fontSize: tema.tipo.titulo,
+                fontWeight: '700',
+                textAlign: 'center',
+                marginTop: tema.espacio.md,
+              }}
+            >
+              ¿En qué te ayudo?
+            </Text>
+            <Text
+              style={{
+                color: tema.color.textoTenue,
+                fontSize: tema.tipo.base,
+                lineHeight: Math.round(tema.tipo.base * 1.5),
+                textAlign: 'center',
+                marginTop: tema.espacio.sm,
+              }}
+            >
+              {TEXTO_VACIO}
+            </Text>
+          </View>
         }
-
-        // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que
-        // `mapearGate` la ignoraría y caería en `Burbuja` — el emprendedor vería el texto del
-        // copiloto y ningún lugar donde corregir el monto.
-        const propuesta = leerGastoPropuesto(mensaje.card);
-        if (propuesta) {
-          return <TarjetaGastoPropuesto key={mensaje.id} propuesta={propuesta} />;
-        }
-
-        // Mismo motivo que el gasto: `cliente_propuesto` no lleva `choices`, así que `mapearGate` la
-        // ignoraría y esto caería en `Burbuja` — se vería el texto del copiloto y ningún lugar donde
-        // corregir el nombre que el LLM entendió mal.
-        const clientePropuesto = leerClientePropuesto(mensaje.card);
-        if (clientePropuesto) {
-          // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
-          // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
-          return (
-            <TarjetaClientePropuesto
-              key={mensaje.id}
-              propuesta={clientePropuesto}
-              texto={mensaje.text}
-            />
-          );
-        }
-
-        // `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112).
-        const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
-        if (ingresoPropuesto) {
-          return <TarjetaIngresoPropuesto key={mensaje.id} propuesta={ingresoPropuesto} />;
-        }
-
-        // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
-        // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
-        const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
-        if (presupuestoPropuesto) {
-          return <TarjetaPresupuestoPropuesto key={mensaje.id} propuesta={presupuestoPropuesto} />;
-        }
-
-        // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
-        // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
-        const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
-        if (facturaPropuesta) {
-          return <TarjetaFacturaPropuesta key={mensaje.id} propuesta={facturaPropuesta} />;
-        }
-
-        const gate = mapearGate(mensaje);
-        if (gate) {
-          return (
-            <TarjetaConfirmacion
-              key={mensaje.id}
-              gate={gate}
-              onConfirm={() => onChoice(gate.confirmValue)}
-              onCancel={() => onChoice(gate.cancelValue)}
-            />
-          );
-        }
-
-        return <Burbuja key={mensaje.id} role="assistant" text={mensaje.text} />;
-      })}
-    </ScrollView>
-  );
-});
+      />
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   contenido: { flexGrow: 1 },

@@ -25,6 +25,16 @@
 
 import type { ChatContenido, ReplyCard, ReplyChoice, ReplyMessage } from '../api/types';
 
+/**
+ * Cota dura del historial en memoria/persistido (C6, ver
+ * `docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md` §Fase C). Sin
+ * esto, `messages` y `seenIds` crecen sin techo por sesión — con 5 usuarios de beta no duele; con
+ * historial largo, serializar el array completo por evento sí. Es una cota de degradación, no un
+ * límite de producto: el usuario nunca ve un error por esto, sólo deja de acumularse historial más
+ * viejo que este umbral en memoria (queda igual en el backend, que es la fuente de verdad).
+ */
+export const MAX_MENSAJES_HISTORIAL = 300;
+
 export type ChatRole = 'user' | 'assistant';
 
 export interface ChatMessage {
@@ -136,6 +146,29 @@ function collectSeenReplyIds(messages: readonly ChatMessage[]): number[] {
 }
 
 /**
+ * Poda `messages` y `seenIds` a `MAX_MENSAJES_HISTORIAL`, en la MISMA operación — podar sólo uno de
+ * los dos deja el otro creciendo sin techo (el leak queda igual, sólo invisible).
+ *
+ * Los dos arrays se recortan de forma INDEPENDIENTE por orden de inserción, NO por un índice
+ * compartido: `seenIds` no necesita corresponder 1:1 a los mensajes todavía visibles — sólo importa
+ * que conserve los ids vistos MÁS RECIENTES para el dedupe defensivo de `respuestas_recibidas` (ver
+ * docstring de `EstadoChat.seenIds`). Podarlo "alineado" a `messages` (ej. derivarlo de nuevo con
+ * `collectSeenReplyIds` sobre el `messages` ya recortado) es el bug que este helper evita: un reply
+ * viejo cuyo mensaje ya salió de la ventana visible dejaría de estar en `seenIds`, y si el servidor lo
+ * reenvía por una carrera de polling o un `after_id` viejo, se volvería a agregar — duplicado
+ * reintroducido, exactamente lo que el dedupe existe para prevenir.
+ */
+function acotarHistorial(
+  messages: readonly ChatMessage[],
+  seenIds: readonly number[],
+): { messages: ChatMessage[]; seenIds: number[] } {
+  return {
+    messages: messages.slice(-MAX_MENSAJES_HISTORIAL),
+    seenIds: seenIds.slice(-MAX_MENSAJES_HISTORIAL),
+  };
+}
+
+/**
  * Arranca (o rehidrata) el estado de una sesión. El cursor (`nextId`) y el set de dedupe (`seenIds`)
  * se DERIVAN de los mensajes persistidos que pase el caller — no se resetean a 0 salvo que no haya
  * historial. Es lo que hace que reabrir el chat rehidrate sin perder mensajes NI repetir en pantalla
@@ -146,12 +179,17 @@ export function hidratarEstado(
   sessionId: string,
   mensajesPersistidos: readonly ChatMessage[] = [],
 ): EstadoChat {
-  const seenIds = collectSeenReplyIds(mensajesPersistidos);
+  // El cursor se calcula sobre el historial COMPLETO (antes de podar): si se calculara sobre la
+  // ventana recortada, un `persistidos` con más de MAX_MENSAJES_HISTORIAL replies dejaría el cursor
+  // atrasado y el próximo poll re-pediría (y re-descartaría) respuestas que ya se tenían.
+  const seenIdsCompleto = collectSeenReplyIds(mensajesPersistidos);
+  const nextId = seenIdsCompleto.reduce((max, id) => Math.max(max, id), 0);
+  const { messages, seenIds } = acotarHistorial(mensajesPersistidos, seenIdsCompleto);
   return {
     sessionId,
-    messages: [...mensajesPersistidos],
+    messages,
     sendStatus: 'idle',
-    nextId: seenIds.reduce((max, id) => Math.max(max, id), 0),
+    nextId,
     seenIds,
     motivoFallo: null,
   };
@@ -195,7 +233,7 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
       };
 
     case 'mensaje_usuario_agregado':
-      return { ...estado, messages: [...estado.messages, evento.mensaje] };
+      return { ...estado, messages: [...estado.messages, evento.mensaje].slice(-MAX_MENSAJES_HISTORIAL) };
 
     case 'envio_iniciado':
       // Limpia el motivo del fallo anterior: si sobreviviera, la pantalla explicaría un fallo que ya
@@ -234,11 +272,12 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
         // El cursor avanza igual aunque no haya novedades — un poll vacío no es un no-op completo.
         return { ...estado, nextId: evento.nextId };
       }
+      const { messages, seenIds } = acotarHistorial([...estado.messages, ...additions], [...seen]);
       return {
         ...estado,
-        messages: [...estado.messages, ...additions],
+        messages,
         nextId: evento.nextId,
-        seenIds: [...seen],
+        seenIds,
         sendStatus: 'idle',
       };
     }

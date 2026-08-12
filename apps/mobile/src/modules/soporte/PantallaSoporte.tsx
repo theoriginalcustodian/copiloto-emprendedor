@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
+import type { FlatList } from 'react-native-gesture-handler';
 
 import type { FuncionSoporte } from '@copiloto/core';
 
@@ -66,7 +66,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const { estado, send, enviarAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
   const voz = useVozComando();
   const tecladoVisible = useTecladoVisible();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un

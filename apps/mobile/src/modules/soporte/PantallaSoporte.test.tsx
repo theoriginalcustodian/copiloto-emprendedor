@@ -119,6 +119,13 @@ async function renderPantallaSoporte() {
 }
 
 describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / deslizar-fija, mismo patrón que ChatView', () => {
+  // El default de Jest (5000ms) queda justo bajo carga real: reproducido 5/5 corriendo
+  // `scripts/gate.sh` (C6, 2026-08-12) -- un `it` distinto cada vez, siempre en este describe,
+  // siempre a metros del borde de 5000ms. No es un bug de este describe (los mismos tests, en
+  // aislado o con la suite completa fuera de gate.sh, pasan 7/7). Es margen insuficiente para el
+  // montaje + efectos async de este flujo bajo contención de CPU, no una carrera de lógica.
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
     jest.mocked(sendSoporteAudio).mockReset().mockResolvedValue({
