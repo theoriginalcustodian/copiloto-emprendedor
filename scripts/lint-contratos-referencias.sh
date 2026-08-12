@@ -53,7 +53,15 @@ for dir in "$BUZON/abierto" "$BUZON/en-curso"; do
     if [ "$tiene_bloque" -eq 0 ] && [ "$tiene_artefacto" -eq 0 ]; then
       violaciones+=("PROSA PURA: $base — sin bloque cercado ni path a artefacto. El contrato define con un shape/test/ejemplo, no sólo describe.")
     fi
-  done < <(find "$dir" -maxdepth 1 \( -name '*contrato_*' -o -name '*addendum_*' \) -name '*.md' -print0 2>/dev/null)
+    # El tipo del mensaje es POSICIONAL (`<fecha>_<tipo>_…`), no una palabra suelta en el nombre.
+    # El glob va anclado por eso: `*contrato_*` matcheaba por substring y se comía las alertas que
+    # el escalador autogenera con el nombre del contrato huérfano embebido en el suyo
+    # (`…_urgente_vigilancia-a-backend_contrato-sin-tomar-<nombre del contrato>.md`). Ésas nunca
+    # traen bloque cercado, así que la violación era permanente e inarreglable: el instrumento se
+    # acusaba a sí mismo, y una alarma que suena siempre enseña a saltear la lista entera.
+    # Cubierto por scripts/tests/test-lint-contratos-glob-por-tipo.sh (control positivo incluido:
+    # un glob que no matchee nada tiene que dar rojo, no verde).
+  done < <(find "$dir" -maxdepth 1 \( -name '????-??-??_contrato_*' -o -name '????-??-??_addendum_*' \) -name '*.md' -print0 2>/dev/null)
 done
 
 if [ "${#violaciones[@]}" -gt 0 ]; then
