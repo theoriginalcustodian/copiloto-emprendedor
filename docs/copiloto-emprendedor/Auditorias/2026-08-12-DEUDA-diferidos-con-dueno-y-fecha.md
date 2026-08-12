@@ -277,7 +277,7 @@ Es una base **fuerte**, no un smoke de "levanta el server". Los huecos son puntu
 
 | # | Hueco vs. DoD §4 | Dueño | Fecha | Nota |
 |---|---|---|---|---|
-| E1 | **Login por Google no se ejercita.** El DoD §4 lo pide explícitamente como control positivo, y C4.1 mete una allow-list app-side justo en `ensure-tenant` — o sea, tocamos ese camino **sin instrumento que lo pruebe** | backend | con C4.1, **vencido** — próximo en cola de backend | Automatizar un login Google real es caro. Alternativa aceptable: ejercitar `ensure-tenant` con un token OAuth de servicio, o dejarlo como verificación **manual documentada** en el `avance_`. Lo que no vale es no probarlo |
+| E1 | ~~Login por Google no se ejercita~~ — **gate app-side de `ensure-tenant` CERRADO 2026-08-12**; el tramo browser (login Google real de punta a punta) sigue abierto, dueño operador/frontend | backend (gate) | resuelto (gate) | Ver abajo |
 | E2 | ~~Aislamiento cross-tenant A↔B no se prueba contra prod~~ — **CERRADO 2026-08-12** | backend | resuelto | Ver abajo |
 | E3 | **Durabilidad no se prueba: ninguna conversación sobrevive a un restart del worker en el smoke.** Es *el moat* del producto | backend | **el próximo deploy propio de backend que reinicie `uc-copiloto-worker.service`** (no "1er sprint post-beta": ya ANCLADO a un disparador concreto, ver abajo) | La Pasada 2 verificó el moat **por estructura** (0 no-determinismo, `RetryPolicy` acotada al 100%, `continue_as_new` con flush) — que es evidencia real y fuerte. Lo que falta es la prueba de comportamiento: matar el worker a mitad de turno y ver que la conversación sigue |
 
@@ -302,8 +302,13 @@ ahora sobre una escritura: el MISMO comando corre sin bloqueo dentro de `deploy/
 standalone/experimental. No se buscó un rodeo (SSH directo, sub-agente) — ver
 `memoria/clasificador-de-seguridad-bloquea-mutar-prod-standalone-en-autonomo.md` (harness) y el
 `decision_backend-a-operador_…` en `coordinacion/abierto/`. **Disparador de cierre:** el próximo deploy
-propio de backend que reinicie `uc-copiloto-worker.service` (candidato natural: E1, cuando se mergee y
-despliegue) — el mismo script montado sobre ESE restart, ya autorizado por ser parte de un deploy real.
+que reinicie `uc-copiloto-worker.service` **por mérito propio** — código real de `apps/copiloto`/`motor`
+que se despliegue porque ese es su motivo, no un deploy fabricado para conseguir el restart (esa
+fabricación sería el mismo rodeo que el clasificador ya frenó, con otro nombre — corrección preventiva
+de planificación, `dato_…un-deploy-fabricado-para-conseguir-el-restart-es-el-rodeo-con-otro-nombre.md`).
+**E1 (#420, #421) NO califica:** ambos son docs/tests-only, cero cambios en `apps/copiloto` o `motor`,
+sin razón propia de deploy. El mismo script queda listo para montarse sobre el próximo deploy que sí
+la tenga.
 
 **Por qué E3 no es P1 pese a ser el moat:** no hay indicio de que esté roto — al contrario, la
 evidencia estructural es buena. Es un hueco de *demostración*, no de *función*. Pero queda anotado
@@ -318,6 +323,33 @@ real, redirect correcto) — un browser headless no tiene forma limpia de pasar 
 cuenta Google real. Cerrar esto de punta a punta exige una **cuenta Google de prueba dedicada** +
 correrlo con un browser no-headless a mano; ninguna de las dos cosas la puede decidir una sesión sola.
 `decision_` pidiéndola: `coordinacion/…decision_frontend-a-todos_pedido-cuenta-google-de-prueba-para-e2e-oauth.md`.
+
+**Cierre de E1 — lado backend/app-side (2026-08-12):** el DoD pedía positivo **y** hostil sobre el
+gate de allowlist de `ensure-tenant`. Inventario primero (canon 3): `apps/copiloto/tests/test_web_app.py`
+ya traía el bloque completo desde C4.1 (header propio: `# --- /auth/oauth/ensure-tenant (Fase 5:
+first-login Google, self-provisioning del tenant) ------`) — no hacía falta escribir nada nuevo, sólo
+confirmar que corre contra el código real. Rigor: `TestClient` de FastAPI contra la app real
+(`create_web_app`), con sólo 2 mocks — el decode/`iss` del JWT (cubierto aparte en `test_auth.py`) y
+una DB in-memory —; la lógica del gate (`_email_en_allowlist`, fail-closed sin env var) corre real.
+
+- **Positivo:** `test_oauth_ensure_tenant_google_provisions_and_returns_cliente_id` — email en la
+  allow-list, token Google válido → 200 + tenant provisionado.
+- **Hostil (el que C4.1 dejó pendiente de confirmar):** `test_oauth_ensure_tenant_email_fuera_de_allowlist_rechaza`
+  — MISMO token Google válido, email no invitado → 403 + `db.tenants == {}`. El propio comentario del
+  test es la prueba de que discrimina el control de su ausencia: *"El test de arriba (`google_provisions`)
+  pasa igual con o sin allow-list; sólo éste distingue el control de su ausencia."*
+- **Fail-closed reforzado:** `test_oauth_ensure_tenant_sin_allowlist_rechaza_incluso_al_invitado` — sin
+  la env var seteada, ni el email que estaría en la lista entra.
+
+Evidencia empírica, no lectura sola: gate completo corrido contra el commit mergeado de PR #420
+(`02e49c4e`), 6/6 `ok` (`.ci-recibos/02e49c4efc44f3e8851024682946f10d68ae1559.json`), los 8 tests del
+bloque `test_oauth_ensure_tenant_*` ejecutados, `0 FAILED` en el log completo (`1875 passed, 26
+skipped`).
+
+**Lo que esto NO cierra:** el login Google real de punta a punta vía browser sigue abierto — es el
+hueco que confirmó frontend arriba, y su cierre depende de una cuenta Google de prueba dedicada
+(`decision_` de frontend), no de nada que backend controle. El gate app-side es lo que backend puede
+cerrar, y queda cerrado con esta evidencia.
 
 ---
 
