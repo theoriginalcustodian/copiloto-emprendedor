@@ -44,6 +44,14 @@ Clase: nombres exportados de `hitl.ts` → 2 funciones, ambas con contraparte ma
 `hitl` en `hitlMapping.ts`.
 Dueño sugerido: frontend. Fix: importar de `@copiloto/core`, borrar la copia.
 
+**CERRADO 2026-08-12 (frontend):** `isConfirmCancelPair`/`classifyChoices`/`MessageKind` en
+`hitlMapping.ts` son ahora re-exports directos de `esParConfirmarCancelar`/`clasificarChoices`/
+`TipoMensaje` de `@copiloto/core` — la copia manual se borró. Lo que quedó local (`CONFIRM_VALUE_RE`/
+`CANCEL_VALUE_RE` para ubicar el confirmChoice/cancelChoice dentro de `buildHitlCardProps`) no es la
+duplicación que este hallazgo señala: es lógica de construcción de props de `<HitlCard>` (badge de
+riesgo, nombre/monto parseados) sin equivalente en core. `hitlMapping.test.ts` (11/11) sigue verde
+ejercitando el re-export directamente, sin cambios propios.
+
 ### H-3 · `motivoFallo.ts` del core no se consume en web · P2 informativo (control, no dupe)
 Dónde: `packages/core/src/chat/motivoFallo.ts` existe · `apps/copiloto-web/src/` → 0 referencias en
 cualquier forma (`git grep -c motivoFallo|motivo_fallo` = 0). No hay reimplementación equivalente tampoco.
