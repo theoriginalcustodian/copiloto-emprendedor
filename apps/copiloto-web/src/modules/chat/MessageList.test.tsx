@@ -66,6 +66,30 @@ describe('MessageList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Juan Gómez' }));
     expect(onChoice).toHaveBeenCalledWith('juan_gomez');
   });
+
+  it('card `presupuesto_propuesto` -> TarjetaPresupuestoPropuesto editable (no burbuja lisa, no HitlCard)', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'a1',
+        role: 'assistant',
+        text: 'Te armé un borrador de presupuesto para Juan Pérez.',
+        card: {
+          kind: 'presupuesto_propuesto',
+          data: {
+            concepto: 'diseño de logo',
+            receptor: { nombre: 'Juan Pérez' },
+            items: [{ descripcion: 'diseño de logo', cantidad: '1', precio_unitario: '50000' }],
+          },
+        },
+      },
+    ];
+    render(<MessageList messages={messages} onChoice={vi.fn()} />);
+    expect(screen.getByTestId('presupuesto-propuesto')).toBeInTheDocument();
+    expect(screen.getByTestId('presupuesto-concepto')).toHaveValue('diseño de logo');
+    expect(screen.queryByTestId(/hitl-card-/)).not.toBeInTheDocument();
+    // La burbuja plana con el `text` NO se monta por separado: la card la reemplaza entera.
+    expect(screen.queryByText('Te armé un borrador de presupuesto para Juan Pérez.')).not.toBeInTheDocument();
+  });
 });
 
 /**

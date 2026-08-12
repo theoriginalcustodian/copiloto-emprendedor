@@ -41,6 +41,20 @@ interface FilaItem {
 
 const FILA_VACIA: FilaItem = { descripcion: '', cantidad: '1', precioUnitario: '' };
 
+/** Valores de arranque de un presupuesto DICTADO (card `presupuesto_propuesto` del chat) — a
+ * diferencia de `corrige`, NO es una corrección (no lleva `reemplazaA`, no muestra "Corregir el N°
+ * X"). Mismo shape que `apps/mobile/.../FormularioPresupuesto.tsx` — puerto 1:1 del hito 8. */
+export interface ValoresInicialesPresupuesto {
+  concepto?: string;
+  receptor?: {
+    nombre?: string;
+    docTipo?: number | null;
+    docNro?: string | null;
+    contacto?: string | null;
+  };
+  items?: readonly FilaItem[];
+}
+
 /** Normaliza lo tipeado a un decimal que el backend acepta: coma → punto, sin espacios. */
 function aDecimal(texto: string): string {
   return texto.trim().replace(/\s/g, '').replace(',', '.');
@@ -84,21 +98,38 @@ export function totalAproximado(items: readonly FilaItem[]): string | null {
 export interface FormularioPresupuestoProps {
   /** Si viene, el alta lleva `reemplazaA` — es una corrección. */
   corrige?: Presupuesto | null;
+  /** Si viene (y `corrige` no), el formulario arranca con lo dictado — ver `ValoresInicialesPresupuesto`. */
+  iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto) => void;
   onCancelar: () => void;
 }
 
-export function FormularioPresupuesto({ corrige = null, onCreado, onCancelar }: FormularioPresupuestoProps) {
-  const [concepto, setConcepto] = useState(corrige?.concepto ?? '');
-  const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? '');
-  const [docTipo, setDocTipo] = useState(String(corrige?.receptor.docTipo ?? 99));
-  const [docNro, setDocNro] = useState(corrige?.receptor.docNro ?? '');
-  const [contacto, setContacto] = useState(corrige?.receptor.contacto ?? '');
-  const [items, setItems] = useState<FilaItem[]>(() =>
-    corrige != null && corrige.items.length > 0
-      ? corrige.items.map((i) => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precioUnitario }))
-      : [{ ...FILA_VACIA }],
+export function FormularioPresupuesto({
+  corrige = null,
+  iniciales = null,
+  onCreado,
+  onCancelar,
+}: FormularioPresupuestoProps) {
+  const [concepto, setConcepto] = useState(corrige?.concepto ?? iniciales?.concepto ?? '');
+  const [nombre, setNombre] = useState(corrige?.receptor.nombre ?? iniciales?.receptor?.nombre ?? '');
+  const [docTipo, setDocTipo] = useState(
+    String(corrige?.receptor.docTipo ?? iniciales?.receptor?.docTipo ?? 99),
   );
+  const [docNro, setDocNro] = useState(corrige?.receptor.docNro ?? iniciales?.receptor?.docNro ?? '');
+  const [contacto, setContacto] = useState(corrige?.receptor.contacto ?? iniciales?.receptor?.contacto ?? '');
+  const [items, setItems] = useState<FilaItem[]>(() => {
+    if (corrige != null && corrige.items.length > 0) {
+      return corrige.items.map((i) => ({
+        descripcion: i.descripcion,
+        cantidad: i.cantidad,
+        precioUnitario: i.precioUnitario,
+      }));
+    }
+    if (iniciales?.items != null && iniciales.items.length > 0) {
+      return iniciales.items.map((i) => ({ ...i }));
+    }
+    return [{ ...FILA_VACIA }];
+  });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conceptos, setConceptos] = useState<readonly Concepto[]>([]);
