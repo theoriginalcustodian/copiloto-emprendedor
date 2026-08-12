@@ -21,6 +21,16 @@ BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8099")
 EMAIL = f"smoke-{uuid.uuid4().hex[:8]}@beta.local"
 PASSWORD = "Smoke-" + uuid.uuid4().hex[:12] + "!"
 CHAT_TIMEOUT = int(os.environ.get("SMOKE_CHAT_TIMEOUT", "120"))
+# C4.1: el alta quedó detrás de un invite-token fail-closed. El smoke lo lee del MISMO env que el
+# server (`copiloto.env`, ya sourceado según el uso de arriba) — cero hardcoding, y si alguien rota
+# el token el smoke lo sigue solo.
+INVITE_TOKEN = os.environ.get("COPILOTO_INVITE_TOKEN", "")
+if not INVITE_TOKEN:
+    # Falla ACÁ y no en el paso 1: sin esto el smoke daría un 403 críptico en el alta y los diez
+    # pasos siguientes en cascada, y alguien leería "C4.1 rompió prod" en vez de "falta la env".
+    # El fail-closed del server es correcto; el instrumento tiene que decir POR QUÉ.
+    sys.exit("COPILOTO_INVITE_TOKEN no está en el entorno: sourceá /etc/unreal-copilot/copiloto.env "
+             "antes de correr el smoke (el alta está detrás del invite-gate desde C4.1).")
 
 client = httpx.Client(base_url=BASE, timeout=30.0)
 results = []
@@ -50,10 +60,23 @@ def poll_reply(token, session_id, after_id=0, timeout=CHAT_TIMEOUT):
         time.sleep(2)
     return None
 
+# 0) ADVERSARIAL DEL ALTA (C4.1) — va ANTES del alta buena, a propósito.
+# Si el gate no existiera, este alta sin invite-token saldría 200 y crearía un tenant real: el caso
+# hostil corriendo contra PROD VIVA, no sólo en CI. `CLAUDE.md` §Seguridad lo exige — un control de
+# autorización sin test adversarial es un control no verificado, y el happy-path de abajo pasa igual
+# con el gate o sin él.
+try:
+    r = client.post("/auth/signup", json={"email": f"intruso-{uuid.uuid4().hex[:8]}@beta.local",
+                                          "password": "Intruso-" + uuid.uuid4().hex[:12] + "!"})
+    rec("alta SIN invite-token es rechazada (C4.1)", r.status_code == 403, f"status={r.status_code}")
+except Exception as e:
+    rec("alta SIN invite-token es rechazada (C4.1)", False, repr(e))
+
 # 1) ALTA
 cliente_id = None
 try:
-    r = client.post("/auth/signup", json={"email": EMAIL, "password": PASSWORD})
+    r = client.post("/auth/signup", json={"email": EMAIL, "password": PASSWORD,
+                                          "invite_token": INVITE_TOKEN})
     j = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
     cliente_id = j.get("cliente_id")
     rec("alta (/auth/signup)", r.status_code == 200 and bool(cliente_id), f"status={r.status_code} cliente_id={cliente_id}")
@@ -378,7 +401,10 @@ except Exception as e:
     print(f"[cleanup] degradado (limpiar a mano {EMAIL}): {e!r}")
 
 # RESUMEN
-CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)", "chat simple → el agente responde"}
+CRIT = {"alta (/auth/signup)", "login (/auth/login)", "/me (identidad de tenant)", "chat simple → el agente responde",
+        # Crítico y no informativo: si el alta abierta vuelve, es una vulnerabilidad en un repo
+        # público, no un check amarillo. Que tumbe el smoke es el punto.
+        "alta SIN invite-token es rechazada (C4.1)"}
 fails = [s for s, ok, _ in results if not ok]
 crit_fails = [s for s in fails if s in CRIT]
 print("\n===== RESUMEN SMOKE BETA =====")

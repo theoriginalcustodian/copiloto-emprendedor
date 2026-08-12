@@ -17,6 +17,7 @@ tenants sin fugas. Todas las deps (`require_tenant`, `conn_factory`, `gotrue`, `
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 import re
@@ -540,9 +541,60 @@ def _default_extraer_ticket(imagen_bytes: bytes, content_type: str) -> dict:
         imagen_bytes, content_type=content_type or "image/jpeg")
 
 
+# --- C4.1: barrera de alta (invite-token + allow-list), FAIL-CLOSED -----------------------------
+# El repo es público y el alta estaba abierta: cualquiera con `curl` creaba un tenant facturable, y
+# cualquier cuenta de Google se autoprovisionaba en `ensure-tenant`. `disable_signup:true` de GoTrue
+# NO tapaba nada, porque `signup_and_provision` entra por la admin API y la bypassa por diseño.
+#
+# Las dos variables se leen POR REQUEST y no en un constante de módulo a propósito: el proceso puede
+# arrancar antes de que el env esté completo, y un valor congelado en el import sería un gate que
+# depende del orden de arranque. También hace que los tests puedan moverlas con `monkeypatch` sin
+# reimportar el módulo.
+INVITE_TOKEN_ENV = "COPILOTO_INVITE_TOKEN"
+SIGNUP_ALLOWLIST_ENV = "COPILOTO_SIGNUP_ALLOWLIST"
+
+
+def _invite_token_valido(recibido: str) -> bool:
+    """FAIL-CLOSED: si `COPILOTO_INVITE_TOKEN` no está seteada o está vacía, **nadie** se registra.
+
+    El default permisivo es justamente cómo se llega acá: un gate que "no aplica si falta la env"
+    reintroduce el agujero entero en el primer deploy que se olvide la variable, y falla ABIERTO,
+    que es el modo en que nadie se entera. Preferimos romper el alta ruidosamente.
+
+    `hmac.compare_digest` en vez de `==` porque es un secreto compartido comparado en cada request y
+    el `==` de Python corta en el primer byte distinto. No es el vector más probable acá, pero la
+    comparación en tiempo constante no cuesta nada y evita tener que discutirlo en la próxima
+    auditoría.
+    """
+    esperado = os.environ.get(INVITE_TOKEN_ENV, "").strip()
+    if not esperado:
+        return False
+    return hmac.compare_digest(recibido.strip(), esperado)
+
+
+def _email_en_allowlist(email: str) -> bool:
+    """Allow-list app-side para el first-login OAuth. FAIL-CLOSED con el mismo criterio que el
+    invite-token: sin `COPILOTO_SIGNUP_ALLOWLIST` seteada no entra ningún email.
+
+    Va en NUESTRO código y no en los "Test users" de Google Console a propósito: ese camino expira
+    los refresh tokens a los 7 días (medido, `2026-08-12-reverificacion-beta.md`), o sea que la
+    alternativa "gratis" rompe las sesiones de los testers cada semana.
+
+    Formato CSV, normalizado a minúsculas y sin espacios — los emails no distinguen mayúsculas en la
+    práctica y la lista la escribe una persona en una variable de entorno.
+    """
+    permitidos = {e.strip().lower() for e in os.environ.get(SIGNUP_ALLOWLIST_ENV, "").split(",") if e.strip()}
+    if not permitidos:
+        return False
+    return email.strip().lower() in permitidos
+
+
 class SignupIn(BaseModel):
     email: str
     password: str
+    # Opcional en el modelo para que la ausencia dé **403 y no 422**: el cliente viejo tiene que
+    # recibir "no estás invitado", no un error de validación que parece un bug de contrato.
+    invite_token: str = ""
 
 
 class LoginIn(BaseModel):
@@ -1011,6 +1063,13 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         # Admin-mediado (disable_signup:true en fusion): crea el user + la fila `tenants` + el
         # claim (Task 3). Sin `require_tenant` -- todavía no hay tenant al momento del signup.
         # `def` (no async): httpx sync + psycopg2 -> threadpool, no bloquea el loop.
+        #
+        # C4.1: la barrera va ACÁ y no en `signup_and_provision` porque ésta es la frontera HTTP —
+        # el único punto por el que entra un desconocido. `signup_and_provision` también la usa el
+        # provisioning interno, y meterle el gate ahí obligaría a inventarle un bypass, que es la
+        # forma habitual de que un fail-closed se vuelva fail-open sin que nadie lo note.
+        if not _invite_token_valido(body.invite_token):
+            raise HTTPException(status_code=403, detail="alta por invitación: invite-token inválido o ausente")
         return signup_and_provision(email=body.email, password=body.password, gotrue=gotrue,
                                     conn_factory=conn_factory)
 
@@ -1075,6 +1134,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             email = claims.get("email")
             if not email:
                 raise HTTPException(status_code=400, detail="el token no trae email")
+            # C4.1: el chequeo de "provider OAuth externo" de arriba NO es una barrera de alta —
+            # sólo dice POR DÓNDE entró, no si esta persona está invitada. Sin esto, cualquier
+            # cuenta de Google del planeta se autoprovisionaba un tenant.
+            if not _email_en_allowlist(email):
+                raise HTTPException(status_code=403, detail="alta por invitación: email no habilitado")
             result = provision_oauth_tenant(auth_user_id=claims["sub"], email=email,
                                             gotrue=gotrue, conn_factory=conn_factory)
             return {"cliente_id": result["cliente_id"]}

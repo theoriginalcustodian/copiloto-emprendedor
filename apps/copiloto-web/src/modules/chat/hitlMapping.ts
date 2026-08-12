@@ -1,3 +1,4 @@
+import { esParConfirmarCancelar, type TipoMensaje, clasificarChoices } from '@copiloto/core';
 import type { BadgeVariant } from '../../design-system';
 import type { ReplyChoice } from '../../lib/api';
 import type { ChatMessage } from './useChat';
@@ -10,26 +11,22 @@ import type { ChatMessage } from './useChat';
  * SIEMPRE en "AGENDA" para todo lo que no fuera un cobro/publicación. El texto del reply solo se usa
  * para el `concept` y para aislar el nombre (**negrita**) / el monto ($) cuando aplica.
  *
- * `classifyChoices`/`isConfirmCancelPair` siguen detectando HITL por el par confirmar/cancelar en los
- * `value` de los choices (contrato de `/reply`: `ReplyChoice = {label, value}`).
+ * La CLASIFICACIÓN (¿es un gate HITL?) es la misma para las dos plataformas — converge a
+ * `@copiloto/core` (`esParConfirmarCancelar`/`clasificarChoices`, ver `hitl.ts`; Pasada 3 de
+ * auditoría, hallazgo H-2, la marcó reimplementada acá sin importarla). Lo que SÍ es específico de
+ * esta plataforma es CONSTRUIR las props de `<HitlCard>` (badge de riesgo por servicio, nombre/monto
+ * parseados del texto, los closures `onConfirm`/`onCancel`) — eso queda local, no tiene equivalente
+ * en core.
  */
 
+export const isConfirmCancelPair = esParConfirmarCancelar;
+export type MessageKind = TipoMensaje;
+export const classifyChoices: (choices?: ReplyChoice[] | null) => MessageKind = clasificarChoices;
+
+/** Sólo para ubicar el confirmChoice/cancelChoice AL CONSTRUIR las props de `<HitlCard>` (badge,
+ * nombre, monto) — la clasificación en sí ya no vive acá, ver arriba. */
 const CONFIRM_VALUE_RE = /confirm|aceptar|^si[_-]|^yes\b|^ok[_-]/i;
 const CANCEL_VALUE_RE = /cancel|^no[_-]|reject/i;
-
-export function isConfirmCancelPair(choices?: ReplyChoice[] | null): boolean {
-  if (!choices || choices.length !== 2) return false;
-  const hasConfirm = choices.some((choice) => CONFIRM_VALUE_RE.test(choice.value));
-  const hasCancel = choices.some((choice) => CANCEL_VALUE_RE.test(choice.value));
-  return hasConfirm && hasCancel;
-}
-
-export type MessageKind = 'plain' | 'choices' | 'hitl';
-
-export function classifyChoices(choices?: ReplyChoice[] | null): MessageKind {
-  if (!choices || choices.length === 0) return 'plain';
-  return isConfirmCancelPair(choices) ? 'hitl' : 'choices';
-}
 
 /** Nombre en **negrita** (destinatario) — opcional, aplica a cualquier servicio. */
 const BOLD_NAME_RE = /\*\*(.+?)\*\*/;
