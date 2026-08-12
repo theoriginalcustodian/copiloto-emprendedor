@@ -6,6 +6,41 @@
 
 ---
 
+## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12 13:45)
+
+> Este bloque existe porque **`coordinacion/` NO está versionada**: el buzón con los contratos vivos
+> no viaja con el repo, así que una sesión nueva no tiene forma de enterarse de esto salvo acá.
+> Cuando la ronda cierre (G8), se borra.
+
+**Estado binario de la ronda** — normativa en
+[`Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md):
+
+| | Estado |
+|---|---|
+| Pasadas 1 (seguridad) y 2 (robustez) | ✅ cerradas, **0 P0** cada una. Triadas: 4 P1 al lote C, 8 P2 al registro de deuda |
+| **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393): cota en el reducer canónico podando `messages` **y** `seenIds`, web importando la misma constante, virtualización en ambas listas, scroll fuera del hilo JS |
+| **D9** — flake del `mobile` en `gate.sh` | ✅ cerrado mismo ciclo (`jest.setTimeout(15000)`, gate 5/5 verde) |
+| **C4.1** — `/auth/signup` abierto (**P0, bloquea la beta**) | 🔴 **SIN EMPEZAR** |
+| Pasada 3 (pulido y eficiencia) | 🔴 **SIN EMPEZAR** |
+
+**El bloqueo no es técnico: no hay sesión de backend ni de auditoría corriendo.** Bajar otro
+contrato al buzón no sirve — el problema es que nadie los lee. Si estás abriendo una sesión, esto es
+lo que hay que tomar, en este orden:
+
+1. **C4.1 primero.** `/auth/signup` es un alta abierta sin allow-list. Antes de deployar, leer el
+   aviso de que el gate fail-closed **tumba `deploy/copiloto/smoke_beta_e2e.py` entero** (el paso 1
+   crea el tenant del que dependen los pasos 2-11) — y ese smoke es el **control positivo del propio
+   fix**, así que se actualiza en el MISMO PR.
+2. **Lote B** (higiene) y **lote C** (los 4 P1 de las auditorías, ordenados por consecuencia: el
+   riesgo de cobro doble va primero).
+3. **Pasada 3**, o declararla explícitamente fuera de alcance. Hoy está fuera **por omisión**, que
+   es la peor forma de decidirlo.
+
+Deuda viva con dueño y fecha:
+[`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md).
+
+---
+
 ## 0. Qué es (30 segundos)
 
 **Copiloto del Emprendedor** = un **agente conversacional durable multi-tenant** para emprendedores: chatea por
