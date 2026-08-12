@@ -42,23 +42,32 @@ No hay plugin de seguridad para esto. Se usa lo que el repo ya tiene:
 
 ### F1 — Conexiones y carga (hereda C1)
 
-`C1: Postgres sin pool / N+1` estaba **VIVO y "empeoró en superficie"** en agosto, y desde entonces se
-sumaron endpoints (CAL1, SOP6, ODOBI8).
+**C1 está 🔴 VIVO y confirmado el 2026-08-12**, con evidencia dura: `git grep
+ConnectionPool|psycopg_pool|pgbouncer` en `apps/copiloto` → **0**. Las 2 raíces siguen con
+`psycopg2.connect` directo (`serve.py:96`, `worker_b.py:384`) y **el patrón se propagó a 5 stores
+nuevos** durante el sprint (`concepto_store`, `feedback_store`, `grafo_sync_store`, `metering_store`).
+N+1 de `margen_por_trabajo` (`inteligencia_queries.py:418`) intacto (~1+3N). Conexiones bare sin
+`with`: `mp_dedup_store`, `reply_store`, `mp_credential_store`.
 
-- ¿Cuántas conexiones abre un request típico? ¿Hay pool, o conexión por request?
-- N+1 en los endpoints de lista: `/presupuestos`, `/clientes`, `/gastos`, `/afip/comprobantes`,
-  `/actividad`, `/admin/soporte/tickets`.
-- Los 4 workers de Temporal (`agent-soporte` y compañía) + la web, ¿comparten techo de conexiones de
-  Postgres? ¿Qué pasa al llegar a `max_connections`?
-- **Consulta clave:** ¿cuál es el límite real y a cuántos usuarios concurrentes equivale? Hoy nadie
-  tiene ese número. Es el número que define si la beta aguanta.
+El diagnóstico ya está hecho; lo que falta acá es la **medición** y el diseño del fix:
+
+- **Consulta clave (el entregable):** ¿cuál es el `max_connections` real y a cuántos usuarios
+  concurrentes equivale? Hoy nadie tiene ese número, y es el que define si la beta aguanta.
+- Los 4 workers de Temporal + la web, ¿comparten ese techo? ¿Qué pasa exactamente al agotarlo:
+  degradación o caída dura?
+- Fix declarado: PgBouncer + pool `ThreadedConnectionPool` detrás de `conn_factory`. Evaluar cuál de
+  los dos, o ambos.
+- Las conexiones bare sin `with` son fugas: cuantificar.
 
 ### F2 — Idempotencia y writes externos (hereda C2, C7, D-B)
 
-- **C2:** writes a Composio y MercadoPago sin idempotencia. Un retry de Temporal = **doble cobro** o
-  evento duplicado. Consecuencia económica directa.
-- **C7:** Composio síncrono sin cache → latencia en el camino caliente.
-- **D-B:** timeout no explícito.
+- **C2 — ⚠️ PARCIAL, mejoró este sprint:** `mp_dedup_store.py` tapa **1 de las 2 rutas** de
+  MercadoPago. Falta la otra, y falta Composio entero. Un retry de Temporal sobre la ruta destapada
+  sigue siendo **doble cobro**: consecuencia económica directa.
+- **C7 — 🔴 VIVO, confirmado:** `git grep TTLCache|lru_cache|cachetools` en `apps/copiloto` → **0**.
+  `/me` (`web.py:869/882`), `/catalog` (`web.py:906`) y `/afip/estado` (`afip_web.py:557`) golpean el
+  SDK síncrono **en cada request**. Está en el camino caliente de la app.
+- **D-B:** timeout no explícito (bajo).
 - El patrón bueno ya existe (`cobro_store`): la pregunta es **dónde no está aplicado**.
 - Precedente real y reciente: el bug de prod donde `channel_ref` no era idempotente y rompía el
   `workflow_id` de Temporal en hilos largos (PR#375). Misma clase. **Buscar las hermanas.**
@@ -80,12 +89,21 @@ Es la columna del producto: si falla acá, falla la promesa entera.
 El frente de manejo de errores está cerrado en prod y hay autohealing global — **por eso mismo** hay
 que verificar sus bordes, no asumirlos.
 
-- **C3:** el fallo de documento de presupuesto queda **fuera de la DLQ**. ¿Sigue así?
-- ¿Qué caminos de error **no** depositan trauma? Un error que no llega a la DLQ es un error invisible.
+- **C3 — ⚠️ PARCIAL, mejoró:** ya loguea el `motivo` con fingerprint, pero **falta la DLQ real**. El
+  fallo se ve, pero nadie lo recupera.
+- **D-A — 🔴 4 errores tragados, los 4 siguen vivos**, y la re-verificación anota algo peor: durante
+  el sprint se agregaron **comentarios que documentan y justifican el mutismo** en vez de arreglarlo.
+  Un `except` silencioso con un comentario que lo explica sigue siendo un error invisible: la clase
+  entera se revisa acá.
+- ¿Qué otros caminos de error **no** depositan trauma? Un error que no llega a la DLQ no existe.
 - El fingerprint `(workflow + nodo + error_type + payload_shape)`: ¿colisiona o se fragmenta?
 - El autohealing abre PRs solo: ¿qué pasa si se dispara sobre un error que *no* puede arreglar —
   loop de PRs?
-- Restos declarados en el doc de agosto: **print de PHI** y **0 traumas reales**.
+- **Print de PHI** (`agent_activities.py`) 🔴 vivo → se cierra en la **Pasada 1** (es fuga de datos).
+- **0 traumas reales:** la DLQ nunca recibió un trauma de producción. Es el mismo patrón que
+  "instrumentos que confirman en vez de verificar": un pipeline de errores que nunca procesó un error
+  real no está verificado. **Control positivo obligatorio:** inducir un fallo real y ver el trauma
+  llegar de punta a punta.
 
 ### F5 — Límites y volumen (hereda C6)
 

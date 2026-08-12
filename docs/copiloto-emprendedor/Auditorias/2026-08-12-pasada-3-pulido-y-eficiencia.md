@@ -45,10 +45,19 @@ pulido: es un cambio funcional y va por contrato aparte.
 
 ### P1 — Cota de listas y renders (hereda C6)
 
-`C6: chat/listas sin cota, "M-WEB duplicó"` es deuda de agosto que aterriza acá.
+**C6 está 🔴 VIVO y confirmado el 2026-08-12 (4/4 sitios)**, con paths exactos:
 
-- Cap `slice(-N)` en historiales de chat; `FlatList`/`FlashList` con virtualización donde hoy hay
-  `.map()` sobre arrays sin techo.
+- `chatMachine.ts` migró a `packages/core/src/chat/chatMachine.ts:243` — reducer **sin `slice(-N)`** y
+  `seenIds` **sin podar**.
+- **La web tiene su propio reducer duplicado** (`apps/copiloto-web/.../useChat.ts`) que nunca convergió
+  al core → esto es P1 y **P2 a la vez**: la duplicación es la razón por la que el fix hay que hacerlo
+  dos veces.
+- Ambas apps **serializan el historial completo O(N) por evento**.
+- `.map` sin virtualizar en `MessageList.tsx:107` (web) y `ListaMensajes.tsx:145` (mobile).
+- `EscritorioFunciones.tsx:267` hace `setState` **por frame** (`scrollEventThrottle={16}`).
+
+Fix declarado: cap `slice(-N)` **podando `messages` y `seenIds` juntos** (podar uno solo reintroduce
+el leak) + `FlatList`/`FlashList` donde hoy hay `.map()` sobre arrays sin techo.
 - Re-renders: el precedente de `BotonVoz.tsx` (objeto `voz` inestable → ~10 renders/seg mientras
   graba, cazado en ODOBI8) sugiere **buscar las hermanas**: props de objeto sin `useMemo` en
   componentes de alta frecuencia.

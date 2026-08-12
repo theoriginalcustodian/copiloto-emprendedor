@@ -27,29 +27,57 @@ agentes headless por subsistema.
 **Consecuencia de diseño:** `/security-review` no es la pasada 1 — es el **gate de cierre** sobre el
 diff acumulado de las tres pasadas.
 
-### H2 — Ya hay 9 hallazgos abiertos, y su plan de seguimiento se perdió
+### H2 — Hay deuda abierta re-verificada, y el sprint de beta no cerró nada de ella
 
-`2026-08-04-listado-problemas-fixes-reverificado.md` dejó **6 VIVOS + 3 PARCIALES**:
+> **Corregido 2026-08-12 ~10:40.** Al escribir la primera versión de este plan, el triaje que se
+> proponía como Pasada 0 **no existía**, y `2026-08-06-plan-de-implementacion.md` no estaba en `main`.
+> Mientras se redactaba, otra sesión mergeó el **PR #386** (`4ecd699d`) que hizo exactamente ese
+> triaje y subió el plan faltante. **La Parte A de la Pasada 0 quedó cubierta por ese trabajo** y este
+> plan la toma como insumo en vez de repetirla. La lección de coordinación queda registrada abajo.
 
-| ID | Problema | Estado 2026-08-04 |
-|---|---|---|
-| C1 | Postgres sin pool / N+1 | 🔴 VIVO (*"empeoró en superficie"*) |
-| C2 | Writes externos no idempotentes | 🔴 VIVO |
-| C6 | Chat/listas sin cota (frontend) | 🔴 VIVO (M-WEB duplicó) |
-| C7 | Composio síncrono sin cache | 🔴 VIVO |
-| C8 | Firma que ignora `payload` | 🔴 VIVO (fix de 1 línea) |
-| D-B | Timeout Composio | 🟢 VIVO / BAJO |
-| C4.1 | `/auth/signup` abierto | ⚠️ PARCIAL |
-| C5 | Acoplamiento por string (no FK) | ⚠️ PARCIAL |
-| C3 | Doc de presupuesto fuera de Temporal (queda fuera de la DLQ) | ⚠️ PARCIAL |
+El diagnóstico vigente es **`2026-08-12-reverificacion-beta.md`**: los 11 ítems re-verificados contra
+`main @ debe5623` con sub-agentes headless y evidencia `path:línea`. **Titular: el sprint de beta no
+cerró ningún ítem del backlog de auditoría.**
 
-El `README.md` de esta carpeta referencia `2026-08-06-plan-de-implementacion.md` como "plan accionable
-vigente" — **ese archivo no existe en `origin/main`**. Se escribió en el checkout compartido (hoy 325
-commits detrás) y nunca llegó. Es el mismo failure mode que la memoria ya tenía anotado en
-`el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama`.
+| ID | Problema | 2026-08-04 | **2026-08-12** |
+|---|---|---|---|
+| **C4.1** | **`/auth/signup` abierto** | ⚠️ PARCIAL | 🔴 **VIVO — BLOQUEANTE DE BETA** |
+| C1 | Postgres sin pool / N+1 | 🔴 VIVO | 🔴 VIVO (propagado a 5 stores nuevos) |
+| C6 | Chat/listas sin cota (frontend) | 🔴 VIVO | 🔴 VIVO (reducer duplicado en web) |
+| C7 | Composio síncrono sin cache | 🔴 VIVO | 🔴 VIVO |
+| C8 | Firma que ignora `payload` | 🔴 VIVO | 🔴 VIVO (caller pasa `None`, sin efecto observable **aún**) |
+| D-A | 4 errores tragados | 🔴 VIVO | 🔴 VIVO (+ comentarios que justifican el mutismo) |
+| Print PHI | `agent_activities.py` | 🔴 VIVO | 🔴 VIVO |
+| C2 | Writes externos no idempotentes | 🔴 VIVO | ⚠️ PARCIAL ↑ (`mp_dedup_store` tapa 1 de 2 rutas) |
+| C3 | Doc de presupuesto fuera de la DLQ | ⚠️ PARCIAL | ⚠️ PARCIAL ↑ (ya loguea `motivo`; falta DLQ real) |
+| C5 | Acoplamiento por string (no FK) | ⚠️ PARCIAL | ⚠️ PARCIAL |
+| D-B | Timeout Composio | 🟢 BAJO | 🟢 BAJO |
+| C4.2 · C9 · D-E | rate-limit · secretos/PII · núcleo de errores | ✅ | ✅ RESUELTOS |
 
-**Consecuencia de diseño:** sin un triaje previo, las tres pasadas re-descubren deuda de agosto como
-si fuera hallazgo nuevo, y nadie puede distinguir una cosa de la otra. De ahí la **Pasada 0**.
+**Balance: 3 resueltos · 3 parciales · 6 vivos · 1 bajo.**
+
+#### 🔴 C4.1 es lo más urgente de todo este plan
+
+`signup_and_provision()` (`onboarding.py:256`) usa `gotrue.admin_create_user` — la **admin API**, que
+**bypassa el `disable_signup:true`** de GoTrue. `SignupIn` (`web.py:543`) no tiene campo de
+invite-token, y `/auth/oauth/ensure-tenant` (`web.py:1061`) sólo valida que el provider sea OAuth
+externo: **no compara el email contra ninguna allow-list**. `git grep INVITE_TOKEN|SIGNUP_TOKEN|ALLOWED_`
+sobre `origin/main` → **0 resultados**.
+
+**Consecuencia, con el repo público:** cualquiera con `curl` crea un tenant facturable, y cualquier
+cuenta de Google se autoprovisiona. Es incompatible con la orden de "un solo usuario de prueba
+canónico a fuego".
+
+**Por eso no espera a ninguna pasada:** es un hallazgo de seguridad vivo, con fix ya decidido
+(decisión de operador #3) y consecuencia económica directa. Se trata como **P0 fuera de banda**.
+
+#### Lección de coordinación (no repetir)
+
+Dos sesiones trabajaron el mismo frente sin saberlo: una re-verificando los 11 hallazgos, otra
+planificando una pasada para re-verificar los 11 hallazgos. Se detectó por un conflicto de merge en el
+README, no por el buzón. **Regla:** antes de abrir un frente de auditoría, revisar `git log origin/main`
+y los PRs abiertos, no sólo el buzón — el buzón refleja lo que alguien anunció, `main` refleja lo que
+alguien hizo.
 
 ### H3 — El CI no tiene ninguna capa de seguridad automática
 
@@ -109,7 +137,8 @@ un entregable exigido de la Pasada 1, no un supuesto.
 
 | # | Pasada | Muta código | Instrumento principal | Archivo |
 |---|---|---|---|---|
-| 0 | Triaje de deuda abierta + capas de CI | Sí (mínimo) | Verificación manual + gates deterministas | [pasada-0](2026-08-12-pasada-0-triaje-y-capas-de-CI.md) |
+| **P0** | **C4.1 — cerrar `/auth/signup`** | Sí | fix + test adversarial | fuera de banda, ver H2 |
+| 0 | ~~Triaje~~ (hecho, PR #386) + capas de CI | Sí (mínimo) | Gates deterministas | [pasada-0](2026-08-12-pasada-0-triaje-y-capas-de-CI.md) |
 | 1 | **Seguridad** | No (read-only) | `/claude-security` → *Scan codebase* | [pasada-1](2026-08-12-pasada-1-seguridad.md) |
 | 2 | **Robustez** (errores no descubiertos) | No (read-only) | Loop Fable + agentes headless | [pasada-2](2026-08-12-pasada-2-robustez.md) |
 | 3 | **Pulido y eficiencia** | Sí (mucho) | `/simplify`, `/code-review` | [pasada-3](2026-08-12-pasada-3-pulido-y-eficiencia.md) |
@@ -117,7 +146,9 @@ un entregable exigido de la Pasada 1, no un supuesto.
 ### Orden y por qué
 
 ```
-Pasada 0  ──────────────►  triaje + gates deterministas
+P0: cerrar C4.1 (/auth/signup)   ← fuera de banda, no espera a nadie: hueco vivo en repo público
+              │
+Pasada 0  ────┴─────────►  capas de CI  (el triaje ya lo hizo el PR #386)
                               │
               ┌───────────────┴───────────────┐
               ▼                               ▼

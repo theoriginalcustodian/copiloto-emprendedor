@@ -90,20 +90,40 @@ después alcanza datos por fuera de su alcance previsto (el frente de autohealin
 
 ### O3 — Autenticación y frontera de sesión
 
-Concentrado en `web.py` y `auth.py`:
+Concentrado en `web.py` y `auth.py`.
 
-- `POST /auth/signup` — hallazgo **C4.1 PARCIAL** conocido (registro abierto). Confirmar estado real.
+> 🔴 **C4.1 ya no es objetivo de esta pasada: es un hallazgo CONFIRMADO y bloqueante.** La
+> re-verificación del 2026-08-12 lo probó vivo con evidencia: `signup_and_provision()`
+> (`onboarding.py:256`) usa `gotrue.admin_create_user`, que **bypassa el `disable_signup:true`**;
+> `SignupIn` (`web.py:543`) no tiene invite-token; `/auth/oauth/ensure-tenant` (`web.py:1061`) no
+> compara el email contra ninguna allow-list; `git grep INVITE_TOKEN|SIGNUP_TOKEN|ALLOWED_` → 0.
+> **Se arregla como P0 fuera de banda, antes de esta pasada.** Acá sólo se **verifica el fix** y se
+> busca si hay otras vías de auto-provisión que el fix no tape.
+
+Lo que sí investiga esta pasada:
+
 - `POST /auth/google/id-token` — **verificación de la firma del ID token**, `aud`/`iss`, expiración,
   y replay. Sign-in nativo agregado hace poco (commit `22a78992`).
-- `POST /auth/oauth/ensure-tenant` — el commit que lo introdujo menciona un "fix gap ensure-tenant":
-  auditar si un usuario puede **atarse a un tenant ajeno** por esta vía. Alta consecuencia.
+- `POST /auth/oauth/ensure-tenant` — más allá de la allow-list de C4.1: ¿puede un usuario **atarse a
+  un tenant ajeno** por esta vía? Es la pregunta de mayor consecuencia de todo O3.
 - `POST /auth/refresh` — rotación e invalidación de refresh tokens.
 - Rate-limit: existe (60req/60s por IP, #229). Verificar que cubre las rutas nuevas de auth.
+- **Nota del fix de C4.1:** la allow-list va **app-side**, NO vía "Test users" de Google Console —
+  ese camino expira los refresh tokens a 7 días (ya documentado en la re-verificación).
+
+### O5 — Fuga de datos personales a logs (hallazgo confirmado)
+
+El **print de PHI en `agent_activities.py`** está 🔴 VIVO desde el 2026-08-04 y sobrevivió el sprint.
+Se cierra en esta pasada, y se barre la clase completa: qué otros `print`/`log` emiten contenido de
+usuario, credenciales o payloads completos. Con logging JSON estructurado obligatorio por norma del
+proyecto, un `print` crudo con datos de cliente es doblemente un defecto.
 
 ### O4 — Webhooks, callbacks y uploads
 
-- `POST /mp/webhook` — **verificación de firma**. Es el candidato natural del hallazgo **C8** ("firma
-  que ignora `payload`"). Si la Pasada 0 no lo cerró, acá es hallazgo de seguridad de pleno derecho.
+- `POST /mp/webhook` — **verificación de firma**. **C8 está confirmado VIVO** (2026-08-12): la firma
+  ignora el `payload`. Hoy no tiene efecto observable *sólo* porque el caller pasa `None` — es una
+  verificación inerte esperando el primer caller que sí mande datos. Se cierra en P0/Pasada 0; acá se
+  verifica el fix y se busca la clase (¿otras firmas/HMAC que no cubran todo lo que autentican?).
 - `GET /mp/callback` y `GET /composio/connect` — OAuth: validación de `state` (CSRF), `redirect_uri`,
   y fijación de sesión.
 - Uploads: `POST /chat/audio`, `/chat/foto`, `/feedback/audio`, `/soporte/chat/audio` — límite de
