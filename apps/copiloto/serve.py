@@ -261,7 +261,8 @@ async def _serve() -> None:
                      else None)
     chat_factory = (
         (lambda cid: InteligenciaChat(queries=InteligenciaQueries(conn_factory, cid), llm=_chat_llm,
-                                      grafo_client=_grafo_client, graph_id=group_id_negocio(cid)))
+                                      grafo_client=_grafo_client, graph_id=group_id_negocio(cid),
+                                      cliente_id=cid))
         if _chat_llm is not None and _grafo_client is not None else None)
     print("copiloto chat IN: " + ("ON" if chat_factory is not None else "OFF (falta LLM o Graphity)"),
           flush=True)

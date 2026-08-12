@@ -23,7 +23,13 @@ def _discover() -> None:
             continue
         try:
             mod = importlib.import_module(f"{__name__}.{info.name}")
-        except Exception:  # noqa: BLE001 — un módulo roto se SALTEA, no tumba al agente ni a los demás servicios
+        except Exception as exc:  # noqa: BLE001 — un módulo roto se SALTEA, no tumba al agente ni a los demás
+            # D-A (lote higiene, 2026-08-12): esto quedaba mudo -- un servicio roto desaparecía del
+            # catálogo sin dejar rastro; nadie se enteraba hasta que un usuario pedía esa tool y el LLM
+            # no la encontraba. Discovery corre a nivel de PROCESO (sin tenant, sin `cliente_id`) --
+            # `log_error` acepta `cliente_id=None` para exactamente este caso: infra, no negocio.
+            from log_estructurado import log_error
+            log_error(exc, workflow="services.discover", extra={"servicio": info.name})
             continue
         if hasattr(mod, "TOOLKIT") and hasattr(mod, "POLICY") and hasattr(mod, "build"):
             _BY_SERVICE[info.name] = mod

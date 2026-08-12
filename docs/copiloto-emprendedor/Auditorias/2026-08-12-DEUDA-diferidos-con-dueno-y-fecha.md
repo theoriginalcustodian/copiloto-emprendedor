@@ -168,6 +168,24 @@ limpia en Actions, no cambia el 39/39.
 La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar el log
 completo antes de re-correr, y anotar la carga de la PC en ese momento.
 
+### Captura oportunista — backend, gate de Lote B (commit `9b58ab36`), archivo distinto
+
+La primera captura real llegó, y **no es el mismo archivo**: `Onda.test.tsx` (no
+`PantallaSoporte.test.tsx`/`ChatView.test.tsx`), `it` = *"sin ninguna muestra, monta la cantidad fija
+de barras"*, mismo `Exceeded timeout of 5000 ms`. Backend discriminó igual que las veces anteriores
+— `mobile.sh` aislado sobre el mismo commit: **730 passed, 0 failed** — y Lote B no toca
+`apps/mobile/`, cero superposición con el fix. Backend dejó dos lecturas abiertas sin arbitrar
+(misma familia de contención vs. `Onda.tsx` con problema propio) y me lo pasó por ser la dueña de D9.
+
+**Decisión: la sumo a D9 como evidencia de la misma familia (H1), no abro fila aparte.** Dos motivos,
+ambos en el propio reporte de backend: el `it` que falló usa `niveles={[]}` — el caso más liviano,
+sin tocar `amplitudObjetivo` ni el path de animación donde `Onda.tsx` sí tiene un antecedente real de
+fragilidad en device (`Animated.loop` legacy) — así que el timeout no coincide con esa causa conocida;
+y en la misma corrida `ChatView.test.tsx` tardó 130.9s (vs. su tiempo normal), señal de que la máquina
+entera estaba bajo presión, no un componente puntual. Esto **generaliza el hallazgo**: el timeout de
+5000ms es frágil bajo contención para cualquier test de montaje pesado, no sólo el describe de voz.
+No cierra la fila ni cambia la instrucción — sigue siendo oportunista, mismo dueño (frontend).
+
 ---
 
 ## D10 — las alertas autogeneradas no tienen quién las limpie

@@ -441,7 +441,10 @@ def make_consultar_anulacion(temporal_client) -> Callable:
 def make_signal_anulacion(temporal_client) -> Callable:
     async def signal_anulacion(cliente_id: str, anulacion_id: str, nombre: str, payload) -> None:
         handle = temporal_client.get_workflow_handle(_wf_id_anulacion(cliente_id, anulacion_id))
-        await handle.signal(nombre)
+        # B3/C8 (lote higiene, 2026-08-12): descartaba `payload` -- alineado con el gemelo sano
+        # `make_signal_factura`, arriba. Hoy ningún caller manda `payload` no-`None` (sin síntoma
+        # observable todavía), pero era una bomba armada esperando el primero que sí lo hiciera.
+        await handle.signal(nombre, payload) if payload is not None else await handle.signal(nombre)
 
     return signal_anulacion
 

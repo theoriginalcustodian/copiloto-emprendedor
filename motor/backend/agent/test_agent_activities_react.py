@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 
 from backend.agent import agent_activities as A
-from backend.agent.agent_runtime import register_domain, reset_registry
+from backend.agent.agent_runtime import register_channel, register_domain, register_stt_provider, reset_registry
 
 
 class _Prov:
@@ -154,3 +154,42 @@ def test_execute_tool_registra_evento_tool_call_error_para_dashboard_de_error_ra
                                 "conv": {"cliente_id": "42", "channel_ref": "s1"},
                                 "confirmed": True, "idem_key": "r-1"}))
     assert seen == [("42", "s1", "tool:gmail_send", None, "tool_call:error")]
+
+
+class _CanalFake:
+    def download_file(self, file_id):
+        return b"audio-bytes-simulados"
+
+
+TEXTO_STT_FAKE = "quiero cancelar mi pedido del martes"
+
+
+class _SttFake:
+    def transcribe(self, audio):
+        return TEXTO_STT_FAKE
+
+
+def test_transcribe_voice_no_expone_texto_crudo_por_default(capsys, monkeypatch):
+    """Control negativo del gate PII (B1, lote higiene): sin `COPILOTO_LOG_STT_TEXT`, `STT_TRANSCRIPT`
+    NO lleva el texto transcripto -- puede traer lo que el cliente dijo. Sólo `chars` (longitud)."""
+    monkeypatch.delenv("COPILOTO_LOG_STT_TEXT", raising=False)
+    reset_registry()
+    register_channel("tg", _CanalFake())
+    register_stt_provider(_SttFake())
+    asyncio.run(A.transcribe_voice({"channel": "tg", "file_id": "f-1"}))
+    salida = capsys.readouterr().out
+    assert "STT_TRANSCRIPT" in salida
+    assert "cancelar mi pedido" not in salida
+    assert f'"chars": {len(TEXTO_STT_FAKE)}' in salida
+
+
+def test_transcribe_voice_expone_texto_con_env_explicita(capsys, monkeypatch):
+    """Con `COPILOTO_LOG_STT_TEXT=1` (opt-in explícito), el texto SÍ viaja -- caso de debug puntual,
+    no el default de producción."""
+    monkeypatch.setenv("COPILOTO_LOG_STT_TEXT", "1")
+    reset_registry()
+    register_channel("tg", _CanalFake())
+    register_stt_provider(_SttFake())
+    asyncio.run(A.transcribe_voice({"channel": "tg", "file_id": "f-1"}))
+    salida = capsys.readouterr().out
+    assert "cancelar mi pedido" in salida
