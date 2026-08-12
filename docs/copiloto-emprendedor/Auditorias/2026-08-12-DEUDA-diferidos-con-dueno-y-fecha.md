@@ -1,6 +1,6 @@
 # Deuda diferida de la ronda de auditorías — dueño y fecha
 
-**Abierto:** 2026-08-12 12:29 · **planificación** · **vivo hasta que las 8 filas estén cerradas.**
+**Abierto:** 2026-08-12 12:29 · **planificación** · **vivo hasta que todas las filas estén cerradas.**
 
 > **Por qué existe este archivo.** El DoD del ciclo (§G2/§G3) exige que **todo hallazgo termine en
 > estado terminal**: resuelto y verificado, o **diferido con dueño y fecha**. Un P2 sin dueño y sin
@@ -25,7 +25,7 @@ Las pasadas 1 y 2 cerraron con **0 P0**. Lo que está en ejecución, y por lo ta
 
 ---
 
-## Las 8 filas de deuda
+## Las 9 filas de deuda
 
 Fecha por defecto: **primer sprint post-beta**. No es una fecha de calendario porque la beta todavía no
 abrió; es un **disparador binario y verificable** — el sprint que arranca después del primer tester
@@ -41,6 +41,28 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent | P1 H-4 | backend | junto con D-A del lote B | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | `apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile | C6(b) | frontend | **próximo ítem de frontend al cerrar C6(c)/(d)** | El defecto real de C6 (crecimiento sin techo) **ya está cerrado en las dos copias**. Lo que queda es duplicación, y converger 348 líneas del hook de chat de producción sin revisor en vivo tiene peor relación riesgo/beneficio que diferirlo |
+| D9 | **Flake del job `mobile` dentro de `gate.sh` completo** — falla 2/2 en la corrida completa y pasa 4/4 aislado, siempre `Exceeded timeout of 5000 ms` y **siempre en un test distinto** del describe de gesto de voz (`PantallaSoporte`, `ChatView`) | campo (frontend, 2026-08-12) | frontend | **la próxima aparición**, o al cerrar C6(c)/(d) si sobra ciclo — lo que pase primero | Ver abajo: es deuda de **instrumento**, no de producto, y por eso vale distinto |
+
+**D9 no es de la misma clase que D1–D8.** Las otras ocho son deuda de **producto**: postergarlas
+cuesta latencia, observabilidad o duplicación. D9 es deuda de **instrumento**, y su costo es que
+**enseña a re-correr hasta verde**. Hoy el DoD hace de *gate 6/6* el criterio de cierre de cada ítem
+de la ronda; una vez que "es el flake conocido" queda instalado como explicación disponible, la
+próxima regresión real pasa con la misma frase. Es la familia de problemas que ya nos costó un frente
+entero (*instrumentos que confirman en vez de verificar*).
+
+Mitigación en vigor mientras la fila siga abierta — **un `mobile` rojo no se atribuye al flake por
+parecido, se discrimina**: re-correr `bash scripts/ci/mobile.sh` aislado; si pasa, es el flake y se
+anota en el `avance_` (la anotación es lo que permite **contar** las apariciones); si falla aislado
+también, es una regresión propia.
+
+Hipótesis y experimento, para que quien la tome no arranque de cero: el job `mobile` corre
+inmediatamente después de `web`, que hace build de Vite + precache PWA, así que la contención de
+CPU/IO no drenó cuando arranca jest. El experimento más barato **prueba la causa y aplica el fix en el
+mismo movimiento**: subir `testTimeout` en ese describe y correr `gate.sh` completo — si 2/2 pasa a
+0/2, quedó demostrado. Y el fondo, independientemente de la contención: un test de gesto
+*hold-and-wait* con timeout de 5000ms es frágil por diseño en una máquina con 10 worktrees y pushes
+que corren sincronización de grafo de 2+ minutos. Subir ese umbral **no es tapar el flake: es
+reconocer que 5000ms era el número equivocado**.
 
 ---
 
