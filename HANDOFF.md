@@ -6,7 +6,7 @@
 
 ---
 
-## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12 13:45)
+## ⚠️ 0.bis — Ronda de auditorías en modo autónomo (2026-08-12, act. 14:45)
 
 > Este bloque existe porque **`coordinacion/` NO está versionada**: el buzón con los contratos vivos
 > no viaja con el repo, así que una sesión nueva no tiene forma de enterarse de esto salvo acá.
@@ -20,21 +20,26 @@
 | Pasadas 1 (seguridad) y 2 (robustez) | ✅ cerradas, **0 P0** cada una. Triadas: 4 P1 al lote C, 8 P2 al registro de deuda |
 | **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393): cota en el reducer canónico podando `messages` **y** `seenIds`, web importando la misma constante, virtualización en ambas listas, scroll fuera del hilo JS |
 | **D9** — flake del `mobile` en `gate.sh` | ✅ cerrado mismo ciclo (`jest.setTimeout(15000)`, gate 5/5 verde) |
-| **C4.1** — `/auth/signup` abierto (**P0, bloquea la beta**) | 🔴 **SIN EMPEZAR** |
-| Pasada 3 (pulido y eficiencia) | 🔴 **SIN EMPEZAR** |
+| Pasada 3 (pulido y eficiencia) | ✅ **cerrada y mergeada** (#396): **0 P0 · 0 P1 · 3 P2 · 1 P3**. Con esto **las tres pasadas están hechas → G1 cumplido** |
+| **C4.1** — `/auth/signup` abierto (**P0, bloquea la beta**) | 🟡 **en curso, lo ejecuta PLANIFICACIÓN** (rama `fix/c4-1-invite-gate`) — ver abajo |
 
-**El bloqueo no es técnico: no hay sesión de backend ni de auditoría corriendo.** Bajar otro
-contrato al buzón no sirve — el problema es que nadie los lee. Si estás abriendo una sesión, esto es
-lo que hay que tomar, en este orden:
+**C4.1 lo tomó planificación, no backend, y eso está declarado.** Backend estuvo 2 h fuera del buzón
+haciendo trabajo táctil en device pedido por el operador en vivo (no fue ocio); el P0 quedó sin dueño
+en el ínterin y se rompió la separación de roles a propósito, con aviso en el buzón
+(`decision_…tomo-C4-1`). **Lote B y lote C siguen siendo de backend** y su contrato ya declara el gate
+de orden: no arrancan hasta que C4.1 esté cerrado **y verificado en prod**.
 
-1. **C4.1 primero.** `/auth/signup` es un alta abierta sin allow-list. Antes de deployar, leer el
-   aviso de que el gate fail-closed **tumba `deploy/copiloto/smoke_beta_e2e.py` entero** (el paso 1
-   crea el tenant del que dependen los pasos 2-11) — y ese smoke es el **control positivo del propio
-   fix**, así que se actualiza en el MISMO PR.
+Si estás abriendo una sesión, lo que queda es, en este orden:
+
+1. **Esperar el cierre de C4.1** (no re-implementarlo: está tomado). Su gate fail-closed **tumba
+   `deploy/copiloto/smoke_beta_e2e.py`** si no se actualiza — el paso 1 crea el tenant del que
+   dependen los pasos 2-11, y ese smoke es el **control positivo del propio fix**, así que viaja en
+   el MISMO PR. El deploy además tiene que provisionar `COPILOTO_INVITE_TOKEN` y
+   `COPILOTO_SIGNUP_ALLOWLIST`, o el fail-closed deja a todos afuera (paso 3.6 de `deploy.sh`).
 2. **Lote B** (higiene) y **lote C** (los 4 P1 de las auditorías, ordenados por consecuencia: el
-   riesgo de cobro doble va primero).
-3. **Pasada 3**, o declararla explícitamente fuera de alcance. Hoy está fuera **por omisión**, que
-   es la peor forma de decidirlo.
+   riesgo de cobro doble va primero) — **backend**, disparados por el aviso de C4.1 cerrado.
+3. **Fase D del DoD** — re-verificar los fixes de backend con control negativo. **Auditoría** ya la
+   tiene armada y esperando input; sin lote B/C mergeado no tiene qué verificar.
 
 Deuda viva con dueño y fecha:
 [`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md).
