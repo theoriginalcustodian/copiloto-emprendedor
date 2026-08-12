@@ -19,6 +19,10 @@ import { generarId } from '../../util/id';
  * MISMA lógica de duplicados (409 por documento = redirige, por nombre = pregunta, `forzar`) e
  * idem-key de alta (`generarId`, se conserva a través del paso "forzar"). Ver ese archivo para el
  * porqué de cada regla — acá sólo cambia `<input>`/`<select>` nativos por los primitivos glass.
+ *
+ * `iniciales` (contrato `cards-propuesto-web`, 2026-08-12): precarga de un ALTA por `cliente_propuesto`
+ * dictado — mismo mecanismo que `iniciales` de `FormularioGasto`. `edita` manda si está; si no,
+ * `iniciales`; si no, vacío. El `origen` de `iniciales` viaja SÓLO al crear (ver `loTipeado`).
  */
 const OPCIONES_DOC: ReadonlyArray<{ valor: string; etiqueta: string }> = [
   { valor: '', etiqueta: 'Sin documento' },
@@ -28,6 +32,7 @@ const OPCIONES_DOC: ReadonlyArray<{ valor: string; etiqueta: string }> = [
 
 export interface FormularioClienteProps {
   edita?: Cliente | null;
+  iniciales?: DatosCliente | null;
   onGuardado: (cliente: Cliente) => void;
   onDuplicado: (duplicado: DuplicadoCliente) => void;
   onAbrirCliente: (cliente: Cliente) => void;
@@ -36,18 +41,20 @@ export interface FormularioClienteProps {
 
 export function FormularioCliente({
   edita = null,
+  iniciales = null,
   onGuardado,
   onDuplicado,
   onAbrirCliente,
   onCancelar,
 }: FormularioClienteProps) {
-  const [nombre, setNombre] = useState(edita?.nombre ?? '');
-  const [docTipo, setDocTipo] = useState(edita?.docTipo != null ? String(edita.docTipo) : '');
-  const [docNro, setDocNro] = useState(edita?.docNro ?? '');
-  const [domicilio, setDomicilio] = useState(edita?.domicilio ?? '');
-  const [email, setEmail] = useState(edita?.email ?? '');
-  const [telefono, setTelefono] = useState(edita?.telefono ?? '');
-  const [notas, setNotas] = useState(edita?.notas ?? '');
+  const base = edita ?? iniciales;
+  const [nombre, setNombre] = useState(base?.nombre ?? '');
+  const [docTipo, setDocTipo] = useState(base?.docTipo != null ? String(base.docTipo) : '');
+  const [docNro, setDocNro] = useState(base?.docNro ?? '');
+  const [domicilio, setDomicilio] = useState(base?.domicilio ?? '');
+  const [email, setEmail] = useState(base?.email ?? '');
+  const [telefono, setTelefono] = useState(base?.telefono ?? '');
+  const [notas, setNotas] = useState(base?.notas ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [homonimo, setHomonimo] = useState<DuplicadoCliente | null>(null);
@@ -66,6 +73,9 @@ export function FormularioCliente({
       email: limpio(email),
       telefono: limpio(telefono),
       notas: limpio(notas),
+      // Sólo al crear, y sólo si vino: en la edición el backend lo ignora y `cambiosDeCliente` no lo
+      // emite. Ver el docstring de `iniciales` arriba.
+      ...(edita == null && iniciales?.origen != null ? { origen: iniciales.origen } : {}),
     };
   }
 

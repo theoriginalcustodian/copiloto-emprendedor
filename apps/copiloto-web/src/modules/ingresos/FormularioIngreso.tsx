@@ -21,7 +21,21 @@ const COMO_SE_PIDE: Record<FaltanteIngreso, string> = {
   concepto: 'por qué trabajo',
 };
 
+/**
+ * Valores de arranque de un ingreso DICTADO — mismo criterio que `ValoresInicialesGasto`. `fecha` es
+ * silenciosa: viaja al guardar pero no tiene campo propio en este formulario (el motor ya resolvió lo
+ * dictado — omitirla haría que el backend ponga "hoy").
+ */
+export interface ValoresInicialesIngreso {
+  monto?: string;
+  cliente?: string;
+  medio?: string;
+  concepto?: string;
+  fecha?: string;
+}
+
 export interface FormularioIngresoProps {
+  iniciales?: ValoresInicialesIngreso;
   origen?: OrigenIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
@@ -33,11 +47,11 @@ export interface FormularioIngresoProps {
  * lo que faltó se avisa DESPUÉS con el ingreso ya guardado y se completa con `completarIngreso`
  * (PATCH sobre el mismo registro, nunca uno nuevo). Ver ese archivo para el porqué de cada regla.
  */
-export function FormularioIngreso({ origen, onGuardado, onCancelar }: FormularioIngresoProps) {
-  const [monto, setMonto] = useState('');
-  const [cliente, setCliente] = useState('');
-  const [medio, setMedio] = useState('');
-  const [concepto, setConcepto] = useState('');
+export function FormularioIngreso({ iniciales, origen, onGuardado, onCancelar }: FormularioIngresoProps) {
+  const [monto, setMonto] = useState(iniciales?.monto ?? '');
+  const [cliente, setCliente] = useState(iniciales?.cliente ?? '');
+  const [medio, setMedio] = useState(iniciales?.medio ?? '');
+  const [concepto, setConcepto] = useState(iniciales?.concepto ?? '');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicado, setDuplicado] = useState<{ mensaje: string; candidato: Ingreso | null } | null>(null);
@@ -67,6 +81,7 @@ export function FormularioIngreso({ origen, onGuardado, onCancelar }: Formulario
         ...(cliente.trim() !== '' ? { clienteNombre: cliente.trim() } : {}),
         ...(medio.trim() !== '' ? { medio: medio.trim() } : {}),
         ...(concepto.trim() !== '' ? { concepto: concepto.trim() } : {}),
+        ...(iniciales?.fecha !== undefined ? { fecha: iniciales.fecha } : {}),
         ...(confirmarDuplicado ? { confirmarDuplicado: true } : {}),
       });
       if (res.status === 'ok') {
