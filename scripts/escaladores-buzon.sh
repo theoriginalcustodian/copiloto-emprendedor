@@ -109,7 +109,7 @@ avance_mas_reciente_epoch() {
   local frente="$1" mejor=0 f m
   [ -n "$frente" ] || { echo 0; return; }
   shopt -s nullglob
-  for f in "$CERRADO"/*/*_avance_"${frente}"-a-*.md; do
+  for f in "$CERRADO"/*/????-??-??_avance_"${frente}"-a-*.md; do   # anclado por posición, ver Regla 1
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$mejor" ] && mejor="$m"
   done
@@ -118,11 +118,27 @@ avance_mas_reciente_epoch() {
 
 # ── Regla 1: contrato_ con disparador cumplido, viejo, sin tomar ───────────────
 shopt -s nullglob
-for f in "$ABIERTO"/*_contrato_*.md; do
+# Glob anclado por POSICIÓN (`<fecha>_<tipo>_…`), no por substring: `*_contrato_*` se comía las
+# alertas que este mismo script autogenera, porque embeben el nombre del contrato huérfano en el
+# suyo (`…_urgente_vigilancia-a-backend_contrato-sin-tomar-<nombre del contrato>.md`). Medido en el
+# buzón real el 2026-08-12: el escalador leía su propia alerta como un contrato sin tomar y, pasado
+# el umbral, generaba una alerta SOBRE su alerta — cascada autogenerada de nombres cada vez más
+# largos. Mismo defecto y mismo fix que en scripts/lint-contratos-referencias.sh (#403).
+for f in "$ABIERTO"/????-??-??_contrato_*.md; do
   b="$(basename "$f")"
   edad="$(edad_min "$f")"
   [ "$edad" -ge "$UMBRAL_CONTRATO_MIN" ] || continue
-  if grep -qiE '^DISPARADOR:[[:space:]]*pendiente' "$f" 2>/dev/null; then
+  # El ancla tolera el marcado markdown de la línea porque el contrato es un .md y nadie escribe
+  # `DISPARADOR: pendiente` pelado: el de lote C lo declara `**DISPARADOR: pendiente.**`, y con
+  # `^DISPARADOR:` el ancla no llegaba ni a la D. La regla existía y no disparó NUNCA — el
+  # escalador gritaba cada 3 min sobre una espera correcta, y ese exit 1 es el que usa
+  # vigilancia-check.sh para decidir si hay parálisis: una alarma permanente por una espera sana
+  # es indistinguible de la parálisis real que tiene que cazar.
+  # Sigue exigiendo la palabra `pendiente`: un contrato que declara su disparador CUMPLIDO tiene
+  # que escalar igual (si no, "tolerar markdown" degenera en "no escalar nunca").
+  # Cubierto por scripts/tests/test-escalador-disparador-pendiente.sh (4 casos, con control
+  # positivo y control de fail-open).
+  if grep -qiE '^[[:space:]>*_-]*DISPARADOR:?[[:space:]*_]*pendiente' "$f" 2>/dev/null; then
     continue   # disparador explícitamente NO cumplido -> no escala (control negativo del DoD)
   fi
   para="$(destinatario_de_nombre "$b")"
@@ -146,7 +162,7 @@ for f in "$ABIERTO"/*_contrato_*.md; do
 done
 
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
-for f in "$ABIERTO"/*_pedido_*.md; do
+for f in "$ABIERTO"/????-??-??_pedido_*.md; do   # anclado por posición, ver Regla 1
   b="$(basename "$f")"
   edad="$(edad_alta_min "$f")"
   [ "$edad" -ge "$UMBRAL_PEDIDO_MIN" ] || continue
