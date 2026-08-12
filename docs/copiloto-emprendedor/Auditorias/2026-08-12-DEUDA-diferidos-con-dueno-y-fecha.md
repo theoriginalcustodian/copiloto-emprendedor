@@ -101,6 +101,7 @@ Lo que se midió, en el orden en que ocurrió:
 | 1 | `gate.sh` completo, SHA `1b299a7c` | `mobile` **failed** (recibo con `"mobile":"failed"`) |
 | 2 | `scripts/ci/mobile.sh` **aislado** | **80 suites / 730 tests, 0 fallos** |
 | 3 | `gate.sh` completo, SHA `9160900f` | `mobile` **ok (32s)** |
+| 4 | `gate.sh` completo, SHA `71b5ff9e` (frontend, log íntegro a archivo, no `tail`) | 5/5 **ok** (recibo `.ci-recibos/71b5ff9e...json`, `mobile` sin marca de duración porque no fue el último job — corrida limpia) |
 
 Aplicada la mitigación de esta misma fila: aislado pasa ⇒ **es el flake, no una regresión** — y el
 cambio de C4.1 no toca **ningún** archivo de `apps/mobile/`. Lo anoto porque anotarlo es lo que
@@ -120,6 +121,13 @@ de *instrumentos que confirman en vez de verificar*.
 **Para quien la tome (frontend):** el próximo `mobile` rojo hay que capturarlo con el log COMPLETO
 antes de re-correr nada. Sin el nombre del `it` y su stack, la hipótesis de "timing marginal bajo
 carga" sigue siendo la única disponible y no es falsable.
+
+**Corrida #4 (frontend, mismo ciclo):** gate completo con salida íntegra a archivo (no `tail`, para
+no repetir el error de instrumento de la corrida #1) — **5/5 limpio, sin fallo que cazar**. No aporta
+el `it`+stack todavía, sólo suma al conteo: de las 3 corridas de `gate.sh` completo post-fix (#3, #4
+y la de C4.1 que reabrió esta fila), **1 de 3 mostró el flake** — consistente con el "1 de cada 3"
+ya estimado. La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar
+el log completo antes de re-correr.
 
 ---
 
