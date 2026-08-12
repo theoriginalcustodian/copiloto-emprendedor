@@ -25,7 +25,7 @@ Las pasadas 1 y 2 cerraron con **0 P0**. Lo que está en ejecución, y por lo ta
 
 ---
 
-## Las 9 filas de deuda
+## Las 10 filas de deuda
 
 Fecha por defecto: **primer sprint post-beta**. No es una fecha de calendario porque la beta todavía no
 abrió; es un **disparador binario y verificable** — el sprint que arranca después del primer tester
@@ -42,6 +42,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent | P1 H-4 | backend | junto con D-A del lote B | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
 | D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
+| D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
 
 **Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
 C6(b), la duplicación **no se convergió** — se protegió con un **test de equivalencia**
@@ -166,6 +167,30 @@ limpia en Actions, no cambia el 39/39.
 
 La fila sigue abierta con la misma instrucción: la próxima vez que salga rojo, capturar el log
 completo antes de re-correr, y anotar la carga de la PC en ese momento.
+
+---
+
+## D10 — las alertas autogeneradas no tienen quién las limpie
+
+`archivar-buzon.sh` nunca toca `contrato_`/`pedido_`/`urgente_`: son **el ancla**, y esa decisión es
+correcta — un janitor que archiva obligaciones las hace desaparecer sin resolver. Pero
+`escaladores-buzon.sh` **genera sus propias alertas con prefijo `urgente_`**, así que hereda la
+inmunidad: cuando el contrato que la motivó se toma, la alerta queda huérfana en `abierto/`
+**permanentemente**.
+
+**Hoy son 2 sobre 26 archivos: no es un problema de volumen y por eso NO se arregla ahora.** Se anota
+porque el crecimiento es monótono —una alerta más por cada contrato que tarde >120 min, sin nada que
+las reste— y porque el precedente del 2026-07-22 está medido: `abierto/` pasó de 32 a 136 y la regla
+de "archivar a mano con disciplina" **empeoró** el problema
+([[buzon-se-ordena-por-janitor-no-por-disciplina]]).
+
+**Fix cuando toque, en una línea de criterio:** una alerta `urgente_vigilancia-a-*` se archiva sola
+cuando **el contrato que la motivó ya no está en `abierto/`** (fue tomado). Es determinista y
+derivable del nombre del archivo, que ya embebe el del contrato — no hace falta estado nuevo.
+
+**Mitigación aplicada hoy, a mano:** archivada la alerta del lote B, cuyo contrato backend ya movió a
+`en-curso/`. La del lote C **se deja**: ese contrato sigue en `abierto/` por diseño (no arranca hasta
+que B cierre), así que el escalador la regeneraría igual — archivarla sería cosmética.
 
 ---
 
