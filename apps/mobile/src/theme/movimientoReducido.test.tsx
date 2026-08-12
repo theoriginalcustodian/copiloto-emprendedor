@@ -12,7 +12,7 @@
 import { render, screen, waitFor } from '@testing-library/react-native';
 import { useRef } from 'react';
 import { AccessibilityInfo } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
+import type { FlatList } from 'react-native-gesture-handler';
 
 import { BotonVoz } from '../modules/chat/BotonVoz';
 import { ThemeProvider } from './ThemeProvider';
@@ -27,7 +27,7 @@ async function envolver(nodo: React.ReactElement) {
  *  no prueba el gesto (ver `BotonVoz.test.tsx`), sólo necesita un ref válido para montar. */
 function botonVoz() {
   function Arnes() {
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<FlatList>(null);
     return <BotonVoz onIniciar={() => {}} onSoltarSinFijar={() => {}} onFijar={() => {}} scrollRef={scrollRef} />;
   }
   return <Arnes />;

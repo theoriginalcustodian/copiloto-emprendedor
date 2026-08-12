@@ -19,6 +19,11 @@ jest.mock('react-native-reanimated', () => {
     createAnimatedComponent: (Comp) => Comp,
     useSharedValue: (inicial) => ({ value: inicial }),
     useAnimatedStyle: () => ({}),
+    // `EscritorioFunciones.tsx` (C6): el offset de scroll horizontal ya no pasa por `setState` -- va
+    // directo a un `SharedValue` vía este handler. Bajo test no se dispara ningún scroll real (no hay
+    // hilo de UI), así que basta con no reventar al invocarse: como los demás worklets de este mock,
+    // la semántica animada real se valida en el device.
+    useAnimatedScrollHandler: () => () => {},
     withTiming: (destino) => destino,
     withSpring: (destino) => destino,
     runOnJS: (fn) => fn,
@@ -47,11 +52,53 @@ jest.mock('react-native-worklets', () => ({
 // no ejercitamos el gesto (se valida en el device + el spike), asi que `GestureDetector` es un
 // passthrough: renderiza sus children sin cablear el gesto. El resto de gesture-handler
 // (`GestureHandlerRootView`, `Gesture.Pan()`, ...) queda real via `requireActual`.
+//
+// 🔴 **`FlatList` (C6, virtualización de `ListaMensajes`) también se stubbea acá — y NO es opcional.**
+// `VirtualizedList` (por dentro de `FlatList`) espera un `onLayout` real para saber cuánto contenido
+// "llenar"; el test-renderer nunca se lo da, así que reprograma su fill-loop (`Batchinator`, timers
+// reales) PARA SIEMPRE. Jest reutiliza el mismo proceso de worker para varios archivos de test: ese
+// timer real sigue vivo después de que termina el archivo que montó el FlatList, y dispara
+// `setState` fuera de cualquier `act()` en el PRÓXIMO archivo que corre en ese worker — se vio así:
+// `PantallaSoporte.test.tsx` colgado (timeout 5s) sólo dentro de la suite completa, verde 9/9 en
+// aislamiento. El stub reproduce el contrato observable que los tests ejercitan (`data`/`renderItem`/
+// `keyExtractor`/`ListEmptyComponent`/`testID`/`ref.scrollToEnd`) con un `.map()` liso, sin
+// virtualización real y sin un solo timer — el comportamiento de scroll/virtualización real se valida
+// en el device. Hueco del ENTORNO de test, no del producto.
 jest.mock('react-native-gesture-handler', () => {
   const actual = jest.requireActual('react-native-gesture-handler');
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const FlatList = React.forwardRef(function FlatList(props, ref) {
+    const { data, renderItem, keyExtractor, ListEmptyComponent, testID, contentContainerStyle } = props;
+    React.useImperativeHandle(ref, () => ({ scrollToEnd: () => {} }), []);
+
+    if (!data || data.length === 0) {
+      const vacio = React.isValidElement(ListEmptyComponent)
+        ? ListEmptyComponent
+        : typeof ListEmptyComponent === 'function'
+          ? React.createElement(ListEmptyComponent)
+          : null;
+      return React.createElement(View, { testID, style: contentContainerStyle }, vacio);
+    }
+
+    return React.createElement(
+      View,
+      { testID, style: contentContainerStyle },
+      data.map((item, index) =>
+        React.createElement(
+          View,
+          { key: keyExtractor ? keyExtractor(item, index) : String(index) },
+          renderItem({ item, index }),
+        ),
+      ),
+    );
+  });
+
   return {
     ...actual,
     GestureDetector: ({ children }) => children,
+    FlatList,
   };
 });
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   construirEnvioClinico,
   hidratarEstado,
+  MAX_MENSAJES_HISTORIAL,
   reducirChat,
   type ChatMessage,
   type EstadoChat,
@@ -233,6 +234,90 @@ describe('nueva sesión', () => {
     expect(estado.nextId).toBe(0);
     expect(estado.seenIds).toEqual([]);
     expect(estado.sendStatus).toBe('idle');
+  });
+});
+
+describe('cota de historial (C6) — messages y seenIds no crecen sin techo', () => {
+  it('`messages` queda acotado a MAX_MENSAJES_HISTORIAL tras recibir más respuestas que la cota', () => {
+    let estado = estadoBase();
+    const total = MAX_MENSAJES_HISTORIAL + 50;
+    for (let id = 1; id <= total; id += 1) {
+      estado = reducirChat(estado, {
+        tipo: 'respuestas_recibidas',
+        nextId: id,
+        replies: [{ id, text: `reply ${id}` }],
+      });
+    }
+
+    expect(estado.messages).toHaveLength(MAX_MENSAJES_HISTORIAL);
+    expect(estado.seenIds).toHaveLength(MAX_MENSAJES_HISTORIAL);
+    // Se conservan los MÁS RECIENTES, no los primeros — un usuario que vuelve ve la cola de la
+    // conversación, no un historial congelado en el arranque.
+    expect(estado.messages[0]!.text).toBe(`reply ${total - MAX_MENSAJES_HISTORIAL + 1}`);
+    expect(estado.messages.at(-1)!.text).toBe(`reply ${total}`);
+    expect(estado.nextId).toBe(total);
+  });
+
+  it('`messages` también queda acotado por `mensaje_usuario_agregado` (sin pasar por respuestas_recibidas)', () => {
+    let estado = estadoBase();
+    const total = MAX_MENSAJES_HISTORIAL + 20;
+    for (let i = 1; i <= total; i += 1) {
+      estado = reducirChat(estado, {
+        tipo: 'mensaje_usuario_agregado',
+        mensaje: { id: `user-${i}`, role: 'user', text: `msg ${i}` },
+      });
+    }
+
+    expect(estado.messages).toHaveLength(MAX_MENSAJES_HISTORIAL);
+    expect(estado.messages.at(-1)!.id).toBe(`user-${total}`);
+  });
+
+  it('podar `seenIds` no reintroduce un duplicado: un reply YA PODADO fuera de la ventana, si el servidor lo reenvía, no se re-agrega mientras siga dentro de la ventana de `seenIds`', () => {
+    // Llena exactamente hasta la cota — el primer reply (id=1) todavía está en `seenIds` (última
+    // posición no podada) pero podría no estarlo en `messages` si la ventana ya lo desplazó. El punto
+    // del test es la dedup, no la visibilidad: mientras `seenIds` lo recuerde, no se duplica.
+    let estado = estadoBase();
+    for (let id = 1; id <= MAX_MENSAJES_HISTORIAL; id += 1) {
+      estado = reducirChat(estado, {
+        tipo: 'respuestas_recibidas',
+        nextId: id,
+        replies: [{ id, text: `reply ${id}` }],
+      });
+    }
+    const largoAntes = estado.messages.length;
+
+    // El servidor reenvía id=1 (carrera de polling) junto con uno genuinamente nuevo.
+    const trasRepeticion = reducirChat(estado, {
+      tipo: 'respuestas_recibidas',
+      nextId: MAX_MENSAJES_HISTORIAL + 1,
+      replies: [
+        { id: 1, text: 'reply 1' },
+        { id: MAX_MENSAJES_HISTORIAL + 1, text: `reply ${MAX_MENSAJES_HISTORIAL + 1}` },
+      ],
+    });
+
+    // Se acotó (largoAntes ya estaba en la cota) y sólo el reply genuinamente nuevo entró — el
+    // repetido fue descartado por `seenIds`, no reintroducido.
+    expect(trasRepeticion.messages).toHaveLength(largoAntes);
+    expect(trasRepeticion.messages.filter((m) => m.text === 'reply 1')).toHaveLength(0);
+    expect(trasRepeticion.messages.at(-1)!.text).toBe(`reply ${MAX_MENSAJES_HISTORIAL + 1}`);
+  });
+
+  it('`hidratarEstado` también acota un historial persistido que ya excedía la cota (ej. de antes de este fix)', () => {
+    const total = MAX_MENSAJES_HISTORIAL + 30;
+    const persistidos: ChatMessage[] = Array.from({ length: total }, (_, i) => ({
+      id: `assistant-${i + 1}`,
+      role: 'assistant' as const,
+      text: `histórico ${i + 1}`,
+    }));
+
+    const estado = hidratarEstado(SESSION, persistidos);
+
+    expect(estado.messages).toHaveLength(MAX_MENSAJES_HISTORIAL);
+    // El cursor se calcula sobre el historial COMPLETO, no sobre la ventana podada — si no, el
+    // próximo poll pediría de nuevo respuestas que el usuario ya tenía.
+    expect(estado.nextId).toBe(total);
+    expect(estado.messages.at(-1)!.text).toBe(`histórico ${total}`);
   });
 });
 

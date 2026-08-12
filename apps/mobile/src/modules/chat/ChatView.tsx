@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
+import type { FlatList } from 'react-native-gesture-handler';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
@@ -63,9 +63,10 @@ function useTecladoVisible(): boolean {
  * terminaron su ciclo) — así una próxima grabación siempre arranca sin fijar.
  *
  * 🔴 **`scrollRef` es la costura de la composición de gestos.** `BotonVoz` flota ENCIMA de
- * `ListaMensajes` y su gesto (`Gesture.LongPress`+`Gesture.Pan`) necesita saber del `ScrollView` de la
- * lista (`simultaneousWithExternalGesture`) para no comerle el toque ni que el scroll se lo coma a él
- * — es la causa raíz del bug de device que este contrato vino a cerrar (§2 del contrato).
+ * `ListaMensajes` y su gesto (`Gesture.LongPress`+`Gesture.Pan`) necesita saber del `FlatList` de la
+ * lista (`simultaneousWithExternalGesture`, C6: antes era un `ScrollView`) para no comerle el toque ni
+ * que el scroll se lo coma a él — es la causa raíz del bug de device que este contrato vino a cerrar
+ * (§2 del contrato).
  *
  * 🔴 **Permiso de micrófono denegado: aviso legible, sin romper el chat.** `useVozComando().iniciar()`
  * devuelve `false` si el usuario no concedió el permiso; acá eso dispara un `Alert` nativo en vez de
@@ -92,7 +93,7 @@ export function ChatView() {
   const voz = useVozComando();
   const foto = useCapturaFoto();
   const tecladoVisible = useTecladoVisible();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un

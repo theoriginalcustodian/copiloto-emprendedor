@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { MAX_MENSAJES_HISTORIAL } from '@copiloto/core';
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 import { generarId as generateId } from '../../util/id';
 
@@ -114,6 +115,27 @@ function highestSeenReplyId(messages: ChatMessage[]): number {
   return collectSeenReplyIds(messages).reduce((max, id) => Math.max(max, id), 0);
 }
 
+/**
+ * Cota de historial (C6) — copia puente de `acotarHistorial` de `packages/core/src/chat/chatMachine.ts`
+ * mientras este hook no converge al reducer de ahí (ver `decision_` en el buzón de coordinación:
+ * `apps/copiloto-web/.../useChat.ts` es hoy una reimplementación standalone, no importa
+ * `reducirChat`/`hidratarEstado`). Usa la MISMA constante importada (`MAX_MENSAJES_HISTORIAL`) para
+ * que las dos copias no puedan desalinearse en el número, aunque sigan desalineadas en el código.
+ *
+ * `seenIds` se recorta por orden de inserción (los IDS vistos MÁS RECIENTES), independiente de qué
+ * mensajes queden visibles en `messages` — igual que en `chatMachine.ts`: alinear la poda 1:1 a
+ * `messages` reintroduciría un duplicado si el servidor reenvía un reply viejo por una carrera de
+ * polling y ese reply ya salió de la ventana visible.
+ */
+function acotarMensajes(messages: ChatMessage[]): ChatMessage[] {
+  return messages.slice(-MAX_MENSAJES_HISTORIAL);
+}
+
+function acotarSeenIds(seenIds: Set<number>): Set<number> {
+  if (seenIds.size <= MAX_MENSAJES_HISTORIAL) return seenIds;
+  return new Set([...seenIds].slice(-MAX_MENSAJES_HISTORIAL));
+}
+
 export type ChatRole = 'user' | 'assistant';
 
 export interface ChatMessage {
@@ -153,13 +175,19 @@ export function useChat(): UseChatResult {
   // sembrar el estado inicial — mismo criterio "eager pero idempotente" que `readOrCreateSessionId`
   // arriba (barato: solo corre de nuevo en re-renders, el valor post-primer-render no se usa).
   const persistedMessages = loadPersistedMessages(sessionIdRef.current);
+  // El cursor y el Set de dedupe se derivan del historial COMPLETO persistido (no del ya podado):
+  // igual que en `hidratarEstado` de `chatMachine.ts`, si se derivaran de la ventana recortada un
+  // historial viejo (de antes de este fix) dejaría el cursor atrasado y re-pediría respuestas ya
+  // tenidas. `messages` en cambio SÍ arranca podado — es lo único que se muestra/persiste.
   const nextIdRef = useRef<number>(highestSeenReplyId(persistedMessages));
-  const seenIdsRef = useRef<Set<number>>(new Set(collectSeenReplyIds(persistedMessages)));
+  const seenIdsRef = useRef<Set<number>>(
+    acotarSeenIds(new Set(collectSeenReplyIds(persistedMessages))),
+  );
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingRef = useRef(false);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(persistedMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(acotarMensajes(persistedMessages));
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   // `sessionId` es estado (no solo el ref) para que el header de escritorio re-renderice al
   // arrancar una conversación nueva; el ref sigue siendo la fuente de verdad de los callbacks
@@ -202,7 +230,8 @@ export function useChat(): UseChatResult {
                          choices: reply.choices, card: reply.card });
       }
       if (additions.length > 0) {
-        setMessages((prev) => [...prev, ...additions]);
+        seenIdsRef.current = acotarSeenIds(seenIdsRef.current);
+        setMessages((prev) => acotarMensajes([...prev, ...additions]));
         stopPolling();
         setSendStatus('idle');
       }
@@ -263,7 +292,7 @@ export function useChat(): UseChatResult {
 
       stopPolling();
       const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: trimmed };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((prev) => acotarMensajes([...prev, userMessage]));
       setSendStatus('sending');
 
       try {
@@ -305,7 +334,7 @@ export function useChat(): UseChatResult {
       }
 
       const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((prev) => acotarMensajes([...prev, userMessage]));
 
       startWaitingForReply();
     },

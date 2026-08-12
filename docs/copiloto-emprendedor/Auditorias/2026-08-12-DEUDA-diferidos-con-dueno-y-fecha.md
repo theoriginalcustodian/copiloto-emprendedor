@@ -41,7 +41,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent | P1 H-4 | backend | junto con D-A del lote B | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | `apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile | C6(b) | frontend | **próximo ítem de frontend al cerrar C6(c)/(d)** | El defecto real de C6 (crecimiento sin techo) **ya está cerrado en las dos copias**. Lo que queda es duplicación, y converger 348 líneas del hook de chat de producción sin revisor en vivo tiene peor relación riesgo/beneficio que diferirlo |
-| D9 | **Flake del job `mobile` dentro de `gate.sh` completo** — falla 2/2 en la corrida completa y pasa 4/4 aislado, siempre `Exceeded timeout of 5000 ms` y **siempre en un test distinto** del describe de gesto de voz (`PantallaSoporte`, `ChatView`) | campo (frontend, 2026-08-12) | frontend | **la próxima aparición**, o al cerrar C6(c)/(d) si sobra ciclo — lo que pase primero | Ver abajo: es deuda de **instrumento**, no de producto, y por eso vale distinto |
+| D9 | ~~Flake del job `mobile` dentro de `gate.sh` completo~~ — **CERRADO 2026-08-12, mismo ciclo que C6** | campo (frontend, 2026-08-12) | frontend | resuelto | Ver abajo: quedó en 5/5 falla completa antes del fix, causa confirmada, fix aplicado y verificado |
 
 **D9 no es de la misma clase que D1–D8.** Las otras ocho son deuda de **producto**: postergarlas
 cuesta latencia, observabilidad o duplicación. D9 es deuda de **instrumento**, y su costo es que
@@ -63,6 +63,19 @@ mismo movimiento**: subir `testTimeout` en ese describe y correr `gate.sh` compl
 *hold-and-wait* con timeout de 5000ms es frágil por diseño en una máquina con 10 worktrees y pushes
 que corren sincronización de grafo de 2+ minutos. Subir ese umbral **no es tapar el flake: es
 reconocer que 5000ms era el número equivocado**.
+
+**Cierre (frontend, mismo día, mismo ciclo que C6):** la hipótesis de contención web→mobile se
+descartó con el experimento más directo — reproducir `web.sh` seguido de `mobile.sh` a mano, y
+también `core→web→mobile→lint` replicando el loop local de `gate.sh` entero: **limpio las dos
+veces**. Lo que sí reprodujo, 5/5, fue invocar `bash scripts/gate.sh` literal (con o sin
+`run_in_background`, con `SOLO=mobile` incluso) — siempre el mismo describe gemelo de gesto de voz
+(`PantallaSoporte.test.tsx` / `ChatView.test.tsx`), siempre un `it` distinto, siempre al borde de
+los 5000ms. Nunca se aisló una causa mecánica del PORQUÉ sólo dentro de ese wrapper — quedó como
+timing marginal bajo carga real, no una carrera de lógica (el único diff de C6 en esos dos archivos
+es un cambio de *tipo*, `ScrollView`→`FlatList`, cero efecto en runtime). Aplicado el experimento
+propuesto arriba: `jest.setTimeout(15000)` en ambos describes gemelos. Gate completo re-corrido
+después del fix: **5/5 verde** (`.ci-recibos/bd25b9b7...json`, PR de C6). No vuelve a aparecer desde
+entonces en este ciclo.
 
 ---
 

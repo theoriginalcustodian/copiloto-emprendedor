@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
@@ -6,6 +7,14 @@ import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
 import type { ChatMessage } from './useChat';
 import './chat.css';
+
+/** Altura estimada de una fila (`chat.css`, burbuja de una línea + paddings) antes de que
+ * `measureElement` la corrija con la altura real — sólo afecta el tamaño inicial del scrollbar/salto
+ * de posición mientras se asientan las primeras filas, nunca el layout final. */
+const ALTO_FILA_ESTIMADO_PX = 88;
+/** Filas de colchón fuera del viewport (arriba y abajo) — evita el "pop-in" de texto sin renderizar
+ * durante un scroll rápido; ver `js-lists-flatlist-flashlist.md` (mismo criterio que `windowSize`). */
+const OVERSCAN_FILAS = 6;
 
 export interface MessageListProps {
   messages: ChatMessage[];
@@ -45,18 +54,32 @@ export function MessageList({
   onSurfaceTap,
   sessionMarker,
 }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
   // ¿El dedo está APOYADO sobre el scroller ahora mismo? Sólo un scroll con el dedo apoyado cuenta
   // como gesto real del usuario (ver handleScroll). Se levanta en pointerdown y se baja al soltar.
   const pointerDownRef = useRef(false);
 
+  // C6 (cotas de chat y listas): antes esto era un `.map()` liso + un `div` sentinela al fondo con
+  // `scrollIntoView` — con `messages` ya acotado a `MAX_MENSAJES_HISTORIAL` (`chatMachine.ts`) igual
+  // montaba hasta 300 burbujas/cards vivas en el DOM sin importar cuántas entraran en pantalla.
+  // `useVirtualizer` sólo monta lo visible + el colchón de `OVERSCAN_FILAS`. `getItemKey` usa el
+  // `id` del mensaje (no el índice) para que la identidad de cada fila sobreviva al agregado de
+  // mensajes nuevos — mismo criterio que el `key={message.id}` que reemplaza.
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ALTO_FILA_ESTIMADO_PX,
+    overscan: OVERSCAN_FILAS,
+    getItemKey: (index) => messages[index].id,
+  });
+
   useEffect(() => {
-    // `scrollIntoView` no existe en jsdom (entorno de test) — guard defensivo, no solo optional
-    // chaining sobre `.current` (el método en sí puede faltar en el elemento).
-    bottomRef.current?.scrollIntoView?.({ block: 'end' });
-  }, [messages.length]);
+    // Con la lista virtualizada ya no hay un sentinela al fondo que `scrollIntoView` — el propio
+    // virtualizer sabe llevar el scroll al último índice, midiendo su offset real.
+    if (messages.length === 0) return;
+    virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+  }, [messages.length, virtualizer]);
 
   function handlePointerDown() {
     pointerDownRef.current = true;
@@ -116,29 +139,56 @@ export function MessageList({
         <div className="chat-messages__session-marker">{sessionMarker}</div>
       )}
 
-      {messages.map((message) => {
-        if (message.role === 'user') {
-          return <Bubble key={message.id} role="user" text={message.text} />;
-        }
+      <div style={{ position: 'relative', height: virtualizer.getTotalSize(), width: '100%' }}>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const message = messages[virtualRow.index];
+          return (
+            <div
+              key={virtualRow.key}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <FilaMensaje message={message} onChoice={onChoice} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-        const kind = classifyChoices(message.choices);
+interface FilaMensajeProps {
+  message: ChatMessage;
+  onChoice: (value: string) => void;
+}
 
-        if (kind === 'hitl') {
-          const hitlProps = buildHitlCardProps(message, onChoice);
-          return <HitlCard key={message.id} {...hitlProps} />;
-        }
+/** Una fila de la lista — mismo árbol de decisión que antes, ahora aislado para que `measureElement`
+ * mida exactamente el contenido de ESTA fila (no el scroller entero). */
+function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
+  if (message.role === 'user') {
+    return <Bubble role="user" text={message.text} />;
+  }
 
-        return (
-          <div key={message.id} className="chat-message-group">
-            <Bubble role="assistant" text={message.text} card={message.card} />
-            {kind === 'choices' && message.choices && (
-              <DisambiguationChips choices={message.choices} onSelect={onChoice} />
-            )}
-          </div>
-        );
-      })}
+  const kind = classifyChoices(message.choices);
 
-      <div ref={bottomRef} aria-hidden="true" />
+  if (kind === 'hitl') {
+    const hitlProps = buildHitlCardProps(message, onChoice);
+    return <HitlCard {...hitlProps} />;
+  }
+
+  return (
+    <div className="chat-message-group">
+      <Bubble role="assistant" text={message.text} card={message.card} />
+      {kind === 'choices' && message.choices && (
+        <DisambiguationChips choices={message.choices} onSelect={onChoice} />
+      )}
     </div>
   );
 }

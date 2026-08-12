@@ -17,6 +17,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
   };
 });
 
+import { MAX_MENSAJES_HISTORIAL } from '@copiloto/core';
 import { api } from '../../lib/api';
 import { useChat } from './useChat';
 
@@ -265,6 +266,62 @@ describe('useChat', () => {
       const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
       expect(stored).toHaveLength(1);
       expect(stored).toMatchObject([{ role: 'user', text: 'Hola de nuevo' }]);
+    });
+  });
+
+  describe('cota de historial (C6) — messages no crece sin techo', () => {
+    const SESSION_ID = 'sess-cota-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+    });
+
+    it('un historial persistido más largo que la cota se rehidrata YA acotado', async () => {
+      const total = MAX_MENSAJES_HISTORIAL + 40;
+      const persisted = Array.from({ length: total }, (_, i) => ({
+        id: `assistant-${i + 1}`,
+        role: 'assistant',
+        text: `histórico ${i + 1}`,
+      }));
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+      vi.mocked(api.getReply).mockResolvedValueOnce({ replies: [], next_id: total });
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages).toHaveLength(MAX_MENSAJES_HISTORIAL);
+      expect(result.current.messages.at(-1)).toMatchObject({ text: `histórico ${total}` });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      // El cursor del poll de montaje usa el mayor id del historial COMPLETO, no de la ventana
+      // podada — si no, re-pediría (y re-descartaría) respuestas que ya se tenían.
+      expect(api.getReply).toHaveBeenCalledWith(SESSION_ID, total);
+    });
+
+    it('`send` repetido más allá de la cota mantiene `messages` acotado a MAX_MENSAJES_HISTORIAL', async () => {
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+      vi.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-cota', accepted: true });
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      const total = MAX_MENSAJES_HISTORIAL + 25;
+      for (let i = 1; i <= total; i += 1) {
+        // eslint-disable-next-line no-await-in-loop -- secuencial a propósito: cada send espera su
+        // propio poll inmediato antes del siguiente, igual que lo haría un usuario tipeando.
+        await act(async () => {
+          await result.current.send(`mensaje ${i}`);
+        });
+      }
+
+      expect(result.current.messages).toHaveLength(MAX_MENSAJES_HISTORIAL);
+      expect(result.current.messages.at(-1)).toMatchObject({ text: `mensaje ${total}` });
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(Array.isArray(stored) ? stored.length : -1).toBe(MAX_MENSAJES_HISTORIAL);
     });
   });
 

@@ -282,6 +282,11 @@ describe('ChatView (integración lista+composer+useChat -- cáscara de texto, si
 });
 
 describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fija, SIN glass', () => {
+  // Mismo margen insuficiente que `PantallaSoporte.test.tsx` -- ver el comentario ahí (C6,
+  // 2026-08-12): el default de Jest (5000ms) reprodujo 5/5 bajo `scripts/gate.sh`, distinto `it`
+  // cada vez, siempre en este describe gemelo. No es una carrera de lógica.
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     jest.mocked(api.sendChat).mockReset();
     jest.mocked(api.sendAudio).mockReset();

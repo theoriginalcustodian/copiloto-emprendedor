@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector, type ScrollView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, type FlatList } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 
@@ -36,10 +36,10 @@ export interface BotonVozProps {
   /** Se apaga mientras ya hay una captura en curso (grabando/pausada/lista) — un segundo `onIniciar`
    *  no puede reiniciar `useVozComando` a mitad de una captura. */
   disabled?: boolean;
-  /** El `ref` de `ListaMensajes` (su `ScrollView` de RNGH) — este botón flota encima y su gesto tiene
-   *  que declararse `simultaneousWithExternalGesture` con el scroll para no comerle el toque ni que
-   *  el scroll se lo coma a él. Ver el docstring del módulo. */
-  scrollRef: React.RefObject<ScrollView | null>;
+  /** El `ref` de `ListaMensajes` (su `FlatList` de RNGH, ver C6 — antes `ScrollView`) — este botón
+   *  flota encima y su gesto tiene que declararse `simultaneousWithExternalGesture` con el scroll
+   *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo. */
+  scrollRef: React.RefObject<FlatList | null>;
 }
 
 /**
@@ -135,13 +135,18 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
    * relación con el scroll en CADA sub-gesto antes de componerlos.
    */
   const gesto = useMemo(() => {
+    // `FlatList` exige `data`/`renderItem` -> su tipo no satisface el `ComponentType<{}>` (props
+    // vacías) que pide esta firma de RNGH (a diferencia del viejo `ScrollView`, con props opcionales).
+    // Es un gap de tipos upstream, no una incompatibilidad real: RNGH sólo usa el handle nativo para
+    // la arbitración de gestos, nunca renderiza nada con esas props.
+    const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null>;
     const gestoMantener = Gesture.LongPress()
       .enabled(!disabled)
       .minDuration(0)
       // Sin tope de distancia: quien decide si el arrastre "fija" es el `Pan` de abajo, no éste — si
       // `LongPress` cancelara por moverse, el deslizar-para-fijar nunca llegaría a activarlo.
       .maxDistance(100000)
-      .simultaneousWithExternalGesture(scrollRef)
+      .simultaneousWithExternalGesture(refParaArbitraje)
       .onStart(() => {
         scheduleOnRN(comenzar);
       })
@@ -151,7 +156,7 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
 
     const gestoDeslizar = Gesture.Pan()
       .enabled(!disabled)
-      .simultaneousWithExternalGesture(scrollRef)
+      .simultaneousWithExternalGesture(refParaArbitraje)
       .onUpdate((e) => {
         // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
         if (-e.translationY > UMBRAL_FIJAR_PX) {

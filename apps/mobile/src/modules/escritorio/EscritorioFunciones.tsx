@@ -49,6 +49,7 @@ import { StyleSheet, Text, View } from 'react-native';
  * `documed-front/apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx`.
  */
 import { ScrollView } from 'react-native-gesture-handler';
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import type { ActividadItem } from '@copiloto/core';
@@ -216,6 +217,17 @@ export interface EscritorioFuncionesProps {
  *  exacto. */
 const UMBRAL_OVERFLOW_PX = 4;
 
+/**
+ * C6 (cotas de chat y listas): el `ScrollView` horizontal de este grid actualizaba `desplazado` con
+ * `setState` en CADA frame de scroll (`scrollEventThrottle={16}` = hasta 60 veces/seg), y ese estado
+ * vivía en `EscritorioFunciones` — el componente padre de las 9 tiles + la lista de actividad. Cada
+ * frame de scroll re-renderizaba TODO ese árbol para decidir la visibilidad de un fade y una flecha.
+ * `Animated.createAnimatedComponent` envuelve el `ScrollView` de RNGH (no el de `react-native` — ver
+ * el docstring de más arriba sobre la arena de gestos) para que `useAnimatedScrollHandler` escriba el
+ * offset directo a un `SharedValue`, en el hilo de UI, sin pasar por React en absoluto.
+ */
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
 export function EscritorioFunciones({
   onFuncion,
   actividad = [],
@@ -230,14 +242,27 @@ export function EscritorioFunciones({
   // contenedor/contenido real da un número que no sigue rotaciones ni el ancho real disponible.
   const [anchoVisible, setAnchoVisible] = useState(0);
   const [anchoContenido, setAnchoContenido] = useState(0);
-  // Cuánto se desplazó ya el emprendedor. Sin esto la solapa seguiría apuntando a la derecha después
-  // de haber llegado al final — prometiendo funciones que no existen, la misma mentira que el fade
-  // evita cuando no hay overflow.
-  const [desplazado, setDesplazado] = useState(0);
+  // Cuánto se desplazó ya el emprendedor. `SharedValue`, no `useState`: sólo alimenta la opacidad
+  // animada de abajo, nunca una decisión de qué se MONTA — no hay motivo para que un valor que
+  // cambia hasta 60 veces/seg pase por React.
+  const desplazado = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      desplazado.value = event.contentOffset.x;
+    },
+  });
 
   const hayOverflow = anchoContenido - anchoVisible > UMBRAL_OVERFLOW_PX;
-  const llegoAlFinal = anchoContenido - anchoVisible - desplazado <= UMBRAL_OVERFLOW_PX;
-  const hayMasFuncionesADerecha = hayOverflow && !llegoAlFinal;
+
+  // La visibilidad SÍ depende del scroll (frame a frame): `useAnimatedStyle` la recalcula en el hilo
+  // de UI a partir del `SharedValue`, así que llegar al final de la grilla nunca dispara un
+  // re-render de React. `hayOverflow` decide si el bloque se MONTA (rara vez cambia, React normal);
+  // esto sólo decide si se VE, dentro de ese bloque.
+  const estiloAfordanciaAnimado = useAnimatedStyle(() => {
+    const llegoAlFinal = anchoContenido - anchoVisible - desplazado.value <= UMBRAL_OVERFLOW_PX;
+    return { opacity: llegoAlFinal ? 0 : 1 };
+  });
 
   return (
     <View style={[styles.contenedor, { paddingHorizontal: 22 }]}>
@@ -257,14 +282,14 @@ export function EscritorioFunciones({
         testID="escritorio-grid-contenedor"
         onLayout={(e) => setAnchoVisible(e.nativeEvent.layout.width)}
       >
-        <ScrollView
+        <AnimatedScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.contenidoGrid}
           onContentSizeChange={(w) => setAnchoContenido(w)}
-          onScroll={(e) => setDesplazado(e.nativeEvent.contentOffset.x)}
-          // 60 fps es innecesario para decidir si se muestra una solapa; 16 ms mantiene la respuesta
-          // inmediata al ojo sin re-renderizar el grid entero en cada frame del gesto.
+          onScroll={scrollHandler}
+          // El offset ya se lee en el hilo de UI (`scrollHandler`, `SharedValue`) — este throttle sólo
+          // gobierna con qué frecuencia el driver nativo entrega eventos, no un `setState` de React.
           scrollEventThrottle={16}
           testID="escritorio-scroll-funciones"
         >
@@ -294,30 +319,33 @@ export function EscritorioFunciones({
               ))}
             </View>
           ))}
-        </ScrollView>
+        </AnimatedScrollView>
 
-        {/* Sólo se dibujan si queda contenido a la derecha — ver docstring del módulo. */}
-        {hayMasFuncionesADerecha && (
-          <>
+        {/* Se MONTA si queda contenido a la derecha (`hayOverflow`, React normal); la opacidad de si
+            se ve AHORA MISMO (llegó o no al final) la maneja `estiloAfordanciaAnimado` en el hilo de
+            UI — ver docstring del módulo. */}
+        {hayOverflow && (
+          <Animated.View
+            style={[styles.afordanciaMasFunciones, estiloAfordanciaAnimado]}
+            pointerEvents="none"
+          >
             <LinearGradient
               colors={['transparent', tema.color.fondo]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.fadeDerecha}
-              pointerEvents="none"
               testID="escritorio-fade-mas-funciones"
             />
             {/* La solapa: va encima del fade y usa el acento del tema —no un color fijo— para seguir
-                siendo visible en los 5 skins. `pointerEvents="none"`: es una señal, no un control. */}
+                siendo visible en los 5 skins. */}
             <View
               style={[styles.solapa, { backgroundColor: tema.color.acento, opacity: 0.22 }]}
-              pointerEvents="none"
               testID="escritorio-solapa-mas-funciones"
             />
-            <View style={styles.solapa} pointerEvents="none">
+            <View style={styles.solapa}>
               <Text style={[styles.flechaSolapa, { color: tema.color.texto }]}>›</Text>
             </View>
-          </>
+          </Animated.View>
         )}
       </View>
 
@@ -362,6 +390,9 @@ const styles = StyleSheet.create({
   // mide siempre igual (ver `ALTO_LABEL`).
   tile: { width: ANCHO_TILE, alignItems: 'center', justifyContent: 'center', gap: 8 },
   labelTile: { fontSize: 11.5, lineHeight: 14, height: ALTO_LABEL, textAlign: 'center' },
+  // Llena `contenedorGrid` exacto: el fade/solapa de adentro siguen posicionándose `absolute` contra
+  // ESTE wrapper igual que antes lo hacían contra `contenedorGrid` directamente.
+  afordanciaMasFunciones: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
   fadeDerecha: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 40 },
   solapa: {
     position: 'absolute',
