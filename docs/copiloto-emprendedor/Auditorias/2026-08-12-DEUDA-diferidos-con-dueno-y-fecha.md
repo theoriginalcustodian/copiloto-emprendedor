@@ -43,6 +43,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
 | D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
+| D11 | **Los 2 adversariales de C3 (lote C) NO aíslan el guard app-side** — al remover el filtro `WHERE cliente_id` del `UPDATE`, el test sigue **verde** porque RLS `FORCE` lo tapa como 2ª barrera. Verifican el sistema (A no toca B), no cuál capa lo garantiza | Fase D lote C (auditoría, 2026-08-12) | backend + auditoría | **al modificar `FORCE ROW LEVEL SECURITY` o la policy de cualquier tabla con guard app-side** | Defense-in-depth = seguro hoy; deuda de **cobertura**, no de función. Ver abajo |
 
 **Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
 C6(b), la duplicación **no se convergió** — se protegió con un **test de equivalencia**
@@ -185,6 +186,39 @@ y en la misma corrida `ChatView.test.tsx` tardó 130.9s (vs. su tiempo normal), 
 entera estaba bajo presión, no un componente puntual. Esto **generaliza el hallazgo**: el timeout de
 5000ms es frágil bajo contención para cualquier test de montaje pesado, no sólo el describe de voz.
 No cierra la fila ni cambia la instrucción — sigue siendo oportunista, mismo dueño (frontend).
+
+---
+
+## D11 — RLS `FORCE` enmascara el control negativo de los adversariales C3
+
+**Qué es.** En la Fase D de lote C (PR #412 → `28c33f56`) los dos tests adversariales nuevos
+—`test_ADVERSARIAL_A_no_puede_editar_ni_desactivar_el_concepto_de_B` (`test_cobros_y_catalogo.py`) y
+`test_ADVERSARIAL_A_no_imputa_el_gasto_de_B_asignandolo_a_su_propio_trabajo`
+(`test_trabajo_store.py`)— **verifican la propiedad de seguridad** (el actor A no puede tocar el
+recurso de B, probado contra Postgres real, cumple la regla dura del repo). Pero **no aíslan el guard
+app-side**: backend lo declaró honestamente en el commit — al remover el filtro `WHERE cliente_id` del
+`UPDATE`, el test **siguió verde** porque **RLS `FORCE` es una 2ª barrera independiente** que sostiene
+el aislamiento sola. Es defense-in-depth (dos candados) = estrictamente más seguro, pero el test pasa
+**con y sin** el filtro app-side ⇒ ese filtro queda cubierto por lectura de código + RLS, no por un
+test que caiga sin él. Si algún día se desactivara RLS `FORCE`, estos tests serían el único guard y no
+tenemos prueba de que funcionen aislados. Detalle y lección:
+[[defense-in-depth-enmascara-el-control-negativo-de-la-capa-interna]].
+
+**Por qué se difiere (no bloquea).** La propiedad de seguridad **sí** está verificada adversarialmente.
+Esto es menor poder diagnóstico de un test sobre un sistema con doble candado, no un fail-open. Sólo se
+vuelve relevante **el día que se toque la capa externa** (RLS).
+
+**Callejón sin salida ya descartado — no gastar tiempo acá.** El mecanismo obvio para aislar el guard
+app-side sería correr el adversarial con un rol `BYPASSRLS`. **Ese rol existe y NO sirve:**
+`copiloto_consola` es `BYPASSRLS` pero **`SELECT`-only** (verificado: `admin_errores.py:34`,
+`admin_tenants.py:24`, `auditoria_store.py:26`) — no puede ejercitar un `UPDATE`. Quien tome esta deuda
+necesita un **rol de test propio con `BYPASSRLS` + write**, y eso es **infra**
+(`deploy/worker/provision_tables.py`): es parte del costo del ítem, no un detalle.
+
+**Qué prueba la cierra (§Fase D).** Con RLS `FORCE` temporalmente en `NO FORCE`/bypass (vía ese rol de
+test dedicado), revertir el filtro `WHERE cliente_id` de cada `UPDATE` hace **caer** los 2 adversariales
+(rojo sin el guard app-side) y restaurarlo los pone verde de nuevo — recién ahí el control negativo
+aísla la capa interna. Dueño: **backend** (infra del rol) **+ auditoría** (re-corre el control negativo).
 
 ---
 
