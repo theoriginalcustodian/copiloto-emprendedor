@@ -69,11 +69,8 @@
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica
-- [🟢🔍 Un instrumento mal hecho no falla: CONFIRMA](instrumentos-que-confirman-en-vez-de-verificar.md) — *¿qué diría si estuviera roto?*
 - [⚖️🔴 El instrumento también CONDENA, no sólo absuelve](el-instrumento-tambien-CONDENA-no-solo-absuelve.md) — el falso rojo parece prudencia.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
-- [🈳🟢 El chequeo de tipos compilaba el proyecto VACÍO](el-chequeo-de-tipos-que-compilaba-el-proyecto-vacio.md) — preguntá el DENOMINADOR.
-- [📐🚫 Una tabla IGNORA el `max-width` de su celda](una-tabla-ignora-el-max-width-de-su-celda.md) — jsdom no hace layout
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
 - [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
@@ -84,14 +81,9 @@
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — horneá el control en el script.
-- [🩺🟢 "No rompió nada" NO es "arregló algo"](no-romper-no-es-arreglar.md) — un no-op puntúa mejor en un gate de no-regresión.
 - [🔌🙈 El test que no usa el camino de prod no lo ve fallar](el-test-que-no-usa-el-camino-de-produccion-no-puede-verlo-fallar.md) — composition root.
 - [🔀🧬 Dos clientes gemelos: el fix llega a UNO](dos-implementaciones-del-mismo-cliente-el-fix-llega-a-una.md) — contá definiciones, no usos.
-- [🧪🔌 Tests que mockean serialización son CIEGOS al wire](tests-que-mockean-la-serializacion-son-ciegos-al-borde-del-wire.md) — `curl` lo caza rápido.
-- [🧪⚡ La suite corre LOCAL contra Postgres efímero — 24 s](suite-local-en-vps-con-rol-no-superuser.md) — el CI es gate final, no consola.
 - [📱 El gate jsdom NO ve gestos táctiles](gate-jsdom-no-ve-gestos-tactiles.md) — verde en vitest ≠ verificado.
-- [🎯🕳️ El control corrido contra la BASE EQUIVOCADA](el-control-corrido-contra-la-base-equivocada.md) — nombrá la base antes de comparar.
-- [🔢 El DEFAULT devuelve más de lo asumido](el-default-de-la-herramienta-devuelve-mas-de-lo-que-asumis.md) — confirmar no dispara control.
 - [🎯📏 La regla que manda a mirar el instrumento EQUIVOCADO](la-regla-que-te-obliga-a-mirar-el-instrumento-equivocado.md) — qué regla te desvía.
 - [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
@@ -110,7 +102,6 @@
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto.
 - [🚧🔁 El guard se vuelve el CUELLO DE BOTELLA](el-guard-se-vuelve-el-cuello-de-botella-de-lo-que-protege.md) — declará si el rechazo es permanente.
 - [🔀🕳️ Dos decisiones correctas que se cruzan en un AGUJERO](dos-decisiones-correctas-que-se-cruzan-en-un-agujero.md) — el hueco vive en el par.
-- [🔌⏱️ Un kill switch por env var NO es inmediato bajo systemd](kill-switch-por-env-no-es-inmediato-bajo-systemd.md) — apagar = pausar el Schedule.
 
 ### Diagnóstico: leer el contrato antes de explicar
 
@@ -126,20 +117,14 @@
 ### Diseño y arquitectura
 
 - [♻️🔒 Reutilizar es REGLA — inventario ANTES del diseño](reutilizacion-es-regla-el-inventario-va-antes-del-diseno.md) — todo `contrato_` abre con §0.
-- [🛠️🔁 La consola se construye con las piezas de la APP](la-consola-se-construye-con-las-piezas-de-la-app.md) — reusá; lo propio, en su módulo.
 - [🧭🪣 Elegí la unidad de trabajo por dónde vivía el DATO](elegi-la-unidad-de-trabajo-por-donde-vivia-el-dato.md) — el ACCESO elige la arquitectura.
 - [🧠 Trifecta cognitiva — SOTA con 2 lentes](trifecta-sota-lente-lateral-hack.md) — el 2º lente colapsa el problema.
 - [♻️🙈 Idempotente ≠ CONVERGENTE](idempotente-no-es-convergente.md) — *¿si cambio el valor, cambia el recurso?*
 - [🔁 "Si ya existe, devolvelo" NO es idempotencia — es una ventana](idempotencia-con-un-if-tiene-ventana.md) — medí el EFECTO.
-- [⏱️🕳️ Un campo que cambia con el RELOJ anula el cache](una-columna-global-mutante-vuelve-inerte-al-cache.md) — invalidar de más no rompe.
-- [🏗️ El provisionado "idempotente" NO reconstruye desde cero](provisionado-no-reconstruye-la-base-desde-cero.md) — leer antes de DR/staging.
-- [🎭 `IF NOT EXISTS` cubre MENOS de lo que promete](if-not-exists-cubre-menos-de-lo-que-promete.md) — no cubre tabla ni permisos.
 - [🧩 El fix YA existe en otro call-site — propagar, no diseñar](el-fix-ya-existe-en-otro-call-site.md) — grepeá el patrón del FIX.
 - [🧬🔁 El MISMO defecto vivía DOS veces](el-mismo-defecto-vivia-dos-veces-el-fix-en-la-capa-compartida-no-alcanzo.md) — ¿qué capa usa la UI: el core o su copia?
 - [🎭 DOS causas suficientes = el test no ATRIBUYE](dos-causas-suficientes-el-test-no-atribuye.md) — el diferencial sale VERDE.
 - [🧬 El fix de RAZONAMIENTO no viaja con el código copiado](el-fix-de-razonamiento-no-viaja-con-el-codigo-copiado.md) — el matiz va en comentario.
-- [📝⚡ Anotar ADENTRO el efecto externo en el instante](anotar-adentro-el-efecto-externo-en-el-instante.md) — "al final" borra la prueba.
-- [🔑🔄 Derivar la clave DENTRO de la activity](derivar-la-clave-dentro-de-la-activity-no-tocar-el-payload.md) — continue-as-new reinicia números.
 - [0️⃣ El cero que NO se puede afirmar](cero-que-no-se-puede-afirmar.md) — `$0` puede ser "no lo sé", no "no compró".
 - [🚧 Verificar que el camino que recomendás EXISTE](verificar-que-el-camino-recomendado-existe.md) — la junta no es de nadie.
 - [🖋️ El contrato afirma el mecanismo que NO opero](el-contrato-afirma-el-mecanismo-que-no-opero.md) — de un sistema: leé su código.
@@ -151,7 +136,6 @@
 - [🔒⚡ 3 gates que FRENAN — script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — nivel 1.
 - [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth.
 - [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`.
-- [🕰️🕸️ El grafo ingesta el DISCO, pero fecha con `HEAD`](el-grafo-ingesta-el-disco-pero-fecha-con-head.md) — frescura = hora del SYNC.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.
 - [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — verificá el estado, no el reporte.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable.
@@ -162,8 +146,6 @@
 
 ### Coordinación entre sesiones
 
-- [🔀 Tres sesiones paralelas — el buzón, y la junta con dueña](coordinacion-tres-sesiones-buzon.md) — leer al arrancar.
-- [🛸 Canal Antigravity — auxiliar, bajo demanda](canal-antigravity-bajo-demanda.md) — no es 4ª sesión.
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) — `dato_` NO escala; ¿querés reclamo? → `pedido_`.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — nunca a mano.
@@ -198,22 +180,12 @@
 
 ### Frontend móvil
 
-- [📱 Estado del frontend móvil — chrome auto-hide y sus regresiones](copiloto-frontend-movil-ux-estado.md) — **al retomar cualquier arreglo del móvil.**
-- [🧊 App "bloqueada" al volver de una función → glass APILADO](glass-apilado-empujar-una-vez.md) — doble toque apila 2 `transparentModal`; lock por FOCO.
-- [🧭 Un `*.test.tsx` en `app/` tumba la app](test-en-carpeta-app-es-una-ruta.md) — expo-router lo carga como RUTA. Guard: `appSoloRutas.test.ts`.
-- [⌨️ El teclado tapa los campos del glass Y mata el scroll](teclado-tapa-campos-cascara-glass.md) — `KeyboardAvoidingView padding` + revelar el campo enfocado.
-- [🇦🇷 La coma decimal del teclado argentino](la-coma-decimal-del-teclado-argentino.md) — `Decimal("15000,50")` → 400. Normalizar, nunca `Number()`.
-- [🪟 Metro en Windows no sigue links de `node_modules` en worktrees](metro-en-windows-no-sigue-links-de-node-modules-en-worktrees.md)
 - [✈️ Receta avión + reverse + Connect para el dev-launcher](receta-avion-reverse-connect-destraba-dev-launcher.md) — sin deep-link ni rebuild.
 - [🌳🕳️ El working tree COMPARTIDO guarda trabajo fuera de toda rama](el-working-tree-compartido-guarda-trabajo-que-no-esta-en-ninguna-rama.md)
 - [🔍 Auditorías van en `docs/copiloto-emprendedor/Auditorias/`](auditorias-van-en-carpeta-auditorias.md) — regla del operador. Nunca sueltas en `docs/`.
 - [📱🔀 El dev-server sirve el CHECKOUT COMPARTIDO](metro-sirve-el-bundle-del-checkout-compartido-no-del-worktree.md) — Metro y vite. Pedile que se identifique.
 - [🧩🔀 Resolver "tomando un lado" NUNCA converge](resolver-tomando-un-lado-nunca-converge.md) — `--ours`/`--theirs` descarta una mitad. Un grep por CADA mitad.
-- [🎨🕳️ Un token con DOS definiciones](un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma.md) — tocar la equivocada no da síntoma: contá **definiciones**, no usos.
-- [📱🤖 `adb` no ejercita el toque corto de un `Gesture.Pan()`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — taps y drags de 600px sí; 0-2px nunca.
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
-- [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — deuda diferida, no gap.
-- [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — GoTrue `MAILER_AUTOCONFIRM=true`; slot para Gmail SMTP.
 
 ## 📚 Referencia
 
