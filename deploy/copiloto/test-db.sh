@@ -49,10 +49,17 @@ APP_USER="${UC_TESTDB_APP_USER:-copiloto_app}"
 AUTOSAN_USER="${UC_TESTDB_AUTOSAN_USER:-copiloto_autosanacion}"
 #: El rol de lectura cross-tenant de la Consola de Operador (BYPASSRLS, SELECT-only). CONS0a.
 CONSOLA_USER="${UC_TESTDB_CONSOLA_USER:-copiloto_consola}"
+#: D11 — BYPASSRLS + escritura, sólo para el experimento de aislamiento de C3: probar que el guard
+#: app-side (`WHERE cliente_id`) por sí solo, SIN la red de RLS FORCE debajo, frena un UPDATE cross-
+#: tenant. `copiloto_consola` no sirve (sólo SELECT, descartado en el contrato); `copiloto_autosanacion`
+#: tampoco (su GRANT está recortado a `copiloto_traumas`, otra tabla). Ver §D11 (cerrado 2026-08-13) en
+#: `docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md`.
+AISLAMIENTO_USER="${UC_TESTDB_AISLAMIENTO_USER:-copiloto_aislamiento_probe}"
 URL_ADMIN="postgres://postgres:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_APP="postgres://${APP_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_AUTOSAN="postgres://${AUTOSAN_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 URL_CONSOLA="postgres://${CONSOLA_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
+URL_AISLAMIENTO="postgres://${AISLAMIENTO_USER}:${PASS}@127.0.0.1:${PUERTO}/postgres"
 
 RECREAR=0; EXPORTAR=0; ADMIN=0
 for arg in "$@"; do
@@ -122,6 +129,11 @@ DO \$do\$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${CONSOLA_USER}') THEN
     CREATE ROLE ${CONSOLA_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER BYPASSRLS;
   END IF;
+  -- D11: rol de sólo-experimento para aislar la capa app-side de la de RLS FORCE (ver nota arriba).
+  -- BYPASSRLS a propósito -- sin eso el experimento mediría el mismo RLS de siempre, no el guard.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${AISLAMIENTO_USER}') THEN
+    CREATE ROLE ${AISLAMIENTO_USER} LOGIN PASSWORD '${PASS}' NOSUPERUSER BYPASSRLS;
+  END IF;
 END \$do\$;
 -- Dueño de su schema, como en producción: \`provision.py\` corre con este rol y necesita CREAR las
 -- tablas (ser dueño), no sólo escribir en ellas.
@@ -148,6 +160,16 @@ if [ "$ADMIN" -eq 0 ]; then
     exit 1
   fi
   decir "==> control OK: ${APP_USER} no es superuser ni bypassrls (el RLS lo alcanza)"
+
+  # D11: el control espejo -- el rol del experimento tiene que SER bypassrls, si no el experimento no
+  # aísla nada (mediría RLS de nuevo, disfrazado de otro rol).
+  ATRIBUTOS_AISL="$(ssh "$HOST" "docker exec '${NOMBRE}' psql -U postgres -tAc \"SELECT rolsuper::text || ' ' || rolbypassrls::text FROM pg_roles WHERE rolname='${AISLAMIENTO_USER}'\"")"
+  if [ "$ATRIBUTOS_AISL" != "false true" ]; then
+    echo "ABORTA: ${AISLAMIENTO_USER} tiene (rolsuper rolbypassrls) = '${ATRIBUTOS_AISL}', se esperaba 'false true'." >&2
+    echo "        Sin bypassrls=true el experimento D11 no aísla la capa app-side de RLS." >&2
+    exit 1
+  fi
+  decir "==> control OK: ${AISLAMIENTO_USER} es bypassrls sin ser superuser (aísla RLS, no lo reemplaza)"
 fi
 
 # --- 3. el esquema, con el MISMO provisionado que usa producción ------------------------------
@@ -216,12 +238,34 @@ GRANT SELECT ON uc_factory.copiloto_auditoria TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.tenants            TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_tickets   TO ${CONSOLA_USER};
 GRANT SELECT ON uc_factory.copiloto_mensajes  TO ${CONSOLA_USER};
+
+-- D11: CRUD completo, pero recortado a las 7 tablas que los 2 adversariales de C3 ejercitan de
+-- punta a punta (alta del fixture -> el UPDATE bajo prueba -> el barrido del fixture tenants). El punto del
+-- rol no es el mínimo de escritura -- es BYPASSRLS sobre un set acotado de tablas de negocio para
+-- que el experimento mida el guard app-side solo, sin la red de RLS FORCE debajo. Nunca toca la base
+-- real: vive sólo en esta base efímera, y ninguna ruta de producción usa este rol.
+GRANT USAGE ON SCHEMA uc_factory TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_conceptos        TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_cobros           TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_gastos           TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_presupuestos     TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_presupuesto_items TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.copiloto_eventos          TO ${AISLAMIENTO_USER};
+GRANT SELECT, INSERT, UPDATE, DELETE ON uc_factory.afip_comprobantes         TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_conceptos_id_seq         TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_cobros_id_seq            TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_gastos_id_seq            TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_presupuestos_id_seq      TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_presupuesto_items_id_seq TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.copiloto_eventos_id_seq           TO ${AISLAMIENTO_USER};
+GRANT USAGE, SELECT ON SEQUENCE uc_factory.afip_comprobantes_id_seq          TO ${AISLAMIENTO_USER};
 SQL
 
 if [ "$EXPORTAR" -eq 1 ]; then
   echo "export UC_TEST_DATABASE_URL='${URL}'"
   echo "export UC_TEST_AUTOSANACION_URL='${URL_AUTOSAN}'"
   echo "export UC_TEST_CONSOLA_URL='${URL_CONSOLA}'"
+  echo "export UC_TEST_AISLAMIENTO_URL='${URL_AISLAMIENTO}'"
 else
   echo "==> LISTA: ${CREADAS} tablas en uc_factory (el manifiesto declara ${ESPERADAS})"
   if [ "$ADMIN" -eq 1 ]; then
