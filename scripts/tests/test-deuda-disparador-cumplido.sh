@@ -21,6 +21,7 @@
 #   5. CONTROL NEGATIVO — disparador en prosa, con todo lo demás cerrado → silencio
 #   6. CONTROL POSITIVO — bloque DEUDA-VIVA ausente                      → alarma, no "sin deuda"
 #   7. CONTROL NEGATIVO — --rol que no es el dueño del cumplido          → silencio
+#   8. CONTROL POSITIVO — sin el documento en disco                      → lo lee de origin/main
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -145,6 +146,67 @@ if [ "$rc" -eq 1 ]; then
   ok "7b POSITIVO · --rol backend sí lo ve (el filtro filtra, no silencia)"
 else
   fail "7b POSITIVO · esperaba exit 1; rc=$rc out=<$out>"
+fi
+
+# ── 8. POSITIVO: el registro se lee de origin/main cuando no está en el working tree ─────────
+# Por qué existe este caso (2026-08-12 21:15): el chequeo se probó 9/9 en el worktree donde se lo
+# escribió, y los crones corren desde el CHECKOUT COMPARTIDO — otro working tree, con su HEAD en otra
+# rama y SIN este documento. Ahí el script alarmaba «no pude leer el registro» cada 3 minutos, en el
+# único lugar donde tenía que servir. El fallback a `git show origin/main:<path>` lo arregla, y además
+# es la autoridad correcta: el registro vive en `main`, no en el checkout que casualmente lo corra.
+#
+# Cómo se simula sin tocar el disco del repo: se copia el script a un REPO_ROOT falso *dentro* del
+# repo (git descubre el repositorio caminando hacia arriba, así que `git show` sigue funcionando) y se
+# apunta DEUDA_FILE al path canónico bajo esa raíz — que no existe en disco. Si el fallback funciona,
+# el script lee el documento real de origin/main; si no, dice «no pude leer el registro».
+#
+# La aserción NO mira si hay alarma o no: eso depende del contenido vivo del registro y volvería este
+# test rojo el día que alguien cumpla un disparador. Lo único que se afirma es que LEYÓ.
+#
+# NO SE SALTEA NUNCA. La primera versión de este caso se salteaba cuando no existía la ref
+# `origin/main` — y Actions clona con fetch-depth=1, sin esa ref: el caso no corrió NI UNA VEZ en CI y
+# el job igual imprimió «todo verde». Un salteo que no pone el test en rojo es verde-por-ausencia, que
+# es exactamente lo que este archivo existe para impedir. Por eso el script acepta `DEUDA_REF`: donde
+# no hay `origin/main` se ejercita el MISMO mecanismo contra `HEAD`. Lo que se verifica es que lee del
+# ref en vez del disco; cuál es el ref no cambia el código que se prueba.
+fake_root="$REPO_ROOT/scripts/tests/.tmp-fallback-$$"
+
+# Corre el montaje del caso 8 con un ref dado; imprime la salida del script.
+corre_desde_ref() {
+  mkdir -p "$fake_root/scripts"
+  cp "$DEUDA_CHECK" "$fake_root/scripts/deuda-check.sh"
+  DEUDA_REF="$1" \
+  DEUDA_FILE="$fake_root/docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md" \
+    bash "$fake_root/scripts/deuda-check.sh" 2>&1
+  local rc=$?
+  rm -rf "$fake_root"
+  return $rc
+}
+
+# Se prueban TODOS los refs disponibles, no el primero que sirva: `HEAD` es el camino que va a tomar
+# Actions, así que tiene que estar ejercitado también acá, donde sí existe `origin/main`. Probar sólo
+# el default dejaría el camino de CI sin cobertura en el único lugar donde se lo puede mirar.
+refs=("HEAD")
+git -C "$REPO_ROOT" rev-parse --verify -q origin/main >/dev/null && refs=("origin/main" "HEAD")
+for ref in "${refs[@]}"; do
+  out="$(corre_desde_ref "$ref")"
+  if printf '%s' "$out" | grep -qi 'no pude leer el registro'; then
+    fail "8 POSITIVO · el fallback a $ref no leyó nada; out=<$out>"
+  elif printf '%s' "$out" | grep -q 'DEUDA'; then
+    ok "8 POSITIVO · sin el archivo en disco, lee el registro de $ref"
+  else
+    fail "8 POSITIVO · salida inesperada, no se puede afirmar que leyó ($ref); out=<$out>"
+  fi
+done
+
+# 8b — el discriminante del 8: mismo montaje, ref que no resuelve. Sin esto, el 8 podría estar
+# pasando por cualquier motivo (p. ej. que el archivo sí existiera en disco). Con los dos, la única
+# variable que cambia es si el ref resuelve.
+out="$(corre_desde_ref "refs/heads/ref-que-no-existe-en-ningun-lado")"; rc=$?
+if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -qi 'no pude leer el registro'; then
+  ok "8b NEGATIVO · ref que no resuelve → grita (el 8 no pasa por casualidad)"
+else
+  fail "8b NEGATIVO · esperaba exit 1 y 'no pude leer el registro'; rc=$rc out=<$out>"
 fi
 
 echo
