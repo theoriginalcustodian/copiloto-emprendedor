@@ -17,32 +17,58 @@ TENANT_A = "tenant-a"
 TENANT_B = "tenant-b"
 
 
-class Espia:
-    """Registra lo que los endpoints le piden a Temporal, sin levantar Temporal."""
+class _WorkflowNoExiste(Exception):
+    """Simula lo que Temporal real hace ante `handle.signal()` sobre un workflow_id compuesto que
+    nadie abrió: `RPCError(status=NOT_FOUND)`. No se usa la clase real del SDK a propósito -- ninguna
+    de las rutas de mutación de `afip_web.py` inspecciona el tipo (no llaman `_no_existe()`, sólo
+    `web.py` lo hace para las lecturas), así que lo único que el test necesita es que ALGO escape sin
+    convertirse en un `{"ok": True}`."""
 
-    def __init__(self):
+
+class Espia:
+    """Registra lo que los endpoints le piden a Temporal, sin levantar Temporal.
+
+    `estricto=True` activa el modo adversarial: `signal_factura`/`signal_anulacion` sólo aceptan un
+    workflow_id que ESE `cliente_id` abrió (vía `iniciar_factura`/`iniciar_anulacion`) -- igual que
+    Temporal real, que jamás encuentra el workflow de otro tenant porque el id se compone con
+    `_wf_id_factura`/`_wf_id_anulacion`. Default `False`: preserva el comportamiento de siempre para
+    los tests que no arrancan la factura antes de mandarle signals.
+    """
+
+    def __init__(self, *, estricto: bool = False):
         self.iniciadas: list[tuple] = []
         self.signals: list[tuple] = []
         self.estados: dict[str, dict] = {}
+        self._estricto = estricto
+        self._abiertos: set[str] = set()
 
     def iniciar_factura(self, cliente_id, cuit):
         self.iniciadas.append((cliente_id, cuit))
+        self._abiertos.add(_wf_id_factura(cliente_id, "fact-123"))
         return "fact-123"
 
     def consultar_factura(self, cliente_id, factura_id):
         return self.estados.get(_wf_id_factura(cliente_id, factura_id))
 
     def signal_factura(self, cliente_id, factura_id, nombre, payload):
+        wf_id = _wf_id_factura(cliente_id, factura_id)
+        if self._estricto and wf_id not in self._abiertos:
+            raise _WorkflowNoExiste(wf_id)
         self.signals.append((cliente_id, factura_id, nombre, payload))
 
     def iniciar_anulacion(self, cliente_id, cuit, tipo, pto, nro):
         self.iniciadas.append((cliente_id, cuit, tipo, pto, nro))
-        return f"{cuit}-{tipo}-{pto}-{nro}"
+        anulacion_id = f"{cuit}-{tipo}-{pto}-{nro}"
+        self._abiertos.add(_wf_id_anulacion(cliente_id, anulacion_id))
+        return anulacion_id
 
     def consultar_anulacion(self, cliente_id, anulacion_id):
         return self.estados.get(_wf_id_anulacion(cliente_id, anulacion_id))
 
     def signal_anulacion(self, cliente_id, anulacion_id, nombre, payload):
+        wf_id = _wf_id_anulacion(cliente_id, anulacion_id)
+        if self._estricto and wf_id not in self._abiertos:
+            raise _WorkflowNoExiste(wf_id)
         self.signals.append((cliente_id, anulacion_id, nombre, payload))
 
 
@@ -61,8 +87,8 @@ class CredStoreConCertificado:
         return {"cert": "c", "key": "k", "ambiente": ambiente or "dev", "ws_autorizados": ["wsfe"]}
 
 
-def armar(tenant=TENANT_A, comprobantes=None):
-    espia = Espia()
+def armar(tenant=TENANT_A, comprobantes=None, *, espia=None, raise_server_exceptions=True):
+    espia = espia or Espia()
     store = ComprobanteStoreFake(comprobantes)
     afip = create_afip_app(
         require_tenant=lambda: tenant,
@@ -80,7 +106,8 @@ def armar(tenant=TENANT_A, comprobantes=None):
     )
     app = FastAPI()
     app.include_router(afip.router)
-    return TestClient(app), espia
+    cliente = TestClient(app, raise_server_exceptions=raise_server_exceptions)
+    return cliente, espia
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +135,66 @@ def test_adversarial_el_factura_id_no_alcanza_para_cruzar_tenants():
 def test_el_workflow_id_se_arma_con_el_tenant():
     assert _wf_id_factura("t1", "f1") == "factura-t1-f1"
     assert _wf_id_factura("t2", "f1") != _wf_id_factura("t1", "f1")
+
+
+def _rutas_de_mutacion_factura(factura_id: str):
+    """Las 6 rutas de ESCRITURA del ciclo del borrador. El GET ya tiene su adversarial arriba -- acá
+    falta lo que D5 encontró sin cubrir: nada verificaba que un `factura_id` ajeno no alcanzara para
+    escribir (no sólo leer)."""
+    return [
+        ("post", f"/afip/facturas/{factura_id}/datos-venta", {"fecha": "2026-07-21", "concepto": 1}),
+        ("post", f"/afip/facturas/{factura_id}/items",
+         {"descripcion": "x", "cantidad": "1", "precio_unitario": "100"}),
+        ("delete", f"/afip/facturas/{factura_id}/items/0", None),
+        ("post", f"/afip/facturas/{factura_id}/cliente", {"condicion_iva": 5, "tipo_doc": 99}),
+        ("post", f"/afip/facturas/{factura_id}/confirmar", {"token": "3:1000.00:99:0"}),
+        ("post", f"/afip/facturas/{factura_id}/cancelar", None),
+    ]
+
+
+def test_ADVERSARIAL_las_mutaciones_de_factura_no_alcanzan_la_de_otro_tenant():
+    """D5: `datos-venta` / `items` (alta y baja) / `cliente` / `confirmar` / `cancelar` llaman
+    `signal_factura` y devuelven `{"ok": True}` SIN mirar el resultado -- a diferencia del GET, ninguna
+    captura el `NOT_FOUND` que Temporal real tira cuando el workflow_id compuesto
+    (`_wf_id_factura(cliente_id, factura_id)`) no es de este tenant. El fail-closed sigue siendo real
+    (nunca aplica el signal ajeno: `Espia(estricto=True)` lo prueba), pero sin este test nada lo
+    ejercitaba a nivel HTTP -- exactamente el hueco que el contrato de D5 pedía cerrar."""
+    espia = Espia(estricto=True)
+    client_b, _ = armar(TENANT_B, espia=espia)
+    factura_b = client_b.post("/afip/facturas", json={"cuit": CUIT}).json()["factura_id"]
+
+    client_a, _ = armar(TENANT_A, espia=espia, raise_server_exceptions=False)
+    for metodo, ruta, body in _rutas_de_mutacion_factura(factura_b):
+        kwargs = {"json": body} if body is not None else {}
+        r = getattr(client_a, metodo)(ruta, **kwargs)
+        assert r.status_code != 200, f"{metodo.upper()} {ruta} dejó pasar una mutación con datos ajenos"
+    assert espia.signals == [], "ningún signal con datos de A llegó a aplicarse sobre la factura de B"
+
+
+def test_ADVERSARIAL_confirmar_anulacion_no_alcanza_la_de_otro_tenant():
+    """Mismo hueco que arriba, del lado de anulaciones: `POST /afip/anulaciones/{id}/confirmar` es la
+    única mutación de ese sub-recurso (`GET` ya usa `consultar_anulacion`, que sí filtra por wf_id)."""
+    espia = Espia(estricto=True)
+    client_b, _ = armar(TENANT_B, espia=espia)
+    cuerpo = {"cuit": CUIT, "tipo_cbte": 11, "punto_venta": 6, "nro": 9}
+    anulacion_b = client_b.post("/afip/comprobantes/anular", json=cuerpo).json()["anulacion_id"]
+
+    client_a, _ = armar(TENANT_A, espia=espia, raise_server_exceptions=False)
+    r = client_a.post(f"/afip/anulaciones/{anulacion_b}/confirmar")
+    assert r.status_code != 200, "confirmar la anulación de otro tenant no puede devolver 200"
+    assert espia.signals == []
+
+
+def test_CONTROL_las_mutaciones_adversariales_pasan_si_el_espia_no_es_estricto():
+    """Control del par de arriba: sin el modo estricto (el `Espia` de siempre, el que usan los demás
+    tests de este archivo), ¿el escenario hostil se cazaría igual? Tiene que dar 200 -- si no,
+    el par de arriba no está probando el guard real, sino una coincidencia del fake."""
+    espia = Espia()  # default: no estricto, exactamente como antes de este test
+    client_b, _ = armar(TENANT_B, espia=espia)
+    factura_b = client_b.post("/afip/facturas", json={"cuit": CUIT}).json()["factura_id"]
+    client_a, _ = armar(TENANT_A, espia=espia)
+    r = client_a.post(f"/afip/facturas/{factura_b}/cancelar")
+    assert r.status_code == 200, "el fake permeable tiene que dejarlo pasar para que el test de arriba pruebe algo"
 
 
 # ---------------------------------------------------------------------------
