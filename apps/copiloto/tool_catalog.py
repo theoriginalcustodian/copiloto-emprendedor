@@ -266,7 +266,12 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
     "description": "Arma una factura AFIP a partir de lo dictado ('facturale 50 mil a Juan por el "
                    "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
                    "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
-                   "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió.",
+                   "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió — el "
+                   "resto de los campos (documento, tipo de documento, concepto, fecha) es OPCIONAL: "
+                   "llamala apenas tengas esos dos datos mínimos, aunque falte todo lo demás. NO le "
+                   "preguntes al usuario por un campo que este schema no marca como \"required\" antes "
+                   "de llamarla — la tarjeta que devuelve ya lo pide con un campo editable si falta. "
+                   "Preguntar antes de llamar es el error: la tool está hecha para invocación parcial.",
     "parameters": {"type": "object", "properties": {
         "cliente_nombre": {"type": "string", "description": "a quién le factura"},
         "cliente_documento": {"type": "string", "description": "CUIT o DNI del cliente, si lo dijo"},
