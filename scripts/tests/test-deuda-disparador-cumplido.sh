@@ -162,24 +162,51 @@ fi
 #
 # La aserción NO mira si hay alarma o no: eso depende del contenido vivo del registro y volvería este
 # test rojo el día que alguien cumpla un disparador. Lo único que se afirma es que LEYÓ.
+#
+# NO SE SALTEA NUNCA. La primera versión de este caso se salteaba cuando no existía la ref
+# `origin/main` — y Actions clona con fetch-depth=1, sin esa ref: el caso no corrió NI UNA VEZ en CI y
+# el job igual imprimió «todo verde». Un salteo que no pone el test en rojo es verde-por-ausencia, que
+# es exactamente lo que este archivo existe para impedir. Por eso el script acepta `DEUDA_REF`: donde
+# no hay `origin/main` se ejercita el MISMO mecanismo contra `HEAD`. Lo que se verifica es que lee del
+# ref en vez del disco; cuál es el ref no cambia el código que se prueba.
 fake_root="$REPO_ROOT/scripts/tests/.tmp-fallback-$$"
-if ! git -C "$REPO_ROOT" rev-parse --verify -q origin/main >/dev/null; then
-  # Skip RUIDOSO a propósito: un salteo silencioso sería verde-por-ausencia, que es justo la falla
-  # que este archivo documenta. Pasa en checkouts sin la ref (p. ej. fetch-depth=1 en Actions).
-  printf '  ⚠️  8 SALTEADO · no hay ref origin/main en este checkout — el fallback NO se verificó\n'
-else
+
+# Corre el montaje del caso 8 con un ref dado; imprime la salida del script.
+corre_desde_ref() {
   mkdir -p "$fake_root/scripts"
   cp "$DEUDA_CHECK" "$fake_root/scripts/deuda-check.sh"
-  out="$(DEUDA_FILE="$fake_root/docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md" \
-         bash "$fake_root/scripts/deuda-check.sh" 2>&1)"
+  DEUDA_REF="$1" \
+  DEUDA_FILE="$fake_root/docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md" \
+    bash "$fake_root/scripts/deuda-check.sh" 2>&1
+  local rc=$?
   rm -rf "$fake_root"
+  return $rc
+}
+
+# Se prueban TODOS los refs disponibles, no el primero que sirva: `HEAD` es el camino que va a tomar
+# Actions, así que tiene que estar ejercitado también acá, donde sí existe `origin/main`. Probar sólo
+# el default dejaría el camino de CI sin cobertura en el único lugar donde se lo puede mirar.
+refs=("HEAD")
+git -C "$REPO_ROOT" rev-parse --verify -q origin/main >/dev/null && refs=("origin/main" "HEAD")
+for ref in "${refs[@]}"; do
+  out="$(corre_desde_ref "$ref")"
   if printf '%s' "$out" | grep -qi 'no pude leer el registro'; then
-    fail "8 POSITIVO · el fallback a origin/main no leyó nada; out=<$out>"
+    fail "8 POSITIVO · el fallback a $ref no leyó nada; out=<$out>"
   elif printf '%s' "$out" | grep -q 'DEUDA'; then
-    ok "8 POSITIVO · sin el archivo en disco, lee el registro de origin/main"
+    ok "8 POSITIVO · sin el archivo en disco, lee el registro de $ref"
   else
-    fail "8 POSITIVO · salida inesperada, no se puede afirmar que leyó; out=<$out>"
+    fail "8 POSITIVO · salida inesperada, no se puede afirmar que leyó ($ref); out=<$out>"
   fi
+done
+
+# 8b — el discriminante del 8: mismo montaje, ref que no resuelve. Sin esto, el 8 podría estar
+# pasando por cualquier motivo (p. ej. que el archivo sí existiera en disco). Con los dos, la única
+# variable que cambia es si el ref resuelve.
+out="$(corre_desde_ref "refs/heads/ref-que-no-existe-en-ningun-lado")"; rc=$?
+if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -qi 'no pude leer el registro'; then
+  ok "8b NEGATIVO · ref que no resuelve → grita (el 8 no pasa por casualidad)"
+else
+  fail "8b NEGATIVO · esperaba exit 1 y 'no pude leer el registro'; rc=$rc out=<$out>"
 fi
 
 echo

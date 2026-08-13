@@ -475,6 +475,12 @@ Dos cosas, y ninguna es «el checkout compartido es un problema»:
   la condición que debe disparar la alarma y verificar que la alarma suena — y hacerlo *en el lugar
   donde tiene que sonar*, no donde se escribió el código. Memoria:
   [[un-disparador-cumplido-no-avisa-a-nadie]].
+  **Y volvió a pasar en el mismo PR:** el test que agregué para el fallback se salteaba en Actions
+  (`fetch-depth=1`, sin ref `origin/main`) y el job igual imprimía «todo verde» — el caso no corrió ni
+  una vez en CI. Se cerró parametrizando `DEUDA_REF` para ejercitar el mismo mecanismo contra `HEAD`
+  donde no hay `origin/main`, más un control negativo (`8b`, ref que no resuelve → grita) para que el
+  positivo no pueda pasar por casualidad. **El salteo nunca es una salida:** si el caso no puede
+  correr, el test tiene que estar rojo, no verde con una advertencia.
 - **Un contador de commits no dice nada sobre un archivo del working tree.** Diffeá el archivo. Yo
   inferí, y la inferencia me hizo escribir en un registro versionado un bloqueante con dueño ajeno que
   no existía — que es peor que no haberlo registrado.

@@ -58,10 +58,16 @@ done
 # corra el script: leerlo de ahí es además lo correcto, no sólo lo que funciona.
 # Se prefiere el archivo local cuando existe para que un worktree que EDITA el registro se pruebe
 # contra su propia versión.
+#
+# DEUDA_REF es parametrizable SÓLO para poder testear el mecanismo donde `origin/main` no existe
+# (Actions clona con fetch-depth=1 y sin esa ref: el caso 8 del test se salteaba, y un salteo que
+# igual imprime «todo verde» es la misma falla que este archivo existe para impedir). El default no
+# se toca: la autoridad es origin/main.
+DEUDA_REF="${DEUDA_REF:-origin/main}"
 leer_registro() {
   if [ -f "$DEUDA" ]; then cat "$DEUDA"; return 0; fi
   local rel="${DEUDA#"$REPO_ROOT/"}"
-  git -C "$REPO_ROOT" show "origin/main:$rel" 2>/dev/null
+  git -C "$REPO_ROOT" show "$DEUDA_REF:$rel" 2>/dev/null
 }
 
 registro="$(leer_registro)"
