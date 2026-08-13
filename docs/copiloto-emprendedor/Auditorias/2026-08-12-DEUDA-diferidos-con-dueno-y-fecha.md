@@ -91,7 +91,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | ~~`except: return False` en `mercadopago_gateway.py:119` — fail-silent. **Es el 5º `except` de D-A**~~ — ✅ **CERRADO 2026-08-12 21:00, #424** | **P2** H-4 por sí solo, pero **P1 como instancia de D-A** (Pasada 2 H-3) — corregido 2026-08-12 20:47 | backend | ✅ resuelto — el fail-closed **no cambió** (sigue `return False`); se agregó `log_error_evento` con `reason` del SDK, que distingue `SIGNATURE_MISMATCH` de `TIMESTAMP_OUT_OF_TOLERANCE` sin loguear la firma cruda. **Con esto D-A queda 5/5 y G2/G3 cierran** | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
-| D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
+| D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado**. Dos sub-clases distintas conviven bajo esta fila: **timeout de gesto** (H1/H2, sigue abierta, oportunista) y **EPERM de caché de Jest** (✅ **CERRADA 2026-08-12**, causa raíz + fix estructural) | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia de la sub-clase timeout pero **no eliminó su causa**. La sub-clase EPERM sí tuvo causa raíz identificada y fix — ver abajo |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
 | D11 | **Los 2 adversariales de C3 (lote C) NO aíslan el guard app-side** — al remover el filtro `WHERE cliente_id` del `UPDATE`, el test sigue **verde** porque RLS `FORCE` lo tapa como 2ª barrera. Verifican el sistema (A no toca B), no cuál capa lo garantiza | Fase D lote C (auditoría, 2026-08-12) | backend + auditoría | **al modificar `FORCE ROW LEVEL SECURITY` o la policy de cualquier tabla con guard app-side** | Defense-in-depth = seguro hoy; deuda de **cobertura**, no de función. Ver abajo |
 | D12 | **Web sólo tiene 1 de las 5 cards `*_propuesto` que mobile tiene desde el hito 8** (`presupuesto_propuesto`, cerrada en e2e §G6; faltan `gasto_propuesto`/`cliente_propuesto`/`ingreso_propuesto`/`factura_propuesto`) | e2e §G6 (frontend, 2026-08-12) | frontend | **cuando se confirme que backend emite `card: {kind: '<x>_propuesto', ...}` hacia web para alguna de las 4 restantes** (grep de `card.kind` en una respuesta real de `/reply`, no suposición) | No hay evidencia de que backend ya mande esas 4 a web — expandir sin esa confirmación es trabajo especulativo. `presupuesto_propuesto` sólo se supo roto porque el smoke lo ejercitó; el mismo método (no inspección de código) decide si esto es deuda real o no aplica |
@@ -237,6 +237,34 @@ y en la misma corrida `ChatView.test.tsx` tardó 130.9s (vs. su tiempo normal), 
 entera estaba bajo presión, no un componente puntual. Esto **generaliza el hallazgo**: el timeout de
 5000ms es frágil bajo contención para cualquier test de montaje pesado, no sólo el describe de voz.
 No cierra la fila ni cambia la instrucción — sigue siendo oportunista, mismo dueño (frontend).
+
+### Sub-clase EPERM/caché — CERRADA (frontend, 2026-08-12) — causa raíz distinta de la de arriba
+
+Backend reportó un síntoma **distinto** al de timeout (lote C, `avance_backend-a-todos_lote-C-C1-C2-C3-cerrado.md`):
+`mobile` falló en el gate completo con `EPERM` de Windows leyendo
+`jest-transform-cache/.../NativeAnimatedAllowlist_...`, sin tocar `apps/mobile/` en su diff, y pasó
+731/731 aislado — mismo discriminador de siempre (aislado verde ⇒ flake), pero un patrón de error
+(`EPERM` sobre un archivo puntual) que no encaja con "timeout de gesto bajo contención".
+
+**Causa raíz verificada, no supuesta:** `npx jest --showConfig` en dos worktrees distintos
+(`deuda-d9` y `cards-propuesto-web`) resolvía el **mismo** `cacheDirectory` byte a byte —
+`<tmp del SO>/jest`, sin scopear por `rootDir` ni por proyecto. Con ~20 worktrees y 3 sesiones
+paralelas corriendo `apps/mobile` sobre el mismo Windows, dos procesos concurrentes escriben el
+mismo archivo de transform-cache (mismo paquete, mismo hash de contenido) y el SO devuelve `EPERM`
+en la carrera — mecánica determinística, no un supuesto de contención.
+
+**Fix de raíz, no retry:** `apps/mobile/jest.config.js` ahora fija `cacheDirectory` a
+`<rootDir>/node_modules/.cache/jest` en ambos proyectos (`native`/`web`) — cada worktree cachea en
+su propia carpeta, así que dos sesiones ya no pueden pisarse el mismo archivo. Verificado: el
+`cacheDirectory` resuelto post-fix es distinto por worktree; `mobile.sh` 730/731 (1 skip
+preexistente) sobre el fix; `gate.sh` completo 5/5 sobre el commit real.
+
+**Qué NO cierra esto — importante no confundirlo:** la sub-clase de `Exceeded timeout of 5000ms` en
+tests de gesto (`PantallaSoporte`/`ChatView`/`Onda.test.tsx`, hipótesis H1/H2 de arriba) es un
+síntoma **distinto**, sin relación mecánica con el cache de Jest. Sigue exactamente donde la dejó la
+sesión anterior: freno deliberado, captura oportunista, sin cerrar. Este fix no la toca ni la
+descarta — sólo elimina una fuente de falsos rojos que hasta ahora se contaba mezclada en el mismo
+conteo de "apariciones de D9".
 
 ---
 
