@@ -1,13 +1,20 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-import { leerClientePropuesto, leerGastoPropuesto, leerIngresoPropuesto, leerPresupuestoPropuesto } from '@copiloto/core';
+import {
+  leerClientePropuesto,
+  leerFacturaPropuesta,
+  leerGastoPropuesto,
+  leerIngresoPropuesto,
+  leerPresupuestoPropuesto,
+} from '@copiloto/core';
 
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
 import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
+import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
@@ -42,6 +49,10 @@ export interface MessageListProps {
    * `TarjetaClientePropuesto` en `ya_existe`). Pasa a través hasta `FilaMensaje`. Opcional — sin él
    * la card no ofrece el botón (mismo criterio que el resto de los callbacks del shell acá). */
   onAbrirCliente?: (id: number) => void;
+  /** D12 — navega a `PantallaFacturacion` sobre el `facturaId` de una `factura_propuesta`
+   * incompleta (botón "Completar a mano" de `TarjetaFacturaPropuesta`). Pasa a través hasta
+   * `FilaMensaje`. Opcional — sin él la card no ofrece el botón. */
+  onFacturar?: (facturaId: string) => void;
 }
 
 /**
@@ -64,6 +75,7 @@ export function MessageList({
   onSurfaceTap,
   sessionMarker,
   onAbrirCliente,
+  onFacturar,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -166,7 +178,12 @@ export function MessageList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <FilaMensaje message={message} onChoice={onChoice} onAbrirCliente={onAbrirCliente} />
+              <FilaMensaje
+                message={message}
+                onChoice={onChoice}
+                onAbrirCliente={onAbrirCliente}
+                onFacturar={onFacturar}
+              />
             </div>
           );
         })}
@@ -179,11 +196,12 @@ interface FilaMensajeProps {
   message: ChatMessage;
   onChoice: (value: string) => void;
   onAbrirCliente?: (id: number) => void;
+  onFacturar?: (facturaId: string) => void;
 }
 
 /** Una fila de la lista — mismo árbol de decisión que antes, ahora aislado para que `measureElement`
  * mida exactamente el contenido de ESTA fila (no el scroller entero). */
-function FilaMensaje({ message, onChoice, onAbrirCliente }: FilaMensajeProps) {
+function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMensajeProps) {
   if (message.role === 'user') {
     return <Bubble role="user" text={message.text} />;
   }
@@ -191,7 +209,8 @@ function FilaMensaje({ message, onChoice, onAbrirCliente }: FilaMensajeProps) {
   // Ninguna card `*_propuesto` lleva `choices` (mismo motivo en las 4: `classifyChoices` las
   // ignoraría y caerían en `Bubble` lisa — el emprendedor vería sólo el texto y ningún lugar donde
   // corregir antes de guardar). Se chequean ANTES del gate HITL, igual que
-  // `apps/mobile/src/modules/chat/ListaMensajes.tsx` (mismo orden: gasto → cliente → presupuesto).
+  // `apps/mobile/src/modules/chat/ListaMensajes.tsx` (mismo orden: gasto → cliente → ingreso →
+  // presupuesto → factura).
   const gastoPropuesto = leerGastoPropuesto(message.card);
   if (gastoPropuesto) {
     return <TarjetaGastoPropuesto propuesta={gastoPropuesto} mensajeId={message.id} />;
@@ -217,6 +236,17 @@ function FilaMensaje({ message, onChoice, onAbrirCliente }: FilaMensajeProps) {
   const presupuestoPropuesto = leerPresupuestoPropuesto(message.card);
   if (presupuestoPropuesto) {
     return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} mensajeId={message.id} />;
+  }
+
+  const facturaPropuesta = leerFacturaPropuesta(message.card);
+  if (facturaPropuesta) {
+    return (
+      <TarjetaFacturaPropuesta
+        propuesta={facturaPropuesta}
+        mensajeId={message.id}
+        onCompletarAMano={onFacturar}
+      />
+    );
   }
 
   const kind = classifyChoices(message.choices);

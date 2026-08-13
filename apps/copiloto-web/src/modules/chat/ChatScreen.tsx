@@ -40,6 +40,10 @@ export interface ChatScreenProps {
   /** D14 — id de cliente a abrir en el tab Clientes (botón "Ver cliente" de
    * `TarjetaClientePropuesto` en `ya_existe`). Lo pasan ambos shells (`abrirCliente`). */
   onAbrirCliente?: (id: number) => void;
+  /** D12 — navega a `PantallaFacturacion` sobre el `facturaId` de una `factura_propuesta`
+   * incompleta (botón "Completar a mano" de `TarjetaFacturaPropuesta`). Ambos shells pasan el mismo
+   * `irAFacturar` que ya usa `PresupuestosScreen` — mismo handoff, sin estado nuevo. */
+  onFacturar?: (facturaId: string) => void;
 }
 
 export function ChatScreen({
@@ -47,6 +51,7 @@ export function ChatScreen({
   onSurfaceTap,
   variant = 'mobile',
   onAbrirCliente,
+  onFacturar,
 }: ChatScreenProps = {}) {
   const { messages, sendStatus, send, sendAudio } = useChat();
   const isDesktop = variant === 'desktop';
@@ -71,6 +76,7 @@ export function ChatScreen({
         onSurfaceTap={isDesktop ? undefined : onSurfaceTap}
         sessionMarker={isDesktop ? undefined : 'SESIÓN ACTIVA · HOY'}
         onAbrirCliente={onAbrirCliente}
+        onFacturar={onFacturar}
       />
       <Composer
         sendStatus={sendStatus}

@@ -274,6 +274,38 @@ a.artifact:focus-visible {
   font-weight: 600;
 }
 
+.propuesta-card__aviso--error {
+  color: var(--danger-fg);
+}
+
+/* ---------- Factura propuesta (hito 9, D12) — resumen de sólo lectura ---------- */
+.propuesta-card__factura-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.propuesta-card__factura-label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--label);
+}
+
+.propuesta-card__factura-valor {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.propuesta-card__factura-total {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--amount-fg);
+  margin: 0;
+}
+
 /* ---------- Chips de desambiguación (Task 14, EXTRACT §2.7) ---------- */
 .disambiguation-chips {
   display: flex;
