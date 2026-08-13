@@ -48,7 +48,16 @@ for dir in "$BUZON/abierto" "$BUZON/en-curso"; do
     ' "$f")
 
     # ¿path a artefacto real?
-    tiene_artefacto=$(grep -c -E 'docs/[A-Za-z0-9_/.-]+|_evidencia/|\.(png|html)\b|mockup' "$f" || true)
+    # ⚠️ La segunda alternativa —path de CÓDIGO— se agregó el 2026-08-12 porque el detector premiaba
+    # enlazar un doc y castigaba citar el código, que es exactamente al revés del canon (§3: todo
+    # diseño abre con inventario `path:línea`). Caso medido: el contrato de `TarjetaIngresoPropuesto`
+    # apuntaba a `apps/mobile/src/modules/ingresos/FormularioIngreso.tsx:255` y
+    # `.../chat/TarjetaIngresoPropuesto.tsx:56` — la forma MÁS precisa de señalar un artefacto en este
+    # repo — y salía «PROSA PURA» en cada ciclo. Frontend lo ejecutó igual y cerró PR #433, así que el
+    # instrumento estaba desmentido por el resultado.
+    # Va anclado a los directorios reales del repo y exige extensión: así una mención en prosa
+    # («tocá el módulo de ingresos») sigue sin contar, que es lo que el lint existe para cazar.
+    tiene_artefacto=$(grep -c -E 'docs/[A-Za-z0-9_/.-]+|_evidencia/|\.(png|html)\b|mockup|(apps|scripts|motor|deploy)/[A-Za-z0-9_/.-]+\.(tsx|ts|py|sh|js|jsx|sql|yml)' "$f" || true)
 
     if [ "$tiene_bloque" -eq 0 ] && [ "$tiene_artefacto" -eq 0 ]; then
       violaciones+=("PROSA PURA: $base — sin bloque cercado ni path a artefacto. El contrato define con un shape/test/ejemplo, no sólo describe.")

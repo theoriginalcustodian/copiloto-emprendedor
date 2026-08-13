@@ -84,9 +84,38 @@ else
   ok "un contrato con shape no se marca"
 fi
 
+echo "── 4. CONTROL NEGATIVO: contrato_ que cita CÓDIGO con path:línea → silencio ──"
+# Medido el 2026-08-12: el detector aceptaba `docs/…`, `.png` y `mockup`, pero NO un path de código.
+# O sea premiaba enlazar un documento y castigaba citar el archivo exacto — al revés del canon §3
+# («inventario con path:línea antes de diseñar»). El contrato de `TarjetaIngresoPropuesto` citaba dos
+# paths con línea, salía «PROSA PURA» en cada ciclo, y frontend lo ejecutó igual y cerró PR #433: el
+# instrumento estaba desmentido por el resultado.
+rm -f "$BUZON/abierto/2026-08-12_contrato_planificacion-a-frontend_con-shape.md"
+printf '# contrato\n\nEl bug esta en `apps/mobile/src/modules/chat/TarjetaIngresoPropuesto.tsx:56`,\ny el POST sale de `apps/mobile/src/modules/ingresos/FormularioIngreso.tsx:255`.\n' \
+  > "$BUZON/abierto/2026-08-12_contrato_planificacion-a-frontend_con-path-de-codigo.md"
+correr
+if printf '%s' "$out" | grep -q "PROSA PURA"; then
+  fail "FALSO POSITIVO: un path:línea de código ES señalar un artefacto, y el más preciso. Salida: $out"
+else
+  ok "un contrato que cita código con path:línea no se marca"
+fi
+
+echo "── 5. CONTROL POSITIVO del caso 4: mencionar el módulo EN PROSA no alcanza ──"
+# Sin este, el caso 4 pasaría también con un patrón tan laxo que aceptara cualquier cosa — que sería
+# apagar el lint con otro nombre.
+rm -f "$BUZON/abierto/2026-08-12_contrato_planificacion-a-frontend_con-path-de-codigo.md"
+prosa "toca el modulo de ingresos de mobile y arregla la card" \
+  "$BUZON/abierto/2026-08-12_contrato_planificacion-a-frontend_solo-prosa-sobre-modulos.md"
+correr
+if printf '%s' "$out" | grep -q "PROSA PURA: 2026-08-12_contrato_planificacion-a-frontend_solo-prosa-sobre-modulos.md"; then
+  ok "nombrar el módulo en prosa sigue sin contar como artefacto"
+else
+  fail "el patrón quedó tan laxo que acepta prosa: el lint está apagado. Salida: $out"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-lint-contratos-glob-por-tipo: 3/3"
+  echo "✅ test-lint-contratos-glob-por-tipo: 5/5"
   exit 0
 fi
 echo "❌ test-lint-contratos-glob-por-tipo: $fallos fallo(s)"
