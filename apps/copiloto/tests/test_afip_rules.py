@@ -36,6 +36,7 @@ from afip_rules import (
     determinar_tipo_comprobante,
     fecha_valida_para_afip,
     normalizar_condicion_iva_receptor,
+    perfil_desde_dict,
     puede_emitir,
     siguiente_estado,
     validar_cuit,
@@ -346,6 +347,47 @@ def test_r7_perfil_incompleto_se_detecta(campo, valor, codigo):
 def test_r7_sin_perfil_no_se_arma_payload():
     with pytest.raises(ValueError):
         armar_payload_wsfe(perfil_monotributo(razon_social=""), borrador_valido(), hoy=HOY)
+
+
+# ---------------------------------------------------------------------------
+# perfil_desde_dict — D12 (2026-08-13): `tool_catalog._run_emitir_factura` pasaba el `dict` crudo de
+# `AfipPerfilStore.get()` directo a `validar_perfil`/`validar_factura_completa` (que hacen `perfil.cuit`,
+# acceso por atributo) -> `AttributeError: 'dict' object has no attribute 'cuit'`, 5/5 en producción. El
+# test que cubría esa ruta usaba un fake que devolvía un `PerfilFiscal` ya armado, nunca el `dict` real
+# -- por eso no lo cazó. Estos tests ejercitan el shape real (`dict` con las 7 columnas de la tabla).
+# ---------------------------------------------------------------------------
+
+
+def _fila_perfil_sql(**kw) -> dict:
+    base = dict(cuit=CUIT_EMISOR, razon_social="Emprendimiento de Prueba",
+               domicilio_comercial="Calle Falsa 123, CABA", condicion_iva="monotributo",
+               ingresos_brutos="20-40937847-2", inicio_actividades=date(2020, 1, 1), punto_venta=1)
+    base.update(kw)
+    return base
+
+
+def test_perfil_desde_dict_reconstruye_el_dataclass_desde_la_fila_sql():
+    perfil = perfil_desde_dict(_fila_perfil_sql())
+    assert perfil == perfil_monotributo()
+
+
+def test_perfil_desde_dict_acepta_inicio_actividades_como_string_iso():
+    """La columna vuelve como `date` con psycopg2, pero cualquier consumidor que la sirva por JSON
+    (ej. una ruta HTTP que reenvíe la fila) la vería como string ISO -- mismo criterio que `_fecha`
+    de `afip_factura_workflow.py`."""
+    perfil = perfil_desde_dict(_fila_perfil_sql(inicio_actividades="2020-01-01"))
+    assert perfil.inicio_actividades == date(2020, 1, 1)
+
+
+def test_perfil_desde_dict_none_da_none():
+    assert perfil_desde_dict(None) is None
+
+
+def test_perfil_desde_dict_alimenta_validar_perfil_sin_explotar():
+    """Regresión directa del bug D12: `validar_perfil` hace acceso por atributo -- si este paso de
+    conversión faltara, esto explotaría con `AttributeError` en vez de devolver `[]`."""
+    errores = validar_perfil(perfil_desde_dict(_fila_perfil_sql()))
+    assert errores == []
 
 
 # ---------------------------------------------------------------------------

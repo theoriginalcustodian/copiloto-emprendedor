@@ -25,7 +25,6 @@ with workflow.unsafe.imports_passed_through():
     from afip_rules import (
         BorradorFactura,
         Concepto,
-        CondicionEmisor,
         CondicionIVA,
         DatosVenta,
         EstadoFactura,
@@ -37,6 +36,7 @@ with workflow.unsafe.imports_passed_through():
         armar_payload_wsfe,
         calcular_totales,
         determinar_tipo_comprobante,
+        perfil_desde_dict,
         puede_emitir,
         receptor_desde_payload,
         siguiente_estado,
@@ -378,18 +378,7 @@ class FacturaWorkflow:
 
     @staticmethod
     def _perfil_desde(datos: dict | None) -> PerfilFiscal | None:
-        if not datos:
-            return None
-        from datetime import date as _date
-
-        inicio = datos["inicio_actividades"]
-        return PerfilFiscal(
-            cuit=str(datos["cuit"]), razon_social=str(datos["razon_social"]),
-            domicilio_comercial=str(datos["domicilio_comercial"]),
-            condicion_iva=CondicionEmisor(str(datos["condicion_iva"])),
-            ingresos_brutos=str(datos["ingresos_brutos"]),
-            inicio_actividades=inicio if isinstance(inicio, _date) else _date.fromisoformat(str(inicio)),
-            punto_venta=int(datos["punto_venta"]))
+        return perfil_desde_dict(datos)
 
     @staticmethod
     def _fecha(valor):

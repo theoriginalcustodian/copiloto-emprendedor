@@ -41,11 +41,22 @@ class _CredFake:
 
 
 class _PerfilStoreFake:
+    """D12 (2026-08-13): devuelve el MISMO shape que el `AfipPerfilStore.get()` real -- un `dict`
+    plano de la fila SQL, nunca un `PerfilFiscal` ya armado. El fake viejo devolvía el dataclass
+    directo y por eso nunca ejercitó el paso `perfil_desde_dict()` que faltaba en `_run_emitir_factura`
+    (`AttributeError: 'dict' object has no attribute 'cuit'`, 5/5 en producción)."""
+
     def __init__(self, perfil):
         self._perfil = perfil
 
     def get(self, cuit):
-        return self._perfil
+        p = self._perfil
+        if p is None:
+            return None
+        return {"cuit": p.cuit, "razon_social": p.razon_social,
+                "domicilio_comercial": p.domicilio_comercial,
+                "condicion_iva": p.condicion_iva.value, "ingresos_brutos": p.ingresos_brutos,
+                "inicio_actividades": p.inicio_actividades, "punto_venta": p.punto_venta}
 
 
 class _FacturaBackendFake:
