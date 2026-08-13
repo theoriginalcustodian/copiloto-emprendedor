@@ -46,6 +46,7 @@ from calendar_policy import CALENDAR_POLICY
 from memory_provider import build_memory_provider
 from conn_pool import pool_de_conexiones
 from contexto_tenant import conexion_con_tenant
+from deposito_traumas import fabrica_desde
 from mp_credential_store import MpCredentialStore
 from mp_payment_store import MpPaymentStore
 from mp_web import create_mp_app
@@ -200,6 +201,9 @@ async def _serve() -> None:
         consultar_factura=make_consultar_factura(client),
         signal_factura=make_signal_factura(client),
         generar_doc=_generar_doc,
+        # D2: el fallo del Doc se atrapa y degrada DENTRO del endpoint (nunca llega a la costura C2
+        # global), así que necesita su propia fábrica de DLQ — misma `conn_factory` que usa C2.
+        traumas=fabrica_desde(conn_factory),
     )
 
     gastos_app = create_gastos_app(

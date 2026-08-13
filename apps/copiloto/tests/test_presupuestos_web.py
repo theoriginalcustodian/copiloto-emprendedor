@@ -6,12 +6,19 @@ verdad y no una imitación: si el router dejara pasar un id ajeno, el fake se lo
 """
 from __future__ import annotations
 
+import os
+import uuid
+
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from presupuesto_store import (APROBADO, DESESTIMADO, PENDIENTE, TRANSICIONES, TransicionInvalida)
 from presupuestos_web import create_presupuestos_app
+from trauma_store import TraumaStore
+
+necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
+                                 reason="requiere Postgres real (DATABASE_URL)")
 
 
 # --- fakes ---------------------------------------------------------------------
@@ -158,7 +165,7 @@ class _EspiaFactura:
 
 
 def _app(*, cliente_id="cid-A", perfiles=None, presupuestos=None, cuit="20111111112",
-         espia=None, generar_doc=None, require_tenant=None):
+         espia=None, generar_doc=None, require_tenant=None, traumas=None):
     perfiles = perfiles if perfiles is not None else {}
     presupuestos = presupuestos if presupuestos is not None else {}
     espia = espia or _EspiaFactura()
@@ -168,7 +175,7 @@ def _app(*, cliente_id="cid-A", perfiles=None, presupuestos=None, cuit="20111111
         presupuesto_store_factory=lambda cid: _FakePresupuestoStore(presupuestos, cid),
         afip_cred_store_factory=lambda cid: _FakeCredStore(cuit),
         abrir_borrador=espia.abrir, consultar_factura=espia.consultar,
-        signal_factura=espia.signal, generar_doc=generar_doc)
+        signal_factura=espia.signal, generar_doc=generar_doc, traumas=traumas)
     return TestClient(app), espia, presupuestos, perfiles
 
 
@@ -294,6 +301,45 @@ def test_el_doc_cuando_funciona_queda_pegado_al_presupuesto():
     cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
     p = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]
     assert (p["doc_id"], p["doc_link"]) == ("doc-1", "https://docs/x")
+
+
+@necesita_pg
+def test_D2_el_fallo_del_doc_queda_depositado_en_la_dlq(conn_de_tenant):
+    """D2 (auditoría lote C, C3): el fallo del Doc se atrapaba y se logueaba, pero como el endpoint
+    NUNCA re-lanza (a propósito — el presupuesto ya existe), la costura global C2 nunca lo veía y
+    nunca depositaba. Con `traumas` cableado, el mismo `except` que ya logueaba también deposita —
+    misma DLQ real que usa la costura C2, no un doble."""
+    cid = str(uuid.uuid4())
+    conn_factory = conn_de_tenant(cid)
+
+    def _doc_que_explota(cid_, presupuesto):
+        raise RuntimeError("Google dijo que no")
+
+    from deposito_traumas import fabrica_desde
+    cli, *_ = _app(cliente_id=cid, generar_doc=_doc_que_explota, traumas=fabrica_desde(conn_factory))
+    r = cli.post("/presupuestos", json=_BODY)
+    assert r.status_code == 201, "el presupuesto se crea igual — el Doc es accesorio"
+
+    (trauma,) = TraumaStore(conn_factory, cid).listar()
+    assert trauma["error_type"] == "RuntimeError"
+    assert trauma["costura"] == "presupuesto_doc_degradado"
+
+    conn = conn_factory()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM uc_factory.copiloto_traumas WHERE cliente_id = %s", (cid,))
+    conn.close()
+
+
+def test_CONTROL_sin_traumas_el_presupuesto_se_crea_igual_sin_depositar():
+    """El depósito es una mejora del registro, nunca una condición para crear — mismo criterio que
+    `deposito_traumas`. `traumas=None` es el default de `_app`, así que esto ya lo cubre
+    `test_el_presupuesto_se_crea_AUNQUE_falle_el_doc`; este test lo deja explícito para D2."""
+    def _doc_que_explota(cid, presupuesto):
+        raise RuntimeError("Google dijo que no")
+
+    cli, *_ = _app(generar_doc=_doc_que_explota, traumas=None)
+    r = cli.post("/presupuestos", json=_BODY)
+    assert r.status_code == 201
 
 
 # --- presupuestos: lectura ----------------------------------------------------
