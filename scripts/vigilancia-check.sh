@@ -101,25 +101,31 @@ if [ -z "${BUZON_DIR:-}" ]; then
 $deuda_out"
 fi
 
-# ── 2.ter) MAIL FRESCO para planificación: nadie lo mira hasta el vigía (cada 20min) ────────────
+# ── 2.ter) MAIL FRESCO: nadie lo mira hasta el vigía ─────────────────────────────────────────────
 # Causa raíz (2026-08-03, hallazgo del operador): ni este chequeo ni el de sesiones ociosas leían
 # abierto/ — sólo COLA/ESCALADORES/VIDA, ninguno es "¿hay correo nuevo dirigido a mí?". Un
 # avance_/cierre_ backend-a-planificacion podía esperar hasta 20min (la cadencia del vigía v3) sin
 # que el gate de 3min lo viera, porque un mensaje nuevo no es ociosidad ni parálisis — es lo
-# opuesto. Ventana de 5min (> intervalo del cron de 3min + margen de jitter): un archivo -a-
-# planificacion_/-a-todos_ más nuevo que eso es necesariamente correo que ningún ciclo previo pudo
-# haber visto. Se apaga solo pasados 5min (no hay estado "leído" que trackear) — alarma como mucho
-# una vez por archivo, en el ciclo inmediato siguiente a su llegada.
+# opuesto. Ventana de 5min (> intervalo del cron de 3min + margen de jitter): un archivo dirigido a
+# mí más nuevo que eso es necesariamente correo que ningún ciclo previo pudo haber visto. Se apaga
+# solo pasados 5min (no hay estado "leído" que trackear) — alarma como mucho una vez por archivo,
+# en el ciclo inmediato siguiente a su llegada.
 #
-# `! -iname '*_planificacion-a-*'` (2026-08-06, medido): sin esto el gate se alarmaba con los
-# broadcasts que ESTA MISMA sesión acababa de escribir — un `dato_planificacion-a-todos_…` matchea
-# `*-a-todos_*`. Cada mensaje propio quemaba el ciclo siguiente releyendo lo que uno mismo redactó
-# treinta segundos antes. El vigía v3 ya descartaba lo propio por esta razón ("son tuyos:
-# notificarlos es ruido disfrazado de novedad"); el gate de 3min nunca copió esa mitad de la regla.
-# Ojo con el patrón: `*_planificacion-a-*`, no `planificacion-a-*`, porque el nombre arranca con la
-# fecha (`2026-08-06_dato_planificacion-a-todos_…`) — anclar al principio no matchearía nunca, y ése
-# es el modo de fallar en silencio de este filtro: no rompe nada, sólo deja de filtrar.
-mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname '*-a-planificacion_*' -o -iname '*-a-todos_*' \) ! -iname '*_planificacion-a-*' -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
+# `SESION_ACTUAL` (2026-08-13, hallazgo frontend): el gate es COMPARTIDO por las 4 sesiones
+# (monitoreo-{backend,frontend,manejo-errores}.md y el genérico de planificación lo invocan
+# idéntico), pero el filtro de "no avisarme de lo que yo mismo escribí" venía hardcodeado a
+# `_planificacion-a-*` — sólo protegía a planificación. Cualquier OTRA sesión que escribiera su
+# propio `-a-todos_` (p.ej. un `avance_` de cierre) se autoalarmaba en su propio ciclo siguiente,
+# el mismo bug que ya se había cazado y resuelto para planificación el 2026-08-06, sin generalizar
+# la mitad que faltaba. Reproducido en vivo: 3 ciclos seguidos de la sesión frontend marcando como
+# "sin ver" un `avance_frontend-a-todos_…` que la propia frontend acababa de redactar.
+# Default `planificacion` preserva el comportamiento histórico para invocaciones que todavía no
+# pasan la variable (crones ya instalados de otras sesiones, que sólo la adoptan al reinstalarse).
+# Ojo con el patrón: `*_<SESION_ACTUAL>-a-*`, no `<SESION_ACTUAL>-a-*`, porque el nombre arranca con
+# la fecha (`2026-08-06_dato_planificacion-a-todos_…`) — anclar al principio no matchearía nunca, y
+# ése es el modo de fallar en silencio de este filtro: no rompe nada, sólo deja de filtrar.
+SESION_ACTUAL="${SESION_ACTUAL:-planificacion}"
+mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname "*-a-${SESION_ACTUAL}_*" -o -iname '*-a-todos_*' \) ! -iname "*_${SESION_ACTUAL}-a-*" -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
 [ -n "$mail_out" ] && add "MAIL FRESCO (sin ver aún, <5min):
 $mail_out"
 
