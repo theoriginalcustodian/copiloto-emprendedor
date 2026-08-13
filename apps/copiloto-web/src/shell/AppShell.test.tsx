@@ -1,11 +1,44 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** Partial mock: sólo la red de Actividad/Clientes — mismo arnés que `TarjetaClientePropuesto.test.tsx`.
+ * D14 necesita datos reales (una fila `cliente`, la ficha de `obtenerCliente`) para ejercitar el
+ * camino fila -> `onAbrirCliente(id)` -> shell -> `ClientesScreen` de punta a punta. */
+vi.mock('@copiloto/core', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@copiloto/core')>();
+  return {
+    ...original,
+    listarActividad: vi.fn(),
+    obtenerCliente: vi.fn(),
+  };
+});
+
+import { listarActividad, obtenerCliente, type Cliente } from '@copiloto/core';
 
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
 import { THEMES, ThemeProvider } from '../design-system/ThemeProvider';
 import { AppShell } from './AppShell';
 import { ModeProvider } from './modeStore';
+
+const mockListarActividad = vi.mocked(listarActividad);
+const mockObtenerCliente = vi.mocked(obtenerCliente);
+
+function clienteFixture(id: number, nombre: string): Cliente {
+  return {
+    id,
+    nombre,
+    docTipo: null,
+    docNro: null,
+    condicionIva: null,
+    domicilio: null,
+    email: null,
+    telefono: null,
+    notas: null,
+    origen: 'derivado',
+    creadoEn: '2026-08-01T00:00:00Z',
+  };
+}
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -112,5 +145,74 @@ describe('AppShell', () => {
     document.documentElement.setAttribute('data-theme', theme);
     renderAppShell();
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+  });
+});
+
+describe('AppShell — D14 (fila de Actividad "cliente" abre la ficha por id)', () => {
+  beforeEach(() => {
+    mockMatchMedia();
+    window.localStorage.clear();
+    vi.clearAllMocks();
+    mockListarActividad.mockResolvedValue({
+      status: 'ok',
+      items: [
+        {
+          id: 'cliente:42',
+          tipo: 'cliente',
+          fecha: '2026-08-10T12:00:00-03:00',
+          titulo: 'Nuevo cliente',
+          detalle: 'Panadería La Esquina',
+          monto: null,
+          signo: 'neutro',
+        },
+      ],
+      cursor: null,
+    });
+  });
+
+  it('tocar la fila navega a Clientes y el id llega a la capa de datos (obtenerCliente) -- abre ESA ficha', async () => {
+    mockObtenerCliente.mockResolvedValue({
+      status: 'ok',
+      ficha: { cliente: clienteFixture(42, 'Panadería La Esquina'), presupuestos: [], facturas: [] },
+    });
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
+    const fila = await screen.findByTestId('actividad-cliente:42');
+    fireEvent.click(fila);
+
+    // El tab cambia solo (no hace falta tocar la barra): `abrirCliente` hace `changeTab` + setea el id.
+    expect(await screen.findByTestId('pantalla-clientes')).toBeInTheDocument();
+    // `FichaCliente` repite su propio `obtenerCliente` al montar (presupuestos/facturas) -- ver el
+    // mismo comentario en `ClientesScreen.test.tsx`. Lo que importa acá es que TODAS las llamadas
+    // sean con el id de ESTA fila (42), no con uno viejo o pegado.
+    await waitFor(() => expect(mockObtenerCliente).toHaveBeenCalledWith(42));
+    expect(mockObtenerCliente.mock.calls.every(([id]) => id === 42)).toBe(true);
+    expect(await screen.findByTestId('ficha-cliente-nombre')).toHaveTextContent('Panadería La Esquina');
+  });
+
+  it('control negativo del reset: volver a Clientes por la BARRA (no por la fila) no reabre la última ficha', async () => {
+    mockObtenerCliente.mockResolvedValue({
+      status: 'ok',
+      ficha: { cliente: clienteFixture(42, 'Panadería La Esquina'), presupuestos: [], facturas: [] },
+    });
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
+    fireEvent.click(await screen.findByTestId('actividad-cliente:42'));
+    await waitFor(() => expect(screen.getByTestId('ficha-cliente-nombre')).toHaveTextContent('Panadería La Esquina'));
+    const llamadasPrevias = mockObtenerCliente.mock.calls.length;
+
+    // Salgo por la barra (Chat) y vuelvo a Clientes por la barra -- NO por `abrirCliente`.
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clientes' }));
+
+    expect(await screen.findByTestId('pantalla-clientes')).toBeInTheDocument();
+    expect(screen.queryByTestId('ficha-cliente')).not.toBeInTheDocument();
+    // `changeTab` limpió `clienteIdAbierto` -- sin el reset, este remount volvería a pedir el 42 de
+    // nuevo (más llamadas que las de la apertura original). Doy un margen breve para que, si el
+    // reset fallara, el pedido espurio ya se haya disparado antes de leer el conteo.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockObtenerCliente.mock.calls.length).toBe(llamadasPrevias);
   });
 });

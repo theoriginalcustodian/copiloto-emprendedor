@@ -37,12 +37,16 @@ export interface ChatScreenProps {
    * `DesktopShell`.
    */
   variant?: 'mobile' | 'desktop';
+  /** D14 — id de cliente a abrir en el tab Clientes (botón "Ver cliente" de
+   * `TarjetaClientePropuesto` en `ya_existe`). Lo pasan ambos shells (`abrirCliente`). */
+  onAbrirCliente?: (id: number) => void;
 }
 
 export function ChatScreen({
   onHideChange,
   onSurfaceTap,
   variant = 'mobile',
+  onAbrirCliente,
 }: ChatScreenProps = {}) {
   const { messages, sendStatus, send, sendAudio } = useChat();
   const isDesktop = variant === 'desktop';
@@ -66,6 +70,7 @@ export function ChatScreen({
         onHideChange={onHideChange}
         onSurfaceTap={isDesktop ? undefined : onSurfaceTap}
         sessionMarker={isDesktop ? undefined : 'SESIÓN ACTIVA · HOY'}
+        onAbrirCliente={onAbrirCliente}
       />
       <Composer
         sendStatus={sendStatus}

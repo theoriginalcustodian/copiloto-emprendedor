@@ -24,7 +24,14 @@ export function ordenarAlfabetico(clientes: readonly Cliente[]): Cliente[] {
   return [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 }
 
-export function ClientesScreen() {
+export interface ClientesScreenProps {
+  /** D14 — id de un cliente a abrir apenas monta (fila de Actividad, botón "Ver cliente" de
+   * `TarjetaClientePropuesto`). El shell lo resetea a `null` en cada cambio de tab (ver
+   * `AppShell`/`DesktopShell`), así que un remount posterior sin id nuevo no reabre la ficha vieja. */
+  clienteIdInicial?: number;
+}
+
+export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [total, setTotal] = useState(0);
@@ -108,11 +115,19 @@ export function ClientesScreen() {
       : 'Ese cliente ya está en tu cartera.';
   }
 
-  async function abrirDueno(id: number) {
+  const abrirDueno = useCallback(async (id: number) => {
     setAvisoDuplicado(null);
     const res = await obtenerCliente(id);
     if (res.status === 'ok' && vivo.current) setFicha(res.ficha.cliente);
-  }
+  }, []);
+
+  // D14 — abre la ficha de `clienteIdInicial` apenas monta (fila de Actividad, "Ver cliente" del
+  // chat). El componente se REMONTA en cada entrada al tab Clientes (ver los shells: `activeTab
+  // === 'clientes' && <ClientesScreen .../>`), así que este efecto sólo corre una vez por entrada
+  // — no hace falta "consumir" el prop para evitar reaperturas espurias.
+  useEffect(() => {
+    if (clienteIdInicial != null) void abrirDueno(clienteIdInicial);
+  }, [clienteIdInicial, abrirDueno]);
 
   const hayClientes = clientes.length > 0;
   const buscando = busquedaAplicada !== '';

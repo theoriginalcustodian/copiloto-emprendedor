@@ -100,6 +100,36 @@ describe('TarjetaClientePropuesto', () => {
     );
   });
 
+  it('D14: 409 por documento + onAbrirCliente -- ofrece "Ver cliente" y navega con el id del dueño', async () => {
+    mockCrear.mockResolvedValue({
+      status: 'duplicado',
+      duplicado: { por: 'documento', dueno: clienteGuardado('Panadería La Esquina') }, // id: 3
+    });
+    const onAbrirCliente = vi.fn();
+    render(
+      <TarjetaClientePropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} onAbrirCliente={onAbrirCliente} />,
+    );
+
+    fireEvent.click(screen.getByTestId('cliente-guardar'));
+    await waitFor(() => expect(screen.getByTestId('cliente-propuesto-ya-existe')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('cliente-propuesto-ver-cliente'));
+    expect(onAbrirCliente).toHaveBeenCalledWith(3);
+  });
+
+  it('D14: sin onAbrirCliente (caller no lo pasa) -- "ya_existe" NO ofrece el botón', async () => {
+    mockCrear.mockResolvedValue({
+      status: 'duplicado',
+      duplicado: { por: 'documento', dueno: clienteGuardado('Panadería La Esquina') },
+    });
+    render(<TarjetaClientePropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    fireEvent.click(screen.getByTestId('cliente-guardar'));
+    await waitFor(() => expect(screen.getByTestId('cliente-propuesto-ya-existe')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('cliente-propuesto-ver-cliente')).toBeNull();
+  });
+
   it('409 por nombre (homónimo): se queda EDITANDO, no cierra la card', async () => {
     mockCrear.mockResolvedValue({
       status: 'duplicado',
@@ -165,6 +195,26 @@ describe('TarjetaClientePropuesto — guard cross-reload (caso hostil)', () => {
 
     expect(screen.getByTestId('cliente-propuesto-ya-existe')).toBeInTheDocument();
     expect(screen.queryByTestId('cliente-nombre')).toBeNull();
+  });
+
+  it('D14: el guard también persiste el `duenoId` -- el botón "Ver cliente" sigue funcionando tras un reload', async () => {
+    mockCrear.mockResolvedValue({
+      status: 'duplicado',
+      duplicado: { por: 'documento', dueno: clienteGuardado('Panadería La Esquina') }, // id: 3
+    });
+    const { unmount } = render(<TarjetaClientePropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+    fireEvent.click(screen.getByTestId('cliente-guardar'));
+    await waitFor(() => expect(screen.getByTestId('cliente-propuesto-ya-existe')).toBeInTheDocument());
+
+    unmount(); // simula el reload -- sólo `localStorage` sobrevive
+
+    const onAbrirCliente = vi.fn();
+    render(
+      <TarjetaClientePropuesto propuesta={propuesta()} mensajeId={MENSAJE_ID} onAbrirCliente={onAbrirCliente} />,
+    );
+
+    fireEvent.click(screen.getByTestId('cliente-propuesto-ver-cliente'));
+    expect(onAbrirCliente).toHaveBeenCalledWith(3);
   });
 
   it('card ya DESCARTADA + reload (remount) ⇒ sigue descartada, no reaparece editable', () => {

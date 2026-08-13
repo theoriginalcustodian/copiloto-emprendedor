@@ -38,6 +38,10 @@ export interface MessageListProps {
    * `undefined`. Se muestra únicamente cuando ya hay mensajes (si el chat está vacío manda el
    * `emptyHint`). */
   sessionMarker?: string;
+  /** D14 — id de cliente a abrir en el tab Clientes (botón "Ver cliente" de
+   * `TarjetaClientePropuesto` en `ya_existe`). Pasa a través hasta `FilaMensaje`. Opcional — sin él
+   * la card no ofrece el botón (mismo criterio que el resto de los callbacks del shell acá). */
+  onAbrirCliente?: (id: number) => void;
 }
 
 /**
@@ -59,6 +63,7 @@ export function MessageList({
   onHideChange,
   onSurfaceTap,
   sessionMarker,
+  onAbrirCliente,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -161,7 +166,7 @@ export function MessageList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <FilaMensaje message={message} onChoice={onChoice} />
+              <FilaMensaje message={message} onChoice={onChoice} onAbrirCliente={onAbrirCliente} />
             </div>
           );
         })}
@@ -173,11 +178,12 @@ export function MessageList({
 interface FilaMensajeProps {
   message: ChatMessage;
   onChoice: (value: string) => void;
+  onAbrirCliente?: (id: number) => void;
 }
 
 /** Una fila de la lista — mismo árbol de decisión que antes, ahora aislado para que `measureElement`
  * mida exactamente el contenido de ESTA fila (no el scroller entero). */
-function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
+function FilaMensaje({ message, onChoice, onAbrirCliente }: FilaMensajeProps) {
   if (message.role === 'user') {
     return <Bubble role="user" text={message.text} />;
   }
@@ -193,7 +199,14 @@ function FilaMensaje({ message, onChoice }: FilaMensajeProps) {
 
   const clientePropuesto = leerClientePropuesto(message.card);
   if (clientePropuesto) {
-    return <TarjetaClientePropuesto propuesta={clientePropuesto} texto={message.text} mensajeId={message.id} />;
+    return (
+      <TarjetaClientePropuesto
+        propuesta={clientePropuesto}
+        texto={message.text}
+        mensajeId={message.id}
+        onAbrirCliente={onAbrirCliente}
+      />
+    );
   }
 
   const ingresoPropuesto = leerIngresoPropuesto(message.card);
