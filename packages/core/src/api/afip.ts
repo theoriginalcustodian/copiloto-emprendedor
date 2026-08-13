@@ -185,6 +185,8 @@ export interface EstadoFacturaResp {
   pdf: { url: string; nombre: string; expiraAt: string | null } | null;
   /** `null` mientras el workflow todavía no llegó a la etapa de archivado. */
   drive: ArchivoDrive | null;
+  /** `null` mientras el borrador no tiene cliente cargado (ni por signal ni desde el presupuesto). */
+  receptor: ReceptorInput | null;
   /** La frase redactada, para MOSTRAR. */
   motivo: string | null;
   /** El código estable, para RAMIFICAR. Ver `MotivoCodigo`. */
@@ -702,6 +704,13 @@ interface EstadoFacturaRaw {
     compartido?: boolean;
     motivo?: string | null;
   } | null;
+  receptor?: {
+    condicion_iva: number;
+    tipo_doc: number;
+    nro_doc: string;
+    nombre: string;
+    domicilio: string;
+  } | null;
   motivo: string | null;
   motivo_codigo?: string | null;
   terminado: boolean;
@@ -731,6 +740,15 @@ function normalizarEstadoFactura(raw: EstadoFacturaRaw): EstadoFacturaResp {
           link: raw.drive.link ?? null,
           compartido: raw.drive.compartido ?? false,
           motivo: raw.drive.motivo ?? null,
+        }
+      : null,
+    receptor: raw.receptor
+      ? {
+          condicionIva: raw.receptor.condicion_iva,
+          tipoDoc: raw.receptor.tipo_doc,
+          nroDoc: raw.receptor.nro_doc,
+          nombre: raw.receptor.nombre,
+          domicilio: raw.receptor.domicilio,
         }
       : null,
     motivo: raw.motivo,

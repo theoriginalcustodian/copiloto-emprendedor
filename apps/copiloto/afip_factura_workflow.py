@@ -102,6 +102,7 @@ class FacturaWorkflow:
             "estado": self._estado.value,
             "faltantes": list(self._errores),
             "items": [self._item_dict(i) for i in self._borrador.items],
+            "receptor": self._receptor_dict(self._borrador.receptor),
             "total": str(self._total()),
             "token_confirmacion": self._token() if self._estado is EstadoFactura.ESPERANDO_CONFIRMACION else None,
             "resultado": self._resultado,
@@ -375,6 +376,18 @@ class FacturaWorkflow:
     def _item_dict(item: Item) -> dict:
         return {"descripcion": item.descripcion, "cantidad": str(item.cantidad),
                 "precio_unitario": str(item.precio_unitario), "subtotal": str(item.subtotal)}
+
+    @staticmethod
+    def _receptor_dict(r: Receptor | None) -> dict | None:
+        if r is None:
+            return None
+        return {
+            "condicion_iva": r.condicion_iva.value,
+            "tipo_doc": r.tipo_doc.value,
+            "nro_doc": r.nro_doc,
+            "nombre": r.nombre,
+            "domicilio": r.domicilio,
+        }
 
     @staticmethod
     def _perfil_desde(datos: dict | None) -> PerfilFiscal | None:
