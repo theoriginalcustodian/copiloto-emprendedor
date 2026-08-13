@@ -15,6 +15,11 @@ El fixture es un history capturado con `temporal workflow show --output json`. P
     docker exec temporal-admin-tools temporal workflow show \
       --address temporal-server:7233 --namespace default \
       --workflow-id <wid> --run-id <rid> --output json > fixtures/history_factura_en_vuelo.json
+
+**El replay contra el código de HOY corre en `test_workflow_replay_gate.py`** (D4, gate genérico que
+cubre este fixture y el de `ConversationWorkflow` desde un solo manifest). Este archivo se queda con
+lo que ES específico de este fixture: el control positivo de que el instrumento detecta divergencia,
+y el guard de que el fixture siga siendo uno pre-emisión.
 """
 from __future__ import annotations
 
@@ -27,23 +32,6 @@ import pytest
 from temporalio import workflow
 
 FIXTURE = Path(__file__).parent / "fixtures" / "history_factura_en_vuelo.json"
-
-
-@pytest.mark.asyncio
-async def test_el_patch_no_rompe_las_ejecuciones_en_vuelo():
-    """El history es de una ejecución detenida en el HITL: ya corrió `cargar_contexto_factura` y
-    todavía no emitió. Es exactamente el estado en el que el patch tiene que ser transparente."""
-    from temporalio.client import WorkflowHistory
-    from temporalio.worker import Replayer
-
-    from afip_factura_workflow import FacturaWorkflow
-
-    historia = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    replayer = Replayer(workflows=[FacturaWorkflow])
-
-    # Si el replay divergiera del history, esto levanta y el test falla. No hay assert que agregar:
-    # la ausencia de excepción ES la verificación.
-    await replayer.replay_workflow(WorkflowHistory.from_json(str(uuid.uuid4()), historia))
 
 
 @workflow.defn(name="FacturaWorkflow")
