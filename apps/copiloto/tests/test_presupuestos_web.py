@@ -347,6 +347,23 @@ def test_ADVERSARIAL_un_tenant_no_factura_el_presupuesto_de_otro():
     assert espia.aperturas == [], "no se armó NINGÚN borrador con datos ajenos"
 
 
+def test_ADVERSARIAL_un_tenant_no_cambia_el_estado_del_presupuesto_de_otro():
+    """D5: `PATCH /presupuestos/{id}/estado` sólo tenía adversarial a nivel STORE
+    (`test_presupuesto_store.py`, contra Postgres real con RLS FORCE) -- nada lo probaba a nivel HTTP,
+    a diferencia de `/facturar` (arriba). Marcar `aprobado`/`desestimado` es la decisión que dispara
+    facturar o archivar: que A pudiera resolverle el presupuesto a B sería tan grave como facturarlo."""
+    presupuestos: dict = {}
+    cli_b, *_ = _app(cliente_id="cid-B", presupuestos=presupuestos)
+    id_de_b = cli_b.post("/presupuestos", json=_BODY).json()["presupuesto"]["id"]
+
+    cli_a, *_ = _app(cliente_id="cid-A", presupuestos=presupuestos)
+    r = cli_a.patch(f"/presupuestos/{id_de_b}/estado", json={"estado": APROBADO})
+    assert r.status_code == 404, "no es 403: confirmar que el recurso existe ya filtra información"
+
+    detalle_b = cli_b.get(f"/presupuestos/{id_de_b}").json()["presupuesto"]
+    assert detalle_b["estado"] == PENDIENTE, "el estado de B no se movió por el intento de A"
+
+
 def test_CONTROL_el_test_adversarial_puede_fallar():
     """Control del par de arriba: si el store NO aislara por tenant, ¿lo cazaríamos?
 
