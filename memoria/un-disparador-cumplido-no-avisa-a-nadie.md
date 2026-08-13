@@ -63,5 +63,11 @@ Moraleja aparte, y es la más portable de todo esto: **un control positivo que c
 verde" no es un control positivo.** El control es forzar la condición que debe disparar la alarma y
 verificar que la alarma suena.
 
+Y tiene una segunda mitad que costó otra media hora: **hay que forzarla donde la alarma tiene que
+sonar.** El script se probó 9/9 en el worktree donde se lo escribió, y los crones corren desde el
+checkout compartido — donde el archivo no estaba, y donde el registro tampoco (se resolvió con un
+fallback a `git show origin/main:<path>`, que además es la autoridad correcta). Verde en el banco de
+pruebas no es verde en producción.
+
 Ver también: [[el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino]] — misma familia, la
 señal que no existe se cuela por el camino feliz.

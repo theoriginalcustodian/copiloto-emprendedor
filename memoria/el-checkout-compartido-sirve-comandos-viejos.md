@@ -51,3 +51,34 @@ corroboración.
 **How to apply:** antes de tomar un hito de `PLAN.md`, verificá su condición contra
 `git show origin/main:<archivo>`, no contra el disco. Si el hito ya está hecho, el trabajo es un
 `dato_` al dueño del tablero — no el hito.
+
+## Corrección: el contador de commits NO mide los archivos del working tree (2026-08-12)
+
+Usé el «237/364 commits atrás» como si midiera los archivos, y **no los mide**.
+`git rev-list --count HEAD..origin/main` mide el **HEAD** del checkout compartido, que está parado en
+una rama vieja. Pero ese checkout tiene ~100 archivos **modificados sin commitear**, porque las
+sesiones escriben scripts y docs directamente ahí: esos archivos pueden estar **al día o incluso más
+nuevos que `main`**.
+
+Concretamente: escribí en el registro de deuda un bloqueante **con dueño operador** afirmando que
+`scripts/vigilancia-check.sh` del checkout compartido era la versión vieja «sin el chequeo», y que por
+eso los fixes de vigilancia #394/#400/#409/#414 tampoco corrían. Una línea lo desmintió:
+
+```
+$ diff <(git show origin/main:scripts/vigilancia-check.sh) scripts/vigilancia-check.sh
+  → sólo faltaba mi propio bloque de 23 líneas
+```
+
+Estaba al día. Los otros fixes **sí** corren. La causa real era mucho más chica y era mía: escribí el
+script en un worktree y nunca lo copié al checkout que ejecuta.
+
+**Por qué esto no contradice lo de arriba, y por qué muerde igual.** El checkout compartido no es
+«viejo»: es **inconsistente** — archivos trackeados sin tocar viven en la rama vieja, y archivos que
+alguna sesión editó a mano están al día. Un solo número no puede describir las dos mitades, así que
+cualquier conclusión sacada del contador es una inferencia disfrazada de medición.
+
+**How to apply:** para saber qué versión de un archivo corre en ese checkout, **diffealo**
+(`diff <(git show origin/main:<path>) <path>`). Nunca lo deduzcas del contador de commits, y nunca
+generalices de un archivo a «todo `scripts/`». Y si vas a escribir la conclusión en un registro
+versionado con dueño ajeno, la barra es más alta, no más baja:
+[[una-orden-cerrada-exige-evidencia-de-device]] es la misma exigencia en otro contexto.

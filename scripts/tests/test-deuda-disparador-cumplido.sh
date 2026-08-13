@@ -21,6 +21,7 @@
 #   5. CONTROL NEGATIVO — disparador en prosa, con todo lo demás cerrado → silencio
 #   6. CONTROL POSITIVO — bloque DEUDA-VIVA ausente                      → alarma, no "sin deuda"
 #   7. CONTROL NEGATIVO — --rol que no es el dueño del cumplido          → silencio
+#   8. CONTROL POSITIVO — sin el documento en disco                      → lo lee de origin/main
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -145,6 +146,40 @@ if [ "$rc" -eq 1 ]; then
   ok "7b POSITIVO · --rol backend sí lo ve (el filtro filtra, no silencia)"
 else
   fail "7b POSITIVO · esperaba exit 1; rc=$rc out=<$out>"
+fi
+
+# ── 8. POSITIVO: el registro se lee de origin/main cuando no está en el working tree ─────────
+# Por qué existe este caso (2026-08-12 21:15): el chequeo se probó 9/9 en el worktree donde se lo
+# escribió, y los crones corren desde el CHECKOUT COMPARTIDO — otro working tree, con su HEAD en otra
+# rama y SIN este documento. Ahí el script alarmaba «no pude leer el registro» cada 3 minutos, en el
+# único lugar donde tenía que servir. El fallback a `git show origin/main:<path>` lo arregla, y además
+# es la autoridad correcta: el registro vive en `main`, no en el checkout que casualmente lo corra.
+#
+# Cómo se simula sin tocar el disco del repo: se copia el script a un REPO_ROOT falso *dentro* del
+# repo (git descubre el repositorio caminando hacia arriba, así que `git show` sigue funcionando) y se
+# apunta DEUDA_FILE al path canónico bajo esa raíz — que no existe en disco. Si el fallback funciona,
+# el script lee el documento real de origin/main; si no, dice «no pude leer el registro».
+#
+# La aserción NO mira si hay alarma o no: eso depende del contenido vivo del registro y volvería este
+# test rojo el día que alguien cumpla un disparador. Lo único que se afirma es que LEYÓ.
+fake_root="$REPO_ROOT/scripts/tests/.tmp-fallback-$$"
+if ! git -C "$REPO_ROOT" rev-parse --verify -q origin/main >/dev/null; then
+  # Skip RUIDOSO a propósito: un salteo silencioso sería verde-por-ausencia, que es justo la falla
+  # que este archivo documenta. Pasa en checkouts sin la ref (p. ej. fetch-depth=1 en Actions).
+  printf '  ⚠️  8 SALTEADO · no hay ref origin/main en este checkout — el fallback NO se verificó\n'
+else
+  mkdir -p "$fake_root/scripts"
+  cp "$DEUDA_CHECK" "$fake_root/scripts/deuda-check.sh"
+  out="$(DEUDA_FILE="$fake_root/docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md" \
+         bash "$fake_root/scripts/deuda-check.sh" 2>&1)"
+  rm -rf "$fake_root"
+  if printf '%s' "$out" | grep -qi 'no pude leer el registro'; then
+    fail "8 POSITIVO · el fallback a origin/main no leyó nada; out=<$out>"
+  elif printf '%s' "$out" | grep -q 'DEUDA'; then
+    ok "8 POSITIVO · sin el archivo en disco, lee el registro de origin/main"
+  else
+    fail "8 POSITIVO · salida inesperada, no se puede afirmar que leyó; out=<$out>"
+  fi
 fi
 
 echo

@@ -56,7 +56,7 @@ D10                        | planificacion      | abierto/ > 40 archivos o > 5 a
 D11                        | backend+auditoria  | al modificar FORCE RLS o una policy         | abierto
 D12                        | frontend           | @emision-factura-propuesto                  | abierto
 E3                         | backend            | proximo deploy de codigo real por su merito | abierto
-D13                        | operador           | decidir que hacer con el checkout compartido| abierto
+D13                        | planificacion      | --                                          | cerrado
 ```
 <!-- DEUDA-VIVA:FIN -->
 
@@ -95,7 +95,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
 | D11 | **Los 2 adversariales de C3 (lote C) NO aíslan el guard app-side** — al remover el filtro `WHERE cliente_id` del `UPDATE`, el test sigue **verde** porque RLS `FORCE` lo tapa como 2ª barrera. Verifican el sistema (A no toca B), no cuál capa lo garantiza | Fase D lote C (auditoría, 2026-08-12) | backend + auditoría | **al modificar `FORCE ROW LEVEL SECURITY` o la policy de cualquier tabla con guard app-side** | Defense-in-depth = seguro hoy; deuda de **cobertura**, no de función. Ver abajo |
-| **D13** | 🔴 **El instrumento nuevo (`deuda-check.sh`) está en `main` pero NO CORRE.** Los tres crones ejecutan `bash scripts/vigilancia-check.sh` desde el **checkout compartido**, que está **364 commits detrás de `main`**: ahí ese archivo no existe y `vigilancia-check.sh` es la versión vieja, sin el chequeo. Verificado 2026-08-12 21:10 (`ls scripts/deuda-check.sh` → no existe; `grep -c deuda-check scripts/vigilancia-check.sh` → 0) | campo (planificación, 2026-08-12) | **operador** | **decidir qué hacer con el checkout compartido** — tiene ~100 archivos modificados sin commitear, así que avanzarlo NO es una operación que una sesión pueda tomar sola (canon 9: nada de `pull`/`reset`/`checkout` ahí) | **Es el mismo modo de falla que el instrumento arregla, un nivel más arriba**: existe, está probado, y no se ejecuta. Todo lo que se mergee a `scripts/` tiene este techo, no sólo este script. Ver abajo |
+| **D13** | ~~**El instrumento nuevo (`deuda-check.sh`) está en `main` pero no corre**~~ — ✅ **CERRADO 2026-08-12 21:20.** Se escribió en un worktree y nunca llegó al **checkout compartido**, que es desde donde los crones ejecutan `vigilancia-check.sh`; y el registro tampoco está en ese working tree | campo (planificación, 2026-08-12) | planificación | ✅ resuelto — fallback a `git show origin/main:<path>` para leer el registro + los dos archivos copiados al checkout que corre. Control positivo **end-to-end ahí**: exit 1 nombrando la fila | Ver abajo: la **primera causa que escribí era falsa** y la medición la desmintió |
 | D12 | **Web sólo tiene 1 de las 5 cards `*_propuesto` que mobile tiene desde el hito 8** (`presupuesto_propuesto`, cerrada en e2e §G6; faltan `gasto_propuesto`/`cliente_propuesto`/`ingreso_propuesto`/`factura_propuesto`) | e2e §G6 (frontend, 2026-08-12) | frontend | **cuando se confirme que backend emite `card: {kind: '<x>_propuesto', ...}` hacia web para alguna de las 4 restantes** (grep de `card.kind` en una respuesta real de `/reply`, no suposición) | No hay evidencia de que backend ya mande esas 4 a web — expandir sin esa confirmación es trabajo especulativo. `presupuesto_propuesto` sólo se supo roto porque el smoke lo ejercitó; el mismo método (no inspección de código) decide si esto es deuda real o no aplica |
 
 **Cierre de D8 (frontend, 2026-08-12):** siguiendo la recomendación de planificación en el `dato_` de
@@ -405,36 +405,79 @@ cerrar, y queda cerrado con esta evidencia.
 
 ---
 
-## D13 en detalle — el instrumento existe y no se ejecuta
+## D13 en detalle — el instrumento no vivía donde se ejecuta (y la primera causa que escribí era falsa)
 
 **Qué es.** El 2026-08-12 21:05 se mergeó `scripts/deuda-check.sh` (#426): el chequeo que hace que un
 disparador cumplido en este mismo registro **grite solo**, compuesto dentro de `vigilancia-check.sh`,
-que los tres crones corren cada 3 minutos. Probado 9/9 con control positivo del cableado.
+que los tres crones corren cada 3 minutos. Probado 9/9 con control positivo del cableado — **en el
+worktree donde se lo escribió**.
 
-**Y no corre.** Los crones ejecutan `bash scripts/vigilancia-check.sh` con el cwd de la sesión, que es
-el **checkout compartido**. Medido:
+**El síntoma.** Los crones no lo ejecutan desde ese worktree: corren con el cwd de la sesión, que es el
+**checkout compartido**. Ahí:
 
 ```
-$ ls scripts/deuda-check.sh                      → No such file or directory
-$ git rev-list --count HEAD..origin/main         → 364
-$ grep -c 'deuda-check' scripts/vigilancia-check.sh → 0
+$ ls scripts/deuda-check.sh                          → No such file or directory
+$ grep -c 'deuda-check' scripts/vigilancia-check.sh  → 0
 ```
 
-**Por qué se registra en vez de arreglarse en el momento.** Avanzar el checkout compartido no es una
-operación táctica: tiene ~100 archivos modificados sin commitear y lo comparten tres sesiones. El
-canon prohíbe explícitamente `pull`/`reset`/`checkout`/`stash` ahí (regla 9), y con razón — el riesgo
-no es el instrumento, es el trabajo sin commitear de otra sesión. **Es una decisión del operador**, no
-un atajo que una sesión autónoma pueda tomar.
+### La causa que escribí primero, y por qué era falsa
 
-**Por qué importa más que este script.** El techo aplica a **todo** lo que se mergee a `scripts/`: los
-fixes de vigilancia #394, #400, #409 y #414 tienen la misma pregunta abierta —¿la versión que corre es
-la que se arregló?—. Este registro sólo puede afirmarlo del código que se verificó leyendo el checkout
-que efectivamente se ejecuta.
+Escribí que la causa era que el checkout compartido está **364 commits detrás de `main`**, y de ahí
+deduje tres cosas: que el dueño era el **operador** (avanzar ese checkout con ~100 archivos sin
+commitear no es táctico), que era un **bloqueante**, y que los fixes de vigilancia #394, #400, #409 y
+#414 tenían la misma pregunta abierta.
 
-**Es, textualmente, el mismo modo de falla que D13 documenta un nivel más abajo:** algo que existe,
-está escrito, está probado, y no se ejecuta. Se cazó por correr el control positivo *en el lugar donde
-el instrumento tiene que sonar* en vez de en el worktree donde se lo escribió — que es la única forma
-de cazarlo. Memoria: [[un-disparador-cumplido-no-avisa-a-nadie]].
+Las tres eran falsas, y la medición que faltaba era una sola línea:
+
+```
+$ diff <(git show origin/main:scripts/vigilancia-check.sh) scripts/vigilancia-check.sh
+  → sólo faltan las 23 líneas de mi propio bloque
+```
+
+`git rev-list --count HEAD..origin/main` mide el **HEAD** del checkout compartido (que está parado en
+`docs/production-readiness-brief`), **no los archivos del working tree**. Y las sesiones escriben los
+scripts *directamente en ese working tree*: por eso `vigilancia-check.sh` en disco estaba al día salvo
+mi bloque. **#394, #400, #409 y #414 sí están corriendo.** Inferí el estado de un archivo desde un
+contador de commits en vez de diffear el archivo.
+
+### La causa real
+
+Dos huecos míos, ninguno del operador:
+
+1. Escribí `deuda-check.sh` y el bloque de `vigilancia-check.sh` en un worktree y **nunca los copié al
+   checkout que corre**. Es el paso que las otras sesiones sí venían haciendo.
+2. El **documento del registro** tampoco está en ese working tree, así que aun copiando el script el
+   chequeo habría fail-loudeado «no encuentro el registro» cada 3 minutos.
+
+### Cómo quedó cerrado
+
+- `leer_registro()` en `deuda-check.sh`: si el documento no está en el working tree, lo lee de
+  `git show origin/main:<path>`. No es un parche de conveniencia — la **autoridad del registro es
+  `origin/main`**, no el checkout que casualmente corra el script.
+- Los dos archivos copiados al checkout compartido (escritura de archivos nuevos, sin tocar el índice
+  git ni el trabajo sin commitear de nadie: no requiere ninguna de las operaciones que el canon 9
+  prohíbe ahí).
+- **Control positivo end-to-end en el checkout que efectivamente corre**, no en el worktree:
+
+```
+$ DEUDA_FILE=<fixture con un disparador cumplido> bash scripts/vigilancia-check.sh --quiet
+DEUDA:
+⚠️  DEUDA: 1 fila(s) con el DISPARADOR CUMPLIDO y sin cerrar
+    · D7 · dueño backend · disparador @lote-B ya está CERRADO
+EXIT=1
+```
+
+### Lo que sobrevive de todo esto
+
+Dos cosas, y ninguna es «el checkout compartido es un problema»:
+
+- **Un control positivo que consiste en "sale verde" no es un control positivo.** El control es forzar
+  la condición que debe disparar la alarma y verificar que la alarma suena — y hacerlo *en el lugar
+  donde tiene que sonar*, no donde se escribió el código. Memoria:
+  [[un-disparador-cumplido-no-avisa-a-nadie]].
+- **Un contador de commits no dice nada sobre un archivo del working tree.** Diffeá el archivo. Yo
+  inferí, y la inferencia me hizo escribir en un registro versionado un bloqueante con dueño ajeno que
+  no existía — que es peor que no haberlo registrado.
 
 ---
 

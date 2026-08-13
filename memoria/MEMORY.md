@@ -12,7 +12,7 @@
 - **🌐 EL REPO ES PÚBLICO** (2026-08-06). Un `.env` commiteado es público al instante; historia auditada: 0 secretos. `CLAUDE.md` §cabecera.
 - **🟢 BETA, M-WEB y CONSOLA cerrados** (faltan las invitaciones del operador). **🔥 Ahora: soporte técnico** — estado real en `coordinacion/PLAN.md`. [[copiloto-beta-sprint-cerrado]]
 - **⚙️ CI PROPIO (ADR-001)** — la suite no se define en GitHub: `scripts/ci/*.sh` + `gate.sh` (recibo por SHA) + `no-drift.sh`. Antes de mergear: `ci-verde.sh <PR>`.
-- **🌳 Checkout compartido: 237 commits atrás** — lo escrito ahí no llega a `main` ni al grafo. Worktree desde `origin/main`.
+- **🌳 Checkout compartido: MEZCLADO** — HEAD viejo, pero ~100 archivos editados a mano y al día. Lo escrito ahí no llega a `main`. Diffeá el archivo; el contador de commits no lo mide.
 - **Prod-beta multitenant vivo**, smoke 10/10, RLS `FORCE` aplicando. [[copiloto-deploy-multitenant-vivo]] · [[rls-activado-que-no-filtraba-el-dueno-esta-exento]]
 - **🛡️ Manejo de errores — COMPLETO en prod** (#151→#185) + autohealing que abre PRs solo, con gate que distingue *arregla* de *no rompe*. [[no-romper-no-es-arreglar]]
 - **⚠️ Ese frente lo destaparon INSTRUMENTOS QUE MENTÍAN, no features** (5 de 35 PRs). [[instrumentos-que-confirman-en-vez-de-verificar]]
@@ -158,7 +158,7 @@
 
 - [🩹 `--amend`/rebase en checkout compartido pisa el commit de otro](amend-en-checkout-compartido-pisa-el-commit-de-otro.md) — commit `docs:` nuevo.
 - [💥 `git checkout <ref> -- .` PISA lo del working tree](checkout-ref-doble-guion-punto-pisa-cambios-solo-en-working-tree.md) — usá `merge-base`.
-- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja, scripts viejos.
+- [🕰️ El checkout compartido sirve COMANDOS VIEJOS](el-checkout-compartido-sirve-comandos-viejos.md) — rama vieja; pero está MEZCLADO: diffeá el archivo, no cuentes commits.
 - [🚨 Sincronizar al VPS desde el worktree equivocado tumba el servicio](sincronizar-al-vps-desde-el-worktree-equivocado.md) — pisa mudo.
 - [🚢 `deploy.sh` NO valida que el checkout esté al día con main](deploy-sh-no-valida-checkout-al-dia-con-main.md) — sube el disco tal cual.
 - [🌿 Rama nueva ≠ "el grafo no sabe nada"](rama-nueva-no-significa-que-el-grafo-no-sepa-nada.md) — base: `merge-base origin/main`.
