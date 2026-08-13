@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
+from deposito_traumas import FabricaDeTraumas, depositar
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
@@ -165,10 +166,16 @@ def create_presupuestos_app(
     consultar_factura: Callable | None = None,
     signal_factura: Callable | None = None,
     generar_doc: Callable | None = None,
+    traumas: FabricaDeTraumas | None = None,
 ) -> FastAPI:
     """`generar_doc(cliente_id, presupuesto) -> dict|None` es opcional a propósito: sin él (o si
     falla) el presupuesto se crea igual, sin Doc. La creación NUNCA depende de que Google responda —
-    misma decisión que el archivado del PDF en Drive."""
+    misma decisión que el archivado del PDF en Drive.
+
+    `traumas` es opcional (igual que en las costuras C2/C3, `deposito_traumas`): el fallo del Doc se
+    degrada y se loguea igual sin DLQ. Con `traumas`, además queda depositado — este endpoint atrapa
+    la excepción localmente y NUNCA la re-lanza (degradar es la decisión correcta: el presupuesto ya
+    existe), así que la costura global C2 nunca la ve. Sin un depósito explícito acá, D2 se repite."""
     app = FastAPI(title="Copiloto Presupuestos")
 
     async def _maybe_async(fn, *args):
@@ -241,8 +248,16 @@ def create_presupuestos_app(
                 # Degradar acá es correcto (el presupuesto ya existe; el Doc es accesorio), pero el
                 # fallo tiene que quedar CONTABLE: si esto pasa 40 veces en una semana, Google Docs
                 # está roto para ese tenant y nadie se entera con una línea en prosa. Item 1.2.
-                log_error(exc, workflow="crear_presupuesto", cliente_id=cliente_id,
-                          extra={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
+                fingerprint = log_error(exc, workflow="crear_presupuesto", cliente_id=cliente_id,
+                                        extra={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
+                # D2 (auditoría lote C, C3): esta excepción se atrapa y NUNCA se re-lanza (a propósito
+                # — el presupuesto ya existe, el Doc es accesorio), así que la costura global C2
+                # (`handler_errores_web.py`) nunca la ve y nunca deposita. Sin este `depositar()`
+                # explícito, el fallo queda logueado pero no reintentable — exactamente D2.
+                depositar(traumas, fingerprint=fingerprint, workflow="crear_presupuesto",
+                          error_type=type(exc).__name__, cliente_id=cliente_id,
+                          costura="presupuesto_doc_degradado",
+                          contexto={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
         return {"presupuesto": presupuesto}
