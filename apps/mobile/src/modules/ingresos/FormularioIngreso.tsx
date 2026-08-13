@@ -65,6 +65,17 @@ export interface FormularioIngresoProps {
   origen?: OrigenIngreso;
   onGuardado: (ingreso: Ingreso) => void;
   onCancelar: () => void;
+  /**
+   * Botón "Así está bien" del aviso post-guardado (`${testID}-listo`) — se pisa APARTE de
+   * `onCancelar` porque, a diferencia de éste, se dispara con el ingreso YA guardado (sólo declina
+   * completar los datos opcionales). Tratarlo como cancelar es el bug real encontrado en vivo contra
+   * prod (2026-08-12, primero en la card web equivalente — mismo componente, mismo botón): un caller
+   * con estado terminal propio (`TarjetaIngresoPropuesto`) mostraba "No lo anotamos" sobre un ingreso
+   * que sí estaba en la base. Opcional: sin proveerlo cae a `onCancelar`, que es lo que ya hacía
+   * `PantallaIngresos` (ahí "así está bien" y "cancelar" llevan al mismo lugar, así que el default
+   * preserva su comportamiento).
+   */
+  onListo?: () => void;
   testID?: string;
 }
 
@@ -73,6 +84,7 @@ export function FormularioIngreso({
   origen,
   onGuardado,
   onCancelar,
+  onListo,
   testID = 'ingreso-form',
 }: FormularioIngresoProps) {
   const tema = useTema();
@@ -252,7 +264,7 @@ export function FormularioIngreso({
                 deshabilitado: enviando,
                 testID: `${testID}-completar`,
               },
-              { etiqueta: 'Así está bien', onPress: onCancelar, variante: 'secundario', testID: `${testID}-listo` },
+              { etiqueta: 'Así está bien', onPress: onListo ?? onCancelar, variante: 'secundario', testID: `${testID}-listo` },
             ]}
           />
         </View>
