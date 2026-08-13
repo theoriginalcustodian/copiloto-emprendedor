@@ -60,7 +60,7 @@ function estadoAfipMock(over: Partial<EstadoAfip> = {}): { status: 'ok' } & Esta
     wsAutorizados: ['wsfe'],
     perfilCompleto: true,
     puedeFacturar: true,
-    ambiente: 'homologacion',
+    ambiente: 'dev',
     onboarding: null,
     ...over,
   };
