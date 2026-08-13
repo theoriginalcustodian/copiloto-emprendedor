@@ -61,3 +61,6 @@ apps/mobile/.expo/
 apps/mobile/android/
 apps/mobile/ios/
 *.apk
+
+# Estado intermedio de scripts e2e multi-fase (armar/verificar) — no se versiona
+.e2e-state/
