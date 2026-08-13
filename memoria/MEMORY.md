@@ -92,6 +92,7 @@
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — señal cero se cuela por el `continue`. Medir contra la expectativa, no contra el reloj. Costó ~100 min de P0 sin dueño.
 - [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: un corte de créditos apagó los 3 sin que sonara nada. `CronList` al reanudar, antes de retomar.
 - [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la corrida verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
+- [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo: D7 tuvo 2 disparadores cumplidos el mismo día y mantuvo la ronda entera abierta. Cerrarlo con instrumento, no con lección.
 
 ### Guards, gates y jueces
 
