@@ -11,6 +11,56 @@
 
 ---
 
+## Bloque máquina — DEUDA-VIVA
+
+**Esto no es un resumen de la tabla de abajo: es la parte que un script puede leer.** Existe porque
+el 2026-08-12 la tabla en prosa falló en su único trabajo: **D5 y D7 tenían el disparador cumplido y
+nadie se enteró**, porque un disparador escrito en lenguaje natural no avisa cuando se cumple — hay
+que ir a buscarlo, y nadie va. Backend cerró su ciclo declarando cola vacía de buena fe: `abierto/` y
+`en-curso/` **estaban** vacíos; esta tabla no.
+
+Mismo mecanismo que el bloque `COLA-VIVA` de `coordinacion/PLAN.md`, que ya resolvió este problema
+para los hitos (`scripts/cola-check.sh`, causa raíz: 4 h de fábrica parada el 2026-07-23). Se reusa
+el idioma, no se inventa uno nuevo.
+
+**Formato:** `id | dueño | disparador | estado`
+
+- `disparador` con la forma `@<otro-id>` se evalúa **solo**: se cumple cuando ese id está `cerrado`.
+  Cualquier otro texto es informativo — el script no lo interpreta y **nunca** lo da por cumplido.
+  Un `@` que apunte a un id inexistente **se reporta como roto**, no se ignora: se cumpliría nunca.
+- `estado` ∈ `abierto` · `en-curso` · `bloqueado` · `cerrado`.
+  - **Sólo `abierto` puede alarmar.** Una fila ya tomada (`en-curso`) tiene dueño mirándola;
+    gritarle cada 3 min sería la alarma-que-suena-siempre que ya se corrigió en el watchdog
+    (#394/#400). Lo que se caza es el hueco exacto: **disparador cumplido y nadie la tomó**.
+  - Sólo `cerrado` satisface el disparador de otra fila.
+- Los `lote-*` y `emision-*` están acá **porque son disparadores de otras filas**, no porque sean
+  deuda: son condiciones observables a las que otra fila se cuelga.
+
+Control: `scripts/deuda-check.sh` (lo compone `scripts/vigilancia-check.sh`, que corre cada 3 min).
+
+<!-- DEUDA-VIVA:INICIO -->
+```
+lote-B                     | backend            | --                                          | cerrado
+lote-C                     | backend            | @lote-B                                     | cerrado
+emision-factura-propuesto  | backend            | que el agente emita esa card hacia web      | abierto
+D1                         | backend            | 1er sprint post-beta                        | abierto
+D2                         | backend            | 1er sprint post-beta                        | abierto
+D3                         | backend            | 1er sprint post-beta                        | abierto
+D4                         | backend            | 1er sprint post-beta                        | abierto
+D5                         | backend            | @lote-C                                     | en-curso
+D6                         | backend            | 1er sprint post-beta                        | abierto
+D7                         | backend            | @lote-B                                     | cerrado
+D8                         | frontend           | --                                          | cerrado
+D9                         | frontend           | proximo item de frontend                    | abierto
+D10                        | planificacion      | abierto/ > 40 archivos o > 5 autogenerados  | abierto
+D11                        | backend+auditoria  | al modificar FORCE RLS o una policy         | abierto
+D12                        | frontend           | @emision-factura-propuesto                  | abierto
+E3                         | backend            | proximo deploy de codigo real por su merito | abierto
+```
+<!-- DEUDA-VIVA:FIN -->
+
+---
+
 ## Contexto: qué NO está acá
 
 Las pasadas 1 y 2 cerraron con **0 P0**. Lo que está en ejecución, y por lo tanto **no** es deuda:
@@ -39,7 +89,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D4 | `patched()` sin gate de replay en CI | P2 H-7 | backend | 1er sprint post-beta | Riesgo real sobre ejecuciones en vuelo, pero requiere diseñar el gate — no es un fix de línea |
 | D5 | 8 endpoints AFIP/presupuestos con guard probado sólo a nivel helper/store, no por endpoint HTTP hostil | **P2** H-2 (⚠️ decía P1 — mal etiquetada, corregida 2026-08-12 20:47 contra el informe de origen) | backend | ⏰ **disparador CUMPLIDO** — el lote C cerró el 2026-08-12 18:12 (#415 + Fase D). Contratada, sin bloquear nada | Es la **misma clase** que C3 del lote C. Al escribir esos tests, extender el patrón a estos 8 |
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
-| D7 | `except: return False` en `mercadopago_gateway.py:119` — fail-silent. **Es el 5º `except` de D-A**, no un hallazgo suelto | **P2** H-4 por sí solo, pero **P1 como instancia de D-A** (Pasada 2 H-3) — corregido 2026-08-12 20:47 | backend | 🔴 **disparador CUMPLIDO DOS VECES y no ejecutado**: «junto con D-A del lote B» (#407, 15:40) y luego «a lote C» (mensaje de commit de #407); el lote C cerró 18:12 sin él. **Bloquea G2, G3 y G8.** Contratado 20:39 | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
+| D7 | ~~`except: return False` en `mercadopago_gateway.py:119` — fail-silent. **Es el 5º `except` de D-A**~~ — ✅ **CERRADO 2026-08-12 21:00, #424** | **P2** H-4 por sí solo, pero **P1 como instancia de D-A** (Pasada 2 H-3) — corregido 2026-08-12 20:47 | backend | ✅ resuelto — el fail-closed **no cambió** (sigue `return False`); se agregó `log_error_evento` con `reason` del SDK, que distingue `SIGNATURE_MISMATCH` de `TIMESTAMP_OUT_OF_TOLERANCE` sin loguear la firma cruda. **Con esto D-A queda 5/5 y G2/G3 cierran** | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
 | D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado** | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia pero **no eliminó la causa**. Ver abajo: 3ª aparición, discriminada |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |

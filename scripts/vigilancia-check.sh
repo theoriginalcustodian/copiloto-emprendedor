@@ -78,6 +78,29 @@ lint_rc=$?
 [ "$lint_rc" -ne 0 ] && add "CONTRATOS SIN ARTEFACTO:
 $lint_out"
 
+# ── 2.quater) DEUDA: disparador cumplido y nadie la tomó ───────────────────────────────────────
+# Causa raíz (2026-08-12, informe G8 §5 lección 4): la cola de una sesión vive en DOS lugares —el
+# buzón y el registro de deuda versionado— y sólo el buzón se miraba solo. D5 y D7 tenían el
+# disparador cumplido desde las 18:12 y backend cerró su ciclo declarando cola vacía DE BUENA FE:
+# `abierto/` y `en-curso/` sí estaban vacíos. Costó ~2 h y dejó G2/G3/G8 abiertos por un `except`
+# de dos líneas. Un disparador cumplido no avisa; hay que ir a buscarlo, y nadie va.
+#
+# Se compone igual que COLA: el script decide, este gate sólo pregunta. Ver su docstring.
+#
+# El gate es `BUZON_DIR sin setear`, NO `-f $BUZON/PLAN.md` como el chequeo de COLA. Se probaron
+# los dos: con la condición de PLAN.md el chequeo se saltea SOLO en cualquier worktree, porque
+# `coordinacion/` está gitignoreada y existe una sola vez (en el checkout principal) — o sea que
+# se autosilenciaba justo donde se lo estaba verificando, y el control positivo daba verde por
+# ausencia. Un instrumento que se saltea solo y no lo dice es peor que no tenerlo.
+# `BUZON_DIR` seteado = corrida de test contra un fixture: ahí sí se saltea, para que los tests de
+# este script no empiecen a fallar el día que una fila real cumpla su disparador.
+if [ -z "${BUZON_DIR:-}" ]; then
+  deuda_out="$(bash "$REPO_ROOT/scripts/deuda-check.sh" --quiet 2>&1)"
+  deuda_rc=$?
+  [ "$deuda_rc" -ne 0 ] && add "DEUDA:
+$deuda_out"
+fi
+
 # ── 2.ter) MAIL FRESCO para planificación: nadie lo mira hasta el vigía (cada 20min) ────────────
 # Causa raíz (2026-08-03, hallazgo del operador): ni este chequeo ni el de sesiones ociosas leían
 # abierto/ — sólo COLA/ESCALADORES/VIDA, ninguno es "¿hay correo nuevo dirigido a mí?". Un
