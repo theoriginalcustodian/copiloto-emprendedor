@@ -15,12 +15,15 @@ excepción de negocio (retry ∞ del workflow), ver `agente-loop-tool-failure-re
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 import secrets
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+
+_log = logging.getLogger("copiloto.tool_catalog")
 
 from _paths import ensure_paths
 ensure_paths()
@@ -57,8 +60,8 @@ from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noq
 # `estado().faltantes` (afip_factura_workflow.py:99): una verdad, un solo lugar (respuesta de
 # planificación al fork del turno-1, 2026-07-24). Nada de esto toca red/DB — son dataclasses + reglas.
 from afip_rules import (BorradorFactura, Concepto, CondicionIVA, DatosVenta,  # noqa: E402
-                        Item, Receptor, TipoDoc, determinar_tipo_comprobante, validar_factura_completa,
-                        validar_perfil)
+                        Item, Receptor, TipoDoc, determinar_tipo_comprobante, perfil_desde_dict,
+                        validar_factura_completa, validar_perfil)
 # reusa el mapeo humano toolkit->nombre (mismo dominio 'emprendedor', sin duplicar el dict) — FIX HIGH card.
 from dispatcher_emprendedor import _friendly_toolkit  # noqa: E402
 
@@ -1325,7 +1328,8 @@ def _run_emitir_factura(arguments, ctx, idem_key, now_iso_provider,
                           observation={"error": "no puedo facturar por voz ahora mismo"})
 
     cuit = afip_cred_store_factory(ctx.cliente_id).primer_cuit()
-    perfil = afip_perfil_store_factory(ctx.cliente_id).get(cuit) if cuit else None
+    perfil_dict = afip_perfil_store_factory(ctx.cliente_id).get(cuit) if cuit else None
+    perfil = perfil_desde_dict(perfil_dict)
     errores_perfil = validar_perfil(perfil)
     if errores_perfil:
         # Mensaje de negocio (DoD §5.5): el turno no se cae, y no es algo que se resuelva re-dictando.
@@ -1617,6 +1621,12 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             # de la app. Se loguea con fingerprint (agrupa ocurrencias del MISMO bug) y se deposita en
             # la DLQ -- `depositar_trauma` nunca lanza (ver `deposito_traumas.py`), así que esto no puede
             # convertirse en un segundo fallo encima del primero.
+            #
+            # D12 (2026-08-13): el fingerprint es one-way (djb2) y `copiloto_traumas.contexto` no
+            # guarda el mensaje -- sin este `_log.exception`, el AttributeError real de
+            # `_run_emitir_factura` quedó 5/5 irreproducible desde los logs, sólo visible leyendo el
+            # código. `_log.exception` deja el traceback en journalctl ANTES de depositar el trauma.
+            _log.exception("tool_executor: fallo no previsto en tool=%s", name)
             fp = fingerprint_de_error(workflow="tool_executor", exc=exc)
             depositar_trauma(trauma_store_factory, fingerprint=fp, workflow="tool_executor",
                              error_type=type(exc).__name__, cliente_id=getattr(ctx, "cliente_id", None),

@@ -170,6 +170,27 @@ class PerfilFiscal:
     punto_venta: int
 
 
+def perfil_desde_dict(datos: dict | None) -> "PerfilFiscal | None":
+    """Reconstruye el `PerfilFiscal` desde el `dict` plano que devuelve `AfipPerfilStore.get()`.
+
+    Único punto de conversión (mismo criterio que el resto de este módulo: "acá hay una sola
+    copia"). D12 (2026-08-13): `_run_emitir_factura` pasaba el `dict` de la store directo a
+    `validar_perfil`/`validar_factura_completa` sin este paso -> `AttributeError` al primer
+    `perfil.cuit`, 5/5 en producción. El test que cubría esa ruta usaba un fake que devolvía un
+    `PerfilFiscal` ya armado, nunca el `dict` real de la store -- no lo detectó.
+    """
+    if not datos:
+        return None
+    inicio = datos["inicio_actividades"]
+    return PerfilFiscal(
+        cuit=str(datos["cuit"]), razon_social=str(datos["razon_social"]),
+        domicilio_comercial=str(datos["domicilio_comercial"]),
+        condicion_iva=CondicionEmisor(str(datos["condicion_iva"])),
+        ingresos_brutos=str(datos["ingresos_brutos"]),
+        inicio_actividades=inicio if isinstance(inicio, date) else date.fromisoformat(str(inicio)),
+        punto_venta=int(datos["punto_venta"]))
+
+
 @dataclass(frozen=True)
 class Item:
     descripcion: str
