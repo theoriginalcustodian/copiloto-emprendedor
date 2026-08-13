@@ -84,7 +84,13 @@ def _build_app(*, require_tenant, transcribe=None):
     )
 
 
-def _post_audio(app, *, session_id: str = "s1", audio_bytes: bytes = b"fake-audio-bytes",
+# D6: firma EBML real (`OggS`/`ftyp`/etc. según formato) -- desde que `web.py` valida magic bytes,
+# un blob fake sin firma se rechaza con 415 ANTES de llegar a `transcribe`, y estos tests dejarían
+# de probar lo que dicen probar.
+_WEBM_HEADER = b"\x1a\x45\xdf\xa3"
+
+
+def _post_audio(app, *, session_id: str = "s1", audio_bytes: bytes = _WEBM_HEADER + b"fake-audio-bytes",
                filename: str = "clip.webm", content_type: str = "audio/webm"):
     return TestClient(app).post(
         "/chat/audio",
@@ -112,12 +118,13 @@ def test_chat_audio_transcribes_and_routes_like_chat(monkeypatch):
         return "quiero un turno para mañana"
 
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_fake_transcribe)
-    r = _post_audio(app, session_id="s1", audio_bytes=b"raw-bytes", content_type="audio/webm")
+    audio_bytes = _WEBM_HEADER + b"raw-bytes"
+    r = _post_audio(app, session_id="s1", audio_bytes=audio_bytes, content_type="audio/webm")
     assert r.status_code == 200
     body = r.json()
     assert body == {"wf_id": "conv-web-cid-A-s1", "accepted": True,
                     "transcript": "quiero un turno para mañana"}
-    assert calls == [(b"raw-bytes", "audio/webm")]        # el transcriber recibió los bytes reales
+    assert calls == [(audio_bytes, "audio/webm")]        # el transcriber recibió los bytes reales
 
 
 def test_chat_audio_different_tenants_route_to_their_own_wf_id(monkeypatch):
@@ -185,3 +192,36 @@ def test_chat_audio_oversized_returns_413(monkeypatch):
     r = _post_audio(app, audio_bytes=b"esto-supera-los-cinco-bytes")
     assert r.status_code == 413
     assert called["n"] == 0   # rechazó antes de transcribir
+
+
+# --- 415: magic bytes no coinciden con el content_type declarado (D6) -------------
+
+def test_chat_audio_content_type_mentido_returns_415_y_no_transcribe(monkeypatch):
+    """El cliente declara `audio/webm` pero los bytes reales son un JPEG -- D6 (deuda registrada):
+    extensión/content-type es un dato del cliente, no una prueba. Debe rechazar ANTES de pegarle a
+    Groq, no confiar en la etiqueta."""
+    called = {"n": 0}
+
+    def _t(audio_bytes: bytes, content_type: str) -> str:
+        called["n"] += 1
+        return "no debería llegar acá"
+
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
+    r = _post_audio(app, audio_bytes=b"\xff\xd8\xffno-es-un-webm", content_type="audio/webm")
+    assert r.status_code == 415
+    assert called["n"] == 0
+
+
+def test_chat_audio_content_type_desconocido_returns_415(monkeypatch):
+    """`content_type` fuera de la whitelist de firmas conocidas -> fail-closed, aunque los bytes
+    pudieran ser audio real de un formato no contemplado."""
+    called = {"n": 0}
+
+    def _t(audio_bytes: bytes, content_type: str) -> str:
+        called["n"] += 1
+        return "no debería llegar acá"
+
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
+    r = _post_audio(app, audio_bytes=_WEBM_HEADER + b"x", content_type="application/octet-stream")
+    assert r.status_code == 415
+    assert called["n"] == 0
