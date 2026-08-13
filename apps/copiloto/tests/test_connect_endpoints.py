@@ -93,6 +93,7 @@ class _FakeComposioGateway:
     def __init__(self, connections: dict | None = None) -> None:
         self.authorize_calls: list[tuple[str, str]] = []
         self.revoke_calls: list[str] = []
+        self.invalidate_calls: list[str] = []
         self._connections = connections or {}
 
     def authorize(self, user_id: str, toolkit: str) -> str:
@@ -104,6 +105,9 @@ class _FakeComposioGateway:
 
     def revoke(self, connection_id: str) -> None:
         self.revoke_calls.append(connection_id)
+
+    def invalidate(self, user_id: str) -> None:
+        self.invalidate_calls.append(user_id)
 
 
 @pytest.fixture(autouse=True)

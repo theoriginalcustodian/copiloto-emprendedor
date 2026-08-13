@@ -1056,6 +1056,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=404, detail=f"el tenant no tiene {service!r} conectado")
         for c in mias:
             composio_gateway.revoke(c["id"])
+        composio_gateway.invalidate(cliente_id)  # D1: sin esto, `/me`/`/catalog` mienten "conectado" hasta que venza el TTL
         return {"desconectado": True, "revocadas": len(mias)}
 
     @app.delete("/mp/connection")
