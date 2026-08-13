@@ -40,6 +40,7 @@ function estado(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
     resultado: { ok: true, duplicado: false, cae: '86294776469171', caeVto: '2026-08-01', nro: 8, tipoCbte: 11, puntoVenta: 6, id: null },
     pdf: { url: 'https://afipsdk/f.pdf', nombre: 'f.pdf', expiraAt: null },
     drive: null,
+    receptor: null,
     motivo: null,
     motivoCodigo: null,
     terminado: true,

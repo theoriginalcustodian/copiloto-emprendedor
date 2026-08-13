@@ -26,6 +26,7 @@ const ESTADO: EstadoFacturaResp = {
   resultado: null,
   pdf: null,
   drive: null,
+  receptor: null,
   motivo: null,
   motivoCodigo: null,
   terminado: false,

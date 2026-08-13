@@ -104,6 +104,7 @@ function estadoMock(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
     resultado: null,
     pdf: null,
     drive: null,
+    receptor: null,
     motivo: null,
     motivoCodigo: null,
     terminado: false,
