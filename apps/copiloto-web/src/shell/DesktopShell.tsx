@@ -101,6 +101,13 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     setClienteIdAbierto(id);
   }, []);
 
+  // D12 — ver el mismo comentario en `AppShell.tsx`: mismo handoff que "Facturar" desde un
+  // presupuesto, ahora también disparado por "Completar a mano" del chat.
+  const irAFacturar = useCallback((facturaId: string) => {
+    setFacturaIdDesdePresupuesto(facturaId);
+    setActiveTab('facturacion');
+  }, []);
+
   const abrirSoporte = useCallback((funcion: FuncionSoporte) => {
     setFuncionSoporte(funcion);
     setActiveTab('soporte');
@@ -122,7 +129,9 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
           <MiTicketScreen ticketId={ticketIdAbierto} onVolver={() => setTicketIdAbierto(null)} />
         ) : (
           <>
-            {activeTab === 'chat' && <ChatScreen variant="desktop" onAbrirCliente={abrirCliente} />}
+            {activeTab === 'chat' && (
+              <ChatScreen variant="desktop" onAbrirCliente={abrirCliente} onFacturar={irAFacturar} />
+            )}
             {activeTab === 'connections' && <ConnectionsScreen />}
             {activeTab === 'gastos' && <GastosScreen />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
@@ -135,14 +144,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
                 onAbrirTicket={setTicketIdAbierto}
               />
             )}
-            {activeTab === 'presupuestos' && (
-              <PresupuestosScreen
-                onFacturar={(facturaId) => {
-                  setFacturaIdDesdePresupuesto(facturaId);
-                  setActiveTab('facturacion');
-                }}
-              />
-            )}
+            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
             {activeTab === 'inteligencia' && <InteligenciaScreen />}
             {activeTab === 'midia' && <MidiaScreen />}
             {activeTab === 'escritorio' && (

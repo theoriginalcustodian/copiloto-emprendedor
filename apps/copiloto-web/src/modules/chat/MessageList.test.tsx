@@ -90,6 +90,56 @@ describe('MessageList', () => {
     // La burbuja plana con el `text` NO se monta por separado: la card la reemplaza entera.
     expect(screen.queryByText('Te armé un borrador de presupuesto para Juan Pérez.')).not.toBeInTheDocument();
   });
+
+  it('D12: card `factura_propuesta` -> TarjetaFacturaPropuesta (gate de sólo lectura, no burbuja lisa)', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'a1',
+        role: 'assistant',
+        text: 'Te armé el borrador de la factura.',
+        card: {
+          kind: 'factura_propuesta',
+          data: {
+            factura_id: 'presu-12',
+            faltantes: [],
+            items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
+            cliente: { razon_social: 'Juan Pérez', cuit: '20304050607', condicion_iva: 'CF' },
+            total: 50000,
+            tipo_comprobante: 'C',
+          },
+        },
+      },
+    ];
+    render(<MessageList messages={messages} onChoice={vi.fn()} />);
+    expect(screen.getByTestId('factura-propuesta')).toBeInTheDocument();
+    expect(screen.getByTestId('factura-propuesta-emitir')).toBeInTheDocument();
+    expect(screen.queryByText('Te armé el borrador de la factura.')).not.toBeInTheDocument();
+  });
+
+  it('D12: `factura_propuesta` incompleta + `onFacturar` -> "Completar a mano" navega con el facturaId', () => {
+    const onFacturar = vi.fn();
+    const messages: ChatMessage[] = [
+      {
+        id: 'a1',
+        role: 'assistant',
+        text: 'Te armé el borrador de la factura.',
+        card: {
+          kind: 'factura_propuesta',
+          data: {
+            factura_id: 'presu-12',
+            faltantes: ['fecha_servicio_desde'],
+            items: [{ descripcion: 'Service de aire', cantidad: 1, precio_unitario: 50000 }],
+            cliente: null,
+            total: 50000,
+            tipo_comprobante: 'C',
+          },
+        },
+      },
+    ];
+    render(<MessageList messages={messages} onChoice={vi.fn()} onFacturar={onFacturar} />);
+    fireEvent.click(screen.getByTestId('factura-propuesta-completar'));
+    expect(onFacturar).toHaveBeenCalledWith('presu-12');
+  });
 });
 
 /**

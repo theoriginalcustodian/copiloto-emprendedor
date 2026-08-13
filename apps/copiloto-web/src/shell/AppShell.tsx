@@ -132,6 +132,15 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
     setClienteIdAbierto(id);
   }, [changeTab]);
 
+  // D12 — mismo handoff que ya usaba "Facturar" desde un presupuesto (línea de abajo), ahora
+  // también disparado por "Completar a mano" de `TarjetaFacturaPropuesta` en el chat: crea/adopta el
+  // borrador ANTES de navegar, `PantallaFacturacion` lo toma vía `facturaIdInicial` en vez de crear
+  // uno nuevo.
+  const irAFacturar = useCallback((facturaId: string) => {
+    setFacturaIdDesdePresupuesto(facturaId);
+    changeTab('facturacion');
+  }, [changeTab]);
+
   const abrirSoporte = useCallback(
     (funcion: FuncionSoporte) => {
       setFuncionSoporte(funcion);
@@ -191,6 +200,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
                 onHideChange={setTabHidden}
                 onSurfaceTap={toggleChrome}
                 onAbrirCliente={abrirCliente}
+                onFacturar={irAFacturar}
               />
             )}
             {activeTab === 'connections' && <ConnectionsScreen />}
@@ -205,14 +215,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
                 onAbrirTicket={setTicketIdAbierto}
               />
             )}
-            {activeTab === 'presupuestos' && (
-              <PresupuestosScreen
-                onFacturar={(facturaId) => {
-                  setFacturaIdDesdePresupuesto(facturaId);
-                  changeTab('facturacion');
-                }}
-              />
-            )}
+            {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
             {activeTab === 'inteligencia' && <InteligenciaScreen />}
             {activeTab === 'midia' && <MidiaScreen />}
             {activeTab === 'escritorio' && (
