@@ -163,6 +163,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
       const { estado } = await esperarEstadoEstable(facturaIdInicial);
       if (cancelado || !vivo.current) return;
       setEstadoFacturaActual(estado);
+      if (estado.receptor) setClienteLocal(estado.receptor);
       setCreandoBorrador(false);
     })().catch(() => {
       if (!cancelado && vivo.current) {
@@ -194,6 +195,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
       if (cancelado || !vivo.current) return;
       setFacturaId(res.facturaId);
       setEstadoFacturaActual(estado);
+      if (estado.receptor) setClienteLocal(estado.receptor);
       setCreandoBorrador(false);
     })().catch(() => {
       if (!cancelado && vivo.current) {
