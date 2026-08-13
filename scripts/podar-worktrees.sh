@@ -59,10 +59,23 @@ AQUI="$(pwd -P)"
 GRACIA_SEG=$((HORAS_GRACIA * 3600))
 AHORA="$(date +%s)"
 
-if ! git -C "$REPO_ROOT" rev-parse --verify -q origin/main >/dev/null; then
-  echo "❌ no hay ref origin/main — sin ella no se puede afirmar que una rama esté mergeada."
+# PODAR_REF es parametrizable SÓLO para poder testear donde `origin/main` no existe (Actions clona
+# con fetch-depth=1 y sin esa ref). El default no se toca: la autoridad de "esto ya está mergeado" es
+# origin/main, y ninguna corrida real debería usar otra cosa.
+REF_BASE="${PODAR_REF:-origin/main}"
+if ! git -C "$REPO_ROOT" rev-parse --verify -q "$REF_BASE" >/dev/null; then
+  echo "❌ no existe la ref '$REF_BASE' — sin ella no se puede afirmar que una rama esté mergeada."
   echo "   Se aborta: clasificar sin esa referencia sería adivinar, y acá adivinar borra trabajo."
   exit 1
+fi
+# …y por eso mismo NO se acepta otra ref en modo destructivo. Medido: con `PODAR_REF=HEAD` en un
+# worktree cualquiera el informe pasó de 0 a 15 podables — la ref decide qué se considera "ya
+# mergeado", así que una ref equivocada convierte este script en un borrador de trabajo ajeno.
+# El flag existe para el test; dejarlo abierto en `--podar` sería abrir el agujero al arreglar el otro.
+if [ "$PODAR" = "1" ] && [ "$REF_BASE" != "origin/main" ]; then
+  echo "❌ PODAR_REF='$REF_BASE' con --podar. Sólo se borra usando origin/main como autoridad."
+  echo "   PODAR_REF existe únicamente para testear donde esa ref no está (CI con fetch-depth=1)."
+  exit 2
 fi
 
 # ── Ramas con PR mergeado, según GitHub ──────────────────────────────────────────────────────
@@ -79,7 +92,7 @@ fi
 trabajo_ya_en_main() {
   local wt="$1" sha="$2" rama="$3"
   # (a) ancestro directo
-  git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null && return 0
+  git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" "$REF_BASE" 2>/dev/null && return 0
   # (b) PR mergeado con esa rama como head
   if [ "$rama" != "(detached)" ] && [ -n "$RAMAS_MERGEADAS" ]; then
     printf '%s\n' "$RAMAS_MERGEADAS" | grep -qxF "$rama" && return 0
@@ -87,12 +100,12 @@ trabajo_ya_en_main() {
   # (c) el contenido que la rama tocó es idéntico al de main. Si main cambió esos archivos después
   #     por otro motivo, da negativo y el worktree se conserva — el error cae del lado seguro.
   local base archivos
-  base="$(git -C "$wt" merge-base origin/main HEAD 2>/dev/null)" || return 1
+  base="$(git -C "$wt" merge-base "$REF_BASE" HEAD 2>/dev/null)" || return 1
   [ -z "$base" ] && return 1
   archivos="$(git -C "$wt" diff --name-only "$base" HEAD 2>/dev/null)"
   [ -z "$archivos" ] && return 0   # la rama no cambió nada respecto de main
   printf '%s\n' "$archivos" | tr '\n' '\0' \
-    | xargs -0 git -C "$wt" diff --quiet origin/main HEAD -- 2>/dev/null
+    | xargs -0 git -C "$wt" diff --quiet "$REF_BASE" HEAD -- 2>/dev/null
 }
 
 # ── ¿Alguien tocó este worktree dentro de la ventana de gracia? ──────────────────────────────
