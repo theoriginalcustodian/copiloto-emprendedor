@@ -45,7 +45,7 @@ paso antes: **el instrumento sí ejerce su lógica, y la ejerce sobre el sujeto 
 salteo visible, no hay error, no hay silencio sospechoso — hay una respuesta bien formada sobre otra
 cosa. Por eso no lo caza revisar la lógica: la lógica está bien.
 
-## Dos vueltas de tuerca que aparecieron en los casos 5 y 6
+## Tres vueltas de tuerca que aparecieron en los casos 5 y 6
 
 **(a) Una alarma permanente es un instrumento apagado, no uno estricto.** El `999999min` sonaba en
 *todos* los ciclos. Nadie lo apagó — se leyó, se descartó por absurdo, y se siguió. Eso es peor que
