@@ -75,6 +75,8 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
   const [funcionSoporte, setFuncionSoporte] = useState<FuncionSoporte>('soporte_tecnico');
   // S6-11 — ver el mismo comentario en `AppShell.tsx`.
   const [ticketIdAbierto, setTicketIdAbierto] = useState<number | null>(null);
+  // D14 — ver el mismo comentario en `AppShell.tsx`.
+  const [clienteIdAbierto, setClienteIdAbierto] = useState<number | null>(null);
 
   // Ver el mismo comentario en `AppShell.tsx` -- `apps` quedó sin caller real tras la depuración
   // de la barra, se deja la rama viva a propósito (retirar el modal entero es una decisión más
@@ -87,7 +89,16 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
     }
     // Ver el mismo comentario en `AppShell.tsx`: cambiar de tab con un ticket abierto lo cierra.
     setTicketIdAbierto(null);
+    // D14 — ver el mismo comentario en `AppShell.tsx`.
+    setClienteIdAbierto(null);
     setActiveTab(key);
+  }, []);
+
+  // D14 — ver el mismo comentario en `AppShell.tsx`. Acá no pasa por `handleTabChange` (mismo
+  // criterio que `onAbrirGasto` de esta pantalla, más abajo: navegación directa vía `setActiveTab`).
+  const abrirCliente = useCallback((id: number) => {
+    setActiveTab('clientes');
+    setClienteIdAbierto(id);
   }, []);
 
   const abrirSoporte = useCallback((funcion: FuncionSoporte) => {
@@ -111,16 +122,16 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
           <MiTicketScreen ticketId={ticketIdAbierto} onVolver={() => setTicketIdAbierto(null)} />
         ) : (
           <>
-            {activeTab === 'chat' && <ChatScreen variant="desktop" />}
+            {activeTab === 'chat' && <ChatScreen variant="desktop" onAbrirCliente={abrirCliente} />}
             {activeTab === 'connections' && <ConnectionsScreen />}
             {activeTab === 'gastos' && <GastosScreen />}
-            {activeTab === 'clientes' && <ClientesScreen />}
+            {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
             {activeTab === 'contabilidad' && <ContabilidadScreen />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen
                 onAbrirGasto={() => setActiveTab('gastos')}
-                onAbrirCliente={() => setActiveTab('clientes')}
+                onAbrirCliente={abrirCliente}
                 onAbrirTicket={setTicketIdAbierto}
               />
             )}
@@ -145,7 +156,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
                   setActiveTab(tab);
                 }}
                 onAbrirGasto={() => setActiveTab('gastos')}
-                onAbrirCliente={() => setActiveTab('clientes')}
+                onAbrirCliente={abrirCliente}
                 onVerRecientes={() => setActiveTab('recientes')}
               />
             )}
