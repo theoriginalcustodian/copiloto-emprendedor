@@ -271,7 +271,12 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
                    "llamala apenas tengas esos dos datos mínimos, aunque falte todo lo demás. NO le "
                    "preguntes al usuario por un campo que este schema no marca como \"required\" antes "
                    "de llamarla — la tarjeta que devuelve ya lo pide con un campo editable si falta. "
-                   "Preguntar antes de llamar es el error: la tool está hecha para invocación parcial.",
+                   "Si el concepto es 'servicios' (p. ej. un service), TAMPOCO le preguntes por el "
+                   "período del servicio ni por el vencimiento del pago — esos datos NI SIQUIERA SON "
+                   "PARÁMETROS de esta tool, así que no hay forma de que se los des igual; si AFIP los "
+                   "exige, la tarjeta los va a pedir con un campo editable, igual que cualquier otro "
+                   "faltante. Preguntar antes de llamar es el error: la tool está hecha para invocación "
+                   "parcial.",
     "parameters": {"type": "object", "properties": {
         "cliente_nombre": {"type": "string", "description": "a quién le factura"},
         "cliente_documento": {"type": "string", "description": "CUIT o DNI del cliente, si lo dijo"},
