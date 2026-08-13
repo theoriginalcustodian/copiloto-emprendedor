@@ -96,7 +96,7 @@ externo. Cuando la beta abra, esa columna se convierte en fechas duras.
 | D6 | 4 uploads sin validación de magic bytes | P1 H-5 | backend | 1er sprint post-beta | **Ya tienen cota de tamaño** (sin DoS) y nunca se persisten a disco — van en memoria a Groq/OpenAI. Sin RCE; peor caso 422/502 externo |
 | D7 | ~~`except: return False` en `mercadopago_gateway.py:119` — fail-silent. **Es el 5º `except` de D-A**~~ — ✅ **CERRADO 2026-08-12 21:00, #424** | **P2** H-4 por sí solo, pero **P1 como instancia de D-A** (Pasada 2 H-3) — corregido 2026-08-12 20:47 | backend | ✅ resuelto — el fail-closed **no cambió** (sigue `return False`); se agregó `log_error_evento` con `reason` del SDK, que distingue `SIGNATURE_MISMATCH` de `TIMESTAMP_OUT_OF_TOLERANCE` sin loguear la firma cruda. **Con esto D-A queda 5/5 y G2/G3 cierran** | Auditoría lo clasificó bien: **blind-spot de observabilidad, no vulnerabilidad**. El webhook **no es forjable** (SDK oficial, fail-closed). Es de la misma familia que los `except` del lote B |
 | D8 | ~~`apps/copiloto-web/.../useChat.ts` (348 líneas) reimplementa `packages/core/src/chat/chatMachine.ts` en vez de consumirlo como hace mobile~~ — **CERRADO 2026-08-12** (test de equivalencia, no convergencia) | C6(b) | frontend | resuelto | Ver abajo |
-| D9 | Flake del job `mobile` dentro de `gate.sh` completo — **REABIERTA 2026-08-12 ~16:50: reapareció CON el fix aplicado**. Dos sub-clases distintas conviven bajo esta fila: **timeout de gesto** (H1/H2, sigue abierta, oportunista) y **EPERM de caché de Jest** (✅ **CERRADA 2026-08-12**, causa raíz + fix estructural) | campo (frontend, 2026-08-12) | frontend | próximo ítem de frontend | `jest.setTimeout(15000)` bajó la frecuencia de la sub-clase timeout pero **no eliminó su causa**. La sub-clase EPERM sí tuvo causa raíz identificada y fix — ver abajo |
+| D9 | Flake del job `mobile` dentro de `gate.sh` completo. Tres sub-clases bajo esta fila: **timeout de gesto** (✅ **CERRADA 2026-08-13** — causa raíz confirmada por experimento controlado + fix estructural + DoD del contrato cumplido: 5/5 `gate.sh` completo bajo carga forzada, cero timeouts), **EPERM cross-worktree de caché** (✅ **CERRADA 2026-08-12**, causa raíz + fix estructural) y **EPERM intra-run** (🆕 hallada 2026-08-13, mecanismo DISTINTO de la cerrada arriba, sigue abierta, oportunista) | campo (frontend, 2026-08-12) → contrato `planificación→frontend` (2026-08-13) | frontend | -- (EPERM intra-run: oportunista, sin disparador contable todavía) | ver detalle abajo |
 | D10 | El janitor **nunca archiva** las alertas que el escalador autogenera (`urgente_vigilancia-a-*`), porque `urgente_` es ancla por diseño ⇒ toda alerta resuelta queda en `abierto/` para siempre | campo (planificación, 2026-08-12) | planificación | `abierto/` > 40 archivos, **o** > 5 autogenerados | Hoy son 2 sobre 26: **no es problema de volumen todavía**. Ver abajo |
 | D11 | **Los 2 adversariales de C3 (lote C) NO aíslan el guard app-side** — al remover el filtro `WHERE cliente_id` del `UPDATE`, el test sigue **verde** porque RLS `FORCE` lo tapa como 2ª barrera. Verifican el sistema (A no toca B), no cuál capa lo garantiza | Fase D lote C (auditoría, 2026-08-12) | backend + auditoría | **al modificar `FORCE ROW LEVEL SECURITY` o la policy de cualquier tabla con guard app-side** | Defense-in-depth = seguro hoy; deuda de **cobertura**, no de función. Ver abajo |
 | **D13** | ~~**El instrumento nuevo (`deuda-check.sh`) está en `main` pero no corre**~~ — ✅ **CERRADO 2026-08-12 21:20.** Se escribió en un worktree y nunca llegó al **checkout compartido**, que es desde donde los crones ejecutan `vigilancia-check.sh`; y el registro tampoco está en ese working tree | campo (planificación, 2026-08-12) | planificación | ✅ resuelto — fallback a `git show origin/main:<path>` para leer el registro + los dos archivos copiados al checkout que corre. Control positivo **end-to-end ahí**: exit 1 nombrando la fila | Ver abajo: la **primera causa que escribí era falsa** y la medición la desmintió |
@@ -275,6 +275,65 @@ síntoma **distinto**, sin relación mecánica con el cache de Jest. Sigue exact
 sesión anterior: freno deliberado, captura oportunista, sin cerrar. Este fix no la toca ni la
 descarta — sólo elimina una fuente de falsos rojos que hasta ahora se contaba mezclada en el mismo
 conteo de "apariciones de D9".
+
+### Cierre de la sub-clase timeout — frontend, contrato D9 (2026-08-13)
+
+**H1 (contención de CPU) confirmado por experimento controlado, no por correlación.** Se aisló la
+variable que las corridas anteriores dejaban mezclada con el ruido de fondo: 10 corridas de
+`bash scripts/ci/mobile.sh` sin carga deliberada (sólo el basal de ~49-53 `node.exe` de otras
+sesiones paralelas) contra 10 corridas idénticas en código y plataforma, con 4 procesos
+`node -e "while(true){ Math.sqrt(Math.random()); }"` forzados encima. Resultado: **0/10 sin carga
+extra, 2/10 con carga extra** — el único diff entre las dos series es la CPU disponible en el
+instante del test, así que la contención (H1) queda confirmada y H2 (Windows vs Linux) descartada
+como explicación única, porque la plataforma fue idéntica en ambas series.
+
+**Fix estructural aplicado, no otro parche puntual:** la re-verificación bajo la MISMA carga forzada
+mostró que el default de Jest (5000ms) es frágil para *cualquier* test de montaje pesado de esta
+suite bajo contención real — no sólo los dos describes de gesto de voz ya conocidos. Fallaron con
+`Exceeded timeout of 5000 ms` tres archivos sin relación con voz (`PantallaInteligencia`,
+`PantallaIngresos`, `PantallaPresupuestos`), generalizando lo que `Onda.test.tsx` ya había mostrado
+de forma oportunista (línea 247 arriba). Por eso el fix va al nivel de config, no al de archivo:
+`apps/mobile/jest.config.js` fija `testTimeout: 20000` a nivel raíz de `module.exports` (4x el
+default), y los dos describes de gesto de voz (`PantallaSoporte.test.tsx`, `ChatView.test.tsx`)
+mantienen su override específico en `30000ms`, porque ese valor puntual sí se re-verificó bajo carga
+forzada (10/10 limpio) y el `20000` global todavía no se sometió a esa misma carga extendida al
+resto de la suite.
+
+**Error propio en el primer intento, dejado documentado en el código para que no se repita:** la
+primera versión del fix puso `testTimeout` DENTRO de cada entrada de `projects[]` (`native`/`web`).
+Jest lo acepta sin error de sintaxis pero lo **ignora en runtime** — `testTimeout` es una opción de
+`GlobalConfig`, no de `ProjectConfig` — y sólo se detectó releyendo el log completo de la
+reverificación (no asumiendo que "ya está aplicado" porque el archivo se había editado):
+`● Validation Warning: Unknown option "testTimeout" with value 20000 was found` en las 10 corridas,
+con los timeouts todavía reportando literalmente "Exceeded timeout of 5000 ms" — el default sin
+tocar. Corregido moviendo `testTimeout` a la raíz de `module.exports`; `npx jest --showConfig`
+confirmó la resolución correcta antes de gastar otra corrida de 30-45 min, y la 3ª verificación dio
+**10/10 limpio, cero apariciones de timeout**.
+
+**Hallazgo nuevo, distinto del EPERM cross-worktree ya cerrado arriba:** en la serie "sin carga
+extra" apareció una vez un `EPERM` escribiendo el mismo archivo de transform-cache para
+`SafeAreaProviderCompat` (dependencia de `expo-router`) — pero esta vez DENTRO de la misma corrida,
+entre los proyectos `native` y `web` de Jest compitiendo por el mismo `cacheDirectory` compartido
+(el fix de la sub-clase cross-worktree scopeó por worktree, no por proyecto dentro del mismo
+worktree). Mecanismo distinto, mismo síntoma de superficie — **sigue abierto**, no se investigó a
+fondo ni se le aplicó fix en este ciclo por estar fuera del alcance del contrato D9 (que acotaba a
+la sub-clase timeout). Frecuencia observada: 1 aparición en ~30 corridas de `mobile.sh` en este
+ciclo.
+
+**DoD del contrato, cumplido (frontend, 2026-08-13, mismo ciclo):** 5 corridas consecutivas de
+`bash scripts/gate.sh` COMPLETO (no sólo `mobile.sh`), con los mismos 4 procesos de CPU forzada
+sostenidos vivos durante toda la ventana (no relanzados por corrida), SHA constante
+`935026a086d32df7d050241a20c94ddc7cdedb5`, log íntegro por corrida a
+`scratchpad-d9/d9-dod-gate-{1..5}.log`. **5/5 limpias**: `exit=0`, `"✅ TODOS los jobs OK"`, job
+`mobile` en verde las 5 veces (35-52s, 731/732 tests), **grep de `"Exceeded timeout|EPERM"` sobre
+las 5 logs juntas: 0 ocurrencias**. `git status --short` al cierre de la verificación: sólo los 3
+archivos del fix + el registro de deuda (este archivo) modificados, más `scratchpad-d9/` sin
+trackear — nada bajo `apps/` tocado fuera de los 3 archivos ya descriptos.
+
+**Cierre de la sub-clase timeout:** causa raíz confirmada + fix estructural aplicado + verificado
+10/10 en `mobile.sh` aislado + **DoD del contrato cumplido, 5/5 `gate.sh` completo**. Sub-clase
+✅ **CERRADA**. La sub-clase EPERM intra-run (hallazgo nuevo de este mismo ciclo, ver arriba) queda
+fuera de este cierre — sigue abierta, oportunista, sin disparador contable propio todavía.
 
 ---
 

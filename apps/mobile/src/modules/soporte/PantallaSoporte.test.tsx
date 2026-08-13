@@ -119,12 +119,15 @@ async function renderPantallaSoporte() {
 }
 
 describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / deslizar-fija, mismo patrón que ChatView', () => {
-  // El default de Jest (5000ms) queda justo bajo carga real: reproducido 5/5 corriendo
-  // `scripts/gate.sh` (C6, 2026-08-12) -- un `it` distinto cada vez, siempre en este describe,
-  // siempre a metros del borde de 5000ms. No es un bug de este describe (los mismos tests, en
-  // aislado o con la suite completa fuera de gate.sh, pasan 7/7). Es margen insuficiente para el
-  // montaje + efectos async de este flujo bajo contención de CPU, no una carrera de lógica.
-  jest.setTimeout(15000);
+  // D9 (frontend, 2026-08-13): 15000ms (el bump anterior, C6 2026-08-12) seguía sin alcanzar bajo
+  // carga real -- discriminado con H1 vs H2 (experimento controlado: 0/10 sin carga extra, 2/10
+  // con 4 procesos de CPU forzados encima del basal, mismo código/plataforma en ambos). No es una
+  // carrera de lógica -- es margen insuficiente para montaje + efectos async de este flujo cuando
+  // la CPU está genuinamente compartida (varios worktrees/sesiones corriendo tests en simultáneo).
+  // Subir el umbral de nuevo no es tapar el flake: es la 2da vez que se ajusta a la contención real
+  // de esta máquina, y esta vez se re-verificó bajo la MISMA carga forzada que lo reprodujo antes
+  // de cerrar D9 -- ver `docs/copiloto-emprendedor/Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md` fila D9.
+  jest.setTimeout(30000);
 
   beforeEach(() => {
     jest.mocked(api.getReply).mockReset().mockResolvedValue({ replies: [], next_id: 0 });
