@@ -1,3 +1,4 @@
+import json
 import sys, time, hmac, hashlib
 from pathlib import Path
 import pytest
@@ -61,3 +62,33 @@ def test_verify_webhook_accepts_valid_rejects_tampered():
     v1 = hmac.new(b"whsec", manifest.encode(), hashlib.sha256).hexdigest()
     assert gw.verify_webhook(f"ts={ts},v1={v1}", rid, data_id) is True
     assert gw.verify_webhook(f"ts={ts},v1={'0'*64}", rid, data_id) is False
+
+
+def test_verify_webhook_firma_invalida_loguea_fingerprint_y_reason(capsys):
+    """D7: una firma inválida ya no queda muda. `SIGNATURE_MISMATCH` es la `reason` real del SDK para
+    un hash que no matchea -- la misma rama, indistinguible entre secret rotado y ataque hasta que se
+    lee el log; este test prueba que el log existe y trae el dato para esa investigación."""
+    gw = MercadoPagoGateway(http_factory=lambda: _FakeHttp())
+    data_id, rid, ts = "123456", "req-1", str(int(time.time() * 1000))
+    assert gw.verify_webhook(f"ts={ts},v1={'0' * 64}", rid, data_id) is False
+
+    salida = capsys.readouterr().out
+    lineas_error = [l for l in salida.splitlines() if l.startswith("ERROR ")]
+    assert len(lineas_error) == 1, f"esperaba exactamente 1 línea ERROR, salió: {salida!r}"
+    campos = json.loads(lineas_error[0][len("ERROR "):])
+    assert campos["evento"] == "error"
+    assert campos["workflow"] == "mercadopago_gateway.verify_webhook"
+    assert campos["error_type"] == "InvalidWebhookSignatureError"
+    assert campos["reason"] == "SignatureMismatch"
+    assert len(campos["fingerprint"]) == 8  # djb2 hex de 32 bits
+
+
+def test_verify_webhook_header_ausente_tambien_loguea_con_su_propia_reason(capsys):
+    """Rama distinta del mismo except (header malformado, no mismatch) -- confirma que `reason` sigue
+    la excepción real en vez de quedar hardcodeada a un solo valor."""
+    gw = MercadoPagoGateway(http_factory=lambda: _FakeHttp())
+    assert gw.verify_webhook("no-tiene-el-formato-esperado", "req-2", "123456") is False
+
+    salida = capsys.readouterr().out
+    campos = json.loads(next(l for l in salida.splitlines() if l.startswith("ERROR "))[len("ERROR "):])
+    assert campos["reason"] == "MalformedSignatureHeader"

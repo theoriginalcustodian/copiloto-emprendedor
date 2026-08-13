@@ -41,3 +41,42 @@ def log_evento(nombre: str, campos: dict[str, Any]) -> None:
     except Exception:  # noqa: BLE001 — serializar no puede tirar el evento entero
         linea = json.dumps({"aviso": "contexto no serializable, se descartó"}, ensure_ascii=False)
     print(f"{nombre} {linea}", flush=True)
+
+
+_LARGO_MENSAJE_FINGERPRINT = 200
+
+
+def _djb2_hash(texto: str) -> str:
+    """djb2 de 32 bits → hex de 8 chars.
+
+    **Duplicado a propósito de `apps/copiloto/fingerprint.py::djb2_hash`, no importado** — ese
+    módulo vive en la capa CLIENTE (`log_error`, con fingerprint + exclusión de PII fiscal, es
+    lógica de cliente; ver el docstring de este archivo). Un boundary uso PLATAFORMA→CLIENTE
+    invertiría la dirección que `_paths.py` documenta como explícita. El algoritmo en sí es
+    agnóstico de dominio (no tenant, no PII), así que duplicarlo acá no repite lógica de negocio —
+    sólo la fórmula de hash. **Mismo contrato que la copia de cliente: DEBE ser byte-idéntico** (un
+    cambio en la fórmula rompería el dedupe de fingerprints entre capas).
+    """
+    h = 5381
+    for ch in texto:
+        h = ((h << 5) + h + ord(ch)) & 0xFFFFFFFF
+    return format(h, "08x")
+
+
+def log_error_evento(exc: BaseException, *, workflow: str, extra: dict[str, Any] | None = None) -> str:
+    """Registra `exc` como línea `ERROR {json}` a stdout, con `fingerprint` — la variante PLATAFORMA
+    de `apps/copiloto/log_estructurado.py::log_error` (mismo propósito: agrupar ocurrencias del
+    MISMO fallo), para call-sites de `motor/` que no pueden importar la versión cliente.
+
+    Igual que `log_evento`: nunca lanza (un fallo acá no puede tapar el error que se está
+    registrando) y nunca incluye el mensaje crudo de la excepción en el campo logueado — sólo
+    entra al hash del fingerprint, no al JSON emitido.
+    """
+    error_type = type(exc).__name__
+    fp = _djb2_hash("|".join((workflow, error_type, str(exc)[:_LARGO_MENSAJE_FINGERPRINT])))
+    campos: dict[str, Any] = {"evento": "error", "fingerprint": fp, "workflow": workflow,
+                              "error_type": error_type}
+    if extra:
+        campos.update(extra)
+    log_evento("ERROR", campos)
+    return fp
