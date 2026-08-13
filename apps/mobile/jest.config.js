@@ -105,7 +105,39 @@ const transformIgnorePatterns = [
  */
 const cacheDirectory = path.join(__dirname, 'node_modules', '.cache', 'jest');
 
+/**
+ * 🔴 **D9 (frontend, 2026-08-13): el default de Jest (5000ms) es frágil para CUALQUIER test de
+ * montaje pesado bajo contención real de esta máquina — no es específico de un archivo.**
+ *
+ * Se venía tratando como flake puntual de 2 describes de gesto de voz (`PantallaSoporte`/
+ * `ChatView`, subidos primero a 15000ms y después a 30000ms, ver los comentarios en esos archivos).
+ * Experimento controlado (0/10 corridas de `mobile.sh` sin carga extra vs 2/10 con 4 procesos de
+ * CPU forzados encima del basal, mismo código/plataforma) confirmó contención real como causa
+ * (H1, no H2/plataforma). La re-verificación del fix puntual, bajo la MISMA carga forzada, mostró
+ * el mecanismo generalizado: 3 archivos sin relación con voz (`PantallaInteligencia`,
+ * `PantallaIngresos`, `PantallaPresupuestos`) fallaron con `Exceeded timeout of 5000 ms` — el
+ * default sin tocar. Mismo patrón ya capturado una vez de forma oportunista en `Onda.test.tsx`
+ * (lote B, 2026-08-12) y sumado a esta fila en vez de abrirse aparte.
+ *
+ * Fix de raíz: subir el default del proyecto, no parchear archivo por archivo cada vez que a uno
+ * le toca perder la carrera. 20000ms cubre 4x el default de Jest; los 2 describes de gesto de voz
+ * mantienen su override específico a 30000ms porque ESE valor ya se re-verificó bajo carga forzada
+ * (10/10 limpio) y este no.
+ *
+ * 🔴 **Primer intento fallido, dejado como advertencia:** poner `testTimeout` DENTRO de cada
+ * entrada de `projects[]` no hace nada — Jest lo acepta sin tirar error de sintaxis, pero lo
+ * ignora en runtime: `testTimeout` no es una opción de `ProjectConfig`, sólo de `GlobalConfig`.
+ * Se descubrió releyendo el log completo de la reverificación bajo carga (no asumiendo que "ya
+ * está aplicado" porque el archivo se editó): `● Validation Warning: Unknown option "testTimeout"
+ * with value 20000 was found` en las 10 corridas, y los timeouts seguían diciendo literalmente
+ * "Exceeded timeout of 5000 ms" -- el default, sin tocar. Por eso va acá, a nivel raíz del
+ * `module.exports`, no adentro de cada proyecto -- ahí sí es una opción válida y aplica a los dos
+ * proyectos (`native`/`web`) de esta config.
+ */
+const testTimeout = 20000;
+
 module.exports = {
+  testTimeout,
   projects: [
     {
       displayName: 'native',
