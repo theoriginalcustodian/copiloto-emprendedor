@@ -10,10 +10,18 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import dataclass
 
 
 _log = logging.getLogger(__name__)
+
+# TTL corto a propósito (no minutos): tras un `/composio/connect` exitoso, la conexión pasa a ACTIVE
+# del lado de Composio de forma ASÍNCRONA (el flip post-OAuth) y este backend no tiene callback que le
+# avise -- invalidar sólo en disconnect no cubre ese caso. Un TTL de 30-60s acota cuánto puede mentir
+# "no conectado" justo después de que el usuario conectó, sin volver a golpear el SDK por request
+# (auditoría C7, `docs/copiloto-emprendedor/Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md`).
+COMPOSIO_CACHE_TTL_SECONDS = 45.0
 
 
 @dataclass(frozen=True)
@@ -72,7 +80,8 @@ def _is_connection_missing(err: Exception) -> bool:
 
 class ComposioGateway:
     def __init__(self, policy, *, api_key_env: str = "COMPOSIO_API_KEY",
-                 denylist=DEFAULT_DENYLIST, client_factory=None):
+                 denylist=DEFAULT_DENYLIST, client_factory=None,
+                 cache_ttl_seconds: float = COMPOSIO_CACHE_TTL_SECONDS, clock=time.monotonic):
         if not policy:
             raise ValueError("ComposioGateway requiere una policy no vacía (fail-closed)")
         # Normaliza slugs a UPPER para resolución case-insensitive robusta.
@@ -86,6 +95,9 @@ class ComposioGateway:
         self._denylist = frozenset(s.upper() for s in denylist)
         self._client_factory = client_factory or self._default_client_factory
         self._client = None  # lazy
+        self._cache_ttl = cache_ttl_seconds
+        self._clock = clock
+        self._cache: dict[str, tuple[float, list]] = {}  # user_id -> (vence_en, conexiones)
 
     def _default_client_factory(self):
         from composio import Composio  # lazy: los unit con mock nunca lo disparan
@@ -244,7 +256,14 @@ class ComposioGateway:
 
     def list_connections(self, user_id: str) -> list:
         """Todas las conexiones del user: filtro server-side por user_id + paginacion completa (antes traia
-        solo la primera pagina de connected_accounts.list() sin filtrar -> ocultaba conexiones)."""
+        solo la primera pagina de connected_accounts.list() sin filtrar -> ocultaba conexiones).
+
+        Cacheada per-tenant con TTL corto (`COMPOSIO_CACHE_TTL_SECONDS`) -- es la base de `/me`,
+        `/catalog` y `connection_status`, y sin esto cada una de esas rutas golpea el SDK sync de
+        Composio por request (auditoría C7)."""
+        cached = self._cache.get(user_id)
+        if cached is not None and self._clock() < cached[0]:
+            return cached[1]
         out = []
         for a in self._iter_accounts(user_ids=[user_id]):
             a_uid = getattr(a, "user_id", None) or (a.get("user_id") if isinstance(a, dict) else None)
@@ -256,7 +275,15 @@ class ComposioGateway:
                 "toolkit": self._slug_of(tk),          # slug string, NO el objeto ItemToolkit
                 "status": getattr(a, "status", None) or (a.get("status") if isinstance(a, dict) else None),
             })
+        self._cache[user_id] = (self._clock() + self._cache_ttl, out)
         return out
+
+    def invalidate(self, user_id: str) -> None:
+        """Descarta la entrada cacheada de este tenant. Se llama tras una mutación local (disconnect)
+        para que la próxima lectura no sirva el estado viejo hasta que el TTL venza solo -- el TTL
+        corto sigue siendo la red de seguridad real para el flip asíncrono post-OAuth que esto no
+        puede ver venir."""
+        self._cache.pop(user_id, None)
 
     def connection_status(self, user_id: str, toolkit: str):
         """Estado de la conexion del toolkit para el user, priorizando ACTIVE sobre estados intermedios
