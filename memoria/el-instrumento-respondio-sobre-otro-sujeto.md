@@ -1,13 +1,13 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Cuatro veces en un día — la respuesta llega, es plausible, y es de otro sujeto. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día — la respuesta llega, es plausible, y es de otro sujeto. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
 metadata:
   type: feedback
 ---
 
 # 🎯🕳️ El instrumento respondió, pero sobre otro sujeto
 
-El 2026-08-13 este error apareció **cuatro veces en un día**, en cuatro instrumentos distintos.
+El 2026-08-13 este error apareció **seis veces en un día**, en seis instrumentos distintos.
 Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido no es el que creías**.
 
 | # | Instrumento | Lo que devolvió | El sujeto real |
@@ -16,6 +16,8 @@ Siempre igual: el comando corre, devuelve algo plausible, y **el sujeto medido n
 | 2 | caso 8 del test en Actions | «todo verde» | el caso **no corrió**: sin ref `origin/main`, se salteaba |
 | 3 | `merge-base --is-ancestor` para "¿está mergeado?" | 18 de 29 "no mergeados" | acá se mergea con **squash**: la rama nunca es ancestro, así que medía otra cosa |
 | 4 | búsqueda de worktrees huérfanos | 0 huérfanos | miraba `$REPO_ROOT/.claude/worktrees`, que **no existe** cuando el script corre desde un worktree. Había 21 |
+| 5 | escalador de edad del buzón | `999999min` (≈1900 años) | comparaba `fecha_del_nombre != hoy` para decir «de un día **anterior**». Las sesiones nombran en UTC y `date` corre en local: a las 22:41 los **13 archivos de hoy** eran «de otro día» |
+| 6 | lint de contratos «PROSA PURA» | contrato sin artefacto | aceptaba `docs/…`, `.png`, `mockup` — **no** un path de código. El contrato citaba `…/FormularioIngreso.tsx:255` y salía marcado |
 
 ## El caso que da más miedo, porque git no falla
 
@@ -42,6 +44,25 @@ razonando «son sólo `node_modules`», habría borrado contenido que **no se pu
 paso antes: **el instrumento sí ejerce su lógica, y la ejerce sobre el sujeto equivocado**. No hay
 salteo visible, no hay error, no hay silencio sospechoso — hay una respuesta bien formada sobre otra
 cosa. Por eso no lo caza revisar la lógica: la lógica está bien.
+
+## Dos vueltas de tuerca que aparecieron en los casos 5 y 6
+
+**(a) Una alarma permanente es un instrumento apagado, no uno estricto.** El `999999min` sonaba en
+*todos* los ciclos. Nadie lo apagó — se leyó, se descartó por absurdo, y se siguió. Eso es peor que
+no tenerlo: el próximo pedido realmente abandonado se lee **igual que los otros trece**. Un
+instrumento que nunca calla no distingue, y no distinguir es exactamente lo que se le pide.
+
+**(b) Al arreglar una mentira, fijate para qué lado empieza a mentir.** Corregido el atajo por fecha,
+el mismo pedido de 40 minutos reales pasó a reportar **0**: sin sidecar previo, el primer avistamiento
+asumía «ahora». El escalador dejó de mentir hacia arriba y empezó a mentir **hacia abajo**, que es
+peor porque *no se nota* — un `999999` te hace sospechar, un `0min` te tranquiliza. El fix completo
+fue poner el `mtime` como piso. **Después de arreglar un instrumento, medí el mismo caso real que lo
+destapó y comparalo con la verdad conocida**, no sólo con el test.
+
+**(c) Un instrumento puede estar desmentido por el resultado del trabajo que juzga.** El lint marcaba
+«PROSA PURA» un contrato que frontend ejecutó sin una sola pregunta, cerrando PR #433 con control
+negativo propio. Esa contradicción estaba disponible desde el primer ciclo y nadie la miró: la señal
+más barata para auditar un juez es **preguntarle al juzgado cómo le fue**.
 
 ## How to apply
 
