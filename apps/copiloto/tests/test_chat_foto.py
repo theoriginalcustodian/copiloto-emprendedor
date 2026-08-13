@@ -80,7 +80,12 @@ def _build_app(*, require_tenant, extraer_ticket=None, adapter=None):
     return app, adapter
 
 
-def _post_foto(app, *, session_id: str = "s1", imagen_bytes: bytes = b"fake-jpeg-bytes",
+# D6: firma JPEG real -- desde que `web.py` valida magic bytes, un blob fake sin firma se rechaza
+# con 415 ANTES de llegar a `extraer_ticket` (ver mismo comentario en test_audio.py).
+_JPEG_HEADER = b"\xff\xd8\xff"
+
+
+def _post_foto(app, *, session_id: str = "s1", imagen_bytes: bytes = _JPEG_HEADER + b"fake-jpeg-bytes",
               filename: str = "ticket.jpg", content_type: str = "image/jpeg"):
     return TestClient(app).post(
         "/chat/foto",
@@ -110,12 +115,13 @@ def test_chat_foto_writes_gasto_propuesto_card_with_empty_monto(monkeypatch):
                 "proveedor": "Panadería Los Tilos", "categoria": "mercaderia", "legible": True}
 
     app, adapter = _build_app(require_tenant=_require_tenant_fixed("cid-A"), extraer_ticket=_fake_ocr)
-    r = _post_foto(app, session_id="s1", imagen_bytes=b"raw-jpeg", content_type="image/jpeg")
+    imagen_bytes = _JPEG_HEADER + b"raw-jpeg"
+    r = _post_foto(app, session_id="s1", imagen_bytes=imagen_bytes, content_type="image/jpeg")
     assert r.status_code == 200
     body = r.json()
     assert body["accepted"] is True
     assert isinstance(body["wf_id"], str) and body["wf_id"]
-    assert calls == [(b"raw-jpeg", "image/jpeg")]
+    assert calls == [(imagen_bytes, "image/jpeg")]
 
     assert len(adapter.sent) == 1
     sent = adapter.sent[0]
@@ -189,6 +195,24 @@ def test_chat_foto_formato_no_soportado_returns_415():
                               extraer_ticket=lambda b, ct: {"monto": 1})
     r = _post_foto(app, content_type="application/pdf")
     assert r.status_code == 415
+    assert adapter.sent == []
+
+
+def test_chat_foto_content_type_mentido_returns_415_y_no_llama_ocr():
+    """D6 (deuda registrada): `content_type=image/jpeg` declarado, pero los bytes reales no son un
+    JPEG (acá, un PNG) -- el whitelist de arriba (content_type declarado) no alcanza, hace falta la
+    firma real. Debe rechazar ANTES de pegarle a OpenAI Vision."""
+    called = {"n": 0}
+
+    def _ocr(imagen_bytes, content_type):
+        called["n"] += 1
+        return {"monto": 1}
+
+    app, adapter = _build_app(require_tenant=_require_tenant_fixed("cid-A"), extraer_ticket=_ocr)
+    png_bytes = b"\x89PNG\r\n\x1a\nno-es-un-jpeg"
+    r = _post_foto(app, imagen_bytes=png_bytes, content_type="image/jpeg")
+    assert r.status_code == 415
+    assert called["n"] == 0
     assert adapter.sent == []
 
 

@@ -140,7 +140,12 @@ def test_feedback_otro_tenant_no_ve_el_de_A():
 
 # --- POST /feedback/audio (voz) ---------------------------------------------------
 
-def _post_audio(app, *, audio_bytes: bytes = b"fake-audio-bytes", filename: str = "clip.webm",
+# D6: firma EBML real -- desde que `web.py` valida magic bytes, un blob fake sin firma se rechaza
+# con 415 ANTES de llegar a `transcribe` (ver mismo comentario en test_audio.py).
+_WEBM_HEADER = b"\x1a\x45\xdf\xa3"
+
+
+def _post_audio(app, *, audio_bytes: bytes = _WEBM_HEADER + b"fake-audio-bytes", filename: str = "clip.webm",
                 content_type: str = "audio/webm", contexto: str | None = None):
     data = {"contexto": contexto} if contexto is not None else {}
     return TestClient(app).post(
@@ -195,4 +200,19 @@ def test_feedback_audio_oversized_413(monkeypatch):
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
     r = _post_audio(app, audio_bytes=b"esto-supera-los-cinco-bytes")
     assert r.status_code == 413
+    assert called["n"] == 0
+
+
+# --- 415: magic bytes no coinciden con el content_type declarado (D6) -------------
+
+def test_feedback_audio_content_type_mentido_returns_415_y_no_transcribe(monkeypatch):
+    called = {"n": 0}
+
+    def _t(audio_bytes: bytes, content_type: str) -> str:
+        called["n"] += 1
+        return "no debería llegar acá"
+
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
+    r = _post_audio(app, audio_bytes=b"\xff\xd8\xffno-es-un-webm", content_type="audio/webm")
+    assert r.status_code == 415
     assert called["n"] == 0

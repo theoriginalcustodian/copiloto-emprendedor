@@ -62,6 +62,7 @@ from mp_credential_store import MpCredentialStore
 from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
+from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
 from soporte_store import TicketStore
 
 import services
@@ -703,6 +704,11 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if len(audio_bytes) > MAX_AUDIO_BYTES:
             raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
         content_type = audio.content_type or "audio/ogg"
+        if not magic_bytes_validos(audio_bytes, content_type, FIRMAS_AUDIO):
+            # D6: el content_type declarado no es prueba de nada -- lo pone el cliente. Rechazar acá,
+            # ANTES de mandar los bytes a Groq, cierra la superficie de "extensión de audio, contenido
+            # de otro tipo" contra el proveedor de STT.
+            raise HTTPException(status_code=415, detail="formato de audio no soportado")
         try:
             transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
         except RuntimeError as e:
@@ -782,6 +788,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if len(audio_bytes) > MAX_AUDIO_BYTES:
             raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
         content_type = audio.content_type or "audio/ogg"
+        if not magic_bytes_validos(audio_bytes, content_type, FIRMAS_AUDIO):
+            raise HTTPException(status_code=415, detail="formato de audio no soportado")
         try:
             transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
         except RuntimeError as e:
@@ -843,6 +851,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if len(audio_bytes) > MAX_AUDIO_BYTES:
             raise HTTPException(status_code=413, detail="audio demasiado grande (máx 25 MB)")
         content_type = audio.content_type or "audio/ogg"
+        if not magic_bytes_validos(audio_bytes, content_type, FIRMAS_AUDIO):
+            raise HTTPException(status_code=415, detail="formato de audio no soportado")
         try:
             transcript = await asyncio.to_thread(transcribe, audio_bytes, content_type)
         except RuntimeError as e:
@@ -876,6 +886,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raise HTTPException(status_code=413, detail="imagen demasiado grande (máx 10 MB)")
         content_type = imagen.content_type or ""
         if content_type not in ("image/jpeg", "image/png"):
+            raise HTTPException(status_code=415, detail="formato de imagen no soportado (jpg/png)")
+        if not magic_bytes_validos(imagen_bytes, content_type, FIRMAS_IMAGEN):
+            # D6: el content_type declarado ya pasó el whitelist de arriba, pero eso es sólo lo que
+            # dice el cliente -- acá se verifica que los bytes reales sean ese formato.
             raise HTTPException(status_code=415, detail="formato de imagen no soportado (jpg/png)")
         try:
             extraido = await asyncio.to_thread(extraer_ticket, imagen_bytes, content_type)

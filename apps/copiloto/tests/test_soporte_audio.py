@@ -74,8 +74,13 @@ def _build_app(*, require_tenant, transcribe=None):
     )
 
 
+# D6: firma EBML real -- desde que `web.py` valida magic bytes, un blob fake sin firma se rechaza
+# con 415 ANTES de llegar a `transcribe` (ver mismo comentario en test_audio.py).
+_WEBM_HEADER = b"\x1a\x45\xdf\xa3"
+
+
 def _post_soporte_audio(app, *, session_id: str = "s1", funcion: str = "soporte_tecnico",
-                        audio_bytes: bytes = b"fake-audio-bytes", filename: str = "clip.webm",
+                        audio_bytes: bytes = _WEBM_HEADER + b"fake-audio-bytes", filename: str = "clip.webm",
                         content_type: str = "audio/webm"):
     return TestClient(app).post(
         "/soporte/chat/audio",
@@ -119,14 +124,15 @@ def test_soporte_chat_audio_transcribe_y_namespacea_por_funcion(monkeypatch):
         return "necesito ayuda con AFIP"
 
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_fake_transcribe)
+    audio_bytes = _WEBM_HEADER + b"raw-bytes"
     r = _post_soporte_audio(app, session_id="s1", funcion="soporte_tecnico",
-                            audio_bytes=b"raw-bytes", content_type="audio/webm")
+                            audio_bytes=audio_bytes, content_type="audio/webm")
     assert r.status_code == 200
     body = r.json()
     assert body == {"wf_id": "conv-web-cid-A-soporte:soporte_tecnico:s1", "accepted": True,
                     "session_id": "soporte:soporte_tecnico:s1",
                     "transcript": "necesito ayuda con AFIP"}
-    assert calls == [(b"raw-bytes", "audio/webm")]
+    assert calls == [(audio_bytes, "audio/webm")]
 
 
 def test_soporte_chat_audio_session_id_ya_namespaced_no_se_duplica(monkeypatch):
@@ -143,7 +149,7 @@ def test_soporte_chat_audio_session_id_ya_namespaced_no_se_duplica(monkeypatch):
     r2 = TestClient(app).post(
         "/soporte/chat/audio",
         data={"session_id": namespaced, "funcion": "soporte_tecnico"},
-        files={"audio": ("clip.webm", b"bytes", "audio/webm")},
+        files={"audio": ("clip.webm", _WEBM_HEADER + b"bytes", "audio/webm")},
     )
     assert r2.json()["session_id"] == "soporte:soporte_tecnico:s1"
 
@@ -153,7 +159,7 @@ def test_soporte_chat_audio_no_colisiona_con_chat_audio_del_copiloto_mismo_sessi
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=lambda b, ct: "hola")
     client = TestClient(app)
     r_copiloto = client.post("/chat/audio", data={"session_id": "s1"},
-                             files={"audio": ("c.webm", b"x", "audio/webm")})
+                             files={"audio": ("c.webm", _WEBM_HEADER + b"x", "audio/webm")})
     r_soporte = _post_soporte_audio(app, session_id="s1", funcion="soporte_tecnico")
     assert r_copiloto.json()["wf_id"] != r_soporte.json()["wf_id"]
 
@@ -196,4 +202,19 @@ def test_soporte_chat_audio_oversized_returns_413(monkeypatch):
     app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
     r = _post_soporte_audio(app, audio_bytes=b"esto-supera-los-cinco-bytes")
     assert r.status_code == 413
+    assert called["n"] == 0
+
+
+# --- 415: magic bytes no coinciden con el content_type declarado (D6) -------------
+
+def test_soporte_chat_audio_content_type_mentido_returns_415_y_no_transcribe(monkeypatch):
+    called = {"n": 0}
+
+    def _t(audio_bytes: bytes, content_type: str) -> str:
+        called["n"] += 1
+        return "no debería llegar acá"
+
+    app = _build_app(require_tenant=_require_tenant_fixed("cid-A"), transcribe=_t)
+    r = _post_soporte_audio(app, audio_bytes=b"\xff\xd8\xffno-es-un-webm", content_type="audio/webm")
+    assert r.status_code == 415
     assert called["n"] == 0
