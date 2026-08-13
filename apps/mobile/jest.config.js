@@ -82,6 +82,29 @@ const transformIgnorePatterns = [
   'node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|standard-navigation|@copiloto/core))',
 ];
 
+/**
+ * 🔴 **D9 (deuda de instrumento, 2026-08-12): sin esto, Jest cachea en un directorio GLOBAL de
+ * máquina, compartido por TODOS los worktrees y TODAS las sesiones.**
+ *
+ * Verificado con `npx jest --showConfig` en dos worktrees distintos (`deuda-d9` y
+ * `cards-propuesto-web`): el `cacheDirectory` por default resolvía **igual, byte a byte**, a
+ * `<tmp-del-SO>/jest` en ambos — no está scopeado por `rootDir` ni por proyecto. Con 3 sesiones
+ * paralelas y ~20 worktrees corriendo `apps/mobile` sobre el mismo checkout de Windows, dos
+ * procesos concurrentes terminan escribiendo el mismo archivo de transform-cache (mismo paquete,
+ * mismo hash de contenido) y Windows devuelve `EPERM` en la carrera — el patrón reportado por
+ * backend (lote C, `avance_backend-a-todos_lote-C-C1-C2-C3-cerrado.md`): `mobile` falló con
+ * `EPERM ... jest-transform-cache/.../NativeAnimatedAllowlist_...` en el gate completo, sin tocar
+ * `apps/mobile/` en su diff, y pasó 731/731 aislado — el mismo discriminador que ya usa D9 (aislado
+ * verde ⇒ flake, no regresión), pero acá con causa estructural identificada, no sólo discriminada.
+ * **Es una clase de síntoma DISTINTA** del flake de timeout en tests de gesto que D9 viene
+ * investigando (H1 contención / H2 plataforma, sin resolver) — este fix cierra la clase de carrera
+ * de caché; no afirma nada sobre la clase de timeout, que sigue abierta con su propia mitigación.
+ *
+ * El fix es de raíz, no un retry: cada worktree cachea en su PROPIO `node_modules/.cache/jest`, así
+ * que dos sesiones ya no pueden pisarse el mismo archivo aunque corran `apps/mobile` a la vez.
+ */
+const cacheDirectory = path.join(__dirname, 'node_modules', '.cache', 'jest');
+
 module.exports = {
   projects: [
     {
@@ -90,6 +113,7 @@ module.exports = {
       setupFiles: ['<rootDir>/jest.setup.js'],
       moduleNameMapper: mapaReact,
       transformIgnorePatterns,
+      cacheDirectory,
     },
     {
       displayName: 'web',
@@ -100,6 +124,7 @@ module.exports = {
       transform: {
         '\\.[jt]sx?$': ['babel-jest', { presets: ['expo/internal/babel-preset'] }],
       },
+      cacheDirectory,
     },
   ],
 };
