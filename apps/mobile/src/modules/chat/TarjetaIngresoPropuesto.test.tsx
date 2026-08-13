@@ -111,6 +111,29 @@ describe('TarjetaIngresoPropuesto', () => {
     expect(screen.queryByTestId('ingreso-propuesto-formulario-guardar')).toBeNull();
   });
 
+  it('regresión: "Así está bien" tras un guardado incompleto NO lo marca como descartado — ya se guardó', async () => {
+    mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado({ falta: ['medio'] }) });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-guardar'));
+    });
+    await waitFor(() => expect(screen.getByTestId('ingreso-propuesto-formulario-listo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-listo'));
+    });
+
+    // Bug real (mismo patrón cazado antes en la card web equivalente, PR #425): "Así está bien"
+    // reusaba el mismo handler que "Cancelar" y la card terminaba en 'descartado' ("No lo anotamos")
+    // sobre un ingreso que SÍ se había guardado (registrarIngreso ya había resuelto 201). Va al Tile
+    // de ÉXITO, no al de descarte.
+    expect(screen.getByTestId('ingreso-propuesto-guardado')).toBeTruthy();
+    expect(screen.queryByTestId('ingreso-propuesto-descartado')).toBeNull();
+    expect(screen.getByTestId('ingreso-propuesto-guardado')).toHaveTextContent('Ingreso anotado: $85.000,00');
+    expect(mockRegistrar).toHaveBeenCalledTimes(1); // "Así está bien" no reintenta el POST
+  });
+
   it('descartar no guarda nada', async () => {
     await montar();
 

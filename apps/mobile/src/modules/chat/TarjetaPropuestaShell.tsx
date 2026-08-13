@@ -16,10 +16,13 @@ import { useTema } from '../../theme/ThemeProvider';
  * evitar. La shell sólo orquesta: aviso + cita de lo dicho + el Formulario que ya existe, como `children`.
  *
  * 🔴 **Los estados TERMINALES no entran acá.** Gasto tiene 2 (guardado/descartado), Cliente tiene 3
- * (+ya_existe, el 409 por documento), Ingreso resuelve el suyo DENTRO de su propio `FormularioIngreso`
- * (guardado con `falta`, sin Tile propio). No hay un enum común a las tres — forzarlo angostaría a la
- * mayoría. Cada `TarjetaXPropuesto` sigue renderizando sus propios estados terminales, fuera de esta
- * shell.
+ * (+ya_existe, el 409 por documento), Ingreso tiene 2 (guardado/descartado) pero SÓLO llega a
+ * 'guardado' cuando el emprendedor dice explícitamente "Así está bien" (`onListo`) — mientras el
+ * ingreso puede completarse, sigue mostrando el aviso de `falta` DENTRO de su propio
+ * `FormularioIngreso`, no este Tile (2026-08-13: antes no tenía Tile propio y "Así está bien"
+ * reusaba `onCancelar`, mostrando "No lo anotamos" sobre un ingreso ya guardado). No hay un enum
+ * común a las tres — forzarlo angostaría a la mayoría. Cada `TarjetaXPropuesto` sigue renderizando
+ * sus propios estados terminales, fuera de esta shell.
  */
 export interface TarjetaPropuestaShellProps {
   /** *"Esto entendí. Revisalo y tocá X — todavía no lo Y."* — el verbo es de cada acción. */
