@@ -86,7 +86,16 @@ edad_alta_min() {
   b="$(basename "$f")"
   fecha_archivo="${b:0:10}"
   fecha_hoy="$(date +%Y-%m-%d)"
-  if [[ "$fecha_archivo" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [ "$fecha_archivo" != "$fecha_hoy" ]; then
+  # ⚠️ `<`, NO `!=` — y la diferencia se midió el 2026-08-12 22:41 local. Las sesiones nombran los
+  # archivos con la fecha UTC (`2026-08-13`) mientras `date` acá devuelve la local (`2026-08-12`):
+  # con `!=`, los **13 archivos de hoy** caían en esta rama y reportaban `999999min`, o sea que
+  # TODO pedido_/urgente_ nuevo escalaba en el instante de nacer. Una alarma que suena siempre es
+  # la que ya se corrigió en el watchdog (#394/#400): no informa, entrena a ignorarla, y la próxima
+  # real se pierde en el ruido. El comentario original ya decía «de un día ANTERIOR» — la intención
+  # estaba bien, la comparación no. En ISO-8601 el orden lexicográfico ES el cronológico, así que
+  # `<` dice exactamente lo que la regla quiere decir, y una fecha futura (o de otra zona horaria)
+  # cae al sidecar, que es el mecanismo correcto para medirle la edad de verdad.
+  if [[ "$fecha_archivo" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && [[ "$fecha_archivo" < "$fecha_hoy" ]]; then
     echo 999999   # de un día anterior: por encima de cualquier umbral en minutos, sin más cálculo
     return
   fi
@@ -94,10 +103,21 @@ edad_alta_min() {
   if [ -f "$sidecar_file" ]; then
     primera="$(cat "$sidecar_file" 2>/dev/null || echo "$now")"
   else
-    primera="$now"
+    # Primer avistamiento: el piso es el `mtime`, NO `now`. La razón por la que el sidecar existe es
+    # que ampliar un pedido_ le refresca el mtime y lo saca del radar — pero eso sólo aplica a los
+    # toques POSTERIORES, y contra ellos ya protege el sidecar (una vez grabado, no se vuelve a
+    # tocar). Para el primer avistamiento el mtime nunca es más nuevo que `now`, y en el caso normal
+    # (archivo creado y no editado) es la verdad exacta. Con `now` se perdía la edad ya acumulada:
+    # al arreglar el atajo por fecha, un pedido_ de 40 min reales pasó a reportar 0 min — el
+    # escalador dejaba de mentir hacia arriba para empezar a mentir hacia abajo, que es peor porque
+    # no se nota.
+    local m_archivo
+    m_archivo="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
+    primera="$m_archivo"
+    [ "$primera" -gt "$now" ] 2>/dev/null && primera="$now"   # reloj adelantado: nunca edad negativa
     if [ "$DRY_RUN" = "0" ]; then
       mkdir -p "$SIDECAR_DIR" 2>/dev/null || true
-      printf '%s\n' "$now" > "$sidecar_file"
+      printf '%s\n' "$primera" > "$sidecar_file"
     fi
   fi
   echo $(( (now - primera) / 60 ))
