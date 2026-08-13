@@ -190,10 +190,17 @@ deuda es bueno guardando *qué* falta, *de quién* es y *cuándo* arranca — y 
 mecanismo que grite cuando el "cuándo" ocurre. D-A quedó 4/5 con su resto difiriéndose dos veces a
 disparadores que **ambos se cumplieron el mismo día**; D5 igual (*«tras el lote C»*, cumplido a las
 18:12). Nadie falló: backend miró su cola —`abierto/` + `en-curso/`— y estaba vacía. **La cola vive en
-dos lugares y sólo uno se mira solo.** Barato de arreglar: al cerrar un lote, releer el registro
-filtrando por disparadores cumplidos, como paso del DoD del lote — no como buena voluntad. Es la misma
-familia que las tres de arriba, en su versión más silenciosa: acá el instrumento **ni siquiera
-confirma**, directamente no se ejecuta.
+dos lugares y sólo uno se mira solo.** Es la misma familia que las tres de arriba, en su versión más
+silenciosa: acá el instrumento **ni siquiera confirma**, directamente no se ejecuta.
+
+> **Cerrada como instrumento, no como lección** (2026-08-12 21:01). Escribir «acordate de releer el
+> registro al cerrar un lote» habría sido otra regla que depende de buena voluntad — exactamente
+> [[la-excepcion-documentada-que-nunca-disparo]]. En vez de eso el registro tiene ahora un bloque
+> `DEUDA-VIVA` legible por máquina y `scripts/deuda-check.sh` lo evalúa dentro de
+> `vigilancia-check.sh`, que ya corre cada 3 minutos. Reusa el idioma de `COLA-VIVA`/`cola-check.sh`,
+> que resolvió este mismo problema para los hitos el 2026-07-23. **Control positivo:** con D7 puesta
+> en `abierto` el gate devuelve exit 1 nombrándola; con D7 en `en-curso` vuelve a silencio. 9/9 en
+> `test-deuda-disparador-cumplido.sh`, dentro del job `lint` del gate.
 
 Las cuatro son la misma familia: **instrumentos que confirman en vez de verificar**, que ya costó un
 frente entero en este repo.

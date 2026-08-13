@@ -11,6 +11,56 @@
 
 ---
 
+## Bloque máquina — DEUDA-VIVA
+
+**Esto no es un resumen de la tabla de abajo: es la parte que un script puede leer.** Existe porque
+el 2026-08-12 la tabla en prosa falló en su único trabajo: **D5 y D7 tenían el disparador cumplido y
+nadie se enteró**, porque un disparador escrito en lenguaje natural no avisa cuando se cumple — hay
+que ir a buscarlo, y nadie va. Backend cerró su ciclo declarando cola vacía de buena fe: `abierto/` y
+`en-curso/` **estaban** vacíos; esta tabla no.
+
+Mismo mecanismo que el bloque `COLA-VIVA` de `coordinacion/PLAN.md`, que ya resolvió este problema
+para los hitos (`scripts/cola-check.sh`, causa raíz: 4 h de fábrica parada el 2026-07-23). Se reusa
+el idioma, no se inventa uno nuevo.
+
+**Formato:** `id | dueño | disparador | estado`
+
+- `disparador` con la forma `@<otro-id>` se evalúa **solo**: se cumple cuando ese id está `cerrado`.
+  Cualquier otro texto es informativo — el script no lo interpreta y **nunca** lo da por cumplido.
+  Un `@` que apunte a un id inexistente **se reporta como roto**, no se ignora: se cumpliría nunca.
+- `estado` ∈ `abierto` · `en-curso` · `bloqueado` · `cerrado`.
+  - **Sólo `abierto` puede alarmar.** Una fila ya tomada (`en-curso`) tiene dueño mirándola;
+    gritarle cada 3 min sería la alarma-que-suena-siempre que ya se corrigió en el watchdog
+    (#394/#400). Lo que se caza es el hueco exacto: **disparador cumplido y nadie la tomó**.
+  - Sólo `cerrado` satisface el disparador de otra fila.
+- Los `lote-*` y `emision-*` están acá **porque son disparadores de otras filas**, no porque sean
+  deuda: son condiciones observables a las que otra fila se cuelga.
+
+Control: `scripts/deuda-check.sh` (lo compone `scripts/vigilancia-check.sh`, que corre cada 3 min).
+
+<!-- DEUDA-VIVA:INICIO -->
+```
+lote-B                     | backend            | --                                          | cerrado
+lote-C                     | backend            | @lote-B                                     | cerrado
+emision-factura-propuesto  | backend            | que el agente emita esa card hacia web      | abierto
+D1                         | backend            | 1er sprint post-beta                        | abierto
+D2                         | backend            | 1er sprint post-beta                        | abierto
+D3                         | backend            | 1er sprint post-beta                        | abierto
+D4                         | backend            | 1er sprint post-beta                        | abierto
+D5                         | backend            | @lote-C                                     | en-curso
+D6                         | backend            | 1er sprint post-beta                        | abierto
+D7                         | backend            | @lote-B                                     | en-curso
+D8                         | frontend           | --                                          | cerrado
+D9                         | frontend           | proximo item de frontend                    | abierto
+D10                        | planificacion      | abierto/ > 40 archivos o > 5 autogenerados  | abierto
+D11                        | backend+auditoria  | al modificar FORCE RLS o una policy         | abierto
+D12                        | frontend           | @emision-factura-propuesto                  | abierto
+E3                         | backend            | proximo deploy de codigo real por su merito | abierto
+```
+<!-- DEUDA-VIVA:FIN -->
+
+---
+
 ## Contexto: qué NO está acá
 
 Las pasadas 1 y 2 cerraron con **0 P0**. Lo que está en ejecución, y por lo tanto **no** es deuda:
