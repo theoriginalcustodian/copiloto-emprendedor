@@ -519,6 +519,36 @@ describe('PantallaFacturacion', () => {
       expect(crearFactura).not.toHaveBeenCalled();
     });
 
+    /**
+     * 🔴 **El gap real que encontró la pasada de device de D12.** `estadoFacturaActual` es un eco del
+     * backend, pero `clienteLocal` es un eco LOCAL que sólo `guardarClienteYActualizar` alimentaba —
+     * si el borrador llega de afuera con `receptor` ya cargado, `PasoResumen` mostraba "no tenemos el
+     * detalle del cliente" aunque el dato estuviera ahí, viajando en `EstadoFacturaResp.receptor`.
+     */
+    it('con receptor ya cargado en el borrador -- siembra clienteLocal, PasoResumen lo muestra sin pedirlo de nuevo', async () => {
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({
+        convergio: true,
+        estado: estadoMock({
+          estado: 'esperando_confirmacion',
+          items: [{ descripcion: 'Mano de obra', cantidad: '1', precioUnitario: '30000.00', subtotal: '30000.00' }],
+          total: '30000.00',
+          tokenConfirmacion: 'tok-confirmar',
+          receptor: {
+            condicionIva: 1,
+            tipoDoc: 80,
+            nroDoc: '20111111112',
+            nombre: 'Doña Repuestos SRL',
+            domicilio: 'Av. Siempre Viva 742',
+          },
+        }),
+      });
+
+      await montar({ facturaIdInicial: 'presu-12' });
+
+      await waitFor(() => expect(screen.getByText(/Doña Repuestos SRL/)).toBeTruthy());
+      expect(screen.queryByTestId('facturacion-paso-resumen-cliente-no-disponible')).toBeNull();
+    });
+
     it('sin el parámetro sigue creando su propio borrador — el camino de siempre no cambia', async () => {
       // El control diferencial: si este test también pasara con `crearFactura` sin llamar, los dos
       // de arriba no estarían probando nada.
