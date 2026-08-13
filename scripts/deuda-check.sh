@@ -47,18 +47,44 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ ! -f "$DEUDA" ]; then
-  # Fail-LOUD, no fail-open: si el registro no está donde se espera, el silencio sería
+# ── De dónde sale el registro ────────────────────────────────────────────────────────────────
+# 1º el archivo del working tree; 2º `git show origin/main:<path>`.
+#
+# El fallback NO es una comodidad: es la corrección de un error medido el 2026-08-12 21:15. El
+# script se escribió en un worktree y se lo verificó ahí, pero los crones corren desde el CHECKOUT
+# COMPARTIDO — que tiene su propio working tree, con su HEAD en otra rama y sin este documento.
+# Sin fallback, el chequeo alarmaba «no existe el registro» cada 3 minutos en el único lugar donde
+# tenía que servir. Y la autoridad del registro es `origin/main`, no el checkout que casualmente
+# corra el script: leerlo de ahí es además lo correcto, no sólo lo que funciona.
+# Se prefiere el archivo local cuando existe para que un worktree que EDITA el registro se pruebe
+# contra su propia versión.
+#
+# DEUDA_REF es parametrizable SÓLO para poder testear el mecanismo donde `origin/main` no existe
+# (Actions clona con fetch-depth=1 y sin esa ref: el caso 8 del test se salteaba, y un salteo que
+# igual imprime «todo verde» es la misma falla que este archivo existe para impedir). El default no
+# se toca: la autoridad es origin/main.
+DEUDA_REF="${DEUDA_REF:-origin/main}"
+leer_registro() {
+  if [ -f "$DEUDA" ]; then cat "$DEUDA"; return 0; fi
+  local rel="${DEUDA#"$REPO_ROOT/"}"
+  git -C "$REPO_ROOT" show "$DEUDA_REF:$rel" 2>/dev/null
+}
+
+registro="$(leer_registro)"
+if [ -z "$registro" ]; then
+  # Fail-LOUD, no fail-open: si el registro no se pudo leer por ningún camino, el silencio sería
   # indistinguible de "no hay deuda" — que es justo el fallo que este script existe para impedir.
-  echo "⚠️  DEUDA: no existe $DEUDA — el registro no se pudo leer, esto NO es 'sin deuda'."
+  echo "⚠️  DEUDA: no pude leer el registro ni del working tree ($DEUDA) ni de origin/main."
+  echo "    Esto NO es 'sin deuda'."
   exit 1
 fi
 
-bloque="$(awk '/DEUDA-VIVA:INICIO/{on=1;next} /DEUDA-VIVA:FIN/{on=0} on' "$DEUDA" \
+bloque="$(printf '%s\n' "$registro" \
+          | awk '/DEUDA-VIVA:INICIO/{on=1;next} /DEUDA-VIVA:FIN/{on=0} on' \
           | grep -vE '^\s*```' | grep -E '\|' || true)"
 
 if [ -z "$bloque" ]; then
-  echo "⚠️  DEUDA: no encuentro el bloque DEUDA-VIVA en $(basename "$DEUDA") (¿marcadores movidos?)."
+  echo "⚠️  DEUDA: no encuentro el bloque DEUDA-VIVA en $(basename "$DEUDA") (¿marcadores movidos?)"
   echo "    Verificá a mano — un bloque ausente no es un registro vacío."
   exit 1
 fi
