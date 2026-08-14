@@ -187,6 +187,8 @@ export interface EstadoFacturaResp {
   drive: ArchivoDrive | null;
   /** `null` mientras el borrador no tiene cliente cargado (ni por signal ni desde el presupuesto). */
   receptor: ReceptorInput | null;
+  /** `null` mientras el borrador no tiene datos de venta cargados (ni por signal ni desde el presupuesto). */
+  datosVenta: DatosVentaInput | null;
   /** La frase redactada, para MOSTRAR. */
   motivo: string | null;
   /** El código estable, para RAMIFICAR. Ver `MotivoCodigo`. */
@@ -711,6 +713,14 @@ interface EstadoFacturaRaw {
     nombre: string;
     domicilio: string;
   } | null;
+  datos_venta?: {
+    fecha: string;
+    concepto: 1 | 2 | 3;
+    condicion_venta: string;
+    fecha_servicio_desde?: string | null;
+    fecha_servicio_hasta?: string | null;
+    fecha_vto_pago?: string | null;
+  } | null;
   motivo: string | null;
   motivo_codigo?: string | null;
   terminado: boolean;
@@ -749,6 +759,16 @@ function normalizarEstadoFactura(raw: EstadoFacturaRaw): EstadoFacturaResp {
           nroDoc: raw.receptor.nro_doc,
           nombre: raw.receptor.nombre,
           domicilio: raw.receptor.domicilio,
+        }
+      : null,
+    datosVenta: raw.datos_venta
+      ? {
+          fecha: raw.datos_venta.fecha,
+          concepto: raw.datos_venta.concepto,
+          condicionVenta: raw.datos_venta.condicion_venta,
+          fechaServicioDesde: raw.datos_venta.fecha_servicio_desde ?? null,
+          fechaServicioHasta: raw.datos_venta.fecha_servicio_hasta ?? null,
+          fechaVtoPago: raw.datos_venta.fecha_vto_pago ?? null,
         }
       : null,
     motivo: raw.motivo,

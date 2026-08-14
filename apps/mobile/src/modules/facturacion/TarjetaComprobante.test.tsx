@@ -41,6 +41,7 @@ function estado(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
     pdf: { url: 'https://afipsdk/f.pdf', nombre: 'f.pdf', expiraAt: null },
     drive: null,
     receptor: null,
+    datosVenta: null,
     motivo: null,
     motivoCodigo: null,
     terminado: true,

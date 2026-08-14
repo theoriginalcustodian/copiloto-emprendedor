@@ -24,6 +24,7 @@ const ESTADO_LISTO: EstadoFacturaResp = {
   pdf: null,
   drive: null,
   receptor: null,
+  datosVenta: null,
   motivo: null,
   motivoCodigo: null,
   terminado: false,

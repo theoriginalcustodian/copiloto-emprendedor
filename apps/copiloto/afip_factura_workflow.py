@@ -103,6 +103,7 @@ class FacturaWorkflow:
             "faltantes": list(self._errores),
             "items": [self._item_dict(i) for i in self._borrador.items],
             "receptor": self._receptor_dict(self._borrador.receptor),
+            "datos_venta": self._datos_venta_dict(self._borrador.datos_venta),
             "total": str(self._total()),
             "token_confirmacion": self._token() if self._estado is EstadoFactura.ESPERANDO_CONFIRMACION else None,
             "resultado": self._resultado,
@@ -387,6 +388,19 @@ class FacturaWorkflow:
             "nro_doc": r.nro_doc,
             "nombre": r.nombre,
             "domicilio": r.domicilio,
+        }
+
+    @staticmethod
+    def _datos_venta_dict(d: DatosVenta | None) -> dict | None:
+        if d is None:
+            return None
+        return {
+            "fecha": d.fecha.isoformat(),
+            "concepto": d.concepto.value,
+            "condicion_venta": d.condicion_venta,
+            "fecha_servicio_desde": d.fecha_servicio_desde.isoformat() if d.fecha_servicio_desde else None,
+            "fecha_servicio_hasta": d.fecha_servicio_hasta.isoformat() if d.fecha_servicio_hasta else None,
+            "fecha_vto_pago": d.fecha_vto_pago.isoformat() if d.fecha_vto_pago else None,
         }
 
     @staticmethod
