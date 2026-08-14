@@ -164,6 +164,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
       if (cancelado || !vivo.current) return;
       setEstadoFacturaActual(estado);
       if (estado.receptor) setClienteLocal(estado.receptor);
+      if (estado.datosVenta) setDatosVentaLocal(estado.datosVenta);
       setCreandoBorrador(false);
     })().catch(() => {
       if (!cancelado && vivo.current) {
@@ -196,6 +197,7 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
       setFacturaId(res.facturaId);
       setEstadoFacturaActual(estado);
       if (estado.receptor) setClienteLocal(estado.receptor);
+      if (estado.datosVenta) setDatosVentaLocal(estado.datosVenta);
       setCreandoBorrador(false);
     })().catch(() => {
       if (!cancelado && vivo.current) {
