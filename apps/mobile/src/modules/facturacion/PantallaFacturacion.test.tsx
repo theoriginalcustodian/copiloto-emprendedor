@@ -550,6 +550,41 @@ describe('PantallaFacturacion', () => {
       expect(screen.queryByTestId('facturacion-paso-resumen-cliente-no-disponible')).toBeNull();
     });
 
+    /**
+     * 🔴 **Mismo gap que `clienteLocal`, mismo mecanismo.** `datosVentaLocal` también es un eco LOCAL
+     * (ver docstring de `PasoResumen`): sin sembrarlo desde `estado.datosVenta` al adoptar un borrador
+     * externo, `PasoResumen` mostraba "no tenemos el detalle de la venta" aunque el dato ya viajara en
+     * `EstadoFacturaResp.datosVenta` (PR #457).
+     */
+    it('con datos_venta ya cargados en el borrador -- siembra datosVentaLocal, PasoResumen lo muestra sin pedirlo de nuevo', async () => {
+      jest.mocked(esperarEstadoEstable).mockResolvedValue({
+        convergio: true,
+        estado: estadoMock({
+          estado: 'esperando_confirmacion',
+          items: [{ descripcion: 'Mano de obra', cantidad: '1', precioUnitario: '30000.00', subtotal: '30000.00' }],
+          total: '30000.00',
+          tokenConfirmacion: 'tok-confirmar',
+          receptor: {
+            condicionIva: 1,
+            tipoDoc: 80,
+            nroDoc: '20111111112',
+            nombre: 'Doña Repuestos SRL',
+            domicilio: 'Av. Siempre Viva 742',
+          },
+          datosVenta: {
+            fecha: '2026-08-14',
+            concepto: 1,
+            condicionVenta: 'contado',
+          },
+        }),
+      });
+
+      await montar({ facturaIdInicial: 'presu-12' });
+
+      await waitFor(() => expect(screen.getByTestId('facturacion-paso-resumen-datos-venta')).toBeTruthy());
+      expect(screen.queryByTestId('facturacion-paso-resumen-datos-venta-no-disponible')).toBeNull();
+    });
+
     it('sin el parámetro sigue creando su propio borrador — el camino de siempre no cambia', async () => {
       // El control diferencial: si este test también pasara con `crearFactura` sin llamar, los dos
       // de arriba no estarían probando nada.
