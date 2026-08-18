@@ -42,7 +42,7 @@ Control: `scripts/deuda-check.sh` (lo compone `scripts/vigilancia-check.sh`, que
 ```
 lote-B                     | backend            | --                                          | cerrado
 lote-C                     | backend            | @lote-B                                     | cerrado
-emision-factura-propuesto  | backend            | que el agente emita esa card hacia web      | abierto
+emision-factura-propuesto  | backend            | ya emite (web+backend, 9c62f310)            | cerrado
 D1                         | backend            | 1er sprint post-beta                        | cerrado
 D2                         | backend            | 1er sprint post-beta                        | cerrado
 D3                         | backend            | 1er sprint post-beta                        | cerrado
@@ -51,7 +51,7 @@ D5                         | backend            | @lote-C                       
 D6                         | backend            | 1er sprint post-beta                        | cerrado
 D7                         | backend            | @lote-B                                     | cerrado
 D8                         | frontend           | --                                          | cerrado
-D9                         | frontend           | proximo item de frontend                    | abierto
+D9                         | frontend           | EPERM intra-run: sin disparador (oportunista) | abierto
 D10                        | planificacion      | abierto/ > 40 archivos o > 5 autogenerados  | abierto
 D11                        | backend+auditoria  | al modificar FORCE RLS o una policy         | cerrado
 D12                        | frontend           | @emision-factura-propuesto                  | cerrado
