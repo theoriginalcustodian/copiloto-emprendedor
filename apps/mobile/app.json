@@ -8,6 +8,15 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.copiloto.emprendedor",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Odobi usa el micrófono para que puedas dictarle por voz en vez de escribir.",
+        "NSCameraUsageDescription": "Odobi usa la cámara para que puedas fotografiar comprobantes y facturas.",
+        "NSPhotoLibraryUsageDescription": "Odobi accede a tus fotos para que puedas adjuntar comprobantes y facturas al chat."
+      }
+    },
     "android": {
       "package": "app.copiloto.emprendedor",
       "predictiveBackGestureEnabled": false,
