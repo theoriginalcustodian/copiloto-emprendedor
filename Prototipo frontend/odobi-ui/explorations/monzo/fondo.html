@@ -1,0 +1,259 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Fondo — ascendente vs descendente</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73; --fondo:#F2EEE7;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+    --ui:Inter,system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--fondo);color:var(--negro);font-family:var(--ui);padding:44px 32px 80px}
+  .wrap{max-width:1240px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sec)}
+  h1{font-family:"PJ";font-size:32px;line-height:1.1;margin:12px 0 0;max-width:24ch}
+  .baja{color:var(--sec);max-width:82ch;margin-top:14px;line-height:1.65}
+  h2.s{font-family:"PJ";font-size:20px;margin:52px 0 6px}
+  .sub{color:var(--sec);font-size:14px;margin-bottom:20px;max-width:80ch}
+
+  .par{display:flex;gap:44px;margin-top:34px;flex-wrap:wrap}
+  .col{flex:0 0 auto}
+  .col .tit{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--sec);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .col.nueva .tit{color:var(--terracota-prof)}
+  .tel{width:390px;height:760px;border-radius:34px;overflow:hidden;position:relative;
+       box-shadow:0 20px 50px rgba(26,21,18,.16);display:flex;flex-direction:column}
+
+  /* ══════ ANTES: lo que tenemos hoy ══════ */
+  .a{background:var(--blanco)}
+  .a .top{height:38px}
+  .a .hd{display:flex;align-items:center;justify-content:space-between;padding:2px 24px 16px}
+  .a .wm{font-family:"PJ";font-size:20px;color:var(--terracota)}
+  .a .av{width:32px;height:32px;border-radius:99px;background:var(--crema);border:1px solid var(--border);
+         display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--sec)}
+  .a .body{flex:1;padding:0 16px;display:flex;flex-direction:column;gap:8px}
+  .a .fecha{font-size:13px;color:var(--sec);padding:0 8px}
+  .a .port{background:var(--crema);border-radius:16px;padding:16px 16px 8px}
+  .a .port .l{font-size:13px;color:var(--sec);margin-bottom:4px}
+  .a .port .n{font-family:"PJ";font-size:28px;line-height:32px}
+  .a .port .d{font-size:13px;font-weight:500;margin-left:8px}
+  .a .rows{display:flex;gap:24px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+  .a .rows div{flex:1}.a .rows span{display:block;font-size:13px;color:var(--sec)}
+  .a .rows b{font-size:16px;font-weight:500}
+  .a .sl{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--sec);padding:8px 8px 0}
+  .a .card{background:var(--blanco);border:1px solid var(--border);border-radius:16px;padding:16px 16px 0;
+           box-shadow:0 1px 2px rgba(26,21,18,.06),0 4px 16px rgba(26,21,18,.05)}
+  .a .card .row{display:flex;gap:12px}
+  .a .tile{width:36px;height:36px;border-radius:8px;background:var(--arena-30);flex-shrink:0;
+           display:flex;align-items:center;justify-content:center}
+  .a .card p{font-size:16px;line-height:24px}
+  .a .acc{min-height:48px;display:flex;align-items:center;font-size:16px;font-weight:500;color:var(--terracota-prof)}
+  .a .peek{border-top:1px solid var(--border);padding:14px 16px 20px;display:flex;gap:8px;align-items:center}
+  .a .inp{flex:1;height:48px;border:1px solid var(--terracota);border-radius:99px;display:flex;align-items:center;
+          padding:0 16px;font-size:16px;color:var(--sec)}
+  .a .mic{width:48px;height:48px;border-radius:99px;background:var(--terracota);flex-shrink:0;
+          display:flex;align-items:center;justify-content:center}
+
+  /* ══════ DESPUÉS: gramática Monzo ══════ */
+  .b{background:var(--crema)}                        /* el lienzo NUNCA es blanco */
+  .b .top{height:38px}
+  /* Header mínimo: el título de la pantalla + el avatar. Sin pills de navegación —
+     un pill se lee como botón, y un botón implica que se NAVEGA ahí: enseñaría el
+     modelo equivocado, porque Mi día es la capa base, no un destino. */
+  .b .hd{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 16px}
+  .b .hd h3{font-size:13px;font-weight:400;color:var(--sec)}  /* la fecha es dato, no título */
+  .b .av{position:relative;width:40px;height:40px;border-radius:99px;background:var(--terracota);color:#fff;
+         display:flex;align-items:center;justify-content:center;font-family:"PJ";font-size:16px}
+  .b .pills{display:flex;gap:8px}
+  .b .pill{height:40px;padding:0 16px;border-radius:99px;background:var(--blanco);display:flex;
+           align-items:center;gap:6px;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(26,21,18,.07)}
+  .b .pill.ic{width:40px;padding:0;justify-content:center}
+  .b .body{flex:1;padding:0 16px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .b .fecha{font-size:15px;color:var(--sec);padding:0 4px}
+  /* el golpe de color: un bloque pleno por pantalla */
+  .b .port{background:var(--negro);border-radius:26px;padding:22px 22px 20px;color:var(--crema)}
+  .b .port .l{font-size:14px;color:var(--arena);margin-bottom:6px}
+  .b .port .n{font-family:"PJ";font-size:46px;line-height:1;letter-spacing:-.02em}
+  .b .port .n i{font-style:normal;font-size:26px;opacity:.85}
+  .b .port .d{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;
+              background:rgba(247,243,236,.12);padding:5px 11px;border-radius:99px;color:var(--crema)}
+  .b .rows{display:flex;gap:10px;margin-top:18px}
+  .b .rows div{flex:1;background:rgba(247,243,236,.09);border-radius:14px;padding:10px 12px}
+  .b .rows span{display:block;font-size:12px;color:var(--arena);margin-bottom:2px}
+  .b .rows b{font-size:15px;font-weight:600;color:var(--crema)}
+  .b .sl{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--sec);
+         padding:6px 4px 0;letter-spacing:.06em;text-transform:uppercase}
+  /* cards: blancas, SIN borde, radio grande, sombra suave */
+  .b .card{background:var(--blanco);border-radius:22px;padding:18px;box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .b .card .row{display:flex;gap:14px;align-items:flex-start}
+  .b .tile{width:42px;height:42px;border-radius:14px;background:var(--arena-30);flex-shrink:0;
+           display:flex;align-items:center;justify-content:center}
+  .b .card p{font-size:16px;line-height:23px}
+  .b .card p b{font-weight:600}
+  /* la acción deja de ser un link: es un botón */
+  /* Mismo fill que el mic (#DE7250): es el color de "esto ejecuta". Blanco encima da
+     3,17:1, que sólo alcanza para texto grande → el label va en DISPLAY 19 Bold,
+     idéntica vía a la de los botones de confirmar (regla 28/07 v2). */
+  .b .acc{display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 20px;margin-top:14px;
+          border-radius:99px;background:var(--terracota);color:#fff;
+          font-family:var(--ui);font-weight:500;font-size:16px;line-height:1}
+          /* prueba 19/08: sin bold, 16px. Pendiente: blanco s/#DE7250 = 3,17:1 */
+  .b .peek{padding:12px 16px 20px;display:flex;gap:10px;align-items:center}
+  .b .inp{flex:1;height:52px;background:var(--blanco);border-radius:99px;display:flex;align-items:center;
+          padding:0 20px;font-size:16px;color:var(--sec);box-shadow:0 3px 12px rgba(26,21,18,.08)}
+  .b .mic{width:52px;height:52px;border-radius:99px;background:var(--terracota);flex-shrink:0;
+          display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(222,114,80,.4)}
+  svg{display:block}
+
+  table{border-collapse:collapse;width:100%;margin-top:22px;font-size:14px}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400}
+  td.q{width:150px;font-weight:600}
+  .caja{background:var(--negro);color:var(--crema);border-radius:18px;padding:28px 32px;margin-top:46px}
+  .caja p{color:#DCD3C6;max-width:84ch;line-height:1.7;margin-top:10px}
+  .caja strong{color:var(--crema)} .caja .eyebrow{color:var(--arena)}
+
+  .fila{display:flex;gap:30px;margin-top:30px;align-items:flex-start}
+  .pie{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--sec);margin-top:12px;width:390px}
+</style></head><body><div class="wrap">
+<div class="eyebrow">Fondo de pantalla · dirección del degradé</div>
+<h1>Ascendente vs descendente</h1>
+<p class="baja">La misma arena al 14 %, cambiando de dónde entra la temperatura. No es una decisión estética
+suelta: <strong>define qué zona de la pantalla “pesa” más</strong>, y por lo tanto por dónde entra el ojo.</p>
+<div class="fila">
+<div class="col"><div class="tit">A · descendente (tibio arriba)</div><div class="tel b" style="background:linear-gradient(180deg,#F5E7DE 0%,#F7F3EC 60%,#F7F3EC 100%)">
+        <div class="top"></div>
+        <div class="hd">
+          <h3>Martes 18 de agosto</h3>
+          <span class="av">M<i style="position:absolute;top:0;right:0;width:11px;height:11px;border-radius:99px;background:var(--terracota-prof);border:2px solid var(--crema)"></i></span>
+        </div>
+        <div class="body">
+          <div class="port">
+            <div class="l">En caja</div>
+            <div class="n"><i>$</i>286.000</div>
+            <span class="d">↓ 18% vs julio</span>
+            <div class="rows">
+              <div><span>Entró</span><b>$412.000</b></div>
+              <div><span>Salió</span><b>$126.000</b></div>
+              <div><span>Por cobrar</span><b>$225.000</b></div>
+            </div>
+          </div>
+          <div class="sl">
+            <svg width="15" height="15" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke="#5C534C" stroke-width="1.7" stroke-linecap="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+            Para hoy
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg></div>
+              <p>El presupuesto de <b>Lucía</b> lleva <b>31 días</b> sin respuesta. Los que pasan el mes casi no se cierran.</p>
+            </div>
+            <div class="acc">Escribirle</div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div>
+              <p>La factura de <b>Rodríguez SRL</b> está impaga hace <b>22 días</b>.</p>
+            </div>
+            <div class="acc">Mandarle recordatorio</div>
+          </div>
+        </div>
+        <div class="peek">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="22" height="22" viewBox="0 0 256 256" fill="#fff"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
+        </div>
+      </div><p class="pie">la temperatura entra por el header y cae · el bloque negro queda sobre lo más cálido</p></div>
+<div class="col"><div class="tit">B · ascendente (tibio abajo)</div><div class="tel b" style="background:linear-gradient(0deg,#F5E7DE 0%,#F7F3EC 60%,#F7F3EC 100%)">
+        <div class="top"></div>
+        <div class="hd">
+          <h3>Martes 18 de agosto</h3>
+          <span class="av">M<i style="position:absolute;top:0;right:0;width:11px;height:11px;border-radius:99px;background:var(--terracota-prof);border:2px solid var(--crema)"></i></span>
+        </div>
+        <div class="body">
+          <div class="port">
+            <div class="l">En caja</div>
+            <div class="n"><i>$</i>286.000</div>
+            <span class="d">↓ 18% vs julio</span>
+            <div class="rows">
+              <div><span>Entró</span><b>$412.000</b></div>
+              <div><span>Salió</span><b>$126.000</b></div>
+              <div><span>Por cobrar</span><b>$225.000</b></div>
+            </div>
+          </div>
+          <div class="sl">
+            <svg width="15" height="15" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke="#5C534C" stroke-width="1.7" stroke-linecap="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+            Para hoy
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg></div>
+              <p>El presupuesto de <b>Lucía</b> lleva <b>31 días</b> sin respuesta. Los que pasan el mes casi no se cierran.</p>
+            </div>
+            <div class="acc">Escribirle</div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div>
+              <p>La factura de <b>Rodríguez SRL</b> está impaga hace <b>22 días</b>.</p>
+            </div>
+            <div class="acc">Mandarle recordatorio</div>
+          </div>
+        </div>
+        <div class="peek">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="22" height="22" viewBox="0 0 256 256" fill="#fff"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
+        </div>
+      </div><p class="pie">la temperatura sube desde el composer · la zona de hablarle es la que “calienta”</p></div>
+<div class="col"><div class="tit">C · ascendente marcado (arena 22 %)</div><div class="tel b" style="background:linear-gradient(0deg,#F2DED2 0%,#F7F3EC 55%,#F7F3EC 100%)">
+        <div class="top"></div>
+        <div class="hd">
+          <h3>Martes 18 de agosto</h3>
+          <span class="av">M<i style="position:absolute;top:0;right:0;width:11px;height:11px;border-radius:99px;background:var(--terracota-prof);border:2px solid var(--crema)"></i></span>
+        </div>
+        <div class="body">
+          <div class="port">
+            <div class="l">En caja</div>
+            <div class="n"><i>$</i>286.000</div>
+            <span class="d">↓ 18% vs julio</span>
+            <div class="rows">
+              <div><span>Entró</span><b>$412.000</b></div>
+              <div><span>Salió</span><b>$126.000</b></div>
+              <div><span>Por cobrar</span><b>$225.000</b></div>
+            </div>
+          </div>
+          <div class="sl">
+            <svg width="15" height="15" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke="#5C534C" stroke-width="1.7" stroke-linecap="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+            Para hoy
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg></div>
+              <p>El presupuesto de <b>Lucía</b> lleva <b>31 días</b> sin respuesta. Los que pasan el mes casi no se cierran.</p>
+            </div>
+            <div class="acc">Escribirle</div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <div class="tile"><svg width="20" height="20" viewBox="0 0 256 256" fill="#1A1512"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div>
+              <p>La factura de <b>Rodríguez SRL</b> está impaga hace <b>22 días</b>.</p>
+            </div>
+            <div class="acc">Mandarle recordatorio</div>
+          </div>
+        </div>
+        <div class="peek">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="22" height="22" viewBox="0 0 256 256" fill="#fff"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
+        </div>
+      </div><p class="pie">mismo sentido que B, con el doble de intensidad abajo</p></div>
+</div>
+<div class="caja">
+<div class="eyebrow">Qué cambia cada dirección</div>
+<p><strong>Descendente:</strong> el peso está arriba. Refuerza el bloque negro —que es el ancla de la pantalla— y
+la lectura cae naturalmente hacia las tarjetas. Es el orden en que se lee el contenido.</p>
+<p><strong>Ascendente:</strong> el peso está abajo, donde vive el composer. <strong>Le da temperatura a la zona de
+hablarle</strong>, que es la acción principal del producto — y en el modelo de capas, el composer es además el
+borde del panel de conversación: el degradé insinúa que ahí abajo <em>hay algo</em>.</p>
+<p>Contrastes en el punto más cálido: arena 14 % → <strong>sec 6,21:1</strong> ✓ · arena 22 % →
+<strong>sec 5,93:1</strong> ✓. Las dos pasan.</p>
+</div>
+</div></body></html>

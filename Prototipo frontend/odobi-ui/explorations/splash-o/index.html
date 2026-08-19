@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — Exploración · Splash "la O entra" (capas circulares + wordmark)</title>
+<style>
+  /* ============================================================
+     EXPLORACIÓN · SPLASH "LA O ENTRA" (29/07/2026)
+     Pedido de Martin: animación tipo atoms (long-press pulse) pero
+     1) sin gesto — corre sola, es splash;
+     2) capas = FORMAS CIRCULARES (consonancia con la O);
+     3) fondo crema/blanco, capas en tonos terracota + negro carbón;
+     4) remate: NO los 3 círculos dentro de un círculo — la "O" de
+        Plus Jakarta Sans Bold entra desde afuera del contenedor hasta
+        el centro, y ahí nacen el resto de las letras de "Odobi".
+     Variante B = misma pieza con un beat de monograma ("la o que
+     habla": 3 barras adentro de la O) antes del wordmark, para
+     comparar (decisión de identidad 28/07).
+     TODO motion-ref: validar timings con MCP 60FPS (server caído hoy).
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --fs-display:28px; --lh-display:32px;
+    --fs-title:20px;   --lh-title:24px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px;
+    --tap:48px; --r-pill:999px;
+    --ease:cubic-bezier(.2,0,0,1);
+    --ease-spring:cubic-bezier(.34,1.56,.64,1);
+    --ease-in:cubic-bezier(.6,0,1,1);
+  }
+
+  /* ===== Meta-capa de presentación ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1080px;margin:0 auto 32px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:840px}
+  .lanes{max-width:1080px;margin:0 auto 40px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
+  .lane{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;line-height:18px;color:var(--sec);text-align:center;max-width:390px}
+  .btnrow{display:flex;gap:8px}
+  .ctl{display:flex;align-items:center;justify-content:center;min-height:var(--tap);padding:0 20px;border:1px solid #C9C1B4;border-radius:var(--r-pill);background:var(--blanco);font-family:var(--font-ui);font-size:14px;font-weight:500;color:var(--negro);cursor:pointer}
+  .ctl:hover{background:var(--crema)}
+  .ctl:focus-visible{outline:2px solid var(--terracota-prof);outline-offset:2px}
+
+  .spec{max-width:1080px;margin:0 auto;background:var(--blanco);border:1px solid #D9D2C7;border-radius:16px;padding:24px 32px}
+  .spec h2{font-family:var(--font-display);font-size:20px;line-height:24px;margin-bottom:12px}
+  .spec ol{margin-left:20px;display:flex;flex-direction:column;gap:8px}
+  .spec li{font-size:14px;line-height:20px;color:var(--sec)}
+  .spec b{color:var(--negro);font-weight:500}
+  .spec .warn{margin-top:16px;padding:12px 16px;background:var(--crema);border-radius:8px;font-size:13px;line-height:18px;color:var(--sec)}
+
+  /* ===== Frame mobile 390px — splash CLARO ===== */
+  .phone{position:relative;width:390px;height:844px;background:var(--crema);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0;color:var(--negro)}
+  .stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center}
+  .foot{height:96px;flex-shrink:0}
+
+  /* --- Capas circulares (arcos con hueco: el hueco hace visible la rotación) --- */
+  .rings{position:absolute;left:50%;top:50%;width:280px;height:280px;margin:-140px 0 0 -140px;pointer-events:none}
+  .rings circle{fill:none;stroke-linecap:round;transform-origin:140px 140px;opacity:0}
+  /* tonos: de afuera hacia adentro arena → terracota → terracota profundo → negro carbón */
+  .r1{stroke:var(--arena);stroke-width:2.5;stroke-dasharray:600 230}
+  .r2{stroke:var(--terracota);stroke-width:2.5;stroke-dasharray:420 259}
+  .r3{stroke:var(--terracota-prof);stroke-width:2.5;stroke-dasharray:300 228}
+  .r4{stroke:var(--negro);stroke-width:2.5;stroke-dasharray:170 207}
+
+  /* entrada: cada anillo aparece escalando desde chico, con stagger */
+  .st-enter .r1{animation:ring-in 520ms var(--ease) 0ms forwards, spin1 16s linear 520ms infinite}
+  .st-enter .r2{animation:ring-in 520ms var(--ease) 120ms forwards, spin2 12s linear 640ms infinite}
+  .st-enter .r3{animation:ring-in 520ms var(--ease) 240ms forwards, spin3 9s linear 760ms infinite}
+  .st-enter .r4{animation:ring-in 520ms var(--ease) 360ms forwards, spin4 7s linear 880ms infinite}
+  @keyframes ring-in{from{opacity:0;transform:scale(.72) rotate(0deg)}to{opacity:1;transform:scale(1) rotate(0deg)}}
+  @keyframes spin1{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spin2{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+  @keyframes spin3{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes spin4{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+
+  /* respiración: el conjunto late (la pieza "respira", no queda rígida) */
+  .st-enter .rings{animation:breathe 2600ms var(--ease) 700ms infinite}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+
+  /* colapso: los anillos se van hacia adentro justo cuando entra la O */
+  .st-collapse .rings{animation:none}
+  .st-collapse circle{animation:ring-out 420ms var(--ease-in) forwards!important}
+  .st-collapse .r1{animation-delay:0ms!important}
+  .st-collapse .r2{animation-delay:60ms!important}
+  .st-collapse .r3{animation-delay:120ms!important}
+  .st-collapse .r4{animation-delay:180ms!important}
+  @keyframes ring-out{to{opacity:0;transform:scale(.12)}}
+
+  /* --- Wordmark: la O entra desde afuera del contenedor hasta el centro --- */
+  .word{position:relative;display:flex;align-items:baseline;font-family:var(--font-display);font-size:88px;line-height:1;color:var(--terracota);letter-spacing:-.01em} /* wordmark: logotipo exento WCAG 1.4.3 */
+  .word .o{position:relative;display:block;opacity:0;transform:translateX(var(--o-shift,0px)) scale(5.6);filter:blur(14px)}
+  .word .rest{display:flex;overflow:visible}
+  .word .rest span{display:block;opacity:0;transform:translateY(10px)}
+  .st-o .word .o{animation:o-in 720ms var(--ease) forwards}
+  @keyframes o-in{
+    0%{opacity:0;transform:translateX(var(--o-shift,0px)) scale(5.6);filter:blur(14px)}
+    65%{opacity:1;transform:translateX(var(--o-shift,0px)) scale(.97);filter:blur(0)}
+    100%{opacity:1;transform:translateX(var(--o-shift,0px)) scale(1);filter:blur(0)}
+  }
+  /* al aparecer las letras, la O se corre a su lugar real del lockup */
+  .st-word .word .o{animation:o-settle 520ms var(--ease) forwards}
+  @keyframes o-settle{to{opacity:1;transform:translateX(0) scale(1);filter:blur(0)}}
+  .st-word .word .rest span{animation:letter-in 420ms var(--ease-spring) forwards}
+  .st-word .word .rest span:nth-child(1){animation-delay:60ms}
+  .st-word .word .rest span:nth-child(2){animation-delay:120ms}
+  .st-word .word .rest span:nth-child(3){animation-delay:180ms}
+  .st-word .word .rest span:nth-child(4){animation-delay:240ms}
+  @keyframes letter-in{to{opacity:1;transform:translateY(0)}}
+
+  /* --- Variante B · beat de monograma: 3 barras adentro de la O --- */
+  .bars{position:absolute;left:50%;top:50%;transform:translate(-50%,-46%);display:flex;align-items:center;gap:5px;pointer-events:none}
+  .bars i{display:block;width:5px;border-radius:3px;background:var(--terracota-prof);transform:scaleY(0);transform-origin:center} /* #B04A2E s/crema 4.91:1 ✅ */
+  .bars i:nth-child(1){height:14px}
+  .bars i:nth-child(2){height:26px}
+  .bars i:nth-child(3){height:14px}
+  .st-mono .bars i{animation:bar-in 320ms var(--ease-spring) forwards, bar-eq 520ms var(--ease) 340ms}
+  .st-mono .bars i:nth-child(1){animation-delay:0ms,360ms}
+  .st-mono .bars i:nth-child(2){animation-delay:60ms,420ms}
+  .st-mono .bars i:nth-child(3){animation-delay:120ms,480ms}
+  @keyframes bar-in{to{transform:scaleY(1)}}
+  @keyframes bar-eq{0%,100%{transform:scaleY(1)}35%{transform:scaleY(1.3)}70%{transform:scaleY(.78)}}
+  .st-word .bars i{animation:bar-out 260ms var(--ease) forwards!important;animation-delay:0ms!important}
+  @keyframes bar-out{to{transform:scaleY(0);opacity:0}}
+
+  /* --- Reduced motion: sin loops ni springs, todo por fade corto --- */
+  @media (prefers-reduced-motion: reduce){
+    .rings circle{opacity:1!important;animation:none!important}
+    .st-enter .rings{animation:none}
+    .st-collapse circle{opacity:0!important;transition:opacity 150ms}
+    .word .o,.word .rest span{filter:none!important}
+    *,*::before,*::after{animation-duration:.01ms!important;transition-duration:150ms!important;transition-delay:0ms!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Exploración · Splash "la O entra" — capas circulares → wordmark</h1>
+  <p>Referencia: <b>atoms · long-press to get started (pulse)</b> — 60fps.design. Se le sacan el gesto y el contenedor final: acá corre sola (es splash) y las capas son <b>arcos circulares</b> en tonos terracota + negro carbón sobre crema, para que rimen con la O. El remate no es "3 círculos adentro de un círculo": los anillos colapsan y la <b>O de Plus Jakarta Sans Bold</b> entra desde afuera del contenedor hasta el centro; ahí nacen <b>dobi</b>. La variante B mete un beat del monograma ("la o que habla") antes del wordmark, para comparar. <b>Ojo: 60FPS MCP no respondió hoy — timings sin validar (TODO motion-ref).</b></p>
+</div>
+
+<div class="lanes">
+
+  <!-- ============ VARIANTE A ============ -->
+  <div class="lane">
+    <span class="lane-tag">A · anillos → O → Odobi</span>
+    <div class="phone st-enter" id="phoneA">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+      <div class="stage">
+        <svg class="rings" viewBox="0 0 280 280" aria-hidden="true">
+          <circle class="r1" cx="140" cy="140" r="132"/>
+          <circle class="r2" cx="140" cy="140" r="108"/>
+          <circle class="r3" cx="140" cy="140" r="84"/>
+          <circle class="r4" cx="140" cy="140" r="60"/>
+        </svg>
+        <div class="word" id="wordA">
+          <span class="o" id="oA">O</span>
+          <span class="rest" id="restA"><span>d</span><span>o</span><span>b</span><span>i</span></span>
+        </div>
+      </div>
+      <div class="foot"></div>
+    </div>
+    <div class="btnrow"><button class="ctl" data-replay="A">↺ Reproducir</button></div>
+    <p class="lane-sub">Sin monograma: la letra madre es el signo hasta que exista el isotipo final.</p>
+  </div>
+
+  <!-- ============ VARIANTE B ============ -->
+  <div class="lane">
+    <span class="lane-tag">B · anillos → O → monograma → Odobi</span>
+    <div class="phone st-enter" id="phoneB">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+      <div class="stage">
+        <svg class="rings" viewBox="0 0 280 280" aria-hidden="true">
+          <circle class="r1" cx="140" cy="140" r="132"/>
+          <circle class="r2" cx="140" cy="140" r="108"/>
+          <circle class="r3" cx="140" cy="140" r="84"/>
+          <circle class="r4" cx="140" cy="140" r="60"/>
+        </svg>
+        <div class="word" id="wordB">
+          <span class="o" id="oB">O
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          </span>
+          <span class="rest" id="restB"><span>d</span><span>o</span><span>b</span><span>i</span></span>
+        </div>
+      </div>
+      <div class="foot"></div>
+    </div>
+    <div class="btnrow"><button class="ctl" data-replay="B">↺ Reproducir</button></div>
+    <p class="lane-sub">El monograma 28/07 ("la o que habla") aparece un beat adentro de la O y se calma antes de que lleguen las letras.</p>
+  </div>
+
+</div>
+
+<div class="spec">
+  <h2>Spec de motion (si se aprueba, se porta a Rive)</h2>
+  <ol>
+    <li><b>Acto 1 · Las capas (0–900ms):</b> 4 arcos concéntricos (r 132/108/84/60, stroke 2.5) entran escalando .72→1 con fade, stagger 120ms, ease(.2,0,0,1) 520ms. Cada arco tiene un hueco distinto (dasharray) — el hueco es lo que hace visible la rotación. Tonos de afuera hacia adentro: arena <code>#E8A088</code> · terracota <code>#DE7250</code> · terracota profundo <code>#B04A2E</code> · negro carbón <code>#1A1512</code>.</li>
+    <li><b>Acto 2 · Vida (900–1900ms):</b> rotación continua con velocidades y sentidos alternados (16s / −12s / 9s / −7s, lineal) + respiración del conjunto (scale 1→1.035, 2600ms). Rotación lineal a propósito: es una máquina que ronronea, no un rebote.</li>
+    <li><b>Acto 3 · Colapso + la O (1900–2620ms):</b> los anillos se van hacia adentro (scale→.12 + fade, 420ms, stagger 60ms, ease-in) y la <b>O</b> entra <b>desde afuera del contenedor</b>: scale 5.6→1 con de-blur 14px→0 y fade, 720ms, pasando por .97 (settle). La O ocupa el centro óptico de la pantalla, todavía sin las otras letras.</li>
+    <li><b>Acto 3-bis (solo variante B) · Monograma (+2620ms):</b> 3 barras nacen adentro de la O (scaleY 0→1, stagger 60ms, back-out 320ms) + un golpe de ecualizador (520ms) y se calman. Es la identidad del 28/07 dicha en un beat.</li>
+    <li><b>Acto 4 · El resto de las letras (A: +2700ms · B: +3400ms):</b> la O se corre a su lugar real del lockup (translateX calculado en runtime, 520ms) mientras <b>d·o·b·i</b> entran con stagger 60ms (translateY 10→0 + fade, back-out 420ms). La palabra queda ópticamente centrada, no la O.</li>
+    <li><b>Reduced motion:</b> sin rotaciones, sin respiración, sin springs — anillos estáticos que se apagan y wordmark por fade de 150ms.</li>
+    <li><b>Puerta abierta (opción B del brief):</b> si los anillos anidados no convencen, la variante alternativa es <b>ondas que emanan del centro</b> (la o hablando) en vez de capas que rotan. Mismo acto 3 y 4.</li>
+  </ol>
+  <div class="warn">
+    <b>Contraste.</b> Los arcos son decoración de una pieza display, no controles ni estado: no les aplica 1.4.11 (arena s/crema 1,9:1 y terracota s/crema 2,86:1 no pasarían como componente). El único elemento con carga informativa es el wordmark, y como logotipo está exento (WCAG 1.4.3 — decisión Martin 22/07). Las barras del monograma van en <code>#B04A2E</code> (4,91:1 s/crema ✅) y no en terracota plena. Si esta pieza pasara a ser un control (tap para entrar), habría que subir los arcos a <code>#B04A2E</code>/negro.
+  </div>
+</div>
+
+<script>
+(function(){
+  var TL = {
+    A: [ {t:1900,cls:'st-collapse'}, {t:1900,cls:'st-o'}, {t:2700,cls:'st-word'} ],
+    B: [ {t:1900,cls:'st-collapse'}, {t:1900,cls:'st-o'}, {t:2620,cls:'st-mono'}, {t:3400,cls:'st-word'} ]
+  };
+  var timers = {A:[], B:[]};
+
+  /* La O arranca en el centro óptico de la PANTALLA; cuando llegan las letras
+     se corre a su lugar del lockup. El desplazamiento = mitad del ancho de "dobi". */
+  function shift(id){
+    var word = document.getElementById('word'+id),
+        rest = document.getElementById('rest'+id);
+    var w = rest.getBoundingClientRect().width;
+    word.style.setProperty('--o-shift', (w/2)+'px');
+  }
+
+  function play(id){
+    var phone = document.getElementById('phone'+id);
+    timers[id].forEach(clearTimeout); timers[id] = [];
+    phone.classList.remove('st-enter','st-collapse','st-o','st-mono','st-word');
+    void phone.offsetWidth; /* reflow: reinicia las animaciones */
+    shift(id);
+    phone.classList.add('st-enter');
+    TL[id].forEach(function(step){
+      timers[id].push(setTimeout(function(){ phone.classList.add(step.cls); }, step.t));
+    });
+  }
+
+  document.querySelectorAll('[data-replay]').forEach(function(b){
+    b.addEventListener('click', function(){ play(b.getAttribute('data-replay')); });
+  });
+
+  function boot(){ play('A'); play('B'); }
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(boot); } else { boot(); }
+})();
+</script>
+
+</body>
+</html>

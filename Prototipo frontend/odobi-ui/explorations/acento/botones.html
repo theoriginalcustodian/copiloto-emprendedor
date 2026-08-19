@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El botón de confirmar — tres salidas a la regla del display Bold</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700}
+  :root{
+    --crema:#F7F3EC; --negro:#1A1512; --sec:#5C534C; --linea:#E8E2D9; --fondo:#F2EEE7;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--fondo);color:var(--negro);font-family:Inter,system-ui,-apple-system,sans-serif;
+       padding:44px 32px 80px}
+  .wrap{max-width:1280px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sec)}
+  h1{font-family:"PJ",sans-serif;font-size:30px;line-height:1.12;margin:12px 0 0;max-width:22ch}
+  .baja{color:var(--sec);max-width:78ch;margin-top:14px;line-height:1.6}
+  h2.sec{font-family:"PJ",sans-serif;font-size:20px;margin:52px 0 6px}
+  .sec-sub{color:var(--sec);font-size:14px;margin-bottom:22px}
+
+  .fila{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+  @media(max-width:1000px){.fila{grid-template-columns:1fr}}
+  .op{}
+  .op .tit{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+           color:var(--sec);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+  /* frame del teléfono, recortado a la zona de la decisión */
+  .tel{border-radius:26px;border:1px solid #C9C1B4;overflow:hidden;background:#fff;
+       box-shadow:0 16px 40px rgba(26,21,18,.13)}
+  .tel.osc{background:#1A1512;border-color:#3A322C}
+  .tel .cab{padding:14px 18px 0;font-size:13px;color:var(--sec)}
+  .tel.osc .cab{color:#928777}
+  .card{margin:12px;border:1px solid var(--linea);border-radius:16px;overflow:hidden}
+  .tel.osc .card{border-color:#3A322C;background:#251B11}
+  .card .ct{padding:14px 16px;border-bottom:1px solid var(--linea);display:flex;justify-content:space-between;align-items:center}
+  .tel.osc .card .ct{border-color:#3A322C}
+  .card .ct b{font-family:"PJ",sans-serif;font-size:17px}
+  .tel.osc .card .ct b{color:#F1E4CC}
+  .chip{font-size:12px;color:var(--sec);background:var(--crema);padding:3px 9px;border-radius:999px}
+  .tel.osc .chip{background:#1B120B;color:#928777}
+  .kv{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--linea);font-size:14px}
+  .tel.osc .kv{border-color:#3A322C;color:#F1E4CC}
+  .kv .k{width:64px;color:var(--sec);flex-shrink:0}
+  .tel.osc .kv .k{color:#928777}
+  .kv .v{flex:1}
+  .aviso{display:flex;gap:8px;padding:11px 16px;font-size:12.5px;color:var(--sec);align-items:center}
+  .tel.osc .aviso{color:#928777}
+  .acciones{padding:4px 16px 18px}
+  .b{min-height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+     color:#fff;margin-bottom:9px}
+  .b.display{font-family:"PJ",sans-serif;font-size:20px}
+  .b.normal{font-size:16px;font-weight:500}
+  .b2{min-height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+      font-size:16px;font-weight:500;border:1.5px solid var(--linea);background:#fff}
+  .tel.osc .b2{background:transparent;border-color:#3A322C;color:#F1E4CC}
+  /* el acento vivo sigue vivo donde manda la Decisión B */
+  .composer{display:flex;gap:8px;padding:10px 12px 16px;align-items:center;border-top:1px solid var(--linea)}
+  .tel.osc .composer{border-color:#3A322C}
+  .inp{flex:1;height:44px;border-radius:999px;border:1px solid #DE7250;display:flex;align-items:center;
+       padding:0 14px;font-size:15px;color:var(--sec);background:#fff}
+  .tel.osc .inp{background:#1B120B;color:#928777}
+  .mic{width:44px;height:44px;border-radius:999px;background:#DE7250;display:flex;align-items:center;
+       justify-content:center;flex-shrink:0}
+  .mic svg{stroke:#fff}
+
+  .nota{margin-top:14px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--sec)}
+  .nota b{color:var(--negro)}
+  .nota .ok{color:#2F6B52}
+  .nota .no{color:#B04A2E}
+
+  .cierre{background:var(--negro);color:var(--crema);border-radius:16px;padding:28px 32px;margin-top:56px}
+  .cierre h2{font-family:"PJ",sans-serif;font-size:22px;margin:10px 0 12px}
+  .cierre p{color:#DCD3C6;max-width:82ch;line-height:1.65;margin-bottom:10px}
+  .cierre strong{color:var(--crema)}
+  .cierre .eyebrow{color:#E8A088}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Acento cerrado: el par #DE7250 + #B04A2E · falta el botón</div>
+  <h1>El botón de confirmar, en su pantalla</h1>
+  <p class="baja">La regla del <strong>display 20 Bold</strong> se da de baja: no ayuda visualmente y rompe la escala
+    —todo lo demás de la app es Inter 16—. Nació de un problema de contraste, no de una decisión de diseño.
+    Estas son las tres salidas, en el HITL, que es donde el botón manda. <strong>En las tres, el acento vivo
+    sigue en el mic y en el borde del input:</strong> lo que se discute es sólo el fill del CTA.</p>
+
+  <h2 class="sec">Piel clara — el default</h2>
+  <p class="sec-sub">Es la piel real del producto (la del DoD): acá es donde hay que decidir.</p>
+
+  <div class="fila">
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#DE7250"></span> Hoy · display 20 Bold</div>
+      <div class="tel">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Para</span><span class="v">Gómez SRL</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="aviso">Un solo mail, ahora. No se manda nada sin tu confirmación.</div>
+          <div class="acciones">
+            <div class="b display" style="background:#DE7250">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg></div>
+        </div>
+      </div>
+      <p class="nota"><b>#DE7250 · display 20 Bold</b><br><span class="no">3,17:1</span> — legal sólo porque es texto grande.
+        El botón pesa más que el título de la card.</p>
+    </div>
+
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#B04A2E"></span> Opción 1 · fill profundo</div>
+      <div class="tel">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Para</span><span class="v">Gómez SRL</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="aviso">Un solo mail, ahora. No se manda nada sin tu confirmación.</div>
+          <div class="acciones">
+            <div class="b normal" style="background:#B04A2E">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg></div>
+        </div>
+      </div>
+      <p class="nota"><b>#B04A2E · Inter 16 Medium</b><br><span class="ok">5,43:1 ✓</span> texto normal.
+        Cero valores nuevos. El botón deja de competir con el contenido.</p>
+    </div>
+
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#DE7250"></span> Opción 3 · negro sobre terracota</div>
+      <div class="tel">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Para</span><span class="v">Gómez SRL</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="aviso">Un solo mail, ahora. No se manda nada sin tu confirmación.</div>
+          <div class="acciones">
+            <div class="b normal" style="background:#DE7250;color:#1A1512">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+        <div class="composer">
+          <div class="inp">Escribí, o hablá…</div>
+          <div class="mic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg></div>
+        </div>
+      </div>
+      <p class="nota"><b>#DE7250 · Inter 16 Medium negro</b><br><span class="ok">5,71:1 ✓</span> texto normal.
+        Conserva el calor. Deroga la regla del 28/07 — y el riesgo es de lectura, no de contraste.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Piel oscura — donde se ve la diferencia</h2>
+  <p class="sec-sub">Acá el fill profundo pierde presencia contra el fondo, y el vivo la conserva.</p>
+
+  <div class="fila">
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#B04A2E"></span> Opción 1 en oscuro</div>
+      <div class="tel osc">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="acciones" style="padding-top:12px">
+            <div class="b normal" style="background:#B04A2E">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+      </div>
+      <p class="nota">fill contra el fondo: <span class="no">3,33:1</span> — el botón se apaga.
+        El texto sigue perfecto (5,43:1): es presencia, no legibilidad.</p>
+    </div>
+
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#DE7250"></span> Opción 3 en oscuro</div>
+      <div class="tel osc">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="acciones" style="padding-top:12px">
+            <div class="b normal" style="background:#DE7250;color:#1A1512">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+      </div>
+      <p class="nota">fill contra el fondo: <span class="ok">5,71:1</span> — conserva presencia.
+        Es el mismo valor que ya usamos para el wordmark en oscuro.</p>
+    </div>
+
+    <div class="op">
+      <div class="tit"><span class="dot" style="background:#DE7250"></span> Mixta · vivo en oscuro, profundo en claro</div>
+      <div class="tel osc">
+        <div class="cab">Odobi · 9:41</div>
+        <div class="card">
+          <div class="ct"><b>Reclamo de pago</b><span class="chip">Gmail</span></div>
+          <div class="kv"><span class="k">Monto</span><span class="v">$120.000</span></div>
+          <div class="acciones" style="padding-top:12px">
+            <div class="b normal" style="background:#DE7250;color:#1A1512">Confirmar y mandar</div>
+            <div class="b2">Cancelar</div>
+          </div>
+        </div>
+      </div>
+      <p class="nota">el fill del botón <b>cambia por piel</b>: #B04A2E en claro, #DE7250 con texto negro en oscuro.
+        Cada piel usa el valor que ahí funciona — pero son dos reglas en vez de una.</p>
+    </div>
+  </div>
+
+  <div class="cierre">
+    <div class="eyebrow">Lo que cambia en cualquier caso</div>
+    <h2>Se da de baja el display 20 Bold en botones</h2>
+    <p>La etiqueta del botón vuelve a <strong>Inter 16 Medium</strong>, como el resto de la app. Era una regla nacida
+      de un problema de contraste —blanco sobre <code>#DE7250</code> da 3,17:1 y sólo era legal por ser texto
+      grande—, no de una decisión de diseño. <strong>Una regla que existe para esquivar un número, y que además
+      empeora lo que se ve, hay que cambiarla por otro color, no por otra tipografía.</strong></p>
+    <p>En las tres opciones, <strong>el acento vivo sigue donde la Decisión B lo quiere</strong>: el mic y el borde
+      del input — «hablarle a Odobi». Lo que se discute acá es sólo el fill del botón de confirmar.</p>
+  </div>
+</div>
+</body>
+</html>

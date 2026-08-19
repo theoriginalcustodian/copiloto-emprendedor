@@ -1,0 +1,994 @@
+{
+ "00-mapa": [
+  {
+   "tag": "1 · El mapa — superficies y flujos",
+   "sub": "La flecha terracota (5) es la que hoy no se ve en la app: el motivo de que se sienta \"funciones sueltas\". Mi día existe para hacerla visible.",
+   "notas": [
+    {
+     "t": "solo la primera vez.Después, la app abredirecto en Mi día",
+     "k": "dim"
+    },
+    {
+     "t": "tocás la acción de una tarjeta →el chat se abre con la propuesta ya armada",
+     "k": ""
+    },
+    {
+     "t": "toda orden de escritura pasa por acá. Sin excepción.",
+     "k": ""
+    },
+    {
+     "t": "5 · lo que confirmás queda anotado solo…y el libro alimenta la portada. ESTE es el sistema.",
+     "k": "accent"
+    },
+    {
+     "t": "6 · el mic vive en todos los tabs: hablar nunca depende de dónde estés",
+     "k": ""
+    },
+    {
+     "t": "7 · si una acción necesita un servicio no conectado, el permiso aparece justo ahí (just-in-time). Sin tab propio — Decisión A cerrada ↓",
+     "k": "dim"
+    },
+    {
+     "t": "las apps muestran y explican; para ejecutar, derivan al chat",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "2 · Decisión A — ¿5 tabs, 4 o 3?",
+   "sub": "Nielsen #8 (minimalismo): cada tab de primer nivel compite por atención todos los días. La pregunta no es \"¿entra?\", es \"¿se lo gana?\". Conexiones no navega el usuario: lo navega el sistema.",
+   "notas": [
+    {
+     "t": "Conexiones se usa fuerte UNA vez (el setup). Después, casi nunca… y ocupa un lugar de máxima jerarquía, todos los días.",
+     "k": ""
+    },
+    {
+     "t": "acá Conexiones vive adentro de Cuenta — y cuando una acción necesita permiso, el pedido aparece solo (flujo 7 del mapa).",
+     "k": ""
+    },
+    {
+     "t": "con 4 tabs cada uno respira más (97pt vs. 78) y la nav queda 100% cotidiana. Pero Cuenta sigue siendo un tab que se toca poco…",
+     "k": "dim"
+    },
+    {
+     "t": "Cuenta (y adentro, Conexiones) vive en el avatar — patrón Gmail/YouTube que el usuario ya conoce. Resuelve además el avatar sin destino (M7 de la crítica).",
+     "k": "accent"
+    },
+    {
+     "t": "3 tabs de 124pt: la nav queda SOLO con lo diario — ver el negocio, hablarle, las apps.",
+     "k": ""
+    },
+    {
+     "t": "¿Conexiones muy oculto? Solo si hubiera que BUSCARLO. Con estas 3 salvaguardas, él te encuentra: 1) puntito en el avatar cuando algo pide atención · 2) conexión caída = tarjeta en Mi día (\"Se cortó Mercado Pago → Reconectala\") · 3) permiso just-in-time al ejecutar (flujo 7).",
+     "k": ""
+    },
+    {
+     "t": "✔ Cerrada 26/07: gana C. Nadie navega A Conexiones — el sistema te lleva cuando hace falta (las 3 salvaguardas de arriba).",
+     "k": "accent"
+    }
+   ]
+  },
+  {
+   "tag": "3 · Decisión B — ¿el terracota qué dice?",
+   "sub": "Un color con un solo significado se aprende en un día (consistencia, Nielsen #4). Cambio transversal: delta del 03/09 y ✓✓ del chat pasan a negro/gris; links, tab activa y mic quedan terracota.",
+   "notas": [
+    {
+     "t": "mismo color, dos mensajes: \"esto está mal\" (dato)…",
+     "k": ""
+    },
+    {
+     "t": "…y \"tocá acá\" (acción). El usuario tiene que adivinar cuál es cuál.",
+     "k": ""
+    },
+    {
+     "t": "el dato malo va en negro, con su signo. Serio, sin drama.",
+     "k": "accent"
+    },
+    {
+     "t": "terracota queda SOLO en lo tocable: si es terracota, pasa algo al tocarlo. El color se vuelve una promesa.",
+     "k": "accent"
+    },
+    {
+     "t": "bonus: si una semana el delta es positivo, tampoco hay problema — negro siempre, el signo habla.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "4 · Decisión C — el puente Mi día → Chat — ✔ aprobada 26/07",
+   "sub": "Aprobado 26/07: \"07-insight\" se da de baja como pantalla propia — el puente ES el 07. Un solo patrón para tarjetas, voz y apps: todo desemboca en el chat, el chat siempre dice de dónde venís.",
+   "notas": [
+    {
+     "t": "tap en la acción: push lateral <320ms. Nada de menús — vas directo.",
+     "k": ""
+    },
+    {
+     "t": "el chip dice DE DÓNDE venís: el chat no arranca de cero, retoma tu aviso.",
+     "k": "accent"
+    },
+    {
+     "t": "confirmaste (HITL de siempre) → el back te devuelve a Mi día.",
+     "k": ""
+    },
+    {
+     "t": "la tarjeta que tocás queda marcada: sabés cuál te llevó al chat.",
+     "k": ""
+    },
+    {
+     "t": "la tarjeta cambió sola: ya no pide acción, cuenta el resultado. Después se va (regla de 21 días).",
+     "k": "accent"
+    },
+    {
+     "t": "mismo puente para la voz: le hablás desde Mi día → la respuesta vive en el chat, con su chip de contexto.",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "01-onboarding": [
+  {
+   "tag": "1 · El aterrizaje del splash = el reveal — \"se dice o-DO-bi\"",
+   "sub": "Primer arranque de la app. El guión §5: «Hola. Soy Odobi — se dice o-DO-bi.» El momento display existe una vez — de acá en adelante la terracota vuelve a ser ≤10% y solo tocable.",
+   "notas": [
+    {
+     "t": "acá termina la animación del splash: la última forma se posó y se convirtió en esta O. No es una pantalla nueva — es el último frame de la pieza, ya operativo.",
+     "k": ""
+    },
+    {
+     "t": "la pronunciación se CODIFICA, no se espera (guión §3/§5: grave, o-DO-bi). Va acá porque es el punto donde el nombre se ve más grande de toda la app. Sobre crema ya es texto normal: 6,79:1 ✅, sin necesidad de la vía display.",
+     "k": ""
+    },
+    {
+     "t": "y además se ESCUCHA: tocás y la voz lo dice (lexicón/SSML §5.7). El botón sí es tocable → terracota profunda, coherente con la Decisión B.",
+     "k": "accent"
+    },
+    {
+     "t": "\"Empecemos\" (no \"Empezar\"): es el aterrizaje del splash, y el splash entrega las mismas dos puertas siempre. Fill terracota + display 19 Bold blanco (regla 28/07 v2).",
+     "k": "accent"
+    },
+    {
+     "t": "la segunda puerta. En post-logout estos dos labels cambian a \"Entrar\" / \"Entrar con otra cuenta\": mismo motor, aterrizaje según sesión.",
+     "k": ""
+    },
+    {
+     "t": "se fue la pantalla de terracota plena: el momento display es la ANIMACIÓN, no una placa fija. Dos momentos de marca seguidos gastaban el permiso dos veces.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "2 · La promesa — \"son dos minutos y te digo algo que no sabés\"",
+   "sub": "La promesa se hace ANTES de pedir nada: conectar tiene un porqué («te digo algo que no sabés»). Sin tabbar todavía — el usuario no entró a la app: está conociéndola. Terracota ≈7% — pantalla de decisión.",
+   "notas": [
+    {
+     "t": "guión §5 LITERAL: \"Laburo así: vos me hablás, yo resuelvo.\" El contrato de la app en dos frases — sin tour de features, sin carrusel de bienvenida.",
+     "k": ""
+    },
+    {
+     "t": "\"dos minutos\" es literal: los 6 servicios del catálogo real son 2 permisos — Mercado Pago + Google (Gmail, Calendar, Drive, Docs, Sheets en un OAuth).",
+     "k": ""
+    },
+    {
+     "t": "mitad del flujo: Mercado Pago ya conectado (\"Conectado ✓\" en sec — feedback, no botón). Los tiles arena son identidad, no semántica de tocable.",
+     "k": ""
+    },
+    {
+     "t": "alcance honesto antes del permiso: qué lee y cómo se revoca (Cuenta). Consentimiento informado, no letra chica.",
+     "k": "dim"
+    },
+    {
+     "t": "un solo primario por pantalla (regla 28/07 v2). \"Conectar Google\" nombra el acto — no \"Continuar\".",
+     "k": "accent"
+    },
+    {
+     "t": "\"Después\" es salida legítima, mismo tamaño: si salteás, Odobi te pide el permiso cuando lo necesita (just-in-time consent — el patrón del 02).",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "3 · La promesa cumplida — el primer minuto, con plata real",
+   "sub": "El cierre del onboarding es el primer minuto de uso real. Dato verificable de sus propios servicios recién conectados — el «te digo algo que no sabés» cumplido. Cifras del guión §5, orientativas de mockup.",
+   "notas": [
+    {
+     "t": "el comprobante abre el historial: qué quedó conectado, con el ícono de \"hecho\" de toda la app. El chat nace auditable desde el minuto uno.",
+     "k": ""
+    },
+    {
+     "t": "guión post-conexión LITERAL: dato ($147.000 sin cobrar) + consecuencia ($63.000 >20 días) + acción (¿te armo el detalle?). La promesa \"algo que no sabés\" se paga acá, con plata — no con un tour.",
+     "k": ""
+    },
+    {
+     "t": "una sola pregunta, cerrada. Nada se ejecuta solo: hasta el primer insight pide permiso para el paso siguiente.",
+     "k": ""
+    },
+    {
+     "t": "\"Armame el detalle\" — el primer tap del usuario en la app ya es una orden de negocio, no un ajuste de configuración.",
+     "k": "accent"
+    },
+    {
+     "t": "recién acá aparece el composer: el onboarding terminó y esto YA es la app. Antes no había con qué hablarle; ahora sí — la señal de \"estás adentro\" es poder pedir algo, no una barra de secciones (rev. 16/08).",
+     "k": "accent"
+    }
+   ]
+  }
+ ],
+ "02-conexiones": [
+  {
+   "tag": "1 · Just-in-time consent — el permiso llega con el pedido, no antes",
+   "sub": "Martes 21, 10:05. El único momento en que Odobi pide un permiso es cuando le hace falta para lo que le pediste — y lo dice. Terracota ≈4% (botón + mic + borde del input tapados por el scrim).",
+   "notas": [
+    {
+     "t": "el permiso nunca arranca en un menú: arranca en un pedido real del usuario. Es el disparador del just-in-time consent (IF Catalogue).",
+     "k": ""
+    },
+    {
+     "t": "guión §5 LITERAL: «Eso no lo puedo ver todavía — no tenés conectado Mercado Pago…» No sabe → lo dice, con la salida en la misma frase. Cero \"no puedo ayudarte con eso\".",
+     "k": ""
+    },
+    {
+     "t": "el sheet sube SOBRE la conversación: el hilo sigue ahí atrás. Conectar no te expulsa a Ajustes y te deja volviendo a escribir lo mismo.",
+     "k": ""
+    },
+    {
+     "t": "alcance en dos filas, en criollo y en verbos: qué lee, qué escribe y con qué condición (\"Nunca sin tu OK\"). Los tiles arena son identidad, no tocables.",
+     "k": "dim"
+    },
+    {
+     "t": "la pata que hace \"just-in-time\" a esto: el permiso NOMBRA lo que desbloquea. No pedís un permiso abstracto — pagás por una respuesta que ya querías.",
+     "k": ""
+    },
+    {
+     "t": "un solo primario, y dice el acto: \"Conectar\". Terracota = tocable (Decisión B) — lo único terracota del sheet.",
+     "k": "accent"
+    },
+    {
+     "t": "\"Ahora no\" del mismo tamaño: negar no cuesta más que aceptar. Se vuelve al hilo y la pregunta queda sin responder — honesto, no castigado.",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "2 · Salvaguarda — conexión caída: tarjeta en Mi día + puntito en el avatar",
+   "sub": "Martes 21, 10:06. Odobi no espera a que preguntes por qué faltan cobros: avisa, dice qué se rompió y qué queda incompleto. Terracota ≈5% (puntito + 2 links de acción + mic + borde del input + tab activa).",
+   "notas": [
+    {
+     "t": "salvaguarda 1 de la Decisión A: si Conexiones vive dentro de Cuenta, el estado tiene que salir a la superficie. Puntito terracota en el avatar = \"hay algo tuyo que mirar\".",
+     "k": "accent"
+    },
+    {
+     "t": "Mi día es la portada: la caída entra como una tarjeta más del día, no como un modal que te bloquea al abrir la app. Anatomía idéntica al 09 — una sola pantalla, un solo dibujo.",
+     "k": "dim"
+    },
+    {
+     "t": "y la cifra lo admite: \"faltan los cobros de hoy\". Un tablero que dice que falta data y arriba muestra un número entero, miente (la misma lección de C2).",
+     "k": "accent"
+    },
+    {
+     "t": "salvaguarda 2: la conexión caída se avisa donde el usuario ya mira. Encabeza la lista porque le está costando plata que no ve.",
+     "k": ""
+    },
+    {
+     "t": "guión §5 LITERAL: «Se me cayó la conexión con Mercado Pago, así que los cobros de hoy pueden estar incompletos. Te aviso apenas vuelva.» Error frontal + consecuencia + qué hace él.",
+     "k": ""
+    },
+    {
+     "t": "la acción abre el mismo sheet del lane 1 — un solo componente de consentimiento en toda la app. UNA sola acción por tarjeta, como manda el 09: dos diluyen sin reconectar todavía.",
+     "k": "accent"
+    },
+    {
+     "t": "el día sigue: la caída no secuestra la pantalla. Una tarjeta de infraestructura y una de negocio conviven, con la misma anatomía.",
+     "k": ""
+    },
+    {
+     "t": "Conexiones no compite en la nav: es una pantalla de Cuenta, a la que se entra por el avatar — y por eso necesita estas dos salvaguardas para no quedar enterrada (rev. 16/08: la nav de 3 tabs quedó reemplazada por el modelo de capas).",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "3 · Cuenta › Conexiones — el destino estable: alcance y corte",
+   "sub": "Martes 21, 10:12 — Mercado Pago ya reconectado desde la tarjeta del lane 2. Conexiones es una pantalla de lectura y corte, no el lugar donde se conecta por primera vez: eso pasa donde hace falta. Terracota ≈4%.",
+   "notas": [
+    {
+     "t": "pantalla apilada sobre la app: se entra desde el avatar (Cuenta) y se vuelve con la flecha. El breadcrumb \"Cuenta\" dice dónde estás parado — patrón Gmail/YouTube.",
+     "k": ""
+    },
+    {
+     "t": "estado en píldora crema, en gris (no terracota): saber cómo está una conexión es feedback, no una acción. Decisión B — si es terracota, pasa algo al tocarlo.",
+     "k": ""
+    },
+    {
+     "t": "el alcance se repite acá con las mismas palabras del sheet: lo que aceptaste en el momento se puede releer después, sin ir a buscar un PDF de términos.",
+     "k": "dim"
+    },
+    {
+     "t": "\"Cortar\" — una palabra, un tap, siempre visible. La revocación tiene que ser tan barata como el otorgamiento: es lo que hace legítimo pedir en contexto.",
+     "k": "accent"
+    },
+    {
+     "t": "6 servicios del catálogo real, 2 tarjetas: la lista se organiza por PERMISO (lo que el usuario otorga), no por integración técnica. Los sub-textos nombran los 6.",
+     "k": ""
+    },
+    {
+     "t": "antes de cortar, Odobi dice qué deja de poder hacer — la consecuencia va antes de la decisión, igual que en el HITL del 04. Y aclara que no borra nada.",
+     "k": ""
+    },
+    {
+     "t": "el input+mic no desaparece ni en Ajustes: hablarle es la vía principal en cualquier pantalla (\"cortá Mercado Pago\" también se puede decir).",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "03-home-conversacional": [
+  {
+   "tag": "Chat — llegada desde Mi día (el puente)",
+   "sub": "Confirmás → back a Mi día: la tarjeta de Gómez pasa a estado resultado (\"Reclamo mandado · 9:41\"). El sábado del 09, Gómez pagó — el ciclo cierra entre mockups.",
+   "notas": [
+    {
+     "t": "tocaste \"Reclamá el pago\" en Mi día → el chat abre con el chip \"↩ Desde tu aviso\". Tocás el chip y volvés al tablero (Decisión C).",
+     "k": "accent"
+    },
+    {
+     "t": "la \"o\" que habla firma cada mensaje de Odobi: la O del wordmark — el glifo real — con sus ondas afuera. El mismo signo que en Mi día y en la entrada diaria. Identidad, no decoración.",
+     "k": ""
+    },
+    {
+     "t": "el borrador se corrige acá mismo (Cambiá / Editá): confirmar no es firmar a ciegas. El patrón madre completo vive en el 04.",
+     "k": ""
+    },
+    {
+     "t": "el chat ya no es la home: es la capa que subió desde este mismo composer, en Mi día. El asidero de arriba la baja — el mismo camino, al revés (C1, rev. 16/08).",
+     "k": "accent"
+    },
+    {
+     "t": "la propuesta llega ARMADA: acción + servicio (Gmail). El usuario decide, no redacta (HitlCard real del repo).",
+     "k": ""
+    },
+    {
+     "t": "alcance a la vista: qué sale, por dónde, cuántas veces. Sin sorpresas — transparencia de decisión automatizada (IF Catalogue).",
+     "k": ""
+    },
+    {
+     "t": "Confirmar en terracota suave #DE7250: ES lo tocable que ejecuta (Decisión B). Label display 19 Bold blanco (3.17:1 = AA texto grande — regla 28/07 v2: nunca negro sobre terracota). Cancelar del mismo tamaño: decidir no es un embudo.",
+     "k": "accent"
+    }
+   ]
+  },
+  {
+   "tag": "Chat — pregunta libre (Inteligencia)",
+   "sub": "Verificable: 9 respondieron ⊂ 34 enviados · $52.000 de la promo ⊂ $286.000 que entraron esta semana (09, viernes). Nada se afirma sin el dato a la vista.",
+   "notas": [
+    {
+     "t": "un solo hilo con tu negocio: el historial queda. El miércoles pediste la promo; el viernes preguntás cómo vino.",
+     "k": ""
+    },
+    {
+     "t": "sin saludo display: el chat ya no abre la sesión, y un socio no te da un discurso cada vez que entrás (M5). El momento display vive en la escucha.",
+     "k": "dim"
+    },
+    {
+     "t": "misma card que la portada de Mi día: UN componente, variante compacta — crema, sin borde (M2).",
+     "k": "accent"
+    },
+    {
+     "t": "✓✓ en gris: feedback de recepción (Jakob's Law, WhatsApp), no botón (Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "la promo del miércoles se CIERRA: respondieron 9 de 34, compraron 4 (m3). El ciclo completo queda contado — esto vende el sistema, no la feature.",
+     "k": "accent"
+    },
+    {
+     "t": "Inteligencia responde con SQL real (5 queries, solo lectura) y si hay algo para hacer, propone — pero no ejecuta sin HITL.",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "Estado de escucha — display por sustracción",
+   "sub": "No tapa: silencia. El contexto sigue detrás del velo; nada compite con la voz.",
+   "notas": [
+    {
+     "t": "display por sustracción, no por saturación. Un velo del color del lienzo al 96% — crema en la piel clara, negro tostado en la oscura. Como toma el color del tema, no hay isla oscura sobre lienzo claro (regla 08/08) y no hace falta excepción.",
+     "k": "accent"
+    },
+    {
+     "t": "el 96% está calculado en el peor caso (el contenido de más contraste justo detrás): a 94% la terracota profunda da 4,37:1 ✗, a 96% da 4,53:1. Ese 4% que queda es lo que hace que el fondo se insinúe — se ve que hay algo detrás, no se lee.",
+     "k": "dim"
+    },
+    {
+     "t": "la onda va en terracota profunda: la viva #DE7250 sobre velo claro queda en ~2,9:1 y no llega al 3:1 que pide 1.4.11 para un gráfico. En la piel oscura sí va la viva. Sin blur — el BlurView nunca desenfocó en Android (medición del propio repo).",
+     "k": ""
+    },
+    {
+     "t": "transcripción en vivo: sabés que escucha bien (Nielsen #1). Y por voz también se ANOTA — el gasto dicho queda en el libro, y Mi día lo vigila.",
+     "k": ""
+    },
+    {
+     "t": "los controles son los del repo (Pausar · Enviar · Eliminar): no se reinventa lo que ya está resuelto y probado en device. Solo se les aplica nuestra regla de color — Enviar es fill #DE7250 + display 19 Bold blanco (3,17:1, regla 28/07 v2).",
+     "k": ""
+    },
+    {
+     "t": "nunca quedás preso del modo voz (Nielsen #3): Pausar sigue vivo y Eliminar es la única vía de perder el audio, como en el repo. TODO motion-ref: el velo entra en <320 ms.",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "04-confirmacion-hitl": [
+  {
+   "tag": "1 · Propuesta con detalle editable",
+   "sub": "El miércoles a la tarde pediste la promo por voz; Odobi la armó y la trajo al chat. Terracota: Confirmar + mic + links ≈ 7% — la pantalla de decisión es el máximo legítimo del sistema.",
+   "notas": [
+    {
+     "t": "wordmark en terracota #DE7250 — logotipo exento de contraste (WCAG 1.4.3). Resuelve m1: antes iba en negro.",
+     "k": ""
+    },
+    {
+     "t": "[1] encabezado de acción: QUÉ va a pasar (display) y POR DÓNDE (chip Gmail — servicio real del repo). La intención se declara antes de actuar (IF Catalogue).",
+     "k": ""
+    },
+    {
+     "t": "[2] detalle editable: cada dato que Odobi asumió es una fila ≥48pt con acción textual. Los 34 se auditan con \"Ver lista\" — nada pide fe ciega.",
+     "k": ""
+    },
+    {
+     "t": "[3] alcance e irreversibilidad, frontal: a cuánta gente sale y que no se deshace. Mala noticia → frontal y con salida (§5). Nielsen #5: sin undo posible, la revisión ES la salvaguarda.",
+     "k": ""
+    },
+    {
+     "t": "m2 sigue resuelto, con otro mecanismo (rev. 16/08): la tarjeta vive dentro de la app real —no flota en el vacío— porque abajo está el composer y arriba el asidero que baja a Mi día. El HITL pasa dentro de la conversación, que es una capa, no una sección.",
+     "k": "accent"
+    },
+    {
+     "t": "la tarjeta es un turno más de la conversación, no un modal que interrumpe. El monograma firma la entrega — el socio te la trae.",
+     "k": ""
+    },
+    {
+     "t": "\"Editá\" / \"Ver lista\" en texto explícito, no ícono de lápiz: cero ambigüedad para usuario no técnico. Links en #B04A2E (5.43:1 ✅ — tocables, Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "[4] decisión: Confirmar en terracota suave #DE7250 + label display 19 Bold blanco (3.17:1 = AA texto grande — regla 28/07 v2). Cancelar del mismo tamaño, apilado: sin dark patterns. Ambos en thumb zone.",
+     "k": "accent"
+    }
+   ]
+  },
+  {
+   "tag": "2 · Edición de un campo",
+   "sub": "Patrón heredable: cualquier fila de cualquier tarjeta HITL abre su sheet de edición. Un solo mecanismo para todo el sistema (05, 06 lo reusan tal cual).",
+   "notas": [
+    {
+     "t": "la edición es un desvío corto, no un viaje: bottom sheet sobre la tarjeta, que sigue visible atrás (scrim 40%). No perdés el contexto de la decisión.",
+     "k": ""
+    },
+    {
+     "t": "el borrador es de Odobi, el texto es tuyo: lo pisás sin pedir permiso. Socio con criterio, no formulario.",
+     "k": ""
+    },
+    {
+     "t": "hint en castellano — \"[nombre] se reemplaza por cada cliente\". Nada de \"merge tag\" ni jerga.",
+     "k": ""
+    },
+    {
+     "t": "\"Listo\", no \"Guardar\" (léxico §5). Y editar NO confirma: cerrar el sheet actualiza la tarjeta con los CTAs intactos — el write sigue teniendo un solo gatillo.",
+     "k": ""
+    },
+    {
+     "t": "TODO motion-ref: entrada del sheet 320ms ease estándar, a validar con MCP 60FPS.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "3 · Comprobante post-confirmación",
+   "sub": "El ciclo sigue en el 03: el viernes preguntás \"¿cómo viene la promo?\" y el historial responde — 9 de 34, 4 ventas, $52.000. Lo ejecutado queda contado, no se evapora.",
+   "notas": [
+    {
+     "t": "\"Confirmá.\" dicho o escrito = el botón. El HITL obliga a decidir, no a tocar: paridad de canales (la voz es EL canal identitario). ✓✓ en sec — feedback, no botón (Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "el check de estado dejó la terracota: ahora círculo negro. Decisión B — \"hecho\" no es tocable, el color ya no opina en el feedback.",
+     "k": ""
+    },
+    {
+     "t": "\"Salió.\" — buena noticia en seco (§5). Cero \"¡increíble!\", cero celebración por un envío. Y promete el seguimiento: estado futuro visible.",
+     "k": ""
+    },
+    {
+     "t": "la tarjeta colapsó a comprobante: qué salió, a cuántos, por dónde, a qué hora. El chat es también el historial auditable de lo que el agente ejecutó (IF Catalogue). \"Detalle\" lo reabre cuando quieras.",
+     "k": ""
+    },
+    {
+     "t": "sonido de marca \"Listo\" acompaña el comprobante (Brand Book §5.7). El par escucha/listo cubre el ciclo pedir→ejecutar. TODO motion-ref: colapso tarjeta→comprobante.",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "05-facturacion": [
+  {
+   "tag": "1 · Pedido por voz — lo que falta se pregunta",
+   "sub": "Jueves 24, 10:12 — entre la promo del miércoles (04) y el viernes del chat (03). Facturar toma dos turnos de conversación: pedir y aclarar lo que falta.",
+   "notas": [
+    {
+     "t": "la invocación es el comando: \"Odobi, facturale…\". El nombre abre el pedido (o-DO-bi, 20+ impresiones de marca por día). La voz entra al thread como texto: un solo historial.",
+     "k": ""
+    },
+    {
+     "t": "meta \"por voz\": queda registrado el canal. Paridad voz/texto en todo el sistema.",
+     "k": "dim"
+    },
+    {
+     "t": "PRIMER HITL: los datos. Odobi no inventa tipo de factura ni CUIT — lo que falta se pregunta, junto y en un solo turno (\"me faltan dos cosas\"), no interrogatorio de a uno. Guión §5 literal.",
+     "k": ""
+    },
+    {
+     "t": "el CUIT sale del registro de clientes del repo y se muestra ANTES de usarse. Dato asumido = dato verificable, nunca fe ciega.",
+     "k": ""
+    },
+    {
+     "t": "la respuesta es coloquial (\"Sí, C. Y usá ese CUIT.\") — no un formulario. El parsing es problema de Odobi, no del usuario.",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "2 · Segundo HITL — la emisión",
+   "sub": "Editar cualquier fila abre el sheet del 04 (mismo mecanismo). La emisión tiene una sola puerta: el botón. Terracota ≈7% — máximo legítimo, pantalla de decisión.",
+   "notas": [
+    {
+     "t": "\"Queda así: Factura C, $80.000, Rodríguez SRL. ¿Emito?\" — guión §5. La propuesta completa se muestra ANTES de tocar ARCA (IF Catalogue: intención declarada).",
+     "k": ""
+    },
+    {
+     "t": "las filas cambian, el patrón no: Cliente / Importe / Concepto en vez de Mensaje / Destinatarios / Descuento. Mismo componente del 04, ≥48pt, acción textual.",
+     "k": ""
+    },
+    {
+     "t": "irreversibilidad fiscal, frontal y con salida: no se borra, se anula con nota de crédito — que es lo que el repo hace de verdad (workflow de anulación). Ni promesa falsa de undo ni letra chica.",
+     "k": ""
+    },
+    {
+     "t": "SEGUNDO HITL: \"Emitir factura\" es el gate ESPERANDO_CONFIRMACION de la máquina de estados real. Botón regla 28/07 v2: fill terracota suave #DE7250 + label display 19 Bold blanco (3.17:1 = AA texto grande ✅; con Inter 16 fallaría).",
+     "k": "accent"
+    },
+    {
+     "t": "la tarjeta ES el patrón madre del 04 — misma anatomía [1][2][3][4]. En el deck: un componente, tres features (promo, factura, presupuesto).",
+     "k": ""
+    },
+    {
+     "t": "chip \"ARCA\": el organismo real, sin logo ajeno. El chip dice por dónde sale el write, igual que \"Gmail\" en el 04.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "3 · Emitida — el CAE queda en el thread",
+   "sub": "Cierre del guión §5 completo: pedir → aclarar → revisar → emitir → comprobante con CAE → siguiente paso propuesto, nunca ejecutado solo. \"Vos confirmás, Odobi ejecuta\" aplicado a lo fiscal.",
+   "notas": [
+    {
+     "t": "\"Emitila.\" dicho o escrito = el botón. Paridad de canales en el gesto central, igual que en el 04.",
+     "k": ""
+    },
+    {
+     "t": "el comprobante muestra lo fiscal de verdad: número, CAE y vencimiento — la emisión fue real (máquina EMITIENDO → EMITIDA). No un toast: queda en el historial, auditable.",
+     "k": ""
+    },
+    {
+     "t": "\"Emitida.\" — buena noticia en seco (§5) y la pregunta siguiente ya viene con opciones reales del catálogo: Drive y Gmail, servicios conectados.",
+     "k": ""
+    },
+    {
+     "t": "los chips son atajos de conversación, no ejecución: tocar \"Mandalo por mail\" arma OTRA tarjeta HITL (mandar el PDF es otro write, con su propia puerta).",
+     "k": ""
+    },
+    {
+     "t": "\"PDF\" abre el comprobante tal como lo ve el cliente. Tocable → #B04A2E (5.43:1 ✅).",
+     "k": ""
+    },
+    {
+     "t": "sonido \"Listo\" (Brand Book §5.7) con el comprobante. TODO motion-ref: colapso tarjeta→receipt.",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "06-presupuestos": [
+  {
+   "tag": "1 · Pedido por voz — los ítems se piden, no se inventan",
+   "sub": "Lunes 20, 09:31 — el inicio de la semana que ya conocés: la promo del miércoles (04), la factura del jueves (05), el chat del viernes (03). Presupuestar toma dos turnos: pedir y cotizar.",
+   "notas": [
+    {
+     "t": "misma invocación que el 05: el nombre es el comando. \"armale un presupuesto a Fernández\" es una frase, no un formulario de cotización.",
+     "k": ""
+    },
+    {
+     "t": "HITL de datos: Odobi no inventa ítems ni precios — los pide. Cliente + ítems con precio son obligatorios en el repo (POST /presupuestos): sin eso no hay presupuesto.",
+     "k": ""
+    },
+    {
+     "t": "se contesta hablando: \"ochenta mil… sesenta y cinco\". Interpretar cantidades y montos es problema de Odobi — y lo interpretado se muestra ANTES de anotarse (lane 2).",
+     "k": ""
+    },
+    {
+     "t": "meta \"por voz\": el canal queda registrado. Paridad voz/texto en todo el sistema.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "2 · La tarjeta editable — \"todavía no lo anoté\"",
+   "sub": "Comparar con el 05: misma anatomía, distinto alcance y distinta cantidad de puertas. Fiscal = dos gates e irreversibilidad frontal; registro propio = un gate y alcance en positivo. Terracota ≈7% — pantalla de decisión.",
+   "notas": [
+    {
+     "t": "copy LITERAL del repo (TarjetaPresupuestoPropuesto): \"Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.\" El verbo \"anoté\" solo aparece DESPUÉS de guardar.",
+     "k": ""
+    },
+    {
+     "t": "las filas cambian, el patrón no: Cliente / Ítems / Total. \"sesenta y cinco\" dicho → $65.000 propuesto: lo interpretado se ve y se corrige acá, no después.",
+     "k": ""
+    },
+    {
+     "t": "el Total NO tiene \"Editá\": lo calcula el código (Σ cantidad × precio, presupuesto_store ignora cualquier total dictado). Se corrige el ítem, no la suma.",
+     "k": ""
+    },
+    {
+     "t": "el patrón madre del 04, tercera feature: promo (Gmail), factura (ARCA), presupuesto (Docs). Un componente, tres riesgos distintos.",
+     "k": ""
+    },
+    {
+     "t": "alcance honesto: acá no hay irreversibilidad — queda en TU registro y el Doc se arma solo (si Google falla, el presupuesto se anota igual). Nada le llega al cliente.",
+     "k": "dim"
+    },
+    {
+     "t": "UNA puerta, no dos: \"Guardar presupuesto\" (regla 28/07 v2). No hay doble HITL porque guardar no toca ARCA ni manda nada — el gate es proporcional al riesgo del write.",
+     "k": "accent"
+    }
+   ]
+  },
+  {
+   "tag": "3 · El ciclo — anotado → aprobado → factura",
+   "sub": "El ciclo entero contado en un thread: cotizaste el lunes, te aprobaron el viernes, y la factura sale por el flujo del 05 con los datos ya cargados. Si Fernández no contestaba, el detector de Mi día lo hubiera avisado (regla real \"presupuestos enfriándose\", como Lucía en el 09).",
+   "notas": [
+    {
+     "t": "\"Presupuesto anotado — N° 12\": copy literal del repo, con estado (Pendiente) a la vista. No un toast: queda en el historial, auditable. Ícono success = el SVG de Martin, animado al entrar en pantalla.",
+     "k": ""
+    },
+    {
+     "t": "\"Doc\" abre el Google Doc real que se armó al guardar (título: \"Presupuesto N° 12 — Fernández\"). Es lo que el cliente va a recibir.",
+     "k": ""
+    },
+    {
+     "t": "\"Mandalo por mail\" es otro write con su propia puerta: tocarlo arma la tarjeta HITL de Gmail (el patrón del 04). Nada sale solo.",
+     "k": ""
+    },
+    {
+     "t": "viernes: \"Me aprobaron el de Fernández\" dicho por voz → tool real marcar_presupuesto. Directo, sin tarjeta: cambiar el estado de TU registro es reversible (aprobado puede pasar a desestimado). Un desestimado NO revive: se hace un presupuesto nuevo.",
+     "k": ""
+    },
+    {
+     "t": "la confirmación repite número, cliente y monto — verificable de un vistazo, como pide el guión.",
+     "k": ""
+    },
+    {
+     "t": "el puente al 05: facturar el presupuesto abre el BORRADOR con los datos ya copiados y lo marca aprobado — pero NO emite. La puerta fiscal (\"Emitir factura\") sigue intacta.",
+     "k": "accent"
+    }
+   ]
+  }
+ ],
+ "08-plan-limites": [
+  {
+   "tag": "1 · Cuenta — el destino del avatar, con Conexiones adentro",
+   "sub": "Martes 21, 10:20. Cierra el pendiente del 02: Cuenta como índice, con Conexiones adentro. Terracota ≈3% (link de cierre + mic + borde del input).",
+   "notas": [
+    {
+     "t": "pantalla apilada sobre la app: se llega desde el avatar y se vuelve con la flecha. Cuenta no compite con lo de todos los días (rev. 16/08: sin tabbar, el avatar es la única puerta — por eso lleva el punto de estado).",
+     "k": "dim"
+    },
+    {
+     "t": "el plan encabeza la lista porque es lo único de esta pantalla que puede frenarte. Lo demás son datos; esto es un techo.",
+     "k": "accent"
+    },
+    {
+     "t": "el contador vive en la fila, no escondido adentro: si el límite existe, tenés que poder verlo sin entrar a buscarlo.",
+     "k": ""
+    },
+    {
+     "t": "Conexiones vive acá adentro (Decisión A) — el 02 lo dibuja completo. Estado en píldora gris: es feedback, no un botón.",
+     "k": ""
+    },
+    {
+     "t": "\"Cerrar sesión\" separado del bloque y sin ser rojo: es reversible y frecuente, no una zona de peligro. Lo destructivo de verdad (borrar cuenta) no vive en un índice.",
+     "k": ""
+    },
+    {
+     "t": "el input+mic tampoco desaparece acá: \"cortá Mercado Pago\" o \"cuánto me queda del plan\" se pueden decir desde cualquier pantalla.",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "2 · El plan — qué cuenta como acción",
+   "sub": "Martes 21, 10:21. El número 200 es a calibrar (handoff §pendientes: experimento de producto), no una decisión de diseño. Terracota ≈8% (botón + mic + borde del input).",
+   "notas": [
+    {
+     "t": "la unidad es ACCIONES/mes, nunca \"consultas\" ni tokens (handoff §0). El usuario tiene que poder contar lo que gasta en la misma moneda en que piensa su laburo.",
+     "k": ""
+    },
+    {
+     "t": "la barra es dato, no botón: pista arena, relleno negro. No es un gráfico decorativo — es la única forma de leer una cuota de un vistazo, y viene con acción al lado.",
+     "k": ""
+    },
+    {
+     "t": "acá se juega si el límite es vivible: lo que Odobi HACE gasta, preguntarle no. Si preguntar gastara, el usuario dejaría de preguntar — y perderíamos justo lo que hace bueno al producto.",
+     "k": "accent"
+    },
+    {
+     "t": "el desglose en las mismas palabras de la app (\"anotar\", \"mandar\", \"emitir\"), no en jerga de facturación. 96+41+12+9+6 = 164 ✓ — la cuenta cierra a la vista.",
+     "k": ""
+    },
+    {
+     "t": "un solo primario y sin urgencia fabricada: ni cuenta regresiva, ni rojo, ni \"¡se te acaba!\". Al 82% todavía no pasó nada.",
+     "k": "accent"
+    }
+   ]
+  },
+  {
+   "tag": "3 · El límite — se avisa hablando, con dos salidas",
+   "sub": "Jueves 30, 16:40 — fin de mes, fuera de la semana narrativa (lunes 20 → viernes 25). Terracota ≈4% (2 chips + mic + borde del input + tab activa).",
+   "notas": [
+    {
+     "t": "el techo se toca haciendo, no navegando: el aviso llega cuando pediste algo que Odobi tiene que EJECUTAR.",
+     "k": "dim"
+    },
+    {
+     "t": "guión §5 LITERAL. No es un paywall ni un modal: es Odobi contándote en qué anda tu plan, en el mismo hilo donde pasa todo lo demás.",
+     "k": "accent"
+    },
+    {
+     "t": "\"se ve que le estás dando laburo, bien ahí\" — el límite se cuenta como consecuencia de usarlo mucho, no como una falta tuya. Y cierra con \"yo no me voy a ningún lado\": nada de urgencia fabricada.",
+     "k": ""
+    },
+    {
+     "t": "las dos salidas del guión, del mismo tamaño: esperar es una opción legítima, no el castigo por no pagar.",
+     "k": ""
+    },
+    {
+     "t": "y el input sigue vivo: preguntar no gasta acciones, así que al tope del plan Odobi deja de EJECUTAR pero no deja de responder. El libro que ya cargaste sigue siendo tuyo.",
+     "k": "accent"
+    }
+   ]
+  }
+ ],
+ "09-mi-dia": [
+  {
+   "tag": "Mi día — apertura con avisos (viernes)",
+   "sub": "Continuidad narrativa: $286.000 / −18% (la semana del mockup 03) · Por cobrar $120.000 = la factura de Gómez SRL. 286 − 194 = 92 ✓.",
+   "notas": [
+    {
+     "t": "esto es el libro: lo que ejecutás queda anotado solo, y acá se VE (query portada, SQL real). La corrección a \"funciones sueltas\".",
+     "k": "accent"
+    },
+    {
+     "t": "la \"o\" que habla: la O del wordmark — el glifo real, no un círculo dibujado — con sus ondas afuera, adelgazando. Un solo signo en toda escala: acá, en el chat, en la entrada diaria.",
+     "k": ""
+    },
+    {
+     "t": "sin tabbar, la etiqueta carga sola con el alcance del número (\"esta semana\") — y la posición se lee por el borde que asoma en cada extremo (M4, rev. 15/08).",
+     "k": "dim"
+    },
+    {
+     "t": "esta acción no ejecuta: abre el chat y responde con datos. Mismo gesto para todo — un solo patrón, no dos affordances (M6).",
+     "k": ""
+    },
+    {
+     "t": "iconografía propia: cada regla del detector tiene su dibujo. Mismo trazo que la ilustración, tile arena. Cero emojis.",
+     "k": ""
+    },
+    {
+     "t": "el composer ES el borde visible del panel de conversación: tocalo o subilo y el chat cubre la pantalla. A un gesto Y a un toque (WCAG 2.5.1), sin cartel que explique el gesto.",
+     "k": "accent"
+    },
+    {
+     "t": "Cuenta vive acá — y adentro, Conexiones (Decisión A). Cuando algo pide atención, aparece un puntito terracota.",
+     "k": ""
+    },
+    {
+     "t": "el −18% va en negro: es dato, no botón. El color ya no opina — el signo habla (Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "tarjeta = dato + consecuencia + acción. Sale del detector real: 8 reglas deterministas, sin LLM. Verificable.",
+     "k": ""
+    },
+    {
+     "t": "tocás la acción → el chat se abre con el chip \"↩ Desde tu aviso\" y la propuesta HITL ya armada (el puente, Decisión C).",
+     "k": "accent"
+    },
+    {
+     "t": "rev. 15/08 — se retira la tabbar: arriba, el otro asidero baja al escritorio de funciones. Dos gestos verticales opuestos, uno por borde: no compiten, se reparten el eje. Modelo completo en 10-arranque.",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "Mi día — sin avisos (sábado: Odobi se calla)",
+   "sub": "Los dos frames cuentan el mismo negocio: el viernes reclamaste (lane 1), el sábado Gómez pagó y la tarjeta se fue sola. 286 + 120 = 406 · 406 − 194 = 212 · 406/349 = +16% ✓.",
+   "notas": [
+    {
+     "t": "la portada queda siempre: el libro a la vista. Los avisos son la excepción, no el mueble.",
+     "k": ""
+    },
+    {
+     "t": "coherencia (C2): el tablero calla porque PUEDE — Gómez pagó tras el reclamo del viernes, Por cobrar $0. Un detector que calla con deudas a la vista, miente.",
+     "k": "accent"
+    },
+    {
+     "t": "delta positivo, negro igual: el signo habla, el color no. La regla B no necesita inventar un verde.",
+     "k": ""
+    },
+    {
+     "t": "acá aparece el trazo propio: line-art con la paleta, objetos del mostrador — la taza de café. La calma también tiene marca, sin relleno motivacional.",
+     "k": "accent"
+    },
+    {
+     "t": "ninguna regla dispara → no hay tarjetas ni relleno. Sin tips genéricos, sin \"¡vas genial!\": el silencio hace creíbles a los avisos.",
+     "k": ""
+    },
+    {
+     "t": "silencio con salida: \"preguntame\" deja la inteligencia a un tap. El usuario decide (Nielsen #3).",
+     "k": ""
+    }
+   ]
+  }
+ ],
+ "10-arranque": [
+  {
+   "tag": "1 · Lo primero que ves es lo que el negocio necesita hoy",
+   "sub": "Mismo motor, capa invertida: el copiloto habla primero y la conversación queda a un gesto y a un toque.",
+   "notas": [
+    {
+     "t": "el composer ES el borde del panel. Tocalo o subilo y la conversación cubre la pantalla. Así el chat queda a un gesto Y a un toque (WCAG 2.5.1) sin un cartel que explique el gesto: el input ya es el signo.",
+     "k": "accent"
+    },
+    {
+     "t": "gesto opuesto y asidero propio: arriba trae el escritorio, abajo trae la conversación. No compiten por el mismo movimiento, se reparten el eje.",
+     "k": ""
+    },
+    {
+     "t": "la portada sale de la query real portada. El delta va en negro: es un dato, no algo que se toque (Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "las 8 reglas del detector ya corren en el backend — determinista, sin LLM. Lo único que cambia es que ahora se ven al abrir. Tocar la acción abre el chat con el chip de contexto (Decisión C).",
+     "k": ""
+    },
+    {
+     "t": "⚠ sin tabbar: si se adopta, deroga la Decisión A. Lo que se pierde —saber dónde estás— lo devuelven los dos asideros: siempre asoma el borde de la capa vecina, arriba y abajo.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "2 · La conversación sube — y el primer encuentro enseña a hablar",
+   "sub": "El estado vacío reemplaza el párrafo estático por un ejemplo que gira. Enseña el registro del habla por imitación, no por instrucción.",
+   "notas": [
+    {
+     "t": "un ejemplo por vez, en rodillo vertical. No se tocan: un atajo tocable competiría con el gesto que la app quiere enseñar. Van entrecomillados y en cursiva — sin esa marca, «gasté 15 lucas» se lee como un dato ya cargado.",
+     "k": "accent"
+    },
+    {
+     "t": "máscara de UNA línea exacta, sin asomar las vecinas: si asomaran, parecería arrastrable y competiría con el panel. ~4 s por ejemplo, para al tocar el input o al grabar, y se detiene tras un ciclo (WCAG 2.2.2).",
+     "k": ""
+    },
+    {
+     "t": "esta línea no se apaga nunca: es el contrato del producto. Los ejemplos sí — después de N usos queda solo el título. Un andamio que no se retira pasa a ser ruido.",
+     "k": ""
+    },
+    {
+     "t": "los ejemplos salen del detector, no de una lista fija: sin gastos cargados → «cargá tu primer gasto»; presupuesto frío → «preguntale a Lucía». Las mismas 8 reglas de Mi día. Cero infraestructura nueva.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "3 · El escritorio — dos bandas, siete funciones, sin scroll",
+   "sub": "Agrupadas por la pregunta que el usuario realmente se hace: «¿vengo a cargar algo o a ver cómo voy?».",
+   "notas": [
+    {
+     "t": "dos bandas, no nueve destinos planos. Hick-Hyman castiga los conjuntos equiprobables: nueve tiles iguales son una decisión entre nueve; dos bandas son una entre dos, y después entre tres o cuatro.",
+     "k": "accent"
+    },
+    {
+     "t": "Ajustes salió de la grilla — vive en el avatar, con el punto de estado. Se toca una vez por mes: no puede pesar lo mismo que Gastos.",
+     "k": ""
+    },
+    {
+     "t": "orden por frecuencia × urgencia, no por categoría contable. Gastos primero: es lo que más se olvida, y sin gastos el margen miente. Clientes al final: la cartera se deriva de lo que emitiste, se entra desde un comprobante.",
+     "k": ""
+    },
+    {
+     "t": "sustantivos acá, verbos en el chat. El escritorio nombra lugares donde está tu información; la conversación ofrece acciones. Si lo decís, es verbo; si lo mirás, es sustantivo.",
+     "k": ""
+    },
+    {
+     "t": "el slot vacío no es un hueco: es dónde entra la 8ª función sin romper la grilla ni volver al scroll horizontal.",
+     "k": "dim"
+    }
+   ]
+  }
+ ],
+ "11-voz-contextual": [
+  {
+   "tag": "1 · La función tiene su propia puerta de voz",
+   "sub": "El composer es el mismo de siempre; lo que cambia es su contexto. Si estás en Gastos, hablarle a Odobi anota un gasto.",
+   "notas": [
+    {
+     "t": "el mismo composer, con el contexto de la función. No es un control nuevo: es el borde del panel de conversación que ya vive abajo en toda la app. Acá el placeholder y el destino cambian — hablarle desde Gastos anota un gasto, no abre una conversación aparte.",
+     "k": "accent"
+    },
+    {
+     "t": "\"Estás en Gastos\" es la promesa de dónde va a caer lo que digas. Sin ese rótulo, dictar acá y dictar en Mi día se ven igual y hacen cosas distintas (Nielsen #1).",
+     "k": "dim"
+    },
+    {
+     "t": "el resumen del mes es la recompensa de la función, no un adorno — la frase es del propio ResumenMes.tsx. Las barras van en arena: son dato, no algo que se toque (Decisión B).",
+     "k": ""
+    },
+    {
+     "t": "\"por voz\" es un dato del repo, no un invento: el campo origen distingue voz · manual · foto · derivado · mercadopago · factura. Mostrarlo cierra el círculo — ves que lo que dictaste llegó.",
+     "k": ""
+    },
+    {
+     "t": "esto es lo que la voz NO puede dar: escanear con los ojos, buscar, comparar. Por eso las dos vías conviven — no compiten (§7 del análisis).",
+     "k": ""
+    }
+   ]
+  },
+  {
+   "tag": "2 · Dictando, sin salir de Gastos",
+   "sub": "El mismo velo de la escucha del 03. Lo que se silencia es la función, no la app entera — y sigue insinuándose detrás.",
+   "notas": [
+    {
+     "t": "el título de la función queda visible arriba del velo. Es la diferencia entre \"estoy dictando un gasto\" y \"estoy hablando con Odobi\": el encabezado sigue diciendo dónde estás mientras hablás.",
+     "k": "accent"
+    },
+    {
+     "t": "mismo velo del 03: color del lienzo al 96%, sin blur, onda en terracota profunda. Un solo mecanismo de escucha para toda la app — el contexto lo pone quien la invoca.",
+     "k": ""
+    },
+    {
+     "t": "dictar acá no abre el chat. Si lo abriera, perderíamos justo lo que esta pantalla vino a resolver: el contexto. La conversación sigue existiendo, pero no se mete en el medio.",
+     "k": "dim"
+    }
+   ]
+  },
+  {
+   "tag": "3 · La card aterriza donde estabas",
+   "sub": "Mecanismo canónico del repo: dictado completo → card editable → recién al guardar persiste. Card en pantalla ≠ dato guardado.",
+   "notas": [
+    {
+     "t": "la card es el formulario real precargado, no un sí/no ciego: un error de transcripción sólo se corrige editando. Es el mecanismo canónico del repo, fijado el 24/07 — acá no se inventa nada, sólo cambia dónde aparece.",
+     "k": "accent"
+    },
+    {
+     "t": "\"Todavía no se guardó nada\" no es una cortesía: es regla dura del producto — mientras la card está visible, prohibido decir \"listo\" o \"lo anoté\" (CONTEXT.md).",
+     "k": ""
+    },
+    {
+     "t": "la card SÍ oscurece el fondo — y la escucha no. La diferencia no es estética: acá hay una decisión pendiente y el foco tiene que estar en ella; allá sólo se escucha, y sacarte el contexto no aporta nada.",
+     "k": ""
+    },
+    {
+     "t": "al guardar, la lista y el resumen de atrás se actualizan solos: ves el efecto donde ya estabas mirando. El camino inverso también existe: si dictaste desde el chat, el receipt lleva \"Ver en Gastos\".",
+     "k": "dim"
+    }
+   ]
+  }
+ ]
+}

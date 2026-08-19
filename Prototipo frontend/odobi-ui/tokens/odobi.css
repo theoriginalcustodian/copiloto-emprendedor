@@ -1,0 +1,149 @@
+/* ============================================================
+   Odobi — Design Tokens v1 (22/07/2026)
+   Fuente de verdad: ODOBI_HANDOFF.md §4. Paleta CERRADA — no reabrir.
+   2 temas (claro/oscuro), mismas variables semánticas.
+   Regla 60/30/10: lienzo ≈60%, estructura ≈30%, terracota ≤10%.
+   Todo par texto/fondo listado acá tiene ratio WCAG calculado.
+   ============================================================ */
+
+/* ---------- Tipografía ---------- */
+@font-face {
+  font-family: "NeueEinstellung";
+  src: url("../assets/fonts/NeueEinstellung-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  /* ⚠️ Licencia embedding web/app pendiente de verificar (handoff §4.2) */
+}
+
+:root {
+  /* ---------- Primitivas de marca (NO usar directo en UI: usar semánticas) ---------- */
+  --odobi-blanco:     #FFFFFF;
+  --odobi-crema:      #F7F3EC;
+  --odobi-negro:      #1A1512; /* negro tostado */
+  --odobi-terracota:  #DE7250;
+  --odobi-terracota-profunda: #B04A2E;
+  --odobi-arena:      #E8A088;
+
+  /* ---------- Tipografía: 2 familias, 4 tamaños, 2 pesos ---------- */
+  --font-display: "NeueEinstellung", "Arial Black", sans-serif; /* solo Bold 700 */
+  --font-ui: "Inter", -apple-system, "Helvetica Neue", sans-serif; /* 400 / 500 */
+
+  --fs-display: 28px;  --lh-display: 32px;  /* títulos de pantalla, cifras clave */
+  --fs-title:   20px;  --lh-title:   24px;  /* subtítulos, headers de card */
+  --fs-body:    16px;  --lh-body:    24px;  /* conversación, cuerpo */
+  --fs-caption: 13px;  --lh-caption: 16px;  /* metadatos, timestamps, labels */
+
+  --fw-regular: 400;   /* Inter cuerpo */
+  --fw-medium:  500;   /* Inter énfasis/labels/CTA */
+  --fw-bold:    700;   /* solo NeueEinstellung display */
+
+  /* ---------- Espaciado: grilla 8pt estricta ---------- */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+  --tap-min: 44px; /* target mínimo (Apple HIG / WCAG 2.5.8) */
+
+  /* ---------- Radios ---------- */
+  --radius-s:  8px;   /* chips, inputs */
+  --radius-m:  16px;  /* cards, burbujas */
+  --radius-l:  24px;  /* sheets, modales */
+  --radius-pill: 999px; /* CTA, pills */
+
+  /* ---------- Motion (TODO motion-ref: validar con MCP 60FPS en Tarea 1/2) ---------- */
+  --motion-fast:   120ms; /* feedback táctil: press, toggle */
+  --motion-base:   200ms; /* transiciones de estado */
+  --motion-slow:   320ms; /* sheets, entradas de pantalla */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit:     cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* ============================================================
+   TEMA CLARO (default) — lienzo blanco/crema
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  --bg:            var(--odobi-blanco);   /* lienzo principal */
+  --bg-alt:        var(--odobi-crema);    /* lienzo alterno, zonas agrupadas */
+  --surface:       var(--odobi-blanco);   /* cards sobre crema */
+  --border:        #E8E2D9;               /* divisores (familia crema, no decorativo) */
+
+  --text:          var(--odobi-negro);            /* 21:1 s/blanco · 16.37:1 s/crema ✅ */
+  --text-secondary:#5C534C;                       /* 7.51:1 s/blanco · 6.79:1 s/crema ✅ */
+  --text-accent:   var(--odobi-terracota-profunda); /* 5.43:1 s/blanco · 4.91:1 s/crema ✅ */
+  /* PROHIBIDO: #DE7250 como texto sobre claro (2.86:1) */
+
+  --accent:        var(--odobi-terracota);  /* fills: mic, estados, marca. ≤10% pantalla */
+  --accent-btn:    var(--odobi-terracota); /* fill de botones de confirmación: #DE7250 suave (regla 28/07 v2). Exige label display ≥20px Bold blanco */
+  /* Regla sobre terracota (28/07/2026 v2 por Martin — reemplaza v1 del mismo día y la del 22/07):
+     - Botones de confirmación: fill #DE7250 (terracota suave) + label DISPLAY ≥20px Bold BLANCO
+       (3.17:1 ≥ 3:1 = AA texto grande ✅). NUNCA negro sobre terracota. NUNCA Inter 16px
+       sobre #DE7250 (3.17:1 < 4.5:1 falla AA texto normal — si un botón necesitara texto
+       chico, el fill baja a #B04A2E, 5.43:1).
+     - Íconos/gráficos s/#DE7250: blanco (3.17:1 ≥ 3:1, WCAG 1.4.11)
+     - Display grande s/#DE7250 (≥19px Bold o ≥24px): blanco (3.17:1 ≥ 3:1, AA texto grande)
+     - Texto normal s/#DE7250: NO EXISTE */
+  --on-accent:       var(--odobi-blanco);   /* label display de botones s/#DE7250 (3.17:1 texto grande) */
+  --on-accent-media: var(--odobi-blanco);   /* íconos + display grande s/#DE7250 (3.17:1) */
+
+  --shadow-card: 0 1px 2px rgba(26, 21, 18, 0.06), 0 4px 16px rgba(26, 21, 18, 0.05);
+  --shadow-sheet: 0 -8px 32px rgba(26, 21, 18, 0.10);
+  /* Sombras neutras cálidas. Nunca glow de color. */
+}
+
+/* ============================================================
+   TEMA OSCURO — negro tostado. Misma identidad: terracota fija.
+   ============================================================ */
+[data-theme="dark"] {
+  --bg:            var(--odobi-negro);
+  --bg-alt:        #211B16;               /* lienzo alterno oscuro */
+  --surface:       #261F1A;               /* cards (texto crema 14.56:1 ✅) */
+  --border:        #3A322B;
+
+  --text:          var(--odobi-crema);    /* 16.37:1 ✅ */
+  --text-secondary:#B8AFA6;               /* 8.38:1 ✅ */
+  --text-accent:   var(--odobi-terracota); /* 5.71:1 s/negro tostado ✅ */
+  --support:       var(--odobi-arena);     /* jerarquía secundaria s/oscuro, 8.46:1 ✅ */
+
+  --accent:        var(--odobi-terracota);
+  --accent-btn:    var(--odobi-terracota); /* fill de botones de confirmación: #DE7250 (regla 28/07 v2, label display ≥20 Bold blanco) */
+  --on-accent:       var(--odobi-blanco);  /* label display de botones s/#DE7250 (3.17:1 texto grande) */
+  --on-accent-media: var(--odobi-blanco);  /* íconos + display grande s/#DE7250 (3.17:1) */
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.30), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.40);
+}
+
+/* ============================================================
+   Clases utilitarias mínimas para mockups
+   ============================================================ */
+.t-display { font-family: var(--font-display); font-weight: var(--fw-bold); font-size: var(--fs-display); line-height: var(--lh-display); }
+.t-title   { font-family: var(--font-display); font-weight: var(--fw-bold); font-size: var(--fs-title);   line-height: var(--lh-title); }
+.t-body    { font-family: var(--font-ui); font-weight: var(--fw-regular); font-size: var(--fs-body);    line-height: var(--lh-body); }
+.t-label   { font-family: var(--font-ui); font-weight: var(--fw-medium);  font-size: var(--fs-body);    line-height: var(--lh-body); }
+.t-caption { font-family: var(--font-ui); font-weight: var(--fw-regular); font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+.btn-primary {
+  min-height: var(--tap-min);
+  background: var(--accent-btn);
+  color: var(--on-accent);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display); /* regla 28/07 v2: label display 19 Bold = texto grande AA s/#DE7250 */
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-title);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+.btn-secondary {
+  min-height: var(--tap-min);
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-body);
+}

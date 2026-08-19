@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Acento — cerrar la divergencia con el repo</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700}
+  :root{
+    --crema:#F7F3EC; --negro:#1A1512; --sec:#5C534C; --linea:#E8E2D9; --fondo:#F2EEE7;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+    --sans:"Inter",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--fondo);color:var(--negro);font-family:var(--sans);padding:44px 32px 72px}
+  h1{font-family:"PJ",var(--sans);font-size:30px;line-height:1.1;max-width:20ch}
+  .baja{color:var(--sec);max-width:76ch;margin-top:14px;line-height:1.6}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sec)}
+  .wrap{max-width:1220px;margin:0 auto}
+
+  .par{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:40px}
+  @media(max-width:900px){.par{grid-template-columns:1fr}}
+  .col{background:#FBF9F5;border:1px solid var(--linea);padding:26px}
+  .col.gana{border-color:var(--negro);border-width:2px}
+  .col h2{font-family:"PJ",var(--sans);font-size:20px;margin:10px 0 4px}
+  .col .cant{font-family:var(--mono);font-size:12px;color:var(--sec);margin-bottom:20px}
+  .muestras{display:flex;gap:10px;margin-bottom:22px}
+  .sw{flex:1;height:52px;border-radius:8px;display:flex;align-items:flex-end;justify-content:center;
+      padding-bottom:5px;font-family:var(--mono);font-size:10px;color:#fff}
+  .sw.oscuro{color:#fff}
+
+  /* demo de componentes */
+  .demo{border-radius:14px;padding:18px;margin-bottom:12px}
+  .demo.claro{background:var(--crema)}
+  .demo.osc{background:#1A1512}
+  .demo .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+             color:var(--sec);margin-bottom:12px}
+  .demo.osc .lbl{color:#928777}
+  .btn{min-height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+       font-size:16px;font-weight:500;color:#fff;margin-bottom:10px}
+  .btn.display{font-family:"PJ",var(--sans);font-size:20px}
+  .link{font-size:16px;font-weight:500;margin-bottom:10px;display:block}
+  .fila{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .mic{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .mic svg{stroke:#fff}
+  .campo{flex:1;height:44px;border-radius:999px;display:flex;align-items:center;padding:0 14px;
+         font-size:15px;color:var(--sec);background:#fff}
+  .wordmark{font-family:"PJ",var(--sans);font-size:22px}
+  .onda{display:flex;align-items:flex-end;gap:5px;height:30px;margin-top:6px}
+  .onda i{width:5px;border-radius:3px;display:block}
+  .onda i:nth-child(1){height:12px}.onda i:nth-child(2){height:22px}.onda i:nth-child(3){height:30px}
+  .onda i:nth-child(4){height:16px}.onda i:nth-child(5){height:26px}
+
+  .ratios{margin-top:18px;border-top:1px solid var(--linea);padding-top:14px}
+  .demo.osc + .ratios{border-color:#3A322C}
+  .r{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11px;
+     padding:5px 0;color:var(--sec)}
+  .r b{color:var(--negro)}
+  .r .ok{color:#2F6B52}
+  .r .no{color:#B04A2E}
+
+  .veredicto{background:var(--negro);color:var(--crema);border-radius:16px;padding:30px 34px;margin-top:40px}
+  .veredicto h2{font-family:"PJ",var(--sans);font-size:24px;margin:10px 0 12px}
+  .veredicto p{color:#DCD3C6;max-width:80ch;line-height:1.65;margin-bottom:10px}
+  .veredicto strong{color:var(--crema)}
+  .veredicto .eyebrow{color:#E8A088}
+  .cierre{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#3A322C;margin-top:22px;
+          border:1px solid #3A322C}
+  .cierre div{background:var(--negro);padding:16px 18px}
+  .cierre .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#928777}
+  .cierre .v{font-family:"PJ",var(--sans);font-size:17px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Decisión abierta · 18 de agosto de 2026</div>
+  <h1>El acento: cerrar la única divergencia que queda</h1>
+  <p class="baja">Los dos sistemas funcionan y los dos están calculados. La pregunta no es cuál rojo gusta más,
+    sino <strong>cuántas reglas hay que recordar para usarlo bien</strong> — y qué pasa en los dos casos donde el
+    acento se vuelve difícil: el <strong>botón con texto</strong> y la <strong>onda sobre el velo de la escucha</strong>.</p>
+
+  <div class="par">
+    <!-- ============ REPO ============ -->
+    <div class="col">
+      <div class="eyebrow">Opción A · el del repo (Mariposas)</div>
+      <h2>Tres valores + gradiente</h2>
+      <div class="cant">#C2452E superficie · #A5341F texto claro · #E67A5E texto oscuro · gradiente a #7E2417</div>
+
+      <div class="muestras">
+        <div class="sw" style="background:#C2452E">C2452E</div>
+        <div class="sw" style="background:#A5341F">A5341F</div>
+        <div class="sw" style="background:#E67A5E;color:#1A1512">E67A5E</div>
+      </div>
+
+      <div class="demo claro">
+        <div class="lbl">Piel clara</div>
+        <div class="btn" style="background:#C2452E">Confirmar y mandar</div>
+        <a class="link" style="color:#A5341F">Mandale un recordatorio →</a>
+        <div class="fila">
+          <div class="campo" style="border:1px solid #C2452E">Escribí, o hablá…</div>
+          <div class="mic" style="background:#C2452E"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg></div>
+        </div>
+        <div class="lbl" style="margin-top:14px">Onda sobre el velo de la escucha</div>
+        <div class="onda"><i style="background:#A5341F"></i><i style="background:#A5341F"></i><i style="background:#A5341F"></i><i style="background:#A5341F"></i><i style="background:#A5341F"></i></div>
+      </div>
+
+      <div class="demo osc">
+        <div class="lbl">Piel oscura</div>
+        <div class="btn" style="background:#C2452E">Confirmar y mandar</div>
+        <a class="link" style="color:#E67A5E">Mandale un recordatorio →</a>
+        <span class="wordmark" style="color:#E67A5E">Odobi</span>
+      </div>
+
+      <div class="ratios">
+        <div class="r"><span>Texto blanco s/ botón</span><b class="ok">5,02:1 ✓ texto normal</b></div>
+        <div class="r"><span>Link s/ crema</span><b class="ok">6,10:1 ✓</b></div>
+        <div class="r"><span>Link s/ negro (piel oscura)</span><b class="ok">6,21:1 ✓</b></div>
+        <div class="r"><span>Onda s/ velo claro</span><b class="ok">5,63:1 ✓</b></div>
+        <div class="r"><span>Onda s/ velo oscuro</span><b class="no">2,44:1 ✗ → usa #C2452E (3,29)</b></div>
+      </div>
+    </div>
+
+    <!-- ============ NUESTRO ============ -->
+    <div class="col">
+      <div class="eyebrow">Opción B · el nuestro</div>
+      <h2>Dos valores, sin gradiente</h2>
+      <div class="cant">#DE7250 fill · #B04A2E texto sobre claro (en oscuro, el fill hace de texto)</div>
+
+      <div class="muestras">
+        <div class="sw" style="background:#DE7250">DE7250</div>
+        <div class="sw" style="background:#B04A2E">B04A2E</div>
+        <div class="sw" style="background:#F2EEE7;color:#8A7F73;border:1px dashed #DDD5C9">—</div>
+      </div>
+
+      <div class="demo claro">
+        <div class="lbl">Piel clara</div>
+        <div class="btn display" style="background:#DE7250">Confirmar y mandar</div>
+        <a class="link" style="color:#B04A2E">Mandale un recordatorio →</a>
+        <div class="fila">
+          <div class="campo" style="border:1px solid #DE7250">Escribí, o hablá…</div>
+          <div class="mic" style="background:#DE7250"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><path d="M12 18v4"/></svg></div>
+        </div>
+        <div class="lbl" style="margin-top:14px">Onda sobre el velo de la escucha</div>
+        <div class="onda"><i style="background:#B04A2E"></i><i style="background:#B04A2E"></i><i style="background:#B04A2E"></i><i style="background:#B04A2E"></i><i style="background:#B04A2E"></i></div>
+      </div>
+
+      <div class="demo osc">
+        <div class="lbl">Piel oscura</div>
+        <div class="btn display" style="background:#DE7250">Confirmar y mandar</div>
+        <a class="link" style="color:#DE7250">Mandale un recordatorio →</a>
+        <span class="wordmark" style="color:#DE7250">Odobi</span>
+      </div>
+
+      <div class="ratios">
+        <div class="r"><span>Texto blanco s/ botón</span><b class="no">3,17:1 — solo display 20 Bold</b></div>
+        <div class="r"><span>Link s/ crema</span><b class="ok">4,91:1 ✓</b></div>
+        <div class="r"><span>Link s/ negro (piel oscura)</span><b class="ok">5,71:1 ✓</b></div>
+        <div class="r"><span>Onda s/ velo claro</span><b class="ok">4,53:1 ✓ (con #B04A2E)</b></div>
+        <div class="r"><span>Onda s/ velo oscuro</span><b class="ok">5,21:1 ✓ (con #DE7250)</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="veredicto">
+    <div class="eyebrow">Lo que realmente los separa</div>
+    <h2>Una regla incómoda contra un valor de más</h2>
+    <p><strong>El del repo admite texto normal en el botón</strong> (5,02:1). El nuestro no: obliga a
+      <strong>display 20 Bold</strong> en toda etiqueta sobre el fill, porque blanco sobre <code>#DE7250</code> da
+      3,17:1 — alcanza para texto grande y nada más. Esa regla ya nos costó una deuda que hubo que cerrar aparte,
+      y obliga a que cada botón nuevo recuerde una excepción.</p>
+    <p><strong>El nuestro tiene un valor menos y ningún gradiente</strong>, y resuelve la piel oscura con el mismo
+      fill (5,71:1 contra 3,61:1 del repo, que ahí necesita un tercer tono). También es más cálido: se aleja más del
+      rojo-señal genérico, que era el punto del brief.</p>
+    <p><strong>Ninguno gana solo.</strong> Lo que sí es insostenible es que convivan tres terracotas en el mismo
+      producto — y con el isotipo de David entrando a la identidad, la divergencia de color pasa a ser lo único
+      que quedaría sin unificar.</p>
+
+    <div class="cierre">
+      <div><div class="k">Si gana A</div><div class="v">Se cae la regla del display 20 Bold; repintamos 11 mockups (2 variables). El repo no toca nada.</div></div>
+      <div><div class="k">Si gana B</div><div class="v">David repinta 2 archivos de tokens (tiene guard de cero-hex). Se conserva el calor y la simplicidad.</div></div>
+      <div><div class="k">Sea cual sea</div><div class="v">No se adoptan los gradientes: el propio DoD ya eligió color pleno + relieve.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>El botón en bold — hasta dónde se puede bajar</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700}
+  :root{--crema:#F7F3EC;--negro:#1A1512;--sec:#5C534C;--linea:#E8E2D9;--fondo:#F2EEE7;
+        --mono:ui-monospace,"SF Mono","JetBrains Mono",monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--fondo);color:var(--negro);font-family:Inter,system-ui,sans-serif;padding:44px 32px 80px}
+  .wrap{max-width:1280px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sec)}
+  h1{font-family:"PJ",sans-serif;font-size:30px;margin:12px 0 0;max-width:24ch;line-height:1.12}
+  .baja{color:var(--sec);max-width:80ch;margin-top:14px;line-height:1.6}
+  h2{font-family:"PJ",sans-serif;font-size:19px;margin:46px 0 4px}
+  .sub{color:var(--sec);font-size:14px;margin-bottom:20px}
+  .fila{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+  @media(max-width:1100px){.fila{grid-template-columns:repeat(2,1fr)}}
+  .c{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:16px}
+  .c.no{border-color:#B04A2E;border-width:2px}
+  .c.si{border-color:#2F6B52;border-width:2px}
+  .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--sec);
+     margin-bottom:12px;min-height:26px}
+  .b{min-height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+     color:#fff;font-family:"PJ",sans-serif}
+  .n{font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--sec);margin-top:12px}
+  .n b{color:var(--negro)} .ok{color:#2F6B52} .mal{color:#B04A2E}
+  .regla{margin:40px 0 0;background:var(--negro);color:var(--crema);border-radius:16px;padding:26px 30px}
+  .regla p{color:#DCD3C6;max-width:84ch;line-height:1.65;margin-top:10px}
+  .regla strong{color:var(--crema)} .regla .eyebrow{color:#E8A088}
+  .linea-corte{display:flex;align-items:center;gap:14px;margin:34px 0 26px;color:#B04A2E;
+               font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .linea-corte::before,.linea-corte::after{content:"";height:1px;background:#B04A2E;flex:1;opacity:.5}
+</style></head><body><div class="wrap">
+<div class="eyebrow">Acento cerrado: par #DE7250 + #B04A2E · falta el tamaño del label</div>
+<h1>El botón en bold: hasta dónde se puede bajar</h1>
+<p class="baja">Con fill <code>#DE7250</code>, blanco da <b>3,17:1</b>. Eso es legal <b>sólo</b> si la etiqueta
+  cuenta como texto grande — y WCAG define texto grande en bold a partir de <b>18,66 px</b> (14 pt).
+  <strong>19 px es el último escalón que pasa; 18 px ya no.</strong></p>
+
+<h2>Con el fill vivo #DE7250 — el borde del acantilado</h2>
+<p class="sub">Todos con blanco encima, 3,17:1. Lo único que cambia es si el tamaño lo vuelve legal.</p>
+<div class="fila">
+  <div class="c"><div class="k">Hoy · display 20</div>
+    <div class="b" style="background:#DE7250;font-size:20px">Confirmar y mandar</div>
+    <div class="n"><b>20 px bold</b><br><span class="ok">✓ legal</span> (≥18,66) · pesa más que el título de la card</div></div>
+  <div class="c si"><div class="k">Pedido · display 19</div>
+    <div class="b" style="background:#DE7250;font-size:19px">Confirmar y mandar</div>
+    <div class="n"><b>19 px bold</b><br><span class="ok">✓ legal</span> — <b>último escalón</b>, con 0,34 px de margen</div></div>
+  <div class="c no"><div class="k">display 18</div>
+    <div class="b" style="background:#DE7250;font-size:18px">Confirmar y mandar</div>
+    <div class="n"><b>18 px bold</b><br><span class="mal">✗ ilegal</span> — deja de ser texto grande y 3,17:1 no alcanza</div></div>
+  <div class="c no"><div class="k">display 17</div>
+    <div class="b" style="background:#DE7250;font-size:17px">Confirmar y mandar</div>
+    <div class="n"><b>17 px bold</b><br><span class="mal">✗ ilegal</span> — mismo motivo</div></div>
+</div>
+
+<div class="linea-corte">debajo de 18,66 px el fill vivo deja de servir · abajo, el mismo bold sin la restricción</div>
+
+<h2>Con el fill profundo #B04A2E — el bold queda libre</h2>
+<p class="sub">5,43:1 con blanco: cumple a cualquier tamaño. El bold deja de depender de una frontera.</p>
+<div class="fila">
+  <div class="c"><div class="k">display 19</div>
+    <div class="b" style="background:#B04A2E;font-size:19px">Confirmar y mandar</div>
+    <div class="n"><b>19 px bold</b> · <span class="ok">✓ 5,43:1</span></div></div>
+  <div class="c si"><div class="k">display 18</div>
+    <div class="b" style="background:#B04A2E;font-size:18px">Confirmar y mandar</div>
+    <div class="n"><b>18 px bold</b> · <span class="ok">✓ 5,43:1</span> — el tamaño que el vivo no puede tener</div></div>
+  <div class="c"><div class="k">display 17</div>
+    <div class="b" style="background:#B04A2E;font-size:17px">Confirmar y mandar</div>
+    <div class="n"><b>17 px bold</b> · <span class="ok">✓ 5,43:1</span></div></div>
+  <div class="c"><div class="k">display 16</div>
+    <div class="b" style="background:#B04A2E;font-size:16px">Confirmar y mandar</div>
+    <div class="n"><b>16 px bold</b> · <span class="ok">✓ 5,43:1</span> — a la par del cuerpo de la app</div></div>
+</div>
+
+<h2>Y en piel oscura</h2>
+<p class="sub">El fill profundo pierde presencia contra el fondo (3,33:1); el vivo la conserva (5,71:1).</p>
+<div class="fila">
+  <div class="c" style="background:#1A1512;border-color:#3A322C"><div class="k" style="color:#928777">#B04A2E · display 18</div>
+    <div class="b" style="background:#B04A2E;font-size:18px">Confirmar y mandar</div>
+    <div class="n" style="color:#928777">texto <span class="ok">✓ 5,43:1</span> · fill vs fondo <span class="mal">3,33:1</span></div></div>
+  <div class="c" style="background:#1A1512;border-color:#3A322C"><div class="k" style="color:#928777">#DE7250 · display 19 · blanco</div>
+    <div class="b" style="background:#DE7250;font-size:19px">Confirmar y mandar</div>
+    <div class="n" style="color:#928777">texto <span class="ok">✓ 3,17:1</span> (grande) · fill vs fondo <span class="ok">5,71:1</span></div></div>
+  <div class="c" style="background:#1A1512;border-color:#3A322C"><div class="k" style="color:#928777">#DE7250 · display 18 · negro</div>
+    <div class="b" style="background:#DE7250;color:#1A1512;font-size:18px">Confirmar y mandar</div>
+    <div class="n" style="color:#928777">texto <span class="ok">✓ 5,71:1</span> a cualquier tamaño · fill vs fondo <span class="ok">5,71:1</span></div></div>
+  <div class="c" style="background:#1A1512;border-color:#3A322C"><div class="k" style="color:#928777">#DE7250 · display 16 · negro</div>
+    <div class="b" style="background:#DE7250;color:#1A1512;font-size:16px">Confirmar y mandar</div>
+    <div class="n" style="color:#928777">el bold chico sólo es posible con texto negro</div></div>
+</div>
+
+<div class="regla">
+  <div class="eyebrow">Lo que hay que decidir, en una línea</div>
+  <p><strong>Si el bold se queda y el fill es #DE7250, el tamaño no puede bajar de 19 px.</strong> Funciona, pero deja
+    la regla al filo: 0,34 px de margen. El día que alguien lo baje a 18 «porque se ve mejor», el botón deja de
+    cumplir y nadie lo va a notar mirando — que es exactamente cómo aparecieron las 9 fallas del build de David.</p>
+  <p><strong>Si el bold se queda y el fill es #B04A2E, el tamaño es libre.</strong> 18, 17 o 16: todos cumplen con
+    margen. Se conserva el bold que te gusta y se elimina la frontera.</p>
+</div>
+</div></body></html>

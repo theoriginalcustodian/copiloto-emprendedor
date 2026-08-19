@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — 05 · Facturación por voz — doble HITL (28/07)</title>
+<style>
+  /* ============================================================
+     05 · FACTURACIÓN POR VOZ — doble HITL (28/07/2026)
+     Guión §5 del handoff hecho pantalla. Hereda el patrón madre
+     del 04 cambiando SOLO las filas de detalle. El botón "Emitir"
+     es el gate ESPERANDO_CONFIRMACION de la máquina real de
+     estados del repo (afip_rules.py): quién decide qué se emite
+     es código, no un modelo. Feature IMPLEMENTADA — sin disclaimer.
+     Aplica: uxsnaps, regla 28/07 (fill #B04A2E + blanco),
+     Decisión B (terracota solo tocable), monograma, Iconoir.
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace; /* meta-capa: monoespaciada (decisión Martin 08/08, deroga la manuscrita del 26/07). Sigue sin confundirse con la UI —que es Inter— pero en registro serio, de spec. */
+    --fs-display:28px; --lh-display:32px;
+    --fs-title:20px;   --lh-title:24px;
+    /* Label de botón sobre terracota: 19px BOLD. No es un tamaño estético — es el piso
+       de WCAG para "texto grande" en bold (18,66px = 14pt), que es lo que vuelve legal el
+       3,17:1 de blanco sobre #DE7250. Bajarlo a 18 rompe el criterio sin que se note a ojo. */
+    --fs-btn:19px;     --lh-btn:24px;
+    --fs-body:16px;    --lh-body:24px;
+    --fs-caption:13px; --lh-caption:16px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px;
+    --tap:48px;
+    --r-s:14px; --r-m:22px; --r-xl:26px; --r-l:24px; --r-pill:999px;
+    --shadow-card:0 1px 2px rgba(26,21,18,.06),0 4px 16px rgba(26,21,18,.05);
+    /* TODO motion-ref: validar con MCP 60FPS */
+    --m-fast:120ms; --m-base:200ms; --m-slow:320ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ===== Meta-capa de presentación (no es la UI) ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1280px;margin:0 auto 40px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:820px}
+  .canvas-wrap{max-width:1000px;margin:0 auto 64px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;color:var(--sec);text-align:center;max-width:640px}
+  .canvas{position:relative;width:960px;background:#EFEBE4;border:1px solid #D9D2C7;border-radius:16px;overflow:hidden;flex-shrink:0}
+  .overlay{position:absolute;inset:0;pointer-events:none}
+
+  /* Anotación uxsnaps (estándar 26/07) */
+  .hand{position:absolute;font-family:var(--font-hand);font-size:11px;line-height:15px;letter-spacing:-.01em;color:var(--negro)} /* 11/15 y no 14/18: la monoespaciada es ~33% más ancha por carácter que la manuscrita que reemplazó, y las 165 anotaciones tienen ancho fijo — a 14px el texto pedía más líneas, crecía hacia abajo y se montaba sobre los frames. */
+  .hand.accent{color:var(--terracota-prof)}
+  .hand.dim{color:var(--lapiz)}
+
+  /* ===== Frame mobile 390px ===== */
+  .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
+
+  /* ===== UI ===== */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:var(--s1) var(--s3) var(--s2);flex-shrink:0}
+  .wordmark{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title);color:var(--terracota)} /* logotipo exento (WCAG 1.4.3) */
+  .avatar{position:relative;width:32px;height:32px;border-radius:var(--r-pill);background:var(--crema);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:500;color:var(--sec)}
+
+  .thread{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
+  .divider{text-align:center;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);padding-top:var(--s1)} /* 7.51:1 ✅ */
+
+  .msg-row{display:flex;align-items:flex-end;gap:var(--s1);align-self:flex-start;max-width:324px}
+  /* El isotipo suelto contra el borde se leía cortado: sus arcos abren a la izquierda
+     y no tiene caja propia. Adentro de un disco blanco es un avatar, y rima con el
+     del usuario en el header. Va con los 4 arcos: la variante de 3 es sólo para
+     ≤24 px, donde el arco interno colapsa. */
+  .msg-row .quien{width:38px;height:38px;border-radius:99px;background:var(--blanco);
+                  box-shadow:0 1px 4px rgba(26,21,18,.06);display:flex;align-items:center;
+                  justify-content:center;flex-shrink:0}
+  .msg-row .quien svg{flex-shrink:0;stroke:var(--terracota);color:var(--terracota);fill:none}
+  .msg{max-width:300px;padding:12px var(--s2);font-size:var(--fs-body);line-height:var(--lh-body)}
+  .msg-odobi{background:var(--crema);border-radius:4px var(--r-m) var(--r-m) var(--r-m)} /* 16.37:1 ✅ */
+  .msg-user{align-self:flex-end;background:var(--negro);color:var(--crema);border-radius:var(--r-m) 4px var(--r-m) var(--r-m)} /* 16.37:1 ✅ */
+  .msg-meta{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-top:-8px}
+  .msg-meta.right{align-self:flex-end}
+  .check{color:var(--sec);letter-spacing:-.05em} /* Decisión B: feedback, no botón */
+
+  /* ===== Tarjeta HITL (heredada del 04 — cambian solo las filas) ===== */
+  .hitl{align-self:stretch;background:var(--blanco);border-radius:var(--r-m);box-shadow:0 4px 18px rgba(26,21,18,.07);overflow:hidden;padding:var(--s2)}
+  .hitl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s2)}
+  .hitl-head h3{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title)}
+  .hitl-chip{font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;color:var(--sec);background:var(--arena-30);padding:4px 12px;border-radius:var(--r-pill)}
+  .hitl-row{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s2);padding:0 0 var(--s2)}
+  .hitl-row .k{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--sec);margin-bottom:3px}
+  .hitl-row .v{flex:1;font-size:var(--fs-body);line-height:var(--lh-body)}
+  .hitl-row .v small{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .hitl-row .edit{font-size:var(--fs-caption);font-weight:500;color:var(--terracota-prof);flex-shrink:0;min-height:0;padding:2px 0;display:flex;align-items:center} /* tocable: 5.43:1 ✅ */
+  .hitl-scope{display:flex;gap:var(--s1);align-items:center;padding:2px 2px 0;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);align-items:center}
+  .hitl-scope svg{flex-shrink:0;stroke:var(--terracota-prof);color:var(--terracota-prof);margin-top:1px}
+  .hitl-actions{display:flex;flex-direction:column;gap:var(--s1);padding:var(--s2) 0 0}
+  .btn-confirm{min-height:52px;background:var(--terracota);color:var(--blanco);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);box-shadow:0 4px 14px rgba(222,114,80,.35)} /* regla 28/07 v2 (Martin): fill #DE7250 suave + label display 19 Bold blanco = texto grande AA (3.17:1 ≥ 3:1 ✅, misma vía que "Cortar" en la escucha). Con Inter 16px fallaría. Nunca negro s/terracota */
+  .btn-cancel{min-height:var(--tap);background:var(--arena-30);color:var(--negro);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-size:var(--fs-body);font-weight:500}
+
+  /* ===== Comprobante ===== */
+  .receipt{align-self:stretch;background:var(--crema);border-radius:var(--r-m);padding:var(--s2);display:flex;align-items:center;gap:var(--s2)}
+  .receipt .ok{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  /* Ícono success = el SVG de Martin (assets/motion/Success.svg): círculo blanco con
+     borde + check, misma geometría. Ajuste legal de color: el #DE7250 del original
+     da 2.86:1 s/blanco (falla WCAG 1.4.11) → #B04A2E (check s/blanco 5.43:1 ✅ ·
+     borde s/crema 4.91:1 ✅). Excepción a Decisión B (terracota en estado no
+     tocable) decidida por Martin 28/07, como la taza del 09.
+     Motion (ref: assets/motion/Success.json): círculo pop + check que se dibuja
+     (trim path del Lottie con dash-offset). Se dispara cuando el comprobante ENTRA
+     EN PANTALLA (IntersectionObserver, script al pie). Una vez, sin loop.
+     TODO motion-ref */
+  .receipt .ok svg{stroke:var(--terracota-prof);color:var(--terracota-prof)}
+  .receipt .ok svg polyline{stroke-dasharray:26}
+  .receipt .ok.play{animation:ok-pop var(--m-slow) var(--ease) both}
+  .receipt .ok.play svg polyline{animation:ok-draw 400ms var(--ease) 260ms backwards}
+  @keyframes ok-pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+  @keyframes ok-draw{from{stroke-dashoffset:26}to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion: reduce){
+    .receipt .ok.play{animation:none}
+    .receipt .ok.play svg polyline{animation:none}
+  }
+  .receipt .rt{flex:1}
+  .receipt .rt .t1{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+  .receipt .rt .t2{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .receipt .link{font-size:var(--fs-caption);font-weight:500;color:var(--terracota-prof);min-height:var(--tap);display:flex;align-items:center} /* tocable ✅ */
+
+  /* Chips de siguiente acción (cada una abre su propio HITL) */
+  .chips{display:flex;gap:var(--s1);align-self:flex-start;flex-wrap:wrap;max-width:324px}
+  .chip-act{min-height:var(--tap);display:flex;align-items:center;padding:0 var(--s2);border-radius:var(--r-pill);font-size:var(--fs-caption);font-weight:500;color:var(--terracota-prof);background:var(--blanco);box-shadow:0 4px 18px rgba(26,21,18,.07)} /* tocable: 5.43:1 ✅ */
+
+  .inputbar{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex-shrink:0}
+  .textfield{flex:1;height:52px;border-radius:var(--r-pill);display:flex;align-items:center;padding:0 var(--s2);font-size:var(--fs-body);color:var(--sec);background:var(--blanco);box-shadow:0 3px 12px rgba(26,21,18,.08)}
+  .micbtn{width:52px;height:52px;border-radius:var(--r-pill);background:var(--terracota);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(222,114,80,.4)}
+  .micbtn svg{stroke:var(--blanco);color:var(--blanco)}   /* ===== Asidero / peek (rev. 16/08 — reemplaza a la tabbar de la Decisión A) ===== */
+  .grip{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0 2px;flex-shrink:0}
+  .grip .bar{width:44px;height:5px;border-radius:3px;background:#DDD5C9}
+  .grip .txt{font-size:11px;letter-spacing:.02em;color:var(--sec)} /* 6.44:1 ✅ — SIN opacity encima */
+  .ctx-mini{display:flex;justify-content:center;font-size:11px;color:var(--sec);padding-bottom:2px}
+
+  /* ===== Íconos Phosphor (19/08) — reemplazan a Iconoir =====
+     Phosphor viene OUTLINEADO: es `fill`, no `stroke`. Se lo reconoce por su viewBox
+     nativo de 256. El isotipo de Odobi sí es `stroke` y conserva el suyo, así que las
+     dos técnicas conviven sin pisarse. El color va por `currentColor`: cada contenedor
+     lo fija con `color`, que es lo que ya hereda el isotipo por `stroke`. */
+  svg[viewBox="0 0 256 256"]{fill:currentColor;stroke:none}
+  .hitl-row .dato{flex:1;min-width:0}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>05 · Facturación por voz — doble HITL (28/07)</h1>
+  <p>El guión §5 del handoff hecho pantalla: «Odobi, facturale $80.000 a Rodríguez» → preguntas por lo que falta (<strong>primer HITL: los datos</strong>) → tarjeta "Queda así" (<strong>segundo HITL: la emisión</strong>) → factura con CAE en el thread. La tarjeta es la del 04 con otras filas — un solo componente en todo el sistema. El botón "Emitir" es el gate <code>ESPERANDO_CONFIRMACION</code> de la máquina real de estados del repo: quién decide qué se emite es código, no un modelo. Feature implementada — sin disclaimer. Fundamentos en <code>DECISIONES.md</code>.</p>
+</div>
+
+<!-- ================= LANE 1 · PEDIDO POR VOZ + LO QUE FALTA SE PREGUNTA ================= -->
+<div class="canvas-wrap" id="lane1">
+  <span class="lane-tag">1 · Pedido por voz — lo que falta se pregunta</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:12</span><span>●●●</span></div>
+      <div class="app-header">
+        <span class="wordmark">Odobi</span>
+        <span class="avatar">M</span>
+      </div>
+      <div class="thread">
+        <div class="divider">Jueves 24</div>
+        <div class="msg msg-user">Odobi, facturale $80.000 a Rodríguez.</div>
+        <div class="msg-meta right">10:12 · por voz · <span class="check">✓✓</span> recibido</div>
+        <div class="msg-row">
+          <!-- monograma "la o que habla" -->
+          <!-- isotipo Odobi (David) — 3 arcos, variante chica --><svg width="18" height="18" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+          <div class="msg msg-odobi">Dale. Para la factura me faltan dos cosas: ¿es factura C? ¿y el CUIT de Rodríguez uso el del registro que tengo (20-28456789-3)?</div>
+        </div>
+        <div class="msg msg-user">Sí, C. Y usá ese CUIT.</div>
+        <div class="msg-meta right">10:13 · <span class="check">✓✓</span> recibido</div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah1-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al pedido por voz (msg-user, derecha) -->
+      <path d="M712,140 C685,160 662,180 646,198" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la meta "por voz" -->
+      <path d="M712,300 C688,290 668,282 652,276" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah1-dim)"/>
+      <!-- a la pregunta de Odobi -->
+      <path d="M248,340 C278,352 300,362 316,370" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al CUIT del registro -->
+      <path d="M245,540 C275,510 298,480 316,455" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la respuesta corta del usuario -->
+      <path d="M712,470 C685,490 662,505 646,516" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+    </svg>
+
+    <div class="hand" style="left:716px;top:90px;width:215px">la invocación es el comando: "Odobi, facturale…". El nombre abre el pedido (o-DO-bi, 20+ impresiones de marca por día). La voz entra al thread como texto: un solo historial.</div>
+    <div class="hand dim" style="left:716px;top:310px;width:210px">meta "por voz": queda registrado el canal. Paridad voz/texto en todo el sistema.</div>
+    <div class="hand" style="left:24px;top:280px;width:215px">PRIMER HITL: los datos. Odobi no inventa tipo de factura ni CUIT — lo que falta se pregunta, junto y en un solo turno ("me faltan dos cosas"), no interrogatorio de a uno. Guión §5 literal.</div>
+    <div class="hand" style="left:24px;top:560px;width:210px">el CUIT sale del registro de clientes del repo y se muestra ANTES de usarse. Dato asumido = dato verificable, nunca fe ciega.</div>
+    <div class="hand" style="left:716px;top:400px;width:210px">la respuesta es coloquial ("Sí, C. Y usá ese CUIT.") — no un formulario. El parsing es problema de Odobi, no del usuario.</div>
+  </div>
+  <p class="lane-sub">Jueves 24, 10:12 — entre la promo del miércoles (04) y el viernes del chat (03). Facturar toma dos turnos de conversación: pedir y aclarar lo que falta.</p>
+</div>
+
+<!-- ================= LANE 2 · SEGUNDO HITL: LA EMISIÓN ================= -->
+<div class="canvas-wrap" id="lane2">
+  <span class="lane-tag">2 · Segundo HITL — la emisión</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:13</span><span>●●●</span></div>
+      <div class="app-header">
+        <span class="wordmark">Odobi</span>
+        <span class="avatar">M</span>
+      </div>
+      <div class="thread">
+        <div class="divider">Jueves 24</div>
+        <div class="msg-row">
+          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+          <div class="msg msg-odobi">Queda así. Revisala antes de emitir:</div>
+        </div>
+        <div class="hitl">
+          <div class="hitl-head">
+            <h3>Factura C</h3>
+            <span class="hitl-chip">ARCA</span>
+          </div>
+          <div class="hitl-row">
+            <span class="dato"><span class="k">Cliente</span><span class="v">Rodríguez SRL<small>CUIT 20-28456789-3</small></span></span>
+            <span class="edit">Cambiá</span>
+          </div>
+          <div class="hitl-row">
+            <span class="dato"><span class="k">Importe</span><span class="v">$80.000</span></span>
+            <span class="edit">Editá</span>
+          </div>
+          <div class="hitl-row">
+            <span class="dato"><span class="k">Concepto</span><span class="v">Servicios<small>trabajo de julio</small></span></span>
+            <span class="edit">Editá</span>
+          </div>
+          <div class="hitl-scope">
+            <!-- phosphor: warning-circle --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></svg>
+            <span>Se emite en ARCA a tu nombre. Una factura emitida no se borra: si está mal, se anula con una nota de crédito.</span>
+          </div>
+          <div class="hitl-actions">
+            <div class="btn-confirm">Emitir factura</div>
+            <div class="btn-cancel">Cancelar</div>
+          </div>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah2-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah2-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- a la head Factura C + chip ARCA -->
+      <path d="M250,270 C278,282 298,292 314,300" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- a la fila Cliente -->
+      <path d="M245,440 C275,428 296,418 314,410" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al alcance/irreversibilidad -->
+      <path d="M245,650 C275,635 296,622 314,610" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al botón Emitir (gate real) -->
+      <path d="M710,600 C680,625 655,650 634,668" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah2-hot)"/>
+      <!-- a la tarjeta entera (herencia del 04) -->
+      <path d="M712,220 C685,250 660,285 642,315" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al chip ARCA (dim) -->
+      <path d="M712,430 C688,415 668,400 652,388" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah2-dim)"/>
+    </svg>
+
+    <div class="hand" style="left:24px;top:210px;width:215px">"Queda así: Factura C, $80.000, Rodríguez SRL. ¿Emito?" — guión §5. La propuesta completa se muestra ANTES de tocar ARCA (IF Catalogue: intención declarada).</div>
+    <div class="hand" style="left:24px;top:380px;width:210px">las filas cambian, el patrón no: Cliente / Importe / Concepto en vez de Mensaje / Destinatarios / Descuento. Mismo componente del 04, ≥48pt, acción textual.</div>
+    <div class="hand" style="left:24px;top:660px;width:215px">irreversibilidad fiscal, frontal y con salida: no se borra, se anula con nota de crédito — que es lo que el repo hace de verdad (workflow de anulación). Ni promesa falsa de undo ni letra chica.</div>
+    <div class="hand accent" style="left:712px;top:520px;width:220px">SEGUNDO HITL: "Emitir factura" es el gate ESPERANDO_CONFIRMACION de la máquina de estados real. Botón regla 28/07 v2: fill terracota suave #DE7250 + label display 19 Bold blanco (3.17:1 = AA texto grande ✅; con Inter 16 fallaría).</div>
+    <div class="hand" style="left:716px;top:150px;width:215px">la tarjeta ES el patrón madre del 04 — misma anatomía [1][2][3][4]. En el deck: un componente, tres features (promo, factura, presupuesto).</div>
+    <div class="hand dim" style="left:716px;top:445px;width:205px">chip "ARCA": el organismo real, sin logo ajeno. El chip dice por dónde sale el write, igual que "Gmail" en el 04.</div>
+  </div>
+  <p class="lane-sub">Editar cualquier fila abre el sheet del 04 (mismo mecanismo). La emisión tiene una sola puerta: el botón. Terracota ≈7% — máximo legítimo, pantalla de decisión.</p>
+</div>
+
+<!-- ================= LANE 3 · EMITIDA: CAE EN EL THREAD ================= -->
+<div class="canvas-wrap" id="lane3">
+  <span class="lane-tag">3 · Emitida — el CAE queda en el thread</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:14</span><span>●●●</span></div>
+      <div class="app-header">
+        <span class="wordmark">Odobi</span>
+        <span class="avatar">M</span>
+      </div>
+      <div class="thread">
+        <div class="divider">Jueves 24</div>
+        <div class="msg msg-user">Emitila.</div>
+        <div class="msg-meta right">10:13 · por voz · <span class="check">✓✓</span> recibido</div>
+        <div class="receipt">
+          <div class="ok">
+            <!-- assets/motion/Success.svg (Martin 28/07) — color #DE7250→#B04A2E por 1.4.11 --><svg width="32" height="32" viewBox="14 14 36 36" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="16.5" fill="#FFFFFF"/><polyline points="23.1,32 29,38 40.9,26.1"/></svg>
+          </div>
+          <div class="rt">
+            <div class="t1">Factura C emitida</div>
+            <div class="t2">Nº 0003-00000127 · $80.000 · Rodríguez SRL</div>
+            <div class="t2">CAE 75282963517824 · vence 03/08</div>
+          </div>
+          <div class="link">PDF</div>
+        </div>
+        <div class="msg-row">
+          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+          <div class="msg msg-odobi">Emitida. Acá está el PDF — ¿lo guardo, lo mando por mail o lo compartís vos?</div>
+        </div>
+        <div class="chips">
+          <div class="chip-act">Guardalo en Drive</div>
+          <div class="chip-act">Mandalo por mail</div>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: micropho --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah3-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al "Emitila." por voz -->
+      <path d="M712,140 C685,158 662,178 646,196" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al CAE del comprobante -->
+      <path d="M245,380 C275,368 296,358 312,350" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- a la burbuja "Emitida." -->
+      <path d="M245,560 C275,535 300,505 316,480" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- a los chips de siguiente acción -->
+      <path d="M712,600 C680,590 655,580 636,572" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al link PDF -->
+      <path d="M712,300 C685,312 662,322 646,330" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al comprobante entero (sonido, dim) -->
+      <path d="M245,190 C270,230 295,270 310,300" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah3-dim)"/>
+    </svg>
+
+    <div class="hand" style="left:716px;top:90px;width:215px">"Emitila." dicho o escrito = el botón. Paridad de canales en el gesto central, igual que en el 04.</div>
+    <div class="hand" style="left:24px;top:390px;width:210px">el comprobante muestra lo fiscal de verdad: número, CAE y vencimiento — la emisión fue real (máquina EMITIENDO → EMITIDA). No un toast: queda en el historial, auditable.</div>
+    <div class="hand" style="left:24px;top:580px;width:210px">"Emitida." — buena noticia en seco (§5) y la pregunta siguiente ya viene con opciones reales del catálogo: Drive y Gmail, servicios conectados.</div>
+    <div class="hand" style="left:716px;top:610px;width:215px">los chips son atajos de conversación, no ejecución: tocar "Mandalo por mail" arma OTRA tarjeta HITL (mandar el PDF es otro write, con su propia puerta).</div>
+    <div class="hand" style="left:716px;top:250px;width:205px">"PDF" abre el comprobante tal como lo ve el cliente. Tocable → #B04A2E (5.43:1 ✅).</div>
+    <div class="hand dim" style="left:24px;top:140px;width:200px">sonido "Listo" (Brand Book §5.7) con el comprobante. TODO motion-ref: colapso tarjeta→receipt.</div>
+  </div>
+  <p class="lane-sub">Cierre del guión §5 completo: pedir → aclarar → revisar → emitir → comprobante con CAE → siguiente paso propuesto, nunca ejecutado solo. "Vos confirmás, Odobi ejecuta" aplicado a lo fiscal.</p>
+</div>
+
+<script>
+/* Dispara la animación del check cuando el receipt entra en pantalla (60% visible), una sola vez */
+const okObs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('play');okObs.unobserve(e.target)}}),{threshold:.6});
+document.querySelectorAll('.receipt .ok').forEach(el=>okObs.observe(el));
+</script>
+</body>
+</html>

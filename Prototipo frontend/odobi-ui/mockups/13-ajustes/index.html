@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>13 · Ajustes — la segunda gramática</title>
+<style>
+  @font-face{font-family:"PlusJakartaSans";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+    --marco:290; --vp:393;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 72px}
+  .page-head{max-width:1280px;margin:0 auto 44px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:10px}
+  .page-head p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px}
+  .page-head p + p{margin-top:10px}
+  .page-head code{font-family:var(--font-hand);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+  .page-head strong{color:var(--negro)}
+
+  .lane{max-width:1240px;margin:0 auto 60px}
+  .lane-tag{display:inline-block;font-size:12px;font-weight:500;letter-spacing:.08em;
+            text-transform:uppercase;background:var(--negro);color:var(--crema);
+            padding:6px 14px;border-radius:999px}
+  .lane h2{font-family:var(--font-display);font-size:20px;margin:14px 0 6px}
+  .lane > p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px;margin-bottom:22px}
+  .fila{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+
+  .tel{width:calc(var(--marco) * 1px);flex:none}
+  .marco{position:relative;width:calc(var(--marco) * 1px);aspect-ratio:1/1}
+  .marco img{width:100%;height:100%;display:block;position:relative;z-index:1;pointer-events:none}
+  .pantalla{position:absolute;left:31.30%;top:8.95%;width:37.75%;height:81.80%;
+            overflow:hidden;z-index:2;border-radius:calc(var(--marco) * .055px);background:var(--crema)}
+  .pantalla iframe{width:calc(var(--vp) * 1px);height:calc(var(--vp) * 2.167px);border:0;
+                   transform-origin:0 0;transform:scale(calc(var(--marco) * .3775 / var(--vp)))}
+  .marco .isla{position:absolute;z-index:3;left:50%;transform:translateX(-50%);
+               top:calc(var(--marco) * .105px);width:calc(var(--marco) * .092px);
+               height:calc(var(--marco) * .027px);background:#111;border-radius:99px}
+  .tel > b{display:block;font-size:15px;font-weight:500;margin-top:2px}
+  .tel .url{display:inline-block;margin-top:6px;font-family:var(--font-hand);font-size:11px;
+            color:var(--terracota-prof);background:var(--arena-30);border-radius:999px;
+            padding:3px 9px;text-decoration:none}
+
+  /* Anotación: mono, nunca la tipografía de la UI, para que jamás se confunda con ella */
+  .hand{font-family:var(--font-hand);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:12px;border-left:2px solid var(--arena);padding-left:10px}
+  .hand b{color:var(--negro);font-weight:500}
+  .hand.accent{border-left-color:var(--terracota)}
+
+  .caja{background:var(--negro);color:var(--crema);border-radius:14px;padding:24px 26px;
+        max-width:1240px;margin:0 auto 60px}
+  .caja .eyebrow{font-family:var(--font-hand);font-size:11px;letter-spacing:.14em;
+                 text-transform:uppercase;color:var(--arena)}
+  .caja p{color:#DCD3C6;max-width:92ch;line-height:1.65;margin-top:10px;font-size:14px}
+  .caja strong{color:var(--crema)}
+  table{border-collapse:collapse;width:100%;max-width:1240px;margin:0 auto 60px;font-size:13.5px;background:var(--blanco);border-radius:14px;overflow:hidden}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:var(--font-hand);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400;background:#FBF8F3}
+  td strong{font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>13 · Ajustes — la segunda gramática</h1>
+  <p>Las <strong>siete opciones</strong> que el repo define en <code>kb-usuario/ajustes.md</code>,
+    en su orden exacto: Mi negocio · Facturación AFIP · Apps conectadas · Mi plan · Mi cuenta ·
+    Apariencia · Cómo hablarle. Acá vive <strong>lo que la voz necesita saber</strong> para poder
+    operar: sin CUIT y sin ARCA vinculada no hay factura posible, por más bien que hables.</p>
+  <p>Estas pantallas <strong>no usan el bloque negro</strong>. Ese es el punto del mockup: si un mail
+    o un tema se visten igual que "$286.000 en caja", el recurso deja de significar algo.</p>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">1 · Por qué otra gramática</span>
+  <h2>Configurar no puede parecerse a operar</h2>
+  <p>Monzo no viste todas sus pantallas igual: las de dinero llevan bloque de color y cifra; las de
+     configuración abren con un <strong>título grande suelto sobre el lienzo</strong> y filas
+     agrupadas. Acá vale lo mismo, y de paso le devuelve el significado al bloque negro: pasa a
+     querer decir <strong>"una cifra de tu negocio"</strong> y nada más.</p>
+  <div class="fila" id="f1"></div>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">2 · Lo que la voz necesita</span>
+  <h2>El estado que importa no siempre es un número</h2>
+  <p>Cada pantalla declara su estado en una línea, con punto de color: si ARCA está vinculada, si el
+     copiloto pide confirmación, cuántas apps hay conectadas. Es lo que define si Odobi puede o no
+     hacer lo que le pidas.</p>
+  <div class="fila" id="f2"></div>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">3 · El duplicado resuelto</span>
+  <h2>Un solo dueño por dato</h2>
+  <p>El repo lista "Cómo hablarle" como opción propia <em>y además</em> describe tono, largo y nombre
+     dentro de Mi negocio. Duplicar los controles sería tener dos dueños del mismo dato. Gana la
+     pantalla propia — el repo dice que esos ajustes <em>"se guardan aparte del resto del perfil"</em> —
+     y en Mi negocio queda un <strong>resumen que lleva ahí</strong>.</p>
+  <div class="fila" id="f3"></div>
+</div>
+
+<table>
+  <tr><th>Elemento</th><th>Decisión</th><th>Fundamento</th><th>Alternativa descartada</th></tr>
+  <tr><td><strong>Encabezado</strong></td><td>Título display 30 px suelto + bajada que explica para qué sirve la pantalla</td>
+      <td>El nombre de la pantalla es contenido, no chrome. La bajada contesta "¿qué hago acá?" antes de que el usuario tenga que deducirlo de las filas</td>
+      <td>Título en la barra superior: obliga a tamaño de etiqueta y no deja lugar a la explicación</td></tr>
+  <tr><td><strong>Bloque de color</strong></td><td><strong>Ninguno</strong></td>
+      <td>El negro significa "una cifra de tu negocio". Un mail o un tema no lo son; usarlo ahí vacía el recurso</td>
+      <td>Mantener el stack por simetría: es lo que hacía que todo se viera igual</td></tr>
+  <tr><td><strong>Elección excluyente</strong></td><td>Filas con radio a la derecha</td>
+      <td>En un segmento sólo entran dos palabras. Con filas, "Producción" puede decir <em>"comprobantes reales, con validez legal"</em> — y el repo insiste en que esa diferencia se entienda <strong>antes</strong> de facturar en serio</td>
+      <td>Segmento tipo iOS: no deja explicar la consecuencia de cada opción</td></tr>
+  <tr><td><strong>CUIT</strong></td><td>Dice "Bloqueado", sin acción</td>
+      <td>El repo: queda bloqueado una vez guardado. Un dato trabado no se disfraza de editable</td>
+      <td>"Editá" que después falla: promete algo que no se puede hacer</td></tr>
+  <tr><td><strong>Clave fiscal</strong></td><td>La aclaración va al pie de la pantalla, textual del repo</td>
+      <td><em>"No se guarda. Se usa una sola vez para vincular tu cuenta con ARCA y se descarta."</em> Es la promesa de seguridad más fuerte del producto: no puede vivir en un tooltip</td>
+      <td>Ocultarla o resumirla: pierde justo lo que la hace creíble, que es el detalle</td></tr>
+  <tr><td><strong>Apps</strong></td><td>Nombradas por <strong>capacidad</strong>, no por marca</td>
+      <td>El repo define la conexión por lo que habilita ("Gmail: para que pueda mandar correos por vos"). Es lo que hace entendible el costo de desconectar, que el repo exige mostrar como lista real</td>
+      <td>Lista de logos: no dice qué se pierde al desconectar</td></tr>
+  <tr><td><strong>Google Drive</strong></td><td>En su propio grupo, "Trabaja sola, de fondo"</td>
+      <td>El repo aclara que no es una app que el copiloto use por chat: sólo archiva facturas</td>
+      <td>Mezclarla con las demás: prometería algo que no hace</td></tr>
+  <tr><td><strong>Cerrar sesión</strong></td><td>Grupo aparte, en <code>#B04A2E</code></td>
+      <td>Una acción destructiva no comparte contenedor con cambios reversibles</td>
+      <td>Una fila más de la lista: se toca por error</td></tr>
+  <tr><td><strong>Apariencia</strong></td><td>Muestras reales de los dos temas</td>
+      <td>Mostrar el fondo, el texto y la terracota de cada uno decide mejor que dos palabras. Y el pie fija la regla: el tema cambia fondo y texto, <strong>la marca no</strong></td>
+      <td>Dos etiquetas "Claro / Oscuro": no muestran lo único que importa, que es cómo se ve</td></tr>
+  <tr><td><strong>"Cómo hablarle"</strong></td><td>El bloque muestra <strong>una respuesta de ejemplo</strong></td>
+      <td>Los controles son abstractos ("Cercano", "Breve"); ver la frase resultante es lo único que hace evidente qué estás eligiendo</td>
+      <td>Sólo los tres selectores: elegís a ciegas</td></tr>
+</table>
+
+<div class="caja">
+  <div class="eyebrow">Lo que este mockup abre y no cierra</div>
+  <p><strong>Mi plan es la única pantalla de visión de la serie.</strong> El backend no expone plan ni
+    consumo (auditoría 13/08). Se dibuja con la unidad correcta —<strong>acciones/mes</strong>, nunca
+    "consultas" ni tokens— y el número 200 sigue a calibrar. Lo importante ahí no es el medidor sino
+    la tabla <strong>Gasta / No gasta</strong>: preguntar no consume. Si preguntar gastara, el usuario
+    dejaría de preguntar, y preguntar es lo que hace bueno al producto.</p>
+  <p><strong>Los formularios de edición no están dibujados.</strong> Cada "Editá" abre uno; acá se
+    dibuja el estado de lectura y el acceso.</p>
+  <p><strong>El flujo de vinculación con ARCA tampoco.</strong> El repo lo define en tres pasos con
+    mensajes que se actualizan durante varios minutos, y un caso importante: si ya tenías la cuenta
+    vinculada y un reintento falla, <strong>la vinculación anterior sigue funcionando</strong> y hay
+    que decirlo para que el usuario no crea que perdió el acceso. Merece su propio lane.</p>
+</div>
+
+<script>
+const P = {
+  f1: [
+    ['ajustes','Ajustes','<b>sin bloque negro</b>. La grilla mantiene las siete opciones en el orden del repo: no se reordenan ni se agrupan, es el mapa que el usuario ya tiene.'],
+    ['negocio','Mi negocio','el estado que importa acá no es un número: es <b>si el copiloto te pide confirmación</b> antes de ejecutar. Eso define cómo se comporta toda la app.'],
+    ['cuenta','Mi cuenta','"Cerrar sesión" vive en su propio grupo y en terracota profunda: una acción destructiva no comparte contenedor con cambios reversibles.'],
+  ],
+  f2: [
+    ['afip','Facturación AFIP','<b>el CUIT dice "Bloqueado", no "Editá"</b>. Y la aclaración de la clave fiscal va al pie, textual del repo: es la promesa de seguridad más fuerte del producto.'],
+    ['apps','Apps conectadas','cada app <b>por lo que habilita</b>, no por su marca. Drive va en su propio grupo porque no se usa por chat: sólo archiva.'],
+    ['plan','Mi plan','<b>preguntar no gasta.</b> Es la decisión de producto más importante de esta pantalla: si preguntar gastara, el usuario dejaría de preguntar.'],
+  ],
+  f3: [
+    ['hablar','Cómo hablarle','<b>la pantalla dueña del dato.</b> El bloque muestra una respuesta de ejemplo: los controles son abstractos y ver la frase es lo único que hace evidente qué elegís.'],
+    ['apar','Apariencia','muestras reales de los dos temas. El pie fija la regla del sistema: cambia el fondo y el texto, <b>la marca no cambia</b>.'],
+  ],
+};
+const tel = (v,t,nota) => `<figure class="tel">
+  <div class="marco">
+    <img src="../../assets/marco/telefono.png" alt="">
+    <div class="pantalla"><iframe src="../../prototipo/?ver=${v}" scrolling="no" title="${t}"></iframe></div>
+    <span class="isla"></span>
+  </div>
+  <b>${t}</b><a class="url" href="../../prototipo/?ver=${v}" target="_blank">?ver=${v} ↗</a>
+  <div class="hand accent">${nota}</div>
+</figure>`;
+for (const [id,l] of Object.entries(P)) document.getElementById(id).innerHTML = l.map(x=>tel(...x)).join('');
+</script>
+</body>
+</html>

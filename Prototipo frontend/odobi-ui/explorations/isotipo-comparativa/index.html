@@ -1,0 +1,136 @@
+<meta charset="utf-8">
+<title>Odobi — los dos isotipos, contra Chaves</title>
+<style>
+  @font-face{font-family:'PJS';src:url('../../assets/fonts/PlusJakartaSans-Bold.ttf');font-weight:700}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#F7F3EC;color:#1A1512;font-family:-apple-system,system-ui,sans-serif;
+       width:2560px;height:1440px;padding:48px 56px}
+  h1{font-size:25px;margin-bottom:3px}
+  .sub{font-size:14px;color:#5C534C;margin-bottom:22px}
+  .grid{display:grid;grid-template-columns:150px 1fr 1fr;gap:0 28px;align-items:start}
+  .colhead{padding:0 0 10px;border-bottom:2px solid #1A1512;margin-bottom:14px}
+  .colhead h2{font-size:17px}
+  .colhead p{font-size:12.5px;color:#5C534C;margin-top:2px;line-height:1.45}
+  .rowlab{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#8A7F73;
+          padding-top:16px;font-weight:600;line-height:1.4}
+  .rowlab small{display:block;text-transform:none;letter-spacing:0;font-weight:400;
+                font-size:11.5px;color:#A79D91;margin-top:3px}
+  .cell{padding:12px 0;border-top:1px solid #E3DBCE;display:flex;align-items:center;gap:26px;min-height:74px}
+  .rowlab.rl{border-top:1px solid #E3DBCE;padding-top:24px}
+  .dark{background:#1A1512;padding:10px 14px;border-radius:8px;display:inline-flex;gap:22px;align-items:center}
+  .terra{background:#DE7250;padding:10px 14px;border-radius:8px;display:inline-flex;gap:22px;align-items:center}
+  .note{font-size:12.5px;color:#5C534C;line-height:1.5;padding:10px 0 0}
+  .bad{color:#B04A2E;font-weight:600}
+  .ok{color:#1A1512;font-weight:600}
+  .icon{width:76px;height:76px;border-radius:17px;display:flex;align-items:center;justify-content:center}
+  .avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  table.m{font-size:12.5px;border-collapse:collapse;margin-top:6px}
+  table.m td{padding:2px 12px 2px 0;color:#5C534C}
+  table.m td b{color:#1A1512}
+</style>
+
+<h1>Odobi — los dos isotipos en las mismas condiciones</h1>
+<p class="sub">Mismo tamaño de render, mismo fondo, mismo encuadre. El wordmark de nuestra propuesta ya usa <b>Plus Jakarta Sans Bold</b> (decisión 07/08). Hoja de trabajo para la reunión — no es un veredicto.</p>
+
+<div class="grid">
+  <div></div>
+  <div class="colhead">
+    <h2>A · Propuesta de David</h2>
+    <p>4 arcos, todo trazo, sin glifo. <code>stroke-width 1.3</code> sobre <code>viewBox 0 0 24 24</code>.<br>No depende de la tipografía.</p>
+  </div>
+  <div class="colhead">
+    <h2>B · "La o que habla" (nuestra)</h2>
+    <p>El glifo real de la O (relleno) + 2 arcos afuera, ±35° y ±30°, trazo 1,6→1,1 <b>definido a 16px</b>.<br>Depende de la tipografía.</p>
+  </div>
+
+  <!-- ESCALA -->
+  <div class="rowlab rl">Escala<small>240 · 96 · 48 · 24 · 16 px</small></div>
+  <div class="cell">
+    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+  </div>
+  <div class="cell">
+    <svg width="120" height="120" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+    <svg width="72" height="72" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+    <svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+  </div>
+
+  <!-- TRAZO REAL A 16PX -->
+  <div class="rowlab rl">Trazo real<small>a 16 px de render</small></div>
+  <div class="cell"><table class="m">
+    <tr><td>Declarado</td><td><b>1,3</b> unidades de un <code>viewBox</code> de 24</td></tr>
+    <tr><td>En pantalla a 16px</td><td class="bad">1,3 × 16/24 = <b>0,87 px</b> — subpíxel</td></tr>
+    <tr><td>Consecuencia</td><td class="bad">los 4 trazos caen por debajo de 1px y dependen del antialias</td></tr>
+  </table></div>
+  <div class="cell"><table class="m">
+    <tr><td>Declarado</td><td><b>1,6 y 1,1 px</b>, definidos <i>a 16px</i></td></tr>
+    <tr><td>En pantalla a 16px</td><td class="ok">1,6 y 1,1 px — es la medida final</td></tr>
+    <tr><td>Consecuencia</td><td class="ok">la O es <b>relleno</b>, no trazo: no adelgaza al bajar de escala</td></tr>
+  </table></div>
+
+  <!-- INVERSIÓN -->
+  <div class="rowlab rl">Negativo y color<small>48px · sobre negro y sobre terracota</small></div>
+  <div class="cell">
+    <span class="dark"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F7F3EC" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#DE7250" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+    <span class="terra"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+  </div>
+  <div class="cell">
+    <span class="dark"><svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#F7F3EC">O</text><g fill="none" stroke="#F7F3EC" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg>
+    <svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#DE7250">O</text><g fill="none" stroke="#DE7250" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg></span>
+    <span class="terra"><svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#FFFFFF">O</text><g fill="none" stroke="#FFFFFF" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg></span>
+  </div>
+
+  <!-- APLICACIONES -->
+  <div class="rowlab rl">Aplicación<small>ícono de app · avatar de chat</small></div>
+  <div class="cell">
+    <span class="icon" style="background:#1A1512"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F7F3EC" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+    <span class="icon" style="background:#F7F3EC;border:1px solid #E3DBCE"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+    <span class="avatar" style="background:#F8E2DB"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C534C" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+  </div>
+  <div class="cell">
+    <span class="icon" style="background:#1A1512"><svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#F7F3EC">O</text><g fill="none" stroke="#F7F3EC" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg></span>
+    <span class="icon" style="background:#F7F3EC;border:1px solid #E3DBCE"><svg width="48" height="48" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg></span>
+    <span class="avatar" style="background:#F8E2DB"><svg width="22" height="22" viewBox="0 0 24 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#5C534C">O</text><g fill="none" stroke="#5C534C" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g></svg></span>
+  </div>
+
+  <!-- LOCKUP -->
+  <div class="rowlab rl">Lockup<small>símbolo + wordmark</small></div>
+  <div class="cell">
+    <svg width="330" height="88" viewBox="0 0 90 24"><g fill="none" stroke="#1A1512" stroke-linecap="round" stroke-width="1.3"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></g><text x="29.66" y="16.95" font-family="PJS" font-size="13.5" letter-spacing="-0.01em" fill="#1A1512">Odobi</text></svg>
+  </div>
+  <div class="cell">
+    <svg width="330" height="88" viewBox="0 0 90 24"><text x="-0.663" y="19.75" font-family="PJS" font-size="20.806" fill="#1A1512">O</text><g fill="none" stroke="#1A1512" stroke-linecap="round"><path d="M17.901 5.404A11.5 11.5 0 0 1 17.901 18.596" stroke-width="1.6"/><path d="M21.471 4.5A15 15 0 0 1 21.471 19.5" stroke-width="1.1"/></g><text x="29.66" y="16.95" font-family="PJS" font-size="13.5" letter-spacing="-0.01em" fill="#1A1512">Odobi</text></svg>
+    <div class="note" style="max-width:300px">El símbolo <b>es</b> la O del wordmark: el mismo signo dos veces.</div>
+  </div>
+
+  <!-- GEOMETRÍA -->
+  <div class="rowlab rl">Geometría<small>verificada, no declarada</small></div>
+  <div class="cell"><table class="m">
+    <tr><td>Documentado como</td><td>«4 arcos <b>concéntricos</b>»</td></tr>
+    <tr><td>Centros reales</td><td class="bad">x = 11 · 11 · <b>12,92</b> · <b>12,38</b></td></tr>
+    <tr><td>Verdicto</td><td class="bad">no son concéntricos — 3 centros distintos</td></tr>
+  </table></div>
+  <div class="cell"><table class="m">
+    <tr><td>Centro óptico</td><td>x = 8,481 (medido sobre el glifo)</td></tr>
+    <tr><td>Arcos</td><td class="ok">ambos concéntricos a ese punto</td></tr>
+    <tr><td>Despeje O↔arco</td><td class="ok">2,60 u ≈ 1,7 px a 16px</td></tr>
+  </table></div>
+
+  <!-- LECTURA -->
+  <div class="rowlab rl">Qué dice<small>compatibilidad semántica</small></div>
+  <div class="cell"><div class="note" style="max-width:430px">
+    Dice <b>«voz»</b>. No dice <b>«Odobi»</b>: el signo no contiene la O — contiene una <i>C</i> (dos semicírculos abiertos a la derecha) más dos arcos.<br><br>
+    El brief exige que el símbolo diga <b>las dos cosas a la vez</b> (§3).<br>
+    Riesgos que el propio brief anticipa: leer <b>«diana»</b> o <b>«ojo»</b>.
+  </div></div>
+  <div class="cell"><div class="note" style="max-width:430px">
+    Dice <b>«voz»</b> y dice <b>«Odobi»</b>: el signo <i>es</i> la inicial de la marca, tomada del wordmark.<br><br>
+    <b>Contra-argumento a tener listo:</b> el brief pide «símbolo <b>abstracto</b>, no solo-logotipo» (§3). Esta propuesta es, en rigor, un <b>monograma</b> — otra tipología. Es la objeción más fuerte que puede hacer David.
+  </div></div>
+</div>

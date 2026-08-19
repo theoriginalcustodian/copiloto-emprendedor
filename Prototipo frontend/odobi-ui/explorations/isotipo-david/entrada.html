@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Entrada — el símbolo se despliega (referencia de movimiento)</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700}
+  :root{--negro:#1A1512;--crema:#F7F3EC;--terracota:#DE7250;--arena:#E8A088;--sec:#5C534C;
+        --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F2EEE7;color:var(--negro);font-family:Inter,system-ui,sans-serif;padding:44px 32px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sec)}
+  h1{font-family:"PJ",sans-serif;font-size:30px;margin:12px 0 0;max-width:24ch;line-height:1.12}
+  .baja{color:var(--sec);max-width:80ch;margin-top:14px;line-height:1.6}
+  .fila{display:grid;grid-template-columns:320px 1fr;gap:40px;margin-top:40px;align-items:start}
+  @media(max-width:860px){.fila{grid-template-columns:1fr}}
+
+  /* el frame, tal como se ve en el arranque */
+  .frame{width:320px;height:640px;border-radius:34px;background:var(--negro);position:relative;
+         overflow:hidden;box-shadow:0 24px 60px rgba(26,21,18,.3);display:flex;align-items:center;justify-content:center}
+  .frame .sello{width:132px;height:132px}
+  .sello path{fill:none;stroke:var(--terracota);stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── el movimiento ──────────────────────────────────────────────
+     Los arcos se DIBUJAN de adentro hacia afuera (draw-on con dashoffset),
+     y las dos ondas salen despedidas hacia la derecha mientras aparecen.
+     `pathLength="100"` normaliza los cuatro trazos: el dasharray no depende
+     de la longitud real de cada arco. */
+  #a-ext{stroke-width:1.3;stroke-dasharray:100;stroke-dashoffset:100;
+         animation:trazo .42s cubic-bezier(.2,.8,.2,1) .00s forwards}
+  #a-int{stroke-width:1.3;stroke-dasharray:100;stroke-dashoffset:100;
+         animation:trazo .34s cubic-bezier(.2,.8,.2,1) .14s forwards}
+  #o-1{stroke-width:1.3;opacity:0;transform-origin:11px 12px;
+       animation:onda .46s cubic-bezier(.2,.8,.2,1) .30s forwards}
+  #o-2{stroke-width:1.3;opacity:0;transform-origin:11px 12px;
+       animation:onda .46s cubic-bezier(.2,.8,.2,1) .42s forwards}
+  @keyframes trazo{to{stroke-dashoffset:0}}
+  @keyframes onda{
+    0%  {opacity:0; transform:translateX(-3px) scaleX(.7)}
+    60% {opacity:1}
+    100%{opacity:1; transform:translateX(0) scaleX(1)}
+  }
+  .frame.replay .sello *{animation:none}
+  @media (prefers-reduced-motion:reduce){
+    #a-ext,#a-int,#o-1,#o-2{animation:none;stroke-dashoffset:0;opacity:1;transform:none}
+  }
+
+  .btn{margin-top:18px;padding:11px 20px;border-radius:999px;background:#B04A2E;color:#fff;
+       border:none;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer}
+  .btn:focus-visible{outline:3px solid var(--arena);outline-offset:3px}
+
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #DDD5C9;vertical-align:top}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400}
+  td.m{font-family:var(--mono);font-size:12px;white-space:nowrap}
+  h2{font-family:"PJ",sans-serif;font-size:19px;margin:38px 0 6px}
+  .sub{color:var(--sec);font-size:14px;margin-bottom:16px}
+  .caja{background:#1A1512;color:var(--crema);border-radius:14px;padding:24px 26px;margin-top:34px}
+  .caja p{color:#DCD3C6;max-width:82ch;line-height:1.65;margin-top:10px}
+  .caja strong{color:var(--crema)}
+  .caja .eyebrow{color:var(--arena)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Referencia de movimiento · no es la pieza final (la pieza se construye en Rive)</div>
+  <h1>Entrada: el símbolo se despliega</h1>
+  <p class="baja">Los arranques 2..n usan una pieza corta cuya única función es <strong>cubrir la latencia de
+    carga</strong>. Con el monograma viejo eran «tres ondas que se disipan alrededor de la O»: el movimiento era un
+    adorno <em>alrededor</em> del signo. <strong>El isotipo de David ya son arcos</strong> — así que la animación
+    deja de rodear al símbolo y pasa a ser <strong>el símbolo dibujándose</strong>.</p>
+
+  <div class="fila">
+    <div>
+      <div class="frame" id="frame">
+        <svg class="sello" viewBox="0 0 24 24" aria-label="Odobi">
+          <path id="a-ext" pathLength="100" d="M11 3.5a8.5 8.5 0 1 0 0 17"/>
+          <path id="a-int" pathLength="100" d="M11 7.5a4.5 4.5 0 1 0 0 9"/>
+          <path id="o-1"   pathLength="100" d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/>
+          <path id="o-2"   pathLength="100" d="M19.5 6.5a9 9 0 0 1 0 11"/>
+        </svg>
+      </div>
+      <button class="btn" id="replay" type="button">↻ Ver de nuevo</button>
+    </div>
+
+    <div>
+      <h2>El guión, en proporciones</h2>
+      <p class="sub">Los tiempos van en % del total, no en ms: la duración final la fija la latencia real de Mi día,
+        que sigue sin medirse. Cuando se mida, la estructura se re-escala sin rediseñar nada.</p>
+      <table>
+        <tr><th>Elemento</th><th>Entra</th><th>Cómo</th><th>Por qué</th></tr>
+        <tr><td>Arco exterior</td><td class="m">0 → 28 %</td><td>se dibuja (trazo que avanza)</td>
+            <td>Es la boca del signo: define la forma antes de que llegue el sonido</td></tr>
+        <tr><td>Arco interno</td><td class="m">9 → 32 %</td><td>se dibuja, superpuesto</td>
+            <td>Solapa con el anterior para que se lea como <em>un</em> gesto y no como dos pasos</td></tr>
+        <tr><td>Onda 1</td><td class="m">20 → 51 %</td><td>aparece saliendo hacia afuera</td>
+            <td>Nace pegada al arco y se despega: el sonido sale del signo, no aparece al lado</td></tr>
+        <tr><td>Onda 2</td><td class="m">28 → 59 %</td><td>idem, escalonada</td>
+            <td>El escalonado es lo que hace legible la dirección: sin él son dos rayas que aparecen</td></tr>
+        <tr><td>Reposo</td><td class="m">59 → 100 %</td><td>el isotipo completo, quieto</td>
+            <td><strong>Termina en el signo estático</strong>, idéntico al de la app. No hay corte ni loop</td></tr>
+      </table>
+
+      <h2>Las tres reglas que la pieza tiene que cumplir</h2>
+      <table>
+        <tr><td><strong>Termina en el símbolo, no en el vacío</strong></td>
+            <td>El último cuadro es exactamente el isotipo estático. Lo que sigue es la app, no un fundido.</td></tr>
+        <tr><td><strong>Un solo gesto, no cuatro entradas</strong></td>
+            <td>Los solapes están calculados para que se lea como una cosa que se despliega. Si cada arco esperara
+                al anterior, serían cuatro animaciones en fila.</td></tr>
+        <tr><td><strong>Se ve 20+ veces por día</strong></td>
+            <td>Nada de rebote ni overshoot: lo que es simpático la primera vez es insoportable a la vigésima.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="caja">
+    <div class="eyebrow">Lo que esto reemplaza</div>
+    <p><strong>Cae la nota de «3 ondas» del 06/08.</strong> Ahí se había decidido mantener tres ondas aunque el
+      isotipo tuviera dos, con el argumento de que «son piezas distintas: una es signo fijo, la otra un pulso».
+      <strong>Con el isotipo de David ese argumento se cae solo</strong>: el signo y el pulso pasan a ser lo mismo, y
+      la cantidad de ondas la fija el símbolo — dos.</p>
+    <p>También cae la referencia a «la geometría del isotipo del 09» (§6.3), que apuntaba al monograma viejo.
+      <strong>La geometría ahora es la del archivo de David</strong>, con su <code>viewBox</code> 0-24 y su spec.</p>
+  </div>
+</div>
+
+<script>
+  /* Re-disparar la animación: se clona el nodo, que es la forma más barata de
+     reiniciar keyframes CSS sin tocar cada regla. */
+  document.getElementById('replay').addEventListener('click', function () {
+    var f = document.getElementById('frame');
+    var s = f.querySelector('.sello');
+    var c = s.cloneNode(true);
+    s.replaceWith(c);
+  });
+</script>
+</body>
+</html>
