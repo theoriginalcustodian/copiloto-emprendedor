@@ -54,7 +54,14 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 BRIDGE="${GRAPHITY_BRIDGE_PATH:-C:/Proyectos/Claude/Claude code/graphify-graphity-bridge}"
 REPO_NAME="${GRAPHITY_REPO_NAME:-copiloto-emprendedor}"
 CKPT=".bridge/checkpoint-${REPO_NAME}.db"
-WT="${UC_GRAPH_WORKTREE:-C:/gfw-src/copiloto-main}"
+# El default dejó de ser `C:/gfw-src/copiloto-main` el 2026-08-19: alguien levantó ahí el Metro del
+# dev-client (`expo start --dev-client`, PID vivo escuchando :8081) y este script le hacía
+# `reset --hard` + `clean -fd` + `checkout --detach` DEBAJO en cada push. Metro veía desaparecer los
+# archivos a mitad del fast-refresh y el teléfono quedaba en «Failed to compile: None of these files
+# exist: src\modules\chat\BotonVoz…». Rompía en CADA push de CUALQUIER sesión, en silencio del lado
+# de git. El worktree del grafo tiene que ser exclusivo de este script — se muda el destructivo, no
+# el pasivo. Si no existe, se crea solo más abajo (`worktree add --detach`).
+WT="${UC_GRAPH_WORKTREE:-C:/gfw-src/copiloto-grafo}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POSITIVE_CONTROL="$SCRIPT_DIR/graphity_positive_control.py"
@@ -102,6 +109,25 @@ if [ -d "$WT" ]; then
     echo "[graph-sync] ❌ '$WT' tiene la rama '$rama_wt' checkouteada." >&2
     echo "[graph-sync]    El worktree del grafo va SIEMPRE detached; con rama es un árbol de trabajo" >&2
     echo "[graph-sync]    y este script lo sanearía con 'reset --hard'. Abortando antes de destruir." >&2
+    exit 1
+  fi
+
+  # Guarda dura 3 (2026-08-19): las guardas 1 y 2 sólo ven consumidores de GIT. Un bundler no lo es:
+  # Metro sirve el árbol en solo-lectura, no tiene rama checkouteada (detached es justo lo que la
+  # guarda 2 EXIGE) y no aparece en `git worktree list` como algo distinto. Las dos guardas pasaban
+  # verdes mientras el `reset --hard` de abajo le volaba los archivos al dev-client debajo, y el
+  # síntoma salía a 2 metros de acá: el teléfono en «Failed to compile».
+  # `node_modules` es la señal: `clean -fd` (sin `-x`) no lo toca porque está gitignored, y un
+  # worktree creado por este script con `worktree add --detach` no lo tiene nunca. Si está, alguien
+  # instaló un proyecto acá y lo está usando. Fail-closed: mejor abortar el push, ruidoso y con
+  # motivo, que romper un device en silencio.
+  if [ -d "$WT/node_modules" ] || [ -d "$WT/apps/mobile/node_modules" ]; then
+    echo "[graph-sync] ❌ '$WT' tiene node_modules: alguien lo está usando como proyecto vivo" >&2
+    echo "[graph-sync]    (típicamente 'expo start' / Metro sirviendo el dev-client desde acá)." >&2
+    echo "[graph-sync]    Este script hace 'reset --hard' + 'clean -fd' sobre el árbol: le borraría" >&2
+    echo "[graph-sync]    los archivos al bundler en caliente. El worktree del grafo va exclusivo." >&2
+    echo "[graph-sync]    Salidas: mover ese proyecto a un worktree propio, o apuntar este script a" >&2
+    echo "[graph-sync]    otro árbol con UC_GRAPH_WORKTREE=<path-exclusivo>." >&2
     exit 1
   fi
 fi

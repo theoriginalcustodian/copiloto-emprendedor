@@ -1,6 +1,6 @@
 ---
 name: el-device-no-corre-main-corre-lo-que-metro-sirve
-description: "Mergear a main NO actualiza el device; corre lo que Metro sirve desde SU checkout. Restaurar ese checkout revierte el fix en el teléfono por fast-refresh, en silencio y sin error"
+description: "Mergear a main NO actualiza el device; corre lo que Metro sirve desde SU checkout. Y ese checkout era el worktree del grafo: graph-sync le hacía reset --hard en CADA push y rompía el teléfono solo, sin que nadie tocara nada"
 metadata: 
   node_type: memory
   type: feedback
@@ -22,6 +22,30 @@ tenía en la mano.**
 desde el working tree de SU checkout, que puede estar en cualquier rama, en detached HEAD, o
 directamente sucio. Mergear no lo toca. Y el fast-refresh aplica el cambio inverso con la misma
 naturalidad que el directo: revertir un archivo es, para Metro, un cambio más.
+
+## ⚠️ Corrección del mismo día (18:00) — el diagnóstico de arriba era correcto pero PARCIAL
+
+Culpar a mi `git checkout --` era quedarse en el síntoma. Dos horas después el teléfono volvió a
+romperse —«Failed to compile: None of these files exist: `src\modules\chat\BotonVoz…`»— **sin que
+nadie tocara nada a mano**. Sólo hubo un `git push`.
+
+`C:\gfw-src\copiloto-main` no era "un checkout donde alguien levantó Metro": era **el worktree del
+grafo**. `scripts/graph-sync.sh` lo usaba de default (`WT=…`) y le hace `reset --hard` + `clean -fd`
++ `checkout --detach origin/main` **en cada push de cualquier sesión**, disparado por el hook
+`pre-push`. Metro veía desaparecer los archivos a mitad del fast-refresh y quedaba pegado.
+
+**Dos dueños con contratos incompatibles sobre el mismo árbol**, y ninguna guarda lo veía: las
+guardas 1 y 2 de `graph-sync.sh` sólo detectan consumidores de **git** (checkout de trabajo, rama
+checkouteada). Un bundler no es ninguna de las dos — está *detached*, que es justo lo que la guarda 2
+**exige**. Pasaban verdes mientras el reset le borraba los archivos al dev-client.
+
+Arreglado el 2026-08-19: el worktree del grafo se mudó a `C:/gfw-src/copiloto-grafo` (se muda el
+destructivo, no el pasivo) + guarda dura 3 que aborta si el árbol del grafo tiene `node_modules`.
+
+**La lección que generaliza:** cuando un proceso vivo lee un directorio, preguntá **qué otro proceso
+lo escribe** — no sólo quién lo edita a mano. Un `reset --hard` automatizado en un hook es un editor
+más, corre sin que nadie lo pida, y no deja rastro en el proceso que rompe. El síntoma sale a dos
+metros de la causa. Relacionado: [[instrumentos-que-confirman-en-vez-de-verificar]].
 
 **Cómo aplicar:**
 
