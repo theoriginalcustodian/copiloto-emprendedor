@@ -106,33 +106,48 @@ const transformIgnorePatterns = [
 const cacheDirectory = path.join(__dirname, 'node_modules', '.cache', 'jest');
 
 /**
- * 🔴 **D9 (frontend, 2026-08-13): el default de Jest (5000ms) es frágil para CUALQUIER test de
- * montaje pesado bajo contención real de esta máquina — no es específico de un archivo.**
+ * 🔴 **D9 (frontend, act. 2026-08-19): el timeout global NO es la causa del flake. Medido.**
  *
- * Se venía tratando como flake puntual de 2 describes de gesto de voz (`PantallaSoporte`/
- * `ChatView`, subidos primero a 15000ms y después a 30000ms, ver los comentarios en esos archivos).
- * Experimento controlado (0/10 corridas de `mobile.sh` sin carga extra vs 2/10 con 4 procesos de
- * CPU forzados encima del basal, mismo código/plataforma) confirmó contención real como causa
- * (H1, no H2/plataforma). La re-verificación del fix puntual, bajo la MISMA carga forzada, mostró
- * el mecanismo generalizado: 3 archivos sin relación con voz (`PantallaInteligencia`,
- * `PantallaIngresos`, `PantallaPresupuestos`) fallaron con `Exceeded timeout of 5000 ms` — el
- * default sin tocar. Mismo patrón ya capturado una vez de forma oportunista en `Onda.test.tsx`
- * (lote B, 2026-08-12) y sumado a esta fila en vez de abrirse aparte.
+ * Lo que decia este bloque antes -- "el default de 5000ms es fragil para CUALQUIER test de montaje
+ * pesado bajo contencion real, no es especifico de un archivo" -- quedo **REFUTADO por medicion
+ * directa**. Experimento del 2026-08-19 sobre `origin/main`, worktree aislado, 20 cores, log
+ * completo de cada corrida a archivo (nunca pipeado por `tail`):
  *
- * Fix de raíz: subir el default del proyecto, no parchear archivo por archivo cada vez que a uno
- * le toca perder la carrera. 20000ms cubre 4x el default de Jest; los 2 describes de gesto de voz
- * mantienen su override específico a 30000ms porque ESE valor ya se re-verificó bajo carga forzada
- * (10/10 limpio) y este no.
+ *   | Condicion                                | Resultado                                     |
+ *   |------------------------------------------|-----------------------------------------------|
+ *   | basal sin carga                          | 744/745 verde, 76s                            |
+ *   | carga 4 procesos, config real            | 0/10 rojas                                    |
+ *   | carga 40 procesos, `--testTimeout=5000`  | 741/745 pasan -- el default "fragil" ALCANZA  |
+ *   | carga 40 procesos, config real           | **3/5 rojas**                                 |
  *
- * 🔴 **Primer intento fallido, dejado como advertencia:** poner `testTimeout` DENTRO de cada
- * entrada de `projects[]` no hace nada — Jest lo acepta sin tirar error de sintaxis, pero lo
- * ignora en runtime: `testTimeout` no es una opción de `ProjectConfig`, sólo de `GlobalConfig`.
- * Se descubrió releyendo el log completo de la reverificación bajo carga (no asumiendo que "ya
- * está aplicado" porque el archivo se editó): `● Validation Warning: Unknown option "testTimeout"
- * with value 20000 was found` en las 10 corridas, y los timeouts seguían diciendo literalmente
- * "Exceeded timeout of 5000 ms" -- el default, sin tocar. Por eso va acá, a nivel raíz del
- * `module.exports`, no adentro de cada proyecto -- ahí sí es una opción válida y aplica a los dos
- * proyectos (`native`/`web`) de esta config.
+ * En las corridas rojas: **22 timeouts, TODOS de 30000 ms -- cero de 20000**. Ningun test que
+ * dependa del `testTimeout` global fallo nunca, en ninguna condicion, ni siquiera forzado a 5000ms
+ * bajo la carga mas alta. Los 3 archivos que este comentario citaba como prueba de que el problema
+ * era general (`PantallaInteligencia`, `PantallaIngresos`, `PantallaPresupuestos`) **no fallaron ni
+ * una vez** con 10x la carga del experimento original.
+ *
+ * **La falla esta localizada en 2 suites de 83**, siempre las mismas: `ChatView.test.tsx` y
+ * `PantallaSoporte.test.tsx`, las dos de gesto de voz. Su override de 30000ms ya no las salva: ES
+ * el valor que se excede. Duracion de la suite completa: 42-47s cuando pasa; 82 / 138 / 160s cuando
+ * falla. Bimodal, no degradacion gradual.
+ *
+ * 🔴 **Para el proximo que toque esto: subir el timeout dejo de ser una mitigacion.** Ya se
+ * subio 5000 -> 15000 -> 30000 y el flake sigue. La causa esta ADENTRO de esas dos suites, no en el
+ * presupuesto de tiempo que se les da.
+ *
+ * `testTimeout = 20000` se CONSERVA pero sin evidencia que lo respalde: el experimento solo ejercio
+ * contencion de **CPU**, y la contencion original descrita (3 sesiones + ~20 worktrees) incluia I/O
+ * y memoria. Estos datos no lo justifican ni lo refutan; se deja por precaucion, no por medicion.
+ *
+ * Evidencia completa y scripts reproducibles:
+ * `docs/copiloto-emprendedor/Auditorias/2026-08-19-D9-el-timeout-global-no-era-la-causa.md`
+ *
+ * 🔴 **Advertencia que sigue vigente (2026-08-13):** poner `testTimeout` DENTRO de cada
+ * entrada de `projects[]` no hace nada. Jest lo acepta sin error de sintaxis y lo ignora en runtime
+ * -- no es opcion de `ProjectConfig`, solo de `GlobalConfig`. Se manifiesta como
+ * `Validation Warning: Unknown option "testTimeout"` y los tests siguen en el default. Re-verificado
+ * el 2026-08-19 con `--showConfig`: en la raiz da `globalConfig.testTimeout = 20000`; movido adentro
+ * de `projects[]` da `None` + el warning. Por eso va a nivel raiz del `module.exports`.
  */
 const testTimeout = 20000;
 

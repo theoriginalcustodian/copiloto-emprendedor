@@ -26,7 +26,7 @@ escondido, estaba registrado y sin dueño.** Faltaba ejecución, no auditoría.
 | Pasadas 1, 2 y 3 | ✅ **las tres cerradas → G1 cumplido**. Balance nuevo: **0 P0 · 5 P1 · 10 P2 · 1 P3** |
 | **C4.1** — `/auth/signup` abierto (**era el P0 que bloqueaba la beta**) | ✅ **CERRADO Y VERIFICADO EN PROD** (#399) — ver ⚠️ abajo, tiene una consecuencia viva |
 | **C6** — cotas de chat y listas (P1, frontend) | ✅ **cerrado y verificado en `main`** (#393) |
-| **D9** — flake del `mobile` en `gate.sh` | 🔴 **REABIERTA.** Se declaró cerrada con `jest.setTimeout(15000)` y **volvió a fallar con el fix ya aplicado**. Dueño: frontend |
+| **D9** — flake del `mobile` en `gate.sh` | 🔴 **ABIERTA, causa re-localizada (2026-08-19).** El timeout global **nunca fue la causa**: 22 timeouts medidos, los 22 de `30000 ms`, cero del global. Falla local a **2 suites de 83** (`ChatView`, `PantallaSoporte` — gesto de voz), 3/5 reproducible. Subir el timeout **ya no mitiga**. Dueño: frontend |
 | Lotes B y C (backend) | 🟡 **B en curso** (B1: los 3 `print()` con PII). C en cola, arranca al cerrar B |
 | Fase D — re-verificar con control negativo | ⏳ **auditoría**, armada y esperando que lote B mergee |
 
@@ -50,8 +50,12 @@ Si estás abriendo una sesión, lo que queda es, en este orden:
    **backend**, arranca al mergear B.
 3. **Fase D del DoD** — re-verificar los fixes con control negativo. **Auditoría**; sin lote B/C
    mergeado no tiene qué verificar.
-4. **D9** — **frontend**. Capturar el log **completo** del próximo `mobile` rojo (a archivo, nunca
-   pipeado por `tail`) en vez de dejar "timing marginal" como única hipótesis no falsable.
+4. **D9** — **frontend**. Ya no es "capturar el próximo rojo": el rojo se reprodujo a demanda y la
+   causa está acotada. Leer
+   [`Auditorias/2026-08-19-D9-el-timeout-global-no-era-la-causa.md`](docs/copiloto-emprendedor/Auditorias/2026-08-19-D9-el-timeout-global-no-era-la-causa.md).
+   **No subir más el timeout** — ya se probó 5000 → 15000 → 30000 y el flake sigue. Lo que falta es
+   un spike sobre por qué `ChatView.test.tsx` y `PantallaSoporte.test.tsx` tardan 48-70s cuando las
+   otras 81 suites juntas tardan 14s. Rediseñarlas o sacarlas del gate es **decisión del operador**.
 
 Normativa del ciclo:
 [`Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md`](docs/copiloto-emprendedor/Auditorias/2026-08-12-DoD-cierre-auditorias-y-fixes.md)
