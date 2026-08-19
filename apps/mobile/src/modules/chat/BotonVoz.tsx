@@ -23,7 +23,7 @@ const ISOTIPO_STROKE_WIDTH = 1.7 / ISOTIPO_ESCALA;
 /** Cuánto hay que deslizar hacia arriba (px) antes de "fijar" la grabación — mismo umbral y misma
  *  razón que documed (`modules/captura/BotonVoz.tsx`, fuente canónica del gesto): un temblor
  *  sosteniendo el teléfono no fija por accidente, pero un deslizamiento franco sí. */
-const UMBRAL_FIJAR_PX = 80;
+export const UMBRAL_FIJAR_PX = 80;
 
 export interface BotonVozProps {
   /** Mantener apretado — arranca la grabación de inmediato (contrato `dictado-por-voz-sin-glass`). */
@@ -54,17 +54,18 @@ export interface BotonVozProps {
  * `Pressable` NATIVO porque no compite con ningún `ScrollView` — acá SÍ hay uno (`ListaMensajes`, que
  * este botón flota encima) y por eso el port no es literal:
  *
- * 🔴 **`Gesture.LongPress()` (arranca instantáneo, `minDuration(0)`) + `Gesture.Pan()` (mide el
- * arrastre), compuestos con `Gesture.Simultaneous` y `simultaneousWithExternalGesture` contra el
- * `ScrollView` de `ListaMensajes`.** Es la causa raíz del bug de device ("se inicia únicamente
- * deslizando" = el toque nativo se perdía contra el responder system del scroll): un `Pressable` de
- * RNGH plano no expone `onPressMove` para medir el arrastre, y el nativo de RN pierde el touch-down
- * contra un `ScrollView` ancestro/superpuesto. La composición explícita es lo que deja convivir el
- * gesto del botón con el scroll de la lista sin que ninguno se coma el toque del otro.
+ * 🔴 **UN SOLO `Gesture.Pan()`** (`onBegin`=pressIn · `onUpdate`=pressMove · `onFinalize`=pressOut),
+ * declarado `simultaneousWithExternalGesture` contra el `FlatList` de `ListaMensajes`. No es un
+ * `Pressable` como en documed porque acá el botón flota sobre una lista scrolleable: el `Pressable`
+ * de RNGH no expone `onPressMove` para medir el arrastre, y el nativo de RN pierde el touch-down
+ * contra un scroll ancestro/superpuesto (bug "se inicia únicamente deslizando"). La declaración
+ * explícita de simultaneidad es lo que deja convivir el gesto del botón con el scroll de la lista.
+ * **Y es UNO SOLO, no una composición** — ver el docstring de `gesto` (tercer hallazgo de device):
+ * dos recognizers componiendo el mismo ciclo se desincronizan, y ése era el bug de la fase trabada.
  *
  * 🔴 **Sin `useSharedValue` — nada que animar en el hilo de UI acá.** El pulso sigue en `Animated`
  * del core (igual que antes); los callbacks del gesto sólo llaman a las tres props (funciones JS
- * planas), así que necesitan `runOnJS` para cruzar del hilo de UI (donde corre el gesto, con
+ * planas), así que necesitan `scheduleOnRN` para cruzar del hilo de UI (donde corre el gesto, con
  * Reanimated instalado) al de JS — mismo patrón ya probado en `MarcoGlass.tsx`.
  */
 export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = false, scrollRef }: BotonVozProps) {
@@ -74,7 +75,7 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
   const movimientoReducido = useMovimientoReducido();
 
   // Espejo síncrono de "¿ya fijé?", leído DENTRO de los callbacks del gesto (funciones JS planas
-  // invocadas vía `runOnJS`, no worklets). No hace falta re-renderizar el botón por esto — el ESTADO
+  // invocadas vía `scheduleOnRN`, no worklets). No hace falta re-renderizar el botón por esto — el ESTADO
   // que le importa a la UI (mostrar los controles flotantes) lo dueño es `ChatView` vía `onFijar`;
   // acá sólo hace falta la guarda idempotente de "no fijar dos veces" / "fijado no suelta".
   const fijadoRef = useRef(false);
@@ -153,9 +154,35 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
    * `disabledRef` (guarda síncrona, no reactiva), así que el gesto ya no necesita saber de `disabled`
    * y su identidad se mantiene estable durante toda la captura.
    *
-   * `simultaneousWithExternalGesture` vive en `BaseGesture` (cada gesto individual), NO en el
-   * resultado de `Gesture.Simultaneous(...)` (`ComposedGesture` no lo expone) — hay que declarar la
-   * relación con el scroll en CADA sub-gesto antes de componerlos.
+   * 🔴 **TERCER hallazgo de device (backend, 2026-08-19) — por qué ya NO hay `Gesture.Simultaneous`.**
+   * Con el `useMemo` estable (arriba) el gesto dejó de reconstruirse, pero al **deslizar para fijar**
+   * la UI quedaba trabada mostrando `Enviar`/`Eliminar` sin `Pausar`/`Reanudar` y sin poder seguir
+   * grabando. Causa raíz **confirmada con logcat instrumentado en device**, no deducida:
+   *
+   * ```
+   * LongPress.onEnd exito=false   <- el LongPress se CANCELA solo, con el dedo todavía apoyado
+   * soltar() fijadoRef=false      <- la guarda no frena: el Pan aún no acumuló los 80px
+   * soltar() PASA -> ENVIA        -> alEnviarVoz() -> detener() -> fase='listo'
+   * fijar() fijadoRef=false       <- recién AHORA el Pan cruza el umbral
+   * onFijar() -> setFijado(true)  -> controles flotantes sobre una grabación YA cortada
+   * ```
+   *
+   * Eran **dos recognizers con ciclos de vida independientes**: el `LongPress` moría apenas el dedo
+   * se movía (y `.onEnd()` dispara también en FAIL/CANCELLED — el flag `success` que el código
+   * ignoraba), mientras el `Pan` seguía vivo y fijaba después. `fijadoRef` no podía salvar nada
+   * porque el orden real es el inverso al que esa guarda asume.
+   *
+   * **El invariante que faltaba, y que documed (`modules/captura/BotonVoz.tsx`, fuente canónica) tiene
+   * gratis:** *empezar, medir y soltar son el MISMO gesto y no pueden desincronizarse*. Allá es un
+   * `Pressable` nativo (`onPressIn`/`onPressMove`/`onPressOut`); acá no se puede usar (compite con el
+   * `FlatList` de `ListaMensajes` — ver arriba), así que el equivalente es **un solo `Pan`**:
+   * `onBegin` = pressIn · `onUpdate` = pressMove · `onFinalize` = pressOut. Es además lo que indica el
+   * árbol de decisión de `swmansion-rn-gestures` para "mantener apretado y después arrastrar".
+   *
+   * `onBegin`/`onFinalize` (no `onStart`/`onEnd`) porque disparan aunque el `Pan` nunca llegue a
+   * ACTIVAR — el caso "apretar y soltar sin mover", que es el camino de enviar directo — y RNGH
+   * garantiza el par: si `onBegin` disparó, `onFinalize` dispara. Con un único recognizer, `onUpdate`
+   * siempre precede a `onFinalize`, así que ahora la guarda `fijadoRef` de `soltar()` sí aplica.
    */
   const gesto = useMemo(() => {
     // `FlatList` exige `data`/`renderItem` -> su tipo no satisface el `ComponentType<{}>` (props
@@ -163,29 +190,20 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
     // Es un gap de tipos upstream, no una incompatibilidad real: RNGH sólo usa el handle nativo para
     // la arbitración de gestos, nunca renderiza nada con esas props.
     const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null>;
-    const gestoMantener = Gesture.LongPress()
-      .minDuration(0)
-      // Sin tope de distancia: quien decide si el arrastre "fija" es el `Pan` de abajo, no éste — si
-      // `LongPress` cancelara por moverse, el deslizar-para-fijar nunca llegaría a activarlo.
-      .maxDistance(100000)
+    return Gesture.Pan()
       .simultaneousWithExternalGesture(refParaArbitraje)
-      .onStart(() => {
+      .onBegin(() => {
         scheduleOnRN(comenzar);
       })
-      .onEnd(() => {
-        scheduleOnRN(soltar);
-      });
-
-    const gestoDeslizar = Gesture.Pan()
-      .simultaneousWithExternalGesture(refParaArbitraje)
       .onUpdate((e) => {
         // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
         if (-e.translationY > UMBRAL_FIJAR_PX) {
           scheduleOnRN(fijar);
         }
+      })
+      .onFinalize(() => {
+        scheduleOnRN(soltar);
       });
-
-    return Gesture.Simultaneous(gestoMantener, gestoDeslizar);
   }, [scrollRef, comenzar, fijar, soltar]);
 
   const etiqueta = disabled

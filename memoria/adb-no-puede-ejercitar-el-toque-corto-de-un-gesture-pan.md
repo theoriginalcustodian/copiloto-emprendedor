@@ -1,12 +1,47 @@
 ---
 name: adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan
-description: "adb shell input tap/swipe no logra disparar la clasificación toque-vs-arrastre de un Gesture.Pan() de react-native-gesture-handler, aunque SÍ dispara taps simples (onPress) y drags grandes sobre el mismo componente"
-metadata: 
+description: "adb `input tap`/`swipe` no ejercita gestos RNGH ni botones flotantes de RN; `input motionevent DOWN/MOVE/UP` SÍ — y es lo único que permite un E2E táctil completo sin dedo real"
+metadata:
   node_type: memory
   type: project
   originSessionId: cbc14bc5-aae4-430e-9c3d-4df2449cbd57
-  modified: 2026-08-04T12:04:25.473Z
+  modified: 2026-08-19T18:51:16.184Z
 ---
+
+**RESUELTO 2026-08-19** (fix de `BotonVoz`, PR #461). Lo de abajo seguía abierto como "no hay forma
+de confirmarlo sin un dedo real". Sí la hay, y es otro subcomando del mismo binario:
+
+```
+adb -s <serial> shell input motionevent DOWN <x> <y>
+adb -s <serial> shell input motionevent MOVE <x> <y>     # N veces, para arrastrar
+adb -s <serial> shell input motionevent UP   <x> <y>
+```
+
+Con eso se ejercitó **el ciclo táctil completo** de un `Gesture.Pan()` de RNGH: arrancar la
+grabación al bajar el dedo, cruzar el umbral de 80px con MOVEs intermedios, fijar, y después tocar
+los botones flotantes (`Pausar` → `Reanudar` → `Enviar`) — todo confirmado por logcat instrumentado.
+`input tap` sobre esos MISMOS botones flotantes no registraba nada.
+
+**Por qué `motionevent` sí y `tap` no:** `input tap` sintetiza un DOWN+UP inmediato en el mismo punto
+y sin duración controlable; `motionevent` emite cada evento por separado, así que hay tiempo real
+entre ellos y se pueden intercalar MOVEs. Un gesto continuo (`Pan`) necesita exactamente eso.
+
+⚠️ **Costo de no saberlo:** planificación concluyó "`Pausar`/`Reanudar` NO aparecen" con `input tap`
++ `uiautomator dump`. La conclusión era correcta por casualidad (había un bug real), pero el
+instrumento no podía distinguirlo de un artefacto — y lo reportó como duda irresoluble. Ver
+[[probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala]].
+
+⚠️ **`uiautomator dump` falla mientras hay una animación corriendo** ("could not get idle state"): no
+escribe el XML, y grepear un archivo inexistente devuelve "AUSENTE" para todo — un falso negativo que
+se lee igual que evidencia. Con una onda de audio animando en pantalla, usar `screencap -p` + leer la
+imagen, nunca el dump. Ver [[probar-ausencia-necesita-otro-instrumento]].
+
+⚠️ **Git Bash mangla los paths de adb** (`/sdcard/x.png` → `C:/Program Files/Git/sdcard/x.png`). Todo
+el trabajo de adb va por la tool de **PowerShell**, no por Bash.
+
+---
+
+## Lo que estaba escrito antes (contexto original, 2026-08-04)
 
 Al intentar verificar A3 (BETA-4a/Sprint mobile-first, `PanelDeslizable.tsx`) — un toque corto y
 casi sin desplazamiento sobre `panel-handle` que hace *toggle* del panel sin arrastrar —
@@ -19,24 +54,13 @@ bounds reales del `GestureDetector`.
 también movió el panel correctamente. Sin ese control, hubiera sido fácil concluir "el toque no
 funciona" cuando en realidad sólo falla el camino de desplazamiento casi-cero.
 
-**Hipótesis (no confirmada, no hay forma de confirmarla sin un dedo real):** `Gesture.Pan()` en
-Android sólo activa (`BEGAN`→`ACTIVE`, y de ahí a que corra la lógica de `.onEnd()`) al cruzar el
-*touch slop* nativo del framework, que suele ser mayor a un `UMBRAL_TAP` chico (5px en este código).
-Un desplazamiento sintético de ADB es determinístico/perfecto (0-2px exactos) — sin el jitter
-natural de un dedo real (que típicamente ya supera esos pocos px), puede quedar siempre por debajo
-del piso de activación nativo, y el branch de "fue un toque" nunca se alcanza, sin que eso implique
-que el toque real de un usuario tenga el mismo problema.
+**Hipótesis de entonces:** `Gesture.Pan()` en Android sólo activa al cruzar el *touch slop* nativo,
+mayor que un `UMBRAL_TAP` chico (5px). Un desplazamiento sintético de ADB es determinístico (0-2px
+exactos), sin el jitter de un dedo real, y queda bajo el piso de activación.
 
-**Por qué importa:** un umbral de tap MENOR al touch-slop nativo de Android es, en el peor caso, un
-bug real nunca ejercitado en device (nadie lo probó con un dedo desde que se escribió, 07-21); en el
-mejor caso, es sólo una limitación de ADB. Sin diferenciarlos, un E2E "PASS" vía ADB sería evidencia
-falsa, y un "FAIL" también — de ahí que se reportó como INCONCLUSO en vez de forzar cualquiera de
-los dos veredictos.
-
-**Cómo aplicar:** para cualquier gesto basado en `Gesture.Pan()`/`Gesture.Tap()` con umbral de
-distancia CHICO (toques que se distinguen de arrastres por pocos px), no asumir que
-`adb shell input tap/swipe` puede ejercitarlo — correr primero el control (¿un tap simple en OTRO
+**Cómo aplicar hoy:** para cualquier gesto RNGH, **empezar por `motionevent`**, no por `tap`/`swipe`.
+Si aun así no dispara, recién ahí corren los controles del párrafo anterior (¿un tap simple en OTRO
 componente funciona? ¿un drag grande en el MISMO componente funciona?) antes de declarar el gesto
-roto o verificado. Si ambos controles pasan y el toque corto específico sigue sin disparar, es este
-patrón — reportar INCONCLUSO con la hipótesis, no forzar un veredicto. Ver también
+roto o verificado — y si el toque corto específico sigue sin disparar con todo lo demás verde, es el
+patrón del touch-slop: reportar INCONCLUSO con la hipótesis, no forzar un veredicto. Ver también
 [[gate-jsdom-no-ve-gestos-tactiles]] (limitación hermana, en el gate de CI en vez de en ADB).
