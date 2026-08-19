@@ -79,6 +79,15 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
   // acá sólo hace falta la guarda idempotente de "no fijar dos veces" / "fijado no suelta".
   const fijadoRef = useRef(false);
 
+  // Espejo síncrono de `disabled` — ver el docstring de `gesto` más abajo (hallazgo de device
+  // 2026-08-12): la guarda de "no reiniciar una captura en curso" tiene que leerse acá, DENTRO de
+  // `comenzar()`, y no vía el `useMemo` del gesto — si `disabled` fuera dependencia del memo, el
+  // objeto se reconstruye en el peor momento posible: el instante en que arranca la propia captura.
+  const disabledRef = useRef(disabled);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
+
   useEffect(() => {
     if (disabled || movimientoReducido) {
       pulso.setValue(1);
@@ -99,6 +108,10 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
   // invalidarse en cada render también, y quedaríamos en el mismo problema que el `useMemo` existe
   // para evitar (ver su comentario).
   const comenzar = useCallback(() => {
+    // Guarda síncrona (no reactiva): un segundo `onStart` no puede reiniciar `useVozComando` a mitad
+    // de una captura en curso. Antes esto vivía en `.enabled(!disabled)`/una dependencia del `useMemo`
+    // de abajo — ver su docstring para por qué eso reconstruía el gesto activo en pleno vuelo.
+    if (disabledRef.current) return;
     fijadoRef.current = false;
     onIniciar();
   }, [onIniciar]);
@@ -126,9 +139,19 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
    * graba, `PantallaSoporte`/`ChatView` re-renderizan ~10 veces por segundo (`voz.niveles` alimenta la
    * onda), así que el recognizer se re-ataba constantemente durante el propio `LongPress` activo.
    *
-   * `enabled(!disabled)` NO es la causa (troubleshooting oficial de RNGH: cambiar `enabled` a mitad de
-   * un gesto en curso no lo cancela, "by design") — pero SÍ dispara una reconstrucción más del objeto
-   * gesto si éste no está memoizado, sumándose al resto.
+   * `enabled(!disabled)` NO es la causa DIRECTA (troubleshooting oficial de RNGH: cambiar `enabled` a
+   * mitad de un gesto en curso no lo cancela, "by design") — pero SÍ era dependencia de este mismo
+   * `useMemo`. **Hallazgo de device 2026-08-12 (operador, logcat + repro manual):** con el `useMemo`
+   * de arriba ya aplicado, el bug volvió con otra forma — corte a los ~2s, deslizar-para-fijar sin
+   * efecto, sin controles de pausar/reanudar/enviar, transcripción de un audio que no es el enviado.
+   * Causa: `disabled` seguía en el array de dependencias, y `disabled` pasa a `true` en el mismísimo
+   * instante en que arranca la grabación (`onIniciar` → el padre re-renderiza con
+   * `disabled={voz.fase !== 'inactivo'}`) — es decir, el `useMemo` se invalida y reconstruye TODO el
+   * gesto compuesto en pleno `LongPress` activo, exactamente la reconstrucción-en-vuelo que este
+   * mismo `useMemo` existía para evitar. La única razón de ser de `disabled` acá era bloquear un
+   * SEGUNDO `onStart` mientras ya hay una captura en curso — eso ahora vive en `comenzar()` vía
+   * `disabledRef` (guarda síncrona, no reactiva), así que el gesto ya no necesita saber de `disabled`
+   * y su identidad se mantiene estable durante toda la captura.
    *
    * `simultaneousWithExternalGesture` vive en `BaseGesture` (cada gesto individual), NO en el
    * resultado de `Gesture.Simultaneous(...)` (`ComposedGesture` no lo expone) — hay que declarar la
@@ -141,7 +164,6 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
     // la arbitración de gestos, nunca renderiza nada con esas props.
     const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null>;
     const gestoMantener = Gesture.LongPress()
-      .enabled(!disabled)
       .minDuration(0)
       // Sin tope de distancia: quien decide si el arrastre "fija" es el `Pan` de abajo, no éste — si
       // `LongPress` cancelara por moverse, el deslizar-para-fijar nunca llegaría a activarlo.
@@ -155,7 +177,6 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
       });
 
     const gestoDeslizar = Gesture.Pan()
-      .enabled(!disabled)
       .simultaneousWithExternalGesture(refParaArbitraje)
       .onUpdate((e) => {
         // `translationY` negativo = el dedo subió. `-e.translationY` = cuánto subió, positivo.
@@ -165,7 +186,7 @@ export function BotonVoz({ onIniciar, onSoltarSinFijar, onFijar, disabled = fals
       });
 
     return Gesture.Simultaneous(gestoMantener, gestoDeslizar);
-  }, [disabled, scrollRef, comenzar, fijar, soltar]);
+  }, [scrollRef, comenzar, fijar, soltar]);
 
   const etiqueta = disabled
     ? 'Grabando — ya hay una captura en curso'
