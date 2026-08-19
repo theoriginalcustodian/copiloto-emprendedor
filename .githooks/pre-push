@@ -58,7 +58,18 @@ if [ "$MAIN_SHA" = "$ULTIMO" ]; then
 fi
 echo "[pre-push] origin/main se movió (${ULTIMO:0:12} -> ${MAIN_SHA:0:12}); sincronizando el grafo…"
 bash "$(git rev-parse --show-toplevel)/scripts/graph-sync.sh"
-echo "[pre-push] ✅ grafo de código sincronizado desde origin/main"
+# El ✅ NO se declara por haber llamado al script: se declara contra el marcador, que graph-sync.sh
+# escribe SOLO al final, después de sus 3 capas de verificación (graph-sync.sh:263). Hay un camino
+# real de exit 0 sin sincronizar — el lock ocupado por otro push concurrente (graph-sync.sh:155-156)
+# sale antes de escribirlo. Ese caso NO aborta el push (es contención, no fallo: el marcador queda
+# viejo y el próximo push reintenta), pero tampoco puede reportarse como sincronizado.
+# Raíz 2026-08-19: el echo era incondicional y anunció "✅ sincronizado" sobre un sync que había
+# salido sin tocar el árbol. Ver memoria/instrumentos-que-confirman-en-vez-de-verificar.md.
+if [ "$(cat "$MARCADOR" 2>/dev/null || echo ninguno)" = "$MAIN_SHA" ]; then
+  echo "[pre-push] ✅ grafo de código sincronizado desde origin/main @ ${MAIN_SHA:0:12}"
+else
+  echo "[pre-push] ⚠️  el sync NO completó (marcador sigue en ${ULTIMO:0:12}, esperado ${MAIN_SHA:0:12}) — el próximo push reintenta." >&2
+fi
 exit 0
 
 # ----- (muerto desde 2026-07-31; se conserva un ciclo por si hay que volver atrás) -----
