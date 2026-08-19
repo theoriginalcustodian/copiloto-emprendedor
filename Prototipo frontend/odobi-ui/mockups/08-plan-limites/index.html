@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — 08 · Cuenta, plan y límites — acciones/mes (02/08)</title>
+<style>
+  /* ============================================================
+     08 · CUENTA, PLAN Y LÍMITES (02/08/2026)
+     Se entra desde el AVATAR (Decisión A, 26/07). Cierra el
+     pendiente que dejó el 02: Cuenta como índice.
+     ⚠ ÚNICO MOCKUP DE VISIÓN: el backend no expone plan ni
+     consumo (el repo tiene una fila "Plan: Profesional"
+     estática). Se marca en la meta-capa, NO adentro del frame:
+     un badge de "próximamente" dentro de la UI sería dibujar
+     una feature que se disculpa a sí misma.
+     Unidad visible = ACCIONES/mes (handoff §0: nunca
+     "consultas" ni tokens). El guión del límite es §5 LITERAL.
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace; /* meta-capa: monoespaciada (decisión Martin 08/08, deroga la manuscrita del 26/07). Sigue sin confundirse con la UI —que es Inter— pero en registro serio, de spec. */
+    --fs-display:28px; --lh-display:32px;
+    --fs-title:20px;   --lh-title:24px;
+    /* Label de botón sobre terracota: 19px BOLD. No es un tamaño estético — es el piso
+       de WCAG para "texto grande" en bold (18,66px = 14pt), que es lo que vuelve legal el
+       3,17:1 de blanco sobre #DE7250. Bajarlo a 18 rompe el criterio sin que se note a ojo. */
+    --fs-btn:19px;     --lh-btn:24px;
+    --fs-body:16px;    --lh-body:24px;
+    --fs-caption:13px; --lh-caption:16px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px;
+    --tap:48px;
+    --r-s:14px; --r-m:22px; --r-xl:26px; --r-l:24px; --r-pill:999px;
+    --shadow-card:0 1px 2px rgba(26,21,18,.06),0 4px 16px rgba(26,21,18,.05);
+    /* TODO motion-ref: validar con MCP 60FPS */
+    --m-fast:120ms; --m-base:200ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ===== Meta-capa de presentación (no es la UI) ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1280px;margin:0 auto 40px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:820px}
+  .vision{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--negro);background:var(--arena-30);border:1px solid var(--arena);padding:6px 14px;border-radius:999px}
+  .canvas-wrap{max-width:1000px;margin:0 auto 64px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;color:var(--sec);text-align:center;max-width:660px}
+  .canvas{position:relative;width:960px;background:#EFEBE4;border:1px solid #D9D2C7;border-radius:16px;overflow:hidden;flex-shrink:0}
+  .overlay{position:absolute;inset:0;pointer-events:none}
+
+  /* Anotación uxsnaps (estándar 26/07) */
+  .hand{position:absolute;font-family:var(--font-hand);font-size:11px;line-height:15px;letter-spacing:-.01em;color:var(--negro)} /* 11/15 y no 14/18: la monoespaciada es ~33% más ancha por carácter que la manuscrita que reemplazó, y las 165 anotaciones tienen ancho fijo — a 14px el texto pedía más líneas, crecía hacia abajo y se montaba sobre los frames. */
+  .hand.accent{color:var(--terracota-prof)}
+  .hand.dim{color:var(--lapiz)}
+
+  /* ===== Frame mobile 390px ===== */
+  .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
+
+  /* ===== Header de pantalla apilada (mismo del 02 lane 3) ===== */
+  .app-header{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s3) var(--s2);flex-shrink:0}
+  .backbtn{width:var(--tap);height:var(--tap);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:-8px}
+  .backbtn svg{stroke:var(--negro);color:var(--negro)}
+  .h-title{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title)}
+  .wordmark{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title);color:var(--terracota)} /* logotipo exento (WCAG 1.4.3) */
+  .avatar{position:relative;width:32px;height:32px;border-radius:var(--r-pill);background:var(--crema);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:500;color:var(--sec)}
+
+  .screen{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s1)}
+  .sec-label{display:flex;align-items:center;gap:var(--s1);padding:var(--s2) var(--s1) var(--s1);font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--sec)} /* 7.51:1 ✅ */
+  .sec-label svg{stroke:var(--sec);color:var(--sec)}
+
+  /* Perfil */
+  .me{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s1) var(--s2)}
+  .me .big-av{width:56px;height:56px;border-radius:var(--r-pill);background:var(--crema);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-title);color:var(--sec)}
+  .me .n{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+  .me small{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)} /* 7.51:1 ✅ */
+
+  /* Filas del índice de Cuenta */
+  .rows{background:var(--blanco);border-radius:var(--r-m);box-shadow:0 4px 18px rgba(26,21,18,.07);overflow:hidden}
+  .row{display:flex;align-items:center;gap:var(--s2);min-height:64px;padding:var(--s1) var(--s2);border-bottom:1px solid var(--border)}
+  .row:last-child{border-bottom:none}
+  .row .tile{width:42px;height:42px;border-radius:var(--r-s);background:var(--arena-30);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .row .tile svg{stroke:var(--negro);color:var(--negro)} /* 14.56:1 s/arena-30 ✅ */
+  .row .v{flex:1}
+  .row .v .k{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+  .row .v small{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .row .chev{flex-shrink:0}
+  .row .chev svg{stroke:var(--sec);color:var(--sec)}
+  .row .estado{font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;color:var(--sec);background:var(--crema);padding:4px 12px;border-radius:var(--r-pill);flex-shrink:0} /* feedback, no botón — Decisión B */
+  .row-out{min-height:var(--tap);display:flex;align-items:center;padding:0 var(--s1);font-size:var(--fs-body);font-weight:500;color:var(--terracota-prof);margin-top:var(--s1)} /* 5.43:1 ✅ */
+
+  /* Medidor de acciones */
+  .plan{background:var(--crema);border-radius:var(--r-m);padding:var(--s2)}
+  .plan .lab{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-bottom:var(--s1)}
+  .plan .main{display:flex;align-items:baseline;gap:var(--s1)}
+  .plan .big{font-family:var(--font-display);font-size:var(--fs-display);line-height:var(--lh-display)} /* 16.37:1 s/crema ✅ */
+  .plan .of{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sec)} /* 6.79:1 s/crema ✅ */
+  /* La barra es DATO, no botón: pista arena, relleno negro (Decisión B).
+     No es "un gráfico decorativo" — es la única forma de que una cuota se lea
+     de un vistazo, y viene con acción posible al lado. */
+  .bar{height:8px;border-radius:var(--r-pill);background:var(--arena-30);margin-top:var(--s2);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:var(--r-pill);background:var(--negro)}
+  .plan .renew{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-top:var(--s1)}
+  /* Qué cuenta como acción: la pregunta que define si el límite es predecible */
+  .whatis{display:flex;gap:var(--s1);align-items:flex-start;padding:var(--s2) var(--s1) 0;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .whatis svg{flex-shrink:0;stroke:var(--sec);color:var(--sec);margin-top:1px}
+  .whatis b{color:var(--negro);font-weight:500}
+  .desglose{background:var(--blanco);border-radius:var(--r-m);box-shadow:0 4px 18px rgba(26,21,18,.07);overflow:hidden}
+  .d-row{display:flex;align-items:center;gap:var(--s2);min-height:var(--tap);padding:0 var(--s2);border-bottom:1px solid var(--border);font-size:var(--fs-body)}
+  .d-row:last-child{border-bottom:none}
+  .d-row span{flex:1;color:var(--sec)}
+  .d-row b{font-weight:500}
+  /* margin-top:auto lo ancla al fondo del scroll: CTA en el tercio inferior (thumb
+     zone) en vez de flotando a mitad de aire debajo del desglose */
+  .upsell{min-height:56px;background:var(--terracota);color:var(--blanco);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn);margin-top:auto;margin-bottom:var(--s1)} /* regla 28/07 v2: display 19 Bold blanco s/#DE7250 = 3.17:1 AA texto grande ✅ */
+
+  /* ===== Chat (lane 3) — mismas clases del 03 ===== */
+  .thread{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
+  .divider{text-align:center;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);padding-top:var(--s1)}
+  .msg-row{display:flex;align-items:flex-end;gap:var(--s1);align-self:flex-start;max-width:324px}
+  /* El isotipo suelto contra el borde se leía cortado: sus arcos abren a la izquierda
+     y no tiene caja propia. Adentro de un disco blanco es un avatar, y rima con el
+     del usuario en el header. Va con los 4 arcos: la variante de 3 es sólo para
+     ≤24 px, donde el arco interno colapsa. */
+  .msg-row .quien{width:38px;height:38px;border-radius:99px;background:var(--blanco);
+                  box-shadow:0 1px 4px rgba(26,21,18,.06);display:flex;align-items:center;
+                  justify-content:center;flex-shrink:0}
+  .msg-row .quien svg{flex-shrink:0;stroke:var(--terracota);color:var(--terracota);fill:none}
+  .msg{max-width:300px;padding:12px var(--s2);font-size:var(--fs-body);line-height:var(--lh-body)}
+  .msg-odobi{background:var(--crema);border-radius:4px var(--r-m) var(--r-m) var(--r-m)} /* 16.37:1 ✅ */
+  .msg-user{align-self:flex-end;background:var(--negro);color:var(--crema);border-radius:var(--r-m) 4px var(--r-m) var(--r-m)} /* 16.37:1 ✅ */
+  .msg-meta{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-top:-8px}
+  .msg-meta.right{align-self:flex-end}
+  .check{color:var(--sec);letter-spacing:-.05em}
+  .chips{display:flex;gap:var(--s1);flex-wrap:wrap;align-self:flex-start}
+  .chip{min-height:var(--tap);display:flex;align-items:center;padding:0 var(--s2);border-radius:var(--r-pill);font-size:var(--fs-caption);font-weight:500;color:var(--terracota-prof);background:var(--blanco);box-shadow:0 4px 18px rgba(26,21,18,.07)} /* 5.43:1 ✅ · 48pt */
+
+  .inputbar{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex-shrink:0}
+  .textfield{flex:1;height:52px;border-radius:var(--r-pill);display:flex;align-items:center;padding:0 var(--s2);font-size:var(--fs-body);color:var(--sec);background:var(--blanco);box-shadow:0 3px 12px rgba(26,21,18,.08)} /* regla de componente 22/07: input+mic = unidad */
+  .micbtn{width:52px;height:52px;border-radius:var(--r-pill);background:var(--terracota);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(222,114,80,.4)}
+  .micbtn svg{stroke:var(--blanco);color:var(--blanco)}   /* ===== Asidero / peek (rev. 16/08 — reemplaza a la tabbar de la Decisión A) ===== */
+  .grip{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0 2px;flex-shrink:0}
+  .grip .bar{width:44px;height:5px;border-radius:3px;background:#DDD5C9}
+  .grip .txt{font-size:11px;letter-spacing:.02em;color:var(--sec)} /* 6.44:1 ✅ — SIN opacity encima */
+  .ctx-mini{display:flex;justify-content:center;font-size:11px;color:var(--sec);padding-bottom:2px}
+
+  /* ===== Íconos Phosphor (19/08) — reemplazan a Iconoir =====
+     Phosphor viene OUTLINEADO: es `fill`, no `stroke`. Se lo reconoce por su viewBox
+     nativo de 256. El isotipo de Odobi sí es `stroke` y conserva el suyo, así que las
+     dos técnicas conviven sin pisarse. El color va por `currentColor`: cada contenedor
+     lo fija con `color`, que es lo que ya hereda el isotipo por `stroke`. */
+  svg[viewBox="0 0 256 256"]{fill:currentColor;stroke:none}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>08 · Cuenta, plan y límites — la unidad es <em>acciones/mes</em></h1>
+  <span class="vision">Visión — no está en el repo</span>
+  <p>Se entra desde el <strong>avatar</strong> (Decisión A, 26/07) y cierra el pendiente que dejó el 02: Cuenta como índice. Lane 1 — Cuenta, con Conexiones adentro. Lane 2 — el plan medido en <strong>acciones/mes</strong> (handoff §0: nunca "consultas" ni tokens) y, sobre todo, <strong>qué cuenta como acción</strong>: lo que Odobi <em>hace</em> por vos gasta, preguntarle no. Lane 3 — el límite, con el guión §5 LITERAL: se avisa en la conversación, con dos salidas y sin castigo. <strong>Es el único mockup de visión de la serie:</strong> el backend no expone plan ni consumo (el repo tiene una fila "Plan: Profesional" estática). Se marca acá afuera, no adentro del frame. Fundamentos en <code>DECISIONES.md</code>.</p>
+</div>
+
+<!-- ================= LANE 1 · CUENTA (DESDE EL AVATAR) ================= -->
+<div class="canvas-wrap" id="lane1">
+  <span class="lane-tag">1 · Cuenta — el destino del avatar, con Conexiones adentro</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:20</span><span>●●●</span></div>
+      <div class="app-header">
+        <div class="backbtn"><!-- phosphor: arrow-left --><svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg></div>
+        <span class="h-title">Cuenta</span>
+      </div>
+      <div class="screen">
+        <div class="me">
+          <div class="big-av">M</div>
+          <div>
+            <div class="n">Martín</div>
+            <small>martin@elgalpon.com.ar · El Galpón</small>
+          </div>
+        </div>
+
+        <div class="rows">
+          <!-- El plan encabeza: es lo único de esta pantalla que puede frenarte -->
+          <div class="row">
+            <div class="tile"><!-- phosphor: sparkle --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></svg></div>
+            <div class="v"><div class="k">Plan Gratis</div><small>164 de 200 acciones este mes</small></div>
+            <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6L15 12L9 18"/></svg></div>
+          </div>
+          <div class="row">
+            <div class="tile"><!-- phosphor: plugs --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M149.66,138.34a8,8,0,0,0-11.32,0L120,156.69,99.31,136l18.35-18.34a8,8,0,0,0-11.32-11.32L88,124.69,69.66,106.34a8,8,0,0,0-11.32,11.32L64.69,124,41.37,147.31a32,32,0,0,0,0,45.26l5.38,5.37-28.41,28.4a8,8,0,0,0,11.32,11.32l28.4-28.41,5.37,5.38a32,32,0,0,0,45.26,0L132,191.31l6.34,6.35a8,8,0,0,0,11.32-11.32L131.31,168l18.35-18.34A8,8,0,0,0,149.66,138.34Zm-52.29,65a16,16,0,0,1-22.62,0L52.69,181.25a16,16,0,0,1,0-22.62L76,135.31,120.69,180Zm140.29-185a8,8,0,0,0-11.32,0l-28.4,28.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L124,64.69l-6.34-6.35a8,8,0,0,0-11.32,11.32l80,80a8,8,0,0,0,11.32-11.32L191.31,132l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,28.41-28.4A8,8,0,0,0,237.66,18.34Zm-34.35,79L180,120.69,135.31,76l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,203.31,97.37Z"/></svg></div>
+            <div class="v"><div class="k">Conexiones</div><small>Mercado Pago · Google</small></div>
+            <div class="estado">Al día</div>
+          </div>
+          <div class="row">
+            <div class="tile"><!-- phosphor: storefront --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M232,96a7.89,7.89,0,0,0-.3-2.2L217.35,43.6A16.07,16.07,0,0,0,202,32H54A16.07,16.07,0,0,0,38.65,43.6L24.31,93.8A7.89,7.89,0,0,0,24,96h0v16a40,40,0,0,0,16,32v72a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V144a40,40,0,0,0,16-32V96ZM54,48H202l11.42,40H42.61Zm50,56h48v8a24,24,0,0,1-48,0Zm-16,0v8a24,24,0,0,1-35.12,21.26,7.88,7.88,0,0,0-1.82-1.06A24,24,0,0,1,40,112v-8ZM200,208H56V151.2a40.57,40.57,0,0,0,8,.8,40,40,0,0,0,32-16,40,40,0,0,0,64,0,40,40,0,0,0,32,16,40.57,40.57,0,0,0,8-.8Zm4.93-75.8a8.08,8.08,0,0,0-1.8,1.05A24,24,0,0,1,168,112v-8h48v8A24,24,0,0,1,204.93,132.2Z"/></svg></div>
+            <div class="v"><div class="k">Datos del negocio</div><small>El Galpón · CUIT 20-31445678-9</small></div>
+            <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6L15 12L9 18"/></svg></div>
+          </div>
+          <div class="row">
+            <div class="tile"><!-- phosphor: be --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"/></svg></div>
+            <div class="v"><div class="k">Avisos</div><small>Mi día, cobros y caídas de conexión</small></div>
+            <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6L15 12L9 18"/></svg></div>
+          </div>
+        </div>
+
+        <div class="row-out">Cerrar sesión</div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: microp --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="a1-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="a1-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- a la flecha de volver -->
+      <path d="M245,130 C270,126 292,124 306,124" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#a1-dim)"/>
+      <!-- a la fila del plan -->
+      <path d="M712,300 C680,306 650,312 628,318" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#a1-hot)"/>
+      <!-- al contador de la fila -->
+      <path d="M245,380 C280,362 320,344 350,336" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a1)"/>
+      <!-- a la fila de Conexiones -->
+      <path d="M712,430 C680,420 648,404 628,394" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a1)"/>
+      <!-- a Cerrar sesión -->
+      <path d="M245,610 C275,616 300,620 318,622" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a1)"/>
+      <!-- al input -->
+      <path d="M712,742 C680,748 650,752 630,754" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a1)"/>
+    </svg>
+
+    <div class="hand dim" style="left:24px;top:100px;width:205px">pantalla apilada sobre la app: se llega desde el avatar y se vuelve con la flecha. Cuenta no compite con lo de todos los días (rev. 16/08: sin tabbar, el avatar es la única puerta — por eso lleva el punto de estado).</div>
+    <div class="hand accent" style="left:716px;top:255px;width:215px">el plan encabeza la lista porque es lo único de esta pantalla que puede frenarte. Lo demás son datos; esto es un techo.</div>
+    <div class="hand" style="left:24px;top:340px;width:210px">el contador vive en la fila, no escondido adentro: si el límite existe, tenés que poder verlo sin entrar a buscarlo.</div>
+    <div class="hand" style="left:716px;top:390px;width:215px">Conexiones vive acá adentro (Decisión A) — el 02 lo dibuja completo. Estado en píldora gris: es feedback, no un botón.</div>
+    <div class="hand" style="left:24px;top:585px;width:210px">"Cerrar sesión" separado del bloque y sin ser rojo: es reversible y frecuente, no una zona de peligro. Lo destructivo de verdad (borrar cuenta) no vive en un índice.</div>
+    <div class="hand" style="left:716px;top:718px;width:215px">el input+mic tampoco desaparece acá: "cortá Mercado Pago" o "cuánto me queda del plan" se pueden decir desde cualquier pantalla.</div>
+  </div>
+  <p class="lane-sub">Martes 21, 10:20. Cierra el pendiente del 02: Cuenta como índice, con Conexiones adentro. Terracota ≈3% (link de cierre + mic + borde del input).</p>
+</div>
+
+<!-- ================= LANE 2 · PLAN Y ACCIONES ================= -->
+<div class="canvas-wrap" id="lane2">
+  <span class="lane-tag">2 · El plan — qué cuenta como acción</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:21</span><span>●●●</span></div>
+      <div class="app-header">
+        <div class="backbtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6L9 12L15 18"/></svg></div>
+        <span class="h-title">Plan</span>
+      </div>
+      <div class="screen">
+        <div class="plan">
+          <div class="lab">Acciones de este mes</div>
+          <div class="main"><span class="big">164</span><span class="of">de 200</span></div>
+          <div class="bar"><i style="width:82%"></i></div>
+          <div class="renew">Se renuevan el 1 de agosto.</div>
+        </div>
+
+        <!-- La pregunta que decide si un límite por uso es vivible: ¿qué gasta? -->
+        <div class="whatis">
+          <!-- phosphor: info --><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>
+          <div>Una acción es <b>algo que Odobi hace por vos</b>: emitir, mandar, cobrar, anotar. <b>Preguntarle no gasta</b> — mirá Mi día y preguntá lo que quieras.</div>
+        </div>
+
+        <div class="sec-label">
+          EN QUÉ SE FUERON
+        </div>
+        <div class="desglose">
+          <div class="d-row"><span>Anotar cobros y gastos</span><b>96</b></div>
+          <div class="d-row"><span>Mails mandados</span><b>41</b></div>
+          <div class="d-row"><span>Links de cobro</span><b>12</b></div>
+          <div class="d-row"><span>Facturas emitidas</span><b>9</b></div>
+          <div class="d-row"><span>Presupuestos armados</span><b>6</b></div>
+        </div>
+
+        <div class="upsell">Pasar a Profesional</div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <svg stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10"/><path d="M12 18V22M12 22H9M12 22H15"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="a2-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al número grande -->
+      <path d="M245,215 C280,220 310,226 332,230" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a2)"/>
+      <!-- a la barra -->
+      <path d="M712,255 C676,262 640,270 616,276" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a2)"/>
+      <!-- a "qué cuenta como acción" -->
+      <path d="M245,400 C280,384 310,368 330,358" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#a2-hot)"/>
+      <!-- al desglose -->
+      <path d="M712,470 C676,478 640,486 618,492" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a2)"/>
+      <!-- al botón -->
+      <path d="M245,700 C280,706 306,712 324,716" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#a2-hot)"/>
+    </svg>
+
+    <div class="hand" style="left:24px;top:180px;width:210px">la unidad es ACCIONES/mes, nunca "consultas" ni tokens (handoff §0). El usuario tiene que poder contar lo que gasta en la misma moneda en que piensa su laburo.</div>
+    <div class="hand" style="left:716px;top:220px;width:215px">la barra es dato, no botón: pista arena, relleno negro. No es un gráfico decorativo — es la única forma de leer una cuota de un vistazo, y viene con acción al lado.</div>
+    <div class="hand accent" style="left:24px;top:346px;width:212px">acá se juega si el límite es vivible: <b>lo que Odobi HACE gasta, preguntarle no</b>. Si preguntar gastara, el usuario dejaría de preguntar — y perderíamos justo lo que hace bueno al producto.</div>
+    <div class="hand" style="left:716px;top:430px;width:215px">el desglose en las mismas palabras de la app ("anotar", "mandar", "emitir"), no en jerga de facturación. 96+41+12+9+6 = 164 ✓ — la cuenta cierra a la vista.</div>
+    <div class="hand accent" style="left:24px;top:672px;width:210px">un solo primario y sin urgencia fabricada: ni cuenta regresiva, ni rojo, ni "¡se te acaba!". Al 82% todavía no pasó nada.</div>
+  </div>
+  <p class="lane-sub">Martes 21, 10:21. El número 200 es <strong>a calibrar</strong> (handoff §pendientes: experimento de producto), no una decisión de diseño. Terracota ≈8% (botón + mic + borde del input).</p>
+</div>
+
+<!-- ================= LANE 3 · EL LÍMITE, EN LA CONVERSACIÓN ================= -->
+<div class="canvas-wrap" id="lane3">
+  <span class="lane-tag">3 · El límite — se avisa hablando, con dos salidas</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>16:40</span><span>●●●</span></div>
+      <div class="app-header" style="justify-content:space-between">
+        <span class="wordmark">Odobi</span>
+        <span class="avatar">M</span>
+      </div>
+      <div class="thread">
+        <div class="divider">Jueves 30 · Hoy</div>
+
+        <div class="msg msg-user">Odobi, mandale el presupuesto a Fernández.</div>
+        <div class="msg-meta right">16:40 · por voz · <span class="check">✓✓</span> recibido</div>
+
+        <div class="msg-row">
+          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+          <div class="msg msg-odobi">Usaste las 200 acciones del mes — se ve que le estás dando laburo, bien ahí. Tenés dos opciones: esperás a que se renueven, o pasás al plan Profesional y seguimos ahora. Como prefieras, yo no me voy a ningún lado.</div>
+        </div>
+        <div class="chips">
+          <div class="chip">Pasame a Profesional</div>
+          <div class="chip">Espero a que se renueven</div>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <svg stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10V11C5 14.866 8.13401 18 12 18V18V18C15.866 18 19 14.866 19 11V10"/><path d="M12 18V22M12 22H9M12 22H15"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="a3-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="a3-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al pedido del usuario -->
+      <path d="M245,215 C290,220 340,224 380,226" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#a3-dim)"/>
+      <!-- al mensaje del límite -->
+      <path d="M712,300 C670,312 630,322 604,328" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#a3-hot)"/>
+      <!-- al "yo no me voy a ningún lado" -->
+      <path d="M245,420 C280,414 316,410 340,408" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a3)"/>
+      <!-- a los dos chips -->
+      <path d="M712,500 C664,494 600,486 556,482" stroke="#1A1512" stroke-width="1.5" marker-end="url(#a3)"/>
+      <!-- al input, que sigue vivo -->
+      <path d="M245,740 C276,744 300,748 316,752" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#a3-hot)"/>
+    </svg>
+
+    <div class="hand dim" style="left:24px;top:190px;width:205px">el techo se toca haciendo, no navegando: el aviso llega cuando pediste algo que Odobi tiene que EJECUTAR.</div>
+    <div class="hand accent" style="left:716px;top:250px;width:215px">guión §5 LITERAL. No es un paywall ni un modal: es Odobi contándote en qué anda tu plan, en el mismo hilo donde pasa todo lo demás.</div>
+    <div class="hand" style="left:24px;top:392px;width:210px">"se ve que le estás dando laburo, bien ahí" — el límite se cuenta como consecuencia de usarlo mucho, no como una falta tuya. Y cierra con "yo no me voy a ningún lado": nada de urgencia fabricada.</div>
+    <div class="hand" style="left:716px;top:452px;width:215px">las dos salidas del guión, del mismo tamaño: esperar es una opción legítima, no el castigo por no pagar.</div>
+    <div class="hand accent" style="left:24px;top:718px;width:212px">y el input sigue vivo: preguntar no gasta acciones, así que al tope del plan Odobi deja de EJECUTAR pero no deja de responder. El libro que ya cargaste sigue siendo tuyo.</div>
+  </div>
+  <p class="lane-sub">Jueves 30, 16:40 — fin de mes, fuera de la semana narrativa (lunes 20 → viernes 25). Terracota ≈4% (2 chips + mic + borde del input + tab activa).</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — 09 · Mi día (portada del negocio, rediseño 26/07 + identidad 28/07)</title>
+<style>
+  /* ============================================================
+     Tokens embebidos (copia de tokens/odobi.css v1 — autocontenido)
+     Paleta cerrada 22/07/2026. Ratios WCAG calculados.
+     Rediseño 26/07: decisiones A (3 tabs + avatar), B (terracota
+     solo tocable), C (puente) + anotación estándar uxsnaps.
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --arena-30:#F8E2DB; /* tint identidad (arena 30% s/blanco). negro s/tile 14.56:1 ✅ · sec s/tile 6.04:1 ✅ */
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace; /* meta-capa: monoespaciada (decisión Martin 08/08, deroga la manuscrita del 26/07). Sigue sin confundirse con la UI —que es Inter— pero en registro serio, de spec. */
+    --fs-display:28px; --lh-display:32px;
+    --fs-title:20px;   --lh-title:24px;
+    /* Label de botón sobre terracota: 19px BOLD. No es un tamaño estético — es el piso
+       de WCAG para "texto grande" en bold (18,66px = 14pt), que es lo que vuelve legal el
+       3,17:1 de blanco sobre #DE7250. Bajarlo a 18 rompe el criterio sin que se note a ojo. */
+    --fs-btn:19px;     --lh-btn:24px;
+    --fs-body:16px;    --lh-body:24px;
+    --fs-caption:13px; --lh-caption:16px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px;
+    --tap:48px;
+    --r-s:14px; --r-m:22px; --r-xl:26px; --r-pill:999px;
+    --shadow-card:0 1px 2px rgba(26,21,18,.06),0 4px 16px rgba(26,21,18,.05);
+    /* TODO motion-ref: validar con MCP 60FPS */
+    --m-fast:120ms; --m-base:200ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ===== Meta-capa de presentación (no es la UI) ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1280px;margin:0 auto 40px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:820px}
+  .canvas-wrap{max-width:1000px;margin:0 auto 64px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;color:var(--sec);text-align:center;max-width:640px}
+  .canvas{position:relative;width:960px;background:#EFEBE4;border:1px solid #D9D2C7;border-radius:16px;overflow:hidden;flex-shrink:0}
+  .overlay{position:absolute;inset:0;pointer-events:none}
+
+  /* Anotación uxsnaps (estándar 26/07): manuscrito flotante + flecha curva AL elemento */
+  .hand{position:absolute;font-family:var(--font-hand);font-size:11px;line-height:15px;letter-spacing:-.01em;color:var(--negro)} /* 11/15 y no 14/18: la monoespaciada es ~33% más ancha por carácter que la manuscrita que reemplazó, y las 165 anotaciones tienen ancho fijo — a 14px el texto pedía más líneas, crecía hacia abajo y se montaba sobre los frames. */
+  .hand.accent{color:var(--terracota-prof)}
+  .hand.dim{color:var(--lapiz)}
+
+  /* ===== Frame mobile 390px ===== */
+  .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
+
+  /* ===== UI ===== */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:var(--s1) var(--s3) var(--s2);flex-shrink:0}
+  .wordmark{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title);color:var(--terracota)} /* logotipo: exento de contraste (WCAG 1.4.3). Decisión Martin 22/07 */
+  /* Decisión A (26/07): el avatar ES la puerta a Cuenta (y adentro, Conexiones).
+     Cuando algo pide atención (p. ej. conexión caída) aparece el puntito .dot. */
+  .avatar{position:relative;width:32px;height:32px;border-radius:var(--r-pill);background:var(--crema);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:500;color:var(--sec)}
+  .avatar .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:var(--r-pill);background:var(--terracota);border:2px solid var(--blanco)}
+
+  .board{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s1)} /* gap 8: las tarjetas se agrupan por proximidad (Gestalt) */
+  .b-date{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);padding:var(--s1) var(--s1) 0}
+
+  /* Portada del negocio (query `portada`) — componente único, se reusa en 03 (resuelve M2) */
+  .portada{background:var(--crema);border-radius:var(--r-m);padding:var(--s2) var(--s2) var(--s1)}
+  .p-label{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-bottom:var(--s1)}
+  .p-main{display:flex;align-items:baseline;gap:var(--s1)}
+  .p-big{font-family:var(--font-display);font-size:var(--fs-display);line-height:var(--lh-display)} /* 16.37:1 s/crema ✅ */
+  .p-delta{font-size:var(--fs-caption);font-weight:500;color:var(--negro)} /* Decisión B 26/07: dato, no botón → negro. 16.37:1 s/crema ✅ */
+  .p-rows{display:flex;gap:var(--s3);margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--border)}
+  .p-item{flex:1;padding-bottom:var(--s1)}
+  .p-item span{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)} /* 6.79:1 s/crema ✅ */
+  .p-item b{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+
+  /* ===== Sistema de identidad gráfica (28/07) =====
+     Capa 1 — microdetalle en UI diaria: monograma "la o que habla"
+     (la o de Odobi con la onda de voz adentro) + íconos SVG propios
+     trazo 2 en tiles arena-30. Capa 2 — ilustración spot en momentos
+     clave: line-art negro 2.5 + fill arena, chispa terracota mínima.
+     Decisión B intacta: los fills de identidad van en ARENA (no
+     tocable); terracota sigue reservada a lo que ejecuta. */
+  .section-label{display:flex;align-items:center;gap:6px;font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;color:var(--sec);padding:var(--s1) var(--s1) 0}
+  /* Monograma: la O es un FILL (glifo tipográfico), las ondas son STROKE (arcos).
+     Los dos en sec: acompañan al texto, no se leen tocables (Decisión B). */
+  .section-label svg{stroke:var(--sec);color:var(--sec);flex-shrink:0} /* isotipo de David: 100% stroke, hereda color */
+
+  /* Tarjeta del detector: dato + consecuencia + acción. La acción SIEMPRE abre el chat con chip de contexto (Decisión C) */
+  .aviso{background:var(--blanco);border-radius:var(--r-m);padding:var(--s2);box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .aviso-top{display:flex;gap:12px;align-items:flex-start}
+  .tile{width:42px;height:42px;border-radius:var(--r-s);background:var(--arena-30);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tile svg{stroke:var(--negro);color:var(--negro)} /* ícono propio: mismo trazo que la ilustración */
+  .aviso p{font-size:var(--fs-body);line-height:var(--lh-body)}
+  .aviso p b{font-weight:500}
+  .aviso-action{display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 20px;margin-top:var(--s2);border-radius:var(--r-pill);background:var(--terracota);color:var(--blanco);font-weight:500;font-size:16px;line-height:1} /* 19/08: la acción de tarjeta pasa de link a pill con el MISMO fill que el mic — lo tocable se ve igual en toda la app (Decisión B). Contraste 3,17:1 anotado, no cerrado. */
+
+  /* Estado tranquilo — acá entra la ilustración spot (capa 2) */
+  .calm{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);padding:var(--s3);text-align:center}
+  .calm .spot{margin-bottom:var(--s1)}
+  .calm h3{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title)}
+  .calm p{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sec);max-width:260px}
+
+  .inputbar{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex-shrink:0}
+  .textfield{flex:1;height:52px;border-radius:var(--r-pill);display:flex;align-items:center;padding:0 var(--s2);font-size:var(--fs-body);color:var(--sec);background:var(--blanco);box-shadow:0 3px 12px rgba(26,21,18,.08)} /* regla de componente 22/07: input+mic = unidad */
+  .micbtn{width:52px;height:52px;border-radius:var(--r-pill);background:var(--terracota);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform var(--m-fast) var(--ease);box-shadow:0 4px 14px rgba(222,114,80,.4)}
+  .micbtn svg{stroke:var(--blanco);color:var(--blanco)} /* ícono = objeto gráfico: 3.17:1 ≥ 3:1 (WCAG 1.4.11) ✅ */
+
+  /* ===== Asideros de capa (rev. 15/08 — reemplazan a la tabbar de la Decisión A) =====
+     Dos gestos verticales OPUESTOS, cada uno con su asidero visible en su propio
+     borde: arriba trae el escritorio, abajo trae la conversación. No compiten por
+     el mismo movimiento, se reparten el eje. Ver mockup 10-arranque. */
+  .grip{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0 2px;flex-shrink:0}
+  .grip .bar{width:44px;height:5px;border-radius:3px;background:#DDD5C9}
+  .grip .txt{font-size:11px;letter-spacing:.02em;color:var(--sec)} /* 6.44:1 s/blanco ✅ — SIN opacity encima: bajarle opacidad a un token ya calculado es lo que rompe el hint del build de David (5,06:1 → 2,90:1) */
+  /* El composer es el BORDE VISIBLE del panel de conversación, no una barra más:
+     así el chat queda a un gesto Y a un toque (WCAG 2.5.1) sin cartel que lo explique. */
+  .peek{flex-shrink:0;background:transparent;
+        border-radius:20px 20px 0 0;box-shadow:0 -6px 20px rgba(26,21,18,.06)}
+
+  /* ===== Íconos Phosphor (19/08) — reemplazan a Iconoir =====
+     Phosphor viene OUTLINEADO: es `fill`, no `stroke`. Se lo reconoce por su viewBox
+     nativo de 256. El isotipo de Odobi sí es `stroke` y conserva el suyo, así que las
+     dos técnicas conviven sin pisarse. El color va por `currentColor`: cada contenedor
+     lo fija con `color`, que es lo que ya hereda el isotipo por `stroke`. */
+  svg[viewBox="0 0 256 256"]{fill:currentColor;stroke:none}
+
+  /* ── portada, gramática Monzo (19/08) ────────────────────────────
+     El bloque negro es EL golpe de color de la pantalla: separa planos con color en
+     vez de con líneas, que es lo que hacía falta cuando el lienzo blanco y las cards
+     blancas obligaban a un borde de 1 px alrededor de todo.
+     Detrás asoma una card blanca del MISMO ancho que baja hasta la mitad por detrás
+     (su borde inferior queda tapado, no recortado). Trae wordmark y fecha: los
+     números quedan fechados dentro del objeto que los muestra. */
+  .stack{position:relative;padding-top:52px}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);
+         display:flex;align-items:baseline;justify-content:space-between}
+  .atras .wm{font-family:var(--font-display);font-size:20px;color:var(--terracota);letter-spacing:-.01em}
+  .atras .fch{font-size:var(--fs-caption);color:var(--sec)}
+  .portada{position:relative;z-index:1;background:var(--negro)!important;color:var(--crema);
+           border-radius:var(--r-xl);padding:26px 20px 22px;
+           box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .portada .p-lbl,.portada .p-item span{color:var(--arena)}
+  .portada .p-big{font-size:40px;line-height:1;letter-spacing:-.02em}
+  .portada .p-delta{color:var(--crema);background:rgba(247,243,236,.10);
+                    border-radius:var(--r-pill);padding:5px 11px;transform:translateY(-7px)}
+  .portada .p-rows{border-top:none;gap:var(--s1)}
+  .portada .p-item{background:rgba(247,243,236,.07);border-radius:var(--r-s);padding:10px 12px}
+  .portada .p-item b{color:var(--crema)}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>09 · Mi día — portada del negocio (rediseño 26/07 + identidad gráfica 28/07)</h1>
+  <p>Pantalla de apertura de la app. Materializa el ciclo <em>hacés → queda anotado → Odobi lo vigila → le preguntás</em>: números de la query real <code>portada</code> + tarjetas del detector determinista (8 reglas, sin LLM). Aplica las 3 decisiones cerradas en <code>00-mapa</code> — Cuenta en el avatar (A — su nav de 3 tabs queda <strong>revisada el 15/08</strong>: ver abajo), terracota solo en lo tocable (B), toda acción desemboca en el chat con chip de contexto (C) — y estrena el <strong>sistema de identidad gráfica</strong> (28/07): monograma "la o que habla", íconos SVG propios en tiles arena e ilustración spot line-art en momentos clave. <strong>Acá aterriza la entrada de los arranques 2..n</strong> (420 ms, la O con las ondas — <code>explorations/splash-o</code>): el splash largo queda para el primer ingreso y el post-logout. Fundamentos en <code>DECISIONES.md</code>.</p>
+  <p><strong>⚠️ Revisión 15/08 — la tabbar se retira.</strong> Tras analizar el build de David (<code>audit/ANALISIS-PROTOTIPO-DAVID.md</code>), el composer pasa a ser el <strong>borde visible del panel de conversación</strong> y un segundo asidero arriba revela el escritorio de funciones. Dos gestos verticales opuestos, uno por borde. El modelo completo está dibujado en <code>mockups/10-arranque</code>; acá se aplica para que los dos mockups no se contradigan. <strong>Deroga la nav de 3 tabs si Martin y David lo adoptan</strong> — hasta entonces, es propuesta.</p>
+</div>
+
+<!-- ================= LANE 1 · VIERNES CON AVISOS ================= -->
+<div class="canvas-wrap" id="lane1">
+  <span class="lane-tag">Mi día — apertura con avisos (viernes)</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+      <div class="grip"><div class="bar"></div><div class="txt">Bajá para tus funciones</div></div>
+      <div class="app-header">
+                <span class="avatar">M</span>
+      </div>
+      <div class="board">
+        <div class="stack">
+        <div class="atras"><span class="wm">Odobi</span><span class="fch">Viernes 25 · Hoy</span></div>
+        <div class="portada">
+          <div class="p-label">Entró esta semana</div>
+          <div class="p-main">
+            <span class="p-big">$286.000</span>
+            <span class="p-delta">−18% vs. la anterior</span>
+          </div>
+          <div class="p-rows">
+            <div class="p-item"><span>Salió</span><b>$194.000</b></div>
+            <div class="p-item"><span>Te queda</span><b>$92.000</b></div>
+            <div class="p-item"><span>Por cobrar</span><b>$120.000</b></div>
+          </div>
+        </div>
+        </div>
+        <div class="section-label">
+          <!-- Monograma "la o que habla" — rev. 29/07 (decisión Martin).
+               La O es el GLIFO REAL de Plus Jakarta Sans Bold (mismo path que el wordmark
+               y que la entrada de los arranques 2..n), no un círculo dibujado: un solo
+               signo en todas las escalas. Las ondas van AFUERA, como arcos concéntricos
+               al centro óptico de la O, con el trazo adelgazando hacia afuera (1.6→1.1):
+               mismo lenguaje de disipación que la entrada. Antes eran 3 barras ADENTRO —
+               a este tamaño el contrapunzón mide ~5px y se empastaban. -->
+          PARA HOY
+        </div>
+        <div class="aviso">
+          <div class="aviso-top">
+            <div class="tile"><!-- phosphor: clock --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg></div>
+            <p>El presupuesto de <b>Lucía ($180.000)</b> va 31 días sin respuesta. Se enfría.</p>
+          </div>
+          <div class="aviso-action">Mandale un recordatorio →</div>
+        </div>
+        <div class="aviso">
+          <div class="aviso-top">
+            <div class="tile"><!-- phosphor: file-text --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></svg></div>
+            <p><b>Gómez SRL</b> debe la factura A-0034 (<b>$120.000</b>). Venció hace 31 días.</p>
+          </div>
+          <div class="aviso-action">Reclamá el pago →</div>
+        </div>
+        <div class="aviso">
+          <div class="aviso-top">
+            <div class="tile"><!-- phosphor: trend-up --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M240,56v64a8,8,0,0,1-16,0V75.31l-82.34,82.35a8,8,0,0,1-11.32,0L96,123.31,29.66,189.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0L136,140.69,212.69,64H168a8,8,0,0,1,0-16h64A8,8,0,0,1,240,56Z"/></svg></div>
+            <p>Los gastos de julio van <b>50% arriba</b> del promedio. Se comen el margen.</p>
+          </div>
+          <div class="aviso-action">Mirá en qué se va →</div>
+        </div>
+      </div>
+      <div class="peek">
+        <div class="grip"><div class="bar"></div></div>
+        <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: micropho --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah1-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah1-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al número grande de la portada -->
+      <path d="M255,140 C285,165 305,205 322,228" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah1-hot)"/>
+      <!-- a la etiqueta "Entró esta semana" (M4) -->
+      <path d="M245,288 C270,266 292,236 308,216" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah1-dim)"/>
+      <!-- al monograma junto a PARA HOY -->
+      <path d="M245,268 C275,300 292,332 306,356" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la acción de la tarjeta 3 (M6) -->
+      <path d="M235,565 C265,615 295,675 320,708" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al tile de la tarjeta 2 (iconografía propia) -->
+      <path d="M232,608 C265,595 305,575 336,560" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al input -->
+      <path d="M215,795 C240,790 270,780 295,774" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al avatar (Decisión A) -->
+      <path d="M715,95 C695,100 675,108 662,116" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah1-hot)"/>
+      <!-- al delta en negro (Decisión B) -->
+      <path d="M712,215 C680,225 645,240 618,250" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la tarjeta 1 (detector) -->
+      <path d="M712,368 C692,382 672,398 658,412" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la acción de la tarjeta Gómez (el puente, Decisión C) -->
+      <path d="M708,548 C665,565 615,580 572,590" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah1-hot)"/>
+    </svg>
+
+    <div class="hand accent" style="left:28px;top:76px;width:220px">esto es el libro: lo que ejecutás queda anotado solo, y acá se VE (query portada, SQL real). La corrección a "funciones sueltas".</div>
+    <div class="hand" style="left:28px;top:190px;width:215px">la "o" que habla: la O del wordmark — el glifo real, no un círculo dibujado — con sus ondas afuera, adelgazando. Un solo signo en toda escala: acá, en el chat, en la entrada diaria.</div>
+    <div class="hand dim" style="left:28px;top:294px;width:210px">sin tabbar, la etiqueta carga sola con el alcance del número ("esta semana") — y la posición se lee por el borde que asoma en cada extremo (M4, rev. 15/08).</div>
+    <div class="hand" style="left:24px;top:478px;width:205px">esta acción no ejecuta: abre el chat y responde con datos. Mismo gesto para todo — un solo patrón, no dos affordances (M6).</div>
+    <div class="hand" style="left:24px;top:600px;width:205px">iconografía propia: cada regla del detector tiene su dibujo. Mismo trazo que la ilustración, tile arena. Cero emojis.</div>
+    <div class="hand accent" style="left:24px;top:740px;width:196px">el composer ES el borde visible del panel de conversación: tocalo o subilo y el chat cubre la pantalla. A un gesto Y a un toque (WCAG 2.5.1), sin cartel que explique el gesto.</div>
+    <div class="hand" style="left:712px;top:44px;width:220px">Cuenta vive acá — y adentro, Conexiones (Decisión A). Cuando algo pide atención, aparece un puntito terracota.</div>
+    <div class="hand" style="left:716px;top:164px;width:215px">el −18% va en negro: es dato, no botón. El color ya no opina — el signo habla (Decisión B).</div>
+    <div class="hand" style="left:716px;top:308px;width:215px">tarjeta = dato + consecuencia + acción. Sale del detector real: 8 reglas deterministas, sin LLM. Verificable.</div>
+    <div class="hand accent" style="left:712px;top:478px;width:220px">tocás la acción → el chat se abre con el chip "↩ Desde tu aviso" y la propuesta HITL ya armada (el puente, Decisión C).</div>
+    <div class="hand" style="left:712px;top:748px;width:222px">rev. 15/08 — <b>se retira la tabbar</b>: arriba, el otro asidero baja al escritorio de funciones. Dos gestos verticales opuestos, uno por borde: no compiten, se reparten el eje. Modelo completo en <code>10-arranque</code>.</div>
+  </div>
+  <p class="lane-sub">Continuidad narrativa: $286.000 / −18% (la semana del mockup 03) · Por cobrar $120.000 = la factura de Gómez SRL. 286 − 194 = 92 ✓.</p>
+</div>
+
+<!-- ================= LANE 2 · SÁBADO TRANQUILO ================= -->
+<div class="canvas-wrap" id="lane2">
+  <span class="lane-tag">Mi día — sin avisos (sábado: Odobi se calla)</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+      <div class="grip"><div class="bar"></div><div class="txt">Bajá para tus funciones</div></div>
+      <div class="app-header">
+                <span class="avatar">M</span>
+      </div>
+      <div class="board">
+        <div class="stack">
+        <div class="atras"><span class="wm">Odobi</span><span class="fch">Sábado 26 · Hoy</span></div>
+        <div class="portada">
+          <div class="p-label">Entró esta semana</div>
+          <div class="p-main">
+            <span class="p-big">$406.000</span>
+            <span class="p-delta">+16% vs. la anterior</span>
+          </div>
+          <div class="p-rows">
+            <div class="p-item"><span>Salió</span><b>$194.000</b></div>
+            <div class="p-item"><span>Te queda</span><b>$212.000</b></div>
+            <div class="p-item"><span>Por cobrar</span><b>$0</b></div>
+          </div>
+        </div>
+        </div>
+        <div class="calm">
+          <!-- Ilustración spot (capa 2 de identidad): taza de café — line-art negro 2.5,
+               espuma y plato en arena (el naranja de la referencia traducido a paleta:
+               Decisión B, terracota solo en la chispa mínima), cuerpo crema,
+               speckles de canela y brillos en negro. Ref: Odobi/taza.png (Martin 28/07). -->
+          <svg class="spot" width="124" height="124" viewBox="0 0 300 300">
+<!-- dibujo de Martin (taza.svg) + capas de color; fuente: assets/illustrations/taza.svg -->
+<g id="color">
+<ellipse cx="124" cy="66" rx="74" ry="19" fill="#DE7250"/>
+<path d="M110 54 C118 46 125 40 130 32 C135 40 143 47 150 54 C142 60 118 60 110 54 Z" fill="#F7F3EC"/>
+<ellipse cx="132" cy="227" rx="84" ry="19" transform="rotate(-2 132 227)" fill="#DE7250"/>
+</g>
+<g transform="translate(0.000000,300.000000) scale(0.100000,-0.100000)"
+fill="#1A1512" stroke="none">
+<path d="M1205 2635 c-50 -62 -112 -91 -221 -105 -242 -30 -339 -55 -459 -119
+-38 -21 -95 -46 -125 -57 -65 -23 -120 -74 -139 -129 -18 -56 -25 -307 -12
+-450 10 -105 61 -360 92 -452 11 -35 80 -140 137 -210 31 -39 32 -43 16 -48
+-58 -18 -130 -63 -155 -98 -81 -112 -52 -239 74 -326 47 -32 345 -170 422
+-195 170 -54 423 -81 705 -73 208 5 295 24 433 93 97 49 238 145 272 186 73
+87 74 181 2 257 -39 41 -145 94 -226 112 -34 7 -61 16 -61 20 0 17 51 37 115
+44 95 10 236 46 325 85 103 43 253 145 326 222 136 141 197 370 145 537 -38
+121 -108 205 -199 235 -86 30 -283 15 -393 -29 -12 -4 -18 6 -26 54 -7 33 -19
+71 -29 86 -21 32 -90 68 -176 92 -34 10 -86 34 -115 54 -75 52 -193 87 -386
+115 -169 24 -211 38 -222 74 -10 31 -46 70 -65 70 -9 0 -34 -20 -55 -45z m53
+-17 c9 -9 12 -9 12 0 0 7 4 12 9 12 10 0 25 -36 26 -60 0 -8 5 -15 12 -15 6 0
+15 -3 19 -7 4 -5 2 -8 -4 -8 -7 0 -12 -7 -12 -16 0 -13 6 -15 28 -9 22 5 25 4
+15 -6 -18 -18 -16 -39 3 -39 13 0 14 -3 4 -15 -20 -24 0 -39 22 -15 16 17 18
+26 9 50 -12 35 -7 39 37 33 29 -5 33 -9 32 -32 -4 -50 0 -73 11 -69 6 2 9 7 7
+10 -2 4 6 13 16 21 13 10 16 16 7 21 -6 4 -9 12 -6 17 10 15 42 10 49 -7 3 -8
+10 -12 16 -9 6 4 8 11 5 16 -7 10 6 12 29 3 12 -5 13 -9 3 -18 -6 -7 -20 -15
+-30 -19 -10 -4 -15 -11 -12 -17 10 -15 35 -12 35 5 0 8 5 15 11 15 6 0 17 7
+25 15 9 8 23 15 31 15 11 0 8 -7 -12 -26 -21 -20 -25 -28 -16 -37 10 -9 16 -7
+29 9 10 11 24 18 31 16 10 -3 12 0 8 12 -5 11 -1 16 13 16 11 0 20 -5 20 -11
+0 -5 -4 -7 -10 -4 -5 3 -10 1 -10 -5 0 -8 7 -9 18 -5 29 13 54 7 127 -29 76
+-38 156 -109 139 -126 -10 -10 -250 -78 -299 -84 -16 -3 -95 -14 -175 -27
+-246 -37 -570 -30 -880 21 -149 24 -211 40 -217 55 -9 24 28 76 75 106 52 33
+188 88 229 92 16 2 36 7 46 12 11 4 23 3 30 -4 15 -15 27 -14 27 4 0 8 9 15
+20 15 13 0 20 -7 20 -20 0 -11 6 -20 14 -20 21 0 31 21 15 32 -10 7 -4 8 18 4
+20 -3 33 -1 37 7 3 9 7 8 15 -3 10 -13 12 -13 21 0 8 13 10 12 10 -2 0 -18 -6
+-21 -50 -22 -14 -1 -25 -6 -25 -13 0 -6 -3 -15 -7 -19 -5 -4 -8 -16 -8 -26 0
+-26 39 -23 48 3 5 12 23 27 41 35 31 13 33 12 38 -6 9 -33 22 -22 19 16 -1 19
+3 42 9 51 10 14 13 12 23 -15 6 -18 16 -32 21 -32 6 0 10 -3 9 -8 -2 -4 7 -19
+20 -32 21 -23 24 -24 36 -8 9 12 23 15 54 12 51 -4 65 13 22 27 -17 6 -29 16
+-25 23 3 6 8 19 11 29 4 9 13 17 20 17 8 0 14 5 14 10 0 6 -7 10 -15 10 -8 0
+-15 -4 -15 -10 0 -5 -9 -10 -20 -10 -14 0 -20 -7 -20 -21 0 -17 -3 -19 -14
+-10 -9 8 -16 8 -20 2 -4 -5 2 -14 11 -20 16 -9 16 -12 3 -21 -8 -5 -20 -10
+-26 -10 -18 0 -26 31 -13 46 9 11 8 18 -1 29 -10 12 -10 18 0 30 17 21 30 19
+30 -5 0 -21 7 -25 28 -12 10 7 10 15 3 36 -10 25 -9 26 10 15 26 -14 37 -4 21
+21 -7 11 -12 22 -12 25 0 9 16 5 28 -7z m872 -312 c78 -41 84 -60 87 -291 2
+-196 -12 -346 -48 -525 -14 -70 -144 -325 -184 -362 -133 -122 -177 -159 -212
+-181 -64 -40 -230 -94 -329 -106 -174 -21 -439 -10 -536 23 -21 8 -89 43 -150
+77 -159 90 -293 219 -348 333 -42 88 -100 277 -121 396 -8 46 -13 161 -13 300
+-1 222 -1 226 24 270 22 39 85 89 113 90 12 0 -4 -44 -19 -53 -53 -31 85 -75
+386 -123 134 -21 458 -29 605 -15 283 28 515 75 617 127 47 24 57 37 38 49 -5
+3 -10 11 -10 17 0 14 44 2 100 -26z m534 -168 c60 -18 137 -99 166 -173 32
+-82 39 -220 15 -301 -26 -90 -72 -169 -146 -249 -121 -129 -268 -216 -441
+-260 -96 -24 -218 -42 -218 -32 0 3 19 38 42 79 23 40 42 74 42 75 1 0 44 8
+96 17 113 20 168 45 275 126 184 141 258 238 258 340 0 177 -176 268 -414 214
+-39 -9 -72 -14 -73 -12 -2 1 -6 32 -9 66 l-5 64 36 15 c95 40 291 56 376 31z
+m-82 -188 c44 -13 93 -52 113 -91 23 -44 19 -135 -10 -197 -48 -104 -172 -210
+-329 -282 -77 -35 -203 -76 -212 -68 -2 2 10 40 27 83 44 112 78 272 86 399
+l6 108 36 15 c88 37 215 51 283 33z m-1903 -1020 c23 -12 23 -13 5 -22 -54
+-28 -94 -63 -109 -93 -14 -30 -14 -38 -2 -68 19 -45 55 -71 130 -96 118 -39
+232 -53 482 -58 336 -7 514 17 673 92 88 42 122 75 122 122 0 45 -39 85 -107
+109 l-51 18 47 38 c52 43 59 44 145 22 91 -23 179 -69 220 -114 30 -34 36 -47
+36 -86 0 -89 -58 -159 -188 -227 -144 -75 -303 -101 -622 -101 -317 0 -521 23
+-718 80 -48 14 -94 27 -103 29 -39 8 -188 79 -231 111 -78 56 -107 140 -74
+217 19 46 96 111 153 129 l48 16 60 -53 c33 -28 71 -58 84 -65z m1181 -51
+c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
+118 -18 35 -9 57 39 92 79 59 123 53 197 -27 78 -84 210 -114 459 -102 168 8
+272 26 346 60 59 27 121 78 130 107 8 24 19 24 75 -2z"/>
+<path d="M1267 2583 c-12 -11 -8 -23 8 -23 8 0 15 7 15 15 0 16 -12 20 -23 8z"/>
+<path d="M1282 2493 c4 -21 33 -25 33 -3 0 8 -8 16 -18 18 -14 3 -18 -1 -15
+-15z"/>
+<path d="M1430 2484 c0 -8 5 -12 10 -9 6 3 10 10 10 16 0 5 -4 9 -10 9 -5 0
+-10 -7 -10 -16z"/>
+<path d="M1303 2445 c-7 -20 2 -29 21 -22 9 4 13 13 10 22 -8 19 -23 19 -31 0z"/>
+<path d="M1522 2439 c2 -6 8 -10 13 -10 5 0 11 4 13 10 2 6 -4 11 -13 11 -9 0
+-15 -5 -13 -11z"/>
+<path d="M680 2430 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M857 2434 c-8 -8 1 -24 14 -24 5 0 9 7 9 15 0 15 -12 20 -23 9z"/>
+<path d="M1435 2431 c-6 -11 9 -23 19 -14 9 9 7 23 -3 23 -6 0 -12 -4 -16 -9z"/>
+<path d="M1735 2419 c-8 -24 -1 -34 19 -26 9 4 12 14 9 26 -7 27 -20 27 -28 0z"/>
+<path d="M755 2420 c3 -5 10 -10 16 -10 5 0 9 5 9 10 0 6 -7 10 -16 10 -8 0
+-12 -4 -9 -10z"/>
+<path d="M1080 2416 c0 -8 4 -17 8 -20 13 -8 35 11 28 23 -10 16 -36 14 -36
+-3z"/>
+<path d="M695 2410 c-8 -14 3 -30 21 -30 8 0 14 9 14 20 0 21 -24 28 -35 10z"/>
+<path d="M1332 2409 c2 -6 8 -10 13 -10 5 0 11 4 13 10 2 6 -4 11 -13 11 -9 0
+-15 -5 -13 -11z"/>
+<path d="M1010 2400 c0 -5 7 -10 15 -10 8 0 15 5 15 10 0 6 -7 10 -15 10 -8 0
+-15 -4 -15 -10z"/>
+<path d="M1530 2400 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M814 2389 c-3 -6 -1 -16 5 -22 9 -9 14 -8 21 3 9 15 4 30 -10 30 -5
+0 -12 -5 -16 -11z"/>
+<path d="M1280 2390 c-10 -6 -11 -13 -5 -19 6 -6 16 -7 25 -1 10 6 11 13 5 19
+-6 6 -16 7 -25 1z"/>
+<path d="M1675 2390 c3 -5 8 -10 11 -10 2 0 4 5 4 10 0 6 -5 10 -11 10 -5 0
+-7 -4 -4 -10z"/>
+<path d="M640 2375 c0 -9 5 -15 11 -13 6 2 11 8 11 13 0 5 -5 11 -11 13 -6 2
+-11 -4 -11 -13z"/>
+<path d="M740 2376 c0 -9 7 -16 16 -16 17 0 14 22 -4 28 -7 2 -12 -3 -12 -12z"/>
+<path d="M874 2379 c-9 -16 12 -33 31 -25 14 5 15 9 5 21 -15 18 -26 19 -36 4z"/>
+<path d="M990 2375 c0 -9 5 -15 11 -13 6 2 11 8 11 13 0 5 -5 11 -11 13 -6 2
+-11 -4 -11 -13z"/>
+<path d="M1160 2380 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M1190 2380 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M1555 2381 c-7 -12 12 -24 25 -16 11 7 4 25 -10 25 -5 0 -11 -4 -15
+-9z"/>
+<path d="M1376 2373 c-11 -11 -6 -23 9 -23 8 0 15 4 15 9 0 13 -16 22 -24 14z"/>
+<path d="M1450 2365 c0 -9 5 -15 11 -13 6 2 11 8 11 13 0 5 -5 11 -11 13 -6 2
+-11 -4 -11 -13z"/>
+<path d="M1650 2355 c0 -9 5 -15 11 -13 6 2 11 8 11 13 0 5 -5 11 -11 13 -6 2
+-11 -4 -11 -13z"/>
+<path d="M1090 2345 c0 -9 5 -15 11 -13 6 2 11 8 11 13 0 5 -5 11 -11 13 -6 2
+-11 -4 -11 -13z"/>
+<path d="M857 2334 c-8 -8 1 -24 14 -24 5 0 9 7 9 15 0 15 -12 20 -23 9z"/>
+<path d="M1370 2330 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M1515 2331 c-6 -11 9 -23 19 -14 9 9 7 23 -3 23 -6 0 -12 -4 -16 -9z"/>
+<path d="M1185 2321 c-7 -12 12 -24 25 -16 11 7 4 25 -10 25 -5 0 -11 -4 -15
+-9z"/>
+<path d="M1480 2320 c0 -5 5 -10 11 -10 5 0 7 5 4 10 -3 6 -8 10 -11 10 -2 0
+-4 -4 -4 -10z"/>
+<path d="M945 2310 c3 -5 8 -10 11 -10 2 0 4 5 4 10 0 6 -5 10 -11 10 -5 0 -7
+-4 -4 -10z"/>
+<path d="M1080 2310 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M1280 2310 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M1010 2270 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
+-10 -4 -10 -10z"/>
+<path d="M396 1993 c-10 -10 -7 -214 4 -274 16 -91 32 -140 44 -136 6 3 10 8
+9 13 -1 5 -9 45 -18 89 -9 45 -17 130 -17 193 -1 104 -6 131 -22 115z"/>
+<path d="M500 1749 c0 -37 27 -158 40 -179 19 -30 21 1 6 69 -9 38 -16 86 -16
+105 0 25 -4 36 -15 36 -10 0 -15 -10 -15 -31z"/>
+<path d="M1916 1329 c-2 -8 -12 -39 -22 -69 -23 -75 -45 -117 -93 -178 -45
+-56 -47 -62 -28 -62 51 0 192 279 159 312 -8 8 -13 7 -16 -3z"/>
+</g>
+          </svg>
+          <h3>Nada urgente por hoy.</h3>
+          <p>Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.</p>
+        </div>
+      </div>
+      <div class="peek">
+        <div class="grip"><div class="bar"></div></div>
+        <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: microp --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah2-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- a la portada (el libro queda) -->
+      <path d="M235,190 C260,215 285,240 305,255" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- a "Por cobrar $0" (coherencia C2) -->
+      <path d="M705,232 C678,255 645,285 624,300" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah2-hot)"/>
+      <!-- al delta positivo en negro -->
+      <path d="M708,375 C680,340 640,295 608,268" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al estado tranquilo (h3) -->
+      <path d="M240,462 C300,500 360,550 424,580" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- a la ilustración spot (identidad, capa 2) -->
+      <path d="M694,498 C650,498 600,496 552,495" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah2-hot)"/>
+      <!-- al "preguntame" -->
+      <path d="M700,642 C660,644 628,642 596,640" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+    </svg>
+
+    <div class="hand" style="left:28px;top:130px;width:210px">la portada queda siempre: el libro a la vista. Los avisos son la excepción, no el mueble.</div>
+    <div class="hand accent" style="left:700px;top:140px;width:225px">coherencia (C2): el tablero calla porque PUEDE — Gómez pagó tras el reclamo del viernes, Por cobrar $0. Un detector que calla con deudas a la vista, miente.</div>
+    <div class="hand" style="left:712px;top:308px;width:210px">delta positivo, negro igual: el signo habla, el color no. La regla B no necesita inventar un verde.</div>
+    <div class="hand accent" style="left:700px;top:462px;width:225px">acá aparece el trazo propio: line-art con la paleta, objetos del mostrador — la taza de café. La calma también tiene marca, sin relleno motivacional.</div>
+    <div class="hand" style="left:28px;top:410px;width:215px">ninguna regla dispara → no hay tarjetas ni relleno. Sin tips genéricos, sin "¡vas genial!": el silencio hace creíbles a los avisos.</div>
+    <div class="hand" style="left:706px;top:620px;width:215px">silencio con salida: "preguntame" deja la inteligencia a un tap. El usuario decide (Nielsen #3).</div>
+  </div>
+  <p class="lane-sub">Los dos frames cuentan el mismo negocio: el viernes reclamaste (lane 1), el sábado Gómez pagó y la tarjeta se fue sola. 286 + 120 = 406 · 406 − 194 = 212 · 406/349 = +16% ✓.</p>
+</div>
+
+</body>
+</html>

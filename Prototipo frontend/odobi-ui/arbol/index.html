@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi — árbol de producto</title>
+<style>
+  @font-face{font-family:"PlusJakartaSans";src:url("../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73; --fondo:#F2EEE7;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace; /* meta-capa: monoespaciada (decisión Martin 08/08, deroga la manuscrita del 26/07). Sigue sin confundirse con la UI —que es Inter— pero en registro serio, de spec. */
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--fondo);font-family:var(--font-ui);color:var(--negro);padding:0 0 80px}
+
+  /* ---- encabezado ---- */
+  .top{background:var(--negro);color:var(--crema);padding:28px 40px 24px}
+  .top-in{max-width:1580px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .brand svg{flex-shrink:0;stroke:var(--terracota);color:var(--terracota)} /* isotipo de David: 100% stroke */
+  .brand span{font-family:var(--font-display);font-size:22px;color:var(--terracota)}
+  .top h1{font-family:var(--font-display);font-size:30px;line-height:34px;margin-bottom:8px}
+  .top p{font-size:14px;line-height:21px;color:#C9BFB4;max-width:920px}
+  .top p b{color:var(--crema)}
+  .leyenda{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid #3A322C;font-size:12.5px;color:#C9BFB4}
+  /* glifos decorativos: NO son tocables -> arena, no terracota (Decisión B). 8.46:1 s/negro tostado ✅ */
+  .leyenda i{font-style:normal;color:var(--arena)}
+
+  /* ---- bloques ---- */
+  .bloque{max-width:1580px;margin:0 auto;padding:44px 40px 0}
+  .bh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+  /* el numero va en sec, no en arena: arena s/fondo claro da 1.85:1 y no llega
+     ni al 3:1 de texto grande. La jerarquia la hace el tamano, no el color. */
+  .bh .n{font-family:var(--font-display);font-size:34px;color:var(--sec)}
+  .bh h2{font-family:var(--font-display);font-size:23px}
+  .bd{font-size:13.5px;line-height:20px;color:var(--sec);max-width:900px;margin-bottom:22px}
+
+  /* ---- fila de pantallas ---- */
+  .fila{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:10px}
+  .flecha{flex-shrink:0;align-self:center;padding:0 14px;color:var(--lapiz);font-size:22px;margin-top:-40px}
+  .flecha em{display:block;font-family:var(--font-hand);font-style:normal;font-size:12px;color:var(--sec);text-align:center;margin-top:2px;white-space:nowrap}
+
+  .card{flex-shrink:0;width:216px;text-decoration:none;color:inherit;display:block}
+  .card .shot{width:216px;height:468px;border-radius:18px;border:1px solid #C9C1B4;background:var(--blanco);
+              overflow:hidden;box-shadow:0 10px 26px rgba(26,21,18,.11);transition:transform .16s,box-shadow .16s}
+  .card .shot img{width:100%;display:block}
+  .card:hover .shot{transform:translateY(-4px);box-shadow:0 16px 34px rgba(26,21,18,.18)}
+  /* sec, no lapiz: a 11px hace falta 4.5:1 y lapiz s/fondo da 3.39:1.
+     La etiqueta se distingue por caja alta + tracking, no por ser mas clara. */
+  .card .ref{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);margin:11px 0 3px}
+  .card h3{font-size:13.5px;line-height:18px;font-weight:600;margin-bottom:5px}
+  .card p{font-size:12.5px;line-height:17px;color:var(--sec)}
+  .card .abre{font-size:11.5px;color:var(--terracota-prof);font-weight:600;margin-top:6px}
+
+  /* esquemas (00-mapa): landscape, no telefono */
+  .card.wide{width:340px}
+  .card.wide .shot{width:340px;height:191px;border-radius:12px}
+
+
+  /* ---- visor del puente: el recorrido se RECORRE, no se explica ---- */
+  /* Fill #B04A2E y no #DE7250: el label va en 15px (texto normal), y blanco sobre
+     la terracota viva da 3.17:1 — alcanza para texto GRANDE, no para este tamaño.
+     Sobre #B04A2E da 5.43:1 ✅ (regla 28/07 v2). */
+  .demo-cta{display:inline-flex;align-items:center;gap:10px;margin-top:18px;padding:14px 22px;
+            border-radius:999px;background:#B04A2E;color:#fff;font-weight:600;font-size:15px;
+            border:none;cursor:pointer;font-family:inherit}
+  .demo-cta:focus-visible{outline:3px solid var(--arena);outline-offset:3px}
+  .visor{position:fixed;inset:0;z-index:50;background:rgba(16,12,10,.94);display:none;
+         align-items:center;justify-content:center;padding:28px}
+  .visor[data-abierto="1"]{display:flex}
+  .visor-in{display:flex;gap:34px;align-items:center;max-width:1100px;width:100%}
+  .visor-shot{flex:none;width:300px;height:649px;border-radius:26px;overflow:hidden;background:#fff;
+              box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .visor-shot img{display:block;width:100%;height:100%;object-fit:cover}
+  .visor-txt{color:var(--crema);max-width:440px}
+  .visor-paso{font-family:var(--font-hand);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+              color:var(--arena)} /* 8.46:1 sobre el fondo del visor ✅ */
+  .visor-txt h3{font-family:var(--font-display);font-size:26px;line-height:1.15;margin:10px 0 12px}
+  .visor-txt p{color:#D6CCC0;font-size:15px;line-height:1.6} /* 10.6:1 ✅ */
+  .visor-txt .mirar{margin-top:16px;padding-top:16px;border-top:1px solid rgba(247,243,236,.22);
+                    font-family:var(--font-hand);font-size:12px;line-height:1.6;color:#D6CCC0}
+  .visor-txt .mirar b{color:var(--crema)}
+  .visor-nav{display:flex;align-items:center;gap:12px;margin-top:26px}
+  .vbtn{width:48px;height:48px;border-radius:999px;border:1.5px solid rgba(247,243,236,.4);
+        background:transparent;color:var(--crema);font-size:18px;cursor:pointer;font-family:inherit}
+  .vbtn:disabled{opacity:.3;cursor:default}
+  .vbtn:focus-visible{outline:3px solid var(--arena);outline-offset:3px}
+  .vcount{font-family:var(--font-hand);font-size:12px;color:#D6CCC0;min-width:44px;text-align:center}
+  .vabrir{margin-left:auto;color:var(--arena);font-size:14px;text-decoration:none;border-bottom:1px solid transparent}
+  .vabrir:hover,.vabrir:focus-visible{border-bottom-color:var(--arena)}
+  .vcerrar{position:absolute;top:22px;right:26px;width:48px;height:48px;border-radius:999px;
+           border:1.5px solid rgba(247,243,236,.4);background:transparent;color:var(--crema);
+           font-size:20px;cursor:pointer;font-family:inherit}
+  .vcerrar:focus-visible{outline:3px solid var(--arena);outline-offset:3px}
+  .vhint{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-family:var(--font-hand);
+         font-size:11px;color:#9A9086} /* 4.6:1 sobre el fondo del visor ✅ */
+  @media (max-width:900px){
+    .visor-in{flex-direction:column;gap:20px}
+    .visor-shot{width:210px;height:454px}
+    .visor-txt h3{font-size:20px}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .visor-shot img{transition:opacity .18s ease}
+  }
+  /* ---- el puente ---- */
+  .puente{max-width:1580px;margin:52px auto 0;padding:0 40px}
+  .puente-in{background:var(--negro);border-radius:22px;padding:30px 34px 34px;color:var(--crema)}
+  .puente h2{font-family:var(--font-display);font-size:22px;margin-bottom:6px}
+  .puente .bd{color:#C9BFB4;max-width:880px}
+  .puente .fila{padding-bottom:0}
+  .puente .card{color:var(--crema);width:200px}
+  .puente .card .shot{width:200px;height:433px;border-color:#3A322C}
+  .puente .card p{color:#C9BFB4}
+  .puente .card .ref{color:var(--arena)}
+  .puente .card .abre{color:var(--arena)}
+  .puente .flecha{color:var(--arena)}
+  .puente .flecha em{color:var(--arena)}
+  /* Fill en terracota PROFUNDA, no en la clara: el número es texto chico (12px) y
+     blanco s/#DE7250 da 3.17:1 — falla AA para texto normal. Con #B04A2E: 5.43:1 ✅
+     (regla 28/07 v2: "si un botón necesitara texto chico, el fill baja a #B04A2E"). */
+  .paso{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--terracota-prof);
+        color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:22px;margin-right:7px}
+
+  /* ---- nota al pie ---- */
+  .pie{max-width:1580px;margin:56px auto 0;padding:0 40px}
+  .pie-in{background:var(--crema);border:1px solid var(--border);border-radius:16px;padding:22px 26px}
+  .pie h3{font-family:var(--font-display);font-size:17px;margin-bottom:8px}
+  .pie ul{margin-left:18px;font-size:13px;line-height:21px;color:var(--sec)}
+  .pie b{color:var(--negro)}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="top-in">
+  <div class="brand">
+    <!-- isotipo Odobi (David) --><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+    <span>Odobi</span>
+  </div>
+  <h1>Árbol de producto — 9 pantallas madre, 27 estados</h1>
+  <p>El recorrido completo de la app en orden narrativo: <b>qué es</b> → <b>cómo entrás</b> → <b>qué ves todos los días</b> → <b>cómo se ejecuta</b> → <b>qué lo sostiene</b>.
+     Cada tarjeta es una pantalla real del prototipo. <b>Click en cualquiera</b> abre el mockup completo con sus anotaciones y el fundamento de cada decisión.</p>
+  <div class="leyenda">
+    <span><i>■</i> Las pantallas son frames de 390 px, sin la capa de anotación.</span>
+    <span><i>→</i> Las flechas son navegación real, no orden de lectura.</span>
+    <span><i>◆</i> Tipografía: Plus Jakarta Sans Bold (display) + Inter (UI).</span>
+  </div>
+</div></div>
+
+<!-- ============ 0 · EL SISTEMA ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">0</span><h2>El sistema — las tres decisiones que ordenan todo</h2></div>
+  <p class="bd">Esquemas de trabajo, no producto. Sirven para abrir la reunión: explican <b>por qué</b> la app tiene la forma que tiene antes de mostrar una sola pantalla. Las tres decisiones se cerraron el 26/07 y no se reabren.</p>
+  <div class="fila">
+    <a class="card wide" href="../mockups/00-mapa/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/00-mapa-lane1.png" alt=""></div>
+      <div class="ref">00 · mapa · lane 1</div>
+      <h3>El mapa — superficies y flujos</h3>
+      <p>El ciclo completo: hacés → queda anotado → Odobi lo vigila → le preguntás.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card wide" href="../mockups/00-mapa/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/00-mapa-lane2.png" alt=""></div>
+      <div class="ref">00 · mapa · lane 2</div>
+      <h3>Decisión A — 3 tabs + Cuenta en el avatar</h3>
+      <p>Frecuencia de uso + Jakob's Law (patrón Gmail/YouTube). Se descartó la nav de 5.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card wide" href="../mockups/00-mapa/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/00-mapa-lane3.png" alt=""></div>
+      <div class="ref">00 · mapa · lane 3</div>
+      <h3>Decisión B — terracota = solo lo tocable</h3>
+      <p>«Si es terracota, pasa algo al tocarlo.» Un color, un significado (Nielsen #4).</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card wide" href="../mockups/00-mapa/index.html#lane4" target="_blank">
+      <div class="shot"><img src="../deck-assets/00-mapa-lane4.png" alt=""></div>
+      <div class="ref">00 · mapa · lane 4</div>
+      <h3>Decisión C — el puente Mi día → Chat</h3>
+      <p>Toda acción de tarjeta desemboca en el chat. Un solo gesto que aprender.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<!-- ============ 1 · LA ENTRADA ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">1</span><h2>La entrada — el primer minuto</h2></div>
+  <p class="bd">El splash largo (6,84 s) se ve <b>una sola vez</b>: primer ingreso y post-logout. Los arranques 2..n usan una pieza corta aparte, que aterriza en Mi día. El splash no está acá porque es animación — vive en Rive.</p>
+  <div class="fila">
+    <a class="card" href="../explorations/splash-o/v2-inmersivo.html" target="_blank">
+      <div class="shot" style="display:flex;align-items:center;justify-content:center;background:var(--negro)">
+        <!-- PRUEBA 08/08: isotipo versión A (4 arcos concéntricos), TODAS las líneas en terracota
+             Terracota s/negro tostado = 5.71:1 ✅, y como
+             logotipo está exento igual (WCAG 1.4.3). Escala display: la objeción
+             de trazo subpixel del ANALISIS-CHAVES es específica de 16px. -->
+        <svg width="132" height="132" viewBox="0 0 24 24" fill="none" stroke="var(--terracota)"
+             stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3">
+          <path d="M11 3.5a8.5 8.5 0 1 0 0 17"/>
+          <path d="M11 7.5a4.5 4.5 0 1 0 0 9"/>
+          <path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/>
+          <path d="M19.5 6.5a9 9 0 0 1 0 11"/>
+        </svg>
+      </div>
+      <div class="ref">splash · animación</div>
+      <h3>El splash — prueba con el isotipo versión A</h3>
+      <p>Los cuatro arcos concéntricos, todos en terracota. La animación vigente sigue siendo la O — esto es una prueba de marca, no el splash portado.</p>
+      <div class="abre">Abrir prototipo animado →</div>
+    </a>
+    <div class="flecha">→<em>aterriza en</em></div>
+    <a class="card" href="../mockups/01-onboarding/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/01-onboarding-lane1.png" alt=""></div>
+      <div class="ref">01 · onboarding · lane 1</div>
+      <h3>El reveal — «se dice o-DO-bi»</h3>
+      <p>El aterrizaje del splash ES el reveal: no hay corte entre animación y UI.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/01-onboarding/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/01-onboarding-lane2.png" alt=""></div>
+      <div class="ref">01 · onboarding · lane 2</div>
+      <h3>La promesa — 6 servicios, 2 permisos</h3>
+      <p>«Son dos minutos y te digo algo que no sabés.» Promesa concreta, no beneficio abstracto.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/01-onboarding/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/01-onboarding-lane3.png" alt=""></div>
+      <div class="ref">01 · onboarding · lane 3</div>
+      <h3>La promesa cumplida — con plata real</h3>
+      <p>El primer minuto termina con un número del negocio, no con un tour de features.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<!-- ============ 2 · EL DÍA A DÍA ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">2</span><h2>El día a día — la portada del negocio</h2></div>
+  <p class="bd"><b>El corazón del argumento.</b> La app abre acá, no en el chat. Los números salen de una query real y las tarjetas de un detector determinista de 6 reglas — sin LLM, verificable. El segundo estado es el que hace creíble al primero: <b>cuando no hay nada que decir, Odobi se calla.</b></p>
+  <div class="fila">
+    <a class="card" href="../mockups/09-mi-dia/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/09-mi-dia-lane1.png" alt=""></div>
+      <div class="ref">09 · mi día · lane 1</div>
+      <h3>Apertura con avisos (viernes)</h3>
+      <p>Portada + 3 tarjetas del detector. Cada tarjeta: dato + consecuencia + acción.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→<em>al día siguiente</em></div>
+    <a class="card" href="../mockups/09-mi-dia/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/09-mi-dia-lane2.png" alt=""></div>
+      <div class="ref">09 · mi día · lane 2</div>
+      <h3>Sin avisos (sábado: Odobi se calla)</h3>
+      <p>Gómez pagó tras el reclamo del viernes. El silencio es verificable contra sus propios números.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→<em>preguntar</em></div>
+    <a class="card" href="../mockups/03-home-conversacional/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/03-home-conversacional-lane2.png" alt=""></div>
+      <div class="ref">03 · chat · lane 2</div>
+      <h3>Pregunta libre (Inteligencia)</h3>
+      <p>BI conversacional solo-lectura sobre queries SQL reales. Preguntar no gasta acciones.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→<em>hablarle</em></div>
+    <a class="card" href="../mockups/03-home-conversacional/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/03-home-conversacional-lane3.png" alt=""></div>
+      <div class="ref">03 · chat · lane 3</div>
+      <h3>La escucha — el momento display</h3>
+      <p>Terracota plena a pantalla completa. Único momento display de la UI operativa: es el estado que se ve 20+ veces por día.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<!-- ============ EL PUENTE ============ -->
+<div class="puente"><div class="puente-in">
+  <h2>El puente — Decisión C funcionando</h2>
+  <p class="bd">Este es el recorrido que conviene demostrar en vivo: es la única parte del sistema que <b>no se entiende explicándola</b>. Toda acción de tarjeta abre el chat con el contexto ya cargado y la propuesta armada; confirmás; volvés a Mi día con la tarjeta en estado resultado. Un solo gesto que aprender, en todas las features.</p>
+  <button class="demo-cta" id="abrir-demo" type="button">▶ Recorrer el puente paso a paso</button>
+  <div class="fila">
+    <a class="card" href="../mockups/09-mi-dia/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/09-mi-dia-lane1.png" alt=""></div>
+      <div class="ref"><span class="paso">1</span>Mi día</div>
+      <h3>Tocás «Reclamá el pago»</h3>
+      <p>La acción no ejecuta nada todavía.</p>
+    </a>
+    <div class="flecha">→<em>abre el chat</em></div>
+    <a class="card" href="../mockups/03-home-conversacional/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/03-home-conversacional-lane1.png" alt=""></div>
+      <div class="ref"><span class="paso">2</span>Chat</div>
+      <h3>Chip «↩ Desde tu aviso» + HITL armado</h3>
+      <p>El contexto viaja con vos: no repetís lo que Odobi ya sabía.</p>
+    </a>
+    <div class="flecha">→<em>revisás</em></div>
+    <a class="card" href="../mockups/04-confirmacion-hitl/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/04-confirmacion-hitl-lane1.png" alt=""></div>
+      <div class="ref"><span class="paso">3</span>HITL</div>
+      <h3>Vos confirmás, Odobi ejecuta</h3>
+      <p>Propuesta → detalle editable → confirmar/cancelar.</p>
+    </a>
+    <div class="flecha">→<em>vuelve</em></div>
+    <a class="card" href="../mockups/09-mi-dia/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/09-mi-dia-lane2.png" alt=""></div>
+      <div class="ref"><span class="paso">4</span>Mi día</div>
+      <h3>La tarjeta queda en estado resultado</h3>
+      <p>El ciclo cierra donde empezó. Nadie quedó en una pantalla huérfana.</p>
+    </a>
+  </div>
+</div></div>
+
+<!-- ============ 3 · EJECUTAR ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">3</span><h2>El patrón madre — «Vos confirmás, Odobi ejecuta»</h2></div>
+  <p class="bd">Es <b>LA</b> pantalla del producto y un componente reutilizable: aparece igual en cobros, facturas y presupuestos. Ya existe implementado en el repo (<code>HitlCard.tsx</code>); el mockup lo refina, no lo inventa.</p>
+  <div class="fila">
+    <a class="card" href="../mockups/04-confirmacion-hitl/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/04-confirmacion-hitl-lane1.png" alt=""></div>
+      <div class="ref">04 · HITL · lane 1</div>
+      <h3>Propuesta con detalle editable</h3>
+      <p>Encabezado + filas + alcance + decisión. Nada se ejecuta sin que lo veas.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/04-confirmacion-hitl/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/04-confirmacion-hitl-lane2.png" alt=""></div>
+      <div class="ref">04 · HITL · lane 2</div>
+      <h3>Edición de un campo</h3>
+      <p>Corregís antes de confirmar. El error se ataja acá, no después.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/04-confirmacion-hitl/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/04-confirmacion-hitl-lane3.png" alt=""></div>
+      <div class="ref">04 · HITL · lane 3</div>
+      <h3>El comprobante queda en el hilo</h3>
+      <p>Lo ejecutado deja rastro donde se decidió. El chat es el libro.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<!-- ============ 4 · MISMO COMPONENTE, DOS FEATURES ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">4</span><h2>El mismo componente, dos features reales</h2></div>
+  <p class="bd">Facturación (ARCA) y Presupuestos están <b>implementadas</b>, no son visión. Las dos heredan el HITL: la puerta es la misma, lo que cambia es el riesgo. Facturar es irreversible, así que tiene doble confirmación.</p>
+  <div class="fila">
+    <a class="card" href="../mockups/05-facturacion/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/05-facturacion-lane1.png" alt=""></div>
+      <div class="ref">05 · facturación · lane 1</div>
+      <h3>Facturar por voz — lo que falta se pregunta</h3>
+      <p>Pide UNA cosa por vez. No inventa datos fiscales.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/05-facturacion/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/05-facturacion-lane2.png" alt=""></div>
+      <div class="ref">05 · facturación · lane 2</div>
+      <h3>Segundo HITL — la emisión</h3>
+      <p>Irreversibilidad frontal: emitir una factura no se deshace.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/05-facturacion/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/05-facturacion-lane3.png" alt=""></div>
+      <div class="ref">05 · facturación · lane 3</div>
+      <h3>Emitida — el CAE en el thread</h3>
+      <p>El comprobante fiscal queda en la conversación donde se pidió.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">↓<em>mismo patrón</em></div>
+    <a class="card" href="../mockups/06-presupuestos/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/06-presupuestos-lane1.png" alt=""></div>
+      <div class="ref">06 · presupuestos · lane 1</div>
+      <h3>Presupuesto por voz — los ítems se piden</h3>
+      <p>No se inventan: se preguntan uno a uno.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/06-presupuestos/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/06-presupuestos-lane2.png" alt=""></div>
+      <div class="ref">06 · presupuestos · lane 2</div>
+      <h3>Una sola puerta, riesgo proporcional</h3>
+      <p>Un presupuesto se edita; una factura no. El HITL se ajusta al riesgo.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/06-presupuestos/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/06-presupuestos-lane3.png" alt=""></div>
+      <div class="ref">06 · presupuestos · lane 3</div>
+      <h3>El ciclo: anotado → aprobado → factura</h3>
+      <p>El presupuesto de hoy es la factura de la semana que viene.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<!-- ============ 5 · LO QUE LO SOSTIENE ============ -->
+<div class="bloque">
+  <div class="bh"><span class="n">5</span><h2>Lo que lo sostiene — permisos, cuenta y límites</h2></div>
+  <p class="bd">Conexiones vive dentro de Cuenta, y Cuenta vive en el avatar (Decisión A). Para que eso no quede escondido hay tres salvaguardas: puntito en el avatar, tarjeta en Mi día si algo se cae, y consentimiento just-in-time al ejecutar.</p>
+  <div class="fila">
+    <a class="card" href="../mockups/02-conexiones/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/02-conexiones-lane1.png" alt=""></div>
+      <div class="ref">02 · conexiones · lane 1</div>
+      <h3>Just-in-time consent</h3>
+      <p>El permiso llega con el pedido, no en un onboarding de 6 pantallas.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/02-conexiones/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/02-conexiones-lane2.png" alt=""></div>
+      <div class="ref">02 · conexiones · lane 2</div>
+      <h3>Conexión caída — la portada lo admite</h3>
+      <p>El tablero dice que está incompleto en vez de mostrar un número mentiroso.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/02-conexiones/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/02-conexiones-lane3.png" alt=""></div>
+      <div class="ref">02 · conexiones · lane 3</div>
+      <h3>Cuenta › Conexiones — alcance y corte</h3>
+      <p>Qué ve Odobi de cada servicio, y cómo cortarlo en un toque.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/08-plan-limites/index.html#lane1" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/08-plan-limites-lane1.png" alt=""></div>
+      <div class="ref">08 · plan · lane 1</div>
+      <h3>Cuenta — el destino del avatar</h3>
+      <p>Resuelve el avatar sin destino de la nav vieja.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/08-plan-limites/index.html#lane2" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/08-plan-limites-lane2.png" alt=""></div>
+      <div class="ref">08 · plan · lane 2</div>
+      <h3>Qué cuenta como acción</h3>
+      <p><b>Hacer gasta, preguntar no.</b> Si preguntar gastara, el usuario dejaría de preguntar.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+    <div class="flecha">→</div>
+    <a class="card" href="../mockups/08-plan-limites/index.html#lane3" target="_blank">
+      <div class="shot"><img src="../deck-assets/frames/08-plan-limites-lane3.png" alt=""></div>
+      <div class="ref">08 · plan · lane 3</div>
+      <h3>El límite — se avisa hablando</h3>
+      <p>Dos salidas del mismo tamaño, sin urgencia fabricada. Al tope el input sigue vivo.</p>
+      <div class="abre">Abrir mockup →</div>
+    </a>
+  </div>
+</div>
+
+<div class="pie"><div class="pie-in">
+  <h3>Cómo leer esto en la reunión</h3>
+  <ul>
+    <li><b>Bloque 0 primero.</b> Sin las tres decisiones, las pantallas parecen elecciones de gusto.</li>
+    <li><b>El puente es la demo.</b> Es lo único que no se entiende explicándolo: hay que recorrerlo.</li>
+    <li><b>08 es el único material de visión.</b> El backend no expone plan ni consumo; el número de acciones/mes está <b>a calibrar</b>. Todo lo demás son features implementadas.</li>
+    <li><b>Las cifras son de mockup pero internamente consistentes</b> entre pantallas: 286 − 194 = 92 · 96+41+12+9+6 = 164 · la factura de Gómez es el mismo dato en 09, 03 y 02. Si se cambian, hay que rehacer la cadena entera.</li>
+    <li><b>Cada mockup trae su <code>DECISIONES.md</code></b> con la tabla elemento → decisión → fundamento → alternativa descartada y por qué.</li>
+  </ul>
+</div></div>
+
+
+<!-- ============ VISOR DEL PUENTE ============ -->
+<div class="visor" id="visor" role="dialog" aria-modal="true" aria-labelledby="visor-titulo" data-abierto="0">
+  <button class="vcerrar" id="visor-cerrar" type="button" aria-label="Cerrar el recorrido">✕</button>
+  <div class="visor-in">
+    <div class="visor-shot"><img id="visor-img" src="" alt=""></div>
+    <div class="visor-txt">
+      <div class="visor-paso" id="visor-paso">Paso 1 de 4 · Mi día</div>
+      <h3 id="visor-titulo">—</h3>
+      <p id="visor-desc">—</p>
+      <div class="mirar" id="visor-mirar">—</div>
+      <div class="visor-nav">
+        <button class="vbtn" id="visor-prev" type="button" aria-label="Paso anterior">←</button>
+        <span class="vcount" id="visor-count">1 / 4</span>
+        <button class="vbtn" id="visor-next" type="button" aria-label="Paso siguiente">→</button>
+        <a class="vabrir" id="visor-abrir" href="#" target="_blank" rel="noopener">Abrir el mockup completo →</a>
+      </div>
+    </div>
+  </div>
+  <div class="vhint">← → para moverte · Esc para salir</div>
+</div>
+
+<script>
+/* El puente es lo único del sistema que no se entiende explicándolo: hay que
+   recorrerlo. Este visor lo hace recorrible sin salir de la página — antes cada
+   paso abría el mockup en otra pestaña y se perdía el hilo de la reunión.
+   Las anclas #laneN siguen disponibles en "Abrir el mockup completo". */
+(function () {
+  var PASOS = [
+    { ref: 'Mi día', img: '../deck-assets/frames/09-mi-dia-lane1.png',
+      titulo: 'Tocás «Reclamá el pago»',
+      desc: 'La acción de la tarjeta no ejecuta nada todavía: arma el pedido y te lleva a revisarlo.',
+      mirar: 'MIRÁ: la tarjeta sale del detector determinista — 8 reglas, sin LLM. El aviso ya trae dato, consecuencia y acción.',
+      abre: '../mockups/09-mi-dia/index.html#lane1' },
+    { ref: 'Chat', img: '../deck-assets/frames/03-home-conversacional-lane1.png',
+      titulo: 'El chat abre con el contexto ya cargado',
+      desc: 'Chip «↩ Desde tu aviso» y la propuesta armada. No repetís nada de lo que Odobi ya sabía.',
+      mirar: 'MIRÁ: el chip es la prueba de que el contexto viajó. Sin él, el usuario tendría que volver a explicar de qué factura habla.',
+      abre: '../mockups/03-home-conversacional/index.html#lane1' },
+    { ref: 'HITL', img: '../deck-assets/frames/04-confirmacion-hitl-lane1.png',
+      titulo: 'Vos confirmás, Odobi ejecuta',
+      desc: 'Propuesta → detalle editable → confirmar o cancelar. Es el patrón madre: aparece igual en cobros, facturas y presupuestos.',
+      mirar: 'MIRÁ: se corrige ACÁ, antes de ejecutar. Es el único control de calidad del dato — después de guardar no hay editar ni borrar.',
+      abre: '../mockups/04-confirmacion-hitl/index.html#lane1' },
+    { ref: 'Mi día', img: '../deck-assets/frames/09-mi-dia-lane2.png',
+      titulo: 'La tarjeta queda en estado resultado',
+      desc: 'El ciclo cierra donde empezó. Nadie queda en una pantalla huérfana preguntándose si pasó algo.',
+      mirar: 'MIRÁ: volvés al mismo lugar del que saliste. Ese cierre es lo que hace que el gesto se aprenda una sola vez.',
+      abre: '../mockups/09-mi-dia/index.html#lane2' }
+  ];
+
+  var visor = document.getElementById('visor');
+  var el = {
+    img: document.getElementById('visor-img'), paso: document.getElementById('visor-paso'),
+    titulo: document.getElementById('visor-titulo'), desc: document.getElementById('visor-desc'),
+    mirar: document.getElementById('visor-mirar'), count: document.getElementById('visor-count'),
+    prev: document.getElementById('visor-prev'), next: document.getElementById('visor-next'),
+    abrir: document.getElementById('visor-abrir'), cerrar: document.getElementById('visor-cerrar')
+  };
+  var i = 0, ultimoFoco = null;
+
+  function pintar() {
+    var p = PASOS[i];
+    el.img.src = p.img;
+    el.img.alt = 'Paso ' + (i + 1) + ': ' + p.titulo;
+    el.paso.textContent = 'Paso ' + (i + 1) + ' de ' + PASOS.length + ' · ' + p.ref;
+    el.titulo.textContent = p.titulo;
+    el.desc.textContent = p.desc;
+    el.mirar.textContent = p.mirar;
+    el.count.textContent = (i + 1) + ' / ' + PASOS.length;
+    el.abrir.href = p.abre;
+    el.prev.disabled = i === 0;
+    el.next.disabled = i === PASOS.length - 1;
+  }
+  function abrir(n) {
+    ultimoFoco = document.activeElement;
+    i = n || 0; pintar();
+    visor.setAttribute('data-abierto', '1');
+    document.body.style.overflow = 'hidden';
+    el.next.focus();
+  }
+  function cerrar() {
+    visor.setAttribute('data-abierto', '0');
+    document.body.style.overflow = '';
+    if (ultimoFoco) ultimoFoco.focus();
+  }
+  function mover(d) {
+    var n = i + d;
+    if (n < 0 || n >= PASOS.length) return;
+    i = n; pintar();
+  }
+
+  document.getElementById('abrir-demo').addEventListener('click', function () { abrir(0); });
+  el.prev.addEventListener('click', function () { mover(-1); });
+  el.next.addEventListener('click', function () { mover(1); });
+  el.cerrar.addEventListener('click', cerrar);
+  visor.addEventListener('click', function (e) { if (e.target === visor) cerrar(); });
+  document.addEventListener('keydown', function (e) {
+    if (visor.getAttribute('data-abierto') !== '1') return;
+    if (e.key === 'Escape') { cerrar(); }
+    else if (e.key === 'ArrowRight') { mover(1); }
+    else if (e.key === 'ArrowLeft') { mover(-1); }
+  });
+
+  /* Cada tarjeta del puente entra al visor en SU paso, en vez de abrir el mockup
+     en otra pestaña. El mockup sigue a un clic, dentro del visor. */
+  var tarjetas = document.querySelectorAll('.puente .card');
+  Array.prototype.forEach.call(tarjetas, function (a, n) {
+    a.addEventListener('click', function (e) { e.preventDefault(); abrir(n); });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odobi — mapa de pantallas</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --sec:#5C534C;
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --r-m:22px; --r-xl:26px; --r-pill:999px;
+
+    /* Medido sobre el PNG del marco (2000×2000): la pantalla ocupa este rectángulo.
+       Su ratio es 2.167 y el del prototipo 2.164 — entra sin deformarse. */
+    --marco:300;                   /* ancho del marco EN NÚMERO: calc() no divide px/px */
+    --px-l:31.30%; --px-t:8.95%; --px-w:37.75%; --px-h:81.80%;
+    --vp:393;                      /* ancho lógico del iframe (iPhone 14 Pro), también número */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--ui);color:var(--negro);line-height:1.5;
+       background:linear-gradient(0deg,#F0E7DF 0%,#F4F1EA 55%,#F4F1EA 100%);
+       padding:40px 24px 80px}
+  .wrap{max-width:1500px;margin:0 auto}
+
+  /* Portada con la misma gramática A del producto */
+  .stack{position:relative;padding-top:52px;margin-bottom:14px;max-width:560px}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);
+         display:flex;align-items:baseline;justify-content:space-between}
+  .atras .wm{font-family:var(--display);font-size:20px;color:var(--terracota);letter-spacing:-.01em}
+  .atras .per{font-size:13px;color:var(--sec)}
+  .port{position:relative;z-index:1;background:var(--negro);color:var(--crema);
+        border-radius:var(--r-xl);padding:26px 20px 22px;box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .port .lbl{font-size:13px;color:var(--arena)}
+  .port .n{font-family:var(--display);font-size:40px;line-height:1;letter-spacing:-.02em;margin:8px 0 12px}
+  .port .n i{font-style:normal;font-size:20px;opacity:.85;margin-left:6px}
+  .port .chip{display:inline-block;font-size:13px;background:rgba(247,243,236,.10);
+              border-radius:var(--r-pill);padding:5px 11px}
+  .intro{max-width:62ch;color:var(--sec);font-size:15px;margin:0 0 10px}
+
+  /* Barra de control: escala y capas de anotación */
+  .barra{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 6px}
+  .barra button{font-family:var(--ui);font-size:13px;font-weight:500;cursor:pointer;
+                border:none;background:var(--blanco);color:var(--negro);
+                border-radius:var(--r-pill);padding:10px 16px;
+                box-shadow:0 3px 12px rgba(26,21,18,.07)}
+  .barra button.on{background:var(--negro);color:var(--crema)}
+  .barra span{font-size:13px;color:var(--sec)}
+  .barra a.mk{font-size:13px;font-weight:500;text-decoration:none;color:var(--negro);
+              background:var(--blanco);border-radius:var(--r-pill);padding:10px 16px;
+              box-shadow:0 3px 12px rgba(26,21,18,.07)}
+
+  h2{font-family:var(--display);font-size:22px;margin:44px 0 4px;letter-spacing:-.01em}
+  h2 + p{color:var(--sec);font-size:14px;max-width:70ch;margin-bottom:20px}
+
+  .fila{display:flex;flex-wrap:wrap;gap:30px}
+
+  /* ── el teléfono ─────────────────────────────────────────────────
+     El iframe carga el prototipo REAL, no una captura: lo que se ve acá es lo mismo
+     que se prueba en el celular, y no hay que regenerar imágenes cuando algo cambia. */
+  .tel{width:calc(var(--marco) * 1px);flex:none}
+  .marco{position:relative;width:calc(var(--marco) * 1px);aspect-ratio:1/1}
+  .marco img{width:100%;height:100%;display:block;pointer-events:none;position:relative;z-index:1}
+  .pantalla{position:absolute;left:var(--px-l);top:var(--px-t);
+            width:var(--px-w);height:var(--px-h);overflow:hidden;z-index:2;
+            border-radius:calc(var(--marco) * .055px);background:var(--crema)}
+  /* isla dinámica: se dibuja acá porque el iframe va encima del PNG y taparía la del marco */
+  .marco .isla{position:absolute;z-index:3;left:50%;transform:translateX(-50%);
+               top:calc(var(--marco) * .105px);
+               width:calc(var(--marco) * .092px);height:calc(var(--marco) * .027px);
+               background:#111;border-radius:99px;pointer-events:none}
+  .pantalla iframe{width:calc(var(--vp) * 1px);height:calc(var(--vp) * 2.167px);border:0;
+                   transform-origin:0 0;
+                   transform:scale(calc(var(--marco) * .3775 / var(--vp)))}
+  .tel figcaption{margin-top:2px}
+  .tel b{display:block;font-size:15px;font-weight:500}
+  .tel small{display:block;font-size:13px;color:var(--sec);line-height:1.45;margin-top:2px}
+  .tel code{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11px;
+            color:var(--terracota-prof);background:var(--arena-30);
+            border-radius:var(--r-pill);padding:3px 9px;text-decoration:none}
+  .tel a.abrir{display:inline-block;margin-top:8px;margin-left:6px;font-size:12px;
+               color:var(--terracota-prof);font-weight:500;text-decoration:none}
+
+  /* Capa de anotación: se puede apagar para ver las pantallas limpias */
+  .nota{margin-top:10px;font-family:var(--mono);font-size:11px;line-height:1.55;
+        color:var(--sec);border-left:2px solid var(--arena);padding-left:10px}
+  body.sin-notas .nota{display:none}
+
+  .pie{margin-top:56px;font-size:13px;color:var(--sec);line-height:1.7;max-width:80ch}
+  .pie b{color:var(--negro);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="stack">
+    <div class="atras"><span class="wm">Odobi</span><span class="per">Mapa de pantallas</span></div>
+    <div class="port">
+      <div class="lbl">Prototipo navegable</div>
+      <div class="n">23<i>pantallas</i></div>
+      <div class="chip">Cada teléfono es el prototipo real, en vivo</div>
+    </div>
+  </div>
+  <p class="intro">No son capturas: cada marco carga el prototipo. Lo que ves acá es lo mismo que
+    se prueba en el celular, y se actualiza solo cuando cambia el diseño.</p>
+
+  <div class="barra">
+    <button id="b-notas" class="on">Anotaciones</button>
+    <button data-esc="240">Chico</button>
+    <button data-esc="300" class="on">Normal</button>
+    <button data-esc="400">Grande</button>
+    <span>Escala del marco</span>
+  </div>
+
+  <h2>Cómo abre la app</h2>
+  <p>Dos piezas distintas y no una acelerada: el <strong>splash</strong> construye identidad y se ve
+     una vez en la vida de la cuenta; la <strong>entrada</strong> sólo cubre la latencia de carga y se
+     ve todos los días. Mismo material, lectura opuesta.</p>
+  <div class="fila" id="g0"></div>
+
+  <h2>Las tres capas</h2>
+  <p>Un solo gesto vertical reparte el eje: arriba el escritorio, abajo la conversación.
+     Siempre asoma el borde de la capa vecina, así la posición se lee sin indicador.</p>
+  <div class="fila" id="g1"></div>
+
+  <h2>Estados que se superponen</h2>
+  <p>No son pantallas: son momentos que caen encima de la que estés usando. Por eso el velo
+     de la escucha deja ver el fondo — desde dónde hablás cambia dónde aterriza lo que decís.</p>
+  <div class="fila" id="g2"></div>
+
+  <h2>Las siete funciones</h2>
+  <p>Gramática A: card blanca con el nombre, bloque negro con la cifra del período, lista debajo.
+     Cambia el contenido, no la forma.</p>
+  <div class="fila" id="g3"></div>
+
+  <h2>Ajustes y sus siete opciones</h2>
+  <p>Gramática B: título grande suelto sobre el lienzo y filas agrupadas. Sin bloque de color,
+     porque acá no hay ninguna cifra del negocio que mostrar.</p>
+  <div class="fila" id="g4"></div>
+
+  <h2>Las piezas de argumentación</h2>
+  <p>El mapa muestra el <em>qué</em>. Los mockups muestran el <em>por qué</em>: cada decisión con su
+     fundamento y la alternativa que se descartó.</p>
+  <div class="barra" style="margin-bottom:10px">
+    <a class="mk" href="../mockups/12-funciones/">12 · Las siete funciones ↗</a>
+    <a class="mk" href="../mockups/13-ajustes/">13 · Ajustes, la segunda gramática ↗</a>
+    <a class="mk" href="../mockups/10-arranque/">10 · El modelo de capas ↗</a>
+    <a class="mk" href="../mockups/04-confirmacion-hitl/">04 · Confirmación HITL ↗</a>
+  </div>
+
+  <div class="pie">
+    <b>Cómo leer este mapa.</b> Las dos primeras filas son la app en uso; la tercera y la cuarta
+    muestran las dos gramáticas visuales del sistema, que existen para que configurar nunca se
+    parezca a operar. El botón <b>Anotaciones</b> las apaga para ver las pantallas limpias.
+  </div>
+</div>
+
+<script>
+/* Las pantallas se declaran una vez y el marco se arma solo: agregar una es agregar
+   una línea acá, no copiar 12 líneas de HTML. */
+const PANTALLAS = {
+  g0: [
+    ['splash', 'Splash', 'Primer ingreso y post-logout. 6,8 s que se pagan una vez.',
+     '4 formas de familia circular nacen en el centro y crecen; la 4ª se contrae hacia EL LUGAR EXACTO DE LA O y se apaga ahí — el wordmark no aparece: llega. Terracota plena es excepción declarada: pieza display, no UI operativa.'],
+    ['entrada', 'Entrada', 'Los arranques 2..n. Dura lo que tarda Mi día en cargar.',
+     'el isotipo de David YA son arcos, así que la animación dejó de rodear al símbolo y pasó a ser el símbolo dibujándose. Termina en el signo estático, idéntico al de la app: no hay corte ni fundido. 1,5 s PROVISORIOS — el número se cierra midiendo la carga real.'],
+  ],
+  g1: [
+    ['', 'Mi día', 'La base. Portada del negocio y los avisos del detector de 8 reglas.',
+     'el bloque negro es EL golpe de color de la pantalla. Detrás asoma una card blanca del mismo ancho que baja hasta la mitad: trae el wordmark y fecha los números.'],
+    ['esc', 'Funciones', 'El escritorio. Siete lugares, en dos bandas por frecuencia.',
+     'acá el negro va ABAJO, en lo que ya pasó. Al deslizar entre capas los dos bloques no coinciden de posición: eso se lee como profundidad, no como repetición.'],
+    ['chat', 'Chat', 'La conversación en reposo, con ejemplos que giran.',
+     'los ejemplos no se tocan: giran. Un chip tocable competiría con el gesto principal, que es hablar.'],
+  ],
+  g2: [
+    ['escucha', 'Escucha', 'Velo del lienzo al 96% sobre lo que estés haciendo.',
+     '96% y no 90%: calculado en el peor caso — a 94% la terracota profunda da 4,37:1 y falla. Ese 4% es lo que deja que el fondo se insinúe.'],
+    ['hitl', 'Confirmación', 'Vos confirmás, Odobi ejecuta. Nada sale sin que lo veas.',
+     'el mensaje es lo único que hay que leer entero antes de confirmar: por eso deja de ser una fila y pasa a ser cita en superficie.'],
+    ['vacio', 'Mi día sin avisos', 'Cuando no queda ninguna tarjeta.',
+     'el vacío es un resultado bueno, no una pantalla que falló al cargar. Por eso lleva ilustración y no un mensaje de sistema.'],
+  ],
+  g3: [
+    ['gastos', 'Gastos', 'Total del mes, desglose por categoría y las tres vías de alta.',
+     'las tres vías del repo: a mano, por voz y foto del ticket. El alta va en la fila del rótulo, no como botón grande: la acción principal sigue siendo hablar.'],
+    ['ingresos', 'Ingresos', 'Todo lo que entró, con su origen.',
+     'cada ingreso muestra de dónde vino. En un negocio chico buena parte de la plata no pasa por AFIP, y hay que poder distinguirla.'],
+    ['factura', 'Facturación', 'Emitidas y su estado.',
+     'el estado va en chip, no tiñendo la fila: un rojo/verde traería una paleta semántica que el sistema no tiene. Lo impago va en negro — lo único que reclama.'],
+    ['presu', 'Presupuestos', 'Lo que espera respuesta.',
+     'el negro no muestra lo presupuestado sino lo que espera respuesta: un presupuesto aceptado ya no pide nada.'],
+    ['bi', 'Inteligencia de Negocio', 'Los cinco números del mes y el acumulado del año.',
+     'regla dura del repo: cuando falta un dato va "—", nunca "$0". Mostrar cero de rentabilidad cuando falta un gasto es mentirle al usuario sobre su negocio.'],
+    ['conta', 'Contabilidad', 'Caja y Facturado, nunca mezclados.',
+     'si se sumaran, la misma plata se contaría dos veces. La separación se dice con superficie: Caja en negro, Facturado en card blanca.'],
+    ['clientes', 'Clientes', 'La cartera, que crece sola cuando facturás.',
+     'el chip cuenta los que entraron solos. Si el usuario no sabe que la cartera se arma sola, ver nombres que no cargó se lee como error.'],
+  ],
+  g4: [
+    ['ajustes', 'Ajustes', 'Las siete opciones, en el orden del repo.',
+     'se entra por el avatar, única puerta (Decisión A). Sin bloque negro: acá no hay ninguna cifra del negocio.'],
+    ['negocio', 'Mi negocio', 'Perfil comercial y cómo trabaja el copiloto.',
+     'el estado que importa no es un número: es si te pide confirmación antes de ejecutar.'],
+    ['afip', 'Facturación AFIP', 'Perfil fiscal, ARCA y ambiente.',
+     'el CUIT dice "Bloqueado", no "Editá": un dato trabado no se disfraza de editable.'],
+    ['apps', 'Apps conectadas', 'Cada app por lo que habilita.',
+     'nombradas por capacidad y no por marca: es lo que hace entendible el costo de desconectar.'],
+    ['plan', 'Mi plan', 'Acciones por mes.',
+     'preguntar no gasta. Si preguntar gastara, el usuario dejaría de preguntar — y preguntar es lo que hace bueno al producto.'],
+    ['cuenta', 'Mi cuenta', 'Mail, contraseña y cerrar sesión.',
+     'cerrar sesión va en su propio grupo: una acción destructiva no comparte contenedor con cambios reversibles.'],
+    ['apar', 'Apariencia', 'Dos temas exactos.',
+     'se muestran las muestras reales, no dos palabras. El tema cambia fondo y texto; la marca no cambia.'],
+    ['hablar', 'Cómo hablarle', 'Tono, largo y el nombre.',
+     'el bloque muestra una respuesta de ejemplo: los controles son abstractos y ver la frase resultante es lo único que hace evidente qué elegís.'],
+  ],
+};
+
+const tel = (v, titulo, bajada, nota) => {
+  const url = '../prototipo/' + (v ? '?ver=' + v : '');
+  return `<figure class="tel">
+    <div class="marco">
+      <img src="../assets/marco/telefono.png" alt="">
+      <div class="pantalla"><iframe src="${url}" title="${titulo}" scrolling="no"></iframe></div>
+      <span class="isla"></span>
+    </div>
+    <figcaption>
+      <b>${titulo}</b>
+      <small>${bajada}</small>
+      <code>${v ? '?ver=' + v : '/'}</code><a class="abrir" href="${url}" target="_blank">abrir ↗</a>
+      <div class="nota">${nota}</div>
+    </figcaption>
+  </figure>`;
+};
+
+for (const [id, lista] of Object.entries(PANTALLAS)) {
+  document.getElementById(id).innerHTML = lista.map(p => tel(...p)).join('');
+}
+
+document.getElementById('b-notas').addEventListener('click', e => {
+  document.body.classList.toggle('sin-notas');
+  e.target.classList.toggle('on', !document.body.classList.contains('sin-notas'));
+});
+document.querySelectorAll('[data-esc]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-esc]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.documentElement.style.setProperty('--marco', b.dataset.esc);
+}));
+</script>
+</body>
+</html>

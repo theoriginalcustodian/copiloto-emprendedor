@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odobi · Análisis del build — 13/08/2026</title>
+<style>
+@font-face{font-family:"Jakarta";src:url("__FONT__") format("truetype");font-weight:700;font-display:swap}
+
+:root{
+  /* meta-capa de presentación: el lienzo de las láminas, NO el de la app */
+  --bg:#F2EEE7;          /* fondo del deck (mismo del árbol): negro 15,66:1 · terracota 4,70:1 */
+  --card:#FBF9F5;        /* tarjeta de hallazgo: negro 17,22:1 · sec 7,08:1 */
+  --neg:#1A1512;
+  --sec:#5C5449;         /* 6,44:1 sobre fondo — el texto secundario legible */
+  --lapiz:#8A7F73;       /* 3,39:1 → SOLO trazos y filetes, nunca texto */
+  --ter:#B04A2E;         /* terracota profunda: 4,70:1 sobre fondo, blanco encima 5,43:1 */
+  --arena:#E8A088;
+  --linea:#DDD5C9;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--neg);font-family:var(--sans);
+     font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Jakarta",var(--sans);font-weight:700;margin:0;letter-spacing:-.02em}
+em{font-style:italic}
+code{font-family:var(--mono);font-size:.88em;background:rgba(26,21,18,.06);padding:1px 5px;border-radius:4px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+/* ---------- eyebrow: rótulo de meta-capa, siempre mono ---------- */
+.eyebrow{font-family:var(--mono);font-size:11px;line-height:15px;letter-spacing:.16em;
+         text-transform:uppercase;color:var(--sec)}
+
+/* ---------- portada ---------- */
+.portada{padding:96px 0 72px;border-bottom:1px solid var(--linea)}
+.portada h1{font-size:clamp(38px,5.6vw,64px);line-height:1.03;margin:20px 0 0;max-width:16ch}
+.portada .bajada{font-size:19px;line-height:1.55;color:var(--sec);max-width:62ch;margin:26px 0 0}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+           background:var(--linea);border:1px solid var(--linea);margin-top:48px}
+.meta-grid > div{background:var(--bg);padding:18px 20px}
+.meta-grid .n{font-family:"Jakarta",var(--sans);font-weight:700;font-size:34px;line-height:1;display:block}
+.meta-grid .n.crit{color:var(--ter)}
+.meta-grid .d{font-family:var(--mono);font-size:11px;line-height:15px;letter-spacing:.1em;
+              text-transform:uppercase;color:var(--sec);margin-top:8px;display:block}
+
+/* ---------- método ---------- */
+.metodo{background:var(--neg);color:#F7F3EC;padding:44px 0}
+.metodo .eyebrow{color:var(--arena)}
+.metodo h2{font-size:26px;margin:12px 0 16px;color:#F7F3EC}
+.metodo p{max-width:72ch;color:#DCD3C6;margin:0 0 12px}
+.metodo strong{color:#F7F3EC}
+
+/* ---------- leyenda ---------- */
+.leyenda{display:flex;gap:26px;flex-wrap:wrap;padding:26px 0;border-bottom:1px solid var(--linea)}
+.leyenda span{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;
+              letter-spacing:.1em;text-transform:uppercase;color:var(--sec)}
+
+/* ---------- marcador numerado ---------- */
+.mk{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:12px;font-weight:700;flex:none;line-height:1}
+.mk.c{background:var(--ter);color:#fff}                        /* crítico — blanco s/#B04A2E = 5,43:1 */
+.mk.m{background:var(--neg);color:#F7F3EC}                     /* mayor — crema s/negro = 16,37:1 */
+.mk.n{background:transparent;color:var(--sec);border:1.5px solid var(--lapiz)}  /* menor */
+.mk.ok{background:#2F6B52;color:#fff}                          /* acierto — blanco encima = 5,37:1 */
+
+/* ---------- lámina de pantalla ---------- */
+.lamina{padding:72px 0;border-bottom:1px solid var(--linea)}
+.lamina-head{margin-bottom:38px;max-width:76ch}
+.lamina-head h2{font-size:clamp(26px,3.2vw,38px);line-height:1.12;margin:12px 0 0}
+.lamina-head .veredicto{font-size:17px;color:var(--sec);margin:14px 0 0;max-width:66ch}
+.split{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:48px;align-items:start}
+@media (max-width:900px){.split{grid-template-columns:1fr;gap:32px}}
+
+/* frame del teléfono con los marcadores encima */
+.frame{position:relative;border-radius:22px;overflow:hidden;background:var(--neg);
+       box-shadow:0 18px 44px rgba(110,75,44,.22);position:sticky;top:24px}
+.frame img{display:block;width:100%;height:auto}
+.pin{position:absolute;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.pin.c{background:var(--ter)}
+.pin.m{background:var(--neg);border:1.5px solid rgba(247,243,236,.5)}
+.pin.n{background:var(--bg);color:var(--sec);border:1.5px solid var(--lapiz)}
+.pin.ok{background:#2F6B52}
+
+/* tarjetas de hallazgo */
+.hallazgos{display:flex;flex-direction:column;gap:14px}
+.h{background:var(--card);border:1px solid var(--linea);border-left:3px solid var(--lapiz);
+   padding:16px 18px;display:grid;grid-template-columns:26px 1fr;gap:14px;align-items:start}
+.h.c{border-left-color:var(--ter)}
+.h.m{border-left-color:var(--neg)}
+.h.ok{border-left-color:#2F6B52}
+.h h3{font-size:16px;line-height:1.35;margin:2px 0 0}
+.h p{margin:8px 0 0;font-size:14px;line-height:1.55;color:var(--sec)}
+.h .fund{font-family:var(--mono);font-size:11px;line-height:15px;color:var(--sec);
+         margin-top:10px;padding-top:9px;border-top:1px dashed var(--linea)}
+.h .fund b{color:var(--neg);font-weight:700}
+.h .dato{font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--ter);font-weight:700}
+
+/* ---------- tabla de contraste ---------- */
+table{border-collapse:collapse;width:100%;margin:22px 0 0;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--linea)}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400}
+td.r{font-family:var(--mono);font-weight:700}
+td.bad{color:var(--ter)}
+td.swatch span{display:inline-block;width:13px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:8px;
+               border:1px solid rgba(26,21,18,.18)}
+
+/* ---------- propuesta ---------- */
+.prop{padding:76px 0;border-bottom:1px solid var(--linea)}
+.prop h2{font-size:clamp(26px,3.2vw,38px);margin:12px 0 0}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:34px}
+@media (max-width:860px){.dos{grid-template-columns:1fr}}
+.caja{background:var(--card);border:1px solid var(--linea);padding:24px}
+.caja .eyebrow{margin-bottom:14px;display:block}
+.caja.antes{border-style:dashed}
+pre{font-family:var(--mono);font-size:12px;line-height:1.5;margin:0;white-space:pre;overflow-x:auto;color:var(--neg)}
+
+/* maqueta del estado vacío */
+.mock{background:#1E1610;border-radius:18px;padding:34px 24px;text-align:center;color:#F1E4CC;margin-top:18px}
+.mock .mono-o{margin:0 auto 18px;display:block}
+.mock .t{font-family:"Jakarta",var(--sans);font-weight:700;font-size:23px;letter-spacing:-.02em}
+.mock .rodillo{height:26px;overflow:hidden;margin:20px 0 0;position:relative}
+.mock .rodillo ul{list-style:none;margin:0;padding:0;animation:rueda 12s cubic-bezier(.2,.8,.2,1) infinite}
+.mock .rodillo li{height:26px;line-height:26px;font-size:16px;color:#C7B8A0;font-style:italic}
+@keyframes rueda{
+  0%,26%{transform:translateY(0)}
+  33%,59%{transform:translateY(-26px)}
+  66%,92%{transform:translateY(-52px)}
+  100%{transform:translateY(-78px)}
+}
+@media (prefers-reduced-motion:reduce){.mock .rodillo ul{animation:none}}
+.mock .contrato{font-size:13px;color:#928777;margin:24px 0 0;line-height:1.5}
+.mock .composer{margin-top:26px;border:1px solid rgba(194,69,46,.8);border-radius:22px;padding:11px 16px;
+                text-align:left;color:#8b8073;font-size:14px}
+
+/* ---------- la propuesta dibujada (banda oscura de cierre) ---------- */
+.propuesta-viva{background:var(--neg);color:#F7F3EC;padding:76px 0;border-bottom:1px solid var(--linea)}
+.propuesta-viva .eyebrow{color:var(--arena)}                    /* 8,46:1 sobre negro */
+.propuesta-viva h2{font-size:clamp(26px,3.2vw,38px);margin:12px 0 0;color:#F7F3EC}
+.propuesta-viva .intro{max-width:70ch;color:#DCD3C6;font-size:17px;margin-top:16px}
+.propuesta-viva code{background:rgba(247,243,236,.1);color:#F7F3EC}
+.tres{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin-top:44px}
+@media (max-width:900px){.tres{grid-template-columns:1fr;max-width:420px}}
+.tres figure{margin:0}
+.tres img{display:block;width:100%;height:auto;border-radius:18px;
+          box-shadow:0 18px 40px rgba(0,0,0,.4);border:1px solid rgba(247,243,236,.12)}
+.tres figcaption{margin-top:18px}
+.tres figcaption h3{font-size:19px;margin:8px 0 0;color:#F7F3EC}
+.tres figcaption p{font-size:14px;line-height:1.6;color:#C9BFB0;margin-top:8px}  /* 8,1:1 sobre negro */
+.tres strong{color:#F7F3EC}
+.nota-eje{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:52px;
+          padding-top:32px;border-top:1px solid rgba(247,243,236,.16)}
+@media (max-width:860px){.nota-eje{grid-template-columns:1fr}}
+.nota-eje p{color:#DCD3C6;font-size:15px;margin-top:10px;max-width:52ch}
+.nota-eje strong{color:#F7F3EC}
+
+/* ---------- la voz contextual (cierra el recorrido, sobre lienzo claro) ---------- */
+.voz{padding:76px 0;border-bottom:1px solid var(--linea)}
+.voz h2{font-size:clamp(26px,3.2vw,38px);margin:12px 0 0}
+.voz .intro{max-width:70ch;color:var(--sec);font-size:17px;margin-top:16px}
+.voz .tres img{box-shadow:0 16px 36px rgba(110,75,44,.20);border:1px solid var(--linea)}
+.voz .tres figcaption h3{color:var(--neg)}
+.voz .tres figcaption p{color:var(--sec)}
+.voz .tres strong{color:var(--neg)}
+.voz .remate{margin-top:44px;padding:24px 26px;background:var(--card);border:1px solid var(--linea);
+             border-left:3px solid var(--ter)}
+.voz .remate p{max-width:76ch;font-size:15px;color:var(--sec)}
+.voz .remate strong{color:var(--neg)}
+
+/* ---------- plan ---------- */
+.plan{padding:76px 0}
+.paso{display:grid;grid-template-columns:56px 1fr auto;gap:20px;align-items:start;
+      padding:20px 0;border-bottom:1px solid var(--linea)}
+.paso .num{font-family:"Jakarta",var(--sans);font-weight:700;font-size:30px;line-height:1;color:var(--lapiz)}
+.paso h3{font-size:17px;margin:0}
+.paso p{margin:6px 0 0;font-size:14px;color:var(--sec);max-width:70ch}
+.costo{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+       padding:5px 11px;border-radius:20px;white-space:nowrap;align-self:center}
+.costo.free{background:#E4EDE6;color:#2F6B52}     /* 5,10:1 */
+.costo.bajo{background:#F4E6DE;color:var(--ter)}  /* 4,34:1 sobre ese tinte */
+.costo.alto{background:var(--neg);color:#F7F3EC}
+
+footer{background:var(--neg);color:#DCD3C6;padding:40px 0;font-size:13px;line-height:1.7}
+footer .eyebrow{color:var(--arena);margin-bottom:12px}
+footer a{color:#E8A088}
+</style>
+</head>
+<body>
+
+<!-- ======================= PORTADA ======================= -->
+<header class="portada">
+  <div class="wrap">
+    <div class="eyebrow">Odobi · análisis de usabilidad · 13-15 de agosto de 2026</div>
+    <h1>Lo que el build ya hace bien, y lo que le falta cerrar</h1>
+    <p class="bajada">Diagnóstico de las cuatro pantallas del build de David, contrastado contra el código
+      del repo. No es una lista de gustos: cada punto tiene un dato medido o una fuente citable, y varios
+      de ellos <strong>ya están decididos por el propio equipo</strong> y esperando su hito.</p>
+
+    <div class="meta-grid">
+      <div><span class="n crit">4</span><span class="d">Críticos</span></div>
+      <div><span class="n">9</span><span class="d">Mayores</span></div>
+      <div><span class="n">7</span><span class="d">Menores</span></div>
+      <div><span class="n">9</span><span class="d">Fallas de contraste medidas</span></div>
+      <div><span class="n">6</span><span class="d">Aciertos a conservar</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= MÉTODO ======================= -->
+<section class="metodo">
+  <div class="wrap">
+    <div class="eyebrow">Cómo se hizo</div>
+    <h2>Medido, no mirado</h2>
+    <p>Los colores se extrajeron <strong>píxel a píxel</strong> de las capturas (ffmpeg → RGB crudo) y los
+      contrastes se calcularon con la fórmula de WCAG 2.2. Después, cada valor se verificó contra
+      <code>apps/mobile/src/theme/tokens.ts</code> y el DoD del sprint. Control de calidad del método: el fondo
+      medido en la captura dio <code>#1D1610</code> y el token real es <code>#1E1610</code> — un punto por canal.</p>
+    <p><strong>Donde el código estaba disponible, gana el código.</strong> Dos conclusiones de la primera lectura
+      se cayeron al abrir el repo y están corregidas acá: la app no abre en el lanzador, y la corrección de un
+      dictado no vive en la pantalla sino en la card.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="leyenda">
+    <span><i class="mk c">1</i> Crítico — bloquea o rompe</span>
+    <span><i class="mk m">2</i> Mayor — cuesta uso</span>
+    <span><i class="mk n">3</i> Menor — pulido</span>
+    <span><i class="mk ok">✓</i> Acierto — conservar</span>
+  </div>
+</div>
+
+__LAMINAS__
+
+<!-- ======================= PROPUESTA ======================= -->
+<section class="prop">
+  <div class="wrap">
+    <div class="eyebrow">Propuesta 1 de 2</div>
+    <h2>El escritorio: dos bandas, no nueve destinos planos</h2>
+    <p style="max-width:70ch;color:var(--sec);font-size:17px;margin-top:14px">
+      Hick-Hyman castiga los conjuntos <em>equiprobables</em>: nueve tiles iguales son una decisión entre nueve.
+      Dos bandas rotuladas son una decisión entre dos, y después entre tres o cuatro. Y la agrupación por
+      <strong>tarea</strong> coincide con la pregunta que el usuario realmente se hace, que nunca es
+      «¿qué módulo?» sino <strong>«¿vengo a cargar algo o a ver cómo voy?»</strong>.
+    </p>
+
+    <div class="dos">
+      <div class="caja antes">
+        <span class="eyebrow">Hoy — 9 tiles, 2 filas, scroll horizontal</span>
+<pre>Funciones
+┌────┐┌────┐┌────┐┌─ ─
+│Fact││Gast││Clie││Pr…   ← se corta
+└────┘└────┘└────┘└─ ─
+┌────┐┌────┐┌────┐┌─ ─
+│Ingr││Pres││Mi d││Co…
+└────┘└────┘└────┘└─ ─
+        ▸ 2 columnas fuera de pantalla
+        ▸ «Facturació/n», «Presupues/tos»
+        ▸ Ajustes duplicado con el engranaje</pre>
+      </div>
+      <div class="caja">
+        <span class="eyebrow">Propuesta — 7 tiles, 2 bandas, sin scroll</span>
+<pre>REGISTRAR            ← lo diario
+┌────┐┌────┐┌────┐┌────┐
+│Gast││Ingr││Fact││Pres│
+└────┘└────┘└────┘└────┘
+
+MIRAR                ← lo periódico
+┌────┐┌────┐┌────┐
+│Inte││Cont││Clie│
+└────┘└────┘└────┘
+
+Mi día  → portada de la app
+Ajustes → engranaje del header</pre>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>Función</th><th>Frecuencia real</th><th>Por qué va donde va</th></tr>
+      <tr><td>Gastos</td><td>varias veces por día</td><td>Lo que más se olvida — y sin gastos <strong>el margen miente</strong></td></tr>
+      <tr><td>Ingresos</td><td>diario</td><td>—</td></tr>
+      <tr><td>Facturación</td><td>semanal</td><td>Baja frecuencia, <strong>máxima consecuencia</strong>: irreversible y fiscal</td></tr>
+      <tr><td>Presupuestos</td><td>semanal</td><td>—</td></tr>
+      <tr><td>Inteligencia</td><td>semanal / mensual</td><td>Revisión, no operación</td></tr>
+      <tr><td>Contabilidad</td><td>mensual</td><td>O cuando lo pide el contador</td></tr>
+      <tr><td>Clientes</td><td>casi nunca solo</td><td><em>La cartera se deriva de lo que emitiste</em> (<code>CONTEXT.md</code>): se entra desde un comprobante</td></tr>
+      <tr><td>Ajustes</td><td>rarísimo</td><td>Fuera de la grilla → engranaje</td></tr>
+      <tr><td>Mi día</td><td>primera cosa del día</td><td>Portada</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="prop">
+  <div class="wrap">
+    <div class="eyebrow">Propuesta 2 de 2</div>
+    <h2>El primer encuentro: ejemplos que giran, no un párrafo</h2>
+    <p style="max-width:70ch;color:var(--sec);font-size:17px;margin-top:14px">
+      El problema del texto de bienvenida no es su largo: es que es una <strong>constante estática</strong>
+      (<code>ListaMensajes.tsx:29</code>), la misma el día 1 y el día 300, y mezcla dos taxonomías —Apps y
+      Funciones— en la misma frase. Se reemplaza por ejemplos <strong>dichos como los diría el usuario</strong>,
+      que enseñan el registro del habla por imitación: leer «podés registrar gastos» no le dice a nadie que
+      puede decir <em>«15 lucas»</em>; ver la frase, sí.
+    </p>
+
+    <div class="dos">
+      <div class="caja">
+        <span class="eyebrow">La maqueta — rodillo vertical, un ejemplo por vez</span>
+        <div class="mock">
+          <!-- isotipo Odobi (David) --><svg class="mono-o" width="40" height="40" viewBox="0 0 24 24" fill="none"
+               stroke="#928777" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/>
+            <path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/>
+          </svg>
+          <div class="t">¿En qué te ayudo?</div>
+          <div class="rodillo">
+            <ul>
+              <li>«Gasté 15 lucas en nafta»</li>
+              <li>«¿Cuánto facturé este mes?»</li>
+              <li>«Cobrale $80.000 a Rodríguez»</li>
+              <li>«Gasté 15 lucas en nafta»</li>
+            </ul>
+          </div>
+          <p class="contrato">Antes de ejecutar algo importante,<br>te lo muestro para que lo confirmes.</p>
+          <div class="composer">Escribí, o hablá…</div>
+        </div>
+      </div>
+
+      <div class="caja">
+        <span class="eyebrow">Las reglas que lo hacen funcionar</span>
+        <div class="hallazgos" style="gap:12px">
+          <div class="h"><i class="mk n">1</i><div>
+            <h3>No se tocan: giran</h3>
+            <p>Un atajo tocable competiría con el gesto que la app quiere enseñar. El ejemplo rotativo, además,
+              muestra la <strong>variedad</strong> de lo que se puede decir en vez de ofrecer una acción suelta.</p>
+          </div></div>
+          <div class="h"><i class="mk n">2</i><div>
+            <h3>Salen del detector, no de una lista fija</h3>
+            <p>Las mismas 8 reglas que alimentan Mi día ya saben qué le falta a ese negocio: sin gastos cargados
+              → «Cargá tu primer gasto»; presupuesto frío → «Preguntale a Lucía». <strong>Cero infraestructura nueva.</strong></p>
+          </div></div>
+          <div class="h"><i class="mk n">3</i><div>
+            <h3>El andamio se retira solo</h3>
+            <p>Después de N interacciones exitosas queda <strong>sólo el título</strong>. Un andamio que no se
+              retira deja de ser ayuda: pasa a ser ruido y ocupa el lugar de la conversación real.</p>
+          </div></div>
+          <div class="h c"><i class="mk c">4</i><div>
+            <h3>Salvaguarda obligatoria del rodillo</h3>
+            <p>Un contenido que se mueve solo más de 5 s necesita mecanismo de pausa. Se cumple sin agregar botones:
+              <strong>~4 s por ejemplo</strong> · se detiene al tocar el input o al grabar · se detiene sola tras un
+              ciclo y queda en el último · <code>prefers-reduced-motion</code> sin rotación · <strong>máscara de una
+              línea exacta, sin asomar las vecinas</strong> (si asoman, invitan a arrastrar y compiten con el panel).</p>
+            <p class="fund"><b>WCAG 2.2.2</b> Pause, Stop, Hide (nivel A)</p>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LA PROPUESTA DIBUJADA ======================= -->
+<section class="propuesta-viva">
+  <div class="wrap">
+    <div class="eyebrow">Las dos propuestas, juntas y en pantalla</div>
+    <h2>Es la misma máquina, invertida</h2>
+    <p class="intro">Todo lo anterior aplicado sobre el mecanismo que <strong>David ya construyó</strong>: capas de
+      profundidad movidas por un gesto, con la ingeniería de <code>PanelDeslizable</code> resuelta y verificada en
+      device. <strong>Cambia una sola cosa: qué capa está adelante.</strong> Mi día pasa al frente y el composer,
+      que ya estaba anclado abajo, se convierte en el borde visible de la conversación.</p>
+
+    <div class="tres">
+      <figure>
+        <img src="__IMG_P1__" alt="Propuesta: Mi día como pantalla de arranque">
+        <figcaption>
+          <span class="eyebrow">01 · El arranque</span>
+          <h3>El copiloto habla primero</h3>
+          <p>La portada real y las tarjetas del detector, al abrir. Abajo, el composer: <strong>tocalo o subilo y la
+            conversación cubre la pantalla</strong>. A un gesto y a un toque, sin cartel que lo explique.</p>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img src="__IMG_P2__" alt="Propuesta: estado vacío del chat con ejemplo rotativo">
+        <figcaption>
+          <span class="eyebrow">02 · El primer encuentro</span>
+          <h3>Un ejemplo por vez, girando</h3>
+          <p>Dicho como lo diría el usuario, entrecomillado y en cursiva. El contrato queda fijo abajo; los ejemplos
+            se retiran solos después de N usos.</p>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img src="__IMG_P3__" alt="Propuesta: escritorio en dos bandas">
+        <figcaption>
+          <span class="eyebrow">03 · El escritorio</span>
+          <h3>Siete funciones, dos bandas</h3>
+          <p>Sin scroll horizontal y sin labels partidos. Ajustes se fue al avatar; el slot vacío es dónde entra la
+            octava función sin romper nada.</p>
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="nota-eje">
+      <div>
+        <span class="eyebrow">La decisión que ordena todo</span>
+        <p><strong>Dos gestos verticales opuestos, cada uno con su asidero visible.</strong> Arriba trae el
+          escritorio, abajo trae la conversación. No compiten por el mismo movimiento: <strong>se reparten el
+          eje</strong>. Y como siempre asoma el borde de la capa vecina, la posición se lee sin necesidad de un
+          indicador.</p>
+      </div>
+      <div>
+        <span class="eyebrow">Lo que hay que decidir</span>
+        <p>Si esto se adopta, <strong>reemplaza la nav de tres tabs</strong> que veníamos manejando. Lo que se pierde
+          es el indicador explícito de posición; lo compensan los asideros. <strong>No está cerrado:</strong> es la
+          conversación a tener, y el motivo de que esto esté dibujado y no implementado.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LA VOZ CONTEXTUAL ======================= -->
+<section class="voz">
+  <div class="wrap">
+    <div class="eyebrow">Y con eso, las dos vías dejan de ser dos apps</div>
+    <h2>Dictar sin salir de la función</h2>
+    <p class="intro">Hoy, para dictar hay que volver al chat y perder el contexto de la pantalla en la que estabas.
+      Esta es la pieza que convierte <strong>la conversación y las pantallas</strong> en una sola experiencia con dos
+      modos de entrada — y otra vez, <strong>sin componentes nuevos</strong>: es el mismo composer, la misma escucha
+      y la misma card que el sistema ya tiene.</p>
+
+    <div class="tres">
+      <figure>
+        <img src="__IMG_V1__" alt="Gastos con el composer contextual">
+        <figcaption>
+          <span class="eyebrow">01 · La puerta</span>
+          <h3>El composer, con el contexto de la función</h3>
+          <p>Mismo control de siempre; cambian el placeholder y el destino. El rótulo <strong>«Estás en Gastos»</strong>
+            es la promesa de dónde va a caer lo que digas.</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="__IMG_V2__" alt="Dictando dentro de Gastos">
+        <figcaption>
+          <span class="eyebrow">02 · El dictado</span>
+          <h3>No te saca de donde estabas</h3>
+          <p>El encabezado de la función <strong>queda por fuera del velo</strong>: es la diferencia entre «estoy
+            dictando un gasto» y «estoy hablando con Odobi».</p>
+        </figcaption>
+      </figure>
+      <figure>
+        <img src="__IMG_V3__" alt="La card precargada dentro de Gastos">
+        <figcaption>
+          <span class="eyebrow">03 · El resultado</span>
+          <h3>La card aterriza ahí mismo</h3>
+          <p>Formulario real precargado, editable campo por campo. Al guardar, la lista y el resumen de atrás se
+            actualizan solos.</p>
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="remate">
+      <span class="eyebrow">Por qué esto importa más de lo que parece</span>
+      <p style="margin-top:10px"><strong>No hay editar ni borrar después de guardar</strong> — es decisión escrita del
+        contrato (§12): un dato se corrige <em>antes</em>, en la card. Eso convierte a la card en <strong>el único
+        control de calidad del dato de todo el producto</strong>, y hace que dónde aparece no sea un detalle de
+        comodidad: es dónde el usuario tiene su única oportunidad de ver lo que se va a guardar.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PLAN ======================= -->
+<section class="plan">
+  <div class="wrap">
+    <div class="eyebrow">Por dónde empezar</div>
+    <h2 style="font-size:clamp(26px,3.2vw,38px);margin:12px 0 8px">Cinco pasos, ordenados por lo que cuestan</h2>
+    <p style="color:var(--sec);max-width:70ch">Los dos primeros son mover cosas de lugar y ya resuelven la mitad
+      de los críticos. Ninguno de los dos depende de la discusión del acento.</p>
+
+    <div style="margin-top:30px">
+      <div class="paso"><span class="num">1</span>
+        <div><h3>Mi día pasa a ser la portada</h3>
+          <p>La capacidad más valiosa del producto —el detector de 8 reglas— hoy está detrás de un ícono.
+             El copiloto tiene que hablar primero.</p></div>
+        <span class="costo free">mover una capa</span></div>
+
+      <div class="paso"><span class="num">2</span>
+        <div><h3>Ajustes sale de la grilla</h3>
+          <p>Se toca una vez por mes y hoy pesa lo mismo que Gastos. El engranaje del header ya existe:
+             sólo hay que agrandarlo a 48 dp.</p></div>
+        <span class="costo free">mover un tile</span></div>
+
+      <div class="paso"><span class="num">3</span>
+        <div><h3>Barrer el contraste</h3>
+          <p>Auditar el nivel <strong>terciario</strong> (<code>alpha .42</code>, nunca revisado) y todo
+             <code>opacity</code> sobre texto. Arregla 7 de las 9 fallas y no es discusión de diseño.</p></div>
+        <span class="costo bajo">mecánico</span></div>
+
+      <div class="paso"><span class="num">4</span>
+        <div><h3>Grilla en dos bandas + estado vacío con rodillo</h3>
+          <p>Mata el scroll horizontal, el truncamiento y el párrafo estático de una sola vez.</p></div>
+        <span class="costo bajo">un componente</span></div>
+
+      <div class="paso"><span class="num">5</span>
+        <div><h3>Voz contextual dentro de cada función</h3>
+          <p>Dictar el gasto <em>estando</em> en Gastos, sin volver al chat ni perder el contexto.
+             Es el que más cambia la experiencia: convierte dos apps pegadas en una con dos modos de entrada.
+             <strong>Ya está dibujado</strong> — es la sección de arriba.</p></div>
+        <span class="costo alto">varias pantallas</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="eyebrow">Fuentes</div>
+    <p><strong>WCAG 2.2</strong> — SC 1.4.1 Use of Color · 1.4.3 Contrast Minimum · 1.4.11 Non-text Contrast ·
+      2.2.2 Pause Stop Hide · 2.5.1 Pointer Gestures · 2.5.8 Target Size ·
+      <strong>Nielsen</strong> — heurísticas #1, #2, #6 · <strong>Norman</strong> — gulf of execution, signifiers ·
+      <strong>Hick-Hyman</strong> · <strong>Material 3</strong> — bottom sheets, 48 dp ·
+      <strong>Apple HIG</strong> — 44 pt, materiales · <strong>Hoober</strong> — zonas del pulgar ·
+      <strong>Gestalt</strong> — proximidad.</p>
+    <p><strong>Del propio repo</strong> — <code>CONTEXT.md</code> ·
+      <code>2026-08-05-DoD-sprint-odobi.md</code> · <code>2026-08-03-odobi-rebrand-marca-y-skin-estado.md</code> ·
+      <code>theme/tokens.ts</code> · <code>shell/PanelDeslizable.tsx</code> · <code>shell/PantallaPrincipal.tsx</code> ·
+      <code>escritorio/EscritorioFunciones.tsx</code> · <code>midia/PantallaMiDia.tsx</code> ·
+      <code>copiloto/mi_dia_detector.py</code> · <code>copiloto/tool_catalog.py</code> ·
+      <code>gastos/DetalleGasto.tsx</code>.</p>
+    <p style="margin-top:18px;color:#928777">Documento completo con las 24 observaciones:
+      <code>odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md</code></p>
+  </div>
+</footer>
+
+</body>
+</html>

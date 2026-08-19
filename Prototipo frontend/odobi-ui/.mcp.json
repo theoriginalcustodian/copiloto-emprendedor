@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "60fps": {
+      "url": "https://mcp.60fps.design/mcp",
+      "headers": { "Authorization": "Bearer 7C612015-F9364BD9-80CA40B2-A747D6FA" }
+    },
+    "rive": {
+      "type": "http",
+      "url": "http://localhost:9791/mcp"
+    }
+  }
+}

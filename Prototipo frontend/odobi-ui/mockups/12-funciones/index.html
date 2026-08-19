@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>12 · Las siete funciones — una anatomía, siete contenidos</title>
+<style>
+  @font-face{font-family:"PlusJakartaSans";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+    --marco:290; --vp:393;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 72px}
+  .page-head{max-width:1280px;margin:0 auto 44px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:10px}
+  .page-head p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px}
+  .page-head p + p{margin-top:10px}
+  .page-head code{font-family:var(--font-hand);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+  .page-head strong{color:var(--negro)}
+
+  .lane{max-width:1240px;margin:0 auto 60px}
+  .lane-tag{display:inline-block;font-size:12px;font-weight:500;letter-spacing:.08em;
+            text-transform:uppercase;background:var(--negro);color:var(--crema);
+            padding:6px 14px;border-radius:999px}
+  .lane h2{font-family:var(--font-display);font-size:20px;margin:14px 0 6px}
+  .lane > p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px;margin-bottom:22px}
+  .fila{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+
+  .tel{width:calc(var(--marco) * 1px);flex:none}
+  .marco{position:relative;width:calc(var(--marco) * 1px);aspect-ratio:1/1}
+  .marco img{width:100%;height:100%;display:block;position:relative;z-index:1;pointer-events:none}
+  .pantalla{position:absolute;left:31.30%;top:8.95%;width:37.75%;height:81.80%;
+            overflow:hidden;z-index:2;border-radius:calc(var(--marco) * .055px);background:var(--crema)}
+  .pantalla iframe{width:calc(var(--vp) * 1px);height:calc(var(--vp) * 2.167px);border:0;
+                   transform-origin:0 0;transform:scale(calc(var(--marco) * .3775 / var(--vp)))}
+  .marco .isla{position:absolute;z-index:3;left:50%;transform:translateX(-50%);
+               top:calc(var(--marco) * .105px);width:calc(var(--marco) * .092px);
+               height:calc(var(--marco) * .027px);background:#111;border-radius:99px}
+  .tel > b{display:block;font-size:15px;font-weight:500;margin-top:2px}
+  .tel .url{display:inline-block;margin-top:6px;font-family:var(--font-hand);font-size:11px;
+            color:var(--terracota-prof);background:var(--arena-30);border-radius:999px;
+            padding:3px 9px;text-decoration:none}
+
+  /* Anotación: mono, nunca la tipografía de la UI, para que jamás se confunda con ella */
+  .hand{font-family:var(--font-hand);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:12px;border-left:2px solid var(--arena);padding-left:10px}
+  .hand b{color:var(--negro);font-weight:500}
+  .hand.accent{border-left-color:var(--terracota)}
+
+  .caja{background:var(--negro);color:var(--crema);border-radius:14px;padding:24px 26px;
+        max-width:1240px;margin:0 auto 60px}
+  .caja .eyebrow{font-family:var(--font-hand);font-size:11px;letter-spacing:.14em;
+                 text-transform:uppercase;color:var(--arena)}
+  .caja p{color:#DCD3C6;max-width:92ch;line-height:1.65;margin-top:10px;font-size:14px}
+  .caja strong{color:var(--crema)}
+  table{border-collapse:collapse;width:100%;max-width:1240px;margin:0 auto 60px;font-size:13.5px;background:var(--blanco);border-radius:14px;overflow:hidden}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:var(--font-hand);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400;background:#FBF8F3}
+  td strong{font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>12 · Las siete funciones — una anatomía, siete contenidos</h1>
+  <p>Las funciones que el repo define en <code>kb-usuario/</code>: Gastos, Ingresos, Facturación,
+    Presupuestos, Inteligencia de Negocio, Contabilidad y Clientes. <strong>No son pantallas de
+    configuración</strong>: son la vía de la mano, paralela a la de la voz, sobre los mismos datos.
+    Cada una tiene su alta propia — <code>Nuevo gasto</code>, <code>Nueva factura</code>,
+    <code>Nuevo presupuesto</code> — salvo Contabilidad, que el repo define como solo consulta.</p>
+  <p>Los teléfonos cargan el <strong>prototipo real</strong>, no capturas: lo que se ve acá es lo que
+    se prueba en el celular, y no queda desactualizado cuando cambia el diseño.</p>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">1 · La anatomía compartida</span>
+  <h2>Card blanca con el nombre · bloque negro con la cifra · lista debajo</h2>
+  <p>Entrar a una función se siente como el mismo objeto cambiando de contenido, no como saltar a
+     otra app. Lo que cambia es qué dice la card y qué cifra muestra el bloque; la forma es la misma.</p>
+  <div class="fila" id="f1"></div>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">2 · Lo que cada función tiene de propio</span>
+  <h2>La misma forma, resolviendo preguntas distintas</h2>
+  <p>El bloque negro no muestra "el total" por defecto: muestra <strong>la cifra accionable</strong>
+     de esa función. En Presupuestos no es lo presupuestado sino lo que espera respuesta; en Clientes
+     no es plata sino el tamaño de la cartera.</p>
+  <div class="fila" id="f2"></div>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">3 · Las dos que no llevan alta</span>
+  <h2>Consultar no es lo mismo que registrar</h2>
+  <p>Contabilidad es <strong>solo consulta</strong> por definición del repo. Inteligencia tampoco
+     registra: responde. Ninguna de las dos lleva "Nuevo".</p>
+  <div class="fila" id="f3"></div>
+</div>
+
+<table>
+  <tr><th>Elemento</th><th>Decisión</th><th>Fundamento</th><th>Alternativa descartada</th></tr>
+  <tr><td><strong>El bloque negro</strong></td><td>Una sola cifra, la accionable de esa función</td>
+      <td>Un golpe de color pleno por pantalla ancla la jerarquía sin necesitar bordes. Si mostrara "el total" siempre, en Presupuestos diría algo que no sirve para actuar</td>
+      <td>Repetir la misma métrica en todas: la pantalla dejaría de tener tema propio</td></tr>
+  <tr><td><strong>El alta manual</strong></td><td>Pill en la fila del rótulo, con el verbo del repo</td>
+      <td>La acción principal de la app sigue siendo hablar. Un FAB competiría con el mic, que es el gesto que el producto quiere enseñar</td>
+      <td>Botón grande al pie: se comía el composer, que es el borde del panel de conversación</td></tr>
+  <tr><td><strong>El estado de cada ítem</strong></td><td>Chip; lo que reclama en negro, lo terminado en arena</td>
+      <td>Teñir la fila de rojo/verde traería una paleta semántica que el sistema no tiene y competiría con el único acento</td>
+      <td>Color de fila: sobre tres ítems el ojo no sabría cuál mirar</td></tr>
+  <tr><td><strong>"Estás en Gastos"</strong></td><td><strong>Derogado</strong> (19/08)</td>
+      <td>El encabezado ya dice dónde estás; repetirlo sobre el composer gastaba un renglón para decir dos veces lo mismo. La promesa de destino la lleva el placeholder</td>
+      <td>Conservarlo: era la decisión del 16/08, y se cae por redundante</td></tr>
+  <tr><td><strong>Dato faltante</strong></td><td>"—", nunca "$0"</td>
+      <td>Regla dura del repo. Mostrar cero de rentabilidad cuando falta un gasto <strong>le miente al usuario sobre su negocio</strong></td>
+      <td>Mostrar $0 o dejar en blanco: lo segundo se lee como error de carga</td></tr>
+  <tr><td><strong>Semáforo del tope</strong></td><td>Verde <code>#3F7D5C</code> · ámbar <code>#A06A1E</code> · rojo <code>#B04A2E</code></td>
+      <td>El repo lo pide explícito. Se eligieron con el mismo valor tonal que la terracota profunda para que no parezcan de otro sistema. Todos ≥4,5:1 sobre blanco. WCAG 1.4.1: el color nunca va solo, el porcentaje se dice con texto</td>
+      <td>Usar solo arena: no distingue "tranquilo" de "cerca del tope", que es toda la información</td></tr>
+</table>
+
+<div class="caja">
+  <div class="eyebrow">Lo que este mockup abre y no cierra</div>
+  <p><strong>La cartera de Clientes no alimenta la facturación.</strong> Textual del repo: al facturar,
+    los datos del cliente se cargan a mano en la factura, sin elegirlo de la lista; la cartera se arma
+    en el sentido inverso. Tener a Rodríguez cargado <strong>hoy no hace</strong> que "facturale a
+    Rodríguez" salga mejor — y la pantalla insinúa esa promesa. Es una carencia del producto, no del
+    diseño, y vale la pena discutirla con David.</p>
+  <p><strong>Contabilidad e Inteligencia se solapan.</strong> Caja, categorías y mejores clientes
+    aparecen en las dos. Viene del repo, pero obliga al usuario a elegir dónde mirar sin un criterio
+    claro.</p>
+  <p><strong>Los gráficos no son tocables.</strong> El repo aclara que tocar una barra todavía no abre
+    el detalle. Hoy nada lo indica: si el usuario los toca y no pasa nada, lo lee como app rota.</p>
+</div>
+
+<script>
+const P = {
+  f1: [
+    ['gastos','Gastos','el desglose por categoría con su porcentaje es lo que el repo define como resumen mensual — no es decoración, es la respuesta a "en qué se me va la plata".'],
+    ['factura','Facturación','tres facturas, y el ojo va sola a la impaga: es la única en negro. Lo terminado ("Cobrada") queda en arena, que no reclama nada.'],
+    ['ingresos','Ingresos','cada ingreso muestra su ORIGEN. En un negocio chico buena parte de la plata no pasa por AFIP y hay que poder distinguirla de un vistazo.'],
+  ],
+  f2: [
+    ['presu','Presupuestos','<b>el negro muestra lo que espera respuesta</b>, no lo presupuestado: un presupuesto aceptado ya no pide nada, y uno rechazado tampoco.'],
+    ['clientes','Clientes','<b>el negro muestra el tamaño de la cartera</b>, no plata. Y el chip cuenta los que entraron solos: el repo dice que la cartera se arma sola al facturar, así que crecer sin hacer nada es lo normal — si no se dice, se lee como error.'],
+    ['gastos','Gastos · alta','<b>tres vías de alta</b>, las del repo: a mano, por voz y foto del ticket. El pill va en la fila del rótulo para no competir con el mic.'],
+  ],
+  f3: [
+    ['conta','Contabilidad','<b>Caja y Facturado nunca se mezclan</b> (repo): si se sumaran, la misma plata se contaría dos veces —al facturar y al cobrar—. La separación se dice con SUPERFICIE: caja en negro, facturado en card blanca.'],
+    ['bi','Inteligencia de Negocio','<b>"—" y nunca "$0"</b>. Rentabilidad tiene su propia card a ancho completo para poder decir por qué falta: "no es cero, es que todavía no se puede calcular".'],
+  ],
+};
+const tel = (v,t,nota) => `<figure class="tel">
+  <div class="marco">
+    <img src="../../assets/marco/telefono.png" alt="">
+    <div class="pantalla"><iframe src="../../prototipo/?ver=${v}" scrolling="no" title="${t}"></iframe></div>
+    <span class="isla"></span>
+  </div>
+  <b>${t}</b><a class="url" href="../../prototipo/?ver=${v}" target="_blank">?ver=${v} ↗</a>
+  <div class="hand accent">${nota}</div>
+</figure>`;
+for (const [id,l] of Object.entries(P)) document.getElementById(id).innerHTML = l.map(x=>tel(...x)).join('');
+</script>
+</body>
+</html>

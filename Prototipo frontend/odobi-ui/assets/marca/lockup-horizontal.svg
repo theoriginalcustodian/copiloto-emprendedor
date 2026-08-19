@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 24">
+  <!--
+    Lockup horizontal de Odobi — símbolo (isotipo de David, viewBox nativo 0-24) + wordmark.
+
+    Rehecho el 18/08/2026 con PLUS JAKARTA SANS BOLD. El lockup original del repo
+    (`docs/Imagen de marca/isotipo-odobi/lockup-horizontal.svg`) declara NeueEinstellung en
+    el <text>, que es la tipografía que se derogó por licencia (USD 375/año por título).
+    Adoptarlo tal cual habría arrastrado una fuente impagable a la marca.
+
+    Se conserva su GEOMETRÍA, que está bien medida:
+      · símbolo: bbox real x:[2.497, 21.376] · ancho 18.879 u
+      · separación ÓPTICA símbolo→wordmark = 0.3 × ancho = 5.66 u
+
+    El x del <text> NO se copia: depende del sidebearing izquierdo de la fuente.
+      NeueEinstellung: lsb ≈ 2.624 u → x = 29.66
+      Plus Jakarta:    lsb  = 0.675 u → x = 21.376 + 5.66 − 0.675 = 26.361
+    Medido con fontTools sobre el archivo real (tabla hmtx), no estimado a ojo.
+    Copiar el 29.66 habría dejado la separación en 7.6 u en vez de 5.66.
+  -->
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3">
+    <path d="M11 3.5a8.5 8.5 0 1 0 0 17"/>
+    <path d="M11 7.5a4.5 4.5 0 1 0 0 9"/>
+    <path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/>
+    <path d="M19.5 6.5a9 9 0 0 1 0 11"/>
+  </g>
+  <text x="26.361" y="16.95" font-family="'PlusJakartaSans','Plus Jakarta Sans',Inter,system-ui,sans-serif"
+        font-weight="700" font-size="13.5" letter-spacing="-0.01em" fill="currentColor">Odobi</text>
+</svg>

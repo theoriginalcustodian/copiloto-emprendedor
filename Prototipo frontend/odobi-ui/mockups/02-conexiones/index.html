@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — 02 · Conexiones — permiso cuando hace falta (29/07)</title>
+<style>
+  /* ============================================================
+     02 · CONEXIONES — el permiso se pide cuando hace falta
+     (29/07/2026). Tres lanes:
+     1) just-in-time consent (IF Catalogue): el pedido del usuario
+        choca con un servicio no conectado → guión §5 LITERAL
+        («Eso no lo puedo ver todavía…») + sheet de permiso que
+        NOMBRA lo que desbloquea. Consentimiento en contexto.
+     2) salvaguarda de la Decisión A: conexión caída = tarjeta en
+        Mi día + puntito terracota en el avatar. Guión §5 LITERAL
+        («Se me cayó la conexión con Mercado Pago…»).
+     3) el destino estable: Cuenta › Conexiones (Conexiones vive
+        DENTRO de Cuenta — Decisión A 26/07). Alcance + Cortar.
+     Aplica: uxsnaps, regla 28/07 v2, Decisión B, monograma,
+     Iconoir, tiles arena-30.
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace; /* meta-capa: monoespaciada (decisión Martin 08/08, deroga la manuscrita del 26/07). Sigue sin confundirse con la UI —que es Inter— pero en registro serio, de spec. */
+    --fs-display:28px; --lh-display:32px;
+    --fs-title:20px;   --lh-title:24px;
+    /* Label de botón sobre terracota: 19px BOLD. No es un tamaño estético — es el piso
+       de WCAG para "texto grande" en bold (18,66px = 14pt), que es lo que vuelve legal el
+       3,17:1 de blanco sobre #DE7250. Bajarlo a 18 rompe el criterio sin que se note a ojo. */
+    --fs-btn:19px;     --lh-btn:24px;
+    --fs-body:16px;    --lh-body:24px;
+    --fs-caption:13px; --lh-caption:16px;
+    --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px;
+    --tap:48px;
+    --r-s:14px; --r-m:22px; --r-xl:26px; --r-l:24px; --r-pill:999px;
+    --shadow-card:0 1px 2px rgba(26,21,18,.06),0 4px 16px rgba(26,21,18,.05);
+    --shadow-sheet:0 -8px 40px rgba(26,21,18,.16);
+    /* TODO motion-ref: validar con MCP 60FPS */
+    --m-fast:120ms; --m-base:200ms; --m-slow:320ms; --ease:cubic-bezier(.2,0,0,1);
+  }
+
+  /* ===== Meta-capa de presentación (no es la UI) ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1280px;margin:0 auto 40px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:820px}
+  .canvas-wrap{max-width:1000px;margin:0 auto 64px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;color:var(--sec);text-align:center;max-width:640px}
+  .canvas{position:relative;width:960px;background:#EFEBE4;border:1px solid #D9D2C7;border-radius:16px;overflow:hidden;flex-shrink:0}
+  .overlay{position:absolute;inset:0;pointer-events:none}
+
+  /* Anotación uxsnaps (estándar 26/07) */
+  .hand{position:absolute;font-family:var(--font-hand);font-size:11px;line-height:15px;letter-spacing:-.01em;color:var(--negro)} /* 11/15 y no 14/18: la monoespaciada es ~33% más ancha por carácter que la manuscrita que reemplazó, y las 165 anotaciones tienen ancho fijo — a 14px el texto pedía más líneas, crecía hacia abajo y se montaba sobre los frames. */
+  .hand.accent{color:var(--terracota-prof)}
+  .hand.dim{color:var(--lapiz)}
+
+  /* ===== Frame mobile 390px ===== */
+  .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
+
+  /* ===== Header ===== */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:var(--s1) var(--s3) var(--s2);flex-shrink:0}
+  .wordmark{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title);color:var(--terracota)} /* logotipo exento (WCAG 1.4.3) */
+  .avatar{position:relative;width:32px;height:32px;border-radius:var(--r-pill);background:var(--crema);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:500;color:var(--sec)}
+  /* Salvaguarda 1 de la Decisión A: estado de conexión visible sin abrir Cuenta */
+  /* terracota-prof, no terracota plena: es un gráfico chico sobre claro y tiene que
+     pasar 1.4.11 → #B04A2E s/blanco 5.43:1 ✅ (#DE7250 daría 2.86:1 ❌) */
+  .avatar .dot{position:absolute;right:-1px;top:-1px;width:10px;height:10px;border-radius:var(--r-pill);background:var(--terracota-prof);border:2px solid var(--blanco)}
+  .avatar .dot::after{content:"";position:absolute;inset:-4px;border-radius:var(--r-pill);border:1.5px solid var(--terracota-prof);opacity:0;animation:dot-ping 2.4s var(--ease) infinite}
+  @keyframes dot-ping{0%{transform:scale(.6);opacity:.7}70%,100%{transform:scale(1.4);opacity:0}}
+  @media (prefers-reduced-motion: reduce){ .avatar .dot::after{animation:none} }
+
+  /* Sub-header de pantalla apilada (Cuenta › Conexiones) */
+  .sub-header{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s2);flex-shrink:0}
+  .backbtn{width:var(--tap);height:var(--tap);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:-8px}
+  .backbtn svg{stroke:var(--negro);color:var(--negro)}
+  .sub-header .st{flex:1}
+  .sub-header h2{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title)}
+  .sub-header .crumb{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)} /* 7.51:1 ✅ */
+
+  /* ===== Hilo de chat ===== */
+  .thread{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
+  .divider{text-align:center;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);padding-top:var(--s1)}
+  .msg-row{display:flex;align-items:flex-end;gap:var(--s1);align-self:flex-start;max-width:324px}
+  /* El isotipo suelto contra el borde se leía cortado: sus arcos abren a la izquierda
+     y no tiene caja propia. Adentro de un disco blanco es un avatar, y rima con el
+     del usuario en el header. Va con los 4 arcos: la variante de 3 es sólo para
+     ≤24 px, donde el arco interno colapsa. */
+  .msg-row .quien{width:38px;height:38px;border-radius:99px;background:var(--blanco);
+                  box-shadow:0 1px 4px rgba(26,21,18,.06);display:flex;align-items:center;
+                  justify-content:center;flex-shrink:0}
+  .msg-row .quien svg{flex-shrink:0;stroke:var(--terracota);color:var(--terracota);fill:none}
+  .msg{max-width:300px;padding:12px var(--s2);font-size:var(--fs-body);line-height:var(--lh-body)}
+  .msg-odobi{background:var(--crema);border-radius:4px var(--r-m) var(--r-m) var(--r-m)} /* 16.37:1 ✅ */
+  .msg-user{align-self:flex-end;background:var(--negro);color:var(--crema);border-radius:var(--r-m) 4px var(--r-m) var(--r-m);max-width:300px;padding:12px var(--s2);font-size:var(--fs-body);line-height:var(--lh-body)}
+
+  /* ===== Sheet de permiso just-in-time ===== */
+  .scrim{position:absolute;inset:0;background:rgba(26,21,18,.32)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--blanco);border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--shadow-sheet);padding:var(--s1) var(--s2) var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+  .grabber{width:36px;height:4px;border-radius:var(--r-pill);background:var(--border);align-self:center;margin-bottom:var(--s1)}
+  .sheet h3{font-family:var(--font-display);font-size:var(--fs-title);line-height:var(--lh-title)}
+  .sheet .lead{font-size:var(--fs-body);line-height:var(--lh-body);color:var(--sec)} /* 7.51:1 ✅ */
+  .scope-list{display:flex;flex-direction:column;gap:var(--s1)}
+  .scope-row{display:flex;align-items:center;gap:var(--s2);min-height:var(--tap)}
+  .tile{width:42px;height:42px;border-radius:var(--r-s);background:var(--arena-30);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tile svg{stroke:var(--negro);color:var(--negro)} /* 14.56:1 s/arena-30 ✅ */
+  .scope-row .v{flex:1;font-size:var(--fs-body);line-height:var(--lh-body)}
+  .scope-row .v small{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  /* Lo que el permiso DESBLOQUEA — el corazón del just-in-time */
+  .pending{display:flex;gap:var(--s1);align-items:flex-start;background:var(--crema);border-radius:var(--r-s);padding:12px var(--s2);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)} /* 6.79:1 ✅ */
+  .pending svg{flex-shrink:0;stroke:var(--sec);color:var(--sec);margin-top:1px}
+  .pending b{color:var(--negro);font-weight:500}
+  .sheet-actions{display:flex;flex-direction:column;gap:var(--s1)}
+  .btn-confirm{min-height:var(--tap);background:var(--terracota);color:var(--blanco);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:var(--fs-btn);line-height:var(--lh-btn)} /* regla 28/07 v2 ✅ */
+  .btn-cancel{min-height:var(--tap);background:transparent;color:var(--negro);border:1px solid var(--border);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;font-size:var(--fs-body);font-weight:500}
+
+  /* ===== Mi día ===== */
+  .day{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s1)} /* gap 8: las tarjetas son un grupo (Gestalt), igual que el 09 */
+  /* Anatomía de Mi día — IDÉNTICA al 09 (rev. 31/07). Antes este lane dibujaba
+     Mi día con clases propias (.greet display 28, .card, .chip-act): dos anatomías
+     para la MISMA pantalla en el mismo deck. Ahora reusa portada + aviso + acción
+     única. Se cae también el saludo: el 09 no tiene, y M5 lo eliminó del chat. */
+  .b-date{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);padding:var(--s1) var(--s1) 0}
+  .portada{background:var(--crema);border-radius:var(--r-m);padding:var(--s2) var(--s2) var(--s1)}
+  .p-label{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-bottom:var(--s1)}
+  .p-main{display:flex;align-items:baseline;gap:var(--s1)}
+  .p-big{font-family:var(--font-display);font-size:var(--fs-display);line-height:var(--lh-display)} /* 16.37:1 s/crema ✅ */
+  /* el tablero admite que su propio dato está incompleto — la misma honestidad que
+     exige C2: si una tarjeta dice que faltan cobros, la cifra no puede fingir estar entera */
+  .p-partial{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-top:4px} /* 6.79:1 s/crema ✅ */
+  .p-rows{display:flex;gap:var(--s3);margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--border)}
+  .p-item{flex:1;padding-bottom:var(--s1)}
+  .p-item span{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .p-item b{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+  .aviso{background:var(--blanco);border-radius:var(--r-m);padding:var(--s2);box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .aviso-top{display:flex;gap:12px;align-items:flex-start}
+  .aviso p{font-size:var(--fs-body);line-height:var(--lh-body)}
+  .aviso p b{font-weight:500}
+  .aviso-action{display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 20px;margin-top:var(--s2);border-radius:var(--r-pill);background:var(--terracota);color:var(--blanco);font-weight:500;font-size:16px;line-height:1} /* 19/08: la acción de tarjeta pasa de link a pill con el MISMO fill que el mic — lo tocable se ve igual en toda la app (Decisión B). Contraste 3,17:1 anotado, no cerrado. */
+  .sec-label{display:flex;align-items:center;gap:var(--s1);padding:0 var(--s1);font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--sec)} /* 7.51:1 ✅ */
+  .sec-label svg{stroke:var(--sec);color:var(--sec)} /* monograma: Odobi habla acá */
+                
+  /* ===== Lista de conexiones (Cuenta › Conexiones) ===== */
+  .list{flex:1;overflow:hidden;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
+  .conn{background:var(--blanco);border-radius:var(--r-m);box-shadow:0 4px 18px rgba(26,21,18,.07);overflow:hidden}
+  .conn-head{display:flex;align-items:center;gap:var(--s2);padding:var(--s2)}
+  .conn-head .v{flex:1}
+  .conn-head .v .n{font-size:var(--fs-body);line-height:var(--lh-body);font-weight:500}
+  .conn-head .v small{display:block;font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .conn-head .estado{font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:500;color:var(--sec);background:var(--crema);padding:4px 12px;border-radius:var(--r-pill);flex-shrink:0} /* 6.79:1 ✅ — estado es feedback */
+  .conn-scope{display:flex;gap:var(--s1);align-items:flex-start;padding:0 var(--s2) var(--s2);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .conn-scope svg{flex-shrink:0;stroke:var(--sec);color:var(--sec);margin-top:1px}
+  .conn-foot{border-top:1px solid var(--border);min-height:var(--tap);display:flex;align-items:center;gap:var(--s1);padding:0 var(--s2);font-size:var(--fs-caption);font-weight:500;color:var(--terracota-prof)} /* tocable 5.43:1 ✅ */
+  .conn-foot svg{stroke:var(--terracota-prof);color:var(--terracota-prof)}
+  .note{display:flex;gap:var(--s1);align-items:flex-start;padding:0 var(--s1);font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec)}
+  .note svg{flex-shrink:0;stroke:var(--sec);color:var(--sec);margin-top:1px}
+
+  /* ===== Barra de input + tabbar ===== */
+  .inputbar{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex-shrink:0}
+  .textfield{flex:1;height:52px;border-radius:var(--r-pill);display:flex;align-items:center;padding:0 var(--s2);font-size:var(--fs-body);color:var(--sec);background:var(--blanco);box-shadow:0 3px 12px rgba(26,21,18,.08)}
+  .micbtn{width:52px;height:52px;border-radius:var(--r-pill);background:var(--terracota);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(222,114,80,.4)}
+  .micbtn svg{stroke:var(--blanco);color:var(--blanco)}   /* ===== Asidero / peek (rev. 16/08 — reemplaza a la tabbar de la Decisión A) ===== */
+  .grip{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0 2px;flex-shrink:0}
+  .grip .bar{width:44px;height:5px;border-radius:3px;background:#DDD5C9}
+  .grip .txt{font-size:11px;letter-spacing:.02em;color:var(--sec)} /* 6.44:1 ✅ — SIN opacity encima */
+  .ctx-mini{display:flex;justify-content:center;font-size:11px;color:var(--sec);padding-bottom:2px}
+
+  /* ===== Íconos Phosphor (19/08) — reemplazan a Iconoir =====
+     Phosphor viene OUTLINEADO: es `fill`, no `stroke`. Se lo reconoce por su viewBox
+     nativo de 256. El isotipo de Odobi sí es `stroke` y conserva el suyo, así que las
+     dos técnicas conviven sin pisarse. El color va por `currentColor`: cada contenedor
+     lo fija con `color`, que es lo que ya hereda el isotipo por `stroke`. */
+  svg[viewBox="0 0 256 256"]{fill:currentColor;stroke:none}
+
+  /* ── portada, gramática Monzo (19/08) ────────────────────────────
+     El bloque negro es EL golpe de color de la pantalla: separa planos con color en
+     vez de con líneas, que es lo que hacía falta cuando el lienzo blanco y las cards
+     blancas obligaban a un borde de 1 px alrededor de todo.
+     Detrás asoma una card blanca del MISMO ancho que baja hasta la mitad por detrás
+     (su borde inferior queda tapado, no recortado). Trae wordmark y fecha: los
+     números quedan fechados dentro del objeto que los muestra. */
+  .stack{position:relative;padding-top:52px}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);
+         display:flex;align-items:baseline;justify-content:space-between}
+  .atras .wm{font-family:var(--font-display);font-size:20px;color:var(--terracota);letter-spacing:-.01em}
+  .atras .fch{font-size:var(--fs-caption);color:var(--sec)}
+  .portada{position:relative;z-index:1;background:var(--negro)!important;color:var(--crema);
+           border-radius:var(--r-xl);padding:26px 20px 22px;
+           box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .portada .p-lbl,.portada .p-item span{color:var(--arena)}
+  .portada .p-big{font-size:40px;line-height:1;letter-spacing:-.02em}
+  .portada .p-delta{color:var(--crema);background:rgba(247,243,236,.10);
+                    border-radius:var(--r-pill);padding:5px 11px;transform:translateY(-7px)}
+  .portada .p-rows{border-top:none;gap:var(--s1)}
+  .portada .p-item{background:rgba(247,243,236,.07);border-radius:var(--r-s);padding:10px 12px}
+  .portada .p-item b{color:var(--crema)}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>02 · Conexiones — el permiso se pide cuando hace falta (29/07)</h1>
+  <p>Conectar no es una pantalla de setup: es un momento de la conversación. Lane 1 — <strong>just-in-time consent</strong> (IF Design Patterns Catalogue): el pedido choca con un servicio no conectado, Odobi lo dice con el guión §5 LITERAL («Eso no lo puedo ver todavía…») y el permiso aparece <em>en contexto</em>, nombrando lo que desbloquea. Lane 2 — la <strong>salvaguarda</strong> de la Decisión A: si una conexión se cae, no se entera solo quien abre Cuenta — hay tarjeta en Mi día y puntito en el avatar. Lane 3 — el destino estable: <strong>Cuenta › Conexiones</strong>, con alcance y corte a un tap. Fundamentos en <code>DECISIONES.md</code>.</p>
+</div>
+
+<!-- ================= LANE 1 · JUST-IN-TIME CONSENT ================= -->
+<div class="canvas-wrap" id="lane1">
+  <span class="lane-tag">1 · Just-in-time consent — el permiso llega con el pedido, no antes</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:05</span><span>●●●</span></div>
+      <div class="app-header">
+                <span class="avatar">M</span>
+      </div>
+      <div class="thread">
+        <div class="divider">Martes</div>
+        <div class="msg-user">¿Cuánto entró esta semana?</div>
+        <div class="msg-row">
+          <!-- monograma "la o que habla" -->
+          <!-- isotipo Odobi (David) — 3 arcos, variante chica --><svg width="18" height="18" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+          <div class="msg msg-odobi">Eso no lo puedo ver todavía — no tenés conectado Mercado Pago. Si lo conectás, te respondo esa y te aviso cada cobro que entre.</div>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+
+      <!-- sheet de permiso: aparece SOBRE la conversación, sin sacarte de ella -->
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grabber"></div>
+        <h3>Conectar Mercado Pago</h3>
+        <p class="lead">Esto es lo que voy a poder hacer:</p>
+        <div class="scope-list">
+          <div class="scope-row">
+            <div class="tile"><!-- phosphor: wallet --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm0,128H56a8,8,0,0,1-8-8V78.63A23.84,23.84,0,0,0,56,80H216Zm-48-60a12,12,0,1,1,12,12A12,12,0,0,1,168,132Z"/></svg></div>
+            <span class="v">Leer tus cobros y movimientos<small>Solo lectura</small></span>
+          </div>
+          <div class="scope-row">
+            <div class="tile"><!-- phosphor: file-text --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></svg></div>
+            <span class="v">Armar links de cobro cuando vos confirmás<small>Nunca sin tu OK</small></span>
+          </div>
+        </div>
+        <div class="pending">
+          <!-- phosphor: arrows-clockwi --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>
+          <span>Apenas conectes sigo con lo tuyo: <b>cuánto entró esta semana</b>.</span>
+        </div>
+        <div class="sheet-actions">
+          <div class="btn-confirm">Conectar</div>
+          <div class="btn-cancel">Ahora no</div>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah1-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah1-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al mensaje del usuario -->
+      <path d="M712,170 C686,178 664,186 648,192" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a la respuesta de Odobi -->
+      <path d="M245,250 C276,256 298,262 314,268" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al título del sheet -->
+      <path d="M712,470 C686,478 664,486 648,492" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- a las filas de alcance -->
+      <path d="M245,580 C276,586 298,592 314,598" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah1-dim)"/>
+      <!-- a la fila "sigo con lo tuyo" -->
+      <path d="M712,660 C686,670 664,680 648,688" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+      <!-- al botón Conectar -->
+      <path d="M245,790 C278,788 302,786 322,784" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah1-hot)"/>
+      <!-- a "Ahora no" -->
+      <path d="M712,860 C686,858 664,856 648,852" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah1)"/>
+    </svg>
+
+    <div class="hand" style="left:716px;top:120px;width:215px">el permiso nunca arranca en un menú: arranca en un pedido real del usuario. Es el disparador del just-in-time consent (IF Catalogue).</div>
+    <div class="hand" style="left:24px;top:190px;width:215px">guión §5 LITERAL: «Eso no lo puedo ver todavía — no tenés conectado Mercado Pago…» No sabe → lo dice, con la salida en la misma frase. Cero "no puedo ayudarte con eso".</div>
+    <div class="hand" style="left:716px;top:410px;width:215px">el sheet sube SOBRE la conversación: el hilo sigue ahí atrás. Conectar no te expulsa a Ajustes y te deja volviendo a escribir lo mismo.</div>
+    <div class="hand dim" style="left:24px;top:520px;width:210px">alcance en dos filas, en criollo y en verbos: qué lee, qué escribe y con qué condición ("Nunca sin tu OK"). Los tiles arena son identidad, no tocables.</div>
+    <div class="hand" style="left:716px;top:600px;width:215px">la pata que hace "just-in-time" a esto: el permiso NOMBRA lo que desbloquea. No pedís un permiso abstracto — pagás por una respuesta que ya querías.</div>
+    <div class="hand accent" style="left:24px;top:760px;width:215px">un solo primario, y dice el acto: "Conectar". Terracota = tocable (Decisión B) — lo único terracota del sheet.</div>
+    <div class="hand" style="left:716px;top:820px;width:215px">"Ahora no" del mismo tamaño: negar no cuesta más que aceptar. Se vuelve al hilo y la pregunta queda sin responder — honesto, no castigado.</div>
+  </div>
+  <p class="lane-sub">Martes 21, 10:05. El único momento en que Odobi pide un permiso es cuando le hace falta para lo que le pediste — y lo dice. Terracota ≈4% (botón + mic + borde del input tapados por el scrim).</p>
+</div>
+
+<!-- ================= LANE 2 · SALVAGUARDA: LA CONEXIÓN SE CAYÓ ================= -->
+<div class="canvas-wrap" id="lane2">
+  <span class="lane-tag">2 · Salvaguarda — conexión caída: tarjeta en Mi día + puntito en el avatar</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:06</span><span>●●●</span></div>
+      <div class="app-header">
+                <span class="avatar">M<span class="dot"></span></span>
+      </div>
+      <div class="day">
+        <div class="b-date">Martes 21 · Hoy</div>
+        <!-- La portada queda siempre (decisión del 09) — pero con Mercado Pago caído
+             NO puede fingir estar completa: la cifra viene con su propia advertencia. -->
+        <div class="stack">
+        <div class="atras"><span class="wm">Odobi</span></div>
+        <div class="portada">
+          <div class="p-label">Entró esta semana</div>
+          <div class="p-main"><span class="p-big">$96.000</span></div>
+          <div class="p-partial">faltan los cobros de hoy — Mercado Pago está caído</div>
+          <div class="p-rows">
+            <div class="p-item"><span>Salió</span><b>$71.000</b></div>
+            <div class="p-item"><span>Te queda</span><b>$25.000</b></div>
+            <div class="p-item"><span>Por cobrar</span><b>$120.000</b></div>
+          </div>
+        </div>
+        </div>
+        <div class="sec-label">PARA HOY</div>
+        <div class="aviso">
+          <div class="aviso-top">
+            <div class="tile"><!-- phosphor: wifi-s --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.92,210.62a8,8,0,1,1-11.84,10.76l-52-57.15a60,60,0,0,0-57.41,7.24,8,8,0,1,1-9.42-12.93A75.43,75.43,0,0,1,128,144c1.28,0,2.55,0,3.82.1L104.9,114.49A108,108,0,0,0,61,135.31,8,8,0,0,1,49.73,134,8,8,0,0,1,51,122.77a124.27,124.27,0,0,1,41.71-21.66L69.37,75.4a155.43,155.43,0,0,0-40.29,24A8,8,0,0,1,18.92,87,171.87,171.87,0,0,1,58,62.86L42.08,45.38A8,8,0,1,1,53.92,34.62ZM128,192a12,12,0,1,0,12,12A12,12,0,0,0,128,192ZM237.08,87A172.3,172.3,0,0,0,106,49.4a8,8,0,1,0,2,15.87A158.33,158.33,0,0,1,128,64a156.25,156.25,0,0,1,98.92,35.37A8,8,0,0,0,237.08,87ZM195,135.31a8,8,0,0,0,11.24-1.3,8,8,0,0,0-1.3-11.24,124.25,124.25,0,0,0-51.73-24.2A8,8,0,1,0,150,114.24,108.12,108.12,0,0,1,195,135.31Z"/></svg></div>
+            <p>Se me cayó la conexión con <b>Mercado Pago</b>, así que los cobros de hoy pueden estar incompletos. Te aviso apenas vuelva.</p>
+          </div>
+          <div class="aviso-action">Reconectá Mercado Pago →</div>
+        </div>
+        <div class="aviso">
+          <div class="aviso-top">
+            <div class="tile"><!-- phosphor: fil --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></svg></div>
+            <p><b>Gómez SRL</b> debe la factura A-0034 (<b>$120.000</b>). Venció hace 27 días.</p>
+          </div>
+          <div class="aviso-action">Reclamá el pago →</div>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+          <!-- phosphor: mi --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah2-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah2-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al puntito del avatar -->
+      <path d="M712,130 C688,126 668,124 654,122" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah2-hot)"/>
+      <!-- al saludo / label de sección -->
+      <path d="M245,230 C276,234 298,238 314,242" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah2-dim)"/>
+      <!-- a la tarjeta de caída -->
+      <path d="M712,330 C688,352 668,378 652,396" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al texto del guión -->
+      <path d="M245,450 C276,440 300,424 322,414" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- a "Reconectar" -->
+      <path d="M712,540 C680,520 640,492 600,474" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah2-hot)"/>
+      <!-- a la segunda tarjeta -->
+      <path d="M245,650 C276,654 298,658 314,662" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah2)"/>
+      <!-- al composer -->
+      <path d="M712,820 C686,824 664,828 648,832" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah2-dim)"/>
+    </svg>
+
+    <div class="hand accent" style="left:716px;top:80px;width:215px">salvaguarda 1 de la Decisión A: si Conexiones vive dentro de Cuenta, el estado tiene que salir a la superficie. Puntito terracota en el avatar = "hay algo tuyo que mirar".</div>
+    <div class="hand dim" style="left:24px;top:190px;width:210px">Mi día es la portada: la caída entra como una tarjeta más del día, no como un modal que te bloquea al abrir la app. Anatomía idéntica al 09 — una sola pantalla, un solo dibujo.</div>
+    <div class="hand accent" style="left:24px;top:296px;width:212px">y la cifra lo admite: "faltan los cobros de hoy". Un tablero que dice que falta data y arriba muestra un número entero, miente (la misma lección de C2).</div>
+    <div class="hand" style="left:716px;top:270px;width:215px">salvaguarda 2: la conexión caída se avisa donde el usuario ya mira. Encabeza la lista porque le está costando plata que no ve.</div>
+    <div class="hand" style="left:24px;top:390px;width:215px">guión §5 LITERAL: «Se me cayó la conexión con Mercado Pago, así que los cobros de hoy pueden estar incompletos. Te aviso apenas vuelva.» Error frontal + consecuencia + qué hace él.</div>
+    <div class="hand accent" style="left:716px;top:490px;width:215px">la acción abre el mismo sheet del lane 1 — un solo componente de consentimiento en toda la app. UNA sola acción por tarjeta, como manda el 09: dos diluyen sin reconectar todavía.</div>
+    <div class="hand" style="left:24px;top:610px;width:215px">el día sigue: la caída no secuestra la pantalla. Una tarjeta de infraestructura y una de negocio conviven, con la misma anatomía.</div>
+    <div class="hand dim" style="left:716px;top:782px;width:215px">Conexiones no compite en la nav: es una <b>pantalla de Cuenta</b>, a la que se entra por el avatar — y por eso necesita estas dos salvaguardas para no quedar enterrada (rev. 16/08: la nav de 3 tabs quedó reemplazada por el modelo de capas).</div>
+  </div>
+  <p class="lane-sub">Martes 21, 10:06. Odobi no espera a que preguntes por qué faltan cobros: avisa, dice qué se rompió y qué queda incompleto. Terracota ≈5% (puntito + 2 links de acción + mic + borde del input + tab activa).</p>
+</div>
+
+<!-- ================= LANE 3 · CUENTA › CONEXIONES ================= -->
+<div class="canvas-wrap" id="lane3">
+  <span class="lane-tag">3 · Cuenta › Conexiones — el destino estable: alcance y corte</span>
+  <div class="canvas" style="height:950px">
+
+    <div class="phone">
+      <div class="statusbar"><span>10:12</span><span>●●●</span></div>
+      <div class="sub-header">
+        <div class="backbtn"><!-- phosphor: icono --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg></div>
+        <div class="st">
+          <div class="crumb">Cuenta</div>
+          <h2>Conexiones</h2>
+        </div>
+      </div>
+      <div class="list">
+
+        <div class="conn">
+          <div class="conn-head">
+            <div class="tile"><!-- phosphor --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm0,128H56a8,8,0,0,1-8-8V78.63A23.84,23.84,0,0,0,56,80H216Zm-48-60a12,12,0,1,1,12,12A12,12,0,0,1,168,132Z"/></svg></div>
+            <div class="v">
+              <div class="n">Cobrar</div>
+              <small>Mercado Pago · reconectado 10:07</small>
+            </div>
+            <span class="estado">Al día</span>
+          </div>
+          <div class="conn-scope">
+            <!-- phosphor --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z"/></svg>
+            <span>Leo cobros y movimientos. Armo links de cobro solo cuando confirmás.</span>
+          </div>
+          <div class="conn-foot">
+            <!-- phosphor --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M198.63,57.37a32,32,0,0,0-45.19-.06L141.79,69.52a8,8,0,0,1-11.58-11l11.72-12.29a1.59,1.59,0,0,1,.13-.13,48,48,0,0,1,67.88,67.88,1.59,1.59,0,0,1-.13.13l-12.29,11.72a8,8,0,0,1-11-11.58l12.21-11.65A32,32,0,0,0,198.63,57.37ZM114.21,186.48l-11.65,12.21a32,32,0,0,1-45.25-45.25l12.21-11.65a8,8,0,0,0-11-11.58L46.19,141.93a1.59,1.59,0,0,0-.13.13,48,48,0,0,0,67.88,67.88,1.59,1.59,0,0,0,.13-.13l11.72-12.29a8,8,0,1,0-11.58-11ZM216,152H192a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16ZM40,104H64a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm120,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V192A8,8,0,0,0,160,184ZM96,72a8,8,0,0,0,8-8V40a8,8,0,0,0-16,0V64A8,8,0,0,0,96,72Z"/></svg>
+            Cortar
+          </div>
+        </div>
+
+        <div class="conn">
+          <div class="conn-head">
+            <div class="tile"><!-- phosphor --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></svg></div>
+            <div class="v">
+              <div class="n">Mail · Agenda · Archivos</div>
+              <small>Google — Gmail, Calendar, Drive, Docs, Sheets</small>
+            </div>
+            <span class="estado">Al día</span>
+          </div>
+          <div class="conn-scope">
+            <!-- phosphor --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z"/></svg>
+            <span>Leo mails, agenda y archivos del negocio. Mando mails solo cuando confirmás.</span>
+          </div>
+          <div class="conn-foot">
+            <!-<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M198.63,57.37a32,32,0,0,0-45.19-.06L141.79,69.52a8,8,0,0,1-11.58-11l11.72-12.29a1.59,1.59,0,0,1,.13-.13,48,48,0,0,1,67.88,67.88,1.59,1.59,0,0,1-.13.13l-12.29,11.72a8,8,0,0,1-11-11.58l12.21-11.65A32,32,0,0,0,198.63,57.37ZM114.21,186.48l-11.65,12.21a32,32,0,0,1-45.25-45.25l12.21-11.65a8,8,0,0,0-11-11.58L46.19,141.93a1.59,1.59,0,0,0-.13.13,48,48,0,0,0,67.88,67.88,1.59,1.59,0,0,0,.13-.13l11.72-12.29a8,8,0,1,0-11.58-11ZM216,152H192a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16ZM40,104H64a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm120,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V192A8,8,0,0,0,160,184ZM96,72a8,8,0,0,0,8-8V40a8,8,0,0,0-16,0V64A8,8,0,0,0,96,72Z"/></svg>
+            Cortar
+          </div>
+        </div>
+
+        <div class="note">
+     <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>
+          <span>Si cortás una conexión, antes te digo qué dejo de poder hacer. Nada se borra: dejo de mirar.</span>
+        </div>
+      </div>
+      <div class="inputbar">
+        <div class="textfield">Escribile a Odobi…</div>
+        <div class="micbtn">
+         <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <svg class="overlay" viewBox="0 0 960 950" fill="none">
+      <defs>
+        <marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1A1512" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah3-hot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
+        </marker>
+        <marker id="ah3-dim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#8A7F73" stroke-width="1.6"/>
+        </marker>
+      </defs>
+      <!-- al back + breadcrumb -->
+      <path d="M245,150 C276,146 298,142 314,140" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al estado "Al día" -->
+      <path d="M712,240 C686,244 664,248 648,252" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- a la línea de alcance -->
+      <path d="M245,360 C276,354 298,348 314,344" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah3-dim)"/>
+      <!-- a "Cortar" -->
+      <path d="M712,430 C684,420 660,410 642,404" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah3-hot)"/>
+      <!-- a la tarjeta de Google -->
+      <path d="M245,560 C276,556 298,552 314,548" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- a la nota final -->
+      <path d="M712,700 C686,706 664,712 648,718" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al input -->
+      <path d="M245,800 C278,806 302,810 322,814" stroke="#8A7F73" stroke-width="1.5" marker-end="url(#ah3-dim)"/>
+    </svg>
+
+    <div class="hand" style="left:24px;top:110px;width:215px">pantalla apilada sobre la app: se entra desde el avatar (Cuenta) y se vuelve con la flecha. El breadcrumb "Cuenta" dice dónde estás parado — patrón Gmail/YouTube.</div>
+    <div class="hand" style="left:716px;top:190px;width:215px">estado en píldora crema, en gris (no terracota): saber cómo está una conexión es feedback, no una acción. Decisión B — si es terracota, pasa algo al tocarlo.</div>
+    <div class="hand dim" style="left:24px;top:290px;width:210px">el alcance se repite acá con las mismas palabras del sheet: lo que aceptaste en el momento se puede releer después, sin ir a buscar un PDF de términos.</div>
+    <div class="hand accent" style="left:716px;top:390px;width:215px">"Cortar" — una palabra, un tap, siempre visible. La revocación tiene que ser tan barata como el otorgamiento: es lo que hace legítimo pedir en contexto.</div>
+    <div class="hand" style="left:24px;top:500px;width:215px">6 servicios del catálogo real, 2 tarjetas: la lista se organiza por PERMISO (lo que el usuario otorga), no por integración técnica. Los sub-textos nombran los 6.</div>
+    <div class="hand" style="left:716px;top:650px;width:215px">antes de cortar, Odobi dice qué deja de poder hacer — la consecuencia va antes de la decisión, igual que en el HITL del 04. Y aclara que no borra nada.</div>
+    <div class="hand dim" style="left:24px;top:770px;width:215px">el input+mic no desaparece ni en Ajustes: hablarle es la vía principal en cualquier pantalla ("cortá Mercado Pago" también se puede decir).</div>
+  </div>
+  <p class="lane-sub">Martes 21, 10:12 — Mercado Pago ya reconectado desde la tarjeta del lane 2. Conexiones es una pantalla de lectura y corte, no el lugar donde se conecta por primera vez: eso pasa donde hace falta. Terracota ≈4%.</p>
+</div>
+
+</body>
+</html>

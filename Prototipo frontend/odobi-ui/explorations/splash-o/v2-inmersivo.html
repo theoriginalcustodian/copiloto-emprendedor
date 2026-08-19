@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi UI — Exploración · Splash v2: formas que nacen del centro → la O</title>
+<style>
+  /* ============================================================
+     EXPLORACIÓN · SPLASH v2 (29/07/2026) — rev. 2
+     Parte 1: formas que NACEN EN EL CENTRO, crecen y salen del
+     frame; adentro ya nació la siguiente (secuencia atoms que
+     pasó Martin). Familia circular homogénea pero no idéntica,
+     paleta Odobi.
+     Rev. 2 (pedidos de Martin 29/07):
+       · la última forma no se contrae al centro de la pantalla:
+         se dirige al lugar EXACTO donde va a quedar la O dentro
+         del lockup "Odobi" (a la izquierda del centro óptico);
+       · d·o·b·i entran con BOUNCE, desde la derecha, en orden;
+       · 4 tempos para elegir (la versión larga, más lenta).
+     TODO motion-ref: validar timings con MCP 60FPS.
+     ============================================================ */
+  @font-face {
+    font-family: "PlusJakartaSans";
+    src: url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  :root {
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088;
+    --sec:#5C534C;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --r-pill:999px;
+    --ease:cubic-bezier(.2,0,0,1);
+    --ease-blob:cubic-bezier(.5,0,.2,1);       /* arranca contenida, acelera, frena */
+    --ease-collapse:cubic-bezier(.32,0,.16,1); /* el inverso: se va posando */
+    --ease-bounce:cubic-bezier(.24,1.62,.4,1); /* rebote de las letras */
+    /* ===== PERILLAS (las mueven los botones de tempo) ===== */
+    --grow:1150ms; --collapse:900ms; --settle:520ms; --letter:520ms;
+  }
+
+  /* ===== Meta-capa de presentación ===== */
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 64px}
+  .page-head{max-width:1080px;margin:0 auto 32px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:8px}
+  .page-head p{font-size:14px;line-height:20px;color:var(--sec);max-width:860px}
+  .lanes{max-width:1080px;margin:0 auto 40px;display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
+  .lane{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .lane-tag{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--negro);color:var(--crema);padding:6px 14px;border-radius:999px}
+  .lane-sub{font-size:13px;line-height:18px;color:var(--sec);text-align:center;max-width:420px}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:440px}
+  .ctl{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;padding:6px 18px;border:1px solid #C9C1B4;border-radius:var(--r-pill);background:var(--blanco);font-family:var(--font-ui);font-size:14px;font-weight:500;color:var(--negro);cursor:pointer}
+  .ctl small{font-size:11px;font-weight:400;color:var(--sec)}
+  .ctl:hover{background:var(--crema)}
+  .ctl[aria-pressed="true"]{background:var(--negro);color:var(--crema);border-color:var(--negro)}
+  .ctl[aria-pressed="true"] small{color:var(--arena)}
+  .ctl:focus-visible{outline:2px solid var(--terracota-prof);outline-offset:2px}
+  .spec{max-width:1080px;margin:0 auto;background:var(--blanco);border:1px solid #D9D2C7;border-radius:16px;padding:24px 32px}
+  .spec h2{font-family:var(--font-display);font-size:20px;line-height:24px;margin-bottom:12px}
+  .spec ol{margin-left:20px;display:flex;flex-direction:column;gap:8px}
+  .spec li{font-size:14px;line-height:20px;color:var(--sec)}
+  .spec b{color:var(--negro);font-weight:500}
+  .spec .warn{margin-top:16px;padding:12px 16px;background:var(--crema);border-radius:8px;font-size:13px;line-height:18px;color:var(--sec)}
+
+  /* ===== Frame mobile 390px ===== */
+  .phone{position:relative;width:390px;height:844px;background:linear-gradient(180deg,#FFFFFF 0%,#F7F3EC 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden}
+  .statusbar{position:absolute;left:0;right:0;top:0;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;z-index:60;color:#FFFFFF;mix-blend-mode:difference} /* difference: negro sobre claro, blanco sobre oscuro */
+
+  /* ===== PARTE 1 · formas que nacen del centro ===== */
+  .blob{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;opacity:0;transform:translate(0,0) scale(.04) rotate(var(--r0,0deg));will-change:transform}
+  .play .blob{animation:blob-grow var(--grow) var(--ease-blob) var(--d,0ms) forwards}
+  @keyframes blob-grow{
+    0%{opacity:0;transform:translate(0,0) scale(.04) rotate(var(--r0,0deg))}
+    5%{opacity:1}
+    100%{opacity:1;transform:translate(0,0) scale(7.8) rotate(var(--r1,0deg))}
+  }
+  /* familia circular: parecidas, no idénticas */
+  .s-circle  {border-radius:50%}
+  .s-squircle{border-radius:34%}
+  .s-super   {border-radius:58% 42% 47% 53% / 47% 55% 45% 53%}
+  .s-egg     {border-radius:46% 54% 52% 48% / 53% 46% 54% 47%}
+  .s-scallop {clip-path:url(#scallop)}
+
+  /* Fondo final: degradé vertical blanco → crema (decisión Martin 29/07) */
+  .finalbg{position:absolute;inset:0;background:linear-gradient(180deg,#FFFFFF 0%,#F7F3EC 100%);opacity:0}
+  .play .finalbg{animation:bg-in var(--collapse) linear var(--dcbg,0ms) forwards}
+  @keyframes bg-in{to{opacity:1}}
+
+  /* La última forma NO sale: se contrae y ADEMÁS se desplaza hasta el lugar
+     exacto que va a ocupar la O dentro del lockup (izquierda del centro). */
+  .play .blob.last{animation:
+    blob-grow var(--grow) var(--ease-blob) var(--d,0ms) forwards,
+    blob-collapse var(--collapse) var(--ease-collapse) var(--dc,0ms) forwards}
+  @keyframes blob-collapse{
+    0%{opacity:1;transform:translate(0,0) scale(7.8) rotate(var(--r1,0deg))}
+    72%{opacity:1}
+    100%{opacity:0;transform:translate(var(--ox,0px),0) scale(.33) rotate(0deg)}
+  }
+
+  /* ===== PARTE 2 · el wordmark ===== */
+  .stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:40}
+  /* el lockup sube para dejarle aire al subtítulo y a los botones */
+  .lockup{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .st-final .lockup{animation:lockup-up 760ms var(--ease) forwards}
+  @keyframes lockup-up{to{transform:translateY(-96px)}}
+  .word{position:relative;display:flex;align-items:baseline;font-family:var(--font-display);font-size:96px;line-height:1;color:var(--terracota);letter-spacing:-.01em} /* logotipo: exento WCAG 1.4.3 */
+  /* La O aparece YA en su lugar del lockup — es donde vino a posarse la forma */
+  .word .o{position:relative;display:block;opacity:0;transform:scale(1.06)}
+  .st-o .word .o{animation:o-appear var(--settle) var(--ease) forwards}
+  @keyframes o-appear{to{opacity:1;transform:scale(1)}}
+  /* d·o·b·i: entran desde la DERECHA, con rebote, en orden */
+  .word .rest{display:flex}
+  .word .rest span{display:block;opacity:0;transform:translateX(72px)}
+  .st-word .word .rest span{animation:letter-bounce var(--letter) var(--ease-bounce) forwards}
+  @keyframes letter-bounce{
+    0%{opacity:0;transform:translateX(72px)}
+    18%{opacity:1}
+    100%{opacity:1;transform:translateX(0)}
+  }
+
+  /* ===== PARTE 3 · subtítulo y acciones (fade in, en cadena) ===== */
+  @keyframes fade-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .tagline{font-family:var(--font-ui);font-size:16px;line-height:24px;font-weight:500;letter-spacing:.02em;color:var(--sec);opacity:0} /* #5C534C s/crema 6,79:1 ✅ */
+  .st-final .tagline{animation:fade-up 680ms var(--ease) 320ms forwards}
+
+  .actions{position:absolute;left:24px;right:24px;bottom:48px;display:flex;flex-direction:column;gap:8px;z-index:50}
+  /* DEUDA CERRADA (Martin 29/07, rev.3): se cae la excepción de Inter Medium 16.
+     Los botones aplican la regla dura del 28/07 v2 — fill #DE7250 + DISPLAY 20 Bold
+     blanco → 3,17:1 = AA texto grande ✅ (misma vía que "Cortar" en la escucha).
+     El ghost queda en Inter: sobre blanco tiene 16,37:1, no necesita la vía display. */
+  .btn{min-height:56px;border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;opacity:0}
+  .btn-primary{background:var(--terracota);color:var(--blanco);font-family:var(--font-display);font-size:20px;line-height:24px} /* 3,17:1 ✅ AA texto grande */
+  .btn-ghost{background:var(--blanco);border:1px solid #E8E2D9;color:var(--negro);font-family:var(--font-ui);font-size:16px;font-weight:500} /* 16,37:1 ✅ */
+  .caso-logout .btn-ghost{background:transparent;border-color:transparent;color:var(--terracota-prof)} /* 4,91:1 ✅ — salida secundaria, no una segunda puerta */
+  .st-final .btn-primary{animation:fade-up 620ms var(--ease) 900ms forwards}
+  .st-final .btn-ghost{animation:fade-up 620ms var(--ease) 1040ms forwards}
+
+  /* ===== CASO 3 · arranque 2..n: entrada corta, 420ms, abre en Mi día =====
+     No es el splash acelerado: es otra pieza. El splash construye identidad y se ve
+     una vez; esto sólo cubre la latencia de carga y se ve todos los días. Por eso
+     la O sola con las ondas, y no las 4 formas.
+     Timing (Martin 29/07: "menor latencia"): 420ms, bajado desde 700. No se sacó
+     ninguna onda — se acortó el recorrido (r 44→96, no 104) y se apretó el escalonado
+     (65ms, no 130). Las tres siguen leyéndose como disipación porque lo que la hace
+     legible es atravesar el degradé, no el tiempo que tardan en hacerlo. */
+  .mono{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;opacity:0;z-index:45}
+  .caso-diario.play .mono{animation:mono-in 420ms linear forwards}
+  @keyframes mono-in{0%{opacity:0}8%{opacity:1}86%{opacity:1}100%{opacity:0}}
+  /* la O entra con un escalón mínimo y se queda quieta: es el ancla, no el evento */
+  .mono-o{transform-box:view-box;transform-origin:110px 110px;opacity:0}
+  .caso-diario.play .mono-o{animation:mono-o-in 160ms var(--ease) forwards}
+  @keyframes mono-o-in{0%{opacity:0;transform:scale(.94)}100%{opacity:1;transform:scale(1)}}
+  /* las ondas: se anima el RADIO (no scale) para que atraviesen el degradé y se
+     disipen solas. El trazo adelgaza al alejarse: la onda se gasta, no se corta. */
+  .onda{opacity:0}
+  .caso-diario.play .w1{animation:onda 260ms var(--ease) 20ms  forwards}
+  .caso-diario.play .w2{animation:onda 260ms var(--ease) 85ms  forwards}
+  .caso-diario.play .w3{animation:onda 260ms var(--ease) 150ms forwards}
+  @keyframes onda{
+    0%  {r:44px; stroke-width:2.4px; opacity:0}
+    16% {opacity:1}
+    100%{r:96px; stroke-width:1.1px; opacity:0}
+  }
+  /* en la entrada corta no hay formas, ni wordmark, ni botones */
+  .caso-diario .blob,.caso-diario .stage,.caso-diario .actions,.caso-diario .finalbg{display:none}
+
+  @media (prefers-reduced-motion: reduce){
+    .play .blob{animation:none!important;opacity:0!important}
+    .word .o,.word .rest span{opacity:1!important;transform:none!important;animation:none!important}
+    .mono,.mono-o{opacity:1!important;animation:none!important;transform:none!important}
+    .onda{animation:none!important;opacity:.28!important} /* ondas quietas, sin recorrido */
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Exploración · Splash v2 (rev. 3) — la forma se posa donde va la O</h1>
+  <p>Parte 1: cada forma <b>nace chica en el centro</b>, crece y <b>sale del frame</b>; adentro ya nació la siguiente. Familia circular homogénea pero no idéntica, en crema · arena · terracota · terracota profundo · negro carbón. <b>Cambios de esta rev.:</b> la última forma, al hacer el camino inverso, no se contrae al centro de la pantalla — se dirige al <b>lugar exacto donde va a quedar la O</b> dentro de "Odobi" (a la izquierda del centro óptico, como en tu captura); y <b>d·o·b·i entran rebotando desde la derecha</b>, en orden. Abajo del frame, <b>4 tempos</b> para elegir. <b>60FPS MCP no respondió hoy: timings sin validar (TODO motion-ref).</b></p>
+</div>
+
+<div class="lanes">
+  <div class="lane">
+    <span class="lane-tag">Splash completo · versión larga (5 formas)</span>
+
+    <div class="phone" id="phone">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+
+      <!-- clip de la forma festoneada (12 lóbulos) -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs><clipPath id="scallop" clipPathUnits="objectBoundingBox"><path id="scallopPath" d=""/></clipPath></defs>
+      </svg>
+
+      <!-- PARTE 1 · orden = orden de nacimiento (la última queda arriba de todo) -->
+      <div class="blob s-scallop"  style="--r0:8deg;   --r1:-26deg; background:#1A1512"></div>
+      <div class="blob s-squircle" style="--r0:-12deg; --r1:34deg;  background:linear-gradient(160deg,#E8A088,#DE7250)"></div>
+      <div class="blob s-super"    style="--r0:-6deg;  --r1:22deg;  background:#FFFFFF"></div>
+
+      <!-- Fondo final: degradé vertical blanco→crema. Va en una capa SIN escalar
+           (si fuera el fill de una forma a scale 7.8, se vería un solo tono) y
+           entra mientras la terracota tapa todo: el cambio no se ve. -->
+      <div class="finalbg"></div>
+
+      <div class="blob s-egg last" style="--r0:10deg;  --r1:-16deg; background:linear-gradient(155deg,#DE7250,#B04A2E)"></div>
+
+      <!-- PARTE 2 · el wordmark -->
+      <div class="stage">
+        <div class="lockup">
+          <div class="word" id="word">
+            <span class="o" id="oGlyph">O</span>
+            <span class="rest" id="rest"><span>d</span><span>o</span><span>b</span><span>i</span></span>
+          </div>
+          <div class="tagline">Tu copiloto emprendedor</div>
+        </div>
+      </div>
+
+      <!-- CASO 3 · la O de Odobi + ondas que se disipan hacia afuera (Martin 29/07).
+           La O es el glifo REAL de Plus Jakarta Sans Bold, extraído del OTF como path
+           (mismo procedimiento que el wordmark del port a Rive): no depende de que
+           la fuente cargue ni de métricas del navegador.
+           El degradé es UN radialGradient en userSpaceOnUse centrado en la O: cada
+           onda, al crecer, atraviesa zonas más tenues del mismo campo y se disipa
+           sola. Por eso se animan los radios (r) y no un scale: con transform el
+           gradiente viajaría con la onda y no habría disipación. -->
+      <div class="mono" aria-hidden="true">
+        <svg viewBox="0 0 220 220" width="220" height="220">
+          <defs>
+            <radialGradient id="onda" gradientUnits="userSpaceOnUse" cx="110" cy="110" r="106">
+              <stop offset="0"   stop-color="#E8A088" stop-opacity=".90"/>
+              <stop offset=".42" stop-color="#E8A088" stop-opacity=".46"/>
+              <stop offset=".72" stop-color="#E8A088" stop-opacity=".17"/>
+              <stop offset="1"   stop-color="#E8A088" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle class="onda w1" cx="110" cy="110" r="44" fill="none" stroke="url(#onda)" stroke-width="2.4"/>
+          <circle class="onda w2" cx="110" cy="110" r="44" fill="none" stroke="url(#onda)" stroke-width="2.4"/>
+          <circle class="onda w3" cx="110" cy="110" r="44" fill="none" stroke="url(#onda)" stroke-width="2.4"/>
+          <!-- dos grupos a propósito: el de afuera lo anima CSS (scale), el de adentro
+               lleva el transform de posición. En el mismo elemento, el transform de CSS
+               pisa el atributo transform del SVG y la O se iría de lugar. -->
+          <g class="mono-o">
+            <g transform="translate(77.097 137.887) scale(0.77984)">
+              <path fill="#DE7250" fill-rule="nonzero" d="M42.144 1.152 C36.896 1.152 32.000 0.224 27.456 -1.632 C22.912 -3.488 18.944 -6.080 15.552 -9.408 C12.160 -12.736 9.520 -16.656 7.632 -21.168 C5.744 -25.680 4.800 -30.560 4.800 -35.808 C4.800 -41.120 5.728 -46.016 7.584 -50.496 C9.440 -54.976 12.064 -58.880 15.456 -62.208 C18.848 -65.536 22.816 -68.112 27.360 -69.936 C31.904 -71.760 36.832 -72.672 42.144 -72.672 C47.456 -72.672 52.384 -71.744 56.928 -69.888 C61.472 -68.032 65.440 -65.456 68.832 -62.160 C72.224 -58.864 74.864 -54.976 76.752 -50.496 C78.640 -46.016 79.584 -41.120 79.584 -35.808 C79.584 -30.560 78.624 -25.680 76.704 -21.168 C74.784 -16.656 72.128 -12.736 68.736 -9.408 C65.344 -6.080 61.392 -3.488 56.880 -1.632 C52.368 0.224 47.456 1.152 42.144 1.152 Z M42.144 -10.752 C45.664 -10.752 48.896 -11.376 51.840 -12.624 C54.784 -13.872 57.360 -15.616 59.568 -17.856 C61.776 -20.096 63.472 -22.752 64.656 -25.824 C65.840 -28.896 66.432 -32.224 66.432 -35.808 C66.432 -39.392 65.840 -42.704 64.656 -45.744 C63.472 -48.784 61.776 -51.440 59.568 -53.712 C57.360 -55.984 54.784 -57.728 51.840 -58.944 C48.896 -60.160 45.664 -60.768 42.144 -60.768 C38.688 -60.768 35.488 -60.160 32.544 -58.944 C29.600 -57.728 27.024 -55.984 24.816 -53.712 C22.608 -51.440 20.896 -48.784 19.680 -45.744 C18.464 -42.704 17.856 -39.392 17.856 -35.808 C17.856 -32.224 18.464 -28.896 19.680 -25.824 C20.896 -22.752 22.608 -20.096 24.816 -17.856 C27.024 -15.616 29.600 -13.872 32.544 -12.624 C35.488 -11.376 38.688 -10.752 42.144 -10.752 Z"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- PARTE 3 · las acciones (el label cambia según el caso: JS) -->
+      <div class="actions">
+        <div class="btn btn-primary" id="btnPrimary">Empecemos</div>
+        <div class="btn btn-ghost" id="btnGhost">Crear una nueva cuenta</div>
+      </div>
+    </div>
+
+    <div class="btnrow" id="casos"></div>
+    <div class="btnrow" id="tempos"></div>
+    <div class="btnrow" id="entradas"></div>
+    <div class="btnrow"><button class="ctl" id="replay">↺ Reproducir</button></div>
+    <p class="lane-sub">Fila 1 = <b>cuándo se ve</b>: el splash largo es sólo del primer ingreso y del post-logout; los arranques 2..n tienen su propia entrada de 400ms. Fila 2 = <b>ritmo</b> (Calmo ya es el definitivo). Fila 3 = <b>aparición</b>: cada cuánto nace la siguiente forma, como fracción de lo que tarda una en comerse la pantalla. Ninguna espera a que la anterior salga. Con "Arranque 2..n" el ritmo y la aparición no aplican: son 400ms fijos.</p>
+  </div>
+</div>
+
+<div class="spec">
+  <h2>Spec de motion (si se aprueba, se porta a Rive)</h2>
+  <ol>
+    <li><b>Parte 1 · el motor:</b> <b>4 formas</b> (decisión Martin 29/07 — con 5 la pieza se estiraba) de una misma familia circular, ninguna idéntica: festoneada de 12 lóbulos (path generado) · squircle (r 34%) · superelipse asimétrica · "huevo". Cada una nace en scale <b>.04</b> en el centro exacto y crece a <b>7,8</b> (se pasa del frame por los cuatro lados) con <code>cubic-bezier(.5,0,.2,1)</code>. Rotan entre −26° y +34° mientras crecen: ninguna repite el gesto.</li>
+    <li><b>Colores:</b> negro carbón <code>#1A1512</code> → arena→terracota (160°) → crema <code>#F7F3EC</code> → terracota→terracota profundo. Alternancia oscuro/cálido/claro; la tercera deja el fondo definitivo y la cuarta es la que se convierte en la O.</li>
+    <li><b>El giro · efecto inverso, dirigido:</b> la cuarta forma llega a pantalla completa y se contrae a scale <b>.33</b> <b>desplazándose hacia la posición final de la O</b> — <code>translateX = −(ancho de "dobi")/2</code>, calculado en runtime. No se posa en el centro de la pantalla: se posa donde va a estar la letra. Crossfade con la O de Plus Jakarta Sans Bold en el último tramo.</li>
+    <li><b>Parte 2 · el wordmark:</b> la O ya aparece <b>en su lugar del lockup</b> (no se corre después: la forma la trajo hasta ahí). <b>d·o·b·i</b> entran desde la derecha con <code>translateX 72→0</code> y rebote <code>cubic-bezier(.24,1.62,.4,1)</code>, en orden de lectura y con stagger. La palabra queda ópticamente centrada.</li>
+    <li><b>Tempo: CALMO — definitivo</b> (Martin 29/07): grow <b>1900ms</b> · colapso <b>1450ms</b> · settle <b>780ms</b> · stagger de letras <b>150ms</b> · rebote <b>720ms</b>. Los otros tres (Ágil / Sereno / Cine) quedan en el prototipo solo como comparación.</li>
+    <li><b>Aparición: DENSA — definitiva</b> (Martin 29/07). Ninguna forma espera a que la anterior salga: el stagger es una <b>fracción del grow</b> (.20 → 380ms con Calmo), así el solape no cambia si mañana se toca el ritmo. Encadenada (.44) y Solapada (.30) quedan en el prototipo solo como comparación.</li>
+    <li><b>Parte 3 · el aterrizaje:</b> cuando la "i" termina de rebotar, el lockup sube 96px (760ms) y entran en cadena, todo por fade + 10px: <b>"Tu copiloto emprendedor"</b> (+320ms), <b>"Empecemos"</b> (+900ms) y <b>"Crear una nueva cuenta"</b> (+1040ms). El splash termina siendo la pantalla de arranque: no hay corte entre animación y UI.</li>
+    <li><b>Fondo final:</b> degradé vertical <code>#FFFFFF</code> → <code>#F7F3EC</code> (blanco arriba, crema abajo). Vive en una capa sin escalar: si fuera el relleno de una forma a scale 7,8, en pantalla se vería un solo tono. Entra por fade <b>mientras la terracota tapa todo</b>, así el cambio de fondo nunca se ve.</li>
+    <li><b>Botones — deuda CERRADA (Martin 29/07, rev.3):</b> se cae la excepción de Inter Medium 16. Aplica la regla dura del 28/07 v2: fill <code>#DE7250</code> + <b>DISPLAY 20 Bold blanco</b> → <b>3,17:1</b> = AA texto grande ✅, la misma vía que el botón "Cortar" de la escucha. El ghost queda en Inter Medium 16 sobre blanco (16,37:1 ✅): no necesita la vía display. En post-logout el ghost pierde fondo y borde y pasa a <code>#B04A2E</code> (4,91:1 ✅) — es una salida secundaria, no una segunda puerta.</li>
+    <li><b>Cuándo se ve cada cosa (Martin 29/07):</b> el splash largo es de <b>primer ingreso y post-logout</b>, no de cada arranque — por eso 6,84 s son admisibles: el costo se paga una vez. <b>Primer ingreso</b> aterriza en "Empecemos" / "Crear una nueva cuenta"; <b>post-logout</b> aterriza en "Entrar" / "Entrar con otra cuenta" (ofrecerle crear cuenta a alguien que acaba de cerrar sesión sugiere que perdió la suya). <b>Arranques 2..n</b>: pieza aparte de <b>420 ms</b> (Martin 29/07) — la <b>O de Odobi en Plus Jakarta Sans Bold</b>, quieta, y <b>tres ondas concéntricas que se disipan hacia afuera</b> (r 44→96, trazo 2,4→1,1px, escalonadas 20/85/150 ms, 260 ms cada una); abre en Mi día. Bajó de 700 a 420 ms sin sacar ninguna onda: se acortó el recorrido y se apretó el escalonado. Lo que hace legible la disipación es atravesar el degradé, no el tiempo que tarda en hacerlo. El degradé es un solo <code>radialGradient</code> en arena centrado en la O: cada onda, al crecer, atraviesa zonas más tenues del mismo campo y se disipa sola — por eso se anima el radio y no un <code>scale</code> (con transform el gradiente viajaría con la onda y no habría disipación). La O va en terracota por la misma vía que el wordmark (logotipos exentos, WCAG 1.4.3); las ondas en arena son decoración sin carga informativa. El glifo es el path real extraído del OTF, no texto: no depende de que la fuente cargue.</li>
+    <li><b>Reduced motion:</b> sin formas ni crecimientos — wordmark quieto desde el frame 1.</li>
+  </ol>
+  <div class="warn">
+    <b>Contraste.</b> Las formas son decoración de una pieza display, sin carga informativa: no les aplica 1.4.11. El único elemento con significado es el wordmark y, como logotipo, está exento (WCAG 1.4.3 — decisión Martin 22/07). Los degradés son dentro del mismo tono (arena→terracota, terracota→terracota profundo): sombra de un color, no los degradés azul-violeta prohibidos ni glassmorphism.
+  </div>
+</div>
+
+<script>
+(function(){
+  var phone=document.getElementById('phone'),
+      word =document.getElementById('word'),
+      rest =document.getElementById('rest'),
+      blobs=Array.prototype.slice.call(document.querySelectorAll('.blob')),
+      last =document.querySelector('.blob.last'),
+      root =document.documentElement,
+      timers=[];
+
+  /* Forma festoneada: 12 lóbulos, coordenadas 0–1 (objectBoundingBox) */
+  (function scallop(){
+    /* R+A debe quedar ≤ .5: si no, los lóbulos se salen de la caja de recorte
+       y las puntas aparecen cortadas contra el borde (bug visto por Martin 29/07) */
+    var N=12, A=.06, R=.5-A, pts=[], i, ang, r;
+    for(i=0;i<N*2;i++){
+      ang=(i/(N*2))*Math.PI*2 - Math.PI/2;
+      r  = R - A + (i%2 ? 0 : A*2);
+      pts.push([.5+Math.cos(ang)*r, .5+Math.sin(ang)*r]);
+    }
+    var d='M'+pts[0][0].toFixed(4)+','+pts[0][1].toFixed(4);
+    for(i=0;i<pts.length;i++){
+      var p0=pts[(i-1+pts.length)%pts.length], p1=pts[i],
+          p2=pts[(i+1)%pts.length],            p3=pts[(i+2)%pts.length],
+          c1=[p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6],
+          c2=[p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6];
+      d+='C'+c1[0].toFixed(4)+','+c1[1].toFixed(4)+' '+c2[0].toFixed(4)+','+c2[1].toFixed(4)+' '+p2[0].toFixed(4)+','+p2[1].toFixed(4);
+    }
+    document.getElementById('scallopPath').setAttribute('d', d+'Z');
+  })();
+
+  /* ===== Tempos =====
+     grow: cuánto tarda una forma en comerse la pantalla
+     stg:  cada cuánto nace la siguiente (cuánto se pisan)
+     col:  el colapso dirigido hacia la O
+     lstg: stagger entre letras · let: duración de cada rebote */
+  var TEMPOS=[
+    {id:'agil',   n:'Ágil',   grow:1150, stg:470,  col:900,  set:520, lstg:90,  let:520},
+    {id:'sereno', n:'Sereno', grow:1500, stg:640,  col:1150, set:640, lstg:120, let:620},
+    {id:'calmo',  n:'Calmo',  grow:1900, stg:820,  col:1450, set:780, lstg:150, let:720},
+    {id:'cine',   n:'Cine',   grow:2400, stg:1050, col:1800, set:900, lstg:180, let:820}
+  ];
+  var current=TEMPOS[2]; /* CALMO — ritmo definitivo (Martin 29/07) */
+
+  /* ===== Aparición de los layers (independiente del ritmo) =====
+     ratio = cada cuánto nace la siguiente, como fracción de lo que tarda
+     una forma en comerse la pantalla. Más chico = nacen más encimadas. */
+  var ENTRADAS=[
+    {id:'encadenada', n:'Encadenada', ratio:.44, d:'nace cuando la anterior va por la mitad'},
+    {id:'solapada',   n:'Solapada',   ratio:.30, d:'nace con la anterior todavía chica'},
+    {id:'densa',      n:'Densa',      ratio:.20, d:'tres vivas casi siempre'}
+  ];
+  var entrada=ENTRADAS[2]; /* DENSA — confirmada por Martin 29/07 junto con Calmo */
+
+  function stg(){ return Math.round(current.grow*entrada.ratio); }
+
+  function total(t){
+    return ((blobs.length-1)*Math.round(t.grow*entrada.ratio) + t.grow + t.col + 300 + t.lstg*4 + t.let)/1000;
+  }
+
+  /* La forma se posa donde va la O: desplazamiento = mitad del ancho de "dobi" */
+  function targetX(){ return -(rest.getBoundingClientRect().width/2); }
+
+  function apply(t){
+    current=t;
+    root.style.setProperty('--grow',    t.grow+'ms');
+    root.style.setProperty('--collapse',t.col +'ms');
+    root.style.setProperty('--settle',  t.set +'ms');
+    root.style.setProperty('--letter',  t.let +'ms');
+    var s=stg();
+    blobs.forEach(function(b,i){ b.style.setProperty('--d',(i*s)+'ms'); });
+    last.style.setProperty('--dc', ((blobs.length-1)*s + t.grow)+'ms');
+    document.querySelector('.finalbg').style.setProperty('--dcbg', ((blobs.length-1)*s + t.grow)+'ms');
+    rest.querySelectorAll('span').forEach(function(sp,i){ sp.style.animationDelay=(i*t.lstg)+'ms'; });
+    document.querySelectorAll('#tempos .ctl').forEach(function(b){
+      b.setAttribute('aria-pressed', b.dataset.id===t.id ? 'true':'false');
+    });
+    document.querySelectorAll('#entradas .ctl').forEach(function(b){
+      b.setAttribute('aria-pressed', b.dataset.id===entrada.id ? 'true':'false');
+    });
+    document.querySelectorAll('#tempos .ctl').forEach(function(b,i){
+      b.querySelector('small').textContent='~'+total(TEMPOS[i]).toFixed(1).replace('.',',')+'s';
+    });
+  }
+
+  /* ===== Los 3 momentos en que se ve algo antes de la app (Martin 29/07) =====
+     El splash largo NO es de cada arranque: se ve una vez en la vida de la cuenta.
+     Mismo motor de formas, aterrizaje distinto según el estado de sesión. */
+  var CASOS=[
+    {id:'nuevo',  n:'Primer ingreso', d:'6,8s · splash completo',
+     primary:'Empecemos',  ghost:'Crear una nueva cuenta'},
+    {id:'logout', n:'Post-logout',    d:'6,8s · sin "crear cuenta"',
+     primary:'Entrar',     ghost:'Entrar con otra cuenta'},
+    {id:'diario', n:'Arranque 2..n',  d:'0,42s · la O y las ondas',
+     primary:null,         ghost:null}
+  ];
+  var caso=CASOS[0];
+
+  function applyCaso(c){
+    caso=c;
+    CASOS.forEach(function(x){ phone.classList.remove('caso-'+x.id); });
+    phone.classList.add('caso-'+c.id);
+    if(c.primary){
+      document.getElementById('btnPrimary').textContent=c.primary;
+      document.getElementById('btnGhost').textContent=c.ghost;
+    }
+    document.querySelectorAll('#casos .ctl').forEach(function(b){
+      b.setAttribute('aria-pressed', b.dataset.id===c.id ? 'true':'false');
+    });
+    /* el ritmo no aplica a la entrada corta: 400ms fijos */
+    document.querySelectorAll('#tempos .ctl,#entradas .ctl').forEach(function(b){
+      b.disabled = (c.id==='diario');
+      b.style.opacity = (c.id==='diario') ? .4 : 1;
+    });
+  }
+
+  function play(){
+    timers.forEach(clearTimeout); timers=[];
+    /* st-final también se limpia: si no, en el replay el lockup arranca ya arriba */
+    phone.classList.remove('play','st-o','st-word','st-final');
+    void phone.offsetWidth;                     /* reflow: reinicia todo */
+    if(caso.id==='diario'){ phone.classList.add('play'); return; }  /* 400ms, sin etapas */
+    last.style.setProperty('--ox', targetX()+'px');
+    phone.classList.add('play');
+    var dc = (blobs.length-1)*stg() + current.grow,
+        tO = dc + current.col - Math.round(current.col*.3),  /* la O entra mientras la forma termina de posarse */
+        tW = dc + current.col + 300,
+        tF = tW + current.lstg*3 + current.let + 120;  /* recién cuando la "i" terminó de rebotar */
+    timers.push(setTimeout(function(){phone.classList.add('st-o');},   tO));
+    timers.push(setTimeout(function(){phone.classList.add('st-word');},tW));
+    timers.push(setTimeout(function(){phone.classList.add('st-final');},tF));
+  }
+
+  /* Botones de caso */
+  var wrapC=document.getElementById('casos');
+  CASOS.forEach(function(c){
+    var b=document.createElement('button');
+    b.className='ctl'; b.dataset.id=c.id; b.type='button';
+    b.innerHTML=c.n+'<small>'+c.d+'</small>';
+    b.addEventListener('click',function(){ applyCaso(c); play(); });
+    wrapC.appendChild(b);
+  });
+
+  /* Botones de tempo */
+  var wrap=document.getElementById('tempos');
+  TEMPOS.forEach(function(t){
+    var b=document.createElement('button');
+    b.className='ctl'; b.dataset.id=t.id; b.type='button';
+    b.innerHTML=t.n+'<small>~'+total(t).toFixed(1).replace('.',',')+'s</small>';
+    b.addEventListener('click',function(){ apply(t); play(); });
+    wrap.appendChild(b);
+  });
+  /* Botones de aparición */
+  var wrapE=document.getElementById('entradas');
+  ENTRADAS.forEach(function(e){
+    var b=document.createElement('button');
+    b.className='ctl'; b.dataset.id=e.id; b.type='button';
+    b.innerHTML=e.n+'<small>'+e.d+'</small>';
+    b.addEventListener('click',function(){ entrada=e; apply(current); play(); });
+    wrapE.appendChild(b);
+  });
+
+  document.getElementById('replay').addEventListener('click',play);
+
+  function boot(){ applyCaso(caso); apply(current); play(); }
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(boot); } else { boot(); }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es-AR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi — Experimento Wise A/B · Home conversacional</title>
+<link rel="stylesheet" href="../../tokens/odobi.css">
+<style>
+  /* ===== Página de exploración (meta-capa, no es la UI) ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #E9E6E0;
+    font-family: var(--font-ui);
+    color: #1A1512;
+    padding: 48px 32px 64px;
+  }
+  .page-head { max-width: 1280px; margin: 0 auto 48px; }
+  .page-head h1 { font-family: var(--font-display); font-size: 28px; line-height: 32px; margin-bottom: 8px; }
+  .page-head p { font-size: 14px; line-height: 20px; color: #5C534C; max-width: 720px; }
+  .lanes { display: flex; gap: 64px; justify-content: center; flex-wrap: wrap; max-width: 1600px; margin: 0 auto; }
+  .lane { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .lane-tag {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    background: #1A1512; color: #F7F3EC; padding: 6px 14px; border-radius: 999px;
+  }
+  .lane-sub { font-size: 13px; color: #5C534C; text-align: center; max-width: 390px; }
+
+  /* ===== Anotaciones estilo uxsnaps ===== */
+  .annotated { display: grid; grid-template-columns: 220px auto 220px; gap: 16px; align-items: start; }
+  .ann-col { display: flex; flex-direction: column; gap: 12px; padding-top: 40px; }
+  .ann {
+    background: #FFFFFF; border: 1px solid #D9D2C7; border-radius: 8px;
+    padding: 10px 12px; font-size: 12px; line-height: 17px; color: #1A1512;
+    position: relative;
+  }
+  .ann b { font-weight: 500; color: #B04A2E; display: block; margin-bottom: 2px; }
+  .ann-col.left .ann::after, .ann-col.right .ann::before {
+    content: ""; position: absolute; top: 50%; width: 16px;
+    border-top: 1px dashed #8A7F73;
+  }
+  .ann-col.left .ann::after { right: -17px; }
+  .ann-col.right .ann::before { left: -17px; }
+
+  /* ===== Frame mobile 390px ===== */
+  .phone {
+    width: 390px; height: 844px; background: var(--bg);
+    border-radius: 40px; border: 1px solid #C9C1B4;
+    box-shadow: 0 24px 64px rgba(26,21,18,0.14);
+    overflow: hidden; display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .statusbar {
+    height: 48px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; font-size: 13px; font-weight: 500; color: var(--text); flex-shrink: 0;
+  }
+
+  /* ===== UI Odobi ===== */
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 24px 16px; flex-shrink: 0;
+  }
+  .wordmark { font-family: var(--font-display); font-size: 20px; color: var(--text); }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 999px; background: var(--bg-alt);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  }
+  .thread { flex: 1; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+  .daychip { align-self: center; font-size: 13px; line-height: 16px; color: var(--text-secondary); background: var(--bg-alt); padding: 4px 12px; border-radius: 999px; }
+
+  .msg { max-width: 300px; padding: 12px 16px; font-size: 16px; line-height: 24px; }
+  .msg-odobi { align-self: flex-start; background: var(--bg-alt); color: var(--text); border-radius: 4px 16px 16px 16px; }
+  .msg-user  { align-self: flex-end; background: #1A1512; color: #F7F3EC; border-radius: 16px 4px 16px 16px; }
+  .msg-meta { font-size: 13px; line-height: 16px; color: var(--text-secondary); margin-top: 4px; }
+  .msg-user + .msg-meta { align-self: flex-end; }
+  .check { color: #B04A2E; letter-spacing: -0.05em; }
+
+  .datacard {
+    align-self: flex-start; width: 300px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px; padding: 16px;
+    box-shadow: var(--shadow-card);
+  }
+  .datacard .dc-label { font-size: 13px; line-height: 16px; color: var(--text-secondary); margin-bottom: 8px; }
+  .datacard .dc-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; }
+  .datacard .dc-row span:first-child { font-size: 13px; color: var(--text-secondary); }
+  .dc-fig { font-size: 16px; font-weight: 500; color: var(--text); }
+  .dc-delta { font-size: 13px; font-weight: 500; color: var(--text-accent); }
+
+  .inputbar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px; flex-shrink: 0;
+  }
+  .textfield {
+    flex: 1; height: 48px; border: 1px solid var(--accent); border-radius: 999px; /* regla 22/07 */
+    display: flex; align-items: center; padding: 0 16px;
+    font-size: 16px; color: var(--text-secondary); background: var(--surface);
+  }
+  .micbtn {
+    width: 48px; height: 48px; border-radius: 999px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .micbtn svg { stroke: var(--on-accent-media); } /* blanco: 3.17:1 ≥ 3:1 (1.4.11) — regla 22/07 */
+
+  .tabbar {
+    display: flex; border-top: 1px solid var(--border); padding: 8px 8px 24px; flex-shrink: 0;
+    background: var(--bg);
+  }
+  .tab { flex: 1; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; line-height: 16px; color: var(--text-secondary); }
+  .tab svg { stroke: var(--text-secondary); }
+  .tab.active { color: var(--text-accent); font-weight: 500; }
+  .tab.active svg { stroke: var(--text-accent); }
+
+  /* ===== Variante B: display protagonista ===== */
+  .greet { padding: 8px 8px 0; }
+  .greet .g-date { font-size: 13px; line-height: 16px; color: var(--text-secondary); margin-bottom: 8px; }
+  .greet h2 { font-family: var(--font-display); font-size: 28px; line-height: 32px; color: var(--text); }
+  .dc-fig-display { font-family: var(--font-display); font-size: 28px; line-height: 32px; color: var(--text); }
+
+  /* ===== B2: momento display — escucha activa ===== */
+  .listen { background: var(--odobi-terracota); color: var(--odobi-blanco); justify-content: space-between; }
+  .listen .statusbar { color: var(--odobi-blanco); }
+  .listen-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 24px; }
+  .listen h2 { font-family: var(--font-display); font-size: 28px; line-height: 32px; }
+  .wave { display: flex; align-items: center; gap: 6px; height: 48px; }
+  .wave i { display: block; width: 6px; border-radius: 3px; background: var(--odobi-blanco); animation: wv 1.1s ease-in-out infinite; }
+  .wave i:nth-child(1){height:16px; animation-delay:0ms}
+  .wave i:nth-child(2){height:32px; animation-delay:120ms}
+  .wave i:nth-child(3){height:48px; animation-delay:240ms}
+  .wave i:nth-child(4){height:24px; animation-delay:360ms}
+  .wave i:nth-child(5){height:40px; animation-delay:480ms}
+  .wave i:nth-child(6){height:16px; animation-delay:600ms}
+  @keyframes wv { 0%,100%{transform:scaleY(0.5)} 50%{transform:scaleY(1)} }
+  .listen-partial { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 24px; text-align: center; max-width: 300px; } /* texto grande: 3.17:1 ≥ 3:1 AA ✅ */
+  .listen-cancel {
+    margin: 0 24px 48px; min-height: 48px; border: 1.5px solid var(--odobi-negro);
+    border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 500; color: var(--odobi-negro); /* botón: única excepción negro s/terracota */
+  }
+
+  /* ===== Veredicto ===== */
+  .verdict { max-width: 1080px; margin: 80px auto 0; background: #FFFFFF; border: 1px solid #D9D2C7; border-radius: 16px; padding: 32px; }
+  .verdict h2 { font-family: var(--font-display); font-size: 20px; line-height: 24px; margin-bottom: 16px; }
+  .verdict table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px; margin: 16px 0; }
+  .verdict th, .verdict td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #E8E2D9; vertical-align: top; }
+  .verdict th { font-weight: 500; color: #5C534C; }
+  .verdict .win { color: #B04A2E; font-weight: 500; }
+  .verdict p { font-size: 14px; line-height: 21px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Experimento Wise — A/B del home conversacional</h1>
+  <p>Mismos tokens (<code>tokens/odobi.css</code>), mismo contenido, misma arquitectura conservada (nav 4 secciones, mic siempre visible, ✓✓ recibido). Lo único que cambia es la dosis: A aplica 60/30/10 estricta con tipografía contenida; B toma de Wise lo permitido — display protagonista, iconografía monocroma, color pleno solo en momento display. Veredicto contra criterio escrito, al pie.</p>
+</div>
+
+<div class="lanes">
+
+  <!-- ================= VERSIÓN A ================= -->
+  <div class="lane">
+    <span class="lane-tag">Versión A — 60/30/10 estricta</span>
+    <div class="annotated">
+      <div class="ann-col left">
+        <div class="ann"><b>Marca sin gastar acento</b>Wordmark en NeueEinstellung, negro. La terracota no se usa en el header.</div>
+        <div class="ann"><b>Dato crudo a la vista</b>Listón del BI proactivo (handoff §0): insight con cifras verificables, no adjetivos.</div>
+        <div class="ann"><b>✓✓ recibido</b>Convención WhatsApp conservada (Jakob's Law: aprovechar hábitos ya aprendidos).</div>
+        <div class="ann"><b>Mic terracota, 48pt</b>La voz es el canal identitario (Wilensky: invocación = impresión de marca). Único fill de acento de la pantalla.</div>
+      </div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="app-header">
+          <span class="wordmark">Odobi</span>
+          <span class="avatar">M</span>
+        </div>
+        <div class="thread">
+          <span class="daychip">Hoy</span>
+          <div class="msg msg-odobi">Ojo con esto: las ventas de la semana vienen 18% abajo, y el jueves y viernes son tus días fuertes.</div>
+          <div class="datacard">
+            <div class="dc-label">Ventas · dato crudo</div>
+            <div class="dc-row"><span>Esta semana</span><span class="dc-fig">$286.000</span></div>
+            <div class="dc-row"><span>Semana pasada</span><span class="dc-fig">$349.000</span></div>
+            <div class="dc-row"><span>Diferencia</span><span class="dc-delta">−18%</span></div>
+          </div>
+          <div class="msg msg-odobi">Si querés, te preparo una promo para mandarle a los clientes que hace más de un mes no compran. Son 34.</div>
+          <div class="msg msg-user">Dale, armala.</div>
+          <div class="msg-meta">14:32 <span class="check">✓✓</span> recibido</div>
+          <div class="msg msg-odobi">La armo y te la muestro antes de mandar nada. Vos confirmás.</div>
+        </div>
+        <div class="inputbar">
+          <div class="textfield">Escribile a Odobi…</div>
+          <div class="micbtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>Chat</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Apps</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>Conexiones</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Cuenta</div>
+        </div>
+      </div>
+      <div class="ann-col right">
+        <div class="ann"><b>Burbuja usuario en estructura</b>Negro tostado, no terracota: el acento no se gasta en cada mensaje del usuario.</div>
+        <div class="ann"><b>Cifras en Inter Medium</b>Jerarquía por peso, no por display. Contenida, neutra.</div>
+        <div class="ann"><b>HITL en el copy</b>"Vos confirmás" — el mensaje de confianza vive en la conversación (§5).</div>
+        <div class="ann"><b>Tab activa en #B04A2E</b>4.91:1 sobre crema ✅. Terracota total de la pantalla ≈2% del área.</div>
+      </div>
+    </div>
+    <p class="lane-sub">Terracota medida: mic (48px) + delta + tab activa ≈ 2% del área. Sobra margen del 10%.</p>
+  </div>
+
+  <!-- ================= VERSIÓN B ================= -->
+  <div class="lane">
+    <span class="lane-tag">Versión B — dosis Wise acotada</span>
+    <div class="annotated">
+      <div class="ann-col left">
+        <div class="ann"><b>Display protagonista</b>Saludo en NeueEinstellung 28px: la voz de marca abre la pantalla (Wise: tipografía como identidad, sin gastar color).</div>
+        <div class="ann"><b>Cifra clave en display</b>El número importante se dice en la tipografía de marca (Chaves: ajuste tipológico — el signo trabaja donde está el valor).</div>
+        <div class="ann"><b>Pantalla operativa NO teñida</b>La dosis Wise no toca el fondo: sigue 60/30/10. Prohibición del kickoff respetada.</div>
+      </div>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="app-header">
+          <span class="wordmark">Odobi</span>
+          <span class="avatar">M</span>
+        </div>
+        <div class="thread">
+          <div class="greet">
+            <div class="g-date">Miércoles 22 · Hoy</div>
+            <h2>Buen día, Martín.<br>Hay una cosa para mirar.</h2>
+          </div>
+          <div class="msg msg-odobi">Ojo con esto: las ventas de la semana vienen 18% abajo, y el jueves y viernes son tus días fuertes.</div>
+          <div class="datacard">
+            <div class="dc-label">Ventas esta semana</div>
+            <div class="dc-fig-display">$286.000</div>
+            <div class="dc-row" style="margin-top:8px"><span>Semana pasada</span><span class="dc-fig">$349.000</span></div>
+            <div class="dc-row"><span>Diferencia</span><span class="dc-delta">−18%</span></div>
+          </div>
+          <div class="msg msg-user">Dale, armala.</div>
+          <div class="msg-meta">14:32 <span class="check">✓✓</span> recibido</div>
+        </div>
+        <div class="inputbar">
+          <div class="textfield">Escribile a Odobi…</div>
+          <div class="micbtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>Chat</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Apps</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>Conexiones</div>
+          <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Cuenta</div>
+        </div>
+      </div>
+      <div class="ann-col right">
+        <div class="ann"><b>Iconografía monocroma</b>Trazos de un solo color sobre fondo plano. Nada de duotonos ni rellenos decorativos.</div>
+        <div class="ann"><b>Saludo con criterio</b>No saluda por saludar: anuncia que hay algo para mirar (dato + consecuencia + acción, regla de oro del insight).</div>
+        <div class="ann"><b>Misma terracota que A</b>Mic + delta + tab activa ≈2%. B no agrega color: agrega jerarquía tipográfica.</div>
+      </div>
+    </div>
+    <p class="lane-sub">B en pantalla operativa: mismos ≈2% de terracota que A. La diferencia es tipográfica, no cromática.</p>
+  </div>
+
+  <!-- ================= B2: MOMENTO DISPLAY ================= -->
+  <div class="lane">
+    <span class="lane-tag">B · momento display — escucha activa</span>
+    <div class="annotated">
+      <div class="ann-col left">
+        <div class="ann"><b>Excepción declarada</b>Terracota plena solo en momento display (kickoff §1 / handoff §4.1). La escucha es transitoria: no es UI operativa.</div>
+        <div class="ann"><b>Blanco s/terracota: solo grande</b>3.17:1 — válido como texto grande (≥20px Bold) e íconos (1.4.11). Negro solo en botones (5.71:1). Regla 22/07, calculada.</div>
+        <div class="ann"><b>20+ invocaciones/día</b>El estado más frecuente del producto se vuelve LA impresión de marca (Wilensky: estrategia de invocación §3).</div>
+      </div>
+      <div class="phone listen">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="listen-body">
+          <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <h2>Te escucho.</h2>
+          <div class="listen-partial">"Odobi, armame la promo para los que no compran hace un mes…"</div>
+        </div>
+        <div class="listen-cancel">Cortar</div>
+      </div>
+      <div class="ann-col right">
+        <div class="ann"><b>Onda, no orbe</b>Barras monocromas blancas (3.17:1 ≥ 3:1, WCAG 1.4.11). Cero glow, cero esfera, cero degradé (prohibición §1). Coherente con el territorio O+voz del símbolo.</div>
+        <div class="ann"><b>Transcripción parcial visible</b>Feedback inmediato de que escucha bien (Nielsen #1: visibilidad del estado del sistema).</div>
+        <div class="ann"><b>"Cortar" en thumb zone</b>Salida clara, ≥48pt, tercio inferior. El usuario nunca queda preso del modo voz.</div>
+        <div class="ann"><b>TODO motion-ref</b>Validar timing de barras y transición de entrada con MCP 60FPS (no disponible en esta sesión).</div>
+      </div>
+    </div>
+    <p class="lane-sub">Pieza display: 100% terracota admitido solo acá. En A este estado sería un sheet parcial sobre el home.</p>
+  </div>
+
+</div>
+
+<!-- ================= VEREDICTO ================= -->
+<div class="verdict">
+  <h2>Veredicto — contra criterio escrito</h2>
+  <p><b>Criterios (definidos antes de evaluar):</b> 1) ¿La pantalla operativa de B respeta 60/30/10? 2) ¿Todos los pares pasan WCAG AA calculado? 3) ¿B es más distintiva frente a la categoría (Chaves: singularidad/vocatividad) sin romper reglas duras? 4) ¿La jerarquía conversacional queda intacta — el contenido manda, no la decoración? 5) ¿El momento display suma impresión de marca sin fatigar a 20+ usos/día?</p>
+  <table>
+    <tr><th>Criterio</th><th>A</th><th>B</th></tr>
+    <tr><td>1. 60/30/10 en operativa</td><td>✅ ≈2%</td><td>✅ ≈2% — B no agrega color, agrega tipografía</td></tr>
+    <tr><td>2. WCAG AA calculado</td><td>✅ todos los pares</td><td>✅ todos los pares (display terracota+negro = 5.71:1)</td></tr>
+    <tr><td>3. Singularidad (Chaves)</td><td>Correcta pero conservadora: podría ser cualquier chat prolijo</td><td class="win">✅ NeueEinstellung en saludo y cifras + escucha terracota = reconocible sin símbolo</td></tr>
+    <tr><td>4. Jerarquía conversacional</td><td>✅ intacta</td><td>✅ con condición: el saludo display solo al abrir sesión; en scroll de conversación desaparece</td></tr>
+    <tr><td>5. Momento display</td><td>— (sheet neutro)</td><td class="win">✅ convierte el estado más repetido en firma de marca; fatiga controlada porque es transitorio (&lt;segundos) y sin animación agresiva</td></tr>
+  </table>
+  <p><b>Veredicto: gana B, acotada.</b> Se adopta para los mockups: (1) NeueEinstellung Bold en saludo de sesión y cifras clave de datacards; (2) iconografía monocroma de trazo; (3) escucha activa a pantalla completa en terracota como único momento display de la UI (excepción declarada). Se descarta de Wise todo lo demás: fondos teñidos, color como ambiente, ilustración decorativa. B no rompe 60/30/10 — no hubo que matarla.</p>
+  <p><b>Riesgo señalado:</b> el saludo display consume ~96px de alto de thread. Regla de uso: solo en la apertura de sesión y con insight pendiente que anunciar; nunca como relleno decorativo. Si no hay nada para decir, no hay saludo grande (regla de oro: sin dato+consecuencia+acción, Odobi se calla).</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F7F3EC">
+<title>Odobi — mapa del prototipo</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --sec:#5C534C;
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
+    --r-m:22px; --r-xl:26px; --r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--ui);color:var(--negro);line-height:1.5;
+       background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);
+       min-height:100vh;padding:28px 20px calc(48px + env(safe-area-inset-bottom))}
+  .wrap{max-width:760px;margin:0 auto}
+
+  /* La portada usa el mismo stack que Mi día: card blanca detrás del bloque negro. */
+  .stack{position:relative;padding-top:52px;margin-bottom:26px}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);
+         display:flex;align-items:baseline;justify-content:space-between}
+  .atras .wm{font-family:var(--display);font-size:20px;color:var(--terracota);letter-spacing:-.01em}
+  .atras .per{font-size:13px;color:var(--sec)}
+  .port{position:relative;z-index:1;background:var(--negro);color:var(--crema);
+        border-radius:var(--r-xl);padding:26px 20px 22px;box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .port .lbl{font-size:13px;color:var(--arena)}
+  .port .n{font-family:var(--display);font-size:40px;line-height:1;letter-spacing:-.02em;margin:8px 0 12px}
+  .port .n i{font-style:normal;font-size:20px;opacity:.85;margin-left:6px}
+  .port .chip{display:inline-block;font-size:13px;background:rgba(247,243,236,.10);
+              border-radius:var(--r-pill);padding:5px 11px}
+
+  h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sec);
+     margin:26px 0 12px;padding:0 4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:12px}
+  a.p{display:block;background:var(--blanco);border-radius:var(--r-m);padding:16px 18px;
+      box-shadow:0 4px 18px rgba(26,21,18,.07);text-decoration:none;color:inherit}
+  a.p b{display:block;font-size:16px;font-weight:500;margin-bottom:3px}
+  a.p span{display:block;font-size:13px;color:var(--sec);line-height:1.4}
+  a.p code{display:inline-block;margin-top:9px;font-family:ui-monospace,"SF Mono",Menlo,monospace;
+           font-size:11px;color:var(--terracota-prof);background:var(--arena-30);
+           border-radius:var(--r-pill);padding:3px 9px}
+  .pie{margin-top:28px;font-size:13px;color:var(--sec);line-height:1.6;padding:0 4px}
+  .pie b{color:var(--negro);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="stack">
+    <div class="atras"><span class="wm">Odobi</span><span class="per">Prototipo navegable</span></div>
+    <div class="port">
+      <div class="lbl">Pantallas dibujadas</div>
+      <div class="n">21<i>en 4 grupos</i></div>
+      <div class="chip">Tocá cualquiera para abrirla</div>
+    </div>
+  </div>
+
+  <h2>Las tres capas</h2>
+  <div class="grid">
+    <a class="p" href="./"><b>Mi día</b><span>La base. Portada del negocio y los avisos del detector.</span><code>/</code></a>
+    <a class="p" href="./?ver=esc"><b>Funciones</b><span>El escritorio, arriba. Siete lugares y la actividad reciente.</span><code>?ver=esc</code></a>
+    <a class="p" href="./?ver=chat"><b>Chat</b><span>La conversación, abajo. En reposo, con ejemplos que giran.</span><code>?ver=chat</code></a>
+  </div>
+
+  <h2>Estados que se superponen</h2>
+  <div class="grid">
+    <a class="p" href="./?ver=escucha"><b>Escucha</b><span>Velo al 96% sobre lo que estés haciendo. No tapa: silencia.</span><code>?ver=escucha</code></a>
+    <a class="p" href="./?ver=hitl"><b>Confirmación HITL</b><span>Vos confirmás, Odobi ejecuta. Nada sale sin que lo veas.</span><code>?ver=hitl</code></a>
+    <a class="p" href="./?ver=vacio"><b>Mi día sin avisos</b><span>El vacío como resultado bueno, no como pantalla fallada.</span><code>?ver=vacio</code></a>
+  </div>
+
+  <h2>Las siete funciones</h2>
+  <div class="grid">
+    <a class="p" href="./?ver=gastos"><b>Gastos</b><span>Total del mes, desglose por categoría y las tres vías de alta.</span><code>?ver=gastos</code></a>
+    <a class="p" href="./?ver=ingresos"><b>Ingresos</b><span>Todo lo que entró, con su origen. Pase o no por AFIP.</span><code>?ver=ingresos</code></a>
+    <a class="p" href="./?ver=factura"><b>Facturación</b><span>Emitidas y su estado. Lo impago es lo único que reclama.</span><code>?ver=factura</code></a>
+    <a class="p" href="./?ver=presu"><b>Presupuestos</b><span>Lo que espera respuesta, y los que se están enfriando.</span><code>?ver=presu</code></a>
+    <a class="p" href="./?ver=bi"><b>Inteligencia</b><span>La portada completa. Preguntar es la vía, no el tablero.</span><code>?ver=bi</code></a>
+    <a class="p" href="./?ver=conta"><b>Contabilidad</b><span>Caja y Facturado, nunca mezclados. Solo consulta.</span><code>?ver=conta</code></a>
+    <a class="p" href="./?ver=clientes"><b>Clientes</b><span>La cartera, que crece sola cuando facturás.</span><code>?ver=clientes</code></a>
+  </div>
+
+  <h2>Ajustes y sus siete opciones</h2>
+  <div class="grid">
+    <a class="p" href="./?ver=ajustes"><b>Ajustes</b><span>La grilla. Se entra por el avatar, única puerta.</span><code>?ver=ajustes</code></a>
+    <a class="p" href="./?ver=negocio"><b>Mi negocio</b><span>Perfil comercial y si el copiloto pide confirmación.</span><code>?ver=negocio</code></a>
+    <a class="p" href="./?ver=afip"><b>Facturación AFIP</b><span>Perfil fiscal, vínculo con ARCA y ambiente.</span><code>?ver=afip</code></a>
+    <a class="p" href="./?ver=apps"><b>Apps conectadas</b><span>Cada app por lo que habilita, no por su nombre.</span><code>?ver=apps</code></a>
+    <a class="p" href="./?ver=plan"><b>Mi plan</b><span>Acciones por mes. Preguntar no gasta.</span><code>?ver=plan</code></a>
+    <a class="p" href="./?ver=cuenta"><b>Mi cuenta</b><span>Mail, contraseña y cerrar sesión.</span><code>?ver=cuenta</code></a>
+    <a class="p" href="./?ver=apar"><b>Apariencia</b><span>Dos temas exactos. La marca no cambia.</span><code>?ver=apar</code></a>
+    <a class="p" href="./?ver=hablar"><b>Cómo hablarle</b><span>Tono y largo, con una respuesta de ejemplo real.</span><code>?ver=hablar</code></a>
+  </div>
+
+  <div class="pie">
+    <b>Cómo moverse sin las URLs:</b> desde Mi día, arrastrá el borde de arriba para el escritorio
+    y el de abajo para el chat. El avatar abre Ajustes desde cualquier pantalla, y cada tile del
+    escritorio abre su función. Las tarjetas de Mi día se descartan deslizando de derecha a izquierda.
+  </div>
+</div>
+</body>
+</html>
