@@ -1,0 +1,14 @@
+# CODEOWNERS — frontera de propiedad por carpeta.
+#
+# ⚠️ Sin branch protection en `main`, esto NO bloquea merges: asigna revisores
+# automáticamente y deja la frontera explícita. El límite es blando a propósito
+# — GitHub no permite restringir merges por path en un repo público de cuenta
+# personal ("Source public repos cannot have push rules"), y el repo es público
+# de forma deliberada.
+
+# Default: el resto del repo es del operador.
+*                       @theoriginalcustodian
+
+# Prototipo, mockups y sistema visual de Odobi — colaborador de diseño.
+# El espacio del path va escapado: sintaxis CODEOWNERS de GitHub.
+/Prototipo\ frontend/   @martinacairo
