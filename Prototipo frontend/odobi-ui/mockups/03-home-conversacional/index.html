@@ -61,6 +61,7 @@
 
   /* ===== Frame mobile 390px ===== */
   .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .phone iframe{width:390px;height:844px;border:0;display:block}
   .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
 
   /* ===== UI ===== */
@@ -117,7 +118,7 @@
   .p-label{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-bottom:var(--s1)} /* 6.79:1 ✅ */
   .p-main{display:flex;align-items:baseline;gap:var(--s1)}
   .p-big{font-family:var(--font-display);font-size:var(--fs-display);line-height:var(--lh-display)} /* 16.37:1 ✅ */
-  .p-delta{font-size:var(--fs-caption);font-weight:500;color:var(--negro)} /* Decisión B: dato, no botón */
+  .p-delta{font-size:var(--fs-caption);font-weight:500;color:var(--negro);white-space:nowrap;line-height:1.35} /* Decisión B: dato, no botón */
   .p-note{font-size:var(--fs-caption);line-height:var(--lh-caption);color:var(--sec);margin-top:var(--s1)}
 
   .inputbar{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex-shrink:0}
@@ -201,7 +202,7 @@
   .portada .p-lbl,.portada .p-item span{color:var(--arena)}
   .portada .p-big{font-size:40px;line-height:1;letter-spacing:-.02em}
   .portada .p-delta{color:var(--crema);background:rgba(247,243,236,.10);
-                    border-radius:var(--r-pill);padding:5px 11px;transform:translateY(-7px)}
+                    border-radius:var(--r-pill);padding:5px 11px;transform:translateY(-7px);white-space:nowrap;line-height:1.35}
   .portada .p-rows{border-top:none;gap:var(--s1)}
   .portada .p-item{background:rgba(247,243,236,.07);border-radius:var(--r-s);padding:10px 12px}
   .portada .p-item b{color:var(--crema)}
@@ -225,47 +226,11 @@
   <div class="canvas" style="height:950px">
 
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="grip"><div class="bar"></div><div class="txt">Bajá para volver a Mi día</div></div>
-      <div class="app-header">
-                <span class="avatar">M</span>
+        <!-- Migrado al metodo del 19/08: la pantalla viene del prototipo
+             por iframe. Antes se recreaba el CSS aca, y eso mantenia dos
+             fuentes de verdad que divergian a cada cambio. -->
+        <iframe src="../../prototipo/?ver=hitl" scrolling="no" title="03-home-conversacional lane 1"></iframe>
       </div>
-      <div class="thread">
-        <div class="divider">Viernes 25 · Hoy</div>
-        <div class="ctx-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 5 5v3"/></svg> Desde tu aviso · Factura A-0034 · Gómez SRL</div>
-        <div class="msg-row">
-          <!-- monograma "la o que habla" -->
-          <!-- isotipo Odobi (David) — 3 arcos, variante chica --><svg width="18" height="18" viewBox="1.20 1.26 21.48 21.48" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
-          <div class="msg msg-odobi">Le reclamo el pago a Gómez SRL. Armé el mensaje — revisalo y confirmá:</div>
-        </div>
-        <div class="hitl">
-          <div class="hitl-head">
-            <h3>Reclamo de pago</h3>
-            <span class="hitl-chip">Gmail</span>
-          </div>
-          <div class="hitl-row">
-            <span class="dato"><span class="k">Para</span><span class="v">Gómez SRL<small>gomezsrl@gmail.com</small></span></span>
-            <span class="edit">Cambiá</span>
-          </div>
-          <div class="hitl-row"><span class="dato"><span class="k">Mensaje</span></span><span class="edit">Editá</span></div>
-          <div class="cita">Hola, ¿qué tal? Les recuerdo la factura A-0034 por $120.000, vencida el 24/06. ¿Me confirman fecha de pago?</div>
-          <div class="hitl-scope">
-            <!-- phosphor: eye --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>
-            Un solo mail, ahora. No se manda nada sin tu confirmación.
-          </div>
-          <div class="hitl-actions">
-            <div class="btn-confirm">Confirmar y mandar</div>
-            <div class="btn-cancel">Cancelar</div>
-          </div>
-        </div>
-      </div>
-      <div class="inputbar">
-        <div class="textfield">Escribile a Odobi…</div>
-        <div class="micbtn">
-          <!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
-        </div>
-      </div>
-    </div>
 
     <svg class="overlay" viewBox="0 0 960 950" fill="none">
       <defs>
@@ -309,47 +274,11 @@
   <div class="canvas" style="height:950px">
 
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="grip"><div class="bar"></div><div class="txt">Bajá para volver a Mi día</div></div>
-      <div class="app-header">
-                <span class="avatar">M</span>
+        <!-- Migrado al metodo del 19/08. El estado que este carril mostraba
+             vivia SOLO aca, recreado en el CSS del mockup; el 25/08 se porto
+             al prototipo como ?ver=preg y ahora viene de una sola fuente. -->
+        <iframe src="../../prototipo/?ver=preg" scrolling="no" title="03-home-conversacional lane 2"></iframe>
       </div>
-      <div class="thread">
-        <div class="divider">Miércoles 22</div>
-        <div class="msg-row">
-          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
-          <div class="msg msg-odobi">Promo mandada a los 34. Te voy contando.</div>
-        </div>
-        <div class="divider">Viernes 25 · Hoy</div>
-        <div class="msg msg-user">¿Cómo viene la promo?</div>
-        <div class="msg-meta right">9:41 <span class="check">✓✓</span> recibido</div>
-        <div class="msg-row">
-          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
-          <div class="msg msg-odobi">Bien: respondieron 9 de los 34, y 4 ya volvieron a comprar.</div>
-        </div>
-        <div class="stack">
-        <div class="atras"><span class="wm">Odobi</span></div>
-        <div class="portada">
-          <div class="p-label">Promo del miércoles · 34 enviados</div>
-          <div class="p-main">
-            <span class="p-big">$52.000</span>
-            <span class="p-delta">4 ventas</span>
-          </div>
-          <div class="p-note">Ya están dentro de lo que entró esta semana.</div>
-        </div>
-        </div>
-        <div class="msg-row">
-          <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
-          <div class="msg msg-odobi">Si querés, la semana que viene les recuerdo a los 25 que no contestaron. Vos confirmás.</div>
-        </div>
-      </div>
-      <div class="inputbar">
-        <div class="textfield">Escribile a Odobi…</div>
-        <div class="micbtn">
-          <!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>
-        </div>
-      </div>
-    </div>
 
     <svg class="overlay" viewBox="0 0 960 950" fill="none">
       <defs>
@@ -384,41 +313,17 @@
   <p class="lane-sub">Verificable: 9 respondieron ⊂ 34 enviados · $52.000 de la promo ⊂ $286.000 que entraron esta semana (09, viernes). Nada se afirma sin el dato a la vista.</p>
 </div>
 
-<!-- ================= LANE 3 · ESCUCHA (rev. 16/08) ================= -->
+<!-- ============ LANE 3 · GRABAR POR VOZ (rev. 24/08) ============ -->
 <div class="canvas-wrap" id="lane3">
-  <span class="lane-tag">Estado de escucha — display por sustracción</span>
-  <p class="lane-sub">No tapa: silencia. El contexto sigue detrás del velo; nada compite con la voz.</p>
+  <span class="lane-tag">Grabar por voz — mantener apretado</span>
+  <p class="lane-sub">Ya no baja un velo: mientras grabás, la pantalla de atrás queda entera.
+     Sólo el campo de texto cede su lugar dentro de la misma barra.</p>
   <div class="canvas" style="height:980px">
 
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="grip"><div class="bar"></div><div class="txt">Bajá para volver a Mi día</div></div>
-
-      <div class="escena">
-        <!-- lo que estabas mirando: sigue ahí -->
-        <div class="fondo-escena">
-          <div class="ctx-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 5 5v3"/></svg> Desde tu aviso · Factura A-0034 · Gómez SRL</div>
-          <div class="msg-row">
-            <span class="quien"><!-- isotipo Odobi (David) — 4 arcos --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
-            <div class="msg msg-odobi">Le reclamo el pago a Gómez SRL. Armé el mensaje — revisalo y confirmá:</div>
-          </div>
-        </div>
-
-        <!-- el velo del color del lienzo + la escucha encima -->
-        <div class="velo"></div>
-        <div class="escucha">
-          <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <h2>Te escucho.</h2>
-          <div class="parcial">"Odobi, anotame un gasto de dieciocho mil en mercadería…"</div>
-          <div class="controles">
-            <div class="btn-ghost">Pausar</div>
-            <div class="btn-enviar">Enviar
-              <!-- phosphor: paper-plane-ti --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></svg>
-            </div>
-          </div>
-          <div class="btn-eliminar">Eliminar</div>
-        </div>
-      </div>
+      <!-- Método del 19/08: la pantalla viene del prototipo por iframe. Este carril
+           mostraba la escucha a pantalla completa (velo al 96%), derogada el 24/08. -->
+      <iframe src="../../prototipo/?ver=bloqueado" scrolling="no" title="Audio bloqueado"></iframe>
     </div>
 
     <svg class="overlay" viewBox="0 0 960 980" fill="none">
@@ -430,48 +335,42 @@
           <path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/>
         </marker>
       </defs>
-      <!-- al velo, arriba, donde se insinúa el contenido -->
-      <path d="M252,250 C275,246 292,242 300,240" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah3-hot)"/>
-      <!-- a la onda -->
-      <path d="M706,398 C690,400 680,404 674,408" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
-      <!-- a la transcripción parcial -->
-      <path d="M252,530 C280,524 300,518 318,514" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
-      <!-- a los controles -->
-      <path d="M706,600 C688,596 678,590 670,584" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
-      <!-- a Eliminar -->
-      <path d="M252,680 C290,676 330,664 366,652" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- a la pantalla que sigue visible detrás -->
+      <path d="M252,300 C275,296 292,292 300,290" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#ah3-hot)"/>
+      <!-- a los tres controles -->
+      <path d="M706,660 C678,722 638,792 606,838" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
+      <!-- al mic, que ahora es Enviar. Sale del lado derecho: una flecha desde la
+           izquierda tendría que cruzar la pantalla entera para llegar. -->
+      <path d="M706,830 C692,838 682,844 676,848" stroke="#1A1512" stroke-width="1.5" marker-end="url(#ah3)"/>
     </svg>
 
-    <div class="hand accent" style="left:24px;top:210px;width:216px">
-      <b>display por sustracción, no por saturación.</b> Un velo del color del lienzo al
-      <b>96%</b> — crema en la piel clara, negro tostado en la oscura. Como toma el color del
-      tema, no hay isla oscura sobre lienzo claro (regla 08/08) y no hace falta excepción.
+    <div class="hand accent" style="left:24px;top:250px;width:216px">
+      <b>no tapa nada.</b> Deroga el velo al 96% del 16/08, que era display por sustracción: el
+      argumento de aquella decisión —que desde dónde hablás cambia dónde aterriza lo que decís—
+      se cumple mejor <b>dejando la pantalla entera visible</b> que insinuándola al 4%.
     </div>
-    <div class="hand dim" style="left:24px;top:330px;width:216px">
-      el 96% está <b>calculado en el peor caso</b> (el contenido de más contraste justo detrás):
-      a 94% la terracota profunda da 4,37:1 ✗, a 96% da 4,53:1. Ese 4% que queda es lo que
-      hace que el fondo se <b>insinúe</b> — se ve que hay algo detrás, no se lee.
+    <div class="hand dim" style="left:24px;top:390px;width:216px">
+      el patrón es el de WhatsApp, y esa es la mitad del fundamento: <b>es el gesto de voz que el
+      usuario ya sabe hacer</b>. No hay nada que enseñar, y el producto cuya función principal es
+      hablar no puede permitirse que hablar sea lo que hay que aprender.
     </div>
-    <div class="hand" style="left:710px;top:368px;width:212px">
-      la onda va en <b>terracota profunda</b>: la viva <code>#DE7250</code> sobre velo claro queda
-      en ~2,9:1 y no llega al 3:1 que pide 1.4.11 para un gráfico. En la piel oscura sí va la viva.
-      <b>Sin blur</b> — el <code>BlurView</code> nunca desenfocó en Android (medición del propio repo).
+    <div class="hand" style="left:710px;top:600px;width:212px">
+      <b>los tres controles son los del repo</b> (Pausar · Enviar · Eliminar): no se reinventa lo
+      que ya está resuelto y probado en device. Van como íconos con <code>aria-label</code>, no
+      como palabras: a 390 px las tres etiquetas más la onda no entran en una fila.
     </div>
-    <div class="hand" style="left:24px;top:548px;width:216px">
-      transcripción en vivo: sabés que escucha bien (Nielsen #1). Y por voz también se ANOTA —
-      el gasto dicho queda en el libro, y Mi día lo vigila.
+    <div class="hand" style="left:710px;top:800px;width:212px">
+      el mic <b>pasa a ser Enviar</b> sin moverse de lugar. Es el mismo botón el que empieza y el
+      que manda, así el pulgar no se reubica — y "enviar" queda donde la mano ya está.
     </div>
-    <div class="hand" style="left:710px;top:560px;width:212px">
-      los controles son <b>los del repo</b> (Pausar · Enviar · Eliminar): no se reinventa lo que ya
-      está resuelto y probado en device. Solo se les aplica nuestra regla de color — Enviar es fill
-      <code>#DE7250</code> + display 19 Bold blanco (3,17:1, regla 28/07 v2).
-    </div>
-    <div class="hand dim" style="left:24px;top:700px;width:216px">
-      nunca quedás preso del modo voz (Nielsen #3): Pausar sigue vivo y Eliminar es la única vía de
-      perder el audio, como en el repo. TODO motion-ref: el velo entra en &lt;320 ms.
+    <div class="hand dim" style="left:24px;top:640px;width:216px">
+      este estado es la <b>alternativa que exige WCAG 2.5.1</b>: deslizar hacia arriba libera el
+      dedo, y quien no puede sostener presión no queda afuera de la función principal del producto.
+      Con teclado, Enter entra directo acá.
     </div>
   </div>
-  <p class="lane-sub">Entrada: tap en el mic del composer o "Odobi…" por voz. Lo dictado se procesa como cualquier mensaje: anotar es directo, ejecutar pide HITL.</p>
+  <p class="lane-sub">Entrada: mantener apretado el mic del composer. Soltás y se manda; deslizás
+     a la izquierda y se cancela; deslizás hacia arriba y queda bloqueado.</p>
 </div>
 
 </body>

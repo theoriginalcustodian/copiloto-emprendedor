@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>12 · Las siete funciones — una anatomía, siete contenidos</title>
+<title>12 · Las seis funciones — una anatomía, seis contenidos</title>
 <style>
   @font-face{font-family:"PlusJakartaSans";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
   :root{
@@ -68,12 +68,12 @@
 <body>
 
 <div class="page-head">
-  <h1>12 · Las siete funciones — una anatomía, siete contenidos</h1>
+  <h1>12 · Las seis funciones — una anatomía, seis contenidos</h1>
   <p>Las funciones que el repo define en <code>kb-usuario/</code>: Gastos, Ingresos, Facturación,
-    Presupuestos, Inteligencia de Negocio, Contabilidad y Clientes. <strong>No son pantallas de
+    Presupuestos, Inteligencia de Negocio y Clientes. <strong>No son pantallas de
     configuración</strong>: son la vía de la mano, paralela a la de la voz, sobre los mismos datos.
     Cada una tiene su alta propia — <code>Nuevo gasto</code>, <code>Nueva factura</code>,
-    <code>Nuevo presupuesto</code> — salvo Contabilidad, que el repo define como solo consulta.</p>
+    <code>Nuevo presupuesto</code> — salvo Inteligencia de Negocio, que sólo responde.</p>
   <p>Los teléfonos cargan el <strong>prototipo real</strong>, no capturas: lo que se ve acá es lo que
     se prueba en el celular, y no queda desactualizado cuando cambia el diseño.</p>
 </div>
@@ -98,8 +98,10 @@
 <div class="lane">
   <span class="lane-tag">3 · Las dos que no llevan alta</span>
   <h2>Consultar no es lo mismo que registrar</h2>
-  <p>Contabilidad es <strong>solo consulta</strong> por definición del repo. Inteligencia tampoco
-     registra: responde. Ninguna de las dos lleva "Nuevo".</p>
+  <p>Inteligencia de Negocio no registra: responde. Es la única sin "Nuevo".
+     ⚠️ <strong>Absorbió a Contabilidad el 20/08</strong> — caja, categorías, mejores clientes y el
+     tope de monotributo aparecían en las dos pantallas, y el usuario tenía que elegir dónde mirar
+     sin criterio. <strong>Diverge del repo</strong>, que las define separadas.</p>
   <div class="fila" id="f3"></div>
 </div>
 
@@ -132,9 +134,9 @@
     en el sentido inverso. Tener a Rodríguez cargado <strong>hoy no hace</strong> que "facturale a
     Rodríguez" salga mejor — y la pantalla insinúa esa promesa. Es una carencia del producto, no del
     diseño, y vale la pena discutirla con David.</p>
-  <p><strong>Contabilidad e Inteligencia se solapan.</strong> Caja, categorías y mejores clientes
-    aparecen en las dos. Viene del repo, pero obliga al usuario a elegir dónde mirar sin un criterio
-    claro.</p>
+  <p><strong>Contabilidad se unificó con Inteligencia el 20/08.</strong> Caja, categorías, mejores
+    clientes y tope de monotributo aparecían en las dos y obligaban a elegir dónde mirar sin criterio.
+    ⚠️ <strong>Diverge del repo</strong>, que las define separadas: va como propuesta a David.</p>
   <p><strong>Los gráficos no son tocables.</strong> El repo aclara que tocar una barra todavía no abre
     el detalle. Hoy nada lo indica: si el usuario los toca y no pasa nada, lo lee como app rota.</p>
 </div>
@@ -144,7 +146,7 @@ const P = {
   f1: [
     ['gastos','Gastos','el desglose por categoría con su porcentaje es lo que el repo define como resumen mensual — no es decoración, es la respuesta a "en qué se me va la plata".'],
     ['factura','Facturación','tres facturas, y el ojo va sola a la impaga: es la única en negro. Lo terminado ("Cobrada") queda en arena, que no reclama nada.'],
-    ['ingresos','Ingresos','cada ingreso muestra su ORIGEN. En un negocio chico buena parte de la plata no pasa por AFIP y hay que poder distinguirla de un vistazo.'],
+    ['ingresos','Ingresos','cada ingreso muestra su ORIGEN. En un negocio chico buena parte de la plata no pasa por ARCA y hay que poder distinguirla de un vistazo.'],
   ],
   f2: [
     ['presu','Presupuestos','<b>el negro muestra lo que espera respuesta</b>, no lo presupuestado: un presupuesto aceptado ya no pide nada, y uno rechazado tampoco.'],
@@ -152,8 +154,7 @@ const P = {
     ['gastos','Gastos · alta','<b>tres vías de alta</b>, las del repo: a mano, por voz y foto del ticket. El pill va en la fila del rótulo para no competir con el mic.'],
   ],
   f3: [
-    ['conta','Contabilidad','<b>Caja y Facturado nunca se mezclan</b> (repo): si se sumaran, la misma plata se contaría dos veces —al facturar y al cobrar—. La separación se dice con SUPERFICIE: caja en negro, facturado en card blanca.'],
-    ['bi','Inteligencia de Negocio','<b>"—" y nunca "$0"</b>. Rentabilidad tiene su propia card a ancho completo para poder decir por qué falta: "no es cero, es que todavía no se puede calcular".'],
+    ['bi','Inteligencia de Negocio','<b>unificada con Contabilidad (20/08).</b> Conserva la regla que la sostenía: <b>Caja y Facturado nunca se mezclan</b> —si se sumaran, la misma plata se contaría dos veces—, y se dice con SUPERFICIE: caja en negro, facturado en card blanca. <b>"—" y nunca "$0"</b>: Rentabilidad tiene su propia card a ancho completo para poder decir por qué falta: "no es cero, es que todavía no se puede calcular".'],
   ],
 };
 const tel = (v,t,nota) => `<figure class="tel">

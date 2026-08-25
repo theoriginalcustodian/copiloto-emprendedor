@@ -15,6 +15,28 @@
     --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
     --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
     --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    /* ── PRIORIDAD · escala pastel (cerrada 20/08) ─────────────────
+       El negro es ESTRUCTURA, no urgencia: usarlo para prioridad lo vaciaba igual que
+       cuando vestía un mail. La urgencia tiene escala propia, en pastel para no
+       competir con la terracota — que es el único acento saturado del sistema.
+       Dos criterios que la hacen funcionar:
+       · Cada chip lleva SU texto oscuro: el contraste vive dentro del chip y no
+         depende del fondo de la card. Un pastel con texto gris daría 2:1.
+       · La luminancia está escalonada POR URGENCIA (rango 0,217): más urge, más peso.
+         El orden de lectura sale solo, sin que nadie ordene nada.
+       ⚠️ Ninguna queda a menos de 23° de matiz de la terracota. El primer intento
+       (#EDAE9E) estaba a 2,2° — era terracota aclarada y competía con los botones. */
+    --p-urge:#F0B7C4;  --p-urge-t:#8C2846;   /* hue 346° · L .564 · 4,90:1 ✅ */
+    --p-pron:#F4D690;  --p-pron-t:#6E4A08;   /* hue  42° · L .693 · 5,62:1 ✅ */
+    --p-tran:#C3DEC8;  --p-tran-t:#28513A;   /* hue 131° · L .680 · 6,27:1 ✅ */
+    --p-sin :#EAE4DA;  --p-sin-t :#5C534C;   /* hue  37° · L .780 · 5,94:1 ✅ */
+    /* tinte de superficie grande: el chip a full sirve para 11 px, no para una banda */
+    --p-urge-suave:#FAE9ED;                  /* 1,17:1 vs card blanca */
+
+    /* ── FUNCIÓN · tile del ícono (ícono negro ≥13,5:1) ──────────── */
+    --f-cobros:#DCE8DC; --f-factura:#DCE3EC; --f-afip:#E4DCEC;
+    --f-presu:#F7E6CD;  --f-clientes:#F8E2DB; --f-propio:#EDE6DC;
+
     --display:"PJ","Arial Black",sans-serif;
     --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
     --fs-display:28px; --lh-display:32px;
@@ -33,7 +55,11 @@
        display:flex;align-items:center;justify-content:center}
 
   /* En el teléfono ocupa todo; en escritorio, un marco de 390×844 para verlo en contexto. */
-  #app{position:relative;width:100%;height:100dvh;max-width:none;overflow:hidden;background:var(--blanco)}
+  /* `min-width:0`: #app es flex item de body y `min-width:auto` no lo dejaría
+     encoger por debajo del ancho de su contenido. Higiene defensiva — hoy nada lo
+     fuerza, pero un hijo ancho lo haría crecer más que la pantalla sin avisar. */
+  #app{position:relative;width:100%;min-width:0;height:100dvh;max-width:none;
+       overflow:hidden;background:var(--blanco)}
   @media (min-width:520px){
     #app{width:390px;height:844px;border-radius:40px;border:1px solid #C9C1B4;
          box-shadow:0 24px 64px rgba(26,21,18,.18)}
@@ -68,7 +94,7 @@
   .snap{transition:transform .42s var(--ease)}
 
   /* ---------- Mi día ---------- */
-  .board{flex:1;min-height:0;overflow-y:auto;padding:0 var(--s2) var(--s2);display:flex;flex-direction:column;gap:var(--s1)}
+  .board{flex:1;min-height:0;overflow-y:auto;padding:0 var(--s2) var(--s3);display:flex;flex-direction:column;gap:var(--s1)}
   .fecha{font-size:var(--fs-cap);color:var(--sec);padding:0 var(--s1)}
   /* Stack: card blanca detrás del bloque negro, mismo ancho, baja hasta la mitad por
      detrás (su borde inferior queda tapado, no recortado). Trae el wordmark y la fecha:
@@ -84,14 +110,23 @@
            border-radius:var(--r-xl);padding:26px 20px 22px;
            box-shadow:0 -2px 10px rgba(26,21,18,.10)}
   .portada .p-lbl{color:var(--arena)}
-  .portada .p-delta{background:rgba(247,243,236,.10);border-radius:var(--r-pill);padding:5px 11px}
+  .portada .p-delta{background:rgba(247,243,236,.10);border-radius:var(--r-pill);padding:5px 11px;white-space:nowrap;line-height:1.35}
   .portada .p-rows{border-top:none;gap:var(--s1)}
+  /* Arena sobre negro tostado: 8,46:1 ✅. Va en arena y no en un rojo: no es un
+     error del usuario ni algo que él pueda arreglar tocando la cifra. */
+  /* Va SEPARADA de la cifra, no pegada: es una advertencia sobre el número, no su
+     bajada. Con -2px arriba se leía como parte del importe. */
+  /* ⚠️ El aire de arriba va en PADDING, no en margin: entre hermanos los márgenes
+     verticales COLAPSAN y gana el mayor, así que el margin-top quedaba absorbido
+     por el de la cifra y la advertencia seguía pegada al importe. */
+  .p-parcial{display:none;font-size:var(--fs-cap);color:var(--arena);
+             line-height:1.45;padding:18px var(--s3) 0 0;margin-bottom:16px}
   .portada .p-item{background:rgba(247,243,236,.07);border-radius:var(--r-s);padding:10px 12px}
   .portada .p-item span{color:var(--arena)}
   .p-lbl{font-size:var(--fs-cap);color:var(--sec);margin-bottom:4px}
   .p-main{display:flex;align-items:baseline;gap:var(--s1)}
   .p-big{font-family:var(--display);font-size:40px;line-height:1;letter-spacing:-.02em}
-  .p-delta{font-size:var(--fs-cap);font-weight:500;transform:translateY(-7px)}
+  .p-delta{font-size:var(--fs-cap);font-weight:500;transform:translateY(-7px);white-space:nowrap;line-height:1.35}
   .p-rows{display:flex;gap:var(--s3);margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--border)}
   .p-item{flex:1;padding-bottom:var(--s1)}
   .p-item span{display:block;font-size:var(--fs-cap);color:var(--sec)}
@@ -110,9 +145,9 @@
   .aviso p b{font-weight:500}
   /* La acción es un pill terracota: mismo fill que el mic — lo tocable se ve igual en
      toda la app (Decisión B). 16 px sin bold: prueba del 19/08, contraste anotado. */
-  .accion{display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 20px;margin-top:var(--s2);
+  .accion{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;margin-top:20px;
           border-radius:var(--r-pill);background:var(--terracota);color:var(--blanco);
-          font-family:var(--ui);font-weight:500;font-size:16px;line-height:1;cursor:pointer}
+          font-family:var(--ui);font-weight:500;font-size:15px;line-height:1;cursor:pointer}
   .resultado{display:flex;align-items:center;gap:6px;min-height:44px;font-size:var(--fs-cap);color:var(--sec)}
 
   /* ---------- composer (peek del chat) ---------- */
@@ -130,8 +165,77 @@
        display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
   .mic svg{stroke:var(--blanco);color:var(--blanco)}
 
+  /* ---------- grabar por voz: mantener apretado (24/08) ----------
+     Patrón de WhatsApp, pedido por Martin y David. DEROGA la escucha a pantalla
+     completa: mientras grabás no se tapa nada — sólo el campo de texto cede su
+     lugar dentro de la MISMA barra. El mic no se mueve ni cambia de tamaño de
+     caja: es el mismo botón el que graba y el que manda, así el pulgar nunca
+     tiene que reubicarse entre empezar y enviar. */
+  .inputbar{position:relative}
+  .rec,.lk{display:none;flex:1;align-items:center;gap:var(--s1);height:52px;
+           min-width:0;padding:0 4px 0 var(--s2)}
+  .inputbar.rec-on .campo{display:none}
+  .inputbar.rec-on .rec{display:flex}
+  .inputbar.lock-on .campo,.inputbar.lock-on .rec{display:none}
+  .inputbar.lock-on .lk{display:flex}
+  /* El punto late porque es lo único que dice "esto está corriendo". Usa
+     #A32B47 —el rojo de prioridad urgente, 7,01:1 ✅— y no un rojo nuevo:
+     el sistema ya tiene un color para "esto reclama atención". */
+  .rec-dot{width:11px;height:11px;border-radius:99px;background:#A32B47;flex-shrink:0;
+           animation:lat 1.4s var(--ease) infinite}
+  @keyframes lat{0%,100%{opacity:1}50%{opacity:.28}}
+  /* tabular-nums: sin esto el cronómetro cambia de ancho a cada segundo y
+     el rótulo de al lado tiembla. */
+  .rec-t{font-variant-numeric:tabular-nums;font-size:var(--fs-body);font-weight:500;
+         color:var(--negro);flex-shrink:0;min-width:38px}
+  .rec-hint{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;
+            font-size:var(--fs-cap);color:var(--sec);white-space:nowrap;overflow:hidden}
+  .rec-hint svg{flex-shrink:0;animation:vaiv 1.7s var(--ease) infinite}
+  @keyframes vaiv{0%,100%{transform:translateX(0);opacity:.4}50%{transform:translateX(-5px);opacity:1}}
+  /* Columna del bloqueo: el ÚNICO cartel del gesto, y se va apenas se usa.
+     Asoma por encima de la barra — .capa no recorta. */
+  .lock-col{position:absolute;right:var(--s2);bottom:84px;width:52px;
+            display:none;flex-direction:column;align-items:center;gap:3px;
+            padding:13px 0;border-radius:var(--r-pill);
+            background:var(--blanco);box-shadow:0 4px 18px rgba(26,21,18,.10);
+            pointer-events:none}
+  .inputbar.rec-on .lock-col{display:flex}
+  .lock-col svg{color:var(--sec);stroke:var(--sec)}
+  .lock-col .flecha{animation:sube 1.7s var(--ease) infinite}
+  @keyframes sube{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-4px);opacity:1}}
+  /* Cerca del bloqueo la columna se tiñe: la devolución llega ANTES de soltar,
+     que es cuando todavía se puede corregir el gesto. */
+  .inputbar.cerca .lock-col{background:#FDF3EF}
+  .inputbar.cerca .lock-col svg{color:var(--terracota-prof);stroke:var(--terracota-prof)}
+  .mic{transition:transform .18s var(--ease)}
+  .inputbar.rec-on .mic{transform:scale(1.14)}
+  .mic .ic-env{display:none}
+  .inputbar.lock-on .mic .ic-mic{display:none}
+  .inputbar.lock-on .mic .ic-env{display:block}
+  /* Bloqueado: Eliminar · Pausar · (Enviar es el mic, que ya cambió de ícono).
+     Son los tres controles que define el repo. */
+  .lk-btn{width:44px;height:44px;border-radius:99px;display:flex;align-items:center;
+          justify-content:center;flex-shrink:0;cursor:pointer;background:var(--arena-30)}
+  .lk-btn svg{color:var(--negro)}
+  .lk-btn.borrar svg{color:#B04A2E}
+  .lk-wave{flex:1;display:flex;align-items:center;gap:3px;height:24px;min-width:0;overflow:hidden}
+  .lk-wave i{flex:1;min-width:2px;max-width:4px;border-radius:99px;background:var(--terracota-prof);
+             animation:wv 1.1s var(--ease) infinite}
+  @keyframes wv{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+  .lk-pausa-txt{display:none;flex:1;font-size:var(--fs-cap);color:var(--sec)}
+  .inputbar.pausa .lk-wave{display:none}
+  .inputbar.pausa .lk-pausa-txt{display:block}
+  .inputbar.pausa .rec-t{color:var(--sec)}
+  /* Cancelar: la barra se va por izquierda, que es hacia donde empujó el dedo. */
+  .inputbar.fuga .rec{transform:translateX(-40px);opacity:0;transition:.22s var(--ease)}
+  /* La onda es decoración de estado, no información: con movimiento reducido
+     se apaga, y el cronómetro —que sí informa— sigue corriendo. */
+  @media (prefers-reduced-motion:reduce){
+    .rec-dot,.rec-hint svg,.lock-col .flecha,.lk-wave i{animation:none}
+  }
+
   /* ---------- escritorio ---------- */
-  .esc{flex:1;min-height:0;overflow-y:auto;padding:0 var(--s2) var(--s2);display:flex;flex-direction:column;gap:var(--s1)}
+  .esc{flex:1;min-height:0;overflow-y:auto;padding:0 var(--s2) var(--s3);display:flex;flex-direction:column;gap:var(--s1)}
   .banda-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sec);margin-top:var(--s2)}
   /* ── Funciones con la gramática de Mi día (19/08) ──────────────
      Tres por fila y no cuatro: a 390 px, cuatro dejan ~85 px por tile y "Presupuestos"
@@ -140,7 +244,12 @@
      un botón: se parece a un cajón, no a una acción. */
   .esc-tit{font-family:var(--display);font-size:var(--fs-title);line-height:var(--lh-title);
            padding:0 var(--s1) var(--s1)}
-  .banda{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  /* Sin bandas (20/08): con 6 funciones la división "Registrar / Mirar" quedaba en 5 y 1,
+     y una banda de un solo elemento no es una banda. El fundamento original era Hick-Hyman
+     —bajar de "una entre 9" a "una entre 2, después entre 3-4"—, y con 5+1 ese beneficio
+     desaparece. Con 6 en dos filas de tres se escanea de un vistazo.
+     El orden es por FRECUENCIA de uso, no por categoría contable. */
+  .banda{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:var(--s2)}
   .fn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;
       background:var(--blanco);border-radius:var(--r-m);box-shadow:0 4px 18px rgba(26,21,18,.07);
       min-height:96px;justify-content:center;cursor:pointer}
@@ -218,8 +327,16 @@
   .kv{display:flex;align-items:center;gap:12px;padding:0 0 6px}
   .kv .campo-txt{flex:1;min-width:0}
   .kv .k{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-         color:var(--sec);margin-bottom:3px}
-  .kv .v{font-size:var(--fs-body);line-height:1.45}
+         color:var(--sec);margin-bottom:4px}
+  .kv .v{font-size:var(--fs-body);line-height:1.5}
+  /* ⚠️ Dentro del HITL los campos van MÁS SUELTOS que en una lista común: acá cada
+     fila es un dato que hay que LEER Y VERIFICAR antes de confirmar algo que no se
+     deshace, no un ítem que se escanea. Con 6 px entre filas, la subétiqueta de un
+     campo ("CUIT 20-…") quedaba tan cerca del rótulo del siguiente que se leían como
+     un bloque solo. 12 px separan los campos entre sí más de lo que separa cada
+     rótulo de su valor — que es lo que hace que se lean de a pares. */
+  .hitl .kv{padding:14px 0}
+  .hitl .kv:first-of-type{padding-top:2px}
   .cita{background:var(--arena-30);border-radius:var(--r-s);padding:13px 14px;
         font-size:var(--fs-body);line-height:1.5;margin-bottom:var(--s2)}
   /* "Editá" es lo único tocable del campo: por eso es lo único en terracota. 5,43:1 ✅ */
@@ -228,7 +345,10 @@
   /* La nota deja de ser un renglón suelto y pasa a ser superficie: es una promesa del
      producto ("nada se manda sin que lo veas"), no un pie de página. */
   .nota{display:flex;gap:8px;align-items:center;padding:2px 2px 0;
-        font-size:var(--fs-cap);color:var(--sec)}
+        font-size:var(--fs-cap);color:var(--sec);line-height:1.55}
+  /* El alcance es lo último que se lee antes de decidir: se despega del último campo
+     para que no parezca la subétiqueta de ése. */
+  .hitl .nota{padding-top:14px}
   .nota svg{stroke:var(--sec);color:var(--sec);flex-shrink:0}
   .acciones{padding:var(--s2) 0 0}
   /* 19 px display bold es el PISO legal sobre #DE7250 (3,17:1 = AA sólo por "texto
@@ -241,6 +361,33 @@
   /* Cancelar pasa de borde a superficie: mismo tamaño de target, cero líneas. */
   .btn2{min-height:var(--tap);border-radius:var(--r-pill);display:flex;align-items:center;justify-content:center;
         font-size:var(--fs-body);font-weight:500;background:var(--arena-30);color:var(--negro);cursor:pointer}
+  /* ── Piezas de hilo que el prototipo no tenía (25/08) ──────────────
+     Estaban sólo en los mockups 01/04/05/06/08, recreadas en su CSS. Al portar
+     esos carriles a iframe hay que traerlas acá: son del producto, no del mockup. */
+  /* Burbuja del usuario: arena al 30% y NO terracota. Decisión B — la terracota
+     marca lo que EJECUTA algo, y un mensaje propio no ejecuta nada. Negro sobre
+     arena-30: 14,56:1 ✅. El radio se espeja respecto de la de Odobi. */
+  .mio{align-self:flex-end;max-width:88%;padding:12px var(--s2);font-size:var(--fs-body);
+       line-height:var(--lh-body);background:var(--arena-30);color:var(--negro);
+       border-radius:var(--r-m) 4px var(--r-m) var(--r-m)}
+  .meta{align-self:flex-end;display:flex;align-items:center;gap:5px;
+        font-size:11px;color:var(--sec);margin-top:-4px}
+  .meta i{font-style:normal;color:var(--terracota-prof);letter-spacing:-1px}
+  /* Separador de día: centrado y sin línea. La fecha ya separa; una regla encima
+     sería decir lo mismo dos veces. */
+  .dia{align-self:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+       color:var(--sec);padding:var(--s1) 0}
+  /* Respuestas sugeridas: borde y texto, sin relleno. Son atajos de lo que podés
+     decir — si fueran terracota plena competirían con el botón del HITL, que es
+     la decisión de verdad. */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;align-self:flex-start}
+  .chip-act{font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof);
+            background:var(--blanco);border:1px solid #EBD9D0;border-radius:var(--r-pill);
+            padding:9px 15px;cursor:pointer;box-shadow:0 2px 8px rgba(26,21,18,.05)}
+  .hitl .sub-k{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:4px;line-height:1.45}
+  .hitl .calc{font-size:11px;color:var(--sec)}
+  .recibo .link{margin-left:auto;font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof)}
+  .recibo .t2{font-size:var(--fs-cap);color:var(--sec);line-height:1.45}
   .recibo{display:flex;align-items:center;gap:10px;background:var(--blanco);box-shadow:0 4px 18px rgba(26,21,18,.07);border-radius:var(--r-m);
           padding:14px var(--s2);font-size:var(--fs-body);width:100%}
   .recibo .ok{width:26px;height:26px;border-radius:99px;border:1.5px solid var(--terracota-prof);
@@ -258,7 +405,8 @@
           font-size:var(--fs-body);font-weight:500;color:var(--terracota-prof);
           min-height:var(--tap);display:flex;align-items:center;cursor:pointer}
   .cuerpo{position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden}
-  .scroll{flex:1;overflow-y:auto;padding:0 var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
+  .scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--s2);
+          padding:0 var(--s2) calc(var(--s3) + env(safe-area-inset-bottom))}
   /* El stack también acá: el nombre de la función migra del header a la card blanca,
      igual que el wordmark en Mi día. Arriba queda sólo la salida. A la derecha el
      período, que es el análogo de la fecha: fecha lo que muestra el bloque negro. */
@@ -291,39 +439,54 @@
   .gasto.nuevo{animation:entra .4s var(--ease)}
   @keyframes entra{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
-  /* ---------- escucha ---------- */
-  #escucha{position:absolute;inset:0;z-index:6;display:none}
-  #escucha.on{display:block}
-  /* El velo sigue siendo del color del LIENZO al 96% (decisión del 16/08: la escucha
-     no tapa, silencia). Ahora que el lienzo es un degradé, el velo lo copia — si fuera
-     crema plano se vería un rectángulo pegado encima del fondo tibio de abajo.
-     96% y no 90%: calculado en el peor caso, a 94% la terracota profunda da 4,37:1 ✗
-     y a 96% da 4,53:1 ✅. Ese 4% es lo que hace que el fondo se insinúe. */
-  .velo{position:absolute;inset:0;
-        background:linear-gradient(0deg,rgba(245,231,222,.96) 0%,rgba(247,243,236,.96) 60%,rgba(247,243,236,.96) 100%)}
-  .escucha-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-              justify-content:center;gap:var(--s3);padding:var(--s3);text-align:center}
-  .escucha-in h2{font-family:var(--display);font-size:var(--fs-display);line-height:var(--lh-display)}
-  .parcial{font-family:var(--display);font-size:var(--fs-title);line-height:1.35;
-           text-align:center;max-width:300px;color:var(--negro);
-           background:var(--blanco);border-radius:var(--r-m);padding:16px 18px;
-           box-shadow:0 4px 18px rgba(26,21,18,.07)}
-  .wave{display:flex;align-items:flex-end;gap:8px;height:56px}
-  .wave i{display:block;width:8px;border-radius:99px;background:var(--terracota-prof);
-          animation:wv 1.1s var(--ease) infinite}
-  .wave i:nth-child(1){height:20px;animation-delay:0ms}   .wave i:nth-child(2){height:38px;animation-delay:120ms}
-  .wave i:nth-child(3){height:56px;animation-delay:240ms} .wave i:nth-child(4){height:28px;animation-delay:360ms}
-  .wave i:nth-child(5){height:46px;animation-delay:480ms} .wave i:nth-child(6){height:20px;animation-delay:600ms}
-  @keyframes wv{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1)}}
-  .ctrl{display:flex;align-items:center;gap:var(--s1);margin-top:var(--s2)}
-  .ghost{min-height:52px;padding:0 var(--s3);border-radius:var(--r-pill);
-         display:flex;align-items:center;font-size:var(--fs-body);font-weight:500;
-         background:var(--arena-30);color:var(--negro);cursor:pointer}
-  .enviar{min-height:52px;padding:0 26px;border-radius:var(--r-pill);background:var(--terracota);
-          display:flex;align-items:center;gap:var(--s1);font-family:var(--display);
-          font-size:var(--fs-btn);color:var(--blanco);cursor:pointer;
-          box-shadow:0 4px 14px rgba(222,114,80,.35)}
-  .enviar svg{stroke:var(--blanco);color:var(--blanco)}
+  /* ---------- reveal: el aterrizaje del splash (01, lane 1) ----------
+     No es una pantalla más: es el ÚNICO momento donde la marca se presenta entera
+     (lockup completo). La pronunciación va acá y en ningún otro lado — se dice una
+     vez, cuando el nombre es nuevo. */
+  #reveal{position:absolute;inset:0;z-index:8;display:none;flex-direction:column;
+          justify-content:space-between;padding:var(--s3);
+          background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  #reveal.on{display:flex}
+  .rv-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2)}
+  /* Separación símbolo↔wordmark = 0,3 × ancho del símbolo (spec del isotipo de
+     David): 54 × 0,3 ≈ 16 px. No se elige a ojo. */
+  .rv-lockup{display:flex;align-items:center;gap:16px}
+  .rv-word{font-family:var(--display);font-size:46px;color:var(--terracota);letter-spacing:-.02em}
+  .rv-pron{display:flex;align-items:center;gap:10px;font-size:var(--fs-body);color:var(--sec)}
+  .rv-say{width:38px;height:38px;border-radius:99px;background:var(--blanco);
+          box-shadow:0 3px 12px rgba(26,21,18,.08);display:flex;align-items:center;justify-content:center}
+  .rv-say svg{color:var(--terracota-prof)}
+  .rv-act{display:flex;flex-direction:column;gap:var(--s1)}
+  /* El ghost no lleva fondo ni borde: hay UNA decisión principal acá, y dos
+     botones con el mismo peso la esconderían. */
+  .rv-ghost{min-height:var(--tap);display:flex;align-items:center;justify-content:center;
+            font-size:var(--fs-body);font-weight:500;color:var(--terracota-prof)}
+
+  /* ---------- sheet de consentimiento (02, lane 1) ----------
+     Just-in-time: el permiso llega CON el pedido, no en un onboarding de 6 pantallas.
+     Por eso el hilo de atrás queda visible: se ve qué quedó esperando. */
+  #consent{position:absolute;inset:0;z-index:9;display:none}
+  #consent.on{display:block}
+  .cs-in{position:absolute;left:0;right:0;bottom:0;background:var(--blanco);
+         border-radius:20px 20px 0 0;padding:var(--s2) var(--s2) var(--s3);
+         padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom));
+         box-shadow:0 -12px 40px rgba(26,21,18,.18);animation:sube .32s var(--ease)}
+  /* El asidero necesita su propio aire: pegado al título, la barrita se lee como
+     parte del encabezado en vez de como el borde agarrable del panel. */
+  .cs-in > .grip,.card-in > .grip{padding:2px 0 var(--s2)}
+  .cs-in h3{font-family:var(--display);font-size:var(--fs-title);margin-bottom:4px}
+  .cs-in .sub{font-size:var(--fs-cap);color:var(--sec);margin-bottom:var(--s2)}
+  .cs-fila{display:flex;align-items:flex-start;gap:12px;padding:11px 0}
+  .cs-fila .tile{width:38px;height:38px;border-radius:12px;background:var(--arena-30);
+                 display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .cs-fila b{display:block;font-size:var(--fs-body);font-weight:500;line-height:1.4}
+  .cs-fila span{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:1px}
+  /* Lo que quedó esperando: es la mitad del argumento del just-in-time — el pedido
+     no se pierde, sigue ahí cuando conectes. */
+  .cs-pend{display:flex;gap:8px;align-items:flex-start;background:var(--arena-30);
+           border-radius:var(--r-s);padding:12px 13px;margin-top:var(--s1);
+           font-size:var(--fs-cap);color:var(--sec);line-height:1.5}
+  .cs-pend svg{flex-shrink:0;margin-top:2px;color:var(--sec)}
 
   /* ---------- card ---------- */
   #card{position:absolute;inset:0;z-index:7;display:none}
@@ -333,12 +496,25 @@
            padding:var(--s2) var(--s2) var(--s3);box-shadow:0 -12px 40px rgba(26,21,18,.18);
            padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom));animation:sube .32s var(--ease)}
   @keyframes sube{from{transform:translateY(100%)}to{transform:none}}
+  /* El título NOMBRA el registro que estás creando ("Nuevo gasto"), no describe lo
+     que pasó ("Esto es lo que entendí"): quien la ve necesita saber QUÉ va a guardar,
+     no cómo llegó ahí. La bajada abajo ya dice que se puede corregir. */
   .card-in h3{font-family:var(--display);font-size:var(--fs-title);margin-bottom:4px}
   .card-in .sub{font-size:var(--fs-cap);color:var(--sec);margin-bottom:var(--s2)}
+  /* Los campos respiran: 6 px entre filas los apelmazaba y la card se leía como un
+     bloque de texto. Separa el ESPACIO, no una línea (regla del 19/08). */
+  .card-in .kv{padding:10px 0}
+  .card-in .kv:last-of-type{padding-bottom:14px}
+  .card-in .nota{padding-top:0}
 
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important}
     .snap{transition:none}
+    /* ⚠️ Sin esto el aviso de guardado NO APARECERÍA: con `*{animation:none}` el
+       keyframe no corre y el elemento se queda en max-height:0. La confirmación de
+       que un dato se guardó no es decoración — tiene que verse igual, sólo que sin
+       transición. */
+    .campo-ed.guardado .ok{max-height:22px;opacity:1;margin-top:6px}
     /* el tambor conserva su transición: es la única forma de que el ejemplo cambie */
     .rodillo li{transition:opacity .62s var(--giro),transform .62s var(--giro)!important}
   }
@@ -354,17 +530,8 @@
   .calma .spot{width:104px;height:104px;margin-bottom:var(--s1)}
   .calma h3{font-family:var(--display);font-size:var(--fs-title);line-height:var(--lh-title)}
   .calma p{font-size:var(--fs-cap);color:var(--sec);line-height:1.55;max-width:250px}
-
-  /* ── Inteligencia ────────────────────────────────────────────────
-     La portada de Mi día ES la query `portada` del BI del repo (Entró/Salió/
-     Facturado/Margen). Por eso tocarla aterriza acá: no es un salto, es el mismo
-     objeto que crece — el bloque negro sigue siendo negro y sigue arriba.
-     El BI del repo es CONVERSACIONAL y de sólo lectura: esta pantalla no inventa
-     tableros, muestra la portada completa y devuelve al chat para preguntar. */
-  #inteligencia{position:absolute;inset:0;z-index:4;
-                background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);
-                display:none;flex-direction:column}
-  #inteligencia.on{display:flex}
+  .pend{font-size:var(--fs-cap);color:var(--sec);padding:0 var(--s1) var(--s1)}
+  .pend b{font-weight:500;color:var(--negro)}
   .bi-port{background:var(--negro);color:var(--crema);border-radius:var(--r-xl);
            padding:26px 20px 22px}
   .bi-port .p-lbl{color:var(--arena)}
@@ -402,9 +569,16 @@
   .fact .txt span{font-size:var(--fs-cap);color:var(--sec)}
   .fact .der{text-align:right;flex-shrink:0}
   .fact .der b{display:block;font-size:var(--fs-body);font-weight:500}
+  /* ⚠️ El chip de ORIGEN se quitó de Ingresos (Martin, 25/08): "De una factura" al
+     lado de una fila que ya dice "Factura A-0036" es decir lo mismo dos veces, y
+     "Lo anotaste vos" / "Lo dictaste por voz" no le sirven a nadie — al usuario le
+     da igual por qué puerta entró el dato. Sobrevive sólo el chip de lo que FALTA. */
   .estado{display:inline-block;margin-top:3px;font-size:11px;color:var(--sec);
           background:var(--arena-30);border-radius:var(--r-pill);padding:3px 9px}
-  .estado.pend{background:var(--negro);color:var(--arena)}
+  /* Sin relleno (Martin, 25/08): el dato que falta se dice con TEXTO, no con una
+     mancha. Un pill negro sobre una fila blanca pesaba más que el importe, que es
+     lo que la fila viene a mostrar. #B04A2E s/blanco 5,43:1 ✅. */
+  .estado.pend{background:none;color:var(--terracota-prof);font-weight:500;padding:3px 0}
 
   /* ── Presupuestos ────────────────────────────────────────────────
      El bloque negro NO muestra "presupuestado este mes": muestra lo que está
@@ -431,7 +605,7 @@
 
   /* ── Ajustes ─────────────────────────────────────────────────────
      El repo define SIETE opciones en grilla y en este orden (kb-usuario/ajustes.md):
-     Mi negocio · Facturación AFIP · Apps conectadas · Mi plan · Mi cuenta ·
+     Mi negocio · Facturación ARCA · Apps conectadas · Mi plan · Mi cuenta ·
      Apariencia · Cómo hablarle. No se reordena ni se agrupa: es el mapa que el
      usuario ya tiene.
      El bloque negro de esta pantalla es la IDENTIDAD FISCAL — quién sos ante ARCA.
@@ -476,10 +650,11 @@
      en card blanca. Distinta materia = distinta naturaleza; ningún usuario va a leer
      esos dos números como partes de un mismo total.
      Es pantalla de SOLO CONSULTA (repo): no lleva "Nuevo", a diferencia del resto de
-     las funciones. El composer queda porque preguntar sí se puede. */
-  #conta{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;
-         background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
-  #conta.on{display:flex}
+     las funciones. El composer queda porque preguntar sí se puede.
+     ⚠️ Acá vivía la regla de #conta, borrada el 20/08 al unificar Contabilidad. El
+     borrado se llevó el SELECTOR y dejó el cuerpo suelto detrás del comentario, más
+     un `.on{display:flex}` huérfano que se aplicaba a TODA la app: cualquier elemento
+     con la clase `on` pasaba a ser flex. Rompía la tarjeta expandible de Mi día. */
   /* desglose dentro del bloque negro: arena para el label (8,46:1) y crema para el dato */
   .resumen .cats{margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid rgba(247,243,236,.12)}
   .resumen .cat{padding:6px 0}
@@ -505,16 +680,41 @@
      valor tonal que #B04A2E para que convivan con la terracota y no parezcan de otro
      sistema. El rojo ya existe: es #B04A2E. Todos sobre blanco ≥4,5:1.
      WCAG 1.4.1: el color NUNCA va solo — el porcentaje se dice con texto. */
-  .tope{display:flex;align-items:center;gap:10px;margin-top:12px}
-  .tope .barra{flex:1;height:8px;border-radius:99px;background:var(--arena-30);overflow:hidden}
-  .tope .barra i{display:block;height:100%}
-  .tope b{font-size:var(--fs-cap);font-weight:500;flex-shrink:0}
+  .medidor{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .medidor .barra{flex:1;height:8px;border-radius:99px;background:var(--arena-30);overflow:hidden}
+  .medidor .barra i{display:block;height:100%}
+  .medidor b{font-size:var(--fs-cap);font-weight:500;flex-shrink:0}
   .sem-ok  {--sem:#3F7D5C}   /* 4,84:1 s/blanco ✅ */
   .sem-ojo {--sem:#A06A1E}   /* 4,63:1 s/blanco ✅ */
   .sem-mal {--sem:#B04A2E}   /* 5,43:1 s/blanco ✅ — ya en paleta */
-  .tope .barra i,.tope b{background:var(--sem)}
-  .tope b{background:none;color:var(--sem)}
+  .medidor .barra i,.medidor b{background:var(--sem)}
+  .medidor b{background:none;color:var(--sem)}
   .rank{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:var(--fs-body)}
+  /* Estado vacío de una sección (repo): "vas a ver un mensaje avisando que todavía no
+     hay datos, en vez de una sección vacía sin explicación". Misma regla que la taza de
+     Mi día — un vacío explicado no se lee como pantalla que falló al cargar.
+     Va SIN ilustración: la taza es para el vacío bueno de toda una pantalla; acá el
+     vacío es sólo una sección y no es un logro, es que todavía no vendiste. */
+  .nada{font-size:var(--fs-cap);color:var(--sec);line-height:1.55;padding:2px 0 4px}
+  /* ⚠️ El modificador es `.sin-datos`, NO `.vacio`: `.vacio` ya era el estado vacío del
+     CHAT (centrado, con ilustración y padding grande) y al reusarlo acá el bloque se
+     centraba entero. La regla del §8 no es sólo "no definir dos veces": es **no reusar
+     un nombre que ya significa otra cosa**, aunque esté definido una sola vez. */
+  .bloque.sin-datos .rank{display:none}
+  .bloque:not(.sin-datos) .nada{display:none}
+
+  /* ── Tirar para actualizar (repo, 24/08) ────────────────────────────
+     El repo lo pide dos veces para esta pantalla: "tirá hacia abajo para refrescar".
+     Se dibuja porque Inteligencia es la única pantalla cuyo contenido el usuario
+     querría volver a pedir: las demás cambian cuando él hace algo. */
+  .refresh{height:0;overflow:hidden;flex:none;display:flex;align-items:center;
+           justify-content:center;gap:8px;font-size:var(--fs-cap);color:var(--sec)}
+  .refresh.anim{transition:height .28s var(--ease)}
+  .refresh svg{stroke:var(--sec);color:var(--sec);transition:transform .22s var(--ease)}
+  .refresh.suelta svg{transform:rotate(180deg)}
+  .refresh.cargando svg{animation:gira .9s linear infinite;transform:none}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){ .refresh.cargando svg{animation:none} }
   .rank span{color:var(--sec);font-size:var(--fs-cap)}
 
   /* ── Ingresos ────────────────────────────────────────────────────
@@ -523,7 +723,7 @@
        el usuario hace, no cómo lo llama el sistema;
      · cada ingreso lleva su ORIGEN visible (de una factura · lo anotaste vos ·
        lo dictaste por voz), porque la mitad de la plata de un negocio chico no pasa
-       por AFIP y hay que poder distinguirla;
+       por ARCA y hay que poder distinguirla;
      · un ingreso se puede guardar con SÓLO el monto, y lo que falte queda como
        "pendiente de completar" con acceso directo a completarlo;
      · MercadoPago todavía NO entra solo: eso es una advertencia del repo, no un
@@ -539,9 +739,12 @@
      Son formularios, y un formulario con la gramática nueva no lleva líneas: cada
      campo es una fila sobre superficie blanca, con la etiqueta arriba en versalitas
      y el valor abajo — el mismo patrón que ya usa la card del HITL. */
-  .sub{position:absolute;inset:0;z-index:6;display:none;flex-direction:column;
-       background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
-  .sub.on{display:flex}
+  /* `.subp` y no `.sub`: `.sub` ya era la BAJADA de texto (Inteligencia, card del
+     HITL). Al llamarse igual, esta regla —position:absolute + display:none— apagaba
+     todas esas bajadas. Un nombre, un significado. */
+  .subp{position:absolute;inset:0;z-index:6;display:none;flex-direction:column;
+        background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  .subp.on{display:flex}
   .grupo{background:var(--blanco);border-radius:var(--r-m);padding:4px var(--s2);
          box-shadow:0 4px 18px rgba(26,21,18,.07)}
   .campo-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0}
@@ -559,7 +762,7 @@
   .seg span{flex:1;text-align:center;padding:9px 12px;border-radius:var(--r-pill);
             font-size:var(--fs-cap);font-weight:500;color:var(--sec);cursor:pointer}
   .seg span.on{background:var(--blanco);color:var(--negro);box-shadow:0 2px 8px rgba(26,21,18,.08)}
-  .nota-sub{display:flex;gap:8px;align-items:flex-start;padding:2px;font-size:var(--fs-cap);
+  .nota-sub{display:flex;gap:8px;align-items:flex-start;padding:2px 2px 6px;font-size:var(--fs-cap);
             color:var(--sec);line-height:1.5}
   .nota-sub svg{flex-shrink:0;margin-top:2px;color:var(--sec)}
 
@@ -813,6 +1016,319 @@
       opacity:1!important;transform:none!important;animation:none!important}
   }
 
+  /* ══ MI DÍA · tres verticales (20/08) ═════════════════════════════
+     Números → agenda → tablero, en el orden en que se decide una mañana: cuánto tengo
+     (sin la caja ninguna prioridad se evalúa) → qué es inamovible (la hora no se
+     negocia) → qué debo atender (lo único que sí se reordena). */
+
+  /* encabezado de sección grande (patrón CARROT Weather): el día se lee como un
+     documento y no como tres widgets apilados. Reemplaza el rótulo de 11 px. */
+  /* Antes era `padding:8px 4px 0`: con el `gap:8px` del board, el rótulo quedaba a
+     8 px de arriba y 8 de abajo — flotando entre dos bloques sin pertenecer a
+     ninguno. Ahora **32 px arriba, 22 abajo** (sumando el gap).
+     ⚠️ Los dos números suben, no sólo el de abajo: si sólo creciera el de abajo, el
+     rótulo se pegaría al bloque ANTERIOR y encabezaría al que no es. **La proximidad
+     es lo que dice qué encabeza qué** (Gestalt) — por eso arriba siempre tiene que
+     ser mayor, y por eso no hace falta ninguna línea divisoria. */
+  .sec{display:flex;align-items:baseline;justify-content:space-between;
+       padding:var(--s3) 4px 14px;flex:none}
+  .sec h4{font-family:var(--display);font-size:19px;letter-spacing:-.01em}
+  .sec .cont{font-size:var(--fs-cap);color:var(--sec);font-weight:400;margin-left:7px}
+  .sec a{font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof);cursor:pointer}
+
+  .lista{background:var(--blanco);border-radius:var(--r-m);padding:2px var(--s2);flex:none;
+         box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ev{display:flex;gap:13px;align-items:flex-start;padding:13px 0}
+  .ev + .ev{border-top:1px solid #F0EAE1}
+  .ev .h{font-size:var(--fs-cap);color:var(--sec);width:42px;flex-shrink:0;padding-top:2px}
+  .ev .t{flex:1;min-width:0}
+  .ev .t b{display:block;font-size:var(--fs-body);font-weight:500}
+  .ev .t span{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:1px}
+  /* ⚠️ RADIOS CONCÉNTRICOS: radio interior = exterior − distancia al borde. Esta fila
+     sobresale 12 px dentro de una .lista con 16 de padding → queda a 4 px del borde,
+     así que su radio es 22 − 4 = 18. Con 14 las curvas no son concéntricas y se nota. */
+  .ev.ahora{background:var(--p-urge-suave);margin:0 -12px;padding:13px 12px;border-radius:18px}
+  .ev.ahora + .ev{border-top:none}
+
+  /* Carrusel: una tarjeta por vez. Es lo que impide que Mi día crezca con la cantidad
+     de pendientes — con 4 o con 12 mide lo mismo, y la agenda nunca queda enterrada.
+     ⚠️ Ocupa el eje horizontal, así que el swipe de descarte se muda al tablero. */
+  .carr{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+        padding:2px 0;margin:0 calc(var(--s2) * -1);padding-left:var(--s2);
+        padding-right:var(--s2);flex:none;scrollbar-width:none}
+  .carr::-webkit-scrollbar{display:none}
+  .carr > .aviso{scroll-snap-align:center;width:calc(100% - 56px);flex:none}
+  .dots{display:flex;gap:6px;justify-content:center;padding-top:2px;flex:none}
+  .dots i{width:6px;height:6px;border-radius:99px;background:#DCD3C8;display:block;
+          transition:width .25s var(--ease),background .25s var(--ease)}
+  .dots i.on{background:var(--terracota);width:18px}
+
+  /* ── Prioridad: SÓLO TEXTO (rev. 20/08) ───────────────────────
+     El fondo pastel daba la jerarquía sola —la luminancia escalonada hacía que lo
+     urgente pesara más—, pero sumaba 8 manchas de color por pantalla (4 chips + 4
+     tiles) encima del bloque negro y el botón terracota. Sacándolo, esa señal se
+     pierde: los cuatro textos oscuros quedan con luminancia entre .066 y .090, un
+     rango de 0,023 — pesan igual.
+     ⚠️ La jerarquía la recupera LA TIPOGRAFÍA, no el color: peso escalonado por
+     urgencia. Eso además la vuelve legible en blanco y negro, que es la prueba de
+     que no depende del color (WCAG 1.4.1). */
+  .chip-p{display:inline-block;margin-top:6px;font-size:12px}
+  .c-urge{color:#A32B47;font-weight:600}   /* 7,01:1 ✅ */
+  .c-pron{color:#8A6410;font-weight:500}   /* 5,37:1 ✅ */
+  .c-tran{color:#3C6B52;font-weight:500}   /* 6,15:1 ✅ */
+  .c-sin {color:#7A716A;font-weight:400}   /* 4,78:1 ✅ */
+
+  /* ══ TABLERO · los tres estados del repo ══════════════════════════
+     Para hoy · Haciendo · Hechas. En mobile son PESTAÑAS, no columnas: a 390 px tres
+     columnas dan 118 px cada una y no cabe el nombre de un cliente. El repo ya lo
+     resolvió así. */
+  #tablero,#agenda{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;
+                   background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  #tablero.on,#agenda.on{display:flex}
+  /* Selección con BORDE + check (patrón Quizlet), no con relleno: la solapa elegida
+     deja de gastar acento y Decisión B queda intacta — la terracota sigue marcando
+     sólo lo que ejecuta algo. */
+  .segb{display:flex;gap:8px;flex:none}
+  .segb span{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;min-height:44px;
+             border-radius:var(--r-pill);font-size:var(--fs-cap);font-weight:500;
+             color:var(--sec);background:var(--blanco);border:1.5px solid #E8E0D6;cursor:pointer}
+  .segb span.on{border-color:var(--terracota);background:#FDF3EF;color:var(--terracota-prof)}
+  .fchips{display:flex;gap:7px;overflow-x:auto;flex:none;scrollbar-width:none}
+  .fchips::-webkit-scrollbar{display:none}
+  .fchips span{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;
+               font-size:var(--fs-cap);padding:9px 13px;border-radius:var(--r-pill);
+               background:var(--blanco);color:var(--sec);border:1.5px solid #E8E0D6;cursor:pointer}
+  .fchips span.on{border-color:var(--terracota);background:#FDF3EF;color:var(--terracota-prof);font-weight:500}
+
+  /* Filas de 64 px: entran cuatro donde antes entraba una card. La card queda para el
+     carrusel del resumen, donde se ve UNA y necesita todo su contexto. */
+  .filas{background:var(--blanco);border-radius:var(--r-m);padding:0 var(--s2);flex:none;
+         box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  /* ⚠️ La fila necesita fondo PROPIO: al envolverla para el swipe, el fondo de descarte
+     queda debajo, y sin fondo blanco se ve el rojo a través. El separador tampoco puede
+     ser `.fi + .fi` porque el wrapper las separa: va entre wrappers. */
+  .fi{display:flex;gap:12px;align-items:center;padding:12px 0;min-height:64px;
+      cursor:pointer;background:var(--blanco)}
+  .filas .swipe + .swipe > .fi{border-top:1px solid #F0EAE1}
+  .exp .swipe + .swipe > .ex{border-top:1px solid #F0EAE1}
+  .exp .swipe:first-child{border-radius:var(--r-m) var(--r-m) 0 0}
+  .exp .swipe:last-child{border-radius:0 0 var(--r-m) var(--r-m)}
+  .filas .swipe{border-radius:0}
+  .filas .swipe:first-child{border-radius:var(--r-m) var(--r-m) 0 0}
+  .filas .swipe:last-child{border-radius:0 0 var(--r-m) var(--r-m)}
+  .fi .tile{width:38px;height:38px}
+  .fi .t{flex:1;min-width:0}
+  .fi .t b{display:block;font-size:15px;font-weight:500}
+  .fi .t .chip-p{margin-top:5px}
+  .fi .ch{color:#C6BCB0;flex-shrink:0}
+
+  /* ══ SHEET de detalle ═════════════════════════════════════════════
+     Resuelve dos cosas a la vez: da el detalle que el repo pide al tocar la tarjeta,
+     y es la ALTERNATIVA DE UN SOLO PUNTERO que WCAG 2.5.1 exige para el swipe. */
+  #detalle{position:absolute;inset:0;z-index:8;display:none}
+  #detalle.on{display:block}
+  #detalle .scrim{position:absolute;inset:0;background:rgba(26,21,18,.28)}
+  #detalle .hoja{position:absolute;left:0;right:0;bottom:0;background:var(--blanco);
+                 border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px var(--s2) var(--s3);
+                 padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom));
+                 box-shadow:0 -12px 40px rgba(26,21,18,.18);animation:sube .32s var(--ease)}
+  #detalle .grip{width:36px;height:4px;border-radius:3px;background:#E0D8CD;margin:0 auto 16px}
+  #detalle h3{font-family:var(--display);font-size:21px;margin-bottom:8px}
+  #detalle .kv{display:flex;justify-content:space-between;align-items:center;
+               padding:13px 0;font-size:15px;gap:14px}
+  #detalle .kv + .kv{border-top:1px solid #F0EAE1}
+  #detalle .kv span{color:var(--sec);flex-shrink:0}
+  #detalle .kv b{text-align:right}
+  #detalle .acciones{display:flex;flex-direction:column;gap:8px;margin-top:var(--s2)}
+
+  /* ══ Tarjeta EXPANDIBLE (20/08) ═══════════════════════════════════
+     Reemplaza al carrusel en el resumen de Mi día. Es lo que el repo ya define:
+     "Tocar una tarjeta la expande, mostrando más detalle. Volvés a tocarla para
+     colapsarla" (kb-usuario/midia.md). No inventa interacción: dibuja la del producto.
+     Tres cosas que gana sobre el carrusel:
+     · se ven TODAS las tarjetas y el detalle de una al mismo tiempo — el contexto es
+       lo que hace decidir cuál atender primero;
+     · no gasta el eje horizontal, así que el swipe de descarte VUELVE a Mi día;
+     · nada tapa la pantalla, a diferencia del sheet. */
+  .exp{background:var(--blanco);border-radius:var(--r-m);padding:0 var(--s2);flex:none;
+       box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ex{padding:12px 0;cursor:pointer}
+  .ex + .ex{border-top:1px solid #F0EAE1}
+  .ex .cab{display:flex;gap:12px;align-items:center;min-height:52px}
+  .ex .cab .t{flex:1;min-width:0}
+  .ex .cab .t b{display:block;font-size:15px;font-weight:500}
+  .ex .cab .t .chip-p{margin-top:5px}
+  .ex .fl{color:#C6BCB0;flex-shrink:0;transition:transform .3s var(--ease)}
+  .ex.on .fl{transform:rotate(90deg)}
+  /* max-height y no height: el contenido no tiene alto fijo y auto no anima */
+  .ex .mas{max-height:0;overflow:hidden;transition:max-height .35s var(--ease)}
+  .ex.on .mas{max-height:260px}
+  .ex .mas .in{padding:4px 0 12px 54px}
+  .ex .mas p{font-size:var(--fs-cap);color:var(--sec);line-height:1.5}
+  .ex .mas .kv{display:flex;justify-content:space-between;gap:12px;font-size:var(--fs-cap);
+               padding:9px 0;border-top:1px solid #F5F0E9;margin-top:8px}
+  .ex .mas .kv span{color:var(--sec)}
+  .ex .mas .accion{margin-top:14px}
+
+  /* ══ 1 · SKELETON de carga (20/08) ════════════════════════════════
+     El detector corre en el backend: hay una ventana real entre abrir la app y tener
+     las tarjetas. Sin esto, esa ventana es una pantalla vacía — que se lee como "no
+     hay nada", justo el mensaje opuesto. */
+  .sk{border-radius:6px;background:linear-gradient(90deg,#EFE9E1 25%,#F7F3EC 37%,#EFE9E1 63%);
+      background-size:400% 100%;animation:brillo 1.5s ease-in-out infinite;display:block}
+  @keyframes brillo{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  .sk.t1{width:38px;height:38px;border-radius:var(--r-s);flex-shrink:0}
+  .sk.t2{height:13px;width:62%}
+  .sk.t3{height:11px;width:38%;margin-top:8px}
+  @media (prefers-reduced-motion:reduce){.sk{animation:none}}
+  #cargando{display:none}
+  #cargando.on{display:block}
+
+  /* ══ 2 · AVANCE DEL DÍA ═══════════════════════════════════════════
+     El repo define tres estados pero nada mostraba el avance. Cerrar cosas ES el
+     trabajo del día: verlo avanzar es la única devolución que el usuario recibe por
+     hacerlo — sin esto la lista sólo le muestra lo que falta. */
+
+  /* ⚠️ El CHECKBOX se quitó (Martin, 20/08): una anotación propia ya cumplida no se
+     archiva, se borra — mantenerla sólo alarga la lista.
+     Consecuencia: descartar vuelve a depender del swipe, que es un gesto de
+     trayectoria. La alternativa de un solo puntero que exige WCAG 2.5.1 pasa a ser
+     **"Borrar" dentro de la tarjeta expandida**: no agrega un control nuevo a la fila,
+     usa el detalle que el repo ya pide al tocar. */
+  .borrar{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;
+          margin-top:14px;border-radius:var(--r-pill);background:var(--arena-30);
+          color:var(--terracota-prof);font-weight:500;font-size:15px;cursor:pointer}
+  .borrar svg{color:var(--terracota-prof)}
+
+  /* ══ Alerta crítica — sólo en el TABLERO (20/08) ══════════════════
+     El repo dice del certificado ARCA: "es el aviso más importante de todos, porque si
+     el certificado vence, se te cae la facturación entera". Como una tarjeta más de la
+     lista, el sistema no distinguía "importante" de "crítico".
+     ⚠️ Va en el tablero y NO en Mi día: allá la prioridad ya la dice el texto en color,
+     y repetirla en un bloque sería decir lo mismo dos veces.
+     ⚠️ Va ARRIBA DE LAS SOLAPAS porque es transversal a los tres estados: no pertenece
+     a "Para hoy" ni a "Haciendo" — pertenece al negocio.
+     Usa el negro, que ya significa peso, en vez de inventar un color de alarma. Se
+     reserva a lo que ROMPE el negocio: ARCA vencido, conexión caída. */
+  .alerta{background:var(--negro);color:var(--crema);border-radius:var(--r-m);
+          padding:var(--s2);flex:none;display:flex;gap:12px;align-items:flex-start}
+  .alerta .ico{width:34px;height:34px;border-radius:99px;background:rgba(240,183,196,.16);
+               display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F0B7C4}
+  .alerta .cont{flex:1;min-width:0}
+  .alerta b{display:block;font-size:15px;font-weight:500}
+  .alerta p{font-size:var(--fs-cap);color:var(--arena);line-height:1.5;margin-top:3px}
+  .alerta .accion{margin-top:12px;height:34px;padding:0 14px;font-size:14px}
+
+  /* ══ AGENDA · gramática de Google Calendar (20/08) ════════════════
+     Se adopta lo que hace RECONOCIBLE a un calendario, no su estética:
+     · columna de horas a la izquierda con líneas tenues que la cruzan;
+     · bloques con ALTURA PROPORCIONAL A LA DURACIÓN — dice cuánto dura sin texto;
+     · la línea del AHORA con su punto, que es el elemento más reconocible de todos.
+     Lo que NO se adopta: color por calendario (rompería la paleta, que tiene un solo
+     acento) y la vista mes (en mobile no sirve para "qué hago hoy").
+     ⚠️ La línea del ahora va en TERRACOTA y no en rojo: es señal, y el sistema ya
+     tiene un color para eso. Google usa rojo porque su acento es azul. */
+  /* ⚠️ Sin padding vertical: las horas se posicionan contra el padding-box y los
+     bloques contra su contenedor interno — con padding, los dos sistemas quedan
+     desfasados y el evento de las 11:30 aparece a las 12. */
+  .cal{position:relative;background:var(--blanco);border-radius:var(--r-m);
+       padding:26px var(--s2) 18px 52px;flex:none;
+       box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .cal .rejilla{position:absolute;left:0;right:0;top:26px;bottom:18px}
+  .cal .h{position:absolute;left:0;width:44px;z-index:2;text-align:right;font-size:11px;
+          color:var(--sec);transform:translateY(-6px)}
+  .cal .linea{position:absolute;left:52px;right:var(--s2);border-top:1px solid #F2ECE4}
+  /* El contenido se CENTRA en el alto del bloque, no se apoya arriba: un evento de
+     30 min mide 25 px y con padding fijo el título quedaba pegado al borde superior.
+     Con flex, el mismo componente sirve para 30 min y para 2 h. */
+  .bcal{position:relative;border-radius:var(--r-s);padding:9px 12px;margin-bottom:2px;
+          background:var(--arena-30);overflow:hidden;
+          display:flex;flex-direction:column;justify-content:center}
+  .bcal b{display:block;font-size:14px;font-weight:500;line-height:1.3}
+  .bcal span{display:block;font-size:11px;color:var(--sec);margin-top:2px;line-height:1.3}
+  /* Bajo cierto alto el subtítulo no entra: mostrarlo lo recorta a la mitad. */
+  .bcal.corto span{display:none}
+  /* el borde izquierdo dice de dónde viene el evento sin gastar un ícono */
+  .bcal.gcal{border-left:3px solid var(--arena)}
+  .bcal.odobi{border-left:3px solid var(--terracota)}
+  .bcal.libre{background:transparent;border:1px dashed #E3D9CE;color:var(--sec);
+                display:flex;align-items:center;font-size:12px;padding:9px 12px}
+
+  /* La línea del ahora: el elemento más reconocible de un calendario. */
+  /* left negativo: la línea vive en el contenedor de bloques, que arranca tras el
+     padding-left de 52 px. Para que el punto caiga sobre la columna de horas hay que
+     restarlo — 38 − 52 = −14. */
+  .ahora-l{position:absolute;left:-14px;right:0;height:2px;background:var(--terracota);
+           z-index:3;pointer-events:none}
+  .ahora-l::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;
+                   border-radius:99px;background:var(--terracota)}
+
+  /* Añadir evento: mismo pill que "Nuevo gasto" — un solo patrón de alta en toda la app */
+  .fila-lbl-cal{display:flex;align-items:baseline;justify-content:space-between;
+                gap:12px;padding:var(--s1) 4px 0;flex:none}
+
+  /* ══ Ajustes en FILAS AGRUPADAS (20/08) ═══════════════════════════
+     La grilla venía del repo, que hablaba de 7 opciones. Con 10 dejó de servir: son
+     5 filas de tiles con las etiquetas cortándose y sin lugar para explicar qué hace
+     cada una. Las filas permiten un subtítulo —imposible en un tile— y escalan si
+     mañana son 12.
+     Y coincide con lo que la gramática B ya definía para configuración: "filas
+     agrupadas con label y estado chico". La grilla era la excepción, no la regla. */
+  .aj-fila{display:flex;gap:12px;align-items:center;padding:13px 0;min-height:64px;cursor:pointer}
+  .aj-fila + .aj-fila{border-top:1px solid var(--arena-30)}
+  .aj-fila .ic{width:38px;height:38px;border-radius:var(--r-s);background:var(--arena-30);
+               display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--negro)}
+  .aj-fila .t{flex:1;min-width:0}
+  .aj-fila .t b{display:block;font-size:15px;font-weight:500}
+  .aj-fila .t span{display:block;font-size:var(--fs-cap);color:var(--sec);line-height:1.4;margin-top:2px}
+  .aj-fila .ch{color:#C6BCB0;flex-shrink:0}
+
+  /* ══ Campos editables con autoguardado (20/08) ════════════════════
+     Cada dato es un campo de texto real, siempre editable: se va el "Editá" por fila.
+     Guarda al salir del campo, no al tipear — guardar en cada tecla dispara validaciones
+     a mitad de un CUIT y muestra errores de algo que el usuario todavía está escribiendo.
+     ⚠️ El LABEL va arriba y visible, nunca sólo como placeholder: el placeholder
+     desaparece al escribir y el usuario pierde de qué campo se trata (WCAG 3.3.2).
+     ⚠️ El CUIT NO se vuelve editable: el repo dice que "queda bloqueado; si necesitás
+     cambiarlo hay una opción explícita". Un dato que rompe la facturación no se cambia
+     sin fricción. */
+  .campo-ed{padding:12px 0}
+  .campo-ed + .campo-ed{border-top:1px solid var(--arena-30)}
+  .campo-ed > label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--sec);margin-bottom:6px}
+  .campo-ed input,.campo-ed textarea{width:100%;font-family:var(--ui);font-size:var(--fs-body);
+       color:var(--negro);background:var(--blanco);border:1.5px solid #E8E0D6;
+       border-radius:var(--r-s);padding:11px 13px;outline:none;resize:none;
+       transition:border-color .2s var(--ease),background .2s var(--ease)}
+  .campo-ed input::placeholder{color:#B5AA9E}
+  .campo-ed input:focus,.campo-ed textarea:focus{border-color:var(--terracota);background:#FFFDFC}
+  /* el error se dice CON EL REQUISITO, no con "campo inválido" */
+  .campo-ed.mal input,.campo-ed.mal textarea{border-color:#A32B47;background:#FDF7F8}
+  .campo-ed .msg{display:none;font-size:var(--fs-cap);color:#A32B47;margin-top:6px;line-height:1.4}
+  .campo-ed.mal .msg{display:block}
+  /* confirmación efímera: aparece al guardar y se va sola */
+  /* ⚠️ El "Guardado" ABRE y CIERRA su propio espacio (Martin, 25/08). Antes sólo se
+     desvanecía —`opacity` a 0 con el elemento todavía ocupando su alto—, así que el
+     campo quedaba con un hueco permanente y la lista se veía despareja: los campos
+     tocados con más aire que los intactos, sin ninguna razón visible.
+     Se anima `max-height` + `margin-top` junto con la opacidad, así el aire aparece
+     con el mensaje y se va con él. */
+  .campo-ed .ok{display:flex;align-items:center;gap:5px;font-size:11px;color:#3C6B52;
+                max-height:0;opacity:0;margin-top:0;overflow:hidden}
+  .campo-ed.guardado .ok{animation:seva 2.4s forwards}
+  @keyframes seva{
+    0%       {max-height:0;    opacity:0; margin-top:0}
+    8%,72%   {max-height:22px; opacity:1; margin-top:6px}
+    100%     {max-height:0;    opacity:0; margin-top:0}
+  }
+  /* dato bloqueado: se ve que es un dato, no un campo */
+  .campo-ed.trabado .val{font-size:var(--fs-body);padding:11px 13px;background:var(--arena-30);
+                         border-radius:var(--r-s);display:flex;justify-content:space-between;
+                         align-items:center;gap:12px}
+  .campo-ed.trabado .val span{font-size:var(--fs-cap);color:var(--sec);flex-shrink:0}
+  .campo-ed .cambiar{font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof);
+                     cursor:pointer;margin-top:8px;display:inline-block}
+
   /* ── descartar un aviso deslizando ──────────────────────────────
      El aviso no es un dato: es algo que el detector propone hoy. Por eso se puede
      sacar de la vista — y por eso el borrado NO es destructivo (nada se borra del
@@ -832,11 +1348,11 @@
   .swipe-bg{position:absolute;inset:0;border-radius:var(--r-m);background:var(--terracota-prof);
             display:flex;align-items:center;justify-content:flex-end;padding-right:26px}
   .swipe-bg svg{fill:var(--blanco);color:var(--blanco);flex-shrink:0}
-  .swipe > .aviso{position:relative;touch-action:pan-y;will-change:transform}
-  .swipe.vuelve > .aviso{transition:transform .28s var(--ease)}
+  .swipe > .aviso,.swipe > .fi,.swipe > .ex{position:relative;background:var(--blanco);touch-action:pan-y;will-change:transform}
+  .swipe.vuelve > .aviso,.swipe.vuelve > .fi{transition:transform .28s var(--ease)}
   .swipe.sale{transition:height .3s var(--ease),margin .3s var(--ease),opacity .2s linear;
               height:0!important;margin-top:0!important;opacity:0}
-  .swipe.sale > .aviso{transition:transform .3s var(--ease)}
+  .swipe.sale > .aviso,.swipe.sale > .fi{transition:transform .3s var(--ease)}
 
   /* Deshacer: negro sobre el lienzo, encima del composer pero sin taparlo */
   #snack{position:absolute;left:var(--s2);right:var(--s2);z-index:9;
@@ -865,28 +1381,20 @@
     <div class="header" style="justify-content:flex-end"><span class="avatar">M<span class="dot"></span></span></div>
     <div class="esc">
       <div class="esc-tit">Tus funciones</div>
-      <div class="banda-lbl">Registrar</div>
       <div class="banda">
         <div class="fn" data-fn="gastos"><div class="ic"><!-- phosphor: wallet --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M216,64H56a8,8,0,0,1,0-16H192a8,8,0,0,0,0-16H56A24,24,0,0,0,32,56V184a24,24,0,0,0,24,24H216a16,16,0,0,0,16-16V80A16,16,0,0,0,216,64Zm0,128H56a8,8,0,0,1-8-8V78.63A23.84,23.84,0,0,0,56,80H216Zm-48-60a12,12,0,1,1,12,12A12,12,0,0,1,168,132Z"/></svg></div><span>Gastos</span></div>
         <div class="fn" data-ing="1"><div class="ic"><!-- phosphor: coins --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><span>Ingresos</span></div>
         <div class="fn" data-fact="1"><div class="ic"><!-- phosphor: file-text --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></svg></div><span>Facturación</span></div>
         <div class="fn" data-presu="1"><div class="ic"><!-- phosphor: clipboard-text --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></div><span>Presupuestos</span></div>
-      </div>
-      <div class="banda-lbl">Mirar</div>
-      <div class="banda">
-        <div class="fn" data-bi="1"><div class="ic"><!-- phosphor: chart-line --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0v94.37L90.73,98a8,8,0,0,1,10.07-.38l58.81,44.11L218.73,90a8,8,0,1,1,10.54,12l-64,56a8,8,0,0,1-10.07.38L96.39,114.29,40,163.63V200H224A8,8,0,0,1,232,208Z"/></svg></div><span>Inteligencia de&nbsp;Negocio</span></div>
-        <div class="fn" data-conta="1"><div class="ic"><!-- phosphor: calculator --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M80,120h96a8,8,0,0,0,8-8V64a8,8,0,0,0-8-8H80a8,8,0,0,0-8,8v48A8,8,0,0,0,80,120Zm8-48h80v32H88ZM200,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24Zm0,192H56V40H200ZM100,148a12,12,0,1,1-12-12A12,12,0,0,1,100,148Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,140,148Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,180,148Zm-80,40a12,12,0,1,1-12-12A12,12,0,0,1,100,188Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,140,188Zm40,0a12,12,0,1,1-12-12A12,12,0,0,1,180,188Z"/></svg></div><span>Contabilidad</span></div>
         <div class="fn" data-cli="1"><div class="ic"><!-- phosphor: user --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg></div><span>Clientes</span></div>
+        <div class="fn" data-bi="1"><div class="ic"><!-- phosphor: chart-line --><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0v94.37L90.73,98a8,8,0,0,1,10.07-.38l58.81,44.11L218.73,90a8,8,0,1,1,10.54,12l-64,56a8,8,0,0,1-10.07.38L96.39,114.29,40,163.63V200H224A8,8,0,0,1,232,208Z"/></svg></div><span>Inteligencia de&nbsp;Negocio</span></div>
       </div>
       <div class="reciente">
         <h4>Actividad reciente</h4>
         <div class="r-fila"><div>Gasto · nafta<br><span>hoy, 8:40 · por voz</span></div><b>$15.000</b></div>
         <div class="r-fila"><div>Factura B · Rodríguez SRL<br><span>ayer · CAE 7521…</span></div><b>$80.000</b></div>
-        <div class="r-fila" style="border-bottom:none"><div>Presupuesto · Fernández<br><span>lunes 20 · pendiente</span></div><b>$145.000</b></div>
+        <div class="r-fila"><div>Presupuesto · Almacén Díaz<br><span>14 de agosto · enviado</span></div><b>$145.000</b></div>
       </div>
-    </div>
-    <div class="peek" id="volver-midia">
-      <div class="grip"><div class="bar"></div><div class="txt">Subí para Mi día</div></div>
     </div>
   </div>
 
@@ -901,8 +1409,11 @@
       <div class="stack">
       <div class="atras"><span class="wm">Odobi</span><span class="fch">Martes 18 de agosto</span></div>
       <div class="portada">
-        <div class="p-lbl">En caja <svg width="15" height="15" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="p-lbl" id="encaja-lbl">En caja <svg width="15" height="15" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
         <div class="p-main"><span class="p-big">$286.000</span><span class="p-delta">−18% vs julio</span></div>
+        <!-- Regla dura del repo: el dato que falta se DICE, no se disfraza de cero.
+             La portada admite estar incompleta en vez de mostrar un número mentiroso. -->
+        <div class="p-parcial" id="p-parcial">faltan los cobros de hoy — Mercado Pago está caído</div>
         <div class="p-rows">
           <div class="p-item"><span>Entró</span><b>$412.000</b></div>
           <div class="p-item"><span>Salió</span><b id="salio">$126.000</b></div>
@@ -910,23 +1421,60 @@
         </div>
       </div>
       </div>
-      <div class="sec-label">
-        PARA HOY
+      <div class="sec"><h4>Ahora<span class="cont">10:42</span></h4><a data-ir="agenda">Ver agenda ›</a></div>
+      <div class="lista">
+        <div class="ev ahora"><span class="h">09:00</span><span class="t"><b>Obra casa Díaz</b><span>Termina en 20 min</span></span></div>
+        <div class="ev"><span class="h">14:30</span><span class="t"><b>Llamar a Lucía</b><span>Recordatorio</span></span></div>
+        <div class="ev"><span class="h">18:00</span><span class="t"><b>Cierre de caja</b><span>Todos los días</span></span></div>
       </div>
-      <div class="aviso" id="aviso-lucia">
-        <div class="aviso-top">
-          <div class="tile"><!-- phosphor: clock --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg></div>
-          <p>El presupuesto de <b>Lucía</b> lleva <b>31 días</b> sin respuesta. Los que pasan el mes casi no se cierran.</p>
+
+      <div class="sec" id="sec-hoy"><h4>Para hoy<span class="cont">4 cosas</span></h4><a data-ir="tablero">Ver tablero ›</a></div>
+      <!-- ⚠️ DEROGA el "avance del día" (20/08), que mostraba una barra de cerradas.
+           Decisión de Martin (25/08): lo que el usuario ya hizo NO se comunica — sólo
+           necesita saber lo que le queda. Una barra de lo hecho es una métrica de
+           vanidad; lo que mueve a actuar es lo que falta. Y deja de ser barra: una
+           barra dice "progreso", y acá no se mide progreso. -->
+      <div class="pend" id="prog"><b id="prog-txt">2 cosas</b> más vencen esta semana</div>
+      <div class="exp" id="cargando">
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2"></span><span class="sk t3"></span></span></div></div>
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2" style="width:74%"></span><span class="sk t3" style="width:30%"></span></span></div></div>
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2" style="width:54%"></span><span class="sk t3" style="width:44%"></span></span></div></div>
+      </div>
+      <div class="exp" id="exp">
+        <div class="ex on">
+          <div class="cab"><span class="tile" style="background:var(--f-afip)"><!-- ARCA: A real de Roboto + anillo --><svg width="21" height="21" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd"><path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/></svg></span>
+            <span class="t"><b>Certificado ARCA</b><span class="chip-p c-urge">Vence en 12 días</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
+          </div>
+          <div class="mas"><div class="in">
+            <p>Si vence, se te cae la facturación entera.</p><div class="kv"><span>Vence</span><b>30 de agosto</b></div><div class="kv"><span>Detectado</span><b>Hoy, 8:00</b></div><div class="accion">Renovarlo</div>
+          </div></div>
         </div>
-        <div class="accion" id="accion-lucia">Escribirle</div>
-      </div>
-      <div class="aviso">
-        <div class="aviso-top">
-          <div class="tile"><!-- phosphor: file-text --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></svg></div>
-          <p>La factura de <b>Rodríguez SRL</b> ($80.000) está impaga hace <b>22 días</b>.</p>
+        <div class="ex" id="aviso-lucia">
+          <div class="cab"><span class="tile" style="background:var(--f-presu)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></span>
+            <span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
+          </div>
+          <div class="mas"><div class="in">
+            <p>Los que pasan el mes casi no se cierran.</p><div class="kv"><span>Enviado</span><b>18 de julio</b></div><div class="kv"><span>Monto</span><b>$180.000</b></div><div class="accion" id="accion-lucia">Escribirle</div>
+          </div></div>
         </div>
-        <div class="accion">Mandarle recordatorio</div>
+        <div class="ex">
+          <div class="cab"><span class="tile" style="background:var(--f-factura)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></span>
+            <span class="t"><b>Factura Rodríguez SRL</b><span class="chip-p c-pron">22 días impaga</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
+          </div>
+          <div class="mas"><div class="in">
+            <p>$80.000 que todavía no te pagaron.</p><div class="kv"><span>Emitida</span><b>28 de julio</b></div><div class="kv"><span>Comprobante</span><b>A-0034</b></div><div class="accion">Mandar recordatorio</div>
+          </div></div>
+        </div>
+        <div class="ex" data-propia="1">
+          <div class="cab"><span class="tile" style="background:var(--f-propio)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/></svg></span>
+            <span class="t"><b>Pasar por el banco</b><span class="chip-p c-sin">Lo anotaste vos</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
+          </div>
+          <div class="mas"><div class="in">
+            <p>Lo dictaste hoy a las 8:12.</p><div class="borrar" data-borrar><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>Borrar</div>
+          </div></div>
+        </div>
       </div>
+
       <div class="calma" id="calma">
         <svg class="spot" width="124" height="124" viewBox="0 0 300 300">
 <!-- dibujo de Martin (taza.svg) + capas de color; fuente: assets/illustrations/taza.svg -->
@@ -1068,7 +1616,14 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
 </g>
           </svg>
         <h3>Nada urgente por hoy.</h3>
-        <p>Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.</p>
+        <p id="calma-expl">Cuando haya algo que mirar, te lo dejo acá. Si querés saber algo, preguntame.</p>
+        <!-- El avance NO se pierde con la lista: se muda acá. Sigue contando sobre el
+             total del día (decisión 20/08) — cerrar cosas ES el trabajo del día y verlo
+             avanzar es la única devolución que el usuario recibe. Lo que cambia es que
+             deja de flotar sobre una sección que ya no existe. -->
+        <!-- Lo que queda por delante y la puerta al tablero NO van acá: viven arriba,
+             en el rótulo de la sección y en su línea de pendientes, que ahora quedan
+             FIJOS. Repetirlos adentro sería decir lo mismo dos veces. -->
       </div>
     </div>
     <div class="peek" id="peek-chat">
@@ -1150,14 +1705,18 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" id="cerrar-bi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span></div>
     <div class="cuerpo">
-      <div class="scroll">
-        
+      <div class="scroll" id="bi-scroll">
+        <div class="refresh" id="bi-refresh"><!-- phosphor: arrow-down --><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg><span id="bi-refresh-txt">Tirá para actualizar</span></div>
         <div class="fn-stack">
         <div class="atras"><span class="nom">Inteligencia de Negocio</span><span class="per">Agosto</span></div>
         <div class="bi-port">
           <div class="p-lbl">Saldo en caja</div>
           <div class="n">$286.000</div>
           <div class="comp">Al 19 de agosto</div>
+          <div class="bi-grid" style="grid-template-columns:1fr 1fr">
+            <div><span>Entró</span><b>$412.000</b></div>
+            <div><span>Salió</span><b>$126.000</b></div>
+          </div>
         </div>
         </div>
 
@@ -1180,6 +1739,14 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
         </div>
 
         <div class="bloque">
+          <h4>En qué se te va la plata</h4>
+          <div class="cat"><span class="nom">Mercadería</span><span class="barra"><i style="width:43%"></i></span><b>$54.000</b></div>
+          <div class="cat"><span class="nom">Servicios</span><span class="barra"><i style="width:25%"></i></span><b>$32.000</b></div>
+          <div class="cat"><span class="nom">Transporte</span><span class="barra"><i style="width:20%"></i></span><b>$25.000</b></div>
+          <div class="cat"><span class="nom">Otros</span><span class="barra"><i style="width:12%"></i></span><b>$15.000</b></div>
+        </div>
+
+        <div class="bloque">
           <h4>Entró vs. salió</h4>
           <div class="barras">
             <div><span class="par"><i class="ent" style="height:62%"></i><i class="sal" style="height:48%"></i></span><small>Abr</small></div><div><span class="par"><i class="ent" style="height:70%"></i><i class="sal" style="height:52%"></i></span><small>May</small></div><div><span class="par"><i class="ent" style="height:54%"></i><i class="sal" style="height:60%"></i></span><small>Jun</small></div><div><span class="par"><i class="ent" style="height:82%"></i><i class="sal" style="height:44%"></i></span><small>Jul</small></div><div><span class="par"><i class="ent" style="height:96%"></i><i class="sal" style="height:29%"></i></span><small>Ago</small></div>
@@ -1188,8 +1755,9 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
             <span><i class="sal" style="background:#1A1512;opacity:.22"></i>Salió</span></div>
         </div>
 
-        <div class="bloque">
+        <div class="bloque" id="bi-clientes">
           <h4>Mejores clientes</h4>
+          <div class="nada">Todavía no registraste ventas a ningún cliente. Cuando factures o anotes un cobro con nombre, el ranking se arma solo.</div>
           <div class="rank"><div>Rodríguez SRL<br><span>12 comprobantes</span></div><b>$320.000</b></div>
           <div class="rank"><div>Gómez SRL<br><span>8 comprobantes</span></div><b>$245.000</b></div>
           <div class="rank"><div>Almacén Díaz<br><span>3 comprobantes</span></div><b>$145.000</b></div>
@@ -1199,7 +1767,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
         <div class="bloque">
           <h4>Facturado en los últimos 12 meses</h4>
           <div class="grande">$4.420.000</div>
-          <div class="tope sem-ojo">
+          <div class="medidor sem-ojo">
             <span class="barra"><i style="width:68%"></i></span>
             <b>68% del tope</b>
           </div>
@@ -1311,15 +1879,28 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     <div class="cuerpo">
       <div class="scroll">
         <div class="titulo-pag"><h2>Ajustes</h2><p>Los datos de tu negocio, tus apps y cómo se comporta Odobi.</p><div class="estado-pag "><i></i>El Galpón · Martín Cairo</div></div>
-        <div class="ajg">
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M232,96a7.89,7.89,0,0,0-.3-2.2L217.35,43.6A16.07,16.07,0,0,0,202,32H54A16.07,16.07,0,0,0,38.65,43.6L24.31,93.8A7.89,7.89,0,0,0,24,96h0v16a40,40,0,0,0,16,32v72a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V144a40,40,0,0,0,16-32V96ZM54,48H202l11.42,40H42.61Zm50,56h48v8a24,24,0,0,1-48,0Zm-16,0v8a24,24,0,0,1-35.12,21.26,7.88,7.88,0,0,0-1.82-1.06A24,24,0,0,1,40,112v-8ZM200,208H56V151.2a40.57,40.57,0,0,0,8,.8,40,40,0,0,0,32-16,40,40,0,0,0,64,0,40,40,0,0,0,32,16,40.57,40.57,0,0,0,8-.8Zm4.93-75.8a8.08,8.08,0,0,0-1.8,1.05A24,24,0,0,1,168,112v-8h48v8A24,24,0,0,1,204.93,132.2Z"/></svg></div><b>Mi negocio</b><span>Qué vendés, a quién, horario</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M72,104a8,8,0,0,1,8-8h96a8,8,0,0,1,0,16H80A8,8,0,0,1,72,104Zm8,40h96a8,8,0,0,0,0-16H80a8,8,0,0,0,0,16ZM232,56V208a8,8,0,0,1-11.58,7.15L192,200.94l-28.42,14.21a8,8,0,0,1-7.16,0L128,200.94,99.58,215.15a8,8,0,0,1-7.16,0L64,200.94,35.58,215.15A8,8,0,0,1,24,208V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Zm-16,0H40V195.06l20.42-10.22a8,8,0,0,1,7.16,0L96,199.06l28.42-14.22a8,8,0,0,1,7.16,0L160,199.06l28.42-14.22a8,8,0,0,1,7.16,0L216,195.06Z"/></svg></div><b>Facturación AFIP</b><span>CUIT, condición, punto de venta</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37ZM88.57,35A8,8,0,0,1,103.43,29l8,20A8,8,0,0,1,96.57,55ZM24.57,93A8,8,0,0,1,35,88.57l20,8A8,8,0,0,1,49,111.43l-20-8A8,8,0,0,1,24.57,93ZM231.43,163a8,8,0,0,1-10.4,4.46l-20-8A8,8,0,1,1,207,144.57l20,8A8,8,0,0,1,231.43,163Zm-64,58.06A8,8,0,0,1,152.57,227l-8-20A8,8,0,0,1,159.43,201Z"/></svg></div><b>Apps conectadas</b><span>Gmail, Drive, Calendar, MercadoPago</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></svg></div><b>Mi plan</b><span>Acciones del mes y límites</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg></div><b>Mi cuenta</b><span>Mail, contraseña, cerrar sesión</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></svg></div><b>Apariencia</b><span>Claro u oscuro</span></div>
-          <div class="aj"><div class="ic"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z"/></svg></div><b>Cómo hablarle</b><span>Tono, largo, cómo lo llamás</span></div>
-        </div>
+        <div class="lista-lbl">Tu negocio</div>
+      <div class="grupo" style="padding:0 var(--s2)">
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M232,96a7.89,7.89,0,0,0-.3-2.2L217.35,43.6A16.07,16.07,0,0,0,202,32H54A16.07,16.07,0,0,0,38.65,43.6L24.31,93.8A7.89,7.89,0,0,0,24,96h0v16a40,40,0,0,0,16,32v72a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V144a40,40,0,0,0,16-32V96ZM54,48H202l11.42,40H42.61Zm50,56h48v8a24,24,0,0,1-48,0Zm-16,0v8a24,24,0,0,1-35.12,21.26,7.88,7.88,0,0,0-1.82-1.06A24,24,0,0,1,40,112v-8ZM200,208H56V151.2a40.57,40.57,0,0,0,8,.8,40,40,0,0,0,32-16,40,40,0,0,0,64,0,40,40,0,0,0,32,16,40.57,40.57,0,0,0,8-.8Zm4.93-75.8a8.08,8.08,0,0,0-1.8,1.05A24,24,0,0,1,168,112v-8h48v8A24,24,0,0,1,204.93,132.2Z"/></svg></span><span class="t"><b>Mi negocio</b><span>Qué vendés, a quién y tu horario</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="21" height="21" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd"><path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/></svg></span><span class="t"><b>Facturación ARCA</b><span>CUIT, condición y punto de venta</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37Z"/></svg></span><span class="t"><b>Apps conectadas</b><span>Gmail, Drive, Calendar, Mercado Pago</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144Z"/></svg></span><span class="t"><b>Mi plan</b><span>Acciones del mes y límites</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+      </div>
+
+      <div class="lista-lbl">La app</div>
+      <div class="grupo" style="padding:0 var(--s2)">
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg></span><span class="t"><b>Mi cuenta</b><span>Mail, contraseña y cerrar sesión</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></svg></span><span class="t"><b>Apariencia</b><span>Claro u oscuro</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z"/></svg></span><span class="t"><b>Cómo hablarle</b><span>Tono, largo y cómo lo llamás</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+      </div>
+
+      <div class="lista-lbl">Ayuda</div>
+      <div class="grupo" style="padding:0 var(--s2)">
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg></span><span class="t"><b>Cómo usar la app</b><span>Te lo muestro paso a paso, con ejemplos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M201.89,54.66A103.43,103.43,0,0,0,128.79,24H128A104,104,0,0,0,24,128v56a24,24,0,0,0,24,24H64a24,24,0,0,0,24-24V144a24,24,0,0,0-24-24H40.36A88.12,88.12,0,0,1,128,40h.7a88.12,88.12,0,0,1,87,80H192a24,24,0,0,0-24,24v40a24,24,0,0,0,24,24h24a24,24,0,0,0,0-.63A32,32,0,0,1,184,232H136a8,8,0,0,0,0,16h48a48.05,48.05,0,0,0,48-48V128.79A103.41,103.41,0,0,0,201.89,54.66ZM64,136a8,8,0,0,1,8,8v40a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V136Zm128,56a8,8,0,0,1-8-8V144a8,8,0,0,1,8-8h24v56Z"/></svg></span><span class="t"><b>Soporte técnico</b><span>Contanos el problema y abrimos un ticket</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M239.82,157l-58.4-25.79a8,8,0,0,0-6.84,0L116.18,157A8,8,0,0,0,112,164.24V184c0,24.36,26.1,39.68,58.4,52a8,8,0,0,0,5.2,0c32.3-12.32,58.4-27.64,58.4-52V164.24A8,8,0,0,0,239.82,157ZM224,184c0,15.68-19.2,27.28-46,38-26.8-10.72-46-22.32-46-38V169.42l46-20.3,46,20.3ZM96,168a8,8,0,0,1-8,8H32a16,16,0,0,1-16-16V56A16,16,0,0,1,32,40H208a16,16,0,0,1,16,16v40a8,8,0,0,1-16,0V56H32V160H88A8,8,0,0,1,96,168Z"/></svg></span><span class="t"><b>Contanos qué tal</b><span>Sugerencias y cosas que no funcionan</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+      </div>
+
       </div>
     </div>
   </div>
@@ -1353,60 +1934,6 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     </div>
   </div>
 
-  <!-- ══════════ Contabilidad ══════════ -->
-  <div id="conta">
-    <div class="tope"></div>
-    <div class="fn-head" style="justify-content:flex-start"><span class="volver" id="cerrar-conta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span></div>
-    <div class="cuerpo">
-      <div class="scroll">
-        <div class="fn-stack">
-        <div class="atras"><span class="nom">Contabilidad</span><span class="per">Agosto</span></div>
-        <div class="resumen">
-          <div class="p-lbl">Te queda en caja</div>
-          <div class="total">$286.000</div>
-          <div class="comp">Mes anterior: $349.000</div>
-          <div class="caja-rows">
-            <div><span>Entró</span><b>$412.000</b></div>
-            <div><span>Salió</span><b>$126.000</b></div>
-          </div>
-        </div>
-        </div>
-
-        <div class="bloque">
-          <h4>En qué se te va la plata</h4>
-          <div class="cat"><span class="nom">Mercadería</span><span class="barra"><i style="width:43%"></i></span><b>$54.000</b></div>
-          <div class="cat"><span class="nom">Servicios</span><span class="barra"><i style="width:25%"></i></span><b>$32.000</b></div>
-          <div class="cat"><span class="nom">Transporte</span><span class="barra"><i style="width:20%"></i></span><b>$25.000</b></div>
-          <div class="cat"><span class="nom">Otros</span><span class="barra"><i style="width:12%"></i></span><b>$15.000</b></div>
-        </div>
-
-        <div class="bloque">
-          <h4>Facturado</h4>
-          <div class="grande">$380.000</div>
-          <div class="sub">Este mes · $4.420.000 en los últimos 12 meses</div>
-          <div class="tope sem-ojo">
-            <span class="barra"><i style="width:68%"></i></span>
-            <b>68% del tope anual</b>
-          </div>
-          <div class="sub">Monotributo categoría F. Te estás acercando.</div>
-        </div>
-
-        <div class="bloque">
-          <h4>Mejores clientes</h4>
-          <div class="rank"><div>Rodríguez SRL<br><span>12 comprobantes</span></div><b>$320.000</b></div>
-          <div class="rank"><div>Gómez SRL<br><span>8 comprobantes</span></div><b>$245.000</b></div>
-          <div class="rank"><div>Almacén Díaz<br><span>3 comprobantes</span></div><b>$145.000</b></div>
-        </div>
-      </div>
-      <div class="peek">
-        <div class="inputbar">
-          <div class="campo">Preguntame por tus números…</div>
-          <div class="mic"><!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ══════════ Ingresos ══════════ -->
   <div id="ingresos">
     <div class="tope"></div>
@@ -1423,10 +1950,10 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
         </div>
         <div class="fila-lbl"><span class="lista-lbl" style="white-space:nowrap">Últimos</span>
           <span class="nuevo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Anotar que me pagaron</span></div>
-        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Gómez SRL</b><span>Factura A-0036 · 12 de agosto</span></div><div class="der"><b>$120.000</b><span class="estado">De una factura</span></div></div>
-        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Seña reforma</b><span>Efectivo · 14 de agosto</span></div><div class="der"><b>$60.000</b><span class="estado">Lo dictaste por voz</span></div></div>
+        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Gómez SRL</b><span>Factura A-0036 · 12 de agosto</span></div><div class="der"><b>$120.000</b></div></div>
+        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Seña reforma</b><span>Efectivo · 14 de agosto</span></div><div class="der"><b>$60.000</b></div></div>
         <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Cobro sin detalle</b><span>16 de agosto</span></div><div class="der"><b>$45.000</b><span class="estado pend">Falta de quién</span></div></div>
-        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Almacén Díaz</b><span>Transferencia · 15 de agosto</span></div><div class="der"><b>$45.000</b><span class="estado">Lo anotaste vos</span></div></div>
+        <div class="fact"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></div><div class="txt"><b>Almacén Díaz</b><span>Transferencia · 15 de agosto</span></div><div class="der"><b>$45.000</b></div></div>
         <div class="aviso-repo">
           <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>
           Los cobros por MercadoPago todavía no entran solos. Si cobrás por ahí, anotalo.
@@ -1442,16 +1969,24 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Ajustes › Mi negocio ══════════ -->
-  <div class="sub" id="s-negocio">
+  <div class="subp" id="s-negocio">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-negocio"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
       <div class="titulo-pag"><h2>Mi negocio</h2><p>El perfil comercial que Odobi usa para entenderte cuando le hablás.</p><div class="estado-pag "><i></i>Te pide confirmación antes de ejecutar</div></div>
       <div class="grupo">
-        <div class="campo-fila"><span class="izq"><span class="k">Qué vendés</span><span class="v">Instalaciones eléctricas domiciliarias y pequeñas obras</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">A quién le vendés</span><span class="v">A empresas y a consumidor final</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Nombre comercial</span><span class="v">El Galpón</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Horario de atención</span><span class="v">Lunes a viernes de 8 a 17</span></span><span class="ed">Editá</span></div>
+        <div class="campo-ed"><label>Qué vendés</label><textarea rows="2" data-regla="min:10" data-msg="Escribí al menos 10 caracteres para que Odobi entienda tu negocio" placeholder="Contá qué hacés">Instalaciones eléctricas domiciliarias y pequeñas obras</textarea>
+          <div class="msg">Escribí al menos 10 caracteres para que Odobi entienda tu negocio</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>A quién le vendés</label><input type="text" value="A empresas y a consumidor final" data-regla="min:3" data-msg="" placeholder="">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Nombre comercial</label><input type="text" value="El Galpón" data-regla="min:2" data-msg="" placeholder="Con el que te conocen">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Horario de atención</label><input type="text" value="Lunes a viernes de 8 a 17" data-regla="" data-msg="" placeholder="Ej: Lunes a viernes de 8 a 17">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Teléfono</label><input type="text" value="341 590 6309" data-regla="tel" data-msg="Poné al menos 8 dígitos, con característica" placeholder="Ej: 341 590 6309">
+          <div class="msg">Poné al menos 8 dígitos, con característica</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Email</label><input type="text" value="contacto@elgalpon.com.ar" data-regla="mail" data-msg="Falta el @ o el dominio: revisá que esté completo" placeholder="nombre@dominio.com">
+          <div class="msg">Falta el @ o el dominio: revisá que esté completo</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
       </div>
       <div class="lista-lbl">Cómo te habla</div>
       <div class="grupo">
@@ -1459,44 +1994,47 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
           <span class="k">Tono y forma</span>
           <span class="v">Cercano · Breve · lo llamás Odobi</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
       </div>
-      <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Acá no van tu CUIT, razón social ni condición frente al IVA: esos son datos fiscales y viven en Facturación AFIP.</div>
+      <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Acá no van tu CUIT, razón social ni condición frente al IVA: esos son datos fiscales y viven en Facturación ARCA.</div>
     </div></div>
   </div>
 
-  <!-- ══════════ Ajustes › Facturación AFIP ══════════ -->
-  <div class="sub" id="s-afip">
+  <!-- ══════════ Ajustes › Facturación ARCA ══════════ -->
+  <div class="subp" id="s-afip">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-afip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
-      <div class="titulo-pag"><h2>Facturación AFIP</h2><p>Tus datos fiscales y el vínculo con ARCA. Sin esto no se puede facturar.</p><div class="estado-pag "><i></i>ARCA vinculada · CUIT 20-28456789-3</div></div>
-      <div class="lista-lbl">Ambiente</div>
-      <div class="grupo">
-        <div class="opc on"><span class="txt"><b>Producción</b><span>Comprobantes reales, con validez legal ante AFIP.</span></span><span class="radio"></span></div>
-        <div class="opc"><span class="txt"><b>Homologación</b><span>Facturas de prueba, sin efecto fiscal. Para probar el circuito.</span></span><span class="radio"></span></div>
-      </div>
+      <div class="titulo-pag"><h2>Facturación ARCA</h2><p>Tus datos fiscales y el vínculo con ARCA. Sin esto no se puede facturar.</p><div class="estado-pag "><i></i>ARCA vinculada · CUIT 20-28456789-3</div></div>
       <div class="lista-lbl">Perfil fiscal</div>
       <div class="grupo">
-        <div class="campo-fila"><span class="izq"><span class="k">CUIT</span><span class="v">20-28456789-3</span></span><span class="trabado">Bloqueado</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Razón social</span><span class="v">Cairo Martín</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Domicilio comercial</span><span class="v">Av. Pellegrini 1420, Rosario</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Condición frente al IVA</span><span class="v">Monotributo</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Ingresos brutos</span><span class="v">Convenio multilateral</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Inicio de actividades</span><span class="v">12 de marzo de 2021</span></span><span class="ed">Editá</span></div>
-        <div class="campo-fila"><span class="izq"><span class="k">Punto de venta</span><span class="v">0003</span></span><span class="ed">Editá</span></div>
+        <div class="campo-ed trabado"><label>CUIT</label>
+          <div class="val">20-28456789-3 <span>Bloqueado</span></div>
+          <span class="cambiar">Necesito cambiarlo ›</span></div>
+        <div class="campo-ed"><label>Razón social</label><input type="text" value="Cairo Martín" data-regla="min:3" data-msg="Falta completar razón social" placeholder="">
+          <div class="msg">Falta completar razón social</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Domicilio comercial</label><input type="text" value="Av. Pellegrini 1420, Rosario" data-regla="min:6" data-msg="" placeholder="Calle, número y ciudad">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Condición frente al IVA</label><input type="text" value="Monotributo" data-regla="min:3" data-msg="" placeholder="">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Ingresos brutos</label><input type="text" value="Convenio multilateral" data-regla="" data-msg="" placeholder="">
+          <div class="msg"></div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Inicio de actividades</label><input type="text" value="12/03/2021" data-regla="fecha" data-msg="Usá el formato DD/MM/AAAA" placeholder="DD/MM/AAAA">
+          <div class="msg">Usá el formato DD/MM/AAAA</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
+        <div class="campo-ed"><label>Punto de venta</label><input type="text" value="0003" data-regla="pdv" data-msg="El punto de venta debe ser 1 o mayor" placeholder="0001">
+          <div class="msg">El punto de venta debe ser 1 o mayor</div><span class="ok" role="status" aria-live="polite"><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Guardado</span></div>
       </div>
       <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Tu clave fiscal no se guarda. Se usa una sola vez para vincular tu cuenta con ARCA y se descarta.</div>
     </div></div>
   </div>
 
   <!-- ══════════ Ajustes › Apps conectadas ══════════ -->
-  <div class="sub" id="s-apps">
+  <div class="subp" id="s-apps">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-apps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
       <div class="titulo-pag"><h2>Apps conectadas</h2><p>Cada app que conectás le da a Odobi una capacidad concreta. Se la pedís por chat, sin nombrarla.</p><div class="estado-pag "><i></i>4 conectadas de 6</div></div>
       <div class="lista-lbl">Para pedirle por chat</div>
       <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48Zm-96,85.15L52.57,64H203.43ZM98.71,128,40,181.81V74.19Zm11.84,10.85,12,11.05a8,8,0,0,0,10.82,0l12-11.05,58,53.15H52.57ZM157.29,128,216,74.18V181.82Z"/></svg></div><div class="txt"><b>Gmail</b><span>Mandar correos por vos. No puede leerlos.</span></div><span class="conectada"><i></i>Conectada</span></div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></div><div class="txt"><b>Google Calendar</b><span>Agendarte eventos y reuniones.</span></div><span class="conectada"><i></i>Conectada</span></div>
+      <div class="app"><div class="tile"><!-- ARCA: A real de Roboto + anillo --><svg width="21" height="21" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd"><path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/></svg></div><div class="txt"><b>Google Calendar</b><span>Agendarte eventos y reuniones.</span></div><span class="conectada"><i></i>Conectada</span></div>
       <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56Z"/></svg></div><div class="txt"><b>Mercado Pago</b><span>Generar links de cobro para tus clientes.</span></div><span class="conectada"><i></i>Conectada</span></div>
       <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M200,24H72A16,16,0,0,0,56,40V56H40A16,16,0,0,0,24,72V200a16,16,0,0,0,16,16H168a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24ZM168,200H40V72H168V200Zm32-32H184V72a16,16,0,0,0-16-16H72V40H200Z"/></svg></div><div class="txt"><b>Google Sheets</b><span>Agregar filas a tus planillas.</span></div><span class="conex">Conectar</span></div>
       <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div><div class="txt"><b>Google Docs</b><span>Crear documentos o leer uno que ya tengas.</span></div><span class="conex">Conectar</span></div>
@@ -1506,7 +2044,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Ajustes › Mi plan ══════════ -->
-  <div class="sub" id="s-plan">
+  <div class="subp" id="s-plan">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-plan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
@@ -1521,7 +2059,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Ajustes › Mi cuenta ══════════ -->
-  <div class="sub" id="s-cuenta">
+  <div class="subp" id="s-cuenta">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-cuenta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
@@ -1538,7 +2076,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Ajustes › Apariencia ══════════ -->
-  <div class="sub" id="s-apar">
+  <div class="subp" id="s-apar">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-apar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
@@ -1556,7 +2094,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Ajustes › Cómo hablarle ══════════ -->
-  <div class="sub" id="s-hablar">
+  <div class="subp" id="s-hablar">
     <div class="tope"></div>
     <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-hablar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
     <div class="cuerpo"><div class="scroll">
@@ -1615,18 +2153,134 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     </div>
   </div>
 
-  <!-- ══════════ escucha ══════════ -->
-  <div id="escucha">
-    <div class="velo"></div>
-    <div class="escucha-in">
-      <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <h2>Te escucho.</h2>
-      <div class="parcial">"…dieciocho mil en mercadería, proveedor Díaz"</div>
-      <div class="ctrl">
-        <div class="ghost" id="cancelar-voz">Pausar</div>
-        <div class="enviar" id="enviar-voz">Enviar
-          <!-- phosphor: paper-plane-tilt --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></svg>
+  <!-- ══════════ Tablero (los 3 estados del repo) ══════════ -->
+  <div id="tablero">
+    <div class="tope"></div>
+    <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="tablero"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span></div>
+    <div class="cuerpo"><div class="scroll">
+      <div class="titulo-pag">
+        <h2>Tu día</h2>
+        <p>Lo que Odobi detectó y lo que anotaste vos.</p>
+        <div class="estado-pag"><i></i>3 para hoy · 1 en curso · 1 crítico</div>
+      </div>
+      <div class="alerta">
+        <span class="ico"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M240.26,186.1,152.81,34.23h0a28.74,28.74,0,0,0-49.62,0L15.74,186.1a27.45,27.45,0,0,0,0,27.71A28.31,28.31,0,0,0,40.55,228h174.9a28.31,28.31,0,0,0,24.79-14.19A27.45,27.45,0,0,0,240.26,186.1ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg></span>
+        <span class="cont">
+          <b>Tu certificado ARCA vence en 12 días</b>
+          <p>Si vence, se te cae la facturación entera: no vas a poder emitir hasta renovarlo.</p>
+          <span class="accion">Renovarlo</span>
+        </span>
+      </div>
+      <div class="segb"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Para hoy 3</span><span>Haciendo 1</span><span>Hechas</span></div>
+      <div class="fchips"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Todo</span><span>Cobros</span><span>ARCA</span><span>Presupuestos</span><span>Tuyas</span></div>
+      <div class="filas">
+        <div class="fi" data-det=""><div class="tile" style="background:var(--f-presu)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></div><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="fi" data-det=""><div class="tile" style="background:var(--f-factura)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div><span class="t"><b>Factura Rodríguez SRL</b><span class="chip-p c-pron">22 días impaga</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="fi" data-det=""><div class="tile" style="background:var(--f-propio)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/></svg></div><span class="t"><b>Pasar por el banco</b><span class="chip-p c-sin">Lo anotaste vos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+      </div>
+      <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.</div>
+    </div></div>
+  </div>
+
+  <!-- ══════════ Agenda ══════════ -->
+  <div id="agenda">
+    <div class="tope"></div>
+    <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="agenda"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span></div>
+    <div class="cuerpo"><div class="scroll">
+      <div class="titulo-pag">
+        <h2>Agenda</h2>
+        <p>Tus eventos y lo que vence, en la misma línea.</p>
+        <div class="estado-pag"><i></i>Google Calendar conectada</div>
+      </div>
+      <div class="fila-lbl-cal">
+        <span class="sec" style="padding:0"><h4 style="font-family:var(--display);font-size:19px">Hoy<span class="cont">martes 18</span></h4></span>
+        <span class="nuevo"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo evento</span>
+      </div>
+      <div class="cal" style="height:948px">
+        <div class="rejilla"><span class="h" style="top:0px">8:00</span><span class="linea" style="top:0px"></span><span class="h" style="top:76px">9:00</span><span class="linea" style="top:76px"></span><span class="h" style="top:152px">10:00</span><span class="linea" style="top:152px"></span><span class="h" style="top:228px">11:00</span><span class="linea" style="top:228px"></span><span class="h" style="top:304px">12:00</span><span class="linea" style="top:304px"></span><span class="h" style="top:380px">13:00</span><span class="linea" style="top:380px"></span><span class="h" style="top:456px">14:00</span><span class="linea" style="top:456px"></span><span class="h" style="top:532px">15:00</span><span class="linea" style="top:532px"></span><span class="h" style="top:608px">16:00</span><span class="linea" style="top:608px"></span><span class="h" style="top:684px">17:00</span><span class="linea" style="top:684px"></span><span class="h" style="top:760px">18:00</span><span class="linea" style="top:760px"></span><span class="h" style="top:836px">19:00</span><span class="linea" style="top:836px"></span></div>
+        <div style="position:relative;height:912px">
+          <div class="bcal gcal" style="position:absolute;top:76px;left:0;right:0;height:148px"><b>Obra casa Díaz</b><span>Av. Pellegrini 1420 · Google Calendar</span></div>
+          <div class="bcal odobi corto" style="position:absolute;top:266px;left:0;right:0;height:34px"><b>Cobrar a Rodríguez</b><span>$80.000 · desde el tablero</span></div>
+          <div class="bcal gcal" style="position:absolute;top:494px;left:0;right:0;height:53px"><b>Llamar a Lucía</b><span>Google Calendar</span></div>
+          <div class="bcal libre" style="position:absolute;top:570px;left:0;right:0;height:186px">Libre · 2 h 30</div>
+          <div class="bcal odobi corto" style="position:absolute;top:760px;left:0;right:0;height:34px"><b>Cierre de caja</b><span>Todos los días</span></div>
+          <div class="ahora-l" style="top:205px"></div>
         </div>
+      </div>
+
+      <div class="sec"><h4>Mañana<span class="cont">miércoles 19</span></h4></div>
+      <div class="lista">
+        <div class="ev"><span class="h">10:00</span><span class="t"><b>Entrega Gómez SRL</b><span>Google Calendar</span></span></div>
+      </div>
+
+      <div class="sec"><h4>Vencen esta semana<span class="cont">2</span></h4></div>
+      <div class="lista">
+        <div class="ev"><span class="h">28</span><span class="t"><b>CAE de la factura A-0036</b><span>Vence</span></span></div>
+        <div class="ev"><span class="h">30</span><span class="t"><b>Certificado ARCA</b><span>Vence</span></span></div>
+      </div>
+
+      <div class="sec"><h4>Sin hora<span class="cont">2</span></h4></div>
+      <div class="lista">
+        <div class="ev"><span class="h">—</span><span class="t"><b>Presupuesto de Lucía</b><span>31 días sin respuesta</span></span></div>
+        <div class="ev"><span class="h">—</span><span class="t"><b>Pasar por el banco</b><span>Lo anotaste vos</span></span></div>
+      </div>
+      
+    </div></div>
+  </div>
+
+  <!-- ══════════ Detalle (sheet) ══════════ -->
+  <div id="detalle">
+    <div class="scrim" data-cierra-det></div>
+    <div class="hoja">
+      <div class="grip"></div>
+      <h3>Certificado ARCA</h3>
+      <span class="chip-p c-urge" style="margin:0 0 6px">Vence el 30 de agosto</span>
+      <div class="kv"><span>Qué pasa si vence</span><b>No podés facturar</b></div>
+      <div class="kv"><span>Detectado</span><b>Hoy, 8:00</b></div>
+      <div class="kv"><span>Estado</span><b>Para hoy</b></div>
+      <div class="kv"><span>Agendarlo</span><b style="color:var(--terracota-prof)">Elegir hora ›</b></div>
+      <div class="acciones">
+        <div class="btn">Renovarlo ahora</div>
+        <div class="btn2" data-cierra-det>Cerrar</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ reveal — el aterrizaje del splash ══════════ -->
+  <div id="reveal">
+    <div class="rv-mid">
+      <!-- Va el LOCKUP, no el wordmark suelto (regla 18/08): el primer ingreso es el
+           único momento donde la marca se presenta entera. Adentro de la app el
+           símbolo es firma y el nombre ya se sabe; acá todavía no. -->
+      <div class="rv-lockup">
+        <svg fill="none" width="54" height="54" viewBox="0 0 24 24" stroke="var(--terracota)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+        <span class="rv-word">Odobi</span>
+      </div>
+      <div class="rv-pron">se dice o-DO-bi
+        <span class="rv-say"><!-- phosphor: speaker-high --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M155.51,24.81a8,8,0,0,0-8.42.88L77.25,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H77.25l69.84,54.31A8,8,0,0,0,160,224V32A8,8,0,0,0,155.51,24.81ZM32,96H72v64H32ZM144,207.64,88,164.09V91.91l56-43.55Zm54-106.08a40,40,0,0,1,0,52.88,8,8,0,0,1-12-10.58,24,24,0,0,0,0-31.72,8,8,0,0,1,12-10.58Z"/></svg></span>
+      </div>
+    </div>
+    <div class="rv-act">
+      <div class="btn">Empecemos</div>
+      <div class="rv-ghost">Crear una nueva cuenta</div>
+    </div>
+  </div>
+
+  <!-- ══════════ sheet de consentimiento just-in-time ══════════ -->
+  <div id="consent">
+    <div class="sombra-card" id="fuera-consent"></div>
+    <div class="cs-in">
+      <div class="grip" style="cursor:default"><div class="bar"></div></div>
+      <h3>Conectar Mercado Pago</h3>
+      <p class="sub">Esto es lo que voy a poder hacer:</p>
+      <div class="cs-fila"><span class="tile"><!-- phosphor: coins --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.6,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.67,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.9,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/></svg></span>
+        <span><b>Leer tus cobros y movimientos</b><span>Solo lectura</span></span></div>
+      <div class="cs-fila"><span class="tile"><!-- phosphor: link --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M137.54,186.36a8,8,0,0,1,0,11.31l-9.94,10A56,56,0,0,1,48.38,128.4L72.5,104.28A56,56,0,0,1,149.31,102a8,8,0,1,1-10.64,12,40,40,0,0,0-54.85,1.63L59.7,139.72a40,40,0,0,0,56.58,56.58l9.94-9.94A8,8,0,0,1,137.54,186.36Zm70.08-138a56.08,56.08,0,0,0-79.22,0l-9.94,9.95a8,8,0,0,0,11.32,11.31l9.94-9.94a40,40,0,0,1,56.58,56.58L172.18,140.4A40,40,0,0,1,117.33,142,8,8,0,1,0,106.69,154a56,56,0,0,0,76.81-2.26l24.12-24.12A56.08,56.08,0,0,0,207.62,48.38Z"/></svg></span>
+        <span><b>Armar links de cobro cuando vos confirmás</b><span>Nunca sin tu OK</span></span></div>
+      <div class="cs-pend"><!-- phosphor: clock-counter-clockwise --><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M136,80v43.47l36.12,21.67a8,8,0,0,1-8.24,13.72l-40-24A8,8,0,0,1,120,128V80a8,8,0,0,1,16,0Zm-8-48A95.44,95.44,0,0,0,60.08,60.15C52.81,67.51,46.35,74.59,40,82V64a8,8,0,0,0-16,0v40a8,8,0,0,0,8,8H72a8,8,0,0,0,0-16H49.14c7.19-8.42,14.28-16.72,22.28-24.8a80,80,0,1,1,1.86,114.19,8,8,0,1,0-11,11.62A96,96,0,1,0,128,32Z"/></svg><span>Apenas conectes sigo con lo tuyo: <b>cuánto entró esta semana</b>.</span></div>
+      <div class="acciones">
+        <div class="btn">Conectar</div>
+        <div class="btn2" id="no-consent">Ahora no</div>
       </div>
     </div>
   </div>
@@ -1636,11 +2290,15 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     <div class="sombra-card" id="fuera-card"></div>
     <div class="card-in">
       <div class="grip" style="cursor:default"><div class="bar"></div></div>
-      <h3>Esto es lo que entendí</h3>
+      <h3 id="card-tit">Nuevo gasto</h3>
       <p class="sub">Corregí lo que haga falta antes de guardar.</p>
-      <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editá</span></div>
-      <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiá</span></div>
-      <div class="kv" style="border-bottom:none"><span class="k">Proveedor</span><span class="v">Díaz</span><span class="e">Editá</span></div>
+      <!-- Los campos los escribe `abrirCard()`: la card es una sola pieza que
+           cambia de contenido según la función desde la que dictaste. -->
+      <div id="card-campos">
+        <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editá</span></div>
+        <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiá</span></div>
+        <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editá</span></div>
+      </div>
       <div class="nota"><!-- phosphor: eye --><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Todavía no se guardó nada.</div>
       <div class="acciones" style="padding-left:0;padding-right:0">
         <div class="btn" id="guardar">Guardar el gasto</div>
@@ -1734,7 +2392,11 @@ arrastrable($('#grip-chat'), {
     v > H() * 0.35 ? bajarChat() : subirChat();
   }
 });
-$('#volver-midia').addEventListener('click', cerrarEscritorio);
+/* ⚠️ Guard obligatorio en los handlers de arranque: si el elemento no existe,
+   null.addEventListener corta el script entero y la app queda sin inicializar
+   (el chat sin posicionar, tapando todo). Ya pasó dos veces. */
+const volverMiDia = $('#volver-midia');
+if (volverMiDia) volverMiDia.addEventListener('click', cerrarEscritorio);
 
 /* ── el puente: acción de tarjeta → chat con contexto + HITL ── */
 $('#accion-lucia').addEventListener('click', () => {
@@ -1763,7 +2425,7 @@ $('#accion-lucia').addEventListener('click', () => {
 function confirmar(){
   $('#hilo').insertAdjacentHTML('beforeend', `
     <div class="recibo">
-      <span class="ok"><!-- phosphor: check --><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg></span>
+      <span class="ok" role="status" aria-live="polite"><!-- phosphor: check --><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg></span>
       <div>Mandado a Lucía · 9:41<br><span class="verlo" id="volver-tablero">Volver al tablero →</span></div>
     </div>`);
   $('#confirmar').closest('.hitl').querySelector('.acciones').remove();
@@ -1789,8 +2451,10 @@ document.querySelectorAll('.avatar').forEach(a =>
   a.addEventListener('click', () => $('#ajustes').classList.add('on')));
 $('#cerrar-aj').addEventListener('click', () => $('#ajustes').classList.remove('on'));
 /* cada opción de la grilla abre su subpantalla; el índice sigue el orden del repo */
+/* Mismo orden que las filas en pantalla. Las tres de Ayuda todavía no tienen
+   subpantalla dibujada: quedan sin destino hasta que se decida su diseño. */
 const SUBS = ['s-negocio','s-afip','s-apps','s-plan','s-cuenta','s-apar','s-hablar'];
-document.querySelectorAll('#ajustes .aj').forEach((a, i) => {
+document.querySelectorAll('#ajustes .aj-fila').forEach((a, i) => {
   if (!SUBS[i]) return;
   a.addEventListener('click', () => $('#' + SUBS[i]).classList.add('on'));
 });
@@ -1800,12 +2464,9 @@ if (irHablarle) irHablarle.addEventListener('click', () => $('#s-hablar').classL
 document.querySelectorAll('[data-cierra]').forEach(b =>
   b.addEventListener('click', () => $('#' + b.dataset.cierra).classList.remove('on')));
 $('#cerrar-cli').addEventListener('click', () => $('#clientes').classList.remove('on'));
-$('#cerrar-conta').addEventListener('click', () => $('#conta').classList.remove('on'));
 $('#cerrar-ing').addEventListener('click', () => $('#ingresos').classList.remove('on'));
 document.querySelectorAll('.fn[data-ing]').forEach(f =>
   f.addEventListener('click', () => $('#ingresos').classList.add('on')));
-document.querySelectorAll('.fn[data-conta]').forEach(f =>
-  f.addEventListener('click', () => $('#conta').classList.add('on')));
 document.querySelectorAll('.fn[data-cli]').forEach(f =>
   f.addEventListener('click', () => $('#clientes').classList.add('on')));
 document.querySelectorAll('.fn[data-presu]').forEach(f =>
@@ -1819,18 +2480,260 @@ document.querySelectorAll('.fn[data-fn]').forEach(f =>
 document.querySelectorAll('.fn[data-bi]').forEach(f => f.addEventListener('click', abrirBI));
 $('#cerrar-fn').addEventListener('click', () => $('#funcion').classList.remove('on'));
 
-/* ── voz contextual: dictar dentro de Gastos ────────────────── */
-$('#mic-gastos').addEventListener('click', () => $('#escucha').classList.add('on'));
-$('#cancelar-voz').addEventListener('click', () => $('#escucha').classList.remove('on'));
-$('#enviar-voz').addEventListener('click', () => {
-  $('#escucha').classList.remove('on');
+/* ══ VOZ: mantener apretado para grabar (24/08/2026) ═══════════════
+   Deroga la escucha a pantalla completa. Patrón de WhatsApp, pedido por
+   Martin y David:
+     · apretás el mic y grabás mientras lo sostenés
+     · soltás y se manda
+     · deslizás a la IZQUIERDA y se cancela
+     · deslizás hacia ARRIBA y queda bloqueado: soltás el dedo y podés
+       pausar, mandar o eliminar (los tres controles que define el repo)
+
+   Los dos gestos usan ejes distintos a propósito. Y el bloqueo no es una
+   comodidad: es la alternativa que WCAG 2.5.1 exige para un gesto que
+   obliga a sostener el dedo — sin él, quien no puede mantener presión
+   queda afuera de la función principal del producto. */
+/* UMBRAL_LOCK subió de 56 a 80 (probado en device por Martin, 24/08): a 56 el
+   bloqueo saltaba solo — el pulgar sube unos milímetros al apretar el mic contra
+   el borde inferior y eso ya alcanzaba. 80 px es un gesto que hay que querer hacer. */
+const UMBRAL_CANCEL = 70, UMBRAL_LOCK = 80;
+
+const ICO_VOZ = {
+  lock:'<svg width="17" height="17" viewBox="0 0 256 256" fill="currentColor"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96Zm112,152H48V96H208V208Z"/></svg>',
+  caret:'<svg class="flecha" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z"/></svg>',
+  chev:'<svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg>',
+  tacho:'<svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>',
+  pausa:'<svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor"><path d="M200,32H168a16,16,0,0,0-16,16V208a16,16,0,0,0,16,16h32a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm0,176H168V48h32ZM88,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H88a16,16,0,0,0,16-16V48A16,16,0,0,0,88,32Zm0,176H56V48H88Z"/></svg>',
+  play:'<svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor"><path d="M232.4,114.49,88.32,26.35a16,16,0,0,0-16.2-.3A15.86,15.86,0,0,0,64,39.87V216.13A15.94,15.94,0,0,0,80,232a16.07,16.07,0,0,0,8.36-2.35L232.4,141.51a15.81,15.81,0,0,0,0-27ZM80,215.94V40.05l143.83,88Z"/></svg>',
+  env:'<svg class="ic-env" width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></svg>',
+};
+
+/* Qué pasa al enviar, según DÓNDE estabas.
+   Regla: lo que REGISTRA se queda en su función · lo que PREGUNTA va al chat.
+   Por eso Inteligencia manda al chat aunque sea una función: el repo la define
+   como BI conversacional, no tiene dónde aterrizar una card. */
+const DESTINO = {
+  funcion:    {tipo:'card', card:'gasto'},
+  ingresos:   {tipo:'card', card:'cobro'},
+  factura:    {tipo:'card', card:'factura'},
+  presu:      {tipo:'card', card:'presu'},
+  clientes:   {tipo:'card', card:'cliente'},
+  inteligencia:{tipo:'chat'},
+};
+
+/* La card es el formulario real precargado — mecanismo canónico del repo.
+   Cambia el contenido, nunca el contrato: "Todavía no se guardó nada". */
+const CARDS = {
+  gasto:   {t:'Nuevo gasto', b:'Guardar el gasto',
+            f:[['Monto','$18.000','Editá'],['Categoría','Mercadería','Cambiá'],['Proveedor','Díaz','Editá']]},
+  cobro:   {t:'Nuevo ingreso', b:'Anotar que me pagaron',
+            f:[['Monto','$80.000','Editá'],['Cliente','Rodríguez','Cambiá'],['Cómo te pagó','Transferencia','Cambiá']]},
+  factura: {t:'Nueva factura', b:'Emitir la factura',
+            f:[['Cliente','Rodríguez','Cambiá'],['Monto','$80.000','Editá'],['Concepto','Instalación eléctrica','Editá']]},
+  presu:   {t:'Nuevo presupuesto', b:'Guardar el presupuesto',
+            f:[['Cliente','Lucía','Cambiá'],['Monto','$145.000','Editá'],['Detalle','Tablero nuevo','Editá']]},
+  cliente: {t:'Nuevo cliente', b:'Guardar el cliente',
+            f:[['Nombre','Rodríguez','Editá'],['Teléfono','341 555 0102','Editá'],['CUIT','—  no lo dijiste','Editá']]},
+};
+
+function abrirCard(clave){
+  const c = CARDS[clave] || CARDS.gasto;
+  $('#card-tit').textContent = c.t;
+  $('#guardar').textContent = c.b;
+  $('#card-campos').innerHTML = c.f.map(([k,v,e],i) =>
+    `<div class="kv"${i === c.f.length - 1 ? ' style="border-bottom:none"' : ''}>
+       <span class="campo-txt"><span class="k">${k}</span><span class="v">${v}</span></span>
+       <span class="e">${e}</span></div>`).join('');
+  $('#card').dataset.card = clave;
   $('#card').classList.add('on');
-});
+}
+
+/* Lo dictado desde Mi día o el chat entra al chat como lo que es: una
+   propuesta pendiente de confirmación. No se guarda nada al enviar. */
+function vozAlChat(dur){
+  $('#vacio').style.display = 'none';
+  $('#hilo').innerHTML = `
+    <div class="ctx-chip"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>Por voz · ${dur}</div>
+    <div class="msg-row">
+      <span class="quien"><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
+      <div class="msg">Entendí "dieciocho mil en mercadería, proveedor Díaz". Revisalo y confirmá.</div>
+    </div>
+    <div class="hitl">
+      <div class="hitl-top"><b>Nuevo gasto</b><span class="chip">Por voz</span></div>
+      <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editá</span></div>
+      <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiá</span></div>
+      <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editá</span></div>
+      <div class="nota">Todavía no se guardó nada.</div>
+      <div class="acciones">
+        <div class="btn" id="confirmar-voz">Guardar el gasto</div>
+        <div class="btn2" id="cancelar-voz-chat">Cancelar</div>
+      </div>
+    </div>`;
+  subirChat();
+  $('#confirmar-voz').addEventListener('click', () => {
+    $('#hilo').insertAdjacentHTML('beforeend',
+      '<div class="resultado">Listo, lo anoté en Gastos.</div>');
+  });
+  $('#cancelar-voz-chat').addEventListener('click', bajarChat);
+}
+
+function armarVoz(bar){
+  const mic = bar.querySelector('.mic');
+  if (!mic) return;
+  mic.querySelector('svg').classList.add('ic-mic');
+  mic.insertAdjacentHTML('beforeend', ICO_VOZ.env);
+  mic.setAttribute('aria-label', 'Mantené apretado para grabar');
+  mic.setAttribute('role', 'button');
+  mic.setAttribute('tabindex', '0');
+
+  /* 18 barras: alto y retardo deterministas — Math.random() daría una onda
+     distinta en cada render y no se podría comparar dos capturas. */
+  const ondas = Array.from({length:18}, (_,i) =>
+    `<i style="height:${8 + (i * 7 % 17)}px;animation-delay:${i * 70}ms"></i>`).join('');
+
+  mic.insertAdjacentHTML('beforebegin', `
+    <div class="rec">
+      <span class="rec-dot"></span><b class="rec-t">0:00</b>
+      <span class="rec-hint">deslizá para cancelar ${ICO_VOZ.chev}</span>
+    </div>
+    <div class="lk">
+      <span class="lk-btn borrar" data-vz="borrar" role="button" tabindex="0" aria-label="Eliminar el audio">${ICO_VOZ.tacho}</span>
+      <span class="lk-wave">${ondas}</span>
+      <span class="lk-pausa-txt">En pausa</span>
+      <b class="rec-t">0:00</b>
+      <span class="lk-btn" data-vz="pausa" role="button" tabindex="0" aria-label="Pausar">${ICO_VOZ.pausa}</span>
+    </div>
+    <div class="lock-col">${ICO_VOZ.lock}${ICO_VOZ.caret}</div>`);
+
+  const relojes = bar.querySelectorAll('.rec-t');
+  const btnPausa = bar.querySelector('[data-vz="pausa"]');
+  let t0 = 0, tick = null, x0 = 0, y0 = 0, seg = 0;
+  let grabando = false, bloqueado = false, pausado = false, cancelado = false;
+
+  const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  const pintaReloj = () => relojes.forEach(r => r.textContent = mmss(seg));
+
+  function correr(){
+    tick = setInterval(() => { if (!pausado) { seg++; pintaReloj(); } }, 1000);
+  }
+  function limpiar(){
+    clearInterval(tick); tick = null;
+    grabando = bloqueado = pausado = cancelado = false;
+    seg = 0; pintaReloj();
+    bar.classList.remove('rec-on','lock-on','cerca','pausa','fuga');
+    bar.querySelector('.rec').style.transform = '';
+    btnPausa.innerHTML = ICO_VOZ.pausa;
+    btnPausa.setAttribute('aria-label', 'Pausar');
+  }
+  function enviar(){
+    const dur = mmss(Math.max(seg, 1));
+    const d = DESTINO[bar.closest('#funcion,#ingresos,#factura,#presu,#clientes,#inteligencia')?.id] || {tipo:'chat'};
+    limpiar();
+    d.tipo === 'card' ? abrirCard(d.card) : vozAlChat(dur);
+  }
+
+  /* ⚠️ El mic vive DENTRO del composer, y el composer es el asidero que arrastra
+     el panel de conversación. Sin frenar la propagación, apretar el mic también
+     arranca el arrastre: `arrastrable` hace setPointerCapture sobre el peek y le
+     roba el puntero a la grabación. Por eso los tres eventos cortan acá. */
+  mic.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    if (bloqueado) { enviar(); return; }        /* bloqueado: el mic YA es "enviar" */
+    e.preventDefault();
+    mic.setPointerCapture(e.pointerId);
+    grabando = true; cancelado = false; seg = 0; pintaReloj();
+    t0 = e.clientY; x0 = e.clientX; y0 = e.clientY;
+    bar.classList.add('rec-on');
+    correr();
+  });
+
+  mic.addEventListener('pointermove', e => {
+    e.stopPropagation();
+    if (!grabando || bloqueado) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    /* Arriba bloquea, izquierda cancela: gana el eje que domina, para que un
+       gesto en diagonal no dispare las dos cosas. */
+    if (-dy > Math.abs(dx)) {
+      bar.classList.toggle('cerca', -dy > UMBRAL_LOCK * 0.6);
+      if (-dy > UMBRAL_LOCK) {
+        bloqueado = true;
+        bar.classList.remove('rec-on','cerca');
+        bar.classList.add('lock-on');
+        try { mic.releasePointerCapture(e.pointerId); } catch(_){}
+      }
+    } else if (dx < 0) {
+      /* La barra sigue al dedo hasta el umbral: el gesto se ve avanzar. */
+      bar.querySelector('.rec').style.transform =
+        'translateX(' + Math.max(dx, -UMBRAL_CANCEL) + 'px)';
+      bar.querySelector('.rec').style.opacity =
+        String(Math.max(1 + dx / (UMBRAL_CANCEL * 1.6), .25));
+      if (-dx > UMBRAL_CANCEL) { cancelado = true; bar.classList.add('fuga'); setTimeout(limpiar, 200); }
+    }
+  });
+
+  const soltar = e => {
+    if (e) e.stopPropagation();
+    if (!grabando || bloqueado || cancelado) return;
+    /* Menos de 1 s es un toque, no un audio: se descarta sin cartel de error,
+       igual que WhatsApp. Un toque accidental no merece una alerta. */
+    if (seg < 1) { limpiar(); return; }
+    enviar();
+  };
+  mic.addEventListener('pointerup', soltar);
+  mic.addEventListener('pointercancel', () => { if (!bloqueado) limpiar(); });
+
+  /* Con teclado no hay "mantener": Enter entra DIRECTO al modo bloqueado, que es
+     el mismo estado al que llega el gesto de deslizar hacia arriba. Enter otra
+     vez manda. Así el camino accesible no es una función distinta, es la misma
+     con otra puerta (WCAG 2.1.1). */
+  mic.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (bloqueado) { enviar(); return; }
+    grabando = true; bloqueado = true; seg = 0; pintaReloj();
+    bar.classList.add('lock-on');
+    correr();
+  });
+
+  btnPausa.addEventListener('click', () => {
+    pausado = !pausado;
+    bar.classList.toggle('pausa', pausado);
+    btnPausa.innerHTML = pausado ? ICO_VOZ.play : ICO_VOZ.pausa;
+    btnPausa.setAttribute('aria-label', pausado ? 'Seguir grabando' : 'Pausar');
+  });
+  bar.querySelector('[data-vz="borrar"]').addEventListener('click', limpiar);
+  /* Misma razón que en el mic: Pausar y Eliminar viven adentro del asidero del
+     panel. Sin esto, tocar "Pausar" subiría el chat. */
+  bar.querySelector('.lk').addEventListener('pointerdown', e => e.stopPropagation());
+  /* Teclado: los dos controles son <span role="button">, así que Enter/Espacio
+     no los activan solos. Sin esto, el modo bloqueado —que es justamente la
+     salida accesible— no se puede operar sin puntero. */
+  bar.querySelectorAll('.lk-btn').forEach(b =>
+    b.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); }
+    }));
+
+  /* Los `?ver=` de demo entran por acá y no pintando la clase a mano: si sólo se
+     pintara, el estado interno quedaría en falso y el mic arrancaría una grabación
+     nueva en vez de mandar — justo delante de quien mira la demo. */
+  bar._voz = {
+    arrancar(bloq, desde){
+      grabando = true; bloqueado = !!bloq; seg = desde || 0; pintaReloj();
+      bar.classList.add(bloq ? 'lock-on' : 'rec-on');
+      correr();
+    }
+  };
+}
+document.querySelectorAll('.inputbar').forEach(armarVoz);
+
 $('#cancelar-card').addEventListener('click', () => $('#card').classList.remove('on'));
 $('#fuera-card').addEventListener('click', () => $('#card').classList.remove('on'));
 $('#guardar').addEventListener('click', () => {
+  const clave = $('#card').dataset.card || 'gasto';
   $('#card').classList.remove('on');
-  /* el efecto se ve donde estabas mirando */
+  /* El efecto se ve donde estabas mirando. Sólo Gastos tiene la lista dibujada:
+     el resto cierra la card sin fingir un resultado que el prototipo no muestra. */
+  if (clave !== 'gasto') return;
   $('#lista-gastos').insertAdjacentHTML('afterbegin', `
     <div class="gasto nuevo" style="margin-bottom:var(--s2)">
       <div class="tile"><!-- phosphor: package --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Zm176,85.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z"/></svg></div>
@@ -1850,6 +2753,10 @@ const UMBRAL = 0.38;                 // fracción del ancho que hay que recorrer
 let ultimo = null, temporizador = null;
 
 function descartable(aviso){
+  /* ⚠️ El descarte se mudó de Mi día al TABLERO (20/08): el carrusel del resumen usa
+     el eje horizontal y dos gestos horizontales en la misma zona no pueden convivir.
+     Además queda mejor repartido: Mi día resume, el tablero gestiona — que es donde
+     el repo define el swipe. */
   const wrap = document.createElement('div'); wrap.className = 'swipe';
   aviso.parentNode.insertBefore(wrap, aviso);
   const fondo = document.createElement('div'); fondo.className = 'swipe-bg';
@@ -1873,7 +2780,12 @@ function descartable(aviso){
     }
     if (eje !== 'x') return;
     dx = Math.min(0, ax);                       // sólo derecha → izquierda
-    aviso.style.transform = 'translateX(' + dx + 'px)';
+    /* Rebote (de "Draggable Card"): pasado el umbral la tarjeta OFRECE RESISTENCIA en
+       vez de seguir al dedo. No es cosmético — es lo que comunica "hasta acá llega"
+       sin un cartel. Antes frenaba seca en el tope y no daba devolución. */
+    const tope = aviso.offsetWidth * UMBRAL;
+    const vis = -dx > tope ? -(tope + (-dx - tope) * 0.28) : dx;
+    aviso.style.transform = 'translateX(' + vis + 'px)';
   });
   const soltar = () => {
     if (!x0) return;
@@ -1908,7 +2820,7 @@ $('#deshacer').addEventListener('click', () => {
   revisarCalma();
 });
 
-document.querySelectorAll('#midia .aviso').forEach(descartable);
+document.querySelectorAll('#tablero .fi').forEach(descartable);
 
 /* ?vacio=1 arranca sin tarjetas — para ver el estado de calma sin tener que
    descartarlas a mano. Es una ayuda del prototipo, no una función del producto. */
@@ -1916,6 +2828,122 @@ document.querySelectorAll('#midia .aviso').forEach(descartable);
 
 
 
+
+
+/* ══ HILOS: los estados de conversación que vivían sólo en los mockups ══
+   Portados el 25/08 al migrar los mockups 01, 02, 04, 05, 06 y 08 a iframe. Eran
+   markup recreado en el CSS de cada mockup; acá pasan a ser parte del producto,
+   que es lo que permite que el mockup deje de tener su propia copia.
+   `O(t)` = burbuja de Odobi · `Y(t,m)` = burbuja del usuario con su meta. */
+const ISO26 = '<svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>';
+const OK16 = '<svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>';
+const OJO16 = '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>';
+
+const O = t => `<div class="msg-row"><span class="quien">${ISO26}</span><div class="msg">${t}</div></div>`;
+const Y = (t, m) => `<div class="mio">${t}</div><div class="meta">${m} <i>✓✓</i> recibido</div>`;
+const D = t => `<div class="dia">${t}</div>`;
+const CH = (...c) => `<div class="chips">${c.map(x => `<div class="chip-act">${x}</div>`).join('')}</div>`;
+const REC = (t1, ...ls) => `<div class="recibo"><span class="ok" role="status" aria-live="polite">${OK16}</span><div><b>${t1}</b>${ls.slice(0,-1).map(x => `<div class="t2">${x}</div>`).join('')}</div>${ls[ls.length-1] ? `<span class="link">${ls[ls.length-1]}</span>` : ''}</div>`;
+const NOTA = t => `<div class="nota">${OJO16}${t}</div>`;
+const FILA = (k, v, e) => `<div class="kv"><span class="campo-txt"><span class="k">${k}</span><span class="v">${v}</span></span>${e ? `<span class="${e === 'suma de ítems' ? 'calc' : 'e'}">${e}</span>` : ''}</div>`;
+const HITL = (tit, chip, filas, nota, ok, no) =>
+  `<div class="hitl"><div class="hitl-top"><b>${tit}</b><span class="chip">${chip}</span></div>${filas}${NOTA(nota)}<div class="acciones"><div class="btn">${ok}</div><div class="btn2">${no}</div></div></div>`;
+
+const HILOS = {
+  'onb-promesa': () =>
+    O('Laburo así: vos me hablás, yo resuelvo. Pero primero necesito ver tu negocio.') +
+    O('¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés.') +
+    HITL('Tus servicios', '2 permisos',
+      FILA('Cobrar', 'Mercado Pago<span class="sub-k">Conectado ✓</span>', '') +
+      FILA('Mail · Agenda · Archivos', 'Google<span class="sub-k">Gmail, Calendar, Drive, Docs, Sheets</span>', ''),
+      'Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Ajustes.',
+      'Conectar Google', 'Después'),
+
+  'onb-cumplida': () =>
+    D('Hoy') +
+    REC('Servicios conectados', 'Mercado Pago · Google', '') +
+    O('Listo, ya veo tu negocio.') +
+    O('Primero que salta: tenés <b>$147.000 facturados sin cobrar</b>, y $63.000 son de hace más de 20 días.') +
+    O('¿Querés que te arme el detalle de quiénes son?') +
+    CH('Armame el detalle'),
+
+  'consent': () =>
+    D('Martes') +
+    Y('¿Cuánto entró esta semana?', '10:05') +
+    O('Eso no lo puedo ver todavía — no tenés conectado Mercado Pago. Si lo conectás, te respondo esa y te aviso cada cobro que entre.'),
+
+  'preg': () =>
+    D('Miércoles 22') + O('Promo mandada a los 34. Te voy contando.') +
+    D('Viernes 25 · Hoy') + Y('¿Cómo viene la promo?', '9:41') +
+    O('Bien: respondieron 9 de los 34, y 4 ya volvieron a comprar.') +
+    `<div class="hitl"><div class="hitl-top"><b>Promo del miércoles</b><span class="chip">34 enviados</span></div>
+       <div class="kv"><span class="campo-txt"><span class="k">Vendiste</span><span class="v" style="font-family:var(--display);font-size:28px;line-height:1.1">$52.000</span></span><span class="chip">4 ventas</span></div>
+       <div class="nota-sub">Ya están dentro de lo que entró esta semana. No se suman aparte.</div></div>` +
+    O('Si querés, la semana que viene les recuerdo a los 25 que no contestaron. Vos confirmás.'),
+
+  'recibo': () =>
+    D('Miércoles 22') + Y('Confirmá.', '14:40') +
+    REC('Promo mandada', '34 clientes · Gmail · 14:41', 'Detalle') +
+    O('Salió. Te aviso a medida que respondan.'),
+
+  'fact-voz': () =>
+    D('Jueves 24') + Y('Odobi, facturale $80.000 a Rodríguez.', '10:12 · por voz') +
+    O('Dale. Para la factura me faltan dos cosas: ¿es factura C? ¿y el CUIT de Rodríguez uso el del registro que tengo (20-28456789-3)?') +
+    Y('Sí, C. Y usá ese CUIT.', '10:13'),
+
+  'fact-hitl': () =>
+    D('Jueves 24') + O('Queda así. Revisala antes de emitir:') +
+    HITL('Factura C', 'ARCA',
+      FILA('Cliente', 'Rodríguez SRL<span class="sub-k">CUIT 20-28456789-3</span>', 'Cambiá') +
+      FILA('Importe', '$80.000', 'Editá') +
+      FILA('Concepto', 'Servicios<span class="sub-k">trabajo de julio</span>', 'Editá'),
+      'Se emite en ARCA a tu nombre. Una factura emitida no se borra: si está mal, se anula con una nota de crédito.',
+      'Emitir factura', 'Cancelar'),
+
+  'fact-cae': () =>
+    D('Jueves 24') + Y('Emitila.', '10:13 · por voz') +
+    REC('Factura C emitida', 'Nº 0003-00000127 · $80.000 · Rodríguez SRL', 'CAE 75282963517824 · vence 03/08', 'PDF') +
+    O('Emitida. Acá está el PDF — ¿lo guardo, lo mando por mail o lo compartís vos?') +
+    CH('Guardalo en Drive', 'Mandalo por mail'),
+
+  'pres-voz': () =>
+    D('Lunes 20') + Y('Odobi, armale un presupuesto a Fernández por la reforma del local.', '09:31 · por voz') +
+    O('Dale. ¿Qué le cotizás? Decime los ítems con su precio.') +
+    Y('Pintura completa ochenta mil, y el cambio de luminarias sesenta y cinco.', '09:32 · por voz'),
+
+  'pres-hitl': () =>
+    D('Lunes 20') +
+    O('Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.') +
+    HITL('Presupuesto', 'Docs',
+      FILA('Cliente', 'Fernández', 'Cambiá') +
+      FILA('Ítem', 'Pintura completa<span class="sub-k">1 × $80.000</span>', 'Editá') +
+      FILA('Ítem', 'Cambio de luminarias<span class="sub-k">1 × $65.000</span>', 'Editá') +
+      FILA('Total', '<b>$145.000</b>', 'suma de ítems'),
+      'Queda en tu registro y te armo el Doc. A Fernández no le llega nada hasta que vos se lo mandes.',
+      'Guardar presupuesto', 'Descartar'),
+
+  'pres-ciclo': () =>
+    D('Lunes 20') +
+    REC('Presupuesto anotado', 'N° 12 · $145.000 · Fernández', 'Pendiente · Doc listo para mandar', 'Doc') +
+    O('Anotado. ¿Se lo mando por mail o se lo pasás vos?') + CH('Mandalo por mail') +
+    D('Viernes 25 · Hoy') + Y('Me aprobaron el de Fernández.', '09:04 · por voz') +
+    O('Marqué el presupuesto N° 12 de Fernández ($145.000) como aprobado. ¿Te armo la factura?') +
+    CH('Armá la factura'),
+
+  'limite': () =>
+    D('Jueves 30 · Hoy') + Y('Odobi, mandale el presupuesto a Fernández.', '16:40 · por voz') +
+    O('Usaste las 200 acciones del mes — se ve que le estás dando laburo, bien ahí. Tenés dos opciones: esperás a que se renueven, o pasás al plan Profesional y seguimos ahora. Como prefieras, yo no me voy a ningún lado.') +
+    CH('Pasame a Profesional', 'Espero a que se renueven'),
+};
+
+function abrirHilo(clave){
+  const f = HILOS[clave];
+  if (!f) return;
+  $('#vacio').style.display = 'none';
+  $('#hilo').innerHTML = f();
+  subirChat();
+  requestAnimationFrame(() => { $('#hilo').scrollTop = $('#hilo').scrollHeight; });
+}
 
 /* Atajos del prototipo para abrir una pantalla directo. Se comparan EXACTO: con
    includes(), '?escucha=1' contenía 'esc' y abría además el escritorio. */
@@ -1992,6 +3020,14 @@ if (ver === 'entrada') {
 if (ver === 'esc')     { yMidia = 0; setTimeout(abrirEscritorio, 60); }
 if (ver === 'chat')    setTimeout(subirChat, 60);
 if (ver === 'bi')      setTimeout(abrirBI, 60);
+/* los dos estados que el repo pide y no se ven en la pantalla por defecto */
+if (ver === 'bi-vacio')   setTimeout(() => { abrirBI(); $('#bi-clientes').classList.add('sin-datos'); }, 60);
+if (ver === 'bi-refresh') setTimeout(() => {
+  abrirBI();
+  const i = $('#bi-refresh');
+  i.classList.add('anim','cargando'); i.style.height = '64px';
+  $('#bi-refresh-txt').textContent = 'Actualizando…';
+}, 60);
 if (ver === 'hitl')    setTimeout(() => { const a = $('#accion-lucia'); if (a) a.click(); }, 120);
 /* la escucha se superpone a lo que estés haciendo: acá, sobre Mi día */
 if (ver === 'cuenta')  setTimeout(() => { $('#ajustes').classList.add('on'); $('#s-cuenta').classList.add('on'); }, 60);
@@ -2002,23 +3038,213 @@ if (ver === 'plan')    setTimeout(() => { $('#ajustes').classList.add('on'); $('
 if (ver === 'negocio') setTimeout(() => { $('#ajustes').classList.add('on'); $('#s-negocio').classList.add('on'); }, 60);
 if (ver === 'afip')    setTimeout(() => { $('#ajustes').classList.add('on'); $('#s-afip').classList.add('on'); }, 60);
 if (ver === 'ingresos') setTimeout(() => $('#ingresos').classList.add('on'), 60);
-if (ver === 'conta')   setTimeout(() => $('#conta').classList.add('on'), 60);
+if (ver === 'cargando') { /* el esqueleto queda fijo, ver bloque de carga */ }
+if (ver === 'tablero') setTimeout(() => $('#tablero').classList.add('on'), 60);
+if (ver === 'agenda')  setTimeout(() => $('#agenda').classList.add('on'), 60);
+if (ver === 'detalle') setTimeout(() => { $('#tablero').classList.add('on'); $('#detalle').classList.add('on'); }, 80);
 if (ver === 'clientes') setTimeout(() => $('#clientes').classList.add('on'), 60);
 if (ver === 'ajustes') setTimeout(() => $('#ajustes').classList.add('on'), 60);
 if (ver === 'presu')   setTimeout(() => $('#presu').classList.add('on'), 60);
 if (ver === 'factura') setTimeout(() => $('#factura').classList.add('on'), 60);
 if (ver === 'gastos')  setTimeout(() => $('#funcion').classList.add('on'), 60);
-if (ver === 'escucha') setTimeout(() => $('#escucha').classList.add('on'), 80);
-if (ver === 'vacio' || location.search.includes('vacio')) {
-  document.querySelectorAll('#midia .swipe').forEach(w => {
+/* Grabando y bloqueado son ESTADOS de la barra, no pantallas: se muestran
+   sobre Gastos, que es donde se ve que el contenido de atrás no se tapa.
+   `?ver=escucha` se conserva apuntando al estado nuevo — la escucha a pantalla
+   completa quedó derogada el 24/08, pero el mapa y el mockup 11 la enlazan. */
+function demoVoz(bloq){
+  $('#funcion').classList.add('on');
+  $('#funcion .inputbar')._voz.arrancar(bloq, 7);
+}
+if (ver === 'escucha')   setTimeout(() => demoVoz(false), 80);
+if (ver === 'grabando')  setTimeout(() => demoVoz(false), 80);
+if (ver === 'bloqueado') setTimeout(() => demoVoz(true), 80);
+/* ══ Tirar para actualizar — sólo Inteligencia ═════════════════════
+   El repo lo pide dos veces para esta pantalla, y es la única donde tiene
+   sentido: las demás cambian cuando el usuario hace algo, Inteligencia es
+   la única cuyo contenido querría volver a pedir sin haber tocado nada.
+
+   ⚠️ NO usa setPointerCapture: capturar el puntero mata el scroll nativo
+   del contenedor. El gesto sólo se engancha si ya estás arriba de todo
+   (scrollTop === 0) y el movimiento es hacia ABAJO — en cualquier otro
+   caso se suelta y el scroll sigue siendo del navegador. */
+(function tirarParaRefrescar(){
+  const sc = $('#bi-scroll'), ind = $('#bi-refresh'), txt = $('#bi-refresh-txt');
+  if (!sc || !ind) return;                       // guard obligatorio (método §3)
+  const TOPE = 64;
+  let y0 = 0, activo = false, listo = false, cargando = false;
+
+  const cerrar = () => {
+    ind.classList.add('anim');
+    ind.style.height = ''; ind.classList.remove('suelta','cargando');
+    txt.textContent = 'Tirá para actualizar';
+    activo = listo = false;
+  };
+
+  sc.addEventListener('pointerdown', e => {
+    if (cargando || sc.scrollTop > 0) return;
+    y0 = e.clientY; activo = true; listo = false;
+    ind.classList.remove('anim');
+  });
+
+  sc.addEventListener('pointermove', e => {
+    if (!activo) return;
+    const d = e.clientY - y0;
+    /* hacia arriba, o ya no estamos en el tope: no es este gesto */
+    if (d <= 0 || sc.scrollTop > 0) { if (listo || ind.style.height) cerrar(); activo = false; return; }
+    /* Mismo rebote que el swipe de descarte: pasado el tope avanza el 30%.
+       Comunica "hasta acá llega" sin cartel. */
+    const vis = d > TOPE ? TOPE + (d - TOPE) * 0.3 : d;
+    ind.style.height = Math.min(vis, TOPE + 20) + 'px';
+    listo = d > TOPE;
+    ind.classList.toggle('suelta', listo);
+    txt.textContent = listo ? 'Soltá para actualizar' : 'Tirá para actualizar';
+  });
+
+  const soltar = () => {
+    if (!activo) return;
+    if (!listo) return cerrar();
+    /* WCAG 1.4.1 y Nielsen #1: el estado se dice con TEXTO, no sólo con el
+       ícono girando. Quien no ve la animación igual sabe qué está pasando. */
+    activo = false; cargando = true;
+    ind.classList.add('anim','cargando'); ind.classList.remove('suelta');
+    ind.style.height = TOPE + 'px';
+    txt.textContent = 'Actualizando…';
+    setTimeout(() => {
+      txt.textContent = 'Al día · recién';
+      setTimeout(() => { cargando = false; cerrar(); }, 700);
+    }, 900);
+  };
+  sc.addEventListener('pointerup', soltar);
+  sc.addEventListener('pointercancel', soltar);
+})();
+
+/* el otro destino: dictar desde Mi día o el chat aterriza EN el chat */
+if (ver === 'vozchat')   setTimeout(() => vozAlChat('0:07'), 80);
+
+/* ── Los 15 estados que vivían sólo en los mockups (25/08) ────────────
+   Doce son hilos de chat, así que entran por `abrirHilo`. Los otros tres
+   son pantalla propia: el reveal, el sheet de consentimiento y Mi día con
+   una conexión caída. */
+if (ver && HILOS[ver]) setTimeout(() => abrirHilo(ver), 80);
+
+/* 01 · el aterrizaje del splash: el reveal */
+if (ver === 'reveal') setTimeout(() => $('#reveal').classList.add('on'), 60);
+
+/* 02 · just-in-time consent: el hilo queda ATRÁS, visible. Ese es el argumento —
+   se ve qué pedido quedó esperando a que conectes. */
+if (ver === 'consent') setTimeout(() => $('#consent').classList.add('on'), 260);
+
+/* 02 · conexión caída. La portada ADMITE estar incompleta en vez de mostrar un
+   número mentiroso, y el aviso sube a la lista como una tarjeta más del detector:
+   una conexión caída es del negocio, no de la app. */
+if (ver === 'caida') setTimeout(() => {
+  /* Se cambia SÓLO el texto: reescribir el innerHTML se llevaba el chevron, y el
+     chevron es lo que dice que la portada es tocable. */
+  $('#encaja-lbl').firstChild.nodeValue = 'Entró esta semana ';
+  /* El delta compara contra el mes pasado; con el dato incompleto esa comparación
+     sería falsa. Mismo criterio que el "—": mejor no decirlo que decirlo mal. */
+  $('#midia .p-delta').style.display = 'none';
+  $('#p-parcial').style.display = 'block';
+  $('#exp').insertAdjacentHTML('afterbegin', `
+    <div class="ex on">
+      <div class="cab"><span class="tile" style="background:var(--f-cobros)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.74,15.74,0,0,1-4,10.46l-.11.12L156,229.15a16,16,0,0,1-27-11.79V184H32a16,16,0,0,1-16-16V88A16,16,0,0,1,32,72h97V38.64a16,16,0,0,1,27-11.79l79.94,90.57.11.12A15.74,15.74,0,0,1,240,128ZM32,168h97V88H32Z"/></svg></span>
+        <span class="t"><b>Mercado Pago está caído</b><span class="chip-p c-pron">Los cobros de hoy pueden faltar</span></span>
+        <svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
+      </div>
+      <div class="mas"><div class="in">
+        <p>Se me cayó la conexión, así que los cobros de hoy pueden estar incompletos. Te aviso apenas vuelva.</p>
+        <div class="kv"><span>Se cayó</span><b>Hoy, 9:12</b></div>
+        <div class="accion">Reconectá Mercado Pago</div>
+      </div></div>
+    </div>`);
+}, 80);
+/* la card que aterriza en la función: `?ver=card` abre la de Gastos,
+   `?ver=card-presu` la de Presupuestos, y así con las cinco claves de CARDS */
+if (ver && ver.startsWith('card')) setTimeout(() => {
+  $('#funcion').classList.add('on');
+  abrirCard(ver.slice(5) || 'gasto');
+}, 80);
+/* ⚠️ Va en setTimeout y marca las TARJETAS, no los wrappers. `descartable()` crea
+   los `.swipe` más abajo en el script, así que acá `#midia .swipe` daba una lista
+   vacía y `?ver=vacio` mostraba Mi día normal — el frame del árbol quedó mostrando
+   la pantalla equivocada sin que nada fallara. Es la misma trampa de orden que ya
+   había mordido a `revisarCalma()`. */
+/* el estado veterano: ya vio la calma cinco días, la explicación se retiró */
+if (ver === 'vacio-visto') {
+  try {
+    localStorage.setItem('odobi-calma-dias',
+      JSON.stringify(['2026-08-18','2026-08-19','2026-08-20','2026-08-21','2026-08-22']));
+  } catch(_){}
+}
+/* y el de estreno: se limpia el conteo para ver la explicación como el primer día */
+if (ver === 'vacio') { try { localStorage.removeItem('odobi-calma-dias'); } catch(_){} }
+
+if (ver === 'vacio' || ver === 'vacio-visto' || location.search.includes('vacio')) setTimeout(() => {
+  document.querySelectorAll('#exp .ex').forEach(t => {
+    const w = t.closest('.swipe') || t;
     w.style.height = '0px'; w.style.marginTop = '0'; w.style.opacity = '0';
     w.classList.add('sale');
   });
+  revisarCalma();
+}, 60);
+/* ── La explicación de la calma se RETIRA con el uso (Martin, 25/08) ──
+   "Cuando haya algo que mirar, te lo dejo acá" enseña qué significa una pantalla
+   vacía. Enseñado eso, el texto deja de informar y pasa a ocupar lugar: es
+   andamiaje, y el andamiaje se saca cuando ya no sostiene nada.
+
+   ⚠️ Se cuentan DÍAS DISTINTOS, no apariciones. Martin dijo "5 veces", pero cinco
+   veces en una misma mañana —abrir y cerrar la app— no es haber aprendido nada;
+   cinco días viéndola, sí. Contar renders además haría que scrollear gastara el
+   cupo. Lo que se aprende se aprende con el tiempo, no con la repetición seguida.
+
+   El título y lo accionable NO se tocan: "Nada urgente por hoy", lo que queda por
+   delante y el enlace al tablero siguen siempre. Se retira la explicación, nunca
+   la información ni la salida. */
+const CALMA_TOPE = 5;                    // días distintos; a calibrar con uso real
+function retirarExplicacion(){
+  const p = $('#calma-expl');
+  if (!p) return;
+  let dias;
+  try { dias = JSON.parse(localStorage.getItem('odobi-calma-dias') || '[]'); }
+  catch(_) { dias = []; }
+  const hoy = FECHA_DEMO || new Date().toISOString().slice(0, 10);
+  if (!dias.includes(hoy)) {
+    dias.push(hoy);
+    try { localStorage.setItem('odobi-calma-dias', JSON.stringify(dias)); } catch(_){}
+  }
+  p.style.display = dias.length >= CALMA_TOPE ? 'none' : '';
 }
+/* `?ver=vacio-visto` fuerza el estado veterano sin esperar cinco días: hace falta
+   para mostrar los dos momentos en el mapa y en el deck. */
+let FECHA_DEMO = null;
+
 function revisarCalma(){
-  const quedan = document.querySelectorAll('#midia .swipe:not(.sale)').length;
-  $('#calma').classList.toggle('on', quedan === 0);
-  $('#midia .sec-label').style.display = quedan === 0 ? 'none' : '';
+  /* Cuenta las tarjetas, no los wrappers: `descartable()` los crea después y este
+     conteo corría antes — daba 0 y disparaba el estado de calma en el arranque. */
+  const quedan = document.querySelectorAll('#exp .ex').length
+               - document.querySelectorAll('#exp .swipe.sale').length;
+  const calmo = quedan === 0;
+  $('#calma').classList.toggle('on', calmo);
+  if (calmo) retirarExplicacion();
+  /* ⚠️ Se colapsa SÓLO LA LISTA. El rótulo "Para hoy" y su "Ver tablero ›" quedan
+     FIJOS, igual que "Ahora / Ver agenda ›" (Martin, 25/08): la puerta al tablero
+     tiene que estar siempre en el mismo lugar, haya o no algo hoy. Una salida que
+     se mueve según el contenido obliga a buscarla cada vez.
+     Antes el selector era `#midia .sec`, que agarraba TAMBIÉN el rótulo de "Ahora"
+     — la agenda quedaba sin título, con su lista colgando de la nada. */
+  $('#exp').style.display = calmo ? 'none' : '';
+  /* La línea de la semana aparece SÓLO con el día limpio (Martin, 25/08). Si hay
+     tarjetas para hoy, lo que vence el jueves distrae de lo que hay que hacer ahora;
+     recién cuando no queda nada de hoy, "lo que viene" pasa a ser lo próximo útil. */
+  $('#prog').style.display = calmo ? '' : 'none';
+  /* El contador sí se va: "4 cosas" al lado de la taza sería mentira, y decir
+     "nada" repetiría lo que ya dice el título del estado vacío. */
+  const cont = $('#sec-hoy').querySelector('.cont');
+  if (cont) cont.style.display = calmo ? 'none' : '';
+  /* El avance se muda al bloque de calma en vez de desaparecer: lo que no puede
+     pasar es que quede flotando arriba de una sección vacía, diciendo "2 de 6"
+     al lado de "nada urgente". */
+
 }
 revisarCalma();
 
@@ -2038,6 +3264,130 @@ revisarCalma();
   }, 2600);
 })();
 
+
+/* ── carrusel del resumen ──────────────────────────────────────────
+   Los puntitos dicen cuántas tarjetas hay sin mostrarlas: es lo que impide que Mi día
+   crezca con la cantidad de pendientes. */
+(function(){
+  const carr = $('#carr'), dots = $('#dots');
+  if (!carr || !dots) return;
+  const marcar = () => {
+    const i = Math.round(carr.scrollLeft / (carr.scrollWidth / carr.children.length));
+    [...dots.children].forEach((d, n) => d.classList.toggle('on', n === i));
+  };
+  carr.addEventListener('scroll', marcar, {passive:true});
+})();
+
+/* ── tablero, agenda y sheet ───────────────────────────────────────
+   El sheet es la ALTERNATIVA DE UN SOLO PUNTERO que WCAG 2.5.1 exige para el swipe:
+   avanzar de etapa y agendar viven acá, sin gesto. */
+document.querySelectorAll('[data-ir]').forEach(a =>
+  a.addEventListener('click', () => $('#' + a.dataset.ir).classList.add('on')));
+document.querySelectorAll('[data-cierra]').forEach(b =>
+  b.addEventListener('click', () => $('#' + b.dataset.cierra).classList.remove('on')));
+document.querySelectorAll('#tablero .fi').forEach(f =>
+  f.addEventListener('click', e => {
+    if (e.target.closest('.swipe-bg')) return;
+    $('#detalle').classList.add('on');
+  }));
+document.querySelectorAll('[data-cierra-det]').forEach(b =>
+  b.addEventListener('click', () => $('#detalle').classList.remove('on')));
+
+/* selección con borde + check: sólo una activa por grupo */
+document.querySelectorAll('.segb, .fchips').forEach(g =>
+  g.querySelectorAll('span').forEach(x => x.addEventListener('click', () => {
+    g.querySelectorAll('span').forEach(y => y.classList.remove('on'));
+    x.classList.add('on');
+  })));
+
+/* Expandible: el repo pide que tocar expanda y volver a tocar colapse. Se cierra la
+   anterior al abrir otra — con dos abiertas la lista deja de leerse de un vistazo. */
+document.querySelectorAll('#exp .ex').forEach(e =>
+  e.addEventListener('click', ev => {
+    if (ev.target.closest('.accion')) return;      // el botón ejecuta, no colapsa
+    const abierta = e.classList.contains('on');
+    document.querySelectorAll('#exp .ex').forEach(x => x.classList.remove('on'));
+    if (!abierta) e.classList.add('on');
+  }));
+
+/* El descarte VUELVE a Mi día: el expandible no usa el eje horizontal, así que ya no
+   hay conflicto con el carrusel. En el tablero sigue igual. */
+document.querySelectorAll('#exp .ex').forEach(descartable);
+
+/* ── 1 · carga ─────────────────────────────────────────────────────
+   El esqueleto se muestra mientras "corre el detector". En el producto la duración la
+   define la respuesta real; acá son 1,1 s para poder verlo. Con ?ver=cargando se queda
+   fijo. */
+(function(){
+  const sk = $('#cargando'), lista = $('#exp'), prog = $('#prog');
+  if (!sk) return;
+  const fijo = new URLSearchParams(location.search).get('ver') === 'cargando';
+  sk.classList.add('on'); lista.style.display = 'none'; prog.style.display = 'none';
+  if (fijo) return;
+  setTimeout(() => {
+    sk.classList.remove('on');
+    lista.style.display = ''; prog.style.display = '';
+    /* ⚠️ Restaurar a ciegas PISABA el estado de calma: el esqueleto termina a los
+       1100 ms, después de que `?ver=vacio` ya había colapsado la sección, y volvía
+       a mostrar la barra de avance sobre una lista vacía. Quien decide qué se ve
+       es `revisarCalma()`, siempre. */
+    revisarCalma();
+  }, 1100);
+})();
+
+/* ── 2 · lo que queda por delante ──────────────────────────────────
+   Antes era el "avance del día": una barra de cuántas cerraste. Derogado el 25/08
+   por Martin — lo hecho no se comunica, sólo lo que falta. */
+/* ⚠️ `pintarAvance()` quedó DEROGADO el 25/08 junto con la barra de cerradas.
+   El número de la línea es lo que VENCE ESTA SEMANA y no depende de lo que el
+   usuario descarte hoy: descartar una tarjeta de hoy no cambia lo que vence el
+   jueves. Por eso ya no se recalcula al soltar el swipe. */
+const PEND_SEMANA = 2;
+function pintarAvance(){}
+
+/* ── 3 · checkbox, sólo en tarjetas propias ────────────────────────
+   Alternativa de un solo puntero para WCAG 2.5.1: marcar hecho ya no depende del swipe. */
+pintarAvance();
+
+/* "Borrar" del expandido: misma salida que el swipe, sin gesto (WCAG 2.5.1). */
+document.querySelectorAll('[data-borrar]').forEach(b =>
+  b.addEventListener('click', e => {
+    e.stopPropagation();
+    const fila = b.closest('.ex'), wrap = fila.parentNode;
+    if (wrap && wrap.classList.contains('swipe')) sacar(wrap, fila);
+  }));
+
+/* ── Campos de Ajustes: validación y autoguardado ──────────────────
+   Guarda al SALIR del campo (blur), no al tipear: validar en cada tecla muestra
+   errores de algo que el usuario todavía está escribiendo — a mitad de un CUIT
+   siempre faltan dígitos.
+   Los mensajes dicen EL REQUISITO, no "campo inválido": el error tiene que decir
+   cómo salir de él. Los de ARCA son textuales del repo. */
+const REGLAS = {
+  mail:  v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v),
+  tel:   v => (v.replace(/\D/g,'').length >= 8),
+  cuit:  v => (v.replace(/\D/g,'').length === 11),
+  pdv:   v => (/^\d+$/.test(v.trim()) && parseInt(v,10) >= 1),
+  fecha: v => /^\d{2}\/\d{2}\/\d{4}$/.test(v.trim()),
+};
+function valida(el){
+  const regla = el.dataset.regla || '', v = el.value.trim();
+  if (!regla) return true;
+  if (regla.startsWith('min:')) return v.length >= parseInt(regla.slice(4), 10);
+  return REGLAS[regla] ? REGLAS[regla](v) : true;
+}
+document.querySelectorAll('.campo-ed input, .campo-ed textarea').forEach(el => {
+  const caja = el.closest('.campo-ed');
+  /* al escribir sólo se LIMPIA el error: nunca se marca uno nuevo a mitad de camino */
+  el.addEventListener('input', () => caja.classList.remove('mal'));
+  el.addEventListener('blur', () => {
+    if (!valida(el)) { caja.classList.add('mal'); caja.classList.remove('guardado'); return; }
+    caja.classList.remove('mal');
+    caja.classList.remove('guardado');
+    void caja.offsetWidth;                    // reinicia la animación del "Guardado"
+    caja.classList.add('guardado');
+  });
+});
 
 init();
 </script>

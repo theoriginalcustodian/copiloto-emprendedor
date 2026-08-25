@@ -1,7 +1,8 @@
-# DECISIONES — 12 · Las siete funciones
+# DECISIONES — 12 · Las seis funciones
 
-Creado el 19/08/2026. Dibuja las siete funciones que el repo define en `kb-usuario/`:
-**Gastos · Ingresos · Facturación · Presupuestos · Inteligencia de Negocio · Contabilidad · Clientes**.
+Creado el 19/08/2026, revisado el 20/08. Dibuja las funciones que el repo define en `kb-usuario/`:
+**Gastos · Ingresos · Facturación · Presupuestos · Inteligencia de Negocio · Clientes**.
+⚠️ Eran siete: **Contabilidad se unificó con Inteligencia el 20/08** (ver §2.bis).
 
 Es el primer mockup que **no recrea la UI en su propio HTML**: los teléfonos cargan el
 prototipo real por `iframe`. Fundamento: había dos fuentes de verdad —el prototipo y once
@@ -25,7 +26,7 @@ mockup (13).
 | Facturación | "Nueva factura" | emisión |
 | Presupuestos | "Nuevo presupuesto" | emisión |
 | Clientes | "Nuevo cliente" | cartera |
-| Contabilidad | **ninguna** — solo consulta | lectura |
+| ~~Contabilidad~~ | — | ⚠️ **Unificada con Inteligencia el 20/08** (ver abajo) |
 | Inteligencia de Negocio | ninguna — responde | lectura |
 
 ## 1 · Las decisiones
@@ -42,7 +43,7 @@ mockup (13).
 | Semáforo del tope | Verde `#3F7D5C` (4,84:1) · ámbar `#A06A1E` (4,63:1) · rojo `#B04A2E` (5,43:1) | El repo lo pide explícito y la paleta no tenía señales semánticas. Se eligieron con el **mismo valor tonal** que la terracota profunda para que convivan. WCAG 1.4.1: el color nunca va solo — el porcentaje va en texto | Sólo arena: no distingue "tranquilo" de "cerca del tope", que es toda la información |
 | Rótulo "Estás en Gastos" | **Derogado el 19/08** | El encabezado ya dice dónde estás. La promesa de destino la lleva el **placeholder** ("Anotá un gasto, o hablá…"), que ya lo dice y no gasta una fila | Conservarlo (decisión del 16/08): se cae por redundante. ⚠️ El **mecanismo** no cambia: dictar en una función sigue sin abrir el chat |
 | Barras de categoría | **Arena sobre crema al 14%** | Dato, no tocable (Decisión B) | — |
-| Contabilidad | **Sin alta** | El repo: *"es una pantalla de solo consulta: no podés cargar ni editar nada desde acá"* | Darle "Nuevo movimiento" por simetría con las otras seis |
+| Contabilidad | **Absorbida por Inteligencia** (20/08) | Las dos mostraban caja, categorías, mejores clientes y tope de monotributo: el usuario elegía dónde mirar sin criterio. La regla que la sostenía se conserva — *Caja y Facturado no se mezclan* | Mantenerlas separadas como en el repo: duplica cuatro secciones. ⚠️ Diverge del repo |
 
 ## 2 · Contraste (calculado)
 
@@ -56,16 +57,28 @@ mockup (13).
 | Verde / ámbar / rojo s/ blanco | 4,84 · 4,63 · 5,43 ✅ | semáforo del tope |
 | ⚠️ Blanco s/ `#DE7250` a 16 px | **3,17:1** ✗ | pill de acción de tarjeta. Aplicado a pedido de Martin, **anotado y no cerrado** |
 
+## 2.bis · Contabilidad se unificó con Inteligencia (20/08)
+
+Decisión de Martin. ⚠️ **Diverge del repo**, que las define separadas: va como propuesta a David.
+
+**Motivo:** caja, categorías de gasto, mejores clientes y tope de monotributo aparecían en **las
+dos** pantallas, y el usuario elegía dónde mirar sin un criterio que se lo dijera. Era el problema
+que este mismo mockup tenía anotado como abierto.
+
+⚠️ **La regla que sostenía a Contabilidad se conserva:** *Caja y Facturado nunca se mezclan* — si se
+sumaran, la misma plata se contaría dos veces. Se sigue diciendo con **superficie**: caja en el
+bloque negro, facturado en card blanca.
+
+**Efecto:** el escritorio pasa de 7 funciones a 6.
+
 ## 3 · Lo que este mockup NO resuelve
 
 - **La cartera de Clientes no alimenta la facturación.** Del repo: al facturar los datos se
   cargan a mano, sin elegir de la lista; la cartera se arma en sentido inverso. La pantalla
   **insinúa una promesa que el backend no cumple**. Es carencia del producto, no del diseño.
-- **Contabilidad e Inteligencia se solapan** en caja, categorías y mejores clientes. Viene del
-  repo, pero obliga a elegir dónde mirar sin criterio.
 - **Los gráficos no son tocables** (repo). Hoy nada lo indica: tocarlos y que no pase nada se
   lee como app rota.
 - **Los formularios de alta no están dibujados.** El repo define que la pantalla alterna entre
   `listado` y `formulario`; acá se dibuja el listado y el acceso al alta.
-- **El tope de monotributo aparece en dos pantallas** (Inteligencia y Contabilidad), por
-  decisión de Martin del 19/08: en Inteligencia con proyección, en Contabilidad como dato.
+- **El tope de monotributo** quedó en un solo lugar tras la unificación, con su proyección
+  ("a este ritmo lo alcanzás en noviembre"). Antes estaba en las dos pantallas.

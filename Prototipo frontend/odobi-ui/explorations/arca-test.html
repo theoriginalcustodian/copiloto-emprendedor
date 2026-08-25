@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8">
+<style>
+ body{background:#F7F3EC;font-family:Inter,system-ui;padding:40px;color:#1A1512}
+ h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#5C534C;margin:26px 0 12px}
+ .f{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
+ .m{text-align:center}
+ .m small{display:block;font-size:10px;color:#5C534C;margin-top:8px;font-family:ui-monospace,Menlo}
+ .tile{width:42px;height:42px;border-radius:14px;background:#E4DCEC;display:flex;
+       align-items:center;justify-content:center;color:#1A1512}
+ .fila{display:flex;gap:14px;align-items:center;background:#fff;border-radius:22px;
+       padding:14px 16px;box-shadow:0 4px 18px rgba(26,21,18,.07);width:330px}
+ .fila b{display:block;font-size:15px;font-weight:500}
+ .fila span{display:block;font-size:12px;color:#A32B47;font-weight:600;margin-top:5px}
+</style>
+<h3>Tamaños · A real de Roboto</h3>
+<div class="f" id="a1"></div>
+<h3>Con los puntos del logo (para >34 px)</h3>
+<div class="f" id="a2"></div>
+<h3>En su tile, junto a íconos Phosphor</h3>
+<div class="f" id="a3"></div>
+<h3>En la fila real</h3>
+<div class="f" id="a4"></div>
+<script>
+const T=`<path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/>`, S=`<path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/><circle cx="12" cy="128" r="7.5"/><circle cx="244" cy="128" r="7.5"/>`;
+const svg=(d,px)=>`<svg width="${px}" height="${px}" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd">${d}</svg>`;
+for (const [id,d] of [['a1',T],['a2',S]])
+  document.getElementById(id).innerHTML=[16,18,22,34,64].map(px=>
+    `<span class="m">${svg(d,px)}<small>${px}px</small></span>`).join('');
+const recibo='<path d="M72,104a8,8,0,0,1,8-8h96a8,8,0,0,1,0,16H80A8,8,0,0,1,72,104Zm8,40h96a8,8,0,0,0,0-16H80a8,8,0,0,0,0,16ZM232,56V208a8,8,0,0,1-11.58,7.15L192,200.94l-28.42,14.21a8,8,0,0,1-7.16,0L128,200.94,99.58,215.15a8,8,0,0,1-7.16,0L64,200.94,35.58,215.15A8,8,0,0,1,24,208V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Zm-16,0H40V195.06l20.42-10.22a8,8,0,0,1,7.16,0L96,199.06l28.42-14.22a8,8,0,0,1,7.16,0L160,199.06l28.42-14.22a8,8,0,0,1,7.16,0L216,195.06Z"/>';
+const doc='<path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/>';
+document.getElementById('a3').innerHTML=[[T,'arca (Roboto)'],[S,'con puntos'],[recibo,'phosphor receipt'],[doc,'phosphor file']]
+  .map(([d,n])=>`<span class="m"><span class="tile">${svg(d,18)}</span><small>${n}</small></span>`).join('');
+document.getElementById('a4').innerHTML=[[T,'Certificado ARCA','Vence en 12 días'],[doc,'Factura Rodríguez SRL','22 días impaga']].map(([d,t1,t2])=>
+  `<div class="fila"><span class="tile">${svg(d,18)}</span><span><b>${t1}</b><span>${t2}</span></span></div>`).join('');
+</script>

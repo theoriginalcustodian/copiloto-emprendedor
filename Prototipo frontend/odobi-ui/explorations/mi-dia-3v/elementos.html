@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi día — elementos que faltan</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --sec:#5C534C;
+    --f-afip:#E4DCEC; --f-presu:#F7E6CD; --f-factura:#DCE3EC; --f-propio:#EDE6DC;
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --s1:8px; --s2:16px; --r-s:14px; --r-m:22px; --r-xl:26px; --r-pill:999px;
+    --ease:cubic-bezier(.2,.8,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#E9E6E0;font-family:var(--ui);color:var(--negro);padding:44px 30px 80px}
+  .head{max-width:1400px;margin:0 auto 32px}
+  .head h1{font-family:var(--display);font-size:28px;line-height:1.15;margin-bottom:10px}
+  .head p{font-size:14px;line-height:1.55;color:var(--sec);max-width:960px}
+  .head p + p{margin-top:9px}
+  .head b{color:var(--negro);font-weight:500}
+  .head code{font-family:var(--mono);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+
+  .fila{display:flex;flex-wrap:wrap;gap:32px;max-width:1400px;margin:0 auto;align-items:flex-start}
+  .col{width:326px;flex:none}
+  .col > h2{font-family:var(--display);font-size:17px;margin-bottom:4px}
+  .col > .de{font-family:var(--mono);font-size:10px;color:var(--terracota-prof);
+             text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+  .col > .sub{font-size:13px;color:var(--sec);margin-bottom:16px;line-height:1.45;min-height:54px}
+
+  .tel{background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);
+       border-radius:34px;border:1px solid #C9C1B4;padding:22px var(--s2);
+       box-shadow:0 20px 50px rgba(26,21,18,.12);min-height:420px}
+  .sec{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 14px}
+  .sec h4{font-family:var(--display);font-size:19px;letter-spacing:-.01em}
+  .sec .cont{font-size:13px;color:var(--sec);font-weight:400;margin-left:7px}
+
+  .exp{background:var(--blanco);border-radius:var(--r-m);padding:0 var(--s2);
+       box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ex{padding:12px 0}
+  .ex + .ex{border-top:1px solid #F0EAE1}
+  .cab{display:flex;gap:12px;align-items:center;min-height:52px}
+  .tile{width:38px;height:38px;border-radius:var(--r-s);display:flex;align-items:center;
+        justify-content:center;flex-shrink:0;font-size:15px}
+  .t{flex:1;min-width:0}
+  .t b{display:block;font-size:15px;font-weight:500}
+  .chip-p{display:block;margin-top:6px;font-size:12px}
+  .c-urge{color:#A32B47;font-weight:600}
+  .c-pron{color:#8A6410;font-weight:500}
+  .c-sin{color:#7A716A;font-weight:400}
+  .fl{color:#C6BCB0;flex-shrink:0}
+
+  /* ── 1 · SKELETON ─────────────────────────────────────────────
+     De gluestack. Mi día NO tiene estado de carga dibujado, y el detector corre en el
+     backend: hay una ventana real entre abrir la app y tener las tarjetas. Hoy esa
+     ventana es una pantalla vacía, que se lee como "no hay nada" — el mensaje opuesto. */
+  .sk{border-radius:6px;background:linear-gradient(90deg,#EFE9E1 25%,#F7F3EC 37%,#EFE9E1 63%);
+      background-size:400% 100%;animation:brillo 1.5s ease-in-out infinite}
+  @keyframes brillo{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  .sk.t1{width:38px;height:38px;border-radius:var(--r-s)}
+  .sk.t2{height:13px;width:62%}
+  .sk.t3{height:11px;width:38%;margin-top:8px}
+  @media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+  /* ── 2 · PROGRESO DEL DÍA ─────────────────────────────────────
+     De gluestack (Progress). El repo define tres estados —Para hoy · Haciendo ·
+     Hechas— pero hoy nada muestra el AVANCE. Cerrar cosas es el trabajo del día:
+     verlo avanzar es la única devolución que el usuario recibe. */
+  .prog{background:var(--blanco);border-radius:var(--r-m);padding:16px var(--s2);
+        box-shadow:0 4px 18px rgba(26,21,18,.07);margin-bottom:14px}
+  .prog .lin{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+  .prog .lin b{font-family:var(--display);font-size:17px}
+  .prog .lin span{color:var(--sec)}
+  .prog .barra{height:8px;border-radius:99px;background:var(--arena-30);overflow:hidden;margin-top:10px}
+  .prog .barra i{display:block;height:100%;background:var(--terracota);border-radius:99px}
+
+  /* ── 3 · CHECKBOX EN LA FILA ──────────────────────────────────
+     De RNEUI (ListItem.CheckBox). ⚠️ Resuelve un PENDIENTE del 19/08: descartar y
+     avanzar dependían de un gesto de trayectoria, y WCAG 2.5.1 exige una alternativa
+     de un solo puntero. El checkbox ES esa alternativa, y además es más rápido que
+     deslizar para lo que más se hace: marcar hecho. */
+  .chk{width:24px;height:24px;border-radius:8px;border:1.5px solid #D8CEC3;flex-shrink:0;
+       display:flex;align-items:center;justify-content:center;background:var(--blanco);cursor:pointer}
+  .chk.on{background:var(--terracota);border-color:var(--terracota);color:#fff}
+  .ex.hecha .t b{text-decoration:line-through;color:var(--sec)}
+  .ex.hecha .tile{opacity:.5}
+
+  /* ── 4 · ALERTA CRÍTICA ───────────────────────────────────────
+     De gluestack (Alert). El repo dice del certificado AFIP: "es el aviso más
+     importante de todos, porque si el certificado vence, se te cae la facturación
+     entera". Hoy es una tarjeta más de la lista — el sistema no distingue "importante"
+     de "crítico". */
+  .alerta{background:var(--negro);color:var(--crema);border-radius:var(--r-m);
+          padding:var(--s2);margin-bottom:14px;display:flex;gap:12px;align-items:flex-start}
+  .alerta .ico{width:34px;height:34px;border-radius:99px;background:rgba(240,183,196,.16);
+               display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F0B7C4}
+  .alerta .cont{flex:1;min-width:0}
+  .alerta b{display:block;font-size:15px;font-weight:500}
+  .alerta p{font-size:13px;color:var(--arena);line-height:1.5;margin-top:3px}
+  .alerta .acc{display:inline-flex;align-items:center;height:34px;padding:0 14px;margin-top:12px;
+               border-radius:var(--r-pill);background:var(--terracota);color:#fff;
+               font-weight:500;font-size:14px}
+
+  .nota{font-family:var(--mono);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:16px;border-left:2px solid var(--terracota);padding-left:10px}
+  .nota b{color:var(--negro);font-weight:500}
+
+  .caja{background:var(--negro);color:var(--crema);border-radius:14px;padding:24px 26px;
+        max-width:1400px;margin:44px auto 0}
+  .caja .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+                 text-transform:uppercase;color:var(--arena)}
+  .caja p{color:#DCD3C6;max-width:96ch;line-height:1.65;margin-top:10px;font-size:14px}
+  .caja strong{color:var(--crema)}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Mi día — cuatro elementos que faltan</h1>
+  <p>De <b>gluestack</b>, <b>RN Elements</b>, <b>UI Kitten</b> y <b>Tamagui</b>. No se instaló
+    ninguna: las cuatro son de React Native y el prototipo es HTML — pero sus catálogos sirven como
+    <b>lista de control</b> de qué componentes tiene una pantalla de tareas y nosotros no.</p>
+  <p><b>El hallazgo no fue estético.</b> Los cuatro huecos que aparecieron son de comportamiento, y
+    uno resuelve un pendiente de accesibilidad que arrastramos desde el 19/08.</p>
+</div>
+
+<div class="fila">
+
+  <div class="col">
+    <div class="de">gluestack · Skeleton</div>
+    <h2>1 · Estado de carga</h2>
+    <div class="sub">El detector corre en el backend: hay una ventana real entre abrir y tener las tarjetas.</div>
+    <div class="tel">
+      <div class="sec"><h4>Para hoy<span class="cont">buscando…</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2"></span><span class="sk t3"></span></span></div></div>
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2" style="width:74%"></span><span class="sk t3" style="width:30%"></span></span></div></div>
+        <div class="ex"><div class="cab"><span class="sk t1"></span><span class="t"><span class="sk t2" style="width:54%"></span><span class="sk t3" style="width:44%"></span></span></div></div>
+      </div>
+    </div>
+    <div class="nota"><b>hoy esa ventana es una pantalla vacía</b>, que se lee como "no hay nada" —
+      justo el mensaje opuesto. El esqueleto dice "estoy buscando" sin texto. Respeta
+      <code>prefers-reduced-motion</code>.</div>
+  </div>
+
+  <div class="col">
+    <div class="de">gluestack · Progress</div>
+    <h2>2 · Avance del día</h2>
+    <div class="sub">El repo define tres estados, pero nada muestra cuánto llevás cerrado.</div>
+    <div class="tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="prog">
+        <div class="lin"><b>2 de 6 cerradas</b><span>hoy</span></div>
+        <div class="barra"><i style="width:33%"></i></div>
+      </div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="chip-p c-urge">Vence en 12 días</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota"><b>cerrar cosas ES el trabajo del día.</b> Verlo avanzar es la única devolución
+      que el usuario recibe por hacerlo — sin eso, la lista sólo le muestra lo que falta.</div>
+  </div>
+
+  <div class="col">
+    <div class="de">RN Elements · ListItem.CheckBox</div>
+    <h2>3 · Marcar hecho sin gesto</h2>
+    <div class="sub">Resuelve el pendiente de WCAG 2.5.1 que quedó abierto el 19/08.</div>
+    <div class="tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab">
+          <span class="chk"></span>
+          <span class="tile" style="background:var(--f-afip)">▣</span>
+          <span class="t"><b>Certificado AFIP</b><span class="chip-p c-urge">Vence en 12 días</span></span></div></div>
+        <div class="ex"><div class="cab">
+          <span class="chk"></span>
+          <span class="tile" style="background:var(--f-presu)">▧</span>
+          <span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span></div></div>
+        <div class="ex hecha"><div class="cab">
+          <span class="chk on"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg></span>
+          <span class="tile" style="background:var(--f-propio)">✎</span>
+          <span class="t"><b>Pasar por el banco</b><span class="chip-p c-sin">Hecho hoy, 9:40</span></span></div></div>
+      </div>
+    </div>
+    <div class="nota"><b>el swipe deja de ser obligatorio.</b> Y es más rápido que deslizar para lo
+      que más se hace: marcar hecho. ⚠️ <b>Sólo para tarjetas propias</b> — las del detector se
+      cierran solas cuando hacés la acción real (regla del repo).</div>
+  </div>
+
+  <div class="col">
+    <div class="de">gluestack · Alert</div>
+    <h2>4 · Lo crítico, aparte</h2>
+    <div class="sub">El repo llama al certificado "el aviso más importante de todos".</div>
+    <div class="tel">
+      <div class="sec"><h4>Ojo con esto<span class="cont">1</span></h4></div>
+      <div class="alerta">
+        <span class="ico"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M240.26,186.1,152.81,34.23h0a28.74,28.74,0,0,0-49.62,0L15.74,186.1a27.45,27.45,0,0,0,0,27.71A28.31,28.31,0,0,0,40.55,228h174.9a28.31,28.31,0,0,0,24.79-14.19A27.45,27.45,0,0,0,240.26,186.1ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg></span>
+        <span class="cont">
+          <b>Tu certificado AFIP vence en 12 días</b>
+          <p>Si vence, se te cae la facturación entera. No vas a poder emitir hasta renovarlo.</p>
+          <span class="acc">Renovarlo</span>
+        </span>
+      </div>
+      <div class="sec"><h4>Para hoy<span class="cont">3 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-factura)">▤</span><span class="t"><b>Factura Rodríguez SRL</b><span class="chip-p c-pron">22 días impaga</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota"><b>hoy es una tarjeta más de la lista:</b> el sistema no distingue "importante"
+      de "crítico". Sacarlo aparte usa el negro —que ya significa peso— <b>sin inventar un color de
+      alarma</b>. Se reserva a lo que rompe el negocio: AFIP vencido, conexión caída.</div>
+  </div>
+
+</div>
+
+<div class="caja">
+  <div class="eyebrow">Por qué no se instaló ninguna</div>
+  <p>Las cuatro son de <strong>React Native</strong>; el prototipo es HTML plano, así que no entran.
+    El único lugar donde correrían es <code>apps/mobile</code> del repo — que <strong>no usa ninguna
+    librería de UI</strong>: tiene theming propio con tokens, protegido por un test
+    (<code>temaSinHex.test.ts</code>) que falla si aparece un hex fuera de los tokens. Meter
+    gluestack o Tamagui ahí es decisión de arquitectura de David, y probablemente rompa ese guard.</p>
+  <p>Además son <strong>mutuamente excluyentes</strong>: cada una es un sistema completo con su
+    provider y su theme. No se usan juntas, se elige una.</p>
+  <p><strong>Lo que sí sirvió fue su catálogo como lista de control</strong> — qué componentes tiene
+    una pantalla de tareas que nosotros no dibujamos. Los cuatro huecos que aparecieron son de
+    <strong>comportamiento, no de estética</strong>, y ninguno necesita una librería para resolverse.</p>
+</div>
+</body>
+</html>

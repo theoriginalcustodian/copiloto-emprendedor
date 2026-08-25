@@ -51,6 +51,7 @@
 
   /* ===== Frame ===== */
   .phone{position:absolute;left:285px;top:48px;width:390px;height:844px;background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);border-radius:40px;border:1px solid #C9C1B4;box-shadow:0 24px 64px rgba(26,21,18,.14);overflow:hidden;display:flex;flex-direction:column}
+  .phone iframe{width:390px;height:844px;border:0;display:block}
   .statusbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:13px;font-weight:500;flex-shrink:0}
 
   /* ===== Chrome de una función (lo que aporta MarcoGlass en el repo) ===== */
@@ -178,50 +179,11 @@
   <p class="lane-sub">El composer es el mismo de siempre; lo que cambia es su contexto. Si estás en Gastos, hablarle a Odobi anota un gasto.</p>
   <div class="canvas" style="height:990px">
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="fn-head" style="justify-content:flex-start" data-fn="Gastos">
-        <span class="volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span>
+        <!-- Migrado al metodo del 19/08: la pantalla viene del prototipo
+             por iframe. Antes se recreaba el CSS aca, y eso mantenia dos
+             fuentes de verdad que divergian a cada cambio. -->
+        <iframe src="../../prototipo/?ver=gastos" scrolling="no" title="11-voz-contextual lane 1"></iframe>
       </div>
-
-      <div class="cuerpo">
-        <div class="scroll">
-          <div class="fn-stack">
-          <div class="atras"><span class="nom">Gastos</span><span class="per">Agosto</span></div>
-          <div class="resumen">
-            <div class="lbl">Gastado este mes</div>
-            <div class="total">$126.000</div>
-            <div class="prev">Mes anterior: $148.500</div>
-            <div class="cats">
-              <div class="cat">Mercadería <span class="barra"><i style="width:62%"></i></span> <b>$54.000</b></div>
-              <div class="cat">Servicios <span class="barra"><i style="width:32%"></i></span> <b>$28.000</b></div>
-              <div class="cat">Transporte <span class="barra"><i style="width:25%"></i></span> <b>$22.000</b></div>
-              <div class="cat">Otros <span class="barra"><i style="width:25%"></i></span> <b>$22.000</b></div>
-            </div>
-          </div>
-          </div>
-
-          <div class="lista-lbl">Últimos</div>
-          <div class="gasto">
-            <div class="tile"><!-- phosphor: gas-pump --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M241,69.66,221.66,50.34a8,8,0,0,0-11.32,11.32L229.66,81A8,8,0,0,1,232,86.63V168a8,8,0,0,1-16,0V128a24,24,0,0,0-24-24H176V56a24,24,0,0,0-24-24H72A24,24,0,0,0,48,56V208H32a8,8,0,0,0,0,16H192a8,8,0,0,0,0-16H176V120h16a8,8,0,0,1,8,8v40a24,24,0,0,0,48,0V86.63A23.85,23.85,0,0,0,241,69.66ZM64,208V56a8,8,0,0,1,8-8h80a8,8,0,0,1,8,8V208Zm80-96a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h48A8,8,0,0,1,144,112Z"/></svg></div>
-            <div class="txt"><b>Nafta</b><span>Transporte · hoy, 8:40 · <span class="origen">por voz</span></span></div>
-            <span class="monto">$15.000</span>
-          </div>
-          <div class="gasto">
-            <div class="tile"><!-- phosphor: package --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.34,44-29.77,16.3-80.35-44ZM128,120,47.66,76l33.9-18.56,80.34,44ZM40,90l80,43.78v85.79L40,175.82Zm176,85.78h0l-80,43.79V133.82l32-17.51V152a8,8,0,0,0,16,0V107.55L216,90v85.77Z"/></svg></div>
-            <div class="txt"><b>Proveedor Díaz</b><span>Mercadería · ayer</span></div>
-            <span class="monto">$54.000</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="peek">
-        <div class="grip"><div class="bar"></div></div>
-        <div class="inputbar">
-          <div class="textfield">Anotá un gasto, o hablá…</div>
-          <div class="micbtn"><!-- phosphor: microphone --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
-        </div>
-      </div>
-    </div>
 
     <svg class="overlay" viewBox="0 0 960 990" fill="none">
       <defs>
@@ -261,47 +223,16 @@
 
 <!-- ================= LANE 2 ================= -->
 <div class="canvas-wrap" id="lane2">
-  <span class="lane-tag">2 · Dictando, sin salir de Gastos</span>
-  <p class="lane-sub">El mismo velo de la escucha del 03. Lo que se silencia es la función, no la app entera — y sigue insinuándose detrás.</p>
+  <span class="lane-tag">2 · Grabando, sin salir de Gastos</span>
+  <p class="lane-sub">Mantenés apretado el mic y <b>no se tapa nada</b>: sólo el campo de texto cede su lugar dentro de la barra. La función sigue entera detrás, que es justo lo que este carril vino a defender.</p>
   <div class="canvas" style="height:990px">
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="fn-head" style="justify-content:flex-start" data-fn="Gastos">
-        <span class="volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span>
+        <!-- Migrado al método del 19/08: la pantalla viene del prototipo por
+             iframe. Este carril mostraba la escucha a pantalla completa, derogada
+             el 24/08 por el patrón de mantener apretado. -->
+        <iframe src="../../prototipo/?ver=grabando" scrolling="no"
+                title="Grabando dentro de Gastos"></iframe>
       </div>
-
-      <div class="cuerpo">
-        <div class="scroll">
-          <div class="fn-stack">
-          <div class="atras"><span class="nom">Gastos</span><span class="per">Agosto</span></div>
-          <div class="resumen">
-            <div class="lbl">Gastado este mes</div>
-            <div class="total">$126.000</div>
-            <div class="prev">Mes anterior: $148.500</div>
-          </div>
-          </div>
-          <div class="lista-lbl">Últimos</div>
-          <div class="gasto">
-            <div class="tile"></div>
-            <div class="txt"><b>Nafta</b><span>Transporte · hoy, 8:40</span></div>
-            <span class="monto">$15.000</span>
-          </div>
-        </div>
-
-        <div class="velo"></div>
-        <div class="escucha">
-          <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <h2>Te escucho.</h2>
-          <div class="parcial">"…dieciocho mil en mercadería, proveedor Díaz"</div>
-          <div class="controles">
-            <div class="btn-ghost">Pausar</div>
-            <div class="btn-enviar">Enviar
-              <svg stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2.5 10.5L21 3L13.5 21.5L11 13L2.5 10.5Z"/></svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <svg class="overlay" viewBox="0 0 960 990" fill="none">
       <defs>
@@ -309,20 +240,23 @@
         <marker id="bh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#B04A2E" stroke-width="1.6"/></marker>
       </defs>
       <path d="M252,260 C275,256 292,252 300,250" stroke="#B04A2E" stroke-width="1.5" marker-end="url(#bh)"/>
-      <path d="M706,470 C692,472 684,478 679,484" stroke="#1A1512" stroke-width="1.5" marker-end="url(#b)"/>
+      <path d="M706,640 C688,706 674,780 668,830" stroke="#1A1512" stroke-width="1.5" marker-end="url(#b)"/>
     </svg>
 
     <div class="hand accent" style="left:24px;top:222px;width:218px">
-      <b>el título de la función queda visible arriba del velo.</b> Es la diferencia entre "estoy dictando
-      un gasto" y "estoy hablando con Odobi": el encabezado sigue diciendo dónde estás mientras hablás.
+      <b>la función entera queda visible mientras grabás.</b> Antes bajaba un velo al 96% y el fondo
+      apenas se insinuaba; ahora no baja nada. El encabezado sigue diciendo dónde estás, y el gasto de
+      arriba sigue leyéndose — que es el contexto que esta pantalla vino a conservar.
     </div>
-    <div class="hand" style="left:710px;top:440px;width:212px">
-      mismo velo del 03: color del lienzo al <b>96%</b>, sin blur, onda en terracota profunda. Un solo
-      mecanismo de escucha para toda la app — el contexto lo pone quien la invoca.
+    <div class="hand" style="left:710px;top:600px;width:212px">
+      el mic <b>no se mueve ni cambia de caja</b>: es el mismo botón el que graba y el que manda. El
+      pulgar no se reubica entre empezar y enviar, que es lo que hace que el gesto se pueda hacer sin
+      mirar.
     </div>
     <div class="hand dim" style="left:24px;top:600px;width:218px">
-      dictar acá <b>no abre el chat</b>. Si lo abriera, perderíamos justo lo que esta pantalla vino a
-      resolver: el contexto. La conversación sigue existiendo, pero no se mete en el medio.
+      dictar acá <b>sigue sin abrir el chat</b>. Cambió el gesto, no el destino: la card aterriza en la
+      propia función. Lo que va al chat es lo que se dicta desde Mi día — porque ahí no hay función
+      donde aterrizar.
     </div>
   </div>
 </div>
@@ -333,52 +267,11 @@
   <p class="lane-sub">Mecanismo canónico del repo: dictado completo → card editable → recién al guardar persiste. Card en pantalla ≠ dato guardado.</p>
   <div class="canvas" style="height:990px">
     <div class="phone">
-      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
-      <div class="fn-head" style="justify-content:flex-start" data-fn="Gastos">
-        <span class="volver"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span>
+        <!-- Migrado al metodo del 19/08: la pantalla viene del prototipo
+             por iframe. Antes se recreaba el CSS aca, y eso mantenia dos
+             fuentes de verdad que divergian a cada cambio. -->
+        <iframe src="../../prototipo/?ver=card" scrolling="no" title="11-voz-contextual lane 3"></iframe>
       </div>
-
-      <div class="cuerpo">
-        <div class="scroll">
-          <div class="fn-stack">
-          <div class="atras"><span class="nom">Gastos</span><span class="per">Agosto</span></div>
-          <div class="resumen">
-            <div class="lbl">Gastado este mes</div>
-            <div class="total">$126.000</div>
-            <div class="prev">Mes anterior: $148.500</div>
-          </div>
-          </div>
-          <div class="lista-lbl">Últimos</div>
-          <div class="gasto">
-            <div class="tile"></div>
-            <div class="txt"><b>Nafta</b><span>Transporte · hoy, 8:40</span></div>
-            <span class="monto">$15.000</span>
-          </div>
-        </div>
-
-        <div class="sombra-card"></div>
-        <div class="card">
-          <div class="grip"><div class="bar"></div></div>
-          <h3>Esto es lo que entendí</h3>
-          <p class="sub">Corregí lo que haga falta antes de guardar.</p>
-
-          <div class="campo"><span class="k">Monto</span><span class="v">$18.000</span><span class="edit">Editá</span></div>
-          <div class="campo"><span class="k">Categoría</span><span class="v">Mercadería</span><span class="edit">Cambiá</span></div>
-          <div class="campo"><span class="k">Proveedor</span><span class="v">Díaz</span><span class="edit">Editá</span></div>
-          <div class="campo" style="border-bottom:none"><span class="k">Fecha</span><span class="v">Hoy, 16 de agosto</span><span class="edit">Cambiá</span></div>
-
-          <div class="aviso-card">
-            <!-- phosphor: e --><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>
-            Todavía no se guardó nada.
-          </div>
-
-          <div class="card-acciones">
-            <div class="btn-guardar">Guardar el gasto</div>
-            <div class="btn-cancelar">Cancelar</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <svg class="overlay" viewBox="0 0 960 990" fill="none">
       <defs>

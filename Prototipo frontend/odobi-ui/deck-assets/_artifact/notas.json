@@ -387,31 +387,27 @@
    ]
   },
   {
-   "tag": "Estado de escucha — display por sustracción",
-   "sub": "No tapa: silencia. El contexto sigue detrás del velo; nada compite con la voz.",
+   "tag": "Grabar por voz — mantener apretado",
+   "sub": "Ya no baja un velo: mientras grabás, la pantalla de atrás queda entera. Sólo el campo de texto cede su lugar dentro de la misma barra.",
    "notas": [
     {
-     "t": "display por sustracción, no por saturación. Un velo del color del lienzo al 96% — crema en la piel clara, negro tostado en la oscura. Como toma el color del tema, no hay isla oscura sobre lienzo claro (regla 08/08) y no hace falta excepción.",
+     "t": "no tapa nada. Deroga el velo al 96% del 16/08, que era display por sustracción: el argumento de aquella decisión —que desde dónde hablás cambia dónde aterriza lo que decís— se cumple mejor dejando la pantalla entera visible que insinuándola al 4%.",
      "k": "accent"
     },
     {
-     "t": "el 96% está calculado en el peor caso (el contenido de más contraste justo detrás): a 94% la terracota profunda da 4,37:1 ✗, a 96% da 4,53:1. Ese 4% que queda es lo que hace que el fondo se insinúe — se ve que hay algo detrás, no se lee.",
+     "t": "el patrón es el de WhatsApp, y esa es la mitad del fundamento: es el gesto de voz que el usuario ya sabe hacer. No hay nada que enseñar, y el producto cuya función principal es hablar no puede permitirse que hablar sea lo que hay que aprender.",
      "k": "dim"
     },
     {
-     "t": "la onda va en terracota profunda: la viva #DE7250 sobre velo claro queda en ~2,9:1 y no llega al 3:1 que pide 1.4.11 para un gráfico. En la piel oscura sí va la viva. Sin blur — el BlurView nunca desenfocó en Android (medición del propio repo).",
+     "t": "los tres controles son los del repo (Pausar · Enviar · Eliminar): no se reinventa lo que ya está resuelto y probado en device. Van como íconos con aria-label, no como palabras: a 390 px las tres etiquetas más la onda no entran en una fila.",
      "k": ""
     },
     {
-     "t": "transcripción en vivo: sabés que escucha bien (Nielsen #1). Y por voz también se ANOTA — el gasto dicho queda en el libro, y Mi día lo vigila.",
+     "t": "el mic pasa a ser Enviar sin moverse de lugar. Es el mismo botón el que empieza y el que manda, así el pulgar no se reubica — y \"enviar\" queda donde la mano ya está.",
      "k": ""
     },
     {
-     "t": "los controles son los del repo (Pausar · Enviar · Eliminar): no se reinventa lo que ya está resuelto y probado en device. Solo se les aplica nuestra regla de color — Enviar es fill #DE7250 + display 19 Bold blanco (3,17:1, regla 28/07 v2).",
-     "k": ""
-    },
-    {
-     "t": "nunca quedás preso del modo voz (Nielsen #3): Pausar sigue vivo y Eliminar es la única vía de perder el audio, como en el repo. TODO motion-ref: el velo entra en <320 ms.",
+     "t": "este estado es la alternativa que exige WCAG 2.5.1: deslizar hacia arriba libera el dedo, y quien no puede sostener presión no queda afuera de la función principal del producto. Con teclado, Enter entra directo acá.",
      "k": "dim"
     }
    ]
@@ -897,11 +893,11 @@
    ]
   },
   {
-   "tag": "3 · El escritorio — dos bandas, siete funciones, sin scroll",
-   "sub": "Agrupadas por la pregunta que el usuario realmente se hace: «¿vengo a cargar algo o a ver cómo voy?».",
+   "tag": "3 · El escritorio — seis funciones, sin bandas y sin scroll",
+   "sub": "Ordenadas por frecuencia de uso. ⚠️ Las bandas «Registrar / Mirar» se cayeron el 20/08: al unificarse Contabilidad con Inteligencia quedaban en 5 y 1, y una banda de un solo elemento no es una banda.",
    "notas": [
     {
-     "t": "dos bandas, no nueve destinos planos. Hick-Hyman castiga los conjuntos equiprobables: nueve tiles iguales son una decisión entre nueve; dos bandas son una entre dos, y después entre tres o cuatro.",
+     "t": "seis destinos, no nueve. Hick-Hyman castiga los conjuntos equiprobables: nueve tiles iguales son una decisión entre nueve. Bajar a seis ya resuelve el grueso. ⚠️ Las bandas «Registrar / Mirar» existían para partir esa decisión en dos, pero al quedar en 5 y 1 dejaron de partir nada — y elegir entre 5 no es más fácil que entre 6.",
      "k": "accent"
     },
     {
@@ -951,19 +947,19 @@
    ]
   },
   {
-   "tag": "2 · Dictando, sin salir de Gastos",
-   "sub": "El mismo velo de la escucha del 03. Lo que se silencia es la función, no la app entera — y sigue insinuándose detrás.",
+   "tag": "2 · Grabando, sin salir de Gastos",
+   "sub": "Mantenés apretado el mic y no se tapa nada: sólo el campo de texto cede su lugar dentro de la barra. La función sigue entera detrás, que es justo lo que este carril vino a defender.",
    "notas": [
     {
-     "t": "el título de la función queda visible arriba del velo. Es la diferencia entre \"estoy dictando un gasto\" y \"estoy hablando con Odobi\": el encabezado sigue diciendo dónde estás mientras hablás.",
+     "t": "la función entera queda visible mientras grabás. Antes bajaba un velo al 96% y el fondo apenas se insinuaba; ahora no baja nada. El encabezado sigue diciendo dónde estás, y el gasto de arriba sigue leyéndose — que es el contexto que esta pantalla vino a conservar.",
      "k": "accent"
     },
     {
-     "t": "mismo velo del 03: color del lienzo al 96%, sin blur, onda en terracota profunda. Un solo mecanismo de escucha para toda la app — el contexto lo pone quien la invoca.",
+     "t": "el mic no se mueve ni cambia de caja: es el mismo botón el que graba y el que manda. El pulgar no se reubica entre empezar y enviar, que es lo que hace que el gesto se pueda hacer sin mirar.",
      "k": ""
     },
     {
-     "t": "dictar acá no abre el chat. Si lo abriera, perderíamos justo lo que esta pantalla vino a resolver: el contexto. La conversación sigue existiendo, pero no se mete en el medio.",
+     "t": "dictar acá sigue sin abrir el chat. Cambió el gesto, no el destino: la card aterriza en la propia función. Lo que va al chat es lo que se dicta desde Mi día — porque ahí no hay función donde aterrizar.",
      "k": "dim"
     }
    ]
@@ -990,5 +986,8 @@
     }
    ]
   }
- ]
+ ],
+ "12-funciones": [],
+ "13-ajustes": [],
+ "14-mi-dia-3v": []
 }

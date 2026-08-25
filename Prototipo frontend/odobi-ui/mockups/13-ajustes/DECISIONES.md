@@ -29,8 +29,8 @@ pantalla**:
 | Elección | — | **filas con radio**, no segmentos |
 | Acción | pill chico | botón ancho al pie |
 
-**Regla resultante (19/08):** el bloque negro sólo aparece en Mi día, las siete funciones y
-Contabilidad. Significa **"una cifra de tu negocio"** y nada más.
+**Regla resultante (19/08):** el bloque negro sólo aparece en Mi día y las seis funciones.
+Significa **"una cifra de tu negocio"** y nada más.
 
 ## 1 · Las decisiones
 

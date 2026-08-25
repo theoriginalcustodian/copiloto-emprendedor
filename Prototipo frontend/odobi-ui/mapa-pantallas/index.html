@@ -103,7 +103,7 @@
     <div class="atras"><span class="wm">Odobi</span><span class="per">Mapa de pantallas</span></div>
     <div class="port">
       <div class="lbl">Prototipo navegable</div>
-      <div class="n">23<i>pantallas</i></div>
+      <div class="n">30<i>pantallas</i></div>
       <div class="chip">Cada teléfono es el prototipo real, en vivo</div>
     </div>
   </div>
@@ -130,11 +130,12 @@
   <div class="fila" id="g1"></div>
 
   <h2>Estados que se superponen</h2>
-  <p>No son pantallas: son momentos que caen encima de la que estés usando. Por eso el velo
-     de la escucha deja ver el fondo — desde dónde hablás cambia dónde aterriza lo que decís.</p>
+  <p>No son pantallas: son momentos que caen encima de la que estés usando. Grabar ya no cae
+     encima de nada — desde dónde hablás cambia dónde aterriza lo que decís, así que la pantalla
+     de atrás tiene que seguir visible.</p>
   <div class="fila" id="g2"></div>
 
-  <h2>Las siete funciones</h2>
+  <h2>Las seis funciones</h2>
   <p>Gramática A: card blanca con el nombre, bloque negro con la cifra del período, lista debajo.
      Cambia el contenido, no la forma.</p>
   <div class="fila" id="g3"></div>
@@ -150,6 +151,7 @@
   <div class="barra" style="margin-bottom:10px">
     <a class="mk" href="../mockups/12-funciones/">12 · Las siete funciones ↗</a>
     <a class="mk" href="../mockups/13-ajustes/">13 · Ajustes, la segunda gramática ↗</a>
+    <a class="mk" href="../mockups/14-mi-dia-3v/">14 · Mi día, tres verticales ↗</a>
     <a class="mk" href="../mockups/10-arranque/">10 · El modelo de capas ↗</a>
     <a class="mk" href="../mockups/04-confirmacion-hitl/">04 · Confirmación HITL ↗</a>
   </div>
@@ -174,14 +176,60 @@ const PANTALLAS = {
   g1: [
     ['', 'Mi día', 'La base. Portada del negocio y los avisos del detector de 8 reglas.',
      'el bloque negro es EL golpe de color de la pantalla. Detrás asoma una card blanca del mismo ancho que baja hasta la mitad: trae el wordmark y fecha los números.'],
-    ['esc', 'Funciones', 'El escritorio. Siete lugares, en dos bandas por frecuencia.',
+    ['esc', 'Funciones', 'El escritorio. Seis lugares en una grilla de 3×2, por frecuencia.',
      'acá el negro va ABAJO, en lo que ya pasó. Al deslizar entre capas los dos bloques no coinciden de posición: eso se lee como profundidad, no como repetición.'],
     ['chat', 'Chat', 'La conversación en reposo, con ejemplos que giran.',
      'los ejemplos no se tocan: giran. Un chip tocable competiría con el gesto principal, que es hablar.'],
   ],
   g2: [
-    ['escucha', 'Escucha', 'Velo del lienzo al 96% sobre lo que estés haciendo.',
-     '96% y no 90%: calculado en el peor caso — a 94% la terracota profunda da 4,37:1 y falla. Ese 4% es lo que deja que el fondo se insinúe.'],
+    ['tablero', 'Tablero', 'Los tres estados del repo: Para hoy · Haciendo · Hechas.',
+     'el tablero YA EXISTÍA en kb-usuario/midia.md — no había que inventarlo, había que dibujarlo. En mobile son PESTAÑAS: a 390 px tres columnas dan 118 px cada una y no cabe el nombre de un cliente.'],
+    ['agenda', 'Agenda', 'Google Calendar y lo que vence, en la misma línea.',
+     'el bloque "sin hora" es obligatorio: un presupuesto frío no vence a las 14:30, y forzarlo a una posición horaria inventa un dato. Los encabezados de día reemplazan al selector Hoy/Semana — un control menos.'],
+    ['detalle', 'Detalle', 'El sheet que sube al tocar una tarjeta.',
+     'resuelve dos cosas: el detalle que el repo pide al tocar, y la alternativa de un solo puntero que WCAG 2.5.1 exige para el swipe.'],
+    ['grabando', 'Grabando', 'Mantenés apretado el mic y sólo cambia la barra.',
+     'reemplaza a la escucha a pantalla completa (24/08): mientras grabás no se tapa nada. El campo de texto cede su lugar dentro de la misma barra y el mic no se mueve — es el mismo botón el que graba y el que manda, así el pulgar no se reubica entre empezar y enviar.'],
+    ['bloqueado', 'Audio bloqueado', 'Deslizás hacia arriba y soltás el dedo.',
+     'no es una comodidad: es la alternativa que WCAG 2.5.1 exige para un gesto que obliga a sostener el dedo. Trae los tres controles que define el repo — Eliminar, Pausar y Enviar, que es el mic con otro ícono.'],
+    ['card', 'La card en la función', 'Dictado desde Gastos: aterriza sin abrir el chat.',
+     'el título NOMBRA lo que vas a guardar ("Nuevo gasto") y el botón conserva el verbo del repo ("Guardar el gasto"). Un título nombra, un botón actúa. Cambia el contenido según de dónde dictaste; lo que no cambia nunca es "Todavía no se guardó nada".'],
+    ['vozchat', 'Lo dictado, en el chat', 'Desde Mi día el audio aterriza como propuesta.',
+     'la regla del destino: lo que REGISTRA se queda en su función, lo que PREGUNTA va al chat. Nada se guarda al enviar — sigue vigente "Todavía no se guardó nada".'],
+    ['bi-vacio', 'Sin ventas todavía', 'El estado vacío de una sección, no de la pantalla.',
+     'el repo lo pide: "un mensaje avisando que todavía no hay datos, en vez de una sección vacía sin explicación". Va SIN ilustración, a diferencia de la taza: la taza celebra un vacío bueno; acá el vacío es que todavía no vendiste.'],
+    ['bi-refresh', 'Tirar para actualizar', 'El único lugar donde el repo lo pide.',
+     'Inteligencia es la única pantalla cuyo contenido querrías volver a pedir sin haber hecho nada — las demás cambian cuando actuás. El estado se dice con TEXTO, no sólo con el ícono girando.'],
+    ['reveal', 'El reveal', 'El aterrizaje del splash: «se dice o-DO-bi».',
+     'lleva el LOCKUP completo y no el wordmark suelto: el primer ingreso es el único momento donde la marca se presenta entera. La pronunciación va acá y en ningún otro lado.'],
+    ['onb-promesa', 'La promesa', '«Son dos minutos y te digo algo que no sabés.»',
+     'el permiso se pide con lo que habilita al lado, no como una lista de scopes. Dos permisos, no seis pantallas.'],
+    ['onb-cumplida', 'La promesa cumplida', 'El primer minuto termina con plata real.',
+     'no es un tour: es un número del negocio que el usuario no sabía. Es la única forma de probar la promesa en vez de repetirla.'],
+    ['consent', 'Just-in-time consent', 'El permiso llega con el pedido.',
+     'el hilo queda VISIBLE detrás del sheet, y eso es el argumento: se ve qué pedido quedó esperando a que conectes.'],
+    ['caida', 'Conexión caída', 'La portada admite estar incompleta.',
+     'mejor decir que falta un dato que mostrar un número mentiroso. El delta se oculta: comparar contra el mes pasado con el dato incompleto sería falso — mismo criterio que el «—» en vez de «$0».'],
+    ['preg', 'Pregunta libre', 'La respuesta de Inteligencia, en el hilo.',
+     'preguntar no gasta acciones. Si preguntar gastara, el usuario dejaría de preguntar — y eso es lo que hace bueno al producto.'],
+    ['recibo', 'El comprobante', 'Lo ejecutado deja rastro donde se decidió.',
+     'el chat es el libro: el comprobante no se va a otra pantalla, queda en la conversación que lo produjo.'],
+    ['fact-voz', 'Facturar por voz', 'Lo que falta se pregunta, no se inventa.',
+     'pide UNA cosa por vez. Un dato fiscal inventado es peor que una pregunta de más.'],
+    ['fact-hitl', 'Segundo HITL — emitir', 'Irreversibilidad frontal.',
+     'una factura emitida no se borra: se anula con nota de crédito. El alcance lo dice antes, no después.'],
+    ['fact-cae', 'Emitida — el CAE', 'El comprobante fiscal, en el thread.',
+     'mismo patrón que el recibo: lo que se ejecutó queda donde se pidió.'],
+    ['pres-voz', 'Presupuesto por voz', 'Los ítems se piden uno a uno.',
+     'mismo criterio que la factura: no se completa un precio que el usuario no dijo.'],
+    ['pres-hitl', 'La tarjeta editable', '«Todavía no lo anoté.»',
+     'card en pantalla ≠ dato guardado. Es la regla dura del mecanismo canónico: prohibido decir «listo» con la card visible.'],
+    ['pres-ciclo', 'El ciclo', 'Anotado → aprobado → factura.',
+     'el presupuesto de hoy es la factura de la semana que viene. El mismo HITL sirve para las dos, ajustado al riesgo.'],
+    ['limite', 'El límite', 'Se avisa hablando, con dos salidas.',
+     'sin urgencia fabricada y con las dos opciones del mismo tamaño. Al tope Odobi deja de ejecutar, no de responder.'],
+    ['vacio-visto', 'Calma, ya conocida', 'La misma pantalla al sexto día.',
+     'la explicación se retira sola: enseñado qué significa una pantalla vacía, el texto deja de informar y pasa a ocupar lugar. Se cuentan DÍAS distintos, no apariciones — cinco veces en una mañana no es haber aprendido. El título, lo que queda y la salida no se tocan nunca.'],
     ['hitl', 'Confirmación', 'Vos confirmás, Odobi ejecuta. Nada sale sin que lo veas.',
      'el mensaje es lo único que hay que leer entero antes de confirmar: por eso deja de ser una fila y pasa a ser cita en superficie.'],
     ['vacio', 'Mi día sin avisos', 'Cuando no queda ninguna tarjeta.',
@@ -191,15 +239,13 @@ const PANTALLAS = {
     ['gastos', 'Gastos', 'Total del mes, desglose por categoría y las tres vías de alta.',
      'las tres vías del repo: a mano, por voz y foto del ticket. El alta va en la fila del rótulo, no como botón grande: la acción principal sigue siendo hablar.'],
     ['ingresos', 'Ingresos', 'Todo lo que entró, con su origen.',
-     'cada ingreso muestra de dónde vino. En un negocio chico buena parte de la plata no pasa por AFIP, y hay que poder distinguirla.'],
+     'cada ingreso muestra de dónde vino. En un negocio chico buena parte de la plata no pasa por ARCA, y hay que poder distinguirla.'],
     ['factura', 'Facturación', 'Emitidas y su estado.',
      'el estado va en chip, no tiñendo la fila: un rojo/verde traería una paleta semántica que el sistema no tiene. Lo impago va en negro — lo único que reclama.'],
     ['presu', 'Presupuestos', 'Lo que espera respuesta.',
      'el negro no muestra lo presupuestado sino lo que espera respuesta: un presupuesto aceptado ya no pide nada.'],
-    ['bi', 'Inteligencia de Negocio', 'Los cinco números del mes y el acumulado del año.',
+    ['bi', 'Inteligencia de Negocio', 'Los números del mes, el acumulado y en qué se te va la plata.',
      'regla dura del repo: cuando falta un dato va "—", nunca "$0". Mostrar cero de rentabilidad cuando falta un gasto es mentirle al usuario sobre su negocio.'],
-    ['conta', 'Contabilidad', 'Caja y Facturado, nunca mezclados.',
-     'si se sumaran, la misma plata se contaría dos veces. La separación se dice con superficie: Caja en negro, Facturado en card blanca.'],
     ['clientes', 'Clientes', 'La cartera, que crece sola cuando facturás.',
      'el chip cuenta los que entraron solos. Si el usuario no sabe que la cartera se arma sola, ver nombres que no cargó se lee como error.'],
   ],
@@ -208,7 +254,7 @@ const PANTALLAS = {
      'se entra por el avatar, única puerta (Decisión A). Sin bloque negro: acá no hay ninguna cifra del negocio.'],
     ['negocio', 'Mi negocio', 'Perfil comercial y cómo trabaja el copiloto.',
      'el estado que importa no es un número: es si te pide confirmación antes de ejecutar.'],
-    ['afip', 'Facturación AFIP', 'Perfil fiscal, ARCA y ambiente.',
+    ['afip', 'Facturación ARCA', 'Perfil fiscal, ARCA y ambiente.',
      'el CUIT dice "Bloqueado", no "Editá": un dato trabado no se disfraza de editable.'],
     ['apps', 'Apps conectadas', 'Cada app por lo que habilita.',
      'nombradas por capacidad y no por marca: es lo que hace entendible el costo de desconectar.'],

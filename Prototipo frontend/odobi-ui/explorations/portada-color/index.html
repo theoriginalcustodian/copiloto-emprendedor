@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portada — negro vs terracota claro</title><style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{--blanco:#FFFFFF;--crema:#F7F3EC;--negro:#1A1512;--terracota:#DE7250;
+        --terracota-prof:#B04A2E;--arena:#E8A088;--arena-30:#F8E2DB;--sec:#5C534C;
+        --f-afip:#E4DCEC;--f-presu:#F7E6CD;
+        --display:"PJ","Arial Black",sans-serif;--ui:"Inter",-apple-system,system-ui,sans-serif;
+        --mono:ui-monospace,"SF Mono",Menlo,monospace;
+        --s1:8px;--s2:16px;--r-s:14px;--r-m:22px;--r-xl:26px;--r-pill:999px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#E9E6E0;font-family:var(--ui);color:var(--negro);padding:44px 30px 80px}
+  .head{max-width:1400px;margin:0 auto 30px}
+  .head h1{font-family:var(--display);font-size:28px;margin-bottom:10px}
+  .head p{font-size:14px;line-height:1.55;color:var(--sec);max-width:920px}
+  .head p+p{margin-top:9px}
+  .head b{color:var(--negro);font-weight:500}
+  .head code{font-family:var(--mono);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+  .fila{display:flex;flex-wrap:wrap;gap:34px;max-width:1400px;margin:0 auto;align-items:flex-start}
+  .col{width:326px;flex:none}
+  .col>h2{font-family:var(--display);font-size:17px;margin-bottom:4px}
+  .col>.sub{font-size:13px;color:var(--sec);margin-bottom:16px;line-height:1.45;min-height:36px}
+  .tel{background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);
+       border-radius:34px;border:1px solid #C9C1B4;padding:22px var(--s2);
+       box-shadow:0 20px 50px rgba(26,21,18,.12)}
+  .stack{position:relative;padding-top:52px}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);display:flex;align-items:baseline;
+         justify-content:space-between}
+  .atras .wm{font-family:var(--display);font-size:20px;color:var(--terracota)}
+  .atras .fch{font-size:13px;color:var(--sec)}
+  .port{position:relative;z-index:1;border-radius:var(--r-xl);padding:26px 20px 22px;
+        box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .port .l{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+  .port .n{font-family:var(--display);font-size:40px;line-height:1;letter-spacing:-.02em;margin:8px 0 12px}
+  .port .d{display:inline-block;font-size:13px;border-radius:var(--r-pill);padding:5px 11px;vertical-align:super}
+  .port .rows{display:flex;gap:var(--s1);margin-top:var(--s2)}
+  .port .rows div{flex:1;border-radius:var(--r-s);padding:10px 12px}
+  .port .rows span{display:block;font-size:13px}
+  .port .rows b{font-size:16px;font-weight:500}
+  .sec{display:flex;align-items:baseline;justify-content:space-between;padding:14px 4px 12px}
+  .sec h4{font-family:var(--display);font-size:19px}
+  .sec .cont{font-size:13px;color:var(--sec);font-weight:400;margin-left:7px}
+  .exp{background:var(--blanco);border-radius:var(--r-m);padding:0 var(--s2);
+       box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ex{padding:12px 0}
+  .ex+.ex{border-top:1px solid #F0EAE1}
+  .cab{display:flex;gap:12px;align-items:center;min-height:52px}
+  .tile{width:38px;height:38px;border-radius:var(--r-s);display:flex;align-items:center;
+        justify-content:center;flex-shrink:0}
+  .t{flex:1;min-width:0}.t b{display:block;font-size:15px;font-weight:500}
+  .chip-p{display:block;margin-top:6px;font-size:12px}
+  .c-urge{color:#A32B47;font-weight:600}.c-pron{color:#8A6410;font-weight:500}
+  .nota{font-family:var(--mono);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:16px;border-left:2px solid var(--terracota);padding-left:10px}
+  .nota b{color:var(--negro);font-weight:500}
+  .nota.warn{border-left-color:#A32B47}
+</style></head><body>
+<div class="head">
+  <h1>Portada de Mi día — negro vs. terracota claro</h1>
+  <p><b>Contraste:</b> sobre <b>arena</b> <code>#E8A088</code> el negro tostado da <b>8,46:1</b> ✅ pero <code>sec</code> sólo <b>3,51:1</b> ✗ — los secundarios hay que oscurecerlos. Sobre <b>arena-30</b> <code>#F8E2DB</code>: negro <b>14,56:1</b> y sec <b>6,04:1</b>, los dos holgados.</p>
+  <p><b>Lo que hay que decidir no es el contraste sino el significado</b>, porque toca dos reglas
+    cerradas. Ver la nota roja de la variante B.</p>
+</div>
+<div class="fila">
+  <div class="col">
+    <h2>A · Negro tostado (hoy)</h2><div class="sub">Lo vigente. El negro significa "una cifra de tu negocio".</div>
+    <div class="tel">
+      <div class="stack">
+        <div class="atras"><span class="wm">Odobi</span><span class="fch">Martes 18 de agosto</span></div>
+        <div class="port" style="background:var(--negro)">
+          <div class="l" style="color:var(--terracota)">En caja ›</div>
+          <div class="n" style="color:var(--crema)">$286.000 <span class="d" style="background:rgba(247,243,236,.10);color:var(--crema)">−18%</span></div>
+          <div class="rows">
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Entró</span><b style="color:var(--crema)">$412.000</b></div>
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Salió</span><b style="color:var(--crema)">$126.000</b></div>
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Por cobrar</span><b style="color:var(--crema)">$225.000</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="chip-p c-urge">Vence en 12 días</span></span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span></div></div>
+      </div>
+    </div>
+    <div class="nota">crema s/negro <b>16,37:1</b> · arena <b>8,46:1</b>. El negro aparece 9 veces en la app y siempre quiere decir lo mismo: una cifra del negocio.</div>
+  </div>
+  <div class="col">
+    <h2>B · Arena (el claro real)</h2><div class="sub"><b>arena</b> <code>#E8A088</code> de fondo, texto negro tostado.</div>
+    <div class="tel">
+      <div class="stack">
+        <div class="atras"><span class="wm">Odobi</span><span class="fch">Martes 18 de agosto</span></div>
+        <div class="port" style="background:var(--arena)">
+          <div class="l" style="color:#7A3418">En caja ›</div>
+          <div class="n" style="color:var(--negro)">$286.000 <span class="d" style="background:rgba(26,21,18,.08);color:var(--negro)">−18%</span></div>
+          <div class="rows">
+            <div style="background:rgba(255,255,255,.42)"><span style="color:#6B3A28">Entró</span><b style="color:var(--negro)">$412.000</b></div>
+            <div style="background:rgba(255,255,255,.42)"><span style="color:#6B3A28">Salió</span><b style="color:var(--negro)">$126.000</b></div>
+            <div style="background:rgba(255,255,255,.42)"><span style="color:#6B3A28">Por cobrar</span><b style="color:var(--negro)">$225.000</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="chip-p c-urge">Vence en 12 días</span></span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span></div></div>
+      </div>
+    </div>
+    <div class="nota warn">⚠️ <b>toca dos reglas cerradas.</b> 1) <b>Terracota ≤10% de la pantalla</b> — un bloque a ancho completo es ~25%. 2) El bloque negro <b>significa</b> "cifra del negocio" (regla del 19/08): si la portada cambia de color, hay que redefinir qué significa el negro en las otras 8 pantallas donde aparece. <b>El contraste está bien; el problema es de sistema.</b></div>
+  </div>
+  <div class="col">
+    <h2>C · Terracota en la card de atrás</h2><div class="sub">Terracota pleno en el stack, wordmark en blanco.</div>
+    <div class="tel">
+      <div class="stack">
+        <div class="atras" style="background:var(--terracota)"><span class="wm" style="color:#FFFFFF">Odobi</span><span class="fch" style="color:var(--negro)">Martes 18 de agosto</span></div>
+        <div class="port" style="background:var(--negro)">
+          <div class="l" style="color:var(--terracota)">En caja ›</div>
+          <div class="n" style="color:var(--crema)">$286.000 <span class="d" style="background:rgba(247,243,236,.10);color:var(--crema)">−18%</span></div>
+          <div class="rows">
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Entró</span><b style="color:var(--crema)">$412.000</b></div>
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Salió</span><b style="color:var(--crema)">$126.000</b></div>
+            <div style="background:rgba(247,243,236,.07)"><span style="color:var(--arena)">Por cobrar</span><b style="color:var(--crema)">$225.000</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="chip-p c-urge">Vence en 12 días</span></span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span></div></div>
+      </div>
+    </div>
+    <div class="nota">la card del stack pasa a <b>terracota plena #DE7250</b> con el wordmark en <b>blanco</b> (3,17:1 — logotipos exentos, WCAG 1.4.3, misma vía que el wordmark sobre crema). ⚠️ <b>la fecha NO es logotipo:</b> en sec daba 2,37:1 ✗, va en negro tostado (5,71:1 ✅). Superficie chica, así que el 10% aguanta — y el negro conserva su significado.</div>
+  </div>
+</div></body></html>

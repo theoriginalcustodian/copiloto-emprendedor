@@ -97,7 +97,7 @@ BLOQUES = [
    ("09-mi-dia",2,"Mi día — sin avisos","Gómez pagó tras el reclamo. El silencio es verificable contra sus números.","al día siguiente"),
    ("03-home-conversacional",1,"Chat — llegada desde Mi día","El chip «↩ Desde tu aviso» + la propuesta ya armada. Es el puente.","tocás la acción"),
    ("03-home-conversacional",2,"Chat — pregunta libre","BI conversacional solo-lectura sobre queries reales. Preguntar no gasta.","preguntar"),
-   ("03-home-conversacional",3,"La escucha","Terracota plena a pantalla completa: el único momento display de la UI.","hablarle"),
+   ("03-home-conversacional",3,"Grabar por voz","El gesto de WhatsApp: mantenés apretado y la pantalla de atrás queda entera.","hablarle"),
  ]),
  ("3", "El patrón madre", "«Vos confirmás, Odobi ejecuta.» Es LA pantalla del producto y un componente reutilizable: aparece igual en cobros, facturas y presupuestos. Ya existe implementado en el repo.", [
    ("04-confirmacion-hitl",1,"Propuesta con detalle editable","Encabezado + filas + alcance + decisión. Nada se ejecuta sin que lo veas.",""),
@@ -120,8 +120,25 @@ BLOQUES = [
    ("08-plan-limites",2,"Qué cuenta como acción","<b>Hacer gasta, preguntar no.</b> Si preguntar gastara, el usuario dejaría de preguntar.","→"),
    ("08-plan-limites",3,"El límite","Dos salidas del mismo tamaño, sin urgencia fabricada. Al tope el input sigue vivo.","→"),
  ]),
-]
 
+ ("6", "Las seis funciones", "La <b>vía de la mano</b>, paralela a la de la voz y sobre los mismos datos. No son pantallas de configuración: eso vive en Ajustes. Entrar a una función se lee como el mismo objeto cambiando de contenido, no como saltar a otra app — así aprender seis lugares cuesta aprender uno. <b>Eran siete: Contabilidad se unificó con Inteligencia el 20/08.</b>", [
+   ("proto","esc","El escritorio — seis lugares","Grilla de 3×2 por frecuencia de uso, sin bandas y sin scroll horizontal.",""),
+   ("proto","gastos","Gastos — la anatomía","Card blanca con el nombre, bloque negro con la cifra accionable, lista debajo.","entrás"),
+   ("proto","ingresos","Ingresos","El alta usa el verbo textual del repo: «Anotar que me pagaron».","→"),
+   ("proto","factura","Facturación","Lo que reclama va en negro; lo terminado, en arena. Sin traer una paleta semántica.","→"),
+   ("proto","presu","Presupuestos","El bloque muestra lo que espera respuesta, no «el total»: un total no sirve para decidir.","→"),
+   ("proto","clientes","Clientes","La cartera crece sola al facturar — hay que decirlo, o ver nombres no cargados se lee como error.","→"),
+   ("proto","bi","Inteligencia de Negocio","La única sin «Nuevo»: responde, no registra. Caja y Facturado nunca se mezclan.","→"),
+ ]),
+ ("7", "Ajustes", "Acá vive <b>lo que la voz necesita saber para poder operar</b>: sin CUIT cargado y sin ARCA vinculada no hay factura posible, por más bien que el usuario hable. Y estrena la gramática B — <b>título grande suelto, sin bloque de color</b>: el bloque negro significa «una cifra de tu negocio», y usarlo para un mail vaciaría el recurso donde sí importa.", [
+   ("proto","ajustes","Ajustes — diez opciones en filas","Sin bloque de color: acá no hay ninguna cifra del negocio que mostrar.",""),
+   ("proto","negocio","Mi negocio","Campos editables en línea, con autoguardado y validación de CUIT, mail y teléfono.","entrás"),
+   ("proto","afip","Facturación ARCA","La clave fiscal no se guarda — la promesa de seguridad más fuerte del producto, textual.","→"),
+   ("proto","apps","Apps conectadas","Nombradas por capacidad, no por marca: es lo que hace entendible el costo de desconectar.","→"),
+   ("proto","plan","Mi plan","Hacer gasta, preguntar no. Si preguntar gastara, el usuario dejaría de preguntar.","→"),
+   ("proto","hablar","Cómo hablarle","Muestra la respuesta de ejemplo: los controles son abstractos, la frase resultante no.","→"),
+ ]),
+]
 PUENTE = [("09-mi-dia",1,"1","Mi día","Tocás «Reclamá el pago». La acción no ejecuta nada todavía.",""),
           ("03-home-conversacional",1,"2","Chat","Chip «↩ Desde tu aviso» + HITL armado. El contexto viaja con vos.","abre el chat"),
           ("04-confirmacion-hitl",1,"3","HITL","Propuesta → detalle editable → confirmar o cancelar.","revisás"),
@@ -141,6 +158,13 @@ def main():
             if not mk.startswith('@'): usados.add((mk, ln))
     for mk, ln, *_ in PUENTE: usados.add((mk, ln))
     for mk, ln in usados:
+        # `proto` = pantalla suelta del prototipo (bloques 6 y 7). No sale de un
+        # mockup, asi que no tiene lane ni anotaciones: el archivo es proto-<ver>.png
+        if mk == 'proto':
+            u = img(f'proto-{ln}.png', FRAMES)
+            if not u: sys.exit(f"Falta render de proto-{ln}")
+            imgs[f'proto-{ln}'] = u
+            continue
         carpeta = MAPA if mk == '00-mapa' else FRAMES
         u = img(f'{mk}-lane{ln}.png', carpeta)
         if not u: sys.exit(f"Falta render de {mk}-lane{ln}")
@@ -149,6 +173,8 @@ def main():
     def panel_datos():
         d = {}
         for mk, ln in usados:
+            if mk == 'proto':      # sin lane, sin anotaciones: no abre panel
+                continue
             lane = notas[mk][ln-1]
             d[f'{mk}-{ln}'] = {'tag': lane['tag'], 'sub': lane['sub'], 'notas': lane['notas']}
         return d
@@ -170,6 +196,12 @@ def main():
         fl = (f'<div class="flecha"><span>→</span>{f"<em>{html.escape(flecha)}</em>" if flecha not in ("","→") else ""}</div>'
               if flecha else '')
         num = f'<span class="paso">{paso}</span>' if paso else ''
+        if mk == 'proto':
+            return fl + (
+              f'<div class="card estatica">'
+              f'<span class="shot" style="background-image:var(--i-{k})"></span>'
+              f'<span class="ref">prototipo · ?ver={ln or "/"}</span>'
+              f'<span class="h3">{tit}</span><span class="p">{res}</span></div>')
         return fl + (
           f'<button class="card{" ancha" if ancha else ""}" data-k="{k}" type="button">'
           + (miniatura_especial(k, 108) if mk.startswith('@')
@@ -260,6 +292,11 @@ body{{margin:0;background:var(--lienzo);color:var(--texto);font-family:var(--ui)
 .card{{flex:0 0 auto;width:214px;background:none;border:0;padding:0;margin:0;text-align:left;
       font:inherit;color:inherit;cursor:pointer;display:block}}
 .card.ancha{{width:330px}}
+/* Las pantallas sueltas del prototipo (bloques 6 y 7) NO abren panel: no salen de
+   un mockup, asi que no tienen anotaciones que mostrar. Cursor normal y sin hover
+   para que no prometan una interaccion que no existe. */
+.card.estatica{{cursor:default}}
+.card.estatica:hover .shot{{transform:none;box-shadow:0 8px 22px rgba(26,21,18,.10)}}
 .shot{{display:block;width:214px;height:463px;border-radius:18px;border:1px solid var(--linea);
       background:var(--sup);overflow:hidden;box-shadow:var(--sombra);
       transition:transform .16s ease,box-shadow .16s ease}}
