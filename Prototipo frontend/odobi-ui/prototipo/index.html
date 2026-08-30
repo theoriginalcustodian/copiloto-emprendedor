@@ -145,8 +145,15 @@
   .aviso p b{font-weight:500}
   /* La acción es un pill terracota: mismo fill que el mic — lo tocable se ve igual en
      toda la app (Decisión B). 16 px sin bold: prueba del 19/08, contraste anotado. */
+  /* ⚠️ Fill `#B04A2E`, no `#DE7250` (30/08 — cierra la deuda del 3,17:1).
+     Blanco sobre la terracota viva da **3,17:1**, que WCAG sólo perdona desde 18,66 px
+     en bold; este label es de 15 px, así que ahí no cumplía. Sobre `#B04A2E` da
+     **5,43:1** ✅ sin tocar el tamaño ni el peso.
+     Es exactamente la salida que la regla del 28/07 v2 ya preveía: **antes de bajar el
+     tamaño, cambiar el fill**. Subirlo a 19 px se probó y se descartó el 20/08 — a ese
+     tamaño el botón pesaba más que el aviso de la tarjeta, que es el tema. */
   .accion{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;margin-top:20px;
-          border-radius:var(--r-pill);background:var(--terracota);color:var(--blanco);
+          border-radius:var(--r-pill);background:var(--terracota-prof);color:var(--blanco);
           font-family:var(--ui);font-weight:500;font-size:15px;line-height:1;cursor:pointer}
   .resultado{display:flex;align-items:center;gap:6px;min-height:44px;font-size:var(--fs-cap);color:var(--sec)}
 
@@ -301,6 +308,14 @@
   .rodillo li.on{opacity:1;transform:translateY(0)}
   .rodillo li.sale{opacity:0;transform:translateY(-26px)}
   .contrato{font-size:var(--fs-cap);color:var(--sec);max-width:280px;line-height:1.5}
+  /* ⚠️ Cuando el contexto viene de Ayuda, el chip no es una etiqueta: es la PUERTA
+     DE VUELTA (Martin, 30/08). Quien entró desde "Cómo usar la app" va a querer el
+     tema siguiente, y sin esto tiene que salir del chat, abrir el avatar, entrar a
+     Ajustes y bajar hasta Ayuda — cuatro toques para volver a donde estaba.
+     Terracota porque ejecuta algo (Decisión B), y con chevron a la izquierda: es
+     retroceso, no un ítem más. */
+  .ctx-chip.volver-ayuda{color:var(--terracota-prof);font-weight:500;cursor:pointer;
+                         background:#FDF3EF;min-height:var(--tap)}
   .ctx-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;
             font-size:var(--fs-cap);color:var(--sec);
             background:var(--arena-30);border-radius:var(--r-pill);padding:6px 12px}
@@ -487,6 +502,109 @@
            border-radius:var(--r-s);padding:12px 13px;margin-top:var(--s1);
            font-size:var(--fs-cap);color:var(--sec);line-height:1.5}
   .cs-pend svg{flex-shrink:0;margin-top:2px;color:var(--sec)}
+
+
+  /* ══ AYUDA · tres opciones, TRES INTERLOCUTORES (30/08) ═══════════
+     Venían pedidas como "tres chats". Al dibujarlas apareció que no son lo mismo:
+     cambia CON QUIÉN hablás y CUÁNDO te contesta. Vestirlas iguales mentiría sobre
+     las dos cosas — un chat que se ve igual al de Odobi promete su velocidad.
+       · Cómo usar la app  → Odobi        → al instante
+       · Soporte técnico   → una persona  → horas
+       · Contanos qué tal  → el equipo    → no contesta, y está bien */
+
+  /* — Cómo usar la app: temas, no un chat nuevo — */
+  .tema-ayuda{display:flex;align-items:center;gap:12px;padding:14px 0;cursor:pointer}
+  .tema-ayuda + .tema-ayuda{border-top:1px solid #F0EAE1}
+  .tema-ayuda .n{width:26px;height:26px;border-radius:99px;background:var(--arena-30);
+                 display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                 font-size:12px;font-weight:500;color:var(--terracota-prof)}
+  .tema-ayuda .t{flex:1;min-width:0}
+  .tema-ayuda .t b{display:block;font-size:var(--fs-body);font-weight:500}
+  .tema-ayuda .t span{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:2px}
+  .tema-ayuda .ch{color:#C6BCB0;flex-shrink:0}
+
+  /* — Soporte: CHAT PROPIO, no el de Odobi (rev. 30/08) —
+     Es un chat aparte a propósito: resuelve dudas sobre la app —problemas, mal
+     funcionamiento, bugs— y si no puede, abre un ticket. El copiloto sabe de tu
+     negocio; de sus propios bugs, no.
+     ⚠️ El avatar NO es el isotipo. El avatar es lo primero que se lee de un
+     mensaje: si fuera el de Odobi, la burbuja diría que contesta el copiloto. */
+  .quien-sop{width:38px;height:38px;border-radius:99px;background:var(--negro);
+             display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .quien-sop svg{color:var(--crema)}
+  .sop-cab{display:flex;align-items:flex-start;gap:10px;padding:2px 0 var(--s2)}
+  .sop-txt b{display:block;font-size:var(--fs-body);font-weight:500}
+  .sop-txt span{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:2px;line-height:1.5}
+  .hilo-sop{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;
+            gap:var(--s2);padding:0 var(--s2) var(--s2)}
+  /* El ticket es el RESULTADO de la conversación, así que vive en el hilo — no en
+     una pantalla aparte. Lo que se decidió queda donde se decidió, igual que el
+     comprobante del HITL. */
+  .ticket{background:var(--blanco);border-radius:var(--r-m);padding:var(--s2);
+          box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ticket .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+  .ticket .num{font-family:var(--display);font-size:19px}
+  .ticket .est{font-size:11px;color:#8A6410;background:#FBF1DC;
+               border-radius:var(--r-pill);padding:4px 10px;font-weight:500}
+  .ticket .li{display:flex;justify-content:space-between;gap:12px;font-size:var(--fs-cap);
+              padding:5px 0;color:var(--sec)}
+  .ticket .li b{color:var(--negro);font-weight:500;text-align:right}
+  .ticket .pie{font-size:var(--fs-cap);color:var(--sec);line-height:1.5;
+               padding-top:10px;margin-top:6px;border-top:1px solid var(--arena-30)}
+  /* Composer de soporte: NO lleva mic, lleva clip.
+     ⚠️ Dos razones, y las dos importan. El mic es el gesto de ODOBI — ponerlo acá
+     diría que estás hablando con el copiloto. Y un problema técnico se muestra
+     mejor de lo que se cuenta: la captura vale más que el dictado.
+     ⚠️ Además usa `.barra-sop` y NO `.inputbar`: `armarVoz()` corre sobre TODOS los
+     `.inputbar` y le habría enganchado la grabación sin que nadie lo pidiera. */
+  .barra-sop{display:flex;align-items:center;gap:var(--s1);padding:var(--s1) var(--s2) var(--s3);flex:none}
+  .barra-sop .campo{flex:1;height:52px;background:var(--blanco);border-radius:var(--r-pill);
+                    box-shadow:0 3px 12px rgba(26,21,18,.08);display:flex;align-items:center;
+                    padding:0 var(--s2);font-size:var(--fs-body);color:var(--sec);cursor:pointer}
+  .barra-sop .clip{width:52px;height:52px;border-radius:var(--r-pill);background:var(--arena-30);
+                   display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+  .barra-sop .clip svg{color:var(--terracota-prof)}
+  .tickets-ant{font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof);
+               padding:var(--s1) var(--s2);cursor:pointer}
+
+  /* Campo de redacción: alto de verdad, no una línea. Contar algo necesita lugar —
+     un input de una línea invita a escribir "no anda".
+     ⚠️ Vive acá y NO en el bloque de Soporte: al rehacer Soporte como chat borré ese
+     tramo entero y me llevé esta regla puesta, que Feedback seguía usando. Antes de
+     borrar un bloque de CSS: buscar quién más usa cada clase de adentro. */
+  .redactar{background:var(--blanco);border-radius:var(--r-m);padding:var(--s2);
+            box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .redactar textarea{width:100%;border:none;outline:none;resize:none;font:inherit;
+                     font-size:var(--fs-body);line-height:1.5;color:var(--negro);
+                     background:none;min-height:96px;display:block}
+  .redactar textarea::placeholder{color:#B5AA9E}
+  .redactar .pie{display:flex;align-items:center;gap:var(--s1);margin-top:var(--s1);
+                 padding-top:var(--s1);border-top:1px solid #F0EAE1}
+  .redactar .adj{display:flex;align-items:center;gap:6px;font-size:var(--fs-cap);
+                 font-weight:500;color:var(--terracota-prof);cursor:pointer;padding:8px 0}
+  .redactar .env{margin-left:auto;min-height:40px;padding:0 18px;border-radius:var(--r-pill);
+                 background:var(--terracota-prof);color:var(--blanco);font-size:var(--fs-cap);
+                 font-weight:500;display:flex;align-items:center;cursor:pointer}
+
+  /* ══ Feedback: el problema es la CAJA VACÍA (30/08) ═══════════════
+     Un formulario que además avisa que no contesta parece un buzón sin fondo. Dos
+     recursos, y ninguno decorativo:
+       1. una PREGUNTA concreta en vez de un campo mudo — "contanos qué tal" no se
+          sabe cómo se contesta; "¿qué le cambiarías?" sí;
+       2. la PRUEBA de que se lee: lo que ya se construyó porque alguien escribió.
+     Lo segundo es lo que convierte "no lleva respuesta" de excusa en política. */
+  .fb-preg{font-family:var(--display);font-size:19px;line-height:1.35;margin-bottom:10px}
+  /* Lo que ya cambió por pedido de alguien. La FECHA es el dato que lo hace creíble:
+     sin ella es marketing, con ella es un registro. Va a la derecha, en versalitas,
+     como el período en las funciones. */
+  .pedido{display:flex;align-items:baseline;gap:12px;padding:11px 0}
+  .pedido + .pedido{border-top:1px solid #F0EAE1}
+  /* `.txt` y no `.q`: `.q` ya era la burbuja NEGRA del usuario, así que cada pedido
+     salía como un globo oscuro. Sexta colisión de la serie — la regla del §8 vale
+     también para inventar un nombre corto adentro de un componente nuevo. */
+  .pedido .txt{flex:1;min-width:0;font-size:var(--fs-body);line-height:1.45}
+  .pedido .cuando{flex-shrink:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+                  color:var(--sec)}
 
   /* ---------- card ---------- */
   #card{position:absolute;inset:0;z-index:7;display:none}
@@ -801,6 +919,19 @@
   .lista-fila + .lista-fila{border-top:1px solid var(--arena-30)}
   .lista-fila .v{display:block;font-size:var(--fs-body)}
   .lista-fila .d{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:2px}
+  /* ══ Fila que existe pero TODAVÍA NO HACE NADA (30/08) ════════════
+     El repo la define así de literal: *"la fila queda visible pero sin hacer nada
+     al tocarla"*. Dibujarla es el problema, no el capricho — una fila que se ve
+     igual a las demás y no responde **se lee como app rota**, y eso es peor que
+     no mostrarla.
+     ⚠️ La regla: si no hace nada, NO PUEDE PARECER QUE LO HACE. Se le saca el
+     chevron, el cursor y el contraste pleno, y se le pone un chip que lo dice.
+     ⚠️ Y NUNCA un switch apagado: el usuario lo toca, no se mueve, y ahí sí
+     concluye que la app falla. Un control muerto miente más que una etiqueta. */
+  .lista-fila.pronto{cursor:default}
+  .lista-fila.pronto .v{color:var(--sec)}
+  .chip-pronto{font-size:11px;color:var(--sec);background:var(--arena-30);
+               border-radius:var(--r-pill);padding:4px 10px;flex-shrink:0}
   .lista-fila .d:empty{display:none}
   .lista-fila svg{color:var(--sec);flex-shrink:0}
   .peligro{color:var(--terracota-prof);font-weight:500}
@@ -1107,8 +1238,12 @@
   /* ⚠️ La fila necesita fondo PROPIO: al envolverla para el swipe, el fondo de descarte
      queda debajo, y sin fondo blanco se ve el rojo a través. El separador tampoco puede
      ser `.fi + .fi` porque el wrapper las separa: va entre wrappers. */
-  .fi{display:flex;gap:12px;align-items:center;padding:12px 0;min-height:64px;
-      cursor:pointer;background:var(--blanco)}
+  /* ⚠️ La fila del tablero pasa de ABRIR UN SHEET a EXPANDIR (30/08). Mismo gesto que
+     Mi día y el que define el repo —"tocar una tarjeta la expande"—: dos formas de ver
+     lo mismo obligaban a aprender dos cosas para una sola. De fila flex a bloque:
+     adentro va `.cab` (la fila de antes) y `.mas`. */
+  .fi{display:block;padding:12px 0;min-height:64px;cursor:pointer;background:var(--blanco)}
+  .fi .cab{display:flex;gap:12px;align-items:center;min-height:40px}
   .filas .swipe + .swipe > .fi{border-top:1px solid #F0EAE1}
   .exp .swipe + .swipe > .ex{border-top:1px solid #F0EAE1}
   .exp .swipe:first-child{border-radius:var(--r-m) var(--r-m) 0 0}
@@ -1125,21 +1260,6 @@
   /* ══ SHEET de detalle ═════════════════════════════════════════════
      Resuelve dos cosas a la vez: da el detalle que el repo pide al tocar la tarjeta,
      y es la ALTERNATIVA DE UN SOLO PUNTERO que WCAG 2.5.1 exige para el swipe. */
-  #detalle{position:absolute;inset:0;z-index:8;display:none}
-  #detalle.on{display:block}
-  #detalle .scrim{position:absolute;inset:0;background:rgba(26,21,18,.28)}
-  #detalle .hoja{position:absolute;left:0;right:0;bottom:0;background:var(--blanco);
-                 border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px var(--s2) var(--s3);
-                 padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom));
-                 box-shadow:0 -12px 40px rgba(26,21,18,.18);animation:sube .32s var(--ease)}
-  #detalle .grip{width:36px;height:4px;border-radius:3px;background:#E0D8CD;margin:0 auto 16px}
-  #detalle h3{font-family:var(--display);font-size:21px;margin-bottom:8px}
-  #detalle .kv{display:flex;justify-content:space-between;align-items:center;
-               padding:13px 0;font-size:15px;gap:14px}
-  #detalle .kv + .kv{border-top:1px solid #F0EAE1}
-  #detalle .kv span{color:var(--sec);flex-shrink:0}
-  #detalle .kv b{text-align:right}
-  #detalle .acciones{display:flex;flex-direction:column;gap:8px;margin-top:var(--s2)}
 
   /* ══ Tarjeta EXPANDIBLE (20/08) ═══════════════════════════════════
      Reemplaza al carrusel en el resumen de Mi día. Es lo que el repo ya define:
@@ -1154,20 +1274,32 @@
        box-shadow:0 4px 18px rgba(26,21,18,.07)}
   .ex{padding:12px 0;cursor:pointer}
   .ex + .ex{border-top:1px solid #F0EAE1}
+  .fi .cab,
   .ex .cab{display:flex;gap:12px;align-items:center;min-height:52px}
+  .fi .cab .t,
   .ex .cab .t{flex:1;min-width:0}
+  .fi .cab .t b,
   .ex .cab .t b{display:block;font-size:15px;font-weight:500}
   .ex .cab .t .chip-p{margin-top:5px}
+  .fi .fl,
   .ex .fl{color:#C6BCB0;flex-shrink:0;transition:transform .3s var(--ease)}
+  .fi.on .fl,
   .ex.on .fl{transform:rotate(90deg)}
   /* max-height y no height: el contenido no tiene alto fijo y auto no anima */
+  .fi .mas,
   .ex .mas{max-height:0;overflow:hidden;transition:max-height .35s var(--ease)}
+  .fi.on .mas,
   .ex.on .mas{max-height:260px}
+  .fi .mas .in,
   .ex .mas .in{padding:4px 0 12px 54px}
+  .fi .mas p,
   .ex .mas p{font-size:var(--fs-cap);color:var(--sec);line-height:1.5}
+  .fi .mas .kv,
   .ex .mas .kv{display:flex;justify-content:space-between;gap:12px;font-size:var(--fs-cap);
                padding:9px 0;border-top:1px solid #F5F0E9;margin-top:8px}
+  .fi .mas .kv span,
   .ex .mas .kv span{color:var(--sec)}
+  .fi .mas .accion,
   .ex .mas .accion{margin-top:14px}
 
   /* ══ 1 · SKELETON de carga (20/08) ════════════════════════════════
@@ -1896,13 +2028,85 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
 
       <div class="lista-lbl">Ayuda</div>
       <div class="grupo" style="padding:0 var(--s2)">
-        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg></span><span class="t"><b>Cómo usar la app</b><span>Te lo muestro paso a paso, con ejemplos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
-        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M201.89,54.66A103.43,103.43,0,0,0,128.79,24H128A104,104,0,0,0,24,128v56a24,24,0,0,0,24,24H64a24,24,0,0,0,24-24V144a24,24,0,0,0-24-24H40.36A88.12,88.12,0,0,1,128,40h.7a88.12,88.12,0,0,1,87,80H192a24,24,0,0,0-24,24v40a24,24,0,0,0,24,24h24a24,24,0,0,0,0-.63A32,32,0,0,1,184,232H136a8,8,0,0,0,0,16h48a48.05,48.05,0,0,0,48-48V128.79A103.41,103.41,0,0,0,201.89,54.66ZM64,136a8,8,0,0,1,8,8v40a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V136Zm128,56a8,8,0,0,1-8-8V144a8,8,0,0,1,8-8h24v56Z"/></svg></span><span class="t"><b>Soporte técnico</b><span>Contanos el problema y abrimos un ticket</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
-        <div class="aj-fila"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M239.82,157l-58.4-25.79a8,8,0,0,0-6.84,0L116.18,157A8,8,0,0,0,112,164.24V184c0,24.36,26.1,39.68,58.4,52a8,8,0,0,0,5.2,0c32.3-12.32,58.4-27.64,58.4-52V164.24A8,8,0,0,0,239.82,157ZM224,184c0,15.68-19.2,27.28-46,38-26.8-10.72-46-22.32-46-38V169.42l46-20.3,46,20.3ZM96,168a8,8,0,0,1-8,8H32a16,16,0,0,1-16-16V56A16,16,0,0,1,32,40H208a16,16,0,0,1,16,16v40a8,8,0,0,1-16,0V56H32V160H88A8,8,0,0,1,96,168Z"/></svg></span><span class="t"><b>Contanos qué tal</b><span>Sugerencias y cosas que no funcionan</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila" data-ir="s-comousar"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg></span><span class="t"><b>Cómo usar la app</b><span>Te lo muestro paso a paso, con ejemplos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila" data-ir="s-soporte"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M201.89,54.66A103.43,103.43,0,0,0,128.79,24H128A104,104,0,0,0,24,128v56a24,24,0,0,0,24,24H64a24,24,0,0,0,24-24V144a24,24,0,0,0-24-24H40.36A88.12,88.12,0,0,1,128,40h.7a88.12,88.12,0,0,1,87,80H192a24,24,0,0,0-24,24v40a24,24,0,0,0,24,24h24a24,24,0,0,0,0-.63A32,32,0,0,1,184,232H136a8,8,0,0,0,0,16h48a48.05,48.05,0,0,0,48-48V128.79A103.41,103.41,0,0,0,201.89,54.66ZM64,136a8,8,0,0,1,8,8v40a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V136Zm128,56a8,8,0,0,1-8-8V144a8,8,0,0,1,8-8h24v56Z"/></svg></span><span class="t"><b>Soporte técnico</b><span>Contanos el problema y abrimos un ticket</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="aj-fila" data-ir="s-feedback"><span class="ic"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M239.82,157l-58.4-25.79a8,8,0,0,0-6.84,0L116.18,157A8,8,0,0,0,112,164.24V184c0,24.36,26.1,39.68,58.4,52a8,8,0,0,0,5.2,0c32.3-12.32,58.4-27.64,58.4-52V164.24A8,8,0,0,0,239.82,157ZM224,184c0,15.68-19.2,27.28-46,38-26.8-10.72-46-22.32-46-38V169.42l46-20.3,46,20.3ZM96,168a8,8,0,0,1-8,8H32a16,16,0,0,1-16-16V56A16,16,0,0,1,32,40H208a16,16,0,0,1,16,16v40a8,8,0,0,1-16,0V56H32V160H88A8,8,0,0,1,96,168Z"/></svg></span><span class="t"><b>Contanos qué tal</b><span>Sugerencias y cosas que no funcionan</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
       </div>
 
       </div>
     </div>
+  </div>
+
+  <!-- ══════════ Ayuda › Cómo usar la app ══════════ -->
+  <div class="subp" id="s-comousar">
+    <div class="tope"></div>
+    <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-comousar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
+    <div class="cuerpo"><div class="scroll">
+      <div class="titulo-pag"><h2>Cómo usar la app</h2><p>Lo que más se pregunta, contestado en dos minutos.</p></div>
+      <div class="lista-lbl">Empezá por acá</div>
+      <div class="grupo" style="padding:0 var(--s2)"><div class="tema-ayuda" data-tema="Cargar un gasto hablando"><span class="n">1</span><span class="t"><b>Cargar un gasto hablando</b><span>Lo más rápido de todo: apretás el mic y contás qué pagaste</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="tema-ayuda" data-tema="Emitir tu primera factura"><span class="n">2</span><span class="t"><b>Emitir tu primera factura</b><span>Qué te va a pedir y por qué te lo muestra antes de emitir</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="tema-ayuda" data-tema="Conectar Mercado Pago"><span class="n">3</span><span class="t"><b>Conectar Mercado Pago</b><span>Qué ve Odobi de tus cobros, y cómo cortarlo cuando quieras</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="tema-ayuda" data-tema="Entender Mi día"><span class="n">4</span><span class="t"><b>Entender Mi día</b><span>De dónde salen los avisos y por qué algunos se cierran solos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="tema-ayuda" data-tema="Corregir algo que salió mal"><span class="n">5</span><span class="t"><b>Corregir algo que salió mal</b><span>Se corrige ANTES de guardar, en la card. Después no se edita</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div></div>
+      <!-- ⚠️ NO abre un cuarto chat: cada tema entra al chat principal con contexto,
+           que es el puente de la Decisión C. Un chat de ayuda aparte sería la misma
+           duplicación que sacamos con la solapa "Preguntar" de Inteligencia. -->
+      <div class="nota-sub" style="padding:var(--s2) 4px 0"><span>Cada tema te lo explico en el chat, con tus propios datos. Si no está lo que buscás, preguntame ahí mismo.</span></div>
+    </div></div>
+  </div>
+
+  <!-- ══════════ Ayuda › Soporte técnico (chat propio) ══════════ -->
+  <div class="subp" id="s-soporte">
+    <div class="tope"></div>
+    <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-soporte"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
+    <div class="cuerpo">
+      <div class="hilo-sop" id="hilo-sop">
+        <div class="titulo-pag" style="padding-bottom:var(--s1)"><h2>Soporte técnico</h2></div>
+        <div class="sop-cab"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><span class="sop-txt"><b>Soporte de Odobi</b><span>Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.</span></span></div>
+        <div class="mio">No me emitió la factura de Rodríguez, tira un error.</div>
+        <div class="meta">10:12 <i>✓✓</i> recibido</div>
+        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">¿Te apareció un cartel con el error? Si podés, mandame la captura — con eso lo miro derecho.</div></div>
+        <div class="mio">Sí, decía «CAE rechazado».</div>
+        <div class="meta">10:14 <i>✓✓</i> recibido</div>
+        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">Ese es del lado de ARCA, no de la app. Suele ser el certificado. Fijate en <b>Ajustes › Facturación ARCA</b> si figura vencido.</div></div>
+        <div class="mio">Dice que vence en 12 días, así que no es eso.</div>
+        <div class="meta">10:16 <i>✓✓</i> recibido</div>
+        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">Entonces se me escapa. Te lo paso a una persona con todo lo que hablamos, así no repetís nada.</div></div>
+        <div class="ticket">
+          <div class="top"><span class="num">Ticket #1043</span><span class="est">Abierto</span></div>
+          <div class="li"><span>Sobre</span><b>CAE rechazado al emitir</b></div>
+          <div class="li"><span>Te contestan</span><b>Antes de 4 h hábiles</b></div>
+          <div class="pie">Va con esta conversación, la versión de la app y el último error registrado. Nada de tus números ni de tus clientes.</div>
+        </div>
+        <div class="tickets-ant">Ver tickets anteriores (3) ›</div>
+      </div>
+      <div class="barra-sop">
+        <div class="campo">Contame qué pasó…</div>
+        <div class="clip"><!-- phosphor: paperclip --><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M209.66,122.34a8,8,0,0,1,0,11.32l-82.05,82a56,56,0,0,1-79.2-79.21L147.67,35.73a40,40,0,1,1,56.61,56.55L105,193A24,24,0,1,1,71,159L154.3,74.38A8,8,0,1,1,165.7,85.6L82.39,170.31a8,8,0,1,0,11.27,11.36L192.93,81A24,24,0,1,0,159,47L59.76,147.68a40,40,0,1,0,56.53,56.62l82.06-82A8,8,0,0,1,209.66,122.34Z"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Ayuda › Contanos qué tal ══════════ -->
+  <div class="subp" id="s-feedback">
+    <div class="tope"></div>
+    <div class="fn-head" style="justify-content:flex-start"><span class="volver" data-cierra="s-feedback"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Ajustes</span></div>
+    <div class="cuerpo"><div class="scroll">
+      <div class="titulo-pag"><h2>Contanos qué tal</h2><p>Lo lee el equipo que construye Odobi. No lleva respuesta: sirve para saber qué mejorar.</p></div>
+      <div class="redactar">
+        <!-- Una pregunta, no una caja muda. "Contanos qué tal" no se sabe cómo se
+             contesta; "¿qué le cambiarías?" sí — y admite tanto la queja como el
+             elogio, sin obligar a elegir una categoría. -->
+        <div class="fb-preg">¿Qué le cambiarías?</div>
+        <textarea placeholder="Lo que se te ocurra. No hace falta que sea prolijo ni corto — se entiende igual."></textarea>
+        <div class="pie">
+          <span class="adj"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>Dictarlo</span>
+          <span class="env">Mandar</span>
+        </div>
+      </div>
+      <!-- LA PIEZA: la prueba de que se lee. Sin esto, "no lleva respuesta" se lee
+           como "no nos importa"; con esto, como "te contestamos construyendo". -->
+      <div class="lista-lbl">Lo pediste vos</div>
+      <div class="grupo" style="padding:0 var(--s2)"><div class="pedido"><span class="txt">Cargar un gasto sacándole una foto al ticket</span><span class="cuando">Julio</span></div><div class="pedido"><span class="txt">Mandar la factura por mail sin salir del chat</span><span class="cuando">Junio</span></div><div class="pedido"><span class="txt">Ver cuánto falta para el tope de monotributo</span><span class="cuando">Mayo</span></div></div>
+      <div class="nota-sub" style="padding-top:var(--s2)"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span><b>Si algo no funciona, mandalo por Soporte técnico</b> — eso sí se contesta, y queda con número de ticket.</span></div>
+    </div></div>
   </div>
 
   <!-- ══════════ Clientes ══════════ -->
@@ -2068,6 +2272,18 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
         <div class="lista-fila"><span><span class="v">Cambiar el mail</span><span class="d">Te pedimos confirmar en la casilla nueva</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
         <div class="lista-fila"><span><span class="v">Cambiar la contraseña</span><span class="d"></span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
       </div>
+      <div class="lista-lbl">Avisos</div>
+      <div class="grupo">
+        <div class="lista-fila pronto">
+          <span><span class="v">No molestar</span><span class="d">Silenciar los avisos de Odobi</span></span>
+          <span class="chip-pronto">Pronto</span>
+        </div>
+      </div>
+      <!-- El motivo NO es relleno: "pronto" a secas es una promesa; con el porqué es
+           una explicación, y ésta habla bien del producto — el cuidado es la razón de
+           la demora. Textual del repo. -->
+      <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span>Para silenciarme tengo que tocar una configuración de tu teléfono, y no quiero que se te quede mudo por accidente. Lo estamos terminando con cuidado.</span></div>
+
       <div class="grupo">
         <div class="lista-fila"><span class="v peligro">Cerrar sesión</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
       </div>
@@ -2174,9 +2390,9 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
       <div class="segb"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Para hoy 3</span><span>Haciendo 1</span><span>Hechas</span></div>
       <div class="fchips"><span class="on"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>Todo</span><span>Cobros</span><span>ARCA</span><span>Presupuestos</span><span>Tuyas</span></div>
       <div class="filas">
-        <div class="fi" data-det=""><div class="tile" style="background:var(--f-presu)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></div><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
-        <div class="fi" data-det=""><div class="tile" style="background:var(--f-factura)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div><span class="t"><b>Factura Rodríguez SRL</b><span class="chip-p c-pron">22 días impaga</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
-        <div class="fi" data-det=""><div class="tile" style="background:var(--f-propio)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/></svg></div><span class="t"><b>Pasar por el banco</b><span class="chip-p c-sin">Lo anotaste vos</span></span><svg class="ch" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+        <div class="fi"><div class="cab"><div class="tile" style="background:var(--f-presu)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></div><span class="t"><b>Presupuesto de Lucía</b><span class="chip-p c-pron">31 días sin respuesta</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="mas"><div class="in"><p>Se lo mandaste hace 31 días y no contestó. Un presupuesto que se enfría rara vez se recupera solo.</p><div class="kv"><span>Monto</span><b>$180.000</b></div><div class="kv"><span>Enviado</span><b>18 de julio</b></div><div class="accion">Mandarle un recordatorio</div></div></div></div>
+        <div class="fi"><div class="cab"><div class="tile" style="background:var(--f-factura)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div><span class="t"><b>Factura Rodríguez SRL</b><span class="chip-p c-pron">22 días impaga</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="mas"><div class="in"><p>Venció hace 22 días. Son $120.000 que ya facturaste y todavía no entraron.</p><div class="kv"><span>Factura</span><b>A-0034</b></div><div class="kv"><span>Venció</span><b>8 de agosto</b></div><div class="accion">Reclamar el pago</div></div></div></div>
+        <div class="fi"><div class="cab"><div class="tile" style="background:var(--f-propio)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.32,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.69,147.32,64l24-24L216,84.69Z"/></svg></div><span class="t"><b>Pasar por el banco</b><span class="chip-p c-sin">Lo anotaste vos</span></span><svg class="fl" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div><div class="mas"><div class="in"><p>Lo anotaste vos, así que lo cerrás vos.</p><div class="kv"><span>Anotado</span><b>Ayer, 19:20</b></div><div class="accion" data-borrar>Borrar</div></div></div></div>
       </div>
       <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>Las que detecta Odobi se cierran solas cuando hacés la acción real. Las que anotaste vos las movés vos.</div>
     </div></div>
@@ -2229,23 +2445,6 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
   </div>
 
   <!-- ══════════ Detalle (sheet) ══════════ -->
-  <div id="detalle">
-    <div class="scrim" data-cierra-det></div>
-    <div class="hoja">
-      <div class="grip"></div>
-      <h3>Certificado ARCA</h3>
-      <span class="chip-p c-urge" style="margin:0 0 6px">Vence el 30 de agosto</span>
-      <div class="kv"><span>Qué pasa si vence</span><b>No podés facturar</b></div>
-      <div class="kv"><span>Detectado</span><b>Hoy, 8:00</b></div>
-      <div class="kv"><span>Estado</span><b>Para hoy</b></div>
-      <div class="kv"><span>Agendarlo</span><b style="color:var(--terracota-prof)">Elegir hora ›</b></div>
-      <div class="acciones">
-        <div class="btn">Renovarlo ahora</div>
-        <div class="btn2" data-cierra-det>Cerrar</div>
-      </div>
-    </div>
-  </div>
-
   <!-- ══════════ reveal — el aterrizaje del splash ══════════ -->
   <div id="reveal">
     <div class="rv-mid">
@@ -2339,6 +2538,18 @@ function init(){ yChat = H(); pintar(); }
 addEventListener('resize', () => { if (yChat > 0) yChat = H(); pintar(); });
 
 function snap(el){ el.classList.add('snap'); setTimeout(()=>el.classList.remove('snap'), 440); }
+/* ⚠️ `#vacio` vive DENTRO de `#hilo`: la PRIMERA vez que se reemplaza el innerHTML,
+   ese elemento deja de existir. Sin guard, el segundo uso tira `null.style` y **mata el
+   handler entero antes de llegar a `subirChat()`** — el síntoma era que volver a Ayuda y
+   tocar otro tema no hacía nada, que no se parece en nada a la causa.
+   Es el §3 del método (todo handler lleva guard) con una vuelta más: acá el elemento no
+   quedó huérfano por un refactor, **lo destruye la propia función que lo usa**. Por eso
+   escribir el hilo pasa por una sola puerta. */
+function ponerHilo(html){
+  const v = $('#vacio');
+  if (v) v.style.display = 'none';
+  $('#hilo').innerHTML = html;
+}
 function subirChat(){ snap(chat); yChat = 0; pintar(); }
 function bajarChat(){ snap(chat); yChat = H(); pintar(); }
 const ASOMO = 62;   /* cuánto de Mi día queda a la vista con el escritorio abierto */
@@ -2400,8 +2611,7 @@ if (volverMiDia) volverMiDia.addEventListener('click', cerrarEscritorio);
 
 /* ── el puente: acción de tarjeta → chat con contexto + HITL ── */
 $('#accion-lucia').addEventListener('click', () => {
-  $('#vacio').style.display = 'none';
-  $('#hilo').innerHTML = `
+  ponerHilo(`
     <div class="ctx-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 5 5v3"/></svg>Desde tu aviso · Presupuesto · Lucía</div>
     <div class="msg-row">
       <span class="quien"><!-- isotipo Odobi (David) — 4 arcos, variante >24 px --><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
@@ -2416,7 +2626,7 @@ $('#accion-lucia').addEventListener('click', () => {
         <div class="btn" id="confirmar">Confirmar y mandar</div>
         <div class="btn2" id="cancelar-hitl">Cancelar</div>
       </div>
-    </div>`;
+    </div>`);
   subirChat();
   $('#confirmar').addEventListener('click', confirmar);
   $('#cancelar-hitl').addEventListener('click', bajarChat);
@@ -2551,8 +2761,7 @@ function abrirCard(clave){
 /* Lo dictado desde Mi día o el chat entra al chat como lo que es: una
    propuesta pendiente de confirmación. No se guarda nada al enviar. */
 function vozAlChat(dur){
-  $('#vacio').style.display = 'none';
-  $('#hilo').innerHTML = `
+  ponerHilo(`
     <div class="ctx-chip"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg>Por voz · ${dur}</div>
     <div class="msg-row">
       <span class="quien"><svg fill="none" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span>
@@ -2568,7 +2777,7 @@ function vozAlChat(dur){
         <div class="btn" id="confirmar-voz">Guardar el gasto</div>
         <div class="btn2" id="cancelar-voz-chat">Cancelar</div>
       </div>
-    </div>`;
+    </div>`);
   subirChat();
   $('#confirmar-voz').addEventListener('click', () => {
     $('#hilo').insertAdjacentHTML('beforeend',
@@ -2939,8 +3148,7 @@ const HILOS = {
 function abrirHilo(clave){
   const f = HILOS[clave];
   if (!f) return;
-  $('#vacio').style.display = 'none';
-  $('#hilo').innerHTML = f();
+  ponerHilo(f());
   subirChat();
   requestAnimationFrame(() => { $('#hilo').scrollTop = $('#hilo').scrollHeight; });
 }
@@ -3041,7 +3249,13 @@ if (ver === 'ingresos') setTimeout(() => $('#ingresos').classList.add('on'), 60)
 if (ver === 'cargando') { /* el esqueleto queda fijo, ver bloque de carga */ }
 if (ver === 'tablero') setTimeout(() => $('#tablero').classList.add('on'), 60);
 if (ver === 'agenda')  setTimeout(() => $('#agenda').classList.add('on'), 60);
-if (ver === 'detalle') setTimeout(() => { $('#tablero').classList.add('on'); $('#detalle').classList.add('on'); }, 80);
+/* `?ver=detalle` sobrevive como alias: ahora abre el tablero con la primera fila
+   YA EXPANDIDA — es lo que reemplazó al sheet, y el mapa y el 14 lo enlazan. */
+if (ver === 'detalle') setTimeout(() => {
+  $('#tablero').classList.add('on');
+  const f = document.querySelector('#tablero .fi');
+  if (f) f.classList.add('on');
+}, 80);
 if (ver === 'clientes') setTimeout(() => $('#clientes').classList.add('on'), 60);
 if (ver === 'ajustes') setTimeout(() => $('#ajustes').classList.add('on'), 60);
 if (ver === 'presu')   setTimeout(() => $('#presu').classList.add('on'), 60);
@@ -3129,6 +3343,43 @@ if (ver && HILOS[ver]) setTimeout(() => abrirHilo(ver), 80);
 
 /* 01 · el aterrizaje del splash: el reveal */
 if (ver === 'reveal') setTimeout(() => $('#reveal').classList.add('on'), 60);
+
+/* ── Ayuda: las tres subpantallas ─────────────────────────────────── */
+['comousar','soporte','feedback'].forEach(k => {
+  if (ver === k) setTimeout(() => {
+    $('#ajustes').classList.add('on'); $('#s-' + k).classList.add('on');
+  }, 60);
+});
+/* ⚠️ Un tema de ayuda NO abre un chat propio: entra al chat principal con contexto,
+   que es exactamente el puente de la Decisión C. Un cuarto chat sería la misma
+   duplicación que sacamos con la solapa "Preguntar" de Inteligencia. */
+document.querySelectorAll('[data-tema]').forEach(t =>
+  t.addEventListener('click', () => {
+    const tema = t.dataset.tema;
+    /* ⚠️ El chat sube PRIMERO y la subpantalla se cierra DESPUÉS. Al hacerlo en el
+       mismo tick, `subirChat()` (que anima con .snap) competía con el cierre de dos
+       capas: si el reflow del cierre llegaba primero, el chat quedaba abajo y el
+       usuario aterrizaba en Mi día en vez de en la conversación. Cerrar en el frame
+       siguiente elimina la carrera — y además se ve mejor: el chat sube POR ENCIMA
+       de Ajustes, y Ajustes se cierra detrás. */
+    ponerHilo(
+      `<div class="ctx-chip volver-ayuda" id="volver-ayuda"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg>Cómo usar la app · ${tema}</div>` +
+      O('Dale, te lo muestro con tus propios datos.') +
+      O('Apretá el mic y decime <b>"gasté quince mil en nafta"</b>. Te armo la card con lo que entendí, la corregís si hace falta y recién ahí se guarda.') +
+      CH('Mostrame otro tema', 'Ya está, gracias'));
+    subirChat();
+    requestAnimationFrame(() => {
+      $('#ajustes').classList.remove('on');
+      $('#s-comousar').classList.remove('on');
+    });
+    /* La vuelta: al tema siguiente sin salir por el avatar. */
+    const v = $('#volver-ayuda');
+    if (v) v.addEventListener('click', () => {
+      bajarChat();
+      $('#ajustes').classList.add('on');
+      $('#s-comousar').classList.add('on');
+    });
+  }));
 
 /* 02 · just-in-time consent: el hilo queda ATRÁS, visible. Ese es el argumento —
    se ve qué pedido quedó esperando a que conectes. */
@@ -3285,13 +3536,17 @@ document.querySelectorAll('[data-ir]').forEach(a =>
   a.addEventListener('click', () => $('#' + a.dataset.ir).classList.add('on')));
 document.querySelectorAll('[data-cierra]').forEach(b =>
   b.addEventListener('click', () => $('#' + b.dataset.cierra).classList.remove('on')));
+/* ⚠️ La fila del tablero EXPANDE, no abre un sheet (30/08). Mismo comportamiento
+   que Mi día: una sola abierta por vez, y el botón ejecuta en vez de colapsar.
+   La alternativa de un solo puntero que exige WCAG 2.5.1 para el swipe sigue
+   cubierta: es el "Borrar" de la fila expandida, igual que en Mi día. */
 document.querySelectorAll('#tablero .fi').forEach(f =>
   f.addEventListener('click', e => {
-    if (e.target.closest('.swipe-bg')) return;
-    $('#detalle').classList.add('on');
+    if (e.target.closest('.swipe-bg') || e.target.closest('.accion')) return;
+    const abierta = f.classList.contains('on');
+    document.querySelectorAll('#tablero .fi').forEach(x => x.classList.remove('on'));
+    if (!abierta) f.classList.add('on');
   }));
-document.querySelectorAll('[data-cierra-det]').forEach(b =>
-  b.addEventListener('click', () => $('#detalle').classList.remove('on')));
 
 /* selección con borde + check: sólo una activa por grupo */
 document.querySelectorAll('.segb, .fchips').forEach(g =>

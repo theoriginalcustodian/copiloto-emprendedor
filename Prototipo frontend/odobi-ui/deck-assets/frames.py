@@ -149,6 +149,9 @@ PROTOTIPO = [
     ('grabando',  'grabando'),
     ('bloqueado', 'bloqueado'),
     ('card',      'card'),
+    ('comousar',  'comousar'),
+    ('soporte',   'soporte'),
+    ('feedback',  'feedback'),
 ]
 
 PROTO_CSS = f"""

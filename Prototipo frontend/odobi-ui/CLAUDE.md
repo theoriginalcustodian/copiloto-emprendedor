@@ -35,6 +35,9 @@ Siempre **Odobi** — mayúscula inicial, resto minúscula. NUNCA "ODOBI" (logo,
 
 ### Proporción 60/30/10
 Lienzo ≈60%, estructura ≈30%, terracota ≤10%. Terracota = señal, no ambiente. Excepción declarada: terracota plena SOLO en piezas display (splash, celebración, onboarding-reveal). Nunca UI operativa.
+⚠️ **Y ya no hay ninguna en la UI DIARIA** (30/08): la escucha a pantalla completa era la
+única, y cayó. **El golpe de color diario lo da el bloque negro**, no la terracota — así que
+la excepción quedó reducida a piezas que se ven una vez.
 
 ### Tipografía
 - Display/títulos: **Plus Jakarta Sans Bold** (`assets/fonts/PlusJakartaSans-Bold.ttf`, solo Bold). **Reemplazó a NeueEinstellung el 06–07/08**: licencia de app USD 375/año renovable por título. No fue swap de títulos — **el monograma ES el glifo real de la O**, cambiar la fuente cambia el símbolo de marca. Se eligió midiendo con `fontTools` sobre archivos reales (ratio ancho/alto de la O, contrapunzón, trazo horizontal): distancia 0,111 contra la referencia. Ver `explorations/tipografia-libre/DECISIONES.md`.
@@ -396,9 +399,10 @@ marcando sólo lo que **ejecuta** algo. Patrón tomado de Quizlet.
 ### Botón de acción en tarjeta (rev. 20/08)
 **38 px de alto · padding 16 · 15 px · margen superior 20.** Bajó de 46/20/16 porque dentro de una
 card de 120 px competía con el aviso, **cuando es una salida y no el tema de la tarjeta**.
-⚠️ Sigue abierta la deuda del **3,17:1** (blanco sobre `#DE7250` sin bold). Se evaluó una variante
-sin fill —acento sólo en el texto, `#B04A2E` 5,43:1— que la resolvería de paso; quedó descartada
-por ahora.
+✅ **Deuda del 3,17:1 CERRADA (30/08):** el fill baja a **`#B04A2E`** y el blanco pasa a
+**5,43:1**, sin tocar el tamaño (15 px) ni el peso. Es la salida que la regla del 28/07 v2 ya
+preveía —*antes de bajar el tamaño, cambiar el fill*—. Subirlo a 19 px bold se probó el 20/08
+y se descartó: a ese tamaño el botón pesaba más que el aviso, que es el tema de la tarjeta.
 
 ### Tarjeta EXPANDIBLE y rebote del swipe (20/08/2026)
 Reemplazan al carrusel del resumen. Salieron de analizar **Aceternity UI**, pero el hallazgo no fue
@@ -415,8 +419,12 @@ mostrando más detalle. Volvés a tocarla para colapsarla"* — y el prototipo n
   2. **no gasta el eje horizontal**, así que el **swipe de descarte VUELVE a Mi día** (había tenido
      que mudarse al tablero por el conflicto de gestos);
   3. nada tapa la pantalla, a diferencia del sheet.
-- ⚠️ **Consecuencia a resolver: el sheet del tablero quedó redundante.** Si el expandible ya da el
-  detalle, hay que decidir si el sheet sobrevive o si el tablero también expande. Pendiente.
+- ✅ **RESUELTO (30/08): el tablero también expande y el sheet se cayó.** Dos formas de ver lo
+  mismo obligaban a aprender dos cosas para una sola, y el repo define una: *"tocar una tarjeta
+  la expande"*. El sheet además tapaba la pantalla justo cuando hace falta el contexto.
+  ⚠️ **La alternativa de un solo puntero que exige WCAG 2.5.1 no se pierde:** era el sheet, y
+  ahora es el **"Borrar" de la fila expandida**, igual que en Mi día. `?ver=detalle` sobrevive
+  como alias y abre el tablero con la primera fila ya expandida.
 
 **Rebote del swipe** (de "Draggable Card"): pasado el umbral la tarjeta **ofrece resistencia** en vez
 de seguir al dedo — avanza sólo el 28% de lo arrastrado. **No es cosmético: es lo que comunica "hasta
@@ -579,9 +587,10 @@ alcanzaba. El de cancelar sigue en 70 px, sobre el otro eje.
   s/lienzo **4,49:1** ✅ · tacho `#B04A2E` s/`#F8E2DB` **4,37:1** ✅ · Pausar negro s/`#F8E2DB`
   **14,56:1** ✅ · "deslizá para cancelar" `sec` s/lienzo **6,21:1** ✅ · candado `sec` s/blanco
   **7,51:1** ✅ (y `#B04A2E` s/`#FDF3EF` **4,98:1** ✅ al acercarse al umbral).
-- ⚠️ Sigue vigente la cláusula del veredicto Wise A/B sobre *el único momento display*: **el
-  momento cambia de mecanismo por segunda vez**. Anotarlo en `explorations/wise-ab/DECISIONES.md`
-  al cerrar con David.
+- ✅ **La cláusula Wise A/B del "único momento display" quedó DEROGADA (30/08).** Ver
+  `explorations/wise-ab/DECISIONES.md`. No se cayó por falta de superficie: **su función
+  migró al bloque negro**, que es el golpe de color diario y aparece en 9 pantallas. El
+  momento display no perdió contenido, cambió de portador.
 
 ### Dónde aterriza lo dictado (24/08) — regla del destino
 > **Lo que REGISTRA se queda en su función · lo que PREGUNTA va al chat.**
@@ -750,7 +759,17 @@ Borradas el 02/08 (estaban vacías): `05-facturacion-arca/` (duplicado del setup
   por eso la forma se posa donde va la O y el wordmark no salta después.
 - **La Entrada va INVERTIDA** (Martin 19/08): fondo blanco, signo en terracota viva. El signo es
   logotipo (WCAG 1.4.3 exime logotipos) y el mensaje no depende de él.
-- **Rive:** artboards `Splash` (415f @60fps) y `Entrada` (**90f** @60fps), `Entry` conectado en ambos. Al 06/08 **no quedan pendientes de archivo**: contrapunzones perforados (§5), 4 gradientes hechos por MCP y rotaciones corregidas (§6). ⚠️ **El MCP escribe la rotación `r` de shapes en RADIANES pero la lee en grados** — se coló un error de 57,3× que sobrevivió a inspección visual. Toda rotación se verifica con `queryKeyFrames`, no a ojo. Único valor abierto: la duración provisoria de `Entrada` (§6.4).
+- ⛔ **RIVE QUEDA EN DUDA (30/08).** Hallazgo al retomar el pendiente del `.riv`:
+  **`apps/mobile` tiene `react-native-reanimated` 4.5.0 y NO tiene Rive.** Consumir un `.riv`
+  exigiría `rive-react-native`, una dependencia **nativa** nueva — decisión de arquitectura de
+  David, no de diseño. **Spec de port escrita: `specs/splash-port-reanimated.md`.**
+  - ⚠️ **El argumento decisivo no es la dependencia: es que el splash MIDE.** `--ox` sale del
+    ancho real de "dobi" en runtime, y un `.riv` lo tiene **horneado**. Si cambia la
+    tipografía o el texto, se desalinea en silencio — y ya nos costó regenerar 24 paths una vez.
+  - ⚠️ **Exportar hoy daría una pieza VIEJA de todos modos:** el artboard se armó el 06/08 con
+    el monograma anterior, y después se adoptó el isotipo (18/08) y se invirtió la entrada
+    (19/08).
+- **Rive (estado del archivo, si se retoma):** artboards `Splash` (415f @60fps) y `Entrada` (**90f** @60fps), `Entry` conectado en ambos. Al 06/08 **no quedan pendientes de archivo**: contrapunzones perforados (§5), 4 gradientes hechos por MCP y rotaciones corregidas (§6). ⚠️ **El MCP escribe la rotación `r` de shapes en RADIANES pero la lee en grados** — se coló un error de 57,3× que sobrevivió a inspección visual. Toda rotación se verifica con `queryKeyFrames`, no a ojo. Único valor abierto: la duración provisoria de `Entrada` (§6.4).
 
 Notas por pantalla: 04-HITL es LA pantalla ("Vos confirmás, Odobi ejecuta": propuesta → detalle editable → confirmar/cancelar, componente reutilizable). 05-facturación: doble HITL según guión §5 — feature IMPLEMENTADA (Martin 22/07, código fuera del repo; el kickoff decía "visión en pausa": desactualizado). 06-presupuestos: feature implementada, hereda HITL. Ambas aparecen como aplicaciones en la sección Apps. 02-conexiones: just-in-time consent (IF Catalogue). 01-onboarding: pronunciación o-DO-bi + promesa del primer minuto con plata real.
 
@@ -773,6 +792,21 @@ o iterando `re.finditer` sobre el contenedor — nunca con un `.*?` suelto.
 Un `for m in re.finditer(...)` que va editando `s` invalida todas las posiciones siguientes.
 **Corrompió 10 archivos** con comentarios truncados (`<!-- phosphor: micropho<svg`). Se resuelve con
 un solo `re.sub(patrón, función, s)`.
+
+### 3.bis · Un elemento puede destruirlo la propia función que lo usa
+`#vacio` vive **dentro** de `#hilo`. La primera vez que se reemplaza `#hilo.innerHTML`, ese
+elemento **deja de existir** — y el segundo uso tira `null.style`, que **mata el handler
+entero antes de llegar a `subirChat()`**. Síntoma: volver a Ayuda y tocar otro tema **no
+hacía nada**, que no se parece en nada a la causa.
+
+Estaba en **cuatro** lugares a la vez (el puente, `vozAlChat`, `abrirHilo` y los temas de
+Ayuda): cada uno funcionaba la primera vez y moría en la segunda. Ahora escribir el hilo pasa
+por **una sola puerta**, `ponerHilo(html)`, que hace el guard.
+
+⚠️ **Es el §3 con una vuelta más:** el elemento no quedó huérfano por un refactor —
+**lo borra la propia operación**. Cuando una función reemplaza el `innerHTML` de un
+contenedor, todo lo que había adentro deja de ser alcanzable, incluido lo que ella misma
+consulta la próxima vez.
 
 ### 3 · Todo handler de arranque lleva guard
 ```javascript

@@ -137,6 +137,10 @@ BLOQUES = [
    ("proto","apps","Apps conectadas","Nombradas por capacidad, no por marca: es lo que hace entendible el costo de desconectar.","→"),
    ("proto","plan","Mi plan","Hacer gasta, preguntar no. Si preguntar gastara, el usuario dejaría de preguntar.","→"),
    ("proto","hablar","Cómo hablarle","Muestra la respuesta de ejemplo: los controles son abstractos, la frase resultante no.","→"),
+   ("proto","comousar","Cómo usar la app","Temas cortos que abren el CHAT PRINCIPAL con contexto. No un cuarto chat.","ayuda"),
+   ("proto","soporte","Soporte técnico","Chat propio, no el de Odobi: el copiloto sabe de tu negocio, de sus bugs no.","→"),
+   ("proto","feedback","Contanos qué tal","Una pregunta en vez de una caja muda, y la prueba de que se lee.","→"),
+   ("proto","cuenta","No molestar — existe y no hace nada","Sin chevron ni switch, con el porqué. Si no hace nada, no puede parecer que lo hace.","→"),
  ]),
 ]
 PUENTE = [("09-mi-dia",1,"1","Mi día","Tocás «Reclamá el pago». La acción no ejecuta nada todavía.",""),

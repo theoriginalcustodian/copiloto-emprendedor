@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odobi — ¿el splash sobrevive sin Rive?</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --sec:#5C534C;
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    /* Curvas y tempos: idénticos a v2-inmersivo rev.3 (Calmo · Densa) */
+    --ease:cubic-bezier(.2,0,0,1);
+    --ease-blob:cubic-bezier(.5,0,.2,1);
+    --ease-collapse:cubic-bezier(.32,0,.16,1);
+    --ease-bounce:cubic-bezier(.24,1.62,.4,1);
+    --grow:1900ms; --collapse:1450ms; --settle:780ms; --letter:720ms;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--ui);color:var(--negro);padding:40px 24px 72px}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-family:var(--display);font-size:28px;line-height:1.15;margin-bottom:10px}
+  .bajada{font-size:14.5px;line-height:1.6;color:var(--sec);max-width:74ch;margin-bottom:6px}
+  .bajada b{color:var(--negro);font-weight:500}
+  .barra{display:flex;gap:10px;align-items:center;margin:22px 0 26px;flex-wrap:wrap}
+  .btn{min-height:46px;padding:0 20px;border:none;border-radius:999px;background:var(--negro);
+       color:var(--crema);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+  .btn.sec{background:var(--blanco);color:var(--negro);border:1px solid #C9C1B4}
+  .btn:focus-visible{outline:3px solid var(--terracota-prof);outline-offset:2px}
+  .nota{font-size:12.5px;color:var(--sec)}
+
+  .par{display:flex;gap:34px;justify-content:center;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+       background:var(--negro);color:var(--crema);padding:6px 13px;border-radius:999px}
+  .col.rn .tag{background:var(--terracota-prof)}
+  .pie{font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--sec);
+       max-width:330px;text-align:center}
+
+  /* ── el frame ─────────────────────────────────────────────── */
+  .tel{position:relative;width:330px;height:714px;overflow:hidden;
+       background:linear-gradient(180deg,#FFF 0%,var(--crema) 100%);
+       border-radius:38px;border:1px solid #C9C1B4;box-shadow:0 20px 54px rgba(26,21,18,.16)}
+
+  /* ── PARTE 1 · las formas ─────────────────────────────────── */
+  .blob{position:absolute;left:50%;top:50%;width:186px;height:186px;margin:-93px 0 0 -93px;
+        opacity:0;transform:translate(0,0) scale(.04) rotate(var(--r0,0deg));will-change:transform}
+  .play .blob{animation:grow var(--grow) var(--ease-blob) var(--d,0ms) forwards}
+  @keyframes grow{
+    0%{opacity:0;transform:translate(0,0) scale(.04) rotate(var(--r0,0deg))}
+    5%{opacity:1}
+    100%{opacity:1;transform:translate(0,0) scale(7.8) rotate(var(--r1,0deg))}
+  }
+  .play .blob.last{animation:
+    grow var(--grow) var(--ease-blob) var(--d,0ms) forwards,
+    colapso var(--collapse) var(--ease-collapse) var(--dc,0ms) forwards}
+  @keyframes colapso{
+    0%{opacity:1;transform:translate(0,0) scale(7.8) rotate(var(--r1,0deg))}
+    72%{opacity:1}
+    100%{opacity:0;transform:translate(var(--ox,0px),0) scale(.33) rotate(0deg)}
+  }
+  .finalbg{position:absolute;inset:0;opacity:0;
+           background:linear-gradient(180deg,#FFF 0%,var(--crema) 100%)}
+  .play .finalbg{animation:bg var(--collapse) linear var(--dc,0ms) forwards}
+  @keyframes bg{to{opacity:1}}
+
+  /* IZQUIERDA — como está hoy: border-radius en % */
+  .css .s-squircle{border-radius:34%}
+  .css .s-super   {border-radius:58% 42% 47% 53% / 47% 55% 45% 53%}
+  .css .s-egg     {border-radius:46% 54% 52% 48% / 53% 46% 54% 47%}
+  .css .s-scallop {clip-path:url(#festonA)}
+
+  /* DERECHA — sólo primitivas que React Native soporta: cada forma es un PATH SVG
+     dentro de un <svg> que llena el blob. Nada de border-radius en porcentaje. */
+  .rn .blob svg{width:100%;height:100%;display:block}
+
+  /* ── PARTE 2 · el wordmark ────────────────────────────────── */
+  .stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:40}
+  .lockup{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .st-final .lockup{animation:sube 760ms var(--ease) forwards}
+  @keyframes sube{to{transform:translateY(-72px)}}
+  .word{display:flex;align-items:baseline;font-family:var(--display);font-size:80px;
+        line-height:1;color:var(--terracota);letter-spacing:-.01em}
+  .word .o{display:block;opacity:0;transform:scale(1.06)}
+  .st-o .word .o{animation:oap var(--settle) var(--ease) forwards}
+  @keyframes oap{to{opacity:1;transform:scale(1)}}
+  .word .rest{display:flex}
+  .word .rest span{display:block;opacity:0;transform:translateX(60px)}
+  .st-word .word .rest span{animation:reb var(--letter) var(--ease-bounce) forwards}
+  @keyframes reb{0%{opacity:0;transform:translateX(60px)}18%{opacity:1}100%{opacity:1;transform:translateX(0)}}
+  .tagline{font-family:var(--ui);font-size:15px;font-weight:500;color:var(--sec);opacity:0}
+  .st-final .tagline{animation:fu 680ms var(--ease) 320ms forwards}
+  @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .acciones{position:absolute;left:22px;right:22px;bottom:42px;display:flex;
+            flex-direction:column;gap:8px;z-index:50}
+  .b{min-height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;opacity:0}
+  .b1{background:var(--terracota);color:#fff;font-family:var(--display);font-size:19px}
+  .b2{background:#fff;border:1px solid #E8E2D9;font-size:15px;font-weight:500}
+  .st-final .b1{animation:fu 620ms var(--ease) 900ms forwards}
+  .st-final .b2{animation:fu 620ms var(--ease) 1040ms forwards}
+
+  @media (prefers-reduced-motion:reduce){
+    .play .blob{animation:none!important;opacity:0!important}
+    .word .o,.word .rest span,.tagline,.b{opacity:1!important;transform:none!important;animation:none!important}
+    .finalbg{opacity:1!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>¿El splash sobrevive sin Rive?</h1>
+  <p class="bajada">Las dos columnas corren <b>la misma pieza</b>, con los mismos tempos y las mismas
+     curvas: Calmo · Densa, sacados de <code>v2-inmersivo.html</code> rev.3.</p>
+  <p class="bajada">⚠️ Aclaración que cambia el planteo: <b>lo que hoy corre en el prototipo
+     (<code>?ver=splash</code>) no es Rive — es esta misma pieza en HTML/CSS.</b> El artboard de Rive
+     se armó <b>a partir</b> de ella. Así que la comparación honesta no es «CSS contra Rive», sino
+     <b>«lo que ya aprobaste, contra lo mismo hecho sólo con primitivas que React Native soporta»</b>.</p>
+  <p class="bajada">La única diferencia técnica está en <b>dos formas</b>: hoy usan
+     <code>border-radius</code> con 8 valores en porcentaje, que RN no soporta. A la derecha son
+     <b>paths SVG</b>. Todo lo demás —el crecimiento, el colapso dirigido, el rebote de las letras—
+     ya es <code>transform</code> y <code>opacity</code>, que Reanimated corre en el hilo de UI.</p>
+
+  <div class="barra">
+    <button class="btn" id="play">▶ Reproducir las dos</button>
+    <button class="btn sec" id="lento">Al 25% de velocidad</button>
+    <span class="nota" id="estado">Calmo · Densa · 6,84 s</span>
+  </div>
+
+  <svg width="0" height="0" aria-hidden="true"><defs>
+    <clipPath id="festonA" clipPathUnits="objectBoundingBox"><path id="pA" d=""/></clipPath>
+  </defs></svg>
+
+  <div class="par">
+    <div class="col">
+      <span class="tag">Hoy · CSS border-radius</span>
+      <div class="tel css" id="telA">
+        <div class="blob s-scallop"  style="--r0:8deg;--r1:-26deg;background:#1A1512"></div>
+        <div class="blob s-squircle" style="--r0:-12deg;--r1:34deg;background:linear-gradient(160deg,#E8A088,#DE7250)"></div>
+        <div class="blob s-super"    style="--r0:-6deg;--r1:22deg;background:#FFFFFF"></div>
+        <div class="finalbg"></div>
+        <div class="blob s-egg last" style="--r0:10deg;--r1:-16deg;background:linear-gradient(155deg,#DE7250,#B04A2E)"></div>
+        <div class="stage"><div class="lockup">
+          <div class="word"><span class="o">O</span><span class="rest"><span>d</span><span>o</span><span>b</span><span>i</span></span></div>
+          <div class="tagline">Tu copiloto emprendedor</div>
+        </div></div>
+        <div class="acciones"><div class="b b1">Empecemos</div><div class="b b2">Crear una nueva cuenta</div></div>
+      </div>
+      <p class="pie">Dos de las cuatro formas se dibujan con<br><code>border-radius: 58% 42% 47% 53% / …</code></p>
+    </div>
+
+    <div class="col rn">
+      <span class="tag">Portable · paths SVG</span>
+      <div class="tel rn" id="telB">
+        <div class="blob b-scallop"  style="--r0:8deg;--r1:-26deg"></div>
+        <div class="blob b-squircle" style="--r0:-12deg;--r1:34deg"></div>
+        <div class="blob b-super"    style="--r0:-6deg;--r1:22deg"></div>
+        <div class="finalbg"></div>
+        <div class="blob b-egg last" style="--r0:10deg;--r1:-16deg"></div>
+        <div class="stage"><div class="lockup">
+          <div class="word"><span class="o">O</span><span class="rest"><span>d</span><span>o</span><span>b</span><span>i</span></span></div>
+          <div class="tagline">Tu copiloto emprendedor</div>
+        </div></div>
+        <div class="acciones"><div class="b b1">Empecemos</div><div class="b b2">Crear una nueva cuenta</div></div>
+      </div>
+      <p class="pie">Las cuatro son <code>&lt;path&gt;</code>, generados con la misma<br>geometría. Es lo que corre en React Native.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ 1 · El festón de 12 lóbulos — idéntico en las dos columnas ═══
+   Ya era un path, así que es portable tal cual. */
+function feston(N, A){
+  const R = .5 - A, pts = [];
+  for (let i = 0; i < N * 2; i++){
+    const ang = (i / (N * 2)) * Math.PI * 2 - Math.PI / 2;
+    const r = R - A + (i % 2 ? 0 : A * 2);
+    pts.push([.5 + Math.cos(ang) * r, .5 + Math.sin(ang) * r]);
+  }
+  let d = 'M' + pts[0][0].toFixed(4) + ',' + pts[0][1].toFixed(4);
+  for (let i = 0; i < pts.length; i++){
+    const p0 = pts[(i - 1 + pts.length) % pts.length], p1 = pts[i],
+          p2 = pts[(i + 1) % pts.length], p3 = pts[(i + 2) % pts.length],
+          c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6],
+          c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += 'C' + c1[0].toFixed(4) + ',' + c1[1].toFixed(4) + ' ' +
+                c2[0].toFixed(4) + ',' + c2[1].toFixed(4) + ' ' +
+                p2[0].toFixed(4) + ',' + p2[1].toFixed(4);
+  }
+  return d + 'Z';
+}
+document.getElementById('pA').setAttribute('d', feston(12, .06));
+
+/* ═══ 2 · border-radius de 8 valores → path SVG ═══
+   Cada esquina tiene su radio horizontal y vertical, en % del lado. Se dibuja el
+   contorno con arcos elípticos: es exactamente lo que hace el motor de CSS.
+   ⚠️ Esto es lo ÚNICO que hay que traducir para React Native. */
+function radiosAPath(W, H, esq){
+  const [tl, tr, br, bl] = esq;   // cada una: [rx%, ry%]
+  const p = (v, lado) => v / 100 * lado;
+  const a = { tlx:p(tl[0],W), tly:p(tl[1],H), trx:p(tr[0],W), try_:p(tr[1],H),
+              brx:p(br[0],W), bry:p(br[1],H), blx:p(bl[0],W), bly:p(bl[1],H) };
+  return `M${a.tlx},0 L${W - a.trx},0 A${a.trx},${a.try_} 0 0 1 ${W},${a.try_}`
+       + ` L${W},${H - a.bry} A${a.brx},${a.bry} 0 0 1 ${W - a.brx},${H}`
+       + ` L${a.blx},${H} A${a.blx},${a.bly} 0 0 1 0,${H - a.bly}`
+       + ` L0,${a.tly} A${a.tlx},${a.tly} 0 0 1 ${a.tlx},0 Z`;
+}
+const S = 186;
+const FORMAS = {
+  'b-scallop':  { path: feston(12, .06), escala: S, fill: '#1A1512' },
+  'b-squircle': { path: radiosAPath(S, S, [[34,34],[34,34],[34,34],[34,34]]), grad: ['#E8A088','#DE7250', 160] },
+  'b-super':    { path: radiosAPath(S, S, [[58,47],[42,55],[47,45],[53,53]]), fill: '#FFFFFF' },
+  'b-egg':      { path: radiosAPath(S, S, [[46,53],[54,46],[52,54],[48,47]]), grad: ['#DE7250','#B04A2E', 155] },
+};
+let gid = 0;
+for (const [cls, f] of Object.entries(FORMAS)){
+  const el = document.querySelector('.rn .' + cls);
+  const esc = f.escala ? ` transform="scale(${S})"` : '';
+  let def = '', fill = f.fill || '#000';
+  if (f.grad){
+    const id = 'g' + (gid++);
+    const rad = (f.grad[2] - 90) * Math.PI / 180;
+    def = `<defs><linearGradient id="${id}" x1="${.5 - Math.cos(rad)/2}" y1="${.5 - Math.sin(rad)/2}"
+            x2="${.5 + Math.cos(rad)/2}" y2="${.5 + Math.sin(rad)/2}">
+            <stop offset="0" stop-color="${f.grad[0]}"/><stop offset="1" stop-color="${f.grad[1]}"/>
+           </linearGradient></defs>`;
+    fill = `url(#${id})`;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${S} ${S}">${def}<path d="${f.path}"${esc} fill="${fill}"/></svg>`;
+}
+
+/* ═══ 3 · El guión, idéntico para las dos ═══ */
+const T = { grow:1900, col:1450, set:780, let:720, lstg:150, ratio:.20 };
+const TELS = [document.getElementById('telA'), document.getElementById('telB')];
+let timers = [], factor = 1;
+
+function correr(){
+  timers.forEach(clearTimeout); timers = [];
+  const g = T.grow * factor, c = T.col * factor, s = Math.round(g * T.ratio),
+        lstg = T.lstg * factor, let_ = T.let * factor;
+  document.documentElement.style.setProperty('--grow', g + 'ms');
+  document.documentElement.style.setProperty('--collapse', c + 'ms');
+  document.documentElement.style.setProperty('--settle', T.set * factor + 'ms');
+  document.documentElement.style.setProperty('--letter', let_ + 'ms');
+
+  TELS.forEach(tel => {
+    tel.classList.remove('play','st-o','st-word','st-final');
+    void tel.offsetWidth;
+    const blobs = tel.querySelectorAll('.blob');
+    blobs.forEach((b, i) => b.style.setProperty('--d', (i * s) + 'ms'));
+    const dc = (blobs.length - 1) * s + g;
+    tel.querySelector('.blob.last').style.setProperty('--dc', dc + 'ms');
+    tel.querySelector('.finalbg').style.setProperty('--dc', dc + 'ms');
+    /* ⚠️ LO QUE UN .riv NO PUEDE: el desplazamiento sale del ancho REAL de "dobi",
+       medido recién ahora. Por eso la forma se posa donde va la O y el wordmark no
+       salta después. Horneado, se desalinea al cambiar la tipografía. */
+    const rest = tel.querySelector('.rest');
+    tel.querySelector('.blob.last').style.setProperty('--ox', -(rest.getBoundingClientRect().width / 2) + 'px');
+    tel.querySelectorAll('.rest span').forEach((sp, i) => sp.style.animationDelay = (i * lstg) + 'ms');
+    tel.classList.add('play');
+    const tO = dc + c - Math.round(c * .3), tW = dc + c + 300, tF = tW + lstg * 3 + let_ + 120;
+    timers.push(setTimeout(() => tel.classList.add('st-o'), tO));
+    timers.push(setTimeout(() => tel.classList.add('st-word'), tW));
+    timers.push(setTimeout(() => tel.classList.add('st-final'), tF));
+  });
+}
+document.getElementById('play').addEventListener('click', () => { factor = 1; estado(); correr(); });
+document.getElementById('lento').addEventListener('click', () => { factor = factor === 1 ? 4 : 1; estado(); correr(); });
+function estado(){
+  document.getElementById('estado').textContent =
+    factor === 1 ? 'Calmo · Densa · 6,84 s' : 'Calmo · Densa · al 25% (27,4 s)';
+}
+correr();
+</script>
+</body>
+</html>
