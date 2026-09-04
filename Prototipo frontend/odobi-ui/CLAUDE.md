@@ -630,6 +630,25 @@ Cómo habla Odobi, y cómo se le habla a Odobi.
 
 #### Discurso en UI
 - Voseo rioplatense siempre: "contame", "dale", "ojo", "mirá", "listo", "te aviso".
+- ⚠️ **El voseo gobierna la VOZ de Odobi, no las etiquetas de control** (02/09).
+  Una etiqueta nombra una acción disponible; no habla. Por eso los campos del
+  HITL dicen **"Editar" / "Cambiar"** y no "Editá" / "Cambiá": en imperativo, la
+  app parece darte una orden en cada fila. Odobi sí sigue hablando en voseo a su
+  alrededor —*"Revisala antes de emitir"*, *"corregí lo que haga falta"*—, y ese
+  contraste es justamente lo que distingue lo que Odobi DICE de lo que la
+  interfaz OFRECE. Coincide además con los verbos de alta del repo, que ya eran
+  infinitivos ("Anotar que me pagaron").
+- ⚠️ **Los CHIPS son la excepción, y no es una excepción: es la misma regla**
+  (04/09). Un chip no lo ofrece la interfaz — es **lo que el usuario diría**,
+  puesto ahí para no tener que escribirlo. Por eso van en voseo: *"Armá la
+  factura"*, *"Mostrame otro tema"*, *"Pasame a Profesional"*, *"Compartila
+  por WhatsApp"*. Se coló un `'Compartir por WhatsApp'` en infinitivo y sonaba
+  a botón de menú en medio de una conversación.
+  **La prueba:** ¿quién dice la frase? Si la dice el usuario → voseo. Si nombra
+  algo que la app pone a disposición → infinitivo. La fila del HITL nombra;
+  el chip habla.
+  El género sigue al documento: factura → *"Compartila"*, presupuesto y link
+  de cobro → *"Compartilo"*.
 - PROHIBIDO: "estoy aquí para ayudarte", "solución integral", "potenciar", "revolucionar", "empoderar", "sinergia", "optimizar", "¡increíble!", tuteo neutro, emojis en voz de Odobi.
 - Errores: frontales y con salida. No sabe → lo dice. Pedido ambiguo → pregunta UNA sola cosa.
 - Todo copy respeta guiones §5 del handoff.
@@ -933,6 +952,27 @@ Antes de dibujar algo que ya se decidió: buscar el archivo.
 #### 9 · Verificar contra el repo antes de diseñar
 El tablero de Mi día **ya existía** en `kb-usuario/midia.md` con sus tres estados; se iba a "inventar"
 un kanban que estaba definido. Antes de proponer una pantalla: leer su `kb-usuario/*.md`.
+
+#### 9.bis · Un cuerpo de CSS sin selector NO es basura: es una regla sin nombre
+⚠️ **Dos errores encadenados, y el segundo fue "arreglar" el primero.**
+
+1. **20/08** — al unificar Contabilidad, un borrado por regex se comió el selector
+   `#inteligencia` y dejó su cuerpo suelto detrás de un comentario, más un
+   `.on{display:flex}` huérfano que golpeaba a **toda** la app.
+2. **30/08** — se detectó ese `.on` global (rompía la tarjeta expandible de Mi día) y se lo
+   borró junto con el bloque anónimo. ⚠️ **Pero ese bloque ERA la regla de `#inteligencia`.**
+   La pantalla quedó sin estilo: existía en el markup, `abrirBI` le ponía `.on`, y **no se
+   mostraba nunca**. `?ver=bi` renderizó Mi día durante medio día, y **los frames del árbol,
+   del deck y del mapa se regeneraron con la pantalla equivocada** sin que ningún verificador
+   lo notara — porque la imagen tenía contenido válido, sólo que de otra pantalla.
+
+**Antes de borrar un bloque sin selector, averiguar de quién era.** Se busca el `id`/clase en
+el markup y se comprueba si tiene regla propia en otro lado; si no la tiene, **el bloque
+huérfano es su regla y hay que devolverle el nombre**, no eliminarlo.
+
+⚠️ **Y deja una lección sobre los verificadores:** `contenido_valido()` mide que el PNG **tenga
+contenido**, no que sea **el contenido correcto**. Dos pantallas distintas con el mismo md5 es
+la señal que sí lo delata — conviene chequear duplicados entre frames que deberían diferir.
 
 #### 10 · Un nombre de clase, un significado — y auditarlo antes de guardar
 El prototipo es **un solo archivo**, así que el CSS no tiene módulos: dos pantallas

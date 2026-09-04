@@ -354,7 +354,7 @@
   .hitl .kv:first-of-type{padding-top:2px}
   .cita{background:var(--arena-30);border-radius:var(--r-s);padding:13px 14px;
         font-size:var(--fs-body);line-height:1.5;margin-bottom:var(--s2)}
-  /* "Editá" es lo único tocable del campo: por eso es lo único en terracota. 5,43:1 ✅ */
+  /* "Editar" es lo único tocable del campo: por eso es lo único en terracota. 5,43:1 ✅ */
   .kv .e{color:var(--terracota-prof);font-weight:500;font-size:var(--fs-cap);
          flex-shrink:0;padding:2px 0;cursor:pointer}
   /* La nota deja de ser un renglón suelto y pasa a ser superficie: es una promesa del
@@ -769,10 +769,20 @@
      esos dos números como partes de un mismo total.
      Es pantalla de SOLO CONSULTA (repo): no lleva "Nuevo", a diferencia del resto de
      las funciones. El composer queda porque preguntar sí se puede.
-     ⚠️ Acá vivía la regla de #conta, borrada el 20/08 al unificar Contabilidad. El
-     borrado se llevó el SELECTOR y dejó el cuerpo suelto detrás del comentario, más
-     un `.on{display:flex}` huérfano que se aplicaba a TODA la app: cualquier elemento
-     con la clase `on` pasaba a ser flex. Rompía la tarjeta expandible de Mi día. */
+     ⚠️ HISTORIA DE ESTA REGLA, porque enseña dos errores encadenados:
+     1. El 20/08, al unificar Contabilidad, un borrado por regex se comió el SELECTOR
+        `#inteligencia` y dejó el cuerpo suelto detrás del comentario, más un
+        `.on{display:flex}` huérfano que se aplicaba a TODA la app.
+     2. El 30/08 se detectó ese `.on` global — rompía la tarjeta expandible de Mi día —
+        y se lo borró. ⚠️ **Pero el cuerpo huérfano ERA esta regla**, así que borrarlo
+        dejó a Inteligencia SIN estilo: la pantalla existía, `abrirBI` le ponía `.on`,
+        y nunca se mostraba. `?ver=bi` renderizaba Mi día durante medio día, y los
+        frames del árbol y del deck se regeneraron con la pantalla equivocada.
+     **La lección: antes de borrar un bloque de CSS sin selector, averiguar de QUIÉN
+     era.** Un cuerpo huérfano no es basura: es una regla a la que le falta el nombre. */
+  #inteligencia{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;
+                background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  #inteligencia.on{display:flex}
   /* desglose dentro del bloque negro: arena para el label (8,46:1) y crema para el dato */
   .resumen .cats{margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid rgba(247,243,236,.12)}
   .resumen .cat{padding:6px 0}
@@ -1416,7 +1426,7 @@
   .aj-fila .ch{color:#C6BCB0;flex-shrink:0}
 
   /* ══ Campos editables con autoguardado (20/08) ════════════════════
-     Cada dato es un campo de texto real, siempre editable: se va el "Editá" por fila.
+     Cada dato es un campo de texto real, siempre editable: se va el "Editar" por fila.
      Guarda al salir del campo, no al tipear — guardar en cada tecla dispara validaciones
      a mitad de un CUIT y muestra errores de algo que el usuario todavía está escribiendo.
      ⚠️ El LABEL va arriba y visible, nunca sólo como placeholder: el placeholder
@@ -2328,7 +2338,7 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
       <div class="lista-lbl">El nombre</div>
       <div class="grupo">
         <div class="campo-fila"><span class="izq"><span class="k">Cómo lo llamás</span>
-          <span class="v">Odobi</span></span><span class="ed">Editá</span></div>
+          <span class="v">Odobi</span></span><span class="ed">Editar</span></div>
       </div>
       <div class="nota-sub"><svg width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg>Esto se guarda aparte del perfil de tu negocio: cambiar el tono no te hace reescribir nada más.</div>
     </div></div>
@@ -2494,9 +2504,9 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
       <!-- Los campos los escribe `abrirCard()`: la card es una sola pieza que
            cambia de contenido según la función desde la que dictaste. -->
       <div id="card-campos">
-        <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editá</span></div>
-        <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiá</span></div>
-        <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editá</span></div>
+        <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editar</span></div>
+        <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiar</span></div>
+        <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editar</span></div>
       </div>
       <div class="nota"><!-- phosphor: eye --><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Todavía no se guardó nada.</div>
       <div class="acciones" style="padding-left:0;padding-right:0">
@@ -2619,7 +2629,7 @@ $('#accion-lucia').addEventListener('click', () => {
     </div>
     <div class="hitl">
       <div class="hitl-top"><b>Recordatorio a Lucía</b><span class="chip">Gmail</span></div>
-      <div class="kv"><span class="campo-txt"><span class="k">Mensaje</span></span><span class="e">Editá</span></div>
+      <div class="kv"><span class="campo-txt"><span class="k">Mensaje</span></span><span class="e">Editar</span></div>
       <div class="cita">"Hola Lucía, ¿pudiste verlo? Cualquier duda te la resuelvo."</div>
       <div class="nota"><!-- phosphor: eye --><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>Un solo mail, ahora. No se manda nada sin tu confirmación.</div>
       <div class="acciones">
@@ -2735,15 +2745,15 @@ const DESTINO = {
    Cambia el contenido, nunca el contrato: "Todavía no se guardó nada". */
 const CARDS = {
   gasto:   {t:'Nuevo gasto', b:'Guardar el gasto',
-            f:[['Monto','$18.000','Editá'],['Categoría','Mercadería','Cambiá'],['Proveedor','Díaz','Editá']]},
+            f:[['Monto','$18.000','Editar'],['Categoría','Mercadería','Cambiar'],['Proveedor','Díaz','Editar']]},
   cobro:   {t:'Nuevo ingreso', b:'Anotar que me pagaron',
-            f:[['Monto','$80.000','Editá'],['Cliente','Rodríguez','Cambiá'],['Cómo te pagó','Transferencia','Cambiá']]},
+            f:[['Monto','$80.000','Editar'],['Cliente','Rodríguez','Cambiar'],['Cómo te pagó','Transferencia','Cambiar']]},
   factura: {t:'Nueva factura', b:'Emitir la factura',
-            f:[['Cliente','Rodríguez','Cambiá'],['Monto','$80.000','Editá'],['Concepto','Instalación eléctrica','Editá']]},
+            f:[['Cliente','Rodríguez','Cambiar'],['Monto','$80.000','Editar'],['Concepto','Instalación eléctrica','Editar']]},
   presu:   {t:'Nuevo presupuesto', b:'Guardar el presupuesto',
-            f:[['Cliente','Lucía','Cambiá'],['Monto','$145.000','Editá'],['Detalle','Tablero nuevo','Editá']]},
+            f:[['Cliente','Lucía','Cambiar'],['Monto','$145.000','Editar'],['Detalle','Tablero nuevo','Editar']]},
   cliente: {t:'Nuevo cliente', b:'Guardar el cliente',
-            f:[['Nombre','Rodríguez','Editá'],['Teléfono','341 555 0102','Editá'],['CUIT','—  no lo dijiste','Editá']]},
+            f:[['Nombre','Rodríguez','Editar'],['Teléfono','341 555 0102','Editar'],['CUIT','—  no lo dijiste','Editar']]},
 };
 
 function abrirCard(clave){
@@ -2769,9 +2779,9 @@ function vozAlChat(dur){
     </div>
     <div class="hitl">
       <div class="hitl-top"><b>Nuevo gasto</b><span class="chip">Por voz</span></div>
-      <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editá</span></div>
-      <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiá</span></div>
-      <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editá</span></div>
+      <div class="kv"><span class="campo-txt"><span class="k">Monto</span><span class="v">$18.000</span></span><span class="e">Editar</span></div>
+      <div class="kv"><span class="campo-txt"><span class="k">Categoría</span><span class="v">Mercadería</span></span><span class="e">Cambiar</span></div>
+      <div class="kv" style="border-bottom:none"><span class="campo-txt"><span class="k">Proveedor</span><span class="v">Díaz</span></span><span class="e">Editar</span></div>
       <div class="nota">Todavía no se guardó nada.</div>
       <div class="acciones">
         <div class="btn" id="confirmar-voz">Guardar el gasto</div>
@@ -3095,6 +3105,45 @@ const HILOS = {
     REC('Promo mandada', '34 clientes · Gmail · 14:41', 'Detalle') +
     O('Salió. Te aviso a medida que respondan.'),
 
+  /* ── Presupuesto con tu marca (02/09) ──────────────────────────────
+     Para la sección de funciones de la web.
+     ⚠️ PROPUESTA: la personalización de plantilla —logo y color, desde los
+     datos del negocio— NO existe en el repo (busqué "plantilla" en todo
+     kb-usuario: cero menciones). Va a David como pedido de Martin.
+     Es paridad, no ventaja: PresYa ya ofrece exactamente eso ("subí tu
+     logo y configurá los colores de tu negocio"). El argumento no puede
+     ser la plantilla: es no necesitar otra app para tenerla. */
+  'pres-marca': () =>
+    D('Lunes 20') + Y('Odobi, armale el presupuesto a Lucía: cerco perimetral de treinta metros, ciento ochenta mil.', '09:31 · por voz') +
+    O('Listo. Salió con tu logo y tus colores, como los dejaste en tu negocio.') +
+    REC('Presupuesto N° 12', 'Lucía · $180.000 · cerco perimetral', 'Válido 15 días · PDF listo', 'Ver') +
+    O('¿Se lo mandás vos o lo mando yo?') +
+    CH('Compartilo por WhatsApp', 'Mandalo por mail'),
+
+  /* ── Factura sin entrar a ARCA (02/09) ─────────────────────────────
+     El ángulo de este hilo es el que Facturitas usa de titular
+     ("Generá facturas sin ingresar a ARCA"), así que acá no alcanza con
+     decirlo: se muestra la factura ya emitida CON su CAE, que es la
+     prueba de que pasó por ARCA sin que el usuario entrara. */
+  'fact-sinarca': () =>
+    D('Jueves 24') + Y('Facturale los ochenta mil a Rodríguez.', '10:12 · por voz') +
+    O('Emitida en ARCA a tu nombre. No hiciste falta que entres.') +
+    REC('Factura C · N° 0003-00000127', '$80.000 · Rodríguez SRL', 'CAE 75282963517824 · vence 03/08', 'PDF') +
+    CH('Compartila por WhatsApp', 'Mandala por mail'),
+
+  /* ── Cobro por voz (02/09) ─────────────────────────────────────────
+     Pedido de Martin para la sección de funciones de la web. El repo lo
+     banca: chat.md lista "Generar un link de cobro de Mercado Pago para
+     mandarle a un cliente" entre las 14 acciones ejecutables por voz.
+     ⚠️ Odobi NO cobra: genera el link y lo manda el usuario. Por eso el
+     recibo dice "link listo" y no "cobrado", y el chip es de compartir. */
+  'cobro-voz': () =>
+    D('Martes 26') + Y('Odobi, hacele un link de cobro a Lorena por cuarenta y cinco mil.', '11:04 · por voz') +
+    O('Listo. Mercado Pago, $45.000 a nombre de Lorena.') +
+    REC('Link de cobro creado', 'Mercado Pago · $45.000 · Lorena', 'vence en 7 días', 'Copiar') +
+    O('Te lo paso para que se lo mandes. Cuando pague, te aviso y lo anoto como ingreso.') +
+    CH('Compartilo por WhatsApp', 'Mandalo por mail'),
+
   'fact-voz': () =>
     D('Jueves 24') + Y('Odobi, facturale $80.000 a Rodríguez.', '10:12 · por voz') +
     O('Dale. Para la factura me faltan dos cosas: ¿es factura C? ¿y el CUIT de Rodríguez uso el del registro que tengo (20-28456789-3)?') +
@@ -3103,17 +3152,25 @@ const HILOS = {
   'fact-hitl': () =>
     D('Jueves 24') + O('Queda así. Revisala antes de emitir:') +
     HITL('Factura C', 'ARCA',
-      FILA('Cliente', 'Rodríguez SRL<span class="sub-k">CUIT 20-28456789-3</span>', 'Cambiá') +
-      FILA('Importe', '$80.000', 'Editá') +
-      FILA('Concepto', 'Servicios<span class="sub-k">trabajo de julio</span>', 'Editá'),
+      FILA('Cliente', 'Rodríguez SRL<span class="sub-k">CUIT 20-28456789-3</span>', 'Cambiar') +
+      FILA('Importe', '$80.000', 'Editar') +
+      FILA('Concepto', 'Servicios<span class="sub-k">trabajo de julio</span>', 'Editar'),
       'Se emite en ARCA a tu nombre. Una factura emitida no se borra: si está mal, se anula con una nota de crédito.',
       'Emitir factura', 'Cancelar'),
 
   'fact-cae': () =>
     D('Jueves 24') + Y('Emitila.', '10:13 · por voz') +
     REC('Factura C emitida', 'Nº 0003-00000127 · $80.000 · Rodríguez SRL', 'CAE 75282963517824 · vence 03/08', 'PDF') +
+    /* El tercer chip cierra una incoherencia que ya estaba: la frase ofrece
+       TRES salidas ("¿lo guardo, lo mando por mail o lo compartís vos?") y
+       había sólo dos chips. "Compartir" abre el menú del sistema, que es
+       exactamente lo que documenta facturacion.md — y por ahí el usuario
+       elige WhatsApp, mail o lo que tenga.
+       ⚠️ Odobi NO manda por WhatsApp ni necesita el teléfono del cliente:
+       el contacto lo resuelve el share del celular. Eso evita tener que
+       unir la cartera con Facturación, que hoy funcionan por separado. */
     O('Emitida. Acá está el PDF — ¿lo guardo, lo mando por mail o lo compartís vos?') +
-    CH('Guardalo en Drive', 'Mandalo por mail'),
+    CH('Guardala en Drive', 'Mandala por mail', 'Compartila por WhatsApp'),
 
   'pres-voz': () =>
     D('Lunes 20') + Y('Odobi, armale un presupuesto a Fernández por la reforma del local.', '09:31 · por voz') +
@@ -3124,9 +3181,9 @@ const HILOS = {
     D('Lunes 20') +
     O('Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.') +
     HITL('Presupuesto', 'Docs',
-      FILA('Cliente', 'Fernández', 'Cambiá') +
-      FILA('Ítem', 'Pintura completa<span class="sub-k">1 × $80.000</span>', 'Editá') +
-      FILA('Ítem', 'Cambio de luminarias<span class="sub-k">1 × $65.000</span>', 'Editá') +
+      FILA('Cliente', 'Fernández', 'Cambiar') +
+      FILA('Ítem', 'Pintura completa<span class="sub-k">1 × $80.000</span>', 'Editar') +
+      FILA('Ítem', 'Cambio de luminarias<span class="sub-k">1 × $65.000</span>', 'Editar') +
       FILA('Total', '<b>$145.000</b>', 'suma de ítems'),
       'Queda en tu registro y te armo el Doc. A Fernández no le llega nada hasta que vos se lo mandes.',
       'Guardar presupuesto', 'Descartar'),
