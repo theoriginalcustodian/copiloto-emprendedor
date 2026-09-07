@@ -72,14 +72,22 @@
  * `:root` (sin `data-theme`) trae el default `claro` como fallback antes de que ThemeProvider
  * monte y setee el atributo — evita FOUC a un tema sin estilar.
  *
- * ═══ "BLOQUE NEGRO" — pendiente de decisión de diseño (2026-09-07, Tarea 3) ═══
- * `--bloque-bg`/`--bloque-fg` (la cifra ACCIONABLE del negocio, CLAUDE.md §5) sólo tienen valor de
- * diseño REAL en `claro` (`#1A1512`/blanco, calcado del mockup — 14,59:1). En `oscuro`/`nocturno`
- * ese mismo negro da ~1:1 contra el canvas (ya casi negro): invisible, no repinta nada. Escalado al
- * buzón (`urgente_frontend1-a-planificacion_bloque-negro-sin-definir...`); hasta que se decida,
- * esas 2 pieles usan `--card-bg`/`--text` como placeholder — una card normal, no el énfasis que el
- * diseño pide, pero tampoco un valor inventado sin fundamento. Buscar `--bloque-bg` en los 3
- * bloques de abajo para ver el detalle de cada piel.
+ * ═══ "BLOQUE" de cifra — decidido (2026-09-07, respuesta de planificación al `urgente_` de FE1) ═══
+ * `--bloque-cifra-bg`/`--bloque-cifra-fg` (la cifra ACCIONABLE del negocio, CLAUDE.md §5, Tarea 3):
+ * el rol es "máximo contraste contra el lienzo", NO "negro" — el mockup lo dibujó negro porque su
+ * lienzo era claro. El mismo `#1A1512` da 14,59:1 en `claro` pero ~1:1 en `oscuro`/`nocturno`
+ * (invisible, canvas ya casi negro): **la polaridad se invierte** en esas 2 pieles — bloque CREMA
+ * (`#F7F3EC`, el mismo `--crema` del mockup) con texto oscuro, no al revés. Verificado (no a ojo):
+ * `claro` bg-vs-canvas 14,59:1 · `oscuro` 16,12:1 · `nocturno` 18,04:1 · texto-vs-bloque 16,37:1 en
+ * las 3 (el par es simétrico). Se descartó una superficie apenas elevada en oscuro/nocturno
+ * (1,10:1, sería una card sutil, no un bloque) y un bloque terracota (rompe el 60/30/10 del acento).
+ * ⚠️ El bloque tiene que quedar COMPACTO en oscuro/nocturno (sólo la cifra) — un área clara grande
+ * sobre lienzo casi negro pesa mucho más visualmente que al revés; si crece, es bug de layout, no
+ * de color. `--bloque-cifra-fg-secondary` (label secundario dentro del bloque) y
+ * `--bloque-cifra-chip-bg` (el chip de comparación) no vienen en la decisión textual pero siguen el
+ * mismo criterio: `claro` reusa "arena" (`#E8A088`, ya declarado en el palette) sobre bloque oscuro;
+ * `oscuro`/`nocturno` reusan el `--label` de `claro` (`#6A6457`, 5,31:1) sobre el bloque ahora claro
+ * — mismo texto secundario que ya usa CUALQUIER superficie crema del sistema, no un valor nuevo.
  */
 
 :root {
@@ -122,11 +130,11 @@
      commit): el mockup fuente sólo define esto para UNA piel (`--negro` (`#1A1512`) fijo, sin
      `data-theme`), y ese valor da 14,59:1 acá en claro (funciona) pero ~1:1 en oscuro/nocturno
      (invisible contra un canvas ya casi negro, ver el bloque de esas 2 pieles). Acá en claro el
-     valor real SÍ es seguro: negro real con texto blanco (17,9:1). */
-  --bloque-bg: #1A1512;
-  --bloque-fg: #FFFFFF;
-  --bloque-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
-  --bloque-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
+     valor real: negro con texto crema, calcado del mockup (`--negro`/`--crema`) — 16,37:1. */
+  --bloque-cifra-bg: #1A1512;
+  --bloque-cifra-fg: #F7F3EC;
+  --bloque-cifra-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
+  --bloque-cifra-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
   --amount-size: 46px;
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
@@ -268,11 +276,11 @@
      commit): el mockup fuente sólo define esto para UNA piel (`--negro` (`#1A1512`) fijo, sin
      `data-theme`), y ese valor da 14,59:1 acá en claro (funciona) pero ~1:1 en oscuro/nocturno
      (invisible contra un canvas ya casi negro, ver el bloque de esas 2 pieles). Acá en claro el
-     valor real SÍ es seguro: negro real con texto blanco (17,9:1). */
-  --bloque-bg: #1A1512;
-  --bloque-fg: #FFFFFF;
-  --bloque-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
-  --bloque-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
+     valor real: negro con texto crema, calcado del mockup (`--negro`/`--crema`) — 16,37:1. */
+  --bloque-cifra-bg: #1A1512;
+  --bloque-cifra-fg: #F7F3EC;
+  --bloque-cifra-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
+  --bloque-cifra-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
   --amount-size: 46px;
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
@@ -375,15 +383,14 @@
   --card-border: 1px solid rgba(241, 228, 204, 0.14);
   --card-shadow: inset 0 1px 0 rgba(241, 228, 204, 0.1), 0 12px 28px -12px rgba(0, 0, 0, 0.6);
   --card-blur: none;
-  /* "Bloque negro" — PLACEHOLDER, no el valor de diseño real (ver escalación en la cabecera de este
-     archivo y el `urgente_` de 2026-09-07 al buzón). `#1A1512` de claro da 1,02:1 contra este --bg
-     (invisible). Hasta que planificación decida, usa el MISMO `--card-bg` que una card normal —
-     no inventa un tercer valor, y no se ve "roto" (ni negro invisible ni un color nuevo sin
-     fundamento): simplemente no tiene todavía el énfasis que el diseño pide. */
-  --bloque-bg: #251B11;
-  --bloque-fg: #F1E4CC;
-  --bloque-fg-secondary: var(--label); /* placeholder = tratamiento de card normal, no arena (esa es sólo del bloque real) */
-  --bloque-chip-bg: color-mix(in srgb, var(--label) 15%, transparent);
+  /* "Bloque" de cifra — POLARIDAD INVERTIDA respecto de claro (decisión de planificación, ver
+     cabecera del archivo): acá el máximo contraste contra un canvas ya casi negro es CREMA, no
+     negro. `#F7F3EC` (el mismo `--crema` del mockup) da 16,12:1 contra `--bg` — el negro de claro
+     daría 1,02:1 acá (invisible). Texto oscuro encima, 16,37:1. */
+  --bloque-cifra-bg: #F7F3EC;
+  --bloque-cifra-fg: #1A1512;
+  --bloque-cifra-fg-secondary: #6A6457; /* --label de CLARO reusado — mismo rol (texto secundario sobre crema), 5,31:1 */
+  --bloque-cifra-chip-bg: color-mix(in srgb, var(--bloque-cifra-fg) 8%, transparent);
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
   --amount-sign: #DE7250; /* 20px/400 NORMAL sobre card-bg oscuro — 5,33-5,98:1; B04A2E daría 3,11:1, falla AA acá */
@@ -473,12 +480,12 @@
   --card-border: 1px solid rgba(241, 228, 204, 0.1);
   --card-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
   --card-blur: none;
-  /* "Bloque negro" — PLACEHOLDER, mismo criterio que en `oscuro` (ver esa nota y la escalación en
-     la cabecera del archivo): `#1A1512` da 1,10:1 acá (invisible). Usa `--card-bg` sin inventar. */
-  --bloque-bg: #141009;
-  --bloque-fg: #F1E4CC;
-  --bloque-fg-secondary: var(--label);
-  --bloque-chip-bg: color-mix(in srgb, var(--label) 15%, transparent);
+  /* "Bloque" de cifra — mismo criterio invertido que `oscuro` (ver esa nota y la cabecera del
+     archivo): `#F7F3EC` da 18,04:1 contra `--bg` acá (el mejor margen de las 3 pieles). */
+  --bloque-cifra-bg: #F7F3EC;
+  --bloque-cifra-fg: #1A1512;
+  --bloque-cifra-fg-secondary: #6A6457;
+  --bloque-cifra-chip-bg: color-mix(in srgb, var(--bloque-cifra-fg) 8%, transparent);
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
   --amount-sign: #DE7250; /* 20px/400 NORMAL sobre card-bg oscuro — 5,33-5,98:1; B04A2E daría 3,11:1, falla AA acá */
