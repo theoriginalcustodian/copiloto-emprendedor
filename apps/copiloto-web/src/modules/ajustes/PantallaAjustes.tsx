@@ -8,9 +8,10 @@ import './ajustes.css';
  * hace el wiring del shell, no este componente.
  *
  * Mismas 6 entradas que mobile, mismo orden. El tile `apariencia` queda con su key intacta a
- * propósito: en web el selector de tema YA vive en `AccountScreen` (`useTheme()`/`THEMES`, 4 temas
- * `aurora`/`daylight`/`refined`/`ai`) — un sistema distinto de los 5 `SKINS` de mobile, y no existe
- * un `PantallaSkins` equivalente en web. A dónde apunta ese tile lo decide el shell.
+ * propósito: en web el selector de tema vive en `ajustes/PantallaApariencia.tsx`
+ * (`useTheme()`/`ThemeProvider`, 3 pieles `claro`/`oscuro`/`nocturno`) — un sistema distinto de
+ * los 5 `SKINS` de mobile, y no existe un `PantallaSkins` equivalente en web. A dónde apunta ese
+ * tile lo decide el shell.
  */
 export type AjusteKey =
   | 'perfilNegocio'
