@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
-import { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso } from './ingresos';
+import {
+  borrarIngreso,
+  completarIngreso,
+  listarIngresos,
+  obtenerResumenIngresos,
+  registrarIngreso,
+} from './ingresos';
 import type { AlmacenTokens } from './tokens';
 
 /**
@@ -216,5 +222,53 @@ describe('borrarIngreso', () => {
   it('el 404 cubre «no existe» y «no es borrable» — el backend usa el mismo código', async () => {
     responder = () => respuesta(404, { detail: 'ingreso no encontrado o no es borrable' });
     expect((await borrarIngreso(1)).status).toBe('no_encontrado');
+  });
+});
+
+describe('obtenerResumenIngresos', () => {
+  it('normaliza el resumen y mantiene los montos como string', async () => {
+    responder = () =>
+      respuesta(200, { periodo: '2026-07', total: '100000.00', mes_anterior: '85000.00' });
+
+    const res = await obtenerResumenIngresos('2026-07');
+
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(res.resumen).toEqual({
+      periodo: '2026-07',
+      total: '100000.00',
+      mesAnterior: '85000.00',
+    });
+    // string, no number: la plata no pasa por `float` ni de ida ni de vuelta.
+    expect(typeof res.resumen.total).toBe('string');
+    expect(peticiones.at(-1)?.path).toContain('/ingresos/resumen?periodo=2026-07');
+  });
+
+  it('un mes sin cobros es 200 con total "0.00" — un DATO, no una ausencia', async () => {
+    responder = () => respuesta(200, { periodo: '2026-07', total: '0.00', mes_anterior: null });
+
+    const res = await obtenerResumenIngresos();
+
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(res.resumen.total).toBe('0.00');
+    // `null` y `'0.00'` son cosas distintas: «no hay registros del mes pasado» vs «entró cero».
+    expect(res.resumen.mesAnterior).toBeNull();
+  });
+
+  it('sin período no manda query string — el backend resuelve el mes corriente', async () => {
+    responder = () => respuesta(200, { periodo: '2026-09', total: '0.00', mes_anterior: null });
+    await obtenerResumenIngresos();
+    expect(peticiones.at(-1)?.path).toMatch(/\/ingresos\/resumen$/);
+  });
+
+  it('una respuesta que NO es de este endpoint se reporta no_disponible, no se pinta', async () => {
+    // El caso real: si `/ingresos/resumen` no estuviera declarada ANTES de `/ingresos/{id}`, el
+    // routing devuelve un 422 de `int_parsing` sobre un parámetro que nunca mandamos. Ese cuerpo no
+    // tiene `periodo`, y colapsarlo en un default pintaría una cifra inventada bajo «Cobraste este
+    // mes» — que es exactamente el error que este endpoint viene a arreglar.
+    responder = () => respuesta(200, { detail: [{ type: 'int_parsing', loc: ['path', 'id'] }] });
+
+    expect((await obtenerResumenIngresos()).status).toBe('no_disponible');
   });
 });

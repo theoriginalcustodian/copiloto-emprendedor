@@ -17,7 +17,11 @@ from decimal import Decimal
 
 import pytest
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from afip_comprobante_store import AfipComprobanteStore
+from afip_web import create_afip_app
 from afip_rules import TipoComprobante
 from cobro_store import CobroStore
 from gasto_store import GastoStore
@@ -161,3 +165,100 @@ def test_ADVERSARIAL_top_clientes_de_A_no_incluye_clientes_de_B(conn_de_tenant, 
 
     top_a = CobroStore(cf_a, tenant_a).top_clientes(PERIODO)
     assert len(top_a) == 1 and top_a[0]["nombre"] == "Cliente A" and top_a[0]["total"] == "1000.00"
+
+
+# --- 🔴 GET /ingresos/resumen — la RUTA, no sólo el store -----------------------------------------
+#
+# Los tests de arriba ejercitan `CobroStore.total_periodo` directamente. Eso NO prueba la ruta: el
+# cálculo podía estar perfecto y la ruta no existir (que es exactamente como estuvo hasta hoy — la
+# lógica escrita y huérfana). Estos van por HTTP, con `TestClient`, contra Postgres real y con el
+# store REAL inyectado: sin fakes en el medio, porque lo que se quiere verificar —el filtro por
+# tenant— vive en el `WHERE cliente_id = %s`, y un fake por-tenant lo confirmaría sin que exista.
+
+def _app_ingresos(conn_de_tenant, tenant: str) -> TestClient:
+    """App mínima con el `CobroStore` REAL del tenant dado. `require_tenant` fija quién pregunta."""
+    afip = create_afip_app(
+        require_tenant=lambda: tenant,
+        perfil_store_factory=lambda cid: None,
+        cred_store_factory=lambda cid: None,
+        handoff_factory=lambda cid: None,
+        start_onboarding=lambda *a: "wf",
+        cobro_store_factory=lambda cid: CobroStore(conn_de_tenant(cid), cid),
+    )
+    app = FastAPI()
+    app.mount("/", afip)
+    return TestClient(app)
+
+
+def test_ruta_resumen_devuelve_el_total_real_del_periodo(conn_de_tenant, tenant_a):
+    cf = conn_de_tenant(tenant_a)
+    CobroStore(cf, tenant_a).registrar_suelto(monto="60000.00", fecha=date(2026, 7, 5))
+    CobroStore(cf, tenant_a).registrar_suelto(monto="40000.00", fecha=date(2026, 7, 20))
+
+    r = _app_ingresos(conn_de_tenant, tenant_a).get(f"/ingresos/resumen?periodo={PERIODO}")
+
+    assert r.status_code == 200
+    assert r.json() == {"periodo": PERIODO, "total": "100000.00", "mes_anterior": None}
+
+
+def test_ruta_resumen_NO_es_el_total_de_listar_ingresos(conn_de_tenant, tenant_a):
+    """El motivo de existir del endpoint: `/ingresos` suma las últimas N filas SIN recortar por
+    fecha. Pintar ese número bajo «Cobraste este mes» le miente al usuario. Acá se prueba que los
+    dos números son distintos cuando hay plata de otro mes — si alguien "simplificara" la ruta para
+    devolver el total del listado, esto se pone rojo."""
+    cf = conn_de_tenant(tenant_a)
+    CobroStore(cf, tenant_a).registrar_suelto(monto="70000.00", fecha=date(2026, 7, 10))
+    CobroStore(cf, tenant_a).registrar_suelto(monto="99000.00", fecha=date(2026, 5, 10))  # otro mes
+    cli = _app_ingresos(conn_de_tenant, tenant_a)
+
+    resumen = cli.get(f"/ingresos/resumen?periodo={PERIODO}").json()
+    listado = cli.get("/ingresos").json()
+
+    assert resumen["total"] == "70000.00"          # sólo julio
+    assert Decimal(listado["total"]) == Decimal("169000.00")   # todo lo listado
+    assert resumen["total"] != listado["total"]
+
+
+def test_ruta_resumen_ADVERSARIAL_el_tenant_A_no_ve_la_plata_del_B(conn_de_tenant, tenant_a,
+                                                                  tenant_b):
+    """🔴 Control de aislamiento ejercitado con un actor HOSTIL, no con el happy-path.
+
+    Regla dura del repo: un control de autorización sin test adversarial es un control NO
+    verificado. El happy-path ("cada quien ve lo suyo") pasa igual si el aislamiento no existe —
+    sólo este caso detecta el fail-open. Es el mismo modo de fallo del drift de ADR-013 §3.3.4, que
+    vivió ~2 meses en prod porque ningún test probó "A pide lo de B".
+
+    Acá el endpoint expone **plata agregada**, así que una fuga no es un ID de más: es la
+    facturación de otro negocio.
+
+    ⚠️ **Alcance honesto de este test: verifica el SISTEMA, no aísla la capa de aplicación.** Hay dos
+    barreras encima del mismo dato — el `WHERE cliente_id = %s` de `total_periodo` y el RLS `FORCE`
+    de la tabla. Si alguien borrara el `WHERE`, es probable que RLS tapara la fuga y este test
+    siguiera verde: defense-in-depth enmascara el control negativo de la capa interna (ya nos pasó,
+    Fase D lote C). O sea: **este test prueba que el usuario no ve plata ajena, no prueba que el
+    filtro app-side esté puesto.** Para eso hace falta ejercitarlo con RLS desactivado, que no es
+    algo que un test de la suite deba hacer por su cuenta. Lo dejo dicho para que nadie lea este
+    verde como más garantía de la que da.
+    """
+    CobroStore(conn_de_tenant(tenant_b), tenant_b).registrar_suelto(
+        monto="500000.00", fecha=date(2026, 7, 15))
+    # A no registró NADA en el período.
+    r = _app_ingresos(conn_de_tenant, tenant_a).get(f"/ingresos/resumen?periodo={PERIODO}")
+
+    assert r.status_code == 200
+    # Si el `WHERE cliente_id` faltara, acá aparecerían los 500000 de B.
+    assert r.json()["total"] == "0.00", "🔴 FUGA CROSS-TENANT: el resumen de A trae plata de B"
+
+
+def test_ruta_resumen_no_la_come_la_ruta_del_id(conn_de_tenant, tenant_a):
+    """El registro de `gastos_web.py:105`: si `/ingresos/resumen` se declara DESPUÉS de una ruta
+    `/ingresos/{id}`, el segmento textual "resumen" cae ahí, no parsea como entero y muere con
+    `422 int_parsing`. Se ejercita por HTTP porque es el routing lo que falla, no la función."""
+    r = _app_ingresos(conn_de_tenant, tenant_a).get("/ingresos/resumen")
+    assert r.status_code == 200, f"el routing se comió /resumen: {r.status_code} {r.text[:120]}"
+
+
+def test_ruta_resumen_periodo_invalido_da_400_y_no_toca_la_base(conn_de_tenant, tenant_a):
+    r = _app_ingresos(conn_de_tenant, tenant_a).get("/ingresos/resumen?periodo=julio")
+    assert r.status_code == 400
+    assert "periodo inválido" in r.json()["detail"]
