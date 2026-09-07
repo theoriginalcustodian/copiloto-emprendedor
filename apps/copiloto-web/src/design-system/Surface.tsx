@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 
 import './primitives.css';
 
-export type SurfaceVariant = 'card' | 'tile' | 'bubble';
+export type SurfaceVariant = 'card' | 'tile' | 'bubble' | 'bloque';
 
 export interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
   variant?: SurfaceVariant;
@@ -15,6 +15,9 @@ export interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
  * - card   -> --card-*   (tarjeta HITL, card de durabilidad)
  * - tile   -> --tile-*   (grid de Conexiones, composer)
  * - bubble -> --bubble-* (burbuja de asistente; `blur` aplica el glass real del mock)
+ * - bloque -> --bloque-* ("bloque negro", gramática Monzo, Tarea 3: LA cifra accionable del
+ *   negocio en una función — CLAUDE.md §5, uno por pantalla). Ver el comentario de cabecera de
+ *   `themes.css` — el valor en oscuro/nocturno es un placeholder pendiente de decisión de diseño.
  *
  * El radio asimétrico de la cola de burbuja de chat (`20 20 20 6` / `20 20 6 20`) y el padding
  * exacto de la HITL card (`22px 20px 18px`) son detalle del componente consumidor específico

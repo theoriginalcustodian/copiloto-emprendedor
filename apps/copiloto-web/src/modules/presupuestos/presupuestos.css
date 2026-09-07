@@ -14,19 +14,124 @@
   position: relative;
 }
 
-.presupuestos-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup
+ * fuente (`#presu`). Web no lleva "Volver ‹" (Rail/TabBar propios, contrato "no se toca el modelo
+ * de capas") — el resto del stack (card blanca, baseline, nombre display / período secundario) sí
+ * se porta. Mismos valores que `gastos-screen__stack` (misma anatomía en toda la app). */
+.presupuestos-screen__stack {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
+}
+
+.presupuestos-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.presupuestos-screen__nombre {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.presupuestos-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.presupuestos-screen__actualizar {
+  font-size: 11px;
+}
+
+/* ---------- Rótulo de sección + alta (CLAUDE.md §5) ---------- */
+.presupuestos-screen__fila-lbl {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.presupuestos-screen__title {
-  font-family: var(--font-display);
-  font-size: 27px;
+.presupuestos-screen__lista-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--heading);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Pill de alta — NUNCA un FAB (compite con el mic). Card blanca, label `var(--core)` — mismo
+   criterio que el mockup (`.nuevo`) y que `gastos-screen__pill-nuevo`. */
+.presupuestos-screen__pill-nuevo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--core);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.presupuestos-screen__pill-nuevo svg {
+  flex-shrink: 0;
+}
+
+/* ---------- "Bloque negro" (Tarea 3, gramática Monzo) ----------
+ * Valores calcados de `.resumen`/`.p-lbl`/`.total`/`.comp` en el mockup fuente (`#presu`). El
+ * fondo/color base los pone `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía
+ * interna, mismos números que `gastos-resumen` (misma anatomía).
+ */
+.presupuestos-resumen {
+  display: flex;
+  flex-direction: column;
+}
+
+.presupuestos-resumen__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg-secondary);
+  margin: 0;
+}
+
+.presupuestos-resumen__total {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-fg);
+  margin: 8px 0 12px;
+}
+
+/* La comparación es un CHIP sobre el bloque (mockup: `.resumen .comp`), no un renglón suelto. */
+.presupuestos-resumen__comparacion {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg);
+  background: var(--bloque-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
   margin: 0;
 }
 
@@ -50,20 +155,44 @@
   color: var(--label);
 }
 
-/* ---------- TarjetaPresupuesto ---------- */
+/* ---------- TarjetaPresupuesto ---------- *
+ * Anatomía de fila del mockup fuente (`#presu .fact`, Tarea 3, CLAUDE.md §5): tile-ícono + cuerpo
+ * (título/subtítulo) + derecha (monto/chip). `flex-wrap` para que la fila de badges (FACTURADO/
+ * REEMPLAZADO, ajena al mockup pero funcionalidad existente que no se pierde en el repintado) caiga
+ * debajo sin romper el layout de dos columnas.
+ */
 .tarjeta-presupuesto {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   padding: 13px 14px;
   cursor: pointer;
 }
 
-.tarjeta-presupuesto__fila-superior {
+/* `.tile` del mockup (42×42, `--r-s`, ícono `--negro`) — nombrado `__icono` acá para no chocar con
+ * `uc-surface--tile` (la card entera ya usa la variante `tile` del design-system, otro significado
+ * de "tile"). No hay token "arena-30" portado todavía para un tinte neutral de ícono: se aproxima
+ * con el mismo `color-mix` sobre `--label` que ya usa `formulario-presupuesto__item` en este mismo
+ * archivo, y `--heading` como tinta (equivalente más cercano a `--negro` del mockup). */
+.tarjeta-presupuesto__icono {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--label) 15%, transparent);
+  color: var(--heading);
+}
+
+.tarjeta-presupuesto__cuerpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .tarjeta-presupuesto__nombre {
@@ -75,32 +204,60 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 1;
-}
-
-.tarjeta-presupuesto__total {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--btn-bg);
-  flex-shrink: 0;
 }
 
 .tarjeta-presupuesto__detalle {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--mono);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.tarjeta-presupuesto__derecha {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.tarjeta-presupuesto__total {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Chip de estado — gramática del mockup (`#presu .estado` / `.estado.pend`): neutral por default
+ * (`Enviado`/`Aceptado`/`Rechazado`, tinte `--chip-*` ya usado para chips genéricos en el resto de
+ * la app), y SIN fondo cuando pide atención (`Se enfría`, `--core`, negrita — igual que el mockup
+ * quita el relleno a propósito para no "manchar" la fila con algo que no es el importe). */
+.tarjeta-presupuesto__chip {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--chip-fg);
+  background: var(--chip-bg);
+  border: var(--chip-border);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.tarjeta-presupuesto__chip--atencion {
+  color: var(--core);
+  background: none;
+  border: none;
+  font-weight: 500;
+  padding: 3px 0;
+}
+
 .tarjeta-presupuesto__badges {
+  flex-basis: 100%;
   display: flex;
   gap: 8px;
-  margin-top: 2px;
 }
 
 /* ---------- FormularioPresupuesto ---------- */

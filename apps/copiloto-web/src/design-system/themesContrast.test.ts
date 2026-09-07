@@ -63,6 +63,13 @@ const TEXT_TOKENS = [
   // que entran al gate estricto sin excepción — a diferencia de `--core` (ver nota más abajo).
   '--avatar-fg',
   '--amount-sign',
+  // Sumados por FE1 (Tarea 3, "bloque negro", 2026-09-07): `claro`/`root-default` tienen valor de
+  // diseño REAL (negro/arena calcados del mockup, ver themes.css cabecera) y sí quedan bajo el
+  // gate estricto. `oscuro`/`nocturno` son PLACEHOLDER (`var(--label)`, no hex sólido — escalado a
+  // planificación, sin decidir) y el gate los saltea solo por eso, no porque estén exentos a
+  // propósito: en cuanto tengan un valor de diseño real, entran a medirse como cualquier otro.
+  '--bloque-fg',
+  '--bloque-fg-secondary',
 ] as const;
 
 /**
@@ -92,6 +99,8 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   // ya documentó este archivo para `--chip-fg`/`--user-fg`.
   '--avatar-fg': '--avatar-bg',
   '--amount-sign': '--card-bg',
+  '--bloque-fg': '--bloque-bg',
+  '--bloque-fg-secondary': '--bloque-bg',
   // `--danger-fg` NO tiene fondo propio: se pinta sobre lo que haya debajo, y aparece tanto suelto
   // como dentro de una card. Queda con el default (`--bg`), pero eso NO es "la superficie más
   // exigente": cuál de las dos exige más depende del tema, porque `--card-bg` es más claro que
