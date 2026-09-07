@@ -63,17 +63,29 @@ const PARES: Par[] = [
     min: { claro: 10, oscuro: 10, nocturno: 10 },
   },
   {
-    // 🔴 EL PAR DE LA REGRESIÓN. `acentoTinta` es el acento usado COMO texto (33 usos).
+    // 🔴 EL PAR DE LA REGRESIÓN, ya corregido. `acentoTinta` es el acento usado COMO texto (33 usos)
+    // y **invierte por piel**: #B04A2E en claro, #DE7250 en oscuro/nocturno.
+    //
+    // Los pisos SUBIERON con el fix (eran 4.3/3.2/3.6, el baseline de cuando el token era un valor
+    // único). Ese es el trinquete: la mejora queda protegida y volver al valor fijo rompe el build —
+    // con #B04A2E en las tres, oscuro cae a 3.28 y nocturno a 3.67, por debajo de estos pisos.
+    // **Ese es el control negativo que pidió el DoD**, y está verificado corriéndolo, no razonándolo.
     nombre: 'acentoTinta como texto sobre el lienzo',
     tinta: (t) => t.color.acentoTinta,
     superficie: (t) => t.color.fondo,
-    min: { claro: 4.3, oscuro: 3.2, nocturno: 3.6 },
+    min: { claro: 4.3, oscuro: 5.6, nocturno: 6.29 },
   },
   {
-    // Texto SOBRE una superficie de acento (botón con label, gate de confirmación).
+    // Texto SOBRE una superficie de acento (botón con label, gate de confirmación, swipe de Mi Día).
+    //
+    // 🔴 Se mide contra `acentoSuperficie`, NO contra `acentoTinta`, y la distinción la descubrió
+    // este mismo test: al hacer que `acentoTinta` invirtiera por piel, este caso se puso ROJO en
+    // oscuro y nocturno (3.17 contra un piso de 5.4), porque esos tres botones usaban `acentoTinta`
+    // como fondo. La inversión mejora la tinta sobre el lienzo y arruina la superficie bajo el
+    // texto: son roles opuestos que compartían token. Por eso existe `acentoSuperficie`.
     nombre: 'acentoTexto sobre la superficie de acento',
     tinta: (t) => t.color.acentoTexto,
-    superficie: (t) => t.color.acentoTinta,
+    superficie: (t) => t.color.acentoSuperficie,
     min: { claro: 5.4, oscuro: 5.4, nocturno: 5.4 },
   },
   {
