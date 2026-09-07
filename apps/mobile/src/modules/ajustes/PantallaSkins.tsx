@@ -68,7 +68,7 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
         {activo && (
           <Text
             testID={`skin-card-${nombre}-activo`}
-            style={{ color: paleta.color.acento, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
+            style={{ color: paleta.color.acentoTinta, fontSize: temaActivo.tipo.chico, fontFamily: temaActivo.fuente.uiSemibold }}
           >
             ✓ Activo
           </Text>

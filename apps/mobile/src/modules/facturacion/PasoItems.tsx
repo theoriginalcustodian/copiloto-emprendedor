@@ -124,7 +124,7 @@ export function PasoItems({
         />
       </View>
 
-      <Text testID={`${testID}-total`} style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}>
+      <Text testID={`${testID}-total`} style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}>
         Total: {estado.total}
       </Text>
 

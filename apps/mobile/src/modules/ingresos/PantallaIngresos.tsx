@@ -145,7 +145,7 @@ export function PantallaIngresos() {
               {total != null && (
                 <Text
                   testID="ingresos-total"
-                  style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
+                  style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
                 >
                   {formatearImporte(total)}
                 </Text>
@@ -204,7 +204,7 @@ export function PantallaIngresos() {
                       hitSlop={10}
                       style={pressableStyle(undefined, PRESS_FADE)}
                     >
-                      <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                      <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                         Borrar
                       </Text>
                     </Pressable>

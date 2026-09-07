@@ -316,7 +316,7 @@ export function DetallePresupuesto({
               hitSlop={12}
               style={pressableStyle(undefined, PRESS_FADE)}
             >
-              <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold }}>Cerrar</Text>
+              <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Cerrar</Text>
             </Pressable>
           </View>
 

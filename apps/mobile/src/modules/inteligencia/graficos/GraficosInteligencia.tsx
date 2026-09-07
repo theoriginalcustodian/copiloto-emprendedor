@@ -55,7 +55,7 @@ function Cargando({ testID }: { testID: string }) {
 }
 
 const rotulo = (tema: ReturnType<typeof useTema>) => ({
-  color: tema.color.acento,
+  color: tema.color.acentoTinta,
   fontFamily: tema.fuente.mono,
   fontSize: 11,
   letterSpacing: 1.2,
@@ -81,7 +81,7 @@ function TarjetaFacturacion() {
             {
               id: 'total',
               etiqueta: 'Facturado',
-              color: tema.color.acento,
+              color: tema.color.acentoTinta,
               valores: res.serie.map((p) => p.total),
             },
           ]}
@@ -181,7 +181,7 @@ function TarjetaMargenTrabajo() {
               {
                 id: 'margen',
                 etiqueta: 'Margen',
-                color: tema.color.acento,
+                color: tema.color.acentoTinta,
                 valores: res.trabajos.map((t) => t.margen),
               },
             ]}

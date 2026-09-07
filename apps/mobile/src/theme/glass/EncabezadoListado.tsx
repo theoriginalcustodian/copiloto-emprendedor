@@ -56,7 +56,7 @@ export function EncabezadoListado({ titulo, onPress, style, testID }: Encabezado
       {tapeable && (
         <Text
           testID={testID != null ? `${testID}-flecha` : undefined}
-          style={[styles.flecha, { color: tema.color.acento }]}
+          style={[styles.flecha, { color: tema.color.acentoTinta }]}
         >
           ›
         </Text>

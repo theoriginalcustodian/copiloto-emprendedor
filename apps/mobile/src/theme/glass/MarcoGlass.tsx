@@ -289,7 +289,7 @@ export function MarcoGlass({ titulo, icono, desnudo, encabezadoExtra, testID, ch
                     { right: tema.espacio.md },
                   ]}
                 >
-                  <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold }}>Volver</Text>
+                  <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Volver</Text>
                 </Pressable>
               </View>
               {encabezadoExtra}

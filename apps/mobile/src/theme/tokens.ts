@@ -58,6 +58,15 @@ export interface Tokens {
     texto: string;
     textoTenue: string;
     acento: string;
+    /**
+     * El acento cuando funciona como TINTA (texto sobre lienzo claro) o como superficie que lleva
+     * texto encima. No es un color nuevo: es el 2º stop del acento (`#B04A2E`), el mismo que ya usa
+     * el gradiente. Existe porque `acento` (`#DE7250`) da 2.87:1 contra `acentoTexto` — por debajo
+     * del piso de 3:1 incluso para texto grande. Decisión del operador 2026-09-07 ("todo texto sobre
+     * acento va sobre #B04A2E"). Regla: si el color TOCA una glifo, es `acentoTinta`; si es puro
+     * adorno (borde, spinner, punto, degradé sin texto), es `acento`.
+     */
+    acentoTinta: string;
     acentoTexto: string;
     borde: string;
     peligro: string;
@@ -229,6 +238,7 @@ const BASE_OSCURO: VidrioCrudo = {
 
 interface PaletaCruda extends Partial<VidrioCrudo> {
   accent: string;
+  accentTinta: string;
   accent2: string;
   on: string;
   glow: string;
@@ -342,14 +352,22 @@ const CATEGORICO: readonly string[] = [
 // ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
 // que ya está declarado.
 const ACCENT = '#DE7250';
+// El acento es #DE7250 en adorno, pero NINGÚN texto se apoya sobre él: 2.87:1 contra `ACCENT_ON`
+// no llega ni al piso de 3:1 de texto grande. `ACCENT_TINTA` es el 2º stop del propio acento y da
+// 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
+const ACCENT_TINTA = '#B04A2E';
 const ACCENT2 = '#F8E0D9';
 const ACCENT_ON = '#FBF3E2'; // texto sobre acento, §2.1
 const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
 // extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
 // usuario" en la fila de acento.
-const UB1 = '#DE7250';
-const UB2 = '#B04A2E';
+// 🔴 La burbuja del usuario LLEVA TEXTO encima, así que su gradiente entero tiene que ser legible:
+// arranca en `ACCENT_TINTA` (peor caso 4.92:1 con `ACCENT_ON`) y no en el fill. `UB2` se deriva
+// aplicando al stop nuevo LA MISMA relación por canal que tenía el par viejo (#C2452E→#7E2417:
+// .649/.522/.500) — es derivación de lo ya declarado, no un color inventado. Da 9.43:1.
+const UB1 = ACCENT_TINTA;
+const UB2 = '#722717';
 // Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
 // a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
 const TINT = 'rgba(222,114,80,.16)';
@@ -371,7 +389,7 @@ const RELIEVE_NIVEL5 = TINT;
 
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   claro: {
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#2E2A20',
     // Texto secundario del DoD es `rgba(46,42,32,.55)` — aplanado sobre el fondo da 3.23:1, bajo el
@@ -409,7 +427,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     },
   },
   oscuro: {
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
@@ -436,7 +454,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
   },
   nocturno: {
     // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     dim: '#928777', // reuso del secundario ya ajustado de oscuro — con el fondo más oscuro de
@@ -489,6 +507,7 @@ function construirTokens(p: PaletaCruda): Tokens {
       texto: p.tx,
       textoTenue: p.dim,
       acento: p.accent,
+      acentoTinta: p.accentTinta,
       acentoTexto: p.on,
       borde: aplanarRgbaSobre(bd, fondo),
       peligro: p.peligro,
