@@ -310,7 +310,11 @@
   text-align: left;
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--muted-fg, currentColor);
+  /* `--muted-fg` no existe en ningún tema (censo de auditoría, 2026-09-07): el fallback a
+     `currentColor` heredaba el color del texto circundante, anulando el propósito de "atenuado"
+     (una sugerencia clicable no debería leerse igual que el texto normal). `--label` es el token
+     real que cumple ese rol en el resto del repo (ajustes.css, account.css, admin.css, etc.). */
+  color: var(--label);
   text-decoration: underline;
   cursor: pointer;
 }

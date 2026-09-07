@@ -452,7 +452,7 @@
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 18px;
-  color: var(--btn-bg);
+  color: var(--core);
 }
 
 .detalle-presupuesto__seccion {
