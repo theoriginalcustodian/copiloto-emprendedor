@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chips de prioridad — sin fondo</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --sec:#5C534C;
+    --f-afip:#E4DCEC; --f-presu:#F7E6CD; --f-factura:#DCE3EC; --f-propio:#EDE6DC;
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --s1:8px; --s2:16px; --r-s:14px; --r-m:22px; --r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#E9E6E0;font-family:var(--ui);color:var(--negro);padding:44px 30px 80px}
+  .head{max-width:1400px;margin:0 auto 30px}
+  .head h1{font-family:var(--display);font-size:28px;line-height:1.15;margin-bottom:10px}
+  .head p{font-size:14px;line-height:1.55;color:var(--sec);max-width:960px}
+  .head p + p{margin-top:9px}
+  .head b{color:var(--negro);font-weight:500}
+  .head code{font-family:var(--mono);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+
+  .fila{display:flex;flex-wrap:wrap;gap:32px;max-width:1400px;margin:0 auto;align-items:flex-start}
+  .col{width:326px;flex:none}
+  .col > h2{font-family:var(--display);font-size:17px;margin-bottom:4px}
+  .col > .sub{font-size:13px;color:var(--sec);margin-bottom:16px;line-height:1.45;min-height:54px}
+
+  .caja-tel{background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%);
+            border-radius:34px;border:1px solid #C9C1B4;padding:22px var(--s2);
+            box-shadow:0 20px 50px rgba(26,21,18,.12)}
+  .sec{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 14px}
+  .sec h4{font-family:var(--display);font-size:19px;letter-spacing:-.01em}
+  .sec .cont{font-size:13px;color:var(--sec);font-weight:400;margin-left:7px}
+
+  .exp{background:var(--blanco);border-radius:var(--r-m);padding:0 var(--s2);
+       box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ex{padding:12px 0}
+  .ex + .ex{border-top:1px solid #F0EAE1}
+  .cab{display:flex;gap:12px;align-items:center;min-height:52px}
+  .tile{width:38px;height:38px;border-radius:var(--r-s);display:flex;align-items:center;
+        justify-content:center;flex-shrink:0;color:var(--negro)}
+  .t{flex:1;min-width:0}
+  .t b{display:block;font-size:15px;font-weight:500}
+  .fl{color:#C6BCB0;flex-shrink:0}
+
+  /* ── 0 · CON FONDO (lo que hay hoy) ─────────────────────────── */
+  .p0{display:inline-block;margin-top:5px;font-size:11px;font-weight:500;
+      border-radius:var(--r-pill);padding:5px 11px}
+  .p0.u{background:#F0B7C4;color:#8C2846}
+  .p0.p{background:#F4D690;color:#6E4A08}
+  .p0.t{background:#C3DEC8;color:#28513A}
+  .p0.s{background:#EAE4DA;color:#5C534C}
+
+  /* ── A · SOLO TEXTO, colores actuales ────────────────────────
+     Limpio, pero los cuatro textos tienen luminancia entre .066 y .090:
+     rango 0,023. Pesan igual, así que la jerarquía por urgencia desaparece. */
+  .pA{display:inline-block;margin-top:6px;font-size:12px;font-weight:500}
+  .pA.u{color:#8C2846}  .pA.p{color:#6E4A08}
+  .pA.t{color:#28513A}  .pA.s{color:#5C534C}
+
+  /* ── B · TEXTO + PUNTO ───────────────────────────────────────
+     El punto devuelve algo de señal cromática sin teñir superficie. */
+  .pB{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;font-weight:500}
+  .pB i{width:7px;height:7px;border-radius:99px;display:block;flex-shrink:0}
+  .pB.u{color:#8C2846} .pB.u i{background:#D4547A}
+  .pB.p{color:#6E4A08} .pB.p i{background:#C9992A}
+  .pB.t{color:#28513A} .pB.t i{background:#4E8C67}
+  .pB.s{color:#5C534C} .pB.s i{background:#B9AFA5}
+
+  /* ── C · TEXTO + PESO ESCALONADO ─────────────────────────────
+     La jerarquía la recupera la tipografía, no el color: la urgente en 600 y
+     más oscura, la sin fecha en 400 y más clara. Todas ≥4,5:1 sobre blanco. */
+  .pC{display:inline-block;margin-top:6px;font-size:12px}
+  .pC.u{color:#A32B47;font-weight:600}   /* 7,01:1 */
+  .pC.p{color:#8A6410;font-weight:500}   /* 5,37:1 */
+  .pC.t{color:#3C6B52;font-weight:500}   /* 6,15:1 */
+  .pC.s{color:#7A716A;font-weight:400}   /* 4,78:1 */
+
+  .nota{font-family:var(--mono);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:16px;border-left:2px solid var(--terracota);padding-left:10px}
+  .nota b{color:var(--negro);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Chips de prioridad — probando sin fondo</h1>
+  <p>El fondo pastel daba la jerarquía sola: <b>la luminancia escalonada hacía que lo urgente pesara
+    más</b>. Sacándolo, esa señal se pierde — los cuatro textos oscuros quedan con luminancia entre
+    .066 y .090, un <b>rango de 0,023</b>. Pesan igual.</p>
+  <p>Las tres variantes de abajo recuperan la jerarquía por vías distintas. Todas cumplen AA sobre
+    card blanca.</p>
+</div>
+
+<div class="fila">
+  <div class="col">
+    <h2>0 · Con fondo (hoy)</h2>
+    <div class="sub">La jerarquía la da la luminancia del fondo. Es lo que se siente colorido.</div>
+    <div class="caja-tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="p0 u">Vence en 12 días</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="p0 p">31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-factura)">▤</span><span class="t"><b>Factura Rodríguez SRL</b><span class="p0 p">22 días impaga</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-propio)">✎</span><span class="t"><b>Pasar por el banco</b><span class="p0 s">Lo anotaste vos</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota">cuatro chips + cuatro tiles = <b>ocho manchas de color</b> por pantalla, y la
+      app tiene además el bloque negro y el botón terracota.</div>
+  </div>
+
+  <div class="col">
+    <h2>A · Solo texto</h2>
+    <div class="sub">Lo más limpio. Pierde la jerarquía: los cuatro pesan igual.</div>
+    <div class="caja-tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="pA u">Vence en 12 días</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="pA p">31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-factura)">▤</span><span class="t"><b>Factura Rodríguez SRL</b><span class="pA p">22 días impaga</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-propio)">✎</span><span class="t"><b>Pasar por el banco</b><span class="pA s">Lo anotaste vos</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota">a 12 px y en tonos oscuros, <b>el color casi no se percibe</b>: se lee como
+      texto gris. La urgencia deja de saltar.</div>
+  </div>
+
+  <div class="col">
+    <h2>B · Texto + punto</h2>
+    <div class="sub">El punto devuelve la señal cromática sin teñir superficie.</div>
+    <div class="caja-tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="pB u"><i></i>Vence en 12 días</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="pB p"><i></i>31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-factura)">▤</span><span class="t"><b>Factura Rodríguez SRL</b><span class="pB p"><i></i>22 días impaga</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-propio)">✎</span><span class="t"><b>Pasar por el banco</b><span class="pB s"><i></i>Lo anotaste vos</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota">el punto de 7 px es <b>mucha menos superficie</b> que un chip, pero conserva el
+      color saturado que hace saltar lo urgente. Mismo recurso que el estado de las pantallas de
+      Ajustes — no es un patrón nuevo.</div>
+  </div>
+
+  <div class="col">
+    <h2>C · Texto + peso</h2>
+    <div class="sub">La jerarquía la recupera la tipografía, no el color.</div>
+    <div class="caja-tel">
+      <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4></div>
+      <div class="exp">
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-afip)">▣</span><span class="t"><b>Certificado AFIP</b><span class="pC u">Vence en 12 días</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-presu)">▧</span><span class="t"><b>Presupuesto de Lucía</b><span class="pC p">31 días sin respuesta</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-factura)">▤</span><span class="t"><b>Factura Rodríguez SRL</b><span class="pC p">22 días impaga</span></span><span class="fl">›</span></div></div>
+        <div class="ex"><div class="cab"><span class="tile" style="background:var(--f-propio)">✎</span><span class="t"><b>Pasar por el banco</b><span class="pC s">Lo anotaste vos</span></span><span class="fl">›</span></div></div>
+      </div>
+    </div>
+    <div class="nota">urgente en 600 y más oscuro; "lo anotaste vos" en 400 y más claro, para que se
+      hunda. <b>Funciona en blanco y negro</b>, que es la prueba de que la jerarquía no depende del
+      color (WCAG 1.4.1).</div>
+  </div>
+</div>
+</body>
+</html>

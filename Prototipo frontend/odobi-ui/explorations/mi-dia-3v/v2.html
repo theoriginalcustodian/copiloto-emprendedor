@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi día · v2 — paleta pastel y agrupación por día</title>
+<style>
+  @font-face{font-family:"PJ";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --sec:#5C534C;
+
+    /* ── PRIORIDAD · pastel (fondo) + su texto oscuro ──────────────
+       El negro no es urgencia: es estructura. La urgencia necesita su propia
+       escala, y en pastel para no competir con la terracota, que es el acento
+       saturado del sistema. Cada chip lleva SU texto oscuro de la misma familia:
+       así el contraste vive dentro del chip y no depende del fondo de la card.
+       ⚠️ La v1 fallaba por una razón medible: las cuatro tenían luminancia entre
+       0,740 y 0,808 — un rango de 0,068. Se parecían porque ERAN casi el mismo valor,
+       aunque el matiz cambiara. Ahora el rango es 0,273 y está escalonado POR URGENCIA:
+       más urgente = más peso visual. El orden de lectura sale solo. */
+    --p-urge:#F0B7C4;  --p-urge-t:#8C2846;   /* L .564 · 4,90:1 ✅ · hue 346° (sep 28,1° de la terracota) */
+    --p-pron:#F4D690;  --p-pron-t:#6E4A08;   /* L .693 · 5,62:1 ✅ */
+    --p-tran:#C3DEC8;  --p-tran-t:#28513A;   /* L .680 · 6,27:1 ✅ */
+    --p-sin :#EAE4DA;  --p-sin-t :#5C534C;   /* L .780 · 5,94:1 ✅ */
+
+    /* ── FUNCIÓN · tile pastel + ícono negro tostado (≥13,5:1) ──── */
+    --f-cobros:#DCE8DC; --f-factura:#DCE3EC; --f-afip:#E4DCEC;
+    --f-presu:#F7E6CD;  --f-clientes:#F8E2DB; --f-propio:#EDE6DC;
+
+    --display:"PJ","Arial Black",sans-serif;
+    --ui:"Inter",-apple-system,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+    --s1:8px; --s2:16px; --s3:24px;
+    --r-s:14px; --r-m:22px; --r-xl:26px; --r-pill:999px;
+    --fs-cap:13px; --fs-body:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#E9E6E0;font-family:var(--ui);color:var(--negro);padding:44px 30px 70px}
+  .head{max-width:1340px;margin:0 auto 32px}
+  .head h1{font-family:var(--display);font-size:28px;line-height:1.15;margin-bottom:10px}
+  .head p{font-size:14px;line-height:1.55;color:var(--sec);max-width:920px}
+  .head p + p{margin-top:9px}
+  .head b{color:var(--negro);font-weight:500}
+
+  /* muestrario de paleta */
+  .paleta{max-width:1340px;margin:0 auto 40px;display:flex;flex-wrap:wrap;gap:26px}
+  .grupo{background:var(--blanco);border-radius:var(--r-m);padding:20px 22px;
+         box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .grupo h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sec);margin-bottom:14px}
+  .muestras{display:flex;gap:10px;flex-wrap:wrap}
+  .m{border-radius:var(--r-s);padding:12px 14px;min-width:132px}
+  .m b{display:block;font-size:14px;font-weight:500}
+  .m span{display:block;font-family:var(--mono);font-size:10px;margin-top:4px;opacity:.8}
+  .mf{display:flex;flex-direction:column;align-items:center;gap:7px;width:88px}
+  .mf .t{width:46px;height:46px;border-radius:var(--r-s);display:flex;align-items:center;
+         justify-content:center;color:var(--negro)}
+  .mf small{font-size:11px;color:var(--sec);text-align:center;line-height:1.3}
+
+  .fila{display:flex;flex-wrap:wrap;gap:38px;max-width:1340px;margin:0 auto;align-items:flex-start}
+  .col{width:390px;flex:none}
+  .col > h2{font-family:var(--display);font-size:17px;margin-bottom:4px}
+  .col > .sub{font-size:13px;color:var(--sec);margin-bottom:14px;line-height:1.45}
+
+  .tel{width:390px;height:800px;border-radius:40px;border:1px solid #C9C1B4;overflow:hidden;
+       box-shadow:0 24px 64px rgba(26,21,18,.14);display:flex;flex-direction:column;
+       background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  .tope{height:26px;flex-shrink:0}
+  .hd{display:flex;align-items:center;justify-content:flex-end;padding:2px var(--s2) var(--s1);flex-shrink:0}
+  .av{position:relative;width:34px;height:34px;border-radius:99px;background:var(--blanco);
+      box-shadow:0 1px 4px rgba(26,21,18,.06);color:var(--sec);font-size:14px;font-weight:500;
+      display:flex;align-items:center;justify-content:center}
+  .av i{position:absolute;top:0;right:0;width:10px;height:10px;border-radius:99px;
+        background:var(--terracota-prof);border:2px solid var(--crema)}
+  .body{flex:1;min-height:0;overflow-y:auto;padding:0 var(--s2) var(--s2);
+        display:flex;flex-direction:column;gap:var(--s2)}
+  .body::-webkit-scrollbar{display:none}
+
+  .stack{position:relative;padding-top:52px;flex:none}
+  .atras{position:absolute;top:0;left:0;right:0;height:calc(50% + 26px);z-index:0;
+         background:var(--blanco);border-radius:var(--r-xl);padding:15px 20px;
+         box-shadow:0 3px 14px rgba(26,21,18,.06);
+         display:flex;align-items:baseline;justify-content:space-between}
+  .atras .wm{font-family:var(--display);font-size:20px;color:var(--terracota)}
+  .atras .fch{font-size:var(--fs-cap);color:var(--sec)}
+  .port{position:relative;z-index:1;background:var(--negro);color:var(--crema);
+        border-radius:var(--r-xl);padding:26px 20px 22px;box-shadow:0 -2px 10px rgba(26,21,18,.10)}
+  .port .l{display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-cap);color:var(--terracota)}
+  .port .l svg{fill:var(--arena)}
+  .port .n{font-family:var(--display);font-size:40px;line-height:1;letter-spacing:-.02em;margin:8px 0 12px}
+  .port .d{display:inline-block;font-size:var(--fs-cap);background:rgba(247,243,236,.10);
+           border-radius:var(--r-pill);padding:5px 11px;vertical-align:super}
+  .port .rows{display:flex;gap:var(--s1);margin-top:var(--s2)}
+  .port .rows div{flex:1;background:rgba(247,243,236,.07);border-radius:var(--r-s);padding:10px 12px}
+  .port .rows span{display:block;font-size:var(--fs-cap);color:var(--arena)}
+  .port .rows b{font-size:var(--fs-body);font-weight:500}
+
+  /* ── encabezado de sección GRANDE (patrón CARROT Weather) ──────
+     Reemplaza el rótulo en versalitas de 11 px. El día se lee como un documento
+     y no como tres widgets apilados; y el mismo patrón escala a "mañana" y a
+     "esta semana" sin cambiar de pantalla. */
+  .sec{display:flex;align-items:baseline;justify-content:space-between;padding:6px 4px 0;flex:none}
+  .sec h4{font-family:var(--display);font-size:19px;letter-spacing:-.01em}
+  .sec a{font-size:var(--fs-cap);font-weight:500;color:var(--terracota-prof);text-decoration:none}
+  .sec .cont{font-size:var(--fs-cap);color:var(--sec);font-weight:400;margin-left:7px}
+
+  .lista{background:var(--blanco);border-radius:var(--r-m);padding:2px var(--s2);flex:none;
+         box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .ev{display:flex;gap:13px;align-items:flex-start;padding:13px 0}
+  .ev + .ev{border-top:1px solid #F0EAE1}
+  .ev .h{font-size:var(--fs-cap);color:var(--sec);width:42px;flex-shrink:0;padding-top:2px}
+  .ev .t{flex:1;min-width:0}
+  .ev .t b{display:block;font-size:var(--fs-body);font-weight:500}
+  .ev .t span{display:block;font-size:var(--fs-cap);color:var(--sec);margin-top:1px}
+  /* Fila destacada (patrón Klook): el chip a full sirve para 11 px, no para una banda
+     de ancho completo. Mismo matiz 346°, mucho más lavado: contra la card blanca queda
+     en 1,17:1 — se distingue sin gritar. Marca "esto está pasando", no una alarma. */
+  /* ⚠️ REGLA DE RADIOS CONCÉNTRICOS: radio interior = radio exterior − distancia al borde.
+     Esta fila sobresale 12 px dentro de una .lista con 16 de padding, así que queda a
+     4 px del borde. Su radio tiene que ser 22 − 4 = 18, no 14: con 14 las curvas no son
+     concéntricas y la banda se ve "metida" en una caja que no la contiene bien. */
+  .ev.ahora{background:#FAE9ED;margin:0 -12px;padding:13px 12px;border-radius:18px}
+  .ev.ahora + .ev{border-top:none}
+
+  .card{background:var(--blanco);border-radius:var(--r-m);padding:var(--s2);flex:none;
+        box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  .card .top{display:flex;gap:12px;align-items:flex-start}
+  .tile{width:42px;height:42px;border-radius:var(--r-s);display:flex;align-items:center;
+        justify-content:center;flex-shrink:0;color:var(--negro)}
+  .card .txt{flex:1;min-width:0}
+  .card .txt b{display:block;font-size:var(--fs-body);font-weight:500}
+  .card .txt p{font-size:var(--fs-cap);color:var(--sec);line-height:1.5;margin-top:4px}
+  .chip{display:inline-block;margin-top:10px;font-size:11px;font-weight:500;
+        border-radius:var(--r-pill);padding:5px 11px}
+  .c-urge{background:var(--p-urge);color:var(--p-urge-t)}
+  .c-pron{background:var(--p-pron);color:var(--p-pron-t)}
+  .c-tran{background:var(--p-tran);color:var(--p-tran-t)}
+  .c-sin {background:var(--p-sin); color:var(--p-sin-t)}
+  /* El botón pesaba demasiado dentro de la card: 46 px de alto y 20 de padding lo
+     ponían al nivel del contenido, cuando es una salida y no el tema de la tarjeta. */
+  .acc{display:inline-flex;align-items:center;border-radius:var(--r-pill);
+       background:var(--terracota);color:#fff;font-weight:500}
+  .acc.a{height:46px;padding:0 20px;margin-top:14px;font-size:16px}   /* actual */
+  .acc.b{height:38px;padding:0 16px;margin-top:20px;font-size:15px}   /* ELEGIDA 20/08 */
+  .acc.c{height:34px;padding:0 14px;margin-top:10px;font-size:14px}   /* chico */
+  /* cuarta vía: sin fill. El acento queda sólo en el texto (5,43:1 ✅) */
+  .acc.d{height:34px;padding:0 0;margin-top:10px;font-size:15px;
+         background:none;color:var(--terracota-prof);font-weight:500}
+
+  .composer{flex-shrink:0;padding:var(--s1) var(--s2) var(--s2);display:flex;gap:var(--s1);align-items:center}
+  .campo{flex:1;height:52px;background:var(--blanco);border-radius:var(--r-pill);display:flex;
+         align-items:center;padding:0 var(--s2);color:var(--sec);font-size:var(--fs-body);
+         box-shadow:0 3px 12px rgba(26,21,18,.08)}
+  .mic{width:52px;height:52px;border-radius:99px;background:var(--terracota);flex-shrink:0;
+       display:flex;align-items:center;justify-content:center;color:#fff;
+       box-shadow:0 4px 14px rgba(222,114,80,.4)}
+
+  /* ── sheet (patrón Alta): detalle sin cambiar de pantalla ────── */
+  .sheet-wrap{position:relative;flex:1;min-height:0}
+  .scrim{position:absolute;inset:0;background:rgba(26,21,18,.28);z-index:5}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:6;background:var(--blanco);
+         border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px var(--s2) var(--s3);
+         box-shadow:0 -12px 40px rgba(26,21,18,.18)}
+  .grip{width:36px;height:4px;border-radius:3px;background:#E0D8CD;margin:0 auto 16px}
+  .sheet h4{font-family:var(--display);font-size:21px;margin-bottom:4px}
+  .kv{display:flex;justify-content:space-between;align-items:center;padding:13px 0;font-size:15px}
+  .kv + .kv{border-top:1px solid #F0EAE1}
+  .kv span{color:var(--sec)}
+  .sheet .acc{width:100%;justify-content:center;margin-top:var(--s2)}
+
+  .nota{font-family:var(--mono);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:14px;border-left:2px solid var(--terracota);padding-left:10px}
+  .nota b{color:var(--negro);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Mi día · v2 — paleta pastel y agrupación por día</h1>
+  <p><b>Dos correcciones sobre la v1.</b> El negro dejó de significar urgencia: es estructura, y usarlo
+    para prioridad lo vaciaba igual que cuando vestía un mail. La urgencia ahora tiene <b>escala
+    propia en pastel</b>, que no compite con la terracota porque no está saturada.</p>
+  <p><b>Y el layout cambió por lo que muestran las referencias:</b> CARROT Weather agrupa con
+    <b>encabezados de día grandes</b> en un scroll continuo — se lee como un documento, no como tres
+    widgets apilados —, Klook <b>tiñe la fila activa</b> dentro de la lista en vez de sacarla, y Alta
+    resuelve el detalle con un <b>sheet</b> que sube, sin cambiar de pantalla.</p>
+</div>
+
+<div class="paleta">
+  <div class="grupo">
+    <h3>Prioridad — escalonada por urgencia (rango L 0,273)</h3>
+    <div class="muestras">
+      <span class="m" style="background:var(--p-urge);color:var(--p-urge-t)"><b>Vence en 12 días</b><span>#EDAE9E · L .507 · 5,61:1</span></span>
+      <span class="m" style="background:var(--p-pron);color:var(--p-pron-t)"><b>31 días sin respuesta</b><span>#F4D690 · L .693 · 5,62:1</span></span>
+      <span class="m" style="background:var(--p-tran);color:var(--p-tran-t)"><b>Al día</b><span>#C3DEC8 · L .680 · 6,27:1</span></span>
+      <span class="m" style="background:var(--p-sin);color:var(--p-sin-t)"><b>Sin fecha</b><span>#EAE4DA · L .780 · 5,94:1</span></span>
+    </div>
+  </div>
+  <div class="grupo">
+    <h3>Función — tile del ícono</h3>
+    <div class="muestras">
+      <span class="mf"><span class="t" style="background:var(--f-cobros)">◐</span><small>Cobros</small></span>
+      <span class="mf"><span class="t" style="background:var(--f-factura)">▤</span><small>Facturación</small></span>
+      <span class="mf"><span class="t" style="background:var(--f-afip)">▣</span><small>AFIP</small></span>
+      <span class="mf"><span class="t" style="background:var(--f-presu)">▧</span><small>Presupuestos</small></span>
+      <span class="mf"><span class="t" style="background:var(--f-clientes)">◑</span><small>Clientes</small></span>
+      <span class="mf"><span class="t" style="background:var(--f-propio)">✎</span><small>Tuyo</small></span>
+    </div>
+  </div>
+</div>
+
+
+<div class="fila" style="margin-bottom:44px">
+  <div class="col" style="width:auto">
+    <h2>Peso del botón — cuatro tallas</h2>
+    <div class="sub">Mismo contenido, sólo cambia el pill. ¿Cuál deja la acción disponible sin robarle la pantalla al aviso?</div>
+    <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+      <div style="width:330px"><div class="card" style="margin-bottom:14px">
+          <div class="top">
+            <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+            <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación entera.</p>
+              <span class="chip c-urge">Vence en 12 días</span></span>
+          </div>
+          <div class="acc b">Renovarlo</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--sec);margin:-6px 0 20px 2px">A · 46 px alto · pad 20 · 16 px   (actual)</div></div>
+      <div style="width:330px"><div class="card" style="margin-bottom:14px">
+          <div class="top">
+            <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+            <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación entera.</p>
+              <span class="chip c-urge">Vence en 12 días</span></span>
+          </div>
+          <div class="acc b">Renovarlo</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--sec);margin:-6px 0 20px 2px">B · 38 px alto · pad 16 · 15 px</div></div>
+      <div style="width:330px"><div class="card" style="margin-bottom:14px">
+          <div class="top">
+            <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+            <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación entera.</p>
+              <span class="chip c-urge">Vence en 12 días</span></span>
+          </div>
+          <div class="acc c">Renovarlo</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--sec);margin:-6px 0 20px 2px">C · 34 px alto · pad 14 · 14 px</div></div>
+      <div style="width:330px"><div class="card" style="margin-bottom:14px">
+          <div class="top">
+            <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+            <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación entera.</p>
+              <span class="chip c-urge">Vence en 12 días</span></span>
+          </div>
+          <div class="acc d">Renovarlo</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--sec);margin:-6px 0 20px 2px">D · sin fill — sólo texto #B04A2E (5,43:1)</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="fila">
+
+  <!-- ══════════ A · MI DÍA ══════════ -->
+  <div class="col">
+    <h2>A · Mi día</h2>
+    <div class="sub">Encabezados de día grandes, en un scroll continuo.</div>
+    <div class="tel">
+      <div class="tope"></div>
+      <div class="hd"><span class="av">M<i></i></span></div>
+      <div class="body">
+        <div class="stack">
+          <div class="atras"><span class="wm">Odobi</span><span class="fch">Martes 18 de agosto</span></div>
+          <div class="port">
+            <div class="l">En caja <svg width="15" height="15" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+            <div class="n">$286.000 <span class="d">−18%</span></div>
+            <div class="rows">
+              <div><span>Entró</span><b>$412.000</b></div>
+              <div><span>Salió</span><b>$126.000</b></div>
+              <div><span>Por cobrar</span><b>$225.000</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec"><h4>Ahora<span class="cont">10:42</span></h4><a>Ver agenda ›</a></div>
+        <div class="lista">
+          <div class="ev ahora"><span class="h">09:00</span><span class="t"><b>Obra casa Díaz</b><span>Termina en 20 min</span></span></div>
+          <div class="ev"><span class="h">14:30</span><span class="t"><b>Llamar a Lucía</b><span>Recordatorio</span></span></div>
+          <div class="ev"><span class="h">18:00</span><span class="t"><b>Cierre de caja</b><span>Todos los días</span></span></div>
+        </div>
+
+        <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4><a>Ver tablero ›</a></div>
+        <div class="card">
+          <div class="top">
+            <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+            <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación entera.</p>
+              <span class="chip c-urge">Vence en 12 días</span></span>
+          </div>
+          <div class="acc b">Renovarlo</div>
+        </div>
+        <div class="card">
+          <div class="top">
+            <span class="tile" style="background:var(--f-presu)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M168,152a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,152Zm-8-40H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm56-64V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V48A16,16,0,0,1,56,32H92.26a47.92,47.92,0,0,1,71.48,0H200A16,16,0,0,1,216,48ZM96,64h64a32,32,0,0,0-64,0ZM200,48H173.25A47.93,47.93,0,0,1,176,64v8a8,8,0,0,1-8,8H88a8,8,0,0,1-8-8V64a47.93,47.93,0,0,1,2.75-16H56V216H200Z"/></svg></span>
+            <span class="txt"><b>Presupuesto de Lucía</b><p>Los que pasan el mes casi no se cierran.</p>
+              <span class="chip c-pron">31 días sin respuesta</span></span>
+          </div>
+          <div class="acc b">Escribirle</div>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="campo">Escribí, o hablá…</div>
+        <div class="mic"><svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="M128,176a48.05,48.05,0,0,0,48-48V64a48,48,0,0,0-96,0v64A48.05,48.05,0,0,0,128,176ZM96,64a32,32,0,0,1,64,0v64a32,32,0,0,1-64,0Zm40,143.6V240a8,8,0,0,1-16,0V207.6A80.11,80.11,0,0,1,48,128a8,8,0,0,1,16,0,64,64,0,0,0,128,0,8,8,0,0,1,16,0A80.11,80.11,0,0,1,136,207.6Z"/></svg></div>
+      </div>
+    </div>
+    <div class="nota"><b>"Ahora" en vez de "Hoy":</b> el encabezado dice el momento y la lista sólo
+      muestra lo que queda por delante. Lo que está pasando se tiñe dentro de la lista
+      (patrón Klook), no se saca aparte.</div>
+  </div>
+
+  <!-- ══════════ B · AGENDA ══════════ -->
+  <div class="col">
+    <h2>B · Agenda</h2>
+    <div class="sub">Un solo scroll: hoy, mañana, la semana. Sin selector.</div>
+    <div class="tel">
+      <div class="tope"></div>
+      <div class="hd" style="justify-content:flex-start;padding-left:var(--s2)">
+        <span style="display:inline-flex;align-items:center;gap:4px;margin-left:-6px;font-size:16px;font-weight:500;color:var(--terracota-prof)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Volver</span>
+      </div>
+      <div class="body">
+        <div style="padding:6px 4px 0">
+          <h3 style="font-family:var(--display);font-size:30px;letter-spacing:-.02em">Agenda</h3>
+          <p style="font-size:15px;color:var(--sec);margin-top:8px;line-height:1.5">Tus eventos y lo que vence, en la misma línea.</p>
+        </div>
+
+        <div class="sec"><h4>Hoy<span class="cont">martes 18</span></h4></div>
+        <div class="lista">
+          <div class="ev ahora"><span class="h">09:00</span><span class="t"><b>Obra casa Díaz</b><span>Termina en 20 min</span></span></div>
+          <div class="ev"><span class="h">14:30</span><span class="t"><b>Llamar a Lucía</b><span>Google Calendar</span></span></div>
+          <div class="ev"><span class="h">18:00</span><span class="t"><b>Cierre de caja</b><span>Todos los días</span></span></div>
+        </div>
+
+        <div class="sec"><h4>Mañana<span class="cont">miércoles 19</span></h4></div>
+        <div class="lista">
+          <div class="ev"><span class="h">10:00</span><span class="t"><b>Entrega Gómez SRL</b><span>Google Calendar</span></span></div>
+          <div class="ev"><span class="h">—</span><span class="t"><b>Cobrar a Rodríguez</b><span>$80.000 · desde el tablero</span></span></div>
+        </div>
+
+        <div class="sec"><h4>Esta semana<span class="cont">2 vencen</span></h4></div>
+        <div class="lista">
+          <div class="ev"><span class="h">28</span><span class="t"><b>CAE de la factura A-0036</b><span>Vence</span></span></div>
+          <div class="ev"><span class="h">30</span><span class="t"><b>Certificado AFIP</b><span>Vence</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="nota"><b>sin selector Hoy/Semana:</b> los encabezados de día hacen el trabajo del
+      selector y además muestran el futuro sin que el usuario lo pida. Un control menos. Lo que no
+      tiene hora se muestra con "—" en la columna: <b>no se le inventa una</b>.</div>
+  </div>
+
+  <!-- ══════════ C · SHEET ══════════ -->
+  <div class="col">
+    <h2>C · Detalle en sheet</h2>
+    <div class="sub">Tocás una tarjeta y sube el detalle. No cambia de pantalla.</div>
+    <div class="tel">
+      <div class="tope"></div>
+      <div class="hd"><span class="av">M<i></i></span></div>
+      <div class="sheet-wrap">
+        <div class="body" style="height:100%">
+          <div class="sec"><h4>Para hoy<span class="cont">4 cosas</span></h4><a>Ver tablero ›</a></div>
+          <div class="card">
+            <div class="top">
+              <span class="tile" style="background:var(--f-afip)"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/></svg></span>
+              <span class="txt"><b>Certificado AFIP</b><p>Si vence, se te cae la facturación.</p>
+                <span class="chip c-urge">Vence en 12 días</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grip"></div>
+          <h4>Certificado AFIP</h4>
+          <span class="chip c-urge" style="margin-bottom:10px">Vence el 30 de agosto</span>
+          <div class="kv"><span>Qué pasa si vence</span><b>No podés facturar</b></div>
+          <div class="kv"><span>Detectado</span><b>Hoy, 8:00</b></div>
+          <div class="kv"><span>Estado</span><b>Para hoy</b></div>
+          <div class="kv"><span>Agendarlo</span><b style="color:var(--terracota-prof)">Elegir hora ›</b></div>
+          <div class="acc b">Renovarlo ahora</div>
+        </div>
+      </div>
+    </div>
+    <div class="nota"><b>el sheet resuelve dos cosas a la vez:</b> da el detalle que el repo pide al
+      tocar la tarjeta, y es <b>la alternativa de un solo puntero</b> que WCAG 2.5.1 exige para el
+      swipe — avanzar de etapa y agendar viven acá, sin gesto.</div>
+  </div>
+
+</div>
+</body>
+</html>

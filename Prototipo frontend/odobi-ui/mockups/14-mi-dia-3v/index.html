@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>14 · Mi día — números, agenda y tablero</title>
+<style>
+  @font-face{font-family:"PlusJakartaSans";src:url("../../assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
+  :root{
+    --blanco:#FFFFFF; --crema:#F7F3EC; --negro:#1A1512;
+    --terracota:#DE7250; --terracota-prof:#B04A2E; --arena:#E8A088; --arena-30:#F8E2DB;
+    --border:#E8E2D9; --sec:#5C534C; --lapiz:#8A7F73;
+    --font-display:"PlusJakartaSans","Arial Black",sans-serif;
+    --font-ui:"Inter",-apple-system,"Helvetica Neue",sans-serif;
+    --font-hand:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+    --marco:290; --vp:393;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#E9E6E0;font-family:var(--font-ui);color:var(--negro);padding:48px 32px 72px}
+  .page-head{max-width:1280px;margin:0 auto 44px}
+  .page-head h1{font-family:var(--font-display);font-size:28px;line-height:32px;margin-bottom:10px}
+  .page-head p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px}
+  .page-head p + p{margin-top:10px}
+  .page-head code{font-family:var(--font-hand);font-size:12px;background:#DCD6CC;padding:1px 5px;border-radius:4px}
+  .page-head strong{color:var(--negro)}
+
+  .lane{max-width:1240px;margin:0 auto 60px}
+  .lane-tag{display:inline-block;font-size:12px;font-weight:500;letter-spacing:.08em;
+            text-transform:uppercase;background:var(--negro);color:var(--crema);
+            padding:6px 14px;border-radius:999px}
+  .lane h2{font-family:var(--font-display);font-size:20px;margin:14px 0 6px}
+  .lane > p{font-size:14px;line-height:21px;color:var(--sec);max-width:900px;margin-bottom:22px}
+  .fila{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+
+  .tel{width:calc(var(--marco) * 1px);flex:none}
+  .marco{position:relative;width:calc(var(--marco) * 1px);aspect-ratio:1/1}
+  .marco img{width:100%;height:100%;display:block;position:relative;z-index:1;pointer-events:none}
+  .pantalla{position:absolute;left:31.30%;top:8.95%;width:37.75%;height:81.80%;
+            overflow:hidden;z-index:2;border-radius:calc(var(--marco) * .055px);background:var(--crema)}
+  .pantalla iframe{width:calc(var(--vp) * 1px);height:calc(var(--vp) * 2.167px);border:0;
+                   transform-origin:0 0;transform:scale(calc(var(--marco) * .3775 / var(--vp)))}
+  .marco .isla{position:absolute;z-index:3;left:50%;transform:translateX(-50%);
+               top:calc(var(--marco) * .105px);width:calc(var(--marco) * .092px);
+               height:calc(var(--marco) * .027px);background:#111;border-radius:99px}
+  .tel > b{display:block;font-size:15px;font-weight:500;margin-top:2px}
+  .tel .url{display:inline-block;margin-top:6px;font-family:var(--font-hand);font-size:11px;
+            color:var(--terracota-prof);background:var(--arena-30);border-radius:999px;
+            padding:3px 9px;text-decoration:none}
+
+  /* Anotación: mono, nunca la tipografía de la UI, para que jamás se confunda con ella */
+  .hand{font-family:var(--font-hand);font-size:11px;line-height:15px;color:var(--sec);
+        margin-top:12px;border-left:2px solid var(--arena);padding-left:10px}
+  .hand b{color:var(--negro);font-weight:500}
+  .hand.accent{border-left-color:var(--terracota)}
+
+  .caja{background:var(--negro);color:var(--crema);border-radius:14px;padding:24px 26px;
+        max-width:1240px;margin:0 auto 60px}
+  .caja .eyebrow{font-family:var(--font-hand);font-size:11px;letter-spacing:.14em;
+                 text-transform:uppercase;color:var(--arena)}
+  .caja p{color:#DCD3C6;max-width:92ch;line-height:1.65;margin-top:10px;font-size:14px}
+  .caja strong{color:var(--crema)}
+  table{border-collapse:collapse;width:100%;max-width:1240px;margin:0 auto 60px;font-size:13.5px;background:var(--blanco);border-radius:14px;overflow:hidden}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:var(--font-hand);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec);font-weight:400;background:#FBF8F3}
+  td strong{font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>14 · Mi día — números, agenda y tablero</h1>
+  <p><strong>Hallazgo que reencuadró el problema:</strong> de las tres verticales que se plantearon,
+    <strong>dos ya existían</strong>. El resumen es la portada más el detector de 8 reglas, y el
+    tablero <strong>es Mi día</strong> — <code>kb-usuario/midia.md</code> lo define como kanban con
+    tres pestañas, swipe para avanzar y control por voz. <strong>Sólo el calendario era nuevo.</strong></p>
+  <p>Los tres bloques van <strong>en el orden en que se decide una mañana</strong>: cuánto tengo
+    (sin la caja ninguna prioridad se evalúa) → qué es inamovible (la hora no se negocia) → qué debo
+    atender (lo único que sí se reordena).</p>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">1 · Una pantalla, tres bloques</span>
+  <h2>El resumen tiene que alcanzar para decidir la mañana</h2>
+  <p>Si obliga a abrir las tres pantallas, falló. Por eso máximo 3 ítems por bloque: el contador dice
+     cuánto hay sin mostrarlo.</p>
+  <div class="fila" id="f1"></div>
+</div>
+
+<div class="lane">
+  <span class="lane-tag">2 · El calendario, la única vertical nueva</span>
+  <h2>Lo que hace reconocible a un calendario, no su estética</h2>
+  <p>Se adopta de Google Calendar la columna de horas, los bloques proporcionales a la duración y la
+     línea del ahora. No se adopta el color por calendario —rompería el 60/30/10— ni la vista mes,
+     que en mobile no contesta "qué hago hoy".</p>
+  <div class="fila" id="f2"></div>
+</div>
+
+<table>
+  <tr><th>Elemento</th><th>Decisión</th><th>Fundamento</th><th>Alternativa descartada</th></tr>
+  <tr><td><strong>Eje del tablero</strong></td><td>Estado: Para hoy · Haciendo · Hechas</td>
+      <td>Es lo construido, lo que la voz ya sabe mover, y contesta la pregunta de la mañana: <em>¿qué hago ahora?</em></td>
+      <td>Por función (cobros, ARCA): pierde el flujo y hay que redefinir qué significa terminar</td></tr>
+  <tr><td><strong>En mobile</strong></td><td>Pestañas, no columnas</td>
+      <td>A 390 px tres columnas dan 118 px cada una: no cabe el nombre de un cliente. El repo ya lo resolvió así</td>
+      <td>Kanban de columnas lado a lado: es diseño de escritorio</td></tr>
+  <tr><td><strong>Tarjeta</strong></td><td><strong>Expandible in-place</strong></td>
+      <td>Es lo que el repo pide: <em>"tocar una tarjeta la expande… volvés a tocarla para colapsarla"</em>. Ves todas Y el detalle de una — el contexto es lo que hace decidir</td>
+      <td>Carrusel: mostraba una por vez y <strong>gastaba el eje horizontal</strong>, que el swipe necesita. Sheet: tapa la pantalla</td></tr>
+  <tr><td><strong>Prioridad</strong></td><td>Color <strong>sólo en el texto</strong>, peso escalonado</td>
+      <td>Con fondo eran 8 manchas por pantalla. Sin fondo los cuatro textos pesan igual (rango de luminancia 0,023), así que <strong>la jerarquía la da la tipografía</strong>. Funciona en blanco y negro (WCAG 1.4.1)</td>
+      <td>Chips con fondo pastel: la app quedaba demasiado colorida</td></tr>
+  <tr><td><strong>Orden</strong></td><td>Odobi ordena; el usuario fija arriba</td>
+      <td>El orden manual <strong>envejece</strong>: una factura que vence mañana queda abajo porque se movió la semana pasada</td>
+      <td>Arrastrar libremente: máximo control, orden desactualizado</td></tr>
+  <tr><td><strong>Bloques del día</strong></td><td>Altura proporcional a la duración, 76 px/hora</td>
+      <td>Dice cuánto dura sin texto. La escala salió de una restricción real: con 58 px/hora un evento de 30 min mide 25 px y <strong>no hay lugar para padding</strong></td>
+      <td>Filas de alto fijo: no distinguen una reunión de 2 h de una llamada de 15 min</td></tr>
+  <tr><td><strong>Línea del ahora</strong></td><td>En <strong>terracota</strong>, no en rojo</td>
+      <td>Es señal, y el sistema ya tiene un color para eso. Google usa rojo porque su acento es azul</td>
+      <td>Rojo de Google: mete un color fuera de la paleta</td></tr>
+  <tr><td><strong>Sin hora</strong></td><td>Bloque aparte, obligatorio</td>
+      <td>La mayoría de las tarjetas del detector no tienen hora: un presupuesto frío no vence a las 14:30, y forzarlo <strong>inventa un dato</strong> — el mismo error que mostrar "$0" donde falta el número</td>
+      <td>Ubicarlas por hora estimada: dato falso presentado como real</td></tr>
+  <tr><td><strong>Alerta crítica</strong></td><td>Sólo en el tablero, arriba de las solapas</td>
+      <td>El repo llama al certificado <em>"el aviso más importante de todos"</em>. Va arriba de las solapas porque es <strong>transversal a los tres estados</strong>: no pertenece a "Para hoy", pertenece al negocio. En Mi día no va: allá la prioridad ya la dice el texto en color</td>
+      <td>Como una tarjeta más: el sistema no distinguía importante de crítico</td></tr>
+</table>
+
+<div class="caja">
+  <div class="eyebrow">Lo que este mockup abre y no cierra</div>
+  <p><strong>Agendar una tarjeta y "Odobi propone huecos" son VISIÓN.</strong> El backend no expone
+    duración ni huecos, y <strong>las tarjetas del detector no tienen campo de hora</strong> — eso es
+    cambio de modelo de datos, no de UI. Confirmarlo con David antes de darlo por real.</p>
+  <p><strong>El sheet de detalle quedó redundante</strong> desde que la tarjeta expande: hay que
+    decidir si sobrevive o si el tablero también expande.</p>
+  <p><strong>"Fijar arriba" y "ocultar tipos" no existen en el repo.</strong> Son propuesta de diseño.</p>
+  <p><strong>Cuántas tarjetas soporta Mi día antes de volverse larga</strong> hay que probarlo con
+    contenido real, no con cuatro de ejemplo.</p>
+</div>
+
+<script>
+const P = {
+  f1: [
+    ['','Mi día','<b>tres bloques en scroll.</b> El de arriba es contexto, el del medio lo inamovible, el de abajo lo que sí se reordena. Al cargar aparece un <b>esqueleto</b>: el detector corre en el backend y sin eso esa ventana es una pantalla vacía, que se lee como "no hay nada" — el mensaje opuesto.'],
+    ['tablero','Tablero','los tres estados del repo, con la <b>alerta crítica arriba de las solapas</b> porque es transversal. Filas de 64 px: entran cuatro donde antes entraba una card.'],
+    ['cargando','Carga','<b>el esqueleto</b>. Respeta <code>prefers-reduced-motion</code>.'],
+  ],
+  f2: [
+    ['agenda','Agenda','<b>bloques proporcionales a la duración</b> — la obra de 2 h ocupa el doble que la llamada, y lo dice sin texto. El borde izquierdo marca el origen: arena para Google Calendar, terracota para lo que viene del tablero.'],
+  ],
+};
+const tel = (v,t,nota) => `<figure class="tel">
+  <div class="marco">
+    <img src="../../assets/marco/telefono.png" alt="">
+    <div class="pantalla"><iframe src="../../prototipo/${v ? '?ver='+v : ''}" scrolling="no" title="${t}"></iframe></div>
+    <span class="isla"></span>
+  </div>
+  <b>${t}</b><a class="url" href="../../prototipo/${v ? '?ver='+v : ''}" target="_blank">${v ? '?ver='+v : '/'} ↗</a>
+  <div class="hand accent">${nota}</div>
+</figure>`;
+for (const [id,l] of Object.entries(P)) document.getElementById(id).innerHTML = l.map(x=>tel(...x)).join('');
+</script>
+</body>
+</html>

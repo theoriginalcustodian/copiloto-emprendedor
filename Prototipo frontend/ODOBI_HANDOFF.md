@@ -21,7 +21,7 @@
 4. El repo del producto se sube como .zip al inicio de cada sesión para auditar decisiones contra la funcionalidad real documentada (el entorno se resetea entre sesiones).
 5. Toda decisión de color se valida con ratios de contraste WCAG calculados, no a ojo.
 
-**Producto (del repo `copiloto-emprendedor`):** agente conversacional durable (Temporal) multi-tenant; 7 servicios operativos vía Composio (Gmail, Calendar, Drive, Docs, HubSpot, Sheets, Instagram); grafo temporal soberano (Graphity/Zep) que unifica memoria + negocio → correlación cross-servicio nativa (el moat); capa RAG multi-tenant; HITL obligatorio: todo write se propone y solo se ejecuta tras confirmación del usuario; MercadoPagoGateway diseñado (decisiones cerradas, build pendiente); facturación AFIP: flujo diseñado (HITL doble, CAE, PDF con QR, botones Guardar/Enviar/Compartir) pero EN PAUSA hasta consolidar Fase 0/1 de la reorganización del repo; pitch Tiendanube como vertical; freemium limitado por uso, unidad visible al cliente = ACCIONES/mes (nunca "consultas" ni tokens), valor del límite = experimento a calibrar; listón del BI proactivo: específico, accionable, con el dato crudo a la vista.
+**Producto (del repo `copiloto-emprendedor`):** agente conversacional durable (Temporal) multi-tenant; **6 servicios** conectables (Mercado Pago · Gmail · Google Calendar · Drive/Docs/Sheets) — ⚠️ **HubSpot e Instagram fueron PODADOS en el hito 2 y no existen**: no mostrarlos; grafo temporal soberano (Graphity/Zep) que unifica memoria + negocio → correlación cross-servicio nativa (el moat); capa RAG multi-tenant; HITL obligatorio: todo write se propone y solo se ejecuta tras confirmación del usuario; MercadoPagoGateway diseñado (decisiones cerradas, build pendiente); **facturación ARCA: IMPLEMENTADA** (confirmado por Martin 22/07; el código vive fuera del repo auditado) — HITL doble, CAE, PDF con QR, botones Guardar/Enviar/Compartir. ⚠️ **Ya no está "en pausa"**, y **el organismo se llama ARCA**, no AFIP; pitch Tiendanube como vertical; freemium limitado por uso, unidad visible al cliente = ACCIONES/mes (nunca "consultas" ni tokens), valor del límite = experimento a calibrar; listón del BI proactivo: específico, accionable, con el dato crudo a la vista.
 
 ---
 
@@ -49,7 +49,7 @@
 **Posicionamiento:** **«El socio que ve tu negocio entero, sin quedarse con la mitad.»**
 > ⚠️ Cambió en esta sesión. La versión vieja era «…y no te pide el 50%», descartada por ambigüedad (se leía como seña de proveedor). Si aparece en algún archivo, está desactualizado.
 
-**Diferenciador:** el único copiloto hecho para el que emprende solo en Argentina — habla tu idioma, conoce MercadoPago y AFIP, ve el negocio entero.
+**Diferenciador:** el único copiloto hecho para el que emprende solo en Argentina — habla tu idioma, conoce Mercado Pago y ARCA, ve el negocio entero.
 **Brand character (Wilensky):** ~35 años simbólicos; capacidad + sinceridad + calidez rioplatense; "canchero pero serio"; el que dice "ojo con esto" antes del problema y "dale, mandale" cuando dudás de más. NUNCA: servicial-genuflexo, técnico-frío, gurú motivacional.
 **Jerarquía de ángulos:** líder = "el socio que nunca tuviste"; subordinados = inteligencia cross-servicio y ejecución por voz.
 
@@ -88,8 +88,10 @@
 **Regla de proporción 60/30/10:** blanco o crema ≈60%, negro tostado ≈30%, terracota **nunca más del 10%**. La terracota es señal, no ambiente.
 
 **Contraste (WCAG verificado):**
-- Negro tostado sobre terracota = 5.71:1 ✅ — única combinación válida de texto sobre terracota
-- Blanco sobre terracota = 3.17:1 ❌
+- ⚠️ **DEROGADO (28/07 v2, decisión de Martin): NUNCA texto negro sobre terracota.** Pasaba el contraste (5,71:1) pero arrastraba la lectura a señalética de obra. La regla vigente:
+  - **Texto de botones sobre terracota: blanco o crema, nunca negro.**
+  - Blanco sobre `#DE7250` = **3.17:1** — sólo válido como **texto grande** (≥18,66 px en bold) o como ícono/gráfico (≥3:1, WCAG 1.4.11). **Debajo de ese tamaño el fill baja a `#B04A2E`** (blanco = 5,43:1 ✅), que es la salida que la propia regla prevé.
+  - ⚠️ A 18 px deja de cumplir **y se ve idéntico**: es una falla invisible a ojo. Antes de bajar el tamaño, cambiar el fill.
 - Terracota como texto sobre crema = 2.86:1 ❌ → usar `#B04A2E` (4.91:1) ✅
 - Terracota sobre negro tostado = 5.71:1 ✅ · Crema sobre negro tostado = 16.37:1 ✅ · Arena sobre negro tostado = 8.46:1 ✅
 
@@ -162,7 +164,7 @@ Variante buena noticia:
 **Servicio caído:**
 > «Se me cayó la conexión con MercadoPago, así que los cobros de hoy pueden estar incompletos. Te aviso apenas vuelva.»
 
-**Facturación AFIP (doble HITL; feature EN PAUSA hasta Fase 0/1):**
+**Facturación ARCA (doble HITL; feature IMPLEMENTADA):**
 > Usuario: «Odobi, facturale $80.000 a Rodríguez.»
 > Odobi: «Dale. Para la factura me faltan dos cosas: ¿es factura C? ¿y el CUIT de Rodríguez lo uso del registro que tengo (20-…-3)?»
 > [completa] → «Queda así: Factura C, $80.000, Rodríguez SRL, CUIT 20-…-3. ¿Emito?»
@@ -173,7 +175,7 @@ Variante buena noticia:
 > Tenés dos opciones: esperás a que se renueven, o pasás al plan [Y] y seguimos ahora.
 > Como prefieras, yo no me voy a ningún lado.»
 
-**Advertencia vigente:** "Odobi, facturame $80.000 → Listo, enviada" es visión, no demo. No prometerlo en vivo hasta consolidar Fase 0/1 y retomar AFIP.
+⚠️ **Advertencia DEROGADA:** decía que *"Odobi, facturame $80.000 → Listo, enviada"* era visión y no demo. **Facturación está implementada** (Martin, 22/07): se puede mostrar en vivo. Lo que sigue siendo visión es el **BI proactivo** y el **plan/límites**.
 
 ### Identidad sonora (Etapa 7 — DEFINIDA, en Brand Book §5.7)
 - **Voz:** masculina, rioplatense suave (sin caricatura; neutro latino prohibido), registro medio-grave, velocidad algo menor al default.

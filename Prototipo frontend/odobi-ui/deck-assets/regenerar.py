@@ -19,6 +19,7 @@ DOS TRAMPAS, las dos aprendidas rompiendo los 27 PNG el 07/08/2026:
    imagen tenga contenido real (mas de un color y varianza suficiente).
 """
 import re, glob, os, subprocess, sys, tempfile
+from frames import servidor, contenido_valido   # ver por que en frames.py
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SALIDA = os.path.join(RAIZ, 'deck-assets')
@@ -51,19 +52,25 @@ def alto_canvas(html, n):
     return int(m.group(1)) if m else 900
 
 def tiene_contenido(png):
-    """True si el PNG no es una lamina plana. Devuelve (ok, n_colores)."""
-    try:
-        from PIL import Image
-    except ImportError:
-        return (os.path.getsize(png) > 60_000, -1)
-    with Image.open(png) as im:
-        chico = im.convert('RGB').resize((160, 90))
-        colores = len(set(chico.getdata()))
-    return (colores >= 12, colores)
+    """True si el PNG es una lamina de verdad. Devuelve (ok, motivo).
+
+    🔴 ANTES USABA PIL Y NO LO DECIA. PIL no importa en esta maquina (x86_64 vs
+    arm64), asi que el `except ImportError` caia SIEMPRE al peso — el mismo gate
+    que el 24/08 dio por buenas 6 laminas con un listado de directorio adentro.
+    Imprimia "-1 colores" y nadie lo leyo como "no verifique nada".
+    Regla: un verificador que puede degradarse en silencio no es un verificador.
+    Ahora mide con ffmpeg, que es lo unico que anda seguro aca.
+    """
+    return contenido_valido(png)
 
 def main():
     if not os.path.exists(CHROME):
         sys.exit(f"No esta Chrome en {CHROME}")
+    # 🔴 Se sirve por http y no por file://: desde el 19/08 los mockups cargan el
+    # prototipo por <iframe>, y bajo file:// eso resuelve al LISTADO DEL DIRECTORIO.
+    # La lamina sale con "contenido" (una tabla de archivos), asi que `tiene_contenido`
+    # tampoco la salva: hay que servir bien, no verificar mejor.
+    base, apagar = servidor(RAIZ)
     ok_total, fallos = 0, []
     for ruta in sorted(glob.glob(os.path.join(RAIZ, 'mockups', '*', 'index.html'))):
         carpeta = os.path.basename(os.path.dirname(ruta))
@@ -71,7 +78,7 @@ def main():
         n_lanes = html.count('<div class="canvas-wrap"')
         # rutas relativas -> absolutas: la pagina temporal se escribe en la misma
         # carpeta del mockup, pero dejarlo explicito evita sorpresas si eso cambia
-        abs_html = re.sub(r'(url\(["\']?)\.\./\.\./', r'\1file://' + RAIZ + '/', html)
+        abs_html = html   # servido por http: las rutas relativas resuelven solas
         for n in range(1, n_lanes + 1):
             alto = alto_canvas(html, n)
             k = min((W - 120) / 960.0, (H - 120) / (alto + 110.0))
@@ -81,17 +88,19 @@ def main():
             destino = os.path.join(SALIDA, f'{carpeta}-lane{n}.png')
             subprocess.run([CHROME, '--headless=new', '--disable-gpu', '--hide-scrollbars',
                             '--force-device-scale-factor=1', f'--window-size={W},{H}',
-                            '--virtual-time-budget=3000', f'--screenshot={destino}',
-                            'file://' + tmp.name], capture_output=True)
+                            '--virtual-time-budget=4500', f'--screenshot={destino}',
+                            f'{base}/mockups/{carpeta}/{os.path.basename(tmp.name)}'],
+                           capture_output=True)
             os.unlink(tmp.name)
             if not os.path.exists(destino):
                 fallos.append((f'{carpeta}-lane{n}', 'Chrome no escribio el archivo')); continue
-            ok, colores = tiene_contenido(destino)
-            print(f"  {'OK ' if ok else 'VACIO'} {carpeta}-lane{n}.png  "
-                  f"(canvas {alto}px, escala {k:.3f}, {colores} colores)")
+            ok, motivo = tiene_contenido(destino)
+            print(f"  {'OK ' if ok else 'MAL'} {carpeta}-lane{n}.png  "
+                  f"(canvas {alto}px, escala {k:.3f}, {motivo})")
             ok_total += 1 if ok else 0
             if not ok:
-                fallos.append((f'{carpeta}-lane{n}', f'lamina plana, {colores} colores'))
+                fallos.append((f'{carpeta}-lane{n}', motivo))
+    apagar()
     print(f"\n{ok_total} PNG con contenido verificado.")
     if fallos:
         print(f"{len(fallos)} CON PROBLEMA:")

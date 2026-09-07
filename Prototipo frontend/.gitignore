@@ -1,0 +1,10 @@
+# Caché local de material de referencia (68 MB): capturas de apps de
+# terceros —Quicken, Plum, Copilot Money— y fichas de estilo scrapeadas
+# de ~75 marcas. Sirve para mirar mientras se diseña; no es entregable
+# nuestro y no tenemos derechos para redistribuirlo. Se queda local.
+odobi-ui/references/
+
+# Sobras de herramientas
+.DS_Store
+__pycache__/
+*.original.md

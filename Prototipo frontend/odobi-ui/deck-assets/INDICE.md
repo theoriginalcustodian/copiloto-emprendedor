@@ -70,12 +70,49 @@ El deck cuenta un sistema, no una galería de pantallas. El orden va de **qué e
 
 ## Cómo regenerar
 
-Para cada `mockups/*/index.html`: se numeran los `.canvas-wrap`, se inyecta un `<style>` que deja visible sólo el lane N, se fija `body` a 2560×1440 y se escala el wrap con `transform:scale(min((2560−120)/960, (1440−120)/(altoCanvas+110)))`. La `@font-face` se reescribe a ruta absoluta `file://` porque la página generada vive fuera de la carpeta del mockup. Después:
+⚠️ **Hay CUATRO scripts y el orden importa.** Correrlos sueltos deja piezas mezcladas
+—texto nuevo con imagen vieja— y eso no se ve hasta que alguien abre el archivo.
+
+```bash
+cd odobi-ui
+python3 deck-assets/regenerar.py           # 1 · las 33 láminas 2560×1440 del deck
+python3 deck-assets/frames.py              # 2 · los 29 frames de teléfono (árbol)
+python3 deck-assets/preparar-artifact.py   # 3 · reduce esos frames + extrae las notas
+python3 deck-assets/construir-artifact.py  # 4 · arbol/arbol-web.html, todo embebido
+```
+
+**El 3 no es opcional.** `construir-artifact.py` no lee `frames/`: lee `_artifact/f1/`,
+que son los mismos frames reducidos. Saltearlo el 24/08 dejó el árbol web con el copy
+nuevo y **la captura vieja** — la pieza más difícil de auditar del proyecto, porque es
+un archivo de 4 MB con todo en data-URI.
+
+⚠️ **El copy de las tarjetas del árbol web está HARDCODEADO** en `construir-artifact.py`
+(la tabla de bloques, ~línea 90), **no** sale de `arbol/index.html`. Editar el árbol y
+regenerar pisa el cambio. Los dos se tocan a mano.
+
+### Dos trampas del render (24/08/2026)
+
+1. **Se sirve por HTTP, no por `file://`.** Desde el 19/08 los mockups no recrean la UI:
+   cargan el prototipo por `<iframe>`. Bajo `file://` ese iframe **no resuelve el query
+   string** y Chrome termina sirviendo el **listado del directorio** del mockup. Los dos
+   scripts levantan un `http.server` efímero y renderizan contra él.
+2. **Un verificador que se degrada en silencio no es un verificador.** `tiene_contenido()`
+   usaba PIL con un `except ImportError` que caía **siempre** (PIL está roto acá: x86_64
+   vs arm64), así que verificaba **por peso**. El listado de directorio pesaba 87 KB y
+   pasó el gate en 6 láminas. Ahora mide en gris con **ffmpeg**: exige media > 120 (el
+   lienzo es crema; un error renderiza casi negro) y desvío > 8 (una lámina plana da ~0).
+   El log imprime los dos números — si dice `-1`, no midió nada.
+
+### El detalle del render
+
+Para cada `mockups/*/index.html`: se numeran los `.canvas-wrap`, se inyecta un `<style>`
+que deja visible sólo el lane N, se fija `body` a 2560×1440 y se escala el wrap con
+`transform:scale(min((2560−120)/960, (1440−120)/(altoCanvas+110)))`.
 
 ```
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headless=new --disable-gpu --hide-scrollbars \
   --force-device-scale-factor=1 --window-size=2560,1440 \
-  --virtual-time-budget=2500 \
-  --screenshot=deck-assets/<nombre>.png "file://<pagina>"
+  --virtual-time-budget=4500 \
+  --screenshot=deck-assets/<nombre>.png "http://127.0.0.1:<puerto>/mockups/<c>/<tmp>.html"
 ```

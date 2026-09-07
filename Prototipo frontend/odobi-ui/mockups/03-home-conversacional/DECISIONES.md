@@ -82,6 +82,43 @@ Alinea el 03 con `09-mi-dia` y `10-arranque`: era el último mockup que mostraba
 
 **Trampa pagada al hacerlo (queda escrita):** eliminar la tabbar con una regex `<div class="tabbar">.*?</div>` **rompe el HTML en silencio** — el `.*?` no-greedy corta en el primer `</div>` (el de un tab interno) y deja divs sueltos; el síntoma fue el overlay del lane colapsando sobre el siguiente, con las anotaciones encimadas. Se rehízo contando `<div>`/`</div>` hasta cerrar el bloque, y se verificó que el conteo de aperturas y cierres coincida (76/76).
 
+## Revisión 24/08 — grabar por voz es el gesto de WhatsApp
+
+Decisión de Martin y David. **Deroga las dos revisiones anteriores de este lane** (la pantalla
+terracota plena del 22/07 y el velo al 96% del 16/08).
+
+| | 22/07 | 16/08 | **24/08 (vigente)** |
+|---|---|---|---|
+| Superficie | pantalla terracota plena | velo del lienzo al 96% | **ninguna — no se tapa nada** |
+| Dónde ocurre | pantalla completa | pantalla completa | **dentro de la barra del composer** |
+| Cómo se entra | tap en el mic | tap en el mic | **mantener apretado el mic** |
+| Cómo se sale | botón "Cortar" | Pausar · Enviar · Eliminar | **soltar manda · izquierda cancela · arriba bloquea** |
+
+**El fundamento principal no es visual: es que el gesto ya se sabe.** Es el de WhatsApp, la app
+que el usuario de Odobi ya usa todos los días para su negocio. Un producto cuya función central es
+hablar no puede permitirse que hablar sea lo que hay que aprender.
+
+**Y el argumento del 16/08 se cumple mejor así.** Aquella revisión decía que *desde dónde hablás
+cambia dónde aterriza lo que decís*, y por eso el velo dejaba el fondo insinuado al 4%. Si el
+contexto importa, **dejar la pantalla entera visible lo respeta más que insinuarla**.
+
+| Elemento | Decisión | Fundamento | Alternativa descartada y por qué |
+|---|---|---|---|
+| El mic | **No se mueve ni cambia de caja**: al bloquear cambia de ícono (mic → avión) | Es el mismo botón el que graba y el que manda, así el pulgar no se reubica entre empezar y enviar — que es lo que permite hacer el gesto sin mirar | Un botón "Enviar" aparte: agrega un destino nuevo justo cuando la mano ya está en su lugar |
+| Los tres controles | **Íconos con `aria-label`**, no palabras | A 390 px las tres etiquetas más la onda no entran en una fila. Son los controles que define el repo: Pausar · Enviar · Eliminar | Etiquetas de texto: obligan a sacar la onda, que es lo único que dice que la grabación corre |
+| Estado "en pausa" | La onda se apaga **y aparece "En pausa" en texto** | WCAG 1.4.1: el estado no puede depender sólo de que algo deje de moverse | Sólo congelar la onda: indistinguible de una animación trabada |
+| Bloqueo | **Deslizar hacia arriba** | ⚠️ No es una comodidad: es la **alternativa que exige WCAG 2.5.1** para un gesto que obliga a sostener presión. Sin él, quien no puede sostenerla queda afuera de la función principal | Sólo mantener apretado: excluye, y encima impide grabar algo largo |
+| Teclado | **Enter entra directo al modo bloqueado** | El camino accesible no es otra función: es la misma con otra puerta (WCAG 2.1.1) | Dejarlo sin teclado: el gesto principal del producto quedaría fuera del alcance de la navegación por tabulación |
+| Los dos ejes | Gana el que domina el movimiento | Un gesto en diagonal no puede disparar cancelar **y** bloquear a la vez | Umbrales independientes: se pisan |
+| Audio de menos de 1 s | Se descarta **sin cartel de error** | Un toque accidental no merece una alerta | Mensaje "grabación muy corta": convierte un roce en un incidente |
+| Método | El lane carga el **prototipo por iframe** | Regla del 19/08: una sola fuente de verdad para la pantalla; el mockup aporta el argumento | CSS copiado: era lo que había, y es de donde salieron varios errores de propagación |
+
+⚠️ **El veredicto Wise A/B se toca por segunda vez.** Declaraba la escucha terracota a pantalla
+completa como *el único momento display*. Ese momento **ya no tiene superficie propia**: hay que
+decidir con David si el momento display se muda al splash/entrada o si la cláusula se deroga.
+
+---
+
 ## Revisión 16/08 (b) — la escucha: display por sustracción
 
 El lane 3 mostraba la escucha como **pantalla terracota plena**, heredada del veredicto del experimento Wise A/B ("el único momento display del sistema"). Se rehízo tras encontrar en el repo que David **eliminó** ese modelo: `GlassGrabacionCopiloto` fue borrado y reemplazado por controles flotantes, bajo un contrato llamado `dictado-por-voz-sin-glass` — *"sin marco, sin cronómetro, el único feedback es la onda"*. Diagnóstico completo en `audit/ANALISIS-PROTOTIPO-DAVID.md` §8.
