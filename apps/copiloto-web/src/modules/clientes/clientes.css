@@ -14,20 +14,130 @@
   position: relative;
 }
 
-.clientes-screen__header {
+/* ---------- Stack (nombre + "Tu cartera") — CLAUDE.md §5, calcado de `.fn-stack .atras` del
+ * mockup. Mismo tratamiento que `gastos-screen__stack`: card blanca, baseline, `--r-xl` porque es
+ * la MISMA card que el bloque negro de abajo. Web no lleva "Volver ‹" (Rail/TabBar propios). */
+.clientes-screen__stack {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
+}
+
+.clientes-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.clientes-screen__nombre {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.clientes-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.clientes-screen__actualizar {
+  font-size: 11px;
+}
+
+/* ---------- Bloque negro (`Surface variant="bloque"`) — CLAUDE.md §5. Acá la cifra ACCIONABLE
+ * NO es plata: es el tamaño de la cartera (mockup: `.cli-n`/`.p-lbl`/`.comp` de `#clientes`). El
+ * fondo/color base los pone `Surface`; acá sólo la tipografía interna, igual criterio que
+ * `gastos-resumen` en `gastos.css`. */
+.clientes-resumen {
+  display: flex;
+  flex-direction: column;
+}
+
+.clientes-resumen__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg-secondary);
+  margin: 0;
+}
+
+.clientes-resumen__cifra {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-fg);
+  margin: 8px 0 12px;
+}
+
+.clientes-resumen__unidad {
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 400;
+  opacity: 0.85;
+  margin-left: 6px;
+}
+
+/* Chip de comparación sobre el bloque (mockup: `.resumen .comp`) — mismo tratamiento que el delta
+ * de Gastos/Mi día. */
+.clientes-resumen__chip {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg);
+  background: var(--bloque-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+}
+
+/* ---------- Rótulo de sección + alta (CLAUDE.md §5) ---------- */
+.clientes-screen__fila-lbl {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.clientes-screen__title {
-  font-family: var(--font-display);
-  font-size: 27px;
+.clientes-screen__lista-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--heading);
-  margin: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Pill de alta — NUNCA un FAB (compite con el mic). Mismos tokens que `gastos-screen__pill-nuevo`. */
+.clientes-screen__pill-nuevo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--core);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.clientes-screen__pill-nuevo svg {
+  flex-shrink: 0;
 }
 
 .clientes-screen__loading,
@@ -142,10 +252,52 @@
   white-space: nowrap;
 }
 
-.tarjeta-cliente__origen {
+/* Tile-ícono (persona) — mockup `.fact .tile` (`--arena-30` sobre blanco); acá con los tokens ya
+ * declarados del sistema (sin inventar un color nuevo): tinte suave de `--core`. */
+.tarjeta-cliente__icono {
   flex-shrink: 0;
-  font-size: 13px;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--core) 14%, transparent);
+  color: var(--core);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tarjeta-cliente__derecha {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.tarjeta-cliente__monto {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Chip de estado (mockup `.fact .estado`) — neutro por default (fondo suave, texto label). */
+.tarjeta-cliente__estado {
+  font-family: var(--font-body);
+  font-size: 11px;
   color: var(--label);
+  background: color-mix(in srgb, var(--label) 12%, transparent);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+/* "Se agregó solo" (mockup `.estado.auto`) — tono distinto a propósito: mismo par bloque negro/
+ * arena que `.resumen .p-lbl`, porque es el mismo evento ("el copiloto lo agregó solo") que ya
+ * usa esa combinación en el bloque de arriba. */
+.tarjeta-cliente__estado--auto {
+  background: var(--bloque-bg);
+  color: var(--bloque-fg-secondary);
 }
 
 /* ---------- FormularioCliente ---------- */
