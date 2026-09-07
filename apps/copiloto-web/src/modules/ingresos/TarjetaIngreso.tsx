@@ -1,15 +1,6 @@
-import { formatearImporte, type Ingreso, type OrigenIngreso } from '@copiloto/core';
+import { formatearImporte, type Ingreso } from '@copiloto/core';
 
 import { Badge, Button, Surface } from '../../design-system';
-
-/** Cómo se nombra cada procedencia **desde la vereda del emprendedor** — mismo texto que
- *  `apps/mobile/src/modules/ingresos/PantallaIngresos.tsx` (`ETIQUETA_ORIGEN`). */
-const ETIQUETA_ORIGEN: Record<OrigenIngreso, string> = {
-  factura: 'de una factura',
-  mercadopago: 'por MercadoPago',
-  manual: 'lo anotaste vos',
-  voz: 'lo dictaste por voz',
-};
 
 export interface TarjetaIngresoProps {
   ingreso: Ingreso;
@@ -17,46 +8,61 @@ export interface TarjetaIngresoProps {
 }
 
 /**
- * Port de la fila de `PantallaIngresos.tsx` (RN `Row`) a `Surface` de web — misma composición que
- * `TarjetaGasto`. `origen` se muestra SIEMPRE (Badge), y "Borrar" sólo si `borrable === true`: `null`
- * es "no sé" y ahí no se ofrece (ver docstring de `Ingreso.borrable` en `@copiloto/core`).
+ * Fila de la lista de Ingresos, repintada a la gramática "lista" de Tarea 3 (CLAUDE.md §5, calcada
+ * de `.fact` en el mockup fuente — `Prototipo frontend/odobi-ui/prototipo/index.html`, `#ingresos`):
+ * título = identidad del cobro (cliente o concepto), subtítulo = origen/tipo · fecha, monto a la
+ * derecha — mismo molde que `TarjetaGasto` (el monto ya vivía a la derecha ahí; acá antes vivía como
+ * título, así que el swap es real, no cosmético).
+ *
+ * ⚠️ **PR#474 (decisión de producto YA TOMADA, no se reabre acá):** el chip de `origen` por fila
+ * (antes `Badge` con "de una factura"/"por MercadoPago"/etc en TODAS las filas) desaparece.
+ * Sobrevive un único chip, y sólo cuando falta un dato: **"Falta de quién"** — cuando ni
+ * `clienteNombre` ni `concepto` identifican el cobro (mockup: fila "Cobro sin detalle"). El resto
+ * de las filas NO llevan chip, aunque tampoco tengan cliente propio — un concepto ("Seña reforma"
+ * en el mockup) identifica el cobro tanto como un nombre de cliente.
  */
 export function TarjetaIngreso({ ingreso, onBorrar }: TarjetaIngresoProps) {
-  const subtitulo = [
-    ingreso.clienteNombre,
-    ingreso.concepto,
-    ingreso.comprobanteNro != null ? `Factura N° ${ingreso.comprobanteNro}` : null,
-    ingreso.medio,
-    ingreso.fecha,
-  ]
-    .filter((x): x is string => x != null && x !== '')
-    .join(' · ');
+  const titulo = ingreso.clienteNombre ?? ingreso.concepto ?? 'Cobro sin detalle';
+  const sinIdentificar = ingreso.clienteNombre == null && ingreso.concepto == null;
+
+  const subtitulo =
+    ingreso.origen === 'factura' && ingreso.comprobanteNro != null
+      ? [`Factura ${ingreso.comprobanteNro}`, ingreso.fecha].filter((x): x is string => x != null && x !== '').join(' · ')
+      : [ingreso.medio, ingreso.fecha].filter((x): x is string => x != null && x !== '').join(' · ');
 
   return (
     <Surface variant="tile" className="tarjeta-ingreso" data-testid={`ingreso-${ingreso.id}`}>
       <div className="tarjeta-ingreso__izquierda">
-        <p className="tarjeta-ingreso__titulo" data-testid={`ingreso-${ingreso.id}-monto`}>
-          {ingreso.monto != null ? formatearImporte(ingreso.monto) : 'Sin monto'}
+        <p className="tarjeta-ingreso__titulo" data-testid={`ingreso-${ingreso.id}-titulo`}>
+          {titulo}
         </p>
         {subtitulo !== '' && (
           <p className="tarjeta-ingreso__sub" data-testid={`ingreso-${ingreso.id}-sub`}>
             {subtitulo}
           </p>
         )}
-        <Badge variant="neutral" className="tarjeta-ingreso__origen">
-          {ETIQUETA_ORIGEN[ingreso.origen]}
-        </Badge>
+        {sinIdentificar && (
+          <Badge variant="warning" className="tarjeta-ingreso__falta" data-testid={`ingreso-${ingreso.id}-falta`}>
+            Falta de quién
+          </Badge>
+        )}
       </div>
 
-      {ingreso.borrable === true && onBorrar != null && (
-        <Button
-          variant="ghost"
-          onClick={() => onBorrar(ingreso)}
-          data-testid={`ingreso-${ingreso.id}-borrar`}
-        >
-          Borrar
-        </Button>
-      )}
+      <div className="tarjeta-ingreso__derecha">
+        {/* Nunca "$0" cuando falta el monto — el em-dash dice "no sé", "$0" diría "cobraste cero". */}
+        <span className="tarjeta-ingreso__monto" data-testid={`ingreso-${ingreso.id}-monto`}>
+          {ingreso.monto != null ? formatearImporte(ingreso.monto) : '—'}
+        </span>
+        {ingreso.borrable === true && onBorrar != null && (
+          <Button
+            variant="ghost"
+            onClick={() => onBorrar(ingreso)}
+            data-testid={`ingreso-${ingreso.id}-borrar`}
+          >
+            Borrar
+          </Button>
+        )}
+      </div>
     </Surface>
   );
 }
