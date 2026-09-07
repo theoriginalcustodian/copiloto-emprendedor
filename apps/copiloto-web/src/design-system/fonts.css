@@ -9,7 +9,8 @@
  * EXTRACT §1.1 — roles verbatim:
  *   Display (headings, nombres, montos, marca)  -> Clash Display   600/700
  *   Body / UI (chat, botones, labels de fila)   -> General Sans    400/500/600
- *   Mono / data (timestamps, labels, badges)    -> JetBrains Mono  400/500/700
+ *   Mono / data (timestamps, labels, badges)    -> Inter (retirado JetBrains Mono, 2026-09-07
+ *     contrato FE1 §Tarea 2 — ver el comentario sobre `--font-mono` más abajo)
  */
 
 @font-face {
@@ -65,29 +66,11 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* JetBrains Mono — RETIRADO (2026-09-07, contrato FE1 §Tarea 2: "se retira JetBrains Mono").
+   Las 3 caras y el @font-face vivían acá; se borran en vez de dejarlas huérfanas ("retirar" es
+   borrar, no dejar sin uso). `--font-mono` abajo pasa a Inter — la cara ya está registrada por
+   `fonts-web.css` (400/500/600, se carga siempre junto con este archivo, ver `main.tsx`), así
+   que no hace falta un @font-face nuevo acá. */
 
 /* Font-stack tokens — fallback del sistema si el woff2 todavía no bajó (P0-A: fetch-fonts.sh
    pendiente de correr en VPS) o mientras carga (swap). Consumir SIEMPRE vía estos tokens, nunca
@@ -95,5 +78,11 @@
 :root {
   --font-display: 'NeueEinstellung', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-body: 'General Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+  /* Antes 'JetBrains Mono' (retirada, ver nota arriba). El nombre del token queda igual a
+     propósito — repuntarlo hubiera exigido tocar los ~39 call-sites de `var(--font-mono)` en
+     módulos de AMBAS sesiones (facturacion/clientes/… y actividad/admin/…), fuera del alcance de
+     Tarea 2 (sólo tokens); repintar CADA consumidor a `--font-body` directo es trabajo de
+     repintado, no de este archivo. Retiro logrado 1:1 vía el token: cero JetBrains Mono en el
+     bundle, cero cambios en componentes. */
+  --font-mono: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }

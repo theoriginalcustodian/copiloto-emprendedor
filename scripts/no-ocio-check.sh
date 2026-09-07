@@ -35,6 +35,8 @@ BUZON="$REPO_ROOT/coordinacion"
 ABIERTO="$BUZON/abierto"
 HOY="$(date +%Y-%m-%d)"
 CERRADO_HOY="$BUZON/cerrado/$HOY"
+# shellcheck source=lib/buzon-roles.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
 
@@ -51,10 +53,13 @@ now="$(date +%s)"
 # autorear, este piso puede subestimar — por eso la triada pide revisar acuses a mano en el caso (b).
 ult_actividad() {
   local sesion="$1" nombre newest=0 m
+  _fa=(); while IFS= read -r _p; do _fa+=(-o -name "$_p"); done < <(firma_patrones "$sesion")
   while IFS= read -r -d '' f; do
     m="$(stat --format=%Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$newest" ] && newest="$m"
-  done < <(find "$ABIERTO" "$CERRADO_HOY" -maxdepth 1 -type f -name "*${sesion}-a-*" -print0 2>/dev/null)
+  # Firma con herencia (scripts/lib/buzon-roles.sh): un `frontend-a-*` previo al desdoble
+  # frontend1/frontend2 cuenta para las dos, o el buzón histórico deja de ser señal de vida.
+  done < <(find "$ABIERTO" "$CERRADO_HOY" -maxdepth 1 -type f \( "${_fa[@]:1}" \) -print0 2>/dev/null)
   echo "$newest"
 }
 min_desde() { local e="$1"; [ "$e" -eq 0 ] && { echo 9999; return; }; echo $(( (now - e) / 60 )); }

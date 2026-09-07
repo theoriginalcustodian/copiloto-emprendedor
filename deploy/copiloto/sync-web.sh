@@ -43,14 +43,19 @@ CORE_SUBDIR="packages/core"   # ADR-010: copiloto-web depende de @copiloto/core 
 # hito 6: fetch-fonts.sh falló ruidoso (sin fallback silencioso, por diseño) en vez de degradar la
 # tipografía sin avisar. Se sincroniza sólo el .otf puntual (no todo `docs/`, que no hace falta acá).
 NEUE_EINSTELLUNG_OTF="docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf"
+# Mismo gap, mismo fix, para la fuente del rebrand Odobi v2 (2026-09-07, contrato FE1 §Tarea 2):
+# fetch-fonts.sh convierte este .ttf (default UC_PLUS_JAKARTA_SRC) y vive en `Prototipo frontend/`,
+# que este script tampoco sincronizaba -- se sincroniza sólo el .ttf puntual, no la carpeta entera
+# (mockups/audit/exploraciones no hacen falta para el build).
+PLUS_JAKARTA_TTF="Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf"
 
-echo "==> [1/3] sync ${WEB_SUBDIR} + ${CORE_SUBDIR} + fuente NeueEinstellung + fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
+echo "==> [1/3] sync ${WEB_SUBDIR} + ${CORE_SUBDIR} + fuentes NeueEinstellung/Plus Jakarta Sans + fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
 tar -C "$LOCAL" \
   --exclude="${WEB_SUBDIR}/node_modules" \
   --exclude="${WEB_SUBDIR}/dist" \
   --exclude="${CORE_SUBDIR}/node_modules" \
-  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" "$NEUE_EINSTELLUNG_OTF" deploy/copiloto/fetch-fonts.sh \
-  | ssh "$HOST" "mkdir -p '$REMOTE/apps' '$REMOTE/packages' '$REMOTE/docs/Imagen de marca/Neue_Einstellung' '$REMOTE/deploy/copiloto' && rm -rf '$REMOTE/$WEB_SUBDIR' '$REMOTE/$CORE_SUBDIR' && tar -C '$REMOTE' -xzf -"
+  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" "$NEUE_EINSTELLUNG_OTF" "$PLUS_JAKARTA_TTF" deploy/copiloto/fetch-fonts.sh \
+  | ssh "$HOST" "mkdir -p '$REMOTE/apps' '$REMOTE/packages' '$REMOTE/docs/Imagen de marca/Neue_Einstellung' '$REMOTE/Prototipo frontend/odobi-ui/assets/fonts' '$REMOTE/deploy/copiloto' && rm -rf '$REMOTE/$WEB_SUBDIR' '$REMOTE/$CORE_SUBDIR' && tar -C '$REMOTE' -xzf -"
 
 echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si ya está)"
 ssh "$HOST" "bash '$REMOTE/deploy/copiloto/fetch-fonts.sh'"

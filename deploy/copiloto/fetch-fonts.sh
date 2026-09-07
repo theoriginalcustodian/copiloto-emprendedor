@@ -6,16 +6,35 @@
 #
 # Fuentes (verificado contra el markup real de cada mock — mobile y desktop usan DOS combos
 # tipográficos distintos por diseño, no por error, ver EXTRACT-WEB §1.1/§6):
-#   Clash Display  600,700     -> Fontshare API      (mobile · @font-face -> parseamos el primer url() woff2)
-#   General Sans   400,500,600 -> Fontshare API      (mobile · idem)
-#   Space Grotesk  500,600,700 -> Google Fonts CSS2   (desktop · idem, subset "latin")
-#   Manrope        400,500,600 -> Google Fonts CSS2   (desktop · idem, subset "latin")
-#   JetBrains Mono 400,500,700 -> mirror jsdelivr/fontsource (compartido, archivo woff2 directo, sin parseo)
-#   NeueEinstellung 700 (Bold) -> CONVERSIÓN local, no CDN (fuente propia, sin distribución pública
-#                                 vía Fontshare/Google) -- fuente .otf en el repo, convertida a
-#                                 .woff2 con fontTools (ver ODOBI hito 3v). Licencia: ver nota en
-#                                 docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md §2.6 y el
-#                                 PR de este cambio -- deuda declarada, no bloqueante para la beta.
+#   Clash Display   600,700     -> Fontshare API      (mobile · @font-face -> parseamos el primer url() woff2)
+#   General Sans    400,500,600 -> Fontshare API      (mobile · idem)
+#   Plus Jakarta Sans 700 (Bold) -> CONVERSIÓN local, no CDN (desktop · rebrand Odobi v2,
+#                                  2026-09-07, contrato FE1 §Tarea 2 — reemplaza a Space Grotesk.
+#                                  Igual que NeueEinstellung: el equipo de diseño ya midió CON
+#                                  fontTools el .ttf real que usa el monograma de marca, así que
+#                                  se convierte ESE archivo, no uno servido por un CDN que puede
+#                                  versionar distinto. Licencia OFL — sin la deuda de licencia que
+#                                  tenía NeueEinstellung).
+#   Inter          400,500,600  -> Google Fonts CSS2   (desktop · rebrand Odobi v2, reemplaza a
+#                                  Manrope. Subset "latin", mismo mecanismo que Manrope antes.
+#                                  600 se fetchea aunque el canon de diseño sólo cite 400/500: el
+#                                  código YA lo pide en varios módulos vía `--font-mono` retirado,
+#                                  ver `fonts.css`)
+#   NeueEinstellung 700 (Bold)  -> CONVERSIÓN local, no CDN (mobile · fuente propia, sin
+#                                  distribución pública vía Fontshare/Google) -- fuente .otf en el
+#                                  repo, convertida a .woff2 con fontTools (ver ODOBI hito 3v).
+#                                  Licencia: ver nota en
+#                                  docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md §2.6 y
+#                                  el PR de este cambio -- deuda declarada, no bloqueante para la
+#                                  beta. ⚠️ El canon de diseño (`Prototipo frontend/odobi-ui/
+#                                  CLAUDE.md` §3) ya reemplazó esta fuente por Plus Jakarta Sans
+#                                  para el shell mobile TAMBIÉN (06-07/08) — pero `fonts.css`
+#                                  (mobile-shell default) NO es archivo de este contrato (sólo
+#                                  `fonts-web.css`, desktop): migrarlo es una decisión de blast-
+#                                  radius grande (afecta TODO módulo sin override de desktop) que
+#                                  no estaba pedida explícitamente, así que queda fuera, escalada
+#                                  por buzón en vez de tocada de arrastre.
+#   JetBrains Mono               -> RETIRADO (2026-09-07, contrato FE1 §Tarea 2). Ya no se fetchea.
 #
 # IDEMPOTENTE: si el archivo destino YA existe y pesa más que UC_FONT_MIN_BYTES (real woff2 ronda
 # los 15-40KB; un stub/placeholder committeado al repo pesa unos pocos bytes) NO vuelve a bajarlo.
@@ -28,8 +47,8 @@
 #   UC_FONT_MIN_BYTES    umbral placeholder-vs-real, bytes    (default: 2048)
 #   UC_FONTSHARE_API     base de la API CSS de Fontshare      (default: https://api.fontshare.com/v2/css)
 #   UC_GOOGLE_FONTS_API  base de la API CSS2 de Google Fonts  (default: https://fonts.googleapis.com/css2)
-#   UC_JETBRAINS_MIRROR  base del mirror woff2 de JetBrains Mono (default: https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest)
 #   UC_NEUE_EINSTELLUNG_SRC  .otf fuente de NeueEinstellung Bold (default: <repo>/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf)
+#   UC_PLUS_JAKARTA_SRC  .ttf fuente de Plus Jakarta Sans Bold  (default: <repo>/Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf)
 #   UC_PYTHON_BIN        intérprete con fontTools+brotli       (default: python3)
 set -euo pipefail
 
@@ -38,8 +57,8 @@ FONTS_DIR="${UC_FONTS_DIR:-$LOCAL/apps/copiloto-web/src/design-system/fonts}"
 MIN_BYTES="${UC_FONT_MIN_BYTES:-2048}"
 FONTSHARE_API="${UC_FONTSHARE_API:-https://api.fontshare.com/v2/css}"
 GOOGLE_FONTS_API="${UC_GOOGLE_FONTS_API:-https://fonts.googleapis.com/css2}"
-JETBRAINS_MIRROR="${UC_JETBRAINS_MIRROR:-https://cdn.jsdelivr.net/fontsource/fonts/jetbrains-mono@latest}"
 NEUE_EINSTELLUNG_SRC="${UC_NEUE_EINSTELLUNG_SRC:-$LOCAL/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf}"
+PLUS_JAKARTA_SRC="${UC_PLUS_JAKARTA_SRC:-$LOCAL/Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf}"
 PYTHON_BIN="${UC_PYTHON_BIN:-python3}"
 
 mkdir -p "$FONTS_DIR"
@@ -103,23 +122,19 @@ for block in re.findall(r"@font-face\s*\{([^}]*)\}", css):
         print(f"{fam.group(1)}\t{weight.group(1)}\t{url.group(1)}")
 ')
 
-# --- Google Fonts (Space Grotesk + Manrope): shell de ESCRITORIO (EXTRACT-WEB §1.1) --------------
-# A diferencia de Clash Display/General Sans (Fontshare, mobile) estas 2 son Google Fonts reales
-# (confirmado contra el markup del mock: `fonts.googleapis.com/css2?family=Manrope...&family=
-# Space+Grotesk...`, no Fontshare) -> API css2, nos quedamos con el subset "latin" (mismo criterio
-# que JetBrains Mono: 1 subset, la app no necesita cirílico/vietnamita/etc). Google solo sirve
-# woff2 con un User-Agent "moderno" en el request -- sin esto, cae a .woff/.ttf más viejo.
-echo "==> Google Fonts: space-grotesk@500,600,700 + manrope@400,500,600 (subset latin)"
+# --- Google Fonts (Inter): shell de ESCRITORIO (rebrand Odobi v2, 2026-09-07) --------------------
+# Reemplaza a Space Grotesk + Manrope (retiradas, contrato FE1 §Tarea 2). Mismo mecanismo que
+# tenían ellas -> API css2, subset "latin" (1 subset, la app no necesita cirílico/vietnamita/etc).
+# Google solo sirve woff2 con un User-Agent "moderno" en el request -- sin esto, cae a .woff/.ttf
+# más viejo.
+echo "==> Google Fonts: inter@400,500,600 (subset latin)"
 GOOGLE_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-GOOGLE_FONTS_CSS="$(curl -fsSL -A "$GOOGLE_UA" "${GOOGLE_FONTS_API}?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap")"
+GOOGLE_FONTS_CSS="$(curl -fsSL -A "$GOOGLE_UA" "${GOOGLE_FONTS_API}?family=Inter:wght@400;500;600&display=swap")"
 
 declare -A GOOGLE_MAP=(
-  ["space grotesk|500"]="SpaceGrotesk-Medium.woff2"
-  ["space grotesk|600"]="SpaceGrotesk-Semibold.woff2"
-  ["space grotesk|700"]="SpaceGrotesk-Bold.woff2"
-  ["manrope|400"]="Manrope-Regular.woff2"
-  ["manrope|500"]="Manrope-Medium.woff2"
-  ["manrope|600"]="Manrope-Semibold.woff2"
+  ["inter|400"]="Inter-Regular.woff2"
+  ["inter|500"]="Inter-Medium.woff2"
+  ["inter|600"]="Inter-Semibold.woff2"
 )
 
 while IFS=$'\t' read -r family weight url; do
@@ -146,16 +161,31 @@ for block in re.findall(r"@font-face\s*\{([^}]*)\}", css):
         print(f"{fam.group(1)}\t{weight.group(1)}\t{url.group(1)}")
 ')
 
-# --- JetBrains Mono: mirror jsdelivr/fontsource, un archivo woff2 por peso, sin parseo -------------
-echo "==> JetBrains Mono (mirror fontsource/jsdelivr): 400,500,700"
-declare -A JETBRAINS_MAP=(
-  ["400"]="JetBrainsMono-Regular.woff2"
-  ["500"]="JetBrainsMono-Medium.woff2"
-  ["700"]="JetBrainsMono-Bold.woff2"
-)
-for weight in 400 500 700; do
-  download_url "$JETBRAINS_MIRROR/latin-$weight-normal.woff2" "$FONTS_DIR/${JETBRAINS_MAP[$weight]}"
-done
+# --- Plus Jakarta Sans Bold: CONVERSIÓN local (mismo motivo que NeueEinstellung) ----------------
+# A diferencia de Inter (Google Fonts arriba), el equipo de diseño ya midió con fontTools el .ttf
+# real que define el glifo de la O del monograma de marca (`Prototipo frontend/odobi-ui/CLAUDE.md`
+# §3) -- se convierte ESE archivo, no una copia que Google podría versionar distinto. Licencia OFL
+# (`assets/fonts/PlusJakartaSans-OFL.txt`), sin la deuda de licencia que tenía NeueEinstellung.
+echo "==> Plus Jakarta Sans Bold: conversión local .ttf -> .woff2 (sin CDN)"
+PLUS_JAKARTA_DEST="$FONTS_DIR/PlusJakartaSans-Bold.woff2"
+if needs_download "$PLUS_JAKARTA_DEST"; then
+  if [ ! -f "$PLUS_JAKARTA_SRC" ]; then
+    echo "  ! fuente .ttf no encontrada: $PLUS_JAKARTA_SRC" >&2
+    echo "  ! seteá UC_PLUS_JAKARTA_SRC o restaurá el archivo -- no hay fallback silencioso" >&2
+    exit 1
+  fi
+  echo "  -> convirtiendo $(basename "$PLUS_JAKARTA_SRC")"
+  "$PYTHON_BIN" -c '
+import sys
+from fontTools.ttLib import TTFont
+font = TTFont(sys.argv[1])
+font.flavor = "woff2"
+font.save(sys.argv[2])
+' "$PLUS_JAKARTA_SRC" "$PLUS_JAKARTA_DEST.tmp"
+  mv "$PLUS_JAKARTA_DEST.tmp" "$PLUS_JAKARTA_DEST"
+else
+  echo "  = $(basename "$PLUS_JAKARTA_DEST") ya presente (idempotente, no-op)"
+fi
 
 # --- NeueEinstellung Bold: CONVERSIÓN local (no hay CDN público para esta fuente) -----------------
 # A diferencia de las 3 familias de arriba, NeueEinstellung no está en Fontshare/Google Fonts: el

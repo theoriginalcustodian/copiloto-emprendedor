@@ -37,6 +37,8 @@ set -uo pipefail   # SIN -e: un chequeo que falle no debe abortar los demás
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
+# shellcheck source=lib/buzon-roles.sh
+. "$REPO_ROOT/scripts/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 TRANSCRIPTS="${TRANSCRIPTS_DIR:-$HOME/.claude/projects/c--Proyectos-Claude-Claude-code-copiloto-emprendedor}"
 UMBRAL_MUERTA_MIN="${UMBRAL_MUERTA_MIN:-30}"
 QUIET=0
@@ -125,7 +127,12 @@ fi
 # la fecha (`2026-08-06_dato_planificacion-a-todos_…`) — anclar al principio no matchearía nunca, y
 # ése es el modo de fallar en silencio de este filtro: no rompe nada, sólo deja de filtrar.
 SESION_ACTUAL="${SESION_ACTUAL:-planificacion}"
-mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( -iname "*-a-${SESION_ACTUAL}_*" -o -iname '*-a-todos_*' \) ! -iname "*_${SESION_ACTUAL}-a-*" -newermt '-5 minutes' -printf '%f\n' 2>/dev/null)"
+# Los patrones que lee esta sesión salen de lee_patrones() (scripts/lib/buzon-roles.sh), no de una
+# lista acá: frontend1/frontend2 heredan además el broadcast `-a-frontend_`, y esa herencia tiene
+# que valer para TODOS los consumidores o el mensaje se pierde en el que se olvidó.
+_pat_args=(); while IFS= read -r _p; do _pat_args+=(-o -iname "$_p"); done < <(lee_patrones "$SESION_ACTUAL")
+mail_out="$(find "$BUZON/abierto" -maxdepth 1 -type f \( "${_pat_args[@]:1}" \) ! -iname "*_${SESION_ACTUAL}-a-*" -newermt '-5 minutes' -printf '%f
+' 2>/dev/null)"
 [ -n "$mail_out" ] && add "MAIL FRESCO (sin ver aún, <5min):
 $mail_out"
 
@@ -244,10 +251,11 @@ senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
   # depende del rótulo del cron: un archivo `*_<rol>-a-*` sólo lo pudo escribir esa sesión, y es
   # producto de trabajo, no latido. Medido 2026-08-12: las dos ventanas de C6 vivas NO tenían
   # marcador de cron (mt_fe=0) y por transcript parecían ausentes — el buzón las mostró al día.
+  _firma_args=(); while IFS= read -r _p; do _firma_args+=(-o -iname "$_p"); done < <(firma_patrones "$rol")
   while IFS= read -r -d '' f; do
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$mejor" ] && mejor="$m"
-  done < <(find "$BUZON" -type f -iname "*_${rol}-a-*" -newermt '-8 hours' -print0 2>/dev/null)
+  done < <(find "$BUZON" -type f \( "${_firma_args[@]:1}" \) -newermt '-8 hours' -print0 2>/dev/null)
   printf '%s' "$mejor"
 }
 
@@ -265,7 +273,7 @@ senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
 # construcción no lo leyó nadie. Verificado contra el estado real de ese día: backend firmó por
 # última vez 11:55 y C4.1 se emitió 11:57 (alarma correcta, llevaba ~100 min sin dueño), frontend
 # firmó 13:01 con su contrato emitido antes (silencio correcto, estaba trabajando).
-for par in "backend:$mt_be" "frontend:$mt_fe" "auditoria:0" "manejo-de-errores:$mt_me"; do
+for par in "backend:$mt_be" "frontend1:$mt_fe" "frontend2:$mt_fe" "auditoria:0" "manejo-de-errores:$mt_me"; do
   rol="${par%%:*}"; mt_main="${par##*:}"
   senal="$(senal_rol "$rol" "$mt_main")"
   # Destinatarios compuestos incluidos (`-a-backend-y-frontend_`). El `-a-` ancla la dirección:
@@ -281,6 +289,7 @@ for par in "backend:$mt_be" "frontend:$mt_fe" "auditoria:0" "manejo-de-errores:$
   # se puede afirmar "no hay ventana"; por encima, la afirmación se sostiene.
   GRACIA_SEG="${VIGILANCIA_GRACIA_SEG:-900}"
   ahora_ts="$(date +%s)"
+  rol_re="$(rol_regex_buzon "$rol")"   # incluye el broadcast heredado (frontend1 <- frontend)
   huerfanos=()
   while IFS= read -r nombre; do
     [ -z "$nombre" ] && continue
@@ -288,7 +297,7 @@ for par in "backend:$mt_be" "frontend:$mt_fe" "auditoria:0" "manejo-de-errores:$
     [ "$(( ahora_ts - mt_c ))" -lt "$GRACIA_SEG" ] && continue
     [ "$mt_c" -gt "$senal" ] && huerfanos+=("$nombre")
   done < <(ls -1 "$BUZON/abierto" 2>/dev/null \
-           | grep -iE "_(contrato|urgente)_[a-z-]*-a-([a-z-]+-y-)?${rol}(-y-[a-z-]+)?_")
+           | grep -iE "_(contrato|urgente)_[a-z0-9-]*-a-([a-z0-9-]*-y-)?${rol_re}(-y-[a-z0-9-]*)?_")
   [ "${#huerfanos[@]}" -eq 0 ] && continue
   if [ "$senal" -eq 0 ]; then desde="nunca dio señal de vida (<8h)"
   else                        desde="no da señal desde las $(date -d "@$senal" '+%H:%M')"; fi
