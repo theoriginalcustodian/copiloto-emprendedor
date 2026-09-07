@@ -190,7 +190,7 @@
   font-size: 11px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--accent, var(--heading));
+  color: var(--core);
 }
 
 .como-hablarle-bloque__ejemplo {
@@ -429,7 +429,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 6px;
 }
 
@@ -564,7 +564,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 4px;
 }
 
@@ -585,7 +585,7 @@
 }
 
 .afip-setup-ambiente-chip--activo {
-  border-color: var(--accent, var(--heading));
+  border-color: var(--core);
 }
 
 .afip-setup-ambiente-chip__nombre {
@@ -598,7 +598,7 @@
 .afip-setup-ambiente-chip__estado {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
 }
 
 /* ---------- Apariencia (selector de piel — movido acá desde Rail.tsx/AccountScreen.tsx,
@@ -675,7 +675,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 0;
   text-align: left;
 }
