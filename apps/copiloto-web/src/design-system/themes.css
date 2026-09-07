@@ -71,6 +71,15 @@
  *
  * `:root` (sin `data-theme`) trae el default `claro` como fallback antes de que ThemeProvider
  * monte y setee el atributo — evita FOUC a un tema sin estilar.
+ *
+ * ═══ "BLOQUE NEGRO" — pendiente de decisión de diseño (2026-09-07, Tarea 3) ═══
+ * `--bloque-bg`/`--bloque-fg` (la cifra ACCIONABLE del negocio, CLAUDE.md §5) sólo tienen valor de
+ * diseño REAL en `claro` (`#1A1512`/blanco, calcado del mockup — 14,59:1). En `oscuro`/`nocturno`
+ * ese mismo negro da ~1:1 contra el canvas (ya casi negro): invisible, no repinta nada. Escalado al
+ * buzón (`urgente_frontend1-a-planificacion_bloque-negro-sin-definir...`); hasta que se decida,
+ * esas 2 pieles usan `--card-bg`/`--text` como placeholder — una card normal, no el énfasis que el
+ * diseño pide, pero tampoco un valor inventado sin fundamento. Buscar `--bloque-bg` en los 3
+ * bloques de abajo para ver el detalle de cada piel.
  */
 
 :root {
@@ -108,6 +117,16 @@
   --card-border: 1px solid rgba(255, 252, 244, 0.7);
   --card-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --card-blur: none;
+  /* "Bloque negro" — gramática Monzo (CLAUDE.md §5, 19-20/08): la cifra ACCIONABLE del negocio en
+     cada función (Tarea 3). Escalado a planificación 2026-09-07 (sin resolver al momento de este
+     commit): el mockup fuente sólo define esto para UNA piel (`--negro` (`#1A1512`) fijo, sin
+     `data-theme`), y ese valor da 14,59:1 acá en claro (funciona) pero ~1:1 en oscuro/nocturno
+     (invisible contra un canvas ya casi negro, ver el bloque de esas 2 pieles). Acá en claro el
+     valor real SÍ es seguro: negro real con texto blanco (17,9:1). */
+  --bloque-bg: #1A1512;
+  --bloque-fg: #FFFFFF;
+  --bloque-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
+  --bloque-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
   --amount-size: 46px;
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
@@ -172,7 +191,7 @@
 
   /* Radios — gramática Monzo (CLAUDE.md §5 "Renovación visual", 19/08; corrección de planificación
      2026-09-07: los valores `8`/`16` del contrato quedan derogados por los del mockup). Invariantes
-     entre pieles, como brand-*/skin-preview-* arriba: son forma, no color, no dependen del lienzo.
+     entre pieles, como `--brand-*`/`--skin-preview-*` arriba: son forma, no color, no dependen del lienzo.
      `--r-xl` es nuevo (no existía en el sistema de 2 radios). `--r-pill` = full-round (fila 5 de la
      tabla, la acción de tarjeta y el mic comparten el mismo fill, no un radio con nombre propio en
      la fuente — se agrega acá para no repetir `999px` a mano). Antes de aplicar un radio interior
@@ -244,6 +263,16 @@
   --card-border: 1px solid rgba(255, 252, 244, 0.7);
   --card-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 26px -12px rgba(110, 75, 44, 0.3);
   --card-blur: none;
+  /* "Bloque negro" — gramática Monzo (CLAUDE.md §5, 19-20/08): la cifra ACCIONABLE del negocio en
+     cada función (Tarea 3). Escalado a planificación 2026-09-07 (sin resolver al momento de este
+     commit): el mockup fuente sólo define esto para UNA piel (`--negro` (`#1A1512`) fijo, sin
+     `data-theme`), y ese valor da 14,59:1 acá en claro (funciona) pero ~1:1 en oscuro/nocturno
+     (invisible contra un canvas ya casi negro, ver el bloque de esas 2 pieles). Acá en claro el
+     valor real SÍ es seguro: negro real con texto blanco (17,9:1). */
+  --bloque-bg: #1A1512;
+  --bloque-fg: #FFFFFF;
+  --bloque-fg-secondary: #E8A088; /* arena — CLAUDE.md §2, `.resumen .p-lbl` del mockup real — 8,46:1 */
+  --bloque-chip-bg: rgba(247, 243, 236, 0.1); /* `.resumen .comp` del mockup — chip de comparación sobre el bloque */
   --amount-size: 46px;
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
@@ -346,6 +375,15 @@
   --card-border: 1px solid rgba(241, 228, 204, 0.14);
   --card-shadow: inset 0 1px 0 rgba(241, 228, 204, 0.1), 0 12px 28px -12px rgba(0, 0, 0, 0.6);
   --card-blur: none;
+  /* "Bloque negro" — PLACEHOLDER, no el valor de diseño real (ver escalación en la cabecera de este
+     archivo y el `urgente_` de 2026-09-07 al buzón). `#1A1512` de claro da 1,02:1 contra este --bg
+     (invisible). Hasta que planificación decida, usa el MISMO `--card-bg` que una card normal —
+     no inventa un tercer valor, y no se ve "roto" (ni negro invisible ni un color nuevo sin
+     fundamento): simplemente no tiene todavía el énfasis que el diseño pide. */
+  --bloque-bg: #251B11;
+  --bloque-fg: #F1E4CC;
+  --bloque-fg-secondary: var(--label); /* placeholder = tratamiento de card normal, no arena (esa es sólo del bloque real) */
+  --bloque-chip-bg: color-mix(in srgb, var(--label) 15%, transparent);
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
   --amount-sign: #DE7250; /* 20px/400 NORMAL sobre card-bg oscuro — 5,33-5,98:1; B04A2E daría 3,11:1, falla AA acá */
@@ -435,6 +473,12 @@
   --card-border: 1px solid rgba(241, 228, 204, 0.1);
   --card-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.75);
   --card-blur: none;
+  /* "Bloque negro" — PLACEHOLDER, mismo criterio que en `oscuro` (ver esa nota y la escalación en
+     la cabecera del archivo): `#1A1512` da 1,10:1 acá (invisible). Usa `--card-bg` sin inventar. */
+  --bloque-bg: #141009;
+  --bloque-fg: #F1E4CC;
+  --bloque-fg-secondary: var(--label);
+  --bloque-chip-bg: color-mix(in srgb, var(--label) 15%, transparent);
   --amount-size: 46px;
   --amount-fg: #F1E4CC;
   --amount-sign: #DE7250; /* 20px/400 NORMAL sobre card-bg oscuro — 5,33-5,98:1; B04A2E daría 3,11:1, falla AA acá */

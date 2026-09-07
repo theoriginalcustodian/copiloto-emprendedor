@@ -81,18 +81,28 @@ export function GastosScreen() {
 
   return (
     <div className="gastos-screen" data-testid="pantalla-gastos">
-      <header className="gastos-screen__header">
-        <h1 className="gastos-screen__title">Gastos</h1>
-        {estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="gastos-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      {/* Anatomía de función (Tarea 3, CLAUDE.md §5, 19/08): stack con nombre + período — el
+          nombre migra del header a esta card blanca, igual que en el mockup fuente. Web conserva
+          su propio chrome (Rail/TabBar) en vez del "Volver ‹" mobile — el contrato dice explícito
+          "no se toca el modelo de capas", así que acá no hay retroceso apilado. `--r-xl` porque es
+          la MISMA card que el bloque negro de abajo (mismo ancho, mismo radio — mockup: `.fn-stack
+          .atras`). */}
+      <header className="gastos-screen__stack">
+        <span className="gastos-screen__nombre-fila">
+          <span className="gastos-screen__nombre">Gastos</span>
+          {estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="gastos-actualizar"
+              className="gastos-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        {resumen != null && <span className="gastos-screen__periodo">{resumen.periodo}</span>}
       </header>
 
       {estado === 'cargando' && (
@@ -126,9 +136,23 @@ export function GastosScreen() {
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
-              <Button onClick={() => setVista('formulario')} data-testid="gastos-nuevo">
-                Anotar un gasto
-              </Button>
+              {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
+                  — compite con el mic, que es el gesto que el producto quiere enseñar. "Nuevo
+                  gasto" es el verbo textual del repo, no "Agregar"/"Cargar". */}
+              <div className="gastos-screen__fila-lbl">
+                <span className="gastos-screen__lista-lbl">Últimos</span>
+                <button
+                  type="button"
+                  className="gastos-screen__pill-nuevo"
+                  onClick={() => setVista('formulario')}
+                  data-testid="gastos-nuevo"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Nuevo gasto
+                </button>
+              </div>
 
               {!hayGastos && (
                 <p className="gastos-screen__empty" data-testid="gastos-vacio">

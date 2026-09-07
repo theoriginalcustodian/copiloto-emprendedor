@@ -3,9 +3,12 @@ import { ETIQUETA_CATEGORIA, formatearImporte, type ResumenGastos } from '@copil
 import { Surface } from '../../design-system';
 
 /**
- * `ResumenMes` — port directo de `apps/mobile/src/modules/gastos/ResumenMes.tsx` (mismo dato, misma
- * regla de normalización de barras). Ver ese archivo para el porqué de "normalizar sobre la suma
- * real, no sobre 100" y "total 0.00 no es un vacío".
+ * `ResumenMes` — port de `apps/mobile/src/modules/gastos/ResumenMes.tsx` (mismo dato, misma regla
+ * de normalización de barras — ver ese archivo para el porqué de "normalizar sobre la suma real,
+ * no sobre 100" y "total 0.00 no es un vacío"), repintado a "bloque negro" (Tarea 3, gramática
+ * Monzo, CLAUDE.md §5): "Gastado este mes" es la cifra ACCIONABLE de esta función. `Surface
+ * variant="bloque"` — ver el comentario de cabecera de `themes.css` sobre el placeholder pendiente
+ * en oscuro/nocturno.
  */
 export interface ResumenMesProps {
   resumen: ResumenGastos;
@@ -15,7 +18,7 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
   const sumaPorcentajes = resumen.porCategoria.reduce((a, c) => a + c.porcentaje, 0);
 
   return (
-    <Surface variant="tile" className="gastos-resumen" data-testid="gastos-resumen">
+    <Surface variant="bloque" className="gastos-resumen" data-testid="gastos-resumen">
       <p className="gastos-resumen__periodo" data-testid="gastos-resumen-periodo">
         Gastado en {resumen.periodo}
       </p>

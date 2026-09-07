@@ -13,20 +13,84 @@
   padding: 6px 16px 24px;
 }
 
-.gastos-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup.
+ * Web no lleva "Volver ‹" (Rail/TabBar propios, contrato: "no se toca el modelo de capas") — el
+ * resto del stack (card blanca, baseline, nombre display / período secundario) sí se porta. */
+.gastos-screen__stack {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
+}
+
+.gastos-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gastos-screen__nombre {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.gastos-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.gastos-screen__actualizar {
+  font-size: 11px;
+}
+
+/* ---------- Rótulo de sección + alta (CLAUDE.md §5) ---------- */
+.gastos-screen__fila-lbl {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.gastos-screen__title {
-  font-family: var(--font-display);
-  font-size: 27px;
+.gastos-screen__lista-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--heading);
-  margin: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Pill de alta — NUNCA un FAB (compite con el mic). Card blanca, label `#B04A2E` (5,43:1 ✅ sobre
+   blanco/card claro) — mismo criterio que el mockup (`.nuevo`), `--r-pill` nuevo. */
+.gastos-screen__pill-nuevo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--core);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gastos-screen__pill-nuevo svg {
+  flex-shrink: 0;
 }
 
 .gastos-screen__loading,
@@ -58,28 +122,45 @@
   margin: 0;
 }
 
-/* ---------- ResumenMes ---------- */
+/* ---------- ResumenMes — "bloque negro" (Tarea 3, gramática Monzo) ----------
+ * Valores calcados 1:1 de `.resumen`/`.p-lbl`/`.total`/`.comp` en el mockup fuente
+ * (`Prototipo frontend/odobi-ui/prototipo/index.html`). El fondo/color base los pone
+ * `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía interna.
+ */
 .gastos-resumen {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 16px 15px;
 }
 
-.gastos-resumen__periodo,
-.gastos-resumen__mes-anterior {
+.gastos-resumen__periodo {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--label);
+  color: var(--bloque-fg-secondary);
   margin: 0;
 }
 
 .gastos-resumen__total {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 40px;
   font-weight: 700;
-  color: var(--text);
-  margin: 2px 0 4px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-fg);
+  margin: 8px 0 12px;
+}
+
+/* La comparación con el mes anterior es un CHIP sobre el bloque (mockup: `.resumen .comp`), no un
+   renglón suelto — mismo tratamiento que el delta de Mi día. */
+.gastos-resumen__mes-anterior {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg);
+  background: var(--bloque-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  margin: 0 0 4px;
 }
 
 .gastos-resumen__categorias {
@@ -105,25 +186,25 @@
 }
 
 .gastos-resumen__cat-label {
-  color: var(--text);
+  color: var(--bloque-fg);
   flex: 1;
 }
 
 .gastos-resumen__cat-total {
-  color: var(--label);
+  color: var(--bloque-fg-secondary);
 }
 
 .gastos-resumen__barra-fondo {
   height: 6px;
   border-radius: 3px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--label) 15%, transparent);
+  background: color-mix(in srgb, var(--bloque-fg) 15%, transparent);
 }
 
 .gastos-resumen__barra {
   height: 6px;
   border-radius: 3px;
-  background: var(--btn-bg);
+  background: var(--bloque-fg-secondary);
 }
 
 /* ---------- TarjetaGasto ---------- */
