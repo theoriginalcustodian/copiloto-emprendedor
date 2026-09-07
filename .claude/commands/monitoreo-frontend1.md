@@ -1,18 +1,18 @@
 ---
-description: Arranque VERIFICADO de la sesión FRONTEND: cron + harness de buzón + contexto + qué arranca, con reporte binario
+description: Arranque VERIFICADO de la sesión FRONTEND-1: cron + harness de buzón + contexto + qué arranca, con reporte binario
 allowed-tools: CronList, CronCreate, Read, Bash, Glob, Grep
 ---
 
-# Arrancar el monitoreo de la sesión FRONTEND
+# Arrancar el monitoreo de la sesión FRONTEND-1
 
 Instalá el cron de heartbeat de ESTA sesión (frontend). **Corré este comando EN LA VENTANA DE
-FRONTEND** — un cron no se puede crear para otra sesión.
+FRONTEND-1** — un cron no se puede crear para otra sesión.
 
 Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objetivo no es
 "instalar el cron", es dejar la sesión LISTA PARA TRABAJAR y poder demostrarlo.**
 
 1. **`CronList`** — mirá si ya existe un cron con schedule `*/3 * * * *` cuyo prompt arranque con
-   "Vigía de coordinación (sesión FRONTEND)". Si ya está → no crees nada, saltá al paso 3.
+   "Vigía de coordinación (sesión FRONTEND1)". Si ya está → no crees nada, saltá al paso 3.
 2. **`CronCreate`** — si falta, crealo con el schedule y el prompt EXACTOS de abajo.
 3. **`CronList` de nuevo y CONFIRMÁ** que aparece. **Sin verlo en `CronList`, NO está instalado**
    (raíz 2026-07-24: backend quedó 8½ h mudo porque instalar no confirmaba nada — ver
@@ -22,10 +22,10 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
    el push no existe y dependés sólo del cron: **decilo en el reporte**, no lo asumas.
 5. **Contexto de coordinación** — leé `coordinacion/COORDINACION.md` y `coordinacion/PLAN.md`
    (reglas vivas + COLA-VIVA). Son la fuente de qué te toca; sin esto arrancás adivinando.
-5.bis. **Instrumento** — `bash scripts/vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
+5.bis. **Instrumento** — `SESION_ACTUAL=frontend1 bash scripts/vigilancia-check.sh --quiet`. Corré esto primero en cada tick del
    cron (ver el gate del paso 0 de abajo); acá en el arranque alcanza con confirmar que corre sin
    error. Si no existe en tu checkout, estás en una rama vieja — decilo.
-6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-frontend_` y `-a-todos_`, **y también**
+6. **Buzón** — listá `coordinacion/abierto/` filtrando `-a-frontend1_`, `-a-frontend_` (broadcast a las dos) y `-a-todos_`, **y también**
    `coordinacion/cerrado/<hoy>/` (los `avance_`/`dato_` nacen archivados: ahí viven las señales que
    destraban, tipo «suelto el device»). Contá cuántos te interpelan sin acusar.
 7. **Checkout** — `git branch --show-current` y `git status --short | head`. Es checkout COMPARTIDO:
@@ -34,7 +34,7 @@ Pasos, en orden (idempotente + auto-verificado). **Ninguno es opcional: el objet
 **REPORTE de arranque — una línea por ítem, binario, sin prosa:**
 
 ```
-✅/❌ cron FRONTEND vivo (schedule */3, próximo tick HH:MM)
+✅/❌ cron FRONTEND-1 vivo (schedule */3, próximo tick HH:MM)
 ✅/❌ vigilancia-check.sh corre
 ✅/❌ buzon_watcher registrado
 ✅/❌ COORDINACION.md + PLAN.md leídos (COLA-VIVA: hito N «...»)
@@ -47,33 +47,33 @@ La última línea **no es opcional**: si terminás el arranque sin nombrar qué 
 — quedaste esperando. Si tu cola está genuinamente vacía, escribilo así y **posteá un `avance_` de una
 línea al buzón**, porque planificación lee el buzón, no tus ticks.
 
-> Contexto: sesión FRONTEND del trabajo en 4 sesiones paralelas (planificación/backend/frontend/
+> Contexto: sesión FRONTEND-1 del trabajo en sesiones paralelas (planificación/backend/frontend1/frontend2/
 > manejo-de-errores) coordinadas por el buzón `coordinacion/`. El cron se pierde al abrir una sesión
 > NUEVA (sobrevive a `--continue`/`--resume`). Este command lo re-arma cuando hace falta.
 
 ---
 
-## Cron — Vigía de coordinación (FRONTEND)
+## Cron — Vigía de coordinación (FRONTEND-1)
 
 - **Schedule (cron):** `*/3 * * * *`  (cada 3 minutos)
 - **Prompt:**
 
 ```
-Vigía de coordinación (sesión FRONTEND).
+Vigía de coordinación (sesión FRONTEND1).
 
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
 0. 🔴 GATE DETERMINISTA (chequeo GLOBAL, no reemplaza el paso 1) — corré primero:
-   `bash scripts/vigilancia-check.sh --quiet`
+   `SESION_ACTUAL=frontend1 bash scripts/vigilancia-check.sh --quiet`
    Exit 1 = alarma global (cola arrancable, contrato_/pedido_/en-curso viejo sin acusar de
    CUALQUIER sesión, o alguna sesión muda ≥30min) — su stdout ya es el reporte, no lo reconstruyas.
    Exit 0 = nada de eso, pero **igual seguí al paso 1**: este gate sólo detecta lo VIEJO/estancado
    (vía `escaladores-buzon.sh`), no un `contrato_` que te bajaron hace 2 minutos — para tu buzón
    propio no hay atajo. Si no existe en tu checkout, estás en una rama vieja — decilo y seguí igual.
 
-1. Listar `abierto/` y quedarte SÓLO con `-a-frontend_` y `-a-todos_`. Descartar lo que empiece por
-   `frontend-a-` (es tuyo). Mirar también `cerrado/<hoy>/` por los `avance_` y `dato_`, que nacen
+1. Listar `abierto/` y quedarte SÓLO con `-a-frontend1_`, `-a-frontend_` y `-a-todos_`. Descartar lo que empiece por
+   `frontend1-a-` (es tuyo). Un `-a-frontend2_` es de la OTRA sesión: no lo tomes. Mirar también `cerrado/<hoy>/` por los `avance_` y `dato_`, que nacen
    archivados: ahí viven las señales que DESTRABAN trabajo (p.ej. «el hito 8 está desplegado»).
 
 2. Abrir lo nuevo y ver si te interpela aunque el nombre diga otro destinatario.

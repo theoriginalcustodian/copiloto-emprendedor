@@ -68,11 +68,12 @@ edad_min() {
   echo $(( (now - m) / 60 ))
 }
 
-# extrae el destinatario del nombre: fecha_tipo_de-a-para_slug.md -> "para"
-destinatario_de_nombre() {
-  local b="$1"
-  echo "$b" | sed -nE 's/^[0-9-]+_[a-z]+_[a-z]+-a-([a-z]+)_.*/\1/p'
-}
+# El parser del destinatario vive en scripts/lib/buzon-roles.sh — FUENTE ÚNICA.
+# Estaba acá con `[a-z]+`, que no matchea dígitos: al desdoblar frontend en frontend1/
+# frontend2 (2026-09-07) devolvía '' y el `${para:-todos}` de más abajo reescribía la
+# escalación a `todos` — un mensaje MAL DIRIGIDO, no un error. Medición en el helper.
+# shellcheck source=lib/buzon-roles.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/buzon-roles.sh"
 
 # edad_alta_min — para pedido_/urgente_: edad desde que ENTRÓ al buzón, no desde el último touch.
 # Causa raíz (medida 2026-08-06): ampliar un pedido_ con evidencia nueva (justo lo que hay que
