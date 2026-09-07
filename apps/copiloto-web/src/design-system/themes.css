@@ -170,6 +170,20 @@
   --skin-preview-oscuro: #1E1610;
   --skin-preview-nocturno: #0C0805;
 
+  /* Radios — gramática Monzo (CLAUDE.md §5 "Renovación visual", 19/08; corrección de planificación
+     2026-09-07: los valores `8`/`16` del contrato quedan derogados por los del mockup). Invariantes
+     entre pieles, como brand-*/skin-preview-* arriba: son forma, no color, no dependen del lienzo.
+     `--r-xl` es nuevo (no existía en el sistema de 2 radios). `--r-pill` = full-round (fila 5 de la
+     tabla, la acción de tarjeta y el mic comparten el mismo fill, no un radio con nombre propio en
+     la fuente — se agrega acá para no repetir `999px` a mano). Antes de aplicar un radio interior
+     dentro de un contenedor con radio propio, leer "Radios concéntricos" (regla dura, CLAUDE.md
+     §5, 20/08): radio interior = radio exterior − distancia al borde, sólo relevante cuando esa
+     distancia es chica (≤4-8px). */
+  --r-s: 14px;
+  --r-m: 22px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
   /* Scrollbar glass, theme-aware (consumido por la regla global en global.css): thumb translúcido
      con el acento, track transparente. Fallback `:root` = mismo valor que `claro` (default). */
 }

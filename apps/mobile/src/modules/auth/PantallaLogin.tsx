@@ -180,7 +180,7 @@ export function PantallaLogin() {
             style={pressableStyle([
               styles.boton,
               {
-                backgroundColor: tema.color.acento,
+                backgroundColor: tema.color.acentoTinta,
                 borderRadius: tema.radio.md,
                 height: ALTO_BOTON,
                 marginTop: tema.espacio.xs,

@@ -35,7 +35,15 @@ const CENTRO = 80;
  * Paleta categórica fija — port 1:1 de `CATEGORICO` en `apps/mobile/src/theme/tokens.ts`. Un solo
  * set literal, no theme-dependent (igual que el original: la identidad de una categoría no puede
  * cambiar con el skin). `themes.css` no tiene una variable equivalente porque nunca hizo falta hasta
- * este gráfico — no es una omisión de este port.
+ * este gráfico — no es una omisión de este port. Excepción documentada, no tokenizada por decisión
+ * de planificación 2026-09-07 (codifica datos, no marca — ver `inteligenciaNoHexLiterals.test.ts`).
+ *
+ * Legibilidad post-rebrand v2 (verificado, no a ojo, 2026-09-07): contraste WCAG de cada color
+ * contra `--bg`/`--card-bg` en las 3 pieles — peor caso 2.34:1 (claro, "cian" c/bg), mejor margen en
+ * `nocturno` (2.77–6.86:1, el fondo más oscuro separa más, no menos). Ninguno se funde con el fondo;
+ * no hay nada que escalar. (Nota aparte, fuera de este chequeo: "naranja-oscuro" `#aa3900` y "azul"
+ * `#1f57c5` tienen luminancia casi idéntica entre sí —1,02:1— por lo que dependen del matiz, no del
+ * brillo, para distinguirse entre sí; no afecta la legibilidad contra fondo que pedía este chequeo.)
  */
 const CATEGORICO: readonly string[] = [
   '#8c398b',

@@ -109,7 +109,7 @@ export function PantallaComoHablarle() {
               <View style={styles.bloque}>
                 <Text
                   style={{
-                    color: tema.color.acento,
+                    color: tema.color.acentoTinta,
                     fontFamily: tema.fuente.mono,
                     fontSize: tema.tipo.chico,
                     letterSpacing: 1.2,
@@ -138,7 +138,7 @@ export function PantallaComoHablarle() {
               <View style={styles.bloque}>
                 <Text
                   style={{
-                    color: tema.color.acento,
+                    color: tema.color.acentoTinta,
                     fontFamily: tema.fuente.mono,
                     fontSize: tema.tipo.chico,
                     letterSpacing: 1.2,

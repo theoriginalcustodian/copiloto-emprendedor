@@ -120,7 +120,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
           )}
 
           {envioTexto === 'confirmado' && (
-            <Text testID="feedback-texto-confirmado" style={{ color: tema.color.acento, fontSize: tema.tipo.base }}>
+            <Text testID="feedback-texto-confirmado" style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.base }}>
               ¡Gracias! Guardamos tu feedback.
             </Text>
           )}
@@ -182,7 +182,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
           {envioAudio === 'confirmado' && transcripcion != null && (
             <Text
               testID="feedback-audio-confirmado"
-              style={{ color: tema.color.acento, fontSize: tema.tipo.base, textAlign: 'center' }}
+              style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.base, textAlign: 'center' }}
             >
               Guardamos: "{transcripcion}"
             </Text>

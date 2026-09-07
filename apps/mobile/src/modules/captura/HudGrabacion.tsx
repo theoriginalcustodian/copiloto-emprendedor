@@ -232,7 +232,7 @@ export function HudGrabacion({
       <View style={styles.encabezado}>
         <View style={styles.etiquetaFila}>
           <PuntoLatido activo={activo} color={tema.color.acento} />
-          <Text style={[styles.etiquetaEstado, { color: tema.color.acento, fontFamily: tema.fuente.mono }]}>
+          <Text style={[styles.etiquetaEstado, { color: tema.color.acentoTinta, fontFamily: tema.fuente.mono }]}>
             {etiqueta}
           </Text>
         </View>

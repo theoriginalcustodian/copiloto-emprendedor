@@ -58,6 +58,15 @@ export interface Tokens {
     texto: string;
     textoTenue: string;
     acento: string;
+    /**
+     * El acento cuando funciona como TINTA (texto sobre lienzo claro) o como superficie que lleva
+     * texto encima. No es un color nuevo: es el 2º stop del acento (`#B04A2E`), el mismo que ya usa
+     * el gradiente. Existe porque `acento` (`#DE7250`) da 2.87:1 contra `acentoTexto` — por debajo
+     * del piso de 3:1 incluso para texto grande. Decisión del operador 2026-09-07 ("todo texto sobre
+     * acento va sobre #B04A2E"). Regla: si el color TOCA una glifo, es `acentoTinta`; si es puro
+     * adorno (borde, spinner, punto, degradé sin texto), es `acento`.
+     */
+    acentoTinta: string;
     acentoTexto: string;
     borde: string;
     peligro: string;
@@ -229,6 +238,7 @@ const BASE_OSCURO: VidrioCrudo = {
 
 interface PaletaCruda extends Partial<VidrioCrudo> {
   accent: string;
+  accentTinta: string;
   accent2: string;
   on: string;
   glow: string;
@@ -336,24 +346,41 @@ const CATEGORICO: readonly string[] = [
   '#876bed', // otros
 ];
 
-// El acento (`#C2452E`→`#7E2417`) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
+// El acento (`#DE7250` fills →`#B04A2E` texto/2º stop) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
 // cambia entre claro y oscuro" — y nocturno deriva de oscuro). `accent2` (tinte pálido, sin
 // declaración propia en el DoD) sale de mezclar el acento hacia blanco al 78%, misma técnica que
 // ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
 // que ya está declarado.
-const ACCENT = '#C2452E';
-const ACCENT2 = '#F2D6D1';
-const ACCENT_ON = '#FBF3E2'; // texto sobre acento, §2.1
-const ACCENT_GLOW = 'rgba(194,69,46,.55)';
+const ACCENT = '#DE7250';
+// El acento es #DE7250 en adorno, pero NINGÚN texto se apoya sobre él: 2.87:1 contra `ACCENT_ON`
+// no llega ni al piso de 3:1 de texto grande. `ACCENT_TINTA` es el 2º stop del propio acento y da
+// 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
+const ACCENT_TINTA = '#B04A2E';
+const ACCENT2 = '#F8E0D9';
+// Blanco PURO, no el crema del sistema viejo: `odobi.css:90-91` declara `--on-accent:
+// var(--odobi-blanco)` para los dos temas, y `--odobi-blanco: #FFFFFF`. El `#FBF3E2` era remanente
+// pre-rebrand — nunca fue un valor Odobi. Decisión de planificación 2026-09-07 (salida 1), aplicada
+// SOBRE la opción 2 del operador: las dos juntas dan #FFFFFF sobre #B04A2E = 5.43:1, AA para texto
+// normal (no sólo grande). Se voltea entero y NO se parte en dos tokens porque el censo dio que sus
+// 11 consumidores caen todos sobre superficies de acento — ninguno fuera.
+// ⚠️ Excepción conocida y DIFERIDA por el operador: `HudGrabacion.tsx:60` pinta sobre un gradiente
+// cuyo stop claro es `accent2` (#F8E0D9) → 1.26:1. No lo arregla ningún color de texto: el defecto
+// es el gradiente. Queda escalado a diseño, no se toca acá.
+const ACCENT_ON = '#FFFFFF';
+const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
 // extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
 // usuario" en la fila de acento.
-const UB1 = '#C2452E';
-const UB2 = '#7E2417';
+// 🔴 La burbuja del usuario LLEVA TEXTO encima, así que su gradiente entero tiene que ser legible:
+// arranca en `ACCENT_TINTA` (peor caso 4.92:1 con `ACCENT_ON`) y no en el fill. `UB2` se deriva
+// aplicando al stop nuevo LA MISMA relación por canal que tenía el par viejo (#C2452E→#7E2417:
+// .649/.522/.500) — es derivación de lo ya declarado, no un color inventado. Da 9.43:1.
+const UB1 = ACCENT_TINTA;
+const UB2 = '#722717';
 // Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
 // a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
-const TINT = 'rgba(194,69,46,.16)';
-const TINT2 = 'rgba(126,36,23,.10)';
+const TINT = 'rgba(222,114,80,.16)';
+const TINT2 = 'rgba(176,74,46,.10)';
 
 // Relieve (DoD §2.4) — geometría/elevation por NIVEL (no por piel: sólo el nivel 1 declara offset/
 // radio distintos entre claro y oscuro, ver `RELIEVE_NIVEL1_*` abajo). `elevation` no lo declara el
@@ -371,7 +398,7 @@ const RELIEVE_NIVEL5 = TINT;
 
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   claro: {
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#2E2A20',
     // Texto secundario del DoD es `rgba(46,42,32,.55)` — aplanado sobre el fondo da 3.23:1, bajo el
@@ -409,7 +436,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     },
   },
   oscuro: {
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
@@ -436,7 +463,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
   },
   nocturno: {
     // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
-    accent: ACCENT, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     dim: '#928777', // reuso del secundario ya ajustado de oscuro — con el fondo más oscuro de
@@ -489,6 +516,7 @@ function construirTokens(p: PaletaCruda): Tokens {
       texto: p.tx,
       textoTenue: p.dim,
       acento: p.accent,
+      acentoTinta: p.accentTinta,
       acentoTexto: p.on,
       borde: aplanarRgbaSobre(bd, fondo),
       peligro: p.peligro,

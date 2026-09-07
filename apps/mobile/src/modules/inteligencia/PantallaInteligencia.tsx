@@ -162,7 +162,7 @@ export function PantallaInteligencia() {
             <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico, letterSpacing: 1.2 }}>
               EN CAJA
             </Text>
-            <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: 34 }}>
+            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: 34 }}>
               {kpi(portada.caja.saldo)}
             </Text>
           </View>
@@ -224,7 +224,7 @@ export function PantallaInteligencia() {
               <Row key={c.cliente} testID={`inteligencia-cliente-${c.cliente}`}>
                 <View style={styles.filaEntre}>
                   <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{c.cliente}</Text>
-                  <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+                  <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
                     {kpi(c.total)}
                   </Text>
                 </View>
@@ -284,7 +284,7 @@ function SerieBarras({ portada }: { portada: Portada }) {
 
 /** El rótulo de sección — depende del tema, así que es una función, no una entrada de `StyleSheet`. */
 const rotulo = (tema: ReturnType<typeof useTema>) => ({
-  color: tema.color.acento,
+  color: tema.color.acentoTinta,
   fontFamily: tema.fuente.mono,
   fontSize: 11,
   letterSpacing: 1.2,

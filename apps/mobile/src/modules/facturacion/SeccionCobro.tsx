@@ -227,7 +227,7 @@ export function SeccionCobro({ comprobanteId, cobrable, onCambio, testID = 'cobr
                 hitSlop={10}
                 style={pressableStyle(undefined, PRESS_FADE)}
               >
-                <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                   Deshacer
                 </Text>
               </Pressable>
