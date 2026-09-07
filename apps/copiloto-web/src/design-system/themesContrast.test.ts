@@ -63,13 +63,13 @@ const TEXT_TOKENS = [
   // que entran al gate estricto sin excepción — a diferencia de `--core` (ver nota más abajo).
   '--avatar-fg',
   '--amount-sign',
-  // Sumados por FE1 (Tarea 3, "bloque negro", 2026-09-07): `claro`/`root-default` tienen valor de
-  // diseño REAL (negro/arena calcados del mockup, ver themes.css cabecera) y sí quedan bajo el
-  // gate estricto. `oscuro`/`nocturno` son PLACEHOLDER (`var(--label)`, no hex sólido — escalado a
-  // planificación, sin decidir) y el gate los saltea solo por eso, no porque estén exentos a
-  // propósito: en cuanto tengan un valor de diseño real, entran a medirse como cualquier otro.
-  '--bloque-fg',
-  '--bloque-fg-secondary',
+  // Sumados por FE1 (Tarea 3, "bloque" de cifra, 2026-09-07). Decisión de planificación resuelta
+  // el mismo día: el rol es "máximo contraste contra el lienzo", no "negro" — la polaridad se
+  // invierte en oscuro/nocturno (bloque CREMA con texto oscuro, no al revés). Las 4 combinaciones
+  // (3 pieles + root-default) tienen valor de diseño real (hex sólido), así que las 4 entran al
+  // gate estricto sin excepción.
+  '--bloque-cifra-fg',
+  '--bloque-cifra-fg-secondary',
   // Sumados por FE2 (contrato "shell/auth", 2026-09-07): `--btn-fg`/`--send-fg` (`#FBF3E2`, texto
   // sobre el fill del composer) usan `--btn-bg`/`--send-bg` como fondo — que el rebrand de acento
   // cambió a `#B04A2E` sólido (antes degradé del acento viejo) sin que ninguna de las dos puntas
@@ -84,16 +84,20 @@ const TEXT_TOKENS = [
 ] as const;
 
 /**
- * `--core` (acento como trazo de ícono / texto chico en `midia.css`) queda A PROPÓSITO fuera de
- * `TEXT_TOKENS`: no es un token de texto puro, es dual — la mayoría de sus consumidores son
- * gráficos decorativos (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto
- * ≥3:1) y uno solo es texto real (`.midia-screen__calendario-hora`, 13px/600). Ese único caso da
- * 4.38:1 en la piel `claro` — por debajo del 4.5:1 estricto de este gate, deuda heredada y
- * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es
- * una regresión, y no hay un tercer valor de acento disponible sin violar "nunca 3 terracotas
- * convivas" (`Prototipo frontend/odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md` §4.1). Meterlo en
- * este gate rompería CI por un token que en el 95% de sus usos no es texto — se documenta la
- * exclusión en vez de forzarlo.
+ * `--core` (acento como trazo de ícono / texto chico) queda A PROPÓSITO fuera de `TEXT_TOKENS`: no
+ * es un token de texto puro, es dual — la mayoría de sus consumidores son gráficos decorativos
+ * (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto ≥3:1). Consumidores de
+ * TEXTO real medidos (`.midia-screen__calendario-hora`, 13px/600, y 5 más en `ajustes.css` —
+ * `.como-hablarle-bloque__rotulo`, `.catalogo-seccion__fila-alternar`,
+ * `.afip-setup-cuit-fijo__cambiar`, `.afip-setup-ambiente-chip__estado/__accion`, hallazgo de FE2
+ * 2026-09-07 con arnés real, dos de ellos sobre `color-mix` y no `--bg` plano): los 6 dan
+ * EXACTAMENTE el mismo número (el tinte no mueve la aguja) — 4.38:1 en `claro`, 5.63:1 `oscuro`,
+ * 6.30:1 `nocturno`. `claro` queda por debajo del 4.5:1 estricto de este gate, deuda heredada y
+ * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es una
+ * regresión, y no hay un tercer valor de acento disponible sin violar "nunca 3 terracotas convivas"
+ * (`Prototipo frontend/odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md` §4.1). Meterlo en este gate
+ * rompería CI por un token que en la mayoría de sus usos no es texto — se documenta la exclusión en
+ * vez de forzarlo.
  */
 
 /** Token de fondo dedicado de cada fg (confirmado por grep de uso real en los componentes). */
@@ -110,8 +114,8 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   // ya documentó este archivo para `--chip-fg`/`--user-fg`.
   '--avatar-fg': '--avatar-bg',
   '--amount-sign': '--card-bg',
-  '--bloque-fg': '--bloque-bg',
-  '--bloque-fg-secondary': '--bloque-bg',
+  '--bloque-cifra-fg': '--bloque-cifra-bg',
+  '--bloque-cifra-fg-secondary': '--bloque-cifra-bg',
   // `--btn-fg`/`--send-fg` son el texto/ícono del composer, siempre sobre el fill sólido de
   // `--btn-bg`/`--send-bg` (nunca sobre `--bg` — mismo motivo que `--input-fg` arriba).
   '--btn-fg': '--btn-bg',
@@ -279,5 +283,35 @@ describe('temas — contraste WCAG AA (>=4.5:1) de tokens de texto sobre su supe
         ).toBeGreaterThanOrEqual(4.5);
       });
     }
+  }
+});
+
+/**
+ * Gate "bloque-vs-lienzo" (DoD de la decisión de planificación sobre el "bloque" de cifra,
+ * 2026-09-07): el test de arriba mide TEXTO sobre su fondo propio, pero no mide si el fondo del
+ * bloque en sí (`--bloque-cifra-bg`) se distingue del canvas de la página (`--bg`) — que es
+ * exactamente el problema real que se escaló (`#1A1512` de claro da 14,59:1 contra su canvas pero
+ * ~1:1 en oscuro/nocturno, invisible). Umbral 3:1 (WCAG 1.4.11, contraste no-textual de un
+ * componente gráfico) — el piso de "se distingue de lo que tiene alrededor", no el 4.5:1 de texto.
+ * Los valores reales (14,59 / 16,12 / 18,04:1) están muy por encima; el gate existe para cazar una
+ * regresión que los baje, no para certificar el número exacto de hoy.
+ */
+describe('temas — el "bloque" de cifra se distingue del lienzo (>=3:1, WCAG 1.4.11)', () => {
+  for (const [themeName, selectorRe] of Object.entries(THEME_BLOCKS)) {
+    const blockBody = extractBlock(themesCss, selectorRe);
+    const vars = parseDeclarations(blockBody);
+    const pageBg = vars['--bg'];
+    const bloqueBg = vars['--bloque-cifra-bg'];
+
+    it(`${themeName}: --bloque-cifra-bg sobre --bg >= 3:1`, () => {
+      expect(bloqueBg, `--bloque-cifra-bg del tema ${themeName} no es hex sólido: ${bloqueBg}`).toMatch(
+        SOLID_HEX_RE,
+      );
+      const ratio = contrastRatio(bloqueBg, pageBg);
+      expect(
+        ratio,
+        `${themeName}: bloque ${bloqueBg} sobre canvas ${pageBg} → ${ratio.toFixed(2)}:1 (< 3:1, se funde con el lienzo)`,
+      ).toBeGreaterThanOrEqual(3);
+    });
   }
 });

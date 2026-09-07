@@ -214,8 +214,8 @@
    `--r-xl` es nuevo, no el 20/24px de las variantes de arriba: es código nuevo, no un rewrite
    retroactivo de lo existente. */
 .uc-surface--bloque {
-  background: var(--bloque-bg);
-  color: var(--bloque-fg);
+  background: var(--bloque-cifra-bg);
+  color: var(--bloque-cifra-fg);
   border-radius: var(--r-xl);
   padding: 26px 20px 22px;
 }
