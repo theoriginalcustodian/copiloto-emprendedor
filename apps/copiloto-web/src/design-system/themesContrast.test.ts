@@ -84,16 +84,20 @@ const TEXT_TOKENS = [
 ] as const;
 
 /**
- * `--core` (acento como trazo de ícono / texto chico en `midia.css`) queda A PROPÓSITO fuera de
- * `TEXT_TOKENS`: no es un token de texto puro, es dual — la mayoría de sus consumidores son
- * gráficos decorativos (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto
- * ≥3:1) y uno solo es texto real (`.midia-screen__calendario-hora`, 13px/600). Ese único caso da
- * 4.38:1 en la piel `claro` — por debajo del 4.5:1 estricto de este gate, deuda heredada y
- * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es
- * una regresión, y no hay un tercer valor de acento disponible sin violar "nunca 3 terracotas
- * convivas" (`Prototipo frontend/odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md` §4.1). Meterlo en
- * este gate rompería CI por un token que en el 95% de sus usos no es texto — se documenta la
- * exclusión en vez de forzarlo.
+ * `--core` (acento como trazo de ícono / texto chico) queda A PROPÓSITO fuera de `TEXT_TOKENS`: no
+ * es un token de texto puro, es dual — la mayoría de sus consumidores son gráficos decorativos
+ * (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto ≥3:1). Consumidores de
+ * TEXTO real medidos (`.midia-screen__calendario-hora`, 13px/600, y 5 más en `ajustes.css` —
+ * `.como-hablarle-bloque__rotulo`, `.catalogo-seccion__fila-alternar`,
+ * `.afip-setup-cuit-fijo__cambiar`, `.afip-setup-ambiente-chip__estado/__accion`, hallazgo de FE2
+ * 2026-09-07 con arnés real, dos de ellos sobre `color-mix` y no `--bg` plano): los 6 dan
+ * EXACTAMENTE el mismo número (el tinte no mueve la aguja) — 4.38:1 en `claro`, 5.63:1 `oscuro`,
+ * 6.30:1 `nocturno`. `claro` queda por debajo del 4.5:1 estricto de este gate, deuda heredada y
+ * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es una
+ * regresión, y no hay un tercer valor de acento disponible sin violar "nunca 3 terracotas convivas"
+ * (`Prototipo frontend/odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md` §4.1). Meterlo en este gate
+ * rompería CI por un token que en la mayoría de sus usos no es texto — se documenta la exclusión en
+ * vez de forzarlo.
  */
 
 /** Token de fondo dedicado de cada fg (confirmado por grep de uso real en los componentes). */
