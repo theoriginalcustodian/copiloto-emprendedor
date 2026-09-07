@@ -330,7 +330,7 @@
 .perfil-negocio-screen__guardado {
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--success-fg, var(--text));
+  color: var(--ok-fg);
   margin: 0;
 }
 
@@ -530,7 +530,7 @@
 }
 
 .afip-setup-bloque__texto--exito {
-  color: var(--success-fg, var(--text));
+  color: var(--ok-fg);
 }
 
 .afip-setup-bloque__texto--peligro {
