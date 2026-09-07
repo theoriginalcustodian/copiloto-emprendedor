@@ -64,7 +64,7 @@
 }
 
 .connections-screen__search {
-  border-radius: 14px;
+  border-radius: var(--r-s);
   border: var(--input-border);
   background: var(--input-bg);
   color: var(--text);
@@ -181,6 +181,6 @@
   align-self: flex-start;
   min-height: 0;
   padding: 7px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 12.5px;
 }
