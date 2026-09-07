@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { listarClientes, obtenerCliente, type Cliente, type DuplicadoCliente } from '@copiloto/core';
 
-import { Button, Skeleton } from '../../design-system';
+import { Button, Skeleton, Surface } from '../../design-system';
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
@@ -19,9 +19,23 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
  * a `copiloto-web`. MISMA lógica: la búsqueda la hace el backend (con debounce), el alta a mano no
  * espera a la voz, la cartera vacía OFRECE el alta. Lo que NO se porta 1:1: `RefreshControl`
  * (gesto táctil) → botón "Actualizar" explícito, mismo criterio que `GastosScreen`.
+ *
+ * Repintado Tarea 3 (anatomía de función, CLAUDE.md §5), calcado de `#clientes` en
+ * `Prototipo frontend/odobi-ui/prototipo/index.html`: stack (nombre + "Tu cartera", label FIJO —
+ * esta función no tiene mes) + bloque negro (`Surface variant="bloque"`, la cifra accionable es
+ * el TAMAÑO de la cartera, no plata) + rótulo "Con movimiento" con pill de alta "Nuevo cliente".
  */
 export function ordenarAlfabetico(clientes: readonly Cliente[]): Cliente[] {
   return [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+}
+
+/** `creadoEn` cae en el mes calendario actual (huso local del navegador — mismo criterio que el
+ * resto de la UI, que nunca normaliza a UTC para mostrar fechas). */
+function esDeEsteMes(iso: string): boolean {
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return false;
+  const ahora = new Date();
+  return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
 }
 
 export interface ClientesScreenProps {
@@ -41,6 +55,19 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const [ficha, setFicha] = useState<Cliente | null>(null);
   const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
   const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
+  /**
+   * "Le vendiste a N clientes" tiene que ser el tamaño de TODA la cartera, no el de una búsqueda
+   * filtrada — se actualiza sólo con una respuesta SIN `q` (dentro de `cargar`) y mientras el
+   * usuario busca queda congelado en el último valor real conocido. Recalcularlo sobre el
+   * subconjunto filtrado mostraría una cifra que baja con cada letra tipeada, que no es lo que
+   * dice ser.
+   *
+   * ⚠️ `agregadosEsteMes` sólo cuenta sobre la página YA CARGADA (el backend de `/clientes` no
+   * manda un agregado del tenant completo) — si `total > clientes.length` (cartera grande,
+   * paginada) esto puede subcontar. Escalado a planificación:
+   * `coordinacion/abierto/2026-09-07_hallazgo_frontend1-clientes-a-planificacion_monto-y-comprobantes-por-cliente-no-existen-en-la-api.md`.
+   */
+  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number } | null>(null);
   // Ver el comentario equivalente en GastosScreen: `vivo.current = true` va DENTRO del setup del
   // efecto (no sólo en `useRef(true)`) por StrictMode.
   const vivo = useRef(true);
@@ -57,7 +84,8 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const cargar = useCallback(
     (silencioso = false): Promise<void> => {
       if (!silencioso) setEstado('cargando');
-      return listarClientes(busquedaAplicada !== '' ? { q: busquedaAplicada } : {})
+      const qActual = busquedaAplicada;
+      return listarClientes(qActual !== '' ? { q: qActual } : {})
         .then((res) => {
           if (!vivo.current) return;
           if (res.status === 'no_disponible') {
@@ -68,6 +96,13 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
           setClientes(res.clientes);
           setTotal(res.total);
           setEstado('ok');
+          if (qActual === '') {
+            setCarteraBase({
+              total: res.total,
+              agregadosEsteMes: res.clientes.filter((c) => c.origen === 'derivado' && esDeEsteMes(c.creadoEn))
+                .length,
+            });
+          }
         })
         .catch(() => {
           if (vivo.current) setEstado('error');
@@ -135,18 +170,24 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
 
   return (
     <div className="clientes-screen" data-testid="pantalla-clientes">
-      <header className="clientes-screen__header">
-        <h1 className="clientes-screen__title">Clientes</h1>
-        {estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="clientes-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      <header className="clientes-screen__stack">
+        <span className="clientes-screen__nombre-fila">
+          <span className="clientes-screen__nombre">Clientes</span>
+          {estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="clientes-actualizar"
+              className="clientes-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        {/* "Tu cartera" es un label FIJO (mockup: `.atras .per`), no un período — a diferencia de
+            gastos/ingresos esta función no tiene mes: es el tamaño total de la cartera. */}
+        <span className="clientes-screen__periodo">Tu cartera</span>
       </header>
 
       {estado === 'cargando' && (
@@ -184,12 +225,24 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
             />
           ) : (
             <>
-              <Button
-                onClick={() => { setAvisoDuplicado(null); setFormulario({ edita: null }); }}
-                data-testid="clientes-nuevo"
-              >
-                Nuevo cliente
-              </Button>
+              {/* Bloque negro (CLAUDE.md §5): acá la cifra NO es plata, es el TAMAÑO de la
+                  cartera (mockup: `.cli-n`) — "Le vendiste a" + N clientes + cuántos se agregaron
+                  solos este mes (detectados al facturar/presupuestar, sin alta manual). Ver el
+                  comentario de `carteraBase` sobre por qué esto se congela mientras se busca. */}
+              <Surface variant="bloque" className="clientes-resumen" data-testid="clientes-resumen">
+                <p className="clientes-resumen__label">Le vendiste a</p>
+                <p className="clientes-resumen__cifra" data-testid="clientes-resumen-cifra">
+                  {carteraBase?.total ?? total}
+                  <span className="clientes-resumen__unidad">
+                    {(carteraBase?.total ?? total) === 1 ? 'cliente' : 'clientes'}
+                  </span>
+                </p>
+                <span className="clientes-resumen__chip" data-testid="clientes-resumen-chip">
+                  {(carteraBase?.agregadosEsteMes ?? 0) === 1
+                    ? '1 se agregó solo este mes'
+                    : `${carteraBase?.agregadosEsteMes ?? 0} se agregaron solos este mes`}
+                </span>
+              </Surface>
 
               {avisoDuplicado != null && (
                 <div className="clientes-screen__duplicado" data-testid="clientes-duplicado">
@@ -217,6 +270,24 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
                   autoCapitalize="none"
                 />
               </label>
+
+              {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un
+                  FAB — compite con el mic. "Con movimiento" y "Nuevo cliente" son el rótulo y el
+                  verbo textuales del mockup (`.fila-lbl`/`.nuevo`), no genéricos inventados. */}
+              <div className="clientes-screen__fila-lbl">
+                <span className="clientes-screen__lista-lbl">Con movimiento</span>
+                <button
+                  type="button"
+                  className="clientes-screen__pill-nuevo"
+                  onClick={() => { setAvisoDuplicado(null); setFormulario({ edita: null }); }}
+                  data-testid="clientes-nuevo"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Nuevo cliente
+                </button>
+              </div>
 
               {!hayClientes && (
                 <p className="clientes-screen__empty" data-testid="clientes-vacio">
