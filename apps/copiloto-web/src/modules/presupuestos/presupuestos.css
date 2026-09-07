@@ -108,7 +108,7 @@
 .presupuestos-resumen__label {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--bloque-fg-secondary);
+  color: var(--bloque-cifra-fg-secondary);
   margin: 0;
 }
 
@@ -118,7 +118,7 @@
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
-  color: var(--bloque-fg);
+  color: var(--bloque-cifra-fg);
   margin: 8px 0 12px;
 }
 
@@ -128,8 +128,8 @@
   align-self: flex-start;
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--bloque-fg);
-  background: var(--bloque-chip-bg);
+  color: var(--bloque-cifra-fg);
+  background: var(--bloque-cifra-chip-bg);
   border-radius: var(--r-pill);
   padding: 5px 11px;
   margin: 0;
