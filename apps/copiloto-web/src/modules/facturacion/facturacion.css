@@ -14,20 +14,118 @@
   padding: 6px 16px 24px;
 }
 
-.facturacion-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup.
+ * Mismo tratamiento que `gastos-screen__stack`: card blanca, baseline, nombre display / período
+ * secundario. Web no lleva "Volver ‹" (Rail/TabBar propios). */
+.facturacion-screen__stack {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
+}
+
+.facturacion-screen__nombre {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.facturacion-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+/* ---------- Rótulo de sección + alta (CLAUDE.md §5) ---------- */
+.facturacion-screen__fila-lbl {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.facturacion-screen__title {
-  font-family: var(--font-display);
-  font-size: 27px;
+.facturacion-screen__lista-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--heading);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Pill de alta — NUNCA un FAB (compite con el mic). Mismos tokens que `gastos-screen__pill-nuevo`. */
+.facturacion-screen__pill-nueva {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--core);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.facturacion-screen__pill-nueva svg {
+  flex-shrink: 0;
+}
+
+/* ---------- ResumenFacturacion — "bloque negro" (Tarea 3, gramática Monzo) ----------
+ * Valores calcados 1:1 de `.resumen`/`.p-lbl`/`.total`/`.comp` del mockup fuente. El fondo/color
+ * base los pone `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía interna,
+ * mismo criterio que `gastos-resumen`. */
+.facturacion-resumen {
+  display: flex;
+  flex-direction: column;
+}
+
+.facturacion-resumen__periodo {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg-secondary);
   margin: 0;
+}
+
+.facturacion-resumen__total {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-fg);
+  margin: 8px 0 12px;
+}
+
+/* La comparación es un CHIP sobre el bloque (mockup: `.resumen .comp`), no un renglón suelto. */
+.facturacion-resumen__comp {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg);
+  background: var(--bloque-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+}
+
+.facturacion-resumen__aviso {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg-secondary);
+  margin: 4px 0 0;
 }
 
 .facturacion-screen__loading {
@@ -582,14 +680,6 @@
   gap: 12px;
 }
 
-.mis-comprobantes__titulo {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--heading);
-  margin: 0;
-}
-
 .mis-comprobantes__aviso {
   font-family: var(--font-body);
   font-size: 13.5px;
@@ -607,22 +697,22 @@
   gap: 8px;
 }
 
+/* Layout de fila (Tarea 3, CLAUDE.md §5, mockup `.fact`) — fondo/radio/sombra los pone
+ * `Surface variant="tile"` (`primitives.css`, mismos tokens que `tarjeta-gasto`); acá sólo la
+ * disposición flex: tile-ícono + textos a la izquierda, monto + chip a la derecha, "Anular" al final. */
 .mis-comprobantes__fila {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 13px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
 .mis-comprobantes__fila-textos {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
   text-align: left;
   background: none;
   border: none;
@@ -631,12 +721,38 @@
   font: inherit;
 }
 
+/* Tile-ícono (mockup: `.fact .tile`) — no hay token "arena" fuera del `--bloque-*` (que es de la
+ * cifra accionable, uno por pantalla, no para reusar en filas); se aproxima con un tinte cálido de
+ * `--core`, misma familia de acento que la pill "Nueva factura". */
+.mis-comprobantes__fila-tile {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--core) 18%, transparent);
+  color: var(--core);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mis-comprobantes__fila-cuerpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .mis-comprobantes__fila-titulo {
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 14px;
   color: var(--text);
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mis-comprobantes__fila-detalle {
@@ -644,6 +760,43 @@
   font-size: 12px;
   color: var(--label);
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mis-comprobantes__fila-der {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.mis-comprobantes__fila-monto {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Chip de estado — SÓLO existe para "Impaga" (CLAUDE.md §5: "lo que reclama en negro, lo terminado
+ * en arena"; "Cobrada" no lleva chip, ver docstring de `SeccionMisComprobantes`). Reusa
+ * `--bloque-bg`/`--bloque-fg-secondary` (mockup: `.estado.pend{background:var(--negro);
+ * color:var(--arena)}`) — mismo tratamiento visual que la cifra accionable, no una cifra nueva. En
+ * oscuro/nocturno hereda el mismo placeholder pendiente que el bloque negro (ver el hallazgo
+ * abierto `bloque-negro-sin-definir-para-oscuro-nocturno` en `coordinacion/`) — no es un problema
+ * nuevo, es el mismo token con un segundo consumidor. */
+.mis-comprobantes__fila-estado--pend {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 11px;
+  white-space: nowrap;
+  background: var(--bloque-bg);
+  color: var(--bloque-fg-secondary);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
 }
 
 .mis-comprobantes__panel-anulacion {
