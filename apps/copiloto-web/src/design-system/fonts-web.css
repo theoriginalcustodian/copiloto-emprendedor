@@ -1,61 +1,67 @@
 /*
- * Fuentes self-hosted del shell de ESCRITORIO (Space Grotesk + Manrope) — DESIGN-SYSTEM-
- * EXTRACT-WEB.md §1.1 (CONFIRMADO: Space Grotesk + Manrope, NO Clash Display + General Sans; ese
- * combo es el de mobile, ver fonts.css). Mismo criterio que fonts.css: `.woff2` los baja
- * `deploy/copiloto/fetch-fonts.sh` (idempotente) a `./fonts/*.woff2`; `font-display:swap` +
- * fallback de sistema para que la app renderice igual si el woff2 real todavía no bajó.
+ * Fuentes self-hosted del shell de ESCRITORIO — rebrand Odobi v2 (2026-09-07, contrato FE1
+ * §Tarea 2). Reemplaza a Space Grotesk + Manrope (DESIGN-SYSTEM-EXTRACT-WEB.md §1.1, hasta
+ * 2026-09-07) por el par cerrado en `Prototipo frontend/odobi-ui/CLAUDE.md` §3:
  *
- * `--font-mono` (JetBrains Mono) es el ÚNICO font-token verdaderamente compartido entre mobile y
- * desktop (EXTRACT §6) — no se toca acá, sigue viniendo de fonts.css.
+ *   Display (H1, nombre HITL, montos, marca)  -> Plus Jakarta Sans  700 (Bold), SOLO ese peso
+ *   Body / UI (chat, botones, inputs, labels) -> Inter               400/500/600
  *
- * Roles verbatim (EXTRACT §1.1):
- *   Display (H1, nombre HITL, montos, marca)  -> Space Grotesk  500/600/700
- *   Body / UI (chat, botones, inputs, labels) -> Manrope        400/500/600
+ * `.woff2` los baja `deploy/copiloto/fetch-fonts.sh` (idempotente) a `./fonts/*.woff2`;
+ * `font-display: swap` + fallback de sistema, mismo criterio que `fonts.css`.
+ *
+ * ⚠️ Plus Jakarta Sans es SÓLO Bold (CLAUDE.md §3: "solo Bold" — decisión cerrada, no la
+ * reabras). Muchos consumidores de `--font-display` en el código piden `font-weight: 600`
+ * (semibold) — con una sola cara Bold(700) registrada, el navegador resuelve por matching al
+ * peso más cercano disponible (700), así que ese texto se ve MÁS pesado que antes. Es una
+ * consecuencia conocida del rebrand, no un bug de este archivo: ajustar cada declaración
+ * `font-weight: 600` junto a `--font-display` a lo que realmente va a renderizar es trabajo de
+ * REPINTADO (Tarea 3 de cada sesión — el propio contrato lo anticipa: "parte del espaciado va a
+ * necesitar un repaso cuando entren las fuentes"), no de esta Tarea 2 (sólo tokens).
+ *
+ * Origen de los archivos (no CDN en runtime — sólo en build-time vía fetch-fonts.sh):
+ *   Plus Jakarta Sans Bold -> CONVERSIÓN LOCAL del .ttf que el equipo de diseño ya midió con
+ *     fontTools (`Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf`, licencia
+ *     OFL — sin la deuda de licencia que tenía NeueEinstellung). Mismo motivo que ese caso: el
+ *     monograma de marca usa el glifo real de esta fuente (CLAUDE.md §3), así que se usa el
+ *     ARCHIVO EXACTO que diseño validó, no una copia servida por un CDN que puede versionar
+ *     distinto. Mismo mecanismo que `fetch-fonts.sh` ya tenía para NeueEinstellung.
+ *   Inter -> Google Fonts CSS2 (mismo mecanismo que Manrope/Space Grotesk antes: público, OFL,
+ *     sin deuda de licencia). Se registra también 600 aunque CLAUDE.md §3 sólo cita 400/500: el
+ *     código YA pide 600 en varios módulos, y no fetchearlo sería una regresión de font-matching,
+ *     no una mejora.
+ *
+ * `--font-mono` (antes JetBrains Mono) se retira en `fonts.css` — no en este archivo, ver su
+ * cabecera: es el único font-token compartido entre mobile y desktop, y no tenía override propio
+ * acá (nunca lo necesitó).
  */
 
 @font-face {
-  font-family: 'Space Grotesk';
-  src: url('./fonts/SpaceGrotesk-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Space Grotesk';
-  src: url('./fonts/SpaceGrotesk-Semibold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Space Grotesk';
-  src: url('./fonts/SpaceGrotesk-Bold.woff2') format('woff2');
+  font-family: 'Plus Jakarta Sans';
+  src: url('./fonts/PlusJakartaSans-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Manrope';
-  src: url('./fonts/Manrope-Regular.woff2') format('woff2');
+  font-family: 'Inter';
+  src: url('./fonts/Inter-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Manrope';
-  src: url('./fonts/Manrope-Medium.woff2') format('woff2');
+  font-family: 'Inter';
+  src: url('./fonts/Inter-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Manrope';
-  src: url('./fonts/Manrope-Semibold.woff2') format('woff2');
+  font-family: 'Inter';
+  src: url('./fonts/Inter-Semibold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -68,6 +74,6 @@
  * ÚNICO eje real de divergencia tipográfica entre mobile y desktop, aislado acá a una sola regla.
  */
 [data-shell='desktop'] {
-  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-body: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
