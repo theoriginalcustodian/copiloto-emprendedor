@@ -181,7 +181,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 13px 14px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
@@ -284,7 +284,7 @@
 .perfil-negocio-seccion__campo input,
 .perfil-negocio-seccion__campo select,
 .perfil-negocio-seccion__campo textarea {
-  border-radius: 14px;
+  border-radius: var(--r-s);
   border: var(--input-border);
   background: var(--input-bg);
   color: var(--text);
@@ -389,7 +389,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 13px 14px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
@@ -495,7 +495,7 @@
 
 .afip-setup-bloque__campo input,
 .afip-setup-bloque__campo select {
-  border-radius: 14px;
+  border-radius: var(--r-s);
   border: var(--input-border);
   background: var(--input-bg);
   color: var(--text);
@@ -579,7 +579,7 @@
   flex-direction: column;
   gap: 4px;
   min-width: 140px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   border: 1px solid var(--cancel-border, transparent);
   padding: 10px 14px;
 }
@@ -639,7 +639,7 @@
 .apariencia-screen__theme-pill {
   min-height: 44px;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   background: var(--tile-bg);
   border: var(--tile-border);
   color: var(--text);
