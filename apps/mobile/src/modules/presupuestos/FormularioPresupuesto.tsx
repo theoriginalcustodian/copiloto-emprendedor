@@ -353,7 +353,7 @@ export function FormularioPresupuesto({
                 accessibilityLabel={`Agregar ${c.nombre} al presupuesto`}
                 style={pressableStyle([styles.chip, { borderColor: tema.color.acento }], PRESS_FADE)}
               >
-                <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}>
+                <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico }}>
                   {c.nombre}
                   {c.precioReferencia != null ? ` · ${formatearImporte(c.precioReferencia)}` : ''}
                 </Text>

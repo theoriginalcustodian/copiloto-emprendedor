@@ -320,8 +320,15 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     await fireEvent.press(screen.getByTestId('boton-voz-fijar-test'));
 
     await waitFor(() => expect(screen.getByTestId('voz-enviar')).toBeTruthy());
-    expect(screen.getByTestId('voz-pausar')).toBeTruthy();
     expect(screen.getByTestId('voz-eliminar')).toBeTruthy();
+    // 🔴 NO alcanza con `getByTestId('voz-pausar')`: el stand-in de `ControlesFlotantes` (arriba)
+    // renderiza los cuatro botones SIEMPRE, sin la guarda `grabando &&` del componente real. Ese
+    // assert pasaba con el bug #468 puesto -- confirmaba en vez de verificar. Lo que hay que mirar
+    // es la FASE que le llega al componente, que es lo ÚNICO que el mock transmite fiel: si al
+    // fijar la fase fuera `'listo'`, el componente REAL no pintaría Pausar (ver
+    // `ControlesFlotantes.tsx:37` y su propio test) y el usuario se queda sin pausar.
+    expect(screen.getByTestId('controles-flotantes-fase')).toHaveTextContent('grabando');
+    expect(screen.getByTestId('voz-pausar')).toBeTruthy();
     // La onda sigue -- es el ÚNICO feedback, contrato §1: "sin contador, la onda flotante".
     expect(screen.getByTestId('onda-flotante')).toBeTruthy();
     // El botón de mantener-apretado ya no está: los controles flotantes tomaron el mando.

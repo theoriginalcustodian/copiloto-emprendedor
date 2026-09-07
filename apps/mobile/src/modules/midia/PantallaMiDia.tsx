@@ -295,7 +295,7 @@ function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendar
         return (
           <View key={ev.id} style={styles.calendarioEvento} testID={`midia-calendario-evento-${ev.id}`}>
             {hora != null && (
-              <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+              <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                 {hora}
               </Text>
             )}
@@ -345,7 +345,7 @@ function TarjetaMiDiaRow({
             swipeableRef.current?.close();
             onAvanzar();
           }}
-          style={[styles.botonSwipe, { backgroundColor: tema.color.acento }]}
+          style={[styles.botonSwipe, { backgroundColor: tema.color.acentoTinta }]}
         >
           <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
             {etiquetaAvanzar}

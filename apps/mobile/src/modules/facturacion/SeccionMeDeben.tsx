@@ -114,7 +114,7 @@ export const SeccionMeDeben = forwardRef<SeccionMeDebenHandle, SeccionMeDebenPro
             {total != null && (
               <Text
                 testID={`${testID}-total`}
-                style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
+                style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
               >
                 {formatearImporte(total)}
               </Text>

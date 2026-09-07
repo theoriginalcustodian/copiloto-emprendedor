@@ -62,7 +62,7 @@ function Seccion({ titulo, items, testID }: { titulo: string; items: OperacionCl
   const tema = useTema();
   return (
     <View style={{ gap: tema.espacio.sm }} testID={testID}>
-      <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico, fontWeight: '700' }}>
+      <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico, fontWeight: '700' }}>
         {titulo.toUpperCase()}
       </Text>
       {items.length === 0 ? (

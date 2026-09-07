@@ -90,7 +90,7 @@ export function TarjetaComprobante({
           </Text>
           <Text
             testID={`${testID}-cae`}
-            style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}
+            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}
           >
             CAE: {resultado.cae}
           </Text>

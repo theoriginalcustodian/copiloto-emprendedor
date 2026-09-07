@@ -111,7 +111,7 @@ export function TarjetaFacturaPropuesta({
           </Row>
         ))}
 
-        <Text testID={`${testID}-total`} style={{ color: tema.color.acento, fontSize: tema.tipo.base, fontWeight: '700' }}>
+        <Text testID={`${testID}-total`} style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.base, fontWeight: '700' }}>
           Total: {propuesta.total}
         </Text>
 

@@ -81,7 +81,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
             onPress={onConfirm}
             style={pressableStyle([
               styles.botonGate,
-              { backgroundColor: tema.color.acento, borderRadius: tema.radio.md },
+              { backgroundColor: tema.color.acentoTinta, borderRadius: tema.radio.md },
             ])}
           >
             <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.base, fontWeight: '700' }}>

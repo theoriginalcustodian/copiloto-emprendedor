@@ -550,7 +550,7 @@ export function PantallaAfipSetup() {
                     onPress={() => setCuitBloqueado(false)}
                     style={pressableStyle(undefined)}
                   >
-                    <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold }}>Cambiar</Text>
+                    <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Cambiar</Text>
                   </Pressable>
                 </View>
               </View>
@@ -864,7 +864,7 @@ export function PantallaAfipSetup() {
                       </Text>
                       {vinculado ? (
                         activo ? (
-                          <Text style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}>Activo</Text>
+                          <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.chico }}>Activo</Text>
                         ) : (
                           // 🔴 Vinculado-pero-no-activo es TOCABLE. Dejarlo como una etiqueta muerta
                           // ("Vinculado") es indistinguible de una función rota: el usuario ve que su
@@ -875,7 +875,7 @@ export function PantallaAfipSetup() {
                             onPress={() => void usarAmbiente(env)}
                             style={pressableStyle(undefined)}
                           >
-                            <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
                               {cambiandoAmbiente === env ? 'Cambiando…' : 'Usar este'}
                             </Text>
                           </Pressable>
@@ -886,7 +886,7 @@ export function PantallaAfipSetup() {
                           onPress={() => iniciarAltaPara(env)}
                           style={pressableStyle(undefined)}
                         >
-                          <Text style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold }}>Vincular</Text>
+                          <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Vincular</Text>
                         </Pressable>
                       )}
                     </View>

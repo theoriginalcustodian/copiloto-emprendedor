@@ -58,7 +58,7 @@ export function TarjetaPresupuesto({ presupuesto: p, onPress, testID }: TarjetaP
           </Text>
           <Text
             testID={`${id}-total`}
-            style={{ color: tema.color.acento, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.base }}
+            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.base }}
           >
             {formatearImporte(p.total)}
           </Text>
