@@ -191,7 +191,9 @@
   color: var(--input-fg);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: 10px;
+  /* `var(--r-s)` (14px) — radio del sistema Odobi para inputs/chips chicos, no el 10px literal
+     que tenía este campo antes del repintado a Gramática B. */
+  border-radius: var(--r-s);
   padding: 8px 10px;
   min-width: 26ch;
 }
@@ -267,8 +269,15 @@
   cursor: pointer;
 }
 
+/* `--card-hover-bg` NO existe en `themes.css` (grep vacío en los 3 temas): el fallback
+   `var(--card-hover-bg, var(--card-bg))` compilaba y no fallaba ningún test, pero resolvía
+   SIEMPRE a `--card-bg` — el mismo fondo que ya tiene `.admin-card` (Surface variant="card") por
+   detrás. El hover era, en los hechos, un no-op invisible. Se reemplaza por el mismo overlay
+   tenue que usa Gramática B para filas interactivas (`color-mix(in srgb, var(--label) 8%,
+   transparent)`, ver `ajustes.css` .catalogo-seccion__fila / .como-hablarle-bloque): es un token
+   real, definido en los 3 temas, y da feedback visible sin inventar un color nuevo. */
 .admin-tickets__fila-clicable:hover {
-  background: var(--card-hover-bg, var(--card-bg));
+  background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
 /* Selector calificado A PROPÓSITO, mismo motivo que `.admin-tabla td.admin-dlq__accion` de arriba:
@@ -305,7 +314,9 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
-  border-radius: 10px;
+  /* `var(--r-s)` (14px), mismo motivo que `.admin-tenant__input`: era 10px literal, y "burbuja
+     chica" es exactamente la categoría que ese token cubre. */
+  border-radius: var(--r-s);
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   max-width: 60ch;
