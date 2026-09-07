@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { borrarIngreso, formatearImporte, listarIngresos, type Ingreso } from '@copiloto/core';
+import { borrarIngreso, listarIngresos, type Ingreso } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
 import { FormularioIngreso } from './FormularioIngreso';
+import { ResumenIngresos } from './ResumenIngresos';
 import { TarjetaIngreso } from './TarjetaIngreso';
 import './ingresos.css';
 
@@ -12,11 +13,24 @@ const SKELETON_ROWS = 3;
 type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type Vista = 'listado' | 'formulario';
 
+/** Mes en curso, capitalizado ("Agosto") — sin pegarle al backend. Fallback explícito del contrato
+ *  de Tarea 3 para el período del stack cuando no hay un dato real de servidor (acá no lo hay: ver
+ *  el docstring de `ResumenIngresos` sobre `/ingresos/resumen` inexistente). */
+function mesActual(): string {
+  const nombre = new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(new Date());
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+}
+
 /**
  * `IngresosScreen` — port de `apps/mobile/src/modules/ingresos/PantallaIngresos.tsx` a `copiloto-web`,
  * mismo molde que `GastosScreen` (ver ese archivo para el porqué de `vivo.current = true` DENTRO del
  * setup del efecto — StrictMode). El total lo suma el BACKEND, nunca la UI: dos números para la misma
  * pregunta es exactamente lo que este módulo existe para evitar (ver `PantallaIngresos.tsx`).
+ *
+ * Repintado a la "anatomía de función" de Tarea 3 (CLAUDE.md §5): stack nombre+período (sin
+ * "Volver" — la web conserva su propio Rail/TabBar) + "bloque negro" (`ResumenIngresos`) + rótulo de
+ * sección "Últimos" con pill de alta "Anotar que me pagaron" (verbo del repo, nunca "Nuevo ingreso")
+ * + lista. `ResumenIngresos` documenta el gap real de dato (no hay `/ingresos/resumen` todavía).
  *
  * No se porta: `RefreshControl` (no existe en web, reemplazado por botón "Actualizar") ni
  * `BuscadorActividad` (pertenece al módulo `actividad`, todavía no portado a web — fuera de scope).
@@ -83,18 +97,25 @@ export function IngresosScreen() {
 
   return (
     <div className="ingresos-screen" data-testid="pantalla-ingresos">
-      <header className="ingresos-screen__header">
-        <h1 className="ingresos-screen__title">Ingresos</h1>
-        {estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="ingresos-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      {/* Anatomía de función (Tarea 3, CLAUDE.md §5): stack con nombre + período. Mismo criterio que
+          `GastosScreen` — web no lleva "Volver ‹" (Rail/TabBar propios). El período no depende de
+          `estado`: es el mes en curso, siempre disponible. */}
+      <header className="ingresos-screen__stack">
+        <span className="ingresos-screen__nombre-fila">
+          <span className="ingresos-screen__nombre">Ingresos</span>
+          {estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="ingresos-actualizar"
+              className="ingresos-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        <span className="ingresos-screen__periodo">{mesActual()}</span>
       </header>
 
       {estado === 'cargando' && (
@@ -127,16 +148,26 @@ export function IngresosScreen() {
           ) : (
             <>
               {/* El total lo suma el BACKEND — sumarlo acá daría un segundo número para la misma
-                  pregunta (ver docstring del módulo). */}
-              {total != null && (
-                <p className="ingresos-screen__total" data-testid="ingresos-total">
-                  {formatearImporte(total)}
-                </p>
-              )}
+                  pregunta (ver docstring del módulo y de `ResumenIngresos`). */}
+              {total != null && <ResumenIngresos total={total} />}
 
-              <Button onClick={() => setVista('formulario')} data-testid="ingresos-nuevo">
-                Anotar que me pagaron
-              </Button>
+              {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
+                  — compite con el mic. "Anotar que me pagaron" es el verbo textual del repo, nunca
+                  "Nuevo ingreso". */}
+              <div className="ingresos-screen__fila-lbl">
+                <span className="ingresos-screen__lista-lbl">Últimos</span>
+                <button
+                  type="button"
+                  className="ingresos-screen__pill-nuevo"
+                  onClick={() => setVista('formulario')}
+                  data-testid="ingresos-nuevo"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Anotar que me pagaron
+                </button>
+              </div>
 
               {!hayIngresos && (
                 <p className="ingresos-screen__empty" data-testid="ingresos-vacio">
@@ -149,6 +180,15 @@ export function IngresosScreen() {
                   <TarjetaIngreso key={i.id} ingreso={i} onBorrar={(ing) => void borrar(ing)} />
                 ))}
               </div>
+
+              {/* Aviso informativo calcado del mockup fuente (`.aviso-repo`): MercadoPago no ingresa
+                  solo todavía — tono neutro/secundario, no es un error. */}
+              <p className="ingresos-screen__aviso" data-testid="ingresos-aviso-mercadopago">
+                <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                  <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z" />
+                </svg>
+                Los cobros por MercadoPago todavía no entran solos. Si cobrás por ahí, anotalo.
+              </p>
 
               {error != null && (
                 <p className="ingresos-screen__error" data-testid="ingresos-error" role="alert">

@@ -13,20 +13,85 @@
   padding: 6px 16px 24px;
 }
 
-.ingresos-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup.
+ * Web no lleva "Volver ‹" (Rail/TabBar propios, contrato: "no se toca el modelo de capas") — el
+ * resto del stack (card blanca, baseline, nombre display / período secundario) sí se porta. Mismos
+ * valores que `.gastos-screen__stack` — misma card, mismo radio. */
+.ingresos-screen__stack {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
+}
+
+.ingresos-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ingresos-screen__nombre {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+}
+
+.ingresos-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.ingresos-screen__actualizar {
+  font-size: 11px;
+}
+
+/* ---------- Rótulo de sección + alta (CLAUDE.md §5) ---------- */
+.ingresos-screen__fila-lbl {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ingresos-screen__title {
-  font-family: var(--font-display);
-  font-size: 27px;
+.ingresos-screen__lista-lbl {
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--heading);
-  margin: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* Pill de alta — NUNCA un FAB (compite con el mic). Card blanca, label `--core`, `--r-pill` — mismo
+   criterio que `.gastos-screen__pill-nuevo` (calcado del mockup, `.nuevo`). */
+.ingresos-screen__pill-nuevo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  color: var(--core);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ingresos-screen__pill-nuevo svg {
+  flex-shrink: 0;
 }
 
 .ingresos-screen__loading,
@@ -49,12 +114,24 @@
   color: var(--label);
 }
 
-.ingresos-screen__total {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text);
+/* Aviso informativo (calcado de `.aviso-repo` del mockup) — tono neutro/secundario, no es error. */
+.ingresos-screen__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
   margin: 0;
+  border-radius: var(--r-m);
+  background: var(--card-bg);
+  border: var(--card-border);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.ingresos-screen__aviso svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .ingresos-screen__error {
@@ -62,6 +139,33 @@
   font-size: 13px;
   color: var(--danger-fg);
   margin: 0;
+}
+
+/* ---------- ResumenIngresos — "bloque negro" (Tarea 3, gramática Monzo) ----------
+ * Valores calcados de `.resumen`/`.p-lbl`/`.total` en el mockup fuente. El fondo/color base los
+ * pone `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía interna. Sin barras
+ * de categoría (no aplica a Ingresos) ni chip de "Mes anterior" (dato inexistente, ver
+ * `ResumenIngresos.tsx`). */
+.ingresos-resumen {
+  display: flex;
+  flex-direction: column;
+}
+
+.ingresos-resumen__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg-secondary);
+  margin: 0;
+}
+
+.ingresos-resumen__total {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-fg);
+  margin: 8px 0 0;
 }
 
 /* ---------- TarjetaIngreso ---------- */
@@ -85,7 +189,7 @@
 .tarjeta-ingreso__titulo {
   font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   margin: 0;
   overflow: hidden;
@@ -105,8 +209,23 @@
   max-width: 100%;
 }
 
-.tarjeta-ingreso__origen {
+.tarjeta-ingreso__falta {
   margin-top: 2px;
+}
+
+.tarjeta-ingreso__derecha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tarjeta-ingreso__monto {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
 }
 
 /* ---------- FormularioIngreso ---------- */
