@@ -1,6 +1,14 @@
-/* S6-11 — hilo de UN ticket propio, del lado del usuario. Burbuja por autor: mismo patrón visual
-   que `.admin-ticket-hilo__msj` de la consola (AdminScreen.tsx), sin compartir el archivo — son dos
-   módulos sin dependencia entre sí (uno admin, otro usuario final). */
+/* S6-11 — hilo de UN ticket propio, del lado del usuario. Burbuja por autor con el MISMO
+   vocabulario de tokens que `modules/chat/chat.css` (`.chat-bubble--user`/`.chat-bubble--assistant`,
+   EXTRACT §2.5): "Vos" (autor `usuario`, el viewer de esta pantalla) es la burbuja propia —
+   `--user-bg` sólido + `--user-fg`, alineada a la derecha, cola `20 20 6 20` — y "Operador" es la
+   burbuja recibida — `--bubble-*` (mismo token que la burbuja de asistente del chat), alineada a la
+   izquierda, cola `20 20 20 6`. El autor/fecha va FUERA de la burbuja (fila separada, como el
+   "✓✓ recibido" de `.chat-bubble__receipt`) para no poner texto `--label` (calibrado contra el
+   lienzo/`--card-bg`) encima del sólido `--user-bg` sin verificar contraste ahí — mismo criterio que
+   `Bubble.tsx`, que tampoco mete metadata dentro de la burbuja de usuario. No comparte archivo con
+   `.admin-ticket-hilo__msj` de la consola (AdminScreen.tsx) — son dos módulos sin dependencia entre
+   sí (uno admin, otro usuario final). */
 
 .mi-ticket-screen {
   display: flex;
@@ -52,40 +60,66 @@
 .mi-ticket-screen__mensajes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.mi-ticket-screen__msj {
+/* Fila = burbuja + caption de autor/fecha, mismo rol que `.chat-row` de chat.css. La alineación
+   (propio a la derecha, operador a la izquierda) vive acá, no en `.mi-ticket-screen__msj`, porque
+   la caption de afuera también necesita alinearse con su burbuja. */
+.mi-ticket-screen__fila {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  max-width: 60ch;
-  align-self: flex-start;
+  gap: 4px;
+}
+
+.mi-ticket-screen__fila--propio {
+  align-items: flex-end;
+}
+
+.mi-ticket-screen__fila--operador {
+  align-items: flex-start;
+}
+
+/* Burbuja — mismos radios de cola que `.chat-bubble--user`/`.chat-bubble--assistant`
+   (`20 20 6 20` / `20 20 20 6`, EXTRACT §2.5), sólo el texto adentro (sin metadata, ver el
+   comentario de cabecera sobre contraste). */
+.mi-ticket-screen__msj {
+  padding: 10px 12px;
 }
 
 .mi-ticket-screen__msj p {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--text);
+  font-size: 14.5px;
+  line-height: 1.48;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.mi-ticket-screen__msj--propio {
+  max-width: 82%;
+  background: var(--user-bg);
+  border: var(--user-border);
+  color: var(--user-fg);
+  border-radius: 20px 20px 6px 20px;
 }
 
 .mi-ticket-screen__msj--operador {
-  align-self: flex-end;
-  background: color-mix(in srgb, var(--core) 12%, var(--card-bg));
-  border-color: var(--core);
+  max-width: 88%;
+  background: var(--bubble-bg);
+  border: var(--bubble-border);
+  box-shadow: var(--bubble-shadow);
+  color: var(--bubble-fg);
+  border-radius: 20px 20px 20px 6px;
 }
 
+/* Caption fuera de la burbuja (mismo criterio que `.chat-bubble__receipt`) — así nunca queda texto
+   `--label` renderizado sobre el `--user-bg` sólido sin haber verificado ese contraste puntual. */
 .mi-ticket-screen__autor {
-  font-family: var(--font-body);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   color: var(--label);
 }

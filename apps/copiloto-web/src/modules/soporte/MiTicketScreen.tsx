@@ -126,15 +126,23 @@ export function MiTicketScreen({ ticketId, onVolver }: MiTicketScreenProps) {
                 key={m.id}
                 className={
                   m.autor === 'operador'
-                    ? 'mi-ticket-screen__msj mi-ticket-screen__msj--operador'
-                    : 'mi-ticket-screen__msj'
+                    ? 'mi-ticket-screen__fila mi-ticket-screen__fila--operador'
+                    : 'mi-ticket-screen__fila mi-ticket-screen__fila--propio'
                 }
                 data-testid={`mi-ticket-msj-${m.id}`}
               >
+                <div
+                  className={
+                    m.autor === 'operador'
+                      ? 'mi-ticket-screen__msj mi-ticket-screen__msj--operador'
+                      : 'mi-ticket-screen__msj mi-ticket-screen__msj--propio'
+                  }
+                >
+                  <p>{m.texto}</p>
+                </div>
                 <span className="mi-ticket-screen__autor">
                   {m.autor === 'operador' ? 'Operador' : 'Vos'} · {fechaCorta(m.created_at)}
                 </span>
-                <p>{m.texto}</p>
               </li>
             ))}
           </ul>
