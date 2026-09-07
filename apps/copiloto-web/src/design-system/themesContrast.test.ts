@@ -56,7 +56,27 @@ const TEXT_TOKENS = [
   // sin dar síntoma (`memoria/un-token-con-dos-definiciones-y-la-equivocada-no-da-sintoma`).
   '--danger-fg',
   '--input-fg',
+  // Sumados por FE1 (contrato Tarea 2, 2026-09-07): rebrand de acento a #DE7250/#B04A2E. Ambos
+  // pasan a ser theme-dependent (antes un solo valor invariante en las 3 pieles) — el gate
+  // confirma que las 3 pieles + el fallback `:root` quedan sobre AA con el par nuevo, no sólo la
+  // piel que se miró a ojo. Los dos limpian 4.5:1 con margen (≥4.59 en las 6 combinaciones), así
+  // que entran al gate estricto sin excepción — a diferencia de `--core` (ver nota más abajo).
+  '--avatar-fg',
+  '--amount-sign',
 ] as const;
+
+/**
+ * `--core` (acento como trazo de ícono / texto chico en `midia.css`) queda A PROPÓSITO fuera de
+ * `TEXT_TOKENS`: no es un token de texto puro, es dual — la mayoría de sus consumidores son
+ * gráficos decorativos (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto
+ * ≥3:1) y uno solo es texto real (`.midia-screen__calendario-hora`, 13px/600). Ese único caso da
+ * 4.38:1 en la piel `claro` — por debajo del 4.5:1 estricto de este gate, deuda heredada y
+ * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es
+ * una regresión, y no hay un tercer valor de acento disponible sin violar "nunca 3 terracotas
+ * convivas" (`Prototipo frontend/odobi-ui/audit/ANALISIS-PROTOTIPO-DAVID.md` §4.1). Meterlo en
+ * este gate rompería CI por un token que en el 95% de sus usos no es texto — se documenta la
+ * exclusión en vez de forzarlo.
+ */
 
 /** Token de fondo dedicado de cada fg (confirmado por grep de uso real en los componentes). */
 const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
@@ -66,6 +86,12 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   // Un campo de formulario tiene su propio fondo, siempre. Medir `--input-fg` contra `--bg` daría
   // un número que ningún píxel de la pantalla tiene.
   '--input-fg': '--input-bg',
+  // `--avatar-fg` (texto/ícono 24px/600 dentro del círculo de avatar) y `--amount-sign` (texto
+  // 20px/400 en `hitl-card`, `Surface variant="card"` -> `--card-bg`) tienen fondo propio, igual
+  // que `--input-fg` arriba — medirlos contra `--bg` sería el mismo falso positivo/negativo que
+  // ya documentó este archivo para `--chip-fg`/`--user-fg`.
+  '--avatar-fg': '--avatar-bg',
+  '--amount-sign': '--card-bg',
   // `--danger-fg` NO tiene fondo propio: se pinta sobre lo que haya debajo, y aparece tanto suelto
   // como dentro de una card. Queda con el default (`--bg`), pero eso NO es "la superficie más
   // exigente": cuál de las dos exige más depende del tema, porque `--card-bg` es más claro que
