@@ -28,6 +28,26 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
  * `onAbrirGasto`/`onAbrirCliente`/`onAbrirTicket`: callbacks de navegación a destino (ver
  * `destinoActividad.ts`). El shell los conecta después — acá sólo se propagan a `FilaActividad`,
  * que decide con ellos si el ítem es tappable.
+ *
+ * Repintado a la "anatomía de función" de Tarea 3 (CLAUDE.md §5): stack nombre + label fijo (mismo
+ * criterio que `ClientesScreen` reusando el slot de "período" para "Tu cartera" — acá tampoco hay
+ * mes, es un feed que crece sin techo) + buscador + lista.
+ *
+ * ⚠️ **Excepción justificada — SIN "bloque negro".** Los otros 4 módulos de Tarea 3
+ * (`gastos`/`ingresos`/`clientes`/`presupuestos`) tienen los dos ingredientes que hacen falta para
+ * un bloque negro honesto: (a) un mockup fuente que define esa cifra para SU pantalla dedicada, y
+ * (b) un dato — de backend (`total`/`obtenerResumenGastos()`) o de una lista acotada de una sola
+ * página (`listarPresupuestos`, "sin cursor por ahora", ver `packages/core/src/api/presupuestos.ts`)
+ * — que la respalda sin subcontar. Acá NO están ninguno de los dos: el mockup fuente
+ * (`Prototipo frontend/odobi-ui/prototipo/index.html`) no tiene una pantalla `#actividad`, sólo el
+ * widget `.reciente` del escritorio (preview no tappable, fuera de este scope) — y `/actividad`
+ * (`packages/core/src/api/actividad.ts`) es, de las 5 pantallas de Tarea 3, la ÚNICA que pagina por
+ * CURSOR sin devolver ningún agregado (`ActividadResult = {items, cursor}`, nunca un `total`) —
+ * por diseño, porque el feed crece sin límite. Cualquier cifra armada acá ("N movimientos hoy")
+ * sólo vería la página ya cargada (20 por default) y subcontaría en silencio cualquier día con más
+ * eventos que esa página — mostrar una cifra grande y prominente que puede estar mal es peor que no
+ * mostrar ninguna (regla de oro #1, "no codificar la esperanza"). Se aplica el resto de la gramática
+ * (stack + lista) sin forzar el bloque.
  */
 export interface ActividadScreenProps {
   onAbrirGasto?: (id: number) => void;
@@ -120,18 +140,25 @@ export function ActividadScreen({ onAbrirGasto, onAbrirCliente, onAbrirTicket }:
 
   return (
     <div className="actividad-screen" data-testid="pantalla-actividad">
-      <header className="actividad-screen__header">
-        <h1 className="actividad-screen__title">Actividad</h1>
-        {estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="actividad-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      <header className="actividad-screen__stack">
+        <span className="actividad-screen__nombre-fila">
+          <span className="actividad-screen__nombre">Actividad</span>
+          {estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="actividad-actualizar"
+              className="actividad-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        {/* Label FIJO (mockup: `.atras .per`), no un período — mismo criterio que
+            `clientes-screen__periodo` ("Tu cartera"): esta función no tiene mes, es el feed
+            completo. */}
+        <span className="actividad-screen__periodo">Todo tu movimiento</span>
       </header>
 
       {estado === 'cargando' && (

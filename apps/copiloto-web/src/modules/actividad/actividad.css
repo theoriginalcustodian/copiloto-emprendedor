@@ -13,20 +13,45 @@
   padding: 6px 16px 24px;
 }
 
-.actividad-screen__header {
+/* ---------- Stack (nombre + label fijo) — CLAUDE.md §5, calcado de `.fn-stack .atras` del
+ * mockup. Mismos valores que `.gastos-screen__stack`/`.clientes-screen__stack` — misma card,
+ * mismo radio. Sin "bloque negro" debajo (ver el docstring de `ActividadScreen` sobre la
+ * excepción justificada) — `--r-xl` se mantiene igual: es la MISMA card que usarían sus
+ * hermanos, no un tratamiento distinto por no tener bloque. */
+.actividad-screen__stack {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
 }
 
-.actividad-screen__title {
+.actividad-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.actividad-screen__nombre {
   font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--heading);
-  margin: 0;
+}
+
+.actividad-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.actividad-screen__actualizar {
+  font-size: 11px;
 }
 
 .actividad-screen__loading,
