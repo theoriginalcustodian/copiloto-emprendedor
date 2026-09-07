@@ -67,6 +67,15 @@ export interface Tokens {
      * adorno (borde, spinner, punto, degradé sin texto), es `acento`.
      */
     acentoTinta: string;
+    /**
+     * El acento como SUPERFICIE que lleva texto encima (botón con label, gate de confirmación,
+     * acción de swipe). **NO invierte por piel**, y ésa es toda la diferencia con `acentoTinta`:
+     * son roles opuestos. `acentoTinta` es tinta que se apoya sobre el lienzo, así que en pieles
+     * oscuras tiene que aclararse; esto es una superficie sobre la que se apoya `acentoTexto`, así
+     * que aclararla arruina justo lo que el otro mejora — blanco sobre `#DE7250` da 3.17:1 contra
+     * los 5.43:1 de `#B04A2E`. Mismo criterio que `glass.ub1` (la burbuja del usuario).
+     */
+    acentoSuperficie: string;
     acentoTexto: string;
     borde: string;
     peligro: string;
@@ -239,6 +248,7 @@ const BASE_OSCURO: VidrioCrudo = {
 interface PaletaCruda extends Partial<VidrioCrudo> {
   accent: string;
   accentTinta: string;
+  accentSuperficie: string;
   accent2: string;
   on: string;
   glow: string;
@@ -353,9 +363,23 @@ const CATEGORICO: readonly string[] = [
 // que ya está declarado.
 const ACCENT = '#DE7250';
 // El acento es #DE7250 en adorno, pero NINGÚN texto se apoya sobre él: 2.87:1 contra `ACCENT_ON`
-// no llega ni al piso de 3:1 de texto grande. `ACCENT_TINTA` es el 2º stop del propio acento y da
+// no llega ni al piso de 3:1 de texto grande. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
-const ACCENT_TINTA = '#B04A2E';
+// 🔴 `acentoTinta` NO es un color: es un ROL — «el acento cuando tiene que ser legible SOBRE el
+// lienzo». Por eso INVIERTE por piel, igual que el bloque de cifra en web (decisión de planificación
+// 2026-09-07: "el bloque es máximo contraste contra el lienzo, no negro"). Un token que nombra un
+// color es un bug esperando la próxima piel; uno que nombra un rol se resuelve solo.
+//
+// Contrastes CALCULADOS contra el `fondoBase` real de cada piel, no estimados:
+//   claro    #B04A2E sobre #EFE6D2 = 4.38  (el viejo #C2452E daba 4.04)
+//   oscuro   #DE7250 sobre #1E1610 = 5.63 ✅AA  (con #B04A2E fijo daba 3.28 — peor que el viejo 3.55)
+//   nocturno #DE7250 sobre #0C0805 = 6.30 ✅AA  (con #B04A2E fijo daba 3.67 — peor que el viejo 3.98)
+// Mejor que el estado anterior Y que el acento viejo en las TRES pieles.
+//
+// Alineado con web, que ya hacía esto: `themes.css` usa `--core: #B04A2E` en pieles claras y
+// `#DE7250` en `nocturno`. Mobile era la excepción, no al revés.
+const ACCENT_TINTA_CLARO = '#B04A2E';
+const ACCENT_TINTA_OSCURO = '#DE7250';
 const ACCENT2 = '#F8E0D9';
 // Blanco PURO, no el crema del sistema viejo: `odobi.css:90-91` declara `--on-accent:
 // var(--odobi-blanco)` para los dos temas, y `--odobi-blanco: #FFFFFF`. El `#FBF3E2` era remanente
@@ -372,10 +396,14 @@ const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
 // usuario" en la fila de acento.
 // 🔴 La burbuja del usuario LLEVA TEXTO encima, así que su gradiente entero tiene que ser legible:
-// arranca en `ACCENT_TINTA` (peor caso 4.92:1 con `ACCENT_ON`) y no en el fill. `UB2` se deriva
+// arranca en `ACCENT_TINTA_CLARO` (peor caso 4.92:1 con `ACCENT_ON`) y no en el fill. `UB2` se deriva
 // aplicando al stop nuevo LA MISMA relación por canal que tenía el par viejo (#C2452E→#7E2417:
 // .649/.522/.500) — es derivación de lo ya declarado, no un color inventado. Da 9.43:1.
-const UB1 = ACCENT_TINTA;
+// 🔴 `UB1` NO sigue a `acentoTinta`, aunque compartan valor en la piel clara. Son roles OPUESTOS:
+// `acentoTinta` es tinta que se apoya SOBRE el lienzo, y `UB1` es una superficie que lleva texto
+// ENCIMA. Invertirlo junto con el token rompería la burbuja justo donde el otro mejora: blanco
+// sobre #DE7250 da 3.17:1 contra los 5.43:1 de #B04A2E (calculado, no estimado). Queda fijo.
+const UB1 = ACCENT_TINTA_CLARO;
 const UB2 = '#722717';
 // Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
 // a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
@@ -398,7 +426,7 @@ const RELIEVE_NIVEL5 = TINT;
 
 const PALETAS: Record<NombreSkin, PaletaCruda> = {
   claro: {
-    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA_CLARO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#2E2A20',
     // Texto secundario del DoD es `rgba(46,42,32,.55)` — aplanado sobre el fondo da 3.23:1, bajo el
@@ -436,7 +464,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     },
   },
   oscuro: {
-    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA_OSCURO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     // Texto secundario declarado (`rgba(241,228,204,.55)`) ya pasa AA (5.07:1) — sin ajustar.
@@ -463,7 +491,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
   },
   nocturno: {
     // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
-    accent: ACCENT, accentTinta: ACCENT_TINTA, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
+    accent: ACCENT, accentTinta: ACCENT_TINTA_OSCURO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
     ub1: UB1, ub2: UB2,
     tx: '#F1E4CC',
     dim: '#928777', // reuso del secundario ya ajustado de oscuro — con el fondo más oscuro de
@@ -517,6 +545,7 @@ function construirTokens(p: PaletaCruda): Tokens {
       textoTenue: p.dim,
       acento: p.accent,
       acentoTinta: p.accentTinta,
+      acentoSuperficie: p.accentSuperficie,
       acentoTexto: p.on,
       borde: aplanarRgbaSobre(bd, fondo),
       peligro: p.peligro,
