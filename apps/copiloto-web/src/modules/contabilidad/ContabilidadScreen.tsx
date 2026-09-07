@@ -37,12 +37,17 @@ const SKELETON_ROWS = 4;
  *
  * Reglas de negocio heredadas 1:1 de mobile (no tocadas por el repintado, ver contrato §2/§4 citado
  * en el port original): caja y facturado NUNCA se suman (una factura emitida no es caja hasta que se
- * cobra); `queda` puede ser negativo y se muestra tal cual (sin tinte de color dentro del bloque —
- * ver `coordinacion/abierto/2026-09-07_hallazgo_frontend1-contabilidad-a-planificacion_sin-tinte-peligro-verificado-para-queda-negativa-en-el-bloque.md`,
- * `--danger-fg` no está verificado contra el bloque, que invierte polaridad entre pieles); los
- * porcentajes de gastos se normalizan sobre la suma real, no sobre 100; sin escala de monotributo
- * vigente el backend manda `tope: null` y sólo se muestra el acumulado de 12 meses, nunca un tope
- * viejo como si fuera vigente.
+ * cobra); `queda` puede ser negativo y se muestra tal cual. **Sin tinte de peligro dentro del
+ * bloque — medido, no por precaución** (corrección de planificación 2026-09-07 a mi primera versión
+ * conservadora: "medí los 6 pares antes de sacar el color, no lo saques porque sí"). `--danger-fg`
+ * contra `--bloque-cifra-bg` (que invierte polaridad entre pieles) da:
+ *   claro    `#b03549` vs `#1A1512` → 2,98:1
+ *   oscuro   `#ff8fa0` vs `#F7F3EC` → 1,96:1
+ *   nocturno `#ff8fa0` vs `#F7F3EC` → 1,96:1
+ * Las 3 pieles fallan incluso el piso de 3:1 (texto grande) — el signo menos queda como única señal
+ * en las 3, no sólo por default. Los porcentajes de gastos se normalizan sobre la suma real, no
+ * sobre 100; sin escala de monotributo vigente el backend manda `tope: null` y sólo se muestra el
+ * acumulado de 12 meses, nunca un tope viejo como si fuera vigente.
  */
 export function ContabilidadScreen() {
   const [estado, setEstado] = useState<Estado>('cargando');
@@ -147,9 +152,9 @@ export function ContabilidadScreen() {
 /**
  * "Bloque" de cifra (gramática Monzo, Tarea 3) — Caja es LA cifra accionable de esta función (regla
  * de superficie citada arriba: nunca se suma con Facturado, que vive aparte en una card blanca).
- * `queda` puede ser negativo — se muestra tal cual, sin tinte de color (ver el hallazgo citado en el
- * docstring de cabecera: no hay un `--danger-*` verificado contra el bloque, que invierte polaridad
- * entre pieles). "Entró/Salió" van como el chip de comparación (mismo rol que "Mes anterior" en
+ * `queda` puede ser negativo — se muestra tal cual, sin tinte de color: medido contra el docstring
+ * de cabecera (2,98:1/1,96:1/1,96:1, las 3 pieles bajo el piso de 3:1), no por precaución sin medir.
+ * "Entró/Salió" van como el chip de comparación (mismo rol que "Mes anterior" en
  * `gastos`/"N sin contestar" en `presupuestos` — un único chip por bloque); el saldo del mes
  * anterior, si existe, es una segunda línea muda debajo, no un segundo chip.
  */
