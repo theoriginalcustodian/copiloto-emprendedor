@@ -209,6 +209,17 @@
   border-radius: 20px;
 }
 
+/* "Bloque negro" (Tarea 3, gramática Monzo) — radio/padding calcados 1:1 de `.resumen` en el
+   mockup fuente (`prototipo/index.html`: `border-radius:var(--r-xl);padding:26px 20px 22px`).
+   `--r-xl` es nuevo, no el 20/24px de las variantes de arriba: es código nuevo, no un rewrite
+   retroactivo de lo existente. */
+.uc-surface--bloque {
+  background: var(--bloque-bg);
+  color: var(--bloque-fg);
+  border-radius: var(--r-xl);
+  padding: 26px 20px 22px;
+}
+
 /* ODOBI hito 2: "sin glass, color pleno" retira el blur — `uc-surface--blur` sigue existiendo como
    className (ver `Surface.tsx`, prop `blur`) pero ya no tiene efecto visual; el relieve real de
    estas superficies lo dan `--card-shadow`/`--tile-shadow`/`--bubble-shadow` (§2.4). */
