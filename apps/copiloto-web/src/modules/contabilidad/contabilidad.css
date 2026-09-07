@@ -1,6 +1,7 @@
 /*
- * Estilos del módulo Contabilidad (M-WEB módulo 5) — theme-aware vía CSS vars de themes.css, mismo
- * criterio que gastos.css/clientes.css (cero color literal).
+ * Estilos del módulo Contabilidad (M-WEB módulo 5 → repintado Tarea 3, CLAUDE.md §5, cierre del
+ * lote α) — theme-aware vía CSS vars de themes.css, mismo criterio que gastos.css/presupuestos.css
+ * (cero color literal).
  */
 
 .contabilidad-screen {
@@ -13,20 +14,44 @@
   padding: 6px 16px 24px;
 }
 
-.contabilidad-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup.
+ * Web no lleva "Volver ‹" (Rail/TabBar propios, contrato: "no se toca el modelo de capas") — el
+ * resto del stack (card blanca, baseline, nombre display / período secundario) sí se porta. Mismos
+ * valores que `gastos-screen__stack`/`presupuestos-screen__stack` (misma anatomía en toda la app). */
+.contabilidad-screen__stack {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
 }
 
-.contabilidad-screen__title {
+.contabilidad-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.contabilidad-screen__nombre {
   font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--heading);
-  margin: 0;
+}
+
+.contabilidad-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.contabilidad-screen__actualizar {
+  font-size: 11px;
 }
 
 .contabilidad-screen__loading,
@@ -48,8 +73,68 @@
   color: var(--label);
 }
 
-/* ---------- tiles compartidos ---------- */
-.contabilidad-caja,
+/* ---------- "Bloque" de cifra — Caja (Tarea 3, gramática Monzo) ----------
+ * Caja es LA ÚNICA cifra accionable de esta función (regla de superficie citada por planificación:
+ * "caja y facturado nunca se suman — se dice con superficie, caja en el bloque, facturado en card
+ * blanca"). Valores calcados de `gastos-resumen`/`presupuestos-resumen` (misma anatomía de bloque
+ * en toda la app) — el fondo/color base los pone `Surface variant="bloque"` (`primitives.css`).
+ */
+.contabilidad-resumen {
+  display: flex;
+  flex-direction: column;
+}
+
+.contabilidad-resumen__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg-secondary);
+  margin: 0;
+}
+
+.contabilidad-resumen__total {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-cifra-fg);
+  margin: 8px 0 12px;
+}
+
+/* `queda` puede ser negativo (regla de negocio heredada) y se muestra TAL CUAL — el signo del propio
+ * importe ya lo comunica. Deliberadamente SIN tinte de color: `--danger-fg` está calibrado contra
+ * `--card-bg`/`--bg`, no contra este bloque (que invierte polaridad en oscuro/nocturno) — ver el
+ * hallazgo citado en la cabecera de `ContabilidadScreen.tsx`. */
+
+/* "Entró/Salió" es el chip de comparación del bloque — mismo rol/tratamiento que "Mes anterior" en
+ * `gastos-resumen__mes-anterior`/"comparación" en `presupuestos-resumen__comparacion` (mockup:
+ * `.resumen .comp`): un único chip por bloque. */
+.contabilidad-resumen__chip {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg);
+  background: var(--bloque-cifra-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  margin: 0;
+}
+
+/* Segunda línea muda debajo del chip — sólo cuando hay dato de mes anterior. */
+.contabilidad-resumen__mes-anterior {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--bloque-cifra-fg-secondary);
+  margin: 8px 0 0;
+}
+
+/* ---------- Secciones de sólo lectura (Tarea 3) ----------
+ * Facturado/Gastos/Clientes son SECCIONES completas del reporte, no filas/celdas de una lista — por
+ * eso usan `Surface variant="card"` (misma superficie que el stack), nunca `tile` (Surface.tsx:
+ * "tile -> grid de Conexiones, composer"). Regla de superficie: Facturado nunca comparte número con
+ * Caja — vive en su propia card, jamás dentro del bloque.
+ */
 .contabilidad-gastos,
 .contabilidad-facturado,
 .contabilidad-clientes {
@@ -59,40 +144,21 @@
   padding: 16px 15px;
 }
 
-.contabilidad-tile__etiqueta {
+.contabilidad-seccion__etiqueta {
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--label);
   margin: 0;
 }
 
-.contabilidad-tile__sub {
+.contabilidad-seccion__sub {
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--label);
   margin: 0;
 }
 
-/* ---------- Caja ---------- */
-.contabilidad-caja__queda {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 2px 0 4px;
-}
-
-.contabilidad-caja__queda--negativo {
-  color: var(--danger-fg);
-}
-
-.contabilidad-caja__fila {
-  display: flex;
-  gap: 16px;
-  margin-top: 4px;
-}
-
-/* ---------- Gastos ---------- */
+/* ---------- Gastos por categoría ---------- */
 .contabilidad-gastos__categorias {
   display: flex;
   flex-direction: column;

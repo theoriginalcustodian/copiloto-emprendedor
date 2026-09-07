@@ -345,7 +345,7 @@ function TarjetaMiDiaRow({
             swipeableRef.current?.close();
             onAvanzar();
           }}
-          style={[styles.botonSwipe, { backgroundColor: tema.color.acentoTinta }]}
+          style={[styles.botonSwipe, { backgroundColor: tema.color.acentoSuperficie }]}
         >
           <Text style={{ color: tema.color.fondo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
             {etiquetaAvanzar}
