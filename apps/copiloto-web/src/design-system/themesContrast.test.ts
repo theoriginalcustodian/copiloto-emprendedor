@@ -63,13 +63,13 @@ const TEXT_TOKENS = [
   // que entran al gate estricto sin excepción — a diferencia de `--core` (ver nota más abajo).
   '--avatar-fg',
   '--amount-sign',
-  // Sumados por FE1 (Tarea 3, "bloque negro", 2026-09-07): `claro`/`root-default` tienen valor de
-  // diseño REAL (negro/arena calcados del mockup, ver themes.css cabecera) y sí quedan bajo el
-  // gate estricto. `oscuro`/`nocturno` son PLACEHOLDER (`var(--label)`, no hex sólido — escalado a
-  // planificación, sin decidir) y el gate los saltea solo por eso, no porque estén exentos a
-  // propósito: en cuanto tengan un valor de diseño real, entran a medirse como cualquier otro.
-  '--bloque-fg',
-  '--bloque-fg-secondary',
+  // Sumados por FE1 (Tarea 3, "bloque" de cifra, 2026-09-07). Decisión de planificación resuelta
+  // el mismo día: el rol es "máximo contraste contra el lienzo", no "negro" — la polaridad se
+  // invierte en oscuro/nocturno (bloque CREMA con texto oscuro, no al revés). Las 4 combinaciones
+  // (3 pieles + root-default) tienen valor de diseño real (hex sólido), así que las 4 entran al
+  // gate estricto sin excepción.
+  '--bloque-cifra-fg',
+  '--bloque-cifra-fg-secondary',
   // Sumados por FE2 (contrato "shell/auth", 2026-09-07): `--btn-fg`/`--send-fg` (`#FBF3E2`, texto
   // sobre el fill del composer) usan `--btn-bg`/`--send-bg` como fondo — que el rebrand de acento
   // cambió a `#B04A2E` sólido (antes degradé del acento viejo) sin que ninguna de las dos puntas
@@ -110,8 +110,8 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   // ya documentó este archivo para `--chip-fg`/`--user-fg`.
   '--avatar-fg': '--avatar-bg',
   '--amount-sign': '--card-bg',
-  '--bloque-fg': '--bloque-bg',
-  '--bloque-fg-secondary': '--bloque-bg',
+  '--bloque-cifra-fg': '--bloque-cifra-bg',
+  '--bloque-cifra-fg-secondary': '--bloque-cifra-bg',
   // `--btn-fg`/`--send-fg` son el texto/ícono del composer, siempre sobre el fill sólido de
   // `--btn-bg`/`--send-bg` (nunca sobre `--bg` — mismo motivo que `--input-fg` arriba).
   '--btn-fg': '--btn-bg',
@@ -279,5 +279,35 @@ describe('temas — contraste WCAG AA (>=4.5:1) de tokens de texto sobre su supe
         ).toBeGreaterThanOrEqual(4.5);
       });
     }
+  }
+});
+
+/**
+ * Gate "bloque-vs-lienzo" (DoD de la decisión de planificación sobre el "bloque" de cifra,
+ * 2026-09-07): el test de arriba mide TEXTO sobre su fondo propio, pero no mide si el fondo del
+ * bloque en sí (`--bloque-cifra-bg`) se distingue del canvas de la página (`--bg`) — que es
+ * exactamente el problema real que se escaló (`#1A1512` de claro da 14,59:1 contra su canvas pero
+ * ~1:1 en oscuro/nocturno, invisible). Umbral 3:1 (WCAG 1.4.11, contraste no-textual de un
+ * componente gráfico) — el piso de "se distingue de lo que tiene alrededor", no el 4.5:1 de texto.
+ * Los valores reales (14,59 / 16,12 / 18,04:1) están muy por encima; el gate existe para cazar una
+ * regresión que los baje, no para certificar el número exacto de hoy.
+ */
+describe('temas — el "bloque" de cifra se distingue del lienzo (>=3:1, WCAG 1.4.11)', () => {
+  for (const [themeName, selectorRe] of Object.entries(THEME_BLOCKS)) {
+    const blockBody = extractBlock(themesCss, selectorRe);
+    const vars = parseDeclarations(blockBody);
+    const pageBg = vars['--bg'];
+    const bloqueBg = vars['--bloque-cifra-bg'];
+
+    it(`${themeName}: --bloque-cifra-bg sobre --bg >= 3:1`, () => {
+      expect(bloqueBg, `--bloque-cifra-bg del tema ${themeName} no es hex sólido: ${bloqueBg}`).toMatch(
+        SOLID_HEX_RE,
+      );
+      const ratio = contrastRatio(bloqueBg, pageBg);
+      expect(
+        ratio,
+        `${themeName}: bloque ${bloqueBg} sobre canvas ${pageBg} → ${ratio.toFixed(2)}:1 (< 3:1, se funde con el lienzo)`,
+      ).toBeGreaterThanOrEqual(3);
+    });
   }
 });

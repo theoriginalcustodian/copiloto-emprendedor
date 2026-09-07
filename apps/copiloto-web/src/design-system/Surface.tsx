@@ -15,9 +15,10 @@ export interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
  * - card   -> --card-*   (tarjeta HITL, card de durabilidad)
  * - tile   -> --tile-*   (grid de Conexiones, composer)
  * - bubble -> --bubble-* (burbuja de asistente; `blur` aplica el glass real del mock)
- * - bloque -> --bloque-* ("bloque negro", gramática Monzo, Tarea 3: LA cifra accionable del
- *   negocio en una función — CLAUDE.md §5, uno por pantalla). Ver el comentario de cabecera de
- *   `themes.css` — el valor en oscuro/nocturno es un placeholder pendiente de decisión de diseño.
+ * - bloque -> --bloque-cifra-* (gramática Monzo, Tarea 3: LA cifra accionable del negocio en una
+ *   función — CLAUDE.md §5, uno por pantalla). El rol es "máximo contraste contra el lienzo", no
+ *   "negro" — invierte polaridad en oscuro/nocturno (bloque crema, texto oscuro). Ver la cabecera
+ *   de `themes.css`.
  *
  * El radio asimétrico de la cola de burbuja de chat (`20 20 20 6` / `20 20 6 20`) y el padding
  * exacto de la HITL card (`22px 20px 18px`) son detalle del componente consumidor específico
