@@ -299,3 +299,56 @@ export async function borrarIngreso(
     throw err;
   }
 }
+
+/** Lo que ENTRÓ en el período, para el bloque «Cobraste este mes». */
+export interface ResumenIngresos {
+  periodo: string;
+  total: string;
+  /** `null`, no `'0.00'`: «no hay datos» y «el mes anterior entró cero» son cosas distintas —
+   *  mismo criterio que `ResumenGastos.mesAnterior` y que `CobroStore.total_periodo`. */
+  mesAnterior: string | null;
+}
+
+interface ResumenIngresosCrudo {
+  periodo?: string;
+  total?: string;
+  mes_anterior?: string | null;
+}
+
+/**
+ * `GET /ingresos/resumen` — lo cobrado del período + el mes anterior.
+ *
+ * **Por qué no alcanza con `listarIngresos()`.** Su `total` suma **hasta `limite` filas recientes,
+ * sin recortar por fecha**. Pintar ese número bajo el label «Cobraste este mes» le miente al usuario
+ * sobre su propio negocio — la misma clase de error que la regla del repo que manda `'—'` en vez de
+ * `'$0'` cuando falta el dato. Este endpoint recorta por período en la base (`CobroStore
+ * .total_periodo`, con los MISMOS límites de mes que `GastoStore.resumen`, no una segunda
+ * implementación del cálculo de fechas).
+ *
+ * Un período sin cobros responde **200** con `total: '0.00'` — no 404: «no entró nada» es un dato.
+ * Y `mesAnterior` puede ser `null` aunque `total` no lo sea: es un mes sin registros, no un cero.
+ */
+export async function obtenerResumenIngresos(
+  periodo?: string,
+): Promise<ConDisponibilidad<{ resumen: ResumenIngresos }>> {
+  const qs = periodo !== undefined ? `?periodo=${encodeURIComponent(periodo)}` : '';
+  try {
+    const raw = await apiClient.get<ResumenIngresosCrudo>(`/ingresos/resumen${qs}`);
+    // `periodo` y no `total`: `total` podría venir de cualquier otra respuesta —, `periodo` es de
+    // ESTE endpoint. Y si la ruta no estuviera declarada ANTES de las de `/ingresos/{id}`, esto
+    // llegaría como un 422 `int_parsing` sobre un parámetro que nunca mandamos.
+    if (!esRespuestaDelEndpoint(raw, 'periodo')) return { status: 'no_disponible' };
+    return {
+      status: 'ok',
+      resumen: {
+        periodo: raw.periodo ?? '',
+        total: raw.total ?? '0.00',
+        mesAnterior: raw.mes_anterior ?? null,
+      },
+    };
+  } catch (err) {
+    if (noDesplegado(err)) return { status: 'no_disponible' };
+    if (!(err instanceof ApiError)) return { status: 'no_disponible' };
+    throw err;
+  }
+}

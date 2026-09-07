@@ -371,6 +371,32 @@ def create_afip_app(
         """
         return await asyncio.to_thread(_cobros(cliente_id).impagos)
 
+    # 🔴 ORDEN: `/ingresos/resumen` va ANTES que cualquier `/ingresos/{ingreso_id}`. Si se declara
+    # después, el segmento textual "resumen" cae en la ruta del id, no parsea como entero, y muere
+    # con `422 int_parsing` sobre un parámetro que el cliente nunca mandó — de los errores que mandan
+    # a buscar el bug del lado equivocado. Es exactamente el registro que dejó `gastos_web.py:105`
+    # (lo midió frontend contra `/presupuestos/resumen` antes de que ese archivo existiera). Hoy las
+    # rutas con `{ingreso_id}` son DELETE y PATCH, así que un GET no colisiona todavía — pero el día
+    # que alguien agregue `GET /ingresos/{id}` debajo, esto sigue funcionando sólo por estar acá
+    # arriba. `test_ingresos_web.py` lo ejercita por HTTP, donde el routing sí participa.
+    @app.get("/ingresos/resumen")
+    async def resumen_ingresos(periodo: str | None = None,
+                               cliente_id: str = Depends(require_tenant)) -> dict:
+        """Lo que ENTRÓ en el período + el mes anterior, para el bloque «Cobraste este mes».
+
+        El cálculo ya vivía en `CobroStore.total_periodo` (`cobro_store.py:360`) y nadie lo llamaba:
+        esto es la ruta que faltaba, no lógica nueva. Importa la distinción porque `listarIngresos()`
+        devuelve el total de **hasta 100 filas recientes sin recortar por fecha** — pintar eso bajo
+        el label "Cobraste este mes" le miente al usuario sobre su negocio.
+        """
+        if periodo:
+            try:
+                date.fromisoformat(f"{periodo}-01")
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=400,
+                                    detail=f"periodo inválido: {periodo!r} (se espera YYYY-MM)") from None
+        return await asyncio.to_thread(_cobros(cliente_id).total_periodo, periodo)
+
     @app.get("/ingresos")
     async def listar_ingresos(limite: int = 100,
                               cliente_id: str = Depends(require_tenant)) -> dict:
