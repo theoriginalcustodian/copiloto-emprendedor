@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
 
-import { Button, Skeleton } from '../../design-system';
+import { Button, Skeleton, Surface } from '../../design-system';
 import { ChatInteligencia } from './ChatInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import './inteligencia.css';
@@ -18,15 +18,45 @@ const OPCIONES_VISTA: readonly { valor: Vista; etiqueta: string }[] = [
 ];
 
 /**
+ * "Mes actual" en español, capitalizado — mismo criterio que `PresupuestosScreen.mesActual()`:
+ * "usá el período real si existe el dato; si no, mes actual". A diferencia de `ResumenGastos`,
+ * `Portada` (`packages/core/src/api/inteligencia.ts`) no trae un período propio.
+ */
+function mesActual(): string {
+  const nombre = new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(new Date());
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+}
+
+/**
+ * "Al 19 de agosto" — el chip de comparación del "bloque" de cifra (mockup: `.bi-port .comp`). La
+ * caja es un saldo DE HOY (no un snapshot con fecha propia que mande el backend) — el "al" es la
+ * fecha de hoy, calculada acá, nunca un dato inventado del wire.
+ */
+function alHoy(): string {
+  const f = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long' }).format(new Date());
+  return `Al ${f}`;
+}
+
+/**
  * `InteligenciaScreen` — port de `apps/mobile/src/modules/inteligencia/PantallaInteligencia.tsx` a
- * `copiloto-web`. Misma lógica: portada (caja, mes, serie mensual, mejores clientes, por cobrar) +
- * los 4 gráficos debajo, dentro del mismo scroll; el chat de preguntas libres es una solapa aparte
- * (mismo criterio que mobile — un `flex:1` con su propio scroll no puede anidarse abajo de contenido
- * que no es suyo). Lo que NO se porta 1:1: `RefreshControl` (gesto táctil) → botón "Actualizar"
- * explícito, mismo criterio que `GastosScreen`/`ClientesScreen`.
+ * `copiloto-web`, repintado a la anatomía de función (Tarea 3, CLAUDE.md §5): stack (nombre +
+ * período) → "bloque" de cifra (Saldo en caja, LA cifra accionable de esta función — CLAUDE.md §5)
+ * → contenido. Inteligencia de Negocio "responde, no registra": es la única función del lote sin
+ * rótulo+pill de alta.
+ *
+ * Markup calcado del mockup fuente (`Prototipo frontend/odobi-ui/prototipo/index.html`,
+ * `#inteligencia`) — ver el detalle de cada sección en su comentario local. Lo que NO se porta 1:1:
+ * `RefreshControl` (gesto táctil "Tirá para actualizar") → botón "Actualizar" explícito, mismo
+ * criterio que `GastosScreen`/`ClientesScreen`.
  *
  * `null` no es `0`: un KPI que no vino se muestra como «—», nunca como «$0» — el helper `kpi()`
  * centraliza esa regla.
+ *
+ * La solapa "Preguntar" (`ChatInteligencia`) NO es del mockup fuente — ese diseño ya la sacó
+ * (`Prototipo frontend/odobi-ui/CLAUDE.md` ~L554: "sería la duplicación que ya sacamos con
+ * 'Preguntar' de Inteligencia"), decisión de navegación fuera del alcance de este repintado
+ * ("no se toca el modelo de capas"). Se mantiene tal cual funciona hoy — escalado a planificación
+ * en `coordinacion/abierto/2026-09-07_hallazgo_frontend1-inteligencia-a-planificacion_solapa-preguntar-ya-deprecada-en-el-diseno.md`.
  */
 export function InteligenciaScreen() {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
@@ -74,18 +104,24 @@ export function InteligenciaScreen() {
 
   return (
     <div className="inteligencia-screen" data-testid="pantalla-inteligencia">
-      <header className="inteligencia-screen__header">
-        <h1 className="inteligencia-screen__title">Inteligencia de Negocio</h1>
-        {vista === 'resumen' && estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="inteligencia-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      {/* Stack (CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup) — igual criterio que
+          `GastosScreen`: web conserva su propio chrome (Rail/TabBar) en vez del "Volver ‹" mobile. */}
+      <header className="inteligencia-screen__stack">
+        <span className="inteligencia-screen__nombre-fila">
+          <span className="inteligencia-screen__nombre">Inteligencia de Negocio</span>
+          {vista === 'resumen' && estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="inteligencia-actualizar"
+              className="inteligencia-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        <span className="inteligencia-screen__periodo">{mesActual()}</span>
       </header>
 
       <div className="inteligencia-screen__solapas" data-testid="inteligencia-solapas">
@@ -136,78 +172,115 @@ export function InteligenciaScreen() {
 
           {estado === 'ok' && portada != null && (
             <div className="inteligencia-screen__contenido" data-testid="inteligencia-portada">
-              {/* CAJA — el número grande, lo primero que se mira. */}
-              <div data-testid="inteligencia-caja">
-                <p className="inteligencia-screen__caja-etiqueta">EN CAJA</p>
-                <p className="inteligencia-screen__caja-valor">{kpi(portada.caja.saldo)}</p>
-              </div>
+              {/* "BLOQUE" DE CIFRA — Saldo en caja, LA cifra accionable de esta función (CLAUDE.md
+                  §5). Mockup: `.bi-port` — mismo tratamiento que `.resumen` (gastos/facturación),
+                  con el agregado del mini-grid Entró/Salió (mockup: `.bi-grid`). Caja y Facturado
+                  NUNCA se suman (regla dura del repo: una factura emitida no es caja hasta que se
+                  cobra) — por eso el grid reusa `mes.ingresos`/`mes.gastos`, no `mes.facturado`. */}
+              <Surface variant="bloque" className="inteligencia-screen__bloque" data-testid="inteligencia-caja">
+                <p className="inteligencia-screen__bloque-etiqueta">Saldo en caja</p>
+                <p className="inteligencia-screen__bloque-valor">{kpi(portada.caja.saldo)}</p>
+                {portada.caja.saldo != null && (
+                  <span className="inteligencia-screen__bloque-chip">{alHoy()}</span>
+                )}
+                <div className="inteligencia-screen__bloque-grid">
+                  <div data-testid="inteligencia-caja-entro">
+                    <span>Entró</span>
+                    <b>{kpi(portada.mes.ingresos)}</b>
+                  </div>
+                  <div data-testid="inteligencia-caja-salio">
+                    <span>Salió</span>
+                    <b>{kpi(portada.mes.gastos)}</b>
+                  </div>
+                </div>
+              </Surface>
 
-              {/* EL MES — cinco números, en una grilla de dos columnas. */}
-              <p className="inteligencia-screen__rotulo">ESTE MES</p>
+              {/* ESTE MES — cuatro KPIs en grilla de 2 columnas (mockup: `.cinco`) + Rentabilidad
+                  en fila completa con su explicación cuando falta el dato (mockup: `.kpi.sindato`,
+                  "no es cero: es que todavía no se puede calcular" — nunca `$0`). */}
+              <p className="inteligencia-screen__rotulo">Este mes</p>
               <div className="inteligencia-screen__grilla-kpis">
                 {(
                   [
-                    ['Ingresos', portada.mes.ingresos, 'var(--ok-fg)'],
-                    ['Gastos', portada.mes.gastos, 'var(--danger-fg)'],
-                    ['Rentabilidad', portada.mes.rentabilidad, 'var(--btn-bg)'],
-                    ['Facturado', portada.mes.facturado, 'var(--text)'],
-                    ['Cobrado', portada.mes.cobrado, 'var(--text)'],
+                    ['Ingresos', portada.mes.ingresos],
+                    ['Gastos', portada.mes.gastos],
+                    ['Facturado', portada.mes.facturado],
+                    ['Cobrado', portada.mes.cobrado],
                   ] as const
-                ).map(([etiqueta, valor, color]) => (
-                  <div
+                ).map(([etiqueta, valor]) => (
+                  <Surface
                     key={etiqueta}
+                    variant="tile"
                     className="inteligencia-screen__kpi-celda"
                     data-testid={`inteligencia-mes-${etiqueta.toLowerCase()}`}
                   >
                     <span className="inteligencia-screen__kpi-etiqueta">{etiqueta}</span>
-                    <span className="inteligencia-screen__kpi-valor" style={{ color }}>
-                      {kpi(valor)}
-                    </span>
-                  </div>
+                    <span className="inteligencia-screen__kpi-valor">{kpi(valor)}</span>
+                  </Surface>
                 ))}
+                <Surface
+                  variant="tile"
+                  className={
+                    portada.mes.rentabilidad == null
+                      ? 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha inteligencia-screen__kpi-celda--sindato'
+                      : 'inteligencia-screen__kpi-celda inteligencia-screen__kpi-celda--ancha'
+                  }
+                  data-testid="inteligencia-mes-rentabilidad"
+                >
+                  <span className="inteligencia-screen__kpi-etiqueta">Rentabilidad</span>
+                  <span className="inteligencia-screen__kpi-valor">{kpi(portada.mes.rentabilidad)}</span>
+                  {portada.mes.rentabilidad == null && (
+                    <small className="inteligencia-screen__kpi-nota" data-testid="inteligencia-rentabilidad-nota">
+                      Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
+                    </small>
+                  )}
+                </Surface>
               </div>
 
-              {/* POR COBRAR — con lo vencido resaltado, que es lo accionable. */}
-              <div className="inteligencia-screen__fila-entre" data-testid="inteligencia-por-cobrar">
-                <span className="inteligencia-screen__fila-entre-label">Por cobrar</span>
-                <span className="inteligencia-screen__fila-entre-valor">{kpi(portada.porCobrar.total)}</span>
-              </div>
-              {portada.porCobrar.vencido != null && (
-                <p className="inteligencia-screen__vencido" data-testid="inteligencia-vencido">
-                  {formatearImporte(portada.porCobrar.vencido)} vencido
-                </p>
-              )}
-
-              {/* SERIE MENSUAL — barras proporcionales, sin librería: ingresos vs gastos por mes. */}
-              {portada.serieMensual.length > 0 && (
-                <div data-testid="inteligencia-serie">
-                  <p className="inteligencia-screen__rotulo">MES A MES</p>
-                  <SerieBarras portada={portada} />
-                </div>
-              )}
-
-              {/* MEJORES CLIENTES — degrada a vacío si Clientes no está. */}
-              <p className="inteligencia-screen__rotulo">MEJORES CLIENTES</p>
-              {portada.mejoresClientes.length === 0 ? (
-                <p className="inteligencia-screen__vacio-chico" data-testid="inteligencia-clientes-vacio">
-                  Todavía no hay clientes con ventas registradas.
-                </p>
-              ) : (
-                portada.mejoresClientes.map((c) => (
-                  <div
-                    key={c.cliente}
-                    className="inteligencia-screen__fila-entre"
-                    data-testid={`inteligencia-cliente-${c.cliente}`}
-                  >
-                    <span className="inteligencia-screen__fila-entre-label">{c.cliente}</span>
-                    <span className="inteligencia-screen__fila-entre-valor inteligencia-screen__fila-entre-valor--acento">
-                      {kpi(c.total)}
+              {/* POR COBRAR — mockup: `.bloque` con cifra "grande" + vencido resaltado (acento de
+                  marca, no un rojo semántico aparte). */}
+              <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-por-cobrar">
+                <p className="inteligencia-screen__card-titulo">Por cobrar</p>
+                <p className="inteligencia-screen__card-cifra">{kpi(portada.porCobrar.total)}</p>
+                {portada.porCobrar.vencido != null && (
+                  <p className="inteligencia-screen__card-sub" data-testid="inteligencia-vencido">
+                    <span className="inteligencia-screen__vencido">
+                      {formatearImporte(portada.porCobrar.vencido)} vencidos
                     </span>
-                  </div>
-                ))
-              )}
+                  </p>
+                )}
+              </Surface>
 
-              {/* LOS 4 GRÁFICOS — cada uno con su propia carga, endpoints independientes de la portada. */}
+              {/* MEJORES CLIENTES — mockup: `.bloque#bi-clientes` con ranking; degrada a vacío si
+                  Clientes no está. */}
+              <Surface variant="card" className="inteligencia-screen__card" data-testid="inteligencia-clientes">
+                <p className="inteligencia-screen__card-titulo">Mejores clientes</p>
+                {portada.mejoresClientes.length === 0 ? (
+                  <p className="inteligencia-screen__vacio-chico" data-testid="inteligencia-clientes-vacio">
+                    Todavía no hay clientes con ventas registradas.
+                  </p>
+                ) : (
+                  portada.mejoresClientes.map((c) => (
+                    <div
+                      key={c.cliente}
+                      className="inteligencia-screen__fila-entre"
+                      data-testid={`inteligencia-cliente-${c.cliente}`}
+                    >
+                      <span className="inteligencia-screen__fila-entre-label">{c.cliente}</span>
+                      <span className="inteligencia-screen__fila-entre-valor inteligencia-screen__fila-entre-valor--acento">
+                        {kpi(c.total)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </Surface>
+
+              {/* LOS GRÁFICOS — cada uno con su propia carga, endpoints independientes de la
+                  portada (facturación, entró vs salió, en qué se te va la plata, margen por
+                  trabajo). "Facturado en los últimos 12 meses" (medidor de tope de monotributo,
+                  mockup: `.bloque` con `.medidor.sem-*`) queda afuera de esta pasada: ni el dato
+                  agregado ni los tokens semánticos de semáforo existen hoy — ver el hallazgo en
+                  `coordinacion/abierto/`. */}
               <div className="inteligencia-screen__graficos" data-testid="inteligencia-graficos-seccion">
                 <GraficosInteligencia />
               </div>
@@ -215,43 +288,6 @@ export function InteligenciaScreen() {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * Barras de la serie mensual, `<div>`s de alto proporcional — sin librería de gráficos, mismo
- * enfoque que `GraficoBarras`. La altura se normaliza contra el máximo de la serie; un mes sin dato
- * (`null`) no dibuja barra, no dibuja una de alto cero que se leería como «cero».
- */
-function SerieBarras({ portada }: { portada: Portada }) {
-  const nums = portada.serieMensual.flatMap((p) =>
-    [p.ingresos, p.gastos].filter((v): v is string => v != null).map(Number),
-  );
-  const max = nums.length > 0 ? Math.max(...nums, 1) : 1;
-  const ALTO = 80;
-
-  return (
-    <div className="inteligencia-screen__serie-fila">
-      {portada.serieMensual.map((p) => {
-        const barra = (valor: string | null, color: string) => {
-          if (valor == null) {
-            return <div className="inteligencia-screen__barra" style={{ height: 1, backgroundColor: 'var(--label)' }} />;
-          }
-          const h = Math.max(2, (Number(valor) / max) * ALTO);
-          return <div className="inteligencia-screen__barra" style={{ height: h, backgroundColor: color }} />;
-        };
-        return (
-          <div key={p.mes} className="inteligencia-screen__serie-col" data-testid={`inteligencia-barra-${p.mes}`}>
-            <div className="inteligencia-screen__serie-barras">
-              {barra(p.ingresos, 'var(--ok-fg)')}
-              {barra(p.gastos, 'var(--danger-fg)')}
-            </div>
-            {/* `2026-04` → `04`: la etiqueta corta cabe; el año se repite y no aporta acá. */}
-            <span className="inteligencia-screen__serie-etiqueta">{p.mes.slice(5)}</span>
-          </div>
-        );
-      })}
     </div>
   );
 }

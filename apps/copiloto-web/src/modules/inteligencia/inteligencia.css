@@ -14,22 +14,49 @@
   padding: 6px 16px 24px;
 }
 
-.inteligencia-screen__header {
+/* ---------- Stack (nombre + período) — CLAUDE.md §5, calcado de `.fn-stack .atras` del mockup
+ * fuente (`Prototipo frontend/odobi-ui/prototipo/index.html`, `#inteligencia`). Mismo criterio que
+ * `gastos-screen__stack`: card blanca, baseline, `--r-xl` porque comparte ancho/radio con el
+ * "bloque" de cifra de abajo. Web no lleva "Volver ‹" (Rail/TabBar propios). */
+.inteligencia-screen__stack {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  background: var(--card-bg);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--r-xl);
+  padding: 15px 20px;
 }
 
-.inteligencia-screen__title {
+.inteligencia-screen__nombre-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.inteligencia-screen__nombre {
   font-family: var(--font-display);
-  font-size: 27px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--heading);
-  margin: 0;
 }
 
+.inteligencia-screen__periodo {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.inteligencia-screen__actualizar {
+  font-size: 11px;
+}
+
+/* ---------- Solapas Resumen/Preguntar — NO son del mockup fuente (ese diseño ya sacó "Preguntar"
+ * de Inteligencia, ver el hallazgo escalado a planificación); la solapa se mantiene funcional por
+ * contrato, sólo con radio de token en vez del `999px` suelto que traía. */
 .inteligencia-screen__solapas {
   display: flex;
   gap: 8px;
@@ -43,7 +70,7 @@
   font-size: 13px;
   font-weight: 600;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   cursor: pointer;
 }
 
@@ -73,49 +100,174 @@
   color: var(--label);
 }
 
-.inteligencia-screen__caja-etiqueta,
-.inteligencia-screen__rotulo {
+/* ---------- Rótulo de sección — mismo tratamiento afuera de una card (`.lista-lbl` del mockup) que
+ * adentro de una (`.bloque h4`): ambos son "mayúsculas chico" (CLAUDE.md §5). `.inteligencia-screen__card-titulo`
+ * agrega sólo el margen inferior que necesita cuando abre el contenido de una card. */
+.inteligencia-screen__rotulo,
+.inteligencia-screen__card-titulo {
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--label);
   margin: 0;
 }
 
-.inteligencia-screen__caja-valor {
-  font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 2px 0 0;
+.inteligencia-screen__card-titulo {
+  margin: 0 0 12px;
 }
 
+/* ---------- "Bloque" de cifra — la caja (Surface variant="bloque", CLAUDE.md §5: LA cifra
+ * accionable de esta función). Valores calcados de `.bi-port`/`.bi-grid` del mockup fuente. */
+.inteligencia-screen__bloque {
+  display: flex;
+  flex-direction: column;
+}
+
+.inteligencia-screen__bloque-etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg-secondary);
+  margin: 0;
+}
+
+.inteligencia-screen__bloque-valor {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--bloque-cifra-fg);
+  margin: 8px 0 4px;
+}
+
+/* El "Al 19 de agosto" es un CHIP sobre el bloque (mockup: `.bi-port .comp`), mismo tratamiento que
+   la comparación de `gastos-resumen__mes-anterior`. */
+.inteligencia-screen__bloque-chip {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg);
+  background: var(--bloque-cifra-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  margin: 0 0 12px;
+}
+
+/* Entró/Salió DENTRO del bloque (mockup: `.bi-grid`, grid de 2 columnas, celdas apenas más claras
+   que el fondo del bloque — `color-mix` sobre `--bloque-cifra-fg` para que invierta con la
+   polaridad del bloque en vez de fijar un rgba de un solo sentido). */
+.inteligencia-screen__bloque-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.inteligencia-screen__bloque-grid > div {
+  background: color-mix(in srgb, var(--bloque-cifra-fg) 7%, transparent);
+  border-radius: var(--r-s);
+  padding: 12px;
+}
+
+.inteligencia-screen__bloque-grid span {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-cifra-fg-secondary);
+}
+
+.inteligencia-screen__bloque-grid b {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bloque-cifra-fg);
+  margin-top: 3px;
+}
+
+/* ---------- "Este mes" — grilla de 2 columnas de KPIs (mockup: `.cinco`), cada celda es un
+ * `Surface variant="tile"` (mismo token set que el grid de Conexiones — CLAUDE.md §1.3 del kit).
+ * `--kpi-ancha` es la fila de Rentabilidad (mockup: `.kpi.sindato`), full-width y con nota cuando
+ * falta el dato — nunca "$0" (regla dura del repo, `kpi()` en `InteligenciaScreen`). */
 .inteligencia-screen__grilla-kpis {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
+/* El fondo/borde/sombra/radio vienen de `<Surface variant="tile">` (`uc-surface--tile`, mismo
+   token set que el grid de Conexiones) — acá sólo el layout interno + el padding compacto del
+   mockup (`.kpi{padding:14px 16px}`), que PISA el `20px` default de `.uc-surface` por selector de
+   igual especificidad e import DESPUÉS (mismo patrón documentado en `connections.css .service-card`). */
 .inteligencia-screen__kpi-celda {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--label) 6%, transparent);
+  gap: 3px;
+  padding: 14px 16px;
+}
+
+.inteligencia-screen__kpi-celda--ancha {
+  grid-column: 1 / -1;
 }
 
 .inteligencia-screen__kpi-etiqueta {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--label);
 }
 
 .inteligencia-screen__kpi-valor {
-  font-family: var(--font-body);
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 700;
+  line-height: 1.2;
+  color: var(--heading);
+}
+
+.inteligencia-screen__kpi-celda--sindato .inteligencia-screen__kpi-valor {
+  color: var(--label);
+}
+
+.inteligencia-screen__kpi-nota {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--label);
+}
+
+/* ---------- Cards blancas (mockup: `.bloque`) — "Por cobrar" / "Mejores clientes" (Surface
+ * variant="card", mismo criterio que `AdminScreen`: cada sección es su propia card). */
+.inteligencia-screen__card {
+  display: flex;
+  flex-direction: column;
+}
+
+.inteligencia-screen__card-cifra {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.inteligencia-screen__card-sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 6px 0 0;
+}
+
+/* El rol de "vencido" es el ACENTO de marca (mockup: `.vencido{color:#B04A2E}` — el mismo
+   `--core` de este rebrand, calculado contra AA), no un rojo semántico separado: el sistema evita
+   convivir dos terracotas/una tercera hue de alerta (CLAUDE.md §4.1 del audit de acento). */
+.inteligencia-screen__vencido {
+  color: var(--core);
+  font-weight: 500;
 }
 
 .inteligencia-screen__fila-entre {
@@ -123,30 +275,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 6px 0;
 }
 
 .inteligencia-screen__fila-entre-label {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 
 .inteligencia-screen__fila-entre-valor {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
 }
 
 .inteligencia-screen__fila-entre-valor--acento {
-  color: var(--btn-bg);
-}
-
-.inteligencia-screen__vencido {
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--danger-fg);
-  margin: -6px 0 0;
+  color: var(--core);
 }
 
 .inteligencia-screen__vacio-chico {
@@ -156,52 +302,17 @@
   margin: 0;
 }
 
-.inteligencia-screen__serie-fila {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.inteligencia-screen__serie-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.inteligencia-screen__serie-barras {
-  display: flex;
-  gap: 3px;
-  align-items: flex-end;
-  height: 80px;
-}
-
-.inteligencia-screen__barra {
-  width: 12px;
-  border-radius: 3px;
-}
-
-.inteligencia-screen__serie-etiqueta {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--label);
-}
-
-.inteligencia-screen__graficos {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 6px;
-}
-
-/* ---------- GraficosInteligencia ---------- */
+/* ---------- GraficosInteligencia — cada tarjeta ya es una `Surface variant="card"` (ver el
+ * componente); acá sólo el rótulo interno y el scroll lateral de los gráficos angostos. */
 .graficos-inteligencia {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+}
+
+.graficos-inteligencia__card {
+  display: flex;
+  flex-direction: column;
 }
 
 .graficos-inteligencia__rotulo {
@@ -209,8 +320,9 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--label);
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 
 .graficos-inteligencia__scroll {
@@ -360,7 +472,7 @@
 .grafico-torta__leyenda-punto {
   width: 9px;
   height: 9px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   display: inline-block;
   flex-shrink: 0;
 }
@@ -474,7 +586,7 @@
 
 .chat-inteligencia__enviar {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--btn-bg);
   color: var(--btn-fg);
   width: 38px;
