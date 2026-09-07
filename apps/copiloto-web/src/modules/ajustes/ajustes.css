@@ -181,7 +181,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 13px 14px;
-  border-radius: 12px;
+  border-radius: var(--r-s);
   background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
@@ -190,7 +190,7 @@
   font-size: 11px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--accent, var(--heading));
+  color: var(--core);
 }
 
 .como-hablarle-bloque__ejemplo {
@@ -284,7 +284,7 @@
 .perfil-negocio-seccion__campo input,
 .perfil-negocio-seccion__campo select,
 .perfil-negocio-seccion__campo textarea {
-  border-radius: 12px;
+  border-radius: var(--r-s);
   border: var(--input-border);
   background: var(--input-bg);
   color: var(--text);
@@ -330,7 +330,7 @@
 .perfil-negocio-screen__guardado {
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--success-fg, var(--text));
+  color: var(--ok-fg);
   margin: 0;
 }
 
@@ -389,7 +389,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 13px 14px;
-  border-radius: 12px;
+  border-radius: var(--r-s);
   background: color-mix(in srgb, var(--label) 8%, transparent);
 }
 
@@ -429,7 +429,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 6px;
 }
 
@@ -495,7 +495,7 @@
 
 .afip-setup-bloque__campo input,
 .afip-setup-bloque__campo select {
-  border-radius: 12px;
+  border-radius: var(--r-s);
   border: var(--input-border);
   background: var(--input-bg);
   color: var(--text);
@@ -530,7 +530,7 @@
 }
 
 .afip-setup-bloque__texto--exito {
-  color: var(--success-fg, var(--text));
+  color: var(--ok-fg);
 }
 
 .afip-setup-bloque__texto--peligro {
@@ -564,7 +564,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 4px;
 }
 
@@ -579,13 +579,13 @@
   flex-direction: column;
   gap: 4px;
   min-width: 140px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   border: 1px solid var(--cancel-border, transparent);
   padding: 10px 14px;
 }
 
 .afip-setup-ambiente-chip--activo {
-  border-color: var(--accent, var(--heading));
+  border-color: var(--core);
 }
 
 .afip-setup-ambiente-chip__nombre {
@@ -598,7 +598,7 @@
 .afip-setup-ambiente-chip__estado {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
 }
 
 /* ---------- Apariencia (selector de piel — movido acá desde Rail.tsx/AccountScreen.tsx,
@@ -639,7 +639,7 @@
 .apariencia-screen__theme-pill {
   min-height: 44px;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--r-s);
   background: var(--tile-bg);
   border: var(--tile-border);
   color: var(--text);
@@ -675,7 +675,7 @@
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
-  color: var(--accent, var(--heading));
+  color: var(--core);
   padding: 0;
   text-align: left;
 }

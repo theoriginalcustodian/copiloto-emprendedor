@@ -110,7 +110,7 @@
 .account-screen__list {
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: var(--r-m);
   background: var(--tile-bg);
   border: var(--tile-border);
   overflow: hidden;

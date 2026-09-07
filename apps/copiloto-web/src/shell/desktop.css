@@ -4,11 +4,12 @@
  * `--nav-active` y `--skin-preview-*`, agregados ahí — ver themes.css), cero color literal salvo
  * la MISMA excepción ya documentada en el repo para el borde de swatch "inactivo": un gris fijo
  * sin token (mismo criterio que el scrim de `.recording-overlay` en chat.css o el de
- * `.uc-sheet-scrim` en primitives.css — un valor constante entre los 4 temas, no reactivo).
+ * `.uc-sheet-scrim` en primitives.css — un valor constante entre las 3 pieles, no reactivo).
  *
  * Tipografía: NO se decide acá. `[data-shell="desktop"]` (seteado por `DesktopShell`) resuelve
- * `--font-display`/`--font-body` a Space Grotesk/Manrope en `fonts-web.css` — este archivo solo
- * consume esos tokens como el resto del design-system.
+ * `--font-display`/`--font-body` a Plus Jakarta Sans/Inter en `fonts-web.css` (rebrand v2,
+ * PR 478 — antes Space Grotesk/Manrope) — este archivo solo consume esos tokens como el resto
+ * del design-system.
  */
 
 .desktop-shell {
@@ -409,7 +410,7 @@
    padding que la base mobile (chat.css). Override SOLO en desktop — mobile intacto. */
 .desktop-shell__content .composer__row {
   padding: 10px 10px 10px 20px;
-  border-radius: 22px;
+  border-radius: var(--r-m);
 }
 
 .desktop-shell__content .composer__input {
@@ -426,7 +427,7 @@
 
 .desktop-shell__content .hitl-card,
 .desktop-shell__content .uc-surface--card {
-  border-radius: 22px;
+  border-radius: var(--r-m);
 }
 
 /* #47 — avatar de Cuenta en escritorio (dc.html:332, 62×62/24px). Base mobile (account.css,
@@ -487,7 +488,7 @@
   transition:
     transform 0.32s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.3s ease;
-  border-radius: 24px;
+  border-radius: var(--r-xl);
   background: var(--card-bg);
   border: var(--card-border);
   /* Nivel 4 · Flotante (§2.4: "shell, modal, bottom sheet" — este panel ES un modal). Reemplaza el

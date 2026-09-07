@@ -70,6 +70,17 @@ const TEXT_TOKENS = [
   // propósito: en cuanto tengan un valor de diseño real, entran a medirse como cualquier otro.
   '--bloque-fg',
   '--bloque-fg-secondary',
+  // Sumados por FE2 (contrato "shell/auth", 2026-09-07): `--btn-fg`/`--send-fg` (`#FBF3E2`, texto
+  // sobre el fill del composer) usan `--btn-bg`/`--send-bg` como fondo — que el rebrand de acento
+  // cambió a `#B04A2E` sólido (antes degradé del acento viejo) sin que ninguna de las dos puntas
+  // del par quedara en este gate. Es la misma clase de hueco que backend encontró hoy en mobile
+  // (`--accent`/`ACCENT_ON`): un color perfectamente tokenizado puede volverse ilegible sin que
+  // ningún test lo note, porque nada mide el par real. Medido antes de agregarlo, no asumido:
+  // `#FBF3E2` sobre `#B04A2E` da 4,92:1 en las 4 combinaciones (invariante entre pieles, coincide
+  // con el comentario de `themes.css` junto a `--btn-bg`) — pasa hoy, y de acá en más una
+  // regresión la caza este gate en vez de quedar invisible.
+  '--btn-fg',
+  '--send-fg',
 ] as const;
 
 /**
@@ -101,6 +112,10 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   '--amount-sign': '--card-bg',
   '--bloque-fg': '--bloque-bg',
   '--bloque-fg-secondary': '--bloque-bg',
+  // `--btn-fg`/`--send-fg` son el texto/ícono del composer, siempre sobre el fill sólido de
+  // `--btn-bg`/`--send-bg` (nunca sobre `--bg` — mismo motivo que `--input-fg` arriba).
+  '--btn-fg': '--btn-bg',
+  '--send-fg': '--send-bg',
   // `--danger-fg` NO tiene fondo propio: se pinta sobre lo que haya debajo, y aparece tanto suelto
   // como dentro de una card. Queda con el default (`--bg`), pero eso NO es "la superficie más
   // exigente": cuál de las dos exige más depende del tema, porque `--card-bg` es más claro que
