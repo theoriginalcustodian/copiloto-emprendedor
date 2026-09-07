@@ -504,11 +504,61 @@ def frente_funciones() -> bool:
     return ok_todas
 
 
+
+PIELES = ("claro", "oscuro", "nocturno")
+
+
+def frente_pieles() -> bool:
+    """Tarea 2 del contrato A16 — las 3 pieles con el acento Odobi nuevo.
+
+    ⚠️ **ESCRITO SIN DEVICE (2026-09-07) — no ejercitado todavía.** El A16 se retiró antes de que
+    hubiera dev-client instalado, así que la ruta de navegación sale de leer los testID en el
+    código (`PantallaAjustes.tsx:140` -> `ajuste-tile-apariencia`; `PantallaSkins.tsx:39` ->
+    `skin-card-<nombre>`), NO de haberla recorrido. Si falla en la primera pasada real, el
+    sospechoso es la navegación, no las capturas.
+
+    Qué prueba: que el acento nuevo (`#DE7250` decorativo / `acentoTinta` `#B04A2E`) se ve bien en
+    las 3 pieles. `skin-card-<nombre>-activo` confirma que la piel QUEDÓ aplicada — sin eso una
+    captura de la piel anterior se ve perfectamente válida, que es el mismo modo de fallo que ya
+    motivó el control de foco de `capturar()`.
+    """
+    print("\n▶ A16 Tarea 2 — las 3 pieles con el acento Odobi")
+    if not abrir_escritorio():
+        capturar("pieles-escritorio-FALLO")
+        return False
+    if not tocar("tile-ajustes", segundos=15):
+        print("   ❌ no pude abrir Ajustes")
+        return False
+    time.sleep(1.0)
+    if not tocar("ajuste-tile-apariencia", segundos=15):
+        print("   ❌ no pude abrir Apariencia (la pantalla de skins)")
+        capturar("pieles-apariencia-FALLO")
+        return False
+    time.sleep(1.2)
+
+    ok_todas = True
+    for piel in PIELES:
+        if not tocar(f"skin-card-{piel}", segundos=15):
+            print(f"   ❌ no pude seleccionar la piel {piel}")
+            ok_todas = False
+            continue
+        time.sleep(1.2)
+        # El control que hace que la captura signifique algo: la piel tiene que estar ACTIVA.
+        if buscar(f"skin-card-{piel}-activo") is None:
+            print(f"   ❌ toqué {piel} pero no quedó activa — la captura mostraría la piel anterior")
+            capturar(f"pieles-{piel}-NO-APLICO")
+            ok_todas = False
+            continue
+        if capturar(f"a16-piel-{piel}") is None:
+            ok_todas = False
+    return ok_todas
+
+
 # ── main ─────────────────────────────────────────────────────────────────────────────────────────
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--frente", default="all",
-                    choices=["all", "arranque", "login", "chat", "funciones"])
+                    choices=["all", "arranque", "login", "chat", "funciones", "pieles"])
     ap.add_argument("--puerto", type=int, default=8081)
     ap.add_argument("--reset", action="store_true",
                     help="pm clear antes de arrancar. OPT-IN: dispara la hoja de bienvenida del "
@@ -534,6 +584,8 @@ def main() -> int:
         resultados["D2 chat"] = frente_chat()
     if args.frente in ("all", "funciones") and resultados.get("D1 login", True):
         resultados["D3 funciones"] = frente_funciones()
+    if args.frente in ("all", "pieles") and resultados.get("D1 login", True):
+        resultados["A16 pieles"] = frente_pieles()
 
     print("\n" + "=" * 52)
     for k, v in resultados.items():
