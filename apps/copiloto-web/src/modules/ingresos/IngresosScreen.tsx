@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { borrarIngreso, listarIngresos, type Ingreso } from '@copiloto/core';
+import { borrarIngreso, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
 import { FormularioIngreso } from './FormularioIngreso';
@@ -13,24 +13,18 @@ const SKELETON_ROWS = 3;
 type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type Vista = 'listado' | 'formulario';
 
-/** Mes en curso, capitalizado ("Agosto") — sin pegarle al backend. Fallback explícito del contrato
- *  de Tarea 3 para el período del stack cuando no hay un dato real de servidor (acá no lo hay: ver
- *  el docstring de `ResumenIngresos` sobre `/ingresos/resumen` inexistente). */
-function mesActual(): string {
-  const nombre = new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(new Date());
-  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
-}
-
 /**
  * `IngresosScreen` — port de `apps/mobile/src/modules/ingresos/PantallaIngresos.tsx` a `copiloto-web`,
  * mismo molde que `GastosScreen` (ver ese archivo para el porqué de `vivo.current = true` DENTRO del
- * setup del efecto — StrictMode). El total lo suma el BACKEND, nunca la UI: dos números para la misma
- * pregunta es exactamente lo que este módulo existe para evitar (ver `PantallaIngresos.tsx`).
+ * setup del efecto — StrictMode). El total de la LISTA lo suma el BACKEND, nunca la UI: dos números
+ * para la misma pregunta es exactamente lo que este módulo existe para evitar (ver
+ * `PantallaIngresos.tsx`).
  *
- * Repintado a la "anatomía de función" de Tarea 3 (CLAUDE.md §5): stack nombre+período (sin
- * "Volver" — la web conserva su propio Rail/TabBar) + "bloque negro" (`ResumenIngresos`) + rótulo de
- * sección "Últimos" con pill de alta "Anotar que me pagaron" (verbo del repo, nunca "Nuevo ingreso")
- * + lista. `ResumenIngresos` documenta el gap real de dato (no hay `/ingresos/resumen` todavía).
+ * Repintado a la "anatomía de función" de Tarea 3 (CLAUDE.md §5): stack nombre+período + "bloque
+ * negro" (`ResumenIngresos`, vía `GET /ingresos/resumen` — PR#488, backend cerró el gap que este
+ * módulo escaló al buzón el mismo día) + rótulo de sección "Últimos" con pill de alta "Anotar que
+ * me pagaron" (verbo del repo, nunca "Nuevo ingreso") + lista. Mismo patrón de `Promise.all` que
+ * `GastosScreen`: el resumen no bloquea la lista si falla, y viceversa.
  *
  * No se porta: `RefreshControl` (no existe en web, reemplazado por botón "Actualizar") ni
  * `BuscadorActividad` (pertenece al módulo `actividad`, todavía no portado a web — fuera de scope).
@@ -38,7 +32,7 @@ function mesActual(): string {
 export function IngresosScreen() {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
-  const [total, setTotal] = useState<string | null>(null);
+  const [resumen, setResumen] = useState<ResumenIngresosDato | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,17 +44,17 @@ export function IngresosScreen() {
 
   const cargar = useCallback((silencioso = false): Promise<void> => {
     if (!silencioso) setEstado('cargando');
-    return listarIngresos()
-      .then((res) => {
+    return Promise.all([listarIngresos(), obtenerResumenIngresos()])
+      .then(([res, resResumen]) => {
         if (!vivo.current) return;
         if (res.status === 'no_disponible') {
           setEstado('no_disponible');
           setIngresos([]);
-          setTotal(null);
+          setResumen(null);
           return;
         }
         setIngresos(res.ingresos);
-        setTotal(res.total);
+        setResumen(resResumen.status === 'ok' ? resResumen.resumen : null);
         setEstado('ok');
       })
       .catch(() => {
@@ -115,7 +109,7 @@ export function IngresosScreen() {
             </Button>
           )}
         </span>
-        <span className="ingresos-screen__periodo">{mesActual()}</span>
+        {resumen != null && <span className="ingresos-screen__periodo">{resumen.periodo}</span>}
       </header>
 
       {estado === 'cargando' && (
@@ -147,9 +141,7 @@ export function IngresosScreen() {
             <FormularioIngreso origen="manual" onGuardado={alGuardar} onCancelar={() => setVista('listado')} />
           ) : (
             <>
-              {/* El total lo suma el BACKEND — sumarlo acá daría un segundo número para la misma
-                  pregunta (ver docstring del módulo y de `ResumenIngresos`). */}
-              {total != null && <ResumenIngresos total={total} />}
+              {resumen != null && <ResumenIngresos resumen={resumen} />}
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
                   — compite con el mic. "Anotar que me pagaron" es el verbo textual del repo, nunca

@@ -256,13 +256,20 @@ export { registrarCobro, borrarCobro, listarCobros, listarImpagos } from './cobr
  * `origen`. ⚠️ Se llamaba `POST /cobros` y **no hay alias**. Lo único obligatorio es el monto: la app
  * no puede exigir más. El 409 de duplicado es una PREGUNTA con su candidato, no un error.
  */
-export { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso } from './ingresos';
+export {
+  borrarIngreso,
+  completarIngreso,
+  listarIngresos,
+  obtenerResumenIngresos,
+  registrarIngreso,
+} from './ingresos';
 export type {
   FaltanteIngreso,
   Ingreso,
   OrigenIngreso,
   RegistrarIngresoRequest,
   ResultadoIngreso,
+  ResumenIngresos,
 } from './ingresos';
 /**
  * `/mi-dia/*` — el tablero del detector proactivo (hito 7): 3 solapas (para_hoy/haciendo/hecha, forma

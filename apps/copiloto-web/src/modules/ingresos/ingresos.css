@@ -142,10 +142,10 @@
 }
 
 /* ---------- ResumenIngresos — "bloque negro" (Tarea 3, gramática Monzo) ----------
- * Valores calcados de `.resumen`/`.p-lbl`/`.total` en el mockup fuente. El fondo/color base los
- * pone `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía interna. Sin barras
- * de categoría (no aplica a Ingresos) ni chip de "Mes anterior" (dato inexistente, ver
- * `ResumenIngresos.tsx`). */
+ * Valores calcados de `.resumen`/`.p-lbl`/`.total`/`.comp` en el mockup fuente. El fondo/color base
+ * los pone `Surface variant="bloque"` (`primitives.css`) — acá sólo la tipografía interna. Sin
+ * barras de categoría (no aplica a Ingresos). El chip "Mes anterior" usa `GET /ingresos/resumen`
+ * (PR#488) — mismo tratamiento que `.gastos-resumen__mes-anterior`. */
 .ingresos-resumen {
   display: flex;
   flex-direction: column;
@@ -165,7 +165,18 @@
   line-height: 1;
   letter-spacing: -0.02em;
   color: var(--bloque-fg);
-  margin: 8px 0 0;
+  margin: 8px 0 12px;
+}
+
+.ingresos-resumen__comp {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bloque-fg);
+  background: var(--bloque-chip-bg);
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
 }
 
 /* ---------- TarjetaIngreso ---------- */
