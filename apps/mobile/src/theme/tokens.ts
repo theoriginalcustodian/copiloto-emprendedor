@@ -336,24 +336,24 @@ const CATEGORICO: readonly string[] = [
   '#876bed', // otros
 ];
 
-// El acento (`#C2452E`→`#7E2417`) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
+// El acento (`#DE7250` fills →`#B04A2E` texto/2º stop) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
 // cambia entre claro y oscuro" — y nocturno deriva de oscuro). `accent2` (tinte pálido, sin
 // declaración propia en el DoD) sale de mezclar el acento hacia blanco al 78%, misma técnica que
 // ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
 // que ya está declarado.
-const ACCENT = '#C2452E';
-const ACCENT2 = '#F2D6D1';
+const ACCENT = '#DE7250';
+const ACCENT2 = '#F8E0D9';
 const ACCENT_ON = '#FBF3E2'; // texto sobre acento, §2.1
-const ACCENT_GLOW = 'rgba(194,69,46,.55)';
+const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
 // extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
 // usuario" en la fila de acento.
-const UB1 = '#C2452E';
-const UB2 = '#7E2417';
+const UB1 = '#DE7250';
+const UB2 = '#B04A2E';
 // Wash de vidrio del acento — mismo patrón que cada skin viejo (`tint`/`tint2` = el propio acento
 // a alfa baja), usando los DOS stops YA declarados del gradiente de acento como base del rgba.
-const TINT = 'rgba(194,69,46,.16)';
-const TINT2 = 'rgba(126,36,23,.10)';
+const TINT = 'rgba(222,114,80,.16)';
+const TINT2 = 'rgba(176,74,46,.10)';
 
 // Relieve (DoD §2.4) — geometría/elevation por NIVEL (no por piel: sólo el nivel 1 declara offset/
 // radio distintos entre claro y oscuro, ver `RELIEVE_NIVEL1_*` abajo). `elevation` no lo declara el
