@@ -4,13 +4,16 @@ import {
   anularComprobante,
   confirmarAnulacion,
   estadoAnulacion,
+  formatearFechaCorta,
+  formatearImporte,
   listarComprobantes,
+  listarImpagos,
   type Comprobante,
   type EstadoAnulacion,
 } from '@copiloto/core';
 
-import { Button, Skeleton } from '../../design-system';
-import { tituloComprobanteConTotal } from './etiquetasComprobante';
+import { Button, Skeleton, Surface } from '../../design-system';
+import { tituloComprobante } from './etiquetasComprobante';
 
 const INTERVALO_POLL_ANULACION_MS = 1500;
 
@@ -24,6 +27,26 @@ function esAnulable(c: Comprobante): boolean {
 
 function claveDe(c: Comprobante): string {
   return `${c.tipoCbte}-${c.puntoVenta}-${c.nro}`;
+}
+
+/**
+ * "Impaga · N días" (CLAUDE.md §5, mockup `.estado.pend`) -- SÓLO si el comprobante reclama algo.
+ * `null` si el backend no trajo `dias` para esta fila: "0 días" fabricado sería peor que omitirlo
+ * (mismo criterio que `antiguedad()` en `SeccionMeDeben`).
+ */
+function chipImpaga(dias: number | null): string {
+  if (dias == null) return 'Impaga';
+  return `Impaga · ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
+
+/** Ícono de fila (mockup: `.fact .tile`, un genérico de comprobante -- no hay ícono por categoría
+ *  como en Gastos). Path de Phosphor "file-text", calcado del mockup fuente. */
+function IconoComprobante() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+      <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z" />
+    </svg>
+  );
 }
 
 /**
@@ -52,6 +75,11 @@ export const SeccionMisComprobantes = forwardRef<SeccionMisComprobantesHandle, S
 function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-comprobantes' }, ref) {
   const [estadoLista, setEstadoLista] = useState<EstadoLista>('cargando');
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
+  // `id` -> días de antigüedad de la deuda (CLAUDE.md §5, chip "Impaga · N días"). Viene de
+  // `listarImpagos()`, un endpoint DISTINTO de `listarComprobantes` (ver docstring de
+  // `cobros.ts::ComprobanteImpago`) -- se cruza acá por `id` de fila, no se inventa un campo nuevo.
+  // Un id ausente del mapa significa "no está impago" (cobrada, o el endpoint no está disponible).
+  const [diasImpagoPorId, setDiasImpagoPorId] = useState<Map<number, number | null>>(new Map());
   const [objetivoAnulacion, setObjetivoAnulacion] = useState<Comprobante | null>(null);
   const [anulacionId, setAnulacionId] = useState<string | null>(null);
   const [estadoAnulacionActual, setEstadoAnulacionActual] = useState<EstadoAnulacion | null>(null);
@@ -74,15 +102,24 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
    */
   const cargar = useCallback((silencioso = false): Promise<void> => {
     if (!silencioso) setEstadoLista('cargando');
-    return listarComprobantes(cuit)
-      .then((res) => {
+    // `listarImpagos()` en paralelo, NO en cascada -- son dos preguntas independientes al backend
+    // y una no debería esperar a la otra. Si falla o `no_disponible`, el mapa queda vacío: la lista
+    // simplemente no muestra chips de "Impaga", nunca inventa uno.
+    return Promise.all([listarComprobantes(cuit), listarImpagos().catch(() => ({ status: 'no_disponible' as const }))])
+      .then(([res, resImpagos]) => {
         if (!vivo.current) return;
         if (res.status === 'no_disponible') {
           setEstadoLista('no_disponible');
           setComprobantes([]);
+          setDiasImpagoPorId(new Map());
           return;
         }
         setComprobantes(res.comprobantes);
+        setDiasImpagoPorId(
+          new Map(
+            resImpagos.status === 'ok' ? resImpagos.comprobantes.map((f) => [f.id, f.dias] as const) : [],
+          ),
+        );
         setEstadoLista('ok');
       })
       .catch(() => {
@@ -173,9 +210,10 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
   }
 
   return (
+    // Sin `<h2>` propio (Tarea 3, CLAUDE.md §5): el rótulo "Últimas emitidas" + pill "Nueva factura"
+    // que antes vivía sólo en el mockup ahora lo renderiza `PantallaFacturacion`, inmediatamente
+    // arriba de esta sección -- duplicar el encabezado acá repetiría la misma etiqueta dos veces.
     <section className="mis-comprobantes" data-testid={testID}>
-      <h2 className="mis-comprobantes__titulo">Mis comprobantes</h2>
-
       {estadoLista === 'cargando' && (
         <div className="facturacion-screen__loading" data-testid={`${testID}-cargando`}>
           <Skeleton height={56} radius={12} />
@@ -205,9 +243,20 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
         comprobantes.map((c) => {
           const clave = claveDe(c);
           const esteEsElObjetivo = objetivoAnulacion != null && claveDe(objetivoAnulacion) === clave;
+          // `id` es lo que cruza con `listarImpagos()` (ver el docstring de `diasImpagoPorId`);
+          // sin `id` (activities de Temporal, ver `Comprobante.id`) no hay forma de saber si está
+          // impago -- se trata como "no impago" en vez de arriesgar un chip inventado.
+          const impaga = c.id != null && diasImpagoPorId.has(c.id);
+          const titulo = c.receptorNombre != null && c.receptorNombre !== '' ? c.receptorNombre : tituloComprobante(c);
+          const fecha = c.fechaEmision != null ? formatearFechaCorta(c.fechaEmision) : '';
+          const subtitulo = [tituloComprobante(c), fecha].filter((s) => s !== '').join(' · ');
           return (
             <div className="mis-comprobantes__grupo" key={clave}>
-              <div className="mis-comprobantes__fila" data-testid={`${testID}-fila-${clave}`}>
+              {/* Anatomía de la lista (CLAUDE.md §5, mockup `.fact`): tile-ícono + título (cliente)
+                  + subtítulo (tipo+número · fecha) + monto a la derecha + chip de estado SÓLO si
+                  reclama algo -- "lo que reclama en negro, lo terminado en arena": una "Cobrada" no
+                  lleva chip (nada gasta más atención que la que ya tiene el ojo del pendiente). */}
+              <Surface variant="tile" className="mis-comprobantes__fila" data-testid={`${testID}-fila-${clave}`}>
                 <button
                   type="button"
                   className="mis-comprobantes__fila-textos"
@@ -215,16 +264,28 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
                   onClick={() => onVerDetalle(c)}
                   aria-label={`Ver el detalle del comprobante N° ${c.nro}`}
                 >
-                  <p className="mis-comprobantes__fila-titulo">{tituloComprobanteConTotal(c)}</p>
-                  <p className="mis-comprobantes__fila-detalle">
-                    CAE {c.cae} · {c.estado}
-                  </p>
-                  {c.receptorNombre != null && c.receptorNombre !== '' && (
-                    <p className="mis-comprobantes__fila-detalle" data-testid={`${testID}-receptor-${clave}`}>
-                      {c.receptorNombre}
+                  <span className="mis-comprobantes__fila-tile" aria-hidden="true">
+                    <IconoComprobante />
+                  </span>
+                  <span className="mis-comprobantes__fila-cuerpo">
+                    <p className="mis-comprobantes__fila-titulo">{titulo}</p>
+                    <p className="mis-comprobantes__fila-detalle" data-testid={`${testID}-sub-${clave}`}>
+                      {subtitulo}
                     </p>
-                  )}
+                  </span>
                 </button>
+                <div className="mis-comprobantes__fila-der">
+                  {/* Nunca "$0" cuando falta el dato: `formatearImporte` devuelve el string crudo si
+                      no matchea el patrón numérico, nunca inventa un importe. */}
+                  <span className="mis-comprobantes__fila-monto" data-testid={`${testID}-monto-${clave}`}>
+                    {formatearImporte(c.total)}
+                  </span>
+                  {impaga && (
+                    <span className="mis-comprobantes__fila-estado mis-comprobantes__fila-estado--pend" data-testid={`${testID}-estado-${clave}`}>
+                      {chipImpaga(c.id != null ? (diasImpagoPorId.get(c.id) ?? null) : null)}
+                    </span>
+                  )}
+                </div>
                 {esAnulable(c) && !esteEsElObjetivo && (
                   <Button
                     variant="danger"
@@ -234,7 +295,7 @@ function SeccionMisComprobantes({ cuit, onVerDetalle, testID = 'facturacion-mis-
                     Anular
                   </Button>
                 )}
-              </div>
+              </Surface>
 
               {esteEsElObjetivo && (
                 <div className="mis-comprobantes__panel-anulacion" data-testid={`${testID}-anulacion-${clave}`}>

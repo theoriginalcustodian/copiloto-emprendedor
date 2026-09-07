@@ -28,12 +28,26 @@ import { PasoCliente } from './PasoCliente';
 import { PasoDatosVenta } from './PasoDatosVenta';
 import { PasoItems } from './PasoItems';
 import { PasoResumen } from './PasoResumen';
+import { ResumenFacturacion } from './ResumenFacturacion';
 import { SeccionMeDeben, type SeccionMeDebenHandle } from './SeccionMeDeben';
 import { SeccionMisComprobantes, type SeccionMisComprobantesHandle } from './SeccionMisComprobantes';
 import { TarjetaComprobante } from './TarjetaComprobante';
 import './facturacion.css';
 
 const INTERVALO_POLL_EMISION_MS = 1500;
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+] as const;
+
+/** "Agosto" -- período que acompaña al nombre de la función en el stack (CLAUDE.md §5). Sin campo
+ *  `período` propio en la API de facturación: se formatea el mes calendario actual, igual criterio
+ *  que `ResumenFacturacion` para la cifra del bloque. */
+function nombreMesActual(): string {
+  const mes = MESES[new Date().getMonth()] ?? '';
+  return mes.charAt(0).toUpperCase() + mes.slice(1);
+}
 
 type PasoEditable = Extract<PasoVisible, 'datos_venta' | 'items' | 'cliente'>;
 
@@ -349,8 +363,14 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
 
   return (
     <div className="facturacion-screen" data-testid="pantalla-facturacion">
-      <header className="facturacion-screen__header">
-        <h1 className="facturacion-screen__title">Facturación</h1>
+      {/* Anatomía de función (Tarea 3, CLAUDE.md §5): stack con nombre + período, calcado de
+          `.fn-stack .atras` del mockup fuente. El nombre migra del `<h1>` de sección a esta card
+          blanca -- mismo tratamiento que `GastosScreen`. Web no lleva "Volver ‹": Rail/TabBar
+          propios, contrato explícito de no tocar el modelo de capas. Siempre visible, sin importar
+          el estado del gate/wizard de abajo -- es chrome de la función, no del paso actual. */}
+      <header className="facturacion-screen__stack">
+        <span className="facturacion-screen__nombre">Facturación</span>
+        <span className="facturacion-screen__periodo">{nombreMesActual()}</span>
       </header>
 
       {gate.tipo === 'verificando' ? (
@@ -412,7 +432,32 @@ export function PantallaFacturacion({ facturaIdInicial, onConfigurar }: Pantalla
           sentido y generaría llamadas condenadas a `no_disponible`. */}
       {cuitConocido && (
         <>
+          <ResumenFacturacion cuit={cuitConocido} />
+
           <SeccionMeDeben ref={refMeDeben} />
+
+          {/* Rótulo de sección + alta (CLAUDE.md §5): pill blanco con el verbo textual del repo,
+              NUNCA un FAB -- compite con el mic. Reusa `nuevaFactura`, la MISMA función que ya
+              resetea el wizard para arrancar otra factura desde los estados terminales
+              (comprobante/rechazada/cancelada) -- tocarla acá no inventa un camino nuevo, sólo le
+              agrega una segunda entrada. Va inmediatamente ANTES de `SeccionMisComprobantes`, que
+              es la lista que rotula -- ese componente ya NO lleva su propio `<h2>` ("Mis
+              comprobantes"), este rótulo lo reemplaza para no duplicar el encabezado. */}
+          <div className="facturacion-screen__fila-lbl">
+            <span className="facturacion-screen__lista-lbl">Últimas emitidas</span>
+            <button
+              type="button"
+              className="facturacion-screen__pill-nueva"
+              onClick={nuevaFactura}
+              data-testid="facturacion-nueva-factura-pill"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Nueva factura
+            </button>
+          </div>
+
           <SeccionMisComprobantes ref={refComprobantes} cuit={cuitConocido} onVerDetalle={setDetalleComprobante} />
         </>
       )}

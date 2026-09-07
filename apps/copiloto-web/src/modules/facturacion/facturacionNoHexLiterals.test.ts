@@ -12,6 +12,7 @@ import pasoClienteSource from './PasoCliente.tsx?raw';
 import pasoDatosVentaSource from './PasoDatosVenta.tsx?raw';
 import pasoItemsSource from './PasoItems.tsx?raw';
 import pasoResumenSource from './PasoResumen.tsx?raw';
+import resumenFacturacionSource from './ResumenFacturacion.tsx?raw';
 import seccionCobroSource from './SeccionCobro.tsx?raw';
 import seccionMeDebenSource from './SeccionMeDeben.tsx?raw';
 import seccionMisComprobantesSource from './SeccionMisComprobantes.tsx?raw';
@@ -42,6 +43,7 @@ const SOURCES: Record<string, string> = {
   'PasoDatosVenta.tsx': pasoDatosVentaSource,
   'PasoItems.tsx': pasoItemsSource,
   'PasoResumen.tsx': pasoResumenSource,
+  'ResumenFacturacion.tsx': resumenFacturacionSource,
   'SeccionCobro.tsx': seccionCobroSource,
   'SeccionMeDeben.tsx': seccionMeDebenSource,
   'SeccionMisComprobantes.tsx': seccionMisComprobantesSource,
