@@ -357,7 +357,16 @@ const ACCENT = '#DE7250';
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
 const ACCENT_TINTA = '#B04A2E';
 const ACCENT2 = '#F8E0D9';
-const ACCENT_ON = '#FBF3E2'; // texto sobre acento, §2.1
+// Blanco PURO, no el crema del sistema viejo: `odobi.css:90-91` declara `--on-accent:
+// var(--odobi-blanco)` para los dos temas, y `--odobi-blanco: #FFFFFF`. El `#FBF3E2` era remanente
+// pre-rebrand — nunca fue un valor Odobi. Decisión de planificación 2026-09-07 (salida 1), aplicada
+// SOBRE la opción 2 del operador: las dos juntas dan #FFFFFF sobre #B04A2E = 5.43:1, AA para texto
+// normal (no sólo grande). Se voltea entero y NO se parte en dos tokens porque el censo dio que sus
+// 11 consumidores caen todos sobre superficies de acento — ninguno fuera.
+// ⚠️ Excepción conocida y DIFERIDA por el operador: `HudGrabacion.tsx:60` pinta sobre un gradiente
+// cuyo stop claro es `accent2` (#F8E0D9) → 1.26:1. No lo arregla ningún color de texto: el defecto
+// es el gradiente. Queda escalado a diseño, no se toca acá.
+const ACCENT_ON = '#FFFFFF';
 const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la
 // extinta `medicalWhite` (card opaca), y es literalmente lo que el DoD asigna a "burbuja del
