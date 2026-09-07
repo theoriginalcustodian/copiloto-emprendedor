@@ -21,6 +21,31 @@ type EstadoLista = 'cargando' | 'ok' | 'error' | 'no_disponible';
  * `ActividadScreen` no expone un modo "sin buscador", esta pantalla reusa las piezas de datos del
  * módulo Actividad (`FilaActividad`, `listarActividad`) en vez de duplicarlas, y no la pantalla
  * entera. Botón "Actualizar" en vez de `RefreshControl` — mismo criterio que el resto de M-WEB.
+ *
+ * Repintado Tarea 3 (anatomía de función, CLAUDE.md §5): stack nombre + "Tu actividad" (label FIJO,
+ * mismo criterio que `clientes-screen__periodo` — esta función tampoco tiene mes, es el feed
+ * completo). **Sin bloque negro** — excepción documentada, no vacío por omisión:
+ *
+ * 1. No hay una cifra ACCIONABLE honesta que mostrar. El mockup fuente (`Prototipo
+ *    frontend/odobi-ui/prototipo/index.html:271`, comentario de `.reciente`) lo dice explícito:
+ *    *"el golpe de color de esta pantalla va abajo, en lo que ya pasó [...] nunca envuelve nada
+ *    tocable (Decisión B): la actividad reciente es registro, no acción"* — y esa misma vista
+ *    (el widget de escritorio) nunca lleva un número grande encima del feed, sólo el `<h4>` +
+ *    las filas.
+ * 2. El feed **mezcla signos y tipos** (`entra`/`sale`/`neutro`, plata y no-plata — ver
+ *    `ActividadItem.signo`/`.monto` en `@copiloto/core`): sumar montos sería sumar entradas y
+ *    salidas de naturaleza distinta bajo un solo número sin sentido de negocio, lo mismo que el
+ *    repo evita en todos lados (nunca un total que mezcle lo que no se puede sumar).
+ * 3. `GET /actividad` (`packages/core/src/api/actividad.ts`) sólo devuelve `{items, cursor}` — a
+ *    diferencia de `/clientes` (`total` real de la cartera) no hay un agregado del servidor que
+ *    describa "cuánto hay" en TODA la actividad, sólo la página cargada. Contar `items.length`
+ *    mostraría un número que cambia con `LIMITE_PAGINA`, no un hecho del negocio — el mismo tipo
+ *    de cifra fabricada que `clientes-resumen` evita al congelar `carteraBase` en vez de mostrar
+ *    el subconjunto filtrado.
+ *
+ * Por eso tampoco lleva el rótulo "Últimos" + pill de alta de gastos/ingresos/clientes: acá no hay
+ * un alta propia (los ítems se originan en otras funciones), así que no hay verbo que ponerle al
+ * pill.
  */
 export function RecientesScreen() {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
@@ -89,18 +114,26 @@ export function RecientesScreen() {
 
   return (
     <div className="recientes-screen" data-testid="pantalla-recientes">
-      <header className="recientes-screen__header">
-        <h1 className="recientes-screen__title">Recientes</h1>
-        {estado === 'ok' && (
-          <Button
-            variant="ghost"
-            onClick={() => void actualizar()}
-            disabled={actualizando}
-            data-testid="recientes-actualizar"
-          >
-            {actualizando ? 'Actualizando…' : 'Actualizar'}
-          </Button>
-        )}
+      {/* Stack nombre + label fijo (CLAUDE.md §5) — calcado del criterio de `clientes-screen__stack`:
+          card blanca, baseline, `--r-xl`. "Tu actividad" en vez de un período: este feed no tiene
+          mes, es todo lo que pasó (mismo texto ya usado en los estados de error/no_disponible de
+          esta pantalla). */}
+      <header className="recientes-screen__stack">
+        <span className="recientes-screen__nombre-fila">
+          <span className="recientes-screen__nombre">Recientes</span>
+          {estado === 'ok' && (
+            <Button
+              variant="ghost"
+              onClick={() => void actualizar()}
+              disabled={actualizando}
+              data-testid="recientes-actualizar"
+              className="recientes-screen__actualizar"
+            >
+              {actualizando ? 'Actualizando…' : 'Actualizar'}
+            </Button>
+          )}
+        </span>
+        <span className="recientes-screen__periodo">Tu actividad</span>
       </header>
 
       {estado === 'cargando' && (
