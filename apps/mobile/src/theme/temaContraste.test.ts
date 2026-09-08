@@ -96,6 +96,28 @@ const PARES: Par[] = [
     superficie: (t) => t.glass.ub1,
     min: { claro: 5.4, oscuro: 5.4, nocturno: 5.4 },
   },
+  // 🔴 Los 2 casos de abajo existen por el hallazgo de 2026-09-08
+  // (`hallazgo_backend-a-planificacion_censo-acentoTexto-2-consumidores-sin-cubrir.md`): los pares
+  // de ARRIBA verifican lo que los TOKENS declaran (`acentoTexto` vs `acentoSuperficie`), pero
+  // `BotonVoz.tsx` y `Marca.tsx` (`tono='acento'`, el default) no usan `acentoSuperficie` — pintan
+  // el isotipo con `acentoTexto` directo sobre `t.color.acento` puro. Ese par nunca tuvo test propio
+  // y por eso el gate seguía verde con dos componentes de altísima exposición sin cobertura real.
+  // Ratio computado (no estimado, `node` con la misma fórmula de este archivo): 3.1681:1 — piso
+  // redondeado hacia abajo a 2 decimales, mismo criterio que el resto del archivo. `accent` y
+  // `acentoTexto` son el MISMO valor en las 3 pieles (`tokens.ts:359`, `:393`), así que el piso es
+  // idéntico en las tres.
+  {
+    nombre: 'acentoTexto sobre accent puro (isotipo de BotonVoz, offset final del gradiente)',
+    tinta: (t) => t.color.acentoTexto,
+    superficie: (t) => t.color.acento,
+    min: { claro: 3.16, oscuro: 3.16, nocturno: 3.16 },
+  },
+  {
+    nombre: "acentoTexto sobre accent puro (isotipo de Marca, tono='acento')",
+    tinta: (t) => t.color.acentoTexto,
+    superficie: (t) => t.color.acento,
+    min: { claro: 3.16, oscuro: 3.16, nocturno: 3.16 },
+  },
 ];
 
 describe('contraste WCAG de las 3 pieles', () => {

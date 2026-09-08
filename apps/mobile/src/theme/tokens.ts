@@ -362,9 +362,17 @@ const CATEGORICO: readonly string[] = [
 // ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
 // que ya está declarado.
 const ACCENT = '#DE7250';
-// El acento es #DE7250 en adorno, pero NINGÚN texto se apoya sobre él: 2.87:1 contra `ACCENT_ON`
-// no llega ni al piso de 3:1 de texto grande. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
+// El acento es #DE7250 en adorno. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
+// 🔴 Cifra corregida 2026-09-08 (era una cifra zombie): acá decía "2.87:1 contra ACCENT_ON", pero
+// ese 2.87 se calculó contra el crema pre-rebrand (#FBF3E2) — cuando `ACCENT_ON` pasó a blanco puro
+// (línea ~393, misma sesión de comentario) nadie actualizó ESTE número. Recalculado con la misma
+// fórmula de `temaContraste.test.ts`: `#DE7250` contra blanco puro (`#FFFFFF`, el `ACCENT_ON` real)
+// = **3.1681:1** — pasa el piso de 3:1 de WCAG 1.4.11 (elemento gráfico/ícono), aunque muy justo
+// (~5.6% de margen). Es el par que pintan `BotonVoz.tsx`/`Marca.tsx` (isotipo directo sobre `accent`
+// puro, sin pasar por `acentoSuperficie`) — cubierto ahora por 2 casos explícitos en
+// `temaContraste.test.ts` (piso 3.16, anti-regresión). Texto normal SIGUE sin poder apoyarse en
+// `accent` puro (contra 4.5:1 hace falta `acentoSuperficie`, no este par).
 // 🔴 `acentoTinta` NO es un color: es un ROL — «el acento cuando tiene que ser legible SOBRE el
 // lienzo». Por eso INVIERTE por piel, igual que el bloque de cifra en web (decisión de planificación
 // 2026-09-07: "el bloque es máximo contraste contra el lienzo, no negro"). Un token que nombra un
