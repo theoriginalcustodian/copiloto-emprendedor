@@ -138,7 +138,7 @@
   --amount-size: 46px;
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
-  --badge-fg: #C6952E;
+  --badge-fg: #7B5C1D; /* mismo H/S que #C6952E (advertencia/ondas §2.1), sólo menos L — daba 1,98-2,06:1 contra badge-bg compuesto (bajo el piso 3:1 no-textual), corregido a 4,51-4,70:1 AA. Gate FE2 2026-09-08. */
   --badge-bg: rgba(198, 149, 46, 0.14);
   --badge-border: 1px solid rgba(198, 149, 46, 0.4);
   --btn-bg: #B04A2E; /* sólido: texto 15,5px/600 no llega al piso de 19px Bold que habilitaría DE7250 (2,87:1); B04A2E da 4,92:1 */
@@ -285,7 +285,7 @@
   --amount-fg: #2E2A20;
   --amount-sign: #B04A2E; /* 20px/400 NORMAL sobre card-bg claro — 4,59:1 */
   /* Badge reusa "Advertencia / ondas" (`#C6952E`, §2.1) — único color de advertencia declarado. */
-  --badge-fg: #C6952E;
+  --badge-fg: #7B5C1D; /* mismo H/S que #C6952E, sólo menos L — 1,98-2,06:1 -> 4,51-4,70:1 AA. Gate FE2 2026-09-08. */
   --badge-bg: rgba(198, 149, 46, 0.14);
   --badge-border: 1px solid rgba(198, 149, 46, 0.4);
   /* "Acento confirmar" del DoD (§2.1) — variante del acento para el botón primario. */

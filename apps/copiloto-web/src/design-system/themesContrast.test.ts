@@ -81,6 +81,22 @@ const TEXT_TOKENS = [
   // regresión la caza este gate en vez de quedar invisible.
   '--btn-fg',
   '--send-fg',
+  // Sumados por FE2 (contrato "tokens semánticos", 2026-09-08): estos 4 quedaron fuera de
+  // TEXT_TOKENS porque la lista era manual — nadie los agregó cuando se crearon, y el gate pasó
+  // callado. Se detectó al invertir el gate a auto-derivado desde `themes.css` (ver
+  // `findUnmappedFgTokens` más abajo): son `--*-fg` declarados que la lista manual no cubría.
+  // Medidos con el mismo arnés WCAG antes de agregarlos (no asumidos): `--amount-fg`/`--name-fg`
+  // (11.5-15.9:1 contra `--bg`) y `--cancel-fg` (4.7-5.7:1) pasan AA holgado en las 4 combinaciones.
+  // `--badge-fg` daba 1.98-2.06:1 en claro (bajo incluso el piso no-textual 3:1) — corregido acá
+  // (ver comentario junto a su valor en `themes.css`, mismo H/S, sólo menos L).
+  // `--danger-btn-fg` y `--ok-fg` (4.00:1 y 3.77-3.95:1 en claro/root-default) NO se agregan acá:
+  // son deuda real, pero corregirlos es una decisión de diseño (qué tono, no sólo "más oscuro") que
+  // este contrato no autoriza — quedan en `EXEMPT_FG_TOKENS` con motivo y las cifras, escaladas a
+  // planificación en vez de asumidas o escondidas.
+  '--amount-fg',
+  '--name-fg',
+  '--cancel-fg',
+  '--badge-fg',
 ] as const;
 
 /**
@@ -129,7 +145,58 @@ const OWN_BG_TOKEN: Partial<Record<(typeof TEXT_TOKENS)[number], string>> = {
   //     nocturno  bg 9.20  ·  card 8.75   → la card exige más
   // Con el valor corregido las seis combinaciones pasan AA, así que medir contra `--bg` alcanza
   // acá. Si alguna vez el margen se achica, este comentario dice dónde mirar: la card, no el fondo.
+  // `--amount-fg`/`--name-fg` no tienen fondo propio (se pintan directo en `chat.css`, sin
+  // contenedor dedicado) — quedan con el default `--bg`, igual que `--danger-fg`.
+  // `--cancel-fg`: su fondo real (`--cancel-bg`) es `transparent` — `resolveSurface` lo resuelve a
+  // `--bg` de todos modos, pero se mapea explícito para que quede documentado cuál es la superficie
+  // real, no un default asumido.
+  '--cancel-fg': '--cancel-bg',
+  // `--badge-fg` SÍ tiene fondo propio (`--badge-bg`, rgba con tinte) — `resolveSurface` lo
+  // alpha-composita sobre `--bg` antes de medir (mismo mecanismo ya usado para `--chip-bg` etc.).
+  '--badge-fg': '--badge-bg',
 };
+
+/**
+ * Todo custom property `--*-fg` declarado en `:root` que NO esté en `TEXT_TOKENS` y tampoco en
+ * `EXEMPT_FG_TOKENS` (con motivo escrito) es un hueco: un token nuevo que nadie sumó al gate.
+ * Antes (lista manual) ese hueco pasaba callado — así fue como `--badge-fg` y otros 5 quedaron sin
+ * cubrir hasta que alguien los buscó a mano. Pedido de planificación (2026-09-08): invertir la
+ * relación, que el CI rompa por default y el que agrega un token nuevo tenga que declarar
+ * explícitamente por qué queda afuera, no que el gate calle por omisión.
+ */
+const EXEMPT_FG_TOKENS: Record<string, string> = {
+  // Dual-role (icono/trazo decorativo, no texto puro) — ver comentario extenso arriba de
+  // `OWN_BG_TOKEN`. Documentado con deuda conocida en claro (4.38:1), no una regresión nueva.
+  '--core': 'dual-role decorativo/texto — ver comentario junto a OWN_BG_TOKEN; no termina en -fg así que ni siquiera aplica el auto-derive, queda listado acá por completitud.',
+  // Deuda real medida por FE2 (2026-09-08), NO corregida: `--danger-btn-fg`=#F5EBD5 sobre su
+  // `--danger-btn-bg` real (#c7455a) da 4.00:1 en claro/root-default (8.36:1 en oscuro/nocturno,
+  // sin problema ahí). Pasa el piso 3:1 no-textual pero no el 4.5:1 AA de texto. Corregirlo cambia
+  // un tono, no sólo su luminosidad recuperando contraste (a diferencia de `--badge-fg`, que sí se
+  // corrigió en este mismo cambio) — el contrato de tokens semánticos no autoriza esa decisión de
+  // diseño. Escalado a planificación con esta cifra vía buzón el 2026-09-08; sale de acá el día que
+  // se resuelva (con el fix, no con más exención).
+  '--danger-btn-fg': 'AA-debt claro/root-default 4.00:1 (piso 3:1 OK) — escalado a planificación 2026-09-08, requiere decisión de diseño, no lo corrige este contrato.',
+  // Deuda real medida por FE2 (2026-09-08), NO corregida: `--ok-fg`=#3C8069 da 3.77:1 contra `--bg`
+  // / 3.95:1 contra `--card-bg` en claro/root-default (10.3-12.2:1 en oscuro/nocturno). Se usa en
+  // texto real de 13px (`ingresos`, `chat`), así que el piso 3:1 no alcanza — es AA-debt genuino,
+  // no un caso límite ignorable. Mismo motivo que `--danger-btn-fg`: la corrección es una decisión
+  // de color, no una recuperación mecánica de contraste. Escalado a planificación 2026-09-08.
+  '--ok-fg': 'AA-debt claro/root-default 3.77-3.95:1 (piso 3:1 OK, usado en texto real 13px) — escalado a planificación 2026-09-08, requiere decisión de diseño, no lo corrige este contrato.',
+};
+
+/** Todo custom property `--algo-fg` declarado en un bloque de vars ya parseado. */
+function fgTokensIn(vars: Record<string, string>): string[] {
+  return Object.keys(vars).filter((k) => k.endsWith('-fg'));
+}
+
+/** Tokens `-fg` declarados que no están cubiertos por el gate ni exentos con motivo. */
+function findUnmappedFgTokens(
+  vars: Record<string, string>,
+  known: readonly string[],
+  exempt: Record<string, string>,
+): string[] {
+  return fgTokensIn(vars).filter((t) => !known.includes(t) && !(t in exempt));
+}
 
 type Rgb = { r: number; g: number; b: number };
 
@@ -265,6 +332,15 @@ describe('temas — contraste WCAG AA (>=4.5:1) de tokens de texto sobre su supe
       expect(pageBg, `--bg del tema ${themeName} no es hex sólido: ${pageBg}`).toMatch(SOLID_HEX_RE);
     });
 
+    it(`${themeName}: todo token --*-fg declarado está en TEXT_TOKENS o EXEMPT_FG_TOKENS`, () => {
+      const unmapped = findUnmappedFgTokens(vars, TEXT_TOKENS, EXEMPT_FG_TOKENS);
+      expect(
+        unmapped,
+        `${themeName}: ${unmapped.join(', ')} se declaran en themes.css pero no están en TEXT_TOKENS ` +
+          `ni en EXEMPT_FG_TOKENS — sumalos a uno de los dos (con motivo si van exentos).`,
+      ).toEqual([]);
+    });
+
     for (const token of TEXT_TOKENS) {
       const value = vars[token];
       const ownBgToken = OWN_BG_TOKEN[token];
@@ -314,4 +390,31 @@ describe('temas — el "bloque" de cifra se distingue del lienzo (>=3:1, WCAG 1.
       ).toBeGreaterThanOrEqual(3);
     });
   }
+});
+
+/**
+ * Control negativo del gate "invertido" de arriba (`findUnmappedFgTokens`): demuestra que la
+ * detección efectivamente rompe cuando aparece un token `-fg` nuevo sin mapear, en vez de asumirlo
+ * por la ausencia de fallas en el gate real de `themes.css` (que podría estar verde porque el
+ * detector es un no-op). Datos sintéticos, no toca el CSS real.
+ */
+describe('control negativo — findUnmappedFgTokens realmente detecta un token nuevo sin mapear', () => {
+  it('un --*-fg fuera de TEXT_TOKENS y EXEMPT_FG_TOKENS aparece como no mapeado', () => {
+    const vars = { '--text': '#000000', '--rogue-fg': '#ff00ff' };
+    const unmapped = findUnmappedFgTokens(vars, TEXT_TOKENS, EXEMPT_FG_TOKENS);
+    expect(unmapped).toEqual(['--rogue-fg']);
+  });
+
+  it('un --*-fg exento con motivo escrito no aparece como no mapeado', () => {
+    const vars = { '--text': '#000000', '--legacy-fg': '#ff00ff' };
+    const exempt = { '--legacy-fg': 'motivo de prueba' };
+    const unmapped = findUnmappedFgTokens(vars, TEXT_TOKENS, exempt);
+    expect(unmapped).toEqual([]);
+  });
+
+  it('los tokens declarados en TEXT_TOKENS no aparecen como no mapeados', () => {
+    const vars = Object.fromEntries(TEXT_TOKENS.filter((t) => t.endsWith('-fg')).map((t) => [t, '#000000']));
+    const unmapped = findUnmappedFgTokens(vars, TEXT_TOKENS, EXEMPT_FG_TOKENS);
+    expect(unmapped).toEqual([]);
+  });
 });
