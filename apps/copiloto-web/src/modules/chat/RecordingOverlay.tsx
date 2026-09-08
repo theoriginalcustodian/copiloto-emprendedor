@@ -16,26 +16,12 @@ function formatElapsed(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-/** Las 6 curvas del waveform (verbatim diseño Copiloto App.dc.html:280-285): solo difieren en el
- * punto de control Y (`cy`), el grosor y la opacidad; la cola `T…` es constante. */
-const WAVE_TAIL =
-  'T70,48 T105,48 T140,48 T175,48 T210,48 T245,48 T280,48 T315,48 T350,48 T385,48 T420,48';
-const WAVES: ReadonlyArray<{ cy: number; sw: number; op: number }> = [
-  { cy: 12, sw: 1.4, op: 0.95 },
-  { cy: 20, sw: 1.3, op: 0.75 },
-  { cy: 28, sw: 1.2, op: 0.6 },
-  { cy: 36, sw: 1.1, op: 0.45 },
-  { cy: 4, sw: 1.3, op: 0.85 },
-  { cy: -6, sw: 1, op: 0.35 },
-];
-const WAVE_GRADIENT_ID = 'uc-wave-gradient';
-
 /**
- * Overlay full-screen de grabación (Task 19, EXTRACT §2.10 "estado grabando") — puramente
- * presentacional, el gesto/MediaRecorder viven en `MicButton` (que lo monta por PORTAL a <body>
- * para que `position:fixed` cubra el viewport real, no la cajita del composer). Waveform SVG del
- * diseño (gradiente cian→azul→violeta→magenta, 6 curvas apiladas, animado por `wavePulse` sobre el
- * grupo + `waveSlide` por dentro) + dot rojo (`recdot`) + timer mono + sub-estados:
+ * Overlay de grabación (Task 19, EXTRACT §2.10 "estado grabando"; recontenido 2026-09-08 — Revisión
+ * 24/08 de `03-home-conversacional/DECISIONES.md`: "no se tapa nada", vive DENTRO de la barra del
+ * composer en vez de un scrim full-screen) — puramente presentacional, el gesto/MediaRecorder viven
+ * en `MicButton`. El waveform SVG de 420×96 del diseño original no entra en una barra de ~54px de
+ * alto y se retira; dot rojo (`recdot`) + timer mono + sub-estados:
  *   - **unlocked** (dedo sostenido): hint "Soltá para enviar · deslizá ↑ para fijar".
  *   - **locked** (deslizó >46px, `MicButton` decide el threshold): botones Cancelar/Enviar.
  */
@@ -47,39 +33,6 @@ export function RecordingOverlay({ elapsedMs, locked, onCancel, onSend }: Record
       role="status"
       aria-live="polite"
     >
-      <div className="recording-overlay__waveform" aria-hidden="true">
-        <svg
-          className="recording-overlay__wave-svg"
-          width="420"
-          height="96"
-          viewBox="0 0 420 96"
-        >
-          <defs>
-            <linearGradient id={WAVE_GRADIENT_ID} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" style={{ stopColor: 'var(--wave-stop-0)' }} />
-              <stop offset="0.3" style={{ stopColor: 'var(--wave-stop-1)' }} />
-              <stop offset="0.55" style={{ stopColor: 'var(--wave-stop-2)' }} />
-              <stop offset="0.8" style={{ stopColor: 'var(--wave-stop-3)' }} />
-              <stop offset="1" style={{ stopColor: 'var(--wave-stop-0)' }} />
-            </linearGradient>
-          </defs>
-          <g className="recording-overlay__wave-pulse">
-            <g className="recording-overlay__wave-slide">
-              {WAVES.map((wave, index) => (
-                <path
-                  key={index}
-                  d={`M0,48 Q17.5,${wave.cy} 35,48 ${WAVE_TAIL}`}
-                  fill="none"
-                  stroke={`url(#${WAVE_GRADIENT_ID})`}
-                  strokeWidth={wave.sw}
-                  opacity={wave.op}
-                />
-              ))}
-            </g>
-          </g>
-        </svg>
-      </div>
-
       <div className="recording-overlay__meta">
         <span className="recording-overlay__dot" aria-hidden="true" />
         <span className="recording-overlay__timer">{formatElapsed(elapsedMs)}</span>
