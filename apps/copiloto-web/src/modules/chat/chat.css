@@ -1,13 +1,14 @@
 /*
  * Estilos del módulo Chat (Tasks 10/12/13/14/15/19) — theme-aware vía CSS vars de themes.css, cero
- * color literal salvo 3 excepciones documentadas (mismo criterio que primitives.css §scrim):
+ * color literal salvo 2 excepciones documentadas (mismo criterio que primitives.css §scrim):
  *   1) `.hitl-card__preview` usa `--brand-instagram` (color de marca fijo entre los 4 temas,
  *      igual que los brand-* de Conexiones — EXTRACT §1.3 "colores de marca hardcodeados").
  *   2) `.hitl-card__preview-title/caption` usan la keyword `white` (no hex) porque el fondo fijo
  *      del preview (gradiente Instagram) no varía con el tema — un texto theme-aware (--text)
  *      perdería contraste en temas claros. Acotado a ESTE elemento, no un patrón general.
- *   3) `.recording-overlay` usa `rgba(3,4,10,.74)` (scrim fijo, verbatim EXTRACT §2.10) — mismo
- *      criterio que el scrim de BottomSheet en primitives.css.
+ * (El scrim fijo `rgba(3,4,10,.74)` de `.recording-overlay` se retiró 2026-09-08 — Revisión 24/08
+ * de `03-home-conversacional/DECISIONES.md`: "no se tapa nada". Ahora vive dentro de
+ * `.composer__row`, con `var(--input-bg)` como el resto del composer.)
  */
 
 /* ---------- Screen ---------- */
@@ -493,6 +494,7 @@ a.artifact:focus-visible {
 }
 
 .composer__row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -599,104 +601,94 @@ a.artifact:focus-visible {
 }
 
 /* ---------- Recording overlay (Task 19, EXTRACT §2.10 "estado grabando") ----------
- * Excepción documentada (mismo criterio que primitives.css §BottomSheet scrim): scrim fijo entre
- * las 3 pieles, verbatim EXTRACT §2.10 (`rgba(3,4,10,.74)`). Sin blur (ODOBI hito 2, "sin glass"). */
+ * Revisión 24/08 (`03-home-conversacional/DECISIONES.md`, aplicada 2026-09-08): "no se tapa nada"
+ * — ya no es un scrim full-screen por portal, vive DENTRO de `.composer__row` (`position:absolute`
+ * sobre la fila, que ahora es `position:relative`), mismo fondo/radio que la barra. El waveform SVG
+ * de 420×96 del diseño original no entra en una barra de ~54px de alto y se retira. Los 5 tokens
+ * fijos `--rec-*` (calibrados para el scrim oscuro que ya no existe) se reemplazan por los tokens
+ * theme-aware que YA se usan contra `--input-bg` en este mismo componente: `--text` en
+ * `.composer__input`, `--input-fg`/`--label` en su placeholder/hint, `--cancel-*` en el botón
+ * "Cancelar" de `Button` (design-system) — sin inventar contraste nuevo. */
 .recording-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  /* Por encima de tab-bar (30) y sheet (60/61) — coincide con el z-index del overlay del diseño (70).
-     Se monta por PORTAL a <body> (MicButton) para que `fixed` cubra el viewport real sin depender de
-     qué ancestro tenga en el futuro (ver el comentario del portal en `MicButton.tsx`). */
-  z-index: 70;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 26px;
-  padding: 0 24px;
-  background: rgba(3, 4, 10, 0.74);
-}
-
-/* Ventana de recorte 280×96 con el SVG de 420×96 corriendo por dentro (waveSlide) — verbatim
-   diseño (Copiloto App.dc.html:275-289). */
-.recording-overlay__waveform {
-  width: 280px;
-  height: 96px;
-  overflow: hidden;
-}
-
-.recording-overlay__wave-svg {
-  display: block;
-}
-
-.recording-overlay__wave-pulse {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: wavePulse 1.6s ease-in-out infinite;
-}
-
-.recording-overlay__wave-slide {
-  animation: waveSlide 2.2s linear infinite;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 20px;
+  background: var(--input-bg);
 }
 
 .recording-overlay__meta {
   display: flex;
   align-items: center;
   gap: 9px;
+  flex-shrink: 0;
 }
 
 .recording-overlay__dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--rec-dot);
+  background: var(--danger-fg);
   animation: recdot 1.1s ease-in-out infinite;
 }
 
 .recording-overlay__timer {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: 0.05em;
-  color: var(--rec-timer);
+  color: var(--text);
 }
 
 .recording-overlay__hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--rec-hint);
-  text-align: center;
+  font-size: 12px;
+  color: var(--label);
+  text-align: right;
   margin: 0;
 }
 
 .recording-overlay__hint-arrow {
-  color: var(--rec-timer);
+  color: var(--text);
 }
 
 .recording-overlay__actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-/* Cancelar: outline sobre el scrim oscuro (fijo entre temas, como el scrim) — verbatim diseño línea 299. */
+/* Mismos tokens que `Button variant="cancel"` (primitives.css) — acción secundaria consistente
+   con el resto del design-system, ya verificados contra fondos claros y oscuros. */
 .recording-overlay__cancel {
   display: inline-flex;
   align-items: center;
-  background: transparent;
-  border: 1px solid var(--rec-cancel-border);
-  color: var(--rec-cancel-fg);
-  border-radius: 13px;
-  padding: 12px 17px;
+  background: var(--cancel-bg);
+  border: var(--cancel-border);
+  color: var(--cancel-fg);
+  border-radius: 12px;
+  padding: 8px 12px;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .recording-overlay__send {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
   border: none;
   background: var(--send-bg);
   color: var(--send-fg);
