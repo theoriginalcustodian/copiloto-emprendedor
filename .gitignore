@@ -17,6 +17,12 @@ Openai apikeyp grafity backup 341.txt
 afip sdk tincho toc.txt
 Usuario y clave fiscal David Huck Afip.txt
 
+# Config MCP del prototipo con token real (Authorization: Bearer) — entró a main por error en el
+# PR#464 y estuvo 24 días expuesto en un repo público. Sacado de HEAD 2026-09-08; el token sigue
+# vivo en el historial y TIENE QUE rotarse igual — esto sólo corta la exposición desde HEAD en
+# adelante. Ver .mcp.json.example para reconectar sin exponer el valor real.
+Prototipo frontend/odobi-ui/.mcp.json
+
 
 # Frontend
 node_modules/
