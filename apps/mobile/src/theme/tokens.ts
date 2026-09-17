@@ -3,7 +3,7 @@
  *
  * Rebrand ODOBI (2026-08-05, `docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md`): reemplaza
  * los 5 skins heredados del rediseño Z-Depth de DocuMed (`cian`/`violeta`/`ambar`/`medicalWhite`/
- * `black`) por 3 pieles con un solo acento terracota — `claro` (default) · `oscuro` · `nocturno`.
+ * `black`) por 2 pieles con un solo acento terracota — `claro` (default) · `oscuro`.
  * Decisión cerrada del sprint (§1.2/§1.3 del DoD): "sin glass, color pleno + relieve" — las
  * superficies YA NO son vidrio translúcido, son color plano aplanado (§2.3). El shape `Tokens.glass`
  * (heredado del rediseño anterior) se conserva porque `CristalVidrio.tsx` sigue consumiéndolo este
@@ -11,7 +11,7 @@
  * sus campos se rellenan con valores inertes/neutros (blur 0, sin glows) en vez de inventar un
  * sistema de vidrio nuevo para un diseño que ya no lo usa.
  *
- * Cada tema define una paleta CRUDA (`PALETAS`, abajo). `oscuro` y `nocturno` comparten la base de
+ * Cada tema define una paleta CRUDA (`PALETAS`, abajo). `oscuro` usa la base de
  * vidrio oscura (`BASE_OSCURO`); `claro` trae la suya (vidrio claro, mismo criterio que la extinta
  * `medicalWhite`). `construirTokens` deriva de ahí las DOS superficies que consume el resto de la app:
  *
@@ -27,12 +27,12 @@
  *     CLARO blendear hacia un `tx` oscuro la oscurece — la dirección opuesta a la superficie
  *     aplanada §2.3 del DoD, que es más CLARA que el fondo. Matemáticamente no hay `fondoBase` válido
  *     (0-255) que reproduzca `#F5EBD5` vía ese blend — se probó por despeje, el canal R exige
- *     `fondoBase.r > 255`. `claro`/`oscuro`/`nocturno` declaran el valor exacto de §2.3 y saltean el
+ *     `fondoBase.r > 255`. `claro`/`oscuro` declaran el valor exacto de §2.3 y saltean el
  *     blend; ningún skin sigue dependiendo del blend viejo (los 5 anteriores se borraron con este
  *     mismo cambio), así que no hay comportamiento previo que romper.
  *   - `peligro`/`exito` — semánticos reusados sin cambio de `SEMANTICOS_CLARO`/`SEMANTICOS_OSCURO`
  *     (no están en el DoD de ODOBI; no hay WCAG gate en mobile que los ejercite, así que reusar el
- *     par ya validado es preferible a inventar uno nuevo). `nocturno` reusa el par de `oscuro`.
+ *     par ya validado es preferible a inventar uno nuevo).
  * - `glass` — NUEVO sub-objeto para el vidrio del rediseño: mapeo 1:1 de `--dm-*`
  *   (`tint, tint2, bd, hi, s1, s2, chip, pill, glow, accent2, on, blur, esLight`).
  */
@@ -53,6 +53,12 @@ export interface LuzFondo {
 export interface Tokens {
   color: {
     fondo: string;
+    /** Degradé ascendente del lienzo `[pie, cabeza]`. Ver `PaletaCruda.fondoDegradado`. */
+    fondoDegradado: readonly [string, string];
+    /** **Arena `#E8A088`** — la jerarquía secundaria SOBRE fondo oscuro (`CLAUDE.md` §2, "Apoyo").
+     *  Es obligatoria dentro del bloque de máximo contraste: el acento `#DE7250` sobre el negro
+     *  tostado no separa lo suficiente, y por eso la arena existe. Sobre negro tostado da 8.46:1. */
+    apoyo: string;
     superficie: string;
     superficieAlta: string;
     texto: string;
@@ -148,16 +154,23 @@ export interface Tokens {
     };
   };
   espacio: { xs: number; sm: number; md: number; lg: number; xl: number };
-  radio: { sm: number; md: number; lg: number; completo: number };
-  tipo: { chico: number; base: number; grande: number; titulo: number };
-  /** Familias tipográficas del diseño (iguales en las 3 pieles). Los valores son las CLAVES que
-   * `useFonts` registra en `app/_layout.tsx`, usables directo como `fontFamily`. `ui*` = Space
-   * Grotesk (UI general); `mono*` = JetBrains Mono (labels/meta/timestamps en mayúsculas); `display`
-   * = NeueEinstellung Bold (ODOBI hito 3, DoD §2.6: "Display / marca" — títulos y wordmark, NO
-   * cuerpo de texto). A diferencia de `ui*`/`mono*` (paquetes `@expo-google-fonts/*`), `display` es
-   * un asset LOCAL (`assets/fonts/NeueEinstellung-Bold.otf`, dejado por el hito 3v/PR#264) cargado
-   * vía `require()` en el mismo `useFonts` de `_layout.tsx` — Expo soporta mezclar ambas fuentes en
-   * una sola llamada. Ver `docs/Implementacion_Desarrollo/2026-07-18_PLAN...` Tarea 2.2. */
+  radio: { sm: number; md: number; lg: number; xl: number; completo: number };
+  tipo: { chico: number; base: number; grande: number; titulo: number; btn: number; cifra: number };
+  /** Familias tipográficas (iguales en las 2 pieles). Los valores son las CLAVES que `useFonts`
+   * registra en `app/_layout.tsx`, usables directo como `fontFamily`.
+   *
+   * 🔴 **DOS FAMILIAS Y NADA MÁS** (`odobi-ui/CLAUDE.md` §3): **Plus Jakarta Sans Bold** para
+   * display y marca, **Inter 400/500** para toda la UI. Se retiraron Space Grotesk, JetBrains
+   * Mono y NeueEinstellung.
+   *
+   * ⚠️ **No hay negrita de cuerpo.** El sistema declara Inter en 400 y 500, "nada más": lo que
+   * necesite peso sube a `display`, no a un Inter Bold que no existe en la paleta tipográfica. Por
+   * eso `uiSemibold` y `uiBold` apuntan hoy a Inter Medium — las claves se conservan para no tocar
+   * los 127 sitios de una, pero **cada uso de `uiBold` hay que revisarlo**: o es display, o es
+   * Medium. Lista en la spec `mobile-coherencia.md`, Ola 1.
+   *
+   * ⚠️ `mono` ya no es monoespaciada. Los labels en mayúsculas quedan en Inter; el sistema no
+   * tiene una tercera familia. (Web retiró JetBrains Mono el 07/09 por el mismo motivo.) */
   fuente: {
     ui: string;
     uiMedium: string;
@@ -169,20 +182,35 @@ export interface Tokens {
   };
 }
 
-export type NombreSkin = 'claro' | 'oscuro' | 'nocturno';
+/** Exactamente DOS pieles (`odobi-ui/CLAUDE.md` §5): claro y oscuro. «Nocturno» se eliminó el
+ *  17/09 por decisión de Martin — el sistema declara dos, y la tercera obligaba a mantener un
+ *  juego de contrastes que nadie firmó. */
+export type NombreSkin = 'claro' | 'oscuro';
 
 const espacio = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
-const radio = { sm: 6, md: 12, lg: 20, completo: 999 };
-const tipo = { chico: 13, base: 15, grande: 18, titulo: 24 };
-/** Claves de fuente (ver `useFonts` en `app/_layout.tsx`). Compartidas por las 3 pieles. */
+/** Radios del sistema (`odobi-ui/CLAUDE.md` §5, renovación del 19/08): 14 / 22 / 26. El `--r-xl:26`
+ *  es nuevo de esa renovación, no un rewrite retroactivo: entra como `xl`. */
+const radio = { sm: 14, md: 22, lg: 26, xl: 26, completo: 999 };
+/** Escala tipográfica de `odobi-ui/tokens/odobi.css` — CUATRO tamaños por pantalla, no más
+ *  (`CLAUDE.md` §3). `caption` metadatos · `base` conversación y cuerpo · `titulo` subtítulos y
+ *  headers de card · `display` títulos de pantalla.
+ *
+ *  Dos valores viven aparte porque son roles, no escalones de la escala:
+ *  - `btn: 19` — label del botón de confirmación. ⚠️ **19 es PISO, no preferencia** (§2): WCAG
+ *    cuenta "texto grande" bold desde 18,66 px, y es lo único que vuelve legal el 3,17:1 del
+ *    blanco sobre `#DE7250`. **A 18 px el botón deja de cumplir y se ve idéntico.** Antes de bajar
+ *    ese número se cambia el fill a `#B04A2E`, nunca la tipografía.
+ *  - `cifra: 40` — la cifra del bloque de máximo contraste (§5). */
+const tipo = { chico: 13, base: 16, grande: 20, titulo: 28, btn: 19, cifra: 40 };
+/** Claves de fuente (ver `useFonts` en `app/_layout.tsx`). Compartidas por las 2 pieles. */
 const fuente = {
-  ui: 'SpaceGrotesk_400Regular',
-  uiMedium: 'SpaceGrotesk_500Medium',
-  uiSemibold: 'SpaceGrotesk_600SemiBold',
-  uiBold: 'SpaceGrotesk_700Bold',
-  mono: 'JetBrainsMono_400Regular',
-  monoMedium: 'JetBrainsMono_500Medium',
-  display: 'NeueEinstellung-Bold',
+  ui: 'Inter_400Regular',
+  uiMedium: 'Inter_500Medium',
+  uiSemibold: 'Inter_500Medium',
+  uiBold: 'Inter_500Medium',
+  mono: 'Inter_400Regular',
+  monoMedium: 'Inter_500Medium',
+  display: 'PlusJakartaSans-Bold',
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -260,6 +288,9 @@ interface PaletaCruda extends Partial<VidrioCrudo> {
   tint: string;
   tint2: string;
   fondoBase: string;
+  /** Degradé ascendente del lienzo `[pie, cabeza]` — el `linear-gradient(0deg, #F5E7DE 0%, crema
+   *  60%, crema 100%)` del prototipo. Lo consume quien pinta el fondo de pantalla. */
+  fondoDegradado: readonly [string, string];
   /**
    * Override explícito de `color.superficie`/`color.superficieAlta` — salta el blend-hacia-`tx` de
    * `construirTokens` (ver docstring del módulo). ODOBI los declara siempre (§2.3 del DoD); queda
@@ -357,11 +388,14 @@ const CATEGORICO: readonly string[] = [
 ];
 
 // El acento (`#DE7250` fills →`#B04A2E` texto/2º stop) es el MISMO en las 3 pieles (§2.1/§2.2 del DoD: "el acento no
-// cambia entre claro y oscuro" — y nocturno deriva de oscuro). `accent2` (tinte pálido, sin
+// cambia entre claro y oscuro"). `accent2` (tinte pálido, sin
 // declaración propia en el DoD) sale de mezclar el acento hacia blanco al 78%, misma técnica que
 // ya usaba cada skin viejo para su propio `accent2` — no es un color nuevo, es una dilución del
 // que ya está declarado.
 const ACCENT = '#DE7250';
+/** Arena — jerarquía secundaria sobre oscuro (`CLAUDE.md` §2). Igual en las dos pieles: no deriva
+ *  del lienzo, es un color de la paleta cerrada del 22/07. */
+const APOYO = '#E8A088';
 // El acento es #DE7250 en adorno. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
 // 🔴 Cifra corregida 2026-09-08 (era una cifra zombie): acá decía "2.87:1 contra ACCENT_ON", pero
@@ -381,11 +415,10 @@ const ACCENT = '#DE7250';
 // Contrastes CALCULADOS contra el `fondoBase` real de cada piel, no estimados:
 //   claro    #B04A2E sobre #EFE6D2 = 4.38  (el viejo #C2452E daba 4.04)
 //   oscuro   #DE7250 sobre #1E1610 = 5.63 ✅AA  (con #B04A2E fijo daba 3.28 — peor que el viejo 3.55)
-//   nocturno #DE7250 sobre #0C0805 = 6.30 ✅AA  (con #B04A2E fijo daba 3.67 — peor que el viejo 3.98)
 // Mejor que el estado anterior Y que el acento viejo en las TRES pieles.
 //
 // Alineado con web, que ya hacía esto: `themes.css` usa `--core: #B04A2E` en pieles claras y
-// `#DE7250` en `nocturno`. Mobile era la excepción, no al revés.
+// `#DE7250` en la piel oscura. Mobile era la excepción, no al revés.
 const ACCENT_TINTA_CLARO = '#B04A2E';
 const ACCENT_TINTA_OSCURO = '#DE7250';
 const ACCENT2 = '#F8E0D9';
@@ -449,7 +482,12 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     // un tercer nivel de elevación declarado por el DoD, y campo es la superficie más elevada que sí
     // lo está).
     superficie: '#F5EBD5', superficieAlta: '#FAF7EC',
-    fondoBase: '#EFE6D2', luminosidad: 0, blur: 0, esLight: true,
+    // 🔴 `#EFE6D2` NO existía en el sistema de diseño: se verificó que no aparece en ningún
+    // archivo de `odobi-ui`. El lienzo del sistema es el degradé ascendente del prototipo
+    // (`#F5E7DE` abajo → crema arriba). `fondoBase` toma el crema —el 60% del degradé y el color
+    // dominante— y el degradé en sí se pinta con `fondoDegradado` (ver abajo).
+    fondoBase: '#F7F3EC', fondoDegradado: ['#F5E7DE', '#F7F3EC'],
+    luminosidad: 0, blur: 0, esLight: true,
     // Éxito tiene valor propio en el DoD (§2.1); peligro no está en el DoD de ODOBI — se reusa el
     // par ya validado de `SEMANTICOS_CLARO` (no hay WCAG gate en mobile que lo ejercite, así que
     // reusar es preferible a inventar uno nuevo).
@@ -461,7 +499,7 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     hi: 'rgba(255,255,255,.95)', pill: 'rgba(46,42,32,.34)', chip: 'rgba(46,42,32,.06)',
     fondoLuz: [],
     // Sombra cálida validada por el spike del hito 0 (nivel 1 · reposo, §2.4 del DoD) — geometría
-    // 10px/26px, distinta de la de oscuro/nocturno (12px/28px, ver más abajo).
+    // 10px/26px, distinta de la de oscuro (12px/28px, ver más abajo).
     relieve: {
       nivel1: { color: '#6E4B2C', opacity: 0.3, offsetY: 10, radius: 26, elevation: 14 },
       nivel2: { color: '#46321E', opacity: 0.32, ...RELIEVE_NIVEL2_GEOM },
@@ -479,7 +517,11 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     dim: '#928777',
     tint: TINT, tint2: TINT2,
     superficie: '#251B11', superficieAlta: '#1B120B', // §2.3: superficie / campo aplanados
-    fondoBase: '#1E1610', luminosidad: 0, blur: 0, esLight: false,
+    // El lienzo oscuro del sistema es el negro tostado `#1A1512` (`tokens/odobi.css` §oscuro:
+    // `--bg: var(--odobi-negro)`), no el `#1E1610` que traía el código. El degradé usa el lienzo
+    // alterno declarado ahí mismo (`--bg-alt: #211B16`) como pie.
+    fondoBase: '#1A1512', fondoDegradado: ['#211B16', '#1A1512'],
+    luminosidad: 0, blur: 0, esLight: false,
     // Ni éxito ni peligro tienen valor propio en el DoD para oscuro — se reusa el par de
     // `SEMANTICOS_OSCURO` (ya validado, ≥8:1 contra este fondo — más margen del que exige AA).
     ...SEMANTICOS_OSCURO,
@@ -491,38 +533,6 @@ const PALETAS: Record<NombreSkin, PaletaCruda> = {
     relieve: {
       nivel1: { color: '#000000', opacity: 0.6, offsetY: 12, radius: 28, elevation: 14 },
       nivel2: { color: '#000000', opacity: 0.5, ...RELIEVE_NIVEL2_GEOM }, // "idem" geometría, §2.4
-      nivel3: RELIEVE_NIVEL3,
-      nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
-      nivel5: RELIEVE_NIVEL5,
-      burbujaUsuario: RELIEVE_BURBUJA_USUARIO,
-    },
-  },
-  nocturno: {
-    // Deriva de oscuro (§2.8): acento y texto principal idénticos, sin valor propio en el DoD.
-    accent: ACCENT, accentTinta: ACCENT_TINTA_OSCURO, accentSuperficie: ACCENT_TINTA_CLARO, accent2: ACCENT2, on: ACCENT_ON, glow: ACCENT_GLOW,
-    ub1: UB1, ub2: UB2,
-    tx: '#F1E4CC',
-    dim: '#928777', // reuso del secundario ya ajustado de oscuro — con el fondo más oscuro de
-    // nocturno da AÚN más contraste (5.66:1), sigue AA sin re-ajustar.
-    tint: TINT, tint2: TINT2,
-    superficie: '#141009', superficieAlta: '#140E08', // §2.8 superficie; campo = rgba(20,13,8,.5)
-    // sobre la superficie nocturna (misma técnica §2.3, base = superficie del propio skin).
-    fondoBase: '#0C0805', luminosidad: 0, blur: 0, esLight: false,
-    ...SEMANTICOS_OSCURO, // reuso de oscuro, ver nota arriba
-    bd: 'rgba(241,228,204,.10)', // §2.8, exacto
-    s1: BASE_OSCURO.s1, s2: BASE_OSCURO.s2,
-    // `hi` (luz interna superior) reducida — §2.8 es explícito: "relieve nivel 1-2 con
-    // rgba(0,0,0,.75), SIN luz interna cálida". El resto del vidrio (s1/s2/pill/chip) no tiene esa
-    // instrucción explícita, así que se deja igual a `oscuro`.
-    hi: 'rgba(255,255,255,.15)',
-    pill: BASE_OSCURO.pill, chip: BASE_OSCURO.chip,
-    fondoLuz: [],
-    // §2.8, exacto: "relieve nivel 1-2 con rgba(0,0,0,.75)" — nocturno sube la opacidad de AMBOS
-    // niveles a .75 (oscuro los tenía separados en .6/.5); geometría y nivel3/4/5 heredan de oscuro
-    // sin cambio, el DoD no declara valor propio para ellos en nocturno.
-    relieve: {
-      nivel1: { color: '#000000', opacity: 0.75, offsetY: 12, radius: 28, elevation: 14 },
-      nivel2: { color: '#000000', opacity: 0.75, ...RELIEVE_NIVEL2_GEOM },
       nivel3: RELIEVE_NIVEL3,
       nivel4: { color: '#000000', opacity: 0.7, ...RELIEVE_NIVEL4_GEOM },
       nivel5: RELIEVE_NIVEL5,
@@ -547,6 +557,8 @@ function construirTokens(p: PaletaCruda): Tokens {
   return {
     color: {
       fondo,
+      fondoDegradado: p.fondoDegradado,
+      apoyo: APOYO,
       superficie: p.superficie ?? mezclarHex(fondo, p.tx, 0.06),
       superficieAlta: p.superficieAlta ?? mezclarHex(fondo, p.tx, 0.12),
       texto: p.tx,

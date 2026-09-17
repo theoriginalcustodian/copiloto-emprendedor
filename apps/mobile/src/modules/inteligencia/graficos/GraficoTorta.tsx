@@ -80,7 +80,7 @@ export function GraficoTorta({ porciones, orden, epigrafe, onSegmentoPress, test
   return (
     <View testID={testID} style={styles.raiz}>
       {epigrafe != null && epigrafe !== '' && (
-        <Text testID={testID ? `${testID}-epigrafe` : undefined} style={[styles.epigrafe, { color: tema.color.textoTenue }]}>
+        <Text testID={testID ? `${testID}-epigrafe` : undefined} style={[styles.epigrafe, { color: tema.color.textoTenue, fontFamily: tema.fuente.ui }]}>
           {epigrafe}
         </Text>
       )}
@@ -136,7 +136,7 @@ export function GraficoTorta({ porciones, orden, epigrafe, onSegmentoPress, test
 
 const styles = StyleSheet.create({
   raiz: { gap: 8 },
-  epigrafe: { fontSize: 12, fontFamily: 'JetBrainsMono_400Regular', letterSpacing: 0.5 },
+  epigrafe: { fontSize: 12, letterSpacing: 0.5 },
   cuerpo: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   leyenda: { flex: 1, gap: 6 },
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -57,7 +57,7 @@ export function GraficoBarras({ puntos, series, epigrafe, onSegmentoPress, testI
   return (
     <View testID={testID} style={styles.raiz}>
       {epigrafe != null && epigrafe !== '' && (
-        <Text testID={testID ? `${testID}-epigrafe` : undefined} style={[styles.epigrafe, { color: tema.color.textoTenue }]}>
+        <Text testID={testID ? `${testID}-epigrafe` : undefined} style={[styles.epigrafe, { color: tema.color.textoTenue, fontFamily: tema.fuente.ui }]}>
           {epigrafe}
         </Text>
       )}
@@ -133,7 +133,7 @@ export function GraficoBarras({ puntos, series, epigrafe, onSegmentoPress, testI
 
 const styles = StyleSheet.create({
   raiz: { gap: 8 },
-  epigrafe: { fontSize: 12, fontFamily: 'JetBrainsMono_400Regular', letterSpacing: 0.5 },
+  epigrafe: { fontSize: 12, letterSpacing: 0.5 },
   leyenda: { flexDirection: 'row', gap: 14 },
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   leyendaPunto: { width: 8, height: 8, borderRadius: 4 },

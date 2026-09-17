@@ -199,23 +199,17 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn().mockResolvedValue({ canceled: true, assets: null }),
 }));
 
-// `useFonts` de `@expo-google-fonts/*` (que `app/_layout.tsx` usa para cargar Space Grotesk +
-// JetBrains Mono) hace un `setState` ASÍNCRONO al terminar la carga (`setLoaded`), fuera de `act()`.
+// `useFonts` de `@expo-google-fonts/*` (que `app/_layout.tsx` usa para cargar Inter) hace un
+// `setState` ASÍNCRONO al terminar la carga (`setLoaded`), fuera de `act()`.
 // En jest eso ensucia la consola con "environment not configured to support act(...)" y, peor,
 // introduce una actualización async no determinista que hace FLAKEAR cualquier test que monte el
 // layout raíz. Mockeamos `useFonts` para que devuelva `[true]` SÍNCRONO (fuentes "ya cargadas"): el
 // layout renderiza contenido de una, sin update async. Las constantes de fuente son sólo claves de
 // `fontFamily`; en test su valor real no importa. Hueco del ENTORNO de test, no del producto.
-jest.mock('@expo-google-fonts/space-grotesk', () => ({
+jest.mock('@expo-google-fonts/inter', () => ({
   useFonts: () => [true, null],
-  SpaceGrotesk_400Regular: 'SpaceGrotesk_400Regular',
-  SpaceGrotesk_500Medium: 'SpaceGrotesk_500Medium',
-  SpaceGrotesk_600SemiBold: 'SpaceGrotesk_600SemiBold',
-  SpaceGrotesk_700Bold: 'SpaceGrotesk_700Bold',
-}));
-jest.mock('@expo-google-fonts/jetbrains-mono', () => ({
-  JetBrainsMono_400Regular: 'JetBrainsMono_400Regular',
-  JetBrainsMono_500Medium: 'JetBrainsMono_500Medium',
+  Inter_400Regular: 'Inter_400Regular',
+  Inter_500Medium: 'Inter_500Medium',
 }));
 
 /**

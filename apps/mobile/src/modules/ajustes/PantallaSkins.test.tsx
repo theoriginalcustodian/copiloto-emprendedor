@@ -54,16 +54,24 @@ describe('PantallaSkins (pantalla propia con cards de color, ex-selector dentro 
   });
 
   it('re-hidrata el skin guardado de una sesión previa al montar', async () => {
-    jest.mocked(almacenClave.leer).mockResolvedValueOnce('nocturno');
+    jest.mocked(almacenClave.leer).mockResolvedValueOnce('oscuro');
     await envolver();
-    await waitFor(() => expect(screen.getByTestId('skin-card-nocturno').props.accessibilityState.selected).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('skin-card-oscuro').props.accessibilityState.selected).toBe(true));
   });
 
-  it('las 3 etiquetas visibles son las pieles de ODOBI -- no traducciones inventadas', async () => {
+  it('las 2 etiquetas visibles son las pieles de ODOBI -- no traducciones inventadas', async () => {
     await envolver();
     expect(screen.getByText('Claro')).toBeTruthy();
     expect(screen.getByText('Oscuro')).toBeTruthy();
-    expect(screen.getByText('Nocturno')).toBeTruthy();
+    expect(screen.queryByText('Nocturno')).toBeNull();
+  });
+
+  // «Nocturno» se eliminó el 17/09 (el sistema declara DOS pieles). Un usuario que la tenía
+  // guardada cae al default: `ThemeProvider` valida con `guardado in SKINS` antes de aplicarla.
+  it('un skin guardado que ya no existe no rompe: cae al default', async () => {
+    jest.mocked(almacenClave.leer).mockResolvedValueOnce('nocturno');
+    await envolver();
+    await waitFor(() => expect(screen.getByTestId('skin-card-claro').props.accessibilityState.selected).toBe(true));
   });
 
   it('cada card muestra 4 chips de color -- la MUESTRA real, no sólo el nombre', async () => {
@@ -86,8 +94,7 @@ describe('PantallaSkins (pantalla propia con cards de color, ex-selector dentro 
     expect(SKINS.oscuro.color.fondo).not.toBe(SKINS.claro.color.fondo);
   });
 
-  it('el acento es el MISMO en las 3 pieles -- identidad ODOBI, no un bug', async () => {
+  it('el acento es el MISMO en las 2 pieles -- identidad ODOBI, no un bug', async () => {
     expect(SKINS.claro.color.acento).toBe(SKINS.oscuro.color.acento);
-    expect(SKINS.oscuro.color.acento).toBe(SKINS.nocturno.color.acento);
   });
 });

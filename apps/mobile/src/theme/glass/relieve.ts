@@ -7,7 +7,7 @@
  * Este módulo es un mapeador PURO: no declara ni un color ni un número de geometría propio. Cada
  * nivel (color, opacidad, offset, radio, elevation) vive declarado por piel en `tokens.ts`
  * (`Tokens.glass.relieve`, único archivo con hex fuera de acá — ver `temaSinHex.test.ts`) porque el
- * DoD §2.4 declara geometría DISTINTA por piel en el nivel 1 (claro `10px/26px`, oscuro/nocturno
+ * DoD §2.4 declara geometría DISTINTA por piel en el nivel 1 (claro `10px/26px`, oscuro
  * `12px/28px`) — no es sólo el color el que cambia.
  *
  * 🔴 **Por qué `{shadowColor,...}` clásico y no `boxShadow`** (reemplaza el mecanismo que usaban

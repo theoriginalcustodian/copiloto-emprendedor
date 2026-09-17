@@ -10,17 +10,7 @@
  *   - Fuentes antes de renderizar: pintar con la fuente del sistema y re-flowear al cargar la real
  *     es un salto visual que ensuciaría la medición.
  */
-import {
-  JetBrainsMono_400Regular,
-  JetBrainsMono_500Medium,
-} from '@expo-google-fonts/jetbrains-mono';
-import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-  useFonts,
-} from '@expo-google-fonts/space-grotesk';
+import { Inter_400Regular, Inter_500Medium, useFonts } from '@expo-google-fonts/inter';
 import { Stack, usePathname } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -91,17 +81,19 @@ function Guard({ children }: { children: React.ReactNode }) {
 }
 
 export default function LayoutRaiz() {
+  // DOS FAMILIAS Y NADA MÁS (`odobi-ui/CLAUDE.md` §3): Plus Jakarta Sans Bold para display y
+  // marca, Inter 400/500 para toda la UI. Se retiraron Space Grotesk, JetBrains Mono y
+  // NeueEinstellung — esta última además tenía licencia de app impaga (pago aparte del EULA de
+  // Hanken), así que su binario salió del bundle.
+  //
+  // ⚠️ El .ttf de Plus Jakarta es el MISMO archivo que validó el sistema de diseño: la elección se
+  // hizo midiendo con `fontTools` sobre archivos reales (ratio ancho/alto de la O, contrapunzón,
+  // trazo horizontal) porque **el monograma ES el glifo real de la O** — cambiar la fuente cambia
+  // el símbolo de marca. Por eso va como asset local y no como paquete de Google Fonts.
   const [fuentesListas] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
-    JetBrainsMono_400Regular,
-    JetBrainsMono_500Medium,
-    // ODOBI hito 3 (DoD §2.6, "Display / marca") — asset LOCAL, no un paquete `@expo-google-fonts/*`
-    // como las de arriba: el binario lo dejó el hito 3v (`assets/fonts/NeueEinstellung-Bold.otf`,
-    // PR#264). `useFonts` de Expo admite mezclar ambos orígenes en una sola llamada.
-    'NeueEinstellung-Bold': require('../assets/fonts/NeueEinstellung-Bold.otf'),
+    Inter_400Regular,
+    Inter_500Medium,
+    'PlusJakartaSans-Bold': require('../assets/fonts/PlusJakartaSans-Bold.ttf'),
   });
 
   return (
