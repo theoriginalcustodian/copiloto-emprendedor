@@ -23,7 +23,9 @@ interface PropsMarca {
 }
 
 const ISOTIPO_VIEWBOX = 24;
-const ISOTIPO_STROKE_BASE = 1.7;
+// 1.3 es el grosor del sistema (`odobi-ui`): el isotipo se dibuja igual en la app, en el prototipo
+// y en las piezas de marca. Mobile lo tenía en 1.7 y engordaba el signo.
+const ISOTIPO_STROKE_BASE = 1.3;
 const ISOTIPO_TRAZOS = [
   'M11 3.5a8.5 8.5 0 1 0 0 17',
   'M11 7.5a4.5 4.5 0 1 0 0 9',

@@ -59,6 +59,22 @@ export interface Tokens {
      *  Es obligatoria dentro del bloque de máximo contraste: el acento `#DE7250` sobre el negro
      *  tostado no separa lo suficiente, y por eso la arena existe. Sobre negro tostado da 8.46:1. */
     apoyo: string;
+    /** **El bloque de máximo contraste** (`CLAUDE.md` §5, renovación del 19/08). Lleva LA cifra
+     *  accionable de la pantalla — una por pantalla, nunca dos.
+     *
+     *  🔴 **El rol es «máximo contraste contra el lienzo», NO «negro».** Por eso invierte por piel:
+     *  sobre lienzo claro es negro tostado con tinta crema; sobre lienzo oscuro es crema con tinta
+     *  negra. Implementarlo como «negro» deja la piel oscura ilegible.
+     *
+     *  ⚠️ `bloqueApoyo` no es decorativo: dentro del bloque, el acento `#DE7250` sobre el negro
+     *  tostado no separa lo suficiente, y por eso la jerarquía secundaria la lleva la arena. */
+    bloque: string;
+    bloqueTexto: string;
+    bloqueApoyo: string;
+    bloqueChip: string;
+    /** Color de la sombra de la elevación del sistema (`0 4px 18px rgba(26,21,18,.07)`). **No
+     *  invierte por piel**: una sombra clara no es una sombra. Es el negro tostado, siempre. */
+    sombra: string;
     superficie: string;
     superficieAlta: string;
     texto: string;
@@ -396,6 +412,10 @@ const ACCENT = '#DE7250';
 /** Arena — jerarquía secundaria sobre oscuro (`CLAUDE.md` §2). Igual en las dos pieles: no deriva
  *  del lienzo, es un color de la paleta cerrada del 22/07. */
 const APOYO = '#E8A088';
+/** Los dos extremos de la paleta (`CLAUDE.md` §2): estructura y lienzo. El bloque los usa
+ *  cruzados según la piel. */
+const NEGRO_TOSTADO = '#1A1512';
+const CREMA = '#F7F3EC';
 // El acento es #DE7250 en adorno. `acentoTinta` (ver abajo) es el 2º stop del propio acento y da
 // 4.92:1 con el crema / 5.43:1 sobre blanco. Decisión del operador 2026-09-07 (opción 2).
 // 🔴 Cifra corregida 2026-09-08 (era una cifra zombie): acá decía "2.87:1 contra ACCENT_ON", pero
@@ -559,6 +579,12 @@ function construirTokens(p: PaletaCruda): Tokens {
       fondo,
       fondoDegradado: p.fondoDegradado,
       apoyo: APOYO,
+      // Invierte con la piel: el bloque es lo contrario del lienzo, no un color fijo.
+      bloque: p.esLight ? NEGRO_TOSTADO : CREMA,
+      bloqueTexto: p.esLight ? CREMA : NEGRO_TOSTADO,
+      bloqueApoyo: p.esLight ? APOYO : p.dim,
+      bloqueChip: p.esLight ? 'rgba(247,243,236,.10)' : 'rgba(26,21,18,.08)',
+      sombra: NEGRO_TOSTADO,
       superficie: p.superficie ?? mezclarHex(fondo, p.tx, 0.06),
       superficieAlta: p.superficieAlta ?? mezclarHex(fondo, p.tx, 0.12),
       texto: p.tx,

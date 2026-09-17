@@ -141,9 +141,9 @@ describe('PantallaGastos', () => {
   it('pinta el resumen del mes y el listado', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('gastos-resumen-total')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('gastos-resumen-cifra')).toBeTruthy());
     // El importe se muestra formateado en argentino, no crudo del backend.
-    expect(screen.getByTestId('gastos-resumen-total')).toHaveTextContent('$15.000,50');
+    expect(screen.getByTestId('gastos-resumen-cifra')).toHaveTextContent('$15.000,50');
     expect(screen.getByTestId('gasto-2-titulo')).toHaveTextContent('Distribuidora Sur');
     expect(screen.getByTestId('gasto-2-monto')).toHaveTextContent('$15.000,50');
   });
@@ -175,7 +175,7 @@ describe('PantallaGastos', () => {
 
     await waitFor(() => expect(screen.getByTestId('gastos-vacio')).toBeTruthy());
     // `0.00` es un DATO ("no gastaste nada"), así que el resumen se muestra igual.
-    expect(screen.getByTestId('gastos-resumen-total')).toHaveTextContent('$0,00');
+    expect(screen.getByTestId('gastos-resumen-cifra')).toHaveTextContent('$0,00');
   });
 
   it('avisa cuando la página muestra menos gastos que los que hay', async () => {
