@@ -12,14 +12,17 @@ import {
   formatearImporte,
   horaDeEvento,
   leerCalendario,
+  leerPortada,
   leerTablero,
   type CalendarioMiDia,
   type EventoCalendario,
   type IdSolapa,
+  type Portada,
   type TarjetaMiDia,
   type TableroMiDia,
 } from '@copiloto/core';
 
+import { PortadaNegocio } from './PortadaNegocio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
@@ -127,6 +130,7 @@ export function PantallaMiDia() {
   const [expandida, setExpandida] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
+  const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -161,15 +165,30 @@ export function PantallaMiDia() {
     }
   }, []);
 
+  // Mismo criterio que el calendario (contrato CAL1 §3): la portada carga y degrada por su cuenta,
+  // SIN compartir `estado` con el tablero. Si `/inteligencia` está caído, Mi día tiene que seguir
+  // mostrando los avisos del detector — que es lo accionable. Y al revés: un tablero vacío no puede
+  // esconder cómo viene la caja.
+  const cargarPortada = useCallback(async () => {
+    try {
+      const res = await leerPortada();
+      if (!vivo.current) return;
+      if (res.status === 'ok') setPortada(res.portada);
+    } catch {
+      /* silencio deliberado: sin portada la pantalla no se rompe, sólo muestra menos. */
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
       void cargar();
       void cargarCalendario();
+      void cargarPortada();
       return () => {
         vivo.current = false;
       };
-    }, [cargar, cargarCalendario]),
+    }, [cargar, cargarCalendario, cargarPortada]),
   );
 
   async function avanzar(t: TarjetaMiDia) {
@@ -201,6 +220,11 @@ export function PantallaMiDia() {
   return (
     <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
       <View style={styles.raiz}>
+        {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
+            dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
+            sería peor que la ausencia. */}
+        {portada != null && <PortadaNegocio portada={portada} />}
+
         <PanelCalendario estado={estadoCalendario} calendario={calendario} />
 
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
