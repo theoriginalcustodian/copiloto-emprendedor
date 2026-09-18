@@ -23,6 +23,7 @@ import {
 } from '@copiloto/core';
 
 import { PortadaNegocio } from './PortadaNegocio';
+import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
@@ -250,11 +251,19 @@ export function PantallaMiDia() {
           <>
             {(solapa == null || solapa.tarjetas.length === 0) && (
               <View style={styles.centro}>
-                <Text testID="midia-vacio" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base, textAlign: 'center' }}>
-                  {solapaActiva === 'para_hoy'
-                    ? 'Hoy no tenés nada pendiente. Cuando el copiloto detecte algo, aparece acá.'
-                    : 'No hay tarjetas acá todavía.'}
-                </Text>
+                {/* La taza va SÓLO en «Para hoy» sin pendientes: ahí el vacío es una buena
+                    noticia y la ilustración la celebra. En las otras solapas el vacío es
+                    «todavía no hay nada acá», que no se celebra. */}
+                {solapaActiva === 'para_hoy' ? (
+                  <EstadoVacio
+                    testID="midia-vacio"
+                    ilustracion
+                    titulo="Nada urgente por hoy"
+                    cuerpo="Cuando el copiloto detecte algo, aparece acá."
+                  />
+                ) : (
+                  <EstadoVacio testID="midia-vacio" titulo="No hay tarjetas acá todavía." />
+                )}
               </View>
             )}
 

@@ -39,7 +39,7 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
     );
   });
 
-  it.each(NOMBRES)('renderiza "%s" sin crashear, con el viewBox 0 0 24 24', async (nombre) => {
+  it.each(NOMBRES)('renderiza "%s" sin crashear, con el viewBox de Phosphor', async (nombre) => {
     await render(
       <ThemeProvider>
         <GlassIcon name={nombre} />
@@ -50,7 +50,7 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
     // real es pesado y no asienta en el render de arbol completo de `shell.test`), así que el `<Svg>`
     // expone `viewBox` tal cual se lo pasamos, sin la descomposición minX/vbWidth del host real.
     const svg = screen.getByTestId(`glass-icon-${nombre}`);
-    expect(svg.props.viewBox).toBe('0 0 24 24');
+    expect(svg.props.viewBox).toBe('0 0 256 256');
   });
 
   it('respeta el `size` recibido (width/height del <Svg>)', async () => {
