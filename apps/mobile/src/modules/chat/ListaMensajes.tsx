@@ -17,6 +17,7 @@ import {
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
+import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
@@ -25,8 +26,15 @@ import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
 
-const TEXTO_VACIO =
-  'Contame qué necesitás: mandar un mail, buscar algo en tus archivos, revisar tus métricas, o cobrar con MercadoPago. Antes de ejecutar algo importante, siempre te lo muestro para que lo confirmes.';
+/**
+ * El contrato, debajo del rodillo. Es lo único fijo del vacío.
+ *
+ * ⚠️ Antes acá había un párrafo que enumeraba capacidades («mandar un mail, buscar algo en tus
+ * archivos, revisar tus métricas, o cobrar con MercadoPago»). Esa lista la muestra ahora el
+ * rodillo, con ejemplos DICHOS como los diría el usuario en vez de un catálogo de funciones — que
+ * es lo que el prototipo hace. Lo que queda es la promesa de que nada se ejecuta a tus espaldas.
+ */
+const TEXTO_VACIO = 'Antes de ejecutar algo importante, te lo muestro para que lo confirmes.';
 
 export interface ListaMensajesProps {
   messages: ChatMessage[];
@@ -246,13 +254,16 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
             >
               ¿En qué te ayudo?
             </Text>
+            <View style={{ alignSelf: 'stretch', marginTop: tema.espacio.md }}>
+              <RodilloEjemplos testID="chat-vacio-rodillo" />
+            </View>
             <Text
               style={{
                 color: tema.color.textoTenue,
-                fontSize: tema.tipo.base,
-                lineHeight: Math.round(tema.tipo.base * 1.5),
+                fontSize: tema.tipo.chico,
+                lineHeight: Math.round(tema.tipo.chico * 1.5),
                 textAlign: 'center',
-                marginTop: tema.espacio.sm,
+                marginTop: tema.espacio.md,
               }}
             >
               {TEXTO_VACIO}
