@@ -3,15 +3,21 @@ import { render, screen } from '@testing-library/react-native';
 // Jest (jest-expo) -- describe/it/expect son globales, no se importan de vitest.
 
 import { ThemeProvider } from '../ThemeProvider';
-import { CATALOGO_ICONOS } from './icons';
+import type { NombreIconoGlass } from './icons';
+import { ICONO_DEL_SISTEMA } from './mapaIconos';
 import { GlassIcon } from './GlassIcon';
 
-const NOMBRES = Object.keys(CATALOGO_ICONOS) as (keyof typeof CATALOGO_ICONOS)[];
+const NOMBRES = Object.keys(ICONO_DEL_SISTEMA) as NombreIconoGlass[];
 
 describe('GlassIcon -- el catálogo de íconos Odobi', () => {
   // Lista EXPLÍCITA y no `NOMBRES.length`: así agregar un ícono obliga a nombrarlo acá, y no queda
-  // un catálogo que crece solo. Los 21 nombres de función del set Odobi (`Iconos Odobi.dc.html`).
-  it('el catálogo tiene exactamente los 21 nombres de función requeridos', () => {
+  // un catálogo que crece solo.
+  //
+  // 18/09: `memoria` salió (no existe en ninguna pantalla del prototipo; confirmado por Martin) y
+  // entraron `soporte` y `feedback`, que el prototipo distingue — Soporte lleva `headset` y
+  // «Contanos qué tal» su propio glifo, no el de conversación ni el del micrófono, que era lo que
+  // tenían las dos pantallas.
+  it('el catálogo tiene exactamente los nombres de función del sistema', () => {
     expect(NOMBRES.sort()).toEqual(
       [
         'conversacion',
@@ -26,7 +32,8 @@ describe('GlassIcon -- el catálogo de íconos Odobi', () => {
         'cobros',
         'appsConectadas',
         'actividadReciente',
-        'memoria',
+        'soporte',
+        'feedback',
         'grabar',
         'comoHablarle',
         'miNegocio',

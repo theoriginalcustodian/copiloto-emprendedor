@@ -30,6 +30,13 @@ export const ICONO_DEL_SISTEMA: Record<NombreIconoGlass, string> = {
   facturacion: 'file-text',
   cobros: 'coins',
   grabar: 'microphone',
+  // Actividad de conversación y las filas de Mi cuenta que llevan al chat. NO es el ícono de
+  // Soporte: ése es `soporte` (headset), como en el prototipo.
+  conversacion: 'chat-circle',
+  // ⏳ Desaparece cuando se aplique la fusión Contabilidad + Inteligencia (cerrada el 20/08).
+  contabilidad: 'calculator',
+  soporte: 'headset', //            Soporte técnico
+  feedback: 'chat-shield', //       Contanos qué tal
   inteligencia: 'chart-line',
 
   // ── POR CONFIRMAR ────────────────────────────────────────────────────────
@@ -38,11 +45,8 @@ export const ICONO_DEL_SISTEMA: Record<NombreIconoGlass, string> = {
   //                                   `clipboard-text` ya es Presupuestos y repetirlo los confunde.
   ingresos: 'coins', //             ⚠️ mismo glifo que `cobros`; el set no distingue los dos
   miDia: 'list-checks', //          ⚠️ sin asignación en el prototipo
-  contabilidad: 'calculator', //    ⚠️ sin asignación
-  conversacion: 'chat-circle', //   ⚠️ repetiría `comoHablarle`
   actividadReciente: 'clock', //    ⚠️ el prototipo usa `clock-counter-clockwise`, que NO está en
   //                                   los 38 archivos del set. Hay que bajarlo o elegir otro.
-  memoria: 'package', //            ⚠️ sin asignación
   ajustes: 'gear', //               ⚠️ sin asignación (en el prototipo se entra por el avatar)
 };
 
@@ -51,9 +55,6 @@ export const ICONOS_POR_CONFIRMAR: readonly NombreIconoGlass[] = [
   'miNegocio',
   'ingresos',
   'miDia',
-  'contabilidad',
-  'conversacion',
   'actividadReciente',
-  'memoria',
   'ajustes',
 ];

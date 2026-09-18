@@ -126,7 +126,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
   return (
-    <MarcoGlass titulo={TITULO[funcion]} icono="conversacion" testID="pantalla-soporte">
+    <MarcoGlass titulo={TITULO[funcion]} icono="soporte" testID="pantalla-soporte">
       <KeyboardAvoidingView testID="soporte-view" behavior="padding" style={styles.contenedor}>
         <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
 

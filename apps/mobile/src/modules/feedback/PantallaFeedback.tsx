@@ -93,7 +93,7 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
   const grabando = voz.fase === 'grabando';
 
   return (
-    <MarcoGlass titulo="Feedback" icono="grabar" testID="pantalla-feedback">
+    <MarcoGlass titulo="Feedback" icono="feedback" testID="pantalla-feedback">
       <ScrollFormulario
         testID="feedback-scroll"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
