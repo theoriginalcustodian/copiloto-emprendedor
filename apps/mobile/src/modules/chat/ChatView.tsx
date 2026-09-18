@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
@@ -9,6 +10,7 @@ import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
 import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
+import { tomarPendiente } from './mensajePendiente';
 import { useCapturaFoto } from './useCapturaFoto';
 import { useChat } from './useChat';
 import { useVozComando } from './useVozComando';
@@ -113,6 +115,25 @@ export function ChatView() {
   }, [voz.fase]);
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
+
+  /**
+   * 🔴 **El puente de la Decisión C**: lo que otra pantalla dejó pendiente entra ACÁ, en el chat
+   * principal, no en una conversación aparte. Hoy lo usa «Cómo usar la app»: tocás un tema, se cierra
+   * el glass y la pregunta aparece dicha en el hilo, con tus propios datos a mano.
+   *
+   * Va en `useFocusEffect` y no en un `useEffect` de montaje: este componente **no se desmonta**
+   * cuando se abre un glass encima (los glass son `transparentModal`), así que un efecto de montaje
+   * no volvería a correr nunca. El foco, en cambio, vuelve exactamente cuando el glass se cerró.
+   *
+   * `tomarPendiente` vacía el buzón al leerlo — sin eso, cada cierre de cualquier glass reenviaría el
+   * mismo mensaje.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      const texto = tomarPendiente();
+      if (texto != null) void send(texto, { kind: 'text' });
+    }, [send]),
+  );
 
   // El confirm/cancel del gate (`ListaMensajes`/`mapearGate`) reenvía acá como `kind:'callback'` —
   // mismo criterio que `handleChoice` en `ChatScreen.tsx` de la PWA.

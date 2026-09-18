@@ -142,6 +142,9 @@ export default function LayoutRaiz() {
                     // se abren SOBRE Ajustes, que queda visible detrás.
                     'ajustes-afip', 'ajustes-skins', 'ajustes-cuenta',
                     'ajustes-mi-plan', 'ajustes-negocio',
+                    // Ayuda (Ola 5). `ajustes-soporte` y `ajustes-feedback` ya existían como
+                    // pantallas y se entraba desde Mi cuenta; lo que cambió es la puerta.
+                    'ajustes-como-usar', 'ajustes-soporte', 'ajustes-feedback', 'soporte-ticket',
                   ] as const).map(
                     (glass) => (
                       <Stack.Screen

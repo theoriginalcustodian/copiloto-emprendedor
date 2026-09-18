@@ -18,7 +18,9 @@ export type AjusteKey =
   | 'miPlan'
   | 'cuenta'
   | 'apariencia'
-  | 'comoHablarle';
+  | 'comoUsar'
+  | 'soporte'
+  | 'feedback';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -68,17 +70,21 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   // dibujado para esto.
   { key: 'apariencia', label: 'Apariencia', icono: 'apariencia' },
   /**
-   * 🆕 2026-07-22 · La guía de uso: qué se le puede pedir al copiloto.
+   * ── AYUDA (Ola 5) ────────────────────────────────────────────────────────
+   * Las tres del prototipo, que hasta el 2026-09-18 vivían **escondidas adentro de Mi cuenta** como
+   * filas sueltas. Ahí no las encontraba nadie: para pedir ayuda había que entrar a la pantalla de
+   * la cuenta, que es donde uno va a cambiar el mail.
    *
-   * **`comoHablarle` y no `grabar`**: el set de 21 separa el glifo de "guía de uso" (burbuja con
-   * ecualizador) del de "grabar/mantené para hablar" (cápsula de micrófono) -- acá corresponde el
-   * primero, porque esta pantalla es la guía, no la acción de grabar.
-   *
-   * Va **última** por la misma regla de orden que el escritorio: se entra una vez, al principio. Y va
-   * en Ajustes —no como tile del escritorio— porque no es un verbo diario: ponerla arriba empujaría
-   * fuera de pantalla algo que se usa todos los días.
+   * **`comoHablarle` es el ÍCONO, no la pantalla.** El glifo (burbuja con ecualizador) sigue siendo
+   * el de "guía de uso" — el set separa ése del de grabar (cápsula de micrófono), y acá corresponde
+   * el primero porque esto es la guía, no la acción. La pantalla vieja «Cómo hablarle» se fundió en
+   * «Cómo usar la app»; el tono y la forma de responder viven en Mi negocio, donde ya estaban.
    */
-  { key: 'comoHablarle', label: 'Cómo hablarle', icono: 'comoHablarle' },
+  { key: 'comoUsar', label: 'Cómo usar la app', icono: 'comoHablarle' },
+  { key: 'soporte', label: 'Soporte técnico', icono: 'soporte' },
+  // «Contanos qué tal» en el prototipo. Acá el label corto entra mejor bajo un tile de 3 columnas, y
+  // la frase larga la dice la propia pantalla.
+  { key: 'feedback', label: 'Contanos qué tal', icono: 'feedback' },
 ];
 
 /** Cuántos tiles entran por fila. 3 en un ancho de teléfono deja la etiqueta legible sin recortar. */
