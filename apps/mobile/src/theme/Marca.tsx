@@ -15,11 +15,13 @@ import { useTema } from './ThemeProvider';
  *
  * `tono='acento'` (default) pinta el badge con el color de acento y el isotipo con `acentoTexto` —
  * para el hero del login. `tono='superficie'` invierte el par — para cuando acompaña texto y no
- * debe competir con él.
+ * debe competir con él. `tono='tinta'` usa el par del bloque de máximo contraste (negro tostado con
+ * el signo en crema, invertido en la piel oscura): es el **avatar de Soporte**, donde la marca
+ * identifica de qué producto es el chat sin pedir el permiso de color que pide el acento.
  */
 interface PropsMarca {
   size?: number;
-  tono?: 'acento' | 'superficie';
+  tono?: 'acento' | 'superficie' | 'tinta';
 }
 
 const ISOTIPO_VIEWBOX = 24;
@@ -45,9 +47,10 @@ const ISOTIPO_RATIO = 34 / 80;
 
 export function Marca({ size = 64, tono = 'acento' }: PropsMarca) {
   const tema = useTema();
-  const esAcento = tono === 'acento';
-  const fondo = esAcento ? tema.color.acento : tema.color.superficieAlta;
-  const trazo = esAcento ? tema.color.acentoTexto : tema.color.acento;
+  const fondo =
+    tono === 'acento' ? tema.color.acento : tono === 'tinta' ? tema.color.bloque : tema.color.superficieAlta;
+  const trazo =
+    tono === 'acento' ? tema.color.acentoTexto : tono === 'tinta' ? tema.color.bloqueTexto : tema.color.acento;
 
   const isotipoTamano = size * ISOTIPO_RATIO;
   const escala = isotipoTamano / ISOTIPO_VIEWBOX;
@@ -60,7 +63,9 @@ export function Marca({ size = 64, tono = 'acento' }: PropsMarca) {
       style={{
         width: size,
         height: size,
-        borderRadius: Math.round(size * 0.3),
+        // Círculo completo en `tinta` (es un avatar, y los avatares son redondos); esquinas
+        // redondeadas en los otros dos, que son el badge de la marca.
+        borderRadius: tono === 'tinta' ? size / 2 : Math.round(size * 0.3),
         backgroundColor: fondo,
         alignItems: 'center',
         justifyContent: 'center',

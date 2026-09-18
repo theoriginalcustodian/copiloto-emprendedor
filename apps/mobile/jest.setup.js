@@ -162,6 +162,9 @@ jest.mock('react-native-svg', () => {
     Stop: paso('Stop'),
     Filter: paso('Filter'),
     FeGaussianBlur: paso('FeGaussianBlur'),
+    // `SvgXml` renderiza los logos de marca (`modules/apps/logosMarca.ts`) desde su XML crudo. Como
+    // los demás: una View que reenvía props, así un test puede leer el `xml` que le llegó.
+    SvgXml: paso('SvgXml'),
   };
 });
 
