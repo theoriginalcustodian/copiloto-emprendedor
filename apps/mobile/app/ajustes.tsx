@@ -33,7 +33,11 @@ const RUTA_POR_AJUSTE: Record<AjusteKey, string> = {
   miPlan: '/ajustes-mi-plan',
   cuenta: '/ajustes-cuenta',
   apariencia: '/ajustes-skins',
-  comoHablarle: '/ajustes-como-hablarle',
+  comoUsar: '/ajustes-como-usar',
+  // Soporte ya existía como pantalla; lo que no existía era una puerta visible. `funcion` es fija por
+  // conversación (ver `useChatSoporte`), así que se elige ACÁ, antes de abrir el chat.
+  soporte: '/ajustes-soporte?funcion=soporte_tecnico',
+  feedback: '/ajustes-feedback',
 };
 
 export default function PantallaAjustesRoute() {

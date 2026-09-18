@@ -120,9 +120,15 @@ export default function LayoutRaiz() {
                       arrastraba): ver `coordinacion/2026-07-20_handoff_fixes-gestos-glass-mobile.md`.
                       `contentStyle` transparente evita el fondo opaco nativo que taparía el vidrio. */}
                   {([
-                    // Las 9 funciones del escritorio, en el orden de `TILES`.
-                    'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes',
-                    'midia', 'inteligencia', 'contabilidad', 'ajustes',
+                    // Las 6 funciones del escritorio, en el orden de `TILES`.
+                    'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes', 'inteligencia',
+                    // ⚠️ `midia` conserva su ruta aunque ya NO sea un tile: Mi día es la portada, y
+                    // se llega deslizando, no entrando. La ruta sigue viva porque el puente de las
+                    // tarjetas (`destinoActividad`) y los enlaces internos la usan.
+                    'midia',
+                    // `ajustes` tampoco es tile: su única puerta es el avatar (Ola 4). La pantalla
+                    // no cambió — cambió desde dónde se entra.
+                    'ajustes',
                     // `apps` ya no es tile del escritorio —se llega desde Ajustes—, pero la pantalla
                     // es la misma y sigue siendo glass: sólo cambió desde dónde se entra.
                     'apps',
@@ -136,6 +142,9 @@ export default function LayoutRaiz() {
                     // se abren SOBRE Ajustes, que queda visible detrás.
                     'ajustes-afip', 'ajustes-skins', 'ajustes-cuenta',
                     'ajustes-mi-plan', 'ajustes-negocio',
+                    // Ayuda (Ola 5). `ajustes-soporte` y `ajustes-feedback` ya existían como
+                    // pantallas y se entraba desde Mi cuenta; lo que cambió es la puerta.
+                    'ajustes-como-usar', 'ajustes-soporte', 'ajustes-feedback', 'soporte-ticket',
                   ] as const).map(
                     (glass) => (
                       <Stack.Screen

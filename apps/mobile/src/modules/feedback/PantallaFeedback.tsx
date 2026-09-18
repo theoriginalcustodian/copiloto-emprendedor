@@ -1,9 +1,11 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { ApiError, enviarFeedback, enviarFeedbackAudio } from '@copiloto/core';
 
 import { useVozComando } from '../chat/useVozComando';
+import { Row } from '../../theme/glass/Row';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -98,6 +100,15 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
         testID="feedback-scroll"
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.lg, paddingBottom: 120 }}
       >
+        {/* «¿Qué le cambiarías?» — la pregunta del prototipo, y no es cosmética: una caja vacía con
+            la etiqueta «Tu feedback» pide una evaluación general, que es lo más difícil de contestar
+            y lo menos accionable de recibir. Una pregunta concreta devuelve respuestas concretas. */}
+        <Text
+          testID="feedback-pregunta"
+          style={{ color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
+        >
+          ¿Qué le cambiarías?
+        </Text>
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
           Contanos qué te gustaría que mejoremos, o grabá un audio si preferís hablarlo.
         </Text>
@@ -138,6 +149,26 @@ export function PantallaFeedback({ contexto }: PantallaFeedbackProps = {}) {
             ]}
           />
         </View>
+
+        {/* 🔴 **La derivación a Soporte, que es lo importante de esta pantalla** (Ola 5). Sin ella,
+            un problema real —algo que no anda— cae en la caja de sugerencias, que por diseño nadie
+            contesta: el emprendedor queda esperando una respuesta que no va a llegar y concluye que
+            avisar no sirve. Acá se dice de frente cuál es cada camino y se ofrece el otro. */}
+        <Row
+          testID="feedback-a-soporte"
+          accessibilityLabel="Ir a Soporte técnico"
+          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
+              ¿Algo no funciona?
+            </Text>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              Contalo en Soporte técnico: ahí te contestamos y, si hace falta, abrimos un ticket. Esto
+              de acá lo leemos, pero no lo respondemos.
+            </Text>
+          </View>
+        </Row>
 
         <View style={{ gap: tema.espacio.sm, alignItems: 'center' }}>
           <Pressable

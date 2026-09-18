@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react-native';
+import type React from 'react';
 import { Text } from 'react-native';
 
 // Jest (jest-expo) — render de RNTL 14 es ASYNC (await). El COMPORTAMIENTO del gesto (drag/snap/
@@ -8,7 +9,7 @@ import { Text } from 'react-native';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { PanelDeslizable } from './PanelDeslizable';
 
-async function envolver(props: Record<string, never> = {}) {
+async function envolver(props: Partial<React.ComponentProps<typeof PanelDeslizable>> = {}) {
   return render(
     <ThemeProvider>
       <PanelDeslizable testID="panel" fondo={<Text>escritorio-fondo</Text>} {...props}>
@@ -27,9 +28,17 @@ describe('PanelDeslizable (Tarea 2.4)', () => {
     expect(screen.getByTestId('panel-handle')).toBeTruthy();
   });
 
-  it('el hint invita a deslizar por defecto', async () => {
+  it('el hint invita a deslizar por defecto — el panel nace arriba y abajo está la base', async () => {
     await envolver();
-    expect(screen.getByTestId('panel-hint').props.children).toBe('Deslizá para ver funciones');
+    expect(screen.getByTestId('panel-hint').props.children).toBe('Deslizá para ver tu día');
+  });
+
+  it('🔴 con `arrancaAbajo` el hint es el del borde inferior: la app abre en la base, no en el chat', async () => {
+    // El texto ES la diferencia visible del cambio de aterrizaje (Ola 4): con la conversación abajo,
+    // la tira que asoma invita a hablarle, no a "subir la conversación" — que nombraba el mecanismo
+    // en vez de lo que se consigue.
+    await envolver({ arrancaAbajo: true, hintAbajo: 'Escribile a Odobi' });
+    expect(screen.getByTestId('panel-hint').props.children).toBe('Escribile a Odobi');
   });
 });
 

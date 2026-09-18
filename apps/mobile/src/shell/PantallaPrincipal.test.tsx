@@ -75,11 +75,11 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    */
   it.each([
     ['facturacion', '/facturacion'],
-    ['ajustes', '/ajustes'],
-    ['midia', '/midia'],
+    ['ingresos', '/ingresos'],
+    ['gastos', '/gastos'],
+    ['presupuestos', '/presupuestos'],
+    ['clientes', '/clientes'],
     ['inteligencia', '/inteligencia'],
-    ['contabilidad', '/contabilidad'],
-    ['facturacion', '/facturacion'],
   ])('tocar el tile %s navega a %s — no monta ninguna capa propia', async (key, ruta) => {
     await envolver();
 
@@ -108,10 +108,24 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
   it('un solo glass a la vez: el segundo tile no navega hasta volver al escritorio', async () => {
     await envolver();
 
-    await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    await fireEvent.press(screen.getByTestId('tile-clientes'));
     await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
     expect(router.push).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith('/clientes');
+  });
+
+  it('🔴 la app aterriza en Mi día, con el avatar como única puerta a Ajustes (Ola 4)', async () => {
+    // El cambio de aterrizaje: antes esta pantalla montaba el escritorio de fondo y la conversación
+    // adelante, con Mi día como una ruta más del grid — o sea que a la base del sistema se llegaba
+    // entrando a una función. Ahora la base ES Mi día y el escritorio cuelga del borde de arriba.
+    await envolver();
+
+    expect(screen.getByTestId('pantalla-midia')).toBeTruthy();
+    expect(screen.getByTestId('panel-funciones-pestana')).toBeTruthy();
+    expect(screen.getByTestId('midia-wordmark')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('avatar-cuenta'));
     expect(router.push).toHaveBeenCalledWith('/ajustes');
   });
 
@@ -145,13 +159,13 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    */
   it('al recuperar el foco la puerta se reabre y el siguiente tile vuelve a navegar', async () => {
     const { unmount } = await envolver();
-    await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    await fireEvent.press(screen.getByTestId('tile-clientes'));
     unmount();
 
     await envolver();
     await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
-    expect(router.push).toHaveBeenNthCalledWith(1, '/ajustes');
+    expect(router.push).toHaveBeenNthCalledWith(1, '/clientes');
     expect(router.push).toHaveBeenNthCalledWith(2, '/inteligencia');
   });
 });

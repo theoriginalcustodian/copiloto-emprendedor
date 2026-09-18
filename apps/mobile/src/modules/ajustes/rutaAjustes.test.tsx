@@ -54,6 +54,10 @@ describe('ruta /ajustes', () => {
     ['miPlan', '/ajustes-mi-plan'],
     ['cuenta', '/ajustes-cuenta'],
     ['apariencia', '/ajustes-skins'],
+    // Ayuda (Ola 5): las tres salieron de adentro de Mi cuenta y ahora tienen puerta propia.
+    ['comoUsar', '/ajustes-como-usar'],
+    ['soporte', '/ajustes-soporte?funcion=soporte_tecnico'],
+    ['feedback', '/ajustes-feedback'],
   ])('el tile %s navega a %s', async (key, ruta) => {
     await montar();
 

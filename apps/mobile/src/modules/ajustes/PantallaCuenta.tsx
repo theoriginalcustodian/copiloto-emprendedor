@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
 
 import { useSession } from '../auth';
-import { GlassIcon } from '../../theme/glass/GlassIcon';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
@@ -51,66 +49,15 @@ export function PantallaCuenta() {
           </View>
         </Row>
 
-        {/* BETA-1a: fila, no tile propio — decisión del contrato (§3): la grilla de Ajustes recién
-            reforzó su disciplina "sin ícono repetido" (8→6-7 tiles, 2026-07-22), y sumar un tile
-            nuevo la rompería justo después de que se cuidó. Reversible: si nadie lo encuentra acá,
-            promoverlo a tile propio es un cambio chico. */}
-        <Row
-          testID="cuenta-feedback"
-          accessibilityLabel="Feedback"
-          onPress={() => router.push('/ajustes-feedback')}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
-            <GlassIcon name="grabar" size={22} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                Feedback
-              </Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Contanos qué mejorarías, por texto o por voz.
-              </Text>
-            </View>
-          </View>
-        </Row>
+        {/* 🔴 **Acá había tres filas —Feedback, Soporte técnico y «Cómo uso la app»— y se fueron a
+            Ajustes › Ayuda (Ola 5).** Estaban acá por una razón que en su momento fue buena: la
+            grilla de Ajustes acababa de reforzar su disciplina de "sin ícono repetido" y sumar tiles
+            la rompía. El costo apareció después: para pedir ayuda había que entrar a la pantalla
+            donde se cambia el mail, y nadie la busca ahí. El prototipo tiene un grupo **Ayuda**
+            propio, que es lo que ahora existe.
 
-        {/* SOP5 — DOS filas, no una: `funcion` es fija por conversación (ver docstring de
-            useChatSoporte), así que la elección pasa ACÁ, antes de abrir el chat, no con un
-            selector adentro. Mismo criterio de disciplina de grilla que Feedback (fila, no tile). */}
-        <Row
-          testID="cuenta-soporte-tecnico"
-          accessibilityLabel="Soporte técnico"
-          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'soporte_tecnico' } })}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
-            <GlassIcon name="conversacion" size={22} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                Soporte técnico
-              </Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Algo no funciona como debería — contale al agente qué pasó.
-              </Text>
-            </View>
-          </View>
-        </Row>
-
-        <Row
-          testID="cuenta-como-uso-la-app"
-          accessibilityLabel="Cómo uso la app"
-          onPress={() => router.push({ pathname: '/ajustes-soporte', params: { funcion: 'como_uso_la_app' } })}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tema.espacio.sm, flex: 1 }}>
-            <GlassIcon name="conversacion" size={22} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontFamily: tema.fuente.uiSemibold }}>
-                Cómo uso la app
-              </Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-                Preguntale al agente cómo hacer algo puntual.
-              </Text>
-            </View>
-          </View>
-        </Row>
+            Las pantallas no cambiaron —`/ajustes-feedback` y `/ajustes-soporte` son las mismas—:
+            cambió la puerta. */}
 
         {/* 🔴 Llegó de "Configuración del sistema", y sigue SIN `onPress` a propósito. «No molestar»
             muta un ajuste GLOBAL del teléfono y necesita un restaurador ante crash: si el copiloto lo

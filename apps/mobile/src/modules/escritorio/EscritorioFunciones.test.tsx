@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import {
-  agruparEnColumnas,
+  agruparEnFilas,
   EscritorioFunciones,
   KEYS_OPERATIVAS,
   TILES,
@@ -14,8 +14,7 @@ import {
 /** Las keys esperadas, EXPLÍCITAS y no `TILES.length`: así agregar/sacar una función obliga a
  *  nombrarla acá, igual criterio que `GlassIcon.test.tsx` con el catálogo de íconos. */
 const KEYS_ESPERADAS: FuncionKey[] = [
-  'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes',
-  'midia', 'inteligencia', 'contabilidad', 'ajustes',
+  'facturacion', 'ingresos', 'gastos', 'presupuestos', 'clientes', 'inteligencia',
 ];
 
 async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {
@@ -26,20 +25,18 @@ async function envolver(props: Parameters<typeof EscritorioFunciones>[0] = {}) {
   );
 }
 
-describe('agruparEnColumnas — invariante genérico, sin acoplar al conteo de TILES', () => {
-  it('nunca deja más de `filasPorColumna` elementos en una columna', () => {
-    const columnas = agruparEnColumnas([1, 2, 3, 4, 5, 6, 7], 2);
-    columnas.forEach((col) => expect(col.length).toBeLessThanOrEqual(2));
+describe('agruparEnFilas — invariante genérico, sin acoplar al conteo de TILES', () => {
+  it('nunca deja más de `porFila` elementos en una fila', () => {
+    agruparEnFilas([1, 2, 3, 4, 5, 6, 7], 3).forEach((f) => expect(f.length).toBeLessThanOrEqual(3));
   });
 
-  it('preserva el orden de los items al aplanar las columnas', () => {
+  it('preserva el orden de los items al aplanar las filas', () => {
     const items = ['a', 'b', 'c', 'd', 'e'];
-    const columnas = agruparEnColumnas(items, 2);
-    expect(columnas.flat()).toEqual(items);
+    expect(agruparEnFilas(items, 3).flat()).toEqual(items);
   });
 
-  it('con filasPorColumna mayor que el total, arma una sola columna', () => {
-    expect(agruparEnColumnas([1, 2, 3], 10)).toEqual([[1, 2, 3]]);
+  it('con porFila mayor que el total, arma una sola fila', () => {
+    expect(agruparEnFilas([1, 2, 3], 10)).toEqual([[1, 2, 3]]);
   });
 });
 
@@ -91,7 +88,27 @@ describe('EscritorioFunciones — el escritorio del copiloto', () => {
 
   it('tocar un tile sin onFuncion no crashea (callback opcional)', async () => {
     await envolver();
-    expect(() => fireEvent.press(screen.getByTestId('tile-ajustes'))).not.toThrow();
+    expect(() => fireEvent.press(screen.getByTestId('tile-clientes'))).not.toThrow();
+  });
+
+  it('🔴 lo que NO es un lugar salió del grid (Ola 4)', async () => {
+    // Los tres se fueron por motivos distintos y ninguno es "no entraba": Mi día ES la portada,
+    // Ajustes se entra por el avatar (su única puerta), y Contabilidad se fundió con Inteligencia.
+    // Si alguno vuelve acá, vuelve el escritorio de 9 con la mitad fuera de pantalla.
+    const keys: string[] = TILES.map((t) => t.key);
+    expect(keys).not.toContain('midia');
+    expect(keys).not.toContain('ajustes');
+    expect(keys).not.toContain('contabilidad');
+  });
+
+  it('🔴 el grid entra COMPLETO: 6 tiles en 2 filas de 3, sin scroll horizontal', async () => {
+    await envolver();
+    expect(screen.getByTestId('fila-escritorio-0')).toBeTruthy();
+    expect(screen.getByTestId('fila-escritorio-1')).toBeTruthy();
+    expect(screen.queryByTestId('fila-escritorio-2')).toBeNull();
+    // La afordancia de «hay más a la derecha» ya no existe: no hay nada a la derecha.
+    expect(screen.queryByTestId('escritorio-scroll-funciones')).toBeNull();
+    expect(screen.queryByTestId('escritorio-fade-mas-funciones')).toBeNull();
   });
 
   it('pinta la actividad que le pasan, sin inventar ninguna', async () => {

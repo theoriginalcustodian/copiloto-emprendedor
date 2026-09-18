@@ -22,6 +22,13 @@ import {
   type TableroMiDia,
 } from '@copiloto/core';
 
+import { AvatarCuenta } from './AvatarCuenta';
+import {
+  CATEGORIAS,
+  ETIQUETA_CATEGORIA,
+  filtrarPorCategoria,
+  type CategoriaTarjeta,
+} from './categoriaTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -116,6 +123,97 @@ function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSo
   );
 }
 
+/**
+ * Los chips de categoría del prototipo. Filtran la solapa activa; **«Todo» es el default y no
+ * filtra**.
+ *
+ * ⚠️ De qué categoría es cada tarjeta lo deriva el frontend hoy — ver `categoriaTarjeta.ts` y el
+ * punto B-3 del pedido a backend. Los chips en sí no dependen de eso: el día que la categoría viaje
+ * en la tarjeta, esto no cambia.
+ */
+function ChipsCategoria({
+  activa,
+  onCambiar,
+}: {
+  activa: CategoriaTarjeta;
+  onCambiar: (c: CategoriaTarjeta) => void;
+}) {
+  const tema = useTema();
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chips}
+      testID="midia-chips"
+    >
+      {CATEGORIAS.map((c) => {
+        const seleccionada = c === activa;
+        return (
+          <Pressable
+            key={c}
+            testID={`midia-chip-${c}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: seleccionada }}
+            onPress={() => onCambiar(c)}
+            style={pressableStyle(undefined)}
+          >
+            {/* Borde y texto, SIN relleno: son atajos para mirar, no decisiones. Con fill competirían
+                con los botones de acción de las tarjetas, que sí ejecutan algo (Decisión B: la
+                terracota marca lo que hace algo al tocarlo). */}
+            <View
+              style={[
+                styles.chip,
+                { borderColor: seleccionada ? tema.color.acento : tema.color.borde },
+              ]}
+            >
+              <Text
+                style={{
+                  color: seleccionada ? tema.color.acento : tema.color.textoTenue,
+                  fontFamily: tema.fuente.uiMedium,
+                  fontSize: tema.tipo.chico,
+                }}
+              >
+                {ETIQUETA_CATEGORIA[c]}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+/**
+ * El contador del prototipo: «3 para hoy · 1 en curso».
+ *
+ * ⚠️ **Falta «· 1 crítico», y no se inventa.** La criticidad es una propiedad de la regla que hoy no
+ * viaja en la tarjeta (B-3). Deducirla del nombre de la regla sería decidir, desde la vista, que un
+ * CAE por vencer urge más que un margen negativo — una jerarquía sobre el negocio de otro. Por el
+ * mismo motivo no está el **banner de alerta crítica** separado que el prototipo pone arriba.
+ */
+function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
+  const tema = useTema();
+  if (tablero == null) return null;
+  const cuenta = (id: IdSolapa) => tablero.solapas.find((s) => s.id === id)?.tarjetas.length ?? 0;
+  const paraHoy = cuenta('para_hoy');
+  const enCurso = cuenta('haciendo');
+  if (paraHoy === 0 && enCurso === 0) return null;
+
+  return (
+    <Text
+      testID="midia-contador"
+      style={{
+        color: tema.color.textoTenue,
+        fontSize: tema.tipo.chico,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+      }}
+    >
+      {paraHoy} para hoy · {enCurso} en curso
+    </Text>
+  );
+}
+
 /** A qué solapa avanza cada una, y cómo se llama la acción. `hecha` no tiene entrada: es terminal, no
  *  hay "siguiente" — sólo queda la acción de borrar. */
 const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }>> = {
@@ -123,11 +221,28 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
 
-export function PantallaMiDia() {
+export interface PantallaMiDiaProps {
+  /**
+   * `true` cuando Mi día se monta como **la base de la app** y no como un glass encima del
+   * escritorio (Ola 4). Cambia una sola cosa: el chrome. Como base no lleva `MarcoGlass` —no hay
+   * "Volver" desde la pantalla a la que se vuelve— y en su lugar va el encabezado propio, con el
+   * wordmark y el avatar, que es la única puerta a Ajustes.
+   *
+   * 🔴 **El cuerpo es EL MISMO en los dos casos, a propósito.** La ruta `/midia` sigue viva porque
+   * las tarjetas de actividad y los enlaces internos la usan; si la base y la ruta tuvieran cuerpos
+   * distintos, cada arreglo habría que hacerlo dos veces y la segunda copia se olvidaría.
+   */
+  comoPortada?: boolean;
+  /** Tocar el avatar. Sólo se usa con `comoPortada`; la navegación la cablea el shell. */
+  onAjustes?: () => void;
+}
+
+export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
+  const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
   const [expandida, setExpandida] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
@@ -217,9 +332,9 @@ export function PantallaMiDia() {
   }
 
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
+  const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
-  return (
-    <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
+  const cuerpo = (
       <View style={styles.raiz}>
         {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
             dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
@@ -228,7 +343,11 @@ export function PantallaMiDia() {
 
         <PanelCalendario estado={estadoCalendario} calendario={calendario} />
 
+        <ContadorTablero tablero={tablero} />
+
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
+
+        <ChipsCategoria activa={categoria} onCambiar={setCategoria} />
 
         {estado === 'cargando' && (
           <View style={styles.centro}>
@@ -249,7 +368,19 @@ export function PantallaMiDia() {
 
         {estado === 'ok' && (
           <>
-            {(solapa == null || solapa.tarjetas.length === 0) && (
+            {tarjetas.length === 0 && categoria !== 'todo' && (
+              <View style={styles.centro}>
+                {/* Vacío POR EL FILTRO, no por el día: decirlo evita que un chip mal elegido se lea
+                    como «no tengo nada pendiente». Sin ilustración — este vacío no se celebra. */}
+                <EstadoVacio
+                  testID="midia-vacio-filtro"
+                  titulo={`Nada en ${ETIQUETA_CATEGORIA[categoria]} por acá.`}
+                  cuerpo="Tocá «Todo» para ver el resto."
+                />
+              </View>
+            )}
+
+            {tarjetas.length === 0 && categoria === 'todo' && (
               <View style={styles.centro}>
                 {/* La taza va SÓLO en «Para hoy» sin pendientes: ahí el vacío es una buena
                     noticia y la ilustración la celebra. En las otras solapas el vacío es
@@ -267,9 +398,9 @@ export function PantallaMiDia() {
               </View>
             )}
 
-            {solapa != null && solapa.tarjetas.length > 0 && (
+            {tarjetas.length > 0 && (
               <ScrollView contentContainerStyle={styles.lista} testID="midia-lista">
-                {solapa.tarjetas.map((t) => (
+                {tarjetas.map((t) => (
                   <TarjetaMiDiaRow
                     key={t.id}
                     tarjeta={t}
@@ -285,7 +416,31 @@ export function PantallaMiDia() {
           </>
         )}
       </View>
-    </MarcoGlass>
+  );
+
+  if (!comoPortada) {
+    return (
+      <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
+        {cuerpo}
+      </MarcoGlass>
+    );
+  }
+
+  return (
+    <View style={styles.portadaRaiz} testID="pantalla-midia">
+      {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
+          ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
+      <View style={styles.encabezadoPortada}>
+        <Text
+          testID="midia-wordmark"
+          style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
+        >
+          Odobi
+        </Text>
+        <AvatarCuenta onPress={onAjustes} />
+      </View>
+      {cuerpo}
+    </View>
   );
 }
 
@@ -439,10 +594,22 @@ function TarjetaMiDiaRow({
 }
 
 const styles = StyleSheet.create({
+  // Como base, la pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para
+  // que el wordmark quede debajo del reloj sin pedirle safe-area a un componente que no la conoce.
+  portadaRaiz: { flex: 1, paddingTop: 58 },
+  encabezadoPortada: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
   raiz: { flex: 1 },
   calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
   solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   solapaPresionable: { flexGrow: 1 },
   solapa: {
     minHeight: 0,
