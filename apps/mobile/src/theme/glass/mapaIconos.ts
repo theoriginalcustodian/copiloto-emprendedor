@@ -9,13 +9,16 @@
  * ése es el que va — aunque dos pantallas compartan ícono (Clientes y Mi cuenta usan los dos
  * `user`, y así está en el prototipo).
  *
- * ⚠️ **Los marcados `POR CONFIRMAR` no aparecen en el prototipo con una asignación clara.** Se puso
- * el más cercano del set para no dejar la app sin ícono, pero **son elección provisoria, no
- * decisión del sistema**. Están listados aparte para que Martin los confirme de una.
+ * ✅ **Los cinco que no tenían asignación clara en el prototipo quedaron CONFIRMADOS por Martin el
+ * 2026-09-18**, con los valores que ya estaban puestos: *"vamos con esos, en todo caso después
+ * cambiamos"*. Ya no hay nada provisorio acá — si uno cambia, cambia por decisión nueva, no por una
+ * duda pendiente. Cada uno conserva la nota de POR QUÉ se eligió, que es lo que hace revisable la
+ * decisión más adelante.
  */
 import type { NombreIconoGlass } from './icons';
 
-/** Confirmado contra el prototipo: la pantalla y su ícono están juntos ahí. */
+/** Confirmado: los primeros, contra el prototipo (la pantalla y su ícono están juntos ahí); los
+ *  cinco del final, por Martin el 2026-09-18. */
 export const ICONO_DEL_SISTEMA: Record<NombreIconoGlass, string> = {
   // ── confirmados ──────────────────────────────────────────────────────────
   perfilFiscal: 'arca', //          Facturación ARCA — el signo del organismo, no un glifo genérico
@@ -39,22 +42,15 @@ export const ICONO_DEL_SISTEMA: Record<NombreIconoGlass, string> = {
   feedback: 'chat-shield', //       Contanos qué tal
   inteligencia: 'chart-line',
 
-  // ── POR CONFIRMAR ────────────────────────────────────────────────────────
-  miNegocio: 'storefront', //       ⚠️ el prototipo lo muestra con `storefront` en un lado y con
-  //                                   `clipboard-text` en otro. Se eligió `storefront` porque
-  //                                   `clipboard-text` ya es Presupuestos y repetirlo los confunde.
-  ingresos: 'coins', //             ⚠️ mismo glifo que `cobros`; el set no distingue los dos
-  miDia: 'list-checks', //          ⚠️ sin asignación en el prototipo
-  actividadReciente: 'clock', //    ⚠️ el prototipo usa `clock-counter-clockwise`, que NO está en
-  //                                   los 38 archivos del set. Hay que bajarlo o elegir otro.
-  ajustes: 'gear', //               ⚠️ sin asignación (en el prototipo se entra por el avatar)
+  // ── confirmados por Martin (2026-09-18), sin asignación clara en el prototipo ─
+  miNegocio: 'storefront', //       el prototipo lo muestra con `storefront` en un lado y con
+  //                                `clipboard-text` en otro. Gana `storefront`: `clipboard-text` ya
+  //                                es Presupuestos y repetirlo confunde las dos pantallas.
+  ingresos: 'coins', //             mismo glifo que `cobros` — el set no distingue los dos, y un
+  //                                cobro ES un ingreso, así que compartirlo no miente.
+  miDia: 'list-checks',
+  actividadReciente: 'clock', //    ⚠️ el prototipo usa `clock-counter-clockwise`, que NO está en los
+  //                                38 archivos del set. `clock` es lo más cercano que hay portado;
+  //                                el día que se baje el otro, éste es el único renglón que cambia.
+  ajustes: 'gear', //               en el prototipo se entra por el avatar, así que no tiene glifo ahí
 };
-
-/** Los que esperan confirmación — se usa en el test que impide que la lista crezca en silencio. */
-export const ICONOS_POR_CONFIRMAR: readonly NombreIconoGlass[] = [
-  'miNegocio',
-  'ingresos',
-  'miDia',
-  'actividadReciente',
-  'ajustes',
-];

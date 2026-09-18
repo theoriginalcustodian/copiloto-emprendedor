@@ -18,7 +18,13 @@ const ISOTIPO_TAMANO_BOTON = 34;
  *  se divide por la misma k para que el trazo se vea igual de fino a cualquier tamaño — el `<G
  *  transform="scale(k)">` ya multiplica todo lo de adentro por k, así que predividir lo cancela. */
 const ISOTIPO_ESCALA = ISOTIPO_TAMANO_BOTON / ISOTIPO_VIEWBOX;
-const ISOTIPO_STROKE_WIDTH = 1.7 / ISOTIPO_ESCALA;
+/**
+ * 🔴 **1.3 PLANO, no 1.6 en chico / 1.3 en grande.** El `LEEME` del sistema define los dos valores;
+ * Martin cerró el plano el 2026-09-18 para toda la app. El motivo por el que acá alcanza: `logoScale`
+ * ya mantiene el trazo ÓPTICAMENTE igual a cualquier tamaño, así que el segundo valor corregiría algo
+ * que la división por la escala corrige sola. Mobile lo tenía en 1.7 y engordaba el signo.
+ */
+const ISOTIPO_STROKE_WIDTH = 1.3 / ISOTIPO_ESCALA;
 
 /** Cuánto hay que deslizar hacia arriba (px) antes de "fijar" la grabación — mismo umbral y misma
  *  razón que documed (`modules/captura/BotonVoz.tsx`, fuente canónica del gesto): un temblor

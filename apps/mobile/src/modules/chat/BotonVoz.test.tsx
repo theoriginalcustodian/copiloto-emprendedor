@@ -216,9 +216,10 @@ describe('BotonVoz -- isotipo ODOBI (ODOBI8 §A, reemplaza el micrófono heredad
     expect(trazo3.props.d).toBe('M16.5 8.8a4.8 4.8 0 0 1 0 6.4');
     expect(trazo4.props.d).toBe('M19.5 6.5a9 9 0 0 1 0 11');
 
-    // 1.7 (stroke-width base del mock, viewBox 24) / (34/24) = 1.2 -- si alguien cambia el tamaño del
-    // botón (34) o el viewBox (24) sin actualizar el otro, este número se mueve y el test lo caza.
-    expect(trazo1.props.strokeWidth).toBeCloseTo(1.2);
+    // 1.3 (el trazo PLANO del sistema, decidido el 2026-09-18) / (34/24) = 0.918 -- si alguien cambia
+    // el tamaño del botón (34) o el viewBox (24) sin actualizar el otro, este número se mueve y el
+    // test lo caza. Y si alguien reintroduce el 1.6 del `LEEME`, también.
+    expect(trazo1.props.strokeWidth).toBeCloseTo(1.3 / (34 / 24));
   });
 
   it('deshabilitado atenúa el isotipo igual que atenuaba el micrófono (opacity 0.45)', async () => {
