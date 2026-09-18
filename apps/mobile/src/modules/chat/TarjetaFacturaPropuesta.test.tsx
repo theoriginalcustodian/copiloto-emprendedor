@@ -11,18 +11,24 @@ jest.mock('expo-router', () => ({
 /** Partial mock: sólo la red. `leerFacturaPropuesta`, REAL. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, confirmarConTokenFresco: jest.fn() };
+  return { ...actual, confirmarConTokenFresco: jest.fn(), estadoFactura: jest.fn() };
 });
 
 import { router } from 'expo-router';
 
-import { confirmarConTokenFresco, leerFacturaPropuesta } from '@copiloto/core';
+import {
+  confirmarConTokenFresco,
+  estadoFactura,
+  leerFacturaPropuesta,
+  type EstadoFacturaResp,
+} from '@copiloto/core';
 
 import { reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 
 const mockConfirmar = confirmarConTokenFresco as jest.MockedFunction<typeof confirmarConTokenFresco>;
+const mockEstado = estadoFactura as jest.MockedFunction<typeof estadoFactura>;
 const mockPush = router.push as jest.MockedFunction<typeof router.push>;
 
 function propuesta(over: Record<string, unknown> = {}) {
@@ -40,6 +46,35 @@ function propuesta(over: Record<string, unknown> = {}) {
   });
   if (p == null) throw new Error('la propuesta de prueba no debería ser null');
   return p;
+}
+
+/** El estado que devuelve el backend una vez emitida. `terminado: true` = el PDF y el Drive YA están. */
+function emitida(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
+  return {
+    estado: 'entregada',
+    faltantes: [],
+    items: [],
+    total: '50000.00',
+    tokenConfirmacion: null,
+    resultado: {
+      ok: true,
+      duplicado: false,
+      cae: '86294776469171',
+      caeVto: '2026-09-28',
+      nro: 8,
+      tipoCbte: 11,
+      puntoVenta: 6,
+      id: null,
+    },
+    pdf: { url: 'https://afipsdk/f.pdf', nombre: 'f.pdf', expiraAt: null },
+    drive: null,
+    receptor: null,
+    datosVenta: null,
+    motivo: null,
+    motivoCodigo: null,
+    terminado: true,
+    ...over,
+  };
 }
 
 async function montar(p = propuesta()) {
@@ -80,7 +115,7 @@ describe('TarjetaFacturaPropuesta', () => {
   });
 
   it('faltantes vacío → botón Emitir; al tocarlo, confía en `confirmarConTokenFresco`', async () => {
-    mockConfirmar.mockResolvedValue({ emitida: true });
+    mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida() });
     await montar();
 
     expect(screen.queryByTestId('factura-propuesta-completar')).toBeNull();
@@ -90,7 +125,84 @@ describe('TarjetaFacturaPropuesta', () => {
 
     expect(mockConfirmar).toHaveBeenCalledWith('presu-12');
     await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
-    expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent('Factura emitida.');
+    expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Factura emitida\./);
+  });
+
+  describe('el comprobante en el chat — CAE + abrir/compartir el PDF', () => {
+    it('🔴 emitida y terminada: muestra el CAE y ofrece abrir y compartir el PDF', async () => {
+      mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida() });
+      await montar();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+      });
+
+      expect(screen.getByTestId('factura-propuesta-emitida-cae')).toHaveTextContent('CAE: 86294776469171');
+      expect(screen.getByTestId('factura-propuesta-emitida')).toHaveTextContent(/Punto de venta 6 · N° 8/);
+      expect(screen.getByTestId('factura-propuesta-emitida-guardar')).toBeTruthy();
+      expect(screen.getByTestId('factura-propuesta-emitida-compartir')).toBeTruthy();
+      expect(screen.getByTestId('factura-propuesta-emitida-aviso-24h')).toBeTruthy();
+      expect(screen.queryByTestId('factura-propuesta-preparando-pdf')).toBeNull();
+    });
+
+    it('🔴 con copia en Drive ofrece ESE link, que no vence — misma precedencia que la pantalla', async () => {
+      mockConfirmar.mockResolvedValue({
+        emitida: true,
+        estado: emitida({ drive: { guardado: true, fileId: '1tnAN', link: 'https://drive/uc?id=1tnAN', compartido: true } }),
+      });
+      await montar();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+      });
+
+      expect(screen.getByTestId('factura-propuesta-emitida-aviso-drive')).toBeTruthy();
+      expect(screen.queryByTestId('factura-propuesta-emitida-aviso-24h')).toBeNull();
+    });
+
+    it('🔴 sin PDF el CAE sigue siendo válido y el aviso NO se pinta como error', async () => {
+      mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida({ pdf: null }) });
+      await montar();
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+      });
+
+      expect(screen.getByTestId('factura-propuesta-emitida-cae')).toHaveTextContent('CAE: 86294776469171');
+      expect(screen.getByTestId('factura-propuesta-emitida-sin-pdf')).toBeTruthy();
+      expect(screen.queryByTestId('factura-propuesta-emitida-guardar')).toBeNull();
+    });
+
+    it('🔴 CAE sin PDF todavía: NO dice que el PDF no existe — dice que lo está preparando, y repolea', async () => {
+      mockConfirmar.mockResolvedValue({
+        emitida: true,
+        estado: emitida({ estado: 'emitida', pdf: null, terminado: false }),
+      });
+      mockEstado.mockResolvedValue(emitida());
+      jest.useFakeTimers();
+      try {
+        await montar();
+
+        await act(async () => {
+          fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+        });
+
+        // La ventana entre el CAE y el PDF: el CAE ya se muestra, el PDF se anuncia como en camino.
+        expect(screen.getByTestId('factura-propuesta-emitida-cae')).toBeTruthy();
+        expect(screen.getByTestId('factura-propuesta-preparando-pdf')).toBeTruthy();
+        expect(screen.queryByTestId('factura-propuesta-emitida-sin-pdf')).toBeNull();
+
+        await act(async () => {
+          jest.advanceTimersByTime(1500);
+        });
+
+        expect(mockEstado).toHaveBeenCalledWith('presu-12');
+        expect(screen.getByTestId('factura-propuesta-emitida-guardar')).toBeTruthy();
+        expect(screen.queryByTestId('factura-propuesta-preparando-pdf')).toBeNull();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   it('🔴 `emitida:false` (no-op del backend) NO pasa a terminal — muestra el motivo y se puede reintentar', async () => {

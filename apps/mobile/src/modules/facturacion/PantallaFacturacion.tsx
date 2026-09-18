@@ -600,7 +600,7 @@ function BloqueConfigurar({ testID = 'facturacion-cta-configurar' }: { testID?: 
   return (
     <View testID={testID} style={{ gap: tema.espacio.sm }}>
       <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-        Todavía no configuraste tu facturación AFIP. Vinculá tu cuenta para emitir comprobantes.
+        Todavía no configuraste tu facturación ARCA. Vinculá tu cuenta para emitir comprobantes.
       </Text>
       <FilaBotones
         testID={`${testID}-botones`}

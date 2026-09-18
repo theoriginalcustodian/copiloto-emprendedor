@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { confirmarConTokenFresco, type FacturaPropuesta } from '@copiloto/core';
+import {
+  confirmarConTokenFresco,
+  estadoFactura as consultarEstadoFactura,
+  type EstadoFacturaResp,
+  type FacturaPropuesta,
+} from '@copiloto/core';
 
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
+import { AccionesComprobante, DatosComprobante } from '../facturacion/comprobante';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
+import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
-import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
+import { TarjetaPropuestaShell } from './TarjetaPropuestaShell';
 
 /**
  * `TarjetaFacturaPropuesta` — lo que el copiloto entendió de una factura dictada (hito 9), de sólo
@@ -27,12 +34,28 @@ import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropue
  * esa verificación, sólo confía en su `ConfirmarResultado.emitida`. Nunca dice "Factura emitida" si
  * ese booleano no vino en `true`.
  *
+ * 🔴 **Emitida, la card muestra el COMPROBANTE, no un cartelito.** `ConfirmarResultado.estado` ya
+ * trae el CAE, el número y el PDF; hasta el 2026-09-18 esta card los descartaba y decía sólo
+ * *"Factura emitida."*, dejando al emprendedor sin el único dato que le sirve cuando el link vence.
+ * `DatosComprobante`/`AccionesComprobante` son las MISMAS piezas de la pantalla de Facturación
+ * (`../facturacion/comprobante`) — no una segunda presentación que puede divergir.
+ *
+ * 🔴 **Después de emitir se SIGUE poleando hasta `terminado`, y no es opcional.** El CAE existe unos
+ * segundos antes que el PDF: el estado que devuelve `confirmarConTokenFresco` es el de justo después
+ * del CAE, así que mostrar `AccionesComprobante` con eso pinta *"el PDF no está disponible"* sobre una
+ * factura cuyo PDF aparece dos segundos más tarde. Es el bug medido en device con la factura N° 7
+ * (CAE 86290619845862) y la razón por la que `PantallaFacturacion` corta por `terminado` y no por
+ * `estado === 'emitida'`. Mientras no está terminado, la card lo DICE.
+ *
  * 🔴 **`Completar a mano` navega DE VERDAD** vía `empujarUnaVez` (mismo patrón que
  * `TarjetaClientePropuesto`/"Abrir ese cliente"): el chat vive en la pantalla lanzadora
  * (`PantallaPrincipal`), así que un `router.push` directo apilaría dos glass.
  */
 
 type Estado = 'mostrando' | 'emitida';
+
+/** Igual que el de `PantallaFacturacion`: la ventana entre el CAE y el PDF se mide en segundos. */
+const INTERVALO_POLL_EMISION_MS = 1500;
 
 export interface TarjetaFacturaPropuestaProps {
   propuesta: FacturaPropuesta;
@@ -47,11 +70,55 @@ export function TarjetaFacturaPropuesta({
   const [estado, setEstado] = useState<Estado>('mostrando');
   const [enviando, setEnviando] = useState(false);
   const [motivo, setMotivo] = useState<string | null>(null);
+  const [comprobante, setComprobante] = useState<EstadoFacturaResp | null>(null);
+  const vivo = useRef(true);
+
+  useEffect(() => {
+    vivo.current = true;
+    return () => {
+      vivo.current = false;
+    };
+  }, []);
+
+  // Sigue leyendo hasta `terminado` — ver el docstring: el PDF llega después del CAE. Un fallo de red
+  // puntual no aborta el loop; el próximo tick reintenta.
+  useEffect(() => {
+    if (estado !== 'emitida' || comprobante == null || comprobante.terminado) return;
+    const intervalo = setInterval(() => {
+      void consultarEstadoFactura(propuesta.facturaId)
+        .then((nuevo) => {
+          if (vivo.current) setComprobante(nuevo);
+        })
+        .catch(() => {});
+    }, INTERVALO_POLL_EMISION_MS);
+    return () => clearInterval(intervalo);
+  }, [estado, comprobante, propuesta.facturaId]);
 
   const lista = propuesta.faltantes.length === 0;
 
   if (estado === 'emitida') {
-    return <TarjetaPropuestaTerminal testID={`${testID}-emitida`} tono="exito" texto="Factura emitida." />;
+    return (
+      <Tile testID={`${testID}-emitida`}>
+        <View style={{ gap: tema.espacio.sm }}>
+          <Text style={{ color: tema.color.exito, fontSize: tema.tipo.base, fontWeight: '600' }}>
+            Factura emitida.
+          </Text>
+
+          {comprobante != null && <DatosComprobante estado={comprobante} testID={`${testID}-emitida`} />}
+
+          {comprobante == null || !comprobante.terminado ? (
+            <Text
+              testID={`${testID}-preparando-pdf`}
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+            >
+              Estamos preparando el PDF. En unos segundos lo vas a poder abrir o compartir desde acá.
+            </Text>
+          ) : (
+            <AccionesComprobante estado={comprobante} testID={`${testID}-emitida`} />
+          )}
+        </View>
+      </Tile>
+    );
   }
 
   async function emitir() {
@@ -61,6 +128,7 @@ export function TarjetaFacturaPropuesta({
     try {
       const res = await confirmarConTokenFresco(propuesta.facturaId);
       if (res.emitida) {
+        setComprobante(res.estado ?? null);
         setEstado('emitida');
       } else {
         setMotivo(res.motivo ?? 'No pudimos emitirla. Revisá el resumen antes de reintentar.');

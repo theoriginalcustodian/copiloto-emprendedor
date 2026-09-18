@@ -912,7 +912,7 @@ export function PantallaAfipSetup() {
         <Seccion titulo="4. Copia en tu Drive" testID="afip-bloque-drive">
           <View style={{ gap: tema.espacio.md }}>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-              Guardá una copia de cada factura en tu Google Drive. El link de AFIP vence a las 24
+              Guardá una copia de cada factura en tu Google Drive. El link de ARCA vence a las 24
               horas; el de tu Drive no.
             </Text>
 
