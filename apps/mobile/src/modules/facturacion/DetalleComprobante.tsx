@@ -234,7 +234,7 @@ export function DetalleComprobante({
             >
               {enDrive
                 ? 'Guardada en tu Drive. Ese link no vence.'
-                : 'El PDF de AFIP está disponible por 24 horas desde la emisión. Después vas a poder descargarlo desde el portal de AFIP con el CAE.'}
+                : 'El PDF de ARCA está disponible por 24 horas desde la emisión. Después vas a poder descargarlo desde el portal de ARCA con el CAE.'}
             </Text>
 
             {link != null && (

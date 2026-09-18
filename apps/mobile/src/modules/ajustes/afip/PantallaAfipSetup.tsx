@@ -519,7 +519,7 @@ export function PantallaAfipSetup() {
   // Render.
   // -------------------------------------------------------------------------------------------
   return (
-    <MarcoGlass titulo="Facturación AFIP" icono="perfilFiscal" testID="pantalla-afip-setup">
+    <MarcoGlass titulo="Facturación ARCA" icono="perfilFiscal" testID="pantalla-afip-setup">
       <ScrollFormulario
         style={styles.scroll}
         testID="afip-setup-scroll"
@@ -839,7 +839,7 @@ export function PantallaAfipSetup() {
                 {estadoGeneralNoDisponible
                   ? // Distinto del caso general de abajo: acá `GET /afip/estado` respondió 404/501 --
                     // la app de AFIP no está desplegada, no que el campo todavía no exista.
-                    'La configuración de AFIP todavía no está disponible.'
+                    'La configuración de ARCA todavía no está disponible.'
                   : // `ambientes_vinculados` ausente = todavía no sabemos cuáles hay. NO se asume
                     // ninguno: mostrar un selector con ambientes inventados llevaría al usuario a
                     // tocar un switch que después falla.

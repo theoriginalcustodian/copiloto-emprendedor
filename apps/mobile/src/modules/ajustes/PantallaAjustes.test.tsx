@@ -46,7 +46,7 @@ describe('PantallaAjustes (grilla de iconos)', () => {
   it('las 6 etiquetas visibles son las esperadas — en castellano y sin pares que se pisen', async () => {
     await envolver();
     expect(screen.getByText('Mi negocio')).toBeTruthy();
-    expect(screen.getByText('Facturación AFIP')).toBeTruthy();
+    expect(screen.getByText('Facturación ARCA')).toBeTruthy();
     expect(screen.getByText('Apps conectadas')).toBeTruthy();
     expect(screen.getByText('Mi plan')).toBeTruthy();
     expect(screen.getByText('Mi cuenta')).toBeTruthy();

@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { borrarIngreso, formatearImporte, listarIngresos, type Ingreso, type OrigenIngreso } from '@copiloto/core';
+import {
+  borrarIngreso,
+  formatearImporte,
+  listarIngresos,
+  obtenerResumenIngresos,
+  type Ingreso,
+  type OrigenIngreso,
+  type ResumenIngresos as ResumenIngresosDato,
+} from '@copiloto/core';
 
 import { FormularioIngreso } from './FormularioIngreso';
+import { ResumenIngresos } from './ResumenIngresos';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -47,7 +56,7 @@ export function PantallaIngresos() {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [ingresos, setIngresos] = useState<readonly Ingreso[]>([]);
-  const [total, setTotal] = useState<string | null>(null);
+  const [resumen, setResumen] = useState<ResumenIngresosDato | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [refrescando, setRefrescando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +68,13 @@ export function PantallaIngresos() {
       if (!vivo.current) return;
       if (res.status === 'ok') {
         setIngresos(res.ingresos);
-        setTotal(res.total);
         setEstado('ok');
+        // El resumen es OTRA llamada y va aparte a propósito: `listarIngresos().total` suma filas
+        // recientes sin recortar por fecha, así que no es «lo cobrado este mes». Si el resumen
+        // falla, la lista igual se ve — pero sin un número que mienta arriba.
+        const r = await obtenerResumenIngresos();
+        if (!vivo.current) return;
+        setResumen(r.status === 'ok' ? r.resumen : null);
         return;
       }
       setEstado('no_disponible');
@@ -142,14 +156,7 @@ export function PantallaIngresos() {
             <>
               {/* El total lo suma el BACKEND. Sumarlo acá daría un segundo número para la misma
                   pregunta, y el día que difieran el emprendedor ve dos verdades. */}
-              {total != null && (
-                <Text
-                  testID="ingresos-total"
-                  style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.titulo }}
-                >
-                  {formatearImporte(total)}
-                </Text>
-              )}
+              {resumen != null && <ResumenIngresos resumen={resumen} />}
 
               <FilaBotones
                 testID="ingresos-acciones"

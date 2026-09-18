@@ -12,7 +12,7 @@ import { SeccionCobro } from './SeccionCobro';
 const TIPO_NOTA_CREDITO = 13;
 
 const AVISO_24H =
-  'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de AFIP con el CAE.';
+  'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de ARCA con el CAE.';
 const AVISO_EN_DRIVE = 'Guardada en tu Drive. Ese link no vence.';
 
 /**
