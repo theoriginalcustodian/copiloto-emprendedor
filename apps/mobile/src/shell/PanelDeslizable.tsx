@@ -127,6 +127,23 @@ export interface PanelDeslizableProps extends PropsWithChildren {
    * estado que ya calculan `alternar()` y `onEnd`, en el mismo callback que ya llama `setPanelAbajo`.
    */
   onPanelAbajoChange?: (abajo: boolean) => void;
+  /**
+   * Arrancar con el panel ABAJO, o sea con la base a la vista y la conversación asomando por el
+   * borde inferior.
+   *
+   * 🔴 **Es el modelo de capas del sistema (Ola 4):** *«Base: Mi día. El copiloto habla primero»* —
+   * la app abre en la portada del negocio, no adentro del chat. Hasta el 2026-09-18 abría con la
+   * conversación tapando todo, que es lo que hacía que el emprendedor tuviera que deslizar para ver
+   * cómo viene su negocio.
+   *
+   * No rompe el invariante de los dos dueños de `panelY` (el gesto y `senalSubir`): esto no es un
+   * writer permanente, es la POSICIÓN INICIAL, y se aplica una sola vez —cuando el `onLayout` da la
+   * primera medida real—, con un `ref` que lo impide de ahí en más. Un segundo writer atado al
+   * layout sí reintroduciría la carrera que documenta el bloque de arriba.
+   */
+  arrancaAbajo?: boolean;
+  /** El texto del borde visible cuando el panel está abajo. Ver `hint` abajo. */
+  hintAbajo?: string;
   testID?: string;
 }
 
@@ -139,7 +156,15 @@ export interface PanelDeslizableProps extends PropsWithChildren {
  * amenaza que lo justifica sería ruido para el próximo lector — si el copiloto suma captura de audio
  * de larga duración en el futuro, este es el punto a revisar primero.
  */
-export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChange, testID }: PanelDeslizableProps) {
+export function PanelDeslizable({
+  fondo,
+  children,
+  senalSubir,
+  onPanelAbajoChange,
+  arrancaAbajo = false,
+  hintAbajo = 'Subir conversación',
+  testID,
+}: PanelDeslizableProps) {
   const tema = useTema();
   const inercia = useInerteAlPerderFoco();
   const insets = useSafeAreaInsets();
@@ -156,7 +181,9 @@ export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChang
   const recorrido = useSharedValue(RECORRIDO_SIN_MEDIR);
   // Espejo en React del estado del panel, SÓLO para el texto del pull-hint (el template lo alterna).
   // Se actualiza vía `runOnJS` en cada snap; el drag en sí sigue 100% en el hilo de UI (no re-renderiza).
-  const [panelAbajo, setPanelAbajo] = useState(false);
+  const [panelAbajo, setPanelAbajo] = useState(arrancaAbajo);
+  /** Que la posición inicial se aplique UNA sola vez, en la primera medida. Ver `arrancaAbajo`. */
+  const inicialAplicada = useRef(false);
 
   /**
    * `onPanelAbajoChange` por `ref`, no directo en el `useMemo` del gesto: si quien llama a
@@ -340,6 +367,12 @@ export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChang
         // al montar y no vuelve a cambiar. La causa del "panel bloqueado" era otra, ver
         // `PantallaPrincipal.alFuncion`. Queda escrito para que nadie vuelva a sospechar de acá.
         recorrido.value = Math.max(e.nativeEvent.layout.height - ALTO_HANDLE - insets.top, 0);
+        // La posición inicial necesita el recorrido medido: antes de esta primera medida, "abajo" no
+        // es ningún número. Sin animación — el panel no se "desliza" al abrir la app, ya nace ahí.
+        if (arrancaAbajo && !inicialAplicada.current && recorrido.value > 0) {
+          inicialAplicada.current = true;
+          panelY.value = recorrido.value;
+        }
       }}
     >
       {/* Capas -1 y 0: lo que se ve, atenuado, a través del vidrio de la Capa 1. */}
@@ -364,7 +397,7 @@ export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChang
                 testID="panel-hint"
                 style={[styles.hint, { color: tema.color.textoTenue, fontFamily: tema.fuente.mono }]}
               >
-                {panelAbajo ? 'Subir conversación' : 'Deslizá para ver funciones'}
+                {panelAbajo ? hintAbajo : 'Deslizá para ver tu día'}
               </Text>
             </View>
           </GestureDetector>

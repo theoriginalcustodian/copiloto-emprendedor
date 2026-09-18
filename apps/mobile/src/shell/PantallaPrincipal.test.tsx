@@ -115,6 +115,20 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
     expect(router.push).toHaveBeenCalledWith('/clientes');
   });
 
+  it('🔴 la app aterriza en Mi día, con el avatar como única puerta a Ajustes (Ola 4)', async () => {
+    // El cambio de aterrizaje: antes esta pantalla montaba el escritorio de fondo y la conversación
+    // adelante, con Mi día como una ruta más del grid — o sea que a la base del sistema se llegaba
+    // entrando a una función. Ahora la base ES Mi día y el escritorio cuelga del borde de arriba.
+    await envolver();
+
+    expect(screen.getByTestId('pantalla-midia')).toBeTruthy();
+    expect(screen.getByTestId('panel-funciones-pestana')).toBeTruthy();
+    expect(screen.getByTestId('midia-wordmark')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('avatar-cuenta'));
+    expect(router.push).toHaveBeenCalledWith('/ajustes');
+  });
+
   it('doble toque rápido sobre el MISMO tile abre un solo glass', async () => {
     await envolver();
 

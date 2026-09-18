@@ -29,8 +29,10 @@ import { listarActividad, type ActividadItem } from '@copiloto/core';
 import { destinoDe } from '../modules/actividad/destinoActividad';
 import { ChatView } from '../modules/chat';
 import { EscritorioFunciones, type FuncionKey } from '../modules/escritorio/EscritorioFunciones';
+import { PantallaMiDia } from '../modules/midia/PantallaMiDia';
 import { empujarUnaVez, reabrirNavegacion } from '../navegacion/empujarUnaVez';
 import { PanelDeslizable } from './PanelDeslizable';
+import { PanelFunciones } from './PanelFunciones';
 
 /**
  * A qué ruta navega cada tile del escritorio — 1:1 con los archivos de `app/` (`apps.tsx`,
@@ -143,21 +145,43 @@ export function PantallaPrincipal() {
     return () => suscripcion.remove();
   }, [panelAbajo]);
 
+  /**
+   * 🔴 **Las tres capas del sistema, en el orden que manda el modelo (Ola 4, 2026-09-18).**
+   *
+   *   - **Base: Mi día.** *«El copiloto habla primero»* — la app abre en la portada del negocio.
+   *     Antes abría adentro del chat, con el escritorio de fondo y Mi día como una ruta del grid: o
+   *     sea que a la pantalla que el sistema define como la base se llegaba **entrando a una
+   *     función**.
+   *   - **Arriba, el escritorio** (`PanelFunciones`): baja desde el borde superior.
+   *   - **Adelante, la conversación** (`PanelDeslizable`): arranca ABAJO, asomando por el borde
+   *     inferior, y sube con el mismo gesto de siempre.
+   *
+   * Los dos gestos son OPUESTOS y por bordes distintos: se reparten el eje vertical en vez de
+   * competir por él.
+   */
   return (
     <PanelDeslizable
       testID="panel-principal"
       senalSubir={senalSubir}
       onPanelAbajoChange={setPanelAbajo}
+      arrancaAbajo
+      hintAbajo="Escribile a Odobi"
       fondo={
-        <EscritorioFunciones
-          onFuncion={alFuncion}
-          actividad={actividad}
-          cargandoActividad={cargandoActividad}
-          onAbrirActividad={alAbrirActividad}
-          // El encabezado "Actividad reciente" entra a la lista COMPLETA. `empujarUnaVez` y no
-          // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
-          onVerRecientes={() => empujarUnaVez('/recientes')}
-        />
+        <PanelFunciones
+          escritorio={
+            <EscritorioFunciones
+              onFuncion={alFuncion}
+              actividad={actividad}
+              cargandoActividad={cargandoActividad}
+              onAbrirActividad={alAbrirActividad}
+              // El encabezado "Actividad reciente" entra a la lista COMPLETA. `empujarUnaVez` y no
+              // `router.push`, igual que los tiles y las filas: dos toques rápidos apilarían dos glass.
+              onVerRecientes={() => empujarUnaVez('/recientes')}
+            />
+          }
+        >
+          <PantallaMiDia comoPortada onAjustes={() => empujarUnaVez('/ajustes')} />
+        </PanelFunciones>
       }>
       <ChatView />
     </PanelDeslizable>

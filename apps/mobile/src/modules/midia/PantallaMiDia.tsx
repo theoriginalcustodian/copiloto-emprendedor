@@ -22,6 +22,7 @@ import {
   type TableroMiDia,
 } from '@copiloto/core';
 
+import { AvatarCuenta } from './AvatarCuenta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -123,7 +124,23 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
 
-export function PantallaMiDia() {
+export interface PantallaMiDiaProps {
+  /**
+   * `true` cuando Mi día se monta como **la base de la app** y no como un glass encima del
+   * escritorio (Ola 4). Cambia una sola cosa: el chrome. Como base no lleva `MarcoGlass` —no hay
+   * "Volver" desde la pantalla a la que se vuelve— y en su lugar va el encabezado propio, con el
+   * wordmark y el avatar, que es la única puerta a Ajustes.
+   *
+   * 🔴 **El cuerpo es EL MISMO en los dos casos, a propósito.** La ruta `/midia` sigue viva porque
+   * las tarjetas de actividad y los enlaces internos la usan; si la base y la ruta tuvieran cuerpos
+   * distintos, cada arreglo habría que hacerlo dos veces y la segunda copia se olvidaría.
+   */
+  comoPortada?: boolean;
+  /** Tocar el avatar. Sólo se usa con `comoPortada`; la navegación la cablea el shell. */
+  onAjustes?: () => void;
+}
+
+export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
@@ -218,8 +235,7 @@ export function PantallaMiDia() {
 
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
 
-  return (
-    <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
+  const cuerpo = (
       <View style={styles.raiz}>
         {/* La portada va PRIMERO: es lo que se mira de reojo antes que nada. Si no cargó, no se
             dibuja nada en su lugar — Mi día sigue sirviendo sin ella, y un esqueleto permanente
@@ -285,7 +301,31 @@ export function PantallaMiDia() {
           </>
         )}
       </View>
-    </MarcoGlass>
+  );
+
+  if (!comoPortada) {
+    return (
+      <MarcoGlass titulo="Mi día" icono="miDia" testID="pantalla-midia">
+        {cuerpo}
+      </MarcoGlass>
+    );
+  }
+
+  return (
+    <View style={styles.portadaRaiz} testID="pantalla-midia">
+      {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
+          ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
+      <View style={styles.encabezadoPortada}>
+        <Text
+          testID="midia-wordmark"
+          style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
+        >
+          Odobi
+        </Text>
+        <AvatarCuenta onPress={onAjustes} />
+      </View>
+      {cuerpo}
+    </View>
   );
 }
 
@@ -439,6 +479,16 @@ function TarjetaMiDiaRow({
 }
 
 const styles = StyleSheet.create({
+  // Como base, la pantalla se pega al borde superior real: el `paddingTop` es el del prototipo para
+  // que el wordmark quede debajo del reloj sin pedirle safe-area a un componente que no la conoce.
+  portadaRaiz: { flex: 1, paddingTop: 58 },
+  encabezadoPortada: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
   raiz: { flex: 1 },
   calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
