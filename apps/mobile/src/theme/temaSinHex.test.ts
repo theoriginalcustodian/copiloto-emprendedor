@@ -28,6 +28,15 @@ const ARCHIVOS_DE_COLOR = [
   join('theme', 'tokens.ts'),
   join('theme', 'glass', 'ondaPalette.ts'),
   join('theme', 'glass', 'ecualizadorPalette.ts'),
+  /**
+   * Los logos de Gmail, Calendar, Sheets, Docs, Drive y Mercado Pago, como XML crudo.
+   *
+   * Cumple los dos criterios de admisión, y por eso entra: (a) **son marcas de terceros** — el rojo
+   * de Gmail no puede cambiar con la piel, ni teñirse, ni adaptarse; y (b) es **datos puros**,
+   * generado desde `odobi-ui/assets/logos/*.svg`, sin una línea de lógica. Quien lo consume
+   * (`LogoMarca.tsx`) queda cero-hex.
+   */
+  join('modules', 'apps', 'logosMarca.ts'),
 ];
 /**
  * `.test.ts` / `.test.tsx` (runner nativo) y `.test.web.ts` (runner web, proyecto Jest "web") son las

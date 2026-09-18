@@ -20,7 +20,9 @@ type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 
 // Tamaños de la jerarquía del login. Son medidas de layout (no colores → no violan `temaSinHex`), y
 // viven acá y no en los tokens porque son propias de ESTE hero, no del sistema compartido (evita
 // inflar la escala global `tipo` con un tamaño que sólo usa una pantalla).
-const HERO = 40;
+const HERO = 34;
+/** El símbolo del lockup. El wordmark va al lado, no debajo — ver el bloque de marca del render. */
+const LOCKUP_SIMBOLO = 44;
 const ALTO_CAMPO = 52;
 const ALTO_BOTON = 54;
 
@@ -111,22 +113,44 @@ export function PantallaLogin() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.marca, { gap: tema.espacio.sm, marginBottom: tema.espacio.xl }]}>
-          <Marca size={76} />
+        {/**
+          * 🔴 **El LOCKUP —símbolo y nombre en una línea—, no el badge apilado con tagline**
+          * (2026-09-18, contra el prototipo). Esta pantalla venía portada de documed: badge grande,
+          * «Odobi» debajo y «tu copiloto de negocio» abajo de todo. Tres bloques de marca antes del
+          * primer campo, en la pantalla donde lo único que hay que hacer es entrar.
+          *
+          * El nombre SÍ va —acá es información: quien mira esto está por entrar a una cuenta y tiene
+          * que ver a cuál—, pero presentado una vez y en horizontal. La tagline se cae: el producto
+          * ya se explicó antes de llegar acá, y repetirlo empuja los campos fuera del alcance del
+          * pulgar.
+          *
+          * La separación símbolo↔wordmark es **0,3 × el ancho del símbolo** (spec del isotipo), no
+          * un número elegido a ojo.
+          */}
+        <View style={[styles.marca, { gap: Math.round(LOCKUP_SIMBOLO * 0.3), marginBottom: tema.espacio.xl }]}>
+          <Marca size={LOCKUP_SIMBOLO} />
           {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
               Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           <Text
+            testID="login-wordmark"
             style={[
               styles.titulo,
-              { color: tema.color.texto, fontSize: HERO, fontFamily: tema.fuente.display },
+              { color: tema.color.acentoTinta, fontSize: HERO, fontFamily: tema.fuente.display },
             ]}
           >
             Odobi
           </Text>
-          <Text style={[styles.tagline, { color: tema.color.textoTenue, fontSize: tema.tipo.grande }]}>
-            tu copiloto de negocio
-          </Text>
         </View>
+
+        <Text
+          testID="login-titulo"
+          style={[styles.encabezado, { color: tema.color.texto, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }]}
+        >
+          Entrá a tu cuenta
+        </Text>
+        <Text style={[styles.bajada, { color: tema.color.textoTenue, fontSize: tema.tipo.base }]}>
+          Con el mail y la contraseña que ya usás.
+        </Text>
 
         <View style={{ gap: tema.espacio.md }}>
           <View style={{ gap: tema.espacio.xs }}>
@@ -264,7 +288,10 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1 },
   // Centra el formulario cuando no hay teclado; con teclado el ScrollView deja subir el contenido.
   scroll: { flexGrow: 1, justifyContent: 'center' },
-  marca: { alignItems: 'center' },
+  // El lockup es una LÍNEA: símbolo y nombre al lado, centrados en el ancho.
+  marca: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  encabezado: { textAlign: 'center' },
+  bajada: { textAlign: 'center', marginBottom: 20 },
   titulo: { fontWeight: '800', letterSpacing: -0.5 },
   tagline: {},
   etiqueta: { fontWeight: '600' },

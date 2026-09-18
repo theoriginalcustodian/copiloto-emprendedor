@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
 import type { FuncionSoporte } from '@copiloto/core';
@@ -11,7 +11,9 @@ import { Composer } from '../chat/Composer';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { ListaMensajes } from '../chat/ListaMensajes';
 import { useVozComando } from '../chat/useVozComando';
+import { Marca } from '../../theme/Marca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
+import { useTema } from '../../theme/ThemeProvider';
 import { useChatSoporte } from './useChatSoporte';
 
 const TITULO: Record<FuncionSoporte, string> = {
@@ -62,6 +64,7 @@ export interface PantallaSoporteProps {
  * forma de presentación queda pendiente de un rediseño a sheet/modal, no de este fix.
  */
 export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
+  const tema = useTema();
   const { me } = useSession();
   const { estado, send, enviarAudio } = useChatSoporte(me?.cliente_id ?? '', funcion);
   const voz = useVozComando();
@@ -126,7 +129,38 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
   return (
-    <MarcoGlass titulo={TITULO[funcion]} icono="soporte" testID="pantalla-soporte">
+    <MarcoGlass
+      titulo={TITULO[funcion]}
+      icono="soporte"
+      testID="pantalla-soporte"
+      /**
+       * 🔴 **La presentación de quién contesta, con el isotipo como avatar** (2026-09-18, Martin).
+       * El prototipo traía un escudo genérico y no representaba a nadie: ni marca ni persona, y a 38
+       * px se leía como un ícono de seguridad. El avatar dice **de qué producto es este chat**; que
+       * del otro lado conteste el equipo se dice con PALABRAS —«Soporte de Odobi», «si no lo puedo
+       * resolver, abro un ticket y lo sigue una persona»—, que es donde ese matiz se entiende.
+       *
+       * Va en `encabezadoExtra` (fijo, fuera del scroll) y no como primer mensaje del hilo: no es un
+       * mensaje, es quién es el interlocutor — y si scrolleara, desaparecería justo cuando la
+       * conversación se hace larga y uno duda de con quién está hablando.
+       */
+      encabezadoExtra={
+        <View style={styles.presentacion}>
+          <Marca size={38} tono="tinta" />
+          <View style={styles.presentacionTextos}>
+            <Text
+              testID="soporte-quien"
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
+            >
+              Soporte de Odobi
+            </Text>
+            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
+              Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.
+            </Text>
+          </View>
+        </View>
+      }
+    >
       <KeyboardAvoidingView testID="soporte-view" behavior="padding" style={styles.contenedor}>
         <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
 
@@ -181,6 +215,8 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1 },
+  presentacion: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingBottom: 12 },
+  presentacionTextos: { flex: 1, gap: 2 },
   overlayVoz: { alignItems: 'center', paddingBottom: 8, gap: 8 },
   ondaFlotante: { width: '100%', paddingHorizontal: 24 },
   oculto: { display: 'none' },

@@ -12,6 +12,7 @@ import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type Servi
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
 import { GlassIcon } from '../../theme/glass/GlassIcon';
+import { hayLogoDe, LogoMarca } from './LogoMarca';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { Row } from '../../theme/glass/Row';
 import type { NombreIconoGlass } from '../../theme/glass/icons';
@@ -38,12 +39,20 @@ import type { NombreIconoGlass } from '../../theme/glass/icons';
  * semana: afirmar un hecho por haber iniciado la acción que lo produciría.
  */
 
-/** Ícono por servicio — presentación pura del lado del cliente: el backend no manda íconos. Un
- *  servicio sin entrada acá cae en `ICONO_POR_DEFECTO` (fail-open a "aparece con un ícono genérico",
- *  nunca a "no se muestra": omitir un servicio real es peor que mostrarlo con el ícono equivocado).
- *  Ninguno de los 21 nombres del set Odobi significa literalmente "Gmail"/"Drive"/etc. (son íconos
- *  de FUNCIÓN, no de marca de terceros -- esos viven en `serviceIcons.tsx`, web, y no se tocan acá);
- *  la asignación de abajo es la analogía visual más cercana, documentada, no un mapeo exacto. */
+/**
+ * Ícono por servicio — presentación pura del lado del cliente: el backend no manda íconos.
+ *
+ * 🔴 **Es el RESPALDO, no el camino principal (2026-09-18).** Los seis servicios que el catálogo
+ * publica hoy se dibujan con su **logo real** (`LogoMarca`): el emprendedor los reconoce por su
+ * marca, y una analogía visual —Gmail con el ícono de Facturación, Drive con el de Presupuestos—
+ * obliga a leer el nombre para saber qué está conectando. Encima dos servicios distintos compartían
+ * glifo, que es justo lo que el escritorio prohíbe.
+ *
+ * Esta tabla queda para el servicio que aparezca mañana sin logo portado: fail-open a «aparece con un
+ * ícono genérico», nunca a «no se muestra» — omitir un servicio real es peor que mostrarlo con el
+ * ícono equivocado. Ninguno de los nombres del set Odobi significa literalmente "Gmail"/"Drive": son
+ * íconos de FUNCIÓN, así que la asignación de abajo es la analogía más cercana, no un mapeo exacto.
+ */
 const ICONO_POR_SERVICIO: Record<string, NombreIconoGlass> = {
   gmail: 'facturacion',
   googledrive: 'presupuestos',
@@ -242,7 +251,11 @@ export function PantallaApps() {
             <Row key={s.key} testID={`app-${s.key}`}>
               <View style={{ gap: tema.espacio.sm }}>
                 <View style={[styles.fila, { gap: tema.espacio.sm }]}>
-                  <GlassIcon name={ICONO_POR_SERVICIO[s.key] ?? ICONO_POR_DEFECTO} size={24} />
+                  {hayLogoDe(s.key) ? (
+                    <LogoMarca servicio={s.key} testID={`app-${s.key}-logo`} />
+                  ) : (
+                    <GlassIcon name={ICONO_POR_SERVICIO[s.key] ?? ICONO_POR_DEFECTO} size={24} />
+                  )}
                   <View style={styles.textos}>
                     <Text style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}>
                       {s.nombre}
