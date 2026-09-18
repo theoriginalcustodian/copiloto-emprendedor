@@ -12,24 +12,16 @@
  * aplica igual acá — `automatizaciones recurrentes` y `trazabilidad` ya están anotadas como candidatas
  * post-v1 en la memoria del proyecto, así que este escritorio va a crecer.
  *
- * 🔵 **Grid: máximo 2 filas + scroll horizontal, nunca una 3ª fila fija.** `TILES` ya tenía 9
- * funciones en el original armadas en 3×3 fijo — ese layout se queda sin filas apenas se suma una
- * función más. Acá el grid crece en COLUMNAS hacia la derecha: `agruparEnColumnas` arma las columnas
- * de a lo sumo `FILAS_MAX_GRID` (2) a partir de `TILES` en tiempo de módulo — sumar una 7ª función es
- * agregar un item a `TILES`, sin tocar esta función ni el JSX que la consume.
+ * 🔵 **Grid 3×2 FIJO, sin scroll (Ola 4).** Hasta el 2026-09-18 eran 9 tiles en dos filas con scroll
+ * horizontal, más su afordancia de «hay más a la derecha» (fade + solapa + medición de anchos): la
+ * mitad de las funciones vivía fuera de pantalla. Con 6 entra todo, así que el scroll y la
+ * afordancia se fueron — una flecha que señala el vacío enseña a desconfiar de las que sí señalan
+ * algo. Ver el docstring de `TILES` para por qué son 6 y no 9.
  *
- * Layout: padding `64/22/20`, título, grid horizontal-scrolleable de `Tile`
- * (ancho fijo `ANCHO_TILE` por columna), el encabezado TAPEABLE "Actividad reciente" (→ `/recientes`)
- * scrolleable con `paddingBottom` generoso para no quedar tapada por el panel/handle que se superpone
- * encima (Capa 1+).
- *
- * **Afordancia de "hay más a la derecha":** un fade (`LinearGradient` transparente → `tema.color.
- * fondo`) + una solapa con flecha, pegados al borde derecho, pero SÓLO cuando el contenido mide más
- * que el ancho visible — medido con `onLayout`/`onContentSizeChange`, nunca con `Dimensions.get
- * ('window')` (mismo criterio que `PanelDeslizable.tsx`: el ancho REAL del contenedor, no el de la
- * ventana, es el que importa).
+ * Layout: padding `64/22/20`, título, el grid, el encabezado TAPEABLE "Actividad reciente"
+ * (→ `/recientes`) y la lista, scrolleable con `paddingBottom` generoso para no quedar tapada por el
+ * panel/handle que se superpone encima (Capa 1+).
  */
-import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 /**
  * 🔴 **`ScrollView` sale de Gesture Handler, NO de `react-native`, y no es preferencia de estilo.**
@@ -49,8 +41,6 @@ import { StyleSheet, Text, View } from 'react-native';
  * `documed-front/apps/mobile/src/modules/escritorio/EscritorioFunciones.tsx`.
  */
 import { ScrollView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import type { ActividadItem } from '@copiloto/core';
 
@@ -208,23 +198,6 @@ export interface EscritorioFuncionesProps {
    */
   onVerRecientes?: () => void;
 }
-
-/** Margen de tolerancia antes de considerar que "hay más contenido a la derecha". RN mide con floats;
- *  un solape de 1-2px entre el ancho visible y el del contenido es ruido de redondeo entre
- *  plataformas, no una señal real de overflow — sin este umbral el fade podría parpadear en el borde
- *  exacto. */
-const UMBRAL_OVERFLOW_PX = 4;
-
-/**
- * C6 (cotas de chat y listas): el `ScrollView` horizontal de este grid actualizaba `desplazado` con
- * `setState` en CADA frame de scroll (`scrollEventThrottle={16}` = hasta 60 veces/seg), y ese estado
- * vivía en `EscritorioFunciones` — el componente padre de las 9 tiles + la lista de actividad. Cada
- * frame de scroll re-renderizaba TODO ese árbol para decidir la visibilidad de un fade y una flecha.
- * `Animated.createAnimatedComponent` envuelve el `ScrollView` de RNGH (no el de `react-native` — ver
- * el docstring de más arriba sobre la arena de gestos) para que `useAnimatedScrollHandler` escriba el
- * offset directo a un `SharedValue`, en el hilo de UI, sin pasar por React en absoluto.
- */
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 export function EscritorioFunciones({
   onFuncion,
