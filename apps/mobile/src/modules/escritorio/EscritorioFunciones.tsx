@@ -68,10 +68,7 @@ export type FuncionKey =
   | 'gastos'
   | 'presupuestos'
   | 'clientes'
-  | 'midia'
-  | 'inteligencia'
-  | 'contabilidad'
-  | 'ajustes';
+  | 'inteligencia';
 
 export interface DefinicionTile {
   key: FuncionKey;
@@ -80,7 +77,19 @@ export interface DefinicionTile {
 }
 
 /**
- * Los 9 tiles del escritorio.
+ * Los 6 tiles del escritorio.
+ *
+ * 🔴 **Eran 9 hasta el 2026-09-18 (Ola 4).** Bajaron a 6 por la razón que el sistema declara
+ * (`odobi-ui/CLAUDE.md` §Modelo de capas, rev. 20/08): Hick-Hyman — elegir entre 9 cuesta, y tres de
+ * esos nueve **no eran lugares de información**, que es lo único que este escritorio nombra:
+ *   - **Mi día** salió porque **es la portada**, no un destino al que se entra;
+ *   - **Ajustes** salió porque se entra **por el avatar**, su única puerta;
+ *   - **Contabilidad** salió porque se **fundió** con Inteligencia — eran dos pantallas leyendo el
+ *     mismo negocio, y la de Contabilidad sólo aportaba el acumulado del año y el tope de
+ *     monotributo, que ahora viven allá.
+ *
+ * Con 6 el grid entra COMPLETO en 3×2 y **desaparece el scroll horizontal**: ya no hay funciones
+ * fuera de pantalla, así que tampoco hace falta la afordancia de "hay más a la derecha".
  *
  * 🔴 **`TILES` se ordena por FRECUENCIA DE USO ESPERADA. Agregar una función obliga a decidir su
  * posición: no existe "al final" como opción por omisión.**
@@ -113,18 +122,11 @@ export const TILES: readonly DefinicionTile[] = [
   // Baja al 5º: la cartera **se llena sola** a medida que se factura, así que casi no se entra a
   // mano. Los cuatro de arriba son los cuatro verbos diarios — facturar, cobrar, gastar, presupuestar.
   { key: 'clientes', label: 'Clientes', icono: 'clientes' },
-  // Cascarón hasta que llegue su contrato (Kanban, hito 7 del sprint de Inteligencia de Negocio).
-  // Va a un `MarcoGlass` que dice qué va a ser, NUNCA a una pantalla en blanco: un tile que abre el
-  // vacío le enseña al emprendedor que hay funciones que no andan, y esa lección después se la
-  // aplica a las que sí andan.
-  { key: 'midia', label: 'Mi día', icono: 'miDia' },
-  // Ex "Métricas". El módulo se REUSA —no se reescribe—, sólo cambia cómo se llama.
+  // Ex "Métricas", y desde el 2026-09-18 también ex "Contabilidad": las dos pantallas se fundieron
+  // (ver `PantallaInteligencia`). El módulo se REUSA — sólo cambia qué contiene.
   { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: 'inteligencia' },
-  // Cascarón: su contrato ya está escrito y espera el cierre de Clientes.
-  { key: 'contabilidad', label: 'Contabilidad', icono: 'contabilidad' },
-  // Último a propósito: se toca una vez por mes. Estaba segundo.
-  { key: 'ajustes', label: 'Ajustes', icono: 'ajustes' },
 ];
+
 
 /**
  * Las funciones OPERATIVAS, en orden. Es lo que el DoD del contrato exige que se vea sin scrollear, y
@@ -137,14 +139,16 @@ export const KEYS_OPERATIVAS: readonly FuncionKey[] = [
   'presupuestos',
 ];
 
-/** Máximo de tiles apilados por columna — el resto de las funciones se alcanza con scroll horizontal,
- *  nunca agregando una 3ª fila. */
-const FILAS_MAX_GRID = 2;
-
-/** Ancho fijo de cada tile en el grid horizontal. Con `flex:1` el ancho se repartía entre las
- *  columnas que hubiera en ESA fila; con scroll horizontal eso ya no es una opción — el ancho de un
- *  tile no puede depender de cuántas funciones haya en total, tiene que ser un valor propio. */
-const ANCHO_TILE = 104;
+/**
+ * Columnas del grid. **3×2 fijo, sin scroll** (`odobi-ui/CLAUDE.md` §Modelo de capas): con 6
+ * funciones entra todo, y lo que entra no se esconde.
+ *
+ * ⚠️ **Si mañana vuelven a ser 7+, esto NO se resuelve agregando una 3ª fila ni volviendo al scroll
+ * horizontal** — se resuelve decidiendo qué función no es un lugar. El scroll horizontal existió
+ * mientras el escritorio tenía 9 tiles, y lo que enseñó es que la mitad de las funciones vivían
+ * fuera de pantalla.
+ */
+const COLUMNAS_GRID = 3;
 
 /**
  * Alto reservado para la etiqueta. Cada tile mide lo que mida su etiqueta: "Redes Sociales" envuelve
@@ -157,24 +161,18 @@ const ANCHO_TILE = 104;
 const ALTO_LABEL = 30;
 
 /**
- * Agrupa `items` en columnas de a lo sumo `filasPorColumna` elementos cada una, preservando el orden.
- * Genérica y sin ningún número de función hardcodeado: agregar una 7ª, 10ª, etc. item a `TILES` sólo
- * cambia cuántas columnas salen de acá — nunca esta función ni el JSX que la consume. Exportada para
- * poder probar el invariante "máximo N por columna" directamente, sin acoplar el test al conteo actual
- * de `TILES`.
+ * Agrupa `items` en filas de `porFila` elementos, preservando el orden. Genérica y sin el conteo de
+ * funciones adentro: es lo que se prueba directo, sin acoplar el test a cuántos tiles haya hoy.
  */
-export function agruparEnColumnas<T>(
-  items: readonly T[],
-  filasPorColumna: number,
-): readonly (readonly T[])[] {
-  const columnas: T[][] = [];
-  for (let i = 0; i < items.length; i += filasPorColumna) {
-    columnas.push(items.slice(i, i + filasPorColumna) as T[]);
+export function agruparEnFilas<T>(items: readonly T[], porFila: number): readonly (readonly T[])[] {
+  const filas: T[][] = [];
+  for (let i = 0; i < items.length; i += porFila) {
+    filas.push(items.slice(i, i + porFila) as T[]);
   }
-  return columnas;
+  return filas;
 }
 
-const COLUMNAS_TILES = agruparEnColumnas(TILES, FILAS_MAX_GRID);
+const FILAS_TILES = agruparEnFilas(TILES, COLUMNAS_GRID);
 
 
 export interface EscritorioFuncionesProps {
@@ -237,33 +235,6 @@ export function EscritorioFunciones({
 }: EscritorioFuncionesProps) {
   const tema = useTema();
 
-  // Ninguno de los dos anchos se pregunta con `Dimensions.get('window')`: se MIDEN, con el mismo
-  // criterio que `PanelDeslizable.tsx` — preguntarle el tamaño a la screen en vez de al
-  // contenedor/contenido real da un número que no sigue rotaciones ni el ancho real disponible.
-  const [anchoVisible, setAnchoVisible] = useState(0);
-  const [anchoContenido, setAnchoContenido] = useState(0);
-  // Cuánto se desplazó ya el emprendedor. `SharedValue`, no `useState`: sólo alimenta la opacidad
-  // animada de abajo, nunca una decisión de qué se MONTA — no hay motivo para que un valor que
-  // cambia hasta 60 veces/seg pase por React.
-  const desplazado = useSharedValue(0);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      desplazado.value = event.contentOffset.x;
-    },
-  });
-
-  const hayOverflow = anchoContenido - anchoVisible > UMBRAL_OVERFLOW_PX;
-
-  // La visibilidad SÍ depende del scroll (frame a frame): `useAnimatedStyle` la recalcula en el hilo
-  // de UI a partir del `SharedValue`, así que llegar al final de la grilla nunca dispara un
-  // re-render de React. `hayOverflow` decide si el bloque se MONTA (rara vez cambia, React normal);
-  // esto sólo decide si se VE, dentro de ese bloque.
-  const estiloAfordanciaAnimado = useAnimatedStyle(() => {
-    const llegoAlFinal = anchoContenido - anchoVisible - desplazado.value <= UMBRAL_OVERFLOW_PX;
-    return { opacity: llegoAlFinal ? 0 : 1 };
-  });
-
   return (
     <View style={[styles.contenedor, { paddingHorizontal: 22 }]}>
       <View style={styles.headerFila}>
@@ -277,76 +248,36 @@ export function EscritorioFunciones({
         </Text>
       </View>
 
-      <View
-        style={styles.contenedorGrid}
-        testID="escritorio-grid-contenedor"
-        onLayout={(e) => setAnchoVisible(e.nativeEvent.layout.width)}
-      >
-        <AnimatedScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.contenidoGrid}
-          onContentSizeChange={(w) => setAnchoContenido(w)}
-          onScroll={scrollHandler}
-          // El offset ya se lee en el hilo de UI (`scrollHandler`, `SharedValue`) — este throttle sólo
-          // gobierna con qué frecuencia el driver nativo entrega eventos, no un `setState` de React.
-          scrollEventThrottle={16}
-          testID="escritorio-scroll-funciones"
-        >
-          {COLUMNAS_TILES.map((columna, iCol) => (
-            <View key={iCol} style={styles.columnaGrid} testID={`col-escritorio-${iCol}`}>
-              {columna.map((t) => (
-                <Tile
-                  key={t.key}
-                  testID={`tile-${t.key}`}
-                  accessibilityLabel={t.label}
-                  onPress={() => onFuncion?.(t.key)}
-                  style={styles.tile}
+      {/* 3×2 fijo. Se fue el `ScrollView` horizontal con su fade y su solapa: con 6 funciones no hay
+          nada a la derecha que anunciar, y una afordancia que señala hacia el vacío enseña a
+          desconfiar de las que sí señalan algo. */}
+      <View style={styles.contenedorGrid} testID="escritorio-grid-contenedor">
+        {FILAS_TILES.map((fila, iFila) => (
+          <View key={iFila} style={styles.filaGrid} testID={`fila-escritorio-${iFila}`}>
+            {fila.map((t) => (
+              <Tile
+                key={t.key}
+                testID={`tile-${t.key}`}
+                accessibilityLabel={t.label}
+                onPress={() => onFuncion?.(t.key)}
+                style={styles.tile}
+              >
+                <GlassIcon name={t.icono} size={46} />
+                {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
+                    no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…". */}
+                <Text
+                  numberOfLines={2}
+                  style={[
+                    styles.labelTile,
+                    { color: tema.color.texto, fontFamily: tema.fuente.uiSemibold },
+                  ]}
                 >
-                  <GlassIcon name={t.icono} size={46} />
-                  {/* `numberOfLines={2}` acota el peor caso: una etiqueta más larga que las actuales
-                      no puede volver a romper la grilla creciendo a 3 líneas — se recorta con "…". */}
-                  <Text
-                    numberOfLines={2}
-                    style={[
-                      styles.labelTile,
-                      { color: tema.color.texto, fontFamily: tema.fuente.uiSemibold },
-                    ]}
-                  >
-                    {t.label}
-                  </Text>
-                </Tile>
-              ))}
-            </View>
-          ))}
-        </AnimatedScrollView>
-
-        {/* Se MONTA si queda contenido a la derecha (`hayOverflow`, React normal); la opacidad de si
-            se ve AHORA MISMO (llegó o no al final) la maneja `estiloAfordanciaAnimado` en el hilo de
-            UI — ver docstring del módulo. */}
-        {hayOverflow && (
-          <Animated.View
-            style={[styles.afordanciaMasFunciones, estiloAfordanciaAnimado]}
-            pointerEvents="none"
-          >
-            <LinearGradient
-              colors={['transparent', tema.color.fondo]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.fadeDerecha}
-              testID="escritorio-fade-mas-funciones"
-            />
-            {/* La solapa: va encima del fade y usa el acento del tema —no un color fijo— para seguir
-                siendo visible en los 5 skins. */}
-            <View
-              style={[styles.solapa, { backgroundColor: tema.color.acento, opacity: 0.22 }]}
-              testID="escritorio-solapa-mas-funciones"
-            />
-            <View style={styles.solapa}>
-              <Text style={[styles.flechaSolapa, { color: tema.color.texto }]}>›</Text>
-            </View>
-          </Animated.View>
-        )}
+                  {t.label}
+                </Text>
+              </Tile>
+            ))}
+          </View>
+        ))}
       </View>
 
       {/* 🔴 De texto muerto a encabezado TAPEABLE → `/recientes` (addendum_mi-dia §3). El CONTENIDO
@@ -383,30 +314,14 @@ const styles = StyleSheet.create({
   contenedor: { flex: 1, paddingTop: 64, paddingBottom: 20 },
   headerFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   titulo: {},
-  contenedorGrid: { marginBottom: 20 },
-  contenidoGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  columnaGrid: { gap: 12 },
+  contenedorGrid: { marginBottom: 20, gap: 12 },
+  filaGrid: { flexDirection: 'row', gap: 12 },
+  // `flex:1` y NO un ancho fijo: sin scroll horizontal las tres columnas se reparten el ancho real
+  // del teléfono, que es lo que hace que el grid entre igual en un 360 y en un 430.
   // Sin `height`: el alto sale solo y es el mismo en todas las cards porque el bloque de la etiqueta
   // mide siempre igual (ver `ALTO_LABEL`).
-  tile: { width: ANCHO_TILE, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  tile: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   labelTile: { fontSize: 11.5, lineHeight: 14, height: ALTO_LABEL, textAlign: 'center' },
-  // Llena `contenedorGrid` exacto: el fade/solapa de adentro siguen posicionándose `absolute` contra
-  // ESTE wrapper igual que antes lo hacían contra `contenedorGrid` directamente.
-  afordanciaMasFunciones: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
-  fadeDerecha: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 40 },
-  solapa: {
-    position: 'absolute',
-    right: 0,
-    top: '50%',
-    marginTop: -26,
-    width: 18,
-    height: 52,
-    borderTopLeftRadius: 9,
-    borderBottomLeftRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flechaSolapa: { fontSize: 15, lineHeight: 15, marginLeft: -1 },
   encabezadoReciente: { marginBottom: 10 },
   listaReciente: { gap: 8, paddingBottom: 180 },
   vacio: { fontSize: 11, opacity: 0.8 },

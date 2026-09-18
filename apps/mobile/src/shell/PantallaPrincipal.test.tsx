@@ -75,11 +75,11 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    */
   it.each([
     ['facturacion', '/facturacion'],
-    ['ajustes', '/ajustes'],
-    ['midia', '/midia'],
+    ['ingresos', '/ingresos'],
+    ['gastos', '/gastos'],
+    ['presupuestos', '/presupuestos'],
+    ['clientes', '/clientes'],
     ['inteligencia', '/inteligencia'],
-    ['contabilidad', '/contabilidad'],
-    ['facturacion', '/facturacion'],
   ])('tocar el tile %s navega a %s — no monta ninguna capa propia', async (key, ruta) => {
     await envolver();
 
@@ -108,11 +108,11 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
   it('un solo glass a la vez: el segundo tile no navega hasta volver al escritorio', async () => {
     await envolver();
 
-    await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    await fireEvent.press(screen.getByTestId('tile-clientes'));
     await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
     expect(router.push).toHaveBeenCalledTimes(1);
-    expect(router.push).toHaveBeenCalledWith('/ajustes');
+    expect(router.push).toHaveBeenCalledWith('/clientes');
   });
 
   it('doble toque rápido sobre el MISMO tile abre un solo glass', async () => {
@@ -145,13 +145,13 @@ describe('PantallaPrincipal (src/shell/PantallaPrincipal.tsx) — el shell real'
    */
   it('al recuperar el foco la puerta se reabre y el siguiente tile vuelve a navegar', async () => {
     const { unmount } = await envolver();
-    await fireEvent.press(screen.getByTestId('tile-ajustes'));
+    await fireEvent.press(screen.getByTestId('tile-clientes'));
     unmount();
 
     await envolver();
     await fireEvent.press(screen.getByTestId('tile-inteligencia'));
 
-    expect(router.push).toHaveBeenNthCalledWith(1, '/ajustes');
+    expect(router.push).toHaveBeenNthCalledWith(1, '/clientes');
     expect(router.push).toHaveBeenNthCalledWith(2, '/inteligencia');
   });
 });

@@ -4,6 +4,7 @@ import { Pressable } from 'react-native-gesture-handler';
 
 import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
 
+import { AcumuladoAnual } from './AcumuladoAnual';
 import { ChatInteligencia } from './ChatInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
@@ -210,6 +211,11 @@ export function PantallaInteligencia() {
               </View>
             ))}
           </View>
+
+          {/* ACUMULADO DEL AÑO + tope de monotributo — llegó de Contabilidad al fundirse las dos
+              pantallas (Ola 4). Va DESPUÉS del mes y antes de lo por cobrar: es la lectura larga del
+              mismo eje (cuánto facturaste), y lo por cobrar ya es otra pregunta. */}
+          <AcumuladoAnual />
 
           {/* POR COBRAR — con lo vencido resaltado, que es lo accionable. */}
           <Row testID="inteligencia-por-cobrar">

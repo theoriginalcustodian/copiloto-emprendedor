@@ -44,10 +44,7 @@ const RUTA_POR_FUNCION: Record<FuncionKey, string> = {
   gastos: '/gastos',
   presupuestos: '/presupuestos',
   clientes: '/clientes',
-  midia: '/midia',
   inteligencia: '/inteligencia',
-  contabilidad: '/contabilidad',
-  ajustes: '/ajustes',
 };
 
 export function PantallaPrincipal() {
