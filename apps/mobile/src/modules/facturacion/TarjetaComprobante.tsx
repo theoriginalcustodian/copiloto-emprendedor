@@ -2,18 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { EstadoFacturaResp } from '@copiloto/core';
 
-import { abrirLink, compartirLink } from '../../util/abrirYCompartir';
 import { useTema } from '../../theme/ThemeProvider';
 import { FilaBotones } from '../../theme/glass/campos';
+import { AccionesComprobante, DatosComprobante } from './comprobante';
 import { SeccionCobro } from './SeccionCobro';
 
 /** Tipo 13 = nota de crédito. No es una deuda de nadie: no se ofrece cobrarla. Mismo criterio que
  *  `DetalleComprobante` y que el backend, que la deja afuera de «me deben». */
 const TIPO_NOTA_CREDITO = 13;
-
-const AVISO_24H =
-  'El PDF está disponible por 24 horas. Después vas a poder descargarlo desde el portal de AFIP con el CAE.';
-const AVISO_EN_DRIVE = 'Guardada en tu Drive. Ese link no vence.';
 
 /**
  * Comprobante emitido -- `estado === 'emitida' | 'entregada'`. Tipo · punto de venta · número · CAE ·
@@ -53,27 +49,6 @@ export function TarjetaComprobante({
   const tema = useTema();
   const resultado = estado.resultado;
 
-  /**
-   * 🔴 **`guardado` es el HECHO; el ajuste "guardar en Drive" es la INTENCIÓN.** El aviso de las 24 h
-   * cuelga del hecho: con el ajuste prendido y el archivado fallado (Drive sin conectar, por ejemplo)
-   * la factura sale igual y su ÚNICO link es el de AFIP, que vence. Colgar el aviso del ajuste le
-   * haría creer al usuario que tiene una copia a salvo cuando no la tiene — peor que no avisar nunca.
-   * Es la misma forma del bug de `estado === 'emitida'` que costó una tarde: la intención no es el hecho.
-   */
-  const enDrive = estado.drive?.guardado === true && estado.drive.link != null;
-  // Drive primero: no vence. El de AfipSDK muere a las 24 h — ofrecerlo teniendo uno permanente sería
-  // darle al usuario el peor de los dos sin decírselo.
-  const link = enDrive ? (estado.drive?.link ?? null) : (estado.pdf?.url ?? null);
-  const sinLink = link == null;
-
-  async function guardar() {
-    if (link) await abrirLink(link, 'tu factura');
-  }
-
-  async function compartir() {
-    if (link) await compartirLink(link, 'tu factura');
-  }
-
   return (
     <View testID={testID} style={[styles.contenedor, { gap: tema.espacio.md }]}>
       <Text
@@ -83,25 +58,7 @@ export function TarjetaComprobante({
         Factura emitida
       </Text>
 
-      {resultado && (
-        <View style={{ gap: tema.espacio.xs }}>
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
-            Tipo de comprobante {resultado.tipoCbte} · Punto de venta {resultado.puntoVenta} · N° {resultado.nro}
-          </Text>
-          <Text
-            testID={`${testID}-cae`}
-            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: tema.tipo.grande }}
-          >
-            CAE: {resultado.cae}
-          </Text>
-          {resultado.caeVto != null && (
-            <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Vence el {resultado.caeVto}
-            </Text>
-          )}
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>Total: {estado.total}</Text>
-        </View>
-      )}
+      <DatosComprobante estado={estado} testID={testID} />
 
       {/* 🔴 «¿Ya la cobraste?» EN EL MOMENTO de emitir — contrato de Contabilidad §2.1: es lo que hace
           que el camino de menor esfuerzo (cargar el cobro apenas se factura, cuando el emprendedor se
@@ -122,44 +79,7 @@ export function TarjetaComprobante({
         />
       )}
 
-      {sinLink ? (
-        /**
-         * 🔴 **`textoTenue`, NO `peligro`. El color es parte del mensaje.**
-         *
-         * Este aviso salió en la PRIMERA emisión real desde el device (2026-07-21, factura N° 5, CAE
-         * 86290619793525): el texto decía "se emitió correctamente" y el color decía falla. Un párrafo
-         * rojo arriba de un CAE válido se lee como error aunque las palabras digan lo contrario —
-         * nadie lee un cartel rojo hasta el final.
-         *
-         * Y el costo de esa contradicción es el más caro de esta pantalla: el usuario concluye que no
-         * se emitió, vuelve a facturar, y **duplica un comprobante fiscal real**. Es exactamente lo
-         * que la sesión de backend confirmó haber vivido en producción y lo que este copy existe para
-         * evitar. Rojo queda reservado para lo que de verdad falló.
-         */
-        <Text
-          testID={`${testID}-sin-pdf`}
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-        >
-          Tu factura se emitió correctamente y el CAE de arriba es válido. El PDF no está disponible en
-          este momento -- podés descargarlo más tarde desde el portal de AFIP con ese CAE.
-        </Text>
-      ) : (
-        <>
-          <Text
-            testID={enDrive ? `${testID}-aviso-drive` : `${testID}-aviso-24h`}
-            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-          >
-            {enDrive ? AVISO_EN_DRIVE : AVISO_24H}
-          </Text>
-          <FilaBotones
-            testID={`${testID}-botones`}
-            botones={[
-              { etiqueta: 'Guardar', onPress: guardar, variante: 'primario', testID: `${testID}-guardar` },
-              { etiqueta: 'Compartir', onPress: compartir, variante: 'secundario', testID: `${testID}-compartir` },
-            ]}
-          />
-        </>
-      )}
+      <AccionesComprobante estado={estado} testID={testID} />
 
       <FilaBotones
         testID={`${testID}-nueva-factura-botones`}

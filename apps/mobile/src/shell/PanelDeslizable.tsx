@@ -21,6 +21,7 @@
  */
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -307,8 +308,16 @@ export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChang
   const estiloSpacer = { height: insets.top };
 
   return (
-    <View
-      style={[styles.raiz, { backgroundColor: tema.color.fondo }]}
+    /* El lienzo es un DEGRADÉ ASCENDENTE (`CLAUDE.md` §5): arena abajo, crema arriba. No es un
+       adorno — el fondo plano fue justamente el diagnóstico del 19/08 («insulso»), y el degradé es
+       lo que permite que las superficies de arriba no necesiten borde.
+       ⚠️ Invertirlo al estilo Quizlet (tinte arriba) SE PROBÓ Y SE DESCARTÓ el 20/08. `fondoDegradado`
+       viene `[pie, cabeza]`, así que el gradiente va de abajo hacia arriba: `start` abajo. */
+    <LinearGradient
+      colors={tema.color.fondoDegradado}
+      start={{ x: 0.5, y: 1 }}
+      end={{ x: 0.5, y: 0 }}
+      style={styles.raiz}
       testID={testID}
       /**
        * 🔴 **Con una función abierta encima, este escritorio deja de existir para el lector de
@@ -362,7 +371,7 @@ export function PanelDeslizable({ fondo, children, senalSubir, onPanelAbajoChang
           {children}
         </CristalVidrio>
       </Animated.View>
-    </View>
+    </LinearGradient>
   );
 }
 

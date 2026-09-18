@@ -23,7 +23,16 @@ interface PropsMarca {
 }
 
 const ISOTIPO_VIEWBOX = 24;
-const ISOTIPO_STROKE_BASE = 1.7;
+/**
+ * 1.3 es el grosor del sistema (`odobi-ui`): el isotipo se dibuja igual en la app, en el prototipo y
+ * en las piezas de marca. Mobile lo tenía en 1.7 y engordaba el signo.
+ *
+ * 🔴 **PLANO, un solo valor.** El `LEEME` del sistema define 1.6 en chico / 1.3 en grande; Martin
+ * cerró el plano el 2026-09-18. `logoScale` (predividir por la escala, abajo) ya mantiene el trazo
+ * ópticamente igual a cualquier tamaño — el segundo valor corregiría algo que la división corrige
+ * sola, y dos números obligan a decidir en cada uso dónde está el corte entre "chico" y "grande".
+ */
+const ISOTIPO_STROKE_BASE = 1.3;
 const ISOTIPO_TRAZOS = [
   'M11 3.5a8.5 8.5 0 1 0 0 17',
   'M11 7.5a4.5 4.5 0 1 0 0 9',

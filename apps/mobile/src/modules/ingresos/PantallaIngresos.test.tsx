@@ -11,6 +11,7 @@ jest.mock('@copiloto/core', () => {
   return {
     ...actual,
     listarIngresos: jest.fn(),
+    obtenerResumenIngresos: jest.fn(),
     registrarIngreso: jest.fn(),
     completarIngreso: jest.fn(),
     borrarIngreso: jest.fn(),
@@ -19,12 +20,20 @@ jest.mock('@copiloto/core', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { borrarIngreso, completarIngreso, listarIngresos, registrarIngreso, type Ingreso } from '@copiloto/core';
+import {
+  borrarIngreso,
+  completarIngreso,
+  listarIngresos,
+  obtenerResumenIngresos,
+  registrarIngreso,
+  type Ingreso,
+} from '@copiloto/core';
 
 import { PantallaIngresos } from './PantallaIngresos';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const listarMock = listarIngresos as jest.MockedFunction<typeof listarIngresos>;
+const resumenMock = obtenerResumenIngresos as jest.MockedFunction<typeof obtenerResumenIngresos>;
 const registrarMock = registrarIngreso as jest.MockedFunction<typeof registrarIngreso>;
 const completarMock = completarIngreso as jest.MockedFunction<typeof completarIngreso>;
 const borrarMock = borrarIngreso as jest.MockedFunction<typeof borrarIngreso>;
@@ -57,17 +66,41 @@ async function tipear(testID: string, texto: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   listarMock.mockResolvedValue({ status: 'ok', ingresos: [DICTADO, DE_FACTURA], total: '95000.00' });
+  resumenMock.mockResolvedValue({
+    status: 'ok',
+    resumen: { periodo: 'agosto', total: '95000.00', mesAnterior: '112000.00' },
+  });
   registrarMock.mockResolvedValue({ status: 'ok', ingreso: { ...DICTADO, id: 9, falta: [] } });
   completarMock.mockResolvedValue({ status: 'ok', ingreso: { ...DICTADO, id: 9, falta: [] } });
   borrarMock.mockResolvedValue({ status: 'ok' });
 });
 
 describe('PantallaIngresos — el listado', () => {
-  it('muestra el total que suma el backend', async () => {
+  it('muestra lo cobrado del mes — del ENDPOINT de resumen, no de sumar la lista', async () => {
     await montar();
 
-    await waitFor(() => expect(screen.getByTestId('ingresos-total')).toBeTruthy());
-    expect(screen.getByTestId('ingresos-total').props.children).toContain('95.000');
+    await waitFor(() => expect(screen.getByTestId('ingresos-resumen-cifra')).toBeTruthy());
+    expect(screen.getByTestId('ingresos-resumen-cifra').props.children).toContain('95.000');
+    expect(screen.getByTestId('ingresos-resumen-rotulo')).toHaveTextContent('Cobraste este mes');
+    expect(screen.getByTestId('ingresos-resumen-chip')).toHaveTextContent('Mes anterior: $112.000,00');
+  });
+
+  /**
+   * 🔴 `listarIngresos().total` suma filas recientes SIN recortar por fecha. Si el resumen no está
+   * disponible, la pantalla no puede caer a ese número: sería «lo del mes» con otra cosa adentro.
+   * Prefiere no mostrar nada.
+   */
+  it('sin resumen no inventa un total con la suma de la lista', async () => {
+    resumenMock.mockResolvedValue({ status: 'no_disponible' } as Awaited<ReturnType<typeof obtenerResumenIngresos>>);
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('ingresos-lista')).toBeTruthy());
+    expect(screen.queryByTestId('ingresos-resumen')).toBeNull();
+  });
+
+  it('el aviso de MercadoPago viaja con el número, no en el pie', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('ingresos-aviso-mercadopago')).toBeTruthy());
   });
 
   it('🔴 la procedencia se ve en TODAS las filas, también en las que anotó el emprendedor', async () => {

@@ -104,11 +104,12 @@ jest.mock('./ControlesFlotantes', () => {
  * controlar X declaran su propio jest.mock").
  */
 jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native');
+  // `Text` lo necesita el rodillo de ejemplos del vacío, que ChatView monta.
+  const { View, Text } = require('react-native');
   const entradaSalida = { duration: () => ({}) };
   return {
     __esModule: true,
-    default: { View, createAnimatedComponent: (Comp: unknown) => Comp },
+    default: { View, Text, createAnimatedComponent: (Comp: unknown) => Comp },
     createAnimatedComponent: (Comp: unknown) => Comp,
     useSharedValue: (inicial: unknown) => ({ value: inicial }),
     useAnimatedStyle: () => ({}),

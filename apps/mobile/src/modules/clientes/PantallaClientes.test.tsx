@@ -552,3 +552,28 @@ describe('ordenarAlfabetico — [CONNECT] orden client-side hasta que el store l
     expect(ordenarAlfabetico(yaOrdenados).map((c) => c.nombre)).toEqual(['Alfa', 'Beta']);
   });
 });
+
+/**
+ * El bloque de la cartera. La regla que protege: «Le vendiste a N» es el tamaño de TODA la cartera,
+ * así que buscar no puede cambiarlo — si se recalculara con el resultado de la búsqueda, escribir
+ * tres letras haría que el emprendedor "pierda" clientes de golpe.
+ */
+describe('PantallaClientes — el bloque de la cartera', () => {
+  it('muestra el tamaño de la cartera y cuántos entraron solos', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra')).toBeTruthy());
+    expect(screen.getByTestId('clientes-resumen-rotulo')).toHaveTextContent('Le vendiste a');
+    expect(screen.getByTestId('clientes-resumen-chip')).toBeTruthy();
+  });
+
+  it('🔴 buscar NO cambia el tamaño de la cartera', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra')).toBeTruthy());
+    const antes = screen.getByTestId('clientes-resumen-cifra').props.children;
+
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0 });
+    fireEvent.changeText(screen.getByTestId('clientes-buscar'), 'zzz');
+
+    await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra').props.children).toEqual(antes));
+  });
+});

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETA_CATEGORIA, formatearImporte, type ResumenGastos } from '@copiloto/core';
 
-import { Tile } from '../../theme/glass/Tile';
+import { BloqueCifra } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -17,6 +17,10 @@ import { useTema } from '../../theme/ThemeProvider';
  *
  * 🔴 **`total: "0.00"` NO es un estado de error ni un vacío**: es "no gastaste nada este mes", que es
  * una respuesta. Se muestra el cero, no un mensaje de que algo falta.
+ *
+ * Va en `BloqueCifra` porque **«Total del mes» es LA cifra de esta pantalla** — así la nombra el
+ * mapa de pantallas del sistema (`gastos`: *"Total del mes, desglose por categoría y las tres vías
+ * de alta"*). Antes era un `Tile` de vidrio: mismo dato, sin jerarquía.
  */
 
 export interface ResumenMesProps {
@@ -28,44 +32,31 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
   const sumaPorcentajes = resumen.porCategoria.reduce((a, c) => a + c.porcentaje, 0);
 
   return (
-    <Tile testID="gastos-resumen">
-      <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }} testID="gastos-resumen-periodo">
-        Gastado en {resumen.periodo}
-      </Text>
-      <Text
-        style={{ color: tema.color.texto, fontSize: tema.tipo.titulo, fontWeight: '700' }}
-        testID="gastos-resumen-total"
-      >
-        {formatearImporte(resumen.total)}
-      </Text>
-
-      {resumen.mesAnterior != null && (
-        <Text
-          style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-          testID="gastos-resumen-mes-anterior"
-        >
-          Mes anterior: {formatearImporte(resumen.mesAnterior)}
-        </Text>
-      )}
-
+    <BloqueCifra
+      testID="gastos-resumen"
+      rotulo={`Gastado en ${resumen.periodo}`}
+      cifra={formatearImporte(resumen.total)}
+      chip={resumen.mesAnterior != null ? `Mes anterior: ${formatearImporte(resumen.mesAnterior)}` : undefined}
+    >
       <View style={styles.categorias}>
         {resumen.porCategoria.map((c) => (
           <View key={c.categoria} style={styles.filaCategoria} testID={`gastos-resumen-cat-${c.categoria}`}>
             <View style={styles.encabezadoCategoria}>
-              <Text style={{ color: tema.color.texto, fontSize: tema.tipo.chico, flex: 1 }}>
+              <Text style={{ color: tema.color.bloqueTexto, fontSize: tema.tipo.chico, flex: 1 }}>
                 {ETIQUETA_CATEGORIA[c.categoria]}
               </Text>
-              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+              <Text style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}>
                 {formatearImporte(c.total)}
               </Text>
             </View>
-            <View style={[styles.barraFondo, { backgroundColor: tema.color.textoTenue + '22' }]}>
+            <View style={[styles.barraFondo, { backgroundColor: tema.color.bloqueChip }]}>
               <View
                 testID={`gastos-resumen-barra-${c.categoria}`}
                 style={[
                   styles.barra,
                   {
-                    backgroundColor: tema.color.acento,
+                    // ⚠️ ARENA, no terracota: dentro del bloque el acento no separa (ver BloqueCifra).
+                    backgroundColor: tema.color.bloqueApoyo,
                     // Sobre la suma real. Si `sumaPorcentajes` fuera 0 (todas en cero, que el backend
                     // ya filtra) la división daría NaN y la barra desaparecería sin avisar.
                     width: sumaPorcentajes > 0 ? `${(c.porcentaje / sumaPorcentajes) * 100}%` : '0%',
@@ -76,7 +67,7 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
           </View>
         ))}
       </View>
-    </Tile>
+    </BloqueCifra>
   );
 }
 

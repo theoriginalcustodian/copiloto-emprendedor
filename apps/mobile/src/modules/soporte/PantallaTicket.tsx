@@ -73,7 +73,7 @@ export function PantallaTicket({ ticketId }: PantallaTicketProps) {
   const titulo = ticket != null ? `${ticket.codigo} · ${ETIQUETA_ESTADO[ticket.estado]}` : 'Tu ticket';
 
   return (
-    <MarcoGlass titulo={titulo} icono="conversacion" testID="pantalla-ticket">
+    <MarcoGlass titulo={titulo} icono="soporte" testID="pantalla-ticket">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.sm }}

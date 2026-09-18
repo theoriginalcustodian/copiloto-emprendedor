@@ -105,7 +105,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'texto principal sobre el lienzo',
       tinta: (t) => t.color.texto,
       superficie: (t) => t.color.fondo,
-      min: { claro: 10, oscuro: 10, nocturno: 10 },
+      min: { claro: 10, oscuro: 10 },
     },
     {
       // Campos de formulario (`EnvolturaCampo.tsx:50`): `CampoSelect`, `CampoTexto`, `CampoFecha`,
@@ -114,13 +114,13 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'texto sobre superficieAlta (campos, paneles, overlays)',
       tinta: (t) => t.color.texto,
       superficie: (t) => t.color.superficieAlta,
-      min: { claro: 13.33, oscuro: 14.68, nocturno: 15.24 },
+      min: { claro: 13.33, oscuro: 14.68 },
     },
     {
       nombre: 'texto sobre superficie (campo de login, PantallaLogin.tsx:87/89)',
       tinta: (t) => t.color.texto,
       superficie: (t) => t.color.superficie,
-      min: { claro: 12.07, oscuro: 13.43, nocturno: 15.08 },
+      min: { claro: 12.07, oscuro: 13.43 },
     },
     {
       // Composer.tsx:185 — input del chat, vidrio `glass.s1→s2`. Se mide contra `s2` (el stop más
@@ -129,7 +129,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'texto sobre glass.s2 del composer (peor stop, compuesto sobre fondo)',
       tinta: (t) => t.color.texto,
       superficie: (t) => aplanar(t.glass.s2, t.color.fondo),
-      min: { claro: 13.12, oscuro: 12.88, nocturno: 14.81 },
+      min: { claro: 13.12, oscuro: 12.88 },
     },
   ],
   textoTenue: [
@@ -137,7 +137,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'textoTenue sobre el lienzo',
       tinta: (t) => t.color.textoTenue,
       superficie: (t) => t.color.fondo,
-      min: { claro: 4.7, oscuro: 5, nocturno: 5.6 },
+      min: { claro: 4.7, oscuro: 5 },
     },
     {
       // Placeholder de `CampoTexto`/`CampoSelect`/`CampoFecha`, ícono del ojo de `CampoSecreto`,
@@ -145,14 +145,14 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'textoTenue sobre superficieAlta (placeholders, paneles)',
       tinta: (t) => t.color.textoTenue,
       superficie: (t) => t.color.superficieAlta,
-      min: { claro: 5.47, oscuro: 5.23, nocturno: 5.43 },
+      min: { claro: 5.47, oscuro: 5.23 },
     },
     {
       // Composer.tsx:187 — placeholder del input, mismo vidrio que `texto` arriba, peor stop.
       nombre: 'textoTenue sobre glass.s2 del composer (peor stop)',
       tinta: (t) => t.color.textoTenue,
       superficie: (t) => aplanar(t.glass.s2, t.color.fondo),
-      min: { claro: 5.39, oscuro: 4.59, nocturno: 5.28 },
+      min: { claro: 5.39, oscuro: 4.59 },
     },
   ],
   acentoTinta: [
@@ -165,7 +165,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'acentoTinta como texto sobre el lienzo',
       tinta: (t) => t.color.acentoTinta,
       superficie: (t) => t.color.fondo,
-      min: { claro: 4.3, oscuro: 5.6, nocturno: 6.29 },
+      min: { claro: 4.3, oscuro: 5.6 },
     },
     {
       // Único caso encontrado por el censo donde `acentoTinta` NO pinta sobre `fondo`:
@@ -173,7 +173,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'acentoTinta sobre superficieAlta',
       tinta: (t) => t.color.acentoTinta,
       superficie: (t) => t.color.superficieAlta,
-      min: { claro: 5.06, oscuro: 5.82, nocturno: 6.04 },
+      min: { claro: 5.06, oscuro: 5.82 },
     },
   ],
   peligro: [
@@ -181,7 +181,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'peligro sobre el lienzo',
       tinta: (t) => t.color.peligro,
       superficie: (t) => t.color.fondo,
-      min: { claro: 3.82, oscuro: 8.22, nocturno: 9.2 },
+      min: { claro: 3.82, oscuro: 8.22 },
     },
     {
       // DetallePresupuesto.tsx (4 usos).
@@ -190,7 +190,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       superficie: (t) => t.color.superficieAlta,
       // 🔴 Deuda conocida en `claro` (4.42 < 4.5 AA), igual que otros pares de este archivo — el
       // piso protege contra EMPEORAR, no exige arreglar hoy.
-      min: { claro: 4.42, oscuro: 8.51, nocturno: 8.83 },
+      min: { claro: 4.42, oscuro: 8.51 },
     },
     {
       // Píldora Descartar del HUD (`FilaBotones.tsx:52`, bg `:100`) y `PasoResumen.tsx:110`
@@ -199,7 +199,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'peligro sobre peligroFondo (compuesto sobre fondo)',
       tinta: (t) => t.color.peligro,
       superficie: (t) => aplanar(t.color.peligroFondo, t.color.fondo),
-      min: { claro: 3.38, oscuro: 6.79, nocturno: 7.95 },
+      min: { claro: 3.38, oscuro: 6.79 },
     },
   ],
   exito: [
@@ -207,14 +207,14 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'exito sobre el lienzo',
       tinta: (t) => t.color.exito,
       superficie: (t) => t.color.fondo,
-      min: { claro: 3.77, oscuro: 10.92, nocturno: 12.21 },
+      min: { claro: 3.77, oscuro: 10.92 },
     },
     {
       // DetallePresupuesto.tsx:404, SeccionMisComprobantes.tsx:324 (condicional junto con `peligro`).
       nombre: 'exito sobre superficieAlta',
       tinta: (t) => t.color.exito,
       superficie: (t) => t.color.superficieAlta,
-      min: { claro: 4.36, oscuro: 11.3, nocturno: 11.73 },
+      min: { claro: 4.36, oscuro: 11.3 },
     },
   ],
   acentoTexto: [
@@ -229,7 +229,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'acentoTexto sobre la superficie de acento',
       tinta: (t) => t.color.acentoTexto,
       superficie: (t) => t.color.acentoSuperficie,
-      min: { claro: 5.4, oscuro: 5.4, nocturno: 5.4 },
+      min: { claro: 5.4, oscuro: 5.4 },
     },
     {
       // La burbuja del usuario lleva el texto del mensaje: se mide contra su stop MÁS CLARO, que es
@@ -237,7 +237,7 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'acentoTexto sobre la burbuja del usuario (peor stop)',
       tinta: (t) => t.color.acentoTexto,
       superficie: (t) => t.glass.ub1,
-      min: { claro: 5.4, oscuro: 5.4, nocturno: 5.4 },
+      min: { claro: 5.4, oscuro: 5.4 },
     },
     // 🔴 Los 2 casos de abajo existen por el hallazgo de 2026-09-08
     // (`hallazgo_backend-a-planificacion_censo-acentoTexto-2-consumidores-sin-cubrir.md`): los pares
@@ -250,25 +250,25 @@ const SUPERFICIES: Record<string, Par[]> = {
       nombre: 'acentoTexto sobre accent puro (isotipo de BotonVoz, offset final del gradiente)',
       tinta: (t) => t.color.acentoTexto,
       superficie: (t) => t.color.acento,
-      min: { claro: 3.16, oscuro: 3.16, nocturno: 3.16 },
+      min: { claro: 3.16, oscuro: 3.16 },
     },
     {
       nombre: "acentoTexto sobre accent puro (isotipo de Marca, tono='acento')",
       tinta: (t) => t.color.acentoTexto,
       superficie: (t) => t.color.acento,
-      min: { claro: 3.16, oscuro: 3.16, nocturno: 3.16 },
+      min: { claro: 3.16, oscuro: 3.16 },
     },
   ],
 };
 
 const PARES: Par[] = Object.values(SUPERFICIES).flat();
 
-describe('contraste WCAG de las 3 pieles', () => {
+describe('contraste WCAG de las 2 pieles', () => {
   const pieles = Object.keys(SKINS) as NombreSkin[];
 
-  it('las 3 pieles existen — control del instrumento', () => {
+  it('las 2 pieles existen — control del instrumento', () => {
     // Sin esto, un `SKINS` vacío haría que TODOS los casos de abajo pasen por no ejecutarse nunca.
-    expect(pieles.sort()).toEqual(['claro', 'nocturno', 'oscuro']);
+    expect(pieles.sort()).toEqual(['claro', 'oscuro']);
   });
 
   for (const par of PARES) {

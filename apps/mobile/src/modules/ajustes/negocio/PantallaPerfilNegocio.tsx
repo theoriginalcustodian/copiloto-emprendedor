@@ -464,7 +464,7 @@ export function PantallaPerfilNegocio() {
           {/* Los datos fiscales viven en otra pantalla a propósito — decirlo evita que el
               emprendedor los busque acá y concluya que faltan. */}
           <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-            Tu CUIT, razón social y condición de IVA se cargan en Ajustes → Facturación AFIP.
+            Tu CUIT, razón social y condición de IVA se cargan en Ajustes → Facturación ARCA.
           </Text>
         </ScrollFormulario>
       )}

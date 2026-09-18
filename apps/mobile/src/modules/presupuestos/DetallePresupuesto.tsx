@@ -440,7 +440,7 @@ export function DetallePresupuesto({
           )}
           {estadoFacturar === 'falta_perfil' && (
             <Text testID={`${testID}-falta-perfil`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
-              Antes de facturar tenés que cargar tu CUIT en Ajustes → Facturación AFIP.
+              Antes de facturar tenés que cargar tu CUIT en Ajustes → Facturación ARCA.
             </Text>
           )}
           {estadoFacturar === 'error' && (

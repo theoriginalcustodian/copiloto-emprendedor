@@ -11,11 +11,13 @@ require('react-native-gesture-handler/jestSetup');
 // stub mínimo y SELF-CONTAINED provee exactamente la API que el codigo usa, sin tocar nativo. El
 // comportamiento real del gesto/animacion se valida en el device (Fase 6) + lo valido el spike.
 jest.mock('react-native-reanimated', () => {
-  const { View } = require('react-native');
+  const { View, Text } = require('react-native');
   // gesture-handler llama `Reanimated.default.createAnimatedComponent` al CARGAR `GestureDetector`.
   return {
     __esModule: true,
-    default: { View, createAnimatedComponent: (Comp) => Comp },
+    // `Animated.Text` lo usa el rodillo de ejemplos del chat: el stub tiene que exponerlo o el
+    // componente renderiza `undefined` y el error apunta al hijo, no al mock.
+    default: { View, Text, createAnimatedComponent: (Comp) => Comp },
     createAnimatedComponent: (Comp) => Comp,
     useSharedValue: (inicial) => ({ value: inicial }),
     useAnimatedStyle: () => ({}),
@@ -67,7 +69,7 @@ jest.mock('react-native-worklets', () => ({
 jest.mock('react-native-gesture-handler', () => {
   const actual = jest.requireActual('react-native-gesture-handler');
   const React = require('react');
-  const { View } = require('react-native');
+  const { View, Text } = require('react-native');
 
   const FlatList = React.forwardRef(function FlatList(props, ref) {
     const { data, renderItem, keyExtractor, ListEmptyComponent, testID, contentContainerStyle } = props;
@@ -136,7 +138,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // El SVG real se ve en el device. Hueco del ENTORNO de test, no del producto.
 jest.mock('react-native-svg', () => {
   const React = require('react');
-  const { View } = require('react-native');
+  const { View, Text } = require('react-native');
   const paso = (nombre) => {
     const Comp = ({ children, ...props }) => React.createElement(View, props, children);
     Comp.displayName = nombre;
@@ -151,6 +153,7 @@ jest.mock('react-native-svg', () => {
     G: paso('G'),
     Path: paso('Path'),
     Circle: paso('Circle'),
+    Ellipse: paso('Ellipse'),
     Rect: paso('Rect'),
     Line: paso('Line'),
     ClipPath: paso('ClipPath'),
@@ -199,23 +202,17 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn().mockResolvedValue({ canceled: true, assets: null }),
 }));
 
-// `useFonts` de `@expo-google-fonts/*` (que `app/_layout.tsx` usa para cargar Space Grotesk +
-// JetBrains Mono) hace un `setState` ASÍNCRONO al terminar la carga (`setLoaded`), fuera de `act()`.
+// `useFonts` de `@expo-google-fonts/*` (que `app/_layout.tsx` usa para cargar Inter) hace un
+// `setState` ASÍNCRONO al terminar la carga (`setLoaded`), fuera de `act()`.
 // En jest eso ensucia la consola con "environment not configured to support act(...)" y, peor,
 // introduce una actualización async no determinista que hace FLAKEAR cualquier test que monte el
 // layout raíz. Mockeamos `useFonts` para que devuelva `[true]` SÍNCRONO (fuentes "ya cargadas"): el
 // layout renderiza contenido de una, sin update async. Las constantes de fuente son sólo claves de
 // `fontFamily`; en test su valor real no importa. Hueco del ENTORNO de test, no del producto.
-jest.mock('@expo-google-fonts/space-grotesk', () => ({
+jest.mock('@expo-google-fonts/inter', () => ({
   useFonts: () => [true, null],
-  SpaceGrotesk_400Regular: 'SpaceGrotesk_400Regular',
-  SpaceGrotesk_500Medium: 'SpaceGrotesk_500Medium',
-  SpaceGrotesk_600SemiBold: 'SpaceGrotesk_600SemiBold',
-  SpaceGrotesk_700Bold: 'SpaceGrotesk_700Bold',
-}));
-jest.mock('@expo-google-fonts/jetbrains-mono', () => ({
-  JetBrainsMono_400Regular: 'JetBrainsMono_400Regular',
-  JetBrainsMono_500Medium: 'JetBrainsMono_500Medium',
+  Inter_400Regular: 'Inter_400Regular',
+  Inter_500Medium: 'Inter_500Medium',
 }));
 
 /**

@@ -12,6 +12,7 @@ import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
+import { BloqueCifra } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
 
@@ -71,11 +72,29 @@ export interface PantallaClientesProps {
   clienteIdInicial?: number;
 }
 
+/** ¿La fecha cae en el mes corriente? Copiado de la app web para que las dos cuenten igual. */
+function esDeEsteMes(iso: string): boolean {
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return false;
+  const ahora = new Date();
+  return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
+}
+
 export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [total, setTotal] = useState(0);
+  /**
+   * El tamaño de la cartera **entera**, congelado mientras se busca. «Le vendiste a N clientes» es
+   * el tamaño de TODA la cartera: si se recalculara con el resultado de una búsqueda, escribir tres
+   * letras haría que el emprendedor "pierda" clientes de golpe.
+   *
+   * ⚠️ `agregadosEsteMes` **subcuenta**: sale de filtrar la página YA CARGADA, porque `/clientes` no
+   * devuelve el agregado del tenant. Con la cartera paginada, los derivados que quedaron fuera de la
+   * página no se cuentan. Mismo hueco que tiene la app web — pedido a backend en curso.
+   */
+  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number } | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [busquedaAplicada, setBusquedaAplicada] = useState('');
   const [refrescando, setRefrescando] = useState(false);
@@ -106,6 +125,13 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
           setClientes(res.clientes);
           setTotal(res.total);
           setEstado('ok');
+          if (busquedaAplicada === '') {
+            setCarteraBase({
+              total: res.total,
+              agregadosEsteMes: res.clientes.filter((c) => c.origen === 'derivado' && esDeEsteMes(c.creadoEn))
+                .length,
+            });
+          }
         })
         .catch(() => {
           if (vivo.current) setEstado('error');
@@ -254,6 +280,20 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
             />
           ) : (
             <>
+              {/* El bloque de esta pantalla: acá la cifra NO es plata, es el TAMAÑO de la cartera.
+                  Y el chip no es decoración — el mapa de pantallas lo marca esencial: «si el usuario
+                  no sabe que la cartera se arma sola, ver nombres que no cargó se lee como error». */}
+              <BloqueCifra
+                testID="clientes-resumen"
+                rotulo="Le vendiste a"
+                cifra={`${carteraBase?.total ?? total} ${(carteraBase?.total ?? total) === 1 ? 'cliente' : 'clientes'}`}
+                chip={
+                  (carteraBase?.agregadosEsteMes ?? 0) === 1
+                    ? '1 se agregó solo este mes'
+                    : `${carteraBase?.agregadosEsteMes ?? 0} se agregaron solos este mes`
+                }
+              />
+
               <FilaBotones
                 testID="clientes-acciones"
                 botones={[

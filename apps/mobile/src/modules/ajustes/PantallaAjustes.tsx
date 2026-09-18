@@ -57,7 +57,7 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   // escritorio (`doc_search`, catálogo viejo de 11 nombres, sin uno propio para "trámite/alta ante
   // ARCA"). El set de 21 SÍ tiene uno distinto (`perfilFiscal`, escudo con check) -- usarlo separa la
   // función (Facturación) de su configuración (esta pantalla), que es más preciso que compartir.
-  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: 'perfilFiscal' },
+  { key: 'facturacionAfip', label: 'Facturación ARCA', icono: 'perfilFiscal' },
   // Antes `folder` (la carpeta que agrupa), heredado del escritorio. `appsConectadas` es el nombre
   // propio del set de 21 para este mismo concepto -- la pantalla es la misma, sólo cambió el glifo.
   { key: 'apps', label: 'Apps conectadas', icono: 'appsConectadas' },

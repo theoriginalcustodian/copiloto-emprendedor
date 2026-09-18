@@ -113,8 +113,8 @@ export function PantallaLogin() {
       >
         <View style={[styles.marca, { gap: tema.espacio.sm, marginBottom: tema.espacio.xl }]}>
           <Marca size={76} />
-          {/* ODOBI hito 3 (DoD §2.6) — el wordmark es la marca en su forma más literal: usa
-              `fuente.display` (NeueEinstellung Bold), no `fuente.uiBold` como el resto de la UI. */}
+          {/* El wordmark es la marca en su forma más literal: usa `fuente.display` (Plus Jakarta
+              Sans Bold), no `fuente.uiBold` como el resto de la UI. */}
           <Text
             style={[
               styles.titulo,

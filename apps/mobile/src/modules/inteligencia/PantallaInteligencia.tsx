@@ -10,6 +10,7 @@ import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
+import { BloqueCifra } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -157,15 +158,37 @@ export function PantallaInteligencia() {
             />
           }
         >
-          {/* CAJA — el número grande, lo primero que se mira. */}
-          <View testID="inteligencia-caja">
-            <Text style={{ color: tema.color.textoTenue, fontFamily: tema.fuente.mono, fontSize: tema.tipo.chico, letterSpacing: 1.2 }}>
-              EN CAJA
-            </Text>
-            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiBold, fontSize: 34 }}>
-              {kpi(portada.caja.saldo)}
-            </Text>
-          </View>
+          {/* CAJA — LA cifra de esta pantalla, en el bloque de máximo contraste.
+              El rótulo es «Saldo en caja», tal como lo dice el prototipo: no se inventa un nombre.
+              Entró/Salió viven ADENTRO del bloque, también como en el prototipo — son la lectura
+              del saldo, no dos KPIs más de la grilla de abajo. */}
+          <BloqueCifra
+            testID="inteligencia-caja"
+            rotulo="Saldo en caja"
+            cifra={kpi(portada.caja.saldo)}
+            // ⚠️ FALTA EL CHIP «Al 19 de agosto» del prototipo: `CajaPortada` sólo trae `saldo` y
+            // `moneda`, sin fecha de corte. No se inventa una fecha — un saldo con una fecha
+            // fabricada es peor que un saldo sin fecha. Pedido a backend: ver `mobile-coherencia.md`
+            // Parte 2 · B-10.
+          >
+            <View style={styles.filaEntre}>
+              {(
+                [
+                  ['Entró', portada.mes.ingresos],
+                  ['Salió', portada.mes.gastos],
+                ] as const
+              ).map(([etiqueta, valor]) => (
+                <View key={etiqueta} style={styles.bloqueCelda} testID={`inteligencia-caja-${etiqueta.toLowerCase()}`}>
+                  <Text style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}>{etiqueta}</Text>
+                  <Text
+                    style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.grande }}
+                  >
+                    {kpi(valor)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </BloqueCifra>
 
           {/* EL MES — cinco números, en una grilla de dos columnas. */}
           <Text style={rotulo(tema)}>ESTE MES</Text>
@@ -310,5 +333,6 @@ const styles = StyleSheet.create({
   serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
   serieCol: { alignItems: 'center', gap: 4 },
   serieBarras: { flexDirection: 'row', gap: 3, alignItems: 'flex-end' },
+  bloqueCelda: { flex: 1, gap: 2 },
   barra: { width: 12, borderRadius: 3 },
 });
