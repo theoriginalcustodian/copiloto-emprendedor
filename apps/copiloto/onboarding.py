@@ -217,10 +217,8 @@ class GoTrueAdmin:
             json=cambios,
         )
         if 400 <= resp.status_code < 500:
-            try:
-                cuerpo = resp.json()
-            except ValueError:
-                cuerpo = {}
+            es_json = "json" in resp.headers.get("content-type", "")
+            cuerpo = resp.json() if es_json else {}
             raise GoTrueUserError(str(cuerpo.get("error_code") or cuerpo.get("code") or "desconocido"),
                                   resp.status_code)
         resp.raise_for_status()
