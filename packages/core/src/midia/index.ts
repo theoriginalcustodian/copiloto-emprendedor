@@ -11,8 +11,9 @@ export type { ElementoTaza, RolTaza } from './ilustracionTaza';
 export {
   CATEGORIAS,
   ETIQUETA_CATEGORIA_TARJETA,
-  categoriaDe,
   filtrarPorCategoria,
-} from './categoriaTarjeta';
-export type { CategoriaTarjeta } from './categoriaTarjeta';
+  hayCategorias,
+  tarjetasCriticas,
+} from './filtroTablero';
+export type { CategoriaTarjeta } from './filtroTablero';
 export { chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';

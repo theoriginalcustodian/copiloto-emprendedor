@@ -18,6 +18,8 @@ import {
   CATEGORIAS,
   ETIQUETA_CATEGORIA_TARJETA,
   filtrarPorCategoria,
+  hayCategorias,
+  tarjetasCriticas,
   type CategoriaTarjeta,
   type EventoCalendario,
   type IdSolapa,
@@ -125,18 +127,21 @@ function Solapas({ activa, onCambiar }: { activa: IdSolapa; onCambiar: (id: IdSo
  * Los chips de categoría del prototipo. Filtran la solapa activa; **«Todo» es el default y no
  * filtra**.
  *
- * ⚠️ De qué categoría es cada tarjeta lo deriva el frontend hoy — ver `categoriaTarjeta.ts` y el
- * punto B-3 del pedido a backend. Los chips en sí no dependen de eso: el día que la categoría viaje
- * en la tarjeta, esto no cambia.
+ * Filtran por `t.categoria`, que decide el detector del backend (BL-J5, K-06) — la vista no deduce
+ * nada. Con un backend previo al campo (ninguna tarjeta trae categoría) no se dibujan: un chip que
+ * filtra a vacío mentiría.
  */
 function ChipsCategoria({
   activa,
   onCambiar,
+  tablero,
 }: {
   activa: CategoriaTarjeta;
   onCambiar: (c: CategoriaTarjeta) => void;
+  tablero: TableroMiDia | null;
 }) {
   const tema = useTema();
+  if (!hayCategorias(tablero)) return null;
   return (
     <ScrollView
       horizontal
@@ -181,20 +186,14 @@ function ChipsCategoria({
   );
 }
 
-/**
- * El contador del prototipo: «3 para hoy · 1 en curso».
- *
- * ⚠️ **Falta «· 1 crítico», y no se inventa.** La criticidad es una propiedad de la regla que hoy no
- * viaja en la tarjeta (B-3). Deducirla del nombre de la regla sería decidir, desde la vista, que un
- * CAE por vencer urge más que un margen negativo — una jerarquía sobre el negocio de otro. Por el
- * mismo motivo no está el **banner de alerta crítica** separado que el prototipo pone arriba.
- */
+/** El contador del prototipo: «3 para hoy · 1 en curso · 1 crítico». */
 function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
   const tema = useTema();
   if (tablero == null) return null;
   const cuenta = (id: IdSolapa) => tablero.solapas.find((s) => s.id === id)?.tarjetas.length ?? 0;
   const paraHoy = cuenta('para_hoy');
   const enCurso = cuenta('haciendo');
+  const criticas = tarjetasCriticas(tablero).length;
   if (paraHoy === 0 && enCurso === 0) return null;
 
   return (
@@ -207,8 +206,41 @@ function ContadorTablero({ tablero }: { tablero: TableroMiDia | null }) {
         paddingTop: 8,
       }}
     >
-      {paraHoy} para hoy · {enCurso} en curso
+      {paraHoy} para hoy · {enCurso} en curso{criticas > 0 ? ` · ${criticas} crítico${criticas === 1 ? '' : 's'}` : ''}
     </Text>
+  );
+}
+
+/**
+ * El banner de alerta crítica (`.alerta` del prototipo): arriba de las solapas porque es transversal a
+ * los tres estados. Sólo para `criticidad: 'critico'` — lo que ROMPE el negocio; usa el bloque (que ya
+ * significa peso) en vez de un color de alarma. Sin tarjeta crítica no existe.
+ */
+function BannerCritico({ tablero }: { tablero: TableroMiDia | null }) {
+  const tema = useTema();
+  const criticas = tarjetasCriticas(tablero);
+  if (criticas.length === 0) return null;
+  return (
+    <View
+      testID="midia-alerta"
+      accessibilityRole="alert"
+      style={[styles.alerta, { backgroundColor: tema.color.bloque, borderRadius: tema.radio.lg }]}
+    >
+      {criticas.map((t) => (
+        <View key={t.id} testID={`midia-alerta-${t.id}`} style={styles.alertaItem}>
+          <Text style={{ color: tema.color.bloqueTexto, fontFamily: tema.fuente.uiMedium, fontSize: tema.tipo.base }}>
+            {t.texto}
+          </Text>
+          {t.verbo != null && (
+            <View style={[styles.alertaAccion, { borderColor: tema.color.bloqueApoyo, borderRadius: tema.radio.completo }]}>
+              <Text style={{ color: tema.color.bloqueApoyo, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+                {t.verbo}
+              </Text>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -343,9 +375,11 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
 
         <ContadorTablero tablero={tablero} />
 
+        <BannerCritico tablero={tablero} />
+
         <Solapas activa={solapaActiva} onCambiar={setSolapaActiva} />
 
-        <ChipsCategoria activa={categoria} onCambiar={setCategoria} />
+        <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
 
         {estado === 'cargando' && (
           <View style={styles.centro}>
@@ -580,6 +614,14 @@ function TarjetaMiDiaRow({
           >
             {tarjeta.texto}
           </Text>
+          {expandida && tarjeta.verbo != null && (
+            <Text
+              testID={`midia-tarjeta-${tarjeta.id}-verbo`}
+              style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}
+            >
+              {tarjeta.verbo}
+            </Text>
+          )}
           {expandida && detalle !== '' && (
             <Text testID={`midia-tarjeta-${tarjeta.id}-detalle`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               {detalle}
@@ -608,6 +650,9 @@ const styles = StyleSheet.create({
   solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  alerta: { marginHorizontal: 16, marginTop: 12, padding: 16, gap: 12 },
+  alertaItem: { gap: 8, alignItems: 'flex-start' },
+  alertaAccion: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 4 },
   solapaPresionable: { flexGrow: 1 },
   solapa: {
     minHeight: 0,

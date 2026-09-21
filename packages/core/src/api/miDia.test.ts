@@ -83,6 +83,39 @@ describe('leerTablero — el camino bueno', () => {
   });
 });
 
+describe('leerTablero — BL-J5 (categoria / criticidad / verbo, aditivos)', () => {
+  it('lee los tres campos que manda el backend', async () => {
+    const cruda = { ...TARJETA_CRUDA, categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo' };
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
+
+    const res = await leerTablero();
+
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({
+      categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo',
+    });
+  });
+
+  it('🔴 fixture vieja (sin los campos) sigue parseando: null, nunca inventados', async () => {
+    responder = () => respuesta(200, TABLERO_VIVO);
+
+    const res = await leerTablero();
+
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({ categoria: null, criticidad: null, verbo: null });
+  });
+
+  it('un valor vacío no se inventa: verbo "" → null', async () => {
+    const cruda = { ...TARJETA_CRUDA, verbo: '  ', categoria: '' };
+    responder = () => respuesta(200, { solapas: [{ id: 'para_hoy', titulo: 'Para hoy', tarjetas: [cruda] }] });
+
+    const res = await leerTablero();
+
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    expect(res.tablero.solapas[0].tarjetas[0]).toMatchObject({ categoria: null, verbo: null });
+  });
+});
+
 describe('leerTablero — lo que NO inventa', () => {
   it('🔴 un `200` con el HTML del SPA es `no_disponible`, NO un tablero vacío', async () => {
     responder = () => respuesta(200, '<!doctype html><html><body>app</body></html>');

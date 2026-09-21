@@ -21,7 +21,7 @@ import {
 
 import { Button, Skeleton } from '../../design-system';
 import { EstadoVacio } from '../../design-system/EstadoVacio';
-import { ChipsCategoria, ContadorTablero } from './ChipsCategoria';
+import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
 import { PortadaNegocio } from './PortadaNegocio';
 import './midia.css';
 
@@ -168,6 +168,8 @@ export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
 
       <ContadorTablero tablero={tablero} />
 
+      <BannerCritico tablero={tablero} />
+
       <PanelCalendario estado={estadoCalendario} calendario={calendario} />
 
       <div className="midia-screen__solapas" data-testid="midia-solapas">
@@ -188,7 +190,7 @@ export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
         })}
       </div>
 
-      <ChipsCategoria activa={categoria} onCambiar={setCategoria} />
+      <ChipsCategoria activa={categoria} onCambiar={setCategoria} tablero={tablero} />
 
       {error != null && (
         <div className="midia-screen__error" data-testid="midia-error" role="alert">
@@ -327,6 +329,11 @@ function TarjetaMiDiaRow({
         aria-label={expandida ? `${tarjeta.texto}, contraer` : `${tarjeta.texto}, expandir`}
       >
         <p className={`midia-tarjeta__frase${expandida ? '' : ' midia-tarjeta__frase--clamp'}`}>{tarjeta.texto}</p>
+        {expandida && tarjeta.verbo != null && (
+          <p className="midia-tarjeta__verbo" data-testid={`midia-tarjeta-${tarjeta.id}-verbo`}>
+            {tarjeta.verbo}
+          </p>
+        )}
         {expandida && detalle !== '' && (
           <p className="midia-tarjeta__detalle" data-testid={`midia-tarjeta-${tarjeta.id}-detalle`}>
             {detalle}

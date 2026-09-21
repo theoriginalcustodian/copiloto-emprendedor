@@ -172,6 +172,38 @@
   margin: 0;
 }
 
+.midia-tarjeta__verbo {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.midia-alerta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.midia-alerta__texto {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.midia-alerta__accion {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
 .midia-tarjeta__acciones {
   display: flex;
   gap: 8px;
