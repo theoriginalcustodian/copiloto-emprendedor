@@ -408,6 +408,19 @@ def _ensure_modo_ceremonia(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
 
 
+def _ensure_telefono_email(conn) -> None:
+    """`copiloto_perfil_negocio.telefono` y `.email` `text NOT NULL DEFAULT ''` — contacto comercial
+    del negocio (K-05, BL-J10). Distinto del perfil fiscal (`afip_perfil`). `DEFAULT ''` es lo correcto
+    para las filas que ya existían: ninguna declaró nunca un contacto, y `''` es «sin cargar», igual
+    que el resto de los textos del perfil. Corre ANTES del pase estándar (mismo motivo que las demás
+    `_ensure_*`: el anti-colisión aborta si una columna declarada falta en la tabla viva)."""
+    cur = conn.cursor()
+    for col in ("telefono", "email"):
+        cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_perfil_negocio "
+                    f"ADD COLUMN IF NOT EXISTS {col} text NOT NULL DEFAULT '';")
+    print(f"OK {SCHEMA}.copiloto_perfil_negocio.telefono/.email (idempotente)", flush=True)
+
+
 def _ensure_nacio_completo(conn) -> None:
     """`copiloto_cobros.nacio_completo boolean` — ¿el ingreso entró completo **de una**?
 
@@ -557,6 +570,7 @@ def provision(conn) -> dict:
     _ensure_clientes_contacto_drop(conn)            # paso 2/2: borra `contacto` (OK operador 2026-08-04).
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
+    _ensure_telefono_email(conn)                    # ídem para `copiloto_perfil_negocio.telefono/.email`.
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).

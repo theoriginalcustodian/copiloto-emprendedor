@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
@@ -52,10 +53,15 @@ class PerfilBody(BaseModel):
     a_quien: str | None = None
     nombre_comercial: str | None = None
     horario_atencion: str | None = None
+    telefono: str | None = None
+    email: str | None = None
     formalidad: str | None = None
     largo_respuesta: str | None = None
     nombre_copiloto: str | None = None
     modo_ceremonia: str | None = None
+
+
+_EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
 
 def _validar_perfil(body: PerfilBody) -> dict:
@@ -83,6 +89,18 @@ def _validar_perfil(body: PerfilBody) -> dict:
         if campo in cambios and len(cambios[campo]) > tope:
             raise HTTPException(status_code=400,
                                 detail=f"{campo} no puede superar los {tope} caracteres")
+    # Contacto comercial (K-05): texto libre validado LAXO. `""` vacía el campo (ausente = no tocar),
+    # así que sólo se valida el formato cuando hay algo escrito.
+    tel = cambios.get("telefono", "").strip()
+    if tel and len(re.sub(r"\D", "", tel)) < 8:
+        raise HTTPException(status_code=400, detail="telefono tiene que tener al menos 8 dígitos")
+    mail = cambios.get("email", "").strip()
+    if mail and not _EMAIL.fullmatch(mail):
+        raise HTTPException(status_code=400,
+                            detail="email no es una dirección válida (falta el @ o el dominio)")
+    for campo in ("telefono", "email"):
+        if campo in cambios:
+            cambios[campo] = cambios[campo].strip()
     return cambios
 
 

@@ -258,6 +258,32 @@ def test_perfil_texto_demasiado_largo_es_400():
     assert cli.post("/perfil-negocio", json={"que_vende": "x" * 501}).status_code == 400
 
 
+@pytest.mark.parametrize("campo,valor,msg", [
+    ("telefono", "590-63", "al menos 8 dígitos"),
+    ("telefono", "abc", "al menos 8 dígitos"),
+    ("email", "contacto.elgalpon.com.ar", "falta el @ o el dominio"),
+    ("email", "contacto@sinpunto", "falta el @ o el dominio"),
+    ("email", "con tacto@x.com", "falta el @ o el dominio"),
+])
+def test_K05_contacto_invalido_es_400_accionable_y_NO_escribe(campo, valor, msg):
+    cli, _, _, perfiles = _app()
+    r = cli.post("/perfil-negocio", json={campo: valor})
+    assert r.status_code == 400 and msg in r.json()["detail"]
+    assert perfiles == {}
+
+
+def test_K05_contacto_valido_se_guarda_recortado_y_un_POST_viejo_no_lo_toca():
+    cli, *_ = _app()
+    r = cli.post("/perfil-negocio", json={"telefono": " 341 590 6309 ", "email": "contacto@elgalpon.com.ar"})
+    assert r.json()["perfil"]["telefono"] == "341 590 6309"
+    # Cliente viejo: no manda los campos nuevos -> siguen intactos.
+    r = cli.post("/perfil-negocio", json={"formalidad": "formal"})
+    assert r.json()["perfil"]["telefono"] == "341 590 6309"
+    assert r.json()["perfil"]["email"] == "contacto@elgalpon.com.ar"
+    # `""` explícito vacía (y no se valida el formato de un vacío).
+    assert cli.post("/perfil-negocio", json={"telefono": ""}).json()["perfil"]["telefono"] == ""
+
+
 # --- presupuestos: creación ---------------------------------------------------
 
 def test_crear_presupuesto_calcula_el_total_e_ignora_el_que_mande_el_cliente():

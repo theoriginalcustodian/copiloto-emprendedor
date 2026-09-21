@@ -89,3 +89,20 @@ def test_aislamiento_upsert_de_A_no_toca_el_perfil_de_B(conn_de_tenant, tenants)
     PerfilNegocioStore(conn_de_tenant(b), b).upsert({"nombre_comercial": "Secreto de B"})
     PerfilNegocioStore(conn_de_tenant(a), a).upsert({"nombre_comercial": "Pisado por A"})
     assert PerfilNegocioStore(conn_de_tenant(b), b).get()["nombre_comercial"] == "Secreto de B"
+
+
+@necesita_pg
+def test_K05_telefono_y_email_persisten_defaultean_a_vacio_y_son_del_tenant(conn_de_tenant, tenants):
+    a, b = tenants
+    sa = PerfilNegocioStore(conn_de_tenant(a), a)
+    assert sa.upsert({"nombre_comercial": "A"})["telefono"] == ""      # default de fila nueva
+    sa.upsert({"telefono": "341 590 6309", "email": "a@a.com"})
+    sb = PerfilNegocioStore(conn_de_tenant(b), b)
+    assert sb.get() is None                                            # A no aparece en B
+    sb.upsert({"telefono": "11 5555 0000", "email": "b@b.com"})
+    # Adversarial: B escribió DESPUES y A sigue viendo lo suyo; ninguno pisó al otro.
+    assert sa.get()["telefono"] == "341 590 6309" and sa.get()["email"] == "a@a.com"
+    assert sb.get()["telefono"] == "11 5555 0000" and sb.get()["email"] == "b@b.com"
+    # Un upsert parcial de A que no menciona el contacto no lo borra.
+    sa.upsert({"formalidad": "formal"})
+    assert sa.get()["telefono"] == "341 590 6309"

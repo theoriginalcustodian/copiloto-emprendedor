@@ -64,6 +64,8 @@
     "a_quien text NOT NULL DEFAULT 'ambos'",
     "nombre_comercial text NOT NULL DEFAULT ''",
     "horario_atencion text NOT NULL DEFAULT ''",
+    "telefono text NOT NULL DEFAULT ''",
+    "email text NOT NULL DEFAULT ''",
     "formalidad text NOT NULL DEFAULT 'cercano'",
     "largo_respuesta text NOT NULL DEFAULT 'breve'",
     "nombre_copiloto text NOT NULL DEFAULT ''",
