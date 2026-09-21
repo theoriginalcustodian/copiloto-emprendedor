@@ -96,6 +96,8 @@ MAX_REFRESH_CYCLES = int(os.environ.get("MP_REFRESH_MAX_CYCLES", 20))
 # tenants (CX33 8GB); un upload gigante de una tenant autenticada = OOM para todas. 25 MB = límite
 # real de Groq Whisper (un archivo mayor lo rechazaría igual). Parametrizable.
 MAX_AUDIO_BYTES = int(os.environ.get("MAX_AUDIO_BYTES", 25 * 1024 * 1024))
+# K-10: formularios que pueden dictar (etiqueta de telemetría de `POST /transcribir`).
+CONTEXTOS_TRANSCRIBIR = frozenset({"gasto", "ingreso", "presupuesto", "cliente"})
 
 # Mismo criterio que MAX_AUDIO_BYTES: cap ANTES de cargar en RAM en el front-door compartido.
 # 10 MB alcanza de sobra para una foto de celular de un ticket (contrato POST /chat/foto §1).
@@ -714,15 +716,10 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             raw_update={"session_id": msg.session_id, "text": msg.text, "kind": msg.kind})
         return {"wf_id": wf_id, "accepted": wf_id is not None}
 
-    @app.post("/chat/audio")
-    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
-                         cliente_id: str = Depends(require_tenant)) -> dict:
-        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
-        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
-        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
-        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
-        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
-        rutas `def`)."""
+    async def _transcribir_audio(audio: UploadFile) -> str:
+        """Tramo COMÚN de voz de `/chat/audio` y `/transcribir` (K-10): tope de tamaño, magic bytes,
+        STT y transcripción vacía. UNA sola definición: si cambia el límite o la validación, cambia en los
+        dos. Devuelve el texto ya `strip`eado; los errores salen como `HTTPException` (413/415/422/502/503)."""
         # Cap ANTES de cargar en RAM (review HIGH-1): rechazá por el Content-Length del multipart
         # (lo setea el browser) para no OOM-ear el front-door compartido; backstop tras leer por si
         # el `size` no viene en la parte.
@@ -750,6 +747,32 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # Vacío O solo-espacios (el STT no captó nada útil) -> 422; nunca despachamos un
             # mensaje en blanco al agente.
             raise HTTPException(status_code=422, detail="no se entendió el audio")
+        return transcript
+
+    @app.post("/transcribir")
+    async def transcribir(audio: UploadFile = File(...), contexto: str | None = Form(None),
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-10 (BL-J7, voz DENTRO de las funciones): transcribe y devuelve el texto, SIN despachar al agente
+        (a diferencia de `/chat/audio`). Sin estado, sin sesión, sin persistencia: el dictado rellena un campo
+        del formulario y quien lo monta decide qué hacer. `contexto` es sólo una etiqueta de telemetría: fuera
+        de la lista se ignora y se loguea, nunca es un 422."""
+        if contexto is not None and contexto not in CONTEXTOS_TRANSCRIBIR:
+            _log.info("transcribir: contexto ignorado %r (cliente=%s)", contexto[:40], cliente_id)
+            contexto = None
+        transcript = await _transcribir_audio(audio)
+        _log.info("transcribir: ok contexto=%s cliente=%s chars=%d", contexto, cliente_id, len(transcript))
+        return {"transcript": transcript}
+
+    @app.post("/chat/audio")
+    async def chat_audio(session_id: str = Form(...), audio: UploadFile = File(...),
+                         cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de voz (voz-backend): transcribe la nota de voz y la mete al MISMO flujo que
+        `/chat` -- la voz es solo OTRA fuente de texto para el agente, nunca un dispatch aparte.
+        `async def` (igual que `/chat`: `await route_inbound`), pero la transcripción es I/O
+        BLOQUEANTE (GroqSTT usa `urllib` síncrono) -> `asyncio.to_thread` la corre en threadpool
+        para no bloquear el event loop del resto de tenants (mismo criterio de escala que las
+        rutas `def`)."""
+        transcript = await _transcribir_audio(audio)
         wf_id = await route_inbound(
             temporal_client, adapter=adapter, cliente_id=cliente_id, domain=DOMAIN,
             task_queue=AGENT_B_TASK_QUEUE,
