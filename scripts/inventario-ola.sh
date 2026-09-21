@@ -81,6 +81,8 @@ export DESDE
 # Sin esto, python en Windows escribe cp1252 a stdout y las rayas y comillas del markdown salen
 # como «?» en el doc que recibe auditoría.
 export PYTHONIOENCODING=utf-8
+# Y python en Windows escribe CRLF: el `\r` quedaba pegado al ÚLTIMO campo de cada línea TSV
+# (la lista de PR) y en el markdown. Todas sus salidas pasan por `tr -d '\r'`.
 
 # Los helpers de python viven en archivos temporales, no en `python -c "…"`: el literal multilínea
 # entre comillas dobles dentro de `$( )` deja el parser de bash contando comillas y aborta el script
@@ -189,7 +191,7 @@ cat <<EOF
 |---|---|---|---|---|
 EOF
 
-echo "$PRS_JSON" | python "$TMP_TABLA"
+echo "$PRS_JSON" | python "$TMP_TABLA" | tr -d '\r'
 
 cat <<EOF
 
@@ -203,7 +205,7 @@ auditoría tiene que preguntar.
 |---|---|---|
 EOF
 
-CITADOS="$(echo "$PRS_JSON" | python "$TMP_CITADOS")"
+CITADOS="$(echo "$PRS_JSON" | python "$TMP_CITADOS" | tr -d '\r')"
 
 fila_cola() {
   local f="$1"
@@ -279,7 +281,7 @@ EOF
 # Sólo los tests que ESTA ola tocó, no todo el repo: el grep amplio devolvía 61 archivos (casi cada
 # test nombra «ajeno» o «tenant» en algún assert) y una lista de 61 no es un inventario, es ruido
 # que empuja a auditoría a leer en vez de correr.
-echo "$PRS_JSON" | python "$TMP_TESTS"
+echo "$PRS_JSON" | python "$TMP_TESTS" | tr -d '\r'
 
 cat <<'EOF'
 
