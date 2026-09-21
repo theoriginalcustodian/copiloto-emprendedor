@@ -55,11 +55,17 @@ esperado() { # $1 = sección (8.1|8.2|8.3) · $2 = ola (default --ola; «*» = t
           # sólo el CÓDIGO, no el texto del ítem: con el texto completo, un código nombrado de paso
           # en la fila de otra cola hacía que la columna «Cola» atribuyera el ítem a la sesión
           # equivocada (BL-C6 salía BACKEND siendo de FRONTEND-2; medido el 21/09).
-          if (match(f, /^(BL-[A-Za-z0-9]+|K-[0-9]+)/)) {
+          # «**BL-J2 + BL-J3** texto»: cada código unido por « + » es fila propia (J3 salía «fuera
+          # del plan»). El avance del ítem se guarda ANTES: los match() internos pisan RSTART.
+          sig = RSTART + RLENGTH
+          while (match(f, /^(BL-[A-Za-z0-9]+|K-[0-9]+)/)) {
             if (ola == "*") printf "%s\t%s\n", c[2], substr(f, RSTART, RLENGTH)
             else printf "%s\n", substr(f, RSTART, RLENGTH)
+            f = substr(f, RLENGTH + 1)
+            if (substr(f, 1, 3) != " + ") break
+            f = substr(f, 4)
           }
-          item = substr(item, RSTART + RLENGTH)
+          item = substr(item, sig)
         }
       }
     }' "$PLAN"
@@ -219,6 +225,25 @@ fila_cola() {
   echo "${out:-?}"
 }
 
+# Contratos K-xx que el plan cuelga de una fila BL (columna «Contrato» de §8.1–8.3). La mitad BACKEND
+# de una fila de junta se entrega bajo su contrato, no bajo el BL: #546 dice «K-05», no «BL-J10».
+# Sin este cruce, las 6 juntas de la Ola 2 salían «mitad BACKEND sin diff» con el diff en main (21/09).
+contratos_de() {
+  awk -v f="$1" '
+    /^### 8\.[123] / { on = 1; next }
+    on && /^### / { on = 0 }
+    on {
+      # la fila cuelga de f si f está en su segmento en negrita (puede ser «**BL-J2 + BL-J3**»)
+      l = $0; hit = 0
+      while (match(l, /\*\*[^*]+\*\*/)) {
+        if (substr(l, RSTART, RLENGTH) ~ ("[* ]" f "[* ]")) hit = 1
+        l = substr(l, RSTART + RLENGTH)
+      }
+      if (hit) { l = $0; while (match(l, /K-[0-9]+/)) { print substr(l, RSTART, RLENGTH); l = substr(l, RSTART + RLENGTH) } }
+    }
+  ' "$PLAN" | sort -u
+}
+
 FALTAN=0
 for f in $TODOS_ESP; do
   cola="$(fila_cola "$f")"
@@ -227,6 +252,15 @@ for f in $TODOS_ESP; do
     est="❌ **NO CITADO**"; FALTAN=$((FALTAN+1))
   else
     capas="$(cut -f2 <<< "$linea")"; prs="$(cut -f3 <<< "$linea")"
+    # Sólo la capa BACKEND se hereda del contrato: la mitad FE tiene que citar su BL. Heredar las dos
+    # daba ✅ a una fila FE con sólo el PR de otra fila que nombró el mismo K (#550 cita K-09).
+    for k in $(contratos_de "$f"); do
+      lk="$(awk -F'	' -v c="$k" '$1 == c' <<< "$CITADOS")"
+      [ -n "$lk" ] || continue
+      if [[ "$(cut -f2 <<< "$lk")" == *B* && "$capas" != *B* ]]; then
+        capas="${capas}B"; prs="$prs; $(cut -f3 <<< "$lk") vía $k"
+      fi
+    done
     falta=""
     [[ "$cola" == *BACKEND* && "$capas" != *B* ]] && falta="BACKEND"
     [[ "$cola" == *FRONTEND* && "$capas" != *F* ]] && falta="${falta:+$falta + }FRONTEND"
