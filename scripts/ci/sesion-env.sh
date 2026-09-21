@@ -8,6 +8,8 @@
 # Sesión = `UC_SESION` (backend|fe1|fe2) si viene explícita; si no, se infiere del prefijo de la
 # rama (backend/…, frontend1/…, frontend2/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2).
 # Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos (compatibilidad).
+# `copiloto-test-db` en el 55432 es el default LEGACY de `gate.sh` sin sesión: ninguna sesión lo usa
+# (backend pasó a 55435 el 2026-09-21 porque ese contenedor ocupa el 55432). Retirarlo: deuda de Cierre B.
 # Un valor ya exportado por quien invoca (UC_TESTDB_NAME/PORT, UC_TEST_STAGE) siempre gana.
 _ROOT_SESION="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -29,7 +31,7 @@ _inferir_sesion() {
 
 UC_SESION="${UC_SESION:-$(_inferir_sesion)}"
 case "$UC_SESION" in
-  backend) _sfx=be; _port=55432 ;;
+  backend) _sfx=be; _port=55435 ;;
   fe1)     _sfx=fe1; _port=55433 ;;
   fe2)     _sfx=fe2; _port=55434 ;;
   "")      _sfx="" ;;

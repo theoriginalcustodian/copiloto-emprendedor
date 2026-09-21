@@ -21,7 +21,7 @@ from afip_credential_store import ClaveFiscal
 from afip_rules import (CondicionEmisor, PerfilFiscal, rango_fechas_permitido,
                         validar_cuit, validar_perfil)
 from gasto_store import hoy_del_negocio
-from errores_web import (AMBIENTE_NO_VINCULADO, CONFIRMACION_NO_TOMADA, INGRESO_DUPLICADO_PROBABLE,
+from errores_web import (AMBIENTE_NO_VINCULADO, CUIT_NO_VINCULADO, CONFIRMACION_NO_TOMADA, INGRESO_DUPLICADO_PROBABLE,
                          SIN_CERTIFICADO_AFIP, SIN_PERFIL_FISCAL, conflicto)
 from cobro_store import CobroInvalido
 
@@ -200,6 +200,17 @@ def create_afip_app(
         if errores:
             raise HTTPException(422, detail=[{"codigo": e.codigo, "campo": e.campo,
                                               "mensaje": e.mensaje} for e in errores])
+
+        # K-02 / DEC-9: el CUIT SE PUEDE cambiar, pero sólo a uno vinculado a la clave fiscal de ESTE
+        # tenant. Sin este chequeo, «Cambiar» aceptaba cualquier número y el perfil quedaba atado a un
+        # CUIT sin certificado (o al de otro emprendedor, sólo con saberlo). Sólo aplica si el tenant ya
+        # vinculó ALGÚN CUIT: el alta original (todavía sin credencial) sigue entrando por acá antes de
+        # `/afip/conectar`, y ese flujo no cambia.
+        cred = cred_store_factory(cliente_id)
+        vinculado = await asyncio.to_thread(cred.ambientes_vinculados, body.cuit)
+        if not vinculado and await asyncio.to_thread(cred.primer_cuit) is not None:
+            raise conflicto(CUIT_NO_VINCULADO,
+                            "Ese CUIT todavía no está vinculado a tu cuenta de ARCA.")
 
         await asyncio.to_thread(
             perfil_store_factory(cliente_id).save, body.cuit,
