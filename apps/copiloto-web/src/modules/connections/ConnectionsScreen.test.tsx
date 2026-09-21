@@ -10,6 +10,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
       me: vi.fn(),
       catalog: vi.fn(),
       connect: vi.fn(),
+      disconnect: vi.fn(),
       sendChat: vi.fn(),
       getReply: vi.fn(),
     },
@@ -80,6 +81,7 @@ describe('ConnectionsScreen', () => {
   beforeEach(() => {
     vi.mocked(api.catalog).mockReset();
     vi.mocked(api.connect).mockReset();
+    vi.mocked(api.disconnect).mockReset();
   });
 
   afterEach(() => {
@@ -142,6 +144,48 @@ describe('ConnectionsScreen', () => {
 
     await waitFor(() => expect(assign).toHaveBeenCalledWith('https://mp.example/oauth/abc'));
     expect(api.connect).toHaveBeenCalledWith('/mp/connect');
+  });
+
+  it('BL-C1: desconectar llama al disconnect_path del catálogo y la tarjeta vuelve a «Conectar» sin recargar', async () => {
+    const conectado = makeService({
+      key: 'mercadopago',
+      display_name: 'Mercado Pago',
+      category: 'pagos',
+      kind: 'payments',
+      connected: true,
+      connect_path: '/mp/connect',
+      disconnect_path: '/mp/connection',
+    });
+    vi.mocked(api.catalog)
+      .mockResolvedValueOnce({ services: [conectado] })
+      .mockResolvedValueOnce({ services: [{ ...conectado, connected: false }] });
+    vi.mocked(api.disconnect).mockResolvedValueOnce(undefined);
+
+    renderConnectionsScreen();
+    await waitFor(() => expect(screen.getByTestId('service-card-mercadopago')).toHaveAttribute('data-state', 'connected'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Desconectar Mercado Pago' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, desconectar' }));
+
+    await waitFor(() => expect(screen.getByTestId('service-card-mercadopago')).toHaveAttribute('data-state', 'disconnected'));
+    expect(api.disconnect).toHaveBeenCalledWith('/mp/connection'); // el path lo decide el backend, no el cliente
+    expect(screen.getByRole('button', { name: 'Conectar' })).toBeInTheDocument();
+  });
+
+  it('BL-C1: si el DELETE falla la tarjeta sigue conectada (no hay flip optimista)', async () => {
+    const conectado = makeService({ key: 'gmail', display_name: 'Gmail', connected: true, disconnect_path: '/composio/connection?service=gmail' });
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: [conectado] });
+    vi.mocked(api.disconnect).mockRejectedValueOnce(new Error('404'));
+
+    renderConnectionsScreen();
+    await waitFor(() => expect(screen.getByTestId('service-card-gmail')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Desconectar Gmail' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, desconectar' }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByTestId('service-card-gmail')).toHaveAttribute('data-state', 'connected');
+    expect(api.catalog).toHaveBeenCalledTimes(1); // no relee ni cambia estado tras un fallo
   });
 
   it('catalog que falla muestra error con botón Reintentar', async () => {

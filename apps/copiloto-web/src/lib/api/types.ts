@@ -85,6 +85,9 @@ export interface CatalogService {
   capabilities: string[];
   connected: boolean;
   connect_path: string;
+  /** Path de desconexión que decide el BACKEND por servicio (`DELETE`, MP y Composio van por rutas
+   * distintas). Opcional: un backend viejo no lo manda y entonces la card no ofrece «Desconectar». */
+  disconnect_path?: string;
 }
 
 export interface CatalogResponse {
@@ -236,6 +239,9 @@ export interface CopilotApi {
   catalog(): Promise<CatalogResponse>;
   /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */
   connect(connectPath: string): Promise<ConnectResponse>;
+  /** `DELETE` al `disconnect_path` del catálogo — el backend resuelve la conexión del tenant del
+   * token (nunca viaja un id de conexión desde el cliente). */
+  disconnect(disconnectPath: string): Promise<void>;
   sendChat(payload: ChatRequest): Promise<ChatResponse>;
   /** Sube una nota de voz (multipart) para transcribir — ver `SendAudioResponse`. */
   sendAudio(sessionId: string, blob: Blob): Promise<SendAudioResponse>;

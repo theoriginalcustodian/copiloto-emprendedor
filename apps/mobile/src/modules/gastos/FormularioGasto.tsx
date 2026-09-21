@@ -6,6 +6,7 @@ import {
   CATEGORIAS_GASTO,
   crearGasto,
   ETIQUETA_CATEGORIA,
+  ETIQUETA_ORIGEN_GASTO,
   esDecimalPositivo,
   normalizarDecimal,
   type CategoriaGasto,
@@ -115,6 +116,14 @@ export function FormularioGasto({
 
   return (
     <View style={{ gap: tema.espacio.md }} testID={testID}>
+      {/* BL-C4: de dónde salió lo que se está confirmando (voz / foto / a mano). */}
+      <Text
+        testID="gasto-origen"
+        style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, textTransform: 'uppercase', letterSpacing: 0.6 }}
+      >
+        {ETIQUETA_ORIGEN_GASTO[origen]}
+      </Text>
+
       <CampoNumero
         etiqueta="Cuánto gastaste"
         valor={monto}

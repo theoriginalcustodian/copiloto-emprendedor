@@ -364,7 +364,7 @@ export function PantallaPerfilNegocio() {
           <SeccionCatalogo testID="perfil-negocio-catalogo" />
 
           <p className="perfil-negocio-screen__nota">
-            Tu CUIT, razón social y condición de IVA se cargan en Ajustes → Facturación AFIP.
+            Tu CUIT, razón social y condición de IVA se cargan en Ajustes → Facturación ARCA.
           </p>
         </>
       )}

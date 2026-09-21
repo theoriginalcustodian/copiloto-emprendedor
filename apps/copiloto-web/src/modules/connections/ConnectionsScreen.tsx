@@ -36,7 +36,8 @@ function initial(clienteId: string | undefined): string {
  * foco) vive en el hook; acá solo presentación + el flujo de abrir el OAuth.
  */
 export function ConnectionsScreen() {
-  const { status, services, connectedCount, totalCount, connect, refresh } = useConnections();
+  const { status, services, connectedCount, totalCount, connect, disconnect, refresh } =
+    useConnections();
   const { me } = useSession();
   const [query, setQuery] = useState('');
   const [connectingKey, setConnectingKey] = useState<string | null>(null);
@@ -116,6 +117,7 @@ export function ConnectionsScreen() {
                   key={service.key}
                   service={service}
                   onConnect={(s) => void handleConnect(s)}
+                  onDisconnect={disconnect}
                   connecting={connectingKey === service.key}
                 />
               ))}

@@ -125,6 +125,7 @@ export {
   crearGasto,
   esCategoriaValida,
   ETIQUETA_CATEGORIA,
+  ETIQUETA_ORIGEN_GASTO,
   listarGastos,
   obtenerGasto,
   obtenerResumenGastos,

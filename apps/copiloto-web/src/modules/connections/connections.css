@@ -151,6 +151,21 @@
   margin: 0;
 }
 
+/* BL-W2: la capacidad de la app («Mandar correos por vos. No puede leerlos.»). Máx. 3 líneas para
+   que una descripción larga no desparrame el grid de 2 columnas. */
+.service-card__description {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--label);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .service-card__footer {
   margin-top: auto;
   display: flex;
@@ -182,5 +197,52 @@
   min-height: 0;
   padding: 7px;
   border-radius: var(--r-pill);
+  font-size: 12.5px;
+}
+
+/* BL-C1: «Desconectar» discreto al pie de la card conectada (mismo hug-content que «Conectar») y su
+   confirmación en la propia card — dice qué se pierde antes de cortar el acceso del copiloto. */
+.service-card__footer {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.service-card__disconnect {
+  min-height: 0;
+  padding: 7px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+
+.service-card__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: var(--danger-border);
+}
+
+.service-card__confirm-text,
+.service-card__confirm-error {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.service-card__confirm-error {
+  color: var(--danger-fg);
+}
+
+.service-card__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.service-card__confirm-actions .uc-btn {
+  min-height: 0;
+  padding: 8px 12px;
   font-size: 12.5px;
 }
