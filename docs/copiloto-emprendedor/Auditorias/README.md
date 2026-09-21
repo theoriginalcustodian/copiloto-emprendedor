@@ -31,6 +31,7 @@ Detalle: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 | 2026-08-12 | `2026-08-12-pasada-2-robustez-HALLAZGOS.md` | **Hallazgos Pasada 2:** 0 P0 · 4 P1 · 3 P2 + evidencia de que el moat Temporal está bien construido |
 | 2026-08-12 | `2026-08-12-pasada-3-pulido-y-eficiencia-HALLAZGOS.md` | **Hallazgos Pasada 3:** 0 P0 · 0 P1 · 3 P2 · 1 P3 — casi todo control positivo |
 | 2026-08-12 | `2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md` | **🏁 EMPEZAR POR ACÁ:** informe de cierre (G8) que consolida las 3 pasadas + el estado final de los 11 + los nuevos. Sustituye a leer los 19 archivos sueltos |
+| 2026-09-21 | `2026-09-21-auditoria-A1-ola-1.md` | **Auditoría A1 — Ola 1 de la beta Odobi @ `fc583792`:** gate y adversariales corridos, 21 filas medidas contra su DoD (7 NO CIERRA · 14 CIERRA_SALVO_DEVICE), 7 costuras OK y 5 clases de hallazgo (instrumento del gate, recibos ADR-001, DoD desactualizado, filas a medias, afirmaciones de PR) |
 
 ## Estado vigente
 
