@@ -1,4 +1,6 @@
-import type { TarjetaMiDia } from '@copiloto/core';
+import { describe, expect, it } from 'vitest';
+
+import type { TarjetaMiDia } from '../api';
 
 import { categoriaDe, filtrarPorCategoria } from './categoriaTarjeta';
 

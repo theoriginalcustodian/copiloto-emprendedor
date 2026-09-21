@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -14,13 +14,16 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     cambiarEstadoTarjetaMiDia: vi.fn(),
     borrarTarjetaMiDia: vi.fn(),
     leerCalendario: vi.fn(),
+    leerPortada: vi.fn(),
   };
 });
 
 import {
+  CLAVE_DIAS_CALMA,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
   leerCalendario,
+  leerPortada,
   leerTablero,
 } from '@copiloto/core';
 
@@ -30,6 +33,7 @@ const leerMock = vi.mocked(leerTablero);
 const cambiarEstadoMock = vi.mocked(cambiarEstadoTarjetaMiDia);
 const borrarMock = vi.mocked(borrarTarjetaMiDia);
 const leerCalendarioMock = vi.mocked(leerCalendario);
+const leerPortadaMock = vi.mocked(leerPortada);
 
 const TABLERO = {
   solapas: [
@@ -60,6 +64,8 @@ beforeEach(() => {
   cambiarEstadoMock.mockReset().mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockReset().mockResolvedValue({ status: 'ok' });
   leerCalendarioMock.mockReset().mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+  leerPortadaMock.mockReset().mockResolvedValue({ status: 'no_disponible' });
+  window.localStorage.clear();
 });
 
 describe('MidiaScreen — el Kanban (wiring básico)', () => {
@@ -112,5 +118,78 @@ describe('MidiaScreen — panel de calendario (CAL1 §3, fuera del Kanban)', () 
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
     expect(screen.queryByTestId('midia-calendario')).not.toBeInTheDocument();
     expect(screen.queryByTestId('midia-calendario-no-conectado')).not.toBeInTheDocument();
+  });
+});
+
+const PORTADA = {
+  caja: { saldo: '125000.00', moneda: 'ARS' },
+  mes: { ingresos: '300000.00', gastos: null, rentabilidad: null, facturado: null, cobrado: null },
+  serieMensual: [],
+  mejoresClientes: [],
+  porCobrar: { total: null, vencido: null },
+};
+
+describe('MidiaScreen — portada del negocio (BL-W8)', () => {
+  it('muestra la caja y el trío; un dato ausente es «—», nunca «$0»', async () => {
+    leerPortadaMock.mockResolvedValue({ status: 'ok', portada: PORTADA });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-portada')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-portada-caja')).not.toHaveTextContent('—');
+    expect(screen.getByTestId('midia-portada-salio')).toHaveTextContent('—');
+    expect(screen.getByTestId('midia-portada-por-cobrar')).toHaveTextContent('—');
+    expect(screen.getByTestId('midia-portada-salio')).not.toHaveTextContent('$0');
+  });
+
+  it('sin portada la pantalla sigue viva (degrada sola)', async () => {
+    leerPortadaMock.mockRejectedValue(new Error('red'));
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-portada')).not.toBeInTheDocument();
+  });
+});
+
+describe('MidiaScreen — chips y contador (BL-W7)', () => {
+  it('el contador cuenta para hoy y en curso; los chips filtran y el vacío por filtro lo dice', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-contador')).toHaveTextContent('1 para hoy · 0 en curso');
+
+    // t1 es de la regla trabajo_con_margen_negativo, sin categoría propia: sólo se ve en «Todo».
+    fireEvent.click(screen.getByTestId('midia-chip-arca'));
+    expect(screen.queryByTestId('midia-tarjeta-t1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('midia-vacio-filtro-titulo')).toHaveTextContent(/Nada en .* por acá/);
+
+    fireEvent.click(screen.getByTestId('midia-chip-todo'));
+    expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument();
+  });
+});
+
+describe('MidiaScreen — vacío con Calma (BL-W5)', () => {
+  const VACIO = { solapas: TABLERO.solapas.map((s) => ({ ...s, tarjetas: [] })) };
+
+  it('«Para hoy» vacío muestra la taza y la explicación', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', tablero: VACIO });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-vacio-titulo')).toHaveTextContent('Nada urgente por hoy'));
+    expect(screen.getByTestId('midia-vacio-taza')).toBeInTheDocument();
+    expect(screen.getByTestId('midia-vacio-cuerpo')).toBeInTheDocument();
+  });
+
+  it('las otras solapas vacías van sin taza', async () => {
+    leerMock.mockResolvedValue({ status: 'ok', tablero: VACIO });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-vacio')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('midia-solapa-hecha'));
+    expect(screen.getByTestId('midia-vacio-titulo')).toHaveTextContent('No hay tarjetas acá todavía.');
+    expect(screen.queryByTestId('midia-vacio-taza')).not.toBeInTheDocument();
+  });
+
+  it('tras N días distintos la explicación se retira; título y taza quedan', async () => {
+    window.localStorage.setItem(CLAVE_DIAS_CALMA, JSON.stringify(['2020-01-01', '2020-01-02', '2020-01-03']));
+    leerMock.mockResolvedValue({ status: 'ok', tablero: VACIO });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-vacio-titulo')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByTestId('midia-vacio-cuerpo')).not.toBeInTheDocument());
+    expect(screen.getByTestId('midia-vacio-taza')).toBeInTheDocument();
   });
 });
