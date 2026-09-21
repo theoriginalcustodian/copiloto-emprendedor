@@ -1,6 +1,6 @@
 # Plan de implementación autónomo — beta Odobi, de hoy al DoD de todo
 
-**Fecha:** 2026-09-21 · **Base:** `main @ 904dbb5a` · **Autor:** planificación
+**Fecha:** 2026-09-21 · **Base:** `main @ fa090362` (incluye #516, la carpeta de Martín) · **Autor:** planificación
 **Fuente única de alcance:** [`2026-09-21-backlog-beta-odobi-con-dod.md`](2026-09-21-backlog-beta-odobi-con-dod.md) (70 ítems, 193 casillas de DoD). Este plan **no repite** los DoD: los cita por ID. Si un DoD de acá y uno del backlog se contradicen, gana el backlog y planificación corrige este archivo.
 
 **Qué es:** quién hace cada ítem, en qué orden, con qué recursos compartidos, cómo se verifica y cuándo se da por terminado, para que **cuatro sesiones trabajen sin el operador** hasta cerrar todo lo que la beta necesita.
@@ -39,7 +39,7 @@ El operador respondió el 21/09. Estas respuestas son **vinculantes** para el pl
 | DEC-12 | Google OAuth y lista de testers: **después**. | `BL-O1` y `BL-O2` → Cierre B. |
 | DEC-13 | **Sin iOS.** | `BL-O3` sólo para Android. |
 | — | «Nada se enciende todavía»: ni backups, ni legal propio, ni horario de soporte. | `BL-O5`, `BL-O6` y `BL-O7` → Cierre B. `BL-W10` sale **sin número** de horas (su propio DoD lo permite). |
-| — | La carpeta `odobi-ui/` de Martín llega el 21/09. | `BL-P2` es disparador del lote B de contratos (§7), con un plan alternativo si se atrasa. |
+| — | La carpeta `odobi-ui/` de Martín **entró el 21/09 (#516)**, con `specs/mobile-coherencia.md` (Parte 2: formas propuestas a backend), los 6 logos reales y la confirmación de Martín de Calma = 3. | `BL-P2` cerrado en lo que es código. Queda la re-medición de auditoría (entrada A1). Los contratos que esperaban sus formas se emiten ya (§7). |
 | — | Hay un teléfono por USB, **distinto** del A16 anterior. | `BL-O9` (nuevo): hay que ponerlo en marcha en la primera hora de BACKEND. |
 
 ---
@@ -274,14 +274,14 @@ Planificación los emite con la plantilla de `COORDINACION.md`:
 | K-11 | `BL-J8` gate `requiere_conexion` | BE + FE1 | **A** | Ola 0 |
 | K-12 | `BL-J11` mail y contraseña (GoTrue) | BE + FE2 | **A** | Ola 0 |
 | K-15 | `BL-X7` editor de tono con ejemplo | BE + FE2 | **A** | Ola 0 |
-| K-03 | `BL-J2` + `BL-J3` fecha de corte y variación (MC-H2) | BE + FE2 | **B** | `BL-P2` en el repo (formas de Martín) |
-| K-06 | `BL-J5` verbo y criticidad (MC-B3) | BE + FE2 | **B** | `BL-P2` |
-| K-09 | `BL-J4` salud por conexión (MC-H3) | BE + FE2 (+ FE1 para el badge del chat si aplica) | **B** | `BL-P2` |
+| K-03 | `BL-J2` + `BL-J3` fecha de corte y variación (MC-H2) | BE + FE2 | **A** | Ola 0 — formas de `mobile-coherencia.md` Parte 2 §B |
+| K-06 | `BL-J5` verbo y criticidad (MC-B3) | BE + FE2 | **A** | Ola 0 — idem |
+| K-09 | `BL-J4` salud por conexión (MC-H3) | BE + FE2 (+ FE1 para el badge del chat si aplica) | **A** | Ola 0 — idem |
 | K-10 | `BL-J7` voz dentro de las funciones | BE + FE1 (componente) + FE2 (montaje) | **B** | Cierre del contrato K-01 (el dispatcher ya estabilizado) |
 | K-13 | `BL-J13` agenda de varios días + ADR | BE + FE2 | **B** | ADR redactado por BACKEND (numeración suya) |
-| K-14 | `BL-X8` onboarding: 2 permisos + primer insight | BE + FE2 | **B** | `BL-P2` + lectura de `mockups/01-onboarding` |
+| K-14 | `BL-X8` onboarding: 2 permisos + primer insight | BE + FE2 | **A** | Ola 0 — lectura de `mockups/01-onboarding` (versión #516) |
 
-**Plan alternativo si `BL-P2` se atrasa:** si 48 h después de emitido el lote A la carpeta de Martín no está en el repo, planificación redacta K-03, K-06, K-09 y K-14 desde el prototipo del 07/09 y desde el código de mobile. Los marca `[RECONCILIAR-CON-P2]` y, cuando llegue la carpeta, emite un `dato_` con el diff de formas. Como todo campo es aditivo y opcional, reconciliar después no rompe clientes.
+**`BL-P2` ya está en `main` (#516):** las formas de MC-H2, MC-H3 y MC-B3 se toman de `Prototipo frontend/odobi-ui/specs/mobile-coherencia.md` Parte 2 §B. Por eso K-03, K-06, K-09 y K-14 pasan al lote A. Quedan en el lote B sólo K-10 y K-13, que dependen de trabajo propio del repo, no de Martín.
 
 **Idempotencia de planificación:** antes de emitir un `K-*`, se busca en `abierto/`, `en-curso/` y `cerrado/` por su ID, y no se emite dos veces.
 
@@ -306,11 +306,11 @@ Cada fila dice qué la bloquea. Si no dice nada, arranca ya.
 | 0.2 | `BL-P4`: el contrato del 16/09 va a `cerrado/2026-09-21/` con nota de reemplazo | `ls cerrado/2026-09-21/` |
 | 0.3 | `BL-P7`: los 8 mensajes viejos de `abierto/` van a `cerrado/<fecha-original>/` | `abierto/` sólo con trabajo vivo |
 | 0.4 | Un `contrato_` de cola por sesión (backend, frontend1, frontend2), con la tabla de §8.1–8.4 que le toca | 3 archivos en `abierto/` que pasan `lint-contratos-eficiencia.sh` |
-| 0.5 | Contratos del lote A (K-01, K-02, K-04, K-05, K-07, K-08, K-11, K-12, K-15) | 9 archivos en `abierto/` |
+| 0.5 | Contratos del lote A (K-01 a K-09, K-11, K-12, K-14, K-15) | 13 archivos en `abierto/` |
 | 0.6 | `BL-P8` comando de arranque de auditoría | `.claude/commands/monitoreo-auditoria.md` en `main` |
 | 0.7 | `PLAN.md` COLA-VIVA reescrita con las olas de este plan | Diff en `main` |
 | 0.8 | `BL-X6` (mitad docs): los 10 `.otf` salen del árbol (`docs/Imagen de marca/Neue_Einstellung/` y `Prototipo frontend/odobi-ui/assets/fonts/`) | PR mergeado + `git ls-files '*.otf'` vacío |
-| 0.9 | Mensaje para Martín, que va **por el operador**: `BL-P6` (corregir `fact-sinarca`), valores nuevos de contraste (DEC-11, cuando `BL-Q4` los fije) y el aviso de que su carpeta no traiga `.otf` | Texto listo en el acta, §Para Martín |
+| 0.9 | Mensaje para Martín, que va **por el operador**: `BL-P6` (corregir `fact-sinarca`), `CALMA_TOPE` del prototipo en 3, y los valores nuevos de contraste (DEC-11, cuando `BL-Q4` los fije) | Texto listo en el acta, §4 |
 
 ### 8.1 BACKEND
 
@@ -391,7 +391,7 @@ Cada fila dice qué la bloquea. Si no dice nada, arranca ya.
 | 1 | 7 | **BL-W5** vacío + Calma con **N = 3** en una constante única para las dos apps | web | — | Test con reloj simulado. |
 | 1 | 8 | **BL-W7** chips de categoría + contador (módulo derivable y borrable) | web | — | Se borra en BL-J5. |
 | 1 | 9 | **BL-X5** (web) «AFIP» → «ARCA» en todo string visible | web | — | Grep = 0. |
-| 1 | 10 | **BL-X11** decisiones de Martín en web: logos reales, cinco íconos, trazo 1,3, lockup en el login | web | Assets de `BL-P2` para los logos | El isotipo de Soporte va en BL-W10 (FE1). Licencia de uso de marca anotada. |
+| 1 | 10 | **BL-X11** decisiones de Martín en web: logos reales (`odobi-ui/assets/logos/`, #516), cinco íconos, trazo 1,3, lockup en el login | web | — | El isotipo de Soporte va en BL-W10 (FE1). Licencia de uso de marca anotada. |
 | 2 | 11 | **BL-X1** armazón en capas en web: aterriza en Mi día y Ajustes se abre sólo por el avatar | web | — | L. La traducción a escritorio queda escrita en el PR y la mira la auditoría de la Ola 2. |
 | 2 | 12 | **BL-X7** (FE) editor de tono con ejemplo; Mi negocio queda con una fila-resumen | web + mobile | K-15 | |
 | 2 | 13 | **BL-J6** (FE) chip de cartera independiente de la paginación | web + mobile | K-04 | |
@@ -500,7 +500,7 @@ Coincide con el §13.5 del backlog más los ítems de §3.3. **No es parte de la
 | R-5 | No-determinismo en Temporal (`BL-B2`, `BL-J7`, `BL-J8`, `BL-J9`, `BL-J13`) | Media | Crítico (workflows en vuelo) | `temporal-developer` antes de tocar, `workflow.patched`, replay con fixtures (ADR-003), `BL-B1` después del deploy. | BACKEND |
 | R-6 | Conflictos en archivos compartidos entre FE1 y FE2 | Media | Medio | Leases (§4.2); `index.ts` sólo crece; merge de `main`, nunca rebase. | Planificación resuelve dudas de propiedad |
 | R-7 | Fable consume tokens sin trabajo | Alta sin BL-P8 | Medio | 4 entradas + cron por hora con salida en una línea + inventario hecho + sub-agentes baratos. | Planificación |
-| R-8 | La carpeta de Martín (`BL-P2`) se atrasa o trae `.otf` o credenciales | Media | Medio | Plan alternativo a 48 h (§7). Revisión de `git status` + grep de credenciales + `git ls-files '*.otf'` antes del PR. | Planificación |
+| R-8 | Una próxima entrega de Martín reintroduce `.otf` o credenciales | Baja | Medio | #516 verificado: sin `.otf` nuevos ni credenciales, y dejó afuera `references/` (68 MB). `BL-B3` (gitleaks) y `git ls-files '*.otf'` en `lint.sh` lo hacen mecánico. | BACKEND (`BL-B3`) |
 | R-9 | Romper `e2e-device` (cambio de contraseña o de mail, onboarding) | Media | Alto (sin usuario canónico, no hay device) | Tests de integración con cuentas efímeras contra una GoTrue **de test**. En prod, la contraseña se cambia y se restaura con un script idempotente, y el onboarding se prueba reseteando su flag. **No se crean usuarios E2E nuevos** (regla del operador). | BACKEND |
 | R-10 | El device escribe datos falsos en prod | Alta | Medio | Sólo el tenant `e2e-device`; `limpiar_residuos_test.py` al final de cada tanda; conteos con claims. | BACKEND |
 | R-11 | Una sesión agota su contexto a mitad de un ítem | Media | Medio | `/checkpoint` al cerrar cada ítem; el estado vive en el buzón y en las ramas, no en la conversación. | Cada sesión |
@@ -573,7 +573,7 @@ Desde ahí, **nadie espera al operador**: la próxima vez que planificación te 
 | Ítem | Sesión | Ola | Contrato | | Ítem | Sesión | Ola | Contrato |
 |---|---|---|---|---|---|---|---|---|
 | BL-P1 | PLAN | 0 | — (acta) | | BL-J6 | BE + FE2 | 2 | K-04 |
-| BL-P2 | PLAN | 0–1 | — (Martín) | | BL-J7 | BE + FE1 + FE2 | 3 | K-10 |
+| BL-P2 | PLAN | ✅ #516 | — | | BL-J7 | BE + FE1 + FE2 | 3 | K-10 |
 | BL-P3 | PLAN | 0 | — | | BL-J8 | BE + FE1 | 3 | K-11 |
 | BL-P4 | PLAN | 0 | — | | BL-J9 | BE + FE1 | 2 | K-07 |
 | BL-P5 | PLAN | 1 (tras P2) | — | | BL-J10 | BE + FE2 | 2 | K-05 |

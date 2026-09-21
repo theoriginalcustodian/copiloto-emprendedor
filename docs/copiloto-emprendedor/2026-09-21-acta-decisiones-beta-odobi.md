@@ -45,8 +45,8 @@
 |---|---|---|---|
 | Avatar de Soporte | Isotipo de 38 px, fuera del scroll, con «Soporte de Odobi» | `apps/mobile/src/modules/soporte/PantallaSoporte.tsx:136-146` | `BL-W10` |
 | Grosor del isotipo | 1,3 en todos los tamaños | `apps/mobile/src/theme/Marca.tsx:28-36` | `BL-X11` |
-| Logos de apps | Logo real de cada servicio en un tile blanco | `apps/mobile/src/modules/apps/logosMarca.ts` | `BL-X11` (espera los SVG de `BL-P2`) |
-| Calma | **3** días distintos | `apps/mobile/src/theme/EstadoVacio.tsx:27` | `BL-W5` con constante única |
+| Logos de apps | Logo real de cada servicio en un tile blanco | `apps/mobile/src/modules/apps/logosMarca.ts`; fuente `odobi-ui/assets/logos/` (#516) | `BL-X11` |
+| Calma | **3** días distintos (Martín lo confirmó en #516) | `apps/mobile/src/theme/EstadoVacio.tsx:27` | `BL-W5` con constante única |
 | Cinco íconos | Provisorios, tal como están | `apps/mobile/src/theme/glass/mapaIconos.ts:12-16` | `BL-X11` |
 | Lockup en el ingreso | Símbolo y nombre en una línea + «Entrá a tu cuenta» | `apps/mobile/src/modules/auth/PantallaLogin.tsx` | `BL-X11` |
 | Nocturno | Eliminado | `apps/mobile/src/theme/tokens.ts:201` | `BL-X4` |
@@ -56,6 +56,6 @@ La nota de `soporte` del mapa («el avatar NO es el isotipo») queda **reemplaza
 ## 4. Para Martín (lo lleva el operador)
 
 1. **`fact-sinarca` (`BL-P6`):** el hilo muestra facturar con un comando de voz y CAE inmediato. El producto **no emite sin confirmación** (`apps/copiloto/tool_catalog.py:267-269`; `kb-usuario/chat.md:96-98`). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. Pedido: ajustarlo o retirarlo del prototipo.
-2. **Tu carpeta `odobi-ui/`** no debe traer archivos `.otf` ni `.woff*` de Neue Einstellung: la fuente sale del repo (DEC-5). La app usa Plus Jakarta Sans + Inter.
+2. **Fuente:** Neue Einstellung salió del repo (DEC-5), incluido `assets/fonts/NeueEinstellung-Bold.otf` del prototipo; el prototipo cae a su fuente de respaldo. En próximas entregas, nada de `.otf` / `.woff*` con licencia paga. La app usa Plus Jakarta Sans + Inter.
 3. **Contrastes (DEC-11):** el sello de acción y el botón de grabar van a cambiar de token para pasar WCAG. Cuando FRONTEND-1 cierre `BL-Q4`, esta acta se actualiza con los valores nuevos, en hex y con su ratio computado, para que los lleves al prototipo.
-4. **Calma = 3 días** en las dos apps. Si preferís otro número, es una constante: avisá y se cambia.
+4. **Calma = 3 días**, confirmado por Martín en #516. Falta alinear el prototipo: `prototipo/index.html:3703` todavía dice `CALMA_TOPE = 5`.
