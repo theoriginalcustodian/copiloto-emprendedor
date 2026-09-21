@@ -61,6 +61,7 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
+from errores_web import EMAIL_YA_REGISTRADO, conflicto
 from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
@@ -1194,8 +1195,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                 gotrue.update_user(_bearer(request), {"email": nuevo})
             except GoTrueUserError as e:
                 if e.codigo == "email_exists":
-                    raise HTTPException(status_code=409, detail={
-                        "codigo": "email_ya_registrado", "mensaje": "Ese email ya está en uso."})
+                    raise conflicto(EMAIL_YA_REGISTRADO, "Ese email ya está en uso.")
                 if e.codigo == "validation_failed":
                     raise HTTPException(status_code=400, detail={
                         "codigo": "email_invalido", "mensaje": "Ese email no es una dirección válida."})
