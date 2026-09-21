@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   borrarTarjetaMiDia,
@@ -55,7 +55,7 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
 
-export function MidiaScreen() {
+export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
@@ -161,6 +161,7 @@ export function MidiaScreen() {
     <div className="midia-screen" data-testid="pantalla-midia">
       <header className="midia-screen__header">
         <h1 className="midia-screen__title">Mi día</h1>
+        {avatar}
       </header>
 
       {portada != null && <PortadaNegocio portada={portada} />}
