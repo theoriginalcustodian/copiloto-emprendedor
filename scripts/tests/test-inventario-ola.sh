@@ -35,6 +35,7 @@ cat > "$TMP/plan.md" <<'PLAN'
 | 1 | 1 | **BL-X5** (backend) textos | — | |
 | 1 | 2 | **BL-C6** (backend) cuit | K-02 | |
 | 2 | 3 | **BL-J6** cartera | K-04 | |
+| 2 | 4 | **BL-J2 + BL-J3** corte y variación | K-03 | |
 
 ### 8.2 FRONTEND-1
 
@@ -97,6 +98,35 @@ if grep -q "gate.sh --solo" <<< "$(grep -v '^#' <<< "$sal" | grep 'gate.sh')"; t
 else
   ok "prescribe el job sin guiones"
 fi
+
+echo "── 6. JUNTA: la mitad BACKEND llega bajo su contrato K, no bajo el BL ──"
+# Caso real Ola 2 (21/09): #542 dice «K-04», #541 dice «BL-J6»; la fila salía «mitad BACKEND sin diff».
+sal2="$(PLAN="$TMP/plan.md" PRS_JSON_FILE="$TMP/prs.json" SHA_MAIN=deadbeef DESDE=2026-09-21 \
+        bash "$INV" --ola 2 2>&1)"
+j6="$(grep -F '| `BL-J6` |' <<< "$sal2")"
+if grep -qF "mitad BACKEND no tiene diff" <<< "$j6"; then ok "sin PR de K-04: J6 acusa la mitad BACKEND (control negativo)"; else fail "control negativo J6: $j6"; fi
+python - "$TMP/prs.json" > "$TMP/prs-k.json" <<'PYIN'
+import json, sys
+prs = json.load(open(sys.argv[1]))
+prs.append({"number": 542, "title": "feat(clientes): agregados (K-04)", "mergedAt": "2026-09-21T13:00:00Z",
+            "mergeCommit": {"oid": "dddddddd44"}, "files": [{"path": "apps/copiloto/clientes_web.py"}]})
+prs.append({"number": 550, "title": "feat(fe): salud (K-04)", "mergedAt": "2026-09-21T14:00:00Z",
+            "mergeCommit": {"oid": "eeeeeeee55"}, "files": [{"path": "apps/mobile/src/z.tsx"}]})
+prs.append({"number": 539, "title": "feat(midia): corte (BL-J2, BL-J3)", "mergedAt": "2026-09-21T15:00:00Z",
+            "mergeCommit": {"oid": "ffffffff66"}, "files": [{"path": "apps/mobile/src/p.tsx"}]})
+prs.append({"number": 540, "title": "feat(inteligencia): corte (K-03)", "mergedAt": "2026-09-21T16:00:00Z",
+            "mergeCommit": {"oid": "abababab77"}, "files": [{"path": "apps/copiloto/inteligencia.py"}]})
+json.dump(prs, sys.stdout)
+PYIN
+sal3="$(PLAN="$TMP/plan.md" PRS_JSON_FILE="$TMP/prs-k.json" SHA_MAIN=deadbeef DESDE=2026-09-21 \
+        bash "$INV" --ola 2 2>&1)"
+j6="$(grep -F '| `BL-J6` |' <<< "$sal3")"
+if grep -qF "✅ sí" <<< "$j6" && grep -qF "vía K-04" <<< "$j6"; then ok "con #542 (K-04, backend): J6 ✅ vía K-04"; else fail "caso J6: $j6"; fi
+# Fila compuesta «**BL-J2 + BL-J3**»: las dos son esperadas y las dos heredan el contrato K-03.
+for f in BL-J2 BL-J3; do
+  l="$(grep -F "| \`$f\` |" <<< "$(sed -n '/^## 2\. /,/^## 2\.bis/p' <<< "$sal3")")"
+  if grep -qF "vía K-03" <<< "$l"; then ok "$f esperada en ola 2 y ✅ vía K-03"; else fail "fila compuesta $f: ${l:-no aparece en §2}"; fi
+done
 
 echo
 if [ "$fallos" -eq 0 ]; then echo "✅ test-inventario-ola: OK"; exit 0; fi
