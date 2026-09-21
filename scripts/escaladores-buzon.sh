@@ -201,7 +201,16 @@ if [ -d "$ENCURSO" ]; then
     # Edad = MÍNIMO entre el mtime del contrato y el del avance_ más reciente del mismo frente —
     # si no se mira el avance_, un frente que SÍ reportó hace 13min sigue leyéndose como "sin
     # avance" con el mtime del contrato de hace 100min (medido 2026-08-06, ver AMPLIACIÓN 2).
+    # El `mv` de abierto/ a en-curso/ NO cambia el mtime, así que un contrato recién TOMADO nacía
+    # marcado con la edad de cuando se escribió: el 21/09 K-03 se movió a en-curso a las 14:27 y el
+    # escalador lo reportó como «104min sin avance» dos minutos después. Una alarma que dispara
+    # sobre trabajo recién tomado entrena a ignorar el escalador, y la próxima real se pierde.
+    # El ctime SÍ cambia con el `mv` (verificado: mismo mtime 12:43 y ctimes 13:07 / 14:22 / 14:27,
+    # que son las tres tomas). Como el estado ES la ubicación del archivo, lo que hay que medir es
+    # desde que LLEGÓ acá: el más nuevo de los dos.
     m_contrato="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
+    m_movido="$(stat -c %Z "$f" 2>/dev/null || echo 0)"
+    [ "$m_movido" -gt "$m_contrato" ] && m_contrato="$m_movido"
     m_avance="$(avance_mas_reciente_epoch "${para:-desconocido}")"
     m_mejor="$m_contrato"
     [ "$m_avance" -gt "$m_mejor" ] && m_mejor="$m_avance"
