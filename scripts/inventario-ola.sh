@@ -82,7 +82,19 @@ TODOS_ESP="$(printf '%s\n%s\n%s\n' "$BE_ESP" "$FE1_ESP" "$FE2_ESP" | codigos)"
 # cadena vacía en silencio y el inventario salía sin una sola fila (medido el 21/09). Un filtro que
 # falla callado en un instrumento de auditoría es peor que no tenerlo.
 if [ -n "${PRS_JSON_FILE:-}" ]; then PRS_JSON="$(cat "$PRS_JSON_FILE")"
-else PRS_JSON="$(gh pr list --state merged --limit 60 --json number,title,mergeCommit,mergedAt,files)"; fi
+else
+  # La ventana se pide por FECHA, no por cantidad. Con `--limit 60`, al pasar los 60 merges los
+  # PR más viejos de la ventana (#520–#530) se caían en silencio y sus filas salían «mitad sin
+  # diff» (BL-X12w, 21/09). Si igual se llega al tope, el inventario muere: truncar es mentir.
+  LIMITE_PRS="${LIMITE_PRS:-1000}"
+  PRS_JSON="$(gh pr list --state merged --search "merged:>=$DESDE" --limit "$LIMITE_PRS" \
+                --json number,title,mergeCommit,mergedAt,files)"
+fi
+n_prs="$(PYTHONIOENCODING=utf-8 python -c 'import json,sys; print(len(json.load(sys.stdin)))' <<< "$PRS_JSON" | tr -d '\r')"
+if [ -z "${PRS_JSON_FILE:-}" ] && [ "$n_prs" -ge "${LIMITE_PRS:-1000}" ]; then
+  echo "❌ inventario-ola: $n_prs PR = el tope --limit; la ventana puede estar TRUNCADA. Subí LIMITE_PRS o acotá --desde." >&2
+  exit 3
+fi
 export DESDE
 # Sin esto, python en Windows escribe cp1252 a stdout y las rayas y comillas del markdown salen
 # como «?» en el doc que recibe auditoría.
