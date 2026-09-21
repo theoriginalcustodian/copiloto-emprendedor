@@ -24,6 +24,7 @@ from typing import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
+from gasto_store import hoy_del_negocio
 from trabajo_store import TrabajoInexistente
 
 
@@ -47,7 +48,8 @@ def create_inteligencia_app(*, require_tenant: Callable,
             # Forma final, datos vacíos: los importes en "0.00" son un cero CALCULADO (no hay
             # movimientos), no un dato ausente — la app distingue por la presencia de la clave `caja`.
             return {
-                "caja": {"saldo": "0.00", "moneda": "ARS"},
+                "caja": {"saldo": "0.00", "moneda": "ARS",
+                         "fecha_corte": hoy_del_negocio().isoformat(), "variacion_pct": None},
                 "mes": {"ingresos": "0.00", "gastos": "0.00", "rentabilidad": "0.00",
                         "facturado": "0.00", "cobrado": "0.00"},
                 "serie_mensual": [],
