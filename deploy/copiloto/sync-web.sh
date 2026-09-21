@@ -54,12 +54,19 @@ NEUE_EINSTELLUNG_OTF="docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - N
 # (mockups/audit/exploraciones no hacen falta para el build).
 PLUS_JAKARTA_TTF="Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf"
 
+# El .otf NO está versionado (asset externo, docs/ASSETS-EXTERNAL.md): un worktree de deploy limpio
+# (`wt-deploy`, BL-B7) no lo tiene y `tar` fallaba con exit 2. Si falta local se omite del tar y se
+# deja el que ya está en el VPS; `fetch-fonts.sh` (paso 2) falla fuerte si allá tampoco existe.
+TAR_ASSETS=("$PLUS_JAKARTA_TTF")
+if [ -f "$LOCAL/$NEUE_EINSTELLUNG_OTF" ]; then TAR_ASSETS+=("$NEUE_EINSTELLUNG_OTF")
+else echo "    (aviso: $NEUE_EINSTELLUNG_OTF no está en el árbol local; se usa la copia del VPS)"; fi
+
 echo "==> [1/3] sync ${WEB_SUBDIR} + ${CORE_SUBDIR} + fuentes NeueEinstellung/Plus Jakarta Sans + fetch-fonts.sh -> ${HOST}:${REMOTE} (clean, idempotente, sin node_modules/dist)"
 tar -C "$LOCAL" \
   --exclude="${WEB_SUBDIR}/node_modules" \
   --exclude="${WEB_SUBDIR}/dist" \
   --exclude="${CORE_SUBDIR}/node_modules" \
-  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" "$NEUE_EINSTELLUNG_OTF" "$PLUS_JAKARTA_TTF" deploy/copiloto/fetch-fonts.sh \
+  -czf - "$WEB_SUBDIR" "$CORE_SUBDIR" "${TAR_ASSETS[@]}" deploy/copiloto/fetch-fonts.sh \
   | ssh "$HOST" "mkdir -p '$REMOTE/apps' '$REMOTE/packages' '$REMOTE/docs/Imagen de marca/Neue_Einstellung' '$REMOTE/Prototipo frontend/odobi-ui/assets/fonts' '$REMOTE/deploy/copiloto' && rm -rf '$REMOTE/$WEB_SUBDIR' '$REMOTE/$CORE_SUBDIR' && tar -C '$REMOTE' -xzf -"
 
 echo "==> [2/3] fuentes self-hosted (idempotente: fetch-fonts.sh no re-baja si ya está)"
