@@ -28,7 +28,7 @@ async function envolver(nodo: React.ReactElement) {
 function botonVoz() {
   function Arnes() {
     const scrollRef = useRef<FlatList>(null);
-    return <BotonVoz onIniciar={() => {}} onSoltarSinFijar={() => {}} onFijar={() => {}} scrollRef={scrollRef} />;
+    return <BotonVoz onIniciar={() => {}} onSoltarSinFijar={() => {}} onFijar={() => {}} onCancelar={() => {}} scrollRef={scrollRef} />;
   }
   return <Arnes />;
 }

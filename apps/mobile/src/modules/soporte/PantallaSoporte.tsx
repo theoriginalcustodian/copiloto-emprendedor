@@ -6,6 +6,7 @@ import type { FuncionSoporte } from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
+import { AvisoCancelar } from '../chat/AvisoCancelar';
 import { BotonVoz } from '../chat/BotonVoz';
 import { Composer } from '../chat/Composer';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
@@ -71,6 +72,7 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -125,6 +127,8 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
 
   const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
   const onFijarVoz = useCallback(() => setFijado(true), []);
+  // BL-D2: deslizar a la izquierda / toque corto descarta lo grabado sin enviarlo.
+  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   const ondaVisible = voz.fase === 'grabando' || voz.fase === 'pausado';
 
@@ -175,10 +179,13 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
                 <Onda niveles={voz.niveles} />
               </View>
             )}
+            {cancelando && <AvisoCancelar />}
             <BotonVoz
               onIniciar={alIniciarVoz}
               onSoltarSinFijar={onSoltarSinFijarVoz}
               onFijar={onFijarVoz}
+              onCancelar={onCancelarVoz}
+              onCancelando={setCancelando}
               disabled={voz.fase !== 'inactivo'}
               scrollRef={scrollRef}
             />

@@ -5,6 +5,7 @@ import type { FlatList } from 'react-native-gesture-handler';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
+import { AvisoCancelar } from './AvisoCancelar';
 import { BotonVoz } from './BotonVoz';
 import { Composer } from './Composer';
 import { ControlesFlotantes } from './ControlesFlotantes';
@@ -97,6 +98,7 @@ export function ChatView() {
   const tecladoVisible = useTecladoVisible();
   const scrollRef = useRef<FlatList>(null);
   const [fijado, setFijado] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
 
   // `voz` es un objeto NUEVO en cada render (niveles cambia ~10 veces/seg mientras graba) -- un
   // `useCallback` que lo tomara como dependencia se recrearía a la misma frecuencia, y con él el
@@ -175,6 +177,8 @@ export function ChatView() {
 
   const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
   const onFijarVoz = useCallback(() => setFijado(true), []);
+  // BL-D2: deslizar a la izquierda / toque corto -> se descarta lo grabado sin enviarlo.
+  const onCancelarVoz = useCallback(() => void vozRef.current.descartar(), []);
 
   // `useCapturaFoto().elegir()` ya resuelve `null` en cancelado/permiso denegado (con su propio
   // `Alert` de permiso -- ver el docstring del hook), así que acá no hay nada más que chequear.
@@ -217,10 +221,15 @@ export function ChatView() {
               <Onda niveles={voz.niveles} />
             </View>
           )}
+          {cancelando && (
+            <AvisoCancelar />
+          )}
           <BotonVoz
             onIniciar={alIniciarVoz}
             onSoltarSinFijar={onSoltarSinFijarVoz}
             onFijar={onFijarVoz}
+            onCancelar={onCancelarVoz}
+            onCancelando={setCancelando}
             disabled={voz.fase !== 'inactivo'}
             scrollRef={scrollRef}
           />
