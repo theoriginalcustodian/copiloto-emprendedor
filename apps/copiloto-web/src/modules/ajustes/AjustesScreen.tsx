@@ -6,10 +6,11 @@ import { PantallaApariencia } from './PantallaApariencia';
 import { PantallaComoHablarle } from './PantallaComoHablarle';
 import { PantallaFeedback } from './PantallaFeedback';
 import { PantallaPerfilNegocio } from './negocio/PantallaPerfilNegocio';
+import { PantallaTono } from './negocio/PantallaTono';
 import { PantallaAfipSetup } from './afip/PantallaAfipSetup';
 import './ajustes.css';
 
-type SubVista = 'perfilNegocio' | 'facturacionAfip' | 'miPlan' | 'comoHablarle' | 'apariencia' | 'feedback';
+type SubVista = 'perfilNegocio' | 'tono' | 'facturacionAfip' | 'miPlan' | 'comoHablarle' | 'apariencia' | 'feedback';
 
 export interface AjustesScreenProps {
   /** `cuenta` navega al tab `account` existente (fusión con `AccountScreen`, M-WEB módulo 13).
@@ -59,7 +60,8 @@ export function AjustesScreen({ onNavegarTab, onAbrirSoporte }: AjustesScreenPro
       >
         ‹ Ajustes
       </button>
-      {vista === 'perfilNegocio' && <PantallaPerfilNegocio />}
+      {vista === 'perfilNegocio' && <PantallaPerfilNegocio onAbrirTono={() => setVista('tono')} />}
+      {vista === 'tono' && <PantallaTono />}
       {vista === 'facturacionAfip' && <PantallaAfipSetup />}
       {vista === 'comoHablarle' && <PantallaComoHablarle />}
       {vista === 'apariencia' && <PantallaApariencia />}

@@ -102,6 +102,7 @@ export {
   errorDeEmail,
   errorDeTelefono,
   guardarPerfilNegocio,
+  leerEjemploDeTono,
   leerPerfilNegocio,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,

@@ -85,27 +85,15 @@ describe('PantallaPerfilNegocio', () => {
     expect(screen.queryByTestId('perfil-negocio-seccion-negocio')).toBeNull();
   });
 
-  /**
-   * 🔴 El invariante que justifica que el POST sea parcial. Si "Guardar" de Personalidad mandara
-   * también los campos del negocio, pisaría con lo que haya en pantalla —que puede ser viejo— lo
-   * que el usuario cambió en otro dispositivo. Este test es rojo si alguien "simplifica" mandando
-   * el objeto entero desde cualquiera de los dos botones.
-   */
-  it('cada sección manda SÓLO sus claves', async () => {
+  it('K-15: la fila-resumen refleja el valor guardado y abre «Cómo hablarle»; el editor ya no vive acá', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
+    expect(screen.getByTestId('perfil-negocio-tono-resumen')).toHaveTextContent(/Cercano · Breve · Copi/);
+    expect(screen.queryByTestId('perfil-negocio-formalidad')).toBeNull();
+    expect(screen.queryByTestId('perfil-negocio-largo')).toBeNull();
 
-    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-personalidad'));
-    await waitFor(() => expect(mockGuardar).toHaveBeenCalled());
-
-    expect(mockGuardar).toHaveBeenCalledWith({
-      formalidad: 'cercano',
-      largoRespuesta: 'breve',
-      nombreCopiloto: 'Copi',
-    });
-    const enviado = mockGuardar.mock.calls[0][0] as Record<string, unknown>;
-    expect(enviado).not.toHaveProperty('queVende');
-    expect(enviado).not.toHaveProperty('nombreComercial');
+    await fireEvent.press(screen.getByTestId('perfil-negocio-tono-fila'));
+    expect(await screen.findByTestId('pantalla-tono')).toBeTruthy();
   });
 
   it('el botón de Negocio manda sólo los campos del negocio', async () => {
@@ -177,7 +165,7 @@ describe('PantallaPerfilNegocio', () => {
 
     await montar();
     await waitFor(() => expect(screen.getByTestId('perfil-negocio-seccion-negocio')).toBeTruthy());
-    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-personalidad'));
+    fireEvent.press(screen.getByTestId('perfil-negocio-guardar-negocio'));
 
     await waitFor(() =>
       expect(screen.getByTestId('perfil-negocio-nombre-comercial-input').props.value).toContain('S.R.L.'),
