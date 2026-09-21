@@ -1,0 +1,7 @@
+# gitleaks (BL-B3). El repo es PÚBLICO: un secreto commiteado es público al instante.
+# Versión del binario fijada en scripts/secretos-check.sh. Las excepciones viven en .gitleaksignore
+# (por fingerprint, no por patrón: un hallazgo nuevo en el mismo archivo vuelve a fallar).
+title = "copiloto-emprendedor"
+
+[extend]
+useDefault = true

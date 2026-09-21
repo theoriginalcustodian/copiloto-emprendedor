@@ -8,6 +8,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # git entrega por stdin una línea por ref — se consume ahora (pipe, una sola lectura).
 REFS_STDIN="$(cat || true)"
 
+# BL-B3 — repo PÚBLICO: ANTES de cualquier otra cosa (incluido el atajo "grafo ya sincronizado"), se
+# escanean los commits que se pushean. Fail-closed: hallazgo o escáner roto ⇒ el push aborta.
+# Bypass consciente y visible: git push --no-verify.
+printf '%s
+' "$REFS_STDIN" | bash "$SCRIPT_DIR/scripts/secretos-check.sh" --refs-stdin || {
+  echo "[pre-push] ❌ secretos-check falló: el push se aborta (repo PÚBLICO)." >&2; exit 1; }
+
 # -----------------------------------------------------------------------------
 # Sync del grafo de código (arco autopoiético)
 # -----------------------------------------------------------------------------

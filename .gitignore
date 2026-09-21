@@ -83,3 +83,6 @@ client_secret_*.json
 .claude/settings.local.json.bak-*
 .claude/scheduled_tasks.lock
 .playwright-mcp/
+
+# BL-B3: binarios de herramientas bajados por scripts (gitleaks fijado)
+.tools/
