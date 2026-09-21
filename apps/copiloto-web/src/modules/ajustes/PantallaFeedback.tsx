@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, enviarFeedback, enviarFeedbackAudio } from '@copiloto/core';
 
 import { Button } from '../../design-system';
+import { LoPedisteVos } from './LoPedisteVos';
 import './ajustes.css';
 
 /**
@@ -58,6 +59,8 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
   const [envioAudio, setEnvioAudio] = useState<Envio>('idle');
   const [errorAudio, setErrorAudio] = useState<string | null>(null);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
+  // BL-J12: sube al confirmar un envío para que «Lo pediste vos» lo muestre sin recargar.
+  const [versionLista, setVersionLista] = useState(0);
 
   const recRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -89,6 +92,7 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
       await enviarFeedback(texto.trim(), contexto);
       setEnvioTexto('confirmado');
       setTexto('');
+      setVersionLista((v) => v + 1);
     } catch (err) {
       setErrorTexto(detalleDe(err, 'No pudimos enviar tu feedback.'));
       setEnvioTexto('error');
@@ -105,6 +109,7 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
         contexto,
       );
       setEnvioAudio('confirmado');
+      setVersionLista((v) => v + 1);
       setTranscripcion(res.transcripcion);
     } catch (err) {
       setErrorAudio(detalleDe(err, 'No pudimos enviar tu feedback por voz.'));
@@ -226,6 +231,8 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
           )}
         </div>
       </div>
+
+      <LoPedisteVos version={versionLista} />
     </div>
   );
 }

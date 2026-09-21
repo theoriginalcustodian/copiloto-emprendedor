@@ -1,15 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { enviarFeedback, enviarFeedbackAudio } = vi.hoisted(() => ({
+const { enviarFeedback, enviarFeedbackAudio, listarFeedbackPropio } = vi.hoisted(() => ({
   enviarFeedback: vi.fn(),
   enviarFeedbackAudio: vi.fn(),
+  listarFeedbackPropio: vi.fn(),
 }));
 
 vi.mock('@copiloto/core', async (orig) => ({
   ...(await orig<typeof import('@copiloto/core')>()),
   enviarFeedback,
   enviarFeedbackAudio,
+  listarFeedbackPropio,
 }));
 
 import { ApiError } from '@copiloto/core';
@@ -20,6 +22,8 @@ describe('PantallaFeedback (BL-W3)', () => {
   beforeEach(() => {
     enviarFeedback.mockReset();
     enviarFeedbackAudio.mockReset();
+    listarFeedbackPropio.mockReset();
+    listarFeedbackPropio.mockResolvedValue([]);
   });
 
   it('pregunta guiada, no caja vacía', () => {

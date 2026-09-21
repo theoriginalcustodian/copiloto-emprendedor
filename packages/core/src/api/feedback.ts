@@ -38,3 +38,52 @@ export function enviarFeedbackAudio(
     audio,
   );
 }
+
+/**
+ * `GET /feedback` (K-08, BL-J12) — el feedback PROPIO del tenant autenticado, más nuevo primero, con
+ * su estado «escuchado» (lo marca el equipo desde la consola de admin). El backend filtra siempre por
+ * `cliente_id`; acá no se reinterpreta nada.
+ *
+ * Tolerante por diseño (mismo criterio que el resto del core): un item sin `escuchado` cuenta como NO
+ * escuchado (`false`, nunca «escuchado por omisión»); `escuchadoEn` ausente → `null`; un item sin `id`
+ * o sin `texto` string se descarta en vez de romper la lista.
+ */
+export interface FeedbackPropio {
+  id: number;
+  tipo: string;
+  texto: string;
+  contexto: string | null;
+  creadoEn: string | null;
+  escuchado: boolean;
+  escuchadoEn: string | null;
+}
+
+interface FeedbackPropioCrudo {
+  id?: unknown;
+  tipo?: unknown;
+  texto?: unknown;
+  contexto?: unknown;
+  created_at?: unknown;
+  escuchado?: unknown;
+  escuchado_en?: unknown;
+}
+
+const comoTextoONull = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+
+export async function listarFeedbackPropio(): Promise<FeedbackPropio[]> {
+  const res = await apiClient.get<{ items?: FeedbackPropioCrudo[] }>('/feedback');
+  const out: FeedbackPropio[] = [];
+  for (const it of res?.items ?? []) {
+    if (typeof it.id !== 'number' || typeof it.texto !== 'string') continue;
+    out.push({
+      id: it.id,
+      tipo: typeof it.tipo === 'string' ? it.tipo : 'texto',
+      texto: it.texto,
+      contexto: comoTextoONull(it.contexto),
+      creadoEn: comoTextoONull(it.created_at),
+      escuchado: it.escuchado === true,
+      escuchadoEn: comoTextoONull(it.escuchado_en),
+    });
+  }
+  return out;
+}

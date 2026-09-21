@@ -6,6 +6,7 @@ jest.mock('@copiloto/core', () => {
     ...actual,
     enviarFeedback: jest.fn(),
     enviarFeedbackAudio: jest.fn(),
+    listarFeedbackPropio: jest.fn().mockResolvedValue([]),
   };
 });
 
