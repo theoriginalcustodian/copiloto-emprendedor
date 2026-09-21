@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { FlatList, Pressable } from 'react-native-gesture-handler';
 import type { ListRenderItemInfo } from 'react-native';
@@ -10,6 +10,7 @@ import {
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
   mapearGate,
+  separadoresDeDia,
   type ChatMessage,
   type Gate,
 } from '@copiloto/core';
@@ -264,9 +265,31 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
       listRef.current?.scrollToEnd?.({ animated: true });
     }, [messages.length]);
 
+    // BL-C3: un divisor por cambio de día (hora de Buenos Aires) sobre el primer mensaje del día.
+    const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
+
     const renderItem = useCallback(
-      ({ item }: ListRenderItemInfo<ChatMessage>) => <FilaMensaje mensaje={item} onChoice={onChoice} />,
-      [onChoice],
+      ({ item }: ListRenderItemInfo<ChatMessage>) => (
+        <View>
+          {separadores.has(item.id) && (
+            <Text
+              testID="separador-dia"
+              accessibilityRole="header"
+              style={{
+                alignSelf: 'center',
+                color: tema.color.textoTenue,
+                fontSize: tema.tipo.chico,
+                fontWeight: '600',
+                paddingVertical: tema.espacio.sm,
+              }}
+            >
+              {separadores.get(item.id)}
+            </Text>
+          )}
+          <FilaMensaje mensaje={item} onChoice={onChoice} />
+        </View>
+      ),
+      [onChoice, separadores, tema],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
