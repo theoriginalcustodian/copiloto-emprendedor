@@ -102,7 +102,7 @@ describe('TarjetaFacturaPropuesta', () => {
   it('🔴 avisa ANTES de emitir que se anula con nota de crédito, no se borra (H-23)', async () => {
     await montar();
 
-    expect(screen.getByTestId('factura-propuesta-aviso-anulacion')).toHaveTextContent('nota de crédito');
+    expect(screen.getByTestId('factura-propuesta-aviso-anulacion')).toHaveTextContent(/nota de crédito/);
   });
 
   it('muestra cliente, ítems y total', async () => {
