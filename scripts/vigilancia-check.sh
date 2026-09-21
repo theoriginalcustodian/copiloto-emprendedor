@@ -63,14 +63,34 @@ fi
 # ── 2) ESCALADORES DE EDAD (Gancho 3): contrato_/pedido_/en-curso viejos ───────────────────────
 # --dry-run se propaga: permite correr TODO este script contra el buzón real sin escribir
 # urgente_ — sólo lectura, útil para smoke-test/evidencia sin riesgo de mutar el canal vivo.
+# Override SOLO para test: el gate tiene que poder probarse contra un escalador de mentira que
+# simule morirse a mitad. Sin este seam el centinela de abajo no es verificable, y un control
+# que no se puede ejercitar es indistinguible de uno ausente.
+ESCALADOR_SH="${ESCALADOR_SH:-$REPO_ROOT/scripts/escaladores-buzon.sh}"
 if [ "$DRY_RUN" = "1" ]; then
-  esc_out="$(bash "$REPO_ROOT/scripts/escaladores-buzon.sh" --dry-run "$BUZON" 2>&1)"
+  esc_out="$(bash "$ESCALADOR_SH" --dry-run "$BUZON" 2>&1)"
 else
-  esc_out="$(bash "$REPO_ROOT/scripts/escaladores-buzon.sh" "$BUZON" 2>&1)"
+  esc_out="$(bash "$ESCALADOR_SH" "$BUZON" 2>&1)"
 fi
 esc_rc=$?
-[ "$esc_rc" -ne 0 ] && add "ESCALADORES:
+# El escalador termina SIEMPRE con la linea centinela. Si no esta, no llego al final: murio a
+# mitad (el 2026-09-21 fue por agotamiento de forks, con 16 worktrees y 5 sesiones sobre el mismo
+# Git for Windows). Un escalador muerto a mitad devuelve un reporte PARCIAL, y un reporte parcial
+# sin alarmas es indistinguible de "no hay nada que escalar" — que es exactamente el silencio que
+# este gate existe para no producir. Sin el centinela, mergear el fix del escalador no alcanzaba:
+# el gate seguia pudiendo reportar calma sobre una medicion que nunca ocurrio.
+esc_completo=0
+case "$esc_out" in *"ESCALADORES: FIN-OK"*) esc_completo=1 ;; esac
+esc_out="${esc_out%ESCALADORES: FIN-OK}"
+esc_out="${esc_out%$'\n'}"
+if [ "$esc_completo" = "0" ]; then
+  add "ESCALADORES NO TERMINARON (rc=${esc_rc}) — falta la linea centinela: el reporte de abajo
+esta INCOMPLETO y su falta de alarmas no es dato. Volve a correrlo antes de concluir nada.
 $esc_out"
+elif [ "$esc_rc" -ne 0 ]; then
+  add "ESCALADORES:
+$esc_out"
+fi
 
 # ── 2.bis) LINT de contratos: un contrato_ nuevo sin artefacto es prosa ambigua ──────────────
 # Regla del formato desde 2026-07-26 (context engineering): todo contrato_/addendum_ baja con
