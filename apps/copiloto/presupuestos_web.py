@@ -27,6 +27,7 @@ from concepto_store import ConceptoDuplicado, ConceptoInvalido
 from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FORMALIDAD,
                                   LARGO_RESPUESTA, LIMITES, MODOS)
 from deposito_traumas import FabricaDeTraumas, depositar
+from perfil_negocio_prompt import ejemplo_de_tono
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
@@ -226,6 +227,18 @@ def create_presupuestos_app(
         llenó" como "algo salió mal", y encima choca con el 404 semántico del resto del router."""
         perfil = await asyncio.to_thread(perfil_negocio_store_factory(cliente_id).get)
         return {"perfil": perfil}
+
+    @app.get("/perfil-negocio/ejemplo")
+    async def ejemplo_tono(formalidad: str | None = None, largo_respuesta: str | None = None,
+                           cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-15: cómo sonaría el copiloto con esa combinación de tono y largo. Copy estático derivado de
+        la MISMA tabla que el prompt real (`perfil_negocio_prompt`); no lee ni escribe datos del negocio,
+        por eso `require_tenant` sólo exige sesión. 400 si algún valor no es uno de los válidos."""
+        ejemplo = ejemplo_de_tono(formalidad or "", largo_respuesta or "")
+        if ejemplo is None:
+            raise HTTPException(400, f"formalidad tiene que ser una de {sorted(FORMALIDAD)} y "
+                                     f"largo_respuesta una de {sorted(LARGO_RESPUESTA)}")
+        return {"ejemplo": ejemplo}
 
     @app.post("/perfil-negocio")
     async def guardar_perfil(body: PerfilBody, cliente_id: str = Depends(require_tenant)) -> dict:
