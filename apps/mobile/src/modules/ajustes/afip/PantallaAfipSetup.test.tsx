@@ -241,6 +241,27 @@ describe('PantallaAfipSetup', () => {
     expect(screen.queryByTestId('afip-perfil-ingresos-brutos-error')).toBeNull();
   });
 
+  it('un 409 cuit_no_vinculado (K-02) pinta el error sobre el campo CUIT y deja el formulario editable', async () => {
+    jest.mocked(guardarPerfil).mockRejectedValueOnce(
+      new ErrorValidacionFiscal([
+        { codigo: 'cuit_no_vinculado', campo: 'cuit', mensaje: 'Ese CUIT no está vinculado a tu clave fiscal.' },
+      ]),
+    );
+
+    await montar();
+    await fireEvent.changeText(screen.getByTestId('afip-perfil-cuit-input'), CUIT);
+    await fireEvent.press(screen.getByTestId('afip-perfil-guardar'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('afip-perfil-cuit-error')).toHaveTextContent(
+        'Ese CUIT no está vinculado a tu clave fiscal.',
+      ),
+    );
+    // No se re-bloquea: el usuario puede corregir el CUIT y reintentar.
+    expect(screen.getByTestId('afip-perfil-cuit-input')).toBeTruthy();
+    expect(screen.queryByTestId('afip-perfil-cuit-fijo')).toBeNull();
+  });
+
   // -----------------------------------------------------------------------------------------
   // Flujo de 3 pasos de ARCA.
   // -----------------------------------------------------------------------------------------

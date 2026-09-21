@@ -242,6 +242,44 @@ describe('afip.ts', () => {
       expect(err.faltantes).toEqual([{ codigo: '', campo: '', mensaje: 'condicion_iva inválida: marciano' }]);
     });
 
+    it('409 cuit_no_vinculado (K-02) -> ErrorValidacionFiscal con Faltante de campo cuit y el mensaje del backend', async () => {
+      responder = () =>
+        respuesta(409, {
+          detail: { codigo: 'cuit_no_vinculado', mensaje: 'Ese CUIT no está vinculado a tu clave fiscal.' },
+        });
+
+      const err = (await guardarPerfil({
+        cuit: '20111222339',
+        razonSocial: 'Ana',
+        domicilioComercial: 'x',
+        condicionIva: 'monotributo',
+        ingresosBrutos: 'CM',
+        inicioActividades: '2020-01-01',
+        puntoVenta: 1,
+      }).catch((e: unknown) => e)) as ErrorValidacionFiscal;
+
+      expect(err).toBeInstanceOf(ErrorValidacionFiscal);
+      expect(err.faltantes).toEqual([
+        { codigo: 'cuit_no_vinculado', campo: 'cuit', mensaje: 'Ese CUIT no está vinculado a tu clave fiscal.' },
+      ]);
+    });
+
+    it('409 con OTRO código no se traga: sigue siendo error genérico (no ErrorValidacionFiscal)', async () => {
+      responder = () => respuesta(409, { detail: { codigo: 'otra_cosa', mensaje: 'x' } });
+
+      const err = await guardarPerfil({
+        cuit: '20111222339',
+        razonSocial: 'Ana',
+        domicilioComercial: 'x',
+        condicionIva: 'monotributo',
+        ingresosBrutos: 'CM',
+        inicioActividades: '2020-01-01',
+        puntoVenta: 1,
+      }).catch((e: unknown) => e);
+
+      expect(err).not.toBeInstanceOf(ErrorValidacionFiscal);
+    });
+
     it('404/501 -> no_disponible, no lanza', async () => {
       responder = () => respuesta(404, { detail: 'not found' });
       expect(await guardarPerfil({
