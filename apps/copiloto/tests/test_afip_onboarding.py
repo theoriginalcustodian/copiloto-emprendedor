@@ -455,3 +455,35 @@ def test_control_el_camino_feliz_guarda_wsfe_autorizado(monkeypatch):
 
     assert guardados == [[], ["wsfe"]], "el segundo save (con wsfe) es el que habilita a facturar"
     assert res["ok"] is True
+
+
+# --- K-02 (BL-C6): el CUIT del perfil tiene que estar vinculado a ESTE tenant -----------------
+
+_PERFIL_K02 = {"razon_social": "Mi Emprendimiento", "domicilio_comercial": "Calle 1",
+               "condicion_iva": "monotributo", "ingresos_brutos": "20-1-2",
+               "inicio_actividades": "2020-01-01", "punto_venta": 1}
+
+
+def test_K02_cuit_no_vinculado_es_409_cuit_no_vinculado_y_no_guarda(cliente, piezas):
+    client, _ = cliente
+    _, perfil, cred, _ = piezas
+    cred.save(CUIT, cert="c", key="k")                       # el tenant YA vinculó un CUIT
+    r = client.post("/afip/perfil", json={**_PERFIL_K02, "cuit": "20111111112"})
+    assert r.status_code == 409
+    assert r.json()["detail"]["codigo"] == "cuit_no_vinculado"
+    assert "vinculado" in r.json()["detail"]["mensaje"]
+    assert perfil.get("20111111112") is None                 # no escribió nada
+
+
+def test_K02_compatibilidad_el_cuit_ya_vinculado_sigue_guardando_200(cliente, piezas):
+    client, _ = cliente
+    _, _, cred, _ = piezas
+    cred.save(CUIT, cert="c", key="k", ambiente="prod")      # otro ambiente también cuenta
+    r = client.post("/afip/perfil", json={**_PERFIL_K02, "cuit": CUIT})
+    assert (r.status_code, r.json()) == (200, {"ok": True})
+
+
+def test_K02_alta_original_sin_ninguna_credencial_sigue_pasando(cliente):
+    """El primer alta guarda el perfil ANTES de `/afip/conectar`: el chequeo no puede bloquearla."""
+    client, _ = cliente
+    assert client.post("/afip/perfil", json={**_PERFIL_K02, "cuit": CUIT}).status_code == 200
