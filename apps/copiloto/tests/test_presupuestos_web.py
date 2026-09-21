@@ -363,6 +363,23 @@ def test_el_doc_cuando_funciona_queda_pegado_al_presupuesto():
     assert (p["doc_id"], p["doc_link"]) == ("doc-1", "https://docs/x")
 
 
+def test_K07_con_doc_ofrece_mandar_por_mail_y_sin_doc_es_null():
+    cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
+    r = cli.post("/presupuestos", json=_BODY).json()
+    assert r["sugerencias"] == {"mandar_por_mail": {"doc_link": "https://docs/x"}}
+    assert r["presupuesto"]["doc_link"] == "https://docs/x"          # los campos existentes siguen iguales
+    cli, *_ = _app()
+    assert cli.post("/presupuestos", json=_BODY).json()["sugerencias"] is None
+
+
+def test_K07_doc_que_falla_no_ofrece_mandar_por_mail():
+    def _rota(cid, p):
+        raise RuntimeError("google caído")
+    cli, *_ = _app(generar_doc=_rota)
+    r = cli.post("/presupuestos", json=_BODY)
+    assert r.status_code == 201 and r.json()["sugerencias"] is None
+
+
 @necesita_pg
 def test_D2_el_fallo_del_doc_queda_depositado_en_la_dlq(conn_de_tenant):
     """D2 (auditoría lote C, C3): el fallo del Doc se atrapaba y se logueaba, pero como el endpoint
