@@ -12,7 +12,7 @@ import {
 } from '@copiloto/core';
 
 import { AcumuladoAnual } from './AcumuladoAnual';
-import { ChatInteligencia } from './ChatInteligencia';
+import { PreguntarInteligencia } from './PreguntarInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import { ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -40,7 +40,7 @@ import { useTema } from '../../theme/ThemeProvider';
  *
  * 🔴 **La decisión de placement (`dato_planificacion-a-frontend_IN-vacio-...`) — una sola pantalla,
  * dos solapas.** Los 4 gráficos (`GraficosInteligencia`) entran DEBAJO de la portada, dentro del mismo
- * scroll — leen de un vistazo, no multiplican rutas para algo chico. El chat (`ChatInteligencia`) NO
+ * scroll — leen de un vistazo, no multiplican rutas para algo chico. La solapa «Preguntar» (`PreguntarInteligencia`) NO
  * entra al mismo scroll: es un `flex:1` con su propio teclado/scroll interno, anidarlo abajo de los
  * gráficos lo dejaría compitiendo por alto con contenido que no es suyo. Por eso "Preguntar" es una
  * solapa aparte, no una sección más — mismo `MarcoGlass`, dos cuerpos que se turnan.
@@ -144,7 +144,7 @@ export function PantallaInteligencia() {
         <Solapas vista={vista} onChange={setVista} />
 
         {vista === 'preguntar' ? (
-          <ChatInteligencia />
+          <PreguntarInteligencia />
         ) : (
           <>
             {estado === 'cargando' && (

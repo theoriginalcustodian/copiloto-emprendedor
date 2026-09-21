@@ -7,7 +7,7 @@ vi.mock('@copiloto/core', async (orig) => ({
   ...(await orig<typeof import('@copiloto/core')>()),
   leerPortada,
 }));
-vi.mock('./ChatInteligencia', () => ({ ChatInteligencia: () => null }));
+vi.mock('./PreguntarInteligencia', () => ({ PreguntarInteligencia: () => null }));
 vi.mock('./graficos/GraficosInteligencia', () => ({ GraficosInteligencia: () => null }));
 
 import { InteligenciaScreen } from './InteligenciaScreen';
@@ -27,7 +27,7 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
   });
 
   it('Actualizando… mientras carga y «Al día · recién» al terminar', async () => {
-    render(<InteligenciaScreen />);
+    render(<InteligenciaScreen onAbrirChat={() => {}} />);
     await screen.findByTestId('inteligencia-actualizar');
     const estado = screen.getByTestId('inteligencia-refresco-estado');
     expect(estado).toHaveTextContent('');
@@ -45,7 +45,7 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
   });
 
   it('el estado se anuncia (role=status) y web no ofrece «Tirá»/«Soltá»', async () => {
-    render(<InteligenciaScreen />);
+    render(<InteligenciaScreen onAbrirChat={() => {}} />);
     await screen.findByTestId('inteligencia-actualizar');
     expect(screen.getByRole('status')).toBe(screen.getByTestId('inteligencia-refresco-estado'));
     expect(document.body.textContent).not.toMatch(/Tirá para|Soltá para/);
