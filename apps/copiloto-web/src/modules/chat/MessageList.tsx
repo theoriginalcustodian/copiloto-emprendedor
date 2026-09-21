@@ -12,6 +12,7 @@ import {
 
 import { Bubble } from './Bubble';
 import { DisambiguationChips } from './DisambiguationChips';
+import { RodilloEjemplos } from './RodilloEjemplos';
 import { HitlCard } from './HitlCard';
 import { buildHitlCardProps, classifyChoices } from './hitlMapping';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
@@ -161,7 +162,12 @@ export function MessageList({
       onPointerDown={handlePointerDown}
       onClick={handleSurfaceClick}
     >
-      {messages.length === 0 && emptyHint && <p className="chat-messages__empty">{emptyHint}</p>}
+      {messages.length === 0 && emptyHint && (
+        <>
+          <p className="chat-messages__empty">{emptyHint}</p>
+          <RodilloEjemplos />
+        </>
+      )}
 
       {sessionMarker && messages.length > 0 && (
         <div className="chat-messages__session-marker">{sessionMarker}</div>
