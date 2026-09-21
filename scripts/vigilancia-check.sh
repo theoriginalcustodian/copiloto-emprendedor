@@ -41,6 +41,36 @@ BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
 . "$REPO_ROOT/scripts/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 TRANSCRIPTS="${TRANSCRIPTS_DIR:-$HOME/.claude/projects/c--Proyectos-Claude-Claude-code-copiloto-emprendedor}"
 RAMAS_GIT_DIR="${RAMAS_GIT_DIR:-$REPO_ROOT}"   # repo del que salen las ramas-señal (override para test)
+SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
+
+# Slugs de los WORKTREES de este repo. Claude Code guarda el transcript bajo un slug derivado del
+# cwd donde arrancó la ventana: una sesión lanzada desde `C:/gfw-src/wt-fe1b` escribe en
+# `C--gfw-src-wt-fe1b/`, no en el slug principal. El bloque 3 sólo miraba el principal, así que
+# una sesión de worktree que se muriera no disparaba nunca SESION MUDA — el `mt=0 → continue`
+# se la comía (medido 2026-09-21: FE1, FE2 y auditoría corrían las tres desde worktrees).
+# Se derivan de `git worktree list`, no de una lista escrita a mano ni de un glob por nombre de
+# rol (`wt-fe1b` no contiene «frontend1»: ése es el agujero del 3.bis).
+#   TRANSCRIPTS_EXTRA_DIRS sin definir + TRANSCRIPTS_DIR sin definir → auto (uso real)
+#   TRANSCRIPTS_DIR definido (test)                                  → ninguno: el fixture aísla
+#   TRANSCRIPTS_EXTRA_DIRS=auto                                      → auto, contra RAMAS_GIT_DIR/SLUGS_ROOT
+#   TRANSCRIPTS_EXTRA_DIRS=<dirs separados por newline>              → esos
+slugs_de_worktrees() {
+  local wt slug d
+  git -C "$RAMAS_GIT_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' |
+  while IFS= read -r wt; do
+    slug="$(printf '%s' "$wt" | sed 's/[^A-Za-z0-9]/-/g')"
+    # La letra de unidad cambia de caja según quién abrió la ventana (`c--` / `C--`).
+    d="$(find "$SLUGS_ROOT" -mindepth 1 -maxdepth 1 -type d -iname "$slug" 2>/dev/null | head -1)"
+    [ -n "$d" ] && [ "$d" != "$TRANSCRIPTS" ] && printf '%s\n' "$d"
+  done
+}
+if [ "${TRANSCRIPTS_EXTRA_DIRS:-}" = "auto" ] || { [ -z "${TRANSCRIPTS_EXTRA_DIRS+x}" ] && [ -z "${TRANSCRIPTS_DIR:-}" ]; }; then
+  TRANSCRIPTS_EXTRA="$(slugs_de_worktrees)"
+else
+  TRANSCRIPTS_EXTRA="${TRANSCRIPTS_EXTRA_DIRS:-}"
+fi
+TRANSCRIPTS_TODOS=("$TRANSCRIPTS")
+while IFS= read -r _d; do [ -n "$_d" ] && [ -d "$_d" ] && TRANSCRIPTS_TODOS+=("$_d"); done <<< "$TRANSCRIPTS_EXTRA"
 UMBRAL_MUERTA_MIN="${UMBRAL_MUERTA_MIN:-30}"
 QUIET=0
 DRY_RUN=0
@@ -180,7 +210,7 @@ if [ -d "$TRANSCRIPTS" ]; then
     # 'PLANIFICACIÓN' 2 → se rotulaba a sí misma como BACKEND. La identidad la asigna quien manda
     # el cron, no el contenido del trabajo. (En JSONL cada mensaje es UNA línea, así que el prompt
     # del cron entero cae en una sola.)
-    cron_txt="$(tail -c 400000 "$f" 2>/dev/null | grep -E 'Vig[ií]a de coordinaci[oó]n|Control de (sesiones|SESIONES)|Monitor de PAR[AÁ]LISIS' || true)"
+    cron_txt="$(tail -c 400000 "$f" 2>/dev/null | grep -E 'Vig(i|í)a de coordinaci(o|ó)n|Control de (sesiones|SESIONES)|Monitor de PAR(A|Á)LISIS' || true)"
     b=$( printf '%s' "$cron_txt" | grep -oc 'sesión BACKEND' || true)
     fr=$(printf '%s' "$cron_txt" | grep -oc 'sesión FRONTEND' || true)
     pl=$(printf '%s' "$cron_txt" | grep -oc 'sesión PLANIFICACIÓN' || true)
@@ -210,7 +240,7 @@ if [ -d "$TRANSCRIPTS" ]; then
     esac
   # -newermt '-4 hours': mismo filtro que no-ocio-check.sh para ignorar transcripts de sesiones
   # cerradas hace días (ventanas viejas no son "sesión muda hoy", son ruido de fondo).
-  done < <(find "$TRANSCRIPTS" -maxdepth 1 -name '*.jsonl' -newermt '-4 hours' -print0 2>/dev/null)
+  done < <(find "${TRANSCRIPTS_TODOS[@]}" -maxdepth 1 -name '*.jsonl' -newermt '-4 hours' -print0 2>/dev/null)
 
   for par in "BACKEND:$mt_be" "FRONTEND:$mt_fe" "PLANIFICACION:$mt_pl" "MANEJO_DE_ERRORES:$mt_me"; do
     rol="${par%%:*}"; mt="${par##*:}"
@@ -255,7 +285,7 @@ fi
 #   b) los slugs hermanos, donde el rol viaja en el NOMBRE del directorio — una sesión lanzada
 #      desde su propio worktree tiene slug propio (`…--claude-worktrees-auditoria`) y jamás
 #      aparece en (a). Ése es exactamente el caso que dejó a auditoría fuera del radar.
-SLUGS_ROOT="${SLUGS_ROOT:-$(dirname "$TRANSCRIPTS")}"
+# SLUGS_ROOT se define arriba, junto a los slugs de worktrees que también lo usan.
 # Los mt_* nacen dentro del `if [ -d "$TRANSCRIPTS" ]` de arriba: si ese directorio no existe
 # quedan sin definir y `set -u` abortaría el script justo en el chequeo que existe para el caso
 # en que NO hay transcripts. Default explícito antes de tocarlos.
