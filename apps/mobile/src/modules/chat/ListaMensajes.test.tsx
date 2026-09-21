@@ -94,6 +94,59 @@ describe('ListaMensajes', () => {
     expect(onChoice).toHaveBeenCalledWith('cancel');
   });
 
+  it('BL-D3: gate irreversible (Instagram) EXIGE la advertencia, el badge y el servicio', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        card: { kind: 'confirm', service: 'instagram', label: 'Instagram' },
+        choices: [
+          { label: 'Publicar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-irreversible')).toBeTruthy();
+    expect(screen.getByText('IRREVERSIBLE')).toBeTruthy();
+    expect(screen.getByText('Instagram')).toBeTruthy();
+  });
+
+  it('BL-D3: gate reversible NO muestra la advertencia; Mercado Pago muestra PARA y MONTO', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrarle **Juan Pérez** $15.000, confirmá',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
+    expect(screen.getByText('REVISAR')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-confirmacion-para')).toBeTruthy();
+    expect(screen.getByText('$15.000')).toBeTruthy();
+  });
+
+  it('BL-D3: sin card, tarjeta neutra sin badge ni advertencia', async () => {
+    await envolver([
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a mandar un mail. ¿Confirmás?',
+        choices: [
+          { label: 'Enviar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.queryByTestId('tarjeta-confirmacion-riesgo')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
+  });
+
   it('🔴 un `cliente_propuesto` se renderiza como CARD editable, no como burbuja', async () => {
     // La card no lleva `choices`, así que `mapearGate` la ignora: sin este cableado caería en
     // `Burbuja` y el emprendedor vería el texto del copiloto y ningún lugar donde corregir el nombre.

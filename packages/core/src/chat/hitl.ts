@@ -45,7 +45,30 @@ export interface Gate {
   confirmValue: string;
   /** El `value` que hay que mandar para cancelarlo. */
   cancelValue: string;
+  /** Servicio que manda el backend en `card.service` (minúsculas); `''` si el gate no lo trae. */
+  service: string;
+  /** Nombre visible del servicio (`card.label`); nunca vacío — «Confirmación» si falta. */
+  label: string;
+  /** Destinatario: primer **negrita** del texto. */
+  name?: string;
+  /** Monto (sólo servicios que lo muestran, hoy Mercado Pago), sin el signo `$`. */
+  amount?: string;
+  /** Riesgo intrínseco del servicio: etiqueta del badge y si no se puede deshacer. */
+  riesgo?: { badge: string; tono: 'warning' | 'danger'; irreversible: boolean };
 }
+
+const BOLD_NAME_RE = /\*\*(.+?)\*\*/;
+// Empieza y termina en dígito: no captura la puntuación de la oración ("$15.000, confirmá").
+const AMOUNT_RE = /\$\s?(\d+(?:[.,]\d+)*)/;
+
+/** Riesgo POR SERVICIO (intrínseco al servicio, no al texto). Sin entrada = tarjeta neutra. */
+const SERVICE_RISK: Record<
+  string,
+  { badge: string; tono: 'warning' | 'danger'; irreversible: boolean; showAmount?: boolean }
+> = {
+  mercadopago: { badge: 'REVISAR', tono: 'warning', irreversible: false, showAmount: true },
+  instagram: { badge: 'IRREVERSIBLE', tono: 'danger', irreversible: true },
+};
 
 /**
  * Convierte un `ChatMessage` en el gate de negocio a mostrar, o `null` si no lo es
@@ -65,8 +88,17 @@ export function mapearGate(mensaje: ChatMessage): Gate | null {
   const cancelChoice =
     choices.find((choice) => CANCEL_VALUE_RE.test(choice.value)) ?? choices[1] ?? CANCEL_FALLBACK;
 
+  const service = (mensaje.card?.service ?? '').toLowerCase();
+  const risk = SERVICE_RISK[service];
+  const markdown = mensaje.card?.markdown ?? mensaje.text;
+
   return {
-    markdown: mensaje.card?.markdown ?? mensaje.text,
+    service,
+    label: mensaje.card?.label || 'Confirmación',
+    name: markdown.match(BOLD_NAME_RE)?.[1],
+    amount: risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined,
+    riesgo: risk && { badge: risk.badge, tono: risk.tono, irreversible: risk.irreversible },
+    markdown,
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
     confirmValue: confirmChoice.value,

@@ -12,6 +12,9 @@ export interface MicButtonProps {
 
 /** Umbral de arrastre hacia arriba (px) que "fija" la grabación — EXTRACT §2.10 (verbatim: >46px). */
 const LOCK_THRESHOLD_PX = 46;
+/** Umbral de arrastre hacia la izquierda (px) que arma la CANCELACIÓN (BL-D2): soltar más allá
+ * descarta la grabación sin enviarla. Spec: `03-home-conversacional/DECISIONES.md:95,108`. */
+const CANCEL_THRESHOLD_PX = 80;
 const TIMER_TICK_MS = 100;
 /** Umbral mínimo de "mantener presionado" (ms) para que soltar sin fijar cuente como intención de
  * grabar y envíe — hardening tap-corto: antes CUALQUIER pointerdown+pointerup (por más breve que
@@ -58,6 +61,7 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [holdHint, setHoldHint] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -67,6 +71,8 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   // Espejo síncrono de `locked` — los listeners de `document` (pointermove/up) se registran una
   // sola vez por gesto y leen closures viejas; el estado de React no sirve para esa lectura.
   const lockedRef = useRef(false);
+  const startXRef = useRef(0);
+  const cancellingRef = useRef(false);
   const pendingSendRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
@@ -97,6 +103,8 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     setRecording(false);
     setLocked(false);
     lockedRef.current = false;
+    setCancelling(false);
+    cancellingRef.current = false;
     setElapsedMs(0);
     chunksRef.current = [];
     mediaRecorderRef.current = null;
@@ -129,7 +137,7 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   }, [resetState]);
 
   const startRecording = useCallback(
-    async (clientY: number) => {
+    async (clientX: number, clientY: number) => {
       setPermissionError(null);
 
       let stream: MediaStream;
@@ -167,7 +175,10 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
       mediaRecorderRef.current = recorder;
       recorder.start();
 
+      startXRef.current = clientX;
       startYRef.current = clientY;
+      cancellingRef.current = false;
+      setCancelling(false);
       lockedRef.current = false;
       setLocked(false);
       setRecording(true);
@@ -188,13 +199,25 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     // `handlePointerUp` tengan el dato aunque `getUserMedia` todavía no haya resuelto.
     gestureActiveRef.current = true;
     pointerDownAtRef.current = Date.now();
-    void startRecording(event.clientY);
+    void startRecording(event.clientX, event.clientY);
 
     function handlePointerMove(moveEvent: PointerEvent) {
       const delta = startYRef.current - moveEvent.clientY;
       if (!lockedRef.current && delta > LOCK_THRESHOLD_PX) {
         lockedRef.current = true;
+        cancellingRef.current = false;
+        setCancelling(false);
         setLocked(true);
+        return;
+      }
+      // Eje horizontal (BL-D2): arrastrar a la izquierda arma la cancelación (con feedback ANTES
+      // de soltar); volver por debajo del umbral la des-arma. Fijar (arriba) gana sobre cancelar.
+      if (!lockedRef.current) {
+        const armed = startXRef.current - moveEvent.clientX > CANCEL_THRESHOLD_PX;
+        if (armed !== cancellingRef.current) {
+          cancellingRef.current = armed;
+          setCancelling(armed);
+        }
       }
     }
     function detachGestureListeners() {
@@ -209,7 +232,9 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         return; // fijado: no hace nada acá — espera Cancelar/Enviar explícitos del overlay.
       }
       const heldMs = Date.now() - pointerDownAtRef.current;
-      if (heldMs < MIN_HOLD_MS) {
+      if (cancellingRef.current) {
+        finishRecording(false); // deslizó a la izquierda y soltó -> cancela, no envía
+      } else if (heldMs < MIN_HOLD_MS) {
         finishRecording(false); // tap corto: sin intención de grabar -> descarta, no envía
         showHoldHint();
       } else {
@@ -278,6 +303,7 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
         <RecordingOverlay
           elapsedMs={elapsedMs}
           locked={locked}
+          cancelling={cancelling}
           onCancel={() => finishRecording(false)}
           onSend={() => finishRecording(true)}
         />
