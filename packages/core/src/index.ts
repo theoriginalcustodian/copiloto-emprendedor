@@ -2,5 +2,6 @@ export * from './audio';
 export * from './artefactos';
 export * from './api';
 export * from './chat';
+export * from './ayuda';
 export * from './dinero/formatoDinero';
 export * from './midia';

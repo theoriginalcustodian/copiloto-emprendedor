@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { dejarPendiente, tomarPendiente } from '@copiloto/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider } from '../../auth/SessionProvider';
@@ -56,5 +57,12 @@ describe('ChatScreen', () => {
     document.documentElement.setAttribute('data-theme', theme);
     renderChatScreen();
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+  });
+
+  it('BL-W9: manda al montar la pregunta que dejó una pantalla de ayuda, y vacía el buzón', async () => {
+    dejarPendiente('¿Cómo emito mi primera factura?');
+    renderChatScreen();
+    expect(await screen.findByText('¿Cómo emito mi primera factura?')).toBeInTheDocument();
+    expect(tomarPendiente()).toBeNull();
   });
 });

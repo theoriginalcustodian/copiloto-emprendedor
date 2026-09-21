@@ -16,7 +16,7 @@ import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
-import { AjustesScreen } from '../modules/ajustes';
+import { AjustesScreen, PantallaComoUsarLaApp } from '../modules/ajustes';
 import { PantallaFacturacion } from '../modules/facturacion';
 import type { FuncionSoporte } from '../lib/api';
 import { AccountScreen } from '../modules/account';
@@ -178,7 +178,13 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
             {activeTab === 'account' && (
               <AccountScreen onNavegarTab={(_tab, funcion) => abrirSoporte(funcion)} />
             )}
-            {activeTab === 'soporte' && <SoporteScreen funcion={funcionSoporte} />}
+            {activeTab === 'soporte' &&
+              (funcionSoporte === 'como_uso_la_app' ? (
+                // BL-W9: «Cómo uso la app» no es un chat de ayuda propio — cada tema abre el chat principal.
+                <PantallaComoUsarLaApp onAbrirChat={() => setActiveTab('chat')} />
+              ) : (
+                <SoporteScreen funcion={funcionSoporte} />
+              ))}
           </>
         )}
       </main>

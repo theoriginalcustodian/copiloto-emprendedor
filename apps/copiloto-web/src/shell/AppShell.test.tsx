@@ -129,6 +129,18 @@ describe('AppShell', () => {
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
+  it('BL-W9: «Cómo uso la app» muestra los temas y cada uno abre el chat principal con su pregunta', async () => {
+    renderAppShell();
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
+    fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
+    fireEvent.click(screen.getByTestId('account-como-uso-la-app'));
+    expect(screen.getByTestId('pantalla-como-usar')).toBeInTheDocument();
+    expect(screen.queryByTestId('soporte-screen')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('como-usar-tema-2'));
+    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(await screen.findByText('¿Cómo conecto Mercado Pago y qué vas a poder ver?')).toBeInTheDocument();
+  });
+
   it('volver a Chat desde Mi día remonta ChatScreen', () => {
     renderAppShell();
     fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
