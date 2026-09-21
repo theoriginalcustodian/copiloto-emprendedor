@@ -436,7 +436,7 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Depende de:** ADR (CAL1 §3 fijó sólo-hoy) + `contrato_`.
 - **DoD:**
   - [ ] ADR que reemplaza la decisión sólo-hoy de CAL1 §3.
-  - [ ] Pantalla Agenda con Hoy / Mañana / Vencen esta semana / Sin hora y franja horaria.
+  - [ ] Pantalla Agenda con Hoy / Mañana / Esta semana / Sin hora y franja horaria (títulos literales de `GRUPOS_AGENDA`, `mi_dia_web.py:46`; K-13 §5).
   - [ ] Crear un evento por voz y desde «Nuevo evento», siempre con HITL; aparece en Google Calendar de `e2e-device`.
   - [ ] Test adversarial: A no lee la agenda de B (la conexión de Composio es por tenant).
   - [ ] La capa 3 (cruce evento ↔ cliente) queda afuera: `BL-V3`.

@@ -19,7 +19,9 @@ averiguarlo.
 5. **Harness de buzón** — `grep -c buzon_watcher ~/.claude/settings.json`. Si da `0`, el push de mensajes
    nuevos no está y las tres sesiones dependen sólo de sus crones: **reportalo**.
 6. **Estado** — leé `coordinacion/PLAN.md` (COLA-VIVA) y listá `coordinacion/abierto/` filtrando
-   `-a-planificacion_` y `-a-todos_`, descartando lo que empiece por `planificacion-a-` (es tuyo).
+   `planificacion_` en CUALQUIER posición de destinatario y `-a-todos_`, descartando lo que empiece
+   por `planificacion-a-` (es tuyo): `find abierto en-curso -name '*planificacion_*' ! -name '*_planificacion-a-*'`.
+   Un filtro `-a-planificacion_` NO ve `-a-backend-y-planificacion_` (K-07-B quedó 20+ min sin leer, 21/09).
    Mirá también `cerrado/<hoy>/` por los `avance_`, que nacen archivados.
 
 **REPORTE de arranque — binario, una línea por ítem:**
@@ -102,8 +104,9 @@ Vigía de coordinación (sesión PLANIFICACIÓN) v3.
 Buzón (ruta absoluta, NO relativa al cwd):
 C:\Proyectos\Claude\Claude code\copiloto-emprendedor\coordinacion\
 
-1. NOVEDADES. Listar `abierto/` y quedarte SÓLO con lo dirigido a vos: nombres que contengan
-   `-a-planificacion_` o `-a-todos_`. Descartar todo lo que empiece por `planificacion-a-` (son
+1. NOVEDADES. Listar `abierto/` y `en-curso/` y quedarte SÓLO con lo dirigido a vos:
+   `find abierto en-curso -name '*planificacion_*' ! -name '*_planificacion-a-*'` más `-a-todos_`
+   (el destinatario puede ser compuesto: `-a-backend-y-planificacion_`; `-a-planificacion_` no lo ve). Descartar todo lo que empiece por `planificacion-a-` (son
    tuyos: notificarlos es ruido disfrazado de novedad). Mirar también `cerrado/<hoy>/` por los
    `avance_`, que nacen archivados y no aparecen en `abierto/`.
 
