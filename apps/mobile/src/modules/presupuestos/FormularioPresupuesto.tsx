@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
@@ -18,6 +18,7 @@ import {
   FilaBotones,
   type OpcionSelect,
 } from '../../theme/glass/campos';
+import { generarId } from '../../util/id';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
 import { Row } from '../../theme/glass/Row';
 import { useTema } from '../../theme/ThemeProvider';
@@ -160,6 +161,9 @@ export function FormularioPresupuesto({
     return [{ ...FILA_VACIA }];
   });
   const [enviando, setEnviando] = useState(false);
+  const enviandoRef = useRef(false);
+  // Una `idem_key` por instancia de formulario (K-01): estable a través de reintentos del mismo submit.
+  const idemKey = useRef(generarId());
   const [error, setError] = useState<string | null>(null);
   /**
    * El catálogo de lo que vende, para armar el presupuesto **eligiendo** en vez de tipear lo mismo
@@ -248,6 +252,10 @@ export function FormularioPresupuesto({
   const puedeGuardar = concepto.trim() !== '' && nombre.trim() !== '' && itemsValidos.length > 0;
 
   async function guardar() {
+    // Guard SÍNCRONO: `enviando` (estado) recién se actualiza en el próximo render, así que dos toques
+    // rápidos pasaban los dos. La ref lo cierra en el mismo tick; `idemKey` cubre el reintento de red.
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
     setEnviando(true);
     setError(null);
     try {
@@ -261,6 +269,7 @@ export function FormularioPresupuesto({
         },
         items: itemsValidos,
         ...(corrige != null ? { reemplazaA: corrige.id } : {}),
+        idemKey: idemKey.current,
       });
       if (res.status === 'no_disponible') {
         setError('Los presupuestos todavía no están disponibles en tu copiloto.');
@@ -270,6 +279,7 @@ export function FormularioPresupuesto({
     } catch (e) {
       setError(e instanceof ApiError ? (e.detail ?? e.message) : 'No pudimos guardar el presupuesto.');
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
     }
   }

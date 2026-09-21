@@ -354,6 +354,13 @@ export interface CrearPresupuestoRequest {
    * circulando serían indistinguibles para el emprendedor.
    */
   reemplazaA?: number;
+  /**
+   * Clave de idempotencia (K-01 / BL-D1): un UUID generado UNA vez por instancia de formulario. Mismo
+   * `idemKey` ⇒ el backend devuelve el presupuesto ya creado en vez de crear otro (doble toque, reintento
+   * de red). Un cliente que no la manda se comporta como antes. No se regenera en un reintento del mismo
+   * submit — regenerarla anula la protección.
+   */
+  idemKey?: string;
 }
 
 function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
@@ -377,6 +384,7 @@ function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
   };
   if (req.moneda !== undefined) body.moneda = req.moneda;
   if (req.reemplazaA !== undefined) body.reemplaza_a = req.reemplazaA;
+  if (req.idemKey !== undefined) body.idem_key = req.idemKey;
   return body;
 }
 
@@ -391,11 +399,15 @@ function aBodyCrudo(req: CrearPresupuestoRequest): Record<string, unknown> {
  */
 export async function crearPresupuesto(
   req: CrearPresupuestoRequest,
-): Promise<ConDisponibilidad<{ presupuesto: Presupuesto }>> {
+): Promise<ConDisponibilidad<{ presupuesto: Presupuesto; repetido?: boolean }>> {
   try {
-    const raw = await apiClient.post<{ presupuesto: PresupuestoCrudo }>('/presupuestos', aBodyCrudo(req));
+    const raw = await apiClient.post<{ presupuesto: PresupuestoCrudo; repetido?: boolean }>(
+      '/presupuestos',
+      aBodyCrudo(req),
+    );
     if (!esRespuestaDelEndpoint(raw, 'presupuesto')) return { status: 'no_disponible' };
-    return { status: 'ok', presupuesto: normalizar(raw.presupuesto) };
+    // `repetido` informa, no ramifica: el destino visual es el mismo presupuesto en los dos casos.
+    return { status: 'ok', presupuesto: normalizar(raw.presupuesto), repetido: raw.repetido === true };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     throw err;
