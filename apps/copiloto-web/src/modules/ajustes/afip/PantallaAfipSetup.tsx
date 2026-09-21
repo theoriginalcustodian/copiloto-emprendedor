@@ -392,7 +392,11 @@ export function PantallaAfipSetup() {
               onChange={(e) => setCuit(e.target.value.replace(/\D/g, '').slice(0, 11))}
               maxLength={11}
             />
-            {erroresPerfil.cuit && <p className="afip-setup-bloque__error">{erroresPerfil.cuit}</p>}
+            {erroresPerfil.cuit && (
+              <p className="afip-setup-bloque__error" data-testid="afip-perfil-cuit-error">
+                {erroresPerfil.cuit}
+              </p>
+            )}
           </label>
         )}
 
