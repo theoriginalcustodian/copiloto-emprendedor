@@ -408,6 +408,17 @@ def _ensure_modo_ceremonia(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
 
 
+def _ensure_onboarding_completado(conn) -> None:
+    """`tenants.onboarding_completado boolean NOT NULL DEFAULT false` (K-14, BL-X8). `tenants` es DDL
+    bespoke (`_provision_tenants`), fuera de `uc_tables.json`: la columna se agrega acá, y como
+    `ADD COLUMN IF NOT EXISTS` es idempotente corre igual sobre DB fresca o existente. Los tenants que ya
+    existen quedan en `false` (verán el onboarding una vez, y «Después» lo cierra)."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.{TENANTS_TABLE} "
+                f"ADD COLUMN IF NOT EXISTS onboarding_completado boolean NOT NULL DEFAULT false;")
+    print(f"OK {SCHEMA}.{TENANTS_TABLE}.onboarding_completado (idempotente)", flush=True)
+
+
 def _ensure_mp_reauth(conn) -> None:
     """`mp_credentials.reauth_desde timestamptz NULL` -- desde cuándo la conexión de MercadoPago pide
     reconectar (K-09, BL-J4). La marca el refresh cuando MP rechaza el `refresh_token` (`needs_reauth`)
@@ -589,6 +600,7 @@ def provision(conn) -> dict:
     _ensure_afip_comprobante_params_pdf_column(conn)  # ídem para `afip_comprobantes.params_pdf_json`.
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
+    _ensure_onboarding_completado(conn)             # K-14: flag del onboarding en `tenants`.
     _provision_ticket_secuencia(conn)  # SOP3/B3: contador atómico por tenant del código SOP-XXXX.
     sql_aplicados = _apply_sql_files(conn)
     return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,

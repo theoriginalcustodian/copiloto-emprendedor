@@ -41,6 +41,7 @@ from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
 from conexiones_salud import composio_caidos
+from tenant_onboarding_store import TenantOnboardingStore
 from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
 # el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
@@ -941,7 +942,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                                   if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
                     "mp_connected": seller is not None, "composio_connected": composio_connected,
-                    "es_admin": es_admin(claims)}
+                    "es_admin": es_admin(claims),
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -953,7 +955,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # puerta de la consola nunca es un agujero de seguridad (el guard real es
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected, "es_admin": False}
+                    "composio_connected": composio_connected, "es_admin": False,
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+
+    @app.post("/me/onboarding/completar")
+    def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-14: marca el onboarding como hecho (también lo llama «Después»: cerrar el hilo cuenta).
+        Sin body: el tenant sale SÓLO del token, nunca de un valor que mande el cliente. Idempotente."""
+        TenantOnboardingStore(conn_factory, cliente_id).completar()
+        return {"onboarding_completado": True}
 
     @app.post("/warm")
     def warm(cliente_id: str = Depends(require_tenant)) -> dict:
