@@ -18,6 +18,7 @@ import {
 
 import { Button, Skeleton } from '../../../design-system';
 import { SeccionCatalogo } from './SeccionCatalogo';
+import { OPCIONES_FORMALIDAD, OPCIONES_LARGO } from './PantallaTono';
 import '../ajustes.css';
 
 /**
@@ -35,16 +36,6 @@ const OPCIONES_A_QUIEN: ReadonlyArray<{ valor: AQuienVende; etiqueta: string }> 
   { valor: 'empresas', etiqueta: 'Empresas' },
   { valor: 'consumidor_final', etiqueta: 'Consumidor final' },
   { valor: 'ambos', etiqueta: 'Ambos' },
-];
-
-const OPCIONES_FORMALIDAD: ReadonlyArray<{ valor: FormalidadCopiloto; etiqueta: string }> = [
-  { valor: 'formal', etiqueta: 'Formal' },
-  { valor: 'cercano', etiqueta: 'Cercano' },
-];
-
-const OPCIONES_LARGO: ReadonlyArray<{ valor: LargoRespuesta; etiqueta: string }> = [
-  { valor: 'breve', etiqueta: 'Breve' },
-  { valor: 'detallado', etiqueta: 'Detallado' },
 ];
 
 interface Campos {
@@ -95,9 +86,16 @@ type EstadoCarga = 'cargando' | 'ok' | 'error' | 'no_disponible';
 type EstadoGuardado = 'idle' | 'enviando' | 'ok' | 'error';
 
 /** Qué sección se está guardando — para que el "Guardando…" aparezca en SU botón y no en los dos. */
-type Seccion = 'negocio' | 'personalidad' | 'modo';
+type Seccion = 'negocio' | 'modo';
 
-export function PantallaPerfilNegocio() {
+/** Resumen de la fila que lleva a «Cómo hablarle»: «Cercano · Breve · Copi». */
+function resumenDeTono(c: { formalidad: FormalidadCopiloto; largoRespuesta: LargoRespuesta; nombreCopiloto: string }): string {
+  const f = OPCIONES_FORMALIDAD.find((o) => o.valor === c.formalidad)?.etiqueta ?? '';
+  const l = OPCIONES_LARGO.find((o) => o.valor === c.largoRespuesta)?.etiqueta ?? '';
+  return [f, l, c.nombreCopiloto.trim()].filter((x) => x !== '').join(' · ');
+}
+
+export function PantallaPerfilNegocio({ onAbrirTono }: { onAbrirTono?: () => void } = {}) {
   const [campos, setCampos] = useState<Campos>(CAMPOS_VACIOS);
   const [estadoCarga, setEstadoCarga] = useState<EstadoCarga>('cargando');
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
@@ -149,21 +147,14 @@ export function PantallaPerfilNegocio() {
       setErroresContacto(errores);
       if (errores.telefono != null || errores.email != null) return;
     }
-    const parcial: GuardarPerfilNegocioRequest =
-      seccion === 'negocio'
-        ? {
-            queVende: campos.queVende,
-            aQuien: campos.aQuien,
-            nombreComercial: campos.nombreComercial,
-            horarioAtencion: campos.horarioAtencion,
-            telefono: campos.telefono,
-            email: campos.email,
-          }
-        : {
-            formalidad: campos.formalidad,
-            largoRespuesta: campos.largoRespuesta,
-            nombreCopiloto: campos.nombreCopiloto,
-          };
+    const parcial: GuardarPerfilNegocioRequest = {
+      queVende: campos.queVende,
+      aQuien: campos.aQuien,
+      nombreComercial: campos.nombreComercial,
+      horarioAtencion: campos.horarioAtencion,
+      telefono: campos.telefono,
+      email: campos.email,
+    };
 
     setSeccionEnCurso(seccion);
     setEstadoGuardado('enviando');
@@ -364,53 +355,18 @@ export function PantallaPerfilNegocio() {
             )}
           </section>
 
-          <section className="perfil-negocio-seccion" data-testid="perfil-negocio-seccion-personalidad">
-            <h2 className="perfil-negocio-seccion__titulo">Cómo te habla el copiloto</h2>
-            <label className="perfil-negocio-seccion__campo">
-              <span className="perfil-negocio-seccion__etiqueta">Tono</span>
-              <select
-                data-testid="perfil-negocio-formalidad"
-                value={campos.formalidad}
-                onChange={(e) => actualizar('formalidad', e.target.value as FormalidadCopiloto)}
-              >
-                {OPCIONES_FORMALIDAD.map((o) => (
-                  <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
-                ))}
-              </select>
-            </label>
-            <label className="perfil-negocio-seccion__campo">
-              <span className="perfil-negocio-seccion__etiqueta">Largo de las respuestas</span>
-              <select
-                data-testid="perfil-negocio-largo"
-                value={campos.largoRespuesta}
-                onChange={(e) => actualizar('largoRespuesta', e.target.value as LargoRespuesta)}
-              >
-                {OPCIONES_LARGO.map((o) => (
-                  <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
-                ))}
-              </select>
-            </label>
-            <label className="perfil-negocio-seccion__campo">
-              <span className="perfil-negocio-seccion__etiqueta">¿Cómo querés llamarlo?</span>
-              <input
-                data-testid="perfil-negocio-nombre-copiloto"
-                type="text"
-                value={campos.nombreCopiloto}
-                onChange={(e) => actualizar('nombreCopiloto', e.target.value)}
-                placeholder="ej.: Copi"
-                maxLength={LIMITE_CAMPO_CORTO}
-              />
-            </label>
-            <div className="perfil-negocio-screen__acciones" data-testid="perfil-negocio-guardar-personalidad-botones">
-              <Button
-                onClick={() => void guardar('personalidad')}
-                disabled={enviando}
-                data-testid="perfil-negocio-guardar-personalidad"
-              >
-                {enviando && seccionEnCurso === 'personalidad' ? 'Guardando…' : 'Guardar'}
-              </Button>
-            </div>
-          </section>
+          {/* K-15 / BL-X7: el editor de tono vive en «Cómo hablarle» (PantallaTono); acá sólo el resumen. */}
+          <button
+            type="button"
+            className="perfil-negocio-seccion perfil-negocio-seccion__fila-tono"
+            data-testid="perfil-negocio-tono-fila"
+            onClick={() => onAbrirTono?.()}
+          >
+            <span className="perfil-negocio-seccion__titulo">Cómo te habla el copiloto</span>
+            <span className="perfil-negocio-seccion__resumen" data-testid="perfil-negocio-tono-resumen">
+              {resumenDeTono(campos)} ›
+            </span>
+          </button>
 
           {estadoGuardado === 'ok' && (
             <p className="perfil-negocio-screen__guardado" data-testid="perfil-negocio-guardado">

@@ -311,3 +311,23 @@ export async function guardarPerfilNegocio(
     throw err;
   }
 }
+
+/**
+ * El texto de ejemplo de cómo respondería el copiloto con ese tono y largo (K-15 / BL-X7). Lo deriva
+ * el BACKEND de la misma tabla que arma el prompt real: acá no existe ninguna copia del copy que pueda
+ * divergir. Fail-soft: cualquier fallo (endpoint no desplegado, red, respuesta rara) → `null`, y la
+ * pantalla omite el ejemplo en vez de mostrar uno inventado.
+ */
+export async function leerEjemploDeTono(
+  formalidad: FormalidadCopiloto,
+  largoRespuesta: LargoRespuesta,
+): Promise<string | null> {
+  try {
+    const raw = await apiClient.get<{ ejemplo?: unknown }>(
+      `/perfil-negocio/ejemplo?formalidad=${encodeURIComponent(formalidad)}&largo_respuesta=${encodeURIComponent(largoRespuesta)}`,
+    );
+    return typeof raw?.ejemplo === 'string' && raw.ejemplo.trim() !== '' ? raw.ejemplo.trim() : null;
+  } catch {
+    return null;
+  }
+}

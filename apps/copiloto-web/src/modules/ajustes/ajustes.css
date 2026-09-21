@@ -807,3 +807,30 @@
   align-items: center;
   gap: 8px;
 }
+
+/* K-15: la fila-resumen de Mi negocio hacia «Cómo hablarle», y el ejemplo de respuesta. */
+.perfil-negocio-seccion__fila-tono {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.perfil-negocio-seccion__resumen {
+  font-size: 13px;
+  color: var(--label);
+}
+
+.perfil-negocio-seccion__ejemplo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--label);
+  font-size: 14px;
+}
