@@ -679,3 +679,35 @@
   padding: 0;
   text-align: left;
 }
+
+/* ---------- Cómo usar la app: los temas que abren el chat principal (BL-W9) ---------- */
+.como-usar-tema {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.como-usar-tema:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.como-usar-tema__titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--heading);
+}
+
+.como-usar-tema__detalle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}

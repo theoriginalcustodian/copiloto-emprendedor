@@ -3,6 +3,7 @@ export { PantallaAjustes, type AjusteKey, type PantallaAjustesProps } from './Pa
 export { PantallaAndamiaje, type PantallaAndamiajeProps } from './PantallaAndamiaje';
 export { PantallaApariencia } from './PantallaApariencia';
 export { PantallaComoHablarle } from './PantallaComoHablarle';
+export { PantallaComoUsarLaApp, type PantallaComoUsarLaAppProps } from './PantallaComoUsarLaApp';
 export { PantallaPerfilNegocio } from './negocio/PantallaPerfilNegocio';
 export { SeccionCatalogo, type SeccionCatalogoProps } from './negocio/SeccionCatalogo';
 export { PantallaAfipSetup } from './afip/PantallaAfipSetup';

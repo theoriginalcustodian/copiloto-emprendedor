@@ -20,3 +20,5 @@ export * from './presupuestoPropuesto';
 export * from './facturaPropuesta';
 // `payment_link` — el link de cobro de MercadoPago (BL-F2). Ver el docstring del módulo.
 export * from './linkDeCobro';
+// El buzón de un solo mensaje pantalla → chat principal (BL-W9; antes sólo mobile).
+export * from './mensajePendiente';
