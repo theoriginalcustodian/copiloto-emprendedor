@@ -122,3 +122,26 @@ describe('ServiceCard', () => {
     expect(screen.getByTestId('service-card-gmail')).toHaveAttribute('data-state', 'reconnect');
   });
 });
+
+describe('ServiceCard — estado real (K-09 / BL-J4)', () => {
+  it.each([
+    ['caido', 'reconnect'],
+    ['conectado', 'connected'],
+    ['nunca_conectado', 'disconnected'],
+  ] as const)('status %s → %s', (status, esperado) => {
+    render(<ServiceCard service={{ ...BASE_SERVICE, connected: status === 'conectado', status }} onConnect={vi.fn()} />);
+    expect(screen.getByTestId('service-card-gmail')).toHaveAttribute('data-state', esperado);
+  });
+
+  it('caído ofrece Reconectar y reusa onConnect', () => {
+    const onConnect = vi.fn();
+    render(<ServiceCard service={{ ...BASE_SERVICE, connected: false, status: 'caido' }} onConnect={onConnect} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Reconectar' }));
+    expect(onConnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('backend viejo (sin status): manda el booleano', () => {
+    render(<ServiceCard service={{ ...BASE_SERVICE, connected: false }} onConnect={vi.fn()} />);
+    expect(screen.getByTestId('service-card-gmail')).toHaveAttribute('data-state', 'disconnected');
+  });
+});

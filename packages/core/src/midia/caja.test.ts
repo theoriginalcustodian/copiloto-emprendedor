@@ -46,3 +46,12 @@ describe('chipDeCaja', () => {
     expect(chipDeCaja({ fechaCorte: null, variacionPct: null })).toBeNull();
   });
 });
+
+describe('chipDeCaja — incompleta (K-09)', () => {
+  it('con una conexión caída no dibuja la variación (sería falsa), conserva la fecha', () => {
+    expect(chipDeCaja({ fechaCorte: '2026-08-19', variacionPct: '-18.0', incompleta: true })).toBe('Al 19 de agosto');
+  });
+  it('incompleta y sin fecha: no hay chip', () => {
+    expect(chipDeCaja({ fechaCorte: null, variacionPct: '5.0', incompleta: true })).toBeNull();
+  });
+});

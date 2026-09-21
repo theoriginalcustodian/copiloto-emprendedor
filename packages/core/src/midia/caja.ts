@@ -46,9 +46,19 @@ export function formatearVariacion(pct: string | null): string | null {
  * El chip bajo «En caja»: «Al 19 de agosto · −18% vs mes anterior». Cada mitad se omite si falta;
  * si faltan las dos → `null` y no hay chip. Un solo texto para que web y mobile digan lo mismo.
  */
-export function chipDeCaja(caja: { fechaCorte: string | null; variacionPct: string | null }): string | null {
-  const partes = [formatearFechaCorte(caja.fechaCorte), formatearVariacion(caja.variacionPct)].filter(
+export function chipDeCaja(caja: {
+  fechaCorte: string | null;
+  variacionPct: string | null;
+  incompleta?: boolean;
+}): string | null {
+  // K-09: con una conexión caída la comparación contra el mes anterior sería falsa — no se dibuja.
+  const variacion = caja.incompleta === true ? null : formatearVariacion(caja.variacionPct);
+  const partes = [formatearFechaCorte(caja.fechaCorte), variacion].filter(
     (p): p is string => p != null,
   );
   return partes.length > 0 ? partes.join(' · ') : null;
 }
+
+/** El aviso de K-09 bajo el saldo cuando `caja.incompleta`: dice qué falta, no un error genérico. */
+export const AVISO_CAJA_INCOMPLETA =
+  'Se cayó una conexión: faltan los cobros de hoy, así que estos números pueden estar incompletos.';

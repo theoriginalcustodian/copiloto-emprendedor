@@ -338,18 +338,29 @@ export function PantallaApps() {
                     )}
                   </View>
                 ) : (
+                  <View style={{ gap: tema.espacio.sm }}>
+                    {/* K-09: «caído» = existió una conexión y ya no sirve; se dice, no se disfraza de «nunca». */}
+                    {s.estado === 'caido' && (
+                      <Text
+                        testID={`app-${s.key}-reconectar-aviso`}
+                        style={{ color: tema.color.acento, fontSize: tema.tipo.chico }}
+                      >
+                        Reconectar: se cayó la conexión
+                      </Text>
+                    )}
                   <FilaBotones
                     compacto
                     testID={`app-${s.key}-botones`}
                     botones={[
                       {
-                        etiqueta: pidiendo === s.key ? 'Abriendo…' : 'Conectar',
+                        etiqueta: pidiendo === s.key ? 'Abriendo…' : s.estado === 'caido' ? 'Reconectar' : 'Conectar',
                         onPress: () => void vincular(s),
                         deshabilitado: pidiendo != null,
                         testID: `app-${s.key}-conectar`,
                       },
                     ]}
                   />
+                  </View>
                 )}
               </View>
             </Row>

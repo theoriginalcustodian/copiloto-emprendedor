@@ -80,8 +80,8 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
-export { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
-export type { ServicioCatalogo } from './catalogo';
+export { desconectarServicio, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
+export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 
 // `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`
 // NO es un error: es el estado normal del primer día. Ver el docstring de `perfilNegocio.ts`.

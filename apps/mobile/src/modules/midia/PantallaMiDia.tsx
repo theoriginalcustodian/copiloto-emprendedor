@@ -12,7 +12,9 @@ import {
   formatearImporte,
   horaDeEvento,
   leerCalendario,
+  hayConexionCaida,
   leerPortada,
+  listarCatalogo,
   leerTablero,
   type CalendarioMiDia,
   CATEGORIAS,
@@ -277,6 +279,8 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
   const [portada, setPortada] = useState<Portada | null>(null);
+  // K-09: ≥ 1 servicio con la conexión caída → punto en el avatar. Apagado si el catálogo no responde.
+  const [conexionCaida, setConexionCaida] = useState(false);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -325,16 +329,27 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
     }
   }, []);
 
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (!vivo.current) return;
+      if (res.status === 'ok') setConexionCaida(hayConexionCaida(res.servicios));
+    } catch {
+      /* fail-soft: sin catálogo el punto queda como estaba. */
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       vivo.current = true;
       void cargar();
       void cargarCalendario();
       void cargarPortada();
+      void cargarSaludConexiones();
       return () => {
         vivo.current = false;
       };
-    }, [cargar, cargarCalendario, cargarPortada]),
+    }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]),
   );
 
   async function avanzar(t: TarjetaMiDia) {
@@ -469,7 +484,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
         >
           Odobi
         </Text>
-        <AvatarCuenta onPress={onAjustes} />
+        <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
       </View>
       {cuerpo}
     </View>
