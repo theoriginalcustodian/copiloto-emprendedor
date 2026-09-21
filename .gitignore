@@ -70,3 +70,16 @@ apps/mobile/ios/
 
 # Estado intermedio de scripts e2e multi-fase (armar/verificar) — no se versiona
 .e2e-state/
+
+# Credenciales sueltas que se guardan en la raíz del checkout local (client secrets de Google OAuth,
+# API keys y tokens en .txt). Patrones genéricos: el repo es PÚBLICO y un `git add` amplio las
+# publicaría. Estaban sólo en un .gitignore local que nunca llegó a main (2026-09-21).
+client_secret_*.json
+*[Aa]pikey*.txt
+*[Tt]oken*.txt
+
+# Claude Code / Playwright locales — por-sesión/por-máquina, no se comparten entre checkouts
+.claude/settings.local.json
+.claude/settings.local.json.bak-*
+.claude/scheduled_tasks.lock
+.playwright-mcp/
