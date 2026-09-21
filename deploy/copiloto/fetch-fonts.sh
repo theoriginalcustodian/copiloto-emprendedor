@@ -4,37 +4,12 @@
 # 2026-07-04). Self-hosted = offline/CSP-safe: la app NUNCA pega a un CDN de fuentes en runtime;
 # esto corre en build-time (VPS, orquestado por sync-web.sh) o a mano en un dev-box con red.
 #
-# Fuentes (verificado contra el markup real de cada mock — mobile y desktop usan DOS combos
-# tipográficos distintos por diseño, no por error, ver EXTRACT-WEB §1.1/§6):
-#   Clash Display   600,700     -> Fontshare API      (mobile · @font-face -> parseamos el primer url() woff2)
-#   General Sans    400,500,600 -> Fontshare API      (mobile · idem)
-#   Plus Jakarta Sans 700 (Bold) -> CONVERSIÓN local, no CDN (desktop · rebrand Odobi v2,
-#                                  2026-09-07, contrato FE1 §Tarea 2 — reemplaza a Space Grotesk.
-#                                  Igual que NeueEinstellung: el equipo de diseño ya midió CON
-#                                  fontTools el .ttf real que usa el monograma de marca, así que
-#                                  se convierte ESE archivo, no uno servido por un CDN que puede
-#                                  versionar distinto. Licencia OFL — sin la deuda de licencia que
-#                                  tenía NeueEinstellung).
-#   Inter          400,500,600  -> Google Fonts CSS2   (desktop · rebrand Odobi v2, reemplaza a
-#                                  Manrope. Subset "latin", mismo mecanismo que Manrope antes.
-#                                  600 se fetchea aunque el canon de diseño sólo cite 400/500: el
-#                                  código YA lo pide en varios módulos vía `--font-mono` retirado,
-#                                  ver `fonts.css`)
-#   NeueEinstellung 700 (Bold)  -> CONVERSIÓN local, no CDN (mobile · fuente propia, sin
-#                                  distribución pública vía Fontshare/Google) -- fuente .otf en el
-#                                  repo, convertida a .woff2 con fontTools (ver ODOBI hito 3v).
-#                                  Licencia: ver nota en
-#                                  docs/copiloto-emprendedor/2026-08-05-DoD-sprint-odobi.md §2.6 y
-#                                  el PR de este cambio -- deuda declarada, no bloqueante para la
-#                                  beta. ⚠️ El canon de diseño (`Prototipo frontend/odobi-ui/
-#                                  CLAUDE.md` §3) ya reemplazó esta fuente por Plus Jakarta Sans
-#                                  para el shell mobile TAMBIÉN (06-07/08) — pero `fonts.css`
-#                                  (mobile-shell default) NO es archivo de este contrato (sólo
-#                                  `fonts-web.css`, desktop): migrarlo es una decisión de blast-
-#                                  radius grande (afecta TODO módulo sin override de desktop) que
-#                                  no estaba pedida explícitamente, así que queda fuera, escalada
-#                                  por buzón en vez de tocada de arrastre.
-#   JetBrains Mono               -> RETIRADO (2026-09-07, contrato FE1 §Tarea 2). Ya no se fetchea.
+# Fuentes (DEC-5 / BL-X6: la app usa Plus Jakarta Sans + Inter, igual que mobile):
+#   Plus Jakarta Sans 700 (Bold) -> CONVERSIÓN local .ttf -> .woff2 (el .ttf que diseño midió con
+#                                  fontTools; licencia OFL)
+#   Inter          400,500,600  -> Google Fonts CSS2 (subset "latin")
+# RETIRADAS: Clash Display, General Sans (ya no las nombra ningún token) y Neue Einstellung (licencia
+# de app impaga; su archivo fuente ya no está en el árbol, así que este script fallaba al pedirla).
 #
 # IDEMPOTENTE: si el archivo destino YA existe y pesa más que UC_FONT_MIN_BYTES (real woff2 ronda
 # los 15-40KB; un stub/placeholder committeado al repo pesa unos pocos bytes) NO vuelve a bajarlo.
@@ -45,9 +20,7 @@
 # Parametrizable (cero hardcoding):
 #   UC_FONTS_DIR        destino de los .woff2                (default: <repo>/apps/copiloto-web/src/design-system/fonts)
 #   UC_FONT_MIN_BYTES    umbral placeholder-vs-real, bytes    (default: 2048)
-#   UC_FONTSHARE_API     base de la API CSS de Fontshare      (default: https://api.fontshare.com/v2/css)
 #   UC_GOOGLE_FONTS_API  base de la API CSS2 de Google Fonts  (default: https://fonts.googleapis.com/css2)
-#   UC_NEUE_EINSTELLUNG_SRC  .otf fuente de NeueEinstellung Bold (default: <repo>/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf)
 #   UC_PLUS_JAKARTA_SRC  .ttf fuente de Plus Jakarta Sans Bold  (default: <repo>/Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf)
 #   UC_PYTHON_BIN        intérprete con fontTools+brotli       (default: python3)
 set -euo pipefail
@@ -55,9 +28,7 @@ set -euo pipefail
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FONTS_DIR="${UC_FONTS_DIR:-$LOCAL/apps/copiloto-web/src/design-system/fonts}"
 MIN_BYTES="${UC_FONT_MIN_BYTES:-2048}"
-FONTSHARE_API="${UC_FONTSHARE_API:-https://api.fontshare.com/v2/css}"
 GOOGLE_FONTS_API="${UC_GOOGLE_FONTS_API:-https://fonts.googleapis.com/css2}"
-NEUE_EINSTELLUNG_SRC="${UC_NEUE_EINSTELLUNG_SRC:-$LOCAL/docs/Imagen de marca/Neue_Einstellung/Hanken Design Co - Neue Einstellung Bold.otf}"
 PLUS_JAKARTA_SRC="${UC_PLUS_JAKARTA_SRC:-$LOCAL/Prototipo frontend/odobi-ui/assets/fonts/PlusJakartaSans-Bold.ttf}"
 PYTHON_BIN="${UC_PYTHON_BIN:-python3}"
 
@@ -84,43 +55,6 @@ download_url() {
     echo "  = $(basename "$dest") ya presente (idempotente, no-op)"
   fi
 }
-
-# --- Fontshare (Clash Display + General Sans): 1 request de CSS, parseo de @font-face -------------
-# Parseo en python3 (no awk/mawk): el `awk` default de Debian/Ubuntu suele ser `mawk`, que NO
-# soporta la forma de 3 argumentos de match() (extensión gawk) -- usar awk portable hubiera sido
-# frágil. python3 ya es una dependencia asumida por el resto de deploy/ (ver el paso Caddy de
-# deploy/copiloto/deploy.sh, que hace exactamente lo mismo: parseo estructurado vía heredoc python3).
-echo "==> Fontshare: clash-display@600,700 + general-sans@400,500,600"
-FONTSHARE_CSS="$(curl -fsSL "${FONTSHARE_API}?f[]=clash-display@600,700&f[]=general-sans@400,500,600&display=swap")"
-
-# map "familia|peso" -> nombre de archivo local esperado por fonts.css
-declare -A FONTSHARE_MAP=(
-  ["clash display|600"]="ClashDisplay-Semibold.woff2"
-  ["clash display|700"]="ClashDisplay-Bold.woff2"
-  ["general sans|400"]="GeneralSans-Regular.woff2"
-  ["general sans|500"]="GeneralSans-Medium.woff2"
-  ["general sans|600"]="GeneralSans-Semibold.woff2"
-)
-
-while IFS=$'\t' read -r family weight url; do
-  [ -z "$family" ] && continue
-  key="$(printf '%s' "$family" | tr '[:upper:]' '[:lower:]')|$weight"
-  filename="${FONTSHARE_MAP[$key]:-}"
-  if [ -z "$filename" ]; then
-    echo "  ! bloque Fontshare sin mapeo conocido: family='$family' weight='$weight' (ignorado)" >&2
-    continue
-  fi
-  download_url "https:$url" "$FONTS_DIR/$filename"
-done < <(printf '%s' "$FONTSHARE_CSS" | python3 -c '
-import re, sys
-css = sys.stdin.read()
-for block in re.findall(r"@font-face\s*\{([^}]*)\}", css):
-    fam = re.search(r"font-family:\s*[\x27\"]([^\x27\"]+)[\x27\"]", block)
-    weight = re.search(r"font-weight:\s*([0-9]+)", block)
-    url = re.search(r"url\((?:\x27|\")(//[^)\x27\"]+\.woff2)(?:\x27|\")\)", block)
-    if fam and weight and url:
-        print(f"{fam.group(1)}\t{weight.group(1)}\t{url.group(1)}")
-')
 
 # --- Google Fonts (Inter): shell de ESCRITORIO (rebrand Odobi v2, 2026-09-07) --------------------
 # Reemplaza a Space Grotesk + Manrope (retiradas, contrato FE1 §Tarea 2). Mismo mecanismo que
@@ -185,31 +119,6 @@ font.save(sys.argv[2])
   mv "$PLUS_JAKARTA_DEST.tmp" "$PLUS_JAKARTA_DEST"
 else
   echo "  = $(basename "$PLUS_JAKARTA_DEST") ya presente (idempotente, no-op)"
-fi
-
-# --- NeueEinstellung Bold: CONVERSIÓN local (no hay CDN público para esta fuente) -----------------
-# A diferencia de las 3 familias de arriba, NeueEinstellung no está en Fontshare/Google Fonts: el
-# .otf vive en el repo (docs/Imagen de marca/Neue_Einstellung/) y se convierte a .woff2 con
-# fontTools. Mismo criterio de idempotencia que download_url (needs_download), pero sin red.
-echo "==> NeueEinstellung Bold: conversión local .otf -> .woff2 (sin CDN)"
-NEUE_DEST="$FONTS_DIR/NeueEinstellung-Bold.woff2"
-if needs_download "$NEUE_DEST"; then
-  if [ ! -f "$NEUE_EINSTELLUNG_SRC" ]; then
-    echo "  ! fuente .otf no encontrada: $NEUE_EINSTELLUNG_SRC" >&2
-    echo "  ! seteá UC_NEUE_EINSTELLUNG_SRC o restaurá el archivo -- no hay fallback silencioso" >&2
-    exit 1
-  fi
-  echo "  -> convirtiendo $(basename "$NEUE_EINSTELLUNG_SRC")"
-  "$PYTHON_BIN" -c '
-import sys
-from fontTools.ttLib import TTFont
-font = TTFont(sys.argv[1])
-font.flavor = "woff2"
-font.save(sys.argv[2])
-' "$NEUE_EINSTELLUNG_SRC" "$NEUE_DEST.tmp"
-  mv "$NEUE_DEST.tmp" "$NEUE_DEST"
-else
-  echo "  = $(basename "$NEUE_DEST") ya presente (idempotente, no-op)"
 fi
 
 echo "==> Fuentes en $FONTS_DIR:"
