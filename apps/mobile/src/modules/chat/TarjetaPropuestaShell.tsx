@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { Tile } from '../../theme/glass/Tile';
+import { Recibo } from './Recibo';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -73,18 +74,5 @@ export interface TarjetaPropuestaTerminalProps {
 }
 
 export function TarjetaPropuestaTerminal({ testID, tono, texto }: TarjetaPropuestaTerminalProps) {
-  const tema = useTema();
-  return (
-    <Tile testID={testID}>
-      <Text
-        style={{
-          color: tono === 'exito' ? tema.color.exito : tema.color.textoTenue,
-          fontSize: tema.tipo.base,
-          fontWeight: tono === 'exito' ? '600' : '400',
-        }}
-      >
-        {texto}
-      </Text>
-    </Tile>
-  );
+  return <Recibo testID={testID} tono={tono} titulo={texto} />;
 }

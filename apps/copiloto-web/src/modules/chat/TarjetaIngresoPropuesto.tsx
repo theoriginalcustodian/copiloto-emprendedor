@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { formatearImporte, type FaltanteIngreso, type IngresoPropuesto } from '@copiloto/core';
 
-import { Surface } from '../../design-system';
+import { Recibo, Surface } from '../../design-system';
 import { FormularioIngreso } from '../ingresos/FormularioIngreso';
 import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
 import './chat.css';
@@ -79,22 +79,17 @@ export function TarjetaIngresoPropuesto({ propuesta, mensajeId }: TarjetaIngreso
     const monto = resuelto?.estado === 'guardado' ? resuelto.monto : null;
     const faltan = resuelto?.estado === 'guardado' ? resuelto.faltan : [];
     return (
-      <div className="chat-row chat-row--assistant" data-testid="ingreso-propuesto-guardado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Ingreso anotado{monto != null ? `: ${formatearImporte(monto)}` : ''}
-          {faltan.length === 0 ? ', con todos los datos.' : '.'}
-        </Surface>
-      </div>
+      <Recibo
+        testId="ingreso-propuesto-guardado"
+        tono="exito"
+        titulo={`Ingreso anotado${monto != null ? `: ${formatearImporte(monto)}` : ''}${faltan.length === 0 ? ', con todos los datos.' : '.'}`}
+      />
     );
   }
 
   if (estado === 'descartado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="ingreso-propuesto-descartado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          No lo anotamos.
-        </Surface>
-      </div>
+      <Recibo testId="ingreso-propuesto-descartado" titulo="No lo anotamos." />
     );
   }
 

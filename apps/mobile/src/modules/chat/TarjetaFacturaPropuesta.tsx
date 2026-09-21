@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import {
+  AVISO_FACTURA_ANULACION,
   confirmarConTokenFresco,
   estadoFactura as consultarEstadoFactura,
   type EstadoFacturaResp,
@@ -12,8 +13,8 @@ import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
 import { AccionesComprobante, DatosComprobante } from '../facturacion/comprobante';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
-import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
+import { Recibo } from './Recibo';
 import { TarjetaPropuestaShell } from './TarjetaPropuestaShell';
 
 /**
@@ -98,26 +99,24 @@ export function TarjetaFacturaPropuesta({
 
   if (estado === 'emitida') {
     return (
-      <Tile testID={`${testID}-emitida`}>
-        <View style={{ gap: tema.espacio.sm }}>
-          <Text style={{ color: tema.color.exito, fontSize: tema.tipo.base, fontWeight: '600' }}>
-            Factura emitida.
-          </Text>
-
-          {comprobante != null && <DatosComprobante estado={comprobante} testID={`${testID}-emitida`} />}
-
-          {comprobante == null || !comprobante.terminado ? (
-            <Text
-              testID={`${testID}-preparando-pdf`}
-              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
-            >
-              Estamos preparando el PDF. En unos segundos lo vas a poder abrir o compartir desde acá.
-            </Text>
-          ) : (
-            <AccionesComprobante estado={comprobante} testID={`${testID}-emitida`} />
-          )}
-        </View>
-      </Tile>
+      <Recibo
+        testID={`${testID}-emitida`}
+        tono="exito"
+        titulo="Factura emitida."
+        nota={
+          comprobante == null || !comprobante.terminado
+            ? {
+                texto: 'Estamos preparando el PDF. En unos segundos lo vas a poder abrir o compartir desde acá.',
+                testID: `${testID}-preparando-pdf`,
+              }
+            : undefined
+        }
+      >
+        {comprobante != null && <DatosComprobante estado={comprobante} testID={`${testID}-emitida`} />}
+        {comprobante != null && comprobante.terminado && (
+          <AccionesComprobante estado={comprobante} testID={`${testID}-emitida`} />
+        )}
+      </Recibo>
     );
   }
 
@@ -186,6 +185,15 @@ export function TarjetaFacturaPropuesta({
         {motivo != null && (
           <Text testID={`${testID}-error`} style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
             {motivo}
+          </Text>
+        )}
+
+        {lista && (
+          <Text
+            testID={`${testID}-aviso-anulacion`}
+            style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+          >
+            {AVISO_FACTURA_ANULACION}
           </Text>
         )}
 

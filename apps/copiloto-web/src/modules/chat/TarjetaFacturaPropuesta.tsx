@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 
 import {
+  AVISO_FACTURA_ANULACION,
   confirmarConTokenFresco,
   estadoFactura,
   type EstadoFacturaResp,
   type FacturaPropuesta,
 } from '@copiloto/core';
 
-import { Button, Surface } from '../../design-system';
+import { Button, Recibo, Surface } from '../../design-system';
 import './chat.css';
 
 /**
@@ -111,59 +112,33 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
     const link = linkPdf(comprobante);
     const preparando = link == null && comprobante?.terminado !== true && !sondeoAgotado;
     return (
-      <div className="chat-row chat-row--assistant" data-testid="factura-propuesta-emitida">
-        <Surface
-          variant="tile"
-          className="propuesta-card propuesta-card--terminal propuesta-card--exito"
-          role="status"
-          aria-live="polite"
-        >
-          <p className="propuesta-card__factura-total">Factura emitida.</p>
-          {resultado != null && (
-            <>
-              <div className="propuesta-card__factura-row">
-                <span className="propuesta-card__factura-label">N°</span>
-                <span className="propuesta-card__factura-valor" data-testid="factura-emitida-numero">
-                  {numeroComprobante(resultado.puntoVenta, resultado.nro)}
-                </span>
-              </div>
-              <div className="propuesta-card__factura-row">
-                <span className="propuesta-card__factura-label">CAE</span>
-                <span className="propuesta-card__factura-valor" data-testid="factura-emitida-cae">
-                  {resultado.cae}
-                </span>
-              </div>
-              {resultado.caeVto != null && (
-                <div className="propuesta-card__factura-row">
-                  <span className="propuesta-card__factura-label">Vence</span>
-                  <span className="propuesta-card__factura-valor" data-testid="factura-emitida-vto">
-                    {resultado.caeVto}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-          {link != null ? (
-            <a
-              className="uc-btn uc-btn--primary"
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="factura-emitida-pdf"
-            >
-              Ver PDF
-            </a>
-          ) : preparando ? (
-            <p className="propuesta-card__aviso" data-testid="factura-emitida-preparando">
-              Preparando el PDF…
-            </p>
-          ) : (
-            <p className="propuesta-card__aviso" data-testid="factura-emitida-sin-pdf">
-              La factura se emitió y el CAE es válido. El PDF no está disponible por ahora.
-            </p>
-          )}
-        </Surface>
-      </div>
+      <Recibo
+        testId="factura-propuesta-emitida"
+        tono="exito"
+        titulo="Factura emitida."
+        lineas={
+          resultado != null
+            ? [
+                { etiqueta: 'N°', valor: numeroComprobante(resultado.puntoVenta, resultado.nro), testId: 'factura-emitida-numero' },
+                { etiqueta: 'CAE', valor: resultado.cae, testId: 'factura-emitida-cae' },
+                ...(resultado.caeVto != null
+                  ? [{ etiqueta: 'Vence', valor: resultado.caeVto, testId: 'factura-emitida-vto' }]
+                  : []),
+              ]
+            : undefined
+        }
+        accion={link != null ? { etiqueta: 'Ver PDF', href: link, testId: 'factura-emitida-pdf' } : undefined}
+        nota={
+          link != null
+            ? undefined
+            : preparando
+              ? { texto: 'Preparando el PDF…', testId: 'factura-emitida-preparando' }
+              : {
+                  texto: 'La factura se emitió y el CAE es válido. El PDF no está disponible por ahora.',
+                  testId: 'factura-emitida-sin-pdf',
+                }
+        }
+      />
     );
   }
 
@@ -223,6 +198,12 @@ export function TarjetaFacturaPropuesta({ propuesta, mensajeId, onCompletarAMano
         {motivo != null && (
           <p className="propuesta-card__aviso propuesta-card__aviso--error" data-testid="factura-propuesta-error">
             {motivo}
+          </p>
+        )}
+
+        {lista && (
+          <p className="propuesta-card__aviso" data-testid="factura-propuesta-aviso-anulacion">
+            {AVISO_FACTURA_ANULACION}
           </p>
         )}
 
