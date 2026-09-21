@@ -82,6 +82,17 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
 export { cambiarContrasena, cambiarEmail } from './auth';
 export type { ResultadoCambioCredencial } from './auth';
+export {
+  completarOnboarding,
+  debeMostrarOnboarding,
+  permisosCompletos,
+  permisosDelHilo,
+  primerInsight,
+  textoDelInsight,
+  type PermisoDelHilo,
+  type PermisoOnboarding,
+  type PrimerInsight,
+} from './onboarding';
 export { desconectarServicio, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
 export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 
