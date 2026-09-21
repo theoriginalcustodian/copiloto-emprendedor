@@ -21,7 +21,7 @@ CAL1 fijó `GET /mi-dia/calendario` con `_rango_hoy()` (`mi_dia_web.py`), sólo 
 
 - Cambio **aditivo**: cero migración, cero cambio en workflows/activities de Temporal (todo es front-door FastAPI + `execute` del gateway) → no hace falta `workflow.patched` ni replay nuevo.
 - Costo: hasta 14 días × `max_results` eventos por request; se mantiene `max_results=50` por defecto y se agrega paginación sólo si el spike muestra truncado real.
-- Riesgo: shape real de `start/end` en día completo no visto → el agrupador «sin hora» se fija tras un spike contra el tenant canónico (`e2e-device`), no antes.
+- Riesgo: el spike de CAL1 (`spikes/calendar-find-event/RESULT.md`) quedó bloqueado: `e2e-device` no tenía Google Calendar `ACTIVE` (consentimiento OAuth humano). Implementación 2026-09-21: `dia_completo` = `start.date` sin `dateTime` (contrato del recurso Events de Google, documentado) y todo `start` ilegible degrada a «sin hora». `[ASSUMED_PENDING_VERIFY]` cómo Composio envuelve ese `start` hasta que exista una conexión `ACTIVE`; la evidencia de device lo cierra.
 
 ## Alternativas rechazadas
 
