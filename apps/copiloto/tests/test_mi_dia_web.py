@@ -164,7 +164,9 @@ def test_sin_token_da_401_antes_de_tocar_ningun_store():
 def test_sin_composio_gateway_calendario_da_conectado_false_sin_pegarle_a_nada():
     r = _app().get("/mi-dia/calendario")
     assert r.status_code == 200
-    assert r.json() == {"conectado": False, "eventos": []}
+    body = r.json()
+    assert body["conectado"] is False and body["eventos"] == []
+    assert [g["id"] for g in body["grupos"]] == ["hoy", "manana", "semana", "sin_hora"]   # siempre los 4
 
 
 def test_calendario_no_conectado_da_conectado_false_no_500():
@@ -173,7 +175,7 @@ def test_calendario_no_conectado_da_conectado_false_no_500():
     gw = _ComposioGatewayFake(excepcion=ConnectionRequired("googlecalendar"))
     r = _app(composio_gateway=gw).get("/mi-dia/calendario")
     assert r.status_code == 200
-    assert r.json() == {"conectado": False, "eventos": []}
+    assert r.json()["conectado"] is False and r.json()["eventos"] == []
 
 
 def test_calendario_conectado_devuelve_eventos_parseados():
@@ -188,7 +190,8 @@ def test_calendario_conectado_devuelve_eventos_parseados():
     body = r.json()
     assert body["conectado"] is True
     assert body["eventos"] == [{"id": "evt1", "titulo": "Reunión con cliente",
-                               "inicio": {"dateTime": "2026-08-11T15:00:00-03:00"}}]
+                               "inicio": {"dateTime": "2026-08-11T15:00:00-03:00"},
+                               "fin": None, "dia_completo": False}]
 
 
 def test_calendario_le_pasa_el_cliente_id_como_user_id_a_composio():
@@ -201,3 +204,88 @@ def test_calendario_le_pasa_el_cliente_id_como_user_id_a_composio():
     assert len(gw.calls) == 1
     assert gw.calls[0]["user_id"] == "cid-B"
     assert gw.calls[0]["confirmed"] is False
+
+
+# --- ADR-004 (K-13): rango, grupos y día completo --------------------------------------------------
+
+from datetime import date, datetime, timedelta  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
+from clients.agent.datetime_resolver import DEFAULT_TZ  # noqa: E402
+
+
+def _hoy():
+    return datetime.now(ZoneInfo(DEFAULT_TZ)).date()
+
+
+def _ev(id_, dias, hora="10:00:00", **extra):
+    d = _hoy() + timedelta(days=dias)
+    return {"id": id_, "summary": id_, "start": {"dateTime": f"{d.isoformat()}T{hora}-03:00"}, **extra}
+
+
+def test_sin_parametros_pide_solo_hoy_retrocompatible():
+    gw = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    assert _app(composio_gateway=gw).get("/mi-dia/calendario").status_code == 200
+    a = gw.calls[0]["arguments"]
+    assert a["time_min"].startswith(_hoy().isoformat() + "T00:00:00")
+    assert a["time_max"].startswith(_hoy().isoformat() + "T23:59:59")
+
+
+def test_desde_hasta_ensanchan_la_ventana():
+    gw = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    d, h = _hoy(), _hoy() + timedelta(days=6)
+    r = _app(composio_gateway=gw).get(f"/mi-dia/calendario?desde={d}&hasta={h}")
+    assert r.status_code == 200
+    a = gw.calls[0]["arguments"]
+    assert a["time_min"].startswith(f"{d}T00:00:00") and a["time_max"].startswith(f"{h}T23:59:59")
+
+
+def test_ventana_invalida_da_400_y_no_le_pega_a_composio():
+    gw = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    c = _app(composio_gateway=gw)
+    d = _hoy()
+    for q in (f"desde={d}&hasta={d - timedelta(days=1)}",          # hasta < desde
+              f"desde={d}&hasta={d + timedelta(days=14)}",         # 15 días > tope de 14
+              "desde=mañana"):                                     # no es fecha
+        assert c.get(f"/mi-dia/calendario?{q}").status_code == 400, q
+    assert gw.calls == []
+    # control positivo: 14 días exactos SÍ pasa (el tope no es un 400 para todo)
+    assert c.get(f"/mi-dia/calendario?desde={d}&hasta={d + timedelta(days=13)}").status_code == 200
+
+
+def test_grupos_hoy_manana_semana_y_sin_hora():
+    items = [_ev("de-hoy", 0), _ev("de-manana", 1), _ev("de-la-semana", 4),
+             {"id": "todo-el-dia", "summary": "todo-el-dia", "start": {"date": _hoy().isoformat()}}]
+    gw = _ComposioGatewayFake(resultado={"data": {"items": items}})
+    body = _app(composio_gateway=gw).get(f"/mi-dia/calendario?hasta={_hoy() + timedelta(days=6)}").json()
+    grupos = {g["id"]: [e["id"] for e in g["eventos"]] for g in body["grupos"]}
+    assert grupos == {"hoy": ["de-hoy"], "manana": ["de-manana"], "semana": ["de-la-semana"],
+                      "sin_hora": ["todo-el-dia"]}
+    assert [g["id"] for g in body["grupos"]] == ["hoy", "manana", "semana", "sin_hora"]
+    dc = {e["id"]: e["dia_completo"] for e in body["eventos"]}
+    assert dc["todo-el-dia"] is True and dc["de-hoy"] is False
+    assert len(body["eventos"]) == 4          # plano CAL1 intacto
+
+
+def test_evento_con_start_ilegible_cae_en_sin_hora_no_rompe():
+    gw = _ComposioGatewayFake(resultado={"data": {"items": [{"id": "x", "summary": "x", "start": "???"}]}})
+    body = _app(composio_gateway=gw).get("/mi-dia/calendario").json()
+    assert [e["id"] for g in body["grupos"] if g["id"] == "sin_hora" for e in g["eventos"]] == ["x"]
+
+
+def test_ADVERSARIAL_ningun_parametro_del_request_cambia_el_user_id_de_composio():
+    gw = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    c = _app(require_tenant=_tenant_fijo("cid-A"), composio_gateway=gw)
+    c.get("/mi-dia/calendario?user_id=cid-B&cliente_id=cid-B&desde=" + _hoy().isoformat())
+    assert [x["user_id"] for x in gw.calls] == ["cid-A"]
+    assert "user_id" not in gw.calls[0]["arguments"] and "cliente_id" not in gw.calls[0]["arguments"]
+    # y sin sesión no llega a Composio
+    gw2 = _ComposioGatewayFake(resultado={"data": {"items": []}})
+    assert _app(require_tenant=_tenant_401(), composio_gateway=gw2).get("/mi-dia/calendario").status_code == 401
+    assert gw2.calls == []
+
+
+def test_calendar_book_sigue_pasando_por_el_gate_HITL():
+    """ADR-004 §3: la escritura de eventos NO tiene endpoint directo; sólo el confirm-gate."""
+    from tool_catalog import WRITE_TOOLS
+    assert "calendar_book" in WRITE_TOOLS
