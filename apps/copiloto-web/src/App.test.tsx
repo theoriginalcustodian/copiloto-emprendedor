@@ -23,6 +23,12 @@ vi.mock('./shell/ResponsiveShell', () => ({
   ),
 }));
 
+vi.mock('./modules/onboarding', () => ({
+  Onboarding: ({ onTerminar }: { onTerminar: () => void }) => (
+    <button type="button" data-testid="onboarding-stub" onClick={onTerminar} />
+  ),
+}));
+
 vi.mock('./lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/api')>();
   return {
@@ -118,5 +124,25 @@ describe('App (router raíz)', () => {
     expect(screen.getByTestId('app-shell-splash')).toBeInTheDocument();
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument();
     expect(screen.queryByTestId('responsive-shell-stub')).not.toBeInTheDocument();
+  });
+
+  // K-14 / BL-X8: el hilo de bienvenida sólo con `onboarding_completado: false` EXPLÍCITO.
+  it('authed con onboarding_completado=false -> Onboarding; al terminar entra al shell', () => {
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't', onboarding_completado: false }, login: vi.fn(), logout: vi.fn() });
+    render(<App />);
+    expect(screen.queryByTestId('responsive-shell-stub')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('onboarding-stub'));
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
+  });
+
+  it('authed con onboarding_completado=true o ausente (backend anterior) -> directo al shell', () => {
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't', onboarding_completado: true }, login: vi.fn(), logout: vi.fn() });
+    const { unmount } = render(<App />);
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
+    unmount();
+    mockUseSession.mockReturnValue({ status: 'authed', me: { cliente_id: 't' }, login: vi.fn(), logout: vi.fn() });
+    render(<App />);
+    expect(screen.queryByTestId('onboarding-stub')).not.toBeInTheDocument();
+    expect(screen.getByTestId('responsive-shell-stub')).toBeInTheDocument();
   });
 });
