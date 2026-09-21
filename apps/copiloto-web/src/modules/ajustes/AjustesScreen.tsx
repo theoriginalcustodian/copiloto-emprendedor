@@ -4,11 +4,12 @@ import { PantallaAjustes, type AjusteKey } from './PantallaAjustes';
 import { PantallaAndamiaje } from './PantallaAndamiaje';
 import { PantallaApariencia } from './PantallaApariencia';
 import { PantallaComoHablarle } from './PantallaComoHablarle';
+import { PantallaFeedback } from './PantallaFeedback';
 import { PantallaPerfilNegocio } from './negocio/PantallaPerfilNegocio';
 import { PantallaAfipSetup } from './afip/PantallaAfipSetup';
 import './ajustes.css';
 
-type SubVista = 'perfilNegocio' | 'facturacionAfip' | 'miPlan' | 'comoHablarle' | 'apariencia';
+type SubVista = 'perfilNegocio' | 'facturacionAfip' | 'miPlan' | 'comoHablarle' | 'apariencia' | 'feedback';
 
 export interface AjustesScreenProps {
   /** `cuenta` navega al tab `account` existente (fusión con `AccountScreen`, M-WEB módulo 13).
@@ -17,6 +18,8 @@ export interface AjustesScreenProps {
    *  vivía escondido ahí (en el Rail de escritorio), "Apariencia" no mostraba ningún ajuste de
    *  apariencia. Ver `PantallaApariencia.tsx`. */
   onNavegarTab?: (tab: 'connections' | 'account') => void;
+  /** «¿Algo no funciona?» de Feedback lleva a Soporte técnico (BL-W3). Lo inyecta el shell. */
+  onAbrirSoporte?: () => void;
 }
 
 /**
@@ -26,7 +29,7 @@ export interface AjustesScreenProps {
  * sin router). Las otras 2 entradas del menú (`apps`/`cuenta`) no tienen pantalla propia en web --
  * ya existen como tabs del shell, así que delegan vía `onNavegarTab`.
  */
-export function AjustesScreen({ onNavegarTab }: AjustesScreenProps = {}) {
+export function AjustesScreen({ onNavegarTab, onAbrirSoporte }: AjustesScreenProps = {}) {
   const [vista, setVista] = useState<SubVista | null>(null);
 
   const handleAjuste = (key: AjusteKey) => {
@@ -60,6 +63,7 @@ export function AjustesScreen({ onNavegarTab }: AjustesScreenProps = {}) {
       {vista === 'facturacionAfip' && <PantallaAfipSetup />}
       {vista === 'comoHablarle' && <PantallaComoHablarle />}
       {vista === 'apariencia' && <PantallaApariencia />}
+      {vista === 'feedback' && <PantallaFeedback onAbrirSoporte={onAbrirSoporte} contexto="ajustes" />}
       {vista === 'miPlan' && (
         <PantallaAndamiaje
           titulo="Mi plan"

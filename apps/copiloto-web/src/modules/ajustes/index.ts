@@ -7,3 +7,4 @@ export { PantallaComoUsarLaApp, type PantallaComoUsarLaAppProps } from './Pantal
 export { PantallaPerfilNegocio } from './negocio/PantallaPerfilNegocio';
 export { SeccionCatalogo, type SeccionCatalogoProps } from './negocio/SeccionCatalogo';
 export { PantallaAfipSetup } from './afip/PantallaAfipSetup';
+export { PantallaFeedback } from './PantallaFeedback';
