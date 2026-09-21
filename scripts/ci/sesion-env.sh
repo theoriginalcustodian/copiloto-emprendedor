@@ -5,8 +5,8 @@
 # VPS. Dos sesiones corriendo el gate a la vez se pisaban la base y el código bajo test (rojos y
 # verdes falsos). Las tres variables ya eran parametrizables; esto sólo les da un valor por sesión.
 #
-# Sesión = `UC_SESION` (backend|fe1|fe2) si viene explícita; si no, se infiere del prefijo de la
-# rama (backend/…, frontend1/…, frontend2/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2).
+# Sesión = `UC_SESION` (backend|fe1|fe2|aud) si viene explícita; si no, se infiere del prefijo de la
+# rama (backend/…, frontend1/…, frontend2/…, aud/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2, wt-audit*).
 # Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos (compatibilidad).
 # `copiloto-test-db` en el 55432 es el default LEGACY de `gate.sh` sin sesión: ninguna sesión lo usa
 # (backend pasó a 55435 el 2026-09-21 porque ese contenedor ocupa el 55432). Retirarlo: deuda de Cierre B.
@@ -21,11 +21,13 @@ _inferir_sesion() {
     backend/*)   echo backend; return ;;
     frontend1/*|fe1/*) echo fe1; return ;;
     frontend2/*|fe2/*) echo fe2; return ;;
+    aud/*|auditoria/*) echo aud; return ;;
   esac
   case "$dir" in
     wt-backend)  echo backend ;;
     wt-fe1|wt-fe1b) echo fe1 ;;
     wt-fe2|wt-fe2-*) echo fe2 ;;
+    wt-aud|wt-aud-*|wt-audit|wt-audit-*) echo aud ;;
   esac
 }
 
@@ -34,8 +36,9 @@ case "$UC_SESION" in
   backend) _sfx=be; _port=55435 ;;
   fe1)     _sfx=fe1; _port=55433 ;;
   fe2)     _sfx=fe2; _port=55434 ;;
+  aud)     _sfx=aud; _port=55436 ;;   # auditoría (A1 §4.4: usó copiloto-test-db-aud:55436)
   "")      _sfx="" ;;
-  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2)" >&2; return 1 2>/dev/null || exit 1 ;;
+  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud)" >&2; return 1 2>/dev/null || exit 1 ;;
 esac
 
 if [ -n "$_sfx" ]; then
@@ -44,4 +47,7 @@ if [ -n "$_sfx" ]; then
   export UC_TEST_STAGE="${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage-$_sfx}"
 fi
 export UC_SESION
-echo "==> sesión del gate: ${UC_SESION:-<sin sesión: defaults históricos>} · db=${UC_TESTDB_NAME:-copiloto-test-db}:${UC_TESTDB_PORT:-55432} · stage=${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage}"
+_etiqueta="${UC_SESION:-<sin sesión: defaults históricos>}"
+# triada exportada explícita por quien invoca (sin sesión inferida): no es «sin sesión» (A1 §4.4)
+[ -z "$UC_SESION" ] && [ -n "${UC_TESTDB_NAME:-}" ] && [ -n "${UC_TESTDB_PORT:-}" ] && [ -n "${UC_TEST_STAGE:-}" ] && _etiqueta="<triada exportada explícita>"
+echo "==> sesión del gate: $_etiqueta · db=${UC_TESTDB_NAME:-copiloto-test-db}:${UC_TESTDB_PORT:-55432} · stage=${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage}"
