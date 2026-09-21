@@ -18,3 +18,5 @@ export * from './presupuestoPropuesto';
 // `factura_propuesta` — hito 9: `data` confirmada por el contrato §2.1; sólo el `kind` es
 // [ASSUMED_PENDING_VERIFY]. Ver el docstring del módulo.
 export * from './facturaPropuesta';
+// El buzón de un solo mensaje pantalla → chat principal (BL-W9; antes sólo mobile).
+export * from './mensajePendiente';

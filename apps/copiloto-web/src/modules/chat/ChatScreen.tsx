@@ -1,4 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+
+import { tomarPendiente } from '@copiloto/core';
 
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -55,6 +57,13 @@ export function ChatScreen({
 }: ChatScreenProps = {}) {
   const { messages, sendStatus, send, sendAudio } = useChat();
   const isDesktop = variant === 'desktop';
+
+  // BL-W9: una pantalla de ayuda dejó una pregunta en el buzón — se manda al montar el chat, UNA vez
+  // (`tomarPendiente` vacía el buzón, así que no se reenvía sola al volver a esta pantalla).
+  useEffect(() => {
+    const pendiente = tomarPendiente();
+    if (pendiente != null) void send(pendiente, { mode: null });
+  }, [send]);
 
   const handleSend = useCallback(
     (text: string, mode: string | null) => void send(text, { mode }),
