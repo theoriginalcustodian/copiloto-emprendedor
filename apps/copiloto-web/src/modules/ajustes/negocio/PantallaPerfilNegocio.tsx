@@ -4,6 +4,8 @@ import {
   ApiError,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,
+  errorDeEmail,
+  errorDeTelefono,
   guardarPerfilNegocio,
   leerPerfilNegocio,
   type AQuienVende,
@@ -50,6 +52,8 @@ interface Campos {
   aQuien: AQuienVende;
   nombreComercial: string;
   horarioAtencion: string;
+  telefono: string;
+  email: string;
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
@@ -62,6 +66,8 @@ const CAMPOS_VACIOS: Campos = {
   aQuien: 'ambos',
   nombreComercial: '',
   horarioAtencion: '',
+  telefono: '',
+  email: '',
   formalidad: 'cercano',
   largoRespuesta: 'breve',
   nombreCopiloto: '',
@@ -76,6 +82,8 @@ function aCampos(p: PerfilNegocio): Campos {
     aQuien: p.aQuien,
     nombreComercial: p.nombreComercial,
     horarioAtencion: p.horarioAtencion,
+    telefono: p.telefono,
+    email: p.email,
     formalidad: p.formalidad,
     largoRespuesta: p.largoRespuesta,
     nombreCopiloto: p.nombreCopiloto,
@@ -95,9 +103,16 @@ export function PantallaPerfilNegocio() {
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  const [erroresContacto, setErroresContacto] = useState<{ telefono: string | null; email: string | null }>({
+    telefono: null,
+    email: null,
+  });
 
   function actualizar<K extends keyof Campos>(campo: K, valor: Campos[K]) {
     setCampos((prev) => ({ ...prev, [campo]: valor }));
+    if (campo === 'telefono' || campo === 'email') {
+      setErroresContacto((prev) => ({ ...prev, [campo]: null }));
+    }
     setEstadoGuardado('idle');
     setErrorGuardado(null);
   }
@@ -124,6 +139,16 @@ export function PantallaPerfilNegocio() {
   }, []);
 
   async function guardar(seccion: Seccion) {
+    // BL-J10: el formato del contacto se avisa EN el campo y no viaja nada si está mal. El backend
+    // sigue siendo la fuente de verdad (su 400 igual se muestra abajo).
+    if (seccion === 'negocio') {
+      const errores = {
+        telefono: errorDeTelefono(campos.telefono),
+        email: errorDeEmail(campos.email),
+      };
+      setErroresContacto(errores);
+      if (errores.telefono != null || errores.email != null) return;
+    }
     const parcial: GuardarPerfilNegocioRequest =
       seccion === 'negocio'
         ? {
@@ -131,6 +156,8 @@ export function PantallaPerfilNegocio() {
             aQuien: campos.aQuien,
             nombreComercial: campos.nombreComercial,
             horarioAtencion: campos.horarioAtencion,
+            telefono: campos.telefono,
+            email: campos.email,
           }
         : {
             formalidad: campos.formalidad,
@@ -265,6 +292,42 @@ export function PantallaPerfilNegocio() {
                 placeholder="ej.: Lunes a viernes de 8 a 17"
                 maxLength={LIMITE_CAMPO_CORTO}
               />
+            </label>
+            <label className="perfil-negocio-seccion__campo">
+              <span className="perfil-negocio-seccion__etiqueta">Teléfono</span>
+              <input
+                data-testid="perfil-negocio-telefono"
+                type="tel"
+                inputMode="tel"
+                value={campos.telefono}
+                onChange={(e) => actualizar('telefono', e.target.value)}
+                placeholder="ej.: 341 590 6309"
+                maxLength={LIMITE_CAMPO_CORTO}
+                aria-invalid={erroresContacto.telefono != null}
+              />
+              {erroresContacto.telefono != null && (
+                <span className="perfil-negocio-seccion__error" role="alert" data-testid="perfil-negocio-telefono-error">
+                  {erroresContacto.telefono}
+                </span>
+              )}
+            </label>
+            <label className="perfil-negocio-seccion__campo">
+              <span className="perfil-negocio-seccion__etiqueta">Email</span>
+              <input
+                data-testid="perfil-negocio-email"
+                type="email"
+                inputMode="email"
+                value={campos.email}
+                onChange={(e) => actualizar('email', e.target.value)}
+                placeholder="ej.: contacto@elgalpon.com.ar"
+                maxLength={LIMITE_CAMPO_CORTO}
+                aria-invalid={erroresContacto.email != null}
+              />
+              {erroresContacto.email != null && (
+                <span className="perfil-negocio-seccion__error" role="alert" data-testid="perfil-negocio-email-error">
+                  {erroresContacto.email}
+                </span>
+              )}
             </label>
             <div className="perfil-negocio-screen__acciones" data-testid="perfil-negocio-guardar-negocio-botones">
               <Button

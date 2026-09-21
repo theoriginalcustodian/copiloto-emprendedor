@@ -85,7 +85,14 @@ export type { ServicioCatalogo } from './catalogo';
 
 // `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`
 // NO es un error: es el estado normal del primer día. Ver el docstring de `perfilNegocio.ts`.
-export { guardarPerfilNegocio, leerPerfilNegocio, LIMITE_CAMPO_CORTO, LIMITE_QUE_VENDE } from './perfilNegocio';
+export {
+  errorDeEmail,
+  errorDeTelefono,
+  guardarPerfilNegocio,
+  leerPerfilNegocio,
+  LIMITE_CAMPO_CORTO,
+  LIMITE_QUE_VENDE,
+} from './perfilNegocio';
 export type {
   AQuienVende,
   FormalidadCopiloto,
