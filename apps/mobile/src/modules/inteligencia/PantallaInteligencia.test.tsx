@@ -20,7 +20,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import {
   leerGraficoCategorias,
@@ -179,5 +179,33 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
 
     await waitFor(() => expect(screen.getByTestId('inteligencia-graficos-seccion')).toBeTruthy());
     expect(screen.getByTestId('inteligencia-grafico-facturacion')).toBeTruthy();
+  });
+});
+
+describe('PantallaInteligencia — estados textuales del refresco (BL-W6)', () => {
+  it('reposo: «Tirá para actualizar»; arrastre pasado el umbral: «Soltá»; al soltar: «Actualizando…» y luego «Al día · recién»', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('inteligencia-portada')).toBeTruthy());
+    const texto = () => screen.getByTestId('inteligencia-refresco-estado').props.children as string;
+    expect(texto()).toBe('Tirá para actualizar');
+
+    // iOS: arrastrar más allá del tope da contentOffset.y negativo.
+    await fireEvent.scroll(screen.getByTestId('inteligencia-portada'), {
+      nativeEvent: { contentOffset: { y: -80 } },
+    });
+    expect(texto()).toBe('Soltá para actualizar');
+
+    // Soltar: el RefreshControl dispara onRefresh.
+    let liberar: () => void = () => undefined;
+    leerMock.mockImplementationOnce(
+      () => new Promise((res) => { liberar = () => res({ status: 'ok', portada: PORTADA }); }),
+    );
+    await act(async () => {
+      screen.getByTestId('inteligencia-portada').props.refreshControl.props.onRefresh();
+    });
+    expect(texto()).toBe('Actualizando…');
+
+    await act(async () => liberar());
+    await waitFor(() => expect(texto()).toBe('Al día · recién'));
   });
 });

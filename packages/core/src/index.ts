@@ -5,3 +5,4 @@ export * from './chat';
 export * from './ayuda';
 export * from './dinero/formatoDinero';
 export * from './midia';
+export * from './refresco';
