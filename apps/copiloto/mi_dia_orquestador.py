@@ -27,13 +27,13 @@ def _texto_certificado(d: dict) -> str:
     """Tres estados bien distintos. Decirlos con una sola frase mentiría en dos: "vence en -12
     días" no es un aviso, es un bug a la vista del emprendedor."""
     if d.get("ilegible"):
-        return ("No pudimos leer tu certificado de AFIP. Revisalo: si está dañado, no vas a poder "
+        return ("No pudimos leer tu certificado de ARCA. Revisalo: si está dañado, no vas a poder "
                 "facturar.")
     dias = d.get("dias")
     if d.get("vencido"):
-        return (f"Tu certificado de AFIP venció hace {abs(dias or 0)} días. Hasta que lo renueves "
+        return (f"Tu certificado de ARCA venció hace {abs(dias or 0)} días. Hasta que lo renueves "
                 f"no vas a poder facturar.")
-    return (f"Tu certificado de AFIP vence en {dias} días. Renovalo antes de esa fecha para no "
+    return (f"Tu certificado de ARCA vence en {dias} días. Renovalo antes de esa fecha para no "
             f"quedarte sin facturar.")
 
 _PLANTILLAS = {

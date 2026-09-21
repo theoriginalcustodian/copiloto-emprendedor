@@ -265,7 +265,7 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
 
 EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
     "name": "emitir_factura",
-    "description": "Arma una factura AFIP a partir de lo dictado ('facturale 50 mil a Juan por el "
+    "description": "Arma una factura electrónica ARCA (ex AFIP) a partir de lo dictado ('facturale 50 mil a Juan por el "
                    "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
                    "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
                    "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió — el "
@@ -275,7 +275,7 @@ EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
                    "de llamarla — la tarjeta que devuelve ya lo pide con un campo editable si falta. "
                    "Si el concepto es 'servicios' (p. ej. un service), TAMPOCO le preguntes por el "
                    "período del servicio ni por el vencimiento del pago — esos datos NI SIQUIERA SON "
-                   "PARÁMETROS de esta tool, así que no hay forma de que se los des igual; si AFIP los "
+                   "PARÁMETROS de esta tool, así que no hay forma de que se los des igual; si ARCA los "
                    "exige, la tarjeta los va a pedir con un campo editable, igual que cualquier otro "
                    "faltante. Preguntar antes de llamar es el error: la tool está hecha para invocación "
                    "parcial.",

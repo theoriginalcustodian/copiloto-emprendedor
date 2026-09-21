@@ -2,7 +2,7 @@
 
 ## Qué es y para qué sirve
 
-Ingresos es donde queda registrada toda la plata que entró a tu negocio: tanto los cobros de facturas que ya emitiste, como cualquier otro ingreso que quieras anotar aunque no tenga una factura detrás —una seña, un cobro en efectivo, una transferencia. La idea es que tengas en un solo lugar todo lo que fuiste cobrando, sin importar si pasó por AFIP o no.
+Ingresos es donde queda registrada toda la plata que entró a tu negocio: tanto los cobros de facturas que ya emitiste, como cualquier otro ingreso que quieras anotar aunque no tenga una factura detrás —una seña, un cobro en efectivo, una transferencia. La idea es que tengas en un solo lugar todo lo que fuiste cobrando, sin importar si pasó por ARCA o no.
 
 En la lista vas a ver los ingresos etiquetados según de dónde vinieron:
 
@@ -14,7 +14,7 @@ Los cobros que recibís por MercadoPago todavía no aparecen solos en esta lista
 
 ## Por qué conviene anotar todos los cobros, aunque no vengan de una factura
 
-Muchas ventas del día a día no terminan en una factura —un cliente que te paga en efectivo por un trabajo chico, una seña—, y sin embargo siguen siendo plata real que entró a tu negocio. Ingresos está pensado para que ese dinero también quede registrado, para que tu panorama de caja sea completo y no solo lo que pasó por AFIP.
+Muchas ventas del día a día no terminan en una factura —un cliente que te paga en efectivo por un trabajo chico, una seña—, y sin embargo siguen siendo plata real que entró a tu negocio. Ingresos está pensado para que ese dinero también quede registrado, para que tu panorama de caja sea completo y no solo lo que pasó por ARCA.
 
 ## Anotar que te pagaron (ingreso suelto)
 

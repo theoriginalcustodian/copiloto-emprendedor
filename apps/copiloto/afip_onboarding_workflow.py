@@ -46,7 +46,7 @@ _MOTIVOS_CONOCIDOS = (
     ("usuario incorrecto", "El usuario de ARCA no es correcto."),
     ("clave incorrecta", "La clave fiscal no es correcta."),
     ("bloquead", "Tu clave fiscal está bloqueada en ARCA. Tenés que desbloquearla desde el sitio "
-                 "de AFIP antes de reintentar."),
+                 "de ARCA antes de reintentar."),
     ("handle_invalido_o_vencido", "La sesión de vinculación venció. Volvé a ingresar tu clave "
                                   "fiscal."),
     # El certificado YA existe en ARCA y ya está guardado acá: lo único que faltó fue habilitar el

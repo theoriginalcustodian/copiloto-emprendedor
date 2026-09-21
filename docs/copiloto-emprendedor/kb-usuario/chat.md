@@ -23,7 +23,7 @@ Esta es la lista completa de lo que el Copiloto puede ejecutar cuando se lo ped�
 - **Dar de alta un cliente nuevo**, con sus datos de contacto y fiscales.
 - **Armar un presupuesto** con el cliente, los ítems y los montos que le dictes.
 - **Marcar un presupuesto** como aprobado o rechazado, según lo que le cuentes.
-- **Armar el borrador de una factura** electrónica (AFIP) con los datos del cliente y los conceptos
+- **Armar el borrador de una factura** electrónica (ARCA) con los datos del cliente y los conceptos
   que le dictes.
 - **Marcar una factura como cobrada**, para que deje de figurar como pendiente de cobro.
 - **Agendar un evento** en tu Google Calendar (si tenés esa app conectada).
@@ -94,7 +94,7 @@ mejor lo dividan en partes más chicas — es preferible a que se trabe o entien
 ## Qué NO hace el Copiloto por chat
 
 - **No emite una factura solo con la voz.** El chat arma el borrador con los datos que le diste, pero
-  la emisión final (el paso que genera el comprobante fiscal ante AFIP) la confirmás vos desde la
+  la emisión final (el paso que genera el comprobante fiscal ante ARCA) la confirmás vos desde la
   tarjeta, con un toque explícito — es un paso que no se puede deshacer, así que nunca lo dispara solo.
 - **No elige por vos cuando hay dudas.** Si le pedís marcar como cobrada "la factura de Juan" y tenés
   más de una que podría ser, te va a mostrar las opciones para que elijas — no adivina.

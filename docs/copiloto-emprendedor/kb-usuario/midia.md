@@ -4,7 +4,7 @@
 
 Mi día es un tablero donde el Copiloto te va dejando tarjetas con cosas que conviene que atiendas:
 presupuestos que se están enfriando sin respuesta, facturas viejas que todavía no te pagaron, un
-trabajo que te está dando pérdida, o un certificado de AFIP que está por vencer. No es una lista que
+trabajo que te está dando pérdida, o un certificado de ARCA que está por vencer. No es una lista que
 armás vos: el Copiloto revisa tu negocio automáticamente y te avisa cuando detecta algo que merece tu
 atención. También podés agregar tus propios recordatorios manuales, como pedirle "recordame llamar a
 Juan".
@@ -59,7 +59,7 @@ Estas son las situaciones que hacen aparecer una tarjeta sola, sin que vos hagas
 - **Un mes con gastos muy por encima de lo normal:** cuando gastaste bastante más (un 50% o más) que
   el mes anterior.
 
-### Tu certificado de AFIP por vencer
+### Tu certificado de ARCA por vencer
 
 Este es el aviso más importante de todos, porque si el certificado vence, se te cae la facturación
 entera de golpe. Por eso el Copiloto te avisa con hasta 30 días de anticipación, y también te avisa
@@ -106,7 +106,7 @@ se lo contás al Copiloto por voz.
 No hay forma de recuperarla — borrar es definitivo. Si era un recordatorio propio, simplemente
 volvés a crearlo.
 
-**"La tarjeta del certificado de AFIP sigue apareciendo aunque ya renové"**
+**"La tarjeta del certificado de ARCA sigue apareciendo aunque ya renové"**
 Puede tardar un momento en desaparecer mientras el Copiloto detecta la renovación. Si persiste mucho
 tiempo, consultá con soporte.
 
@@ -118,7 +118,7 @@ persiste.
 
 **¿Las tarjetas que crea el Copiloto se repiten todos los días?**
 No, cada aviso tiene un período de silencio antes de volver a mostrarse (generalmente dos semanas),
-salvo el del certificado de AFIP, que por su urgencia se repite con más frecuencia si el problema
+salvo el del certificado de ARCA, que por su urgencia se repite con más frecuencia si el problema
 sigue sin resolverse.
 
 **¿Puedo tener tarjetas en "Haciendo" y volver a "Para hoy"?**
