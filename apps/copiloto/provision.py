@@ -408,6 +408,17 @@ def _ensure_modo_ceremonia(conn) -> None:
     print(f"OK {SCHEMA}.copiloto_perfil_negocio.modo_ceremonia (idempotente)", flush=True)
 
 
+def _ensure_mp_reauth(conn) -> None:
+    """`mp_credentials.reauth_desde timestamptz NULL` -- desde cuándo la conexión de MercadoPago pide
+    reconectar (K-09, BL-J4). La marca el refresh cuando MP rechaza el `refresh_token` (`needs_reauth`)
+    y se limpia sola al guardar tokens nuevos. `NULL` es lo correcto para las filas existentes: ninguna
+    se sabe caída. Sin esta columna «caído» era indistinguible de «nunca conectado»."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.mp_credentials "
+                f"ADD COLUMN IF NOT EXISTS reauth_desde timestamptz;")
+    print(f"OK {SCHEMA}.mp_credentials.reauth_desde (idempotente)", flush=True)
+
+
 def _ensure_telefono_email(conn) -> None:
     """`copiloto_perfil_negocio.telefono` y `.email` `text NOT NULL DEFAULT ''` — contacto comercial
     del negocio (K-05, BL-J10). Distinto del perfil fiscal (`afip_perfil`). `DEFAULT ''` es lo correcto
@@ -571,6 +582,7 @@ def provision(conn) -> dict:
     _ensure_presupuesto_estado(conn)                # ídem para `copiloto_presupuestos.estado`.
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
     _ensure_telefono_email(conn)                    # ídem para `copiloto_perfil_negocio.telefono/.email`.
+    _ensure_mp_reauth(conn)                         # ídem para `mp_credentials.reauth_desde` (K-09).
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).

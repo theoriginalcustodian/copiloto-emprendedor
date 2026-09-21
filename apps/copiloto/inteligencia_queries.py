@@ -27,6 +27,7 @@ from typing import Callable
 
 from cobro_store import CobroStore
 from gasto_store import CATEGORIAS, dos_decimales, hoy_del_negocio
+from mp_credential_store import MpCredentialStore
 from trabajo_store import TrabajoStore
 
 _SCHEMA = "uc_factory"
@@ -204,10 +205,14 @@ class InteligenciaQueries:
         # mes en curso). Mismo cálculo que `caja.saldo`, aplicado al mes de antes (BL-J3).
         previo = serie[-2]
         rentabilidad_previa = Decimal(previo["ingresos"]) - Decimal(previo["gastos"])
+        # K-09: MercadoPago es hoy la única fuente automática de cobros; con su conexión caída «lo que
+        # entró» puede estar incompleto y la app no debe comparar contra el mes anterior.
+        incompleta = MpCredentialStore(self._conn_factory, self._cliente_id, None).salud() == "caido"
         return {
             "caja": {"saldo": dos_decimales(rentabilidad_mes), "moneda": MONEDA,
                      "fecha_corte": hoy.isoformat(),
-                     "variacion_pct": variacion_pct(rentabilidad_mes, rentabilidad_previa)},
+                     "variacion_pct": variacion_pct(rentabilidad_mes, rentabilidad_previa),
+                     "incompleta": incompleta},
             "mes": {
                 "ingresos": dos_decimales(ingresos_mes),
                 "gastos": dos_decimales(gastos_mes),

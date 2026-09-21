@@ -49,10 +49,13 @@ class _FakeCursor:
         return False
 
     def execute(self, sql: str, params: tuple = ()) -> None:
-        pass
+        self._sql = sql
 
     def fetchone(self):
-        return (self._seller,) if self._seller else None
+        if not self._seller:
+            return None
+        # `salud()` (K-09) pide `(reauth_desde, expires_at)`; `first_seller_user_id` pide `(seller,)`.
+        return (None, 4102444800) if "reauth_desde" in getattr(self, "_sql", "") else (self._seller,)
 
     def fetchall(self):
         return []

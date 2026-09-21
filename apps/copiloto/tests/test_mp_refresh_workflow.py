@@ -21,6 +21,7 @@ class _FakeStore:
     def get(self, seller): return dict(self.tokens)
     def update_tokens(self, seller, *, access_token, refresh_token, expires_at):
         self.tokens = {"access_token": access_token, "refresh_token": refresh_token, "expires_at": expires_at}
+    def marcar_reauth(self, seller): self.reauth = getattr(self, "reauth", []) + [seller]
 
 
 @pytest.mark.asyncio
@@ -36,3 +37,18 @@ async def test_refresh_loop_rotates_and_persists():
     assert gw.calls == 3                       # refrescó 3 ciclos (los sleeps se saltaron)
     assert store.tokens["refresh_token"] == "RT3"   # persistió el par rotado
     assert out["cycles"] == 3 and out["outcome"] == "active"
+
+
+def test_refresh_rechazado_marca_la_conexion_para_reconectar():
+    """K-09: antes `needs_reauth` se devolvía y se descartaba -- «caído» no dejaba rastro."""
+    from clients.agent.providers.mercadopago_gateway import MercadoPagoAuthError
+
+    class _GwRechaza:
+        def refresh(self, rt): raise MercadoPagoAuthError("invalid_grant")
+
+    store = _FakeStore()
+    set_refresh_deps(_GwRechaza(), lambda cid: store)
+    from clients.agent.providers.mp_refresh_activities import _refresh_sync
+    out = _refresh_sync(str(uuid.uuid4()), "s1")
+    assert out == {"ok": False, "reason": "needs_reauth"}
+    assert store.reauth == ["s1"]
