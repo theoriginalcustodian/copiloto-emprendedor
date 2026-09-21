@@ -203,6 +203,13 @@ if [ -d "$TRANSCRIPTS" ]; then
   mt_be=0; mt_fe=0; mt_pl=0; mt_me=0; mt_sin_rol=0
   while IFS= read -r -d '' f; do
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+    # Corridas del SDK (revisión de seguridad del pre-push, `claude -p`…) no son ventanas: no tienen
+    # cron ni rol. Contadas como «ventana SIN rol» tapaban una SESION MUDA real con un AVISO
+    # (21/09: un security-review en wt-fe1b escondió a BACKEND callado). `grep -m1` sobre el archivo
+    # entero, no sobre un `head -c`: el primer mensaje de un review trae el diff y el entrypoint
+    # quedaba después de los primeros 20 KB (medido: e628061a salía sin entrypoint).
+    ep="$(grep -o -m1 '"entrypoint":"[^"]*"' "$f" 2>/dev/null || true)"
+    [[ "$ep" == *'"sdk-'* ]] && continue
     # ⚠️ El rol se cuenta SÓLO dentro de las líneas que son el PROMPT DEL CRON que esta ventana
     # RECIBE — no en cualquier mención del texto. Contar menciones sueltas ya falló dos veces:
     # una sesión que le escribe contratos a otra la nombra más que a sí misma. Medido 2026-07-24
