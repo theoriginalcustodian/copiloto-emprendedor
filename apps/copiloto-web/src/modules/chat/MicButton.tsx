@@ -59,6 +59,7 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [holdHint, setHoldHint] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -75,7 +76,10 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
   const cancellingRef = useRef(false);
   const pendingSendRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // El cronómetro de la grabación descuenta las pausas: `accumMsRef` = lo ya grabado en tramos
+  // cerrados, `startedAtRef` = inicio del tramo en curso.
   const startedAtRef = useRef(0);
+  const accumMsRef = useRef(0);
   // Cleanup de los listeners de `document` del gesto en curso (si hay uno colgado) — lo llenan
   // `handlePointerDown`/`handlePointerUp` de abajo; lo lee el `useEffect` de desmontaje.
   const gestureCleanupRef = useRef<(() => void) | null>(null);
@@ -94,6 +98,13 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     }
   }, []);
 
+  const startTimer = useCallback(() => {
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      setElapsedMs(accumMsRef.current + (Date.now() - startedAtRef.current));
+    }, TIMER_TICK_MS);
+  }, [stopTimer]);
+
   const releaseStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -106,6 +117,8 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     setCancelling(false);
     cancellingRef.current = false;
     setElapsedMs(0);
+    setPaused(false);
+    accumMsRef.current = 0;
     chunksRef.current = [];
     mediaRecorderRef.current = null;
     stopTimer();
@@ -183,13 +196,33 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
       setLocked(false);
       setRecording(true);
       startedAtRef.current = Date.now();
+      accumMsRef.current = 0;
       setElapsedMs(0);
-      timerRef.current = setInterval(() => {
-        setElapsedMs(Date.now() - startedAtRef.current);
-      }, TIMER_TICK_MS);
+      setPaused(false);
+      startTimer();
     },
-    [onSendAudio, resetState],
+    [onSendAudio, resetState, startTimer],
   );
+
+  /** Pausar (BL-W1): `MediaRecorder.pause()` conserva lo grabado; el blob entero sale en `stop()`. */
+  function pauseRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state !== 'recording') return;
+    recorder.pause();
+    accumMsRef.current += Date.now() - startedAtRef.current;
+    stopTimer();
+    setElapsedMs(accumMsRef.current);
+    setPaused(true);
+  }
+
+  function resumeRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state !== 'paused') return;
+    recorder.resume();
+    startedAtRef.current = Date.now();
+    startTimer();
+    setPaused(false);
+  }
 
   function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     if (disabled) return;
@@ -304,6 +337,9 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
           elapsedMs={elapsedMs}
           locked={locked}
           cancelling={cancelling}
+          paused={paused}
+          onPause={pauseRecording}
+          onResume={resumeRecording}
           onCancel={() => finishRecording(false)}
           onSend={() => finishRecording(true)}
         />

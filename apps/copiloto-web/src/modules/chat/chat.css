@@ -667,6 +667,11 @@ a.artifact:focus-visible {
   margin: 0;
 }
 
+.recording-overlay__dot--paused {
+  animation: none;
+  opacity: 0.4;
+}
+
 .recording-overlay__hint--cancel {
   color: var(--danger-fg);
   font-weight: 600;
