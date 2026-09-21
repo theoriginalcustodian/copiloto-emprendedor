@@ -30,7 +30,7 @@ from typing import Callable
 from _paths import ensure_paths
 ensure_paths()
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -61,7 +61,7 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
-from onboarding import InvalidCredentials, provision_oauth_tenant, signup_and_provision
+from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
 from upload_validacion import FIRMAS_AUDIO, FIRMAS_IMAGEN, magic_bytes_validos
@@ -603,6 +603,31 @@ class SignupIn(BaseModel):
     invite_token: str = ""
 
 
+_EMAIL_VALIDO = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def _es_cuenta_google(claims: dict) -> bool:
+    """`True` si la cuenta entra con Google (no tiene una contraseña propia que cambiar). Sale de los
+    claims del MISMO token ya validado: GoTrue pone `app_metadata.provider/providers` en el JWT (verificado
+    en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`, sólo para cuentas email/password; el caso Google
+    real es `[ASSUMED_PENDING_VERIFY]`). Una cuenta con Google Y contraseña cuenta como Google: ocultar la
+    fila es lo seguro, mostrarla llevaría a un error confuso."""
+    meta = claims.get("app_metadata") or {}
+    proveedores = set(meta.get("providers") or [])
+    if meta.get("provider"):
+        proveedores.add(meta["provider"])
+    return "google" in proveedores
+
+
+class CambiarContrasenaIn(BaseModel):
+    contrasena_actual: str
+    contrasena_nueva: str
+
+
+class CambiarEmailIn(BaseModel):
+    email_nuevo: str
+
+
 class LoginIn(BaseModel):
     email: str
     password: str
@@ -942,7 +967,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                                   if (c["status"] or "").upper() == "ACTIVE"]
             return {"cliente_id": cliente_id, "email": claims.get("email"),
                     "mp_connected": seller is not None, "composio_connected": composio_connected,
-                    "es_admin": es_admin(claims),
+                    "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
                     "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
     else:
         @app.get("/me")
@@ -955,7 +980,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # puerta de la consola nunca es un agujero de seguridad (el guard real es
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
-                    "composio_connected": composio_connected, "es_admin": False,
+                    "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
                     "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
 
     @app.post("/me/onboarding/completar")
@@ -1116,6 +1141,67 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return gotrue.password_grant(body.email, body.password)
         except InvalidCredentials:
             raise HTTPException(status_code=401, detail="credenciales inválidas")
+
+    # --- cambiar contraseña / mail de la PROPIA cuenta (K-12) ------------------------------------
+    # Sólo con `require_claims` (necesita el email del token para reautenticar). El Bearer de la request
+    # es lo que se reenvía a GoTrue: ninguna de las dos rutas acepta un identificador de cuenta en el
+    # body, así que un token de A no tiene forma de apuntar a B (test adversarial en `test_cambiar_cuenta.py`).
+    if require_claims is not None:
+        def _bearer(request: Request) -> str:
+            auth = request.headers.get("authorization", "")
+            return auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+
+        @app.post("/auth/cambiar-contrasena")
+        def cambiar_contrasena(body: CambiarContrasenaIn, request: Request,
+                               cliente_id: str = Depends(require_tenant),
+                               claims: dict = Depends(require_claims)) -> dict:
+            """Reautentica con la contraseña ACTUAL (`password_grant`, 401 propio si no coincide) y sólo
+            entonces cambia la contraseña con el Bearer del usuario. Nunca loguea contraseñas."""
+            email = claims.get("email")
+            if not email:
+                raise HTTPException(status_code=400, detail={
+                    "codigo": "cuenta_sin_email", "mensaje": "Esta cuenta no tiene un email asociado."})
+            try:
+                gotrue.password_grant(email, body.contrasena_actual)
+            except InvalidCredentials:
+                raise HTTPException(status_code=401, detail={
+                    "codigo": "contrasena_actual_incorrecta",
+                    "mensaje": "La contraseña actual no coincide."})
+            try:
+                gotrue.update_user(_bearer(request), {"password": body.contrasena_nueva})
+            except GoTrueUserError as e:
+                if e.codigo == "same_password":
+                    mensaje = "La contraseña nueva tiene que ser distinta de la actual."
+                elif e.codigo == "weak_password":
+                    mensaje = "La contraseña nueva es muy débil: usá al menos 6 caracteres."
+                else:
+                    raise HTTPException(status_code=502, detail={
+                        "codigo": "no_se_pudo_cambiar", "mensaje": "No pudimos cambiar la contraseña ahora."})
+                raise HTTPException(status_code=422, detail={"codigo": "contrasena_invalida", "mensaje": mensaje})
+            return {"ok": True}
+
+        @app.post("/auth/cambiar-email")
+        def cambiar_email(body: CambiarEmailIn, request: Request,
+                          cliente_id: str = Depends(require_tenant)) -> dict:
+            """Pide el cambio al mail nuevo. GoTrue lo deja PENDIENTE hasta que se confirme desde el mail:
+            `email` sigue siendo el viejo hasta entonces (por eso `confirmacion_pendiente: true`, nunca
+            «cambiado»)."""
+            nuevo = (body.email_nuevo or "").strip()
+            if not _EMAIL_VALIDO.fullmatch(nuevo):
+                raise HTTPException(status_code=400, detail={
+                    "codigo": "email_invalido", "mensaje": "Ese email no es una dirección válida."})
+            try:
+                gotrue.update_user(_bearer(request), {"email": nuevo})
+            except GoTrueUserError as e:
+                if e.codigo == "email_exists":
+                    raise HTTPException(status_code=409, detail={
+                        "codigo": "email_ya_registrado", "mensaje": "Ese email ya está en uso."})
+                if e.codigo == "validation_failed":
+                    raise HTTPException(status_code=400, detail={
+                        "codigo": "email_invalido", "mensaje": "Ese email no es una dirección válida."})
+                raise HTTPException(status_code=502, detail={
+                    "codigo": "no_se_pudo_cambiar", "mensaje": "No pudimos pedir el cambio de email ahora."})
+            return {"ok": True, "confirmacion_pendiente": True}
 
     @app.post("/auth/refresh")
     def refresh(body: RefreshIn) -> dict:

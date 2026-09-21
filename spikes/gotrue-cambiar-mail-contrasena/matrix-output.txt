@@ -1,0 +1,111 @@
+# K-12 matriz GoTrue v2.186.0 (descartable)
+health: 200
+settings: {"external": {"anonymous_users": false, "apple": false, "azure": false, "bitbucket": false, "discord": false, "facebook": false, "snapchat": false, "figma": false, "fly": false, "github": false, "gitlab": false, "google": false, "keycloak": false, "kakao": false, "linkedin": false, "linkedin_oidc": false, "notion": false, "spotify": false, "slack": false, "slack_oidc": false, "workos": false, "twitch": false, "twitter": false, "email": true, "phone": false, "zoom": false}, "disable_signup": true, "mailer_autoconfirm": true}
+
+## Escenario A: AUTOCONFIRM=true SECURE_EMAIL_CHANGE=true REAUTH=false
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE true -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  crear usuarios (admin, email_confirm=true): 200 200
+  login A: 200
+  [422] PUT password corta 'abc': {"code": 422, "error_code": "weak_password", "msg": "Password should be at least 6 characters.", "weak_password": {"reasons": ["length"]}}
+  [422] PUT password IGUAL a la actual: {"code": 422, "error_code": "same_password", "msg": "New password should be different from the old password."}
+  [200] PUT password nueva válida (sin nonce): {"id": "4fa0a35d-c364-49fb-9f93-63624f394f80", "aud": "authenticated", "role": "authenticated", "email": "a-4b9b75@k12.test", "email_confirmed_at": "2026-09-21T18:05:44.172995Z", "phone": "", "confirmed_at": "2026-09-21T18:05:44.172995Z", "last_sign_in_at": "2026-09-21T18:05:44.390228Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "8147bcef-954a-4c31-822e-3426a8d42833", "id": "4fa0a35d-c364-49fb-9f93-63624f394f80", "user_id": "4fa0a35d-c364-49fb-9f93-63624f394f80", "identity_data": {"email": "a-4b9b75@k12.test", "email_verified": false, "phone_verified": false, "sub": "4fa0a35d-c364-49fb-9f93-63624f394f80"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:05:44.16935Z", "created_at": "2026-09-21T18:05:44.169397Z", "updated_at": "2026-09-21T18:05:44.169397Z", "email": "a-4b9b75@k12.test"}], "created_at": "2026-09-21T18:05:44.166266Z", "updated_at": "2026-09-21T18:05:44.751741Z", "is_anonymous": false}
+  mails tras password: []
+  login con vieja: 400 | con nueva: 200
+  [400] token grant con password INCORRECTA: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  [400] token grant con email inexistente: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  PUT email nuevo -> 200 {'email': 'a-4b9b75@k12.test', 'new_email': 'a2-4b9b75@k12.test', 'email_change_sent_at': '2026-09-21T18:05:45.274283669Z', 'email_confirmed_at': '2026-09-21T18:05:44.172995Z', 'updated_at': '2026-09-21T18:05:45.279714Z'}
+  mails tras cambio de email: [('Confirm Email Change', ['a2-4b9b75@k12.test']), ('Confirm Email Change', ['a-4b9b75@k12.test'])]
+  GET /user tras PUT: 200 {'email': 'a-4b9b75@k12.test', 'new_email': 'a2-4b9b75@k12.test', 'email_change_sent_at': '2026-09-21T18:05:45.274283Z', 'email_confirmed_at': '2026-09-21T18:05:44.172995Z', 'updated_at': '2026-09-21T18:05:45.279714Z'}
+  login con email VIEJO: 200 | con email NUEVO: 400
+  [422] PUT email YA EN USO por otra cuenta: {"code": 422, "error_code": "email_exists", "msg": "A user with this email address has already been registered"}
+  [400] PUT email inválido: {"code": 400, "error_code": "validation_failed", "msg": "Unable to validate email address: invalid format"}
+
+  JWT claims (subset): {'iss': 'https://k12.local/auth/v1', 'aud': 'authenticated', 'role': 'authenticated', 'email': 'a-4b9b75@k12.test', 'app_metadata': {'provider': 'email', 'providers': ['email']}, 'user_metadata': {'email_verified': True}, 'amr': [{'method': 'password', 'timestamp': 1790013945}], 'is_anonymous': False}
+  GET /user app_metadata: {'provider': 'email', 'providers': ['email']} | identities: [{'provider': 'email', 'identity_id': '8147bcef-954a-4c31-822e-3426a8d42833'}]
+
+## Escenario B: AUTOCONFIRM=true SECURE_EMAIL_CHANGE=true REAUTH=true
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE true -> []
+   $ setenv K12_REAUTH true -> []
+   $ recreate -> ['health OK']
+  crear usuarios (admin, email_confirm=true): 200 200
+  login A: 200
+  [422] PUT password corta 'abc': {"code": 422, "error_code": "weak_password", "msg": "Password should be at least 6 characters.", "weak_password": {"reasons": ["length"]}}
+  [422] PUT password IGUAL a la actual: {"code": 422, "error_code": "same_password", "msg": "New password should be different from the old password."}
+  [200] PUT password nueva válida (sin nonce): {"id": "3bc64117-fe5d-4c44-87dd-5968555190e7", "aud": "authenticated", "role": "authenticated", "email": "a-37ed23@k12.test", "email_confirmed_at": "2026-09-21T18:05:49.703751Z", "phone": "", "confirmed_at": "2026-09-21T18:05:49.703751Z", "last_sign_in_at": "2026-09-21T18:05:49.919561Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "9bc7a599-7ce5-427f-8f0a-e613e3feaa31", "id": "3bc64117-fe5d-4c44-87dd-5968555190e7", "user_id": "3bc64117-fe5d-4c44-87dd-5968555190e7", "identity_data": {"email": "a-37ed23@k12.test", "email_verified": false, "phone_verified": false, "sub": "3bc64117-fe5d-4c44-87dd-5968555190e7"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:05:49.699975Z", "created_at": "2026-09-21T18:05:49.700245Z", "updated_at": "2026-09-21T18:05:49.700245Z", "email": "a-37ed23@k12.test"}], "created_at": "2026-09-21T18:05:49.695399Z", "updated_at": "2026-09-21T18:05:50.270164Z", "is_anonymous": false}
+  mails tras password: []
+  login con vieja: 400 | con nueva: 200
+  [400] token grant con password INCORRECTA: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  [400] token grant con email inexistente: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  PUT email nuevo -> 200 {'email': 'a-37ed23@k12.test', 'new_email': 'a2-37ed23@k12.test', 'email_change_sent_at': '2026-09-21T18:05:50.78122088Z', 'email_confirmed_at': '2026-09-21T18:05:49.703751Z', 'updated_at': '2026-09-21T18:05:50.786469Z'}
+  mails tras cambio de email: [('Confirm Email Change', ['a-37ed23@k12.test']), ('Confirm Email Change', ['a2-37ed23@k12.test'])]
+  GET /user tras PUT: 200 {'email': 'a-37ed23@k12.test', 'new_email': 'a2-37ed23@k12.test', 'email_change_sent_at': '2026-09-21T18:05:50.78122Z', 'email_confirmed_at': '2026-09-21T18:05:49.703751Z', 'updated_at': '2026-09-21T18:05:50.786469Z'}
+  login con email VIEJO: 200 | con email NUEVO: 400
+  [422] PUT email YA EN USO por otra cuenta: {"code": 422, "error_code": "email_exists", "msg": "A user with this email address has already been registered"}
+  [400] PUT email inválido: {"code": 400, "error_code": "validation_failed", "msg": "Unable to validate email address: invalid format"}
+
+## Escenario C: AUTOCONFIRM=false SECURE_EMAIL_CHANGE=true REAUTH=false
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM false -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE true -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  crear usuarios (admin, email_confirm=true): 200 200
+  login A: 200
+  [422] PUT password corta 'abc': {"code": 422, "error_code": "weak_password", "msg": "Password should be at least 6 characters.", "weak_password": {"reasons": ["length"]}}
+  [422] PUT password IGUAL a la actual: {"code": 422, "error_code": "same_password", "msg": "New password should be different from the old password."}
+  [200] PUT password nueva válida (sin nonce): {"id": "31fe5453-8ed0-44bf-9220-ce77cd73239d", "aud": "authenticated", "role": "authenticated", "email": "a-18e66b@k12.test", "email_confirmed_at": "2026-09-21T18:05:55.115503Z", "phone": "", "confirmed_at": "2026-09-21T18:05:55.115503Z", "last_sign_in_at": "2026-09-21T18:05:55.33017Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "de376802-0174-41bc-8c3f-1592746e2c39", "id": "31fe5453-8ed0-44bf-9220-ce77cd73239d", "user_id": "31fe5453-8ed0-44bf-9220-ce77cd73239d", "identity_data": {"email": "a-18e66b@k12.test", "email_verified": false, "phone_verified": false, "sub": "31fe5453-8ed0-44bf-9220-ce77cd73239d"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:05:55.110693Z", "created_at": "2026-09-21T18:05:55.110739Z", "updated_at": "2026-09-21T18:05:55.110739Z", "email": "a-18e66b@k12.test"}], "created_at": "2026-09-21T18:05:55.104515Z", "updated_at": "2026-09-21T18:05:55.690877Z", "is_anonymous": false}
+  mails tras password: []
+  login con vieja: 400 | con nueva: 200
+  [400] token grant con password INCORRECTA: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  [400] token grant con email inexistente: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  PUT email nuevo -> 200 {'email': 'a-18e66b@k12.test', 'new_email': 'a2-18e66b@k12.test', 'email_change_sent_at': '2026-09-21T18:05:56.203112525Z', 'email_confirmed_at': '2026-09-21T18:05:55.115503Z', 'updated_at': '2026-09-21T18:05:56.208023Z'}
+  mails tras cambio de email: [('Confirm Email Change', ['a-18e66b@k12.test']), ('Confirm Email Change', ['a2-18e66b@k12.test'])]
+  GET /user tras PUT: 200 {'email': 'a-18e66b@k12.test', 'new_email': 'a2-18e66b@k12.test', 'email_change_sent_at': '2026-09-21T18:05:56.203112Z', 'email_confirmed_at': '2026-09-21T18:05:55.115503Z', 'updated_at': '2026-09-21T18:05:56.208023Z'}
+  login con email VIEJO: 200 | con email NUEVO: 400
+  [422] PUT email YA EN USO por otra cuenta: {"code": 422, "error_code": "email_exists", "msg": "A user with this email address has already been registered"}
+  [400] PUT email inválido: {"code": 400, "error_code": "validation_failed", "msg": "Unable to validate email address: invalid format"}
+
+## Escenario D: AUTOCONFIRM=false SECURE_EMAIL_CHANGE=false REAUTH=false
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM false -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE false -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  crear usuarios (admin, email_confirm=true): 200 200
+  login A: 200
+  [422] PUT password corta 'abc': {"code": 422, "error_code": "weak_password", "msg": "Password should be at least 6 characters.", "weak_password": {"reasons": ["length"]}}
+  [422] PUT password IGUAL a la actual: {"code": 422, "error_code": "same_password", "msg": "New password should be different from the old password."}
+  [200] PUT password nueva válida (sin nonce): {"id": "72f1f5e1-522f-4e9c-9c11-2a7a636c14c1", "aud": "authenticated", "role": "authenticated", "email": "a-0e727a@k12.test", "email_confirmed_at": "2026-09-21T18:06:00.522519Z", "phone": "", "confirmed_at": "2026-09-21T18:06:00.522519Z", "last_sign_in_at": "2026-09-21T18:06:00.756126Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "a93b9022-19bf-4047-8b77-17f973378573", "id": "72f1f5e1-522f-4e9c-9c11-2a7a636c14c1", "user_id": "72f1f5e1-522f-4e9c-9c11-2a7a636c14c1", "identity_data": {"email": "a-0e727a@k12.test", "email_verified": false, "phone_verified": false, "sub": "72f1f5e1-522f-4e9c-9c11-2a7a636c14c1"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:06:00.518239Z", "created_at": "2026-09-21T18:06:00.518277Z", "updated_at": "2026-09-21T18:06:00.518277Z", "email": "a-0e727a@k12.test"}], "created_at": "2026-09-21T18:06:00.514357Z", "updated_at": "2026-09-21T18:06:01.125798Z", "is_anonymous": false}
+  mails tras password: []
+  login con vieja: 400 | con nueva: 200
+  [400] token grant con password INCORRECTA: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  [400] token grant con email inexistente: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  PUT email nuevo -> 200 {'email': 'a-0e727a@k12.test', 'new_email': 'a2-0e727a@k12.test', 'email_change_sent_at': '2026-09-21T18:06:01.684481977Z', 'email_confirmed_at': '2026-09-21T18:06:00.522519Z', 'updated_at': '2026-09-21T18:06:01.689146Z'}
+  mails tras cambio de email: [('Confirm Email Change', ['a2-0e727a@k12.test'])]
+  GET /user tras PUT: 200 {'email': 'a-0e727a@k12.test', 'new_email': 'a2-0e727a@k12.test', 'email_change_sent_at': '2026-09-21T18:06:01.684481Z', 'email_confirmed_at': '2026-09-21T18:06:00.522519Z', 'updated_at': '2026-09-21T18:06:01.689146Z'}
+  login con email VIEJO: 200 | con email NUEVO: 400
+  [422] PUT email YA EN USO por otra cuenta: {"code": 422, "error_code": "email_exists", "msg": "A user with this email address has already been registered"}
+  [400] PUT email inválido: {"code": 400, "error_code": "validation_failed", "msg": "Unable to validate email address: invalid format"}
+
+## Escenario E: AUTOCONFIRM=true SECURE_EMAIL_CHANGE=false REAUTH=false
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE false -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  crear usuarios (admin, email_confirm=true): 200 200
+  login A: 200
+  [422] PUT password corta 'abc': {"code": 422, "error_code": "weak_password", "msg": "Password should be at least 6 characters.", "weak_password": {"reasons": ["length"]}}
+  [422] PUT password IGUAL a la actual: {"code": 422, "error_code": "same_password", "msg": "New password should be different from the old password."}
+  [200] PUT password nueva válida (sin nonce): {"id": "dda054e5-d338-4132-8fd5-1b143a1a3eca", "aud": "authenticated", "role": "authenticated", "email": "a-595902@k12.test", "email_confirmed_at": "2026-09-21T18:06:06.05207Z", "phone": "", "confirmed_at": "2026-09-21T18:06:06.05207Z", "last_sign_in_at": "2026-09-21T18:06:06.26856Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "94567d01-ab9c-4ef3-8ac2-54a64c0734c9", "id": "dda054e5-d338-4132-8fd5-1b143a1a3eca", "user_id": "dda054e5-d338-4132-8fd5-1b143a1a3eca", "identity_data": {"email": "a-595902@k12.test", "email_verified": false, "phone_verified": false, "sub": "dda054e5-d338-4132-8fd5-1b143a1a3eca"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:06:06.04786Z", "created_at": "2026-09-21T18:06:06.047907Z", "updated_at": "2026-09-21T18:06:06.047907Z", "email": "a-595902@k12.test"}], "created_at": "2026-09-21T18:06:06.044109Z", "updated_at": "2026-09-21T18:06:06.626954Z", "is_anonymous": false}
+  mails tras password: []
+  login con vieja: 400 | con nueva: 200
+  [400] token grant con password INCORRECTA: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  [400] token grant con email inexistente: {"code": 400, "error_code": "invalid_credentials", "msg": "Invalid login credentials"}
+  PUT email nuevo -> 200 {'email': 'a-595902@k12.test', 'new_email': 'a2-595902@k12.test', 'email_change_sent_at': '2026-09-21T18:06:07.176194653Z', 'email_confirmed_at': '2026-09-21T18:06:06.05207Z', 'updated_at': '2026-09-21T18:06:07.18095Z'}
+  mails tras cambio de email: [('Confirm Email Change', ['a2-595902@k12.test'])]
+  GET /user tras PUT: 200 {'email': 'a-595902@k12.test', 'new_email': 'a2-595902@k12.test', 'email_change_sent_at': '2026-09-21T18:06:07.176194Z', 'email_confirmed_at': '2026-09-21T18:06:06.05207Z', 'updated_at': '2026-09-21T18:06:07.18095Z'}
+  login con email VIEJO: 200 | con email NUEVO: 400
+  [422] PUT email YA EN USO por otra cuenta: {"code": 422, "error_code": "email_exists", "msg": "A user with this email address has already been registered"}
+  [400] PUT email inválido: {"code": 400, "error_code": "validation_failed", "msg": "Unable to validate email address: invalid format"}
