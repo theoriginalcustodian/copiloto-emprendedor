@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# scripts/ci/sesion-env.sh — triada del gate por sesión (BL-B6). Se hace `source` desde gate.sh.
+#
+# Por qué existe: `test-db.sh` y `sync-test-backend.sh` tenían un contenedor y un stage FIJOS en el
+# VPS. Dos sesiones corriendo el gate a la vez se pisaban la base y el código bajo test (rojos y
+# verdes falsos). Las tres variables ya eran parametrizables; esto sólo les da un valor por sesión.
+#
+# Sesión = `UC_SESION` (backend|fe1|fe2) si viene explícita; si no, se infiere del prefijo de la
+# rama (backend/…, frontend1/…, frontend2/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2).
+# Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos (compatibilidad).
+# Un valor ya exportado por quien invoca (UC_TESTDB_NAME/PORT, UC_TEST_STAGE) siempre gana.
+_ROOT_SESION="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+_inferir_sesion() {
+  local rama dir
+  rama="$(git -C "$_ROOT_SESION" branch --show-current 2>/dev/null || true)"
+  dir="$(basename "$_ROOT_SESION")"
+  case "$rama" in
+    backend/*)   echo backend; return ;;
+    frontend1/*|fe1/*) echo fe1; return ;;
+    frontend2/*|fe2/*) echo fe2; return ;;
+  esac
+  case "$dir" in
+    wt-backend)  echo backend ;;
+    wt-fe1|wt-fe1b) echo fe1 ;;
+    wt-fe2|wt-fe2-*) echo fe2 ;;
+  esac
+}
+
+UC_SESION="${UC_SESION:-$(_inferir_sesion)}"
+case "$UC_SESION" in
+  backend) _sfx=be; _port=55432 ;;
+  fe1)     _sfx=fe1; _port=55433 ;;
+  fe2)     _sfx=fe2; _port=55434 ;;
+  "")      _sfx="" ;;
+  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2)" >&2; return 1 2>/dev/null || exit 1 ;;
+esac
+
+if [ -n "$_sfx" ]; then
+  export UC_TESTDB_NAME="${UC_TESTDB_NAME:-copiloto-test-db-$_sfx}"
+  export UC_TESTDB_PORT="${UC_TESTDB_PORT:-$_port}"
+  export UC_TEST_STAGE="${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage-$_sfx}"
+fi
+export UC_SESION
+echo "==> sesión del gate: ${UC_SESION:-<sin sesión: defaults históricos>} · db=${UC_TESTDB_NAME:-copiloto-test-db}:${UC_TESTDB_PORT:-55432} · stage=${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage}"
