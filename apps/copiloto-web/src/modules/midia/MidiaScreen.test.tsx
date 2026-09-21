@@ -15,6 +15,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     borrarTarjetaMiDia: vi.fn(),
     leerCalendario: vi.fn(),
     leerPortada: vi.fn(),
+    leerAgenda: vi.fn(),
   };
 });
 
@@ -22,6 +23,7 @@ import {
   CLAVE_DIAS_CALMA,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  leerAgenda,
   leerCalendario,
   leerPortada,
   leerTablero,
@@ -256,5 +258,27 @@ describe('MidiaScreen — vacío con Calma (BL-W5)', () => {
     await waitFor(() => expect(screen.getByTestId('midia-vacio-titulo')).toBeInTheDocument());
     await waitFor(() => expect(screen.queryByTestId('midia-vacio-cuerpo')).not.toBeInTheDocument());
     expect(screen.getByTestId('midia-vacio-taza')).toBeInTheDocument();
+  });
+});
+
+describe('MidiaScreen — agenda de varios días (BL-J13)', () => {
+  it('«Ver agenda» abre la Agenda y «← Mi día» vuelve al Kanban', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+    vi.mocked(leerAgenda).mockResolvedValue({ status: 'ok', agenda: { conectado: false, grupos: [] } });
+    render(<MidiaScreen onAbrirChat={() => {}} />);
+
+    fireEvent.click(await screen.findByTestId('midia-ver-agenda'));
+    expect(await screen.findByTestId('pantalla-agenda')).toBeInTheDocument();
+    expect(screen.queryByTestId('pantalla-midia')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('agenda-volver'));
+    expect(await screen.findByTestId('pantalla-midia')).toBeInTheDocument();
+  });
+
+  it('sin `onAbrirChat` no hay entrada a la agenda (no puede ofrecer «Nuevo evento»)', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+    render(<MidiaScreen />);
+    await screen.findByTestId('midia-calendario-vacio');
+    expect(screen.queryByTestId('midia-ver-agenda')).not.toBeInTheDocument();
   });
 });

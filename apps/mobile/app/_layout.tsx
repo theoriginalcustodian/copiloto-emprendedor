@@ -126,6 +126,9 @@ export default function LayoutRaiz() {
                     // se llega deslizando, no entrando. La ruta sigue viva porque el puente de las
                     // tarjetas (`destinoActividad`) y los enlaces internos la usan.
                     'midia',
+                    // BL-J13: la agenda de varios días, glass hoja que se abre desde el panel de
+                    // calendario de Mi día (`empujarUnaVez('/agenda')`).
+                    'agenda',
                     // `ajustes` tampoco es tile: su única puerta es el avatar (Ola 4). La pantalla
                     // no cambió — cambió desde dónde se entra.
                     'ajustes',

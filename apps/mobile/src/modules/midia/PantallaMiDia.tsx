@@ -267,9 +267,11 @@ export interface PantallaMiDiaProps {
   comoPortada?: boolean;
   /** Tocar el avatar. Sólo se usa con `comoPortada`; la navegación la cablea el shell. */
   onAjustes?: () => void;
+  /** BL-J13: abre la agenda de varios días. La cablea el shell (`empujarUnaVez`); sin él no hay entrada. */
+  onAgenda?: () => void;
 }
 
-export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaProps = {}) {
+export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: PantallaMiDiaProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
@@ -387,6 +389,21 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
         {portada != null && <PortadaNegocio portada={portada} />}
 
         <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+
+        {estadoCalendario === 'ok' && onAgenda != null && (
+          <Pressable
+            testID="midia-ver-agenda"
+            accessibilityRole="button"
+            accessibilityLabel="Ver agenda"
+            onPress={onAgenda}
+            style={styles.verAgenda}
+            hitSlop={8}
+          >
+            <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.chico }}>
+              Ver agenda
+            </Text>
+          </Pressable>
+        )}
 
         <ContadorTablero tablero={tablero} />
 
@@ -662,6 +679,7 @@ const styles = StyleSheet.create({
   raiz: { flex: 1 },
   calendario: { gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   calendarioEvento: { flexDirection: 'row', gap: 8, alignItems: 'baseline' },
+  verAgenda: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   solapas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   chips: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },

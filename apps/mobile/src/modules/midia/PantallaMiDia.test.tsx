@@ -371,3 +371,29 @@ describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', (
     expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
   });
 });
+
+describe('PantallaMiDia — entrada a la agenda (BL-J13)', () => {
+  it('con `onAgenda` y el calendario listo, «Ver agenda» la abre', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+    const onAgenda = jest.fn();
+
+    render(
+      <ThemeProvider>
+        <PantallaMiDia onAgenda={onAgenda} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-ver-agenda')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('midia-ver-agenda'));
+    expect(onAgenda).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin `onAgenda` no hay entrada (la ruta glass /midia no la ofrece)', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: true, eventos: [] } });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-vacio')).toBeTruthy());
+    expect(screen.queryByTestId('midia-ver-agenda')).toBeNull();
+  });
+});

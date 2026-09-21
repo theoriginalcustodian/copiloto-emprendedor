@@ -317,6 +317,20 @@ export type {
   TarjetaMiDia,
 } from './miDia';
 /**
+ * `GET /mi-dia/calendario?desde&hasta` (BL-J13, K-13) — agenda de varios días: 4 grupos fijos, rango
+ * armado por el cliente (<= 14 días). «Nuevo evento» va por el chat (`dejarPendiente`), sin endpoint.
+ */
+export {
+  DIAS_AGENDA_DEFAULT,
+  DIAS_MAX_AGENDA,
+  ORDEN_GRUPOS_AGENDA,
+  TEXTO_NUEVO_EVENTO,
+  franjaDeEvento,
+  leerAgenda,
+  rangoAgenda,
+} from './agenda';
+export type { AgendaMiDia, EventoAgenda, GrupoAgenda, IdGrupoAgenda, RangoAgenda } from './agenda';
+/**
  * `/inteligencia/portada` — el resumen del negocio (caja, mes, serie, mejores clientes, por cobrar).
  * **[CONNECT]** — construido contra el contrato §3.1, el endpoint todavía NO está publicado; degrada a
  * `no_disponible` hasta el connect. Plata como string, `ausente ≠ cero`. Ver el docstring.
