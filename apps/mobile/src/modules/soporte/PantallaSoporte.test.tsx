@@ -271,3 +271,15 @@ describe('PantallaSoporte -- voz (ODOBI8 §C2): hold-graba / soltar-envía / des
     alertSpy.mockRestore();
   });
 });
+
+describe('PantallaSoporte -- encabezado (BL-W10)', () => {
+  it('dice el tiempo de respuesta y qué viaja con el ticket, sin prometer un número de horas', async () => {
+    await renderPantallaSoporte();
+    const detalle = screen.getByTestId('soporte-detalle');
+    const texto = (Array.isArray(detalle.props.children) ? detalle.props.children.join('') : String(detalle.props.children));
+    expect(texto).toContain('plazo de respuesta');
+    expect(texto).toContain('asunto y un resumen');
+    expect(texto).not.toMatch(/\d+\s*(h|hs|horas|hábiles)/i);
+    expect(screen.getByTestId('soporte-quien').props.children).toBe('Soporte de Odobi');
+  });
+});
