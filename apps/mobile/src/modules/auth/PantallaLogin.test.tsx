@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 // Jest (jest-expo) — describe/it/expect/jest son globales, no se importan de vitest.
@@ -152,10 +153,44 @@ describe('PantallaLogin', () => {
     await fireEvent.press(screen.getByTestId('login-submit'));
 
     await waitFor(() => expect(screen.getByTestId('login-alert')).toBeTruthy());
-    expect(screen.getByText('Email o contraseña incorrectos. Probá de nuevo.')).toBeTruthy();
+    expect(screen.getByText('Ese mail y esa contraseña no coinciden. Probá de nuevo.')).toBeTruthy();
     // El detalle crudo del backend (mensaje interno de GoTrue/proveedor) nunca debe llegar a la UI.
     expect(screen.queryByText(detalleCrudo)).toBeNull();
     expect(await almacenTokens.leerToken()).toBeNull();
+  });
+
+  it('BL-X12m: el pie tranquiliza a quien vuelve y, con error, el campo de contraseña pasa a terracota', async () => {
+    jest.mocked(api.login).mockRejectedValueOnce(new UnauthorizedError('x'));
+    await montar();
+    expect(screen.getByTestId('login-pie').props.children).toBe(
+      'Tus datos quedan guardados: al volver a entrar está todo como lo dejaste.',
+    );
+    const borde = () => StyleSheet.flatten(screen.getByTestId('login-password').props.style).borderColor;
+    const bordeSinError = borde();
+
+    await fireEvent.changeText(screen.getByTestId('login-email'), 'emprendedor@copiloto.test');
+    await fireEvent.changeText(screen.getByTestId('login-password'), 'mala');
+    await fireEvent.press(screen.getByTestId('login-submit'));
+    await waitFor(() => expect(screen.getByTestId('login-alert')).toBeTruthy());
+
+    // Control: el borde CAMBIA con el error (no es el mismo del reposo).
+    expect(borde()).not.toBe(bordeSinError);
+  });
+
+  it('BL-X12m: «Entrar con Google» va sin borde (.btn2)', async () => {
+    await montar();
+    expect(StyleSheet.flatten(screen.getByTestId('login-google').props.style)?.borderWidth ?? 0).toBe(0);
+  });
+
+  it('BL-X12m: `emailInicial` precarga el mail (el reveal «Entrar» ya sabe quién era)', async () => {
+    await render(
+      <ThemeProvider>
+        <SessionProvider>
+          <PantallaLogin emailInicial="ana@x.com" />
+        </SessionProvider>
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('login-email').props.value).toBe('ana@x.com');
   });
 
   it('campos vacíos no disparan request', async () => {

@@ -20,7 +20,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 // `@copiloto/core`. Sin esto, cualquier llamada al backend sale sin transporte configurado. Es la
 // única vez que se ejecuta en toda la app.
 import '../src/adapters/plataforma';
-import { PantallaLogin, SessionProvider, useSession } from '../src/modules/auth';
+import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
@@ -77,7 +77,7 @@ function Guard({ children }: { children: React.ReactNode }) {
   if (RUTAS_LIBRES.includes(ruta)) return <>{children}</>;
   if (estado === 'verificando') return <Splash />;
   if (estado === 'autenticado') return <>{children}</>;
-  return <PantallaLogin />;
+  return <EntradaSesion />;
 }
 
 export default function LayoutRaiz() {
