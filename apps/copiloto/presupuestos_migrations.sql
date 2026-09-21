@@ -42,3 +42,12 @@ CREATE INDEX IF NOT EXISTS afip_comprobantes_workflow_ix
 -- bypassa RLS), así que el índice tiene que empezar por donde empieza el WHERE.
 CREATE INDEX IF NOT EXISTS copiloto_presupuesto_items_cliente_presu_ix
   ON uc_factory.copiloto_presupuesto_items (cliente_id, presupuesto_id, orden);
+
+-- 2026-09-21 — K-01 (BL-D1/BL-J1): idempotencia del alta. La MISMA intención (doble toque, reintento
+-- de red) no abre un segundo presupuesto. Parcial: los clientes viejos no mandan `idem_key` (NULL) y
+-- no deben bloquearse entre sí. Es índice único y no sólo un SELECT previo porque entre la consulta y
+-- el INSERT hay una ventana por la que pasan justo las dos altas concurrentes que esto evita.
+-- (El nombre del índice no lo lee el código: la carrera se resuelve releyendo por clave.)
+CREATE UNIQUE INDEX IF NOT EXISTS copiloto_presupuestos_cliente_idem_uk
+  ON uc_factory.copiloto_presupuestos (cliente_id, idem_key)
+  WHERE idem_key IS NOT NULL;

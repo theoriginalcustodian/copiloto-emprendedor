@@ -22,6 +22,8 @@ from contextlib import contextmanager
 from decimal import Decimal
 from typing import Callable
 
+import psycopg2.errors
+
 from evento_store import registrar_evento
 
 
@@ -211,7 +213,49 @@ class PresupuestoStore:
     # --- escritura ---------------------------------------------------------------
 
     def crear(self, *, concepto: str, receptor: dict, items: list, moneda: str = "ARS",
-              reemplaza_a: int | None = None) -> dict:
+              reemplaza_a: int | None = None, idem_key: str | None = None) -> dict:
+        """Alta idempotente si viene `idem_key`; devuelve sólo el presupuesto (ver `crear_idem`)."""
+        return self.crear_idem(concepto=concepto, receptor=receptor, items=items, moneda=moneda,
+                               reemplaza_a=reemplaza_a, idem_key=idem_key)[0]
+
+    def crear_idem(self, *, concepto: str, receptor: dict, items: list, moneda: str = "ARS",
+                   reemplaza_a: int | None = None, idem_key: str | None = None) -> tuple[dict, bool]:
+        """`(presupuesto, repetido)`. K-01 / BL-D1+BL-J1.
+
+        Con `idem_key`, la MISMA intención (doble toque, reintento de red) devuelve el presupuesto que
+        ya se creó en vez de abrir otro con número distinto. Se consulta primero y, además, el índice
+        único parcial `(cliente_id, idem_key)` cierra la ventana entre el SELECT y el INSERT: la
+        segunda de dos altas concurrentes choca ahí y se resuelve devolviendo la fila de la primera.
+        Sin `idem_key` (cliente viejo) el comportamiento es el de siempre: una fila nueva cada vez."""
+        idem_key = (idem_key or "").strip() or None
+        if idem_key:
+            previo = self._por_idem_key(idem_key)
+            if previo:
+                return previo, True
+        try:
+            return self._insertar(concepto=concepto, receptor=receptor, items=items, moneda=moneda,
+                                  reemplaza_a=reemplaza_a, idem_key=idem_key), False
+        except psycopg2.errors.UniqueViolation:
+            # En la carrera, la perdedora suele chocar PRIMERO contra `(cliente_id, numero)` (las dos
+            # calcularon el mismo `max+1`), no contra la clave. Por eso no se mira QUÉ índice saltó:
+            # con clave, se relee por ella — si la fila del ganador ya está, es "repetido"; si no, la
+            # colisión es sólo de número y sigue siendo un error que el caller reintenta.
+            if idem_key:
+                previo = self._por_idem_key(idem_key)
+                if previo:
+                    return previo, True
+            raise
+
+    def _por_idem_key(self, idem_key: str) -> dict | None:
+        conn = self._conn_factory()
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT id FROM {_TABLE} WHERE cliente_id=%s AND idem_key=%s",
+                        (self._cid, idem_key))
+            fila = cur.fetchone()
+        return self.detalle(fila[0]) if fila else None
+
+    def _insertar(self, *, concepto: str, receptor: dict, items: list, moneda: str,
+                  reemplaza_a: int | None, idem_key: str | None) -> dict:
         """Alta del presupuesto + sus ítems, en UNA transacción.
 
         El `total` lo calcula ACÁ (Σ cantidad × precio_unitario) y se ignora cualquier total que venga
@@ -235,12 +279,12 @@ class PresupuestoStore:
             cur.execute(
                 f"INSERT INTO {_TABLE} (cliente_id, numero, concepto, receptor_nombre, "
                 f"receptor_doc_tipo, receptor_doc_nro, receptor_condicion_iva, receptor_domicilio, "
-                f"receptor_contacto, total, moneda, reemplaza_a) "
-                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                f"receptor_contacto, total, moneda, reemplaza_a, idem_key) "
+                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
                 (self._cid, numero, concepto, receptor.get("nombre", ""),
                  receptor.get("doc_tipo"), receptor.get("doc_nro"),
                  receptor.get("condicion_iva"), receptor.get("domicilio"),
-                 receptor.get("contacto"), total, moneda, reemplaza_a))
+                 receptor.get("contacto"), total, moneda, reemplaza_a, idem_key))
             presupuesto_id = cur.fetchone()[0]
             for orden, it in enumerate(items):
                 cur.execute(

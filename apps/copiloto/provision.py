@@ -233,6 +233,19 @@ def _ensure_presupuestos_cliente_ref_column(conn) -> None:
           flush=True)
 
 
+def _ensure_presupuestos_idem_key_column(conn) -> None:
+    """Migración aditiva de `copiloto_presupuestos.idem_key text` (K-01, BL-D1/BL-J1).
+
+    Mismo criterio que `_ensure_presupuestos_cliente_ref_column`: corre ANTES del pase estándar. El
+    índice único parcial `(cliente_id, idem_key) WHERE idem_key IS NOT NULL` vive en
+    `presupuestos_migrations.sql` (se aplica al final, con la tabla ya creada). Parcial: las filas
+    existentes y las de clientes viejos no la traen y no deben bloquearse entre sí."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_presupuestos "
+                f"ADD COLUMN IF NOT EXISTS idem_key text;")
+    print(f"OK {SCHEMA}.copiloto_presupuestos.idem_key (columna aditiva text, idempotente)", flush=True)
+
+
 def _ensure_clientes_homonimo_column(conn) -> None:
     """Migración aditiva de `copiloto_clientes.homonimo integer NOT NULL DEFAULT 0`.
 
@@ -538,6 +551,7 @@ def provision(conn) -> dict:
     _ensure_reply_idem_key(conn)      # ídem para `copiloto_web_replies.idem_key` (+ índice único parcial).
     _ensure_afip_activo_column(conn)  # ídem para `afip_credentials.activo`.
     _ensure_presupuestos_cliente_ref_column(conn)   # ídem para `copiloto_presupuestos.cliente_ref`.
+    _ensure_presupuestos_idem_key_column(conn)      # ídem para `copiloto_presupuestos.idem_key` (K-01).
     _ensure_clientes_homonimo_column(conn)          # ídem para `copiloto_clientes.homonimo`.
     _ensure_clientes_email_telefono(conn)           # ídem + migra el `contacto` viejo.
     _ensure_clientes_contacto_drop(conn)            # paso 2/2: borra `contacto` (OK operador 2026-08-04).

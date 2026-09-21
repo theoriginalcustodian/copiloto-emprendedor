@@ -60,8 +60,18 @@ class _FakePresupuestoStore:
     def _mios(self) -> dict:
         return self._datos.setdefault(self._cid, {})
 
-    def crear(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None) -> dict:
+    def crear(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None,
+              idem_key=None) -> dict:
+        return self.crear_idem(concepto=concepto, receptor=receptor, items=items, moneda=moneda,
+                               reemplaza_a=reemplaza_a, idem_key=idem_key)[0]
+
+    def crear_idem(self, *, concepto, receptor, items, moneda="ARS", reemplaza_a=None,
+                   idem_key=None):
         mios = self._mios()
+        if idem_key:
+            previo = next((p for p in mios.values() if p.get("_idem_key") == idem_key), None)
+            if previo:
+                return previo, True
         pid = max(mios) + 1 if mios else 1
         total = sum(float(i["cantidad"]) * float(i["precio_unitario"]) for i in items)
         p = {"id": pid, "numero": len(mios) + 1, "fecha": "2026-07-21T00:00:00Z",
@@ -74,8 +84,10 @@ class _FakePresupuestoStore:
                         "cantidad": f"{float(i['cantidad']):.2f}",
                         "precio_unitario": f"{float(i['precio_unitario']):.2f}",
                         "codigo": i.get("codigo", "")} for n, i in enumerate(items)]}
+        if idem_key:
+            p["_idem_key"] = idem_key
         mios[pid] = p
-        return p
+        return p, False
 
     def detalle(self, presupuesto_id: int):
         return self._mios().get(presupuesto_id)
@@ -563,3 +575,21 @@ def test_el_borrador_de_un_tenant_no_colisiona_con_el_del_otro():
 def test_facturar_sin_token_es_401():
     cli, *_ = _app(require_tenant=_require_tenant_401())
     assert cli.post("/presupuestos/1/facturar").status_code == 401
+
+
+def test_K01_misma_idem_key_devuelve_el_mismo_presupuesto_y_repetido_true():
+    cli, *_ = _app()
+    clave = "c3f1e2a0-0000-4000-8000-000000000001"
+    r1 = cli.post("/presupuestos", json={**_BODY, "idem_key": clave})
+    r2 = cli.post("/presupuestos", json={**_BODY, "idem_key": clave})
+    assert (r1.status_code, r2.status_code) == (201, 201)
+    assert r1.json()["repetido"] is False and r2.json()["repetido"] is True
+    assert r1.json()["presupuesto"]["id"] == r2.json()["presupuesto"]["id"]
+    assert len(cli.get("/presupuestos").json()["presupuestos"]) == 1
+
+
+def test_K01_compatibilidad_sin_idem_key_sigue_creando_una_fila_por_alta():
+    cli, *_ = _app()
+    assert cli.post("/presupuestos", json=_BODY).json()["repetido"] is False
+    assert cli.post("/presupuestos", json=_BODY).json()["repetido"] is False
+    assert len(cli.get("/presupuestos").json()["presupuestos"]) == 2
