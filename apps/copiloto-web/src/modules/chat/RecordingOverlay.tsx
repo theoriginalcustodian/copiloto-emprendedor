@@ -7,6 +7,10 @@ export interface RecordingOverlayProps {
   locked: boolean;
   /** `true` cuando el dedo ya pasó el umbral hacia la izquierda: soltar cancela (BL-D2). */
   cancelling?: boolean;
+  /** Grabación fijada y en pausa (BL-W1): el botón pasa de Pausar a Reanudar. */
+  paused?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
   onCancel: () => void;
   onSend: () => void;
 }
@@ -27,7 +31,7 @@ function formatElapsed(ms: number): string {
  *   - **unlocked** (dedo sostenido): hint "Soltá para enviar · deslizá ↑ para fijar".
  *   - **locked** (deslizó >46px, `MicButton` decide el threshold): botones Cancelar/Enviar.
  */
-export function RecordingOverlay({ elapsedMs, locked, cancelling = false, onCancel, onSend }: RecordingOverlayProps) {
+export function RecordingOverlay({ elapsedMs, locked, cancelling = false, paused = false, onPause, onResume, onCancel, onSend }: RecordingOverlayProps) {
   return (
     <div
       className="recording-overlay"
@@ -36,14 +40,24 @@ export function RecordingOverlay({ elapsedMs, locked, cancelling = false, onCanc
       aria-live="polite"
     >
       <div className="recording-overlay__meta">
-        <span className="recording-overlay__dot" aria-hidden="true" />
+        <span className={`recording-overlay__dot${paused ? " recording-overlay__dot--paused" : ""}`} aria-hidden="true" />
         <span className="recording-overlay__timer">{formatElapsed(elapsedMs)}</span>
       </div>
 
       {locked ? (
         <div className="recording-overlay__actions">
+          {onPause && onResume && (
+            <button
+              type="button"
+              className="recording-overlay__cancel"
+              onClick={paused ? onResume : onPause}
+              data-testid={paused ? 'voz-reanudar' : 'voz-pausar'}
+            >
+              {paused ? 'Reanudar' : 'Pausar'}
+            </button>
+          )}
           <button type="button" className="recording-overlay__cancel" onClick={onCancel}>
-            Cancelar
+            Eliminar
           </button>
           <button
             type="button"
