@@ -142,11 +142,11 @@ Todos los ítems del backlog salvo los de §3.2 y §3.3. Son **62 ítems del bac
 ### 5.1 Ciclo de un ítem
 
 1. **Tomar.** Si el ítem tiene contrato, se hace `mv abierto/→en-curso/` **pegado** al acuse. Si no lo tiene, alcanza con la cola de la sesión (§8): no hace falta pedir permiso.
-2. **Preparar.** Invocar `/ejecutar-con-eficiencia` y las skills del dominio **antes de la primera edición** (§5.3). Después, inventario: grafo (`graphity-code`, `group_id=code-copiloto-emprendedor`) → `Grep` → leer el archivo citado en la evidencia del backlog. Si hay algo de cáscara, gesto o animación, se lee primero el equivalente en documed.
+2. **Preparar.** Invocar `/ejecutar-con-eficiencia` y las skills del dominio **antes de la primera edición** (§5.3). Decidir qué parte del ítem se ejecuta con script y qué corre en segundo plano (§5.7). Después, inventario: grafo (`graphity-code`, `group_id=code-copiloto-emprendedor`) → `Grep` → leer el archivo citado en la evidencia del backlog. Si hay algo de cáscara, gesto o animación, se lee primero el equivalente en documed.
 3. **Rama.** Desde `origin/main` recién traído, en el **worktree propio de la sesión**: `backend/bl-<id>-<slug>`, `frontend1/bl-<id>-<slug>`, `frontend2/bl-<id>-<slug>`.
 4. **Test primero** donde tenga sentido. Integración antes que mocks. Si el ítem toca tenant, el adversarial se escribe **antes** del código.
 5. **Implementar.** Se puede agrupar en un solo PR un par de ítems chicos del mismo dominio (`memoria/batch-cambios-no-pr-por-tweak.md`), pero **nunca** uno de backend con uno de frontend, ni dos contratos distintos.
-6. **Gate.** `bash scripts/gate.sh` con la triada de la sesión. La salida va **completa a archivo** (nunca por `tail`) y el recibo queda en `.ci-recibos/<sha>.json`.
+6. **Gate.** `bash scripts/gate.sh` con la triada de la sesión, **en segundo plano** (§5.7): la sesión sigue trabajando mientras corre. La salida va **completa a archivo** (nunca por `tail`) y el recibo queda en `.ci-recibos/<sha>.json`.
 7. **PR.** El body lleva:
    - causa raíz o motivación;
    - plan de rollback;
@@ -234,6 +234,26 @@ Cuando termina un ítem, la sesión toma el siguiente de su cola **sin avisar**.
   - `uiautomator dump` **no** vale como prueba si hay animación;
   - video con `screenrecord` para gestos y animaciones.
 - **Salida:** `respuesta_backend-a-<fe>_device-<ítem>` con las rutas en `_evidencia/<fecha>/<ítem>/` y el veredicto por casilla. Si falla, dice qué se vio: la FRONTEND abre el fix y **el ítem no se cierra**.
+
+### 5.7 Script-first y segundo plano (regla dura del operador, 21/09)
+
+**Todo lo que se pueda ejecutar con un script se ejecuta con un script, y lo largo corre en segundo plano.** Rige para las cinco sesiones, en cada ítem. Por eso cada `contrato_` la repite en su sección «Antes de la primera edición».
+
+| Qué | Cómo | Nunca |
+|---|---|---|
+| Gate, tests en el VPS, deploy, build EAS, smoke, E3 | Script versionado (`scripts/gate.sh`, `deploy/copiloto/*.sh`, `scripts/e2e_*.py`), lanzado **en segundo plano** (`run_in_background`) con la salida **completa a archivo**. La sesión sigue con otro trabajo y la notificación de fin la despierta. | Correrlo en primer plano y quedarse mirando. Pasarlo por `tail`. Hacer polling con `sleep`. |
+| Secuencias de device (tanda de capturas, gestos, `force-stop` + limpiar caché) | Un script por tanda en `scripts/device/` (propiedad de BACKEND), parametrizado por ítem y pantalla, idempotente, que deja las capturas en `_evidencia/<fecha>/<ítem>/`. | `adb` a mano, comando por comando. |
+| Evidencia web (PWA con SW purgado, lado a lado con `?ver=`) | Un script Playwright reutilizable por sesión (`scripts/evidencia/`), que recibe la ruta y el `?ver=`. | Navegar a mano con el MCP para cada captura. |
+| Barridos y greps de verificación (p. ej. «ninguna card con texto terminal propio», «AFIP = 0») | Comando o script que se pega en el PR con su salida, con un control positivo. | Leer archivo por archivo. |
+| Operaciones de datos (conteos con claims, limpieza de residuos, reset del onboarding de `e2e-device`, restaurar su contraseña) | Script versionado, idempotente, con modo `--dry-run`. | SQL suelto en la terminal. |
+| Mover mensajes del buzón, armar inventarios de auditoría | Scripts de planificación (`scripts/archivar-buzon*.sh`, inventario por ola). | `mv` sueltos repetidos. |
+
+Tres criterios para decidir:
+1. **Si se va a repetir** (en otro ítem, en otra ola o en el Cierre A), es script desde la primera vez.
+2. **Si tarda más de ~1 minuto**, va en segundo plano.
+3. **Si es lectura amplia**, va a sub-agentes baratos (haiku para barrer, sonnet para construir).
+
+Un script nuevo entra con su test o, como mínimo, con una corrida de control documentada en el PR.
 
 ---
 
