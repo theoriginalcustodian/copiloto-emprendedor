@@ -1,14 +1,24 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
+
+import {
+  leerPreferenciaTema,
+  PREFERENCIA_DEFAULT,
+  resolverPiel,
+  type PreferenciaTema,
+} from '@copiloto/core';
 
 import { almacenClave } from '../adapters/almacen';
 import { SKINS, type NombreSkin, type Tokens } from './tokens';
 
 const CLAVE_SKIN = 'copiloto.tema.skin';
-const SKIN_DEFAULT: NombreSkin = 'claro';
-
 interface ContextoTema {
+  /** La piel que se pinta (ya resuelta). */
   skin: NombreSkin;
+  /** Lo que el usuario eligió (puede ser `sistema` = «Como el teléfono»). Es lo que se persiste. */
+  preferencia: PreferenciaTema;
+  setPreferencia: (preferencia: PreferenciaTema) => void;
   setSkin: (skin: NombreSkin) => void;
 }
 
@@ -20,34 +30,40 @@ const ContextoTema = createContext<ContextoTema | null>(null);
  * persistida, que llega async por `AlmacenClave`, resuelva; y re-pinta si había otro skin guardado
  * de una sesión previa.
  *
- * El guard `guardado in SKINS` de abajo protege en general contra cualquier valor persistido que ya no
- * matchee ninguna clave de `SKINS` — típicamente tras remover o renombrar un skin en un rediseño futuro
+ * `leerPreferenciaTema` protege contra cualquier valor persistido que ya no exista — típicamente tras
+ * remover o renombrar un skin en un rediseño futuro
  * — y cae al default sin crash, en vez de dejar el contexto en un estado imposible.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [skin, setSkinState] = useState<NombreSkin>(SKIN_DEFAULT);
+  const [preferencia, setPreferenciaState] = useState<PreferenciaTema>(PREFERENCIA_DEFAULT);
+  // `useColorScheme` re-renderiza cuando el sistema cambia de esquema: «Como el teléfono» sigue al
+  // sistema EN VIVO con la app abierta, sin listeners propios.
+  const esquema = useColorScheme();
 
   useEffect(() => {
     let vivo = true;
     almacenClave.leer(CLAVE_SKIN).then((guardado) => {
-      // `guardado in SKINS` blinda contra un valor de una versión vieja de la app con nombres de
-      // skin que ya no existen — sin esto, un skin removido dejaría el contexto en un estado
-      // imposible en vez de simplemente no aplicar la preferencia.
-      if (vivo && guardado && guardado in SKINS) setSkinState(guardado as NombreSkin);
+      // `leerPreferenciaTema` blinda contra valores de versiones viejas (`nocturno` migra a `oscuro`,
+      // lo desconocido cae al default) — sin esto un skin removido dejaría un estado imposible.
+      if (vivo && guardado) setPreferenciaState(leerPreferenciaTema(guardado));
     });
     return () => {
       vivo = false;
     };
   }, []);
 
-  const setSkin = useCallback((nuevo: NombreSkin) => {
-    setSkinState(nuevo);
-    // Best-effort: si el guardado falla, el skin queda aplicado igual en esta sesión — ver
+  const setPreferencia = useCallback((nueva: PreferenciaTema) => {
+    setPreferenciaState(nueva);
+    // Best-effort: si el guardado falla, la preferencia queda aplicada igual en esta sesión — ver
     // docstring de `AlmacenClave` (perder la preferencia no puede romper la sesión).
-    void almacenClave.guardar(CLAVE_SKIN, nuevo);
+    void almacenClave.guardar(CLAVE_SKIN, nueva);
   }, []);
 
-  const valor = useMemo(() => ({ skin, setSkin }), [skin, setSkin]);
+  const skin: NombreSkin = resolverPiel(preferencia, esquema === 'dark');
+  const valor = useMemo(
+    () => ({ skin, preferencia, setPreferencia, setSkin: setPreferencia }),
+    [skin, preferencia, setPreferencia],
+  );
 
   return <ContextoTema.Provider value={valor}>{children}</ContextoTema.Provider>;
 }
@@ -67,4 +83,10 @@ export function useTema(): Tokens {
 export function useSkin(): [NombreSkin, (s: NombreSkin) => void] {
   const { skin, setSkin } = useContextoTema();
   return [skin, setSkin];
+}
+
+/** La preferencia elegida (`claro` | `oscuro` | `sistema`) y su setter — para la pantalla de Skins. */
+export function usePreferenciaTema(): [PreferenciaTema, (p: PreferenciaTema) => void] {
+  const { preferencia, setPreferencia } = useContextoTema();
+  return [preferencia, setPreferencia];
 }

@@ -1,24 +1,40 @@
-import { useTheme, type Theme } from '../../design-system/ThemeProvider';
+import { ETIQUETA_PREFERENCIA, PREFERENCIAS_TEMA, type PielEfectiva, type PreferenciaTema } from '@copiloto/core';
+
+import { useTheme } from '../../design-system/ThemeProvider';
 import './ajustes.css';
 
-/** Nombres es-AR del selector de tema — mismos IDs internos (`claro`/`oscuro`/`nocturno`) que
- *  `ThemeProvider`, solo la etiqueta visible. Duplicado deliberado de `Rail.tsx` (no exportado
- *  desde ahí, y ahora ese selector se retiró del rail — ver docstring de este componente). */
-const THEME_LABELS: Record<Theme, string> = {
-  claro: 'Claro',
-  oscuro: 'Oscuro',
-  nocturno: 'Nocturno',
-};
+/**
+ * Muestra REAL de una piel: un bloque `data-muestra` que hereda los tokens de esa piel (themes.css
+ * declara los mismos tokens bajo `[data-muestra='…']`), así el usuario ve el tema ANTES de elegirlo
+ * y la muestra no puede desincronizarse de la piel de verdad. Cero hex acá.
+ */
+function Muestra({ piel }: { piel: PielEfectiva }) {
+  return (
+    <span className="apariencia-screen__muestra" data-muestra={piel} aria-hidden="true">
+      <span className="apariencia-screen__muestra-texto">Aa</span>
+      <span className="apariencia-screen__muestra-acento" />
+    </span>
+  );
+}
+
+function MuestraDe({ preferencia }: { preferencia: PreferenciaTema }) {
+  if (preferencia !== 'sistema') return <Muestra piel={preferencia} />;
+  // «Como el teléfono»: las dos pieles juntas, porque cuál se ve depende del sistema.
+  return (
+    <span className="apariencia-screen__muestra-doble" aria-hidden="true">
+      <Muestra piel="claro" />
+      <Muestra piel="oscuro" />
+    </span>
+  );
+}
 
 /**
- * `PantallaApariencia` — sub-vista propia de `apariencia` en Ajustes (antes navegaba a `Cuenta`,
- * decisión revertida por pedido directo del operador 2026-08-06: el selector de piel vivía en el
- * Rail de escritorio, oculto ahí dentro de `AccountScreen` — "Apariencia" mostraba datos de cuenta,
- * no ajustes de apariencia). El selector se movió ACÁ desde dos lugares (`Rail.tsx` en escritorio,
- * la sección "Elegí el tema" de `AccountScreen.tsx` en mobile-web) para que exista un solo dueño.
+ * `PantallaApariencia` — sub-vista propia de `apariencia` en Ajustes. BL-X4 (DA-5): dos pieles
+ * (`Claro`/`Oscuro`, con muestra real) + «Como el teléfono», que sigue al sistema en vivo. La piel
+ * `nocturno` se retiró: quien la tenía guardada pasa a `Oscuro` (ver `leerPreferenciaTema`).
  */
 export function PantallaApariencia() {
-  const { theme, setTheme, themes } = useTheme();
+  const { preference, setPreference } = useTheme();
 
   return (
     <div className="apariencia-screen" data-testid="pantalla-apariencia">
@@ -26,21 +42,22 @@ export function PantallaApariencia() {
       <p className="apariencia-screen__intro">Elegí la piel del copiloto.</p>
 
       <div className="apariencia-screen__theme-grid" role="group" aria-label="Selector de tema">
-        {themes.map((t) => (
+        {PREFERENCIAS_TEMA.map((p) => (
           <button
-            key={t}
+            key={p}
             type="button"
-            aria-pressed={t === theme}
-            data-testid={`theme-pill-${t}`}
+            aria-pressed={p === preference}
+            data-testid={`theme-pill-${p}`}
             className={[
               'apariencia-screen__theme-pill',
-              t === theme ? 'apariencia-screen__theme-pill--active' : '',
+              p === preference ? 'apariencia-screen__theme-pill--active' : '',
             ]
               .filter(Boolean)
               .join(' ')}
-            onClick={() => setTheme(t)}
+            onClick={() => setPreference(p)}
           >
-            {THEME_LABELS[t]}
+            <MuestraDe preferencia={p} />
+            <span>{ETIQUETA_PREFERENCIA[p]}</span>
           </button>
         ))}
       </div>

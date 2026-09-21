@@ -1,10 +1,12 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { PreferenciaTema } from '@copiloto/core';
+
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
 import { SKINS, type NombreSkin, type Tokens } from '../../theme/tokens';
-import { useSkin, useTema } from '../../theme/ThemeProvider';
-import { ETIQUETA_SKIN, ORDEN_SKINS } from './skinsCatalogo';
+import { usePreferenciaTema, useTema } from '../../theme/ThemeProvider';
+import { ETIQUETA_OPCION, ORDEN_PREFERENCIAS } from './skinsCatalogo';
 
 /**
  * Qué colores de la paleta cruda de cada skin se muestran como "muestra" en su card. ODOBI usa un
@@ -17,7 +19,7 @@ function muestrasDe(paleta: Tokens): string[] {
 }
 
 interface SkinCardProps {
-  nombre: NombreSkin;
+  nombre: PreferenciaTema;
   activo: boolean;
   onPress: () => void;
   /** El tema ACTIVO (no el de esta card) -- sólo para geometría/tipografía compartida del shell
@@ -31,15 +33,20 @@ interface SkinCardProps {
  * card usara el tema activo, las 5 cards se verían idénticas salvo la que ya está elegida.
  */
 function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
-  const paleta = SKINS[nombre];
-  const muestras = muestrasDe(paleta);
+  // «Como el teléfono» no tiene paleta propia: se pinta con la piel que hoy resuelve el sistema (la del
+  // tema activo) y sus muestras muestran las dos pieles, porque cuál se ve depende del sistema.
+  const esSistema = nombre === 'sistema';
+  const paleta = esSistema ? temaActivo : SKINS[nombre];
+  const muestras = esSistema
+    ? [...muestrasDe(SKINS.claro).slice(2), ...muestrasDe(SKINS.oscuro).slice(2)]
+    : muestrasDe(paleta);
 
   return (
     <Pressable
       testID={`skin-card-${nombre}`}
       accessibilityRole="button"
       accessibilityState={{ selected: activo }}
-      accessibilityLabel={ETIQUETA_SKIN[nombre]}
+      accessibilityLabel={ETIQUETA_OPCION[nombre]}
       onPress={onPress}
       // Escala: la card tiene caja propia (fondo, borde, radio) y elegir un skin es la acción más
       // "física" de esta pantalla. Opacidad quedaba descartada de entrada -- atenuar una card cuyo
@@ -63,7 +70,7 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
         <Text
           style={{ color: paleta.color.texto, fontSize: temaActivo.tipo.base, fontFamily: temaActivo.fuente.uiSemibold }}
         >
-          {ETIQUETA_SKIN[nombre]}
+          {ETIQUETA_OPCION[nombre]}
         </Text>
         {activo && (
           <Text
@@ -99,7 +106,7 @@ function SkinCard({ nombre, activo, onPress, temaActivo }: SkinCardProps) {
  */
 export function PantallaSkins() {
   const tema = useTema();
-  const [skin, setSkin] = useSkin();
+  const [preferencia, setPreferencia] = usePreferenciaTema();
 
   return (
     // Mismo ícono que el tile de entrada en el grid de Ajustes ('apariencia') -- entrar por un ícono
@@ -114,14 +121,14 @@ export function PantallaSkins() {
         contentContainerStyle={[styles.contenedor, { padding: tema.espacio.md, gap: tema.espacio.md }]}
       >
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.base }}>
-          Elegí el skin de la app. Se aplica al instante y queda guardado para la próxima sesión.
+          Elegí el skin de la app, o dejá que siga al teléfono. Se aplica al instante y queda guardado para la próxima sesión.
         </Text>
-        {ORDEN_SKINS.map((nombre) => (
+        {ORDEN_PREFERENCIAS.map((nombre) => (
           <SkinCard
             key={nombre}
             nombre={nombre}
-            activo={nombre === skin}
-            onPress={() => setSkin(nombre)}
+            activo={nombre === preferencia}
+            onPress={() => setPreferencia(nombre)}
             temaActivo={tema}
           />
         ))}

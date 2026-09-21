@@ -21,11 +21,25 @@ describe('PantallaApariencia', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('renderiza los 3 nombres de piel ODOBI', () => {
+  it('ofrece Claro, Oscuro y «Como el teléfono», y ya no Nocturno', () => {
     renderApariencia();
     expect(screen.getByText('Claro')).toBeInTheDocument();
     expect(screen.getByText('Oscuro')).toBeInTheDocument();
-    expect(screen.getByText('Nocturno')).toBeInTheDocument();
+    expect(screen.getByText('Como el teléfono')).toBeInTheDocument();
+    expect(screen.queryByText('Nocturno')).toBeNull();
+  });
+
+  it('cada opción muestra su muestra real; «Como el teléfono» muestra las dos pieles', () => {
+    const { container } = renderApariencia();
+    expect(container.querySelectorAll('[data-muestra="claro"]').length).toBe(2);
+    expect(container.querySelectorAll('[data-muestra="oscuro"]').length).toBe(2);
+  });
+
+  it('elegir «Como el teléfono» persiste sistema', () => {
+    renderApariencia();
+    fireEvent.click(screen.getByTestId('theme-pill-sistema'));
+    expect(window.localStorage.getItem('copiloto-theme')).toBe('sistema');
+    expect(screen.getByTestId('theme-pill-sistema')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('el selector de tema cambia el theme activo y persiste en localStorage', () => {
