@@ -15,4 +15,4 @@ export {
   filtrarPorCategoria,
 } from './categoriaTarjeta';
 export type { CategoriaTarjeta } from './categoriaTarjeta';
-export { chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';
+export { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';

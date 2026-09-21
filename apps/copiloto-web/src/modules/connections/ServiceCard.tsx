@@ -41,6 +41,10 @@ export interface ServiceCardProps {
  * `deriveState` pasa a leer ese campo en vez de asumir "solo 2 estados posibles".
  */
 function deriveState(service: CatalogService): ServiceCardState {
+  // K-09: con `status` (backend nuevo) los 3 estados son reales; sin él, el booleano de siempre.
+  if (service.status === 'caido') return 'reconnect';
+  if (service.status === 'conectado') return 'connected';
+  if (service.status === 'nunca_conectado') return 'disconnected';
   return service.connected ? 'connected' : 'disconnected';
 }
 
@@ -145,7 +149,19 @@ export function ServiceCard({
           </Button>
         )}
 
-        {resolvedState === 'reconnect' && <Badge variant="warning">RECONECTAR</Badge>}
+        {resolvedState === 'reconnect' && (
+          <>
+            <Badge variant="warning">RECONECTAR</Badge>
+            <Button
+              variant="ghost"
+              className="service-card__connect"
+              onClick={() => onConnect(service)}
+              disabled={connecting}
+            >
+              {connecting ? 'Conectando…' : 'Reconectar'}
+            </Button>
+          </>
+        )}
 
         {resolvedState === 'disconnected' && (
           <Button

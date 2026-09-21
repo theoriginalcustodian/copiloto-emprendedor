@@ -185,6 +185,13 @@
   opacity: 0.75;
 }
 
+.midia-portada__aviso {
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .midia-portada__chip {
   display: inline-block;
   margin-bottom: 18px;

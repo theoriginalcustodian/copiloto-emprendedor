@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { desconectarServicio, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from './catalogo';
+import { desconectarServicio, estadoDeConexion, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from './catalogo';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -69,6 +69,7 @@ describe('catalogo.ts', () => {
         descripcion: 'Creá y buscá archivos en tu Google Drive.',
         capacidades: ['Crear archivo', 'Buscar archivo'],
         conectado: true,
+        estado: 'conectado',
         connectPath: '/composio/connect?service=googledrive',
       });
     });
@@ -223,5 +224,21 @@ describe('catalogo.ts', () => {
 
       await expect(desconectarServicio(servicio())).rejects.toThrow();
     });
+  });
+});
+
+describe('estado de conexión (K-09 / BL-J4)', () => {
+  it('estadoDeConexion: valida el status y cae al booleano si no viene o es inválido', () => {
+    expect(estadoDeConexion('caido', false)).toBe('caido');
+    expect(estadoDeConexion('nunca_conectado', false)).toBe('nunca_conectado');
+    expect(estadoDeConexion(undefined, true)).toBe('conectado');
+    // Sin la señal NO se afirma que se cayó algo.
+    expect(estadoDeConexion(undefined, false)).toBe('nunca_conectado');
+    expect(estadoDeConexion('roto', false)).toBe('nunca_conectado');
+  });
+  it('hayConexionCaida: sólo con ≥ 1 servicio caído', () => {
+    expect(hayConexionCaida([{ estado: 'conectado' }, { estado: 'nunca_conectado' }])).toBe(false);
+    expect(hayConexionCaida([{ estado: 'conectado' }, { estado: 'caido' }])).toBe(true);
+    expect(hayConexionCaida([])).toBe(false);
   });
 });
