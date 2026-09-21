@@ -19,12 +19,15 @@ const BASE_SERVICE: CatalogService = {
 };
 
 describe('ServiceCard', () => {
-  it('usa el ícono de marca real (ServiceIcon) para una key mapeada, no la marca-letra', () => {
-    render(<ServiceCard service={BASE_SERVICE} onConnect={vi.fn()} />);
-    const card = screen.getByTestId('service-card-gmail');
-    // gmail está mapeado en `design-system/serviceIcons.tsx` -> renderiza un <svg>, no un span
-    // con la inicial (fiel al diseño, líneas 335-365 del mock).
-    expect(card.querySelector('svg')).toBeInTheDocument();
+  it('BL-X11: los 6 servicios con logo real lo muestran (img); los demás siguen con su ícono', () => {
+    for (const key of ['gmail', 'googlecalendar', 'googlesheets', 'googledocs', 'googledrive', 'mercadopago']) {
+      const { unmount } = render(<ServiceCard service={{ ...BASE_SERVICE, key }} onConnect={vi.fn()} />);
+      expect(screen.getByTestId(`logo-${key}`)).toHaveAttribute('src');
+      unmount();
+    }
+    render(<ServiceCard service={{ ...BASE_SERVICE, key: 'hubspot' }} onConnect={vi.fn()} />);
+    expect(screen.getByTestId('service-card-hubspot').querySelector('svg')).toBeInTheDocument();
+    expect(screen.queryByTestId('logo-hubspot')).not.toBeInTheDocument();
   });
 
   it('BL-W2: muestra la descripción por capacidad bajo el nombre', () => {

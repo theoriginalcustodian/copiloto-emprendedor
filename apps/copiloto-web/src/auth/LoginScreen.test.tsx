@@ -84,8 +84,17 @@ describe('LoginScreen', () => {
     await fillAndSubmit('a@a.com', 'mala');
 
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Email o contraseña incorrectos'),
+      expect(screen.getByRole('alert')).toHaveTextContent('Ese mail y esa contraseña no coinciden'),
     );
+  });
+
+  it('el error de credenciales también pinta el borde de la contraseña (aria-invalid)', async () => {
+    vi.mocked(api.login).mockRejectedValueOnce(new UnauthorizedError('bad creds'));
+    renderLoginScreen();
+    await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
+    expect(screen.getByLabelText('Contraseña')).not.toHaveAttribute('aria-invalid');
+    await fillAndSubmit('a@a.com', 'mala');
+    await waitFor(() => expect(screen.getByLabelText('Contraseña')).toHaveAttribute('aria-invalid', 'true'));
   });
 
   it('403 -> muestra aviso de cuenta no habilitada', async () => {
@@ -119,16 +128,23 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No pudimos conectarnos'));
   });
 
-  it('muestra la derivación admin-mediada (sin flujo de reset por email)', async () => {
-    renderLoginScreen();
-    await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
-    expect(screen.getByText(/¿Olvidaste tu contraseña\?/)).toBeInTheDocument();
-    expect(screen.getByText(/¿No tenés cuenta\?/)).toBeInTheDocument();
-  });
-
   it.each(THEMES)('renderiza sin romper bajo el tema "%s"', async (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     renderLoginScreen();
     await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
+  });
+});
+
+describe('LoginScreen — lockup y copy del prototipo (BL-X11 / BL-X12w)', () => {
+  it('lockup símbolo + «Odobi», título, bajada y pie; sin tagline ni «Escribinos»', async () => {
+    renderLoginScreen();
+    await waitFor(() => expect(screen.getByTestId('login-screen')).toBeInTheDocument());
+    expect(screen.getByTestId('marca')).toBeInTheDocument();
+    expect(screen.getByTestId('login-wordmark')).toHaveTextContent('Odobi');
+    expect(screen.getByTestId('login-titulo')).toHaveTextContent('Entrá a tu cuenta');
+    expect(screen.getByText('Con el mail y la contraseña que ya usás.')).toBeInTheDocument();
+    expect(screen.getByTestId('login-pie')).toHaveTextContent('Tus datos quedan guardados');
+    expect(screen.queryByText(/Escribinos/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/tu copiloto de ia/i)).not.toBeInTheDocument();
   });
 });

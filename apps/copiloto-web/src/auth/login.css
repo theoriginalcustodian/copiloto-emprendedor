@@ -20,33 +20,41 @@
 /* ---------- Marca ---------- */
 .login-screen__brand {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
-}
-
-.login-screen__brand-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: center;
+  /* 0,3 × el ancho del símbolo (44px): spec del isotipo, no un número a ojo. */
+  gap: 13px;
 }
 
 .login-screen__brand-title {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 30px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--heading);
 }
 
-.login-screen__tagline {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--label);
+.login-screen__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.login-screen__title {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.login-screen__subtitle {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--label);
 }
 
 /* ---------- Card del form ---------- */
@@ -90,6 +98,20 @@
 .login-screen__input:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+/* Error de credenciales: el borde de la contraseña también lo dice (no sólo el texto de abajo). */
+.login-screen__input--error {
+  border: var(--danger-border);
+}
+
+.login-screen__pie {
+  margin: 0;
+  max-width: 320px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
 }
 
 .login-screen__input:disabled {
