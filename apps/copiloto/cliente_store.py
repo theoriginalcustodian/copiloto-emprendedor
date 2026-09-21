@@ -7,11 +7,13 @@ adversarial que lo ejercita.
 """
 from __future__ import annotations
 
+import datetime
 import re
 import unicodedata
 from typing import Callable
 
 from afip_rules import NOTAS_CREDITO
+from gasto_store import ZONA_DEL_NEGOCIO, hoy_del_negocio
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_clientes"
@@ -252,6 +254,19 @@ class ClienteStore:
             filas = [self._fila(r) for r in cur.fetchall()]
             cur.execute(f"SELECT count(*) FROM {_TABLE} WHERE cliente_id = %s", (self._cliente_id,))
             return filas, int(cur.fetchone()[0])
+
+    def agregados_este_mes(self) -> int:
+        """Cuántos clientes se agregaron SOLOS (`origen='derivado'`) en el mes corriente del negocio.
+        Tenant-wide e independiente de `q`/`limit`, igual que el `total` de `listar` (K-03/K-04): antes
+        lo contaba la app filtrando la página YA cargada y subcontaba con más clientes que `limit`.
+        El mes se recorta con `hoy_del_negocio()` (UTC−3), no con el `now()` del servidor."""
+        hoy = hoy_del_negocio()
+        ini = datetime.datetime.combine(hoy.replace(day=1), datetime.time.min, ZONA_DEL_NEGOCIO)
+        sig = (ini.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+        with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT count(*) FROM {_TABLE} WHERE cliente_id = %s AND origen = 'derivado' "
+                        f"AND created_at >= %s AND created_at < %s", (self._cliente_id, ini, sig))
+            return int(cur.fetchone()[0])
 
     def detalle(self, cliente: int) -> dict | None:
         with self._conn_factory() as conn, conn.cursor() as cur:

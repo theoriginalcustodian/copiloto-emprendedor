@@ -10,12 +10,14 @@ que `test_actividad_store.py`/`test_inteligencia_queries.py`: conexiones reales 
 """
 from __future__ import annotations
 
+import datetime
 import os
 import uuid
 
 import pytest
 
 from cliente_store import ClienteStore
+from gasto_store import hoy_del_negocio
 
 necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
                                  reason="requiere Postgres del VPS (DATABASE_URL)")
@@ -66,3 +68,43 @@ def test_aislamiento_A_no_ve_el_resumen_de_operaciones_de_B(conn_de_tenant, tena
     a, b = tenants
     creado = ClienteStore(conn_de_tenant(b), b).crear(nombre="Secreto de B")
     assert ClienteStore(conn_de_tenant(a), a).resumen_operaciones(creado["id"]) is None
+
+
+def _derivado(conn_de_tenant, cid, nombre, *, dias_atras=0):
+    """Alta `derivado` con `created_at` puesto a mano (el mes corriente se recorta por esa columna)."""
+    c = ClienteStore(conn_de_tenant(cid), cid).crear(nombre=nombre, origen="derivado")
+    conn = conn_de_tenant(cid)()
+    with conn.cursor() as cur:
+        cur.execute("UPDATE uc_factory.copiloto_clientes SET created_at = now() - make_interval(days => %s) "
+                    "WHERE cliente_id = %s AND id = %s", (dias_atras, cid, c["id"]))
+    conn.close()
+
+
+@necesita_pg
+def test_K04_agregados_este_mes_supera_una_pagina_y_coincide_con_un_count_con_claims(conn_de_tenant, tenants):
+    a, _ = tenants
+    for i in range(5):
+        _derivado(conn_de_tenant, a, f"Solo {i}")
+    _derivado(conn_de_tenant, a, "De hace dos meses", dias_atras=hoy_del_negocio().day + 40)
+    ClienteStore(conn_de_tenant(a), a).crear(nombre="Manual del mes")  # origen manual: no cuenta
+    store = ClienteStore(conn_de_tenant(a), a)
+    items, total = store.listar(limit=2)
+    assert len(items) == 2 and total == 7                      # más resultados que la página
+    conn = conn_de_tenant(a)()                                 # conteo CON claims del tenant
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM uc_factory.copiloto_clientes WHERE cliente_id = %s "
+                    "AND origen = 'derivado' AND created_at >= date_trunc('month', now() AT TIME ZONE "
+                    "'America/Argentina/Buenos_Aires') AT TIME ZONE 'America/Argentina/Buenos_Aires'", (a,))
+        esperado = cur.fetchone()[0]
+    conn.close()
+    assert store.agregados_este_mes() == esperado == 5
+
+
+@necesita_pg
+def test_K04_aislamiento_A_no_cuenta_los_derivados_de_B(conn_de_tenant, tenants):
+    a, b = tenants
+    _derivado(conn_de_tenant, b, "Derivado de B")
+    _derivado(conn_de_tenant, b, "Otro de B")
+    _derivado(conn_de_tenant, a, "Derivado de A")
+    assert ClienteStore(conn_de_tenant(a), a).agregados_este_mes() == 1
+    assert ClienteStore(conn_de_tenant(b), b).agregados_este_mes() == 2  # control: B ve los suyos
