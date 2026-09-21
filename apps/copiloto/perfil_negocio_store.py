@@ -48,15 +48,16 @@ def modo_de(perfil: dict | None) -> str:
     return AUTOMATICO if perfil.get("modo_ceremonia") == AUTOMATICO else CONFIRMACION
 
 # Campo -> largo máximo. `que_vende` es el único de formato libre largo: es la descripción del negocio.
-LIMITES = {"que_vende": 500, "nombre_comercial": 120, "horario_atencion": 120, "nombre_copiloto": 120}
+LIMITES = {"que_vende": 500, "nombre_comercial": 120, "horario_atencion": 120, "nombre_copiloto": 120,
+           "telefono": 40, "email": 254}
 
-CAMPOS = ("que_vende", "a_quien", "nombre_comercial", "horario_atencion",
+CAMPOS = ("que_vende", "a_quien", "nombre_comercial", "horario_atencion", "telefono", "email",
           "formalidad", "largo_respuesta", "nombre_copiloto", "modo_ceremonia")
 
 # El default de `modo_ceremonia` es `confirmacion`, y para usuarios NUEVOS también: el que recién
 # llega no descubre el producto viendo cosas guardarse solas. Se cambia solo, cuando ya confía.
 _DEFAULTS = {"que_vende": "", "a_quien": "ambos", "nombre_comercial": "", "horario_atencion": "",
-             "formalidad": "cercano", "largo_respuesta": "breve", "nombre_copiloto": "",
+             "telefono": "", "email": "", "formalidad": "cercano", "largo_respuesta": "breve", "nombre_copiloto": "",
              "modo_ceremonia": CONFIRMACION}
 
 
