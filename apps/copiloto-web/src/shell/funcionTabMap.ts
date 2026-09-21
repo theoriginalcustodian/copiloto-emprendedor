@@ -14,5 +14,4 @@ export const FUNCION_A_TAB: Readonly<Record<FuncionKey, TabKey | null>> = {
   presupuestos: 'presupuestos',
   clientes: 'clientes',
   inteligencia: 'inteligencia',
-  contabilidad: 'contabilidad',
 };

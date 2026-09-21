@@ -8,6 +8,7 @@ vi.mock('@copiloto/core', async (orig) => ({
   leerPortada,
 }));
 vi.mock('./ChatInteligencia', () => ({ ChatInteligencia: () => null }));
+vi.mock('./AcumuladoAnual', () => ({ AcumuladoAnual: () => <div data-testid="acumulado-mock" /> }));
 vi.mock('./graficos/GraficosInteligencia', () => ({ GraficosInteligencia: () => null }));
 
 import { InteligenciaScreen } from './InteligenciaScreen';
@@ -49,5 +50,13 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
     await screen.findByTestId('inteligencia-actualizar');
     expect(screen.getByRole('status')).toBe(screen.getByTestId('inteligencia-refresco-estado'));
     expect(document.body.textContent).not.toMatch(/Tirá para|Soltá para/);
+  });
+});
+
+describe('InteligenciaScreen — acumulado del año fusionado (BL-X2)', () => {
+  it('monta «Acumulado del año» dentro del resumen (ya no hay pantalla Contabilidad)', async () => {
+    leerPortada.mockResolvedValue({ status: 'ok', portada: PORTADA });
+    render(<InteligenciaScreen />);
+    expect(await screen.findByTestId('acumulado-mock')).toBeInTheDocument();
   });
 });

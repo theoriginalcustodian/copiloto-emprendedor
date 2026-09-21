@@ -17,7 +17,7 @@ import './escritorio.css';
  * `onFuncion`/`onAbrirGasto`/`onAbrirCliente`/`onVerRecientes`.
  *
  * El grid no scrollea horizontal como en mobile (acá no hay el mismo problema de ancho acotado):
- * 9 tiles entran cómodos en un CSS grid de 3 columnas, mismo criterio de grid plano que
+ * 6 tiles entran cómodos en un CSS grid de 3 columnas (2 filas; BL-X2 retiró Contabilidad, fusionada en Inteligencia), mismo criterio de grid plano que
  * `connections-screen__grid`.
  */
 export type FuncionKey =
@@ -26,8 +26,7 @@ export type FuncionKey =
   | 'gastos'
   | 'presupuestos'
   | 'clientes'
-  | 'inteligencia'
-  | 'contabilidad';
+  | 'inteligencia';
 
 interface DefinicionTile {
   key: FuncionKey;
@@ -42,7 +41,7 @@ interface DefinicionTile {
  * completo; acá se hereda el orden ya validado, no se vuelve a decidir.
  *
  * Íconos: emoji directo, mismo criterio que `ICONO_POR_TIPO` de `FilaActividad` — web no tiene un
- * catálogo `GlassIcon` propio, así que no se inventa uno para 9 tiles.
+ * catálogo `GlassIcon` propio, así que no se inventa uno para 6 tiles.
  */
 export const TILES: readonly DefinicionTile[] = [
   { key: 'facturacion', label: 'Facturación', icono: '🧾' },
@@ -51,7 +50,6 @@ export const TILES: readonly DefinicionTile[] = [
   { key: 'presupuestos', label: 'Presupuestos', icono: '📝' },
   { key: 'clientes', label: 'Clientes', icono: '👤' },
   { key: 'inteligencia', label: 'Inteligencia de Negocio', icono: '📊' },
-  { key: 'contabilidad', label: 'Contabilidad', icono: '📁' },
 ];
 
 export const KEYS_OPERATIVAS: readonly FuncionKey[] = [

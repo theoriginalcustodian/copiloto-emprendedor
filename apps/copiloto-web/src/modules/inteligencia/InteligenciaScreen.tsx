@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatearImporte, leerPortada, MS_AL_DIA, TEXTO_REFRESCO, type Portada } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
+import { AcumuladoAnual } from './AcumuladoAnual';
 import { ChatInteligencia } from './ChatInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import './inteligencia.css';
@@ -254,6 +255,9 @@ export function InteligenciaScreen() {
                   )}
                 </Surface>
               </div>
+
+              {/* ACUMULADO DEL AÑO (BL-X2) — ex-Contabilidad; fail-soft: si su endpoint falla no se dibuja. */}
+              <AcumuladoAnual />
 
               {/* POR COBRAR — mockup: `.bloque` con cifra "grande" + vencido resaltado (acento de
                   marca, no un rojo semántico aparte). */}
