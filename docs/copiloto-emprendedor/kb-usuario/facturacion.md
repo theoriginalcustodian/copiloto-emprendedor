@@ -1,14 +1,14 @@
-# Facturación electrónica AFIP
+# Facturación electrónica ARCA
 
 ## Qué es y para qué sirve
 
-Facturación es la función del Copiloto que te deja emitir comprobantes fiscales electrónicos —factura, nota de crédito— directamente autorizados por AFIP, sin salir de la app. Cargás los datos de la venta, revisás un resumen y confirmás: el Copiloto arma el comprobante, lo manda a AFIP, obtiene el CAE (el número que certifica que tu factura es válida) y te entrega el PDF listo para guardar o compartir con tu cliente.
+Facturación es la función del Copiloto que te deja emitir comprobantes fiscales electrónicos —factura, nota de crédito— directamente autorizados por ARCA, sin salir de la app. Cargás los datos de la venta, revisás un resumen y confirmás: el Copiloto arma el comprobante, lo manda a ARCA, obtiene el CAE (el número que certifica que tu factura es válida) y te entrega el PDF listo para guardar o compartir con tu cliente.
 
 Hoy la función está pensada sobre todo para monotributistas y para quienes facturan sin discriminar IVA: es el circuito más común entre emprendedores y el que está más pulido. La Factura A o B con IVA discriminado, para cuando tu condición frente al IVA es Responsable Inscripto, todavía no está disponible: por ahora el Copiloto solo emite Factura C.
 
 ## Antes de facturar: cargar tus datos fiscales
 
-La primera vez que entrás a Facturación, si todavía no vinculaste tu CUIT, vas a ver un aviso para **Configurar facturación**. Ese paso te lleva a Ajustes → Facturación AFIP, donde cargás:
+La primera vez que entrás a Facturación, si todavía no vinculaste tu CUIT, vas a ver un aviso para **Configurar facturación**. Ese paso te lleva a Ajustes → Facturación ARCA, donde cargás:
 
 - Tu CUIT
 - Razón social
@@ -26,11 +26,11 @@ Facturar es una sola pantalla que te va guiando en cuatro pasos. No hace falta c
 
 ### Paso 1 — Datos de la venta
 
-Elegís la fecha (tiene que estar dentro de los diez días antes o después de hoy, porque es el margen que permite AFIP), qué vendiste —productos, servicios, o ambos— y la condición de venta (por ejemplo "contado"). Si marcaste que vendiste un servicio, te va a pedir además el período que cubrió ese servicio (desde/hasta) y la fecha de vencimiento de pago: son datos que AFIP exige específicamente para servicios.
+Elegís la fecha (tiene que estar dentro de los diez días antes o después de hoy, porque es el margen que permite ARCA), qué vendiste —productos, servicios, o ambos— y la condición de venta (por ejemplo "contado"). Si marcaste que vendiste un servicio, te va a pedir además el período que cubrió ese servicio (desde/hasta) y la fecha de vencimiento de pago: son datos que ARCA exige específicamente para servicios.
 
 ### Paso 2 — Ítems
 
-Cargás lo que vendiste: descripción, cantidad y precio unitario, uno por línea. Podés agregar tantos ítems como necesites y borrar los que te hayas equivocado de cargar. El subtotal y el total los calcula siempre el Copiloto — vos no tenés que sumar nada a mano, y así te asegurás de que coincida con lo que después manda a AFIP.
+Cargás lo que vendiste: descripción, cantidad y precio unitario, uno por línea. Podés agregar tantos ítems como necesites y borrar los que te hayas equivocado de cargar. El subtotal y el total los calcula siempre el Copiloto — vos no tenés que sumar nada a mano, y así te asegurás de que coincida con lo que después manda a ARCA.
 
 ### Paso 3 — Datos del cliente
 
@@ -40,7 +40,7 @@ Acá elegís la condición frente al IVA de tu cliente y su documento. Este paso
 
 Ves todo lo que cargaste de un vistazo: venta, ítems, cliente y el total. Desde acá podés:
 
-- **Confirmar y emitir** (en el ambiente de pruebas) o **Emitir factura real** (si ya estás facturando en serio) — manda el comprobante a AFIP.
+- **Confirmar y emitir** (en el ambiente de pruebas) o **Emitir factura real** (si ya estás facturando en serio) — manda el comprobante a ARCA.
 - **Editar y confirmar** — si necesitás corregir algo antes de mandarlo.
 - **Cancelar** — si te arrepentiste.
 
@@ -48,7 +48,7 @@ Es importante que prestes atención a si el botón dice "Emitir factura real": e
 
 ## Qué pasa después de emitir
 
-Cuando confirmás, el Copiloto reserva el número de comprobante y se lo manda a AFIP. Si AFIP lo autoriza, te devuelve el **CAE**, que es el código que certifica que la factura es válida, y el Copiloto genera el PDF con el diseño del tipo de comprobante correspondiente (la Factura C incluye el código QR de AFIP).
+Cuando confirmás, el Copiloto reserva el número de comprobante y se lo manda a ARCA. Si ARCA lo autoriza, te devuelve el **CAE**, que es el código que certifica que la factura es válida, y el Copiloto genera el PDF con el diseño del tipo de comprobante correspondiente (la Factura C incluye el código QR de ARCA).
 
 Ese PDF queda disponible para descargar por 24 horas desde el link directo. Pero no te tenés que preocupar por eso: el Copiloto guarda automáticamente una copia permanente en tu Google Drive (si lo tenés conectado), así que la factura sigue estando disponible después de que ese link venza.
 
@@ -69,11 +69,11 @@ Lo mismo aplica a la nota de crédito: cuando anulás una factura, la nota sigue
 
 ## Los datos que pide cada ítem
 
-Cada línea que cargás en el paso de ítems necesita tres cosas para poder guardarse: una descripción (no puede quedar vacía), una cantidad mayor a cero, y un precio unitario mayor a cero. Si dejás alguno de esos tres campos incompleto o en cero, el Copiloto no te va a dejar avanzar hasta que lo corrijas — es una validación pensada para que no termines mandando a AFIP una factura con un ítem a $0 por error de tipeo.
+Cada línea que cargás en el paso de ítems necesita tres cosas para poder guardarse: una descripción (no puede quedar vacía), una cantidad mayor a cero, y un precio unitario mayor a cero. Si dejás alguno de esos tres campos incompleto o en cero, el Copiloto no te va a dejar avanzar hasta que lo corrijas — es una validación pensada para que no termines mandando a ARCA una factura con un ítem a $0 por error de tipeo.
 
 ## Cómo anular una factura
 
-Una factura ya autorizada por AFIP no se puede borrar —fiscalmente no existe el "deshacer"—. Si te equivocaste o el cliente te devolvió la compra, tenés que emitir una **nota de crédito** desde el mismo comprobante. El sistema no te va a dejar anular:
+Una factura ya autorizada por ARCA no se puede borrar —fiscalmente no existe el "deshacer"—. Si te equivocaste o el cliente te devolvió la compra, tenés que emitir una **nota de crédito** desde el mismo comprobante. El sistema no te va a dejar anular:
 
 - Un comprobante que ya fue anulado antes.
 - Un comprobante sin CAE (porque nunca llegó a autorizarse, así que no hay nada que anular).
@@ -99,11 +99,11 @@ También podés avisarle por chat cuando te pagan una factura ya emitida, con al
 
 ### "No me deja facturar, dice que faltan datos fiscales"
 
-Todavía no cargaste tu CUIT y el resto de los datos en Ajustes → Facturación AFIP. Es el primer paso obligatorio.
+Todavía no cargaste tu CUIT y el resto de los datos en Ajustes → Facturación ARCA. Es el primer paso obligatorio.
 
 ### "Me dice que la fecha está fuera de rango"
 
-AFIP solo permite facturar con una fecha dentro de los diez días corridos antes o después de hoy. Si necesitás facturar algo más viejo, no vas a poder hacerlo con esa fecha exacta.
+ARCA solo permite facturar con una fecha dentro de los diez días corridos antes o después de hoy. Si necesitás facturar algo más viejo, no vas a poder hacerlo con esa fecha exacta.
 
 ### "Cargué el CUIT de mi cliente pero me marca la condición de IVA como sospechosa"
 
@@ -111,7 +111,7 @@ Es un aviso preventivo: pusiste un CUIT válido pero dejaste la condición del c
 
 ### "Emití la factura pero no puedo descargar el PDF, dice que expiró"
 
-El link directo de AFIP vence a las 24 horas. Buscá el comprobante en el detalle: ahí el botón "Guardar" te lleva a la copia que quedó archivada en tu Google Drive, que no vence.
+El link directo de ARCA vence a las 24 horas. Buscá el comprobante en el detalle: ahí el botón "Guardar" te lleva a la copia que quedó archivada en tu Google Drive, que no vence.
 
 ### "¿Puedo hacer una Factura A o B con IVA discriminado?"
 
@@ -127,9 +127,9 @@ Estás en el ambiente de producción: la próxima factura que emitas es fiscalme
 
 Al tocar "Facturar" desde un presupuesto, el Copiloto arma el borrador con los datos de ese presupuesto y te lleva directo al resumen para que lo revises y confirmes vos — todavía no se emitió nada, es el mismo paso de revisión que si facturás manualmente.
 
-### "Me rechazó la factura AFIP con un código de error"
+### "Me rechazó la factura ARCA con un código de error"
 
-Cuando AFIP rechaza un comprobante, el motivo que te muestra el Copiloto es el mismo texto que devuelve AFIP, tal cual. No siempre es fácil de entender a simple vista; si no lográs interpretarlo, pegale una consulta al Copiloto por chat con el código que te apareció.
+Cuando ARCA rechaza un comprobante, el motivo que te muestra el Copiloto es el mismo texto que devuelve ARCA, tal cual. No siempre es fácil de entender a simple vista; si no lográs interpretarlo, pegale una consulta al Copiloto por chat con el código que te apareció.
 
 ### "Le pedí por chat que facture y no me confirmó que la mandó"
 
@@ -137,7 +137,7 @@ Es el comportamiento esperado: el Copiloto nunca te va a decir "listo, la emití
 
 ## Preguntas frecuentes
 
-**¿Puedo facturar un servicio prestado hace más de diez días?** No con esa fecha exacta: AFIP solo acepta comprobantes con fecha dentro del margen de diez días corridos antes o después de hoy. Fuera de ese rango, la fecha del comprobante no va a coincidir con la fecha real del trabajo.
+**¿Puedo facturar un servicio prestado hace más de diez días?** No con esa fecha exacta: ARCA solo acepta comprobantes con fecha dentro del margen de diez días corridos antes o después de hoy. Fuera de ese rango, la fecha del comprobante no va a coincidir con la fecha real del trabajo.
 
 **¿Necesito el CUIT de mi cliente para facturarle?** Solo si tu cliente es Responsable Inscripto o Monotributista y querés identificarlo, o si el monto de la venta supera el tope que exige identificación obligatoria. Para una venta común a consumidor final, no.
 

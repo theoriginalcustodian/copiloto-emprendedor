@@ -46,7 +46,7 @@ Uno por función real de la app, verificado contra el código:
 
 | Documento | Cubre |
 |---|---|
-| `facturacion.md` | Emitir comprobantes AFIP |
+| `facturacion.md` | Emitir comprobantes ARCA |
 | `presupuestos.md` | Armar y enviar presupuestos |
 | `clientes.md` | Alta y gestión de clientes |
 | `ingresos.md` · `gastos.md` | Registrar movimientos |

@@ -2,7 +2,7 @@
 
 ## Qué es y para qué sirve
 
-Un presupuesto es la cotización que le mandás a un cliente antes de que el trabajo se concrete: cuánto le vas a cobrar por tal servicio o tal producto, antes de facturarlo. A diferencia de la factura, el presupuesto **no es un documento fiscal** — no lo autoriza AFIP, es solamente tuyo y de tu cliente. Sirve para dejar por escrito una propuesta, hacerle seguimiento, y —si el cliente lo acepta— convertirlo directamente en factura sin tener que volver a cargar todo de cero.
+Un presupuesto es la cotización que le mandás a un cliente antes de que el trabajo se concrete: cuánto le vas a cobrar por tal servicio o tal producto, antes de facturarlo. A diferencia de la factura, el presupuesto **no es un documento fiscal** — no lo autoriza ARCA, es solamente tuyo y de tu cliente. Sirve para dejar por escrito una propuesta, hacerle seguimiento, y —si el cliente lo acepta— convertirlo directamente en factura sin tener que volver a cargar todo de cero.
 
 Cada presupuesto que hacés queda clasificado en una de tres categorías, para que sepas de un vistazo en qué está cada uno:
 
@@ -12,7 +12,7 @@ Cada presupuesto que hacés queda clasificado en una de tres categorías, para q
 
 ## Diferencia entre un presupuesto y una factura
 
-Es una confusión común al empezar a usar la app, así que conviene aclararla desde el principio. Una factura es un comprobante fiscal: una vez que la emitís, queda registrada ante AFIP con un CAE y no se puede deshacer, solo anular con una nota de crédito. Un presupuesto no tiene ninguna de esas dos características: podés crear tantas versiones corregidas como necesites, y mientras no lo factures, no genera ningún movimiento fiscal. Pensalo como el paso previo y opcional a la factura: podés facturar directamente sin pasar por un presupuesto, y podés hacer presupuestos que nunca termines facturando.
+Es una confusión común al empezar a usar la app, así que conviene aclararla desde el principio. Una factura es un comprobante fiscal: una vez que la emitís, queda registrada ante ARCA con un CAE y no se puede deshacer, solo anular con una nota de crédito. Un presupuesto no tiene ninguna de esas dos características: podés crear tantas versiones corregidas como necesites, y mientras no lo factures, no genera ningún movimiento fiscal. Pensalo como el paso previo y opcional a la factura: podés facturar directamente sin pasar por un presupuesto, y podés hacer presupuestos que nunca termines facturando.
 
 ## Cómo se crea un presupuesto
 
@@ -46,11 +46,11 @@ Una vez que un presupuesto queda Desestimado, no se puede reactivar — si el cl
 
 Cuando el cliente te aprueba el trabajo, desde el detalle del presupuesto tocás **Facturar**. Esto arma automáticamente un borrador de factura con el mismo cliente y los mismos ítems que cargaste en el presupuesto, y te lleva directo a la pantalla de Facturación con todo precargado para que lo revises.
 
-Es importante que entiendas que **este botón no emite la factura por sí solo** — te lleva al mismo paso de revisión y confirmación que cuando facturás manualmente. Recién cuando confirmás ahí es que se emite de verdad ante AFIP. El presupuesto pasa a estar **Aprobado** automáticamente en cuanto generás ese borrador.
+Es importante que entiendas que **este botón no emite la factura por sí solo** — te lleva al mismo paso de revisión y confirmación que cuando facturás manualmente. Recién cuando confirmás ahí es que se emite de verdad ante ARCA. El presupuesto pasa a estar **Aprobado** automáticamente en cuanto generás ese borrador.
 
 Si volvés a tocar "Facturar" sobre un presupuesto que ya tiene un borrador sin confirmar, el Copiloto no te crea uno nuevo: te lleva al mismo borrador donde lo dejaste, con el botón mostrando **"Continuar la factura"**.
 
-Para poder facturar un presupuesto necesitás tener cargado tu CUIT en Ajustes → Facturación AFIP; si todavía no lo hiciste, te lo va a pedir antes de dejarte avanzar. Tampoco vas a poder facturar un presupuesto que ya marcaste como Desestimado, ni uno que ya facturaste antes.
+Para poder facturar un presupuesto necesitás tener cargado tu CUIT en Ajustes → Facturación ARCA; si todavía no lo hiciste, te lo va a pedir antes de dejarte avanzar. Tampoco vas a poder facturar un presupuesto que ya marcaste como Desestimado, ni uno que ya facturaste antes.
 
 ## Cómo se calcula el total
 
@@ -97,7 +97,7 @@ Un presupuesto que marcaste como "no me lo tomaron" no se puede facturar directa
 
 ### "Me dice que falta el CUIT antes de facturar"
 
-Necesitás cargar tus datos fiscales en Ajustes → Facturación AFIP antes de poder convertir cualquier presupuesto en factura.
+Necesitás cargar tus datos fiscales en Ajustes → Facturación ARCA antes de poder convertir cualquier presupuesto en factura.
 
 ### "No tengo botón para compartir el presupuesto"
 
@@ -119,7 +119,7 @@ No, sigue estando en tu lista de Presupuestos en estado "Pendiente" hasta que vo
 
 ### ¿Un presupuesto tiene algún valor fiscal?
 
-No, ninguno. Es un documento comercial entre vos y tu cliente; el único paso que genera un comprobante ante AFIP es facturarlo.
+No, ninguno. Es un documento comercial entre vos y tu cliente; el único paso que genera un comprobante ante ARCA es facturarlo.
 
 ### ¿Puedo hacer un presupuesto sin saber el documento del cliente?
 

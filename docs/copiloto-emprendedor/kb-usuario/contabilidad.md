@@ -64,7 +64,7 @@ Vale la pena entender bien esta diferencia, porque es la base de toda la pantall
 - **Caja** sale de restar tus gastos a tus cobros reales. No le importa si emitiste una factura o no:
   sólo mira la plata que efectivamente entró y salió de tu bolsillo (por ejemplo, a través de
   MercadoPago, o un gasto que cargaste a mano).
-- **Facturado** sale de los comprobantes que emitiste ante AFIP, los hayas cobrado o no todavía.
+- **Facturado** sale de los comprobantes que emitiste ante ARCA, los hayas cobrado o no todavía.
 
 Si el Copiloto sumara estos dos números, contaría la misma plata dos veces: primero cuando facturás
 algo, y de nuevo cuando lo cobrás. Por eso cada uno vive en su propio bloque de la pantalla, y ninguna
@@ -130,5 +130,5 @@ así que pueden no cerrar en un número redondo — es normal y no indica un err
 |---|---|---|
 | Caja | Cuánta plata tenés ahora | Cobros menos gastos reales |
 | En qué se te va la plata | Tus gastos por categoría | Tus gastos cargados en el período |
-| Facturado | Cuánto emitiste (te hayan pagado o no) | Comprobantes AFIP |
+| Facturado | Cuánto emitiste (te hayan pagado o no) | Comprobantes ARCA |
 | Mejores clientes | Quién te compró más | Tus ventas facturadas |

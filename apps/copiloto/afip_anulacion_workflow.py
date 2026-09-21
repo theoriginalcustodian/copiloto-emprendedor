@@ -166,7 +166,7 @@ class AnulacionWorkflow:
                                   nc.get("nro"), punto_venta, nro, exc)
             self._motivo = (
                 f"La nota de crédito N° {nc.get('nro')} se emitió correctamente, pero no pudimos "
-                f"actualizar el estado de la factura original. La anulación ante AFIP es válida.")
+                f"actualizar el estado de la factura original. La anulación ante ARCA es válida.")
 
         # ✅ RESUELTO 2026-08-04: la nota de crédito ahora genera su PDF (arriba, template
         # `credit-note-c`). Comprobantes anulados que se emitieron ANTES de esta fecha no tienen

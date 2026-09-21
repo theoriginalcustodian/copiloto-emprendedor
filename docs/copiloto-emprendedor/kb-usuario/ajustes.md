@@ -4,19 +4,19 @@
 
 Ajustes es el centro de configuración del Copiloto: desde ahí manejás los datos de tu negocio, tus datos fiscales, las apps que conectaste, tu cuenta y cómo se ve y te habla la aplicación. Se llega tocando el ícono de Ajustes en el menú principal de la app, y te muestra una grilla con siete opciones.
 
-Este documento te explica qué hay dentro de cada una y para qué sirve. Algunas —como Mi negocio y Facturación AFIP— tienen su propio documento aparte por lo extensas que son; acá las vas a encontrar resumidas con un link a dónde profundizar.
+Este documento te explica qué hay dentro de cada una y para qué sirve. Algunas —como Mi negocio y Facturación ARCA— tienen su propio documento aparte por lo extensas que son; acá las vas a encontrar resumidas con un link a dónde profundizar.
 
 ## Las siete opciones de Ajustes
 
-Al entrar a Ajustes vas a ver, en este orden: **Mi negocio**, **Facturación AFIP**, **Apps conectadas**, **Mi plan**, **Mi cuenta**, **Apariencia** y **Cómo hablarle**.
+Al entrar a Ajustes vas a ver, en este orden: **Mi negocio**, **Facturación ARCA**, **Apps conectadas**, **Mi plan**, **Mi cuenta**, **Apariencia** y **Cómo hablarle**.
 
 ### Mi negocio
 
-Acá cargás el perfil comercial de tu negocio: qué vendés, a quién le vendés, tu nombre comercial, tu horario de atención, y cómo querés que el Copiloto te hable (tono, largo de las respuestas, y hasta cómo querés llamarlo). También podés ver y cambiar si tu copiloto te pide confirmación antes de actuar o si ya trabaja en modo automático. El detalle completo está en el documento **Mi negocio y tus datos fiscales AFIP**.
+Acá cargás el perfil comercial de tu negocio: qué vendés, a quién le vendés, tu nombre comercial, tu horario de atención, y cómo querés que el Copiloto te hable (tono, largo de las respuestas, y hasta cómo querés llamarlo). También podés ver y cambiar si tu copiloto te pide confirmación antes de actuar o si ya trabaja en modo automático. El detalle completo está en el documento **Mi negocio y tus datos fiscales ARCA**.
 
-### Facturación AFIP
+### Facturación ARCA
 
-Es donde cargás tus datos fiscales —CUIT, razón social, condición frente al IVA, punto de venta— y vinculás tu cuenta con ARCA para poder emitir facturas electrónicas reales. También elegís entre el ambiente de pruebas (Homologación) y el de facturas reales (Producción). Cubierto en detalle en **Mi negocio y tus datos fiscales AFIP**.
+Es donde cargás tus datos fiscales —CUIT, razón social, condición frente al IVA, punto de venta— y vinculás tu cuenta con ARCA para poder emitir facturas electrónicas reales. También elegís entre el ambiente de pruebas (Homologación) y el de facturas reales (Producción). Cubierto en detalle en **Mi negocio y tus datos fiscales ARCA**.
 
 ### Apps conectadas
 
@@ -87,9 +87,9 @@ Volvé a la pantalla de Apps conectadas después de autorizar en el navegador; e
 
 ### ¿Dónde cargo el CUIT de mi negocio?
 
-En Ajustes → Facturación AFIP. Ver el documento **Mi negocio y tus datos fiscales AFIP** para el detalle completo.
+En Ajustes → Facturación ARCA. Ver el documento **Mi negocio y tus datos fiscales ARCA** para el detalle completo.
 
-¿Por qué "Mi negocio" y "Facturación AFIP" son pantallas separadas si las dos hablan de mi negocio? Porque cumplen funciones distintas: "Mi negocio" es tu perfil comercial (qué vendés, cómo te gusta que te hablen) y no tiene efecto fiscal; "Facturación AFIP" son tus datos legales ante AFIP, necesarios para que una factura sea válida. Separarlas evita que confundas un dato opcional de presentación con uno obligatorio para poder facturar.
+¿Por qué "Mi negocio" y "Facturación ARCA" son pantallas separadas si las dos hablan de mi negocio? Porque cumplen funciones distintas: "Mi negocio" es tu perfil comercial (qué vendés, cómo te gusta que te hablen) y no tiene efecto fiscal; "Facturación ARCA" son tus datos legales ante ARCA, necesarios para que una factura sea válida. Separarlas evita que confundas un dato opcional de presentación con uno obligatorio para poder facturar.
 
 ### ¿Puedo usar varios estilos visuales a la vez, por ejemplo uno de día y otro de noche?
 
@@ -122,10 +122,10 @@ tu cuenta, la vía es escribirle al equipo del Copiloto.
 
 ### ¿El orden de las opciones en Ajustes es siempre el mismo?
 
-Sí. Vas a encontrar siempre las mismas siete opciones en el mismo orden: Mi negocio, Facturación AFIP, Apps conectadas, Mi plan, Mi cuenta, Apariencia y Cómo hablarle. No cambia según lo que hayas configurado antes.
+Sí. Vas a encontrar siempre las mismas siete opciones en el mismo orden: Mi negocio, Facturación ARCA, Apps conectadas, Mi plan, Mi cuenta, Apariencia y Cómo hablarle. No cambia según lo que hayas configurado antes.
 
 ¿Cómo vuelvo a la pantalla principal de la app desde Ajustes? Cada pantalla dentro de Ajustes tiene un botón para volver, y desde la grilla principal de Ajustes volvés al menú principal del Copiloto de la misma forma que entraste — no hay un camino distinto según qué sección hayas abierto.
 
 ### ¿Tengo que completar todas las secciones de Ajustes antes de poder usar el Copiloto?
 
-No. Sólo Facturación AFIP tiene datos obligatorios, y únicamente si querés emitir facturas —el resto de la app funciona sin que la hayas completado. Las demás secciones (Mi negocio, Apps conectadas, Apariencia, Cómo hablarle) son configuración que podés ir completando cuando quieras, a tu ritmo.
+No. Sólo Facturación ARCA tiene datos obligatorios, y únicamente si querés emitir facturas —el resto de la app funciona sin que la hayas completado. Las demás secciones (Mi negocio, Apps conectadas, Apariencia, Cómo hablarle) son configuración que podés ir completando cuando quieras, a tu ritmo.

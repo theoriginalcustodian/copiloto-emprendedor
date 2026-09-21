@@ -156,7 +156,7 @@ def create_afip_app(
     signal_anulacion: Callable | None = None,
     composio_gateway=None,
 ) -> FastAPI:
-    app = FastAPI(title="Copiloto AFIP")
+    app = FastAPI(title="Copiloto ARCA")
 
     async def _drive_conectado(cliente_id: str) -> bool | None:
         """¿El tenant tiene Google Drive vinculado? `None` si no se pudo averiguar.
