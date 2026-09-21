@@ -15,6 +15,7 @@ TABLA = {
     det.REGLA_TRABAJO_MARGEN_NEGATIVO: (None, "pronto", "Revisar el trabajo"),
     det.REGLA_TRABAJO_SIN_INGRESO:     (None, "pronto", "¿Te lo pagaron?"),
     det.REGLA_GASTO_MES_ALTO:          (None, "sin_plazo", None),
+    det.REGLA_CONEXION_CAIDA:          (None, "critico", "Reconectar"),
 }
 
 
@@ -23,7 +24,7 @@ def _t(regla):
     return r["categoria"], r["criticidad"], r["verbo"]
 
 
-def test_las_7_reglas_del_detector_dan_exactamente_la_tabla_acordada():
+def test_las_8_reglas_del_detector_dan_exactamente_la_tabla_acordada():
     for regla, esperado in TABLA.items():
         assert _t(regla) == esperado, regla
 
@@ -41,9 +42,9 @@ def test_regla_futura_sin_entrada_nunca_inventa_critico():
     assert _t("regla_que_todavia_no_existe") == (None, "sin_plazo", None)
 
 
-def test_el_unico_critico_es_el_certificado():
+def test_los_unicos_criticos_son_certificado_y_conexion_caida():
     criticos = [r for r in TABLA if _t(r)[1] == "critico"]
-    assert criticos == [det.REGLA_CERTIFICADO_POR_VENCER]
+    assert set(criticos) == {det.REGLA_CERTIFICADO_POR_VENCER, det.REGLA_CONEXION_CAIDA}
 
 
 def test_toda_tarjeta_que_sale_del_store_lleva_los_3_campos_y_conserva_los_viejos():

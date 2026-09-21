@@ -26,6 +26,8 @@ _POR_REGLA: dict[str, tuple[str | None, str, str | None]] = {
     "trabajo_con_margen_negativo":       (None, PRONTO, "Revisar el trabajo"),
     "trabajo_con_gastos_y_sin_ingreso":  (None, PRONTO, "¿Te lo pagaron?"),
     "gasto_del_mes_alto":                (None, SIN_PLAZO, None),
+    # K-09: una conexión caída deja los números incompletos y los avisos mudos: es lo primero que se ve.
+    "conexion_caida":                    (None, CRITICO, "Reconectar"),
 }
 # Tarjeta manual (`regla is None`): la anotó el emprendedor.
 _MANUAL = (TUYAS, SIN_PLAZO, "Borrar")

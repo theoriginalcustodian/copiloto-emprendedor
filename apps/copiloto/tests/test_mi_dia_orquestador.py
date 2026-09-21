@@ -51,7 +51,7 @@ def _candidato(regla, entidad_id, **datos):
 
 
 def _correr(monkeypatch, crudos: dict, avisos: _AvisosFake, tarjetas: _TarjetasFake):
-    monkeypatch.setattr(orq, "detectar_todos", lambda cf, cid: crudos)
+    monkeypatch.setattr(orq, "detectar_todos", lambda cf, cid, **kw: crudos)
     monkeypatch.setattr(orq, "AvisosEmitidosStore", avisos)
     monkeypatch.setattr(orq, "TarjetaStore", tarjetas)
     return orq.avanzar_tablero(conn_factory=None, cliente_id="cid-A")

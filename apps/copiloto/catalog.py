@@ -85,7 +85,7 @@ def _default_presentation(toolkit: str) -> dict:
     }
 
 
-def _entry(key: str, *, kind: str, connected: bool) -> dict:
+def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -> dict:
     presentation = _PRESENTATION.get(key) or _default_presentation(key)
     es_pago = kind == "payments"
     connect_path = "/mp/connect" if es_pago else f"/composio/connect?service={key}"
@@ -101,20 +101,30 @@ def _entry(key: str, *, kind: str, connected: bool) -> dict:
         "kind": kind,
         "description": presentation["description"],
         "capabilities": list(presentation["capabilities"]),
+        # K-09: `status` distingue «caido» (hubo conexión y ya no sirve) de «nunca_conectado».
+        # `connected` se conserva para clientes viejos y es siempre `status == "conectado"`.
         "connected": connected,
+        "status": status or ("conectado" if connected else "nunca_conectado"),
         "connect_path": connect_path,
         "disconnect_path": disconnect_path,
     }
 
 
-def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected) -> list[dict]:
+def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
+                  mp_status: str | None = None, composio_caidos=()) -> list[dict]:
     """Catálogo completo (MercadoPago + todos los toolkits Composio soportados), en el shape del contrato
     `GET /catalog` (handoff §7.7). `valid_toolkits`: iterable de slugs Composio (derivado por el caller de la
     MISMA fuente que valida `/composio/connect`, NUNCA hardcodeado acá). `composio_connected`: iterable de
     slugs conectados (mismo shape que `/me`). Orden determinístico (sorted) -- ni `valid_toolkits` (puede ser
     un frozenset/dict) ni `composio_connected` garantizan orden estable entre corridas."""
     connected_set = set(composio_connected or ())
-    services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected))]
+    caidos = set(composio_caidos or ())
+    if mp_status is not None:
+        mp_connected = mp_status == "conectado"
+    services = [_entry(MERCADOPAGO_KEY, kind="payments", connected=bool(mp_connected), status=mp_status)]
     for toolkit in sorted(valid_toolkits or ()):
-        services.append(_entry(toolkit, kind="composio", connected=toolkit in connected_set))
+        conectado = toolkit in connected_set
+        services.append(_entry(toolkit, kind="composio", connected=conectado,
+                               status="conectado" if conectado else
+                               ("caido" if toolkit in caidos else "nunca_conectado")))
     return services

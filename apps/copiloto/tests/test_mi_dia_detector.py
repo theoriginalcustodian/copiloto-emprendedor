@@ -174,6 +174,7 @@ def test_margen_negativo_no_esta_en_auto_cierre_pero_sin_ingreso_si():
     assert detector.REGLAS_AUTO_CIERRE == (
         detector.REGLA_PRESUPUESTOS_ENFRIANDOSE, detector.REGLA_FACTURAS_IMPAGAS_VIEJAS,
         detector.REGLA_TRABAJO_SIN_INGRESO, detector.REGLA_CERTIFICADO_POR_VENCER,
+        detector.REGLA_CONEXION_CAIDA,
     )
     assert detector.REGLA_TRABAJO_MARGEN_NEGATIVO not in detector.REGLAS_AUTO_CIERRE
     # El CAE NO auto-cierra (no se "renueva") y el certificado SÍ. Son la misma familia de alerta y
