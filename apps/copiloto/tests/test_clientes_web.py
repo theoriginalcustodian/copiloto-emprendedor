@@ -54,6 +54,9 @@ class _FakeClienteStore:
             mios = [c for c in mios if normalizar_nombre(q) in normalizar_nombre(c["nombre"])]
         return mios[:limit], len(mios)
 
+    def agregados_este_mes(self) -> int:
+        return sum(1 for c in self._b.get(self._cid, {}).values() if c["origen"] == "derivado")
+
     def detalle(self, cliente: int):
         return self._b.get(self._cid, {}).get(cliente)
 
@@ -133,7 +136,7 @@ def test_la_cartera_vacia_es_200_con_lista_vacia_no_404():
     hay clientes» como «algo salió mal»."""
     cli, _ = _app()
     r = cli.get("/clientes")
-    assert r.status_code == 200 and r.json() == {"clientes": [], "total": 0}
+    assert r.status_code == 200 and r.json() == {"clientes": [], "total": 0, "agregados_este_mes": 0}
 
 
 def test_una_ficha_inexistente_es_404():
@@ -160,6 +163,16 @@ def test_el_total_del_listado_es_el_del_TENANT_no_el_de_la_pagina():
         store.sembrar(f"Cliente {i}")
     r = cli.get("/clientes?limit=2").json()
     assert len(r["clientes"]) == 2 and r["total"] == 5
+
+
+def test_agregados_este_mes_es_del_tenant_e_ignora_q_y_limit():
+    cli, bucket = _app()
+    store = _FakeClienteStore(bucket, "cid-A")
+    for i in range(4):
+        store.sembrar(f"Derivado {i}", origen="derivado")
+    store.sembrar("Manual", origen="manual")
+    r = cli.get("/clientes?limit=1&q=manual").json()
+    assert len(r["clientes"]) == 1 and r["agregados_este_mes"] == 4
 
 
 def test_la_busqueda_por_q_ignora_tildes_y_mayusculas():
@@ -199,7 +212,7 @@ def test_ADVERSARIAL_el_listado_de_uno_no_trae_los_del_otro():
     bucket: dict = {}
     _FakeClienteStore(bucket, "cid-B").sembrar("Cliente de B")
     cli_a, _ = _app(cliente_id="cid-A", bucket=bucket)
-    assert cli_a.get("/clientes").json() == {"clientes": [], "total": 0}
+    assert cli_a.get("/clientes").json() == {"clientes": [], "total": 0, "agregados_este_mes": 0}
 
 
 def test_CONTROL_el_test_adversarial_PUEDE_fallar():
@@ -591,7 +604,7 @@ def test_el_alta_de_un_tenant_no_aparece_en_la_cartera_del_otro():
     cli_a, _ = _app(cliente_id="cid-A", bucket=bucket)
     cli_b, _ = _app(cliente_id="cid-B", bucket=bucket)
     cli_a.post("/clientes", json={"nombre": "Sólo de A"})
-    assert cli_b.get("/clientes").json() == {"clientes": [], "total": 0}
+    assert cli_b.get("/clientes").json() == {"clientes": [], "total": 0, "agregados_este_mes": 0}
 
 
 def test_el_mismo_nombre_en_DOS_tenants_no_choca():

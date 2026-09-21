@@ -148,11 +148,15 @@ def create_clientes_app(*, require_tenant: Callable, cliente_store_factory: Call
     async def listar_clientes(q: str = "", limit: int = LIMITE_LISTADO_DEFAULT,
                               cliente_id: str = Depends(require_tenant)) -> dict:
         limit = max(1, min(int(limit), LIMITE_LISTADO_MAX))
-        clientes, total = await asyncio.to_thread(
-            lambda: cliente_store_factory(cliente_id).listar(q=q, limit=limit))
+        def _leer():
+            store = cliente_store_factory(cliente_id)
+            clientes, total = store.listar(q=q, limit=limit)
+            return clientes, total, store.agregados_este_mes()
+        clientes, total, agregados = await asyncio.to_thread(_leer)
         # Cartera vacía → 200 con lista vacía. Nunca 404: «todavía no hay clientes» es una pantalla,
         # no un error, y es exactamente el estado hasta que corra el backfill del hito 2.
-        return {"clientes": clientes, "total": total}
+        # `agregados_este_mes`: tenant-wide, ignora `q` y `limit` como `total` (K-04, BL-J6). Aditivo.
+        return {"clientes": clientes, "total": total, "agregados_este_mes": agregados}
 
     @app.post("/clientes", status_code=201)
     async def crear_cliente(body: ClienteBody, cliente_id: str = Depends(require_tenant)):
