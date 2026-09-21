@@ -288,7 +288,7 @@ export function useChat(clienteId: string): UseChatResult {
 
       detenerPolling();
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: trimmed };
+      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: trimmed, creadoEn: Date.now() };
       // Dos eventos separados: agregar el mensaje NO toca `sendStatus` — ese cambio es explícito vía
       // `envio_iniciado`, así el mensaje aparece OPTIMISTA (antes de que la red responda).
       let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
@@ -364,7 +364,7 @@ export function useChat(clienteId: string): UseChatResult {
         return;
       }
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: transcript };
+      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: transcript, creadoEn: Date.now() };
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });
@@ -416,6 +416,7 @@ export function useChat(clienteId: string): UseChatResult {
         id: `user-${generarId()}`,
         role: 'user',
         text: '📷 Foto del ticket enviada',
+        creadoEn: Date.now(),
       };
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });

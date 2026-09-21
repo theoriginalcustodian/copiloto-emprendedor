@@ -130,6 +130,16 @@
   padding: 2px 0;
 }
 
+.chat-messages__day-separator {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--label);
+  padding: 10px 0 6px;
+}
+
 .chat-message-group {
   display: flex;
   flex-direction: column;

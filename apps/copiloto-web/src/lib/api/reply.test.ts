@@ -17,7 +17,9 @@ describe('getReply — normaliza el shape crudo del backend', () => {
     const res = await getReply('sid-123', 0);
 
     expect(res).toEqual({
-      replies: [{ id: 140, text: '¡Hola! Puedo ayudarte…', choices: undefined }],
+      replies: [
+        { id: 140, text: '¡Hola! Puedo ayudarte…', choices: undefined, createdAt: Date.UTC(2026, 6, 4, 2, 49, 38) },
+      ],
       next_id: 140,
     });
   });

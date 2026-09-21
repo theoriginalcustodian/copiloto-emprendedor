@@ -146,6 +146,8 @@ export interface ChatMessage {
   /** Metadata de presentación del reply (gate HITL o artefacto terminal, Task 17) — la usa
    * `hitlMapping`/`HitlCard` (kind='confirm') o `Bubble`/`ArtifactView` (otros kinds). */
   card?: ReplyCard;
+  /** Instante del mensaje (ms epoch) — separadores de día (BL-C3). Ausente en historial viejo. */
+  creadoEn?: number;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -227,7 +229,7 @@ export function useChat(): UseChatResult {
         if (seenIdsRef.current.has(reply.id)) continue; // dedupe defensivo además del cursor next_id
         seenIdsRef.current.add(reply.id);
         additions.push({ id: `assistant-${reply.id}`, role: 'assistant', text: reply.text,
-                         choices: reply.choices, card: reply.card });
+                         choices: reply.choices, card: reply.card, creadoEn: reply.createdAt });
       }
       if (additions.length > 0) {
         seenIdsRef.current = acotarSeenIds(seenIdsRef.current);
@@ -291,7 +293,7 @@ export function useChat(): UseChatResult {
       if (!trimmed) return;
 
       stopPolling();
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: trimmed };
+      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: trimmed, creadoEn: Date.now() };
       setMessages((prev) => acotarMensajes([...prev, userMessage]));
       setSendStatus('sending');
 
@@ -333,7 +335,7 @@ export function useChat(): UseChatResult {
         return;
       }
 
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript };
+      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript, creadoEn: Date.now() };
       setMessages((prev) => acotarMensajes([...prev, userMessage]));
 
       startWaitingForReply();

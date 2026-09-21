@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 import {
@@ -7,6 +7,7 @@ import {
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  separadoresDeDia,
 } from '@copiloto/core';
 
 import { Bubble } from './Bubble';
@@ -97,6 +98,10 @@ export function MessageList({
     getItemKey: (index) => messages[index].id,
   });
 
+  // BL-C3: un divisor por cambio de día (hora de Buenos Aires), dentro de la fila del primer mensaje
+  // del día — así los índices del virtualizer no cambian.
+  const separadores = useMemo(() => separadoresDeDia(messages, Date.now()), [messages]);
+
   useEffect(() => {
     // Con la lista virtualizada ya no hay un sentinela al fondo que `scrollIntoView` — el propio
     // virtualizer sabe llevar el scroll al último índice, midiendo su offset real.
@@ -178,6 +183,11 @@ export function MessageList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
+              {separadores.has(message.id) && (
+                <div className="chat-messages__day-separator" role="separator" data-testid="separador-dia">
+                  {separadores.get(message.id)}
+                </div>
+              )}
               <FilaMensaje
                 message={message}
                 onChoice={onChoice}

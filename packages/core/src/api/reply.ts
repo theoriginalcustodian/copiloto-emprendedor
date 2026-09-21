@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { parsearFecha } from '../chat/separadoresFecha';
 import type { RawReplyResponse, ReplyResponse } from './types';
 
 /**
@@ -24,6 +25,7 @@ export async function getReply(sessionId: string, afterId: number): Promise<Repl
       text: r.reply_text,
       choices: r.choices ?? undefined,
       card: r.card ?? undefined,
+      createdAt: parsearFecha(r.created_at),
     })),
     next_id: raw.next_id,
   };

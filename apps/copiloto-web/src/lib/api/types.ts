@@ -196,6 +196,8 @@ export interface ReplyMessage {
   text: string;
   choices?: ReplyChoice[];
   card?: ReplyCard;
+  /** `created_at` del backend en ms epoch (ausente si no vino o no parsea). */
+  createdAt?: number;
 }
 
 export interface ReplyResponse {

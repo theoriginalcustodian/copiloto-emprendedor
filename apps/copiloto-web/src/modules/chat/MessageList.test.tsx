@@ -32,6 +32,22 @@ describe('MessageList', () => {
     expect(screen.getByText('Hola, en qué te ayudo?')).toBeInTheDocument();
   });
 
+  it('BL-C3: un separador por cambio de día, con Hoy/Ayer, y ninguno sin fechas', () => {
+    const ahora = Date.now();
+    const conFechas: ChatMessage[] = [
+      { id: 'u1', role: 'user', text: 'de ayer', creadoEn: ahora - 24 * 3600_000 },
+      { id: 'u2', role: 'user', text: 'de hoy A', creadoEn: ahora },
+      { id: 'u3', role: 'user', text: 'de hoy B', creadoEn: ahora },
+    ];
+    const { unmount } = render(<MessageList messages={conFechas} onChoice={vi.fn()} />);
+    expect(screen.getAllByTestId('separador-dia')).toHaveLength(2);
+    expect(screen.getByText('Hoy')).toBeInTheDocument();
+    expect(screen.getByText('Ayer')).toBeInTheDocument();
+    unmount();
+    render(<MessageList messages={[{ id: 'u1', role: 'user', text: 'viejo' }]} onChoice={vi.fn()} />);
+    expect(screen.queryByTestId('separador-dia')).not.toBeInTheDocument();
+  });
+
   it('choices de desambiguación -> burbuja + chips (no HitlCard)', () => {
     const messages: ChatMessage[] = [
       { id: 'a1', role: 'assistant', text: 'Tenés dos "Juan". ¿A cuál le cobro?', choices: DISAMBIGUATION },

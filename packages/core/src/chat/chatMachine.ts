@@ -46,6 +46,9 @@ export interface ChatMessage {
    * consume `hitl.ts` (`kind==='confirm'`) o la vista de artefacto de cada plataforma
    * (`kind==='clinical_saved'` / `'start_recording'` / `'start_upload'`). */
   card?: ReplyCard;
+  /** Instante del mensaje (ms epoch). Lo usan los separadores de día (`separadoresFecha.ts`); ausente
+   * en el historial persistido antes de BL-C3 o si el reply no trajo `created_at`. */
+  creadoEn?: number;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -266,6 +269,7 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
           text: reply.text,
           choices: reply.choices,
           card: reply.card,
+          creadoEn: reply.createdAt,
         });
       }
       if (additions.length === 0) {
