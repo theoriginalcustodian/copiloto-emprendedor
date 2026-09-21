@@ -42,7 +42,7 @@ const categoriasMock = leerGraficoCategorias as jest.MockedFunction<typeof leerG
 const margenTrabajoMock = leerGraficoMargenTrabajo as jest.MockedFunction<typeof leerGraficoMargenTrabajo>;
 
 const PORTADA = {
-  caja: { saldo: '184000.00', moneda: 'ARS' },
+  caja: { saldo: '184000.00', moneda: 'ARS', fechaCorte: null, variacionPct: null },
   mes: { ingresos: '95000.00', gastos: '31000.00', rentabilidad: '64000.00', facturado: '120000.00', cobrado: '90000.00' },
   serieMensual: [
     { mes: '2026-03', ingresos: '80000.00', gastos: '20000.00' },
@@ -116,7 +116,7 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     // distintas, y un cero por default sería un KPI que miente.
     leerMock.mockResolvedValue({
       status: 'ok',
-      portada: { ...PORTADA, caja: { saldo: null, moneda: 'ARS' }, mes: { ...PORTADA.mes, facturado: null } },
+      portada: { ...PORTADA, caja: { saldo: null, moneda: 'ARS', fechaCorte: null, variacionPct: null }, mes: { ...PORTADA.mes, facturado: null } },
     });
 
     await montar();
