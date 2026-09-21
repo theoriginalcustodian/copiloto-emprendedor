@@ -212,6 +212,17 @@ def test_calendar_book_needs_confirmation_observation_has_service():
     assert tr.observation["service"] == "googlecalendar"
 
 
+def test_agendar_reunion_manana_a_las_10_termina_en_la_gate_HITL_sin_escribir():
+    """K-13 / ADR-004: «agendá una reunión mañana a las 10» NO crea el evento: `calendar_book` queda en
+    `needs_confirmation` y el gateway no recibió ninguna llamada. Sólo con `confirmed=True` escribe."""
+    gw = _FakeGateway()
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-09-21T12:00:00")
+    tr = ex("calendar_book", {"title": "Reunión", "date_raw": "mañana", "time_raw": "10"},
+           _Ctx(), confirmed=False, idem_key="run1-cal")
+    assert tr.status == "needs_confirmation" and gw.calls == []
+    assert "calendar_book" in tool_catalog.WRITE_TOOLS
+
+
 def test_service_proposal_needs_confirmation_observation_has_service():
     """Mismo fix aplicado al path de servicio plug-in (Proposal): `service` = `mod.TOOLKIT` real."""
     tr = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")(
