@@ -10,6 +10,7 @@ import {
   type Concepto,
   type NuevoItemPresupuesto,
   type Presupuesto,
+  type SugerenciasPresupuesto,
 } from '@copiloto/core';
 
 import {
@@ -127,7 +128,7 @@ export interface FormularioPresupuestoProps {
   corrige?: Presupuesto | null;
   /** Si viene (y `corrige` no), el formulario arranca con lo dictado — ver `ValoresInicialesPresupuesto`. */
   iniciales?: ValoresInicialesPresupuesto | null;
-  onCreado: (presupuesto: Presupuesto) => void;
+  onCreado: (presupuesto: Presupuesto, sugerencias: SugerenciasPresupuesto | null) => void;
   onCancelar: () => void;
   testID?: string;
 }
@@ -275,7 +276,7 @@ export function FormularioPresupuesto({
         setError('Los presupuestos todavía no están disponibles en tu copiloto.');
         return;
       }
-      onCreado(res.presupuesto);
+      onCreado(res.presupuesto, res.sugerencias ?? null);
     } catch (e) {
       setError(e instanceof ApiError ? (e.detail ?? e.message) : 'No pudimos guardar el presupuesto.');
     } finally {

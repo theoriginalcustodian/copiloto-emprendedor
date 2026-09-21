@@ -23,6 +23,7 @@ import {
   facturarPresupuesto,
   formatearFechaLarga,
   formatearImporte,
+  mailtoMandarPresupuesto,
   obtenerPresupuesto,
   type EstadoPresupuesto,
   type Presupuesto,
@@ -51,6 +52,11 @@ export interface DetallePresupuestoProps {
   onCorregir: (presupuesto: Presupuesto) => void;
   /** Cambió el estado acá adentro. La lista de atrás lo usa para no quedar mostrando el anterior. */
   onEstadoCambiado?: (presupuesto: Presupuesto) => void;
+  /**
+   * K-07: el backend sugirió «Mandalo por mail» al guardar (sólo con Doc). Ofrece abrir el correo del
+   * usuario con el link; NO envía nada. Ausente = sin sugerencia (abrir un presupuesto viejo).
+   */
+  sugerenciaMandarPorMail?: { docLink: string } | null;
   testID?: string;
 }
 
@@ -114,6 +120,7 @@ export function DetallePresupuesto({
   onFacturar,
   onCorregir,
   onEstadoCambiado,
+  sugerenciaMandarPorMail = null,
   testID = 'detalle-presupuesto',
 }: DetallePresupuestoProps) {
   const tema = useTema();
@@ -230,6 +237,15 @@ export function DetallePresupuesto({
       // apuntando a nada. Avisar en vez de dejar la pantalla muda — un botón que no hace nada se lee
       // como que la app se colgó.
       setEstadoFacturar('error');
+    }
+  }
+
+  async function mandarPorMail() {
+    if (sugerenciaMandarPorMail == null) return;
+    try {
+      await Linking.openURL(mailtoMandarPresupuesto({ numero: p.numero, contacto: p.receptor.contacto }, sugerenciaMandarPorMail.docLink));
+    } catch {
+      // Sin app de correo el `openURL` rechaza: el botón «Compartir» de al lado cubre ese caso.
     }
   }
 
@@ -415,6 +431,9 @@ export function DetallePresupuesto({
               botones={[
                 { etiqueta: 'Ver en Google Docs', onPress: () => void abrirDoc(), variante: 'secundario', testID: `${testID}-ver-doc` },
                 { etiqueta: 'Compartir', onPress: () => void compartir(), variante: 'secundario', testID: `${testID}-compartir` },
+                ...(sugerenciaMandarPorMail != null
+                  ? [{ etiqueta: 'Mandalo por mail', onPress: () => void mandarPorMail(), variante: 'primario' as const, testID: `${testID}-mandar-por-mail` }]
+                  : []),
               ]}
             />
           ) : (
