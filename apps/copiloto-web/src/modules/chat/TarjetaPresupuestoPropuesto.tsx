@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { PresupuestoPropuesto } from '@copiloto/core';
 
-import { Surface } from '../../design-system';
+import { Recibo, Surface } from '../../design-system';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
 import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
 import './chat.css';
@@ -70,21 +70,17 @@ export function TarjetaPresupuestoPropuesto({ propuesta, mensajeId }: TarjetaPre
 
   if (estado === 'guardado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="presupuesto-propuesto-guardado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Presupuesto anotado{numero != null ? ` — N° ${numero}` : ''}
-        </Surface>
-      </div>
+      <Recibo
+        testId="presupuesto-propuesto-guardado"
+        tono="exito"
+        titulo={`Presupuesto anotado${numero != null ? ` — N° ${numero}` : ''}`}
+      />
     );
   }
 
   if (estado === 'descartado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="presupuesto-propuesto-descartado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          No lo guardamos.
-        </Surface>
-      </div>
+      <Recibo testId="presupuesto-propuesto-descartado" titulo="No lo guardamos." />
     );
   }
 

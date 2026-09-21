@@ -22,3 +22,4 @@ export * from './facturaPropuesta';
 export * from './linkDeCobro';
 // El buzón de un solo mensaje pantalla → chat principal (BL-W9; antes sólo mobile).
 export * from './mensajePendiente';
+export * from './avisosCard';

@@ -68,6 +68,12 @@ describe('TarjetaFacturaPropuesta', () => {
     expect(screen.getByText('Esto entendí. Revisalo y tocá Emitir — todavía no la mandé.')).toBeInTheDocument();
   });
 
+  it('🔴 avisa ANTES de emitir que se anula con nota de crédito, no se borra (H-23)', () => {
+    render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
+
+    expect(screen.getByTestId('factura-propuesta-aviso-anulacion')).toHaveTextContent('nota de crédito');
+  });
+
   it('muestra cliente, ítems y total', () => {
     render(<TarjetaFacturaPropuesta propuesta={propuesta()} mensajeId={MENSAJE_ID} />);
 

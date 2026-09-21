@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { formatearImporte, type GastoPropuesto } from '@copiloto/core';
 
-import { Surface } from '../../design-system';
+import { Recibo, Surface } from '../../design-system';
 import { FormularioGasto } from '../gastos/FormularioGasto';
 import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
 import './chat.css';
@@ -53,21 +53,17 @@ export function TarjetaGastoPropuesto({ propuesta, mensajeId }: TarjetaGastoProp
 
   if (estado === 'guardado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="gasto-propuesto-guardado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal propuesta-card--exito">
-          Gasto anotado{monto != null ? `: ${formatearImporte(monto)}` : ''}
-        </Surface>
-      </div>
+      <Recibo
+        testId="gasto-propuesto-guardado"
+        tono="exito"
+        titulo={`Gasto anotado${monto != null ? `: ${formatearImporte(monto)}` : ''}`}
+      />
     );
   }
 
   if (estado === 'descartado') {
     return (
-      <div className="chat-row chat-row--assistant" data-testid="gasto-propuesto-descartado">
-        <Surface variant="tile" className="propuesta-card propuesta-card--terminal">
-          No lo anotamos.
-        </Surface>
-      </div>
+      <Recibo testId="gasto-propuesto-descartado" titulo="No lo anotamos." />
     );
   }
 
