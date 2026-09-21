@@ -22,6 +22,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { pressableStyle } from '../../theme/glass/presion';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { EJEMPLOS_CHAT } from '@copiloto/core';
@@ -86,7 +87,7 @@ export function RodilloEjemplos({ testID }: RodilloEjemplosProps) {
           accessibilityLabel={pausado ? 'Reanudar ejemplos' : 'Pausar ejemplos'}
           onPress={() => setPausado((p) => !p)}
           hitSlop={12}
-          style={styles.pausa}
+          style={pressableStyle(styles.pausa)}
         >
           <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
             {pausado ? '▶ Reanudar' : '❚❚ Pausar'}
