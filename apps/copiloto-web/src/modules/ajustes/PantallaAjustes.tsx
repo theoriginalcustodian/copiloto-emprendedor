@@ -31,7 +31,7 @@ interface DefinicionTileAjuste {
 /** Mismo orden que `TILES_AJUSTES` en mobile — ver ese archivo para el porqué de cada posición. */
 const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'perfilNegocio', label: 'Mi negocio', icono: '💬' },
-  { key: 'facturacionAfip', label: 'Facturación AFIP', icono: '🧾' },
+  { key: 'facturacionAfip', label: 'Facturación ARCA', icono: '🧾' },
   { key: 'apps', label: 'Apps conectadas', icono: '📁' },
   { key: 'miPlan', label: 'Mi plan', icono: '📊' },
   { key: 'cuenta', label: 'Mi cuenta', icono: '👤' },

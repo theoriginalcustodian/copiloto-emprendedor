@@ -308,7 +308,7 @@ export function DetallePresupuesto({
         )}
         {estadoFacturar === 'falta_perfil' && (
           <p className="detalle-presupuesto__error" data-testid="detalle-presupuesto-falta-perfil">
-            Antes de facturar tenés que cargar tu CUIT en Ajustes → Facturación AFIP.
+            Antes de facturar tenés que cargar tu CUIT en Ajustes → Facturación ARCA.
           </p>
         )}
         {estadoFacturar === 'error' && (

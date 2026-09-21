@@ -361,7 +361,7 @@ export function PantallaAfipSetup() {
   // -------------------------------------------------------------------------------------------
   return (
     <div className="afip-setup-screen" data-testid="pantalla-afip-setup">
-      <h1 className="afip-setup-screen__title">Facturación AFIP</h1>
+      <h1 className="afip-setup-screen__title">Facturación ARCA</h1>
 
       {/* ---------------------------- Bloque 1 -- Perfil fiscal ---------------------------- */}
       <section className="afip-setup-bloque" data-testid="afip-bloque-perfil">
@@ -678,7 +678,7 @@ export function PantallaAfipSetup() {
             data-testid="afip-ambiente-no-disponible"
           >
             {estadoGeneralNoDisponible
-              ? 'La configuración de AFIP todavía no está disponible.'
+              ? 'La configuración de ARCA todavía no está disponible.'
               : 'Todavía no sabemos qué ambientes tenés vinculados. Vinculá tu cuenta con ARCA arriba y volvé acá.'}
           </p>
         ) : (
@@ -736,7 +736,7 @@ export function PantallaAfipSetup() {
       <section className="afip-setup-bloque" data-testid="afip-bloque-drive">
         <h2 className="afip-setup-bloque__titulo">4. Copia en tu Drive</h2>
         <p className="afip-setup-bloque__texto afip-setup-bloque__texto--tenue">
-          Guardá una copia de cada factura en tu Google Drive. El link de AFIP vence a las 24 horas;
+          Guardá una copia de cada factura en tu Google Drive. El link de ARCA vence a las 24 horas;
           el de tu Drive no.
         </p>
 

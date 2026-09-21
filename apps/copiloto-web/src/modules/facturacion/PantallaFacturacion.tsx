@@ -494,7 +494,7 @@ function BloqueConfigurar({
 }) {
   return (
     <div className="facturacion-screen__cta-configurar" data-testid={testID}>
-      <p>Todavía no configuraste tu facturación AFIP. Vinculá tu cuenta para emitir comprobantes.</p>
+      <p>Todavía no configuraste tu facturación ARCA. Vinculá tu cuenta para emitir comprobantes.</p>
       <Button disabled={onConfigurar == null} onClick={onConfigurar} data-testid={`${testID}-boton`}>
         Configurar facturación
       </Button>

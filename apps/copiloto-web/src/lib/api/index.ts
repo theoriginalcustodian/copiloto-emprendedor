@@ -6,7 +6,7 @@ import { sendAudio } from './audio';
 import { login, signup } from './auth';
 import { catalog } from './catalog';
 import { sendChat } from './chat';
-import { getConnect } from './connect';
+import { deleteConnection, getConnect } from './connect';
 import { me } from './me';
 import { mockApi } from './mock';
 import { ensureOauthTenant } from './oauth';
@@ -21,6 +21,7 @@ const realApi: CopilotApi = {
   me,
   catalog,
   connect: getConnect,
+  disconnect: deleteConnection,
   sendChat,
   sendAudio,
   getReply,
