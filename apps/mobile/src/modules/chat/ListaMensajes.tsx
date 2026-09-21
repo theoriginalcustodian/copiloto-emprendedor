@@ -72,17 +72,59 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
   // propio ocluyente -- sin esto el chat de atrás se leería A TRAVÉS de la superficie donde el
   // usuario confirma lo que se va a ejecutar.
   return (
-    <CristalVidrio nivel="informe" testID="tarjeta-confirmacion" style={styles.tarjetaGate}>
+    <CristalVidrio
+      nivel="informe"
+      testID="tarjeta-confirmacion"
+      style={
+        gate.riesgo?.irreversible
+          ? { ...styles.tarjetaGate, borderWidth: 1, borderColor: tema.color.peligro }
+          : styles.tarjetaGate
+      }
+    >
       <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
         <View style={styles.encabezadoGate}>
           <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }} />
-          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700' }}>
-            Confirmá antes de continuar
+          <Text
+            testID="tarjeta-confirmacion-servicio"
+            style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700', flex: 1 }}
+          >
+            {gate.service ? gate.label : 'Confirmá antes de continuar'}
           </Text>
+          {gate.riesgo && (
+            <Text
+              testID="tarjeta-confirmacion-riesgo"
+              style={{
+                color: gate.riesgo.tono === 'danger' ? tema.color.peligro : tema.color.texto,
+                fontSize: tema.tipo.base - 2,
+                fontWeight: '700',
+              }}
+            >
+              {gate.riesgo.badge}
+            </Text>
+          )}
         </View>
+        {gate.name && (
+          <Text testID="tarjeta-confirmacion-para" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            Para: <Text style={{ fontWeight: '700' }}>{gate.name}</Text>
+          </Text>
+        )}
+        {gate.amount && (
+          <Text testID="tarjeta-confirmacion-monto" style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>
+            Monto: <Text style={{ fontWeight: '700' }}>{`$${gate.amount}`}</Text>
+          </Text>
+        )}
         <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, lineHeight: Math.round(tema.tipo.base * 1.4) }}>
           {gate.markdown}
         </Text>
+        {gate.riesgo?.irreversible && (
+          <Text
+            testID="tarjeta-confirmacion-irreversible"
+            accessibilityRole="alert"
+            style={{ color: tema.color.peligro, fontSize: tema.tipo.base, fontWeight: '600' }}
+          >
+            No se puede deshacer · queda público
+          </Text>
+        )}
         <View style={[styles.accionesGate, { gap: tema.espacio.sm }]}>
           <Pressable
             testID="tarjeta-confirmacion-confirmar"
