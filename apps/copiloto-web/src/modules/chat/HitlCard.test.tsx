@@ -31,7 +31,7 @@ describe('HitlCard', () => {
     expect(card).toBeInTheDocument();
     expect(screen.getByText('Google Docs')).toBeInTheDocument();
     expect(screen.queryByText('AGENDA')).not.toBeInTheDocument();
-    expect(card.querySelector('svg')).toBeInTheDocument(); // ícono de marca, no la marca-letra
+    expect(card.querySelector('img[data-testid="logo-googledocs"]')).toBeInTheDocument(); // logo real (BL-X11)
   });
 
   it('NUNCA muestra la nota "Los turnos duran 60 min." (se eliminó de todos los carteles)', () => {
