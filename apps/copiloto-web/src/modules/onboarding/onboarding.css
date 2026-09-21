@@ -1,0 +1,75 @@
+/*
+ * Estilos del onboarding (K-14 / BL-X8) — theme-aware vía CSS vars, cero color literal (mismo
+ * criterio que account.css/connections.css). Sin relleno propio en «Después»: es una salida legítima,
+ * del mismo peso que el resto de los botones (ghost).
+ */
+
+.onboarding {
+  flex: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.onboarding__titulo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.onboarding__texto {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.onboarding__permisos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.onboarding__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.onboarding__fila-titulo {
+  margin: 0;
+  font-weight: 600;
+}
+
+.onboarding__fila-detalle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--label);
+}
+
+.onboarding__ok {
+  font-size: 14px;
+  color: var(--label);
+}
+
+.onboarding__alcance {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--label);
+}
+
+.onboarding__error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}

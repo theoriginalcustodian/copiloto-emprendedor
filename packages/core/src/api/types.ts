@@ -49,6 +49,8 @@ export interface MeResponse {
   email: string | null;
   /** K-12: la cuenta entra con Google (sin contraseña propia). Ausente (backend anterior) → `false`. */
   cuenta_google?: boolean;
+  /** K-14: ¿ya pasó por el hilo de bienvenida? Ausente (backend anterior) → no se muestra el hilo. */
+  onboarding_completado?: boolean;
 }
 
 // ---------------------------------------------------------------------------

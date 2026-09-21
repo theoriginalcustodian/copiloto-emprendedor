@@ -28,6 +28,7 @@ from perfil_negocio_store import (A_QUIEN, AUTOMATICO, CAMPOS, CONFIRMACION, FOR
                                   LARGO_RESPUESTA, LIMITES, MODOS)
 from deposito_traumas import FabricaDeTraumas, depositar
 from perfil_negocio_prompt import ejemplo_de_tono
+from presupuesto_sugerencias import sugerencias_de_guardado
 from errores_web import (CONCEPTO_DUPLICADO, FALTA_CUIT,
                          PRESUPUESTO_NO_FACTURABLE,
                          PRESUPUESTO_YA_FACTURADO, TRANSICION_INVALIDA, conflicto)
@@ -273,7 +274,8 @@ def create_presupuestos_app(
         if repetido:
             # Misma clave ⇒ mismo presupuesto ya creado (y ya con su Doc, si se pudo): no se vuelve a
             # generar nada. Informa, no ramifica (mismo criterio que `borradorNuevo` de facturar).
-            return {"presupuesto": presupuesto, "repetido": True}
+            return {"presupuesto": presupuesto, "repetido": True,
+                    "sugerencias": sugerencias_de_guardado(presupuesto)}
 
         if generar_doc is not None:
             try:
@@ -299,7 +301,8 @@ def create_presupuestos_app(
                           contexto={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
-        return {"presupuesto": presupuesto, "repetido": False}
+        return {"presupuesto": presupuesto, "repetido": False,
+                "sugerencias": sugerencias_de_guardado(presupuesto)}
 
     @app.get("/presupuestos")
     async def listar_presupuestos(limit: int = LIMITE_LISTADO_DEFAULT,
