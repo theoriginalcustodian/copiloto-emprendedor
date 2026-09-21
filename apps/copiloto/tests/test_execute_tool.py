@@ -220,6 +220,21 @@ def test_service_proposal_needs_confirmation_observation_has_service():
     assert tr.observation["service"] == "gmail"
 
 
+def test_K11_connection_required_deja_gate_card_con_alcance_del_catalogo():
+    from clients.agent.providers.composio_gateway import ConnectionRequired
+
+    class _SinConexion:
+        def execute(self, *a, **k):
+            raise ConnectionRequired("gmail")
+
+    ex = tool_catalog.make_tool_executor(_SinConexion(), now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "subject": "s", "body": "hola"}, _Ctx(), confirmed=True, idem_key="k11")
+    assert tr.status == "error" and tr.observation["needs_connect"] == "gmail"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "gmail" and card["label"] == "Gmail"
+    assert card["connect_path"] == "/composio/connect?service=gmail" and card["alcance"]
+
+
 def test_unexpected_exception_in_executor_returns_error_not_propagates():
     """FIX LOW (contrato 'nunca excepción -> observación', regla dura PR #114): cualquier excepción NO
     prevista (no ConnectionRequired/ComposioExecutionError/MercadoPagoError, ej un KeyError de un shape

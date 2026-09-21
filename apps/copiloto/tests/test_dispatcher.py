@@ -87,6 +87,32 @@ def test_tool_no_conectada_no_crashea_y_pide_conectar():
     assert r.state_patch["pending"] is None
 
 
+def test_K11_conexion_faltante_arma_card_requiere_conexion_con_alcance_del_catalogo():
+    from catalog import build_catalog
+    pending = {"slug": "GMAIL_SEND_EMAIL", "arguments": {}}
+    r = _disp(_GatewayRaises(ConnectionRequired("gmail")))(
+        Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
+    entrada = next(s for s in build_catalog(valid_toolkits=["gmail"], mp_connected=False, composio_connected=[])
+                   if s["key"] == "gmail")
+    assert r.card == {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail",
+                      "alcance": entrada["capabilities"], "connect_path": entrada["connect_path"]}
+    assert r.card["connect_path"] == "/composio/connect?service=gmail"
+    # compatibilidad: un cliente que ignora `card` sigue viendo el mismo texto útil de siempre
+    assert "Gmail" in r.reply_text and "conect" in r.reply_text.lower() and r.done is False
+
+
+def test_K11_mercadopago_apunta_a_su_propio_connect_path():
+    from catalog import requiere_conexion_card
+    assert requiere_conexion_card("mercadopago", "MercadoPago")["connect_path"] == "/mp/connect"
+
+
+def test_K11_turno_sin_conexion_faltante_no_trae_card_de_gate():
+    r = _disp(_GatewayRaises(ComposioExecutionError("boom")))(
+        Intent(action="callback", entities={"value": "confirm"}),
+        {"pending": {"slug": "GMAIL_SEND_EMAIL", "arguments": {}}}, _ctx(composio_user_id="u1"))
+    assert not r.card
+
+
 def test_fallo_de_servicio_no_crashea_mensaje_generico():
     # Un ComposioExecutionError genérico (servicio caído) tampoco tumba el turno → mensaje genérico, done=False.
     pending = {"slug": "GMAIL_SEND_EMAIL", "arguments": {}}
