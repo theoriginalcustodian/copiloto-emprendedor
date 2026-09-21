@@ -19,6 +19,7 @@ import {
 import { CristalVidrio } from '../../theme/glass/CristalVidrio';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
+import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
@@ -86,7 +87,14 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel }: TarjetaConfirmacionP
     >
       <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
         <View style={styles.encabezadoGate}>
-          <View style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }} />
+          {gate.service != null && hayLogoDe(gate.service) ? (
+            <LogoMarca servicio={gate.service} tamano={20} testID="tarjeta-confirmacion-logo" />
+          ) : (
+            <View
+              testID="tarjeta-confirmacion-punto"
+              style={{ width: 8, height: 8, borderRadius: 8, backgroundColor: tema.color.acento }}
+            />
+          )}
           <Text
             testID="tarjeta-confirmacion-servicio"
             style={{ color: tema.color.texto, fontSize: tema.tipo.base, fontWeight: '700', flex: 1 }}
