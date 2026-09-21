@@ -1,11 +1,20 @@
 import { useCallback } from 'react';
 
+import {
+  SOPORTE_PRESENTACION,
+  SOPORTE_QUE_VIAJA,
+  SOPORTE_QUIEN,
+  SOPORTE_TIEMPO_RESPUESTA,
+} from '@copiloto/core';
+
 import type { FuncionSoporte } from '../../lib/api';
+import { Marca } from '../../design-system/Marca';
 import { useSession } from '../../auth/useSession';
 import { MessageList } from '../chat/MessageList';
 import { ComposerSoporte } from './ComposerSoporte';
 import { useChatSoporte } from './useChatSoporte';
 import '../chat/chat.css';
+import './soporte.css';
 
 const WELCOME_TEXT: Record<FuncionSoporte, string> = {
   soporte_tecnico: 'Algo no funciona como debería — contale al agente qué pasó.',
@@ -41,6 +50,20 @@ export function SoporteScreen({ funcion }: SoporteScreenProps) {
 
   return (
     <div className="app-frame chat-screen" data-testid="soporte-screen">
+      {/* BL-W10 — quién contesta (isotipo + nombre, decisión de Martín) y las dos promesas honestas:
+          sin plazo inventado y sólo lo que de verdad viaja con el ticket. Fijo, fuera del scroll. */}
+      <header className="soporte-presentacion" data-testid="soporte-presentacion">
+        <Marca size={38} />
+        <div className="soporte-presentacion__textos">
+          <h1 className="soporte-presentacion__quien" data-testid="soporte-quien">
+            {SOPORTE_QUIEN}
+          </h1>
+          <p className="soporte-presentacion__detalle">{SOPORTE_PRESENTACION}</p>
+          <p className="soporte-presentacion__detalle" data-testid="soporte-detalle">
+            {SOPORTE_TIEMPO_RESPUESTA} {SOPORTE_QUE_VIAJA}
+          </p>
+        </div>
+      </header>
       <MessageList messages={messages} onChoice={handleChoice} emptyHint={WELCOME_TEXT[funcion]} />
       <ComposerSoporte sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
     </div>

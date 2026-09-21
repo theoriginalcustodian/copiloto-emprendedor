@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import type { FlatList } from 'react-native-gesture-handler';
 
-import type { FuncionSoporte } from '@copiloto/core';
+import {
+  SOPORTE_PRESENTACION,
+  SOPORTE_QUE_VIAJA,
+  SOPORTE_QUIEN,
+  SOPORTE_TIEMPO_RESPUESTA,
+  type FuncionSoporte,
+} from '@copiloto/core';
 
 import { Onda } from '../captura/Onda';
 import { useSession } from '../auth/useSession';
@@ -156,10 +162,16 @@ export function PantallaSoporte({ funcion }: PantallaSoporteProps) {
               testID="soporte-quien"
               style={{ color: tema.color.texto, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.base }}
             >
-              Soporte de Odobi
+              {SOPORTE_QUIEN}
             </Text>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}>
-              Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.
+              {SOPORTE_PRESENTACION}
+            </Text>
+            <Text
+              testID="soporte-detalle"
+              style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico, lineHeight: 18 }}
+            >
+              {SOPORTE_TIEMPO_RESPUESTA} {SOPORTE_QUE_VIAJA}
             </Text>
           </View>
         </View>
