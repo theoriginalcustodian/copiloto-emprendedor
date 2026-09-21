@@ -208,4 +208,17 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  position: relative;
+}
+
+/* K-09: el punto de estado — hay una conexión caída para mirar en Ajustes. */
+.avatar-cuenta__punto {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 2px solid var(--avatar-bg);
 }

@@ -207,6 +207,28 @@ def test_perfil_sin_configurar_devuelve_200_con_null_no_404():
     assert r.json() == {"perfil": None}
 
 
+@pytest.mark.parametrize("formalidad,largo", [(f, l) for f in ("formal", "cercano") for l in ("breve", "detallado")])
+def test_K15_ejemplo_de_tono_devuelve_el_texto_de_la_combinacion(formalidad, largo):
+    from perfil_negocio_prompt import ejemplo_de_tono
+    cli, *_ = _app()
+    r = cli.get("/perfil-negocio/ejemplo", params={"formalidad": formalidad, "largo_respuesta": largo})
+    assert r.status_code == 200
+    assert r.json() == {"ejemplo": ejemplo_de_tono(formalidad, largo)}
+
+
+@pytest.mark.parametrize("params", [{}, {"formalidad": "formal"}, {"formalidad": "x", "largo_respuesta": "breve"},
+                                    {"formalidad": "formal", "largo_respuesta": "eterno"}])
+def test_K15_ejemplo_de_tono_valor_invalido_o_faltante_es_400(params):
+    cli, *_ = _app()
+    assert cli.get("/perfil-negocio/ejemplo", params=params).status_code == 400
+
+
+def test_K15_ejemplo_de_tono_sin_token_es_401():
+    cli, *_ = _app(require_tenant=_require_tenant_401())
+    assert cli.get("/perfil-negocio/ejemplo",
+                   params={"formalidad": "formal", "largo_respuesta": "breve"}).status_code == 401
+
+
 def test_perfil_sin_token_es_401():
     cli, *_ = _app(require_tenant=_require_tenant_401())
     assert cli.get("/perfil-negocio").status_code == 401

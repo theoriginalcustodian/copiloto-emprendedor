@@ -86,6 +86,8 @@ export interface CatalogService {
   description: string;
   capabilities: string[];
   connected: boolean;
+  /** K-09: salud de la conexión. Opcional (backend anterior): sin él se usa `connected`. */
+  status?: 'conectado' | 'nunca_conectado' | 'caido';
   connect_path: string;
   /** Path de desconexión que decide el BACKEND por servicio (`DELETE`, MP y Composio van por rutas
    * distintas). Opcional: un backend viejo no lo manda y entonces la card no ofrece «Desconectar». */

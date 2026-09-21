@@ -10,10 +10,9 @@
  * avatar, la conexión caída como tarjeta en Mi día, y el consentimiento just-in-time al ejecutar. Si
  * alguna vez se saca el punto, se saca media salvaguarda — no es decoración.
  *
- * El punto entra por `avisa`, que hoy **nadie pasa en `true`**: la señal de salud por conexión no
- * existe en el contrato (es el hueco H-3 del `pedido_` a backend). Se deja cableado y apagado, no
- * encendido con una condición inventada: un punto que avisa de algo que no se sabe es peor que
- * ninguno.
+ * El punto entra por `avisa`: Mi día lo enciende cuando el catálogo trae ≥ 1 servicio `caido`
+ * (K-09 / BL-J4). Si el catálogo no responde queda apagado: un punto que avisa de algo que no se
+ * sabe es peor que ninguno.
  */
 import { StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';

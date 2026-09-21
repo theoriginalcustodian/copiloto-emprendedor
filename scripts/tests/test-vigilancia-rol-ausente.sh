@@ -53,12 +53,33 @@ nuevo_slug_root() {
   printf '%s' "$d"
 }
 
+# Repos git de mentira para la señal (d) —«el rol commiteó en una rama que lleva su nombre».
+# Sin este aislamiento el fixture NO aísla nada: el buzón es de prueba pero el `.git` sería el
+# REAL, y el control positivo del caso 1 daría verde en cualquier máquina donde backend acabe de
+# commitear. Medido: con la señal sin parametrizar, este mismo archivo pasó de 9/9 a 4 fallos.
+git -c init.defaultBranch=main init -q "$TMP/repo-vacio"
+
+# nuevo_repo_con_rama <n> <rama> <minutos> — repo con un commit en <rama>, fechado hace <minutos>.
+# `--date` mueve el AUTHOR date; el que lee `for-each-ref --sort=-committerdate` es el COMMITTER,
+# así que hace falta la variable de entorno. Confundirlos deja el fixture fechado AHORA y el test
+# pasa por el motivo equivocado.
+nuevo_repo_con_rama() {
+  local d="$TMP/repo-$1" rama="$2" cuando
+  cuando="$(date -d "-$3 minutes" '+%Y-%m-%dT%H:%M:%S')"
+  rm -rf "$d"; git -c init.defaultBranch=main init -q "$d"
+  GIT_COMMITTER_DATE="$cuando" git -C "$d" -c user.email=t@t -c user.name=t \
+    commit -q --allow-empty --date="$cuando" -m "trabajo en $rama"
+  git -C "$d" branch "$rama" HEAD
+  printf '%s' "$d"
+}
+
 # Deja el stdout en $out y el exit code en $rc. NO se usa `out=$(correr …)`: la substitución de
 # comandos abre un subshell y `rc` asignado ahí se pierde al volver.
 out=""; rc=0
-correr() {  # correr <buzon> <slug_root>
-  local buzon="$1" root="$2"
+correr() {  # correr <buzon> <slug_root> [repo_ramas]
+  local buzon="$1" root="$2" ramas="${3:-$TMP/repo-vacio}"
   BUZON_DIR="$buzon" TRANSCRIPTS_DIR="$root/c--proyecto-principal" SLUGS_ROOT="$root" \
+  RAMAS_GIT_DIR="$ramas" \
     bash "$VIGILANCIA" --dry-run > "$TMP/salida.txt" 2>&1
   rc=$?
   out="$(cat "$TMP/salida.txt")"
@@ -167,9 +188,47 @@ else
   fail "la gracia apagó la regla en vez de demorarla. Salida: $out"
 fi
 
+echo "── 7. La señal (d): el rol commitea en SU rama, sin tocar el buzón ──"
+# Caso real del 2026-09-21 14:40: el gate acusó «BACKEND no da señal desde las 13:40» mientras
+# backend tenía un merge de 9 min y un commit de 51 s. Las tres sesiones comparten UN slug de
+# transcripts, así que la sonda (b) —el rol en el path del .jsonl— no puede matchear NUNCA, y a una
+# sesión que escribe código en vez de mensajes le queda sólo el buzón, que se toca al cerrar un
+# hito. O sea: el instrumento castigaba exactamente la conducta que se le había pedido.
+b="$(nuevo_buzon 7)"; r="$(nuevo_slug_root 7)"
+msg "$b/abierto/2026-09-21_contrato_planificacion-a-backend-y-frontend1_K-10-voz.md" 60
+repo_fresco="$(nuevo_repo_con_rama 7 backend/k06-verbo-criticidad 2)"
+correr "$b" "$r" "$repo_fresco"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  fail "acusó a backend teniendo un commit suyo de 2 min en backend/… . Salida: $out"
+else
+  ok "un commit en backend/… cuenta como señal de vida"
+fi
+
+# Control positivo del control: la MISMA rama, con el commit ANTERIOR al contrato, vuelve a alarmar.
+# Sin esto, un bug que diera por viva a toda rama existente —o un for-each-ref que fallara callado—
+# pasaría el caso anterior en verde. El modo de falla de esta señal es silencioso: no acusa de más,
+# ciega el gate.
+repo_viejo="$(nuevo_repo_con_rama 7b backend/k06-verbo-criticidad 180)"
+correr "$b" "$r" "$repo_viejo"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  ok "con el commit anterior al contrato sí alarma (la señal fecha, no exime)"
+else
+  fail "la rama existente apagó la regla en vez de fecharla. Salida: $out"
+fi
+
+# Y una rama que no nombra a nadie no vale como señal de nadie: fix/…, chore/…, main. Por eso
+# rama_patrones() es estricta — ver su comentario en lib/buzon-roles.sh.
+repo_anonimo="$(nuevo_repo_con_rama 7c fix/recording-overlay-sin-scrim 2)"
+correr "$b" "$r" "$repo_anonimo"
+if printf '%s' "$out" | grep -q "SIN DUEÑO: BACKEND"; then
+  ok "una rama sin rol en el nombre no cuenta como señal de nadie"
+else
+  fail "REGRESIÓN: una rama fix/… silenció la alarma de backend. Salida: $out"
+fi
+
 echo
 if [ "$fallos" -eq 0 ]; then
-  echo "✅ test-vigilancia-rol-ausente: 9/9"
+  echo "✅ test-vigilancia-rol-ausente: 12/12"
   exit 0
 fi
 echo "❌ test-vigilancia-rol-ausente: $fallos fallo(s)"

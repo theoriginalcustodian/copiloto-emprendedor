@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 
-import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
+import {
+  faseRefresco,
+  formatearImporte,
+  leerPortada,
+  MS_AL_DIA,
+  TEXTO_REFRESCO,
+  type Portada,
+} from '@copiloto/core';
 
 import { AcumuladoAnual } from './AcumuladoAnual';
 import { ChatInteligencia } from './ChatInteligencia';
@@ -85,6 +92,9 @@ export function PantallaInteligencia() {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [portada, setPortada] = useState<Portada | null>(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [alDia, setAlDia] = useState(false);
+  const [arrastrePx, setArrastrePx] = useState(0);
+  const timerAlDia = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [vista, setVista] = useState<Vista>('resumen');
   const vivo = useRef(true);
 
@@ -104,6 +114,7 @@ export function PantallaInteligencia() {
     void cargar();
     return () => {
       vivo.current = false;
+      if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
     };
   }, [cargar]);
 
@@ -112,7 +123,15 @@ export function PantallaInteligencia() {
     try {
       await cargar();
     } finally {
-      if (vivo.current) setRefrescando(false);
+      if (vivo.current) {
+        setRefrescando(false);
+        // «Al día · recién» es la confirmación textual de que terminó (WCAG 1.4.1: no sólo el spinner).
+        setAlDia(true);
+        if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
+        timerAlDia.current = setTimeout(() => {
+          if (vivo.current) setAlDia(false);
+        }, MS_AL_DIA);
+      }
     }
   }
 
@@ -146,7 +165,22 @@ export function PantallaInteligencia() {
             )}
 
       {estado === 'ok' && portada != null && (
+        <>
+        <Text
+          testID="inteligencia-refresco-estado"
+          accessibilityRole="text"
+          accessibilityLiveRegion="polite"
+          style={{
+            color: tema.color.textoTenue,
+            fontSize: tema.tipo.chico,
+            textAlign: 'center',
+            paddingTop: tema.espacio.xs,
+          }}
+        >
+          {TEXTO_REFRESCO[faseRefresco({ actualizando: refrescando, alDia, arrastrePx: -arrastrePx })]}
+        </Text>
         <ScrollFormulario
+          onOffsetY={setArrastrePx}
           testID="inteligencia-portada"
           contentContainerStyle={{ padding: tema.espacio.md, gap: tema.espacio.md, paddingBottom: 120 }}
           refreshControl={
@@ -266,6 +300,7 @@ export function PantallaInteligencia() {
             <GraficosInteligencia />
           </View>
         </ScrollFormulario>
+        </>
             )}
           </>
         )}

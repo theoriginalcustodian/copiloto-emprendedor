@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER,
+from mi_dia_detector import (REGLA_CAE_POR_VENCER, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA,
                              REGLA_FACTURAS_IMPAGAS_VIEJAS,
                              REGLA_GASTO_MES_ALTO, REGLA_PRESUPUESTOS_ENFRIANDOSE,
                              REGLA_TRABAJO_MARGEN_NEGATIVO, REGLA_TRABAJO_SIN_INGRESO,
@@ -54,6 +54,11 @@ _PLANTILLAS = {
     REGLA_CAE_POR_VENCER:
         lambda d: f"La factura {d.get('nro') or ''} tiene el CAE por vencer en {d.get('dias')} días.",
     REGLA_CERTIFICADO_POR_VENCER: _texto_certificado,
+    REGLA_CONEXION_CAIDA:
+        lambda d: (f"Se me cayó la conexión con {d.get('nombre') or 'un servicio'}"
+                   + (", así que los cobros de hoy pueden estar incompletos."
+                      if d.get("servicio") == "mercadopago" else ".")
+                   + " Reconectala y sigo."),
 }
 
 
@@ -66,7 +71,8 @@ def _redactar_plantilla(regla: str, datos: dict) -> str:
     return plantilla(datos or {}) if plantilla else f"Aviso: {regla}."
 
 
-def avanzar_tablero(conn_factory: Callable, cliente_id: str) -> dict:
+def avanzar_tablero(conn_factory: Callable, cliente_id: str,
+                    composio_conexiones: Callable | None = None) -> dict:
     """Corre el pipeline entero y devuelve el tablero YA actualizado
     (`TarjetaStore.listar_tablero`).
 
@@ -77,7 +83,7 @@ def avanzar_tablero(conn_factory: Callable, cliente_id: str) -> dict:
       un candidato silenciado sigue siendo VERDADERO (ver docstring de `detectar_todos`); filtrar
       por silencio acá cerraría por error tarjetas de algo que sigue vigente.
     """
-    crudos = detectar_todos(conn_factory, cliente_id)
+    crudos = detectar_todos(conn_factory, cliente_id, composio_conexiones=composio_conexiones)
     avisos = AvisosEmitidosStore(conn_factory, cliente_id)
     tarjetas = TarjetaStore(conn_factory, cliente_id)
 

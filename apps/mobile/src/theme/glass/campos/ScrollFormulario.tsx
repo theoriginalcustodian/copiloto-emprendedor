@@ -70,6 +70,8 @@ export interface ScrollFormularioProps extends PropsWithChildren {
    * hacia abajo pasarían a competir y habría que declarar la relación entre ambos explícitamente.
    */
   refreshControl?: ReactElement<RefreshControlProps>;
+  /** Offset vertical en cada scroll (negativo = arrastre más allá del tope, en iOS). Lo usa el indicador del refresco. */
+  onOffsetY?: (y: number) => void;
   testID?: string;
 }
 
@@ -78,6 +80,7 @@ export function ScrollFormulario({
   style,
   contentContainerStyle,
   refreshControl,
+  onOffsetY,
   testID,
 }: ScrollFormularioProps) {
   const refScroll = useRef<ScrollView>(null);
@@ -128,6 +131,7 @@ export function ScrollFormulario({
           keyboardShouldPersistTaps="handled"
           onScroll={(e) => {
             offsetActual.current = e.nativeEvent.contentOffset.y;
+            onOffsetY?.(e.nativeEvent.contentOffset.y);
           }}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { formatearImporte, leerPortada, type Portada } from '@copiloto/core';
+import { formatearImporte, leerPortada, MS_AL_DIA, TEXTO_REFRESCO, type Portada } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
 import { ChatInteligencia } from './ChatInteligencia';
@@ -63,12 +63,17 @@ export function InteligenciaScreen() {
   const [portada, setPortada] = useState<Portada | null>(null);
   const [vista, setVista] = useState<Vista>('resumen');
   const [actualizando, setActualizando] = useState(false);
+  const [alDia, setAlDia] = useState(false);
+  const timerAlDia = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ver el comentario equivalente en GastosScreen/ClientesScreen: `vivo.current = true` va DENTRO
   // del setup del efecto (no sólo en `useRef(true)`) por StrictMode.
   const vivo = useRef(true);
   useEffect(() => {
     vivo.current = true;
-    return () => { vivo.current = false; };
+    return () => {
+      vivo.current = false;
+      if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
+    };
   }, []);
 
   const cargar = useCallback((silencioso = false): Promise<void> => {
@@ -96,7 +101,14 @@ export function InteligenciaScreen() {
   async function actualizar() {
     setActualizando(true);
     await cargar(true);
-    if (vivo.current) setActualizando(false);
+    if (!vivo.current) return;
+    setActualizando(false);
+    // «Al día · recién»: confirmación textual de que terminó (WCAG 1.4.1), no sólo el botón que vuelve.
+    setAlDia(true);
+    if (timerAlDia.current != null) clearTimeout(timerAlDia.current);
+    timerAlDia.current = setTimeout(() => {
+      if (vivo.current) setAlDia(false);
+    }, MS_AL_DIA);
   }
 
   /** Un importe para un KPI: «—» si no vino, nunca «$0». */
@@ -117,11 +129,17 @@ export function InteligenciaScreen() {
               data-testid="inteligencia-actualizar"
               className="inteligencia-screen__actualizar"
             >
-              {actualizando ? 'Actualizando…' : 'Actualizar'}
+              Actualizar
             </Button>
           )}
         </span>
         <span className="inteligencia-screen__periodo">{mesActual()}</span>
+        {/* BL-W6 — estado del refresco en texto, anunciado. Decisión: web refresca con BOTÓN, no con
+            gesto de arrastre (WCAG 2.5.1: el arrastre necesita alternativa de un solo puntero, y con
+            mouse/teclado no existe «tirar»); por eso «Tirá»/«Soltá» son sólo de mobile. */}
+        <span className="inteligencia-screen__refresco" role="status" data-testid="inteligencia-refresco-estado">
+          {actualizando ? TEXTO_REFRESCO.actualizando : alDia ? TEXTO_REFRESCO.aldia : ''}
+        </span>
       </header>
 
       <div className="inteligencia-screen__solapas" data-testid="inteligencia-solapas">

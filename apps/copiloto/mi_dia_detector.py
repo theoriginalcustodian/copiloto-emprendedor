@@ -30,6 +30,7 @@ from cobro_store import CobroStore
 # una sola definición de "factura vieja" en toda la app.
 from inteligencia_queries import DIAS_VENCIDO as DIAS_FACTURA_VENCIDA
 from inteligencia_queries import InteligenciaQueries
+from mp_credential_store import MpCredentialStore
 from presupuesto_store import PENDIENTE, PresupuestoStore
 
 _SCHEMA = "uc_factory"
@@ -121,6 +122,7 @@ REGLA_TRABAJO_SIN_INGRESO = "trabajo_con_gastos_y_sin_ingreso"
 REGLA_GASTO_MES_ALTO = "gasto_del_mes_alto"
 REGLA_CAE_POR_VENCER = "cae_por_vencer"
 REGLA_CERTIFICADO_POR_VENCER = "certificado_afip_por_vencer"
+REGLA_CONEXION_CAIDA = "conexion_caida"
 
 
 def _evaluar_presupuestos_enfriandose(presupuestos: list[dict]) -> list[dict]:
@@ -248,6 +250,19 @@ def _evaluar_cae_por_vencer(comprobantes: list[dict]) -> list[dict]:
     return salida
 
 
+def _evaluar_conexion_caida(caidas: list[str]) -> list[dict]:
+    """K-09: una tarjeta por servicio caído (`mercadopago`, o el toolkit Composio). `dias_silencio=1`:
+    si se reconecta y vuelve a caer, el aviso puede volver al día siguiente; mientras siga caída la
+    tarjeta ya existe (`crear_si_no_existe`) y no se duplica."""
+    from catalog import _PRESENTATION
+    out = []
+    for servicio in caidas:
+        nombre = (_PRESENTATION.get(servicio) or {}).get("display_name") or servicio
+        out.append({"regla": REGLA_CONEXION_CAIDA, "entidad_tipo": "conexion", "entidad_id": servicio,
+                    "dias_silencio": 1, "datos": {"servicio": servicio, "nombre": nombre}})
+    return out
+
+
 def _evaluar_certificado_por_vencer(certificados: list[dict]) -> list[dict]:
     """El certificado de AFIP está por vencer — o ya venció, o no se puede leer.
 
@@ -327,9 +342,18 @@ def _candidatos_certificado_por_vencer(conn_factory: Callable, cliente_id: str,
     return AfipCredentialStore(conn_factory, cliente_id, crypto).vencimientos()
 
 
+def _candidatos_conexion_caida(conn_factory: Callable, cliente_id: str,
+                               composio_conexiones: Callable | None = None) -> list[str]:
+    """Servicios caídos de ESTE tenant (`conexiones_salud`, misma definición que `/catalog`). Sin
+    `composio_conexiones` sólo se mira MercadoPago; no hace falta `crypto` para leer la salud."""
+    from conexiones_salud import conexiones_caidas
+    return conexiones_caidas(MpCredentialStore(conn_factory, cliente_id, None), composio_conexiones)
+
+
 # ── El orquestador — lo único que la activity de Temporal llama ────────────────────────────────────
 
-def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None) -> dict[str, list[dict]]:
+def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None,
+                   composio_conexiones: Callable | None = None) -> dict[str, list[dict]]:
     """DETECTAR puro (contrato §1, primer paso) — la verdad CRUDA, sin filtrar por silencio.
 
     🔴 A propósito NO filtra silenciados acá. Un consumidor que necesite "cerrar la tarjeta sola
@@ -359,6 +383,9 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None) -> dict
         REGLA_CERTIFICADO_POR_VENCER:
             _evaluar_certificado_por_vencer(
                 _candidatos_certificado_por_vencer(conn_factory, cliente_id, crypto)),
+        REGLA_CONEXION_CAIDA:
+            _evaluar_conexion_caida(
+                _candidatos_conexion_caida(conn_factory, cliente_id, composio_conexiones)),
     }
 
 
@@ -375,4 +402,5 @@ def detectar_todos(conn_factory: Callable, cliente_id: str, crypto=None) -> dict
 # por el HECHO y no por el gesto importa acá más que en ninguna otra: una tarjeta de "certificado por
 # vencer" cerrada a mano sin haber renovado nada dejaría al emprendedor creyendo que lo resolvió.
 REGLAS_AUTO_CIERRE = (REGLA_PRESUPUESTOS_ENFRIANDOSE, REGLA_FACTURAS_IMPAGAS_VIEJAS,
-                      REGLA_TRABAJO_SIN_INGRESO, REGLA_CERTIFICADO_POR_VENCER)
+                      REGLA_TRABAJO_SIN_INGRESO, REGLA_CERTIFICADO_POR_VENCER, REGLA_CONEXION_CAIDA)
+# `conexion_caida` SÍ: se cierra por el HECHO (la conexión volvió), no por el gesto de tocar la tarjeta.

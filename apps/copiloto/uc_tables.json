@@ -20,6 +20,7 @@
     "refresh_token_enc text NOT NULL",
     "expires_at bigint NOT NULL",
     "public_key text",
+    "reauth_desde timestamptz",
     "updated_at timestamptz DEFAULT now()"
   ],
   "mp_payments": [

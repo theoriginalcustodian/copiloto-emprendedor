@@ -78,3 +78,29 @@ firma_patrones() {
     frontend1|frontend2) printf '%s\n' '*_frontend-a-*' ;;   # firmas previas al desdoble
   esac
 }
+
+# rama_patrones <rol> — prefijos de rama git que SÓLO puede haber creado <rol>. Tercera vista de la
+# misma tabla, para la señal de vida que el buzón no ve.
+#
+# POR QUÉ (2026-09-21): las tres sesiones comparten UN slug de transcripts
+# (`c--Proyectos-Claude-…-copiloto-emprendedor`), así que la sonda de `vigilancia-check.sh`
+# que busca el rol en el PATH del `.jsonl` no puede matchear jamás — le queda sólo el buzón. A las
+# 14:40 el gate acusó "BACKEND no da señal desde las 13:40" mientras backend tenía un merge de 9
+# min y un commit de 51 segundos: escribía código en vez de escribir mensajes, que es exactamente
+# lo que se le pidió. Las ramas sí nombran el rol y viven en el `.git` COMPARTIDO por los 14
+# worktrees, así que un `for-each-ref` local las ve todas, sin red.
+#
+# ⚠️ El sentido del riesgo se INVIERTE respecto de firma_patrones(): esa señal, al encontrarse,
+# CALLA la alarma. Un patrón laxo no acusa en falso — ciega el gate, que es peor y además
+# silencioso. Por eso acá sólo van prefijos inequívocos: ante ambigüedad NO se cuenta (se sigue
+# alarmando, que es el lado recuperable). En particular quedan afuera `main`, los `fix/…`/`chore/…`
+# sin rol, y el `frontend/` heredado, que no distingue frontend1 de frontend2.
+rama_patrones() {
+  case "$1" in
+    backend)   printf '%s\n' 'backend/' ;;
+    frontend1) printf '%s\n' 'fe1/' 'feat/fe1-' 'fix/fe1-' 'frontend1/' ;;
+    frontend2) printf '%s\n' 'fe2/' 'feat/fe2-' 'fix/fe2-' 'frontend2/' ;;
+    auditoria) printf '%s\n' 'aud/' 'auditoria/' ;;
+    *)         : ;;   # planificacion y manejo-de-errores no tienen prefijo propio: sin señal
+  esac
+}
