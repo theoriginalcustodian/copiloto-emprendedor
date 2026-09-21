@@ -39,10 +39,17 @@ nuevo_slug_root() {
   printf '%s' "$d"
 }
 
+# Repo git vacío para la señal (d) de senal_rol() —"el rol commiteó en una rama que lleva su
+# nombre"—. Sin el override, el fixture NO aísla nada: el buzón es de prueba pero el `.git` sería el
+# REAL, y los controles positivos 2 y 3 (frontend2 ausente) darían verde en cualquier máquina donde
+# exista una rama `fe2/…` fresca. Medido: con la señal sin parametrizar, este archivo dio 2 fallos.
+git -c init.defaultBranch=main init -q "$TMP/repo-vacio"
+
 out=""; rc=0
 correr() {  # correr <buzon> <slug_root> [SESION_ACTUAL]
   local buzon="$1" root="$2" sesion="${3:-planificacion}"
   SESION_ACTUAL="$sesion" BUZON_DIR="$buzon" TRANSCRIPTS_DIR="$root/c--proyecto-principal" \
+    RAMAS_GIT_DIR="$TMP/repo-vacio" \
     SLUGS_ROOT="$root" bash "$VIGILANCIA" --dry-run > "$TMP/salida.txt" 2>&1
   rc=$?
   out="$(cat "$TMP/salida.txt")"

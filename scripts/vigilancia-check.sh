@@ -40,6 +40,7 @@ BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
 # shellcheck source=lib/buzon-roles.sh
 . "$REPO_ROOT/scripts/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 TRANSCRIPTS="${TRANSCRIPTS_DIR:-$HOME/.claude/projects/c--Proyectos-Claude-Claude-code-copiloto-emprendedor}"
+RAMAS_GIT_DIR="${RAMAS_GIT_DIR:-$REPO_ROOT}"   # repo del que salen las ramas-señal (override para test)
 UMBRAL_MUERTA_MIN="${UMBRAL_MUERTA_MIN:-30}"
 QUIET=0
 DRY_RUN=0
@@ -256,6 +257,30 @@ senal_rol() {   # epoch de la señal de vida más nueva del rol; 0 = ninguna
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$mejor" ] && mejor="$m"
   done < <(find "$BUZON" -type f \( "${_firma_args[@]:1}" \) -newermt '-8 hours' -print0 2>/dev/null)
+  # (d) el último COMMIT en una rama cuyo nombre lleva el rol. Es la señal que faltaba para la
+  # sesión que está haciendo justo lo que se le pidió: código, no mensajes. (b) no la ve porque los
+  # tres transcripts comparten slug, y (c) tampoco, porque el buzón sólo se toca al cerrar un hito
+  # — entre dos `avance_` pueden pasar horas de trabajo real. Ver rama_patrones() en
+  # lib/buzon-roles.sh para por qué los prefijos son estrictos.
+  # Local y sin red: los 14 worktrees comparten un solo `.git`, así que `for-each-ref` ya tiene las
+  # ramas de las otras sesiones aunque nunca hayan pusheado.
+  #
+  # RAMAS_GIT_DIR existe por la misma razón que SLUGS_ROOT: sin override, un fixture NO aísla esta
+  # señal —el buzón es de mentira pero el `.git` es el real— y el control positivo del caso 1 pasa
+  # a verde porque backend commiteó hace un minuto en la máquina donde corre el test. Se verificó
+  # en vivo: con la señal (d) sin parametrizar, test-vigilancia-rol-ausente dio 4 fallos.
+  local _prefijos; _prefijos="$(rama_patrones "$rol")"
+  if [ -n "$_prefijos" ]; then
+    while IFS=' ' read -r ts ref; do
+      [ -z "${ts:-}" ] && continue
+      ref="${ref#origin/}"
+      while IFS= read -r p; do
+        case "$ref" in "$p"*) [ "$ts" -gt "$mejor" ] && mejor="$ts"; break ;; esac
+      done <<< "$_prefijos"
+    done < <(git -C "$RAMAS_GIT_DIR" for-each-ref --sort=-committerdate \
+               --format='%(committerdate:unix) %(refname:short)' \
+               refs/heads refs/remotes/origin 2>/dev/null | head -40)
+  fi
   printf '%s' "$mejor"
 }
 
