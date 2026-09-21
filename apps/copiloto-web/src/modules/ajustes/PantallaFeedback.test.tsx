@@ -62,7 +62,6 @@ describe('PantallaFeedback (BL-W3)', () => {
 
   describe('voz', () => {
     let stopTrack: ReturnType<typeof vi.fn>;
-    let instancia: FakeRecorder;
 
     class FakeRecorder {
       static isTypeSupported = () => true;
@@ -70,8 +69,9 @@ describe('PantallaFeedback (BL-W3)', () => {
       mimeType = 'audio/webm';
       ondataavailable: ((e: { data: Blob }) => void) | null = null;
       onstop: (() => void) | null = null;
+      static ultima: FakeRecorder | null = null;
       constructor() {
-        instancia = this;
+        FakeRecorder.ultima = this;
       }
       start() {
         this.state = 'recording';
@@ -99,7 +99,7 @@ describe('PantallaFeedback (BL-W3)', () => {
       enviarFeedbackAudio.mockResolvedValue({ transcripcion: 'me gusta' });
       render(<PantallaFeedback contexto="ajustes" />);
       fireEvent.click(screen.getByTestId('feedback-mic'));
-      await waitFor(() => expect(instancia?.state).toBe('recording'));
+      await waitFor(() => expect(FakeRecorder.ultima?.state).toBe('recording'));
       expect(screen.getByTestId('feedback-mic')).toHaveTextContent('Detener y enviar');
 
       fireEvent.click(screen.getByTestId('feedback-mic'));
@@ -124,7 +124,7 @@ describe('PantallaFeedback (BL-W3)', () => {
       enviarFeedbackAudio.mockRejectedValue(new ApiError(502, 'x', 'No transcribimos'));
       render(<PantallaFeedback />);
       fireEvent.click(screen.getByTestId('feedback-mic'));
-      await waitFor(() => expect(instancia?.state).toBe('recording'));
+      await waitFor(() => expect(FakeRecorder.ultima?.state).toBe('recording'));
       fireEvent.click(screen.getByTestId('feedback-mic'));
       expect(await screen.findByTestId('feedback-audio-error')).toHaveTextContent('No transcribimos');
     });
