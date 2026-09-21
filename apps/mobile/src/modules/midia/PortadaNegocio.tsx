@@ -12,11 +12,11 @@
  * La fecha de corte y la variación contra el mes anterior (BL-J2/BL-J3, K-03) las calcula el BACKEND;
  * acá sólo se dibujan, y cada una se omite entera si no vino (nunca «0%» ni «—»).
  *
- * ⚠️ **Una cosa del prototipo NO está, y no se fabrica:** la línea que admite estar incompleto
- * («faltan los cobros de hoy — Mercado Pago está caído»). Necesita una señal de salud por conexión
- * (K-09 / BL-J4). Regla dura del repo: el dato que falta se DICE, no se disfraza de cero.
+ * **Admite estar incompleta (K-09 / BL-J4):** con `caja.incompleta` (una conexión caída) se dice qué
+ * falta y NO se dibuja la variación — comparar contra el mes anterior sería falso. Regla dura del
+ * repo: el dato que falta se DICE, no se disfraza de cero.
  */
-import { chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
+import { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BloqueCifra } from '../../theme/BloqueCifra';
@@ -35,6 +35,14 @@ export function PortadaNegocio({ portada }: PortadaNegocioProps) {
 
   return (
     <BloqueCifra testID="midia-portada" rotulo="En caja" cifra={importe(portada.caja.saldo)} chip={chipDeCaja(portada.caja) ?? undefined}>
+      {portada.caja.incompleta && (
+        <Text
+          testID="midia-portada-incompleta"
+          style={{ color: tema.color.bloqueApoyo, fontSize: tema.tipo.chico }}
+        >
+          {AVISO_CAJA_INCOMPLETA}
+        </Text>
+      )}
       <View style={styles.trio}>
         {(
           [

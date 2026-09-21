@@ -1,3 +1,4 @@
+import { debeMostrarOnboarding } from '@copiloto/core';
 import { useState } from 'react';
 
 import { ThemeProvider } from './design-system/ThemeProvider';
@@ -5,6 +6,7 @@ import { SessionProvider } from './auth/SessionProvider';
 import { LoginScreen } from './auth/LoginScreen';
 import { SignupScreen } from './auth/SignupScreen';
 import { useSession } from './auth/useSession';
+import { Onboarding } from './modules/onboarding';
 import { ResponsiveShell } from './shell/ResponsiveShell';
 import { ModeProvider } from './shell/modeStore';
 
@@ -28,13 +30,18 @@ function leerSignupDeQuery(): boolean {
  * — ver auth/LoginScreen.tsx) o `SignupScreen` (BETA-4b, ver `leerSignupDeQuery`).
  */
 function AppRouter() {
-  const { status } = useSession();
+  const { status, me } = useSession();
   const [mostrarSignup, setMostrarSignup] = useState(leerSignupDeQuery);
   // BETA-4b DoD: "conecta al menos un servicio → llega al chat activo" — recién firmado aterriza
   // en Conexiones (no Chat) para que ese paso sea lo primero que ve, sin bloquearlo (sigue
   // pudiendo navegar a Chat cuando quiera). Vive en `App` (no en `ResponsiveShell`/los shells)
   // porque debe sobrevivir al remount que dispara el cambio de `status` a 'authed'.
   const [recienFirmado, setRecienFirmado] = useState(false);
+  // K-14 / BL-X8: el hilo de bienvenida (2 permisos + primer insight) se muestra UNA vez, tras el login,
+  // cuando `/me` dice `onboarding_completado: false`. Se decidió montarlo acá (no en el shell): es previo
+  // a la app, y `me` ya vive en la sesión. `onboardingCerrado` evita reabrirlo en esta sesión sin
+  // depender de que `/me` se relea; en el próximo arranque el backend ya lo trae en `true`.
+  const [onboardingCerrado, setOnboardingCerrado] = useState(false);
 
   if (status === 'checking') {
     return (
@@ -49,6 +56,9 @@ function AppRouter() {
   }
 
   if (status === 'authed') {
+    if (!onboardingCerrado && debeMostrarOnboarding(me)) {
+      return <Onboarding onTerminar={() => setOnboardingCerrado(true)} />;
+    }
     return <ResponsiveShell initialTab={recienFirmado ? 'connections' : undefined} />;
   }
 

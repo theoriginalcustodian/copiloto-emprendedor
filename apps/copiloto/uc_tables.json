@@ -202,7 +202,9 @@
     "tipo text NOT NULL",
     "texto text NOT NULL",
     "contexto text",
-    "created_at timestamptz DEFAULT now()"
+    "created_at timestamptz DEFAULT now()",
+    "escuchado boolean NOT NULL DEFAULT false",
+    "escuchado_en timestamptz"
   ],
   "copiloto_avisos_emitidos": [
     "regla text NOT NULL",

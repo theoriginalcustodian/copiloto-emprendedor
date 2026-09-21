@@ -1,4 +1,4 @@
-import { chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
+import { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
@@ -24,8 +24,8 @@ const importe = (v: string | null): string => (v != null ? formatearImporte(v) :
  * La fecha de corte y la variación contra el mes anterior (BL-J2/BL-J3, K-03) las calcula el BACKEND
  * y acá sólo se dibujan; cada una se omite entera si no vino (nunca «0%» ni «—»).
  *
- * ⚠️ Lo que el prototipo tiene y acá NO se fabrica: la línea «faltan los cobros de hoy» espera `BL-J4`
- * (K-09) — un aviso inventado sobre el dinero de alguien es justo la mentira que este sistema prohíbe.
+ * Con `caja.incompleta` (K-09 / BL-J4: una conexión caída) dice qué falta y NO dibuja la variación —
+ * comparar contra el mes anterior sería falso.
  */
 export function PortadaNegocio({ portada }: PortadaNegocioProps) {
   const trio: readonly [string, string, string | null][] = [
@@ -46,6 +46,11 @@ export function PortadaNegocio({ portada }: PortadaNegocioProps) {
         <span className="midia-portada__chip" data-testid="midia-portada-chip">
           {chip}
         </span>
+      )}
+      {portada.caja.incompleta && (
+        <p className="midia-portada__aviso" role="status" data-testid="midia-portada-incompleta">
+          {AVISO_CAJA_INCOMPLETA}
+        </p>
       )}
       <div className="midia-portada__trio">
         {trio.map(([etiqueta, id, valor]) => (

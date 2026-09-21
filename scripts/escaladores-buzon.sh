@@ -62,9 +62,49 @@ UMBRAL_SILENCIO_DEFAULT_MIN="${UMBRAL_SILENCIO_DEFAULT_MIN:-90}"   # default ya 
 now="$(date +%s)"
 alarma=0
 
+# ── MEDICIONES QUE NO SE PUDIERON HACER ─────────────────────────────────────────
+# Este script mide edades con `$(...)`, y cada una de esas es un fork. El 2026-09-21, con 16
+# worktrees y 5 sesiones vivas sobre el mismo Git for Windows, los forks empezaron a fallar de a
+# rachas (`dofork: child -1 ... Resource temporarily unavailable`, `cygheap read copy failed`).
+#
+# Lo grave NO es que falle: es COMO fallaba. Un fork fallido devuelve la medicion VACIA, y el
+# `[ "$edad" -ge "$UMBRAL" ] || continue` de cada regla trata "integer expression expected" igual
+# que "todavia es joven": SALTEA el archivo. Si la racha alcanzaba a todos, el script llegaba al
+# final con `alarma=0`, imprimia "nada que escalar" y salia 0 — y vigilancia-check.sh reportaba
+# calma. Un contrato abandonado y un escalador que no pudo mirarlo producian EL MISMO SILENCIO.
+#
+# Es la familia de defectos que este repo ya pago varias veces (el watchdog que solo ve al que
+# llega tarde, la allowlist que no sabe lo que le falta): el instrumento no falla, se calla. La
+# regla que lo cierra es una sola — **una medicion que no se pudo hacer es una ALARMA, nunca un
+# cero**. Abajo se cuentan, y el bloque de cierre convierte el conteo en exit 1 con nombre propio.
+medicion_fallida=0
+medicion_fallida_lista=""
+
+# Una medicion valida es un entero. Vacio, texto o negativo = el fork no volvio con un numero.
+es_medicion() { [[ "${1:-}" =~ ^[0-9]+$ ]]; }
+
+# anotar_fallo <archivo> <de-que-regla> — registra y deja constancia en stdout en el acto, para
+# que se vea cual archivo quedo sin mirar aunque el script muera en el proximo fork.
+anotar_fallo() {
+  medicion_fallida=$(( medicion_fallida + 1 ))
+  medicion_fallida_lista="${medicion_fallida_lista}  · ${1} (${2})
+"
+}
+
+# `date` una sola vez y no por archivo: cada $(...) es un fork, y los forks son el recurso escaso.
+FECHA_HOY="$(date +%Y-%m-%d)"
+
 edad_min() {
   local f="$1" m
   m="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
+  # NO inventar un numero. En aritmetica de bash una variable vacia vale 0, asi que un `stat` que
+  # sale 0 sin imprimir nada (lo que hace un fork caido a medio camino) no da error: da
+  # `(now - 0) / 60` = 29.833.587 minutos. La medicion no se pierde, se vuelve "infinitamente
+  # viejo", y el escalador pasa de callarse a INUNDAR: todo cruza cualquier umbral a la vez.
+  # Medido el 2026-09-21 con un `stat` de mentira, y es la otra mitad del mismo defecto: mentir
+  # hacia arriba y mentir hacia abajo son los dos modos de no saber. Devolver vacio deja que el
+  # llamador lo cuente como medicion fallida, que es lo unico cierto que se puede decir.
+  es_medicion "$m" || { echo ""; return; }
   echo $(( (now - m) / 60 ))
 }
 
@@ -84,9 +124,9 @@ edad_min() {
 # — la primera vez que este script VE el archivo, graba cuándo; toques posteriores no lo tocan.
 edad_alta_min() {
   local f="$1" b fecha_archivo fecha_hoy sidecar_file primera
-  b="$(basename "$f")"
+  b="${f##*/}"                 # builtin, no `basename`: un fork menos por archivo
   fecha_archivo="${b:0:10}"
-  fecha_hoy="$(date +%Y-%m-%d)"
+  fecha_hoy="$FECHA_HOY"       # calculada una vez arriba, no por archivo
   # ⚠️ `<`, NO `!=` — y la diferencia se midió el 2026-08-12 22:41 local. Las sesiones nombran los
   # archivos con la fecha UTC (`2026-08-13`) mientras `date` acá devuelve la local (`2026-08-12`):
   # con `!=`, los **13 archivos de hoy** caían en esta rama y reportaban `999999min`, o sea que
@@ -121,19 +161,35 @@ edad_alta_min() {
       printf '%s\n' "$primera" > "$sidecar_file"
     fi
   fi
+  # NO inventar un numero. En aritmetica de bash una variable vacia vale 0, asi que un `stat` que
+  # sale 0 sin imprimir nada (lo que hace un fork caido a medio camino) no da error: da
+  # `(now - 0) / 60` = 29.833.587 minutos. La medicion no se pierde, se vuelve "infinitamente
+  # viejo", y el escalador pasa de callarse a INUNDAR: todo cruza cualquier umbral a la vez.
+  # Medido el 2026-09-21 con un `stat` de mentira, y es la otra mitad del mismo defecto: mentir
+  # hacia arriba y mentir hacia abajo son los dos modos de no saber. Devolver vacio deja que el
+  # llamador lo cuente como medicion fallida, que es lo unico cierto que se puede decir.
+  es_medicion "$primera" || { echo ""; return; }
   echo $(( (now - primera) / 60 ))
 }
 
 # epoch del avance_ MÁS RECIENTE que el frente <destinatario> mandó (patrón *_avance_<frente>-a-*),
 # nacen archivados en cerrado/<fecha>/. 0 si no hay ninguno.
+declare -A _avance_cache=()
 avance_mas_reciente_epoch() {
   local frente="$1" mejor=0 f m
   [ -n "$frente" ] || { echo 0; return; }
+  # Memoizado: la Regla 3 lo llama UNA VEZ POR ARCHIVO de en-curso/, y cada llamada re-escaneaba
+  # `cerrado/*/` entero con un `stat` por match. Con 14 frentes y un cerrado/ que crece todos los
+  # dias eso son cientos de forks para releer lo mismo. El resultado no cambia dentro de una
+  # corrida (`now` ya esta congelado arriba), asi que cachearlo por frente es exacto, no una
+  # aproximacion.
+  if [ -n "${_avance_cache[$frente]:-}" ]; then echo "${_avance_cache[$frente]}"; return; fi
   shopt -s nullglob
   for f in "$CERRADO"/*/????-??-??_avance_"${frente}"-a-*.md; do   # anclado por posición, ver Regla 1
     m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     [ "$m" -gt "$mejor" ] && mejor="$m"
   done
+  _avance_cache["$frente"]="$mejor"
   echo "$mejor"
 }
 
@@ -149,8 +205,11 @@ declare -A sin_tomar_n=() sin_tomar_lista=() sin_tomar_edad=() sin_tomar_viejo=(
 # el umbral, generaba una alerta SOBRE su alerta — cascada autogenerada de nombres cada vez más
 # largos. Mismo defecto y mismo fix que en scripts/lint-contratos-referencias.sh (#403).
 for f in "$ABIERTO"/????-??-??_contrato_*.md; do
-  b="$(basename "$f")"
+  b="${f##*/}"
   edad="$(edad_min "$f")"
+  # Sin este guard, una medicion vacia cae en el `|| continue` de abajo y el contrato desaparece
+  # del radar sin dejar rastro. Ver el bloque MEDICIONES QUE NO SE PUDIERON HACER, arriba.
+  if ! es_medicion "$edad"; then anotar_fallo "$b" "contrato sin tomar"; continue; fi
   [ "$edad" -ge "$UMBRAL_CONTRATO_MIN" ] || continue
   # El ancla tolera el marcado markdown de la línea porque el contrato es un .md y nadie escribe
   # `DISPARADOR: pendiente` pelado: el de lote C lo declara `**DISPARADOR: pendiente.**`, y con
@@ -190,7 +249,7 @@ done
 # `alarma=1` ya quedó puesto arriba. Lo que se agrupa es el efecto colateral en el canal. Y el
 # mensaje agrupado dice algo que el individual no podía decir —"son N, el más viejo es éste"—, que
 # es justo el dato que necesita quien lo recibe para ordenar su cola.
-fecha_hoy="$(date +%Y-%m-%d)"
+fecha_hoy="$FECHA_HOY"
 for para in "${!sin_tomar_n[@]}"; do
   n="${sin_tomar_n[$para]}"
   urgente="$ABIERTO/${fecha_hoy}_urgente_vigilancia-a-${para}_contratos-sin-tomar.md"
@@ -224,8 +283,9 @@ done
 
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
 for f in "$ABIERTO"/????-??-??_pedido_*.md; do   # anclado por posición, ver Regla 1
-  b="$(basename "$f")"
+  b="${f##*/}"
   edad="$(edad_alta_min "$f")"
+  if ! es_medicion "$edad"; then anotar_fallo "$b" "pedido sin respuesta"; continue; fi
   [ "$edad" -ge "$UMBRAL_PEDIDO_MIN" ] || continue
   para="$(destinatario_de_nombre "$b")"
   alarma=1
@@ -236,7 +296,7 @@ done
 if [ -d "$ENCURSO" ]; then
   for f in "$ENCURSO"/*.md; do
     [ -e "$f" ] || continue
-    b="$(basename "$f")"
+    b="${f##*/}"
     para="$(destinatario_de_nombre "$b")"
     # Edad = MÍNIMO entre el mtime del contrato y el del avance_ más reciente del mismo frente —
     # si no se mira el avance_, un frente que SÍ reportó hace 13min sigue leyéndose como "sin
@@ -250,6 +310,11 @@ if [ -d "$ENCURSO" ]; then
     # desde que LLEGÓ acá: el más nuevo de los dos.
     m_contrato="$(stat -c %Y "$f" 2>/dev/null || echo "$now")"
     m_movido="$(stat -c %Z "$f" 2>/dev/null || echo 0)"
+    # El `|| echo` de arriba cubre que `stat` FALLE, no que el fork no vuelva: en ese caso la
+    # sustitucion sale vacia, el `||` nunca dispara y la aritmetica de abajo se rompe en silencio.
+    if ! es_medicion "$m_contrato" || ! es_medicion "$m_movido"; then
+      anotar_fallo "$b" "en-curso sin avance"; continue
+    fi
     [ "$m_movido" -gt "$m_contrato" ] && m_contrato="$m_movido"
     m_avance="$(avance_mas_reciente_epoch "${para:-desconocido}")"
     m_mejor="$m_contrato"
@@ -264,8 +329,24 @@ if [ -d "$ENCURSO" ]; then
   done
 fi
 
+# Una medicion que no se pudo hacer NO es un cero: es una alarma. Va antes del resumen para que
+# quede arriba en el reporte del gate, donde se lee primero.
+if [ "$medicion_fallida" -gt 0 ]; then
+  alarma=1
+  echo "MEDICION INCOMPLETA: ${medicion_fallida} archivo(s) no se pudieron medir (fork/stat no volvio con un numero)."
+  printf '%s' "$medicion_fallida_lista"
+  echo "   -> el silencio de este reporte NO es dato: esos archivos quedaron sin mirar."
+fi
+
 if [ "$alarma" = "0" ]; then
   echo "ESCALADORES: nada que escalar."
-  exit 0
 fi
+
+# CENTINELA DE TERMINACION — ultima linea SIEMPRE, en los dos caminos.
+# El guard de arriba cubre la medicion que vuelve vacia; esto cubre el caso en que el proceso
+# MUERE a mitad (el fork que falla es el del propio subshell y bash aborta el pipeline). Ahi no
+# hay contador que salvar: lo unico que distingue "termine y no habia nada" de "me morto antes de
+# llegar" es que la frase final este o no este. vigilancia-check.sh la exige; si falta, alarma.
+echo "ESCALADORES: FIN-OK"
+[ "$alarma" = "0" ] && exit 0
 exit 1

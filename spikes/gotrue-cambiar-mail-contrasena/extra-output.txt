@@ -1,0 +1,41 @@
+# EXTRA 1: REAUTH=true con sesiÃ³n ANTIGUA (last_sign_in_at/sessions retrocedidos 3 dÃ­as vÃ­a SQL en la DB descartable)
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE true -> []
+   $ setenv K12_REAUTH true -> []
+   $ recreate -> ['health OK']
+  env en contenedor: true
+  [400] PUT password sesiÃ³n vieja sin nonce: {"code": 400, "error_code": "reauthentication_needed", "msg": "Password update requires reauthentication"}
+  [200] GET /reauthenticate: {}
+  mails: [('Confirm reauthentication', ['x-91743a@k12.test'])]
+  nonce en mail: True
+  [200] PUT password + nonce: {"id": "7ea92f4c-d870-402f-bbfa-6eb4242313d5", "aud": "authenticated", "role": "authenticated", "email": "x-91743a@k12.test", "email_confirmed_at": "2026-09-21T18:07:12.217165Z", "phone": "", "confirmed_at": "2026-09-21T18:07:12.217165Z", "last_sign_in_at": "2026-09-18T18:07:12.486162Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "e11b944b-f3e8-455b-a33a-dab7860e5cc2", "id": "7ea92f4c-d870-402f-bbfa-6eb4242313d5", "user_id": "7ea92f4c-d870-402f-bbfa-6eb4242313d5", "identity_data": {"email": "x-91743a@k12.test", "email_verified": false, "phone_verified": false, "sub": "7ea92f4c-d870-402f-bbfa-6eb4242313d5"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:07:12.211949Z", "created_at": "2026-09-21T18:07:12.212006Z", "updated_at": "2026-09-21T18:07:12.212006Z", "email": "x-91743a@k12.test"}], "created_at": "2026-09-21T18:07:12.206945Z", "updated_at": "2026-09-21T18:07:13.835912Z", "is_anonymous": false}
+  [422] PUT password nonce invÃ¡lido: {"code": 422, "error_code": "reauthentication_not_valid", "msg": "Nonce has expired or is invalid"}
+
+# EXTRA 2: confirmaciÃ³n del cambio de email por link â€” SECURE=false (1 mail al nuevo)
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE false -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  PUT: 200
+  mail a ['n-4d6881@k12.test'] links: ['http://127.0.0.1:9971/verify?token=<r>&type=email_change&redirect_to=https://k12.local']
+   (link crudo /verify -> 200 b'' )
+  click -> (303, 'https://k12.local#<fragment redactado>')
+  GET /user (token viejo): 200 {'email': 'n-4d6881@k12.test', 'email_change_sent_at': '2026-09-21T18:07:17.210405Z', 'email_confirmed_at': '2026-09-21T18:07:17.019303Z', 'updated_at': '2026-09-21T18:07:18.278363Z'}
+  login viejo: 400 | login nuevo: 200
+
+# EXTRA 3: SECURE=true (2 mails) â€” click en uno solo, luego en ambos
+   $ setenv GOTRUE_MAILER_AUTOCONFIRM true -> []
+   $ setenv K12_SECURE_EMAIL_CHANGE true -> []
+   $ setenv K12_REAUTH false -> []
+   $ recreate -> ['health OK']
+  mails a: [['n-6ec1af@k12.test'], ['x-6ec1af@k12.test']]
+   (link crudo /verify -> 200 b'' )
+  click #1 -> ['n-6ec1af@k12.test'] (303, 'https://k12.local#<fragment redactado>')
+  tras 1 click: {'email': 'n-6ec1af@k12.test', 'email_change_sent_at': '2026-09-21T18:07:21.72521Z', 'email_confirmed_at': '2026-09-21T18:07:21.52847Z', 'updated_at': '2026-09-21T18:07:22.801335Z'}
+   (link crudo /verify -> 200 b'' )
+  click #2 -> ['x-6ec1af@k12.test'] (303, 'https://k12.local#<fragment redactado>')
+  tras 2 clicks: {'email': 'n-6ec1af@k12.test', 'email_change_sent_at': '2026-09-21T18:07:21.72521Z', 'email_confirmed_at': '2026-09-21T18:07:21.52847Z', 'updated_at': '2026-09-21T18:07:22.801335Z'}
+  login viejo: 400 | login nuevo: 200
+
+# EXTRA 4: cambio de email con redirect_to fuera de allow-list
+  [200] PUT ?redirect_to=https://evil.example: {"id": "55cbc13c-59b3-43f4-9938-73f02f09db86", "aud": "authenticated", "role": "authenticated", "email": "x-6808e8@k12.test", "email_confirmed_at": "2026-09-21T18:07:23.148953Z", "phone": "", "confirmed_at": "2026-09-21T18:07:23.148953Z", "new_email": "z-6808e8@k12.test", "email_change_sent_at": "2026-09-21T18:07:23.327079275Z", "last_sign_in_at": "2026-09-21T18:07:23.252835Z", "app_metadata": {"provider": "email", "providers": ["email"]}, "user_metadata": {"email_verified": true}, "identities": [{"identity_id": "52466418-5606-4bb5-b1eb-323bed160c2c", "id": "55cbc13c-59b3-43f4-9938-73f02f09db86", "user_id": "55cbc13c-59b3-43f4-9938-73f02f09db86", "identity_data": {"email": "x-6808e8@k12.test", "email_verified": false, "phone_verified": false, "sub": "55cbc13c-59b3-43f4-9938-73f02f09db86"}, "provider": "email", "last_sign_in_at": "2026-09-21T18:07:23.145365Z", "created_at": "2026-09-21T18:07:23.145398Z", "updated_at": "2026-09-21T18:07:23.145398Z", "email": "x-6808e8@k12.test"}], "created_at": "2026-09-21T18:07:23.142199Z", "updated_at": "2026-09-21T18:07:23.330376Z", "is_anonymous": false}

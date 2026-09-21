@@ -16,4 +16,4 @@ export {
   tarjetasCriticas,
 } from './filtroTablero';
 export type { CategoriaTarjeta } from './filtroTablero';
-export { chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';
+export { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';

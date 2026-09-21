@@ -51,6 +51,17 @@ _EMAIL_EXISTS_STATUS = 422  # GoTrue devuelve 422 al crear un user con email ya 
 _INVALID_GRANT_STATUSES = (400, 401)  # GoTrue devuelve 400 (invalid_grant) o 401 ante login inválido
 
 
+class GoTrueUserError(Exception):
+    """Rechazo 4xx de GoTrue al actuar COMO el usuario (`PUT /auth/v1/user`). `codigo` es el
+    `error_code` de GoTrue (`weak_password`, `same_password`, `email_exists`, `validation_failed`,
+    `reauthentication_needed`, ...); las rutas lo traducen a su propio contrato, nunca lo reenvían crudo."""
+
+    def __init__(self, codigo: str, status: int) -> None:
+        super().__init__(f"gotrue user update rechazado: {status} {codigo}")
+        self.codigo = codigo
+        self.status = status
+
+
 class InvalidCredentials(Exception):
     """Email/password inválidos en el password-grant de GoTrue (Task 6, `password_grant`). La ruta
     HTTP (`POST /auth/login`, web.py) la traduce a 401 sin filtrar el detalle del error de GoTrue
@@ -190,6 +201,26 @@ class GoTrueAdmin:
         )
         if resp.status_code in _INVALID_GRANT_STATUSES:
             raise InvalidCredentials(f"password grant failed: {resp.status_code}")
+        resp.raise_for_status()
+        return resp.json()
+
+    def update_user(self, access_token: str, cambios: dict) -> dict:
+        """PUT /auth/v1/user con el Bearer del PROPIO usuario (K-12) -- no con el `service_role_key` de las
+        rutas admin: es el camino que GoTrue usa para disparar la confirmación por mail del cambio de email,
+        y el token resuelve "de quién es" del lado de GoTrue (un token de A no puede tocar la cuenta de B).
+        `apikey` va igual porque el gateway lo exige en todo `/auth/v1`. Ante un 4xx levanta
+        `GoTrueUserError(error_code)`; 5xx/red propagan como error de httpx (transitorio, no del usuario).
+        Verificado contra GoTrue v2.186.0 en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`."""
+        resp = self._client.put(
+            f"{self._base_url}/auth/v1/user",
+            headers={"apikey": self._service_role_key, "Authorization": f"Bearer {access_token}"},
+            json=cambios,
+        )
+        if 400 <= resp.status_code < 500:
+            es_json = "json" in resp.headers.get("content-type", "")
+            cuerpo = resp.json() if es_json else {}
+            raise GoTrueUserError(str(cuerpo.get("error_code") or cuerpo.get("code") or "desconocido"),
+                                  resp.status_code)
         resp.raise_for_status()
         return resp.json()
 

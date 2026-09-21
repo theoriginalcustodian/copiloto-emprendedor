@@ -207,6 +207,28 @@ def test_perfil_sin_configurar_devuelve_200_con_null_no_404():
     assert r.json() == {"perfil": None}
 
 
+@pytest.mark.parametrize("formalidad,largo", [(f, l) for f in ("formal", "cercano") for l in ("breve", "detallado")])
+def test_K15_ejemplo_de_tono_devuelve_el_texto_de_la_combinacion(formalidad, largo):
+    from perfil_negocio_prompt import ejemplo_de_tono
+    cli, *_ = _app()
+    r = cli.get("/perfil-negocio/ejemplo", params={"formalidad": formalidad, "largo_respuesta": largo})
+    assert r.status_code == 200
+    assert r.json() == {"ejemplo": ejemplo_de_tono(formalidad, largo)}
+
+
+@pytest.mark.parametrize("params", [{}, {"formalidad": "formal"}, {"formalidad": "x", "largo_respuesta": "breve"},
+                                    {"formalidad": "formal", "largo_respuesta": "eterno"}])
+def test_K15_ejemplo_de_tono_valor_invalido_o_faltante_es_400(params):
+    cli, *_ = _app()
+    assert cli.get("/perfil-negocio/ejemplo", params=params).status_code == 400
+
+
+def test_K15_ejemplo_de_tono_sin_token_es_401():
+    cli, *_ = _app(require_tenant=_require_tenant_401())
+    assert cli.get("/perfil-negocio/ejemplo",
+                   params={"formalidad": "formal", "largo_respuesta": "breve"}).status_code == 401
+
+
 def test_perfil_sin_token_es_401():
     cli, *_ = _app(require_tenant=_require_tenant_401())
     assert cli.get("/perfil-negocio").status_code == 401
@@ -339,6 +361,23 @@ def test_el_doc_cuando_funciona_queda_pegado_al_presupuesto():
     cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
     p = cli.post("/presupuestos", json=_BODY).json()["presupuesto"]
     assert (p["doc_id"], p["doc_link"]) == ("doc-1", "https://docs/x")
+
+
+def test_K07_con_doc_ofrece_mandar_por_mail_y_sin_doc_es_null():
+    cli, *_ = _app(generar_doc=lambda cid, p: {"doc_id": "doc-1", "doc_link": "https://docs/x"})
+    r = cli.post("/presupuestos", json=_BODY).json()
+    assert r["sugerencias"] == {"mandar_por_mail": {"doc_link": "https://docs/x"}}
+    assert r["presupuesto"]["doc_link"] == "https://docs/x"          # los campos existentes siguen iguales
+    cli, *_ = _app()
+    assert cli.post("/presupuestos", json=_BODY).json()["sugerencias"] is None
+
+
+def test_K07_doc_que_falla_no_ofrece_mandar_por_mail():
+    def _rota(cid, p):
+        raise RuntimeError("google caído")
+    cli, *_ = _app(generar_doc=_rota)
+    r = cli.post("/presupuestos", json=_BODY)
+    assert r.status_code == 201 and r.json()["sugerencias"] is None
 
 
 @necesita_pg
