@@ -42,6 +42,9 @@ export interface PerfilNegocio {
   aQuien: AQuienVende;
   nombreComercial: string;
   horarioAtencion: string;
+  /** Contacto comercial (BL-J10), texto libre. `''` si no lo cargó (o si el deploy es previo al campo). */
+  telefono: string;
+  email: string;
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
@@ -78,6 +81,8 @@ interface PerfilCrudo {
   a_quien?: string;
   nombre_comercial?: string;
   horario_atencion?: string;
+  telefono?: string;
+  email?: string;
   formalidad?: string;
   largo_respuesta?: string;
   nombre_copiloto?: string;
@@ -106,6 +111,8 @@ function normalizar(p: PerfilCrudo): PerfilNegocio {
     aQuien: enumODefault(p.a_quien, A_QUIEN_VALIDOS, 'ambos'),
     nombreComercial: p.nombre_comercial ?? '',
     horarioAtencion: p.horario_atencion ?? '',
+    telefono: p.telefono ?? '',
+    email: p.email ?? '',
     formalidad: enumODefault(p.formalidad, FORMALIDAD_VALIDOS, 'cercano'),
     largoRespuesta: enumODefault(p.largo_respuesta, LARGO_VALIDOS, 'breve'),
     nombreCopiloto: p.nombre_copiloto ?? '',
@@ -193,6 +200,8 @@ export interface GuardarPerfilNegocioRequest {
   aQuien?: AQuienVende;
   nombreComercial?: string;
   horarioAtencion?: string;
+  telefono?: string;
+  email?: string;
   formalidad?: FormalidadCopiloto;
   largoRespuesta?: LargoRespuesta;
   nombreCopiloto?: string;
@@ -216,6 +225,8 @@ function aBodyCrudo(req: GuardarPerfilNegocioRequest): Record<string, string> {
   if (req.aQuien !== undefined) body.a_quien = req.aQuien;
   if (req.nombreComercial !== undefined) body.nombre_comercial = req.nombreComercial;
   if (req.horarioAtencion !== undefined) body.horario_atencion = req.horarioAtencion;
+  if (req.telefono !== undefined) body.telefono = req.telefono;
+  if (req.email !== undefined) body.email = req.email;
   if (req.formalidad !== undefined) body.formalidad = req.formalidad;
   if (req.largoRespuesta !== undefined) body.largo_respuesta = req.largoRespuesta;
   if (req.nombreCopiloto !== undefined) body.nombre_copiloto = req.nombreCopiloto;
@@ -227,6 +238,23 @@ function aBodyCrudo(req: GuardarPerfilNegocioRequest): Record<string, string> {
  *  para poder señalar el campo exacto antes del viaje — no para reemplazar esa validación. */
 export const LIMITE_QUE_VENDE = 500;
 export const LIMITE_CAMPO_CORTO = 120;
+
+/**
+ * Validación de formato del contacto (BL-J10), para avisar EN el campo antes de mandar. **El backend
+ * es la fuente de verdad** (`_validar_perfil` devuelve 400 con su propio texto): esto sólo evita el
+ * viaje. Vacío es válido — el perfil a medio llenar no bloquea nada. Devuelven el mensaje o `null`.
+ */
+export function errorDeTelefono(valor: string): string | null {
+  const v = valor.trim();
+  if (v === '') return null;
+  return v.replace(/\D/g, '').length >= 8 ? null : 'Poné al menos 8 dígitos, con característica';
+}
+
+export function errorDeEmail(valor: string): string | null {
+  const v = valor.trim();
+  if (v === '') return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Falta el @ o el dominio (ej.: contacto@tunegocio.com.ar)';
+}
 
 /**
  * Guarda una parte del perfil. Devuelve el perfil **completo** ya actualizado — no hace falta

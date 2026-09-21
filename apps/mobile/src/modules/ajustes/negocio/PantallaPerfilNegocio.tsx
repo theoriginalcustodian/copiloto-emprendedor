@@ -5,6 +5,8 @@ import {
   ApiError,
   LIMITE_CAMPO_CORTO,
   LIMITE_QUE_VENDE,
+  errorDeEmail,
+  errorDeTelefono,
   guardarPerfilNegocio,
   leerPerfilNegocio,
   type AQuienVende,
@@ -77,6 +79,8 @@ interface Campos {
   aQuien: AQuienVende;
   nombreComercial: string;
   horarioAtencion: string;
+  telefono: string;
+  email: string;
   formalidad: FormalidadCopiloto;
   largoRespuesta: LargoRespuesta;
   nombreCopiloto: string;
@@ -95,6 +99,8 @@ const CAMPOS_VACIOS: Campos = {
   aQuien: 'ambos',
   nombreComercial: '',
   horarioAtencion: '',
+  telefono: '',
+  email: '',
   formalidad: 'cercano',
   largoRespuesta: 'breve',
   nombreCopiloto: '',
@@ -110,6 +116,8 @@ function aCampos(p: PerfilNegocio): Campos {
     aQuien: p.aQuien,
     nombreComercial: p.nombreComercial,
     horarioAtencion: p.horarioAtencion,
+    telefono: p.telefono,
+    email: p.email,
     formalidad: p.formalidad,
     largoRespuesta: p.largoRespuesta,
     nombreCopiloto: p.nombreCopiloto,
@@ -167,9 +175,16 @@ export function PantallaPerfilNegocio() {
   const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>('idle');
   const [seccionEnCurso, setSeccionEnCurso] = useState<Seccion | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  const [erroresContacto, setErroresContacto] = useState<{ telefono: string | null; email: string | null }>({
+    telefono: null,
+    email: null,
+  });
 
   function actualizar<K extends keyof Campos>(campo: K, valor: Campos[K]) {
     setCampos((prev) => ({ ...prev, [campo]: valor }));
+    if (campo === 'telefono' || campo === 'email') {
+      setErroresContacto((prev) => ({ ...prev, [campo]: null }));
+    }
     // Un cambio invalida el "Guardado" anterior: dejarlo en pantalla mientras el usuario edita diría
     // que lo que está viendo ya está a salvo, y no lo está.
     setEstadoGuardado('idle');
@@ -199,6 +214,16 @@ export function PantallaPerfilNegocio() {
   }, []);
 
   async function guardar(seccion: Seccion) {
+    // BL-J10: el formato del contacto se avisa EN el campo y no viaja nada si está mal. El backend
+    // sigue siendo la fuente de verdad (su 400 igual se muestra abajo).
+    if (seccion === 'negocio') {
+      const errores = {
+        telefono: errorDeTelefono(campos.telefono),
+        email: errorDeEmail(campos.email),
+      };
+      setErroresContacto(errores);
+      if (errores.telefono != null || errores.email != null) return;
+    }
     const parcial: GuardarPerfilNegocioRequest =
       seccion === 'negocio'
         ? {
@@ -206,6 +231,8 @@ export function PantallaPerfilNegocio() {
             aQuien: campos.aQuien,
             nombreComercial: campos.nombreComercial,
             horarioAtencion: campos.horarioAtencion,
+            telefono: campos.telefono,
+            email: campos.email,
           }
         : {
             formalidad: campos.formalidad,
@@ -350,6 +377,27 @@ export function PantallaPerfilNegocio() {
               onChange={(v) => actualizar('horarioAtencion', v)}
               placeholder="ej.: Lunes a viernes de 8 a 17"
               maxLength={LIMITE_CAMPO_CORTO}
+            />
+            <CampoTexto
+              testID="perfil-negocio-telefono"
+              etiqueta="Teléfono"
+              valor={campos.telefono}
+              onChange={(v) => actualizar('telefono', v)}
+              placeholder="ej.: 341 590 6309"
+              keyboardType="phone-pad"
+              maxLength={LIMITE_CAMPO_CORTO}
+              error={erroresContacto.telefono ?? undefined}
+            />
+            <CampoTexto
+              testID="perfil-negocio-email"
+              etiqueta="Email"
+              valor={campos.email}
+              onChange={(v) => actualizar('email', v)}
+              placeholder="ej.: contacto@elgalpon.com.ar"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              maxLength={LIMITE_CAMPO_CORTO}
+              error={erroresContacto.email ?? undefined}
             />
             <FilaBotones
               testID="perfil-negocio-guardar-negocio-botones"
