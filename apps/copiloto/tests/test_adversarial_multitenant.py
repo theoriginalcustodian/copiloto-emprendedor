@@ -389,11 +389,11 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
 
     assert me_a == {"cliente_id": a.cliente_id, "mp_connected": True, "composio_connected": ["gmail"],
-                    "es_admin": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
     # y B NO ve la conexión composio que solo existe para A.
     assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": [],
-                    "es_admin": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
@@ -403,3 +403,21 @@ def test_K14_completar_con_el_cliente_de_A_no_cambia_la_fila_de_B(two_tenants, c
     a, b = two_tenants
     TenantOnboardingStore(conn_de_tenant(a.cliente_id), a.cliente_id).completar()
     assert TenantOnboardingStore(conn_de_tenant(b.cliente_id), b.cliente_id).completado() is False
+
+
+# --- K-08: feedback propio ("Lo pediste vos") -------------------------------------
+
+def test_K08_el_feedback_de_A_no_aparece_en_la_lista_de_B(two_tenants, conn_de_tenant):
+    from feedback_store import FeedbackStore
+    a, b = two_tenants
+    try:
+        fid = FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            tipo="texto", texto="secreto de A", contexto=None)
+        assert [i["id"] for i in FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).listar_propio()] == [fid]
+        assert FeedbackStore(conn_de_tenant(b.cliente_id), b.cliente_id).listar_propio() == []
+    finally:
+        conn = conn_de_tenant(a.cliente_id)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_feedback WHERE cliente_id = %s", (a.cliente_id,))
+        conn.commit()
+        conn.close()

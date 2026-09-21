@@ -22,10 +22,12 @@ from pydantic import BaseModel
 from admin_errores import buscar_por_id, motivo_prohibido, resumen_errores
 from admin_salud import estado_salud
 from admin_soporte import (
-    listar_mensajes_admin, listar_tickets_admin, obtener_ticket_admin, resumen_soporte)
+    listar_mensajes_admin, listar_tickets_admin, obtener_feedback_admin, obtener_ticket_admin,
+    resumen_soporte)
 from admin_tenants import ESTADOS_VALIDOS, cambiar_estado, listar_tenants
 from admin_uso import resumen_uso
 from auditoria_store import AuditoriaStore
+from feedback_store import FeedbackStore
 from contexto_tenant import tenant
 from errores_web import TRAUMA_DOMINIO_PROHIBIDO, conflicto
 from soporte_store import CERRADO, RESPONDIDO, TicketStore
@@ -173,6 +175,25 @@ def create_admin_app(*, require_admin: Callable, temporal_client=None,
             raise HTTPException(status_code=404, detail="ticket no encontrado")
         mensajes = listar_mensajes_admin(consola_conn_factory, ticket_id)
         return {"ticket": ticket, "mensajes": mensajes}
+
+    @app.post("/admin/feedback/{feedback_id}/escuchado")
+    async def feedback_escuchado(feedback_id: int, claims: dict = Depends(require_admin)) -> dict:
+        """K-08 («Lo pediste vos»). Mismo molde que `responder`: el `cliente_id` dueño se RESUELVE del
+        feedback con el rol consola (nunca del body) y la escritura va con la conexión del TENANT DUEÑO."""
+        if consola_conn_factory is None or conn_factory is None:
+            raise HTTPException(status_code=503, detail="conn_factory no configurado")
+        dueno = obtener_feedback_admin(consola_conn_factory, feedback_id)
+        if dueno is None:
+            raise HTTPException(status_code=404, detail="feedback no encontrado")
+        cliente_id = dueno["cliente_id"]
+        with tenant(cliente_id):
+            marcado = FeedbackStore(conn_factory, cliente_id).marcar_escuchado(feedback_id)
+            if marcado is None:
+                raise HTTPException(status_code=404, detail="feedback no encontrado")
+            AuditoriaStore(conn_factory, cliente_id).registrar(
+                admin_user_id=claims["sub"], admin_email=claims.get("email") or "",
+                accion="feedback.escuchado", detalle={"feedback_id": feedback_id})
+        return marcado
 
     @app.post("/admin/soporte/tickets/{ticket_id}/responder")
     async def soporte_ticket_responder(ticket_id: int, body: _ResponderTicketBody,

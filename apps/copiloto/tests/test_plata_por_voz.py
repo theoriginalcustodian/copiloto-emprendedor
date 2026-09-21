@@ -343,6 +343,18 @@ def test_aprobar_por_nombre_del_cliente():
     assert "aprobado" in res.observation["result"]
 
 
+def test_K07_aprobar_ofrece_armar_la_factura_y_descartar_no():
+    """K-07: el chip «¿Te armo la factura?» sólo aparece al APROBAR; el resto de la observación no cambia."""
+    store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
+    res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=store)
+    assert res.observation["sugerencia"] == {"kind": "armar_factura", "presupuesto_id": 1,
+                                             "texto": "¿Te armo la factura?"}
+    assert "aprobado" in res.observation["result"] and res.observation["presupuesto"]["id"] == 1
+    store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
+    res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "desestimado"}, presupuesto=store)
+    assert "sugerencia" not in res.observation
+
+
 def test_desestimar_dice_descartado_no_desestimado():
     """«Desestimado» es la palabra del schema, no la del emprendedor."""
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería")])

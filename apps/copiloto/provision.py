@@ -419,6 +419,19 @@ def _ensure_onboarding_completado(conn) -> None:
     print(f"OK {SCHEMA}.{TENANTS_TABLE}.onboarding_completado (idempotente)", flush=True)
 
 
+def _ensure_feedback_escuchado(conn) -> None:
+    """`copiloto_feedback.escuchado boolean NOT NULL DEFAULT false` + `.escuchado_en timestamptz NULL`
+    (K-08, BL-J12, «Lo pediste vos»). Las marca el operador desde la consola; el emprendedor ve el badge
+    en su lista de feedback. `false`/`NULL` es lo correcto para las filas existentes: ninguna fue
+    escuchada todavía. Corre ANTES del pase estándar (mismo motivo que las demás `_ensure_*`)."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_feedback "
+                f"ADD COLUMN IF NOT EXISTS escuchado boolean NOT NULL DEFAULT false;")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.copiloto_feedback "
+                f"ADD COLUMN IF NOT EXISTS escuchado_en timestamptz;")
+    print(f"OK {SCHEMA}.copiloto_feedback.escuchado/.escuchado_en (idempotente)", flush=True)
+
+
 def _ensure_mp_reauth(conn) -> None:
     """`mp_credentials.reauth_desde timestamptz NULL` -- desde cuándo la conexión de MercadoPago pide
     reconectar (K-09, BL-J4). La marca el refresh cuando MP rechaza el `refresh_token` (`needs_reauth`)
@@ -594,6 +607,7 @@ def provision(conn) -> dict:
     _ensure_modo_ceremonia(conn)                    # ídem para `copiloto_perfil_negocio.modo_ceremonia`.
     _ensure_telefono_email(conn)                    # ídem para `copiloto_perfil_negocio.telefono/.email`.
     _ensure_mp_reauth(conn)                         # ídem para `mp_credentials.reauth_desde` (K-09).
+    _ensure_feedback_escuchado(conn)                # ídem para `copiloto_feedback.escuchado/.escuchado_en` (K-08).
     _ensure_nacio_completo(conn)                    # ídem para `copiloto_cobros.nacio_completo`.
     _ensure_imputacion_de_gastos(conn)              # ídem para los `*_ref` y el cobro a mano.
     _ensure_metering_evento_column(conn)            # ídem para `copiloto_metering.evento` (BETA-1b).

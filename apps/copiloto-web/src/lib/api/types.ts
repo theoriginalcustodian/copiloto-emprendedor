@@ -51,6 +51,10 @@ export interface MeResponse {
    *  fuente. `null`/ausente si el token no lo trae (login por teléfono/anónimo, o si
    *  `require_claims` no está activo) -- ausente, no inventado. */
   email?: string | null;
+  /** K-12: la cuenta entra con Google (sin contraseña propia). Ausente en un backend anterior → se trata como `false`. */
+  cuenta_google?: boolean;
+  /** K-14: ver `packages/core/src/api/types.ts`. Ausente → no se muestra el hilo de bienvenida. */
+  onboarding_completado?: boolean;
   mp_connected: boolean;
   composio_connected: string[];
   /** ¿Este usuario ve la Consola de operador? Sale del MISMO predicado que el guard real

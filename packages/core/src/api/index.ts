@@ -80,6 +80,19 @@ export { listarEntradasCorregibles, previewEnmienda } from './enmienda';
 
 // `/catalog` + `/composio/connect` — las integraciones y su vinculación. El catálogo lo decide el
 // BACKEND (policy real de toolkits), no una lista en el cliente: ver el docstring de `catalogo.ts`.
+export { cambiarContrasena, cambiarEmail } from './auth';
+export type { ResultadoCambioCredencial } from './auth';
+export {
+  completarOnboarding,
+  debeMostrarOnboarding,
+  permisosCompletos,
+  permisosDelHilo,
+  primerInsight,
+  textoDelInsight,
+  type PermisoDelHilo,
+  type PermisoOnboarding,
+  type PrimerInsight,
+} from './onboarding';
 export { desconectarServicio, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
 export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 
