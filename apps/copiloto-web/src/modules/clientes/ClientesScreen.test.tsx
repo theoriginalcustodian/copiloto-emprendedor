@@ -38,7 +38,7 @@ function cliente(over: Partial<Cliente> = {}): Cliente {
 describe('ClientesScreen — D14 (clienteIdInicial)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0 });
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: 0 });
   });
 
   it('sin clienteIdInicial: no llama a obtenerCliente ni abre ninguna ficha', async () => {
@@ -76,5 +76,32 @@ describe('ClientesScreen — D14 (clienteIdInicial)', () => {
 
     await waitFor(() => expect(mockObtener).toHaveBeenCalledWith(7));
     expect(screen.getByTestId('ficha-cliente-nombre')).toHaveTextContent('Kiosco Norte');
+  });
+});
+
+describe('ClientesScreen — BL-J6 (chip de cartera independiente de la paginación)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('el chip sale del agregado del backend, no de contar la página (cartera paginada)', async () => {
+    mockListar.mockResolvedValue({
+      status: 'ok',
+      clientes: [cliente({ origen: 'manual' })],
+      total: 42,
+      agregadosEsteMes: 5,
+    });
+
+    render(<ClientesScreen />);
+
+    expect(await screen.findByTestId('clientes-resumen-chip')).toHaveTextContent('5 se agregaron solos este mes');
+    expect(screen.getByTestId('clientes-resumen-cifra')).toHaveTextContent('42');
+  });
+
+  it('sin agregado del backend (null) no hay chip — nunca «0 se agregaron»', async () => {
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente()], total: 1, agregadosEsteMes: null });
+
+    render(<ClientesScreen />);
+
+    expect(await screen.findByTestId('clientes-resumen-cifra')).toBeInTheDocument();
+    expect(screen.queryByTestId('clientes-resumen-chip')).not.toBeInTheDocument();
   });
 });

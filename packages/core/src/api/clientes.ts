@@ -133,22 +133,30 @@ export interface ListarClientesParams {
 /**
  * La cartera. Tenant sin clientes → `{status:'ok', clientes: [], total: 0}` — **`[]` no es un error**.
  *
- * `total` es el conteo del tenant, no el largo de la página.
+ * `total` es el conteo del tenant, no el largo de la página. `agregadosEsteMes` (BL-J6) también: los
+ * `derivado` del mes de TODA la cartera, sin importar `q` ni `limit`. Aditivo — un backend que todavía
+ * no lo manda da `null` («—», nunca 0: un cero inventado subcontaría la cartera).
  */
 export async function listarClientes(
   params: ListarClientesParams = {},
-): Promise<ConDisponibilidad<{ clientes: Cliente[]; total: number }>> {
+): Promise<ConDisponibilidad<{ clientes: Cliente[]; total: number; agregadosEsteMes: number | null }>> {
   const query = new URLSearchParams();
   if (params.q !== undefined && params.q !== '') query.set('q', params.q);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   const qs = query.toString();
   try {
-    const raw = await apiClient.get<{ clientes: ClienteCrudo[]; total: number }>(
+    const raw = await apiClient.get<{ clientes: ClienteCrudo[]; total: number; agregados_este_mes?: number | null }>(
       qs ? `/clientes?${qs}` : '/clientes',
     );
     if (!esRespuestaDelEndpoint(raw, 'clientes')) return { status: 'no_disponible' };
     const clientes = (raw.clientes ?? []).map(normalizar);
-    return { status: 'ok', clientes, total: raw.total ?? clientes.length };
+    const agregados = raw.agregados_este_mes;
+    return {
+      status: 'ok',
+      clientes,
+      total: raw.total ?? clientes.length,
+      agregadosEsteMes: typeof agregados === 'number' && Number.isFinite(agregados) ? agregados : null,
+    };
   } catch (err) {
     if (noDesplegado(err)) return { status: 'no_disponible' };
     // Un 200 con HTML explota en `res.json()`, no en `mapearError`.

@@ -91,7 +91,29 @@ describe('clientes.ts', () => {
     it('una cartera vacía es `ok` con [], no un error — es el estado del primer día', async () => {
       responder = () => respuesta(200, { clientes: [], total: 0 });
 
-      await expect(listarClientes()).resolves.toEqual({ status: 'ok', clientes: [], total: 0 });
+      await expect(listarClientes()).resolves.toEqual({
+        status: 'ok',
+        clientes: [],
+        total: 0,
+        agregadosEsteMes: null,
+      });
+    });
+
+    it('BL-J6: mapea `agregados_este_mes` (tenant-wide, aparte del largo de la página)', async () => {
+      responder = () => respuesta(200, { clientes: [clienteCrudo()], total: 42, agregados_este_mes: 7 });
+
+      const r = await listarClientes({ limit: 1 });
+
+      expect(r).toMatchObject({ status: 'ok', total: 42, agregadosEsteMes: 7 });
+      if (r.status === 'ok') expect(r.clientes).toHaveLength(1);
+    });
+
+    it('BL-J6: sin `agregados_este_mes` (backend viejo) es null, nunca 0', async () => {
+      responder = () => respuesta(200, { clientes: [clienteCrudo()], total: 1 });
+
+      const r = await listarClientes();
+
+      expect(r).toMatchObject({ status: 'ok', agregadosEsteMes: null });
     });
 
     it('manda `q` sólo si hay búsqueda', async () => {
