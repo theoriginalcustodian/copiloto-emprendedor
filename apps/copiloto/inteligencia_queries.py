@@ -22,7 +22,7 @@ explícito es la barrera efectiva, con test adversarial que la ejercita (regla 7
 from __future__ import annotations
 
 import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable
 
 from cobro_store import CobroStore
@@ -56,6 +56,15 @@ _GASTOS = f"SELECT fecha AS dia, monto FROM {_SCHEMA}.copiloto_gastos WHERE clie
 DIAS_VENCIDO = 30
 
 MONEDA = "ARS"
+
+
+def variacion_pct(actual: Decimal, anterior: Decimal) -> str | None:
+    """`(actual − anterior) / |anterior| × 100` a 1 decimal, como string. `None` si `anterior == 0`:
+    no es «0% de variación», es «no se puede calcular» (la app omite el chip entero, nunca pinta 0%)."""
+    if anterior == 0:
+        return None
+    pct = (actual - anterior) / abs(anterior) * 100
+    return str(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _primer_dia_del_mes(d: datetime.date) -> datetime.date:
@@ -191,8 +200,14 @@ class InteligenciaQueries:
             serie = self._serie_mensual(cur, 6)
             mejores = self._mejores_clientes(cur, 5)
         rentabilidad_mes = ingresos_mes - gastos_mes
+        # Mes calendario anterior COMPLETO = penúltimo punto de la serie (sin huecos, el último es el
+        # mes en curso). Mismo cálculo que `caja.saldo`, aplicado al mes de antes (BL-J3).
+        previo = serie[-2]
+        rentabilidad_previa = Decimal(previo["ingresos"]) - Decimal(previo["gastos"])
         return {
-            "caja": {"saldo": dos_decimales(rentabilidad_mes), "moneda": MONEDA},
+            "caja": {"saldo": dos_decimales(rentabilidad_mes), "moneda": MONEDA,
+                     "fecha_corte": hoy.isoformat(),
+                     "variacion_pct": variacion_pct(rentabilidad_mes, rentabilidad_previa)},
             "mes": {
                 "ingresos": dos_decimales(ingresos_mes),
                 "gastos": dos_decimales(gastos_mes),
