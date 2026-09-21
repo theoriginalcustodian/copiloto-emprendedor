@@ -176,3 +176,69 @@
   display: flex;
   gap: 8px;
 }
+
+/* ---------- Portada del negocio (BL-W8) ---------- */
+.midia-portada__rotulo {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.midia-portada__cifra {
+  margin: 4px 0 18px;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.midia-portada__trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.midia-portada__celda {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.midia-portada__celda b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- Chips de categoría (BL-W7) — borde y texto, sin relleno ---------- */
+.midia-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.midia-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label);
+  background: transparent;
+  border: var(--cancel-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.midia-chip--activo {
+  color: var(--text);
+  border: var(--card-border);
+}
+
+.midia-contador {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}

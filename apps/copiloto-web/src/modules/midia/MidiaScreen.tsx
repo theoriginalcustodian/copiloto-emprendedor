@@ -3,18 +3,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  ETIQUETA_CATEGORIA_TARJETA,
+  filtrarPorCategoria,
   formatearImporte,
   horaDeEvento,
   leerCalendario,
+  leerPortada,
   leerTablero,
   type CalendarioMiDia,
+  type CategoriaTarjeta,
   type EventoCalendario,
   type IdSolapa,
+  type Portada,
   type TarjetaMiDia,
   type TableroMiDia,
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
+import { EstadoVacio } from '../../design-system/EstadoVacio';
+import { ChipsCategoria, ContadorTablero } from './ChipsCategoria';
+import { PortadaNegocio } from './PortadaNegocio';
 import './midia.css';
 
 const SKELETON_ROWS = 3;
@@ -55,6 +63,8 @@ export function MidiaScreen() {
   const [error, setError] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
+  const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
+  const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -88,15 +98,28 @@ export function MidiaScreen() {
     }
   }, []);
 
+  // Igual que el calendario: la portada carga y degrada por su cuenta. Sin portada la pantalla no se
+  // rompe, sólo muestra menos.
+  const cargarPortada = useCallback(async () => {
+    try {
+      const res = await leerPortada();
+      if (vivo.current && res.status === 'ok') setPortada(res.portada);
+    } catch {
+      /* silencio deliberado */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
     void cargarCalendario();
+    void cargarPortada();
 
     function alVolverElFoco() {
       if (document.visibilityState === 'visible') {
         void cargar();
         void cargarCalendario();
+        void cargarPortada();
       }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
@@ -105,7 +128,7 @@ export function MidiaScreen() {
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar, cargarCalendario]);
+  }, [cargar, cargarCalendario, cargarPortada]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -132,12 +155,17 @@ export function MidiaScreen() {
   }
 
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
+  const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
   return (
     <div className="midia-screen" data-testid="pantalla-midia">
       <header className="midia-screen__header">
         <h1 className="midia-screen__title">Mi día</h1>
       </header>
+
+      {portada != null && <PortadaNegocio portada={portada} />}
+
+      <ContadorTablero tablero={tablero} />
 
       <PanelCalendario estado={estadoCalendario} calendario={calendario} />
 
@@ -158,6 +186,8 @@ export function MidiaScreen() {
           );
         })}
       </div>
+
+      <ChipsCategoria activa={categoria} onCambiar={setCategoria} />
 
       {error != null && (
         <div className="midia-screen__error" data-testid="midia-error" role="alert">
@@ -184,17 +214,34 @@ export function MidiaScreen() {
 
       {estado === 'ok' && (
         <>
-          {(solapa == null || solapa.tarjetas.length === 0) && (
-            <p className="midia-screen__empty" data-testid="midia-vacio">
-              {solapaActiva === 'para_hoy'
-                ? 'Hoy no tenés nada pendiente. Cuando el copiloto detecte algo, aparece acá.'
-                : 'No hay tarjetas acá todavía.'}
-            </p>
+          {tarjetas.length === 0 && categoria !== 'todo' && (
+            /* Vacío POR EL FILTRO, no por el día: decirlo evita que un chip mal elegido se lea como
+               «no tengo nada pendiente». Sin ilustración: este vacío no se celebra. */
+            <EstadoVacio
+              testId="midia-vacio-filtro"
+              titulo={`Nada en ${ETIQUETA_CATEGORIA_TARJETA[categoria]} por acá.`}
+              cuerpo="Tocá «Todo» para ver el resto."
+            />
           )}
 
-          {solapa != null && solapa.tarjetas.length > 0 && (
+          {tarjetas.length === 0 && categoria === 'todo' && (
+            /* La taza va SÓLO en «Para hoy» sin pendientes (buena noticia); en las otras solapas el
+               vacío es «todavía no hay nada», que no se celebra. */
+            solapaActiva === 'para_hoy' ? (
+              <EstadoVacio
+                testId="midia-vacio"
+                ilustracion
+                titulo="Nada urgente por hoy"
+                cuerpo="Cuando el copiloto detecte algo, aparece acá."
+              />
+            ) : (
+              <EstadoVacio testId="midia-vacio" titulo="No hay tarjetas acá todavía." />
+            )
+          )}
+
+          {tarjetas.length > 0 && (
             <div className="midia-screen__lista" data-testid="midia-lista">
-              {solapa.tarjetas.map((t) => (
+              {tarjetas.map((t) => (
                 <TarjetaMiDiaRow
                   key={t.id}
                   tarjeta={t}

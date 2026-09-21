@@ -15,6 +15,10 @@ import {
   leerPortada,
   leerTablero,
   type CalendarioMiDia,
+  CATEGORIAS,
+  ETIQUETA_CATEGORIA_TARJETA,
+  filtrarPorCategoria,
+  type CategoriaTarjeta,
   type EventoCalendario,
   type IdSolapa,
   type Portada,
@@ -23,12 +27,6 @@ import {
 } from '@copiloto/core';
 
 import { AvatarCuenta } from './AvatarCuenta';
-import {
-  CATEGORIAS,
-  ETIQUETA_CATEGORIA,
-  filtrarPorCategoria,
-  type CategoriaTarjeta,
-} from './categoriaTarjeta';
 import { PortadaNegocio } from './PortadaNegocio';
 import { EstadoVacio } from '../../theme/EstadoVacio';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -173,7 +171,7 @@ function ChipsCategoria({
                   fontSize: tema.tipo.chico,
                 }}
               >
-                {ETIQUETA_CATEGORIA[c]}
+                {ETIQUETA_CATEGORIA_TARJETA[c]}
               </Text>
             </View>
           </Pressable>
@@ -374,7 +372,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes }: PantallaMiDiaP
                     como «no tengo nada pendiente». Sin ilustración — este vacío no se celebra. */}
                 <EstadoVacio
                   testID="midia-vacio-filtro"
-                  titulo={`Nada en ${ETIQUETA_CATEGORIA[categoria]} por acá.`}
+                  titulo={`Nada en ${ETIQUETA_CATEGORIA_TARJETA[categoria]} por acá.`}
                   cuerpo="Tocá «Todo» para ver el resto."
                 />
               </View>

@@ -24,13 +24,13 @@
  * de la regla sería inventar una jerarquía sobre el negocio de otro: que un CAE esté por vencer sea
  * más o menos urgente que un margen negativo es una decisión de producto, no de la vista. Espera B-3.
  */
-import type { TarjetaMiDia } from '@copiloto/core';
+import type { TarjetaMiDia } from '../api';
 
 export const CATEGORIAS = ['todo', 'cobros', 'arca', 'presupuestos', 'tuyas'] as const;
 export type CategoriaTarjeta = (typeof CATEGORIAS)[number];
 
 /** El rótulo de cada chip, en el orden en que se muestran. */
-export const ETIQUETA_CATEGORIA: Record<CategoriaTarjeta, string> = {
+export const ETIQUETA_CATEGORIA_TARJETA: Record<CategoriaTarjeta, string> = {
   todo: 'Todo',
   cobros: 'Cobros',
   arca: 'ARCA',
