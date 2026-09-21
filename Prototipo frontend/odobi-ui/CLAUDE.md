@@ -307,6 +307,7 @@ Origen: feedback "falta personalidad, sabor demasiado minimalista" + referencias
 - **Dos capas:** microdetalle en UI diaria (monograma + tiles con íconos) + ilustración spot en momentos clave (estados vacíos/calma, onboarding, celebración, splash).
 - **Símbolo: el ISOTIPO DE DAVID (decisión Martin 18/08 — reemplaza al monograma "la o que habla").** Cuatro arcos concéntricos abiertos a la izquierda, sin punto central. Fuente: `repo-app/.../docs/Imagen de marca/isotipo-odobi/` (positivo · negativo · monocromo + los dos lockups), con spec propia: resguardo 0,5 u, separación símbolo↔wordmark 0,3 × ancho, bbox medido con `getBBox()`. **Se adopta la spec completa, no sólo el dibujo.**
   - **Dos variantes por escala, y no es opcional:** **≤24 px → 3 arcos** (se quita el interno) con `stroke-width` **1.6** y `viewBox="1.20 1.26 21.48 21.48"`; **>24 px → los 4 arcos** con **1.3** y el `viewBox` nativo `0 0 24 24`. Medido: a 16 px el arco interno (r 4,5) colapsa y se funde con el exterior — el signo pierde estructura. Mismo problema que tenía el monograma anterior con las barras adentro de la O, al revés.
+  - ⚠️ **Rev. 18/09 — en la APP el trazo es PLANO en 1.3; el par 1.6/1.3 es sólo del prototipo.** Mobile predivide el `stroke-width` por la escala (`logoScale`, `Marca.tsx`), así que el trazo ya sale ópticamente igual a cualquier tamaño: el 1.6 corregiría algo que la división corrige sola, y dos números obligan a decidir en cada uso dónde está el corte entre "chico" y "grande". En el prototipo, que dibuja SVG a pelo sin predividir, **siguen los dos valores**. Lo que NO cambia en ninguna superficie: **3 arcos ≤24 px / 4 arcos >24 px**, que es de estructura del signo, no de peso. Aplicado en `Marca.tsx` y `BotonVoz.tsx` (commit `c2cb298`).
   - ⚠️ **En chico va el `viewBox` AJUSTADO al bbox, no el nativo.** El `viewBox` 0-24 trae mucho aire alrededor del símbolo (bbox real 18,88 × 17), así que a 16 px el signo se dibuja al ~66 % de su caja: se ve chico, desvaído y "cortado". El ajustado = bbox + medio trazo + resguardo 0,5 u que pide la spec, en caja cuadrada para no deformarlo. Detectado probando el prototipo en el celular, no en escritorio.
   - **100% stroke, sin fill.** Hereda color por CSS del contenedor (`stroke:var(--sec)` / `var(--terracota)`), así que un solo marcado sirve para claro y oscuro.
   - **Qué se pierde y qué se gana:** el monograma anterior era *la O real del wordmark*, su argumento era la constancia de signo (misma letra en logo y símbolo). El de David no deriva de la letra. **El símbolo deja de decir el nombre y pasa a decir qué hace el producto** — y deja de depender de la tipografía, que ya nos costó regenerar 24 paths al cambiar de fuente.
@@ -326,6 +327,7 @@ Origen: feedback "falta personalidad, sabor demasiado minimalista" + referencias
 - **Íconos: PHOSPHOR, peso `regular`** (phosphoricons.com, MIT — decisión Martin 19/08; **deroga Iconoir**, del 28/07). Set en `assets/iconos/` + `LEEME.md`.
   - **Por qué Regular, medido:** grosor de cada peso como proporción del alto del ícono (única forma de comparar sets con distinto `viewBox` — Phosphor usa 256, nosotros 24): Light **4,69 %** · **Regular 6,25 %** · Bold 9,38 %. El isotipo chico pesa **6,67 %**. **Regular es el único que pesa como el símbolo de la marca.** De paso quedó a la vista que los tiles con Iconoir usaban trazo 2 = **8,33 %**: el ícono de una tarjeta pesaba más que el signo de Odobi.
   - ⚠️ **Phosphor es `fill`, no `stroke`:** viene outlineado. Color se hereda por `fill="currentColor"` + `color` en el contenedor, pero **el grosor NO se ajusta por CSS** — si hace falta otro peso, se baja otro set; nunca se toca `stroke-width`. A cambio se ve idéntico a cualquier escala.
+  - **Los 5 íconos que el prototipo no asignaba (confirmados 18/09).** Mi negocio · Ingresos · Mi día · Actividad reciente · Ajustes venían marcados `POR CONFIRMAR` en `mapaIconos.ts`: el prototipo nunca les dio un glifo explícito y mobile eligió uno provisorio para no quedarse sin dibujo. **Se confirman con el valor que ya tenían** — se usaron meses sin que ninguno chirriara, y cambiarlos ahora sería mover algo que funciona para justificar la revisión. La marca `ICONOS_POR_CONFIRMAR` se va del código: no queda nada provisorio. ⚠️ `actividadReciente` usa **`clock`, no `clock-counter-clockwise`**, porque el segundo no está entre los 38 archivos del set portado; si algún día se baja, ése es el glifo correcto.
   - **Convivencia con el isotipo, que sí es `stroke`:** regla global `svg[viewBox="0 0 256 256"]{fill:currentColor;stroke:none}` y cada contenedor declara **`stroke` y `color` con el mismo valor** — el isotipo toma el `stroke`, Phosphor el `color`. ⚠️ **El isotipo lleva `fill="none"` inline, no por CSS**: cuando el `fill:none` vivía en la hoja de estilos, apagaba a Phosphor; al sacarlo, los isotipos que no lo traían inline se rellenaron.
   - Tamaños: **18 px** en tiles de tarjeta y escritorio · **20 px** en el composer · **34 px** en estados vacíos y encabezados. Comparativa que fundó la decisión: `explorations/iconos/`.
   - Isotipo e ilustraciones spot siguen siendo dibujo propio (marca, no librería). Cero emojis como íconos.
@@ -366,7 +368,14 @@ quede un número huérfano contradiciendo al mensaje.
 #### La explicación de la calma se RETIRA con el uso (25/08)
 *"Cuando haya algo que mirar, te lo dejo acá"* enseña qué significa una pantalla vacía.
 Enseñado eso, **deja de informar y pasa a ocupar lugar**: es andamiaje, y el andamiaje se
-saca cuando ya no sostiene nada. Se retira a los **5 días** (`CALMA_TOPE`, a calibrar).
+saca cuando ya no sostiene nada. Se retira a los **3 días** (`DIAS_PARA_RETIRAR_EXPLICACION`,
+`EstadoVacio.tsx`).
+
+⚠️ **Rev. 18/09 — eran 5 "a calibrar" y se cierra en 3.** El 5 salía del "5 veces" que dijo
+Martin el 25/08, no de una medición: quedó anotado como provisorio y nunca se calibró. La app
+se construyó en 3 y al mirarlas juntas ganó el 3 — tres días distintos viendo la misma pantalla
+vacía ya enseñaron lo que el texto tenía para enseñar, y el andamiaje que sobra después molesta
+más de lo que informa. **Manda el 3 en las dos superficies.**
 
 - ⚠️ **Se cuentan DÍAS DISTINTOS, no apariciones.** Martin dijo "5 veces", pero cinco veces
   en una misma mañana —abrir y cerrar la app— no es haber aprendido nada; cinco días
@@ -376,7 +385,7 @@ saca cuando ya no sostiene nada. Se retira a los **5 días** (`CALMA_TOPE`, a ca
   hoy", lo que queda por delante y el enlace al tablero siguen siempre. Mismo criterio que
   el error del rótulo: un estado puede sacar el andamiaje, jamás la puerta.
 - **`?ver=vacio` fuerza el estreno y `?ver=vacio-visto` el estado veterano** — hacen falta
-  para mostrar los dos momentos sin esperar cinco días.
+  para mostrar los dos momentos sin esperar tres días.
 - Aplica el mismo patrón a cualquier texto que *enseñe*: si sólo sirve la primera vez, tiene
   que saber irse.
 

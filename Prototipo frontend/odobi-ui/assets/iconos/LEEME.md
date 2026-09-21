@@ -18,6 +18,19 @@ es el único peso que **pesa como el símbolo de la marca**. Los tiles con Icono
 - Tamaños: **18 px** en tiles de tarjeta y del escritorio · **20 px** en el composer ·
   **34 px** en estados vacíos y encabezados de función.
 
+## Tres vinieron del prototipo, no del repo (18/09/2026)
+
+`headset.svg` · `chat-shield.svg` · `pen.svg` se **portaron desde el prototipo**, no se bajaron
+del set. Motivo: estaban usados en las pantallas (Soporte técnico, Contanos qué tal, y las
+tarjetas «lo anotaste vos») pero faltaban en esta carpeta, y bajarlos hoy del repo **no daba lo
+mismo**: el `headset` publicado cambió de dibujo — 446 caracteres de `path` contra los 467 del
+que ya estaba en uso. Portarlos del prototipo deja la app idéntica a lo diseñado en vez de
+idéntica a la última versión de Phosphor.
+
+⚠️ **`chat-shield` es un nombre nuestro.** No se pudo identificar cuál es en el set oficial: se
+probó la familia `chat-*` entera en peso Regular y ninguno contiene ese `path`. Si algún día
+aparece el nombre real, se renombra.
+
 ## Nada de esto aplica al isotipo
 
 El isotipo de Odobi **sí es `stroke`** (1.6 en chico / 1.3 en grande) y tiene su propio `viewBox`.
