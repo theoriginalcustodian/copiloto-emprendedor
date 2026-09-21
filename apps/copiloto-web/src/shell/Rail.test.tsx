@@ -32,7 +32,6 @@ const KEYS_ESPERADAS: readonly TabKey[] = [
   'actividad',
   'ingresos',
   'gastos',
-  'contabilidad',
   'facturacion',
   'presupuestos',
   'clientes',
