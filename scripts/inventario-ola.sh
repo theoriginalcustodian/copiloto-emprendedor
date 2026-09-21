@@ -13,7 +13,9 @@
 # el 21/09: `origin/main` local en 5ec87b8e mientras el remoto estaba 11 merges adelante).
 set -uo pipefail
 
-REPO="${REPO:-c:/Proyectos/Claude/Claude code/copiloto-emprendedor}"
+# REPO por defecto = el worktree donde vive ESTE script, no el checkout compartido: ése queda decenas
+# de commits atrás (medido el 21/09) y el plan que lee sería el viejo.
+REPO="${REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 PLAN="${PLAN:-docs/copiloto-emprendedor/2026-09-21-plan-implementacion-beta-odobi-autonomo.md}"
 OLA=""
 DESDE="${DESDE:-2026-09-21}"   # los PR de la beta arrancan el 21/09 (#520 en adelante)
@@ -28,21 +30,24 @@ done
 [ -n "$OLA" ] || { echo "falta --ola N" >&2; exit 2; }
 cd "$REPO" || exit 1
 
-command -v gh >/dev/null || { echo "gh no está en el PATH" >&2; exit 1; }
-
-SHA_MAIN="$(gh api "repos/{owner}/{repo}/commits/main" --jq '.sha[0:8]')"
+# Seams para el test (scripts/tests/test-inventario-ola.sh): PRS_JSON_FILE reemplaza a `gh pr list`
+# y SHA_MAIN al `gh api`. En uso normal no se tocan.
+if [ -z "${PRS_JSON_FILE:-}" ] || [ -z "${SHA_MAIN:-}" ]; then
+  command -v gh >/dev/null || { echo "gh no está en el PATH" >&2; exit 1; }
+fi
+SHA_MAIN="${SHA_MAIN:-$(gh api "repos/{owner}/{repo}/commits/main" --jq '.sha[0:8]')}"
 HOY="$(date +%Y-%m-%d)"
 
 # ── 1. ESPERADO: las filas que el plan asigna a esta ola, por cola ──────────────────────────────
 # Formato de las tablas §8.1/8.2/8.3:  | Ola | # | **BL-XX** texto | plataformas | depende | nota |
-esperado() { # $1 = encabezado de la sección (8.1|8.2|8.3)
-  awk -v sec="### $1 " -v ola="$OLA" '
+esperado() { # $1 = sección (8.1|8.2|8.3) · $2 = ola (default --ola; «*» = todas, como «ola<TAB>código»)
+  awk -v sec="### $1 " -v ola="${2:-$OLA}" '
     index($0, sec) == 1 { on = 1; next }
     on && /^### / { on = 0 }
     on && $0 ~ /^\| *[0-9]+ *\|/ {
       split($0, c, "|")
       gsub(/ /, "", c[2])
-      if (c[2] == ola) {
+      if (ola == "*" || c[2] == ola) {
         item = c[4]
         # los códigos de fila son BL-xx o K-xx en negrita
         while (match(item, /\*\*(BL-[A-Za-z0-9]+|K-[0-9]+)[^*]*\*\*/)) {
@@ -50,8 +55,10 @@ esperado() { # $1 = encabezado de la sección (8.1|8.2|8.3)
           # sólo el CÓDIGO, no el texto del ítem: con el texto completo, un código nombrado de paso
           # en la fila de otra cola hacía que la columna «Cola» atribuyera el ítem a la sesión
           # equivocada (BL-C6 salía BACKEND siendo de FRONTEND-2; medido el 21/09).
-          if (match(f, /^(BL-[A-Za-z0-9]+|K-[0-9]+)/))
-            printf "%s\n", substr(f, RSTART, RLENGTH)
+          if (match(f, /^(BL-[A-Za-z0-9]+|K-[0-9]+)/)) {
+            if (ola == "*") printf "%s\t%s\n", c[2], substr(f, RSTART, RLENGTH)
+            else printf "%s\n", substr(f, RSTART, RLENGTH)
+          }
           item = substr(item, RSTART + RLENGTH)
         }
       }
@@ -68,7 +75,8 @@ TODOS_ESP="$(printf '%s\n%s\n%s\n' "$BE_ESP" "$FE1_ESP" "$FE2_ESP" | codigos)"
 # El filtro por fecha se hace en python, NO en `--jq`: anidar comillas dentro del --jq devolvía una
 # cadena vacía en silencio y el inventario salía sin una sola fila (medido el 21/09). Un filtro que
 # falla callado en un instrumento de auditoría es peor que no tenerlo.
-PRS_JSON="$(gh pr list --state merged --limit 60 --json number,title,mergeCommit,mergedAt,files)"
+if [ -n "${PRS_JSON_FILE:-}" ]; then PRS_JSON="$(cat "$PRS_JSON_FILE")"
+else PRS_JSON="$(gh pr list --state merged --limit 60 --json number,title,mergeCommit,mergedAt,files)"; fi
 export DESDE
 # Sin esto, python en Windows escribe cp1252 a stdout y las rayas y comillas del markdown salen
 # como «?» en el doc que recibe auditoría.
@@ -143,12 +151,27 @@ import json, sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from codigos import codigos
 
+# Capa = por dónde pasó el diff, no lo que dice el título. Una fila con mitad BACKEND y mitad FE que
+# cita un solo PR de web salía «✅ sí» (BL-X5, A1 §9.2): contar citas no ve la mitad que falta.
+BACK = ('apps/copiloto/', 'motor/', 'deploy/', 'docs/copiloto-emprendedor/kb-usuario/')
+FRONT = ('apps/mobile/', 'apps/copiloto-web/', 'packages/')
+
 d = os.environ.get('DESDE', '')
-cods = set()
+capas, prs = {}, {}
 for p in json.load(sys.stdin):
-    if p['mergedAt'] > d:
-        cods.update(codigos(p['title']))
-print('\n'.join(sorted(cods)))
+    if p['mergedAt'] <= d:
+        continue
+    paths = [f['path'] for f in (p.get('files') or [])]
+    tocadas = set()
+    if any(x.startswith(BACK) for x in paths):
+        tocadas.add('B')
+    if any(x.startswith(FRONT) for x in paths):
+        tocadas.add('F')
+    for c in codigos(p['title']):
+        capas.setdefault(c, set()).update(tocadas)
+        prs.setdefault(c, []).append('#%d' % p['number'])
+for c in sorted(capas):
+    print('%s\t%s\t%s' % (c, ''.join(sorted(capas[c])) or '-', ','.join(prs[c])))
 PY
 
 # ── 3. Salida ───────────────────────────────────────────────────────────────────────────────────
@@ -196,20 +219,61 @@ fila_cola() {
 
 FALTAN=0
 for f in $TODOS_ESP; do
-  if echo "$CITADOS" | grep -qE "^$f$"; then est="✅ sí"; else est="❌ **NO CITADO**"; FALTAN=$((FALTAN+1)); fi
-  echo "| \`$f\` | $(fila_cola "$f") | $est |"
+  cola="$(fila_cola "$f")"
+  linea="$(awk -F'\t' -v c="$f" '$1 == c' <<< "$CITADOS")"
+  if [ -z "$linea" ]; then
+    est="❌ **NO CITADO**"; FALTAN=$((FALTAN+1))
+  else
+    capas="$(cut -f2 <<< "$linea")"; prs="$(cut -f3 <<< "$linea")"
+    falta=""
+    [[ "$cola" == *BACKEND* && "$capas" != *B* ]] && falta="BACKEND"
+    [[ "$cola" == *FRONTEND* && "$capas" != *F* ]] && falta="${falta:+$falta + }FRONTEND"
+    if [ -n "$falta" ]; then
+      est="⚠️ **citada, pero la mitad $falta no tiene diff** ($prs)"; FALTAN=$((FALTAN+1))
+    else
+      est="✅ sí ($prs)"
+    fi
+  fi
+  echo "| \`$f\` | $cola | $est |"
 done
 
 cat <<EOF
 
-**Filas de la Ola $OLA sin PR que las cite: $FALTAN.** Si es > 0, el pedido a auditoría no sale
-hasta explicarlas una por una (entregada dentro de otro PR / diferida con dueño / realmente abierta).
+**Filas de la Ola $OLA sin PR que las cite, o con una mitad sin diff: $FALTAN.** Si es > 0, el pedido
+a auditoría no sale hasta explicarlas una por una (entregada dentro de otro PR / diferida con dueño /
+realmente abierta). «Mitad sin diff» se mide por las rutas que tocaron los PR, no por el título.
+
+## 2.bis Entregadas en esta ventana pero asignadas a OTRA ola (adelantadas)
+
+El plan las pone en otra ola, pero un PR de esta ventana ya las cita. **Entran en esta auditoría**:
+si no se miden acá, nadie las mide (A1 §9.1: las J de la Ola 2 llegaron con los K de la Ola 0 y el
+inventario no las listaba).
+
+| Fila | Ola del plan | PR que la cita |
+|---|---|---|
+EOF
+
+TODAS_OLAS="$(for s in 8.1 8.2 8.3; do esperado "$s" "*"; done | sort -u)"
+ADELANTADAS=0
+while IFS=$'\t' read -r cod _capas prs; do
+  [ -n "$cod" ] || continue
+  grep -qxF "$cod" <<< "$TODOS_ESP" && continue
+  olas="$(awk -F'\t' -v c="$cod" '$2 == c {print $1}' <<< "$TODAS_OLAS" | sort -u | paste -sd, -)"
+  echo "| \`$cod\` | ${olas:-fuera del plan §8} | $prs |"
+  ADELANTADAS=$((ADELANTADAS+1))
+done <<< "$CITADOS"
+[ "$ADELANTADAS" -gt 0 ] || echo "| — | — | ninguna |"
+
+cat <<EOF
 
 ## 3. Controles de aislamiento nuevos — el test adversarial se CORRE, no se lee
 
 Regla dura del repo (\`CLAUDE.md\` §Seguridad): un control de autorización sin test adversarial
-ejecutado queda \`[UNVERIFIED]\` y bloquea el cierre. **Tests tocados por los PR de esta ventana**
-(el resto del repo no entra: lo que esta ola no tocó, esta auditoría no re-mide):
+ejecutado queda \`[UNVERIFIED]\` y bloquea el cierre.
+
+⚠️ **Esta lista NO es la de adversariales** (A1 §9.4): son los tests que tocaron los PR de la ventana;
+el resto del repo no entra. Cuáles ejercitan el caso hostil lo decide auditoría leyendo el test — un
+filtro por nombre acá sería una allowlist que no sabe lo que le falta.
 
 EOF
 # Sólo los tests que ESTA ola tocó, no todo el repo: el grep amplio devolvía 61 archivos (casi cada
@@ -219,10 +283,15 @@ echo "$PRS_JSON" | python "$TMP_TESTS"
 
 cat <<'EOF'
 
-**Comando exacto para correrlos (en el VPS, en segundo plano, salida completa a archivo):**
+**Comando exacto para correrlos** (el job backend corre en el VPS; en segundo plano, salida completa
+a archivo, sin sub-agentes vivos en la PC — bajo carga el gate falla por `fork`, A1 §4.3):
 
 ```bash
-bash scripts/gate.sh --solo backend > /tmp/gate-adversarial-$(date +%s).log 2>&1
+# El job va SOLO, sin guiones: `gate.sh --solo backend` no matchea ningún job, corre 0 y sale verde
+# (A1 §4.1). La triada (DB/puerto/stage) sale de UC_SESION; si tu sesión no está en
+# scripts/ci/sesion-env.sh, exportá UC_TESTDB_NAME/UC_TESTDB_PORT/UC_TEST_STAGE propios.
+UC_SESION=<tu-sesión> bash scripts/gate.sh backend > "gate-backend-$(date +%s).log" 2>&1
+grep -c PASSED gate-backend-*.log   # 0 PASSED o un recibo con "jobs":{} es falso verde, no verde
 ```
 
 ## 4. Evidencia de device
