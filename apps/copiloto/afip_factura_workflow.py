@@ -14,6 +14,7 @@ toca el mundo está en activities.
 """
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 from decimal import Decimal
 
@@ -49,6 +50,11 @@ TIMEOUT_EMISION = timedelta(minutes=3)
 # start_to_close (3 min la emisión, 10 el alta): minutos de alguien esperando sin saber.
 HEARTBEAT_TIMEOUT = timedelta(seconds=60)
 TIMEOUT_CORTO = timedelta(seconds=60)
+
+# BL-B2: ventana de vida del borrador esperando confirmación. Un dictado abandonado no puede quedar
+# «abierto» para siempre (el link directo y el turno 2 lo reanudarían con datos de otro día).
+VENTANA_VIDA_BORRADOR = timedelta(hours=24)
+MOTIVO_CODIGO_VENCIDO = "dictado_vencido"
 # El archivado son 4 llamadas a Composio (buscar carpeta, crearla, subir, compartir) y la subida baja
 # el PDF desde AfipSDK server-side: más lento que una query, lejos de una emisión.
 TIMEOUT_ARCHIVADO = timedelta(minutes=2)
@@ -237,8 +243,21 @@ class FacturaWorkflow:
         self._perfil = self._perfil_desde(contexto.get("perfil"))
         self._recalcular()
 
-        # Espera sin límite: el HITL puede tardar lo que el usuario tarde.
-        await workflow.wait_condition(lambda: self._confirmado or self._cancelado)
+        # BL-B2: el HITL espera hasta `VENTANA_VIDA_BORRADOR`; vencida, el workflow termina CANCELADA
+        # (`dictado_vencido`) y ya no hay a quién confirmarle nada. `patched`: las ejecuciones en vuelo
+        # (sin el marker en su history) conservan la espera sin límite de antes; sólo las nuevas expiran.
+        if workflow.patched("ventana-de-vida-borrador"):
+            try:
+                await workflow.wait_condition(lambda: self._confirmado or self._cancelado,
+                                              timeout=VENTANA_VIDA_BORRADOR)
+            except asyncio.TimeoutError:
+                self._estado = EstadoFactura.CANCELADA
+                self._motivo = "el borrador venció sin confirmarse: si querés facturar, pedilo de nuevo"
+                self._motivo_codigo = MOTIVO_CODIGO_VENCIDO
+                self._fin = True
+                return self.estado()
+        else:
+            await workflow.wait_condition(lambda: self._confirmado or self._cancelado)
 
         if self._cancelado:
             self._estado = EstadoFactura.CANCELADA
