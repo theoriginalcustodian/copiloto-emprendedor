@@ -3,6 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# Congelamiento nativo (plan §6, BL-B6): falla antes de pagar npm install si el PR toca package.json/app.json.
+bash "$ROOT/scripts/ci/nativo-freeze.sh"
+
 cd "$ROOT"
 npm install --no-audit --no-fund
 

@@ -25,6 +25,11 @@ set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# BL-B7: sólo se despliega lo mergeado (HEAD==origin/main), con árbol limpio y candado único.
+# shellcheck source=guard-deploy.sh
+source "$(dirname "${BASH_SOURCE[0]}")/guard-deploy.sh"
+guard_deploy "$LOCAL" "deploy.sh" || exit 1
+
 # Guard: un checkout desactualizado sube apps/copiloto/motor TAL CUAL el disco y regresiona en
 # silencio código ya arreglado en origin/main -- sin conflicto de git, sin error (pasó el
 # 2026-07-23: /actividad y /inteligencia/* volvieron a romperse por un deploy desde una rama vieja).

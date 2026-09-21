@@ -33,6 +33,11 @@
 set -euo pipefail
 
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# BL-B7: sólo se despliega lo mergeado (HEAD==origin/main), con árbol limpio y candado único.
+# shellcheck source=guard-deploy.sh
+source "$(dirname "${BASH_SOURCE[0]}")/guard-deploy.sh"
+guard_deploy "$LOCAL" "sync-web.sh" || exit 1
 HOST="${UC_DEPLOY_HOST:-unreal-copilot}"
 REMOTE="${UC_DEPLOY_PATH:-/opt/uc-repos/copiloto}"
 AUTH_URL="${UC_AUTH_URL-https://copilotoemprendedor.duckdns.org}"   # default = dominio propio duckdns (no *.sslip.io, que redes de terceros bloquean). nota: `-` (no `:-`) para permitir UC_AUTH_URL="" explícito
@@ -72,5 +77,24 @@ VITE_AUTH_URL="$AUTH_URL" npm run build
 echo "--- dist/ generado en: ---"
 realpath "$WEB_DIR/dist"
 REMOTE_BUILD
+
+# BL-B7: el bundle servido tiene que ser el que se acaba de buildear. Compara el `assets/index-<hash>.js`
+# que referencia el index.html del dist remoto con el que sirve la URL pública (el SW no interviene:
+# es un GET sin service worker). Un desfasaje = deploy que no llegó (o pisado por otro): falla ruidoso.
+if [ -n "$AUTH_URL" ]; then
+  echo "==> [verif] hash del bundle servido vs. buildeado"
+  _build="$(ssh "$HOST" "grep -o 'assets/index-[A-Za-z0-9_-]*\.js' '$REMOTE/$WEB_SUBDIR/dist/index.html' | head -1")"
+  _vivo=""
+  for _i in 1 2 3 4 5; do
+    _vivo="$(curl -fsS --max-time 15 "${AUTH_URL%/}/?_=$(date +%s)" | grep -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
+    [ -n "$_vivo" ] && [ "$_vivo" = "$_build" ] && break
+    sleep 3
+  done
+  if [ -z "$_build" ] || [ "$_vivo" != "$_build" ]; then
+    echo "ABORT: bundle servido (${_vivo:-<nada>}) ≠ bundle buildeado (${_build:-<nada>})." >&2
+    exit 1
+  fi
+  echo "    ok: ${_build}"
+fi
 
 echo "==> sync-web.sh completo."

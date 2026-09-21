@@ -16,6 +16,10 @@ SHA="$(git -C "$ROOT" rev-parse HEAD)"
 RECIBO_DIR="$ROOT/.ci-recibos"
 mkdir -p "$RECIBO_DIR"
 
+# Triada por sesión (BL-B6): base de tests, puerto y stage propios -> dos sesiones no se pisan.
+# shellcheck source=ci/sesion-env.sh
+source "$ROOT/scripts/ci/sesion-env.sh"
+
 SOLO="${1:-}"
 JOBS_LOCAL=(core web mobile lint)
 declare -A RESULTADO
@@ -59,7 +63,7 @@ done
 JOBS_JSON+="}"
 
 cat > "$RECIBO_DIR/$SHA.json" <<EOF
-{"sha":"$SHA","fecha":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","jobs":$JOBS_JSON,"host":"$(hostname)","duracion_seg":$DURACION}
+{"sha":"$SHA","sesion":"${UC_SESION:-}","fecha":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","jobs":$JOBS_JSON,"host":"$(hostname)","duracion_seg":$DURACION}
 EOF
 echo "==> recibo: $RECIBO_DIR/$SHA.json"
 cat "$RECIBO_DIR/$SHA.json"; echo
