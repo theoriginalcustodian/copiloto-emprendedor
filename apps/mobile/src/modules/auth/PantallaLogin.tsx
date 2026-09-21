@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 
+import { TEXTO_CREDENCIALES_INCORRECTAS, TEXTO_PIE_INGRESAR } from '@copiloto/core';
+
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
@@ -42,10 +44,10 @@ const ALTO_BOTON = 54;
  * decide DÓNDE montarlo (la ruta de expo-router) y cómo cablear `<SessionProvider>` + el guard que,
  * tras un login exitoso, saca al usuario de esta pantalla — acá NO se navega a mano.
  */
-export function PantallaLogin() {
+export function PantallaLogin({ emailInicial = '' }: { emailInicial?: string } = {}) {
   const tema = useTema();
   const { estado, avisoSesion, login, loginConGoogle } = useSession();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
   const scrollRef = useRef<ScrollView>(null);
@@ -189,7 +191,8 @@ export function PantallaLogin() {
               // de abrir y el layout se reasiente.
               onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)}
               placeholderTextColor={tema.color.textoTenue}
-              style={[styles.input, estiloCampo]}
+              // Error de credenciales: el borde del campo de contraseña pasa a terracota (`.ig-campo.err`).
+              style={[styles.input, estiloCampo, estadoEfectivo === 'error-credenciales' && { borderColor: tema.color.acento }]}
             />
           </View>
 
@@ -234,8 +237,7 @@ export function PantallaLogin() {
             style={pressableStyle([
               styles.boton,
               {
-                borderWidth: 1,
-                borderColor: tema.color.borde,
+                // Sin borde (`.btn2` del prototipo, BL-X12m): la jerarquía la da el relleno, no un marco.
                 backgroundColor: tema.color.superficie,
                 borderRadius: tema.radio.md,
                 height: ALTO_BOTON,
@@ -265,7 +267,7 @@ export function PantallaLogin() {
           )}
           {estadoEfectivo === 'error-credenciales' && (
             <Text testID="login-alert" style={[styles.alerta, { color: tema.color.peligro, fontSize: tema.tipo.chico }]}>
-              Email o contraseña incorrectos. Probá de nuevo.
+              {TEXTO_CREDENCIALES_INCORRECTAS}
             </Text>
           )}
           {estadoEfectivo === 'no-habilitada' && (
@@ -278,6 +280,9 @@ export function PantallaLogin() {
               No pudimos conectarnos. Probá de nuevo en un toque.
             </Text>
           )}
+          <Text testID="login-pie" style={[styles.alerta, { color: tema.color.textoTenue, fontSize: tema.tipo.chico }]}>
+            {TEXTO_PIE_INGRESAR}
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

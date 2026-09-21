@@ -1,4 +1,6 @@
+export { EntradaSesion } from './EntradaSesion';
 export { PantallaLogin } from './PantallaLogin';
+export { RevealEntrada } from './RevealEntrada';
 export { SessionProvider } from './SessionProvider';
 export {
   useSession,

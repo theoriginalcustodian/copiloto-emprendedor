@@ -7,3 +7,4 @@ export * from './dinero/formatoDinero';
 export * from './midia';
 export * from './refresco';
 export * from './tema';
+export * from './textosEntrada';

@@ -38,6 +38,12 @@ export interface UseSessionResult {
    * `SessionStatus` nuevo.
    */
   avisoSesion?: string;
+  /**
+   * BL-X12m: el usuario salió A PROPÓSITO (`logout`) y todavía no volvió a entrar. Distinto de
+   * `avisoSesion` (la sesión se cayó sola) y de no haber tenido nunca sesión: sólo éste aterriza en el
+   * reveal «volver» (Entrar / Entrar con otra cuenta). `email` es el de la cuenta que salió, si se sabía.
+   */
+  cierreVoluntario?: { email: string | null };
   login: (email: string, password: string) => Promise<LoginResult>;
   loginConGoogle: () => Promise<LoginResult>;
   logout: () => void;
