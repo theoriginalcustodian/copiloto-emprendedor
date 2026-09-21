@@ -148,7 +148,7 @@ Rompen una garantía que el sistema ya declara. No dependen de ninguna decisión
 - **Evidencia:** `apps/mobile/src/modules/chat/ListaMensajes.tsx:68-115` (`TarjetaConfirmacion`: sólo `gate.markdown` + Confirmar/Cancelar) · referencia web `apps/copiloto-web/src/modules/chat/HitlCard.tsx:41-125`.
 - **Depende de:** nada (el payload del gate ya trae `service`/`label`/riesgo; web lo consume).
 - **DoD:**
-  - [ ] Paridad de campos con web: ícono + label del servicio, PARA, MONTO, badge de riesgo, preview, aviso «no se puede deshacer» con borde de alerta.
+  - [ ] Paridad de campos con web: ícono + label del servicio, PARA, MONTO, badge de riesgo, aviso «no se puede deshacer» con borde de alerta. (corregido 2026-09-21 post-A1: `preview` sale del DoD — el motor lo manda como texto del mensaje, `conversation_workflow.py:608-615`; ninguna app tiene productor de `preview`.)
   - [ ] Test de componente: un gate irreversible **exige** el aviso; uno reversible no lo muestra.
   - [ ] Device: captura de un HITL irreversible real (p. ej. mandar un mail) lado a lado con `?ver=hitl`.
 
@@ -187,7 +187,7 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
 - **Plataforma:** web + mobile · **Tamaño:** S · **Origen:** trabajo 4, H-18
 - **Evidencia:** web `apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx:39,45,64` (envía `origen`, sólo muestra la cita OCR si es `foto`, `:100`) · mobile `apps/mobile/src/modules/gastos/FormularioGasto.tsx:52,60,85` (sólo lo envía).
 - **DoD:**
-  - [ ] El formulario muestra el origen para los cuatro valores en ambas apps.
+  - [ ] El formulario muestra el origen para los tres valores (voz / foto / manual) en ambas apps. (corregido 2026-09-21 post-A1: `mail` nunca existió, `gasto_store.py:20` `ORIGENES`; un origen por mail sería fila nueva de ingesta, fuera de la beta.)
   - [ ] Test de componente por valor de `origen`.
   - [ ] Captura de una propuesta por voz y una por foto en device.
 
@@ -273,7 +273,7 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 - **DoD:**
   - [ ] Chips Todo / Cobros / ARCA / Presupuestos / Tuyas y contador «N para hoy · N en curso · N crítico».
   - [ ] La derivación vive en un único módulo borrable (misma forma que mobile).
-  - [ ] Test unitario del mapeo `regla → categoría`; captura en el PWA.
+  - [ ] Test del mapeo `regla → categoría` **en backend** (`test_mi_dia_clasificacion.py`, K-06 lo movió ahí); captura en el PWA. (corregido 2026-09-21 post-A1: el FE ya no mapea.)
 
 ### BL-W8 · Portada financiera de Mi día como componente
 - **Plataforma:** web · **Tamaño:** M · **Origen:** H-04 (a) · **Pantalla:** `/`
@@ -317,7 +317,7 @@ Mobile va adelante en estas pantallas (auditoría §9.1–9.2). Se porta la vers
 - **Plataforma:** mobile · **Tamaño:** S · **Origen:** hilo `cobro-voz` (fuera del mapa; el prototipo lo marca spec, `index.html:3134-3139`)
 - **Evidencia:** backend listo (`apps/copiloto/tool_catalog.py:102-108,588-630`, `mp_charge` genera el link y no cobra) · web lo pinta (`apps/copiloto-web/src/modules/chat/ArtifactView.tsx:23`, tests `ArtifactView.test.tsx:20-65`) · mobile **no porta el renderer de artefactos** (`apps/mobile/src/modules/chat/Burbuja.tsx:20-22`); grep de `payment_link`/`init_point` en `apps/mobile/src` vacío, con control positivo en web.
 - **DoD:**
-  - [ ] Mobile renderiza `payment_link` con monto, vencimiento y acciones Copiar / Compartir (share sheet nativo).
+  - [ ] Mobile renderiza `payment_link` con monto, concepto y acciones Compartir (share sheet nativo, que incluye copiar) / Abrir. (corregido 2026-09-21 post-A1: el backend no emite vencimiento, `tool_catalog.py:613-615`; «Copiar» propio exige `expo-clipboard`, nativo congelado — Compartir lo cubre.)
   - [ ] Decidido en el PR qué otros `kind` de artefacto porta (`email_draft`, etc.) o se abre ítem por cada uno.
   - [ ] Device: «hacele un link de cobro a …» → HITL → tarjeta con el link real de MercadoPago; compartir por WhatsApp.
 
@@ -347,7 +347,7 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Plataforma:** backend + web + mobile · **Tamaño:** M · **Origen:** H-04, sesión de Martín
 - **Evidencia:** `apps/mobile/src/modules/midia/PortadaNegocio.tsx:14-18` (`serieMensual` trae ingresos y gastos, no saldo por mes).
 - **DoD:**
-  - [ ] Saldo del mes anterior (o delta) expuesto; la portada muestra la variación con «—» si falta.
+  - [ ] Saldo del mes anterior (o delta) expuesto; si falta (`variacion_pct: null`) la portada **omite el chip entero**. (corregido 2026-09-21 post-A1: manda K-03 l.49.)
   - [ ] Test backend con un tenant de un solo mes de historia (sin mes anterior).
 
 ### BL-J4 · Salud por conexión (`MC-H3`) + alerta en el detector
@@ -519,7 +519,7 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 
 ### BL-X11 · Aplicar las decisiones de Martín posteriores al 07/09 que se acepten
 - **Plataforma:** web (mobile ya las tiene) · **Tamaño:** S–M · **Origen:** auditoría §6.3 · **Depende de:** `DEC-2`, `DEC-10`
-- **Incluye:** isotipo en el avatar de Soporte · trazo 1,3 del isotipo · logos reales de apps (`logosMarca.ts`; `assets/logos/` falta en el repo) · Calma 3 vs 5 días · cinco íconos provisorios (`mapaIconos.ts:12-16`) · lockup en el login.
+- **Incluye:** isotipo en el avatar de Soporte · trazo 1,3 del isotipo · logos reales de apps (`logosMarca.ts`; `assets/logos/` falta en el repo) · Calma 3 vs 5 días · cinco íconos provisorios (`mapaIconos.ts:12-16`) · lockup en el login. (corregido 2026-09-21 post-A1: en **web** el avatar de Soporte y los cinco íconos son N/A — no hay Soporte en `apps/copiloto-web`; se acepta el acta de #528. En mobile siguen incluidos.)
 - **DoD:**
   - [ ] Cada decisión con acta; las aceptadas, en web; las rechazadas, revertidas en mobile.
   - [ ] Los logos de apps con fuente versionada y licencia de uso de marca anotada.
