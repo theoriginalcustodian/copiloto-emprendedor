@@ -165,7 +165,7 @@ Martin adoptó el **isotipo de David** como símbolo de la marca (ver `../isotip
 
 Hasta acá la entrada eran *«3 ondas que se disipan alrededor de la O»*: el movimiento era un adorno **alrededor** del símbolo, porque el símbolo era una letra y las letras no se mueven. **El isotipo de David ya son arcos** — así que la animación pasa a ser **el símbolo dibujándose**, y termina exactamente en el signo estático que usa la app.
 
-Referencia de movimiento navegable: **`../isotipo-david/entrada.html`** (CSS, no es la pieza final — la pieza se construye en Rive).
+Origen del dibujo: **`../isotipo-david/entrada.html`**. ⚠️ **Rev. 05/09 — la pieza VIGENTE es la del prototipo (`?ver=entrada`)**, que trae el mismo movimiento con la piel invertida del 19/08 (fondo blanco, signo terracota). **Rive quedó derogado el 30/08** (`CLAUDE.md` §8): se porta a Reanimated desde `specs/splash-port-reanimated.md` §6, que tiene la tabla de paths, duraciones y delays.
 
 ### 7.2 · Qué queda derogado
 

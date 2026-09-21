@@ -139,30 +139,66 @@ En RN: `react-native-svg` con `<Path>` y `clipPath`, o directamente el path como
 
 ---
 
-## 6 · La entrada diaria — ⚠️ HAY QUE REHACERLA
+## 6 · La entrada diaria — ✅ REHECHA, lista para portar
 
-El HTML tiene la versión vieja: **la O del wordmark quieta + 3 ondas que se disipan**. Eso
-quedó superado por dos decisiones posteriores:
+**Fuente de verdad: `prototipo/index.html` → `?ver=entrada`.** Se rehizo con tu isotipo el
+18/08 (`explorations/isotipo-david/entrada.html`) y ya está portada al prototipo.
 
-1. **18/08 — se adoptó tu isotipo** (4 arcos concéntricos abiertos a la izquierda).
-2. **19/08 — la entrada va INVERTIDA:** fondo blanco, signo en terracota viva.
+⚠️ **No mires `explorations/splash-o/v2-inmersivo.html` para esto.** Ahí vive la versión
+vieja —la O del wordmark quieta + 3 ondas que se disipan— y quedó superada por dos
+decisiones posteriores: **18/08** se adoptó tu isotipo, **19/08** la entrada se invirtió
+(fondo blanco, signo en terracota viva). Ese archivo se conserva como registro histórico y
+sigue siendo la fuente del **splash**, no de la entrada.
 
 **El signo nuevo encaja mejor que el viejo, y no es casualidad: ya son arcos.** La onda deja
-de ser un adorno alrededor de la letra y pasa a ser **el propio símbolo desplegándose** — los
-cuatro arcos se dibujan de adentro hacia afuera y quedan.
+de ser un adorno alrededor de la letra y pasa a ser **el propio símbolo desplegándose**.
 
-Lo que se conserva del original:
+### Lo que hay que portar
 
-- **Se anima el RADIO, no `scale`.** Así los arcos **atraviesan** el fondo y se disipan
-  solos, en vez de agrandarse enteros.
-- **El trazo adelgaza al alejarse** (2,4 → 1,1): la onda **se gasta**, no se corta.
-- **Escalonado corto** entre arcos (~65 ms): lo que las hace legibles es atravesar el fondo,
-  no el tiempo que tardan.
+Fondo `#FFFFFF`. Signo de **132 px**, `viewBox="0 0 24 24"`, los 4 arcos con
+`stroke:#DE7250` · `fill:none` · `stroke-width:1.3` · linecap y linejoin `round`.
+`pathLength="100"` normaliza los cuatro trazos: **el `dasharray` no depende del largo real
+de cada arco**, que es lo que permite que los dos primeros tarden lo que se les dice y no lo
+que miden.
 
-⚠️ **Duración: 1,5 s son PROVISORIOS.** El número se cierra **midiendo la carga real de Mi
-día**, no a ojo. Si la carga es más rápida, la entrada sobra; si es más lenta, hay que
+| Elemento | `d` | Cómo entra | Dur | Delay |
+|---|---|---|---|---|
+| Arco exterior | `M11 3.5a8.5 8.5 0 1 0 0 17` | draw-on (`dashoffset` 100→0) | 420 ms | 0 |
+| Arco interno | `M11 7.5a4.5 4.5 0 1 0 0 9` | draw-on | 340 ms | 140 ms |
+| Onda 1 | `M16.5 8.8a4.8 4.8 0 0 1 0 6.4` | `onda` | 460 ms | 300 ms |
+| Onda 2 | `M19.5 6.5a9 9 0 0 1 0 11` | `onda` | 460 ms | 420 ms |
+
+Curva única para los cuatro: `cubic-bezier(.2, .8, .2, 1)` → `Easing.bezier(.2,.8,.2,1)`.
+**No hay overshoot acá** (a diferencia del splash): se ve 20+ veces por día y **lo simpático
+la primera vez es insoportable a la vigésima**.
+
+```
+onda:  0%   opacity 0 · translateX(-3px) scaleX(.7)
+      60%   opacity 1
+     100%   opacity 1 · translateX(0) scaleX(1)
+```
+`transform-origin: 11px 12px` — el centro del signo, no el de la caja. En Reanimated va como
+`transformOrigin` sobre el `<Path>`, o desplazando el pivote a mano.
+
+⚠️ **`scaleX`, no `scale`:** las ondas se **estiran hacia afuera** desde el eje del signo. Con
+escala uniforme se agrandan enteras y se lee como un zoom, no como sonido que sale.
+
+El último arco termina a los **880 ms** (420 + 460). Lo que sigue es sostener el signo quieto
+hasta el corte y salir con un fundido de **340 ms**.
+
+### Las tres reglas que la pieza cumple
+
+- **Termina en el signo estático, idéntico al de la app** — no hay corte ni fundido entre la
+  animación y la pantalla.
+- **Un solo gesto, no cuatro entradas:** los solapes están calculados para eso (cada elemento
+  arranca antes de que termine el anterior).
+- **Nada de rebote.** Ver arriba.
+
+⚠️ **Duración total: 1,5 s son PROVISORIOS.** El número se cierra **midiendo la carga real de
+Mi día**, no a ojo. Si la carga es más rápida, la entrada sobra; si es más lenta, hay que
 sostenerla o repetirla. **Esto lo tenés que medir vos** — es el único dato de toda la spec
-que no está de nuestro lado.
+que no está de nuestro lado. Los 880 ms de dibujo no se tocan: lo que se estira o se acorta es
+**el reposo**, entre que el signo queda completo y el fundido.
 
 ---
 
@@ -172,7 +208,10 @@ Con `prefers-reduced-motion` (RN: `AccessibilityInfo.isReduceMotionEnabled`):
 
 - Las formas **no se animan y no se muestran** — se va directo al fondo final.
 - El wordmark aparece **completo y quieto**.
-- En la entrada, los arcos quedan **fijos al 28% de opacidad**, sin recorrido.
+- En la entrada, **el signo aparece entero y quieto**: `dashoffset` en 0, opacidad plena, sin
+  transform. ⚠️ **Deroga el "fijos al 28% de opacidad"** de la versión vieja: aquello era una
+  onda a medio disipar, un estado intermedio. **Ahora el signo es el logo**, y un logo al 28%
+  se lee como que la app no terminó de cargar.
 
 ⚠️ **Lo que NO se apaga: el resultado.** El usuario tiene que ver el lockup y llegar a los
 botones igual. Se saca el movimiento, nunca el contenido — es la misma regla que aplicamos al
