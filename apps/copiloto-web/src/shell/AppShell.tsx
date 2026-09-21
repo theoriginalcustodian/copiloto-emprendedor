@@ -8,7 +8,6 @@ import { AppsScreen } from '../modules/apps';
 import { ConnectionsScreen } from '../modules/connections';
 import { GastosScreen } from '../modules/gastos';
 import { ClientesScreen } from '../modules/clientes';
-import { ContabilidadScreen } from '../modules/contabilidad';
 import { IngresosScreen } from '../modules/ingresos';
 import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
@@ -208,7 +207,6 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
             {activeTab === 'connections' && <ConnectionsScreen />}
             {activeTab === 'gastos' && <GastosScreen />}
             {activeTab === 'clientes' && <ClientesScreen clienteIdInicial={clienteIdAbierto ?? undefined} />}
-            {activeTab === 'contabilidad' && <ContabilidadScreen />}
             {activeTab === 'ingresos' && <IngresosScreen />}
             {activeTab === 'actividad' && (
               <ActividadScreen

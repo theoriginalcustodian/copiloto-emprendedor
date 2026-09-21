@@ -7,7 +7,6 @@ export type TabKey =
   | 'connections'
   | 'gastos'
   | 'clientes'
-  | 'contabilidad'
   | 'ingresos'
   | 'actividad'
   | 'presupuestos'
@@ -66,7 +65,6 @@ export const TABS: readonly TabDefinition[] = [
   { key: 'actividad', label: 'Actividad' },
   { key: 'ingresos', label: 'Ingresos' },
   { key: 'gastos', label: 'Gastos' },
-  { key: 'contabilidad', label: 'Contabilidad' },
   { key: 'facturacion', label: 'Facturación' },
   { key: 'presupuestos', label: 'Presupuestos' },
   { key: 'clientes', label: 'Clientes' },

@@ -448,9 +448,8 @@ const ACCENT2 = '#F8E0D9';
 // SOBRE la opción 2 del operador: las dos juntas dan #FFFFFF sobre #B04A2E = 5.43:1, AA para texto
 // normal (no sólo grande). Se voltea entero y NO se parte en dos tokens porque el censo dio que sus
 // 11 consumidores caen todos sobre superficies de acento — ninguno fuera.
-// ⚠️ Excepción conocida y DIFERIDA por el operador: `HudGrabacion.tsx:60` pinta sobre un gradiente
-// cuyo stop claro es `accent2` (#F8E0D9) → 1.26:1. No lo arregla ningún color de texto: el defecto
-// es el gradiente. Queda escalado a diseño, no se toca acá.
+// BL-Q4 (DEC-11): `HudGrabacion.tsx` ya no pinta el degradado que terminaba en `accent2` (1.26:1): usa
+// `glass.ub1 → glass.ub2` (#B04A2E → #722717, peor caso 5.43:1 con `ACCENT_ON`).
 const ACCENT_ON = '#FFFFFF';
 const ACCENT_GLOW = 'rgba(222,114,80,.55)';
 // Burbuja del usuario = "acento (superficie)" del DoD, sólida (no rgba) — mismo criterio que la

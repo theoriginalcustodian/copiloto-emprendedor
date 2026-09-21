@@ -565,3 +565,16 @@
   color: var(--label);
   min-height: 1.2em;
 }
+
+/* ---------- Acumulado del año (BL-X2, ex-Contabilidad) ---------- */
+.inteligencia-screen__acumulado-sub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--label);
+  margin: 0;
+}
+
+.inteligencia-screen__acumulado-tope {
+  margin-top: 8px;
+  align-self: flex-start;
+}

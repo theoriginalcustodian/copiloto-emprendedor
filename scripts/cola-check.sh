@@ -24,7 +24,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PLAN="$REPO_ROOT/coordinacion/PLAN.md"
+# COLA_PLAN: el PLAN del buzón que se vigila. Sin él, corrido desde un worktree (donde
+# `coordinacion/` no existe: es carpeta física única, no versionada) gritaba «No existe PLAN.md»
+# en CADA ciclo y el vigilante daba exit 1 permanente: una alarma fija tapa las reales (21/09).
+PLAN="${COLA_PLAN:-$REPO_ROOT/coordinacion/PLAN.md}"
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
 [ -f "$PLAN" ] || { echo "No existe $PLAN"; exit 0; }

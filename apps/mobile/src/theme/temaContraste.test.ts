@@ -91,8 +91,9 @@ function aplanar(rgba: string, hexFondo: string): string {
  *   `fondo`, casi opaco (95%): no es una superficie distinta, es el mismo par ya cubierto.
  * - `borde` en `EnvolturaCampo.tsx:46` para `peligro` — es `borderColor`, no `color` de texto: fuera
  *   de alcance de este gate (que mide texto/ícono, no bordes).
- * - `HudGrabacion.tsx` — deuda conocida y DIFERIDA por el operador (`tokens.ts:398-400`), fuera de
- *   alcance de este contrato explícitamente.
+ * - `HudGrabacion.tsx` — YA NO es excepción (BL-Q4 / DEC-11): el botón de grabar pinta el gradiente
+ *   `glass.ub1 → glass.ub2`, cubierto por el par «burbuja del usuario (peor stop)»; el último `it` de
+ *   este archivo fija que no vuelva al degradado que terminaba en `accent2` (1,26:1).
  * - `PantallaTicket.tsx` (burbuja de soporte) usa geometría de color ad-hoc del componente, no un
  *   token de `Tokens.color` reusable — mismo motivo que `HudGrabacion`: no hay token que referenciar
  *   sin reinventar el cálculo local. Documentado, no cubierto — deuda conocida, no silenciada.
@@ -317,4 +318,12 @@ describe('auditoría del mapa SUPERFICIES contra el código real', () => {
       expect(usado).toBe(true);
     });
   }
+
+  it('BL-Q4: el botón de grabar no vuelve al degradado que terminaba en accent2 (1,26:1)', () => {
+    const hud = fs.readFileSync(path.join(SRC, 'modules', 'captura', 'HudGrabacion.tsx'), 'utf8');
+    const gradiente = hud.match(/colors=\{\[([^\]]+)\]\}/);
+    expect(gradiente).not.toBeNull();
+    expect(gradiente![1]).not.toMatch(/accent2/);
+    expect(gradiente![1]).toMatch(/glass\.ub1/);
+  });
 });
