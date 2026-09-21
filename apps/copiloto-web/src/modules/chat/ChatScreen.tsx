@@ -4,7 +4,9 @@ import { tomarPendiente } from '@copiloto/core';
 
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { useChat } from './useChat';
+import { useConexionRequerida } from './useConexionRequerida';
 import './chat.css';
 
 const WELCOME_TEXT =
@@ -57,6 +59,8 @@ export function ChatScreen({
 }: ChatScreenProps = {}) {
   const { messages, sendStatus, send, sendAudio } = useChat();
   const isDesktop = variant === 'desktop';
+  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
+  const conexion = useConexionRequerida(messages, send);
 
   // BL-W9: una pantalla de ayuda dejó una pregunta en el buzón — se manda al montar el chat, UNA vez
   // (`tomarPendiente` vacía el buzón, así que no se reenvía sola al volver a esta pantalla).
@@ -91,6 +95,13 @@ export function ChatScreen({
         sendStatus={sendStatus}
         onSend={handleSend}
         onSendAudio={handleSendAudio}
+      />
+      <SheetRequiereConexion
+        conexion={conexion.pendiente?.conexion ?? null}
+        onConectar={conexion.conectar}
+        onAhoraNo={conexion.ahoraNo}
+        ocupado={conexion.ocupado}
+        error={conexion.error}
       />
     </div>
   );
