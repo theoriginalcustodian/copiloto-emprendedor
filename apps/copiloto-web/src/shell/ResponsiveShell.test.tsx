@@ -58,15 +58,15 @@ describe('ResponsiveShell', () => {
     expect(screen.queryByTestId('tab-bar')).not.toBeInTheDocument();
   });
 
-  it('en ambos breakpoints monta la misma pantalla de módulo (Chat) por default', () => {
+  it('en ambos breakpoints monta la misma pantalla de módulo (Mi día) por default', () => {
     mockMatchMedia(false);
     const { unmount } = renderResponsiveShell();
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('pantalla-midia')).toBeInTheDocument();
     unmount();
 
     mockMatchMedia(true);
     renderResponsiveShell();
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('pantalla-midia')).toBeInTheDocument();
   });
 
   it('BETA-4b: `initialTab` se propaga tal cual al shell montado en ambos breakpoints', () => {

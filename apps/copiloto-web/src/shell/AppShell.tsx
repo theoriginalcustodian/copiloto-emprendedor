@@ -14,6 +14,7 @@ import { ActividadScreen } from '../modules/actividad';
 import { PresupuestosScreen } from '../modules/presupuestos';
 import { InteligenciaScreen } from '../modules/inteligencia';
 import { MidiaScreen } from '../modules/midia';
+import { AvatarCuenta } from './AvatarCuenta';
 import { EscritorioScreen } from '../modules/escritorio';
 import { RecientesScreen } from '../modules/recientes';
 import { AjustesScreen } from '../modules/ajustes';
@@ -27,7 +28,8 @@ import { useBackGuard } from './useBackGuard';
 import { useChromeAutoHide } from './useChromeAutoHide';
 import './shell.css';
 
-const DEFAULT_TAB: TabKey = 'chat';
+// BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
+const DEFAULT_TAB: TabKey = 'midia';
 
 /**
  * Shell mobile (Task 9, EXTRACT §2.3/§4): contenedor de navegación con tab-bar flotante que
@@ -217,9 +219,10 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
             )}
             {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
             {activeTab === 'inteligencia' && <InteligenciaScreen />}
-            {activeTab === 'midia' && <MidiaScreen />}
+            {activeTab === 'midia' && <MidiaScreen avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />} />}
             {activeTab === 'escritorio' && (
               <EscritorioScreen
+                avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />}
                 onFuncion={(key) => {
                   const tab = FUNCION_A_TAB[key];
                   if (tab == null) {

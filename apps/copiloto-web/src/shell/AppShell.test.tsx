@@ -74,12 +74,13 @@ describe('AppShell', () => {
     window.localStorage.clear();
   });
 
-  it('renderiza el frame + tab-bar y por default muestra el tab Chat (ChatScreen)', () => {
+  it('renderiza el frame + tab-bar y por default aterriza en Mi día (BL-X1)', () => {
     renderAppShell();
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('tab-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('pantalla-midia')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-screen')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mi día' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('BETA-4b: `initialTab="connections"` aterriza en Conexiones, no en Chat', () => {
@@ -97,48 +98,54 @@ describe('AppShell', () => {
   // lo EJERCITA en vez de afirmarlo. Mientras pase, `ajustes` puede estar fuera de `TABS` sin dejar
   // la pantalla inalcanzable en el teléfono; si alguien rompe el wireo (`FUNCION_A_TAB.ajustes`) o
   // saca el tile, esto se pone rojo y la decisión se revisa.
-  it('MOBILE: Ajustes es alcanzable sin tab propio -- Funciones > tile Ajustes abre la pantalla', () => {
+  it('MOBILE: Ajustes se abre SÓLO por el avatar -- ni tab ni tile de Funciones (BL-X1)', () => {
     renderAppShell();
     expect(screen.queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
-    fireEvent.click(screen.getByTestId('tile-ajustes'));
+    expect(screen.queryByTestId('tile-ajustes')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mi día' }));
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
+    expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
+  });
+
+  it('el avatar también está en Funciones y abre Ajustes', () => {
+    renderAppShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
   });
 
   it('navegar a Ajustes > Apps conectadas muestra ConnectionsScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
-    fireEvent.click(screen.getByTestId('tile-ajustes'));
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
     fireEvent.click(screen.getByTestId('ajuste-tile-apps'));
     expect(screen.getByTestId('connections-screen')).toBeInTheDocument();
   });
 
   it('navegar a Ajustes > Mi cuenta muestra AccountScreen (camino real post-depuración)', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
-    fireEvent.click(screen.getByTestId('tile-ajustes'));
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
     fireEvent.click(screen.getByTestId('ajuste-tile-cuenta'));
     expect(screen.getByTestId('account-screen')).toBeInTheDocument();
   });
 
-  it('volver a Chat desde otro tab remonta ChatScreen', () => {
+  it('volver a Chat desde Mi día remonta ChatScreen', () => {
     renderAppShell();
     fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
     expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
   });
 
-  it('el botón atrás desde otro tab vuelve a Chat en vez de salir', () => {
+  it('el botón atrás desde otro tab vuelve a Mi día en vez de salir', () => {
     renderAppShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
-    fireEvent.click(screen.getByTestId('tile-ajustes'));
+    fireEvent.click(screen.getByTestId('avatar-cuenta'));
     expect(screen.getByTestId('pantalla-ajustes')).toBeInTheDocument();
 
     act(() => {
       window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
     });
-    expect(screen.getByTestId('chat-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('pantalla-midia')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mi día' })).toHaveAttribute('aria-current', 'page');
   });
 
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {

@@ -27,7 +27,8 @@ import { Rail } from './Rail';
 import { type TabKey } from './TabBar';
 import './desktop.css';
 
-const DEFAULT_TAB: TabKey = 'chat';
+// BL-X1: la app abre en Mi día (la portada), no en el chat — igual que mobile.
+const DEFAULT_TAB: TabKey = 'midia';
 
 /**
  * Shell de escritorio (DESIGN-SYSTEM-EXTRACT-WEB.md §3/§4): Rail lateral + columna de contenido a
