@@ -389,11 +389,11 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
 
     assert me_a == {"cliente_id": a.cliente_id, "mp_connected": True, "composio_connected": ["gmail"],
-                    "es_admin": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
     # y B NO ve la conexión composio que solo existe para A.
     assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": [],
-                    "es_admin": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 

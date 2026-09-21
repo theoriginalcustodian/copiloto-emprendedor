@@ -561,14 +561,14 @@ def test_me_with_token_reports_mp_connected_true():
     r = TestClient(app).get("/me")
     assert r.status_code == 200
     assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
-                        "es_admin": False, "onboarding_completado": False}
+                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
 
 
 def test_me_without_mp_connection_reports_false():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     r = TestClient(app).get("/me")
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
-                        "es_admin": False, "onboarding_completado": False}
+                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
 
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():
@@ -705,7 +705,7 @@ def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     client = TestClient(app)
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
-                                        "composio_connected": [], "es_admin": False, "onboarding_completado": False}
+                                        "composio_connected": [], "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
                                              "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 
