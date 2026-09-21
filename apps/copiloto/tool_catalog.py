@@ -51,6 +51,7 @@ from gasto_store import CATEGORIAS, LIMITES, dos_decimales, hoy_del_negocio  # n
 # literal acá y un rename allá se descubren en producción, cuando el copiloto marca y no pasa nada.
 from cobro_store import COBRADA, ORIGEN_MANUAL  # noqa: E402
 from mi_dia_tarjeta_store import HACIENDO, HECHA, PARA_HOY, EstadoInvalido  # noqa: E402
+from presupuesto_sugerencias import sugerencia_de_aprobacion  # noqa: E402
 from presupuesto_store import (APROBADO, DESESTIMADO, TRANSICIONES,  # noqa: E402
                                TransicionInvalida)
 from cliente_store import (DOC_CUIT, DOC_DNI, LIMITES as LIMITES_CLIENTE,  # noqa: E402
@@ -1257,7 +1258,10 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
                                              f"({_plata(actualizado['total'])}) como {verbo}. "
                                              f"Confirmáselo en una línea corta.",
-                                   "presupuesto": actualizado})
+                                   "presupuesto": actualizado,
+                                   # K-07: sólo al APROBAR el cliente ofrece armar la factura (nunca al descartar).
+                                   **({"sugerencia": sugerencia_de_aprobacion(actualizado)}
+                                      if nuevo == APROBADO else {})})
 
 
 # ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────
