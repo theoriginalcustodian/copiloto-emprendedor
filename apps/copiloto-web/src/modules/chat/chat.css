@@ -657,6 +657,11 @@ a.artifact:focus-visible {
   margin: 0;
 }
 
+.recording-overlay__hint--cancel {
+  color: var(--danger-fg);
+  font-weight: 600;
+}
+
 .recording-overlay__hint-arrow {
   color: var(--text);
 }

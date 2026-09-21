@@ -5,6 +5,8 @@ export interface RecordingOverlayProps {
   elapsedMs: number;
   /** `true` cuando el usuario deslizó el dedo >46px hacia arriba ("fijado", manos libres). */
   locked: boolean;
+  /** `true` cuando el dedo ya pasó el umbral hacia la izquierda: soltar cancela (BL-D2). */
+  cancelling?: boolean;
   onCancel: () => void;
   onSend: () => void;
 }
@@ -25,7 +27,7 @@ function formatElapsed(ms: number): string {
  *   - **unlocked** (dedo sostenido): hint "Soltá para enviar · deslizá ↑ para fijar".
  *   - **locked** (deslizó >46px, `MicButton` decide el threshold): botones Cancelar/Enviar.
  */
-export function RecordingOverlay({ elapsedMs, locked, onCancel, onSend }: RecordingOverlayProps) {
+export function RecordingOverlay({ elapsedMs, locked, cancelling = false, onCancel, onSend }: RecordingOverlayProps) {
   return (
     <div
       className="recording-overlay"
@@ -60,10 +62,14 @@ export function RecordingOverlay({ elapsedMs, locked, onCancel, onSend }: Record
             </svg>
           </button>
         </div>
+      ) : cancelling ? (
+        <p className="recording-overlay__hint recording-overlay__hint--cancel">
+          Soltá para cancelar
+        </p>
       ) : (
         <p className="recording-overlay__hint">
           Soltá para enviar · deslizá <span className="recording-overlay__hint-arrow">↑</span> para
-          fijar
+          fijar · <span className="recording-overlay__hint-arrow">←</span> para cancelar
         </p>
       )}
     </div>

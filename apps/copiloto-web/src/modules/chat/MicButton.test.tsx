@@ -111,6 +111,50 @@ describe('MicButton — gesto tipo WhatsApp (Task 19)', () => {
     expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
   });
 
+  it('BL-D2: deslizar >80px a la izquierda avisa ANTES de soltar y al soltar CANCELA (no envía)', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientX: 300, clientY: 300 });
+    });
+    clock.advance(500);
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 300 - 81, clientY: 300 });
+    });
+    expect(screen.getByText('Soltá para cancelar')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+
+    expect(onSendAudio).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('recording-overlay')).not.toBeInTheDocument();
+  });
+
+  it('BL-D2: volver por debajo del umbral antes de soltar des-arma la cancelación y envía', async () => {
+    const onSendAudio = vi.fn();
+    const clock = mockClock();
+    render(<MicButton onSendAudio={onSendAudio} />);
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientX: 300, clientY: 300 });
+    });
+    clock.advance(500);
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 200, clientY: 300 });
+    });
+    await act(async () => {
+      fireEvent.pointerMove(document, { clientX: 250, clientY: 300 });
+    });
+    expect(screen.queryByText('Soltá para cancelar')).not.toBeInTheDocument();
+    await act(async () => {
+      fireEvent.pointerUp(document);
+    });
+
+    expect(onSendAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('tap corto (held < 350ms) NO envía y muestra el hint "Mantené presionado para grabar"', async () => {
     const onSendAudio = vi.fn();
     const clock = mockClock();
