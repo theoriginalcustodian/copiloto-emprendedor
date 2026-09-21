@@ -122,7 +122,7 @@ describe('MidiaScreen — panel de calendario (CAL1 §3, fuera del Kanban)', () 
 });
 
 const PORTADA = {
-  caja: { saldo: '125000.00', moneda: 'ARS' },
+  caja: { saldo: '125000.00', moneda: 'ARS', fechaCorte: null, variacionPct: null },
   mes: { ingresos: '300000.00', gastos: null, rentabilidad: null, facturado: null, cobrado: null },
   serieMensual: [],
   mejoresClientes: [],

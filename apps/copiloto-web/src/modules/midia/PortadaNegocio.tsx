@@ -1,4 +1,4 @@
-import { formatearImporte, type Portada } from '@copiloto/core';
+import { chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
@@ -21,9 +21,11 @@ const importe = (v: string | null): string => (v != null ? formatearImporte(v) :
  * El trío Entró / Salió / Por cobrar va ADENTRO del bloque: son la lectura del saldo, no tres KPIs
  * sueltos.
  *
- * ⚠️ Lo que el prototipo tiene y acá NO se fabrica: el delta «vs julio» y la línea «faltan los cobros
- * de hoy» esperan `BL-J2`/`BL-J3` y `BL-J4` (K-03 / K-09) — un porcentaje o un aviso inventados sobre
- * el dinero de alguien son justo la mentira que este sistema prohíbe.
+ * La fecha de corte y la variación contra el mes anterior (BL-J2/BL-J3, K-03) las calcula el BACKEND
+ * y acá sólo se dibujan; cada una se omite entera si no vino (nunca «0%» ni «—»).
+ *
+ * ⚠️ Lo que el prototipo tiene y acá NO se fabrica: la línea «faltan los cobros de hoy» espera `BL-J4`
+ * (K-09) — un aviso inventado sobre el dinero de alguien es justo la mentira que este sistema prohíbe.
  */
 export function PortadaNegocio({ portada }: PortadaNegocioProps) {
   const trio: readonly [string, string, string | null][] = [
@@ -32,12 +34,19 @@ export function PortadaNegocio({ portada }: PortadaNegocioProps) {
     ['Por cobrar', 'por-cobrar', portada.porCobrar.total],
   ];
 
+  const chip = chipDeCaja(portada.caja);
+
   return (
     <Surface variant="bloque" className="midia-portada" data-testid="midia-portada">
       <p className="midia-portada__rotulo">En caja</p>
       <p className="midia-portada__cifra" data-testid="midia-portada-caja">
         {importe(portada.caja.saldo)}
       </p>
+      {chip != null && (
+        <span className="midia-portada__chip" data-testid="midia-portada-chip">
+          {chip}
+        </span>
+      )}
       <div className="midia-portada__trio">
         {trio.map(([etiqueta, id, valor]) => (
           <div key={id} className="midia-portada__celda" data-testid={`midia-portada-${id}`}>

@@ -55,6 +55,26 @@ beforeEach(() => {
   configurarApi({ http, tokens: crearTokensFake() });
 });
 
+describe('leerPortada — K-03 fecha de corte y variación', () => {
+  it('lee fecha_corte y variacion_pct de caja', async () => {
+    responder = () =>
+      respuesta(200, { ...PORTADA_VIVA, caja: { saldo: '286000.00', moneda: 'ARS', fecha_corte: '2026-08-19', variacion_pct: '-18.0' } });
+    const res = await leerPortada();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    expect(res.portada.caja.fechaCorte).toBe('2026-08-19');
+    expect(res.portada.caja.variacionPct).toBe('-18.0');
+  });
+
+  it('variacion_pct null (un solo mes de historia) se conserva null, no 0', async () => {
+    responder = () =>
+      respuesta(200, { ...PORTADA_VIVA, caja: { saldo: '1.00', moneda: 'ARS', fecha_corte: '2026-08-19', variacion_pct: null } });
+    const res = await leerPortada();
+    if (res.status !== 'ok') throw new Error('esperaba ok');
+    expect(res.portada.caja.variacionPct).toBeNull();
+    expect(res.portada.caja.fechaCorte).toBe('2026-08-19');
+  });
+});
+
 describe('leerPortada — el camino bueno', () => {
   it('trae los cinco números del mes, la serie y los mejores clientes, con la plata como string', async () => {
     responder = () => respuesta(200, PORTADA_VIVA);
@@ -65,6 +85,9 @@ describe('leerPortada — el camino bueno', () => {
     if (res.status !== 'ok') return;
     expect(res.portada.caja.saldo).toBe('184000.00');
     expect(res.portada.caja.moneda).toBe('ARS');
+    // Forma vieja (sin K-03): los dos campos nuevos quedan null, nunca 0.
+    expect(res.portada.caja.fechaCorte).toBeNull();
+    expect(res.portada.caja.variacionPct).toBeNull();
     expect(res.portada.mes.rentabilidad).toBe('64000.00');
     expect(res.portada.serieMensual.map((p) => p.mes)).toEqual(['2026-03', '2026-04']);
     expect(res.portada.mejoresClientes[0].cliente).toBe('Panadería Los Tilos');

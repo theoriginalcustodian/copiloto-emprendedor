@@ -15,3 +15,4 @@ export {
   filtrarPorCategoria,
 } from './categoriaTarjeta';
 export type { CategoriaTarjeta } from './categoriaTarjeta';
+export { chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';

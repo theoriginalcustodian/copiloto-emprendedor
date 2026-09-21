@@ -9,22 +9,14 @@
  * tres datos sueltos: son la lectura del saldo. Sacarlos afuera los vuelve KPIs y el saldo pierde
  * el contexto que lo hace entendible.
  *
- * ⚠️ **Dos cosas del prototipo NO están, y no se fabrican:**
+ * La fecha de corte y la variación contra el mes anterior (BL-J2/BL-J3, K-03) las calcula el BACKEND;
+ * acá sólo se dibujan, y cada una se omite entera si no vino (nunca «0%» ni «—»).
  *
- * 1. **El delta «−18% vs julio».** El contrato no trae la variación del saldo contra el mes
- *    anterior: `CajaPortada` es {saldo, moneda} y `serieMensual` sólo tiene ingresos/gastos por mes,
- *    no el saldo de caja. Se podría calcular algo parecido con esos dos, pero sería **otra cosa
- *    llamada igual** — y un porcentaje inventado sobre el dinero de alguien es exactamente el tipo
- *    de mentira que el sistema prohíbe.
- * 2. **La línea que admite estar incompleto** («faltan los cobros de hoy — Mercado Pago está
- *    caído»). Necesita una señal de salud por conexión que hoy no existe en ningún lado. Es la
- *    regla dura del repo: el dato que falta se DICE, no se disfraza de cero. Mientras no exista la
- *    señal, la portada **no puede saber** que está incompleta — y callarlo es el default menos malo
- *    sólo porque la alternativa es avisar siempre, que es ruido.
- *
- * Las dos son pedidos a backend, anotados en la spec `mobile-coherencia.md` Parte 2.
+ * ⚠️ **Una cosa del prototipo NO está, y no se fabrica:** la línea que admite estar incompleto
+ * («faltan los cobros de hoy — Mercado Pago está caído»). Necesita una señal de salud por conexión
+ * (K-09 / BL-J4). Regla dura del repo: el dato que falta se DICE, no se disfraza de cero.
  */
-import { formatearImporte, type Portada } from '@copiloto/core';
+import { chipDeCaja, formatearImporte, type Portada } from '@copiloto/core';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BloqueCifra } from '../../theme/BloqueCifra';
@@ -42,7 +34,7 @@ export function PortadaNegocio({ portada }: PortadaNegocioProps) {
   const importe = (v: string | null) => (v != null ? formatearImporte(v) : '—');
 
   return (
-    <BloqueCifra testID="midia-portada" rotulo="En caja" cifra={importe(portada.caja.saldo)}>
+    <BloqueCifra testID="midia-portada" rotulo="En caja" cifra={importe(portada.caja.saldo)} chip={chipDeCaja(portada.caja) ?? undefined}>
       <View style={styles.trio}>
         {(
           [
