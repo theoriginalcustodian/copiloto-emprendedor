@@ -17,3 +17,5 @@ export * from './presupuestoPropuesto';
 // `factura_propuesta` — hito 9: `data` confirmada por el contrato §2.1; sólo el `kind` es
 // [ASSUMED_PENDING_VERIFY]. Ver el docstring del módulo.
 export * from './facturaPropuesta';
+// `payment_link` — el link de cobro de MercadoPago (BL-F2). Ver el docstring del módulo.
+export * from './linkDeCobro';

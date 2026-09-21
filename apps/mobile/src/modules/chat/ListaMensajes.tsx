@@ -6,6 +6,7 @@ import type { ListRenderItemInfo } from 'react-native';
 import {
   leerClientePropuesto,
   leerFacturaPropuesta,
+  leerLinkDeCobro,
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
@@ -21,6 +22,7 @@ import { Marca } from '../../theme/Marca';
 import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
@@ -211,6 +213,12 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
   if (facturaPropuesta) {
     return <TarjetaFacturaPropuesta propuesta={facturaPropuesta} />;
+  }
+
+  // `payment_link` — el link que `mp_charge` ya generó (BL-F2). Sin `url` no hay card y cae a `Burbuja`.
+  const linkDeCobro = leerLinkDeCobro(mensaje.card);
+  if (linkDeCobro) {
+    return <TarjetaLinkDeCobro link={linkDeCobro} />;
   }
 
   const gate = mapearGate(mensaje);

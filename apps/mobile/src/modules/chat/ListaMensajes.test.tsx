@@ -335,4 +335,27 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('¿Cuál de estos clientes?')).toBeTruthy();
     expect(screen.queryByTestId('tarjeta-confirmacion')).toBeNull();
   });
+
+  it('BL-F2: una card payment_link se renderiza como tarjeta de cobro, no como burbuja', async () => {
+    await envolver([
+      {
+        id: 'assistant-9',
+        role: 'assistant',
+        text: 'Listo, ahí tenés el link.',
+        card: { kind: 'payment_link', data: { url: 'https://mpago.la/x', amount: 2500, concept: 'Clase' } },
+      },
+    ]);
+
+    expect(screen.getByTestId('tarjeta-link-cobro')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-link-cobro-monto')).toHaveTextContent('$2.500');
+  });
+
+  it('BL-F2: un payment_link sin url cae a la burbuja de texto', async () => {
+    await envolver([
+      { id: 'assistant-10', role: 'assistant', text: 'No pude armar el link.', card: { kind: 'payment_link', data: {} } },
+    ]);
+
+    expect(screen.queryByTestId('tarjeta-link-cobro')).toBeNull();
+    expect(screen.getByText('No pude armar el link.')).toBeTruthy();
+  });
 });
