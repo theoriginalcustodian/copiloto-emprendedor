@@ -37,6 +37,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
+from catalog import requiere_conexion_card  # noqa: E402
 from deposito_traumas import depositar as depositar_trauma  # noqa: E402
 from fingerprint import fingerprint_de_error  # noqa: E402
 # La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
@@ -1613,7 +1614,10 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
             return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "resultado inesperado"})
         except ConnectionRequired as e:
             return ToolResult(tool_call_id=idem_key, status="error",
-                              observation={"error": f"servicio no conectado: {e.toolkit}", "needs_connect": e.toolkit})
+                              observation={"error": f"servicio no conectado: {e.toolkit}", "needs_connect": e.toolkit,
+                                           # K-11: el motor lo saca del mensaje al LLM y lo adjunta a la
+                                           # respuesta como `card` (sheet «conectá X» en la app).
+                                           "gate_card": requiere_conexion_card(e.toolkit, _friendly_toolkit(e.toolkit))})
         except ComposioExecutionError:
             return ToolResult(tool_call_id=idem_key, status="error",
                               observation={"error": "el servicio falló; reintentá en un rato"})

@@ -532,6 +532,7 @@ class ConversationWorkflow:
         # confirmación (_run_react_turn) antes de entrar acá, y se sigue completando abajo con cada tool que
         # este loop resuelve. Viaja a _react_finish para que el marcador cubra TODO el turno, no solo esta pasada.
         trace = list(tool_trace) if tool_trace else []
+        gate_card = None      # K-11: card del último gate estructurado (ej. requiere_conexion) que dejó una tool
         while step < self.REACT_MAX_STEPS:
             resp = await workflow.execute_activity(
                 "call_llm_tools",
@@ -586,7 +587,7 @@ class ConversationWorkflow:
                     content = resp.get("content") or content
                 if not tool_calls:
                     await self._react_finish(channel, channel_ref, cliente_id, content, last_artifact,
-                                             tool_trace=trace)
+                                             tool_trace=trace, card=gate_card)
                     return False
             tc = tool_calls[0]                                   # parallel_tool_calls=false -> 1
             sig = _tool_signature(tc)                            # no-progreso: misma tool+args 2× consecutivas
@@ -616,8 +617,21 @@ class ConversationWorkflow:
                                        choices=_confirm_choices(start_turn_ix, step),  # token por gate (HIGH)
                                        card=card)
                 return False                                     # el confirm/cancel reingresa por _run_react_turn
+            observation = tr.get("observation") or {}
+            # K-11: una tool puede dejar en su observación un `gate_card` (ej. «conectá Gmail»). El motor NO
+            # conoce su contenido (capa PLANTILLA, domain-blind): sólo lo saca del mensaje que ve el LLM y lo
+            # adjunta a la respuesta final del turno. Se limpia si una tool posterior sí resuelve. La misma
+            # activity `send_channel_message` con otro valor de `card`: mismo Command sequence, replay-safe;
+            # el `patched` se consulta SÓLO cuando hay gate (las historias viejas nunca pasan por acá).
+            if isinstance(observation.get("gate_card"), dict):
+                observation = dict(observation)
+                nuevo_gate = observation.pop("gate_card")
+                if workflow.patched("gate-card-requiere-conexion"):
+                    gate_card = nuevo_gate
+            elif tr.get("status") == "ok":
+                gate_card = None
             tc_msg = _assistant_tool_call_msg(tc)
-            tr_msg = _tool_result_msg(tc["id"], tr.get("observation") or {})
+            tr_msg = _tool_result_msg(tc["id"], observation)
             messages.append(tc_msg)
             messages.append(tr_msg)
             self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
@@ -640,7 +654,7 @@ class ConversationWorkflow:
         return False
 
     async def _react_finish(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact,
-                            tool_trace: list | None = None) -> None:
+                            tool_trace: list | None = None, card: dict | None = None) -> None:
         """Cierre TERMINAL del turno (texto final, no la card del gate): apendea a self._history para memoria/CAN
         (major #4) y despacha por el canal con el artifact clicable.
 
@@ -666,7 +680,7 @@ class ConversationWorkflow:
         # así que un turno futuro ve la secuencia completa (pidió X -> tool_call -> tool_result -> texto), no solo
         # el texto suelto que el marcador de PR#85 intentaba compensar sin éxito.
         self._react_transcript.append({"role": "assistant", "content": text})
-        await self._react_send(channel, channel_ref, cliente_id, text, artifact)
+        await self._react_send(channel, channel_ref, cliente_id, text, artifact, card=card)
 
     async def _react_send(self, channel: str, channel_ref: str, cliente_id: str, text: str, artifact, *,
                           choices=None, card=None) -> None:

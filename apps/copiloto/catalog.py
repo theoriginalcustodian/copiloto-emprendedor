@@ -110,6 +110,20 @@ def _entry(key: str, *, kind: str, connected: bool, status: str | None = None) -
     }
 
 
+KIND_REQUIERE_CONEXION = "requiere_conexion"
+
+
+def requiere_conexion_card(service: str, label: str) -> dict:
+    """`card` del reply cuando un turno cae en `ConnectionRequired` (K-11, BL-J8): el sheet «conectá X»
+    que la app pinta en contexto. `alcance` y `connect_path` salen de `_entry`, la MISMA fuente que
+    `GET /catalog` (cero copy duplicado: una segunda lista de permisos driftearía). `label` lo pone quien
+    llama para que coincida con el texto del reply."""
+    key = (service or "").lower()
+    entry = _entry(key, kind="payments" if key == MERCADOPAGO_KEY else "composio", connected=False)
+    return {"kind": KIND_REQUIERE_CONEXION, "service": key, "label": label,
+            "alcance": entry["capabilities"], "connect_path": entry["connect_path"]}
+
+
 def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
                   mp_status: str | None = None, composio_caidos=()) -> list[dict]:
     """Catálogo completo (MercadoPago + todos los toolkits Composio soportados), en el shape del contrato

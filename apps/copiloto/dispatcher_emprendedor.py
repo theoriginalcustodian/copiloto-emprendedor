@@ -24,6 +24,7 @@ from clients.agent.providers.composio_gateway import ComposioExecutionError, Con
 
 from activity_summary import summarize_activity
 from calendar_policy import CREATE_EVENT_SLUG
+from catalog import requiere_conexion_card
 import services
 from services.base import Proposal, Read
 
@@ -280,7 +281,9 @@ def make_dispatcher(gateway, *, now_iso_provider: Callable[[], str],
             return DispatchResult(
                 reply_text=f"Para eso necesito que conectes {_friendly_toolkit(e.toolkit)} primero. "
                            "Andá a Conexiones, conectalo y volvé a pedírmelo 👌",
-                done=False, state_patch={"pending": None})
+                done=False, state_patch={"pending": None},
+                # K-11: gate estructurado (aditivo; canales texto-only y clientes viejos siguen con `reply_text`).
+                card=requiere_conexion_card(e.toolkit, _friendly_toolkit(e.toolkit)))
         except ComposioExecutionError:
             return DispatchResult(
                 reply_text="Uy, no pude completar esa acción con el servicio ahora mismo. "
