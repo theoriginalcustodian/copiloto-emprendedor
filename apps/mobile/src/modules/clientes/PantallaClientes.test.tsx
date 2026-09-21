@@ -55,7 +55,7 @@ async function montar() {
 describe('PantallaClientes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente()], total: 1 });
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente()], total: 1, agregadosEsteMes: 1 });
     mockFicha.mockResolvedValue({ status: 'ok', ficha: ficha() });
     mockCrear.mockResolvedValue({ status: 'ok', cliente: cliente({ id: 30, nombre: 'Kiosco' }) });
     mockEditar.mockResolvedValue({ status: 'ok', cliente: cliente() });
@@ -76,6 +76,7 @@ describe('PantallaClientes', () => {
       status: 'ok',
       clientes: [cliente({ docNro: null, docTipo: null, telefono: null })],
       total: 1,
+      agregadosEsteMes: null,
     });
 
     await montar();
@@ -85,7 +86,7 @@ describe('PantallaClientes', () => {
   });
 
   it('no marca los derivados y sí los cargados a mano', async () => {
-    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente({ origen: 'voz' })], total: 1 });
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente({ origen: 'voz' })], total: 1, agregadosEsteMes: null });
 
     await montar();
 
@@ -93,7 +94,7 @@ describe('PantallaClientes', () => {
   });
 
   it('la cartera vacía explica que se arma sola, sin parecer un error', async () => {
-    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0 });
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: null });
 
     await montar();
 
@@ -209,7 +210,7 @@ describe('PantallaClientes', () => {
     it('la cartera VACIA ofrece el alta - no solo informa que no hay nada', async () => {
       // El dia 1 no hay facturas de las que derivar. Un vacio que solo informa deja la funcion
       // nacida muerta: es el mecanismo por el que se abandono el Sheet de presupuestos.
-      mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0 });
+      mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: null });
 
       await montar();
 
@@ -355,6 +356,7 @@ describe('PantallaClientes', () => {
       mockListar.mockResolvedValue({
         status: 'ok',
         total: 2,
+        agregadosEsteMes: null,
         clientes: [
           cliente({ id: 20, nombre: 'Juan Pérez', docNro: null, docTipo: null, telefono: '11-1111-1111' }),
           cliente({ id: 23, nombre: 'Juan Pérez', docNro: null, docTipo: null, telefono: null, domicilio: 'Mitre 500' }),
@@ -460,7 +462,7 @@ describe('PantallaClientes', () => {
       // El bug mas caro de esta pantalla: el objeto entero borra el domicilio que vino de las
       // facturas de AFIP - un dato que el emprendedor nunca tipeo y no sabe que puede perder.
       const conDomicilio = cliente({ domicilio: 'Av. Mitre 1234', telefono: null });
-      mockListar.mockResolvedValue({ status: 'ok', clientes: [conDomicilio], total: 1 });
+      mockListar.mockResolvedValue({ status: 'ok', clientes: [conDomicilio], total: 1, agregadosEsteMes: null });
       mockFicha.mockResolvedValue({ status: 'ok', ficha: ficha({ cliente: conDomicilio }) });
 
       await montar();
@@ -483,7 +485,7 @@ describe('PantallaClientes', () => {
       // mismo formulario, y el telefono que se borraria es el que el backfill saco de un presupuesto
       // viejo — nadie lo tipeo y nadie sabe que puede perderlo.
       const conTelefono = cliente({ telefono: '11-5555-4444', email: null });
-      mockListar.mockResolvedValue({ status: 'ok', clientes: [conTelefono], total: 1 });
+      mockListar.mockResolvedValue({ status: 'ok', clientes: [conTelefono], total: 1, agregadosEsteMes: null });
       mockFicha.mockResolvedValue({ status: 'ok', ficha: ficha({ cliente: conTelefono }) });
 
       await montar();
@@ -566,12 +568,31 @@ describe('PantallaClientes — el bloque de la cartera', () => {
     expect(screen.getByTestId('clientes-resumen-chip')).toBeTruthy();
   });
 
+  it('BL-J6: el chip sale del agregado del backend, no de contar la página (cartera paginada)', async () => {
+    // 1 cliente en la página, 42 en la cartera, 5 derivados este mes — el chip dice 5, no 1 ni 0.
+    mockListar.mockResolvedValue({
+      status: 'ok',
+      clientes: [cliente({ origen: 'manual' })],
+      total: 42,
+      agregadosEsteMes: 5,
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-resumen-chip')).toHaveTextContent('5 se agregaron solos este mes'));
+  });
+
+  it('BL-J6: sin agregado del backend (null) no hay chip — nunca «0 se agregaron»', async () => {
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente()], total: 1, agregadosEsteMes: null });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra')).toBeTruthy());
+    expect(screen.queryByTestId('clientes-resumen-chip')).toBeNull();
+  });
+
   it('🔴 buscar NO cambia el tamaño de la cartera', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra')).toBeTruthy());
     const antes = screen.getByTestId('clientes-resumen-cifra').props.children;
 
-    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0 });
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: null });
     fireEvent.changeText(screen.getByTestId('clientes-buscar'), 'zzz');
 
     await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra').props.children).toEqual(antes));

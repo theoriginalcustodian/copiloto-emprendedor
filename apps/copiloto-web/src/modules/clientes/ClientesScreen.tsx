@@ -29,15 +29,6 @@ export function ordenarAlfabetico(clientes: readonly Cliente[]): Cliente[] {
   return [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 }
 
-/** `creadoEn` cae en el mes calendario actual (huso local del navegador — mismo criterio que el
- * resto de la UI, que nunca normaliza a UTC para mostrar fechas). */
-function esDeEsteMes(iso: string): boolean {
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return false;
-  const ahora = new Date();
-  return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
-}
-
 export interface ClientesScreenProps {
   /** D14 — id de un cliente a abrir apenas monta (fila de Actividad, botón "Ver cliente" de
    * `TarjetaClientePropuesto`). El shell lo resetea a `null` en cada cambio de tab (ver
@@ -62,12 +53,10 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
    * subconjunto filtrado mostraría una cifra que baja con cada letra tipeada, que no es lo que
    * dice ser.
    *
-   * ⚠️ `agregadosEsteMes` sólo cuenta sobre la página YA CARGADA (el backend de `/clientes` no
-   * manda un agregado del tenant completo) — si `total > clientes.length` (cartera grande,
-   * paginada) esto puede subcontar. Escalado a planificación:
-   * `coordinacion/abierto/2026-09-07_hallazgo_frontend1-clientes-a-planificacion_monto-y-comprobantes-por-cliente-no-existen-en-la-api.md`.
+   * `agregadosEsteMes` viene del backend (BL-J6): los derivados del mes de TODA la cartera, no de la
+   * página cargada — no subcuenta con cartera paginada. `null` = el backend no lo manda: sin chip.
    */
-  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number } | null>(null);
+  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number | null } | null>(null);
   // Ver el comentario equivalente en GastosScreen: `vivo.current = true` va DENTRO del setup del
   // efecto (no sólo en `useRef(true)`) por StrictMode.
   const vivo = useRef(true);
@@ -99,8 +88,7 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
           if (qActual === '') {
             setCarteraBase({
               total: res.total,
-              agregadosEsteMes: res.clientes.filter((c) => c.origen === 'derivado' && esDeEsteMes(c.creadoEn))
-                .length,
+              agregadosEsteMes: res.agregadosEsteMes,
             });
           }
         })
@@ -237,11 +225,13 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
                     {(carteraBase?.total ?? total) === 1 ? 'cliente' : 'clientes'}
                   </span>
                 </p>
-                <span className="clientes-resumen__chip" data-testid="clientes-resumen-chip">
-                  {(carteraBase?.agregadosEsteMes ?? 0) === 1
-                    ? '1 se agregó solo este mes'
-                    : `${carteraBase?.agregadosEsteMes ?? 0} se agregaron solos este mes`}
-                </span>
+                {carteraBase?.agregadosEsteMes != null && (
+                  <span className="clientes-resumen__chip" data-testid="clientes-resumen-chip">
+                    {carteraBase.agregadosEsteMes === 1
+                      ? '1 se agregó solo este mes'
+                      : `${carteraBase.agregadosEsteMes} se agregaron solos este mes`}
+                  </span>
+                )}
               </Surface>
 
               {avisoDuplicado != null && (

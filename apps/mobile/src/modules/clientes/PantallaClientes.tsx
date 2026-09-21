@@ -72,14 +72,6 @@ export interface PantallaClientesProps {
   clienteIdInicial?: number;
 }
 
-/** ¿La fecha cae en el mes corriente? Copiado de la app web para que las dos cuenten igual. */
-function esDeEsteMes(iso: string): boolean {
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return false;
-  const ahora = new Date();
-  return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
-}
-
 export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {}) {
   const tema = useTema();
   const [estado, setEstado] = useState<EstadoLista>('cargando');
@@ -90,11 +82,10 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
    * el tamaño de TODA la cartera: si se recalculara con el resultado de una búsqueda, escribir tres
    * letras haría que el emprendedor "pierda" clientes de golpe.
    *
-   * ⚠️ `agregadosEsteMes` **subcuenta**: sale de filtrar la página YA CARGADA, porque `/clientes` no
-   * devuelve el agregado del tenant. Con la cartera paginada, los derivados que quedaron fuera de la
-   * página no se cuentan. Mismo hueco que tiene la app web — pedido a backend en curso.
+   * `agregadosEsteMes` viene del backend (BL-J6): los derivados del mes de TODA la cartera, no de la
+   * página cargada — no subcuenta con cartera paginada. `null` = el backend no lo manda: sin chip.
    */
-  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number } | null>(null);
+  const [carteraBase, setCarteraBase] = useState<{ total: number; agregadosEsteMes: number | null } | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [busquedaAplicada, setBusquedaAplicada] = useState('');
   const [refrescando, setRefrescando] = useState(false);
@@ -128,8 +119,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
           if (busquedaAplicada === '') {
             setCarteraBase({
               total: res.total,
-              agregadosEsteMes: res.clientes.filter((c) => c.origen === 'derivado' && esDeEsteMes(c.creadoEn))
-                .length,
+              agregadosEsteMes: res.agregadosEsteMes,
             });
           }
         })
@@ -288,9 +278,11 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                 rotulo="Le vendiste a"
                 cifra={`${carteraBase?.total ?? total} ${(carteraBase?.total ?? total) === 1 ? 'cliente' : 'clientes'}`}
                 chip={
-                  (carteraBase?.agregadosEsteMes ?? 0) === 1
-                    ? '1 se agregó solo este mes'
-                    : `${carteraBase?.agregadosEsteMes ?? 0} se agregaron solos este mes`
+                  carteraBase?.agregadosEsteMes == null
+                    ? undefined
+                    : carteraBase.agregadosEsteMes === 1
+                      ? '1 se agregó solo este mes'
+                      : `${carteraBase.agregadosEsteMes} se agregaron solos este mes`
                 }
               />
 
