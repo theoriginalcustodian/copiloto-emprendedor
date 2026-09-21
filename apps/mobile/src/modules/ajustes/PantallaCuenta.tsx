@@ -5,6 +5,7 @@ import { useSession } from '../auth';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { FilaBotones } from '../../theme/glass/campos';
 import { Row } from '../../theme/glass/Row';
+import { CambiarCredenciales } from './CambiarCredenciales';
 import { useTema } from '../../theme/ThemeProvider';
 
 /**
@@ -48,6 +49,8 @@ export function PantallaCuenta() {
             </Text>
           </View>
         </Row>
+
+        <CambiarCredenciales cuentaGoogle={me?.cuenta_google === true} />
 
         {/* 🔴 **Acá había tres filas —Feedback, Soporte técnico y «Cómo uso la app»— y se fueron a
             Ajustes › Ayuda (Ola 5).** Estaban acá por una razón que en su momento fue buena: la
