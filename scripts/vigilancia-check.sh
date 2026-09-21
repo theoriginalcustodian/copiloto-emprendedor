@@ -22,10 +22,10 @@
 #     para juzgar si una sesión trabaja (.claude/commands/monitoreo.md). Acá sólo se mide "hace
 #     cuántos minutos escribió algo", que es justamente lo que no le costó nada acertar.
 #
-# LÍMITE DOCUMENTADO: cola-check.sh deriva su propio PLAN.md desde SU PATH de script, no acepta
-# override — así que el chequeo de COLA sólo corre contra el buzón REAL (coordinacion/ del repo).
-# Contra un buzón de prueba (BUZON_DIR apuntando a un fixture sin PLAN.md) ese paso se salta solo
-# (no hay PLAN.md ahí) — no hace falta tocar cola-check.sh para poder probar este script aislado.
+# COLA: cola-check.sh lee el PLAN.md del MISMO buzón que se vigila (COLA_PLAN="$BUZON/PLAN.md").
+# Antes lo derivaba de su propio path: desde un worktree buscaba `coordinacion/` ahí, no existe, y
+# el vigilante daba exit 1 fijo por «No existe PLAN.md» (21/09). Si el buzón no tiene PLAN.md
+# (fixture de prueba), el paso se salta solo.
 #
 # Uso:
 #   scripts/vigilancia-check.sh                  # contra el buzón y transcripts reales
@@ -85,7 +85,7 @@ add() { reporte+=("$1"); alarma=1; }
 
 # ── 1) COLA: hito arrancable sin arrancar (sólo aplica al buzón real, ver nota arriba) ─────────
 if [ -f "$BUZON/PLAN.md" ]; then
-  cola_out="$(bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
+  cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
   [ -n "$cola_out" ] && add "COLA:
 $cola_out"
 fi
