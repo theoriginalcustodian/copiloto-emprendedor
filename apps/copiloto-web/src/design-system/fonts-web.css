@@ -66,14 +66,3 @@
   font-style: normal;
   font-display: swap;
 }
-
-/*
- * Override de tipografía por SHELL, no por CSS var global fija (EXTRACT §6, recomendación #2):
- * `[data-shell="desktop"]` lo setea `DesktopShell.tsx` en su nodo raíz. Todo lo demás
- * (`--font-mono`, escala de tamaño/tracking, tokens de color) sigue 100% compartido — este es el
- * ÚNICO eje real de divergencia tipográfica entre mobile y desktop, aislado acá a una sola regla.
- */
-[data-shell='desktop'] {
-  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
