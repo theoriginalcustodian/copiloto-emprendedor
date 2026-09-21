@@ -638,8 +638,55 @@
 
 .apariencia-screen__theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+@media (max-width: 420px) {
+  .apariencia-screen__theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.apariencia-screen__muestra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 44px;
+  padding: 6px 8px;
+  border-radius: var(--r-s);
+  background: var(--bg);
+  border: 1px solid var(--label);
+  box-sizing: border-box;
+}
+
+.apariencia-screen__muestra-texto {
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.apariencia-screen__muestra-acento {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+}
+
+.apariencia-screen__muestra-doble {
+  display: flex;
+  width: 100%;
+  gap: 4px;
+}
+
+.apariencia-screen__theme-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 .apariencia-screen__theme-pill {

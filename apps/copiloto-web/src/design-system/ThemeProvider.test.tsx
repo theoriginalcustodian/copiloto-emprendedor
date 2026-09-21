@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import './themes.css';
 import { THEMES, ThemeProvider, useTheme, type Theme } from './ThemeProvider';
@@ -76,15 +76,82 @@ describe('ThemeProvider / useTheme', () => {
       </ThemeProvider>,
     );
     act(() => {
-      screen.getByTestId('set-nocturno').click();
+      screen.getByTestId('set-oscuro').click();
     });
     await waitFor(() => {
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('nocturno');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('oscuro');
     });
-    expect(screen.getByTestId('current-theme')).toHaveTextContent('nocturno');
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('oscuro');
   });
 
-  it('cada uno de los 3 data-theme produce un --bg distinto (mínimo requerido por el plan)', () => {
+  it('🔴 «nocturno» (piel retirada en BL-X4) guardado de antes migra a oscuro, no rompe', () => {
+    window.localStorage.setItem(STORAGE_KEY, 'nocturno');
+    render(
+      <ThemeProvider>
+        <ThemeProbe />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('oscuro');
+  });
+
+  it('las pieles son 2: claro y oscuro', () => {
+    expect([...THEMES]).toEqual(['claro', 'oscuro']);
+  });
+
+  describe('«Como el teléfono» (sistema)', () => {
+    type Oyente = (e: { matches: boolean }) => void;
+    let oyentes: Oyente[];
+    let oscuro: boolean;
+
+    beforeEach(() => {
+      oyentes = [];
+      oscuro = false;
+      vi.stubGlobal('matchMedia', (q: string) => ({
+        get matches() {
+          return q.includes('dark') ? oscuro : false;
+        },
+        media: q,
+        addEventListener: (_: string, fn: Oyente) => oyentes.push(fn),
+        removeEventListener: (_: string, fn: Oyente) => {
+          oyentes = oyentes.filter((o) => o !== fn);
+        },
+      }));
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: globalThis.matchMedia });
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('sigue al sistema EN VIVO con la app abierta y persiste «sistema», no la piel resuelta', () => {
+      function Probe() {
+        const { theme, setPreference } = useTheme();
+        return (
+          <div>
+            <span data-testid="piel">{theme}</span>
+            <button data-testid="a-sistema" onClick={() => setPreference('sistema')} />
+          </div>
+        );
+      }
+      render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+      act(() => screen.getByTestId('a-sistema').click());
+      expect(screen.getByTestId('piel')).toHaveTextContent('claro');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('sistema');
+
+      act(() => {
+        oscuro = true;
+        oyentes.forEach((o) => o({ matches: true }));
+      });
+      expect(screen.getByTestId('piel')).toHaveTextContent('oscuro');
+      expect(document.documentElement.getAttribute('data-theme')).toBe('oscuro');
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe('sistema');
+    });
+  });
+
+  it('cada uno de los data-theme produce un --bg distinto (mínimo requerido por el plan)', () => {
     render(
       <ThemeProvider>
         <ThemeProbe />

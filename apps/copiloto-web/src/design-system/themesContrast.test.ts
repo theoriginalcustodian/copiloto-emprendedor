@@ -312,14 +312,13 @@ function extractBlock(css: string, selectorRe: RegExp): string {
   return match[1];
 }
 
-// Las 3 pieles ODOBI + el fallback `:root` sin `data-theme` (documentado como default `claro`
+// Las 2 pieles ODOBI vigentes (claro/oscuro; `nocturno` se retiró en BL-X4, DA-5) + el fallback `:root` sin `data-theme` (documentado como default `claro`
 // antes de que ThemeProvider monte — ver comentario en themes.css). Se valida también por
 // separado para que un drift entre el fallback y el tema `claro` real no pase inadvertido.
 const THEME_BLOCKS: Record<string, RegExp> = {
   'root-default (fallback claro)': /:root\s*\{([^}]*)\}/,
-  claro: /:root\[data-theme=['"]claro['"]\]\s*\{([^}]*)\}/,
-  oscuro: /:root\[data-theme=['"]oscuro['"]\]\s*\{([^}]*)\}/,
-  nocturno: /:root\[data-theme=['"]nocturno['"]\]\s*\{([^}]*)\}/,
+  claro: /:root\[data-theme=['"]claro['"]\],\s*\[data-muestra=['"]claro['"]\]\s*\{([^}]*)\}/,
+  oscuro: /:root\[data-theme=['"]oscuro['"]\],\s*\[data-muestra=['"]oscuro['"]\]\s*\{([^}]*)\}/,
 };
 
 describe('temas — contraste WCAG AA (>=4.5:1) de tokens de texto sobre su superficie real', () => {
