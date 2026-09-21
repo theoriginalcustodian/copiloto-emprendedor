@@ -4,7 +4,7 @@ import type { PreferenciaTema } from '@copiloto/core';
 
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { pressableStyle } from '../../theme/glass/presion';
-import { SKINS, type NombreSkin, type Tokens } from '../../theme/tokens';
+import { SKINS, type Tokens } from '../../theme/tokens';
 import { usePreferenciaTema, useTema } from '../../theme/ThemeProvider';
 import { ETIQUETA_OPCION, ORDEN_PREFERENCIAS } from './skinsCatalogo';
 
