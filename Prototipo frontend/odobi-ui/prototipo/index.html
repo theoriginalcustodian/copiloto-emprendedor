@@ -477,6 +477,72 @@
   .rv-ghost{min-height:var(--tap);display:flex;align-items:center;justify-content:center;
             font-size:var(--fs-body);font-weight:500;color:var(--terracota-prof)}
 
+  /* ---------- ingresar: la pantalla de credenciales (18/09) ----------
+     LA QUE FALTABA. El sistema tenía dibujado el aterrizaje del splash (el reveal, con
+     "Empecemos"/"Crear una nueva cuenta") y el aterrizaje post-logout escrito en §8
+     ("Entrar"/"Entrar con otra cuenta"), pero NUNCA la pantalla donde se tipea mail y
+     contraseña. `apps/mobile` la resolvió portando la de documed: lockup + tagline +
+     dos campos + dos botones del mismo peso. Eso presenta la marca DOS VECES seguidas
+     (la animación de entrada y después la placa), que es exactamente lo que se derogó
+     el 29/07 cuando cayó la pantalla de terracota plena.
+
+     🔴 **Acá el símbolo va CHICO y sin wordmark.** El nombre ya se presentó un segundo
+     antes; repetirlo entero gasta el permiso de marca dos veces y empuja los campos
+     fuera del alcance del pulgar. Adentro de la app el símbolo es FIRMA, y esta
+     pantalla ya está adentro.
+
+     🔴 **Una decisión principal, no dos.** "Entrar" es el único botón con fill; Google
+     va en superficie (`.btn2`) y no con borde: dos botones del mismo peso esconden la
+     decisión, que es el mismo argumento del ghost del reveal.
+
+     ⚠️ **No hay "olvidé mi contraseña".** El backend no expone recuperación y el repo
+     prohíbe dibujar lo que no existe: un link que no lleva a ningún lado es peor que su
+     ausencia. Cuando exista, va bajo el campo, no en el pie. */
+  #ingresar{position:absolute;inset:0;z-index:8;display:none;flex-direction:column;
+            justify-content:center;align-items:center;padding:var(--s3);
+            background:linear-gradient(0deg,#F5E7DE 0%,var(--crema) 60%,var(--crema) 100%)}
+  #ingresar.on{display:flex}
+  /* 🔴 **Centrado en los dos ejes (Martin, 18/09).** Antes el bloque colgaba del borde
+     superior y dejaba media pantalla vacía abajo — un formulario de dos campos no llena
+     un teléfono, y anclarlo arriba hace que el vacío se lea como contenido que faltó
+     cargar. Centrado, el vacío es margen. Con el teclado abierto el bloque se sube solo:
+     el centrado es del contenedor, no una posición fija. */
+  .ig-bloque{width:100%;max-width:340px}
+  /* Va el LOCKUP (símbolo + wordmark), no el isotipo suelto: acá el nombre ES la
+     información — quien mira esta pantalla está por entrar a una cuenta y tiene que ver
+     de qué. Se arma como el del reveal (span con la display, no el <text> del .svg) para
+     que use la misma fuente cargada y la misma separación de la spec: 0,3 × ancho del
+     símbolo = 38 × 0,3 ≈ 11 px. */
+  .ig-marca{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:var(--s4)}
+  .ig-marca .w{font-family:var(--display);font-size:32px;color:var(--terracota);letter-spacing:-.02em}
+  .ig-tit{font-family:var(--display);font-size:var(--fs-display);line-height:var(--lh-display);
+          letter-spacing:-.02em;margin-bottom:6px;text-align:center}
+  .ig-sub{font-size:var(--fs-body);color:var(--sec);margin-bottom:var(--s3);text-align:center}
+  .ig-campos{display:flex;flex-direction:column;gap:var(--s2)}
+  .ig-lbl{display:block;font-size:var(--fs-cap);color:var(--sec);margin-bottom:6px}
+  /* Radio 14 y no pill: un campo de texto largo dentro de una cápsula obliga a meter el
+     texto hacia adentro y el mail deja de entrar. El pill queda para la barra del chat,
+     que lleva una línea corta. */
+  .ig-campo{height:52px;background:var(--blanco);border-radius:var(--r-s);
+            border:1px solid rgba(26,21,18,.10);padding:0 14px;display:flex;align-items:center;
+            font-size:var(--fs-body);color:var(--negro)}
+  .ig-campo.foco{border-color:var(--terracota-prof);box-shadow:0 0 0 3px rgba(222,114,80,.16)}
+  .ig-campo .punto{letter-spacing:.22em}
+  .ig-act{margin-top:var(--s3);display:flex;flex-direction:column;gap:var(--s1)}
+  /* El aviso de sesión caída: TENUE, no peligro. Que la sesión expire es lo normal —
+     pintarlo de rojo acusa al emprendedor de un error que no cometió. Mismo criterio que
+     el "emitida sin PDF" de Facturación. */
+  .ig-aviso{font-size:var(--fs-cap);color:var(--sec);margin-top:var(--s2);line-height:var(--lh-cap);
+            text-align:center}
+  /* Este SÍ es un error del intento, y va en terracota profunda (la única vía de color
+     para texto sobre claro). No inventa una paleta semántica que el sistema no tiene. */
+  .ig-error{display:none;font-size:var(--fs-cap);color:var(--terracota-prof);font-weight:500;
+            margin-top:var(--s1);line-height:var(--lh-cap);text-align:center}
+  #ingresar.err .ig-error{display:block}
+  #ingresar.err .ig-campo.pass{border-color:var(--terracota-prof)}
+  .ig-pie{font-size:var(--fs-cap);color:var(--sec);text-align:center;margin-top:var(--s3);
+          line-height:var(--lh-cap)}
+
   /* ---------- sheet de consentimiento (02, lane 1) ----------
      Just-in-time: el permiso llega CON el pedido, no en un onboarding de 6 pantallas.
      Por eso el hilo de atrás queda visible: se ve qué quedó esperando. */
@@ -527,8 +593,14 @@
      Es un chat aparte a propósito: resuelve dudas sobre la app —problemas, mal
      funcionamiento, bugs— y si no puede, abre un ticket. El copiloto sabe de tu
      negocio; de sus propios bugs, no.
-     ⚠️ El avatar NO es el isotipo. El avatar es lo primero que se lee de un
-     mensaje: si fuera el de Odobi, la burbuja diría que contesta el copiloto. */
+     🔴 **El avatar ES el isotipo (Martin, 18/09)** — deroga la nota anterior, que
+     decía lo contrario («si fuera el de Odobi, la burbuja diría que contesta el
+     copiloto»). El escudo genérico no representaba a nadie: no es una marca, no es una
+     persona, y a 38 px se leía como un ícono de seguridad. Quien contesta acá sigue
+     siendo el equipo, y eso se dice con PALABRAS —«Soporte de Odobi», «si no lo puedo
+     resolver, abro un ticket y lo sigue una persona»—, que es donde el matiz se entiende;
+     el avatar dice de qué producto es este chat. Va en crema sobre el disco negro, no en
+     terracota: es firma, no acción. */
   .quien-sop{width:38px;height:38px;border-radius:99px;background:var(--negro);
              display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .quien-sop svg{color:var(--crema)}
@@ -903,6 +975,24 @@
      sólo archiva las facturas si activás esa opción. */
   .app{display:flex;align-items:center;gap:12px;flex:none;background:var(--blanco);
        border-radius:var(--r-m);padding:14px var(--s2);box-shadow:0 4px 18px rgba(26,21,18,.07)}
+  /* 🔴 **El logo de una app externa va REAL, no traducido a un glifo del sistema.**
+     Hasta el 18/09 cada app se dibujaba con su ícono Phosphor más parecido (Gmail = un
+     sobre, Drive = una carpeta) y Google Calendar llevaba, por un error de copiado, el
+     signo de ARCA. El problema no es la estética: el usuario reconoce estas apps por su
+     marca, y un sobre genérico no dice "Gmail" — obliga a leer el nombre para saber qué
+     está conectando. Acá la iconografía monocroma del sistema no aplica: estas marcas no
+     son nuestras y no se tiñen.
+     El tile va BLANCO y con borde para no teñir el logo: sobre arena-30, el rojo de
+     Gmail y el azul de Calendar se ensucian. */
+  .app .tile.marca{background:var(--blanco);border:1px solid rgba(26,21,18,.08)}
+  .app .tile.marca img{width:22px;height:22px;display:block}
+  /* Mercado Pago es el único apaisado (287×199): a 22 px de ancho queda 15 de alto y se
+     ve más chico que los cuadrados de al lado. Se compensa por ANCHO, que es lo que el
+     ojo compara en una columna de tiles. */
+  .app .tile.marca img.ancho{width:28px;height:auto}
+  /* Docs es el único vertical (73×100): encajado en la caja de 22 queda 16 de ancho y se
+     lee flaco. Se iguala por ALTO, el eje que domina en una hoja de papel. */
+  .app .tile.marca img.alto{height:26px;width:auto}
   .app .txt{flex:1;min-width:0}
   .app .txt b{display:block;font-size:var(--fs-body);font-weight:500}
   .app .txt span{font-size:var(--fs-cap);color:var(--sec);line-height:1.35}
@@ -1053,8 +1143,11 @@
      · se ve 20+ veces por día, así que nada de rebote — lo simpático la primera vez
        es insoportable a la vigésima.
      ⚠️ 1,5 s son PROVISORIOS: el número se cierra midiendo la carga real de Mi día.
-     ⚠️ Esto es la referencia de movimiento. La pieza final se construye en Rive
-     (`explorations/isotipo-david/entrada.html`); todavía no hay .riv exportado. */
+     ⚠️ ESTA ES LA PIEZA, no una referencia (rev. 05/09). Rive quedó derogado el 30/08:
+     `apps/mobile` tiene Reanimated 4.5.0 y no tiene Rive, y el artboard es del 06/08 —
+     armado con el monograma anterior, o sea viejo de dos decisiones. Se porta a
+     Reanimated desde acá: `specs/splash-port-reanimated.md` §6 tiene la tabla de paths,
+     duraciones y delays. Origen del dibujo: `explorations/isotipo-david/entrada.html`. */
   /* Invertida (Martin 19/08): fondo blanco, signo en terracota viva. El signo acá es
      logotipo —WCAG 1.4.3 exime logotipos del criterio de contraste—, y el mensaje no
      depende de él: la pieza sólo cubre la latencia. */
@@ -2069,16 +2162,16 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     <div class="cuerpo">
       <div class="hilo-sop" id="hilo-sop">
         <div class="titulo-pag" style="padding-bottom:var(--s1)"><h2>Soporte técnico</h2></div>
-        <div class="sop-cab"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><span class="sop-txt"><b>Soporte de Odobi</b><span>Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.</span></span></div>
+        <div class="sop-cab"><span class="quien-sop"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span><span class="sop-txt"><b>Soporte de Odobi</b><span>Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.</span></span></div>
         <div class="mio">No me emitió la factura de Rodríguez, tira un error.</div>
         <div class="meta">10:12 <i>✓✓</i> recibido</div>
-        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">¿Te apareció un cartel con el error? Si podés, mandame la captura — con eso lo miro derecho.</div></div>
+        <div class="msg-row"><span class="quien-sop"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span><div class="msg">¿Te apareció un cartel con el error? Si podés, mandame la captura — con eso lo miro derecho.</div></div>
         <div class="mio">Sí, decía «CAE rechazado».</div>
         <div class="meta">10:14 <i>✓✓</i> recibido</div>
-        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">Ese es del lado de ARCA, no de la app. Suele ser el certificado. Fijate en <b>Ajustes › Facturación ARCA</b> si figura vencido.</div></div>
+        <div class="msg-row"><span class="quien-sop"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span><div class="msg">Ese es del lado de ARCA, no de la app. Suele ser el certificado. Fijate en <b>Ajustes › Facturación ARCA</b> si figura vencido.</div></div>
         <div class="mio">Dice que vence en 12 días, así que no es eso.</div>
         <div class="meta">10:16 <i>✓✓</i> recibido</div>
-        <div class="msg-row"><span class="quien-sop"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M226.53,56.41l-96-32a8,8,0,0,0-5.06,0l-96,32A8,8,0,0,0,24,64v72c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.27,47,25.53a8,8,0,0,0,4.2,0c1-.26,23.91-6.67,47-25.53C190.48,220.67,216,188.72,216,136V64A8,8,0,0,0,226.53,56.41ZM200,136c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,247.65a129.3,129.3,0,0,1-31.4-22.23C69.66,203.16,56,173.07,56,136V69.77L128,45.4l72,24.37Zm-40.53-71.6a8,8,0,0,1,.13,11.19l-40,42a8,8,0,0,1-11.5.11l-24-24a8,8,0,0,1,11.32-11.31l18.19,18.19,34.37-36.1A8,8,0,0,1,159.47,64.4Z"/></svg></span><div class="msg">Entonces se me escapa. Te lo paso a una persona con todo lo que hablamos, así no repetís nada.</div></div>
+        <div class="msg-row"><span class="quien-sop"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg></span><div class="msg">Entonces se me escapa. Te lo paso a una persona con todo lo que hablamos, así no repetís nada.</div></div>
         <div class="ticket">
           <div class="top"><span class="num">Ticket #1043</span><span class="est">Abierto</span></div>
           <div class="li"><span>Sobre</span><b>CAE rechazado al emitir</b></div>
@@ -2247,13 +2340,13 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
     <div class="cuerpo"><div class="scroll">
       <div class="titulo-pag"><h2>Apps conectadas</h2><p>Cada app que conectás le da a Odobi una capacidad concreta. Se la pedís por chat, sin nombrarla.</p><div class="estado-pag "><i></i>4 conectadas de 6</div></div>
       <div class="lista-lbl">Para pedirle por chat</div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48Zm-96,85.15L52.57,64H203.43ZM98.71,128,40,181.81V74.19Zm11.84,10.85,12,11.05a8,8,0,0,0,10.82,0l12-11.05,58,53.15H52.57ZM157.29,128,216,74.18V181.82Z"/></svg></div><div class="txt"><b>Gmail</b><span>Mandar correos por vos. No puede leerlos.</span></div><span class="conectada"><i></i>Conectada</span></div>
-      <div class="app"><div class="tile"><!-- ARCA: A real de Roboto + anillo --><svg width="21" height="21" viewBox="0 0 256 256" fill="currentColor" fill-rule="evenodd"><path d="M6,128a122,122 0 1,1 244,0a122,122 0 1,1 -244,0ZM19,128a109,109 0 1,0 218,0a109,109 0 1,0 -218,0Z"/><path d="M152.67788461538464 156.2032967032967H103.24107142857143L92.13804945054946 187.0H76.09134615384616L121.15178571428572 69.0H134.76717032967034L179.90865384615387 187.0H163.9429945054945ZM107.94162087912088 143.39835164835165H148.05837912087912L127.95947802197803 88.20741758241758Z"/></svg></div><div class="txt"><b>Google Calendar</b><span>Agendarte eventos y reuniones.</span></div><span class="conectada"><i></i>Conectada</span></div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56Z"/></svg></div><div class="txt"><b>Mercado Pago</b><span>Generar links de cobro para tus clientes.</span></div><span class="conectada"><i></i>Conectada</span></div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M200,24H72A16,16,0,0,0,56,40V56H40A16,16,0,0,0,24,72V200a16,16,0,0,0,16,16H168a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24ZM168,200H40V72H168V200Zm32-32H184V72a16,16,0,0,0-16-16H72V40H200Z"/></svg></div><div class="txt"><b>Google Sheets</b><span>Agregar filas a tus planillas.</span></div><span class="conex">Conectar</span></div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg></div><div class="txt"><b>Google Docs</b><span>Crear documentos o leer uno que ya tengas.</span></div><span class="conex">Conectar</span></div>
+      <div class="app"><div class="tile marca"><img src="../assets/logos/gmail.svg" alt=""></div><div class="txt"><b>Gmail</b><span>Mandar correos por vos. No puede leerlos.</span></div><span class="conectada"><i></i>Conectada</span></div>
+      <div class="app"><div class="tile marca"><img src="../assets/logos/calendar.svg" alt=""></div><div class="txt"><b>Google Calendar</b><span>Agendarte eventos y reuniones.</span></div><span class="conectada"><i></i>Conectada</span></div>
+      <div class="app"><div class="tile marca"><img class="ancho" src="../assets/logos/mercadopago.svg" alt=""></div><div class="txt"><b>Mercado Pago</b><span>Generar links de cobro para tus clientes.</span></div><span class="conectada"><i></i>Conectada</span></div>
+      <div class="app"><div class="tile marca"><img src="../assets/logos/sheets.svg" alt=""></div><div class="txt"><b>Google Sheets</b><span>Agregar filas a tus planillas.</span></div><span class="conex">Conectar</span></div>
+      <div class="app"><div class="tile marca"><img class="alto" src="../assets/logos/docs.svg" alt=""></div><div class="txt"><b>Google Docs</b><span>Crear documentos o leer uno que ya tengas.</span></div><span class="conex">Conectar</span></div>
       <div class="lista-lbl">Trabaja sola, de fondo</div>
-      <div class="app"><div class="tile"><svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M216,72H131.31L104,44.69A15.86,15.86,0,0,0,92.69,40H40A16,16,0,0,0,24,56V200.62A15.4,15.4,0,0,0,39.38,216H216.89A15.13,15.13,0,0,0,232,200.89V88A16,16,0,0,0,216,72ZM40,56H92.69l16,16H40ZM216,200H40V88H216Z"/></svg></div><div class="txt"><b>Google Drive</b><span>Archiva tus facturas automáticamente. No se usa por chat.</span></div><span class="conectada"><i></i>Conectada</span></div>
+      <div class="app"><div class="tile marca"><img class="ancho" src="../assets/logos/drive.svg" alt=""></div><div class="txt"><b>Google Drive</b><span>Archiva tus facturas automáticamente. No se usa por chat.</span></div><span class="conectada"><i></i>Conectada</span></div>
     </div></div>
   </div>
 
@@ -2473,6 +2566,41 @@ c150 -68 90 -143 -167 -208 -137 -35 -258 -44 -527 -38 -348 8 -513 43 -552
       <div class="btn">Empecemos</div>
       <div class="rv-ghost">Crear una nueva cuenta</div>
     </div>
+  </div>
+
+  <!-- ══════════ ingresar — mail y contraseña (18/09) ══════════ -->
+  <div id="ingresar">
+   <div class="ig-bloque">
+    <div class="ig-marca">
+      <svg fill="none" width="38" height="38" viewBox="0 0 24 24" stroke="var(--terracota)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5a8.5 8.5 0 1 0 0 17"/><path d="M11 7.5a4.5 4.5 0 1 0 0 9"/><path d="M16.5 8.8a4.8 4.8 0 0 1 0 6.4"/><path d="M19.5 6.5a9 9 0 0 1 0 11"/></svg>
+      <span class="w">Odobi</span>
+    </div>
+    <h2 class="ig-tit">Entrá a tu cuenta</h2>
+    <p class="ig-sub">Con el mail y la contraseña que ya usás.</p>
+
+    <div class="ig-campos">
+      <label><span class="ig-lbl">Mail</span>
+        <!-- El contenido del campo queda a la IZQUIERDA aunque el bloque esté centrado:
+             un mail centrado dentro de su caja se mueve de lugar a medida que se escribe,
+             y el cursor deja de estar donde el ojo lo dejó. -->
+        <div class="ig-campo">martin@elgalpon.com.ar</div>
+      </label>
+      <label><span class="ig-lbl">Contraseña</span>
+        <div class="ig-campo pass foco"><span class="punto">••••••••••</span></div>
+      </label>
+    </div>
+
+    <p class="ig-error">Ese mail y esa contraseña no coinciden. Probá de nuevo.</p>
+
+    <div class="ig-act">
+      <div class="btn">Entrar</div>
+      <div class="btn2">Entrar con Google</div>
+    </div>
+
+    <p class="ig-aviso">Tu sesión se cerró por seguridad. Entrá otra vez y seguís donde estabas.</p>
+
+    <p class="ig-pie">Tus datos quedan guardados: al volver a entrar está todo como lo dejaste.</p>
+   </div>
   </div>
 
   <!-- ══════════ sheet de consentimiento just-in-time ══════════ -->
@@ -3137,6 +3265,52 @@ const HILOS = {
      mandarle a un cliente" entre las 14 acciones ejecutables por voz.
      ⚠️ Odobi NO cobra: genera el link y lo manda el usuario. Por eso el
      recibo dice "link listo" y no "cobrado", y el chip es de compartir. */
+  /* ── LOCAL DE ROPA · los tres pedidos seguidos ─────────────────────────
+     Escenario para la pieza 2 de Instagram, y el PRIMERO que no es de obra:
+     hasta acá todos los ejemplos del prototipo eran Rodríguez SRL, cerco
+     perimetral, instalación eléctrica y pintura. Una emprendedora con local
+     propio es tan público de Odobi como un electricista, y no se reconocía
+     en ningún hilo.
+     Son TRES PEDIDOS SEGUIDOS, no una frase compuesta: es lo que el motor
+     resuelve hoy. El presupuesto y el link salen derecho; la factura para
+     y repregunta, porque es la única de las tres que va a ARCA y no se
+     borra. Una sola fricción, en el punto donde equivocarse cuesta caro.
+     El link de cobro es para RODRÍGUEZ, no para Laura: a Laura se le cotiza
+     —un presupuesto no se cobra hasta que lo acepta—, a Rodríguez se le
+     factura y por eso se le cobra. */
+  'ropa-presu': () =>
+    D('Martes 9') +
+    Y('Odobi, armale un presupuesto a Laura por sesenta mil, por el alquiler del vestuario para la sesión de fotos.', '10:24 · por voz') +
+    O('Listo. Revisalo y tocá Guardar — todavía no lo anoté.') +
+    HITL('Presupuesto', 'Docs',
+      FILA('Cliente', 'Laura', 'Cambiar') +
+      FILA('Ítem', 'Alquiler de vestuario<span class="sub-k">sesión de fotos · 1 × $60.000</span>', 'Editar') +
+      FILA('Total', '<b>$60.000</b>', 'suma de ítems'),
+      'Queda en tu registro y te armo el Doc. A Laura no le llega nada hasta que vos se lo mandes.',
+      'Guardar presupuesto', 'Descartar'),
+
+  'ropa-factura': () =>
+    D('Martes 9') +
+    Y('Ahora facturale doscientos mil a Rodríguez, por la ropa para el personal.', '10:25 · por voz') +
+    O('Antes de emitir, una sola cosa: ¿es factura C y uso el CUIT que tengo guardado de Rodríguez?') +
+    Y('Sí, ese.', '10:25') +
+    O('Queda así. Revisala antes de emitir:') +
+    HITL('Factura C', 'ARCA',
+      FILA('Cliente', 'Rodríguez SRL<span class="sub-k">CUIT 20-28456789-3</span>', 'Cambiar') +
+      FILA('Importe', '$200.000', 'Editar') +
+      FILA('Concepto', 'Productos<span class="sub-k">ropa para el personal</span>', 'Editar'),
+      'Se emite en ARCA a tu nombre. Una factura emitida no se borra: si está mal, se anula con una nota de crédito.',
+      'Emitir factura', 'Cancelar'),
+
+  'ropa-cobro': () =>
+    D('Martes 9') +
+    REC('Factura C emitida', 'N° 0003-00000128 · Rodríguez SRL · $200.000', 'CAE 75282963517824', '') +
+    Y('Y dame el link de pago, que se lo reenvío por WhatsApp.', '10:26 · por voz') +
+    O('Mercado Pago, $200.000 a nombre de Rodríguez SRL — el mismo importe de la factura que acabás de emitir.') +
+    REC('Link de cobro creado', 'Mercado Pago · $200.000 · Rodríguez SRL', 'vence en 7 días', 'Copiar') +
+    O('Cuando pague, te aviso y lo anoto como ingreso.') +
+    CH('Compartilo por WhatsApp', 'Mandalo por mail'),
+
   'cobro-voz': () =>
     D('Martes 26') + Y('Odobi, hacele un link de cobro a Lorena por cuarenta y cinco mil.', '11:04 · por voz') +
     O('Listo. Mercado Pago, $45.000 a nombre de Lorena.') +
@@ -3400,6 +3574,24 @@ if (ver && HILOS[ver]) setTimeout(() => abrirHilo(ver), 80);
 
 /* 01 · el aterrizaje del splash: el reveal */
 if (ver === 'reveal') setTimeout(() => $('#reveal').classList.add('on'), 60);
+/* El MISMO reveal con los labels del post-logout (§8: "aterrizaje según sesión").
+   No es otra pantalla: es el mismo motor con las dos puertas que corresponden a quien
+   ya tuvo cuenta. Por eso se pinta sobre el reveal en vez de duplicar el markup. */
+if (ver === 'volver') setTimeout(() => {
+  $('#reveal').classList.add('on');
+  $('#reveal .btn').textContent = 'Entrar';
+  $('#reveal .rv-ghost').textContent = 'Entrar con otra cuenta';
+}, 60);
+/* La pantalla de credenciales, con y sin el error del intento. */
+if (ver === 'ingresar')       setTimeout(() => $('#ingresar').classList.add('on'), 60);
+if (ver === 'ingresar-error') setTimeout(() => {
+  const i = $('#ingresar');
+  i.classList.add('on','err');
+  /* El aviso de sesión caída se va: en cuanto hay un resultado de ESTE intento, lo que
+     importa es ese resultado y no por qué te habías quedado afuera. Misma regla que
+     `estadoEfectivo` en `PantallaLogin.tsx`. */
+  i.querySelector('.ig-aviso').style.display = 'none';
+}, 60);
 
 /* ── Ayuda: las tres subpantallas ─────────────────────────────────── */
 ['comousar','soporte','feedback'].forEach(k => {

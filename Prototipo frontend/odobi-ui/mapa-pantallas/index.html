@@ -149,11 +149,11 @@
   <p>El mapa muestra el <em>qué</em>. Los mockups muestran el <em>por qué</em>: cada decisión con su
      fundamento y la alternativa que se descartó.</p>
   <div class="barra" style="margin-bottom:10px">
-    <a class="mk" href="../mockups/12-funciones/index.html">12 · Las siete funciones ↗</a>
-    <a class="mk" href="../mockups/13-ajustes/index.html">13 · Ajustes, la segunda gramática ↗</a>
-    <a class="mk" href="../mockups/14-mi-dia-3v/index.html">14 · Mi día, tres verticales ↗</a>
-    <a class="mk" href="../mockups/10-arranque/index.html">10 · El modelo de capas ↗</a>
-    <a class="mk" href="../mockups/04-confirmacion-hitl/index.html">04 · Confirmación HITL ↗</a>
+    <a class="mk" href="../mockups/12-funciones/">12 · Las siete funciones ↗</a>
+    <a class="mk" href="../mockups/13-ajustes/">13 · Ajustes, la segunda gramática ↗</a>
+    <a class="mk" href="../mockups/14-mi-dia-3v/">14 · Mi día, tres verticales ↗</a>
+    <a class="mk" href="../mockups/10-arranque/">10 · El modelo de capas ↗</a>
+    <a class="mk" href="../mockups/04-confirmacion-hitl/">04 · Confirmación HITL ↗</a>
   </div>
 
   <div class="pie">
@@ -170,6 +170,12 @@ const PANTALLAS = {
   g0: [
     ['splash', 'Splash', 'Primer ingreso y post-logout. 6,8 s que se pagan una vez.',
      '4 formas de familia circular nacen en el centro y crecen; la 4ª se contrae hacia EL LUGAR EXACTO DE LA O y se apaga ahí — el wordmark no aparece: llega. Terracota plena es excepción declarada: pieza display, no UI operativa.'],
+    ['volver', 'Volver a entrar', 'El mismo reveal, con las puertas de quien ya tuvo cuenta.',
+     'no es otra pantalla: es el aterrizaje del splash con los labels del post-logout («Entrar» / «Entrar con otra cuenta»). Estaba escrito en §8 desde el 29/07 y nunca se había dibujado — y en mobile no existe: la app salta directo al formulario.'],
+    ['ingresar', 'Ingresar', 'Mail y contraseña. La pantalla que el sistema no tenía.',
+     'el símbolo va CHICO y sin wordmark: la marca se presentó un segundo antes y repetirla entera gasta el permiso dos veces (es lo que se derogó el 29/07 con la placa de terracota plena). Una sola decisión con fill — Google en superficie, no con borde. No hay «olvidé mi contraseña» porque el backend no la tiene: el repo prohíbe dibujar lo que no existe.'],
+    ['ingresar-error', 'No coinciden', 'El intento que falló, sin acusar a nadie.',
+     'el error va en terracota profunda y el aviso de «tu sesión se cerró» DESAPARECE: en cuanto hay resultado de este intento, lo anterior dejó de importar. Expirar es normal y va tenue; equivocarse la contraseña es un resultado y va con color — dos cosas distintas que la app de hoy pinta igual.'],
     ['entrada', 'Entrada', 'Los arranques 2..n. Dura lo que tarda Mi día en cargar.',
      'el isotipo de David YA son arcos, así que la animación dejó de rodear al símbolo y pasó a ser el símbolo dibujándose. Termina en el signo estático, idéntico al de la app: no hay corte ni fundido. 1,5 s PROVISORIOS — el número se cierra midiendo la carga real.'],
   ],
@@ -276,7 +282,7 @@ const PANTALLAS = {
 };
 
 const tel = (v, titulo, bajada, nota) => {
-  const url = '../prototipo/index.html' + (v ? '?ver=' + v : '');
+  const url = '../prototipo/' + (v ? '?ver=' + v : '');
   return `<figure class="tel">
     <div class="marco">
       <img src="../assets/marco/telefono.png" alt="">

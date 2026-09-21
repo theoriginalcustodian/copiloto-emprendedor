@@ -60,11 +60,22 @@
   .caja p{color:#DCD3C6;max-width:82ch;line-height:1.65;margin-top:10px}
   .caja strong{color:var(--crema)}
   .caja .eyebrow{color:var(--arena)}
+  /* Aviso de vigencia: va en el registro histórico, no en la UI. Familia mono, que es la
+     que el sistema usa para la meta-capa (estándar de anotación, 26/07). */
+  .nota-vieja{font-family:var(--mono);font-size:12px;line-height:1.6;color:#5A3A2E;
+              background:#FDF3EF;border-left:3px solid #B04A2E;border-radius:0 10px 10px 0;
+              padding:12px 16px;margin:14px 0 26px;max-width:86ch}
+  .nota-vieja code{background:rgba(176,74,46,.1);padding:1px 5px;border-radius:5px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow">Referencia de movimiento · no es la pieza final (la pieza se construye en Rive)</div>
+  <div class="eyebrow">Origen del dibujo (18/08) · la pieza vigente está en el prototipo, <code>?ver=entrada</code></div>
+  <div class="nota-vieja">⚠️ <strong>Este marco quedó un día atrás de una decisión.</strong> Acá el fondo es
+    negro; el <strong>19/08 Martin invirtió la entrada</strong> — fondo blanco, signo en terracota viva. El
+    <em>movimiento</em> de esta página sigue siendo el vigente (mismos paths, mismas duraciones, mismos delays);
+    lo que cambió es la piel. <strong>Rive quedó derogado el 30/08</strong>: la pieza se porta a Reanimated desde
+    <code>specs/splash-port-reanimated.md</code> §6.</div>
   <h1>Entrada: el símbolo se despliega</h1>
   <p class="baja">Los arranques 2..n usan una pieza corta cuya única función es <strong>cubrir la latencia de
     carga</strong>. Con el monograma viejo eran «tres ondas que se disipan alrededor de la O»: el movimiento era un
