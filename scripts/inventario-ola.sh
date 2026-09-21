@@ -91,6 +91,12 @@ else
                 --json number,title,mergeCommit,mergedAt,files)"
 fi
 n_prs="$(PYTHONIOENCODING=utf-8 python -c 'import json,sys; print(len(json.load(sys.stdin)))' <<< "$PRS_JSON" | tr -d '\r')"
+if ! [[ "$n_prs" =~ ^[0-9]+$ ]]; then
+  # gh o el JSON fallaron: un inventario sin PRs daría TODAS las filas como faltas (o ninguna
+  # evidencia) con rc=0 — fail-closed, nunca un reporte que parezca medido.
+  echo "❌ inventario-ola: no pude leer la lista de PR (gh/JSON falló); no genero un inventario sin medir." >&2
+  exit 3
+fi
 if [ -z "${PRS_JSON_FILE:-}" ] && [ "$n_prs" -ge "${LIMITE_PRS:-1000}" ]; then
   echo "❌ inventario-ola: $n_prs PR = el tope --limit; la ventana puede estar TRUNCADA. Subí LIMITE_PRS o acotá --desde." >&2
   exit 3
