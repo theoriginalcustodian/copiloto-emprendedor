@@ -853,6 +853,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         mensajes = store.listar_mensajes(ticket_id=ticket_id)
         return {"ticket": ticket, "mensajes": mensajes}
 
+    @app.get("/feedback")
+    def feedback_propio(cliente_id: str = Depends(require_tenant)) -> dict:
+        """K-08 («Lo pediste vos»): el feedback que el emprendedor mandó, con si ya fue escuchado.
+        Filtra por el `cliente_id` del token (nunca del query)."""
+        return {"items": FeedbackStore(conn_factory, cliente_id).listar_propio()}
+
     @app.post("/feedback")
     def feedback(body: FeedbackIn, cliente_id: str = Depends(require_tenant)) -> dict:
         """Feedback in-app del emprendedor por texto (BETA-1a, contrato
