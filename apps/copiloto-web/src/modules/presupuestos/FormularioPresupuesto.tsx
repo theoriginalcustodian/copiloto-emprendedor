@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 import {
   ApiError,
@@ -11,6 +11,7 @@ import {
 } from '@copiloto/core';
 
 import { Button, Chip } from '../../design-system';
+import { generarId } from '../../util/id';
 
 /**
  * Port de `apps/mobile/src/modules/presupuestos/FormularioPresupuesto.tsx` — MISMA lógica de negocio:
@@ -131,6 +132,9 @@ export function FormularioPresupuesto({
     return [{ ...FILA_VACIA }];
   });
   const [enviando, setEnviando] = useState(false);
+  const enviandoRef = useRef(false);
+  // Una `idem_key` por instancia de formulario (K-01): estable a través de reintentos del mismo submit.
+  const idemKey = useRef(generarId());
   const [error, setError] = useState<string | null>(null);
   const [conceptos, setConceptos] = useState<readonly Concepto[]>([]);
 
@@ -187,6 +191,9 @@ export function FormularioPresupuesto({
   const puedeGuardar = concepto.trim() !== '' && nombre.trim() !== '' && itemsValidos.length > 0 && !enviando;
 
   async function guardar() {
+    // Guard SÍNCRONO (ver mobile): `enviando` recién cambia en el próximo render y dos clicks rápidos pasaban.
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
     setEnviando(true);
     setError(null);
     try {
@@ -200,6 +207,7 @@ export function FormularioPresupuesto({
         },
         items: itemsValidos,
         ...(corrige != null ? { reemplazaA: corrige.id } : {}),
+        idemKey: idemKey.current,
       });
       if (res.status === 'no_disponible') {
         setError('Los presupuestos todavía no están disponibles en tu copiloto.');
@@ -209,6 +217,7 @@ export function FormularioPresupuesto({
     } catch (e) {
       setError(e instanceof ApiError ? (e.detail ?? e.message) : 'No pudimos guardar el presupuesto.');
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
     }
   }

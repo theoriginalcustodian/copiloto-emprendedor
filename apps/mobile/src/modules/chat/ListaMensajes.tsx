@@ -205,7 +205,7 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
   if (presupuestoPropuesto) {
-    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} />;
+    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} mensajeId={mensaje.id} />;
   }
 
   // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito

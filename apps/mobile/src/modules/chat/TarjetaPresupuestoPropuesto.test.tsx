@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 /** Partial mock: sólo la red. `leerPresupuestoPropuesto`, REAL. `listarConceptos` resuelve vacío —
@@ -44,16 +45,32 @@ function presupuestoGuardado(numero: number): Presupuesto {
   } as unknown as Presupuesto;
 }
 
-async function montar(p = propuesta()) {
-  return render(
+function arbol(p = propuesta(), mensajeId = 'assistant-1') {
+  return (
     <ThemeProvider>
-      <TarjetaPresupuestoPropuesto propuesta={p} />
-    </ThemeProvider>,
+      <TarjetaPresupuestoPropuesto propuesta={p} mensajeId={mensajeId} />
+    </ThemeProvider>
   );
 }
 
+/** La card lee su estado del almacén (async): se espera a que aparezca ALGO — formulario o terminal. */
+async function montar(p = propuesta(), mensajeId = 'assistant-1') {
+  const r = await render(arbol(p, mensajeId));
+  await waitFor(() =>
+    expect(
+      screen.queryByTestId('presupuesto-propuesto') ??
+        screen.queryByTestId('presupuesto-propuesto-guardado') ??
+        screen.queryByTestId('presupuesto-propuesto-descartado'),
+    ).toBeTruthy(),
+  );
+  return r;
+}
+
 describe('TarjetaPresupuestoPropuesto', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await AsyncStorage.clear();
+  });
 
   it('dice explícitamente que TODAVÍA no se guardó', async () => {
     await montar();
@@ -145,5 +162,82 @@ describe('TarjetaPresupuestoPropuesto', () => {
 
     expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
     expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  const CLAVE = 'copiloto-presupuesto-propuesto-resuelto:assistant-1';
+
+  it('🔴 K-01: al guardar, la resolución queda persistida por mensajeId', async () => {
+    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    await montar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
+
+    expect(JSON.parse((await AsyncStorage.getItem(CLAVE)) ?? 'null')).toEqual({ estado: 'guardado', numero: 7 });
+  });
+
+  it('🔴 K-01: montar una card cuyo mensaje YA se guardó (remount/recarga) queda terminal, sin botón Guardar', async () => {
+    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'guardado', numero: 7 }));
+
+    await montar();
+
+    expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent('Presupuesto anotado — N° 7');
+    expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('K-01: la marca es por mensajeId — otro mensaje sigue editable', async () => {
+    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'guardado', numero: 7 }));
+
+    await montar(propuesta(), 'assistant-2');
+
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
+  });
+
+  it('K-01: un descarte también sobrevive al remount', async () => {
+    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'descartado' }));
+
+    await montar();
+
+    expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
+  });
+
+  it('K-01: una marca corrupta no rompe — la card vuelve a verse editable', async () => {
+    await AsyncStorage.setItem(CLAVE, '{no es json');
+
+    await montar();
+
+    expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
+  });
+
+  it('🔴 K-01: tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key', async () => {
+    let resolver: (v: Awaited<ReturnType<typeof crearPresupuesto>>) => void = () => {};
+    mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    expect(mockCrear).toHaveBeenCalledTimes(1);
+    expect(mockCrear.mock.calls[0]?.[0].idemKey).toMatch(/^[0-9a-f-]{36}$/);
+    await act(async () => resolver({ status: 'ok', presupuesto: presupuestoGuardado(7) }));
+  });
+
+  it('K-01: un reintento tras error usa la MISMA idem_key (regenerarla anularía la protección)', async () => {
+    mockCrear.mockRejectedValueOnce(new Error('red')).mockResolvedValueOnce({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+    await montar();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+    });
+
+    expect(mockCrear).toHaveBeenCalledTimes(2);
+    expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
   });
 });

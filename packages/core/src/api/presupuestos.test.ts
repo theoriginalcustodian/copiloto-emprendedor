@@ -230,6 +230,29 @@ describe('presupuestos.ts', () => {
       expect((peticiones[0].cuerpoJson as Record<string, unknown>).reemplaza_a).toBe(11);
     });
 
+    it('K-01: manda idem_key cuando se la da, y no la manda si no (cliente viejo = comportamiento de antes)', async () => {
+      responder = () => respuesta(201, { presupuesto: presupuestoCrudo() });
+      const base = { concepto: 'X', receptor: { nombre: 'Y' }, items: [{ descripcion: 'Z', cantidad: '1', precioUnitario: '1' }] };
+
+      await crearPresupuesto({ ...base, idemKey: 'c3f1e2a0-0000-4000-8000-000000000001' });
+      await crearPresupuesto(base);
+
+      expect((peticiones[0].cuerpoJson as Record<string, unknown>).idem_key).toBe('c3f1e2a0-0000-4000-8000-000000000001');
+      expect(peticiones[1].cuerpoJson as Record<string, unknown>).not.toHaveProperty('idem_key');
+    });
+
+    it('K-01: expone `repetido` cuando el backend devolvió el presupuesto ya creado', async () => {
+      const base = { concepto: 'X', receptor: { nombre: 'Y' }, items: [{ descripcion: 'Z', cantidad: '1', precioUnitario: '1' }] };
+
+      responder = () => respuesta(200, { presupuesto: presupuestoCrudo(), repetido: true });
+      const rep = await crearPresupuesto({ ...base, idemKey: 'k' });
+      responder = () => respuesta(201, { presupuesto: presupuestoCrudo() });
+      const nuevo = await crearPresupuesto(base);
+
+      expect(rep.status === 'ok' && rep.repetido).toBe(true);
+      expect(nuevo.status === 'ok' && nuevo.repetido).toBe(false);
+    });
+
     it('🔴 doc_link null NO es un error: el presupuesto se creó igual, sin Doc', async () => {
       responder = () => respuesta(201, { presupuesto: presupuestoCrudo({ doc_link: null, doc_id: null }) });
 
