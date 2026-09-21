@@ -40,6 +40,7 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 from backend.agent.inbound_router import route_inbound
 from auth import es_admin
 from catalog import build_catalog
+from conexiones_salud import composio_caidos
 from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
 # el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
@@ -979,12 +980,15 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         capa PURA sin imports de temporal/fastapi -- testeable aislado). `valid_toolkits` sale
         SIEMPRE de `_composio_valid_toolkits()` (derivado de la policy real), nunca de una lista
         literal que pueda driftear de `/composio/connect`."""
-        seller = MpCredentialStore(conn_factory, cliente_id, crypto).first_seller_user_id()
-        composio_connected = [c["toolkit"] for c in composio_gateway.list_connections(cliente_id)
+        mp_status = MpCredentialStore(conn_factory, cliente_id, crypto).salud()
+        conexiones = composio_gateway.list_connections(cliente_id)
+        composio_connected = [c["toolkit"] for c in conexiones
                               if (c["status"] or "").upper() == "ACTIVE"]
         return {"services": build_catalog(valid_toolkits=_composio_valid_toolkits(),
-                                          mp_connected=seller is not None,
-                                          composio_connected=composio_connected)}
+                                          mp_connected=mp_status == "conectado",
+                                          composio_connected=composio_connected,
+                                          mp_status=mp_status,
+                                          composio_caidos=composio_caidos(conexiones))}
 
     @app.get("/capacidades")
     def capacidades(cliente_id: str = Depends(require_tenant)) -> dict:

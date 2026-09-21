@@ -65,6 +65,12 @@ export interface TarjetaMiDia {
   cliente: string | null;
   monto: string | null;
   fecha: string | null;
+  /** BL-J5: `cobros|arca|presupuestos|tuyas`, o `null` (trabajo/gasto: sólo en «Todo», o backend previo). */
+  categoria: string | null;
+  /** BL-J5: `critico|pronto|sin_plazo`. `null` sólo con un backend previo al campo — nunca se infiere. */
+  criticidad: string | null;
+  /** BL-J5: la acción resolutoria de la regla («Renovarlo»…), o `null` si no tiene. */
+  verbo: string | null;
 }
 
 export interface SolapaMiDia {
@@ -102,6 +108,9 @@ function tarjeta(v: unknown): TarjetaMiDia | null {
     cliente: texto(datos.cliente),
     monto: importe(datos.monto),
     fecha: texto(datos.fecha),
+    categoria: texto(r.categoria),
+    criticidad: texto(r.criticidad),
+    verbo: texto(r.verbo),
   };
 }
 

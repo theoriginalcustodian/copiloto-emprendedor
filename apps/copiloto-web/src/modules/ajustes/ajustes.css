@@ -717,3 +717,93 @@
   font-size: 13px;
   color: var(--label);
 }
+
+/* ---------- «Contanos qué tal» (feedback, BL-W3) ---------- */
+.feedback-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 16px 24px;
+}
+
+.feedback-screen__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.feedback-screen__texto {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: var(--row-border);
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  resize: vertical;
+}
+
+.feedback-screen__ok,
+.feedback-screen__error,
+.feedback-screen__estado {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.feedback-screen__ok {
+  color: var(--text);
+}
+
+.feedback-screen__error {
+  color: var(--danger-fg);
+}
+
+.feedback-screen__estado {
+  color: var(--label);
+}
+
+.feedback-screen__soporte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--r-s);
+  background: color-mix(in srgb, var(--label) 8%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feedback-screen__soporte:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.feedback-screen__soporte-titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--heading);
+}
+
+.feedback-screen__soporte-detalle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+}
+
+.feedback-screen__voz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}

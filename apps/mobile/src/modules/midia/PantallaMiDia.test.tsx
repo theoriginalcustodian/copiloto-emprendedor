@@ -77,6 +77,9 @@ const TABLERO = {
           cliente: 'Panadería del barrio',
           monto: '-8000.00',
           fecha: '2026-07-22',
+          categoria: null,
+          criticidad: 'pronto',
+          verbo: 'Revisar el trabajo',
         },
       ],
     },
@@ -95,6 +98,9 @@ const TABLERO = {
           cliente: null,
           monto: null,
           fecha: null,
+          categoria: null,
+          criticidad: 'sin_plazo',
+          verbo: 'Borrar',
         },
       ],
     },
@@ -160,6 +166,79 @@ describe('PantallaMiDia — expandir', () => {
 
     await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
     expect(screen.queryByTestId('midia-tarjeta-t1-detalle')).toBeNull();
+  });
+});
+
+function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
+  return {
+    id, texto: `Tarjeta ${id}`, regla: 'x', entidadTipo: null, entidadId: null, estado: 'pendiente',
+    cliente: null, monto: null, fecha: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
+  };
+}
+function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
+  return {
+    solapas: [
+      { id: 'para_hoy' as const, titulo: 'Para hoy', tarjetas: para },
+      { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+      { id: 'hecha' as const, titulo: 'Hechas', tarjetas: [] },
+    ],
+  };
+}
+
+describe('PantallaMiDia — BL-J5 (categoría / criticidad / verbo del backend)', () => {
+  it('los chips filtran por `t.categoria`; categoria null sólo aparece en «Todo»', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([tarjetaDe('a', { categoria: 'arca' }), tarjetaDe('n', { categoria: null })]),
+    });
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy());
+
+    await fireEvent.press(screen.getByTestId('midia-chip-arca'));
+    expect(screen.getByTestId('midia-tarjeta-a')).toBeTruthy();
+    expect(screen.queryByTestId('midia-tarjeta-n')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-chip-todo'));
+    expect(screen.getByTestId('midia-tarjeta-n')).toBeTruthy();
+  });
+
+  it('🔴 backend previo (ninguna tarjeta con categoría): no se dibujan chips', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-chips')).toBeNull();
+  });
+
+  it('banner crítico: con una tarjeta `critico` aparece con su verbo y el contador la cuenta', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { criticidad: 'critico', verbo: 'Renovarlo', texto: 'Tu certificado vence en 12 días' }),
+        tarjetaDe('p'),
+      ]),
+    });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-alerta')).toBeTruthy());
+    expect(screen.getByTestId('midia-alerta-c')).toBeTruthy();
+    expect(screen.queryByTestId('midia-alerta-p')).toBeNull();
+    expect(screen.getByText('Renovarlo')).toBeTruthy();
+    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
+  });
+
+  it('sin tarjeta crítica no hay banner', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-alerta')).toBeNull();
+  });
+
+  it('el verbo se muestra en la tarjeta expandida', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
+    expect(screen.queryByTestId('midia-tarjeta-t1-verbo')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('midia-tarjeta-t1'));
+
+    expect(screen.getByTestId('midia-tarjeta-t1-verbo')).toHaveTextContent('Revisar el trabajo');
   });
 });
 

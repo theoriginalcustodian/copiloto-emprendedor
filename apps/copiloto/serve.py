@@ -280,7 +280,8 @@ async def _serve() -> None:
     mi_dia_app = create_mi_dia_app(
         require_tenant=require_tenant,
         tarjeta_store_factory=lambda cid: TarjetaStore(conn_factory, cid),
-        avanzar_tablero_fn=lambda cid: avanzar_tablero(conn_factory, cid),
+        avanzar_tablero_fn=lambda cid: avanzar_tablero(
+            conn_factory, cid, composio_conexiones=lambda: composio_gateway.list_connections(cid)),
         composio_gateway=composio_gateway,
     )
 

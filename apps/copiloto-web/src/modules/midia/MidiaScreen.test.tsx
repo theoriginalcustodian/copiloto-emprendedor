@@ -51,6 +51,9 @@ const TABLERO = {
           cliente: 'Panadería del barrio',
           monto: '-8000.00',
           fecha: '2026-07-22',
+          categoria: null,
+          criticidad: 'pronto',
+          verbo: 'Revisar el trabajo',
         },
       ],
     },
@@ -148,19 +151,81 @@ describe('MidiaScreen — portada del negocio (BL-W8)', () => {
   });
 });
 
-describe('MidiaScreen — chips y contador (BL-W7)', () => {
-  it('el contador cuenta para hoy y en curso; los chips filtran y el vacío por filtro lo dice', async () => {
-    render(<MidiaScreen />);
-    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
-    expect(screen.getByTestId('midia-contador')).toHaveTextContent('1 para hoy · 0 en curso');
+function tarjetaDe(id: string, over: Record<string, unknown> = {}) {
+  return {
+    id, texto: `Tarjeta ${id}`, regla: 'x', entidadTipo: null, entidadId: null, estado: 'pendiente',
+    cliente: null, monto: null, fecha: null, categoria: null, criticidad: 'pronto', verbo: null, ...over,
+  };
+}
+function tableroCon(para: ReturnType<typeof tarjetaDe>[]) {
+  return {
+    solapas: [
+      { id: 'para_hoy' as const, titulo: 'Para hoy', tarjetas: para },
+      { id: 'haciendo' as const, titulo: 'Haciendo', tarjetas: [] },
+      { id: 'hecha' as const, titulo: 'Hechas', tarjetas: [] },
+    ],
+  };
+}
 
-    // t1 es de la regla trabajo_con_margen_negativo, sin categoría propia: sólo se ve en «Todo».
+describe('MidiaScreen — chips, contador y banner crítico (BL-W7 + BL-J5)', () => {
+  it('los chips filtran por `t.categoria`; categoria null sólo aparece en «Todo»; el vacío por filtro lo dice', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([tarjetaDe('a', { categoria: 'arca' }), tarjetaDe('n', { categoria: null })]),
+    });
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-a')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso');
+
     fireEvent.click(screen.getByTestId('midia-chip-arca'));
-    expect(screen.queryByTestId('midia-tarjeta-t1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('midia-tarjeta-a')).toBeInTheDocument();
+    expect(screen.queryByTestId('midia-tarjeta-n')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('midia-chip-cobros'));
     expect(screen.getByTestId('midia-vacio-filtro-titulo')).toHaveTextContent(/Nada en .* por acá/);
 
     fireEvent.click(screen.getByTestId('midia-chip-todo'));
-    expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument();
+    expect(screen.getByTestId('midia-tarjeta-n')).toBeInTheDocument();
+  });
+
+  it('🔴 backend previo (ninguna tarjeta con categoría): no se dibujan chips que filtrarían a vacío', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-chips')).not.toBeInTheDocument();
+  });
+
+  it('banner crítico: con una tarjeta `critico` aparece arriba con su verbo y el contador la cuenta', async () => {
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      tablero: tableroCon([
+        tarjetaDe('c', { categoria: 'arca', criticidad: 'critico', verbo: 'Renovarlo', texto: 'Tu certificado vence en 12 días' }),
+        tarjetaDe('p'),
+      ]),
+    });
+    render(<MidiaScreen />);
+
+    const banner = await screen.findByTestId('midia-alerta');
+    expect(banner).toHaveTextContent('Tu certificado vence en 12 días');
+    expect(banner).toHaveTextContent('Renovarlo');
+    expect(screen.queryByTestId('midia-alerta-p')).not.toBeInTheDocument();
+    expect(screen.getByTestId('midia-contador')).toHaveTextContent('2 para hoy · 0 en curso · 1 crítico');
+  });
+
+  it('sin tarjeta crítica no hay banner ni «crítico» en el contador', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-alerta')).not.toBeInTheDocument();
+    expect(screen.getByTestId('midia-contador')).not.toHaveTextContent('crítico');
+  });
+
+  it('el verbo de la regla se muestra en la tarjeta expandida cuando no es null', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-tarjeta-t1-verbo')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/expandir/));
+
+    expect(screen.getByTestId('midia-tarjeta-t1-verbo')).toHaveTextContent('Revisar el trabajo');
   });
 });
 

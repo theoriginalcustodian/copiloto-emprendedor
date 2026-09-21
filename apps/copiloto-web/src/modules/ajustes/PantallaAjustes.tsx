@@ -20,7 +20,8 @@ export type AjusteKey =
   | 'miPlan'
   | 'cuenta'
   | 'apariencia'
-  | 'comoHablarle';
+  | 'comoHablarle'
+  | 'feedback';
 
 interface DefinicionTileAjuste {
   key: AjusteKey;
@@ -37,6 +38,7 @@ const TILES_AJUSTES: readonly DefinicionTileAjuste[] = [
   { key: 'cuenta', label: 'Mi cuenta', icono: '👤' },
   { key: 'apariencia', label: 'Apariencia', icono: '🎨' },
   { key: 'comoHablarle', label: 'Cómo hablarle', icono: '🎙️' },
+  { key: 'feedback', label: 'Contanos qué tal', icono: '💬' },
 ];
 
 export interface PantallaAjustesProps {

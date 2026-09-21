@@ -32,8 +32,10 @@ def _refresh_sync(cliente_id: str, seller_user_id: str) -> dict:
     try:
         tok = _gateway.refresh(creds["refresh_token"])
     except MercadoPagoAuthError:
+        store.marcar_reauth(seller_user_id)
         return {"ok": False, "reason": "needs_reauth"}
     if not tok.get("refresh_token"):
+        store.marcar_reauth(seller_user_id)
         return {"ok": False, "reason": "needs_reauth"}
     store.update_tokens(seller_user_id, access_token=tok["access_token"],
                         refresh_token=tok["refresh_token"],

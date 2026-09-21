@@ -49,7 +49,8 @@ def create_inteligencia_app(*, require_tenant: Callable,
             # movimientos), no un dato ausente — la app distingue por la presencia de la clave `caja`.
             return {
                 "caja": {"saldo": "0.00", "moneda": "ARS",
-                         "fecha_corte": hoy_del_negocio().isoformat(), "variacion_pct": None},
+                         "fecha_corte": hoy_del_negocio().isoformat(), "variacion_pct": None,
+                         "incompleta": False},
                 "mes": {"ingresos": "0.00", "gastos": "0.00", "rentabilidad": "0.00",
                         "facturado": "0.00", "cobrado": "0.00"},
                 "serie_mensual": [],

@@ -164,7 +164,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               />
             )}
             {activeTab === 'recientes' && <RecientesScreen />}
-            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={setActiveTab} onAbrirSoporte={() => abrirSoporte('soporte_tecnico')} />}
             {activeTab === 'facturacion' && (
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}

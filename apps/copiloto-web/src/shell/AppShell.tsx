@@ -237,7 +237,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'recientes' && <RecientesScreen />}
-            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} />}
+            {activeTab === 'ajustes' && <AjustesScreen onNavegarTab={changeTab} onAbrirSoporte={() => abrirSoporte('soporte_tecnico')} />}
             {activeTab === 'facturacion' && (
               <PantallaFacturacion
                 facturaIdInicial={facturaIdDesdePresupuesto}
