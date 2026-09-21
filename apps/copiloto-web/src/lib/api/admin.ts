@@ -412,6 +412,16 @@ export function adminResponderTicketSoporte(
 }
 
 /**
+ * K-08 (BL-J12) — el equipo marca un feedback como «escuchado»; el emprendedor lo ve en «Lo pediste
+ * vos». Escribe con el tenant dueño del lado del backend (molde de `responder`) y audita.
+ */
+export function adminMarcarFeedbackEscuchado(
+  feedbackId: number,
+): Promise<{ id: number; escuchado: boolean; escuchado_en: string }> {
+  return apiClient.post(`/admin/feedback/${encodeURIComponent(feedbackId)}/escuchado`, {});
+}
+
+/**
  * Reintenta **UN** trauma. La acción de más riesgo del sprint y **no reversible**: el efecto ya
  * ocurrió o no ocurrió, y reintentar algo que sí se ejecutó lo duplica — en este repo eso ya costó
  * dos CAE por una factura.

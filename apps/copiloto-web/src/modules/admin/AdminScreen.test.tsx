@@ -12,6 +12,7 @@ vi.mock('../../lib/api/admin', async (importOriginal) => {
     adminUso: vi.fn(),
     adminErrores: vi.fn(),
     adminSoporte: vi.fn(),
+    adminMarcarFeedbackEscuchado: vi.fn(),
     adminAuditoria: vi.fn(),
     adminCambiarEstadoTenant: vi.fn(),
     adminTenants: vi.fn(),
@@ -32,6 +33,7 @@ import {
   adminDetalleTicketSoporte,
   adminErrores,
   adminListarTicketsSoporte,
+  adminMarcarFeedbackEscuchado,
   adminReintentarError,
   adminResponderTicketSoporte,
   adminSalud,
@@ -254,6 +256,30 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     vi.mocked(adminListarTicketsSoporte)
       .mockReset()
       .mockRejectedValue(new AdminNoDisponibleError('sin endpoint'));
+    vi.mocked(adminMarcarFeedbackEscuchado)
+      .mockReset()
+      .mockResolvedValue({ id: 1, escuchado: true, escuchado_en: null } as never);
+  });
+
+  it('K-08: «Marcar escuchado» llama con el id de la fila y luego muestra «Escuchado»', async () => {
+    renderAdmin();
+    const boton = await screen.findByTestId('admin-ticket-marcar-escuchado-1');
+    fireEvent.click(boton);
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-ticket-escuchado-1')).toHaveTextContent('Escuchado'),
+    );
+    expect(adminMarcarFeedbackEscuchado).toHaveBeenCalledWith(1);
+    // El otro ticket no se marca por arrastre.
+    expect(screen.getByTestId('admin-ticket-marcar-escuchado-2')).toBeInTheDocument();
+  });
+
+  it('K-08: si el POST falla NO se afirma «Escuchado» (el botón sigue para reintentar)', async () => {
+    vi.mocked(adminMarcarFeedbackEscuchado).mockRejectedValue(new Error('500'));
+    renderAdmin();
+    fireEvent.click(await screen.findByTestId('admin-ticket-marcar-escuchado-1'));
+    await waitFor(() => expect(adminMarcarFeedbackEscuchado).toHaveBeenCalled());
+    expect(screen.queryByTestId('admin-ticket-escuchado-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('admin-ticket-marcar-escuchado-1')).toBeInTheDocument();
   });
 
   it('A5: muestra el error agrupado, con "veces" y "cuentas" SEPARADOS', async () => {
