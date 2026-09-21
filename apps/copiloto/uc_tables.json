@@ -90,6 +90,7 @@
     "cliente_ref bigint",
     "estado text NOT NULL DEFAULT 'pendiente'",
     "estado_actualizado_en timestamptz",
+    "idem_key text",
     "created_at timestamptz DEFAULT now()"
   ],
   "copiloto_presupuesto_items": [

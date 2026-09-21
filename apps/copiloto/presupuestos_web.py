@@ -125,6 +125,9 @@ class NuevoPresupuestoBody(BaseModel):
     items: list[ItemBody] = Field(min_length=1)
     moneda: str = "ARS"
     reemplaza_a: int | None = None
+    # K-01: UUID del cliente, estable por instancia de formulario. Opcional: un cliente viejo sin él
+    # se comporta exactamente como antes.
+    idem_key: str | None = Field(default=None, max_length=100)
 
 
 def _decimal_o_400(valor, campo: str) -> Decimal:
@@ -232,9 +235,14 @@ def create_presupuestos_app(
                 "codigo": it.codigo or "",
             })
         store = presupuesto_store_factory(cliente_id)
-        presupuesto = await asyncio.to_thread(
-            lambda: store.crear(concepto=body.concepto, receptor=body.receptor.model_dump(),
-                                items=items, moneda=body.moneda, reemplaza_a=body.reemplaza_a))
+        presupuesto, repetido = await asyncio.to_thread(
+            lambda: store.crear_idem(concepto=body.concepto, receptor=body.receptor.model_dump(),
+                                     items=items, moneda=body.moneda, reemplaza_a=body.reemplaza_a,
+                                     idem_key=body.idem_key))
+        if repetido:
+            # Misma clave ⇒ mismo presupuesto ya creado (y ya con su Doc, si se pudo): no se vuelve a
+            # generar nada. Informa, no ramifica (mismo criterio que `borradorNuevo` de facturar).
+            return {"presupuesto": presupuesto, "repetido": True}
 
         if generar_doc is not None:
             try:
@@ -260,7 +268,7 @@ def create_presupuestos_app(
                           contexto={"presupuesto_id": presupuesto["id"], "degradado": "sin_doc"})
                 _log.warning("presupuesto %s creado SIN Doc (cliente=%s): %s",
                              presupuesto["id"], cliente_id, exc)
-        return {"presupuesto": presupuesto}
+        return {"presupuesto": presupuesto, "repetido": False}
 
     @app.get("/presupuestos")
     async def listar_presupuestos(limit: int = LIMITE_LISTADO_DEFAULT,
