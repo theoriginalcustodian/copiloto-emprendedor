@@ -14,6 +14,8 @@
 #   4. CONTROL NEGATIVO — fila de esta ola no citada                   → NO CITADO, no aparece en §2.bis
 #   5. El comando del gate no usa `--solo`
 set -uo pipefail
+# Nunca `productor | grep -q` acá: con pipefail, grep -q corta el pipe, el productor muere por
+# SIGPIPE y el `if` miente (falso rojo; falso verde si está negado). Todo va con here-string.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INV="$SCRIPT_DIR/../inventario-ola.sh"
@@ -71,22 +73,22 @@ echo "── 0. corre ──"
 
 echo "── 1. CONTROL POSITIVO: dos mitades con diff en las dos capas ──"
 # Sin este caso, un script que marcara ⚠️ a TODA fila de dos colas pasaría el caso 2 en verde.
-if fila BL-C6 | grep -q "✅ sí (#530)"; then ok "BL-C6 ✅ con #530 (backend + core)"; else fail "BL-C6: $(fila BL-C6)"; fi
+if grep -qF "✅ sí (#530)" <<< "$(fila BL-C6)"; then ok "BL-C6 ✅ con #530 (backend + core)"; else fail "BL-C6: $(fila BL-C6)"; fi
 
 echo "── 2. EL CASO X5: un solo PR de web para una fila de dos mitades ──"
-if fila BL-X5 | grep -q "mitad BACKEND no tiene diff"; then ok "BL-X5 acusa la mitad BACKEND"; else fail "BL-X5: $(fila BL-X5)"; fi
-if fila BL-X5 | grep -q "✅"; then fail "BL-X5 sigue saliendo ✅"; else ok "BL-X5 no sale ✅"; fi
+if grep -qF "mitad BACKEND no tiene diff" <<< "$(fila BL-X5)"; then ok "BL-X5 acusa la mitad BACKEND"; else fail "BL-X5: $(fila BL-X5)"; fi
+if grep -qF "✅" <<< "$(fila BL-X5)"; then fail "BL-X5 sigue saliendo ✅"; else ok "BL-X5 no sale ✅"; fi
 
 echo "── 3. EL CASO J: fila de otra ola entregada en la ventana ──"
-if grep -A20 "## 2.bis" <<< "$sal" | grep -F '`BL-J6`' | grep -q "| 2 | #541"; then
+if grep -qF '| `BL-J6` | 2 | #541 |' <<< "$(sed -n '/## 2.bis/,/^## 3/p' <<< "$sal")"; then
   ok "BL-J6 en §2.bis con ola 2 y #541"
 else
   fail "BL-J6 no aparece en §2.bis como adelantada"
 fi
 
 echo "── 4. CONTROL NEGATIVO: fila de esta ola sin PR ──"
-if fila BL-D3 | grep -q "NO CITADO"; then ok "BL-D3 NO CITADO"; else fail "BL-D3: $(fila BL-D3)"; fi
-if grep -A20 "## 2.bis" <<< "$sal" | grep -qF '`BL-D3`'; then fail "BL-D3 se filtró a §2.bis"; else ok "§2.bis sólo trae filas de otras olas"; fi
+if grep -qF "NO CITADO" <<< "$(fila BL-D3)"; then ok "BL-D3 NO CITADO"; else fail "BL-D3: $(fila BL-D3)"; fi
+if grep -qF '`BL-D3`' <<< "$(sed -n '/## 2.bis/,/^## 3/p' <<< "$sal")"; then fail "BL-D3 se filtró a §2.bis"; else ok "§2.bis sólo trae filas de otras olas"; fi
 if grep -q "o con una mitad sin diff: 2\." <<< "$sal"; then ok "cuenta 2 faltas (D3 + mitad de X5)"; else fail "conteo: $(grep 'mitad sin diff:' <<< "$sal")"; fi
 
 echo "── 5. El comando del gate no es un falso verde ──"
