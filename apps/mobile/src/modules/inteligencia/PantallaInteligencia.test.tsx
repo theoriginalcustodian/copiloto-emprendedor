@@ -16,7 +16,6 @@ jest.mock('@copiloto/core', () => {
     leerGraficoEntroVsSalio: jest.fn(),
     leerGraficoCategorias: jest.fn(),
     leerGraficoMargenTrabajo: jest.fn(),
-    preguntarInteligencia: jest.fn(),
   };
 });
 
@@ -28,14 +27,12 @@ import {
   leerGraficoFacturacion,
   leerGraficoMargenTrabajo,
   leerPortada,
-  preguntarInteligencia,
 } from '@copiloto/core';
 
 import { PantallaInteligencia } from './PantallaInteligencia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const leerMock = leerPortada as jest.MockedFunction<typeof leerPortada>;
-const preguntarMock = preguntarInteligencia as jest.MockedFunction<typeof preguntarInteligencia>;
 const facturacionMock = leerGraficoFacturacion as jest.MockedFunction<typeof leerGraficoFacturacion>;
 const entroVsSalioMock = leerGraficoEntroVsSalio as jest.MockedFunction<typeof leerGraficoEntroVsSalio>;
 const categoriasMock = leerGraficoCategorias as jest.MockedFunction<typeof leerGraficoCategorias>;
@@ -69,7 +66,6 @@ beforeEach(() => {
   entroVsSalioMock.mockResolvedValue({ status: 'no_disponible' });
   categoriasMock.mockResolvedValue({ status: 'no_disponible' });
   margenTrabajoMock.mockResolvedValue({ status: 'no_disponible' });
-  preguntarMock.mockResolvedValue({ status: 'ok', respuesta: { respuesta: 'Gastaste $18.000 este mes.', fuente: 'sql' } });
 });
 
 describe('PantallaInteligencia — lo que muestra', () => {
@@ -151,11 +147,11 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
 
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-preguntar'));
 
-    expect(screen.getByTestId('chat-inteligencia')).toBeTruthy();
+    expect(screen.getByTestId('preguntar-inteligencia')).toBeTruthy();
     expect(screen.queryByTestId('inteligencia-portada')).toBeNull();
   });
 
-  it('volver a "Resumen" restaura la portada sin perder la pregunta ya hecha', async () => {
+  it('volver a "Resumen" restaura la portada ', async () => {
     await montar();
     await waitFor(() => expect(screen.getByTestId('inteligencia-caja')).toBeTruthy());
 
@@ -163,7 +159,7 @@ describe('PantallaInteligencia — la solapa "Preguntar" (decisión de placement
     await fireEvent.press(screen.getByTestId('inteligencia-solapa-resumen'));
 
     expect(screen.getByTestId('inteligencia-caja')).toBeTruthy();
-    expect(screen.queryByTestId('chat-inteligencia')).toBeNull();
+    expect(screen.queryByTestId('preguntar-inteligencia')).toBeNull();
   });
 
   it('🔴 los 4 gráficos entran DEBAJO de la portada, en el mismo scroll', async () => {

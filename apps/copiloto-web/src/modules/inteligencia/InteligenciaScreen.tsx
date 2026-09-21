@@ -4,7 +4,7 @@ import { formatearImporte, leerPortada, MS_AL_DIA, TEXTO_REFRESCO, type Portada 
 
 import { Button, Skeleton, Surface } from '../../design-system';
 import { AcumuladoAnual } from './AcumuladoAnual';
-import { ChatInteligencia } from './ChatInteligencia';
+import { PreguntarInteligencia } from './PreguntarInteligencia';
 import { GraficosInteligencia } from './graficos/GraficosInteligencia';
 import './inteligencia.css';
 
@@ -53,13 +53,13 @@ function alHoy(): string {
  * `null` no es `0`: un KPI que no vino se muestra como «—», nunca como «$0» — el helper `kpi()`
  * centraliza esa regla.
  *
- * La solapa "Preguntar" (`ChatInteligencia`) NO es del mockup fuente — ese diseño ya la sacó
+ * La solapa "Preguntar" (`PreguntarInteligencia`, BL-X3: deja la pregunta pendiente y abre el chat principal) NO es del mockup fuente — ese diseño ya la sacó
  * (`Prototipo frontend/odobi-ui/CLAUDE.md` ~L554: "sería la duplicación que ya sacamos con
  * 'Preguntar' de Inteligencia"), decisión de navegación fuera del alcance de este repintado
  * ("no se toca el modelo de capas"). Se mantiene tal cual funciona hoy — escalado a planificación
  * en `coordinacion/abierto/2026-09-07_hallazgo_frontend1-inteligencia-a-planificacion_solapa-preguntar-ya-deprecada-en-el-diseno.md`.
  */
-export function InteligenciaScreen() {
+export function InteligenciaScreen({ onAbrirChat }: { onAbrirChat: () => void }) {
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [portada, setPortada] = useState<Portada | null>(null);
   const [vista, setVista] = useState<Vista>('resumen');
@@ -163,7 +163,7 @@ export function InteligenciaScreen() {
       </div>
 
       {vista === 'preguntar' ? (
-        <ChatInteligencia />
+        <PreguntarInteligencia onAbrirChat={onAbrirChat} />
       ) : (
         <div className="inteligencia-screen__body">
           {estado === 'cargando' && (

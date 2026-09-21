@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 // eslint-disable-next-line import/no-unresolved -- `?raw` es una convención de Vite (import de
 // texto crudo), no un módulo real (mismo patrón que modules/connections/connectionsNoHexLiterals.test.ts).
 import inteligenciaCss from './inteligencia.css?raw';
-import chatInteligenciaSource from './ChatInteligencia.tsx?raw';
+import preguntarInteligenciaSource from './PreguntarInteligencia.tsx?raw';
 import inteligenciaScreenSource from './InteligenciaScreen.tsx?raw';
 import graficoBarrasSource from './graficos/GraficoBarras.tsx?raw';
 import graficosInteligenciaSource from './graficos/GraficosInteligencia.tsx?raw';
@@ -38,7 +38,7 @@ const CATEGORICO_EXCEPCION = [
 
 const SOURCES: Record<string, string> = {
   'inteligencia.css': inteligenciaCss,
-  'ChatInteligencia.tsx': chatInteligenciaSource,
+  'PreguntarInteligencia.tsx': preguntarInteligenciaSource,
   'InteligenciaScreen.tsx': inteligenciaScreenSource,
   'graficos/GraficoBarras.tsx': graficoBarrasSource,
   'graficos/GraficosInteligencia.tsx': graficosInteligenciaSource,

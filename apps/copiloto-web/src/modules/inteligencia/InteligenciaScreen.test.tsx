@@ -7,7 +7,7 @@ vi.mock('@copiloto/core', async (orig) => ({
   ...(await orig<typeof import('@copiloto/core')>()),
   leerPortada,
 }));
-vi.mock('./ChatInteligencia', () => ({ ChatInteligencia: () => null }));
+vi.mock('./PreguntarInteligencia', () => ({ PreguntarInteligencia: () => null }));
 vi.mock('./AcumuladoAnual', () => ({ AcumuladoAnual: () => <div data-testid="acumulado-mock" /> }));
 vi.mock('./graficos/GraficosInteligencia', () => ({ GraficosInteligencia: () => null }));
 
@@ -28,7 +28,7 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
   });
 
   it('Actualizando… mientras carga y «Al día · recién» al terminar', async () => {
-    render(<InteligenciaScreen />);
+    render(<InteligenciaScreen onAbrirChat={() => {}} />);
     await screen.findByTestId('inteligencia-actualizar');
     const estado = screen.getByTestId('inteligencia-refresco-estado');
     expect(estado).toHaveTextContent('');
@@ -46,7 +46,7 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
   });
 
   it('el estado se anuncia (role=status) y web no ofrece «Tirá»/«Soltá»', async () => {
-    render(<InteligenciaScreen />);
+    render(<InteligenciaScreen onAbrirChat={() => {}} />);
     await screen.findByTestId('inteligencia-actualizar');
     expect(screen.getByRole('status')).toBe(screen.getByTestId('inteligencia-refresco-estado'));
     expect(document.body.textContent).not.toMatch(/Tirá para|Soltá para/);
@@ -56,7 +56,7 @@ describe('InteligenciaScreen — estado textual del refresco (BL-W6)', () => {
 describe('InteligenciaScreen — acumulado del año fusionado (BL-X2)', () => {
   it('monta «Acumulado del año» dentro del resumen (ya no hay pantalla Contabilidad)', async () => {
     leerPortada.mockResolvedValue({ status: 'ok', portada: PORTADA });
-    render(<InteligenciaScreen />);
+    render(<InteligenciaScreen onAbrirChat={() => {}} />);
     expect(await screen.findByTestId('acumulado-mock')).toBeInTheDocument();
   });
 });
