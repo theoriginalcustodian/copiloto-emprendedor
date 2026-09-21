@@ -5,6 +5,7 @@ import {
   facturarPresupuesto,
   formatearFechaLarga,
   formatearImporte,
+  mailtoMandarPresupuesto,
   obtenerPresupuesto,
   type EstadoPresupuesto,
   type Presupuesto,
@@ -61,6 +62,8 @@ export interface DetallePresupuestoProps {
   onCorregir: (presupuesto: Presupuesto) => void;
   /** Cambió el estado acá adentro. La lista de atrás lo usa para no quedar mostrando el anterior. */
   onEstadoCambiado?: (presupuesto: Presupuesto) => void;
+  /** K-07: «Mandalo por mail» sugerido al guardar (sólo con Doc). Abre el correo del usuario; NO envía. */
+  sugerenciaMandarPorMail?: { docLink: string } | null;
 }
 
 function Dato({ etiqueta, valor, testId }: { etiqueta: string; valor: string; testId?: string }) {
@@ -80,6 +83,7 @@ export function DetallePresupuesto({
   onFacturar,
   onCorregir,
   onEstadoCambiado,
+  sugerenciaMandarPorMail = null,
 }: DetallePresupuestoProps) {
   const [p, setP] = useState<Presupuesto>(inicial);
   const [cargandoItems, setCargandoItems] = useState(true);
@@ -255,6 +259,19 @@ export function DetallePresupuesto({
             <Button variant="cancel" onClick={() => window.open(p.docLink ?? undefined, '_blank', 'noopener,noreferrer')} data-testid="detalle-presupuesto-ver-doc">
               Ver en Google Docs
             </Button>
+            {sugerenciaMandarPorMail != null && (
+              <Button
+                onClick={() => {
+                  window.location.href = mailtoMandarPresupuesto(
+                    { numero: p.numero, contacto: p.receptor.contacto },
+                    sugerenciaMandarPorMail.docLink,
+                  );
+                }}
+                data-testid="detalle-presupuesto-mandar-por-mail"
+              >
+                Mandalo por mail
+              </Button>
+            )}
           </div>
         ) : (
           <p className="detalle-presupuesto__aviso" data-testid="detalle-presupuesto-sin-doc">

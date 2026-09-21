@@ -125,6 +125,7 @@ export {
   crearPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
+  mailtoMandarPresupuesto,
   obtenerPresupuesto,
 } from './presupuestos';
 export type {
@@ -136,6 +137,7 @@ export type {
   Presupuesto,
   ReceptorPresupuesto,
   ResultadoFacturar,
+  SugerenciasPresupuesto,
 } from './presupuestos';
 
 // `/gastos` — lo que sale: alta, listado, detalle y el resumen del mes. Mismo criterio de plata que

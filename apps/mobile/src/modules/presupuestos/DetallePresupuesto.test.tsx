@@ -15,6 +15,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
+import { Linking } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { cambiarEstadoPresupuesto, facturarPresupuesto, obtenerPresupuesto, type Presupuesto } from '@copiloto/core';
@@ -47,7 +48,7 @@ function presupuesto(over: Partial<Presupuesto> = {}): Presupuesto {
   } as Presupuesto;
 }
 
-async function montar(p: Presupuesto, onEstadoCambiado = jest.fn()) {
+async function montar(p: Presupuesto, onEstadoCambiado = jest.fn(), sugerenciaMandarPorMail?: { docLink: string } | null) {
   return render(
     <ThemeProvider>
       <DetallePresupuesto
@@ -56,6 +57,7 @@ async function montar(p: Presupuesto, onEstadoCambiado = jest.fn()) {
         onFacturar={() => {}}
         onCorregir={() => {}}
         onEstadoCambiado={onEstadoCambiado}
+        sugerenciaMandarPorMail={sugerenciaMandarPorMail}
       />
     </ThemeProvider>,
   );
@@ -152,5 +154,30 @@ describe('DetallePresupuesto — el estado', () => {
 
     await waitFor(() => expect(screen.getByTestId('detalle-presupuesto-estado-incompatible')).toBeTruthy());
     expect(screen.queryByTestId('detalle-presupuesto-falta-perfil')).toBeNull();
+  });
+});
+
+describe('DetallePresupuesto — «Mandalo por mail» (K-07)', () => {
+  it('con la sugerencia y Doc: muestra el chip y abre el correo con el Doc adentro', async () => {
+    const abrir = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    await montar(
+      presupuesto({ docLink: 'https://docs.google.com/d/1', receptor: { nombre: 'P', docTipo: null, docNro: '', condicionIva: null, domicilio: '', contacto: 'p@x.com' } }),
+      jest.fn(),
+      { docLink: 'https://docs.google.com/d/1' },
+    );
+
+    await fireEvent.press(screen.getByTestId('detalle-presupuesto-mandar-por-mail'));
+
+    expect(abrir).toHaveBeenCalledTimes(1);
+    const url = decodeURIComponent(abrir.mock.calls[0][0]);
+    expect(url).toContain('mailto:p@x.com');
+    expect(url).toContain('https://docs.google.com/d/1');
+    abrir.mockRestore();
+  });
+
+  it('sin sugerencia (presupuesto viejo / sin Doc) no aparece nada nuevo', async () => {
+    await montar(presupuesto({ docLink: 'https://docs.google.com/d/1' }));
+    expect(screen.queryByTestId('detalle-presupuesto-mandar-por-mail')).toBeNull();
+    expect(screen.getByTestId('detalle-presupuesto-ver-doc')).toBeTruthy();
   });
 });

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { formatearImporte, listarPresupuestos, obtenerPresupuesto, type Presupuesto } from '@copiloto/core';
+import {
+  formatearImporte,
+  listarPresupuestos,
+  obtenerPresupuesto,
+  type Presupuesto,
+  type SugerenciasPresupuesto,
+} from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
 import { DetallePresupuesto } from './DetallePresupuesto';
@@ -86,6 +92,8 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const [vista, setVista] = useState<Vista>('listado');
   const [corrigiendo, setCorrigiendo] = useState<Presupuesto | null>(null);
   const [detalle, setDetalle] = useState<Presupuesto | null>(null);
+  // K-07: «Mandalo por mail» sólo se ofrece sobre el presupuesto recién guardado con Doc.
+  const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [actualizando, setActualizando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
   // `vivo.current = true` DENTRO del setup del efecto — StrictMode, ver el comentario equivalente en
@@ -139,12 +147,13 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
     if (vivo.current) setActualizando(false);
   }
 
-  function alCrear(nuevo: Presupuesto) {
+  function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
     // Se RELEE en vez de insertar el objeto en la lista local: el alta puede haber reemplazado a
     // otro, que tiene que DESAPARECER del listado vigente.
     void cargar(true);
+    setSugerenciaMail(sugerencias?.mandarPorMail ?? null);
     setDetalle(nuevo);
   }
 
@@ -291,7 +300,8 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
       {detalle != null && (
         <DetallePresupuesto
           presupuesto={detalle}
-          onCerrar={() => setDetalle(null)}
+          sugerenciaMandarPorMail={sugerenciaMail}
+          onCerrar={() => { setDetalle(null); setSugerenciaMail(null); }}
           onFacturar={facturarDesdeDetalle}
           onCorregir={abrirCorreccion}
           // El estado cambió en la hoja: se pisa la fila de atrás con lo que devolvió el backend.
