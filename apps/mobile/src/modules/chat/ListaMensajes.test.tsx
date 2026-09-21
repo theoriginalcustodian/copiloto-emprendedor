@@ -131,6 +131,55 @@ describe('ListaMensajes', () => {
     expect(screen.getByText('$15.000')).toBeTruthy();
   });
 
+  it('BL-D3: el gate pinta el LOGO real del servicio (por serviceKey)', async () => {
+    await envolver([
+      {
+        id: 'assistant-mercadopago',
+        role: 'assistant',
+        text: 'Confirmá',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Ok', value: 'confirm' },
+          { label: 'No', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-logo')).toBeTruthy();
+    expect(screen.queryByTestId('tarjeta-confirmacion-punto')).toBeNull();
+  });
+
+  it('BL-D3: un servicio sin logo (Instagram) cae al punto genérico', async () => {
+    await envolver([
+      {
+        id: 'assistant-instagram',
+        role: 'assistant',
+        text: 'Confirmá',
+        card: { kind: 'confirm', service: 'instagram', label: 'Instagram' },
+        choices: [
+          { label: 'Ok', value: 'confirm' },
+          { label: 'No', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByTestId('tarjeta-confirmacion-punto')).toBeTruthy();
+    expect(screen.queryByTestId('tarjeta-confirmacion-logo')).toBeNull();
+  });
+
+  it('BL-C3: el separador de día cambia en la medianoche de Buenos Aires, no en la del runtime', async () => {
+    // 21/09 23:59 BA = 22/09 02:59Z; 22/09 00:01 BA = 22/09 03:01Z. En UTC ambos serían «22»: acá son dos días.
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 8, 22, 15, 0, 0));
+    try {
+      await envolver([
+        { id: 'u1', role: 'user', text: 'antes', creadoEn: Date.UTC(2026, 8, 22, 2, 59, 0) },
+        { id: 'u2', role: 'user', text: 'después', creadoEn: Date.UTC(2026, 8, 22, 3, 1, 0) },
+      ]);
+      const etiquetas = screen.getAllByTestId('separador-dia').map((n) => n.props.children);
+      expect(etiquetas).toEqual(['Ayer', 'Hoy']);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('BL-D3: sin card, tarjeta neutra sin badge ni advertencia', async () => {
     await envolver([
       {
