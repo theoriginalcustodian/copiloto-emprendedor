@@ -37,7 +37,7 @@ from clients.agent.providers.mercadopago_gateway import MercadoPagoError  # noqa
 
 from activity_summary import summarize_activity  # noqa: E402
 from calendar_policy import CREATE_EVENT_SLUG  # noqa: E402
-from catalog import requiere_conexion_card  # noqa: E402
+from catalog import requiere_conexion_card, sugerencia_armar_factura_card  # noqa: E402
 from deposito_traumas import depositar as depositar_trauma  # noqa: E402
 from fingerprint import fingerprint_de_error  # noqa: E402
 # La lista de categorías y los límites de largo salen del store, no se re-declaran acá: el schema que ve
@@ -1254,6 +1254,7 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                           observation={"result": "No pude encontrar ese presupuesto. Preguntale a "
                                                  "cuál se refiere."})
     verbo = "aprobado" if nuevo == APROBADO else "descartado"
+    sugerencia = sugerencia_de_aprobacion(actualizado) if nuevo == APROBADO else None
     return ToolResult(tool_call_id=idem_key, is_write=True, status="ok",
                       observation={"result": f"Marqué el presupuesto {actualizado['numero']} de "
                                              f"{actualizado['receptor']['nombre'] or 'sin nombre'} "
@@ -1261,8 +1262,12 @@ def _run_marcar_presupuesto(arguments, ctx, idem_key, presupuesto_store_factory)
                                              f"Confirmáselo en una línea corta.",
                                    "presupuesto": actualizado,
                                    # K-07: sólo al APROBAR el cliente ofrece armar la factura (nunca al descartar).
-                                   **({"sugerencia": sugerencia_de_aprobacion(actualizado)}
-                                      if nuevo == APROBADO else {})})
+                                   **({"sugerencia": sugerencia,
+                                       # K-07-B: el motor la saca del mensaje al LLM y la adjunta al reply como
+                                       # `card` (mismo camino que K-11; sin activity nueva -> replay-safe).
+                                       "gate_card": sugerencia_armar_factura_card(
+                                           sugerencia["presupuesto_id"], sugerencia["texto"])}
+                                      if sugerencia else {})})
 
 
 # ── hito 9 — facturar por voz (contrato §1-§2) ──────────────────────────────────────────────────────

@@ -124,6 +124,16 @@ def requiere_conexion_card(service: str, label: str) -> dict:
             "alcance": entry["capabilities"], "connect_path": entry["connect_path"]}
 
 
+KIND_SUGERENCIA_ARMAR_FACTURA = "sugerencia_armar_factura"
+
+
+def sugerencia_armar_factura_card(presupuesto_id: int, texto: str) -> dict:
+    """`card` del reply al APROBAR un presupuesto (K-07-B, BL-J9): el chip «¿Te armo la factura?».
+    NO es un gate (no pausa el turno ni pide confirmación): informa y ofrece. El cliente decide por
+    `kind`, nunca por `texto`. Viaja por el mismo camino que `requiere_conexion_card` (`gate_card`)."""
+    return {"kind": KIND_SUGERENCIA_ARMAR_FACTURA, "presupuesto_id": presupuesto_id, "texto": texto}
+
+
 def build_catalog(*, valid_toolkits, mp_connected: bool, composio_connected,
                   mp_status: str | None = None, composio_caidos=()) -> list[dict]:
     """Catálogo completo (MercadoPago + todos los toolkits Composio soportados), en el shape del contrato
