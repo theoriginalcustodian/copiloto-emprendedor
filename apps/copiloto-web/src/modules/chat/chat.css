@@ -793,3 +793,59 @@ a.artifact:focus-visible {
     transition: none;
   }
 }
+
+/* ---------- SheetRequiereConexion (K-11 / BL-J8) ---------- */
+.sheet-conexion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 4px 8px;
+}
+
+.sheet-conexion__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet-conexion__titulo {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--heading);
+  margin: 0;
+}
+
+.sheet-conexion__sub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 2px 0 0;
+}
+
+.sheet-conexion__alcance {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--heading);
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet-conexion__error {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--label);
+  margin: 0;
+}
+
+/* Las dos acciones del MISMO tamaño: mismo ancho, sin que una empuje a aceptar. */
+.sheet-conexion__acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.sheet-conexion__acciones > * {
+  flex: 1;
+}
