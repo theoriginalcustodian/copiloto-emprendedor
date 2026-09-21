@@ -139,6 +139,9 @@ avance_mas_reciente_epoch() {
 
 # ── Regla 1: contrato_ con disparador cumplido, viejo, sin tomar ───────────────
 shopt -s nullglob
+# Acumuladores por destinatario: el reporte a stdout sigue siendo uno por contrato, pero el
+# `urgente_` que se ESCRIBE en el buzón es uno por rol (ver el bloque que cierra la regla).
+declare -A sin_tomar_n=() sin_tomar_lista=() sin_tomar_edad=() sin_tomar_viejo=()
 # Glob anclado por POSICIÓN (`<fecha>_<tipo>_…`), no por substring: `*_contrato_*` se comía las
 # alertas que este mismo script autogenera, porque embeben el nombre del contrato huérfano en el
 # suyo (`…_urgente_vigilancia-a-backend_contrato-sin-tomar-<nombre del contrato>.md`). Medido en el
@@ -163,23 +166,60 @@ for f in "$ABIERTO"/????-??-??_contrato_*.md; do
     continue   # disparador explícitamente NO cumplido -> no escala (control negativo del DoD)
   fi
   para="$(destinatario_de_nombre "$b")"
+  para="${para:-todos}"
   alarma=1
-  echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> le toca a ${para:-todos}"
-  fecha_hoy="$(date +%Y-%m-%d)"
-  slug_base="${b%.md}"
-  urgente="$ABIERTO/${fecha_hoy}_urgente_vigilancia-a-${para:-todos}_contrato-sin-tomar-${slug_base}.md"
-  if [ "$DRY_RUN" = "0" ] && [ ! -e "$urgente" ]; then
-    {
-      echo "# URGENTE -> ${para:-TODOS} - contrato sin tomar"
-      echo
-      echo "Generado automaticamente por scripts/escaladores-buzon.sh (Gancho 3, escalador de edad)."
-      echo
-      echo "El contrato '$b' lleva ${edad} min en abierto/ con el disparador cumplido y nadie lo"
-      echo "movio a en-curso/. Tomalo, o si en realidad espera algo, declaralo con una linea"
-      echo "'DISPARADOR: pendiente' en el propio contrato para que deje de escalar."
-    } > "$urgente"
-    echo "   -> generado $urgente"
+  echo "CONTRATO SIN TOMAR (${edad}min >= ${UMBRAL_CONTRATO_MIN}): $b -> le toca a ${para}"
+  # Se ACUMULA por destinatario en vez de escribir el urgente_ acá. Ver el bloque de abajo.
+  sin_tomar_n["$para"]=$(( ${sin_tomar_n["$para"]:-0} + 1 ))
+  sin_tomar_lista["$para"]="${sin_tomar_lista["$para"]:-}  · ${b} (${edad}min)
+"
+  if [ "${edad}" -gt "${sin_tomar_edad["$para"]:-0}" ]; then
+    sin_tomar_edad["$para"]="$edad"
+    sin_tomar_viejo["$para"]="$b"
   fi
+done
+
+# UN urgente_ por DESTINATARIO, no uno por contrato. El 2026-09-21 14:52 backend tenía 6 contratos
+# (K-07/08/11/12/14/15) cruzando el umbral en el mismo ciclo, porque planificación los bajó en
+# lote: la versión anterior iba a escribir SEIS archivos `urgente_` en abierto/ —de una, y otros
+# tantos por cada destinatario compuesto— convirtiendo el canal en su propio ruido. El buzón ya
+# pagó esto una vez con la cascada de alertas-sobre-alertas de agosto (ver el comentario del glob
+# anclado, arriba): el escalador NO tiene que poder inundar el buzón que vigila.
+#
+# El CRITERIO no cambia y la alarma tampoco: cada contrato sigue saliendo por stdout con su edad, y
+# `alarma=1` ya quedó puesto arriba. Lo que se agrupa es el efecto colateral en el canal. Y el
+# mensaje agrupado dice algo que el individual no podía decir —"son N, el más viejo es éste"—, que
+# es justo el dato que necesita quien lo recibe para ordenar su cola.
+fecha_hoy="$(date +%Y-%m-%d)"
+for para in "${!sin_tomar_n[@]}"; do
+  n="${sin_tomar_n[$para]}"
+  urgente="$ABIERTO/${fecha_hoy}_urgente_vigilancia-a-${para}_contratos-sin-tomar.md"
+  [ "$DRY_RUN" = "0" ] || continue
+  # Idempotente por DÍA y destinatario: si ya existe, se REESCRIBE con la lista actual en vez de
+  # saltearse. Saltear dejaba el aviso congelado en la foto del primer ciclo — un contrato que
+  # entrara después nunca aparecía en el archivo que el destinatario abre.
+  {
+    echo "# URGENTE -> ${para^^} - ${n} contrato(s) sin tomar"
+    echo
+    echo "Generado automaticamente por scripts/escaladores-buzon.sh (Gancho 3, escalador de edad)."
+    echo "Se reescribe en cada corrida: la lista de abajo es la foto de $(date '+%H:%M')."
+    echo
+    echo "Llevan mas de ${UMBRAL_CONTRATO_MIN} min en abierto/ con el disparador cumplido y nadie"
+    echo "los movio a en-curso/:"
+    echo
+    printf '%s' "${sin_tomar_lista[$para]}"
+    echo
+    echo "El mas viejo es ${sin_tomar_viejo[$para]} (${sin_tomar_edad[$para]} min)."
+    echo
+    echo "Tomalos en orden. Si alguno en realidad espera algo, declaralo con una linea"
+    echo "'DISPARADOR: pendiente' en el propio contrato para que deje de escalar."
+    if [ "$n" -ge 4 ]; then
+      echo
+      echo "Si son mas de los que tu cola absorbe, eso es un dato para PLANIFICACION, no una deuda"
+      echo "tuya: contestale con un pedido_ diciendo cuantos podes tomar y en que orden."
+    fi
+  } > "$urgente"
+  echo "   -> generado $urgente (${n} contrato/s)"
 done
 
 # ── Regla 2: pedido_ viejo en abierto/ (= sin respuesta_, por protocolo) ───────
