@@ -97,7 +97,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaCon
           : styles.tarjetaGate,
         // H-A4-9 — ya respondida: opacidad reducida, mismo criterio visual que `.uc-btn:disabled`
         // en la web (`primitives.css`).
-        disabled ? { opacity: 0.55 } : null,
+        disabled ? { opacity: 0.55 } : {},
       ]}
     >
       <View style={[styles.contenidoGate, { padding: tema.espacio.md, gap: tema.espacio.sm }]}>
