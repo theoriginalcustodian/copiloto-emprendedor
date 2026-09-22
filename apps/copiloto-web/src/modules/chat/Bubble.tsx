@@ -14,6 +14,9 @@ export interface BubbleProps {
    * debajo del texto. El gate `kind:'confirm'` lo sigue renderizando `HitlCard` (mensajes HITL no
    * pasan por `Bubble` en `MessageList` de todos modos) — este chequeo es la red de seguridad. */
   card?: ReplyCard;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().sendAudio`): chip «Por voz · Ns»,
+   * mismo criterio que `MicFuncion` fuera del chat. `undefined` en mensajes escritos: sin chip. */
+  porVoz?: { duracionSeg: number };
 }
 
 // Detecta URLs sueltas en el texto plano (Task 17) — el LLM NO debería narrarlas (el artifact ya es
@@ -43,12 +46,17 @@ function linkifyText(text: string): ReactNode {
  * real del mock), radio `20 20 20 6`. NO incluye el sub-header "SESIÓN ACTIVA · HOY" (decisión
  * congelada del plan — el diseño más reciente lo eliminó, ver prompt del Task 12).
  */
-export function Bubble({ role, text, card }: BubbleProps) {
+export function Bubble({ role, text, card, porVoz }: BubbleProps) {
   if (role === 'user') {
     return (
       <div className="chat-row chat-row--user">
         <div className="chat-bubble chat-bubble--user">
           <p className="chat-bubble__text">{text}</p>
+          {porVoz && (
+            <span className="chat-bubble__voz" data-testid="chat-bubble-voz">
+              Por voz · {porVoz.duracionSeg}s
+            </span>
+          )}
         </div>
         <span className="chat-bubble__receipt">✓✓ recibido</span>
       </div>

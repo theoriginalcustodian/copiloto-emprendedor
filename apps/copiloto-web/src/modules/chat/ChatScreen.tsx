@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { tomarPendiente } from '@copiloto/core';
 
@@ -80,7 +80,20 @@ export function ChatScreen({
     (value: string, label: string) => void send(value, { kind: 'callback', displayText: label }),
     [send],
   );
-  const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);
+  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx`: el instante del `pointerdown` (vía
+  // `onRecordingStart`, ya expuesto por `MicButton`) mide la duración del dictado para el chip
+  // «Por voz · Ns» de la burbuja, sin duplicar el cronómetro interno de `MicButton`.
+  const inicioMsRef = useRef(0);
+  const handleRecordingStart = useCallback(() => {
+    inicioMsRef.current = Date.now();
+  }, []);
+  const handleSendAudio = useCallback(
+    (blob: Blob) => {
+      const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
+      void sendAudio(blob, duracionSeg);
+    },
+    [sendAudio],
+  );
 
   return (
     <div className="app-frame chat-screen" data-testid="chat-screen">
@@ -98,6 +111,7 @@ export function ChatScreen({
         sendStatus={sendStatus}
         onSend={handleSend}
         onSendAudio={handleSendAudio}
+        onRecordingStart={handleRecordingStart}
       />
       <SheetRequiereConexion
         conexion={conexion.pendiente?.conexion ?? null}

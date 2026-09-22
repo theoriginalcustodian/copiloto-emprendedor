@@ -170,12 +170,16 @@ describe('useChat', () => {
       expect(api.getReply).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        await result.current.sendAudio(blob);
+        await result.current.sendAudio(blob, 6);
       });
 
       expect(api.sendAudio).toHaveBeenCalledWith(expect.any(String), blob);
       expect(result.current.messages).toHaveLength(1);
-      expect(result.current.messages[0]).toMatchObject({ role: 'user', text: 'Mandale un mail a Juan' });
+      expect(result.current.messages[0]).toMatchObject({
+        role: 'user',
+        text: 'Mandale un mail a Juan',
+        porVoz: { duracionSeg: 6 },
+      });
       expect(result.current.sendStatus).toBe('waiting');
 
       await act(async () => {
@@ -206,7 +210,7 @@ describe('useChat', () => {
       expect(api.getReply).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        await result.current.sendAudio(blob);
+        await result.current.sendAudio(blob, 3);
       });
 
       expect(result.current.sendStatus).toBe('error');

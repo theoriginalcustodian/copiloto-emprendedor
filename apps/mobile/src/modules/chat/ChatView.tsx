@@ -150,7 +150,14 @@ export function ChatView() {
     [send],
   );
 
+  // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx` (voz standalone): el instante del toque que
+  // arranca la grabación mide la duración del dictado para el chip «Por voz · Ns» de la burbuja. No
+  // se usa `voz.segundos` (el reloj propio del grabador, que excluye pausas) para no ensanchar el
+  // contrato de `useVozComando` — hook compartido con `feedback`/`soporte`, fuera del alcance de esta
+  // fila.
+  const inicioMsRef = useRef(0);
   const alIniciarVoz = useCallback(() => {
+    inicioMsRef.current = Date.now();
     void (async () => {
       const ok = await vozRef.current.iniciar();
       if (!ok) {
@@ -177,7 +184,8 @@ export function ChatView() {
     }
     const audio = actual.tomar();
     if (audio === null) return; // no llegó a grabar nada
-    void enviarAudio(audio);
+    const duracionSeg = Math.max(1, Math.round((Date.now() - inicioMsRef.current) / 1000));
+    void enviarAudio(audio, duracionSeg);
   }, [enviarAudio]);
 
   const onSoltarSinFijarVoz = useCallback(() => void alEnviarVoz(), [alEnviarVoz]);
