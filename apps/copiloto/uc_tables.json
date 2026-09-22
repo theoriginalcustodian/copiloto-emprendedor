@@ -117,7 +117,8 @@
     "created_at timestamptz DEFAULT now()",
     "presupuesto_ref bigint",
     "comprobante_ref bigint",
-    "cobro_ref bigint"
+    "cobro_ref bigint",
+    "idem_key text"
   ],
   "copiloto_clientes": [
     "nombre text NOT NULL DEFAULT ''",

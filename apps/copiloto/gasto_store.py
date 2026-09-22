@@ -7,10 +7,30 @@ la bypassea; el filtro explícito es la barrera efectiva, y hay un test adversar
 from __future__ import annotations
 
 import datetime
+from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 
+import psycopg2.errors
+
 from evento_store import registrar_evento
+
+
+@contextmanager
+def _transaccion(conn):
+    """Agrupa el INSERT + `registrar_evento` en UNA transacción real (ver el mismo helper en
+    `presupuesto_store.py`: la conexión viene con `autocommit=True`, y sin esto un fallo en
+    `registrar_evento` deja un gasto guardado sin su evento)."""
+    previo = conn.autocommit
+    conn.autocommit = False
+    try:
+        yield
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.autocommit = previo
 
 _SCHEMA = "uc_factory"
 _TABLE = f"{_SCHEMA}.copiloto_gastos"
@@ -95,14 +115,59 @@ class GastoStore:
     def crear(self, *, monto: Decimal, fecha: datetime.date | None = None,
               categoria: str = "otros", proveedor: str = "", medio_pago: str = "",
               descripcion: str = "", origen: str = "manual",
-              monto_sugerido: Decimal | None = None) -> dict:
+              monto_sugerido: Decimal | None = None, idem_key: str | None = None) -> dict:
+        """Alta idempotente si viene `idem_key`; devuelve sólo el gasto (ver `crear_idem`)."""
+        return self.crear_idem(monto=monto, fecha=fecha, categoria=categoria, proveedor=proveedor,
+                               medio_pago=medio_pago, descripcion=descripcion, origen=origen,
+                               monto_sugerido=monto_sugerido, idem_key=idem_key)[0]
+
+    def crear_idem(self, *, monto: Decimal, fecha: datetime.date | None = None,
+                   categoria: str = "otros", proveedor: str = "", medio_pago: str = "",
+                   descripcion: str = "", origen: str = "manual",
+                   monto_sugerido: Decimal | None = None,
+                   idem_key: str | None = None) -> tuple[dict, bool]:
+        """`(gasto, repetido)`. Mismo mecanismo que `PresupuestoStore.crear_idem`: un segundo toque
+        sobre la misma card (doble "Guardar", reintento de red) devuelve el gasto ya creado en vez de
+        duplicar el registro financiero. El índice único parcial `(cliente_id, idem_key)` cierra la
+        ventana entre el SELECT y el INSERT; sin `idem_key` (cliente viejo) el comportamiento es el de
+        siempre: una fila nueva cada vez."""
+        idem_key = (idem_key or "").strip() or None
+        if idem_key:
+            previo = self._por_idem_key(idem_key)
+            if previo:
+                return previo, True
+        try:
+            return self._insertar(monto=monto, fecha=fecha, categoria=categoria, proveedor=proveedor,
+                                  medio_pago=medio_pago, descripcion=descripcion, origen=origen,
+                                  monto_sugerido=monto_sugerido, idem_key=idem_key), False
+        except psycopg2.errors.UniqueViolation:
+            # Igual que en presupuestos: en la carrera, releer por la clave decide si el ganador ya
+            # cubrió esta intención (repetido=True) o si el choque fue por otra cosa (se repropaga).
+            if idem_key:
+                previo = self._por_idem_key(idem_key)
+                if previo:
+                    return previo, True
+            raise
+
+    def _por_idem_key(self, idem_key: str) -> dict | None:
         with self._conn_factory() as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT id FROM {_TABLE} WHERE cliente_id=%s AND idem_key=%s",
+                        (self._cliente_id, idem_key))
+            fila = cur.fetchone()
+        return self.detalle(fila[0]) if fila else None
+
+    def _insertar(self, *, monto: Decimal, fecha: datetime.date | None, categoria: str,
+                  proveedor: str, medio_pago: str, descripcion: str, origen: str,
+                  monto_sugerido: Decimal | None, idem_key: str | None) -> dict:
+        conn = self._conn_factory()
+        with _transaccion(conn), conn.cursor() as cur:
             cur.execute(
                 f"INSERT INTO {_TABLE} (cliente_id, monto, fecha, categoria, proveedor, "
-                f"medio_pago, descripcion, origen, monto_sugerido) "
-                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
+                f"medio_pago, descripcion, origen, monto_sugerido, idem_key) "
+                f"VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(_COLS)}",
                 (self._cliente_id, monto, fecha or hoy_del_negocio(), categoria,
-                 proveedor or "", medio_pago or "", descripcion or "", origen, monto_sugerido))
+                 proveedor or "", medio_pago or "", descripcion or "", origen, monto_sugerido,
+                 idem_key))
             gasto = self._fila(cur.fetchone())
             # `REGISTRO_GASTO` (Negocio→Gasto) y `PAGADO_A` (Gasto→Proveedor), §2.1. El `fact_template`
             # de ambas interpola monto, categoría, proveedor y fecha, así que van en `datos` —lo que no
