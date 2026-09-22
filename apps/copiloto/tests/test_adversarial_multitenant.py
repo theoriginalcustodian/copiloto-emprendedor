@@ -403,6 +403,41 @@ def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, cr
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
 
 
+def test_adversarial_http_reply_card_a_cannot_read_b_card(two_tenants, crypto, conn_de_tenant):
+    """K-07-B contrato §3 (auditoría A2): mismo patrón que el test de arriba, pero sobre `card` -- la
+    metadata HITL/sugerencia (K-11/K-07-B) que viaja en la MISMA fila que `reply_text`. `card` es un
+    payload nuevo; sin un assert propio, un bug que sólo tocara SU proyección (ej. un JOIN que la
+    resolviera por fuera del filtro `cliente_id`/`session_id` de `reply_store.read_replies`) pasaría
+    inadvertido detrás del test de `reply_text`, que no mira `card`."""
+    a, b = two_tenants
+    card_a = {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail", "bloquea": True,
+              "alcance": ["Leer mails"], "connect_path": "/composio/connect?service=gmail"}
+    card_b = {"kind": "sugerencia_armar_factura", "presupuesto_id": 999, "texto": "¿Te armo la factura?",
+              "bloquea": False}
+    make_pg_reply_sink(conn_de_tenant(a.cliente_id))(a.cliente_id, a.session_id, "conectá Gmail", None, card_a)
+    make_pg_reply_sink(conn_de_tenant(b.cliente_id))(b.cliente_id, b.session_id, "¿armo la factura?", None, card_b)
+
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    # token de A + session_id de B: ni texto ni card de B viajan.
+    r = client.get("/reply", params={"session_id": b.session_id},
+                   headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json()["replies"] == []
+
+    # control positivo: cada uno ve SU PROPIA card con su propio token+session (nunca la del otro, y
+    # nunca None por una proyección que la pierda).
+    r_a = client.get("/reply", params={"session_id": a.session_id},
+                     headers={"Authorization": f"Bearer {a.token}"})
+    assert [x["card"] for x in r_a.json()["replies"]][-1] == card_a
+
+    r_b = client.get("/reply", params={"session_id": b.session_id},
+                     headers={"Authorization": f"Bearer {b.token}"})
+    assert [x["card"] for x in r_b.json()["replies"]][-1] == card_b
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
 def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants, crypto):
     """`/me` con el token de A refleja SOLO el estado de A (su propio mp_connected/seller propio,
     su propia lista de composio_connected) -- nunca el de B, aunque la MISMA instancia de app y el

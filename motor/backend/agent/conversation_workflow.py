@@ -627,7 +627,18 @@ class ConversationWorkflow:
                 observation = dict(observation)
                 nuevo_gate = observation.pop("gate_card")
                 if workflow.patched("gate-card-requiere-conexion"):
-                    gate_card = nuevo_gate
+                    # A2/K-07-B: "última tool gana" perdía la card que BLOQUEA (ej. «conectá Gmail»)
+                    # cuando llegaba primero y una que no bloquea (ej. la sugerencia de factura) llegaba
+                    # después en el mismo turno -- medido roto en auditoría A2. El motor sigue sin
+                    # conocer `kind`: la prioridad viaja EN la card (`bloquea`, contrato K-07-B §2).
+                    # `patched` nuevo porque cambia qué `card` termina en el Command `send_channel_message`
+                    # (mismo cuidado que `gate-card-requiere-conexion`): una historia vieja en vuelo debe
+                    # seguir recomputando el "última gana" con el que ya se grabó.
+                    if workflow.patched("gate-card-precedencia-bloquea"):
+                        if gate_card is None or not gate_card.get("bloquea") or nuevo_gate.get("bloquea"):
+                            gate_card = nuevo_gate
+                    else:
+                        gate_card = nuevo_gate
             elif tr.get("status") == "ok":
                 gate_card = None
             tc_msg = _assistant_tool_call_msg(tc)
