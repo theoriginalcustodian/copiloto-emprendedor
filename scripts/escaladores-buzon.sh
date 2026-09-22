@@ -172,8 +172,11 @@ edad_alta_min() {
   echo $(( (now - primera) / 60 ))
 }
 
-# epoch del avance_ MÁS RECIENTE que el frente <destinatario> mandó (patrón *_avance_<frente>-a-*),
-# nacen archivados en cerrado/<fecha>/. 0 si no hay ninguno.
+# epoch del avance_ o cierre_ MÁS RECIENTE que el frente <destinatario> mandó (patrón
+# *_avance_<frente>-a-* / *_cierre_<frente>-a-*), en cerrado/<fecha>/ O en abierto/. 0 si no hay ninguno.
+# El protocolo dice que el avance_ nace archivado, pero no todas las sesiones lo cumplen: el 22/09 FE2
+# dejó su avance_ (06:37) y su cierre_ (06:46) en abierto/, y el escalador lo reportó «92min sin
+# avance» con el PR del frente mergeado hacía 3 min. Lo que se mide es CUÁNDO reportó, no DÓNDE lo dejó.
 declare -A _avance_cache=()
 # Deja el resultado en la GLOBAL `AVANCE_EPOCH` (no por stdout): llamarla con `$(...)` corre en un
 # subshell y el cache moría en cada llamada — la memoización nunca funcionó y cada archivo de
@@ -185,7 +188,8 @@ avance_mas_reciente_epoch() {
   [ -n "$frente" ] || return 0
   if [ -n "${_avance_cache[$frente]:-}" ]; then AVANCE_EPOCH="${_avance_cache[$frente]}"; return 0; fi
   shopt -s nullglob
-  files=("$CERRADO"/*/????-??-??_avance_"${frente}"-a-*.md)   # anclado por posición, ver Regla 1
+  files=("$CERRADO"/*/????-??-??_{avance,cierre}_"${frente}"-a-*.md   # anclado por posición, ver Regla 1
+         "$ABIERTO"/????-??-??_{avance,cierre}_"${frente}"-a-*.md)
   if [ "${#files[@]}" -gt 0 ]; then
     AVANCE_EPOCH="$(stat -c %Y "${files[@]}" 2>/dev/null | sort -n | tail -1)"
     [[ "$AVANCE_EPOCH" =~ ^[0-9]+$ ]] || AVANCE_EPOCH=0
