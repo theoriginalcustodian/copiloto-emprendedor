@@ -52,6 +52,7 @@ describe('SessionProvider — cierreVoluntario (BL-X12w)', () => {
       email: 'ana@x.com',
       mp_connected: false,
       composio_connected: [],
+      es_admin: false,
     });
     render(
       <SessionProvider>
