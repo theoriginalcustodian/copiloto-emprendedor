@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { leerGastoPropuesto } from './gastoPropuesto';
+import { datosGastoPropuesto, leerGastoPropuesto } from './gastoPropuesto';
 
 /** La forma EXACTA que manda el motor (`avance_backend..._gastos-hito-4`, verificada por su E2E). */
 function card(over: Record<string, unknown> = {}) {
@@ -102,5 +102,47 @@ describe('leerGastoPropuesto', () => {
       // en sí (objeto ausente/roto), sólo la del campo `monto`.
       expect(leerGastoPropuesto({ kind: 'gasto_propuesto', data: 'no soy un objeto' })).toBeNull();
     });
+  });
+});
+
+describe('datosGastoPropuesto — BL-J7 3er ítem del DoD, `POST /gastos/leer-foto` sin card de chat', () => {
+  // Misma forma exacta que manda `/gastos/leer-foto` (contrato §2: "SIN cambios de forma" respecto
+  // de `data` en `gasto_propuesto`) — pero acá llega DIRECTO, sin envolver en `{kind, data}`.
+  function dataFoto(over: Record<string, unknown> = {}) {
+    return {
+      monto: '',
+      monto_sugerido: '1076.21',
+      fecha: '2026-09-22',
+      categoria: 'mercaderia',
+      proveedor: null,
+      medio_pago: null,
+      descripcion: null,
+      origen: 'foto',
+      ...over,
+    };
+  }
+
+  it('parsea el `gasto` crudo de `leerFotoGasto` exactamente igual que una card de chat', () => {
+    const p = datosGastoPropuesto(dataFoto());
+
+    expect(p).not.toBeNull();
+    expect(p?.monto).toBe('');
+    expect(p?.montoSugerido).toBe('1076.21');
+    expect(p?.origen).toBe('foto');
+    expect(p?.categoria).toBe('mercaderia');
+  });
+
+  it('mismo parseo que `leerGastoPropuesto(card)` — no hay dos lógicas divergentes', () => {
+    const cruda = dataFoto({ proveedor: 'Kiosco Once' });
+    const viaCard = leerGastoPropuesto({ kind: 'gasto_propuesto', data: cruda });
+    const directo = datosGastoPropuesto(cruda);
+
+    expect(directo).toEqual(viaCard);
+  });
+
+  it('null/no-objeto no rompe', () => {
+    expect(datosGastoPropuesto(null)).toBeNull();
+    expect(datosGastoPropuesto('no soy un objeto')).toBeNull();
+    expect(datosGastoPropuesto(undefined)).toBeNull();
   });
 });

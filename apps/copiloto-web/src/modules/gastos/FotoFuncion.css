@@ -1,0 +1,24 @@
+/* BL-J7 3er ítem del DoD — botón de foto del ticket, hermano visual de `.composer__mic`
+ * (`chat/chat.css`) pero con el color de esta pantalla (`--core`), no el del chat. */
+.foto-funcion {
+  display: inline-flex;
+}
+
+.foto-funcion__boton {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: transparent;
+  border: none;
+  color: var(--core);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.foto-funcion__boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

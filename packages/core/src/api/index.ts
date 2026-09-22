@@ -420,3 +420,8 @@ export type { EstadoTicketPropio, MensajeTicketPropio, MiTicketResult, TicketPro
  * `transcribir.ts` para la diferencia con `sendAudio` (`/chat/audio`, sí dispara un workflow). */
 export { avisoErrorTranscripcion, transcribir } from './transcribir';
 export type { ContextoTranscripcion, TranscribirResponse } from './transcribir';
+
+/** `POST /gastos/leer-foto` — BL-J7 3er ítem del DoD, foto del ticket SIN chat. Ver el docstring de
+ * `leerFotoGasto.ts` para la diferencia con `/chat/foto` (ese sí abre sesión y escribe al hilo). */
+export { avisoErrorLecturaFoto, leerFotoGasto } from './leerFotoGasto';
+export type { LeerFotoGastoResponse } from './leerFotoGasto';

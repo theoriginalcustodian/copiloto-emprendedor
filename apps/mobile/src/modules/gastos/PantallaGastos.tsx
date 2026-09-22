@@ -11,6 +11,7 @@ import {
 
 import { DetalleGasto } from './DetalleGasto';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
+import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
@@ -66,6 +67,10 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
   const [errorMic, setErrorMic] = useState<string | null>(null);
+  // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
+  // `/gastos/leer-foto` devolvió 200, nunca por defecto.
+  const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
+  const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -127,6 +132,8 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   function alCrear() {
     setVista('listado');
     setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     // Se RELEE en vez de insertar el objeto devuelto: el resumen es un agregado del backend y no se
     // puede recalcular a mano sin volver a hacer aritmética de plata del lado del cliente.
     void cargar(true);
@@ -134,12 +141,33 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
   function abrirFormularioEnBlanco() {
     setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     setVista('formulario');
   }
 
   function alDictarGasto(texto: string) {
     setErrorMic(null);
     setInicialesDictado({ descripcion: texto });
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
+  function alLeerFoto(iniciales: ValoresInicialesGasto) {
+    setErrorFoto(null);
+    setInicialesDictado(iniciales);
+    setOrigenAlta('foto');
+    setVista('formulario');
+  }
+
+  // Cualquier error (413/415/422/502/503/401) NUNCA bloquea la carga manual (contrato §3): se
+  // muestra el aviso y el alta se abre igual, en blanco, para que el emprendedor tipee a mano.
+  function alErrorFoto(mensaje: string) {
+    setErrorFoto(mensaje);
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
     setVista('formulario');
   }
 
@@ -186,21 +214,32 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
             />
           }
         >
+          {/* BL-J7 3er ítem del DoD: el error de lectura de foto se muestra ACÁ, fuera del ternario
+              de abajo — `alErrorFoto` ya abrió el formulario en blanco (contrato §3: nunca bloquea
+              la carga manual), así que el aviso tiene que sobrevivir al cambio de vista. */}
+          {errorFoto != null && (
+            <Text testID="gastos-foto-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+              {errorFoto}
+            </Text>
+          )}
+
           {vista === 'formulario' ? (
             <FormularioGasto
-              origen="manual"
+              origen={origenAlta}
               iniciales={inicialesDictado}
               onCreado={alCrear}
-              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); setOrigenAlta('manual'); setErrorFoto(null); }}
             />
           ) : (
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
-              {/* BL-J7/K-10: el mic vive junto al botón de alta — dictar abre el formulario con
-                  `descripcion` prellenada (K-10, `/transcribir`, sin sesión de chat), nunca envía
-                  nada solo. `scrollRef` se omite: `ScrollFormulario` no es un `FlatList` de RNGH. */}
+              {/* BL-J7/K-10: mic + foto viven junto al botón de alta — dictar/leer una foto abren el
+                  formulario con `descripcion`/la propuesta del OCR prellenada (K-10/§2, sin sesión de
+                  chat), nunca envían nada solo. `scrollRef` se omite: `ScrollFormulario` no es un
+                  `FlatList` de RNGH. */}
               <View style={styles.filaConMic}>
+                <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
                 <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
                 <View style={styles.botonesFlex}>
                   <FilaBotones
