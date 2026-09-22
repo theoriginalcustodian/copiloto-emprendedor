@@ -11,4 +11,5 @@ npm install --no-audit --no-fund
 
 cd "$ROOT/apps/mobile"
 npx tsc --noEmit
-npx jest
+# jest, con un único reintento acotado al EPERM de su caché en Windows (2026-09-22: 60a6999a, b4c46a85).
+bash "$ROOT/scripts/ci/jest-con-reintento-eperm.sh"
