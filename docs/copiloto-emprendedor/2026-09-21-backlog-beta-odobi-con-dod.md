@@ -106,7 +106,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 ### BL-P5 · Marcar spec vs visión en el mapa del prototipo
 - **Qué:** P-3. `mapa.html:97` presenta `plan` como spec aunque `index.html:915` dice VISIÓN; `limite`, `pres-marca`, `fact-sinarca` y `cobro-voz` no figuran en el mapa. Sin esto, «48/48 coherentes» se mide contra pantallas que nadie va a construir.
 - **Depende de:** `BL-P2` (sobre la versión final), DEC-8.
-- **DoD:** [ ] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar; [ ] el criterio de cierre del frente (§13) cita esa lista.
+- **DoD:** [x] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar (`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`: 54 spec · 2 visión · 1 propuesta · 7 fuera); [x] el criterio de cierre del frente (§13) cita esa lista.
 
 ### BL-P6 · Corregir `fact-sinarca` en el prototipo
 - **Qué:** el hilo muestra facturar con un solo comando de voz y CAE inmediato, sin confirmación. El producto **prohíbe** emitir sin HITL: `apps/copiloto/tool_catalog.py:267-269` («NO la emite: la deja lista para que él la revise») y `kb-usuario/chat.md:96-98` («No emite una factura solo con la voz»). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. No se implementa: se corrige el prototipo.
@@ -700,7 +700,7 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).
 2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD, y los `BL-X` cuya decisión los mantuvo en la beta.
-3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5`, contra el prototipo final de Martín (`BL-P2`).
+3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5` — la lista es [`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`](2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md) §2, **54 ids** —, contra el prototipo final de Martín (`BL-P2`).
 4. `smoke_beta_e2e.py` en verde contra prod (`BL-Q2`) y durabilidad demostrada (`BL-B1`).
 5. Un tester que no es del equipo completa, sin ayuda y en su propio teléfono: alta → conectar una app → dictar un gasto → emitir una factura en homologación → pedir soporte. Con video.
 
