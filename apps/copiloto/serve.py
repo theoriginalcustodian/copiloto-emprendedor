@@ -308,6 +308,8 @@ async def _serve() -> None:
         gotrue=gotrue,
         mp_gateway=mp_gateway, composio_gateway=composio_gateway,
         warm_fn=(memory_provider.warm if memory_provider is not None else None),
+        # H-A4-10: mismo secreto+issuer que `require_tenant` -- el rate-limit cupa por usuario, no por IP.
+        jwt_secret=os.environ["SUPABASE_JWT_SECRET"], jwt_issuer=issuer,
         # `transcribe` sin inyectar -- `create_web_app` usa su default de producción
         # (`_default_transcribe`/GroqSTT, lazy sobre `GROQ_API_KEY`); menos invasivo que construirlo
         # acá y no duplica el criterio "cuál transcriber usa /chat/audio" en dos módulos.

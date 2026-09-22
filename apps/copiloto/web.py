@@ -656,7 +656,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
                    read_replies_fn: Callable[[str, str, int], list] | None = None,
                    transcribe: Callable[[bytes, str], str] | None = None,
                    extraer_ticket: Callable[[bytes, str], dict] | None = None,
-                   warm_fn: Callable[[str], bool] | None = None) -> FastAPI:
+                   warm_fn: Callable[[str], bool] | None = None,
+                   jwt_secret: str | None = None, jwt_issuer: str | None = None) -> FastAPI:
     """Composition root del front-door (spec §3). `read_replies_fn(cliente_id, session_id, after_id)
     -> list`; si no se inyecta, usa el default de producción (`reply_store.read_replies` atado al
     `conn_factory`). El `crypto` de `/me`/`/mp/connect` se construye acá (lee `COPILOTO_FERNET_KEY` del
@@ -677,7 +678,12 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     tenant en `POST /warm` (el front lo dispara al abrir la app / volver a la pestaña de chat, ANTES del 1er
     mensaje → el grafo llega caliente y el 1er turno no paga el cache-miss). `None` (default) → `/warm` es
     no-op (`{"warmed": false}`): apps sin memoria no cambian. En prod lo inyecta `serve.py` desde los MISMOS
-    `GRAPHITY_*` que el worker (via `build_memory_provider`). Best-effort: nunca 500."""
+    `GRAPHITY_*` que el worker (via `build_memory_provider`). Best-effort: nunca 500.
+
+    `jwt_secret`/`jwt_issuer` (H-A4-10): mismo secreto+issuer que `require_tenant`, inyectados acá
+    SOLO para que `RateLimitMiddleware` pueda cupar por usuario (`sub` del JWT) en vez de por IP.
+    `None` (default, ej. en tests que no pasan este par) -> el rate-limit sigue siendo por IP, el
+    comportamiento de siempre; no rompe nada que no lo pase."""
     read_replies_fn = read_replies_fn or (
         lambda cliente_id, session_id, after_id: _read_replies(conn_factory, cliente_id, session_id, after_id))
     transcribe = transcribe or _default_transcribe
@@ -689,7 +695,7 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
     # BETA-2.d: rate-limit del front-door completo (protege costo LLM + abuso). Middleware ASGI puro
     # -> envuelve TODO el stack, incluye los sub-apps montados (/mp, /afip, etc.) sin tocarlos. Ver
     # docstring de `rate_limit.py` (asume proceso único, confirmado contra el systemd unit real).
-    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware, jwt_secret=jwt_secret, jwt_issuer=jwt_issuer)
 
     # Costura C2: la captura de errores de las 80 rutas entra acá y en ningún otro lado. Va ANTES de
     # registrar rutas y de los `include_router` para que ninguna quede afuera. NO toca los
