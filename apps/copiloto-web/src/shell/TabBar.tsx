@@ -88,6 +88,23 @@ export function tabsVisibles(esAdmin: boolean): readonly TabDefinition[] {
   return TABS.filter((tab) => !tab.soloAdmin || esAdmin);
 }
 
+/**
+ * BL-D7: las «puertas fijas» que `TabBar` (‹900px) muestra — las mismas tres que compone mobile
+ * (`PanelDeslizable`: `ChatView` de base, `PantallaMiDia`/`EscritorioFunciones` como paneles), más
+ * `admin` cuando aplica. **No se toca `TABS`/`tabsVisibles`**: `Rail.tsx` (≥900px) consume esa misma
+ * lista sin filtrar y el contrato pide dejarlo intacto. Las otras 7 funciones (`actividad`,
+ * `ingresos`, `gastos`, `facturacion`, `presupuestos`, `clientes`, `inteligencia`) siguen existiendo
+ * como `TabKey` — se llega a ellas desde los tiles de `EscritorioScreen` (grid de 6, más
+ * "Actividad reciente" debajo, que cubre `actividad`), igual que en mobile.
+ */
+const KEYS_TAB_BAR_FIJAS: readonly TabKey[] = ['chat', 'midia', 'escritorio'];
+
+function tabsBarraTelefono(esAdmin: boolean): readonly TabDefinition[] {
+  return tabsVisibles(esAdmin).filter(
+    (tab) => KEYS_TAB_BAR_FIJAS.includes(tab.key) || tab.key === 'admin',
+  );
+}
+
 export interface TabBarProps {
   active: TabKey;
   onChange: (key: TabKey) => void;
@@ -98,9 +115,15 @@ export interface TabBarProps {
 }
 
 /**
- * Tab-bar flotante (Task 9, EXTRACT §2.3): 4 ítems fijos, táctil (≥44px), estado activo/inactivo
- * por tokens `--tab-*`, `aria-current="page"` en el activo. Blur + radio 26px vía shell.css.
- * Íconos SVG (`NAV_ICONS`) verbatim del diseño.
+ * Tab-bar flotante (Task 9, EXTRACT §2.3): 3 puertas fijas (Chat · Mi día · Funciones) + `admin`
+ * cuando `esAdmin`, táctil (≥44px), estado activo/inactivo por tokens `--tab-*`,
+ * `aria-current="page"` en el activo. Blur + radio 26px vía shell.css. Íconos SVG (`NAV_ICONS`)
+ * verbatim del diseño.
+ *
+ * **BL-D7** (revertido de "todas las 10-11 `tabsVisibles` sueltas en un `<nav>` angosto", que
+ * amontonaba etiquetas superpuestas ‹900px): vuelve al criterio original de `tabsBarraTelefono` —
+ * mismas 3 puertas que compone mobile, el resto entra por los tiles de `EscritorioScreen`.
+ * `tabsVisibles`/`TABS` siguen intactos: `Rail.tsx` (≥900px) los consume sin este filtro.
  *
  * Hide-on-scroll (EXTRACT §2.3): al scrollear el chat hacia abajo la barra se oculta
  * (`translateY`), reaparece al subir. `AppShell` calcula `hidden` desde el scroll del chat y lo
@@ -110,7 +133,7 @@ export function TabBar({ active, onChange, hidden = false, esAdmin = false }: Ta
   const navClasses = ['tab-bar', hidden ? 'tab-bar--hidden' : ''].filter(Boolean).join(' ');
   return (
     <nav className={navClasses} data-testid="tab-bar" aria-label="Navegación principal">
-      {tabsVisibles(esAdmin).map((tab) => {
+      {tabsBarraTelefono(esAdmin).map((tab) => {
         const isActive = tab.key === active;
         const classes = ['tab-bar__item', isActive ? 'tab-bar__item--active' : '']
           .filter(Boolean)
