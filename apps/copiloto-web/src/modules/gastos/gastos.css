@@ -60,6 +60,20 @@
   gap: 12px;
 }
 
+/* BL-J7/K-10: mic + pill agrupados a la derecha — el `space-between` de arriba sigue separando SÓLO
+   el rótulo de este cluster, en vez de repartir 3 hijos parejo. */
+.gastos-screen__fila-lbl-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gastos-screen__mic-error {
+  color: var(--danger-fg);
+  font-size: 12px;
+  margin: -4px 0 4px;
+}
+
 .gastos-screen__lista-lbl {
   font-family: var(--font-body);
   font-size: 11px;

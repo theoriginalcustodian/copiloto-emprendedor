@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { listarGastos, obtenerResumenGastos, type Gasto, type ResumenGastos } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { FormularioGasto } from './FormularioGasto';
+import { MicFuncion } from '../voz';
+import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import './gastos.css';
@@ -27,6 +28,11 @@ export function GastosScreen() {
   const [resumen, setResumen] = useState<ResumenGastos | null>(null);
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
+  // BL-J7/K-10: dictado desde la fila del rótulo (fuera del formulario) — llena `descripcion`, el
+  // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
+  // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   // `vivo.current = true` va DENTRO del setup del efecto, no sólo en `useRef(true)` -- en
   // StrictMode (dev) React invoca cada efecto setup→cleanup→setup de nuevo al montar; sin repetir
   // la asignación acá, el cleanup del primer paso deja `vivo.current` en `false` para siempre y
@@ -74,7 +80,19 @@ export function GastosScreen() {
 
   function alCrear() {
     setVista('listado');
+    setInicialesDictado(undefined);
     void cargar(true);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setVista('formulario');
+  }
+
+  function alDictarGasto(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ descripcion: texto });
+    setVista('formulario');
   }
 
   const hayGastos = gastos.length > 0;
@@ -131,28 +149,44 @@ export function GastosScreen() {
       {estado === 'ok' && (
         <div className="gastos-screen__body">
           {vista === 'formulario' ? (
-            <FormularioGasto origen="manual" onCreado={alCrear} onCancelar={() => setVista('listado')} />
+            <FormularioGasto
+              origen="manual"
+              iniciales={inicialesDictado}
+              onCreado={alCrear}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+            />
           ) : (
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
                   — compite con el mic, que es el gesto que el producto quiere enseñar. "Nuevo
-                  gasto" es el verbo textual del repo, no "Agregar"/"Cargar". */}
+                  gasto" es el verbo textual del repo, no "Agregar"/"Cargar". BL-J7/K-10: el mic vive
+                  acá, junto al pill — dictar abre el formulario con `descripcion` prellenada (K-10,
+                  `/transcribir`, sin sesión de chat), nunca envía nada solo. */}
               <div className="gastos-screen__fila-lbl">
                 <span className="gastos-screen__lista-lbl">Últimos</span>
-                <button
-                  type="button"
-                  className="gastos-screen__pill-nuevo"
-                  onClick={() => setVista('formulario')}
-                  data-testid="gastos-nuevo"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Nuevo gasto
-                </button>
+                <div className="gastos-screen__fila-lbl-acciones">
+                  <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
+                  <button
+                    type="button"
+                    className="gastos-screen__pill-nuevo"
+                    onClick={abrirFormularioEnBlanco}
+                    data-testid="gastos-nuevo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nuevo gasto
+                  </button>
+                </div>
               </div>
+
+              {errorMic != null && (
+                <p className="gastos-screen__mic-error" data-testid="gastos-mic-error" role="alert">
+                  {errorMic}
+                </p>
+              )}
 
               {!hayGastos && (
                 <p className="gastos-screen__empty" data-testid="gastos-vacio">

@@ -9,8 +9,9 @@ import {
 } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
+import { MicFuncion } from '../voz';
 import { DetallePresupuesto } from './DetallePresupuesto';
-import { FormularioPresupuesto } from './FormularioPresupuesto';
+import { FormularioPresupuesto, type ValoresInicialesPresupuesto } from './FormularioPresupuesto';
 import { TarjetaPresupuesto } from './TarjetaPresupuesto';
 import './presupuestos.css';
 
@@ -96,6 +97,10 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [actualizando, setActualizando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
+  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
+  // llena `concepto` (nunca es una corrección, por eso no toca `corrigiendo`).
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesPresupuesto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   // `vivo.current = true` DENTRO del setup del efecto — StrictMode, ver el comentario equivalente en
   // GastosScreen/ClientesScreen.
   const vivo = useRef(true);
@@ -150,11 +155,25 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
   function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
+    setInicialesDictado(undefined);
     // Se RELEE en vez de insertar el objeto en la lista local: el alta puede haber reemplazado a
     // otro, que tiene que DESAPARECER del listado vigente.
     void cargar(true);
     setSugerenciaMail(sugerencias?.mandarPorMail ?? null);
     setDetalle(nuevo);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setCorrigiendo(null);
+    setInicialesDictado(undefined);
+    setVista('formulario');
+  }
+
+  function alDictarPresupuesto(texto: string) {
+    setErrorMic(null);
+    setCorrigiendo(null);
+    setInicialesDictado({ concepto: texto });
+    setVista('formulario');
   }
 
   function abrirCorreccion(p: Presupuesto) {
@@ -230,10 +249,12 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
           {vista === 'formulario' ? (
             <FormularioPresupuesto
               corrige={corrigiendo}
+              iniciales={inicialesDictado}
               onCreado={alCrear}
               onCancelar={() => {
                 setVista('listado');
                 setCorrigiendo(null);
+                setInicialesDictado(undefined);
               }}
             />
           ) : (
@@ -251,24 +272,32 @@ export function PresupuestosScreen({ onFacturar, presupuestoIdInicial }: Presupu
               </Surface>
 
               {/* Rótulo de sección + alta, misma fila (CLAUDE.md §5): el pill NUNCA es un FAB —
-                  compite con el mic. "Nuevo presupuesto" es el verbo textual del repo. */}
+                  compite con el mic. "Nuevo presupuesto" es el verbo textual del repo. BL-J7/K-10:
+                  dictar acá abre el formulario con `concepto` prellenado (K-10, `/transcribir`, sin
+                  sesión de chat), nunca una corrección. */}
               <div className="presupuestos-screen__fila-lbl">
                 <span className="presupuestos-screen__lista-lbl">{rotuloLista}</span>
-                <button
-                  type="button"
-                  className="presupuestos-screen__pill-nuevo"
-                  onClick={() => {
-                    setCorrigiendo(null);
-                    setVista('formulario');
-                  }}
-                  data-testid="presupuestos-nuevo"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Nuevo presupuesto
-                </button>
+                <div className="presupuestos-screen__fila-lbl-acciones">
+                  <MicFuncion contexto="presupuesto" onTranscripcion={alDictarPresupuesto} onError={setErrorMic} />
+                  <button
+                    type="button"
+                    className="presupuestos-screen__pill-nuevo"
+                    onClick={abrirFormularioEnBlanco}
+                    data-testid="presupuestos-nuevo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nuevo presupuesto
+                  </button>
+                </div>
               </div>
+
+              {errorMic != null && (
+                <p className="presupuestos-screen__mic-error" data-testid="presupuestos-mic-error" role="alert">
+                  {errorMic}
+                </p>
+              )}
 
               {!hayPresupuestos && (
                 <p className="presupuestos-screen__empty" data-testid="presupuestos-vacio">

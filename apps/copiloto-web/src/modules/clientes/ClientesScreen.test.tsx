@@ -1,22 +1,74 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-/** Partial mock: sólo la red — mismo arnés que `TarjetaClientePropuesto.test.tsx`. */
+/** Partial mock: sólo la red — mismo arnés que `TarjetaClientePropuesto.test.tsx`. `transcribir` se
+ * suma acá (BL-J7/K-10) para el bloque del mic, de abajo. */
 vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
   return {
     ...original,
     listarClientes: vi.fn(),
     obtenerCliente: vi.fn(),
+    crearCliente: vi.fn(),
+    transcribir: vi.fn(),
   };
 });
 
-import { listarClientes, obtenerCliente, type Cliente } from '@copiloto/core';
+import { crearCliente, listarClientes, obtenerCliente, transcribir, type Cliente } from '@copiloto/core';
 
 import { ClientesScreen } from './ClientesScreen';
 
 const mockListar = vi.mocked(listarClientes);
 const mockObtener = vi.mocked(obtenerCliente);
+const mockCrear = vi.mocked(crearCliente);
+const mockTranscribir = vi.mocked(transcribir);
+
+// BL-J7/K-10: mismo polyfill/mock que `modules/voz/MicFuncion.test.tsx` — acá se ejercita MONTADO
+// dentro de la pantalla, no aislado, para probar la costura real (mic → abre el alta → `nombre`
+// prellenado), no sólo el componente.
+if (typeof window.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {}
+  window.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
+}
+
+class MockMediaRecorder {
+  static isTypeSupported = vi.fn(() => true);
+  state: 'inactive' | 'recording' | 'paused' = 'inactive';
+  ondataavailable: ((event: { data: Blob }) => void) | null = null;
+  onstop: (() => void) | null = null;
+  constructor(public stream: MediaStream) {}
+  start() {
+    this.state = 'recording';
+  }
+  stop() {
+    this.state = 'inactive';
+    this.ondataavailable?.({ data: new Blob(['audio-bytes'], { type: 'audio/webm' }) });
+    this.onstop?.();
+  }
+}
+
+function mockStream(): MediaStream {
+  return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
+}
+
+function mockClock() {
+  let current = 0;
+  vi.spyOn(Date, 'now').mockImplementation(() => current);
+  return { advance: (ms: number) => { current += ms; } };
+}
+
+/** Graba y suelta — mismo gesto Pointer Events que `MicFuncion.test.tsx` (pointerdown en el botón,
+ * pointerup en `document`: el arrastre puede salir del propio botón). El reloj avanza ENTRE los dos
+ * — `MicButton` descarta como tap-corto todo lo que suelta antes de `MIN_HOLD_MS` (350ms). */
+async function dictar(clock: { advance: (ms: number) => void }) {
+  await act(async () => {
+    fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
+  });
+  clock.advance(400);
+  await act(async () => {
+    fireEvent.pointerUp(document);
+  });
+}
 
 function cliente(over: Partial<Cliente> = {}): Cliente {
   return {
@@ -103,5 +155,59 @@ describe('ClientesScreen — BL-J6 (chip de cartera independiente de la paginaci
 
     expect(await screen.findByTestId('clientes-resumen-cifra')).toBeInTheDocument();
     expect(screen.queryByTestId('clientes-resumen-chip')).not.toBeInTheDocument();
+  });
+});
+
+describe('ClientesScreen — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [cliente()], total: 1, agregadosEsteMes: 1 });
+    vi.stubGlobal('MediaRecorder', MockMediaRecorder);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn().mockResolvedValue(mockStream()) },
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('dictado → abre el alta con `nombre` prellenado, y NO guarda nada solo (DoD FE2 §4)', async () => {
+    const clock = mockClock();
+    mockTranscribir.mockResolvedValue({ transcript: 'Panadería La Esquina' });
+
+    render(<ClientesScreen />);
+    await screen.findByTestId('clientes-nuevo');
+
+    await dictar(clock);
+
+    expect(await screen.findByTestId('cliente-nombre')).toHaveValue('Panadería La Esquina');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    const clock = mockClock();
+    mockTranscribir.mockResolvedValue({ transcript: '   ' });
+
+    render(<ClientesScreen />);
+    await screen.findByTestId('clientes-nuevo');
+
+    await dictar(clock);
+
+    expect(await screen.findByTestId('clientes-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('cliente-nombre')).not.toBeInTheDocument();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Nuevo cliente» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    render(<ClientesScreen />);
+    await screen.findByTestId('clientes-nuevo');
+
+    fireEvent.click(screen.getByTestId('clientes-nuevo'));
+
+    expect(await screen.findByTestId('cliente-nombre')).toHaveValue('');
+    expect(mockTranscribir).not.toHaveBeenCalled();
   });
 });

@@ -11,9 +11,10 @@ import {
   type ResumenIngresos as ResumenIngresosDato,
 } from '@copiloto/core';
 
-import { FormularioIngreso } from './FormularioIngreso';
+import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { MicFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { PRESS_FADE, pressableStyle } from '../../theme/glass/presion';
@@ -60,6 +61,10 @@ export function PantallaIngresos() {
   const [vista, setVista] = useState<Vista>('listado');
   const [refrescando, setRefrescando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
+  // llena `concepto` (el campo libre "por qué trabajo"), no `monto` ni `cliente`.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesIngreso | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -111,6 +116,12 @@ export function PantallaIngresos() {
     else setError('No pudimos borrarlo. Probá de nuevo.');
   }
 
+  function alDictarIngreso(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ concepto: texto });
+    setVista('formulario');
+  }
+
   return (
     <MarcoGlass titulo="Ingresos" icono="ingresos" testID="pantalla-ingresos">
       {estado === 'cargando' && (
@@ -146,9 +157,11 @@ export function PantallaIngresos() {
         >
           {vista === 'formulario' ? (
             <FormularioIngreso
-              onGuardado={() => void cargar()}
+              iniciales={inicialesDictado}
+              onGuardado={() => { setInicialesDictado(undefined); void cargar(); }}
               onCancelar={() => {
                 setVista('listado');
+                setInicialesDictado(undefined);
                 void cargar();
               }}
             />
@@ -158,17 +171,30 @@ export function PantallaIngresos() {
                   pregunta, y el día que difieran el emprendedor ve dos verdades. */}
               {resumen != null && <ResumenIngresos resumen={resumen} />}
 
-              <FilaBotones
-                testID="ingresos-acciones"
-                botones={[
-                  {
-                    etiqueta: 'Anotar que me pagaron',
-                    onPress: () => setVista('formulario'),
-                    variante: 'primario',
-                    testID: 'ingresos-nuevo',
-                  },
-                ]}
-              />
+              {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
+                  formulario con `concepto` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
+              <View style={styles.filaConMic}>
+                <MicFuncion contexto="ingreso" onTranscripcion={alDictarIngreso} onError={setErrorMic} />
+                <View style={styles.botonesFlex}>
+                  <FilaBotones
+                    testID="ingresos-acciones"
+                    botones={[
+                      {
+                        etiqueta: 'Anotar que me pagaron',
+                        onPress: () => { setInicialesDictado(undefined); setVista('formulario'); },
+                        variante: 'primario',
+                        testID: 'ingresos-nuevo',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {errorMic != null && (
+                <Text testID="ingresos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {/* 🔴 Decisión C: la lista rica de ingresos (con `origen`, `borrable`) NO se toca — la
                   envuelve el buscador. Sin query, se muestra intacta; con query, pega a
@@ -236,4 +262,7 @@ export function PantallaIngresos() {
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   textos: { flex: 1, gap: 2 },
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`.
+  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  botonesFlex: { flex: 1 },
 });

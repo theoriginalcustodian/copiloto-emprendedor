@@ -5,12 +5,14 @@ import {
   listarClientes,
   obtenerCliente,
   type Cliente,
+  type DatosCliente,
   type DuplicadoCliente,
 } from '@copiloto/core';
 
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
+import { MicFuncion } from '../voz';
 import { CampoTexto, FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
@@ -93,6 +95,10 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
   /** `null` = no hay formulario. `{edita: null}` = alta. `{edita: cliente}` = edición. */
   const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
   const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictado desde la fila de acciones
+  // llena `nombre` (el único dato con el que este alta puede arrancar sin tipear nada).
+  const [inicialesDictado, setInicialesDictado] = useState<DatosCliente | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -165,11 +171,25 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
    */
   function alGuardar(cliente: Cliente) {
     setFormulario(null);
+    setInicialesDictado(undefined);
     setAvisoDuplicado(null);
     void cargar(true);
     // Se abre la ficha del que se acaba de tocar: cierra el bucle "¿se guardó?" con el dato, no con
     // un cartel de éxito que hay que creer.
     setFicha(cliente);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setAvisoDuplicado(null);
+    setInicialesDictado(undefined);
+    setFormulario({ edita: null });
+  }
+
+  function alDictarCliente(texto: string) {
+    setErrorMic(null);
+    setAvisoDuplicado(null);
+    setInicialesDictado({ nombre: texto });
+    setFormulario({ edita: null });
   }
 
   /**
@@ -263,10 +283,11 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
           {formulario != null ? (
             <FormularioCliente
               edita={formulario.edita}
+              iniciales={inicialesDictado}
               onGuardado={alGuardar}
               onDuplicado={alDuplicado}
               onAbrirCliente={(c) => { setFormulario(null); setFicha(c); }}
-              onCancelar={() => setFormulario(null)}
+              onCancelar={() => { setFormulario(null); setInicialesDictado(undefined); }}
             />
           ) : (
             <>
@@ -286,17 +307,30 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
                 }
               />
 
-              <FilaBotones
-                testID="clientes-acciones"
-                botones={[
-                  {
-                    etiqueta: 'Nuevo cliente',
-                    onPress: () => { setAvisoDuplicado(null); setFormulario({ edita: null }); },
-                    variante: 'primario',
-                    testID: 'clientes-nuevo',
-                  },
-                ]}
-              />
+              {/* BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`: dictar acá abre el
+                  alta con `nombre` prellenado (K-10, `/transcribir`, sin sesión de chat). */}
+              <View style={styles.filaConMic}>
+                <MicFuncion contexto="cliente" onTranscripcion={alDictarCliente} onError={setErrorMic} />
+                <View style={styles.botonesFlex}>
+                  <FilaBotones
+                    testID="clientes-acciones"
+                    botones={[
+                      {
+                        etiqueta: 'Nuevo cliente',
+                        onPress: abrirFormularioEnBlanco,
+                        variante: 'primario',
+                        testID: 'clientes-nuevo',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {errorMic != null && (
+                <Text testID="clientes-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {avisoDuplicado != null && (
                 <View style={{ gap: tema.espacio.sm }} testID="clientes-duplicado">
@@ -368,4 +402,7 @@ export function PantallaClientes({ clienteIdInicial }: PantallaClientesProps = {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // BL-J7/K-10 — ver el mismo comentario en `PantallaGastos.tsx`.
+  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  botonesFlex: { flex: 1 },
 });

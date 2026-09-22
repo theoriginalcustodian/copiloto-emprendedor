@@ -62,6 +62,19 @@
   gap: 12px;
 }
 
+/* BL-J7/K-10 — ver el mismo comentario en `gastos.css`. */
+.presupuestos-screen__fila-lbl-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.presupuestos-screen__mic-error {
+  color: var(--danger-fg);
+  font-size: 12px;
+  margin: -4px 0 4px;
+}
+
 .presupuestos-screen__lista-lbl {
   font-family: var(--font-body);
   font-size: 11px;
