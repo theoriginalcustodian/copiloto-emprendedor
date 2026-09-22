@@ -10,10 +10,11 @@ import {
 } from '@copiloto/core';
 
 import { DetalleGasto } from './DetalleGasto';
-import { FormularioGasto } from './FormularioGasto';
+import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import { BuscadorActividad } from '../actividad/BuscadorActividad';
+import { MicFuncion } from '../voz';
 import { FilaBotones, ScrollFormulario } from '../../theme/glass/campos';
 import { MarcoGlass } from '../../theme/glass/MarcoGlass';
 import { useTema } from '../../theme/ThemeProvider';
@@ -60,6 +61,11 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
   const [vista, setVista] = useState<Vista>('listado');
   const [refrescando, setRefrescando] = useState(false);
   const [detalle, setDetalle] = useState<Gasto | null>(null);
+  // BL-J7/K-10: dictado desde la fila de acciones (fuera del formulario) — llena `descripcion`, el
+  // campo libre; el monto y el resto los sigue completando el emprendedor a mano, mismo criterio
+  // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => () => { vivo.current = false; }, []);
 
@@ -120,9 +126,21 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
   function alCrear() {
     setVista('listado');
+    setInicialesDictado(undefined);
     // Se RELEE en vez de insertar el objeto devuelto: el resumen es un agregado del backend y no se
     // puede recalcular a mano sin volver a hacer aritmética de plata del lado del cliente.
     void cargar(true);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setVista('formulario');
+  }
+
+  function alDictarGasto(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ descripcion: texto });
+    setVista('formulario');
   }
 
   const hayGastos = gastos.length > 0;
@@ -169,22 +187,41 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
           }
         >
           {vista === 'formulario' ? (
-            <FormularioGasto origen="manual" onCreado={alCrear} onCancelar={() => setVista('listado')} />
+            <FormularioGasto
+              origen="manual"
+              iniciales={inicialesDictado}
+              onCreado={alCrear}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+            />
           ) : (
             <>
               {resumen != null && <ResumenMes resumen={resumen} />}
 
-              <FilaBotones
-                testID="gastos-acciones"
-                botones={[
-                  {
-                    etiqueta: 'Anotar un gasto',
-                    onPress: () => setVista('formulario'),
-                    variante: 'primario',
-                    testID: 'gastos-nuevo',
-                  },
-                ]}
-              />
+              {/* BL-J7/K-10: el mic vive junto al botón de alta — dictar abre el formulario con
+                  `descripcion` prellenada (K-10, `/transcribir`, sin sesión de chat), nunca envía
+                  nada solo. `scrollRef` se omite: `ScrollFormulario` no es un `FlatList` de RNGH. */}
+              <View style={styles.filaConMic}>
+                <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
+                <View style={styles.botonesFlex}>
+                  <FilaBotones
+                    testID="gastos-acciones"
+                    botones={[
+                      {
+                        etiqueta: 'Anotar un gasto',
+                        onPress: abrirFormularioEnBlanco,
+                        variante: 'primario',
+                        testID: 'gastos-nuevo',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              {errorMic != null && (
+                <Text testID="gastos-mic-error" style={{ color: tema.color.peligro, fontSize: tema.tipo.chico }}>
+                  {errorMic}
+                </Text>
+              )}
 
               {/* 🔴 Decisión C: el buscador NO reemplaza la lista rica de gastos — la envuelve. Sin
                   query muestra las `TarjetaGasto` (con categoría) tal cual; con query pega a
@@ -223,4 +260,7 @@ export function PantallaGastos({ gastoIdInicial }: PantallaGastosProps = {}) {
 
 const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // BL-J7/K-10 — ver el mismo comentario en el JSX: mic de tamaño fijo + botón que ocupa el resto.
+  filaConMic: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  botonesFlex: { flex: 1 },
 });

@@ -106,7 +106,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 ### BL-P5 · Marcar spec vs visión en el mapa del prototipo
 - **Qué:** P-3. `mapa.html:97` presenta `plan` como spec aunque `index.html:915` dice VISIÓN; `limite`, `pres-marca`, `fact-sinarca` y `cobro-voz` no figuran en el mapa. Sin esto, «48/48 coherentes» se mide contra pantallas que nadie va a construir.
 - **Depende de:** `BL-P2` (sobre la versión final), DEC-8.
-- **DoD:** [ ] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar; [ ] el criterio de cierre del frente (§13) cita esa lista.
+- **DoD:** [x] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar (`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`: 54 spec · 2 visión · 1 propuesta · 7 fuera); [x] el criterio de cierre del frente (§13) cita esa lista.
 
 ### BL-P6 · Corregir `fact-sinarca` en el prototipo
 - **Qué:** el hilo muestra facturar con un solo comando de voz y CAE inmediato, sin confirmación. El producto **prohíbe** emitir sin HITL: `apps/copiloto/tool_catalog.py:267-269` («NO la emite: la deja lista para que él la revise») y `kb-usuario/chat.md:96-98` («No emite una factura solo con la voz»). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. No se implementa: se corrige el prototipo.
@@ -557,6 +557,7 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Pasada sobre la historia completa con el resultado anotado.
 
 ### BL-B4 · `gate.sh` que corra en macOS (bash 3.2)
+- **➡️ Movido a post-beta `BL-V16`** por `DEC-1` (acta `:11`, plan `:87`). No se implementa en la beta.
 - **Plataforma:** repo · **Tamaño:** S · **Origen:** ADR-001; PR #511–#513 mergeados sin recibo
 - **Depende de:** `DEC-1` (si la sesión de Martín sigue implementando).
 - **DoD:**
@@ -641,9 +642,12 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
 ### BL-Q1 · Control de paridad web ↔ mobile en CI
 - **Tamaño:** M · **Origen:** reporte 16/09 §7, auditoría §11.6 (R-2 ya ocurrió tres veces: D-1, H-14 y el lote del 18/09).
 - **DoD:**
-  - [ ] Inventario versionado de `testID` / `data-testid` equivalentes por pantalla.
-  - [ ] Un script en `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada.
-  - [ ] Control positivo: borrar un id en una sola app pone el gate en rojo.
+  - [x] Inventario versionado de `testID` / `data-testid` equivalentes **por pantalla** (`scripts/ci/testid_paridad.py --inventario`; agrupa por el mapeo `modules/<feature>` que web y mobile ya comparten).
+  - [x] `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada (`--check`, clave `pantalla::id`).
+  - [x] Control positivo: borrar un id en una sola app pone el gate en rojo, nombrando `pantalla::id`.
+  - [x] Trinquete: el archivo de excepciones sólo puede achicarse — una excepción cuyo id ya no existe o ya tiene su par en la misma pantalla hace fallar el gate ("sacala del baseline"), no se puede acumular en silencio.
+  - [x] Ids dinámicos (`testID={...}` / `data-testid={...}`) no se pierden: se cuentan y reportan aparte como "no medidos" (656 usos hoy: 402 mobile / 254 web), nunca como par ni como falta.
+  - [x] Baseline inicial: 535 excepciones `pantalla::id` sin triage id-por-id, con dueño y disparador — ver `BL-V17`.
 
 ### BL-Q2 · Smoke E2E completo contra producción
 - **Tamaño:** S · **Evidencia:** `deploy/copiloto/smoke_beta_e2e.py`; última corrida con evidencia `37/37` el 13/08 (`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:107`); `deploy.sh` sólo corre `/healthz` + un smoke corto.
@@ -691,6 +695,8 @@ No bloquean la beta. Cada uno con su condición de entrada.
 | BL-V13 | Memoria busca top-10 por similitud | Deuda condicional no disparada | `apps/copiloto/inteligencia_chat.py:130-135` |
 | BL-V14 | TODO muerto del guardrail de narración | Cosmético | `motor/backend/agent/conversation_workflow.py:548` |
 | BL-V15 | Config OAuth propia de Google en Composio (branding propio) | Funciona con la de Composio; sale de `DEC-12` si se decide | `composio_gateway.py:190-234` |
+| BL-V16 | `gate.sh` y `scripts/ci/*.sh` en bash 3.2 (macOS), ex `BL-B4` | `DEC-1`: Martín diseña y no commitea código; vuelve si eso cambia | `scripts/gate.sh` · acta `DEC-1` |
+| BL-V17 | Triage id-por-id de las 535 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (535 entradas, 2026-09-22) |
 
 ---
 
@@ -700,7 +706,7 @@ La beta está lista cuando **todo** esto es verdad a la vez, medido sobre un mis
 
 1. Todos los `DEC-*` tienen acta (resueltos o explícitamente pospuestos con su ítem movido a §12).
 2. Todos los `BL-P`, `BL-D`, `BL-C`, `BL-W`, `BL-F`, `BL-J`, `BL-B`, `BL-O` y `BL-Q` cerrados con su DoD, y los `BL-X` cuya decisión los mantuvo en la beta.
-3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5`, contra el prototipo final de Martín (`BL-P2`).
+3. La matriz de pantallas re-medida (`BL-Q5`) da ✅ en web y mobile para **todas las pantallas marcadas spec** en `BL-P5` — la lista es [`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`](2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md) §2, **54 ids** —, contra el prototipo final de Martín (`BL-P2`).
 4. `smoke_beta_e2e.py` en verde contra prod (`BL-Q2`) y durabilidad demostrada (`BL-B1`).
 5. Un tester que no es del equipo completa, sin ayuda y en su propio teléfono: alta → conectar una app → dictar un gasto → emitir una factura en homologación → pedir soporte. Con video.
 

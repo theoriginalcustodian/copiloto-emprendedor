@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { borrarIngreso, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { FormularioIngreso } from './FormularioIngreso';
+import { MicFuncion } from '../voz';
+import { FormularioIngreso, type ValoresInicialesIngreso } from './FormularioIngreso';
 import { ResumenIngresos } from './ResumenIngresos';
 import { TarjetaIngreso } from './TarjetaIngreso';
 import './ingresos.css';
@@ -36,6 +37,10 @@ export function IngresosScreen() {
   const [vista, setVista] = useState<Vista>('listado');
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
+  // llena `concepto` (el campo libre "por qué trabajo"), no `monto` ni `cliente`.
+  const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesIngreso | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   const vivo = useRef(true);
   useEffect(() => {
     vivo.current = true;
@@ -74,7 +79,19 @@ export function IngresosScreen() {
 
   function alGuardar() {
     setVista('listado');
+    setInicialesDictado(undefined);
     void cargar(true);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setInicialesDictado(undefined);
+    setVista('formulario');
+  }
+
+  function alDictarIngreso(texto: string) {
+    setErrorMic(null);
+    setInicialesDictado({ concepto: texto });
+    setVista('formulario');
   }
 
   async function borrar(ingreso: Ingreso) {
@@ -138,28 +155,43 @@ export function IngresosScreen() {
       {estado === 'ok' && (
         <div className="ingresos-screen__body">
           {vista === 'formulario' ? (
-            <FormularioIngreso origen="manual" onGuardado={alGuardar} onCancelar={() => setVista('listado')} />
+            <FormularioIngreso
+              origen="manual"
+              iniciales={inicialesDictado}
+              onGuardado={alGuardar}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+            />
           ) : (
             <>
               {resumen != null && <ResumenIngresos resumen={resumen} />}
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un FAB
                   — compite con el mic. "Anotar que me pagaron" es el verbo textual del repo, nunca
-                  "Nuevo ingreso". */}
+                  "Nuevo ingreso". BL-J7/K-10: dictar acá abre el formulario con `concepto`
+                  prellenado (K-10, `/transcribir`, sin sesión de chat). */}
               <div className="ingresos-screen__fila-lbl">
                 <span className="ingresos-screen__lista-lbl">Últimos</span>
-                <button
-                  type="button"
-                  className="ingresos-screen__pill-nuevo"
-                  onClick={() => setVista('formulario')}
-                  data-testid="ingresos-nuevo"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Anotar que me pagaron
-                </button>
+                <div className="ingresos-screen__fila-lbl-acciones">
+                  <MicFuncion contexto="ingreso" onTranscripcion={alDictarIngreso} onError={setErrorMic} />
+                  <button
+                    type="button"
+                    className="ingresos-screen__pill-nuevo"
+                    onClick={abrirFormularioEnBlanco}
+                    data-testid="ingresos-nuevo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Anotar que me pagaron
+                  </button>
+                </div>
               </div>
+
+              {errorMic != null && (
+                <p className="ingresos-screen__mic-error" data-testid="ingresos-mic-error" role="alert">
+                  {errorMic}
+                </p>
+              )}
 
               {!hayIngresos && (
                 <p className="ingresos-screen__empty" data-testid="ingresos-vacio">

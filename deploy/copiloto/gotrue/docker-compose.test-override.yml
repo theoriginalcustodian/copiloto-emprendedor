@@ -1,0 +1,22 @@
+# deploy/copiloto/gotrue/docker-compose.test-override.yml
+# Override para una GoTrue EFÍMERA DE TEST sobre el compose de producción (docker-compose.gotrue.yml):
+# agrega mailpit (captura SMTP sin salir a internet) y expone las 2-3 vars que el compose de prod no
+# necesita exponer. Promovido del spike descartable `spikes/gotrue-cambiar-mail-contrasena/` (VERDICT
+# GREEN, 2026-09-21, GoTrue v2.186.0 -- ver su RESULT.md para la matriz de códigos de error validados
+# empíricamente) a ubicación PERMANENTE porque K-12 (BL-J11) pasa de spike a levantado por
+# `deploy/copiloto/test-gotrue.sh` en cada corrida de gate/CI. Aislado por `COMPOSE_PROJECT_NAME` y
+# puertos loopback propios -- nunca toca `copiloto-auth` (prod) ni fusion.
+services:
+  auth:
+    environment:
+      GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION: ${UC_TESTGOTRUE_REAUTH:-false}
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: ${UC_TESTGOTRUE_SECURE_EMAIL_CHANGE:-true}
+      GOTRUE_PASSWORD_MIN_LENGTH: ${UC_TESTGOTRUE_PW_MIN:-6}
+    depends_on:
+      mailpit:
+        condition: service_started
+  mailpit:
+    image: axllent/mailpit:v1.21
+    networks: [authnet]
+    ports:
+      - "127.0.0.1:${UC_TESTGOTRUE_MAIL_PORT:-8971}:8025"

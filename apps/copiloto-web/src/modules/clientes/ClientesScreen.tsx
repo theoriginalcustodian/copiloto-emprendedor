@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listarClientes, obtenerCliente, type Cliente, type DuplicadoCliente } from '@copiloto/core';
+import { listarClientes, obtenerCliente, type Cliente, type DatosCliente, type DuplicadoCliente } from '@copiloto/core';
 
 import { Button, Skeleton, Surface } from '../../design-system';
+import { MicFuncion } from '../voz';
 import { FichaCliente } from './FichaCliente';
 import { FormularioCliente } from './FormularioCliente';
 import { TarjetaCliente } from './TarjetaCliente';
@@ -46,6 +47,10 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
   const [ficha, setFicha] = useState<Cliente | null>(null);
   const [formulario, setFormulario] = useState<{ edita: Cliente | null } | null>(null);
   const [avisoDuplicado, setAvisoDuplicado] = useState<DuplicadoCliente | null>(null);
+  // BL-J7/K-10 — ver el mismo comentario en `GastosScreen.tsx`: dictado desde la fila del rótulo
+  // llena `nombre` (el único dato con el que este alta puede arrancar sin tipear nada).
+  const [inicialesDictado, setInicialesDictado] = useState<DatosCliente | undefined>(undefined);
+  const [errorMic, setErrorMic] = useState<string | null>(null);
   /**
    * "Le vendiste a N clientes" tiene que ser el tamaño de TODA la cartera, no el de una búsqueda
    * filtrada — se actualiza sólo con una respuesta SIN `q` (dentro de `cargar`) y mientras el
@@ -111,9 +116,23 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
 
   function alGuardar(cliente: Cliente) {
     setFormulario(null);
+    setInicialesDictado(undefined);
     setAvisoDuplicado(null);
     void cargar(true);
     setFicha(cliente);
+  }
+
+  function abrirFormularioEnBlanco() {
+    setAvisoDuplicado(null);
+    setInicialesDictado(undefined);
+    setFormulario({ edita: null });
+  }
+
+  function alDictarCliente(texto: string) {
+    setErrorMic(null);
+    setAvisoDuplicado(null);
+    setInicialesDictado({ nombre: texto });
+    setFormulario({ edita: null });
   }
 
   function alDuplicado(duplicado: DuplicadoCliente) {
@@ -206,10 +225,11 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
           {formulario != null ? (
             <FormularioCliente
               edita={formulario.edita}
+              iniciales={inicialesDictado}
               onGuardado={alGuardar}
               onDuplicado={alDuplicado}
               onAbrirCliente={(c) => { setFormulario(null); setFicha(c); }}
-              onCancelar={() => setFormulario(null)}
+              onCancelar={() => { setFormulario(null); setInicialesDictado(undefined); }}
             />
           ) : (
             <>
@@ -263,21 +283,32 @@ export function ClientesScreen({ clienteIdInicial }: ClientesScreenProps = {}) {
 
               {/* Rótulo de sección + alta, en la misma fila (CLAUDE.md §5): el pill NUNCA es un
                   FAB — compite con el mic. "Con movimiento" y "Nuevo cliente" son el rótulo y el
-                  verbo textuales del mockup (`.fila-lbl`/`.nuevo`), no genéricos inventados. */}
+                  verbo textuales del mockup (`.fila-lbl`/`.nuevo`), no genéricos inventados.
+                  BL-J7/K-10: dictar acá abre el alta con `nombre` prellenado (K-10, `/transcribir`,
+                  sin sesión de chat). */}
               <div className="clientes-screen__fila-lbl">
                 <span className="clientes-screen__lista-lbl">Con movimiento</span>
-                <button
-                  type="button"
-                  className="clientes-screen__pill-nuevo"
-                  onClick={() => { setAvisoDuplicado(null); setFormulario({ edita: null }); }}
-                  data-testid="clientes-nuevo"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Nuevo cliente
-                </button>
+                <div className="clientes-screen__fila-lbl-acciones">
+                  <MicFuncion contexto="cliente" onTranscripcion={alDictarCliente} onError={setErrorMic} />
+                  <button
+                    type="button"
+                    className="clientes-screen__pill-nuevo"
+                    onClick={abrirFormularioEnBlanco}
+                    data-testid="clientes-nuevo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nuevo cliente
+                  </button>
+                </div>
               </div>
+
+              {errorMic != null && (
+                <p className="clientes-screen__mic-error" data-testid="clientes-mic-error" role="alert">
+                  {errorMic}
+                </p>
+              )}
 
               {!hayClientes && (
                 <p className="clientes-screen__empty" data-testid="clientes-vacio">

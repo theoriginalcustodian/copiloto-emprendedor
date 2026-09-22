@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { Gesture } from 'react-native-gesture-handler';
 
 /** Partial mock: sólo la red. `formatearImporte` y las clases de error, REALES. */
 jest.mock('@copiloto/core', () => {
@@ -9,10 +10,29 @@ jest.mock('@copiloto/core', () => {
     obtenerCliente: jest.fn(),
     crearCliente: jest.fn(),
     editarCliente: jest.fn(),
+    transcribir: jest.fn(),
   };
 });
 
-import { crearCliente, editarCliente, listarClientes, obtenerCliente } from '@copiloto/core';
+// BL-J7/K-10 — mismo arnés que `modules/voz/MicFuncion.test.tsx`: `MicFuncion` (mobile) envuelve
+// `BotonVoz`/`useVozComando`, no `MediaRecorder` como en web.
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockVoz = {
+  fase: 'inactivo' as 'inactivo' | 'grabando' | 'pausado' | 'listo',
+  niveles: [] as number[],
+  iniciar: jest.fn().mockResolvedValue(true),
+  pausar: jest.fn(),
+  reanudar: jest.fn(),
+  detener: jest.fn().mockResolvedValue(undefined),
+  descartar: jest.fn().mockResolvedValue(undefined),
+  tomar: jest.fn(),
+};
+jest.mock('../chat/useVozComando', () => ({ useVozComando: () => mockVoz }));
+
+import { crearCliente, editarCliente, listarClientes, obtenerCliente, transcribir } from '@copiloto/core';
 import type { Cliente, FichaCliente } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -22,6 +42,26 @@ const mockListar = listarClientes as jest.MockedFunction<typeof listarClientes>;
 const mockFicha = obtenerCliente as jest.MockedFunction<typeof obtenerCliente>;
 const mockCrear = crearCliente as jest.MockedFunction<typeof crearCliente>;
 const mockEditar = editarCliente as jest.MockedFunction<typeof editarCliente>;
+const mockTranscribir = transcribir as jest.MockedFunction<typeof transcribir>;
+
+/** Dispara el ciclo completo del gesto de `BotonVoz` (apretar `MIN_HOLD_MS` y soltar) — mismo
+ * mecanismo que `modules/voz/MicFuncion.test.tsx` (mobile). `espiaPan` tiene que estar activo DESDE
+ * ANTES del `render`: el recognizer se crea al montar `MicFuncion`, que vive en el listado. */
+async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
+  const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
+    handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
+  };
+  let ahora = 1_000_000;
+  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  await act(async () => {
+    recognizer.handlers.onBegin?.({});
+  });
+  ahora += 400;
+  await act(async () => {
+    recognizer.handlers.onFinalize?.({}, true);
+  });
+  relojEspia.mockRestore();
+}
 
 function cliente(over: Partial<Cliente> = {}): Cliente {
   return {
@@ -596,5 +636,68 @@ describe('PantallaClientes — el bloque de la cartera', () => {
     fireEvent.changeText(screen.getByTestId('clientes-buscar'), 'zzz');
 
     await waitFor(() => expect(screen.getByTestId('clientes-resumen-cifra').props.children).toEqual(antes));
+  });
+});
+
+describe('PantallaClientes — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListar.mockResolvedValue({ status: 'ok', clientes: [], total: 0, agregadosEsteMes: null });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    // `Gesture.Pan` se espía DESDE ANTES del `render`: `MicFuncion` vive en el listado.
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    espiaPan.mockRestore();
+  });
+
+  it('dictado → abre el alta con `nombre` prellenado, y NO guarda nada solo (DoD FE2 §4)', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: 'Panadería La Esquina' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('formulario-cliente-nombre-input')).toBeTruthy());
+    expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBe('Panadería La Esquina');
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    mockTranscribir.mockResolvedValue({ transcript: '   ' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('clientes-mic-error')).toBeTruthy());
+    expect(screen.getByTestId('clientes-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('formulario-cliente-nombre-input')).toBeNull();
+    expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  it('«Nuevo cliente» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('clientes-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('clientes-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('formulario-cliente-nombre-input')).toBeTruthy());
+    expect(screen.getByTestId('formulario-cliente-nombre-input').props.value).toBeFalsy();
+    expect(mockTranscribir).not.toHaveBeenCalled();
   });
 });
