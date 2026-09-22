@@ -21,24 +21,31 @@ function credenciales() {
 /** Abre la PWA con el service worker y las caches purgados (gotcha pwa-sw-staleness) y loguea. */
 export async function abrirLogueado({ ancho = 390, alto = 844 } = {}) {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH, headless: true });
-  const ctx = await browser.newContext({ viewport: { width: ancho, height: alto }, permissions: ['microphone'] });
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/?ver=${Date.now()}`);
-  await page.evaluate(async () => {
-    (await navigator.serviceWorker?.getRegistrations?.())?.forEach((r) => r.unregister());
-    for (const k of await caches.keys()) await caches.delete(k);
-  });
-  await page.goto(`${BASE}/?ver=${Date.now()}`);
-  // El reveal/onboarding (BL-X10) se interpone ANTES del login desde que se agregó — sin esto
-  // `abrirLogueado` quedaba pegado esperando `input[name=email]` que nunca aparece hasta tocar
-  // "Empecemos". No-op si no está (login directo, o ya logueado).
-  await page.getByText('Empecemos').click({ timeout: 5000 }).catch(() => {});
-  const { email, password } = credenciales();
-  await page.fill('input[name=email]', email);
-  await page.fill('input[name=password]', password);
-  await page.click('button[type=submit]');
-  await page.waitForSelector('[data-testid=tab-bar], [data-testid=rail], [data-testid=app-shell]', { timeout: 30000 });
-  return { browser, page };
+  try {
+    const ctx = await browser.newContext({ viewport: { width: ancho, height: alto }, permissions: ['microphone'] });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/?ver=${Date.now()}`);
+    await page.evaluate(async () => {
+      (await navigator.serviceWorker?.getRegistrations?.())?.forEach((r) => r.unregister());
+      for (const k of await caches.keys()) await caches.delete(k);
+    });
+    await page.goto(`${BASE}/?ver=${Date.now()}`);
+    // El reveal/onboarding (BL-X10) se interpone ANTES del login desde que se agregó — sin esto
+    // `abrirLogueado` quedaba pegado esperando `input[name=email]` que nunca aparece hasta tocar
+    // "Empecemos". No-op si no está (login directo, o ya logueado).
+    await page.getByText('Empecemos').click({ timeout: 5000 }).catch(() => {});
+    const { email, password } = credenciales();
+    await page.fill('input[name=email]', email);
+    await page.fill('input[name=password]', password);
+    await page.click('button[type=submit]');
+    await page.waitForSelector('[data-testid=tab-bar], [data-testid=rail], [data-testid=app-shell]', { timeout: 30000 });
+    return { browser, page };
+  } catch (e) {
+    // Sin este catch, un timeout de login (selector nunca aparece) deja el Chromium abierto y
+    // huérfano — máquina con memoria ajustada (ver gate-local-serial.sh), no hay quien lo cierre.
+    await browser.close();
+    throw e;
+  }
 }
 
 export const foto = (page, nombre) => page.screenshot({ path: join(OUT, `${nombre}.png`), fullPage: false });
