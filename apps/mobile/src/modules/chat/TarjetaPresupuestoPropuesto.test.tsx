@@ -211,7 +211,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
     expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
   });
 
-  it('🔴 K-01: tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key', async () => {
+  it('🔴 K-01: tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key derivada del mensajeId', async () => {
     let resolver: (v: Awaited<ReturnType<typeof crearPresupuesto>>) => void = () => {};
     mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
     await montar();
@@ -222,7 +222,9 @@ describe('TarjetaPresupuestoPropuesto', () => {
     });
 
     expect(mockCrear).toHaveBeenCalledTimes(1);
-    expect(mockCrear.mock.calls[0]?.[0].idemKey).toMatch(/^[0-9a-f-]{36}$/);
+    // BL-V32: ya no nace con el montaje (UUID) — se DERIVA del `mensajeId` de la card ('assistant-1',
+    // ver `montar()` arriba), con el prefijo `presupuesto:` para no chocar con la idem_key de otra alta.
+    expect(mockCrear.mock.calls[0]?.[0].idemKey).toBe('presupuesto:assistant-1');
     await act(async () => resolver({ status: 'ok', presupuesto: presupuestoGuardado(7) }));
   });
 

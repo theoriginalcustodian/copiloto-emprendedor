@@ -117,6 +117,7 @@ export function TarjetaPresupuestoPropuesto({
   return (
     <TarjetaPropuestaShell testID={testID} aviso="Esto entendí. Revisalo, corregí lo que haga falta y tocá Guardar — todavía no lo anoté.">
       <FormularioPresupuesto
+        mensajeId={mensajeId}
         iniciales={{
           concepto: propuesta.concepto,
           receptor: {
