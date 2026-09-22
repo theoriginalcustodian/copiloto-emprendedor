@@ -70,11 +70,15 @@ class InvalidCredentials(Exception):
 
 class GoTrueAdmin:
     """Adaptador HTTP fino sobre la GoTrue admin API (self-host fusion, spec §5.1). Inyectable —
-    nunca se instancia contra literales; el real se construye con `from_env()`, el de test usa un
-    `client` con `httpx.MockTransport` (constraint del brief: los tests NO llaman a GoTrue real).
+    nunca se instancia contra literales; el real se construye con `from_env()`.
 
-    El `httpx.Client` se inyecta (default: uno propio) para que el camino de tolerancia al 422
-    (email ya registrado → lookup) sea testeable sin red real."""
+    El `httpx.Client` se inyecta (default: uno propio). El brief original pedía que los tests NUNCA
+    llamaran a una GoTrue real y usaba `httpx.MockTransport` para todo — auditoría A2 lo marcó como
+    sustituto inaceptable para K-12 (integración > mocks es regla dura, CLAUDE.md raíz §Testing): los
+    tests de `/auth/cambiar-contrasena`/`/auth/cambiar-email` corren ahora contra una GoTrue de TEST
+    efímera de verdad (`deploy/copiloto/test-gotrue.sh`, ver `tests/test_cambiar_cuenta_gotrue_real.py`).
+    El `MockTransport` sigue siendo válido para lo que SÍ es una unidad pura: caminos que nunca tocan
+    GoTrue (validación de formato, ausencia de token)."""
 
     def __init__(self, *, base_url: str, service_role_key: str, client: httpx.Client | None = None) -> None:
         self._base_url = base_url.rstrip("/")

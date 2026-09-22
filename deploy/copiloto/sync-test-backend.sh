@@ -5,7 +5,8 @@
 # tests corren en el VPS). NO toca el deploy vivo ni el stage de la sesión de deploy.
 #
 # IDEMPOTENTE: rm -rf del stage + re-untar en cada corrida (sin stale files).
-# Parametrizable (cero hardcoding): UC_DEPLOY_HOST, UC_TEST_STAGE, UC_VENV, UC_TEST_DATABASE_URL.
+# Parametrizable (cero hardcoding): UC_DEPLOY_HOST, UC_TEST_STAGE, UC_VENV, UC_TEST_DATABASE_URL,
+# UC_TEST_GOTRUE_URL (+ _JWT_SECRET/_SERVICE_ROLE_KEY/_ANON_KEY, ver `test-gotrue.sh --export`).
 # Uso: bash deploy/copiloto/sync-test-backend.sh [args de pytest]   (default: "tests -q")
 #
 # LOS TESTS CONTRA POSTGRES SON OPT-IN (UC_TEST_DATABASE_URL), Y EL DEFAULT ES NO CORRERLOS.
@@ -63,6 +64,23 @@ else
   PG_AVISO="OFF — los tests @necesita_pg se SALTAN (no están en el número de abajo)"
 fi
 
+# Mismo criterio opt-in que Postgres arriba, para la GoTrue de test (K-12/BL-J11): sin
+# `UC_TEST_GOTRUE_URL` los `@necesita_gotrue` se saltan — nadie corre contra `copiloto-auth` de prod
+# por default. Emitido por `test-gotrue.sh --export` (stack efímero propio, ver ese script).
+if [ -n "${UC_TEST_GOTRUE_URL:-}" ]; then
+  GOTRUE_ENV="UC_TEST_GOTRUE_URL='${UC_TEST_GOTRUE_URL}' "
+  [ -n "${UC_TEST_GOTRUE_JWT_SECRET:-}" ] && \
+    GOTRUE_ENV="${GOTRUE_ENV}UC_TEST_GOTRUE_JWT_SECRET='${UC_TEST_GOTRUE_JWT_SECRET}' "
+  [ -n "${UC_TEST_GOTRUE_SERVICE_ROLE_KEY:-}" ] && \
+    GOTRUE_ENV="${GOTRUE_ENV}UC_TEST_GOTRUE_SERVICE_ROLE_KEY='${UC_TEST_GOTRUE_SERVICE_ROLE_KEY}' "
+  [ -n "${UC_TEST_GOTRUE_ANON_KEY:-}" ] && \
+    GOTRUE_ENV="${GOTRUE_ENV}UC_TEST_GOTRUE_ANON_KEY='${UC_TEST_GOTRUE_ANON_KEY}' "
+  GOTRUE_AVISO="ON — los tests @necesita_gotrue CORREN contra la GoTrue efímera de test"
+else
+  GOTRUE_ENV=""
+  GOTRUE_AVISO="OFF — los tests @necesita_gotrue se SALTAN (no están en el número de abajo)"
+fi
+
 echo "==> sync worktree -> ${HOST}:${STAGE} (clean)"
 # `--exclude __pycache__` no es cosmética: el checkout es COMPARTIDO por varias sesiones, y basta con
 # que otra corra pytest para que se reescriban los `.pyc` mientras este `tar` lee el directorio →
@@ -78,8 +96,9 @@ tar -C "$LOCAL" --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cac
 
 echo "==> scripts/ci/backend.sh en el venv del VPS${PYTEST_ARGS:+ (args: ${PYTEST_ARGS})}"
 echo "==> Postgres: ${PG_AVISO}"
+echo "==> GoTrue:   ${GOTRUE_AVISO}"
 set +e
-ssh "$HOST" "${PG_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' PYTHON_BIN='$VENV/bin/python' \
+ssh "$HOST" "${PG_ENV}${GOTRUE_ENV}PYTHONPATH='$STAGE/apps/copiloto:$STAGE/$MOTOR' PYTHON_BIN='$VENV/bin/python' \
   bash '$STAGE/scripts/ci/backend.sh' ${PYTEST_ARGS}"
 RC=$?
 set -e
@@ -87,6 +106,11 @@ set -e
 if [ -z "${UC_TEST_DATABASE_URL:-}" ]; then
   echo "==> ⚠️  Ese resultado NO incluye los tests contra Postgres. Para incluirlos:"
   echo "        eval \"\$(bash deploy/copiloto/test-db.sh --export)\"   # base efímera, rol NO-superuser"
+  echo "        bash deploy/copiloto/sync-test-backend.sh ${PYTEST_ARGS}"
+fi
+if [ -z "${UC_TEST_GOTRUE_URL:-}" ]; then
+  echo "==> ⚠️  Ese resultado NO incluye los tests contra GoTrue real (K-12). Para incluirlos:"
+  echo "        eval \"\$(bash deploy/copiloto/test-gotrue.sh --export)\"   # GoTrue efímera propia"
   echo "        bash deploy/copiloto/sync-test-backend.sh ${PYTEST_ARGS}"
 fi
 exit $RC

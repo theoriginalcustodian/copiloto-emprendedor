@@ -1,5 +1,12 @@
 """K-12: cambiar contraseña / mail de la PROPIA cuenta, y `cuenta_google` en `/me`.
 
+⚠️ Este archivo usa un `httpx.MockTransport` — auditoría A2 lo marcó como sustituto inaceptable para
+el DoD de K-12 (integración > mocks es regla dura). La cobertura AUTORITATIVA contra una GoTrue de
+TEST real vive en `test_cambiar_cuenta_gotrue_real.py` (`deploy/copiloto/test-gotrue.sh`). Lo que
+queda acá son las unidades puras que NUNCA tocan GoTrue (validación de formato, ausencia de token:
+`sim.puts == []` lo prueba) más una copia rápida del resto para feedback local sin VPS — su rojo no
+sustituye al del archivo real; su verde tampoco basta para declarar K-12 cerrado.
+
 GoTrue se simula con un `httpx.MockTransport` que resuelve la cuenta SÓLO por el Bearer (como la real:
 `PUT /auth/v1/user` no recibe ningún id de cuenta), con los códigos de error verificados contra GoTrue
 v2.186.0 en `spikes/gotrue-cambiar-mail-contrasena/RESULT.md`. El adversarial es de verdad: el body
