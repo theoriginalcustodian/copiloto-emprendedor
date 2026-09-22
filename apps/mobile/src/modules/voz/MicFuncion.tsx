@@ -10,6 +10,7 @@ import { AvisoCancelar } from '../chat/AvisoCancelar';
 import { BotonVoz } from '../chat/BotonVoz';
 import { ControlesFlotantes } from '../chat/ControlesFlotantes';
 import { useVozComando } from '../chat/useVozComando';
+import { useTema } from '../../theme/ThemeProvider';
 
 export interface MicFuncionProps {
   /** A dónde va el texto. Se llama UNA sola vez por dictado, ya transcripto. */
@@ -48,6 +49,7 @@ async function borrarArchivoLocal(archivo: ArchivoSubida): Promise<void> {
  * componente no re-implementa nada de esto.
  */
 export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrollRef }: MicFuncionProps) {
+  const tema = useTema();
   const voz = useVozComando();
   const [fijado, setFijado] = useState(false);
   const [cancelando, setCancelando] = useState(false);
@@ -150,7 +152,7 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
           de rellenar el campo. Sólo aparece con el gesto en reposo: mientras graba/fijado, la Onda
           y los controles ya ocupan ese lugar. */}
       {ultimaDuracionSeg !== null && !fijado && voz.fase === 'inactivo' && (
-        <Text testID="mic-funcion-chip" style={estilos.chip}>
+        <Text testID="mic-funcion-chip" style={[estilos.chip, { color: tema.color.textoTenue }]}>
           Por voz · {ultimaDuracionSeg}s
         </Text>
       )}
@@ -161,6 +163,6 @@ export function MicFuncion({ onTranscripcion, contexto, disabled, onError, scrol
 const estilos = StyleSheet.create({
   contenedor: { alignItems: 'center' },
   overlayVoz: { alignItems: 'center', gap: 8 },
-  chip: { fontSize: 12, color: '#6b7280', marginTop: 4 },
+  chip: { fontSize: 12, marginTop: 4 },
   ondaFlotante: { width: '100%', paddingHorizontal: 24 },
 });
