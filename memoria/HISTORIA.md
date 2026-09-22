@@ -196,3 +196,7 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 - [💾⏸️ Backups off-site de fusion y Temporal: APAGADOS por diseño](backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md) — deuda diferida, no gap.
 - [📧⏸️ SMTP y reset de password diferidos por el operador](smtp-email-transaccional-diferido-reset-password.md) — GoTrue `MAILER_AUTOCONFIRM=true`; slot para Gmail SMTP.
+
+## Movidos del índice el 2026-09-22 (el índice se pasaba 71 chars del techo al sumar el cierre de A4)
+
+- [🕰️ Recall temporal — "qué hice ayer"](copiloto-recall-temporal.md) — `consultar_actividad`; `valid_at` naive→UTC; anti-injection.

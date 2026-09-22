@@ -101,7 +101,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P4 · Re-emitir el contrato del 16/09 con el estado real
 - **Qué:** el contrato sigue en `abierto/` sin acuse ni avance; el trabajo 2 se hizo en mobile por fuera. Hay que cerrarlo y emitir uno nuevo con `BL-C1`–`BL-C6` y su estado de hoy.
-- **DoD:** [ ] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo; [ ] contrato nuevo en `abierto/` citando este backlog.
+- **DoD:** [x] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo (`cerrado/2026-09-21/2026-09-16_contrato_planificacion-a-frontend_seis-trabajos-…`, línea 1: «REEMPLAZADO … (BL-P4)»); [x] contrato nuevo citando este backlog: `2026-09-21_contrato_planificacion-a-frontend2_cola-del-plan-autonomo-beta-odobi.md` (BL-C1–C6 en la cola de FE2; hoy en `cerrado/2026-09-22/`). Checkboxes tildados el 2026-09-22 tras A4 (auditoría lo verificó).
 
 ### BL-P5 · Marcar spec vs visión en el mapa del prototipo
 - **Qué:** P-3. `mapa.html:97` presenta `plan` como spec aunque `index.html:915` dice VISIÓN; `limite`, `pres-marca`, `fact-sinarca` y `cobro-voz` no figuran en el mapa. Sin esto, «48/48 coherentes» se mide contra pantallas que nadie va a construir.
@@ -114,7 +114,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P7 · Cerrar los mensajes viejos de `abierto/`
 - **Qué:** 8 `avance_`/`dato_` del 07–08/09 ya materializados siguen en `abierto/` (el barrendero no los movió). Ruido que esconde lo vivo.
-- **DoD:** [ ] cada uno movido a `cerrado/<fecha-original>/`; [ ] `abierto/` sólo contiene trabajo vivo.
+- **DoD:** [x] cada uno movido a `cerrado/<fecha-original>/`; [x] `abierto/` sólo contiene trabajo vivo (2026-09-22: `find abierto -name '2026-09-0[78]_*'` → 0; auditoría contó los archivos de `abierto/`: todos del 22/09).
 
 ---
 
