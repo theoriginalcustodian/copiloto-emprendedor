@@ -28,6 +28,9 @@ mkdir -p "$R/scripts/ci" "$R/deploy/copiloto" "$T/bin"
 cp "$ROOT/scripts/gate.sh" "$R/scripts/"
 cp "$ROOT/scripts/ci/sesion-env.sh" "$ROOT/scripts/ci/candado-stage.sh" "$R/scripts/ci/"
 printf '#!/usr/bin/env bash\necho "export STUB_DB=1"\n' > "$R/deploy/copiloto/test-db.sh"
+# H-A3-11: gate.sh también provisiona GoTrue de test efímera antes del sync -- sin este stub el
+# fixture pega contra el script real (ausente acá) y el backend falla ANTES de llegar al stub de sync.
+printf '#!/usr/bin/env bash\necho "export STUB_GOTRUE=1"\n' > "$R/deploy/copiloto/test-gotrue.sh"
 # el stub de sync deja constancia de su ventana [inicio, fin] y tarda STUB_SYNC_SEG
 cat > "$R/deploy/copiloto/sync-test-backend.sh" <<'EOF'
 #!/usr/bin/env bash

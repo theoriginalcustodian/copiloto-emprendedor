@@ -951,36 +951,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
-    "modules/ajustes::como-hablarle-cargando": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "como-hablarle-cargando",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-hablarle-fechas": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "como-hablarle-fechas",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-hablarle-fechas-si-no-esta": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "como-hablarle-fechas-si-no-esta",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
     "modules/ajustes::como-hablarle-lista": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
@@ -991,36 +961,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
-    "modules/ajustes::como-hablarle-no-disponible": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "como-hablarle-no-disponible",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-hablarle-vacio": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "como-hablarle-vacio",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-cargando": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-cargando",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
     "modules/ajustes::como-usar-contenido": {
       "en": [
         "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
@@ -1028,56 +968,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "como-usar-contenido",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-fechas": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-fechas",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-fechas-si-no-esta": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-fechas-si-no-esta",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-no-disponible": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-no-disponible",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-pie": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-pie",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::como-usar-vacio": {
-      "en": [
-        "apps/mobile/src/modules/ajustes/PantallaComoUsarLaApp.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "como-usar-vacio",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
@@ -1338,16 +1228,6 @@
       "falta_en": "mobile",
       "fecha": "2026-09-22",
       "id": "pantalla-apariencia",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/ajustes"
-    },
-    "modules/ajustes::pantalla-como-hablarle": {
-      "en": [
-        "apps/copiloto-web/src/modules/ajustes/PantallaComoHablarle.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "pantalla-como-hablarle",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },

@@ -101,10 +101,20 @@ if quiere backend; then
     echo "==> [backend] provisionando Postgres efímero en el VPS..."
     if EXPORTS="$(bash "$ROOT/deploy/copiloto/test-db.sh" --export 2>&1)"; then
       eval "$(echo "$EXPORTS" | grep '^export ')"
-      # el inicio del job backend es el del provisioning: incluye la DB efímera
-      ini="${INICIO_JOB[backend]}"
-      correr backend bash "$ROOT/deploy/copiloto/sync-test-backend.sh"
-      INICIO_JOB[backend]="$ini"
+      # H-A3-11: GoTrue de test efímera, misma disciplina que Postgres arriba -- fail-closed (si no
+      # levanta, el job backend falla) para que los 8 tests @necesita_gotrue no vuelvan a depender de
+      # que alguien se acuerde de correrlos a mano (ese era exactamente el gap de BL-J11).
+      echo "==> [backend] provisionando GoTrue de test efímera en el VPS (H-A3-11)..."
+      if GOTRUE_EXPORTS="$(bash "$ROOT/deploy/copiloto/test-gotrue.sh" --export 2>&1)"; then
+        eval "$(echo "$GOTRUE_EXPORTS" | grep '^export ')"
+        # el inicio del job backend es el del provisioning: incluye ambas efímeras
+        ini="${INICIO_JOB[backend]}"
+        correr backend bash "$ROOT/deploy/copiloto/sync-test-backend.sh"
+        INICIO_JOB[backend]="$ini"
+      else
+        echo "$GOTRUE_EXPORTS" >&2
+        RESULTADO[backend]="failed"; FIN_JOB[backend]=$(date +%s); LOG_JOB[backend]=""
+      fi
     else
       echo "$EXPORTS" >&2
       RESULTADO[backend]="failed"; FIN_JOB[backend]=$(date +%s); LOG_JOB[backend]=""

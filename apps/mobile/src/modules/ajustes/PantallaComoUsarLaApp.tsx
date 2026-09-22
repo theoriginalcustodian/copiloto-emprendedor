@@ -2,7 +2,12 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { leerCapacidades, TEMAS_AYUDA, type GuiaCapacidades } from '@copiloto/core';
+import {
+  agruparCapacidadesPorRotulo,
+  leerCapacidades,
+  TEMAS_AYUDA,
+  type GuiaCapacidades,
+} from '@copiloto/core';
 
 import { dejarPendiente } from '../chat/mensajePendiente';
 import { ScrollFormulario } from '../../theme/glass/campos';
@@ -147,11 +152,11 @@ export function PantallaComoUsarLaApp() {
               </Text>
             )}
 
-            {guia.capacidades.map((c) => (
-              <Row key={c.tool} testID={`como-usar-${c.tool}`}>
+            {agruparCapacidadesPorRotulo(guia.capacidades).map((grupo, i) => (
+              <Row key={grupo.rotulo} testID={`como-usar-grupo-${i}`}>
                 <View style={styles.bloque}>
-                  <Text style={rotulo(tema)}>{c.rotulo}</Text>
-                  {c.ejemplos.map((e) => (
+                  <Text style={rotulo(tema)}>{grupo.rotulo}</Text>
+                  {grupo.ejemplos.map((e) => (
                     <Text
                       key={e}
                       style={{ color: tema.color.texto, fontFamily: tema.fuente.ui, fontSize: tema.tipo.base }}

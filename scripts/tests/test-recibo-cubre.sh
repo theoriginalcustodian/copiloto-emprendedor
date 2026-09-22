@@ -18,6 +18,7 @@
 #                un `exit 0` de test cubriría un SHA que nadie probó.
 #   9. COPIA DURABLE  gate.sh (sin overrides) copia el recibo a `<common-dir>/ci-recibos/`; borrado el
 #                worktree, recibo-cubre lo sigue encontrando, y otro worktree del mismo SHA acumula desde ahí.
+#                9e: dos recibos DISTINTOS del mismo SHA se evalúan los dos (uno fallido no tapa al que cubre).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CUBRE="$ROOT/scripts/recibo-cubre.sh"
@@ -116,6 +117,19 @@ gate9 "$T/w9b" lint > "$T/o9c" 2>&1
 (cd "$R9" && bash scripts/recibo-cubre.sh "$SHA9") > "$T/o9d" 2>&1
 [ "$(grep -cE "^(❌ mismo árbol, NO cubre|✅ CUBRE)" "$T/o9d")" = 1 ] \
   && ok "9d el mismo SHA en la copia durable y en el worktree se evalúa UNA vez" || fail "9d · salida=<$(cat "$T/o9d")>"
+# 9e. dos recibos DISTINTOS del mismo SHA (copia durable con backend failed, otro worktree 5/5): se evalúan
+#     los dos. Deduplicar por SHA dejaba que el primero —el fallido— tapara al que cubre (falso ❌).
+g9 worktree add -q --detach "$T/w9e" HEAD
+mkdir -p "$T/w9e/.ci-recibos"
+jq -n --arg sha "$SHA9" --arg arbol "$(g9 rev-parse "$SHA9^{tree}")" '{sha:$sha, arbol:$arbol,
+  jobs:{core:"ok",web:"ok",mobile:"ok",lint:"ok",backend:"ok"},
+  detalle:{core:{sucio:false},web:{sucio:false},mobile:{sucio:false},lint:{sucio:false},backend:{sucio:false}}}' \
+  > "$T/w9e/.ci-recibos/$SHA9.json"
+jq '.jobs.backend = "failed"' "$T/w9e/.ci-recibos/$SHA9.json" > "$COMUN9/$SHA9.json"
+(cd "$R9" && bash scripts/recibo-cubre.sh "$SHA9") > "$T/o9e" 2>&1; rc9e=$?
+[ "$rc9e" = 0 ] && grep -q "✅ CUBRE .*w9e/.ci-recibos" "$T/o9e" && grep -q "backend=failed" "$T/o9e" \
+  && ok "9e un recibo fallido del mismo SHA no tapa al que cubre (se evalúan los dos)" \
+  || fail "9e · rc=$rc9e salida=<$(cat "$T/o9e")>"
 
 echo
 [ "$fallos" -eq 0 ] && { echo "✅ test-recibo-cubre: todo verde"; exit 0; }
