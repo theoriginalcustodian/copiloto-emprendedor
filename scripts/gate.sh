@@ -87,14 +87,46 @@ correr() {
   echo "==> [$job] ${RESULTADO[$job]} ($(( FIN_JOB[$job] - INICIO_JOB[$job] ))s, fin ${FIN_JOB[$job]})"
 }
 
+# H-A4-1 (reabre H-A3-1): `core.hooksPath` es config LOCAL, compartida por TODOS los worktrees, y no
+# versionada -- nada en el repo la reescribe (barrido completo, A4), pero una vez que queda absoluta
+# (mutación manual, sin rastro) TODO worktree corre el pre-push de ESE árbol, no el propio, y el
+# scanner de secretos (#601) deja de correr en cualquier push sin que nada lo avise. Antes esto sólo
+# se arreglaba a mano (H-A3-1) y se reabrió en <24h (H-A4-1): un fix sin control fail-closed no es un
+# fix, es una reincidencia programada. Este check corre ANTES de cualquier job y, si falla, marca
+# TODOS los jobs seleccionados como `failed` -- ROJO real en el recibo, no un rechazo silencioso
+# (distinto del guard de tríada arriba, que si rechaza NO escribe recibo a propósito).
+# Se saltea bajo overrides de test (GATE_CI_DIR/GATE_RECIBO_DIR) Y cuando el árbol ni siquiera trae
+# `.githooks/pre-push` -- un fixture de `scripts/tests/*.sh` hace `git init` en un temp dir para
+# probar OTRA cosa (recibo-cubre, la tríada, etc.) SIN levantar el hook real; no hay nada que este
+# check pueda proteger ahí (regresión propia: rompía test-recibo-cubre.sh 9a/9c, que corren gate.sh
+# sin overrides A PROPÓSITO para ejercitar su comportamiento default contra un repo ajeno).
+HOOKSPATH_ROTO=0
+if [ -z "${GATE_CI_DIR:-}${GATE_RECIBO_DIR:-}" ] && [ -f "$ROOT/.githooks/pre-push" ]; then
+  HOOKSPATH_ACTUAL="$(git -C "$ROOT" config --get core.hooksPath 2>/dev/null || echo '(sin setear)')"
+  if [ "$HOOKSPATH_ACTUAL" != ".githooks" ]; then
+    HOOKSPATH_ROTO=1
+    echo "gate.sh: ❌ core.hooksPath='$HOOKSPATH_ACTUAL' (esperado '.githooks' relativo)." >&2
+    echo "         El pre-push de secretos (#601) puede no estar corriendo en NINGÚN worktree" >&2
+    echo "         (todos comparten esta config). Repo público: gate ROJO hasta que se arregle." >&2
+    echo "         Fix: git config core.hooksPath .githooks" >&2
+  fi
+fi
+
 for job in "${JOBS_LOCAL[@]}"; do
   quiere "$job" || continue
+  if [ "$HOOKSPATH_ROTO" -eq 1 ]; then
+    INICIO_JOB[$job]=$(date +%s); FIN_JOB[$job]="${INICIO_JOB[$job]}"; LOG_JOB[$job]=""
+    RESULTADO[$job]="failed"
+    continue
+  fi
   correr "$job" bash "$CI_DIR/$job.sh"
 done
 
 if quiere backend; then
   INICIO_JOB[backend]=$(date +%s)
-  if ! tomar_candado "$UC_TEST_STAGE" "$SHA"; then
+  if [ "$HOOKSPATH_ROTO" -eq 1 ]; then
+    RESULTADO[backend]="failed"; FIN_JOB[backend]="${INICIO_JOB[backend]}"; LOG_JOB[backend]=""
+  elif ! tomar_candado "$UC_TEST_STAGE" "$SHA"; then
     RESULTADO[backend]="failed"; FIN_JOB[backend]=$(date +%s); LOG_JOB[backend]=""
   else
     trap 'soltar_candado "$UC_TEST_STAGE"' EXIT
