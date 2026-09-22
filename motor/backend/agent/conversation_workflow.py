@@ -407,7 +407,10 @@ class ConversationWorkflow:
         #    turno normal lo mandaría al LLM como si fuera un mensaje de usuario (fuga del mecanismo interno
         #    del gate al scratchpad). Corte determinístico, sin LLM, sin tocar el estado.
         if kind == "callback" and not parked:
-            await self._react_send(channel, channel_ref, cliente_id, "Listo 👍", None)
+            # H-A4-9: "Listo 👍" mentía -- confirmaba una acción que esta rama, por definición, NUNCA
+            # ejecuta (el gate ya no está parqueado). Texto honesto: no se hizo nada.
+            await self._react_send(channel, channel_ref, cliente_id,
+                                    "Ese botón ya no sirve: se resolvió antes o llegó tarde 🙈", None)
             return False
 
         # ── reingreso de confirmación (callback determinístico, SIN LLM) ──────────────────────────
