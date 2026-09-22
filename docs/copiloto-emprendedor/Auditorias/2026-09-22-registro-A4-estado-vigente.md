@@ -23,7 +23,7 @@
 
 | Fila | Sev | Qué era | Estado hoy | Evidencia |
 |---|---|---|---|---|
-| H-A4-1 | **alta** | Pre-push con gitleaks inactivo si `core.hooksPath` está desviado (worktrees de agente). Repo **público**. | 🔴 **ABIERTA — sin red para el secreto PROPIO** | 2026-09-22: se activaron secret scanning + push protection (`enabled` los dos, releídos). **No alcanza**: `secret_scanning_non_provider_patterns` está `disabled` → el servidor sólo intercepta **catálogo de proveedores**, no un `.env` ni un token interno. Y la capa local tampoco corre (H-A3-1, push real: **0** líneas `[secretos]`). Ver «Lo que falta» |
+| H-A4-1 | **alta** | Pre-push con gitleaks inactivo si `core.hooksPath` está desviado (worktrees de agente). Repo **público**. | 🔴 **ABIERTA — sin red para el secreto PROPIO** | 2026-09-22: se activaron secret scanning + push protection (`enabled` los dos, releídos). **No alcanza**: `secret_scanning_non_provider_patterns` está `disabled` → el servidor sólo intercepta **catálogo de proveedores**, no un `.env` ni un token interno. La capa **local** cambió de estado el mismo día y conviene no arrastrar el diagnóstico viejo: `core.hooksPath` vale hoy `.githooks` — **relativa** (remedido post-reboot) — y #649 le puso a `gate.sh` un check **fail-closed** que marca TODOS los jobs `failed` si deja de serlo. Sigue abierta por la mitad **server-side**. Ver «Lo que falta» |
 | H-A4-2 | alta | Reveal X10 roto en el estado final del splash (la O tapa «dobi»). | ✅ CERRADA | #648 · A4-bis: solapamiento **0 px** en 7 tiempos |
 | H-A4-3 | media | Rentabilidad = saldo de caja; el estado «no se puede calcular» del prototipo era inalcanzable. Junta backend↔web. | ✅ CERRADA | Backend #651 (`null` explícito) + FE1 #648 (UI del `null`). **La junta cerró de los dos lados** — se verificó el fallo típico del repo (un lado sí, el otro pinta `$0,00`) y no ocurrió |
 | H-A4-4 | media | El chat de Soporte mostraba el rodillo de ejemplos del chat general. | ✅ CERRADA | #648 · A4-bis: rodillo = 0 |
@@ -78,20 +78,52 @@ un error: GitHub deja `non_provider` apagado por defecto porque da falsos positi
 
 ### Qué la cierra, y por qué son dos palancas y no una
 
-1. **`core.hooksPath` relativo** (H-A3-1) — reactiva gitleaks en todos los worktrees de una. **Sin
-   costo de fricción**: es la mitad barata. Dueño: planificación, al levantarse el alto.
+1. **`core.hooksPath` relativo** (H-A3-1) — **ya no está pendiente, y el que la cerró no fue el
+   valor sino el detector.** Remedido el 2026-09-22 post-reboot, con control positivo
+   (`git -C <path inexistente>` debe fallar):
+
+   ```
+   git config --show-origin --get core.hooksPath
+     file:.git/config    .githooks        ← relativa, y lo mismo en los 6 worktrees de agente
+   git show "origin/main:.githooks/pre-push" | grep -n secretos-check
+     15: ... bash "$SCRIPT_DIR/scripts/secretos-check.sh" --refs-stdin || {
+   ```
+
+   Con ruta **relativa** cada worktree corre **su propio** pre-push, así que la capa local está
+   **armada** en una rama en/después de #601 y **apagada** en una de base vieja — el checkout
+   compartido es el segundo caso (**cero** líneas `secretos-check` en su `.githooks/pre-push`), y eso
+   es por su árbol viejo, no por un hook desviado. El push real de A3 con **0** líneas `[secretos]`
+   sigue siendo un hecho; lo que cambia es a qué se atribuye.
+
+   Lo durable no es el valor — que nadie versiona y que se vuelve a torcer solo — sino que #649 le
+   puso a `gate.sh` un check **fail-closed**: si `core.hooksPath != .githooks`, marca **todos** los
+   jobs `failed` y escribe un recibo ROJO. Su propio comentario lo dice mejor que yo: *«un fix sin
+   control fail-closed no es un fix, es una reincidencia programada»* — y lo escribió porque
+   H-A3-1 se había arreglado a mano y **se reabrió en menos de 24 h**. El mecanismo que la tuerce
+   (Claude Code escribiéndola al crear un worktree de agente) sigue activo; lo que ya no es, es
+   **silencioso**. [[el-guard-que-caza-a-su-propio-autor]]
+
+   ⚠️ Y el instrumento: mi primer `grep -c` sobre `origin/main:.githooks/pre-push` dio **0** y era
+   mentira — Git Bash mangló el path (`origin\main;.githooks\pre-push`, fatal) y `grep -c` contó las
+   cero líneas del error. Con `MSYS_NO_PATHCONV=1` aparecen las dos.
+   [[git-bash-mangla-paths-con-punto-y-fabrica-handoffs-falsos]]
 2. **`non_provider_patterns`** — cubre la clase propia del lado servidor. Decisión del operador
    (2026-09-22): **se activa al terminar el sprint**, no ahora, porque sus falsos positivos frenarían
    pushes legítimos y *un guard que grita en el caso normal se desarma solo*.
 
 Y el **test adversarial** sigue siendo precondición: un control que nadie ejercitó con un caso hostil
-es indistinguible de uno ausente. Diseño acordado con auditoría, en dos pushes, porque con uno solo
-el resultado **no atribuye**:
+es indistinguible de uno ausente. El diseño pasó de **dos pushes a tres** justamente por la medición
+de arriba: con la capa local **armada** en un worktree al día, un «fue rechazado» no dice **quién** lo
+rechazó — dos causas suficientes y el resultado no atribuye
+([[dos-causas-suficientes-el-test-no-atribuye]]):
 
-- **Control positivo** — patrón de **proveedor** del catálogo documentado. Debe ser **rechazado**. Si
-  pasa, el instrumento está ciego: se para ahí y no se concluye nada sobre el repo.
-- **Caso real** — patrón **non-provider**, la forma que motivó esta fila. **Predicción escrita antes
-  de correrlo: va a pasar las dos capas.** Si alguna lo frena, el equivocado soy yo.
+- **Control positivo** — patrón de **proveedor** del catálogo, worktree **al día**. Debe ser
+  **rechazado**. Si pasa, el instrumento está ciego: se para ahí y no se concluye nada sobre el repo.
+- **Caso real, worktree al día** — patrón **non-provider**. Predicción: **lo frena el hook local**,
+  no el servidor. Eso NO cierra esta fila: prueba la capa que ya sabemos armada.
+- **Caso real, worktree de BASE VIEJA** (pre-push sin `secretos-check`) — la única capa que queda es
+  la del servidor, con `non_provider_patterns` apagado. **Predicción escrita antes de correrlo: pasa.**
+  Ése es el push que ejercita de verdad la fila. Si alguna capa lo frena, el equivocado soy yo.
 
 Requisitos duros del test, que no son detalles: material **sintético** (su modo de falla *publica* en
 un repo público, así que jamás una credencial viva ni una de las que pasaron por chat), rama en
@@ -99,8 +131,8 @@ un repo público, así que jamás una credencial viva ni una de las que pasaron 
 rama), y veredicto por **`ls-remote`**, no por el exit code de `git push` — que ya salió 0 sin haber
 pusheado.
 
-Ese test es de **auditoría** (su disparador M-3, ya notificado). No arranca hasta que se levante el
-alto total.
+Ese test es de **auditoría** (su disparador M-3). El alto total se levantó el 2026-09-22 tras el
+reinicio de la PC y auditoría tiene el **verde explícito**, con el diseño de tres pushes de arriba.
 
 **H-A4-15 — cerrada por decisión, no por fix.** El operador decidió el 2026-09-22 que «Crear una
 nueva cuenta» **no va** en el reveal: en una beta cerrada las altas las hace él y nadie se registra
