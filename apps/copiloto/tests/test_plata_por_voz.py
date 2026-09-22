@@ -360,7 +360,7 @@ def test_K07B_aprobar_deja_la_card_sugerencia_armar_factura_y_descartar_no():
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
     res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=store)
     assert res.observation["gate_card"] == {"kind": "sugerencia_armar_factura", "presupuesto_id": 1,
-                                            "texto": "¿Te armo la factura?"}
+                                            "texto": "¿Te armo la factura?", "bloquea": False}
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
     res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "desestimado"}, presupuesto=store)
     assert "gate_card" not in res.observation

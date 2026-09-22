@@ -94,7 +94,7 @@ def test_K11_conexion_faltante_arma_card_requiere_conexion_con_alcance_del_catal
         Intent(action="callback", entities={"value": "confirm"}), {"pending": pending}, _ctx(composio_user_id="u1"))
     entrada = next(s for s in build_catalog(valid_toolkits=["gmail"], mp_connected=False, composio_connected=[])
                    if s["key"] == "gmail")
-    assert r.card == {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail",
+    assert r.card == {"kind": "requiere_conexion", "service": "gmail", "label": "Gmail", "bloquea": True,
                       "alcance": entrada["capabilities"], "connect_path": entrada["connect_path"]}
     assert r.card["connect_path"] == "/composio/connect?service=gmail"
     # compatibilidad: un cliente que ignora `card` sigue viendo el mismo texto útil de siempre
