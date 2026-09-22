@@ -148,6 +148,9 @@ export interface ChatMessage {
   card?: ReplyCard;
   /** Instante del mensaje (ms epoch) — separadores de día (BL-C3). Ausente en historial viejo. */
   creadoEn?: number;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`sendAudio`): alimenta el chip «Por voz · Ns»
+   * en `Bubble`. Ausente en mensajes escritos o en historial viejo (no se persiste todavía). */
+  porVoz?: { duracionSeg: number };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -167,8 +170,9 @@ export interface UseChatResult {
   messages: ChatMessage[];
   sendStatus: SendStatus;
   send: (text: string, opts?: SendOptions) => Promise<void>;
-  /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función. */
-  sendAudio: (blob: Blob) => Promise<void>;
+  /** Sube una nota de voz grabada (Task 19, FASE 4) — ver doc arriba de la función.
+   * `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns» en la burbuja del usuario. */
+  sendAudio: (blob: Blob, duracionSeg: number) => Promise<void>;
   /** `session_id` activo (para mostrar un fragmento en el header de escritorio, ej. `sess_9f2a`). */
   sessionId: string;
   /** Arranca una conversación nueva: genera un `session_id` fresco, lo persiste, descarta el
@@ -333,7 +337,7 @@ export function useChat(): UseChatResult {
    * igual que `send`.
    */
   const sendAudio = useCallback(
-    async (blob: Blob) => {
+    async (blob: Blob, duracionSeg: number) => {
       stopPolling();
       setSendStatus('sending');
 
@@ -346,7 +350,13 @@ export function useChat(): UseChatResult {
         return;
       }
 
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: transcript, creadoEn: Date.now() };
+      const userMessage: ChatMessage = {
+        id: `user-${generateId()}`,
+        role: 'user',
+        text: transcript,
+        creadoEn: Date.now(),
+        porVoz: { duracionSeg },
+      };
       setMessages((prev) => acotarMensajes([...prev, userMessage]));
 
       startWaitingForReply();

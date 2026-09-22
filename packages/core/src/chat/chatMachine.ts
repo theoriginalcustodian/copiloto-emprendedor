@@ -49,6 +49,9 @@ export interface ChatMessage {
   /** Instante del mensaje (ms epoch). Lo usan los separadores de día (`separadoresFecha.ts`); ausente
    * en el historial persistido antes de BL-C3 o si el reply no trajo `created_at`. */
   creadoEn?: number;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useVozComando`/`MicButton`): alimenta el chip
+   * «Por voz · Ns» de la burbuja del usuario en ambas plataformas. Ausente en mensajes escritos. */
+  porVoz?: { duracionSeg: number };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';

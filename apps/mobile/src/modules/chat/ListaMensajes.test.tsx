@@ -35,6 +35,18 @@ describe('ListaMensajes', () => {
 
     expect(screen.getByText('hola copiloto')).toBeTruthy();
     expect(screen.queryByTestId('tarjeta-confirmacion')).toBeNull();
+    expect(screen.queryByTestId('chat-bubble-voz')).toBeNull();
+  });
+
+  it('BL-J7 (H-A3-7): un mensaje llegado por dictado muestra el chip «Por voz · Ns»', async () => {
+    const mensajes: ChatMessage[] = [
+      { id: 'user-2', role: 'user', text: 'anotá un gasto de 500', porVoz: { duracionSeg: 7 } },
+    ];
+
+    await envolver(mensajes);
+
+    expect(screen.getByTestId('chat-bubble-voz')).toBeTruthy();
+    expect(screen.getByText('Por voz · 7s')).toBeTruthy();
   });
 
   it('el gate de confirmación (par confirmar/cancelar) se renderiza como tarjeta, no como burbuja', async () => {
