@@ -22,7 +22,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import '../src/adapters/plataforma';
 import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
-import { EntradaDiaria } from '../src/shell/EntradaDiaria';
+import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 /**

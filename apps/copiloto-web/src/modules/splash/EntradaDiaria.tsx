@@ -38,7 +38,7 @@ export function EntradaDiaria({ onFin }: { onFin: () => void }) {
     : { animationDelay: `${ENTRADA_TOTAL_MS - ENTRADA_FADE_MS}ms`, animationDuration: `${ENTRADA_FADE_MS}ms` };
 
   return (
-    <div className="identidad-entrada" data-testid="identidad-entrada" style={fadeStyle}>
+    <div className="identidad-entrada" data-testid="entrada-diaria" style={fadeStyle}>
       <svg className="identidad-entrada__signo" viewBox="0 0 24 24" aria-hidden="true">
         {ARCOS.map((a) => (
           <path

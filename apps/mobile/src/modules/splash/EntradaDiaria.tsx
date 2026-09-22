@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path, type PathProps } from 'react-native-svg';
 
-import { useTema } from '../theme/ThemeProvider';
+import { useTema } from '../../theme/ThemeProvider';
 
 // `pathLength` es un atributo SVG estándar (draw-on vía `strokeDasharray`/`strokeDashoffset`
 // normalizados) que react-native-svg SOPORTA en runtime pero no declara en `PathProps` -- se

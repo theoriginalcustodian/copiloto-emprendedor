@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { ThemeProvider } from '../theme/ThemeProvider';
+import { ThemeProvider } from '../../theme/ThemeProvider';
 import { EntradaDiaria } from './EntradaDiaria';
 
 // Jest (jest-expo) -- describe/it/expect son globales, no se importan de vitest.

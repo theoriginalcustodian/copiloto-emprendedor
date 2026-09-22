@@ -100,7 +100,7 @@ export function Splash({ onFin, cta }: { onFin: () => void; cta?: SplashCta }) {
   );
 
   return (
-    <div className="identidad-splash" data-testid="identidad-splash" style={containerStyle}>
+    <div className="identidad-splash" data-testid="identidad-entrada" style={containerStyle}>
       {!reducido && (
         <div className="identidad-splash__formas" aria-hidden="true">
           {BLOBS.map((b, i) => {

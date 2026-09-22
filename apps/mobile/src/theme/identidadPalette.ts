@@ -1,5 +1,5 @@
 /**
- * BL-X10 — colores de las 4 formas de la animación de entrada (`modules/auth/IdentidadEntrada.tsx`).
+ * BL-X10 — colores de las 4 formas de la animación de entrada (`modules/splash/IdentidadEntrada.tsx`).
  * FIJOS, no salen del tema: son el LOGOTIPO en construcción, mismo criterio que `--identidad-word`
  * en web (`Splash.css`, exención WCAG 1.4.3 — decisión Martín 22/07, `splash-port-reanimated.md §8`)
  * y que `ondaPalette.ts`/`ecualizadorPalette.ts` acá: color intrínseco del diseño, no de la piel.

@@ -34,7 +34,7 @@ describe('EntradaSesion (BL-X12w)', () => {
 
   it('tras un logout a propósito aterriza en el reveal con "Entrar" y "Entrar con otra cuenta"', () => {
     montar(sesion({ cierreVoluntario: { email: 'ana@x.com' } }));
-    expect(screen.getByTestId('identidad-splash')).toBeInTheDocument();
+    expect(screen.getByTestId('identidad-entrada')).toBeInTheDocument();
     expect(screen.getByText('Entrar')).toBeInTheDocument();
     expect(screen.getByText('Entrar con otra cuenta')).toBeInTheDocument();
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument();
@@ -56,6 +56,6 @@ describe('EntradaSesion (BL-X12w)', () => {
   it('control negativo: primer arranque o sesión caída sola NO muestran el reveal (directo al formulario)', () => {
     montar(sesion());
     expect(screen.getByTestId('login-screen')).toBeInTheDocument();
-    expect(screen.queryByTestId('identidad-splash')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('identidad-entrada')).not.toBeInTheDocument();
   });
 });

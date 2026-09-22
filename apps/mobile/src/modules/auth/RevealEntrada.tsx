@@ -6,7 +6,7 @@ import { PRONUNCIACION_MARCA } from '@copiloto/core';
 import { pressableStyle } from '../../theme/glass/presion';
 import { Marca } from '../../theme/Marca';
 import { useTema } from '../../theme/ThemeProvider';
-import { IdentidadEntrada } from './IdentidadEntrada';
+import { IdentidadEntrada } from '../splash/IdentidadEntrada';
 
 const LOCKUP_SIMBOLO = 54;
 const ALTO_BOTON = 54;
