@@ -34,8 +34,9 @@ async function cambiar(path: string, body: object): Promise<ResultadoCambioCrede
     const res = await apiClient.post<{ ok?: boolean; confirmacion_pendiente?: boolean }>(path, body);
     return { ok: true, confirmacionPendiente: res?.confirmacion_pendiente === true };
   } catch (err) {
-    // 401 (actual incorrecta), 409 (mail en uso), 422 (política): traen `detail.{codigo,mensaje}`.
-    if (err instanceof ApiError && [401, 409, 422].includes(err.status)) {
+    // 400 (cuenta sin email, `web.py:1193`), 401 (actual incorrecta), 409 (mail en uso),
+    // 422 (política): todos traen `detail.{codigo,mensaje}`.
+    if (err instanceof ApiError && [400, 401, 409, 422].includes(err.status)) {
       const detalle = (err.body as { detail?: { codigo?: unknown } } | undefined)?.detail;
       const codigo = typeof detalle?.codigo === 'string' ? detalle.codigo : null;
       return { ok: false, codigo, mensaje: mensajeDeConflicto(err.body) ?? err.detail ?? 'No pudimos hacer el cambio.' };
