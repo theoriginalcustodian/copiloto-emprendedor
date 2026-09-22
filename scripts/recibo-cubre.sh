@@ -34,10 +34,28 @@ if [ "${#dirs[@]}" -eq 0 ]; then
     < <(git worktree list --porcelain | awk '/^worktree /{print substr($0,10)}')
 fi
 
+# Prefiltro de rendimiento: evaluar cada recibo cuesta ~3 forks (jq, hash-object) y en Windows eso
+# eran 34 s con 225 recibos el 22/09 — y la copia durable sólo crece. gate.sh nombra cada recibo
+# `<sha>.json`: UN `git cat-file --batch-check` da el árbol de todos y la evaluación completa corre sólo
+# sobre los que coinciden. Un recibo que no se llame `<sha40>.json` es candidato siempre. El prefiltro
+# sólo puede descartar DE MÁS (un falso ❌), nunca dejar pasar: todo candidato se evalúa entero abajo.
+todos=()
+for d in "${dirs[@]}"; do for r in "$d"/*.json; do [ -f "$r" ] && todos+=("$r"); done; done
+declare -A candidato=()
+if [ "${#todos[@]}" -gt 0 ]; then
+  mapfile -t arboles < <(for r in "${todos[@]}"; do b="${r##*/}"; printf '%s^{tree}\n' "${b%.json}"; done \
+                           | git cat-file --batch-check='%(objectname)' 2>/dev/null)
+  for i in "${!todos[@]}"; do
+    b="${todos[$i]##*/}"; b="${b%.json}"
+    # Si cat-file no devolvió una línea por recibo, no se puede alinear: se evalúan todos.
+    if [ "${#arboles[@]}" -ne "${#todos[@]}" ] || ! [[ "$b" =~ ^[0-9a-f]{40}$ ]] \
+       || [ "${arboles[$i]}" = "$arbol_obj" ]; then candidato["${todos[$i]}"]=1; fi
+  done
+fi
+
 cubren=0; mismo_arbol=0; declare -A visto=()
-for d in "${dirs[@]}"; do
-  for r in "$d"/*.json; do
-    [ -f "$r" ] || continue
+for r in "${todos[@]}"; do
+    [ -n "${candidato[$r]:-}" ] || continue
     sha_r="$(jq -r '.sha // empty' "$r" 2>/dev/null)"; [ -n "$sha_r" ] || continue
     huella="$(git hash-object "$r")"
     [ -n "${visto[$huella]:-}" ] && continue; visto[$huella]=1
@@ -61,7 +79,6 @@ for d in "${dirs[@]}"; do
     else
       echo "❌ mismo árbol, NO cubre: $r  ($meta) — $(IFS=', '; echo "${motivos[*]}")"
     fi
-  done
 done
 
 if [ "$cubren" -gt 0 ]; then exit 0; fi
