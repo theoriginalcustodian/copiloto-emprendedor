@@ -15,10 +15,30 @@ jest.mock('@copiloto/core', () => {
     registrarIngreso: jest.fn(),
     completarIngreso: jest.fn(),
     borrarIngreso: jest.fn(),
+    transcribir: jest.fn(),
   };
 });
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+// BL-J7/K-10 — mismo arnés que `modules/voz/MicFuncion.test.tsx`: `MicFuncion` (mobile) envuelve
+// `BotonVoz`/`useVozComando`, no `MediaRecorder` como en web.
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockVoz = {
+  fase: 'inactivo' as 'inactivo' | 'grabando' | 'pausado' | 'listo',
+  niveles: [] as number[],
+  iniciar: jest.fn().mockResolvedValue(true),
+  pausar: jest.fn(),
+  reanudar: jest.fn(),
+  detener: jest.fn().mockResolvedValue(undefined),
+  descartar: jest.fn().mockResolvedValue(undefined),
+  tomar: jest.fn(),
+};
+jest.mock('../chat/useVozComando', () => ({ useVozComando: () => mockVoz }));
+
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Gesture } from 'react-native-gesture-handler';
 
 import {
   borrarIngreso,
@@ -26,6 +46,7 @@ import {
   listarIngresos,
   obtenerResumenIngresos,
   registrarIngreso,
+  transcribir,
   type Ingreso,
 } from '@copiloto/core';
 
@@ -37,6 +58,26 @@ const resumenMock = obtenerResumenIngresos as jest.MockedFunction<typeof obtener
 const registrarMock = registrarIngreso as jest.MockedFunction<typeof registrarIngreso>;
 const completarMock = completarIngreso as jest.MockedFunction<typeof completarIngreso>;
 const borrarMock = borrarIngreso as jest.MockedFunction<typeof borrarIngreso>;
+const transcribirMock = transcribir as jest.MockedFunction<typeof transcribir>;
+
+/** Dispara el ciclo completo del gesto de `BotonVoz` (apretar `MIN_HOLD_MS` y soltar) — mismo
+ * mecanismo que `modules/voz/MicFuncion.test.tsx` (mobile). `espiaPan` tiene que estar activo DESDE
+ * ANTES del `render`: el recognizer se crea al montar `MicFuncion`, que vive en el listado. */
+async function dictar(espiaPan: ReturnType<typeof jest.spyOn>) {
+  const recognizer = espiaPan.mock.results[espiaPan.mock.results.length - 1]?.value as {
+    handlers: { onBegin?: (e: unknown) => void; onFinalize?: (e: unknown, exito: boolean) => void };
+  };
+  let ahora = 1_000_000;
+  const relojEspia = jest.spyOn(Date, 'now').mockImplementation(() => ahora);
+  await act(async () => {
+    recognizer.handlers.onBegin?.({});
+  });
+  ahora += 400;
+  await act(async () => {
+    recognizer.handlers.onFinalize?.({}, true);
+  });
+  relojEspia.mockRestore();
+}
 
 const DICTADO: Ingreso = {
   id: 1, monto: '85000.00', medio: 'efectivo', fecha: '2026-07-22', origen: 'manual',
@@ -256,5 +297,68 @@ describe('PantallaIngresos — anotar', () => {
     await waitFor(() => expect(completarMock).toHaveBeenCalledWith(9, { medio: 'efectivo' }));
     // Y NO un alta nueva.
     expect(registrarMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PantallaIngresos — BL-J7/K-10 (mic en la fila del rótulo)', () => {
+  let espiaPan: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    listarMock.mockResolvedValue({ status: 'ok', ingresos: [], total: '0.00' });
+    mockVoz.fase = 'inactivo';
+    mockVoz.niveles = [];
+    mockVoz.iniciar.mockResolvedValue(true);
+    mockVoz.detener.mockResolvedValue(undefined);
+    mockVoz.descartar.mockResolvedValue(undefined);
+    mockVoz.tomar.mockReset();
+    transcribirMock.mockReset();
+    // `Gesture.Pan` se espía DESDE ANTES del `render`: `MicFuncion` vive en el listado.
+    espiaPan = jest.spyOn(Gesture, 'Pan');
+  });
+
+  afterEach(() => {
+    espiaPan.mockRestore();
+  });
+
+  it('dictado → abre el alta con `concepto` prellenado, y NO guarda nada solo (DoD FE2 §4)', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    transcribirMock.mockResolvedValue({ transcript: 'venta de pan dulce' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('ingresos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('ingreso-form-concepto-input')).toBeTruthy());
+    expect(screen.getByTestId('ingreso-form-concepto-input').props.value).toBe('venta de pan dulce');
+    expect(registrarMock).not.toHaveBeenCalled();
+  });
+
+  it('transcripción vacía NO abre el alta — se queda en el listado con el error del mic', async () => {
+    mockVoz.tomar.mockReturnValue({ nombre: 'voz.m4a', mime: 'audio/m4a', datos: 'file:///cache/voz.m4a' });
+    transcribirMock.mockResolvedValue({ transcript: '   ' });
+
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('ingresos-nuevo')).toBeTruthy());
+
+    await dictar(espiaPan);
+
+    await waitFor(() => expect(screen.getByTestId('ingresos-mic-error')).toBeTruthy());
+    expect(screen.getByTestId('ingresos-mic-error')).toHaveTextContent('No se entendió el audio. Probá de nuevo.');
+    expect(screen.queryByTestId('ingreso-form-concepto-input')).toBeNull();
+    expect(registrarMock).not.toHaveBeenCalled();
+  });
+
+  it('«Anotar que me pagaron» sigue abriendo el alta EN BLANCO — el mic no le pisa el flujo manual', async () => {
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('ingresos-nuevo')).toBeTruthy());
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ingresos-nuevo'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('ingreso-form-concepto-input')).toBeTruthy());
+    expect(screen.getByTestId('ingreso-form-concepto-input').props.value).toBeFalsy();
+    expect(transcribirMock).not.toHaveBeenCalled();
   });
 });
