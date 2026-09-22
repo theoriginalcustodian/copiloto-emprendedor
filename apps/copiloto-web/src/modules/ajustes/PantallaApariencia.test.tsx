@@ -29,10 +29,19 @@ describe('PantallaApariencia', () => {
     expect(screen.queryByText('Nocturno')).toBeNull();
   });
 
-  it('cada opción muestra su muestra real; «Como el teléfono» muestra las dos pieles', () => {
+  it('Claro y Oscuro muestran su muestra real (H-A4-7: 2 tiles, «Como el teléfono» sin muestra propia)', () => {
     const { container } = renderApariencia();
-    expect(container.querySelectorAll('[data-muestra="claro"]').length).toBe(2);
-    expect(container.querySelectorAll('[data-muestra="oscuro"]').length).toBe(2);
+    expect(container.querySelectorAll('[data-muestra="claro"]').length).toBe(1);
+    expect(container.querySelectorAll('[data-muestra="oscuro"]').length).toBe(1);
+  });
+
+  it('H-A4-7: «Como el teléfono» es una fila propia, con subtítulo y fuera del grid de 2 tiles', () => {
+    renderApariencia();
+    expect(screen.getByText('Cambia solo según tu sistema')).toBeInTheDocument();
+    // Control negativo: antes del fix, las 3 preferencias vivían en el mismo grid de 3 columnas —
+    // sin distinguir visualmente la regla "sistema" de las 2 pieles reales.
+    expect(screen.getByTestId('theme-pill-sistema').className).toContain('sistema-fila');
+    expect(screen.getByTestId('theme-pill-claro').className).toContain('tema-tile');
   });
 
   it('elegir «Como el teléfono» persiste sistema', () => {

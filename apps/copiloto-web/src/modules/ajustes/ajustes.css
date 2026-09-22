@@ -636,16 +636,19 @@
   margin: 0;
 }
 
-.apariencia-screen__theme-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+.apariencia-screen__etiqueta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label);
 }
 
-@media (max-width: 420px) {
-  .apariencia-screen__theme-grid {
-    grid-template-columns: 1fr;
-  }
+.apariencia-screen__tema-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 
 .apariencia-screen__muestra {
@@ -676,49 +679,104 @@
   background: var(--btn-bg);
 }
 
-.apariencia-screen__muestra-doble {
-  display: flex;
-  width: 100%;
-  gap: 4px;
-}
-
-.apariencia-screen__theme-pill {
+.apariencia-screen__tema-tile {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-}
-
-.apariencia-screen__theme-pill {
   min-height: 44px;
-  padding: 10px 14px;
-  border-radius: var(--r-s);
+  padding: 14px;
+  border-radius: var(--r-m, var(--r-s));
   background: var(--tile-bg);
-  border: var(--tile-border);
+  border: 2px solid transparent;
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  text-align: center;
   cursor: pointer;
   transition:
     filter 0.15s ease,
-    opacity 0.15s ease;
+    border-color 0.15s ease;
 }
 
-.apariencia-screen__theme-pill:hover {
+.apariencia-screen__tema-tile:hover {
   filter: brightness(1.08);
 }
 
-.apariencia-screen__theme-pill:focus-visible {
+.apariencia-screen__tema-tile:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
 
-.apariencia-screen__theme-pill--active {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  box-shadow: var(--btn-shadow);
+/* Anillo terracota (`--core`) alrededor del tile elegido — igual al prototipo, sin invertir fondo. */
+.apariencia-screen__tema-tile--active {
+  border-color: var(--core);
+}
+
+.apariencia-screen__sistema-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: var(--r-m, var(--r-s));
+  background: var(--tile-bg);
+  border: 2px solid transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.apariencia-screen__sistema-fila:hover {
+  filter: brightness(1.08);
+}
+
+.apariencia-screen__sistema-fila:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.apariencia-screen__sistema-fila--active {
+  border-color: var(--core);
+}
+
+.apariencia-screen__sistema-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apariencia-screen__sistema-titulo {
+  font-family: var(--font-body);
+  font-size: 15px;
   font-weight: 600;
+  color: var(--heading);
+}
+
+.apariencia-screen__sistema-detalle {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+}
+
+.apariencia-screen__sistema-chevron {
+  font-size: 18px;
+  color: var(--label);
+  line-height: 1;
+}
+
+.apariencia-screen__nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--label);
+  margin: 0;
 }
 
 .afip-setup-ambiente-chip__accion {
