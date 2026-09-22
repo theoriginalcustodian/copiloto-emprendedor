@@ -3375,16 +3375,6 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia"
     },
-    "modules/inteligencia::inteligencia-mes-rentabilidad": {
-      "en": [
-        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "inteligencia-mes-rentabilidad",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/inteligencia"
-    },
     "modules/inteligencia::inteligencia-refresh": {
       "en": [
         "apps/mobile/src/modules/inteligencia/PantallaInteligencia.tsx"
@@ -3392,16 +3382,6 @@
       "falta_en": "web",
       "fecha": "2026-09-22",
       "id": "inteligencia-refresh",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/inteligencia"
-    },
-    "modules/inteligencia::inteligencia-rentabilidad-nota": {
-      "en": [
-        "apps/copiloto-web/src/modules/inteligencia/InteligenciaScreen.tsx"
-      ],
-      "falta_en": "mobile",
-      "fecha": "2026-09-22",
-      "id": "inteligencia-rentabilidad-nota",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/inteligencia"
     },

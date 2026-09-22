@@ -19,7 +19,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 
 import {
   leerGraficoCategorias,
@@ -121,6 +121,36 @@ describe('PantallaInteligencia — lo que NO inventa', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     // Y NO hay ningún «$0» inventado en pantalla.
     expect(screen.queryByText(/\$\s?0(\D|$)/)).toBeNull();
+  });
+
+  it('🔴 rentabilidad en `null` muestra la nota "no se puede calcular", nunca «$0» ni «NaN» (H-A4-3)', async () => {
+    // Cuando el backend no puede calcular la rentabilidad del mes (p.ej. gastos sin asignar a
+    // trabajos), viene `null` — no es que el negocio rindió cero. Mismo patrón que web
+    // (InteligenciaScreen `.kpi.sindato`): "—" en el número + una nota explicando por qué.
+    leerMock.mockResolvedValue({
+      status: 'ok',
+      portada: { ...PORTADA, mes: { ...PORTADA.mes, rentabilidad: null } },
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-rentabilidad')).toBeTruthy());
+    expect(screen.getByTestId('inteligencia-rentabilidad-nota')).toBeTruthy();
+    expect(
+      screen.getByText('Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.'),
+    ).toBeTruthy();
+
+    const celdaRentabilidad = screen.getByTestId('inteligencia-mes-rentabilidad');
+    expect(within(celdaRentabilidad).getByText('—')).toBeTruthy();
+    expect(within(celdaRentabilidad).queryByText(/\$\s?0(\D|$)/)).toBeNull();
+    expect(within(celdaRentabilidad).queryByText(/NaN/)).toBeNull();
+  });
+
+  it('🔴 rentabilidad con dato NO muestra la nota "no se puede calcular"', async () => {
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('inteligencia-mes-rentabilidad')).toBeTruthy());
+    expect(screen.queryByTestId('inteligencia-rentabilidad-nota')).toBeNull();
   });
 
   it('🔴 mejores clientes vacío muestra el aviso, no una lista rota', async () => {
