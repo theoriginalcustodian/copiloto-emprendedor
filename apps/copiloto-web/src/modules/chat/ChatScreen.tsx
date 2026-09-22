@@ -9,8 +9,9 @@ import { useChat } from './useChat';
 import { useConexionRequerida } from './useConexionRequerida';
 import './chat.css';
 
-const WELCOME_TEXT =
-  'Contame qué necesitás y lo hago. Antes de tocar nada —cobrar, agendar, mandar un mail— siempre te pido que confirmes.';
+// Verbatim `Prototipo frontend/odobi-ui/prototipo/index.html:1886` (`.contrato`) — matriz web
+// A4 Criterio 3 fila 1: la app decía otra cosa, se alinea al texto literal del proto.
+const WELCOME_TEXT = 'Antes de ejecutar algo importante, te lo muestro para que lo confirmes.';
 
 /**
  * Pantalla de Chat completa. Toda la lógica de envío/polling/durabilidad vive en `useChat`; acá

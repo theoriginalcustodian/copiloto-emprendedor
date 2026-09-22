@@ -842,6 +842,33 @@
   padding: 6px 16px 24px;
 }
 
+/* Título de PÁGINA (proto `.titulo-pag`, `index.html:2195`) — matriz web A4 Criterio 3 fila 2,
+   mismo patrón que `.apariencia-screen__title`/`__intro`. */
+.feedback-screen__title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  margin: 0;
+}
+
+.feedback-screen__title-intro {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+}
+
+/* La PREGUNTA guiada (proto `.fb-preg`) — sub-encabezado, más chica que el título de página. */
+.feedback-screen__pregunta {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--heading);
+}
+
 .feedback-screen__label {
   font-family: var(--font-mono);
   font-size: 11px;

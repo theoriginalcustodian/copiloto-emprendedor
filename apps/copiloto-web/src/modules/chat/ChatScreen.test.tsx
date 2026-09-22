@@ -50,7 +50,18 @@ describe('ChatScreen', () => {
     expect(screen.queryByTestId('chat-header')).not.toBeInTheDocument();
     expect(screen.getByTestId('message-list')).toBeInTheDocument();
     expect(screen.getByTestId('composer')).toBeInTheDocument();
-    expect(screen.getByText(/Antes de tocar nada/)).toBeInTheDocument();
+    // Matriz web A4 Criterio 3 fila 1: texto literal de
+    // `Prototipo frontend/odobi-ui/prototipo/index.html:1886` (`.contrato`).
+    expect(screen.getByText('Antes de ejecutar algo importante, te lo muestro para que lo confirmes.')).toBeInTheDocument();
+  });
+
+  it('A4 Criterio 3 fila 1: vacío del chat general con isotipo + headline centrados (proto `#vacio`)', () => {
+    renderChatScreen();
+    expect(screen.getByTestId('chat-vacio')).toBeInTheDocument();
+    expect(screen.getByTestId('marca')).toBeInTheDocument();
+    expect(screen.getByText('¿En qué te ayudo?')).toBeInTheDocument();
+    // BL-W4 (decisión de planificación, se queda a propósito aunque el proto no lo tenga).
+    expect(screen.getByTestId('rodillo-pausa')).toBeInTheDocument();
   });
 
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {

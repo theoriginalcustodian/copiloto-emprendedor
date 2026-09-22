@@ -11,6 +11,7 @@ import {
   separadoresDeDia,
 } from '@copiloto/core';
 
+import { Marca } from '../../design-system/Marca';
 import { Bubble } from './Bubble';
 import { ChipArmarFactura } from './ChipArmarFactura';
 import { DisambiguationChips } from './DisambiguationChips';
@@ -173,10 +174,19 @@ export function MessageList({
       onClick={handleSurfaceClick}
     >
       {messages.length === 0 && emptyHint && (
-        <>
+        mostrarEjemplos ? (
+          // Verbatim `Prototipo frontend/odobi-ui/prototipo/index.html:1879-1886` (`#vacio`): isotipo
+          // + headline centrados arriba del rodillo, y el texto de contrato AL FINAL — sólo el chat
+          // GENERAL (matriz web A4 Criterio 3 fila 1); Soporte sigue con el `<p>` liso de antes.
+          <div className="chat-messages__empty-state" data-testid="chat-vacio">
+            <Marca size={96} />
+            <h3 className="chat-messages__empty-headline">¿En qué te ayudo?</h3>
+            <RodilloEjemplos />
+            <p className="chat-messages__empty">{emptyHint}</p>
+          </div>
+        ) : (
           <p className="chat-messages__empty">{emptyHint}</p>
-          {mostrarEjemplos && <RodilloEjemplos />}
-        </>
+        )
       )}
 
       {sessionMarker && messages.length > 0 && (

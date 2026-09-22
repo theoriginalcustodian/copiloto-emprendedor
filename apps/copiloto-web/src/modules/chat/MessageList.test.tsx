@@ -27,6 +27,26 @@ describe('MessageList', () => {
     expect(screen.getByTestId('rodillo-ejemplos')).toBeInTheDocument();
   });
 
+  it('A4 Criterio 3 fila 1: chat general -> isotipo + headline "¿En qué te ayudo?" centrados arriba del rodillo (verbatim proto `#vacio`)', () => {
+    render(<MessageList messages={[]} onChoice={vi.fn()} emptyHint="Contame qué necesitás." />);
+    expect(screen.getByTestId('chat-vacio')).toBeInTheDocument();
+    expect(screen.getByTestId('marca')).toBeInTheDocument();
+    expect(screen.getByText('¿En qué te ayudo?')).toBeInTheDocument();
+  });
+
+  it('H-A4-4: con `mostrarEjemplos={false}` (Soporte) NO se monta el isotipo/headline del chat general', () => {
+    render(
+      <MessageList
+        messages={[]}
+        onChoice={vi.fn()}
+        emptyHint="Algo no funciona como debería"
+        mostrarEjemplos={false}
+      />,
+    );
+    expect(screen.queryByTestId('chat-vacio')).not.toBeInTheDocument();
+    expect(screen.queryByText('¿En qué te ayudo?')).not.toBeInTheDocument();
+  });
+
   it('H-A4-4: con `mostrarEjemplos={false}` (Soporte), el vacío NO dibuja el rodillo de ejemplos del chat general', () => {
     // Control negativo: antes del fix, MessageList montaba RodilloEjemplos siempre que había
     // `emptyHint`, sin importar el chat — Soporte mostraba "Gasté 15 lucas en nafta" etc.
