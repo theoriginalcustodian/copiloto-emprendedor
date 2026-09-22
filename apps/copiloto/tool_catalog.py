@@ -598,14 +598,21 @@ def _run_mp_charge(name, arguments, ctx, confirmed, idem_key, now_iso_provider, 
                           observation={"error": "MercadoPago no esta disponible en tu cuenta"})
     if not amount:
         return ToolResult(tool_call_id=idem_key, status="error", observation={"error": "falta el monto"})
+    creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
+    if not creds:
+        # H-A4-11: no pedir HITL sobre algo imposible -- mismo criterio que H-A3-2(b) (tool_catalog.py
+        # ~1612) para el camino genérico de servicios Composio, acá aplicado a MercadoPago (que tiene
+        # SU PROPIO store de credenciales, no pasa por `gateway.connection_status`). Se lo decimos ANTES
+        # de pedir confirmación, con la MISMA card (`requiere_conexion_card`) que usa cualquier otra
+        # tool -- no es un `if name == "cobro_mp"` en el flujo de dispatch, es esta tool chequeando SU
+        # propia capacidad, igual que ya hace cada módulo de servicio con `mod.TOOLKIT`.
+        return ToolResult(tool_call_id=idem_key, status="error",
+                          observation={"error": "servicio no conectado: mercadopago", "needs_connect": "mercadopago",
+                                       "gate_card": requiere_conexion_card("mercadopago", _friendly_toolkit("mercadopago"))})
     if not confirmed:
         return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
                           observation={"preview": f"generar link de cobro por ${amount} ({concept})",
                                        **_obs_service("mercadopago")})
-    creds = ctx.mp_cred_store.get(ctx.mp_seller_user_id)
-    if not creds:
-        return ToolResult(tool_call_id=idem_key, status="error",
-                          observation={"error": "conecta tu cuenta de MercadoPago primero"})
     dedup = mp_dedup_factory(ctx.cliente_id) if mp_dedup_factory else None
     if dedup:                                             # spike C: MP no deduplica -> dedup app-side
         cached = dedup.get(idem_key)

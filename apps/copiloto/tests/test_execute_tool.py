@@ -209,6 +209,25 @@ def test_mp_charge_needs_confirmation_observation_has_service():
     assert tr.observation["label"] == "Mercado Pago"
 
 
+def test_mp_charge_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
+    """H-A4-11: mismo criterio que H-A3-2(b) (test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion,
+    arriba) pero para MercadoPago, que tiene SU PROPIO store de credenciales (`mp_cred_store`) y no pasa
+    por `gateway.connection_status` como el camino genérico de servicios Composio (ese path ya lo cubre
+    test_dispatcher.py con `googledocs`, no sólo gmail). Sin credencial MP: la tool corta ANTES del
+    `needs_confirmation` -- no tiene sentido pedir HITL para cobrar con una cuenta no conectada."""
+    gw = _FakeMpGw()
+    ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "t", mp_dedup_factory=_dedup_factory())
+    ctx = _mp_ctx(gw)
+    ctx.mp_cred_store = _FakeCred()
+    ctx.mp_cred_store.get = lambda seller: None    # sin credencial guardada para este seller
+    tr = ex("mp_charge", {"amount": 5000, "concept": "sena"}, ctx, confirmed=False, idem_key="run1-a4-11")
+    assert tr.status == "error"                        # NO needs_confirmation
+    assert tr.observation["needs_connect"] == "mercadopago"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "mercadopago" and card["label"] == "Mercado Pago"
+    assert gw.calls == 0                                # no llamó create_payment_link
+
+
 def test_calendar_book_needs_confirmation_observation_has_service():
     """Mismo fix aplicado a calendar_book (2da tool de 1ra clase): `service='googlecalendar'`."""
     ex = tool_catalog.make_tool_executor(_FakeGateway(), now_iso_provider=lambda: "2026-07-04T00:00:00")
