@@ -118,10 +118,16 @@ except Exception as e:
     rec("/warm (memoria)", False, repr(e))
 
 # 6) CHAT simple → el agente responde E2E (CRÍTICO)
+# H-A4-13: cada /chat arranca un ConversationWorkflow (`wf_id` en la respuesta, `web.py:714`) que el
+# smoke nunca cerraba -- quedaban 2 RUNNING por corrida (uno acá, otro en el ReAct de abajo). Se
+# guardan los `wf_id` para terminarlos en el CLEANUP de más abajo.
+wf_ids_a_terminar = []
 sid = f"smoke-{uuid.uuid4().hex[:8]}"
 try:
     r = client.post("/chat", headers=H, json={"session_id": sid, "text": "Hola, ¿qué podés hacer por mí? Respondé breve.", "kind": "text"})
     if r.status_code == 200 and r.json().get("accepted"):
+        if r.json().get("wf_id"):
+            wf_ids_a_terminar.append(r.json()["wf_id"])
         reply = poll_reply(token, sid)
         rec("chat simple → el agente responde", bool(reply), f"reply={(reply or '(sin respuesta en %ds)' % CHAT_TIMEOUT)[:140]}")
     else:
@@ -134,6 +140,8 @@ sid2 = f"smoke-{uuid.uuid4().hex[:8]}"
 try:
     r = client.post("/chat", headers=H, json={"session_id": sid2, "text": "Agendá una reunión con Juan mañana a las 10 y mandale un mail con el resumen.", "kind": "text"})
     if r.status_code == 200 and r.json().get("accepted"):
+        if r.json().get("wf_id"):
+            wf_ids_a_terminar.append(r.json()["wf_id"])
         reply = poll_reply(token, sid2)
         rec("chat ReAct (multi-paso) → responde coherente", bool(reply), f"reply={(reply or '(sin respuesta)')[:160]}")
     else:
@@ -374,6 +382,27 @@ except Exception as e:
     rec("artefacto: GET /auth/v1/authorize?provider=google → 302 a accounts.google.com", False, repr(e))
 
 # CLEANUP (best-effort)
+try:
+    import asyncio as _asyncio
+
+    from temporalio.client import Client as _TemporalClient
+
+    async def _terminar_workflows(wf_ids):
+        target = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
+        namespace = os.environ.get("TEMPORAL_NAMESPACE", "default")
+        c = await _TemporalClient.connect(target, namespace=namespace)
+        for wf_id in wf_ids:
+            try:
+                await c.get_workflow_handle(wf_id).terminate(reason="smoke_beta_e2e cleanup")
+                print(f"[cleanup] workflow terminado={wf_id}")
+            except Exception as e:
+                print(f"[cleanup] no pude terminar workflow {wf_id}: {e!r}")
+
+    if wf_ids_a_terminar:
+        _asyncio.run(_terminar_workflows(wf_ids_a_terminar))
+except Exception as e:
+    print(f"[cleanup] terminación de workflows degradada: {e!r}")
+
 try:
     import json as _json
     import psycopg2
