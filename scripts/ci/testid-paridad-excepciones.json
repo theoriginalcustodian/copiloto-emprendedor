@@ -1211,6 +1211,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::feedback-titulo": {
+      "en": [
+        "apps/copiloto-web/src/modules/ajustes/PantallaFeedback.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-22",
+      "id": "feedback-titulo",
+      "motivo": "matriz web A4 Criterio 3 fila 2 (contrato planificacion->frontend1): agrega el titulo de pagina 'Contanos que tal' (index.html:2195), que faltaba en web. En mobile el titulo de pantalla lo pinta el shell compartido MarcoGlass con un testID FIJO por diseno (glass-titulo, igual en TODAS las pantallas, ver theme/glass/MarcoGlass.tsx:271) -- no hay un id por-pantalla con el que parear sin inventar uno redundante fuera de este contrato (que es web-only). Dueno: frontend1. Disparador para triar: si mobile alguna vez agrega un testID de titulo propio por pantalla (dejaria de ser glass-titulo generico).",
+      "pantalla": "modules/ajustes"
+    },
     "modules/ajustes::lo-pediste-vos": {
       "en": [
         "apps/copiloto-web/src/modules/ajustes/LoPedisteVos.tsx"
@@ -1641,16 +1651,6 @@
       "falta_en": "mobile",
       "fecha": "2026-09-22",
       "id": "chat-screen",
-      "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
-      "pantalla": "modules/chat"
-    },
-    "modules/chat::chat-vacio": {
-      "en": [
-        "apps/mobile/src/modules/chat/ListaMensajes.tsx"
-      ],
-      "falta_en": "web",
-      "fecha": "2026-09-22",
-      "id": "chat-vacio",
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/chat"
     },
