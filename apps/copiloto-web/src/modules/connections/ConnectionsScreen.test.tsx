@@ -88,6 +88,14 @@ describe('ConnectionsScreen', () => {
     vi.restoreAllMocks();
   });
 
+  it('BL-D8: el título es "Apps" (alineado con mobile, no "Conexiones")', async () => {
+    vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
+    renderConnectionsScreen();
+
+    expect(await screen.findByRole('heading', { name: 'Apps' })).toBeInTheDocument();
+    expect(screen.queryByText('Conexiones')).not.toBeInTheDocument();
+  });
+
   it('loading -> ready: muestra skeleton y después la grilla con los servicios', async () => {
     vi.mocked(api.catalog).mockResolvedValueOnce({ services: TWO_SERVICES });
 
