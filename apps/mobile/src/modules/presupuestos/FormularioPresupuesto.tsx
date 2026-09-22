@@ -4,9 +4,11 @@ import { Pressable } from 'react-native-gesture-handler';
 
 import {
   ApiError,
+  calcularTotalAproximado,
   crearPresupuesto,
   formatearImporte,
   listarConceptos,
+  normalizarDecimal,
   type Concepto,
   type NuevoItemPresupuesto,
   type Presupuesto,
@@ -57,53 +59,9 @@ interface FilaItem {
 
 const FILA_VACIA: FilaItem = { descripcion: '', cantidad: '1', precioUnitario: '' };
 
-/**
- * Normaliza lo que se tipeó a un decimal que el backend acepta: coma → punto, sin espacios.
- *
- * 🔴 **Normaliza, no convierte.** El teclado numérico de Android entrega coma en configuración
- * regional argentina, y `"30000,50"` no es un decimal válido para el backend. Pasar por `Number` acá
- * arreglaría el separador y de paso metería el float que todo el contrato evita — el string sale
- * string.
- */
-function aDecimal(texto: string): string {
-  return texto.trim().replace(/\s/g, '').replace(',', '.');
-}
-
-/** Multiplica dos decimales string SIN float, para el aproximado. Ver el docstring del módulo. */
-function multiplicarDecimal(a: string, b: string): string | null {
-  const na = aDecimal(a);
-  const nb = aDecimal(b);
-  if (!/^\d+(\.\d+)?$/.test(na) || !/^\d+(\.\d+)?$/.test(nb)) return null;
-  const decimales = (na.split('.')[1]?.length ?? 0) + (nb.split('.')[1]?.length ?? 0);
-  // `BigInt` sobre los dígitos sin punto: exacto para cualquier cantidad de decimales.
-  const producto = BigInt(na.replace('.', '')) * BigInt(nb.replace('.', ''));
-  const s = producto.toString().padStart(decimales + 1, '0');
-  const corte = s.length - decimales;
-  return decimales === 0 ? s : `${s.slice(0, corte)}.${s.slice(corte)}`;
-}
-
-function sumarDecimal(a: string, b: string): string {
-  const decimales = Math.max(a.split('.')[1]?.length ?? 0, b.split('.')[1]?.length ?? 0);
-  const escala = (v: string) => {
-    const [ent, dec = ''] = v.split('.');
-    return BigInt(ent + dec.padEnd(decimales, '0'));
-  };
-  const suma = (escala(a) + escala(b)).toString().padStart(decimales + 1, '0');
-  const corte = suma.length - decimales;
-  return decimales === 0 ? suma : `${suma.slice(0, corte)}.${suma.slice(corte)}`;
-}
-
-/** El aproximado del total, o `null` si alguna fila todavía no es un número. */
-export function totalAproximado(items: readonly FilaItem[]): string | null {
-  let acumulado = '0';
-  for (const it of items) {
-    if (it.descripcion.trim() === '' && it.precioUnitario.trim() === '') continue;
-    const parcial = multiplicarDecimal(it.cantidad, it.precioUnitario);
-    if (parcial == null) return null;
-    acumulado = sumarDecimal(acumulado, parcial);
-  }
-  return acumulado;
-}
+// BL-D5: el cálculo (multiplicar+sumar+redondear a 2 decimales) vivía acá duplicado línea a línea
+// con web — mudado a `packages/core/src/dinero/totalAproximado.ts` (`calcularTotalAproximado`),
+// consumido por las dos apps. Ver su docstring para el porqué del bug («$30.000,0000»).
 
 /**
  * Valores de arranque de un presupuesto DICTADO — a diferencia de `corrige`, NO es una corrección
@@ -240,8 +198,8 @@ export function FormularioPresupuesto({
     .filter((it) => it.descripcion.trim() !== '')
     .map((it) => ({
       descripcion: it.descripcion.trim(),
-      cantidad: aDecimal(it.cantidad) || '1',
-      precioUnitario: aDecimal(it.precioUnitario) || '0',
+      cantidad: normalizarDecimal(it.cantidad) || '1',
+      precioUnitario: normalizarDecimal(it.precioUnitario) || '0',
     }));
 
   /**
@@ -285,7 +243,7 @@ export function FormularioPresupuesto({
     }
   }
 
-  const aproximado = totalAproximado(items);
+  const aproximado = calcularTotalAproximado(items);
 
   return (
     <View testID={testID} style={{ gap: tema.espacio.md }}>

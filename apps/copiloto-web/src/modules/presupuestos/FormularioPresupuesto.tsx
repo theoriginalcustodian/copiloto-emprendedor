@@ -2,9 +2,11 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 import {
   ApiError,
+  calcularTotalAproximado,
   crearPresupuesto,
   formatearImporte,
   listarConceptos,
+  normalizarDecimal,
   type Concepto,
   type NuevoItemPresupuesto,
   type Presupuesto,
@@ -57,45 +59,9 @@ export interface ValoresInicialesPresupuesto {
   items?: readonly FilaItem[];
 }
 
-/** Normaliza lo tipeado a un decimal que el backend acepta: coma → punto, sin espacios. */
-function aDecimal(texto: string): string {
-  return texto.trim().replace(/\s/g, '').replace(',', '.');
-}
-
-/** Multiplica dos decimales string SIN float, para el aproximado. */
-function multiplicarDecimal(a: string, b: string): string | null {
-  const na = aDecimal(a);
-  const nb = aDecimal(b);
-  if (!/^\d+(\.\d+)?$/.test(na) || !/^\d+(\.\d+)?$/.test(nb)) return null;
-  const decimales = (na.split('.')[1]?.length ?? 0) + (nb.split('.')[1]?.length ?? 0);
-  const producto = BigInt(na.replace('.', '')) * BigInt(nb.replace('.', ''));
-  const s = producto.toString().padStart(decimales + 1, '0');
-  const corte = s.length - decimales;
-  return decimales === 0 ? s : `${s.slice(0, corte)}.${s.slice(corte)}`;
-}
-
-function sumarDecimal(a: string, b: string): string {
-  const decimales = Math.max(a.split('.')[1]?.length ?? 0, b.split('.')[1]?.length ?? 0);
-  const escala = (v: string) => {
-    const [ent, dec = ''] = v.split('.');
-    return BigInt(ent + dec.padEnd(decimales, '0'));
-  };
-  const suma = (escala(a) + escala(b)).toString().padStart(decimales + 1, '0');
-  const corte = suma.length - decimales;
-  return decimales === 0 ? suma : `${suma.slice(0, corte)}.${suma.slice(corte)}`;
-}
-
-/** El aproximado del total, o `null` si alguna fila todavía no es un número. */
-export function totalAproximado(items: readonly FilaItem[]): string | null {
-  let acumulado = '0';
-  for (const it of items) {
-    if (it.descripcion.trim() === '' && it.precioUnitario.trim() === '') continue;
-    const parcial = multiplicarDecimal(it.cantidad, it.precioUnitario);
-    if (parcial == null) return null;
-    acumulado = sumarDecimal(acumulado, parcial);
-  }
-  return acumulado;
-}
+// BL-D5: el cálculo (multiplicar+sumar+redondear a 2 decimales) vivía acá duplicado línea a línea
+// con mobile — mudado a `packages/core/src/dinero/totalAproximado.ts` (`calcularTotalAproximado`),
+// consumido por las dos apps. Ver su docstring para el porqué del bug («$30.000,0000»).
 
 export interface FormularioPresupuestoProps {
   /** Si viene, el alta lleva `reemplazaA` — es una corrección. */
@@ -185,8 +151,8 @@ export function FormularioPresupuesto({
     .filter((it) => it.descripcion.trim() !== '')
     .map((it) => ({
       descripcion: it.descripcion.trim(),
-      cantidad: aDecimal(it.cantidad) || '1',
-      precioUnitario: aDecimal(it.precioUnitario) || '0',
+      cantidad: normalizarDecimal(it.cantidad) || '1',
+      precioUnitario: normalizarDecimal(it.precioUnitario) || '0',
     }));
 
   const puedeGuardar = concepto.trim() !== '' && nombre.trim() !== '' && itemsValidos.length > 0 && !enviando;
@@ -229,7 +195,7 @@ export function FormularioPresupuesto({
     void guardar();
   }
 
-  const aproximado = totalAproximado(items);
+  const aproximado = calcularTotalAproximado(items);
 
   return (
     <form className="formulario-presupuesto" data-testid="formulario-presupuesto" onSubmit={alSubmit}>
