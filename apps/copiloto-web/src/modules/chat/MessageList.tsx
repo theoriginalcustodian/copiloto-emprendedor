@@ -35,7 +35,10 @@ const OVERSCAN_FILAS = 6;
 
 export interface MessageListProps {
   messages: ChatMessage[];
-  onChoice: (value: string, label: string) => void;
+  /** H-A4-9 — `messageId` (3er arg, opcional) viaja SÓLO desde `HitlCard` (vía
+   * `hitlMapping.buildHitlCardProps`) — `DisambiguationChips` sigue llamando con 2 args, la
+   * marcación de "respondida" es específica de la card HITL, no de la desambiguación. */
+  onChoice: (value: string, label: string, messageId?: string) => void;
   emptyHint?: string;
   /** Hide-on-scroll (EXTRACT §2.3): reporta si la tab-bar debe ocultarse. `true` al scrollear hacia
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
@@ -217,7 +220,7 @@ export function MessageList({
 
 interface FilaMensajeProps {
   message: ChatMessage;
-  onChoice: (value: string, label: string) => void;
+  onChoice: (value: string, label: string, messageId?: string) => void;
   onAbrirCliente?: (id: number) => void;
   onFacturar?: (facturaId: string) => void;
 }

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { MAX_MENSAJES_HISTORIAL } from '@copiloto/core';
+// `clasificarChoices` (no `hitlMapping.ts`, ver H-A4-9 abajo): evita un import circular entre este
+// módulo y `hitlMapping.ts` (que ya importa `type ChatMessage` de acá) — `@copiloto/core` es la
+// fuente canónica de la clasificación de todos modos.
+import { MAX_MENSAJES_HISTORIAL, clasificarChoices } from '@copiloto/core';
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 import { generarId as generateId } from '../../util/id';
 
@@ -69,6 +72,47 @@ function messagesStorageKey(sessionId: string): string {
   return `${MESSAGES_STORAGE_PREFIX}:${sessionId}`;
 }
 
+/** Token técnico LEGACY (pre-#624/BL-D4): antes de ese fix la burbuja optimista del usuario pintaba
+ * el `value` crudo del choice elegido (`cancel:<turn>:<step>`/`confirm:<turn>:<step>`) en vez del
+ * label que vio y tocó. Sólo sirve para RECONOCER ese formato viejo al rehidratar. */
+const LEGACY_HITL_TOKEN_RE = /^(cancel|confirm):/i;
+
+/**
+ * H-A4-9 — migra un historial rehidratado para que una card HITL ya respondida quede marcada
+ * `hitlRespondido`: sin esto, `HitlCard` la vuelve a mostrar activa en cada reload, y un click
+ * tardío reenvía confirm/cancel aunque el turno ya se haya resuelto. Copia hermana de
+ * `sanitizarHitlRespondido` en `packages/core/src/chat/hitl.ts` (la usa `apps/mobile`) — este hook
+ * ya es una reimplementación standalone (ver docstring del módulo) sobre un `ChatMessage` propio,
+ * así que se duplica la heurística en vez de importar el tipo cruzado; SI algún día converge a
+ * `reducirChat`/`hidratarEstado` de `@copiloto/core`, esta copia se elimina con esa migración.
+ *
+ * Heurística (idéntica a la de core): un `assistant` clasificado `'hitl'` (par confirmar/cancelar,
+ * `hitlMapping.classifyChoices`) SIN `hitlRespondido` cuyo mensaje INMEDIATO SIGUIENTE es de
+ * `role: 'user'` ya fue respondido — el gate bloquea el turno, así que ese mensaje es su respuesta.
+ * El texto de esa respuesta llega en dos formatos posibles: el LABEL (post-#624) o el token técnico
+ * crudo LEGACY (pre-#624, `LEGACY_HITL_TOKEN_RE`); en cualquiera de los dos alcanza con saber QUE
+ * fue respondida — el legacy se normaliza a "Cancelar"/"Confirmar" en vez de mostrar `cancel:2:0`.
+ */
+function sanitizeLegacyHitlTokens(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((message, index) => {
+    if (message.role !== 'assistant') return message;
+    if (message.hitlRespondido) return message;
+    if (clasificarChoices(message.choices) !== 'hitl') return message;
+
+    const next = messages[index + 1];
+    if (!next || next.role !== 'user') return message; // sin respuesta después -> sigue activa
+
+    const legacyMatch = LEGACY_HITL_TOKEN_RE.exec(next.text);
+    const label = legacyMatch
+      ? legacyMatch[1].toLowerCase() === 'cancel'
+        ? 'Cancelar'
+        : 'Confirmar'
+      : next.text;
+
+    return { ...message, hitlRespondido: { value: next.text, label } };
+  });
+}
+
 /** Rehidrata los mensajes persistidos de este `session_id` — best-effort (localStorage puede
  * fallar en modo privado/cuota llena, o traer basura si otro código escribió la key) y NUNCA debe
  * romper el mount: cualquier problema degrada a "sin historial", igual que `getToken` en
@@ -79,7 +123,10 @@ function loadPersistedMessages(sessionId: string): ChatMessage[] {
     const raw = window.localStorage.getItem(messagesStorageKey(sessionId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+    const messages = Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+    // H-A4-9 — sanitizar ANTES de derivar `nextIdRef`/`seenIdsRef` (más abajo en `useChat`): la
+    // migración sólo agrega el campo `hitlRespondido`, nunca cambia ids ni cantidad de mensajes.
+    return sanitizeLegacyHitlTokens(messages);
   } catch {
     return [];
   }
@@ -151,6 +198,11 @@ export interface ChatMessage {
   /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`sendAudio`): alimenta el chip «Por voz · Ns»
    * en `Bubble`. Ausente en mensajes escritos o en historial viejo (no se persiste todavía). */
   porVoz?: { duracionSeg: number };
+  /** H-A4-9 — si ESTA card HITL (mensaje `assistant` con `choices` clasificados `'hitl'`) ya fue
+   * respondida, y con qué. Ausente = todavía activa/clickeable. Se persiste con `messages` (mismo
+   * efecto de la línea 225) así sobrevive a un reload; el historial viejo sin este campo se migra al
+   * rehidratar con `sanitizeLegacyHitlTokens` (arriba). */
+  hitlRespondido?: { value: string; label: string };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -164,6 +216,11 @@ export interface SendOptions {
    * con un label ("Confirmar"/"Cancelar"). Sin este campo, la burbuja pintaba el `value` técnico
    * tal cual (`hitlMapping.ts` → `ChatScreen.tsx` → acá). Ausente: se usa `text` como siempre. */
   displayText?: string;
+  /** H-A4-9 — id del `ChatMessage` HITL que esta respuesta resuelve (`message.id` de la card en
+   * `hitlMapping.buildHitlCardProps`). Presente en el confirm/cancel de la card: además de mandar la
+   * respuesta, marca ESE mensaje `hitlRespondido` (atómico con la burbuja nueva, ver `send` abajo)
+   * para que quede deshabilitado aun después de un reload. Ausente en cualquier otro `send`. */
+  hitlMessageId?: string;
 }
 
 export interface UseChatResult {
@@ -309,7 +366,19 @@ export function useChat(): UseChatResult {
         text: opts?.displayText ?? trimmed,
         creadoEn: Date.now(),
       };
-      setMessages((prev) => acotarMensajes([...prev, userMessage]));
+      // H-A4-9 — si `opts.hitlMessageId` está presente, marcar ESA card `hitlRespondido` en la
+      // MISMA actualización que agrega la burbuja nueva: atómico, nunca hay un render intermedio
+      // donde la card ya se respondió pero sigue activa.
+      setMessages((prev) => {
+        const marked = opts?.hitlMessageId
+          ? prev.map((m) =>
+              m.id === opts.hitlMessageId
+                ? { ...m, hitlRespondido: { value: trimmed, label: userMessage.text } }
+                : m,
+            )
+          : prev;
+        return acotarMensajes([...marked, userMessage]);
+      });
       setSendStatus('sending');
 
       try {

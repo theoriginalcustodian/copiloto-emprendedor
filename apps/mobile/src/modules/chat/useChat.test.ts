@@ -137,6 +137,49 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     unmount();
   });
 
+  // H-A4-9 — el confirm/cancel de un gate con `opts.hitlMessageId` marca ESA card `hitlRespondido`,
+  // atómico con la burbuja nueva (mismo reducer, ver `chatMachine.test.ts` en `@copiloto/core`).
+  it('H-A4-9: el confirm/cancel de un gate con hitlMessageId marca ESA card hitlRespondido', async () => {
+    jest.mocked(api.getReply)
+      // Un poll real trae el reply con la card HITL (confirmar/cancelar) -- así llega en producción.
+      .mockResolvedValueOnce({
+        replies: [
+          {
+            id: 5,
+            text: 'Vas a publicar en Instagram. ¿Confirmás?',
+            choices: [
+              { label: 'Publicar', value: 'confirm:0:0' },
+              { label: 'Cancelar', value: 'cancel:0:0' },
+            ],
+          },
+        ],
+        next_id: 5,
+      })
+      .mockResolvedValue({ replies: [], next_id: 5 });
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-hitl', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+
+    const gateMsg = result.current.estado?.messages[0];
+    expect(gateMsg?.hitlRespondido).toBeUndefined(); // todavía activa
+
+    await act(async () => {
+      await result.current.send('cancel:0:0', {
+        kind: 'callback',
+        displayText: 'Cancelar',
+        hitlMessageId: gateMsg!.id,
+      });
+    });
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      id: gateMsg!.id,
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    expect(result.current.estado?.messages[1]).toMatchObject({ role: 'user', text: 'Cancelar' });
+    unmount();
+  });
+
   it('no se puede enviar vacío o sólo espacios', async () => {
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 
@@ -288,6 +331,109 @@ describe('useChat -- aislamiento por clienteId (no cross-tenant leak)', () => {
     // Nada se escribió en el almacén -- ni bajo una clave de sesión ni de mensajes.
     expect(store.size).toBe(0);
     await unmount();
+  });
+});
+
+/**
+ * H-A4-9 — una card HITL ya respondida no puede seguir siendo clickeable, NI SIQUIERA tras un
+ * reload de la app: el estado "ya respondida" tiene que vivir en `AsyncStorage` (dentro del
+ * mensaje), no en un estado efímero que se pierde al remontar. Usa el mismo `AlmacenClave` con
+ * estado REAL que el bloque de aislamiento por tenant (arriba) para poder sembrar el historial
+ * ANTES del primer render, como lo dejaría una sesión previa de verdad.
+ */
+describe('useChat -- HITL ya respondida sobrevive a un reload (H-A4-9)', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-hitl-reload';
+  // Mismo formato que `claveMensajes` (privado, `useChat.ts`): `${PREFIJO_MENSAJES}:${clienteId}:${sessionId}`.
+  const CLAVE_MENSAJES_PREFIJO = 'copiloto-chat-msgs';
+  const CLAVE_SESSION_PREFIJO = 'copiloto-chat-session-id';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`${CLAVE_SESSION_PREFIJO}:${CLIENTE_ID}`, sessionId);
+    store.set(`${CLAVE_MENSAJES_PREFIJO}:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  it('rehidrata un HITL YA marcado hitlRespondido tal cual -- sigue deshabilitado', async () => {
+    sembrarHistorial('sess-1', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+        hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+      },
+      { id: 'user-9', role: 'user', text: 'Cancelar' },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    unmount();
+  });
+
+  it('sanitiza un HITL viejo con el token LEGACY (pre-#624, "cancel:0:0") al rehidratar', async () => {
+    sembrarHistorial('sess-2', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'cancel:0:0' }, // token crudo LEGACY, no un label
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[0]).toMatchObject({
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    unmount();
+  });
+
+  it('un HITL sin respuesta después (sigue activo) NO se marca hitlRespondido', async () => {
+    sembrarHistorial('sess-3', [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: 'Vas a publicar en Instagram. ¿Confirmás?',
+        choices: [
+          { label: 'Publicar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(1));
+
+    expect(result.current.estado?.messages[0]?.hitlRespondido).toBeUndefined();
+    unmount();
   });
 });
 
