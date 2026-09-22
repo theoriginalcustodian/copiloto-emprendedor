@@ -10,8 +10,9 @@
 #
 # Uso: bash scripts/recibo-cubre.sh <sha> [dir-de-recibos ...]
 #      Sin dirs, busca en la copia durable `<git-common-dir>/ci-recibos/` (gate.sh la escribe; sobrevive a
-#      `git worktree remove`) y en `.ci-recibos/` de TODOS los worktrees. Un mismo SHA se evalúa una vez:
-#      gana la copia durable, que acumula las corridas de todos los worktrees.
+#      `git worktree remove`) y en `.ci-recibos/` de TODOS los worktrees. Un recibo idéntico (la copia
+#      durable y su original) se evalúa una vez; dos recibos DISTINTOS del mismo SHA se evalúan los dos:
+#      deduplicar por SHA dejaba que uno fallido tapara al que cubre.
 # Cubre = mismo árbol + los 5 jobs en `ok` + ningún job marcado `sucio` (árbol con cambios sin
 # commitear durante la corrida: los jobs leen el disco, no git). Un recibo anterior al registro de
 # `sucio` cubre con ⚠️: no consta si el árbol estaba limpio.
@@ -38,7 +39,8 @@ for d in "${dirs[@]}"; do
   for r in "$d"/*.json; do
     [ -f "$r" ] || continue
     sha_r="$(jq -r '.sha // empty' "$r" 2>/dev/null)"; [ -n "$sha_r" ] || continue
-    [ -n "${visto[$sha_r]:-}" ] && continue; visto[$sha_r]=1
+    huella="$(git hash-object "$r")"
+    [ -n "${visto[$huella]:-}" ] && continue; visto[$huella]=1
     arbol_r="$(jq -r '.arbol // empty' "$r")"
     [ -n "$arbol_r" ] || arbol_r="$(git rev-parse --verify -q "${sha_r}^{tree}" 2>/dev/null)" || continue
     [ "$arbol_r" = "$arbol_obj" ] || continue
