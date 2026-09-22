@@ -641,9 +641,12 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
 ### BL-Q1 · Control de paridad web ↔ mobile en CI
 - **Tamaño:** M · **Origen:** reporte 16/09 §7, auditoría §11.6 (R-2 ya ocurrió tres veces: D-1, H-14 y el lote del 18/09).
 - **DoD:**
-  - [ ] Inventario versionado de `testID` / `data-testid` equivalentes por pantalla.
-  - [ ] Un script en `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada.
-  - [ ] Control positivo: borrar un id en una sola app pone el gate en rojo.
+  - [x] Inventario versionado de `testID` / `data-testid` equivalentes **por pantalla** (`scripts/ci/testid_paridad.py --inventario`; agrupa por el mapeo `modules/<feature>` que web y mobile ya comparten).
+  - [x] `scripts/ci/lint.sh` falla si una pantalla tiene un id en una plataforma y no en la otra sin excepción declarada (`--check`, clave `pantalla::id`).
+  - [x] Control positivo: borrar un id en una sola app pone el gate en rojo, nombrando `pantalla::id`.
+  - [x] Trinquete: el archivo de excepciones sólo puede achicarse — una excepción cuyo id ya no existe o ya tiene su par en la misma pantalla hace fallar el gate ("sacala del baseline"), no se puede acumular en silencio.
+  - [x] Ids dinámicos (`testID={...}` / `data-testid={...}`) no se pierden: se cuentan y reportan aparte como "no medidos" (656 usos hoy: 402 mobile / 254 web), nunca como par ni como falta.
+  - [x] Baseline inicial: 535 excepciones `pantalla::id` sin triage id-por-id, con dueño y disparador — ver `BL-V16`.
 
 ### BL-Q2 · Smoke E2E completo contra producción
 - **Tamaño:** S · **Evidencia:** `deploy/copiloto/smoke_beta_e2e.py`; última corrida con evidencia `37/37` el 13/08 (`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:107`); `deploy.sh` sólo corre `/healthz` + un smoke corto.
@@ -691,6 +694,7 @@ No bloquean la beta. Cada uno con su condición de entrada.
 | BL-V13 | Memoria busca top-10 por similitud | Deuda condicional no disparada | `apps/copiloto/inteligencia_chat.py:130-135` |
 | BL-V14 | TODO muerto del guardrail de narración | Cosmético | `motor/backend/agent/conversation_workflow.py:548` |
 | BL-V15 | Config OAuth propia de Google en Composio (branding propio) | Funciona con la de Composio; sale de `DEC-12` si se decide | `composio_gateway.py:190-234` |
+| BL-V16 | Triage id-por-id de las 535 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (535 entradas, 2026-09-22) |
 
 ---
 
