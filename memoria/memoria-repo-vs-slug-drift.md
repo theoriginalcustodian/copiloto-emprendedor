@@ -76,6 +76,28 @@ obedecer**: acá fueron 30 segundos de `grep` sobre el script, contra dos meses 
 [[una-cifra-en-un-comentario-es-un-cache-sin-invalidacion]] aplicado a una orden en vez de a un número,
 y el costo es mayor: un número mal citado se propaga, una prohibición obsoleta **impide el arreglo**.
 
+## ⚠️ El rescate publica: correr el seed en un repo PÚBLICO necesita una pasada de lectura
+
+El rescate hace lo que promete —trae al repo lo que sólo vive en el slug— y **no puede saber que una
+entrada es deliberadamente local**. Al reconciliar el 2026-09-22 se iba a versionar
+`telegram-composio-canal-operador.md`, que lleva el **`chat_id` del operador** y cuyo propio cuerpo
+dice *«un `chat_id` identifica al operador en Telegram (dato semi-sensible) y no debe quedar
+versionado»*. En un repo público eso se publica **en el instante del push**.
+
+Lo que no lo habría detenido: un `chat_id` es **un número de diez dígitos**. No matchea ningún patrón
+de credencial — ni gitleaks, ni un escáner propio de JWT/`gh*_`/`sk-*`/AWS (corrido sobre los 32
+archivos con control positivo: 0 hallazgos, y estaba bien, porque no hay nada con forma de secreto).
+Lo único que lo cazó fue **abrir los archivos antes de publicarlos**, empezando por los que el nombre
+volvía sospechosos.
+
+**How to apply:** (1) antes de commitear un rescate de memoria a un repo público, `grep` de
+`no debe quedar versionad|no versionar|fuera del repo|no commitear` sobre lo rescatado —
+**las entradas que no deben publicarse suelen decirlo en su propio cuerpo**, porque quien las escribió
+ya lo pensó. (2) La exclusión va en `.gitignore`, no en acordarse: el seed es idempotente y va a volver
+a traer el archivo en cada corrida. Verificá la barrera reponiendo el archivo y mirando que
+`git status` no lo vea. (3) Un escáner de patrones responde «no hay nada con forma de secreto», que
+**no** es «no hay nada sensible»: identificadores de persona, rutas internas y chat ids pasan limpios.
+
 Relacionado: [[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]] ·
 [[la-excepcion-documentada-que-nunca-disparo]] · [[instrumentos-que-confirman-en-vez-de-verificar]]
 
