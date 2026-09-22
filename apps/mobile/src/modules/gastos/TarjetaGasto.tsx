@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ETIQUETA_CATEGORIA, formatearImporte, type Gasto } from '@copiloto/core';
+import { ETIQUETA_CATEGORIA, formatearFechaCorta, formatearImporte, type Gasto } from '@copiloto/core';
 
 import { Tile } from '../../theme/glass/Tile';
 import { useTema } from '../../theme/ThemeProvider';
@@ -47,7 +47,9 @@ export function TarjetaGasto({ gasto, onPress }: TarjetaGastoProps) {
             style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
             testID={`gasto-${gasto.id}-sub`}
           >
-            {ETIQUETA_CATEGORIA[gasto.categoria]} · {gasto.fecha}
+            {/* H-A4-6: `gasto.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se
+                pinta tal cual. */}
+            {ETIQUETA_CATEGORIA[gasto.categoria]} · {formatearFechaCorta(gasto.fecha)}
           </Text>
         </View>
         <Text

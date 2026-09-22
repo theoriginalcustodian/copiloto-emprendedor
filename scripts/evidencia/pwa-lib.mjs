@@ -29,6 +29,10 @@ export async function abrirLogueado({ ancho = 390, alto = 844 } = {}) {
     for (const k of await caches.keys()) await caches.delete(k);
   });
   await page.goto(`${BASE}/?ver=${Date.now()}`);
+  // El reveal/onboarding (BL-X10) se interpone ANTES del login desde que se agregó — sin esto
+  // `abrirLogueado` quedaba pegado esperando `input[name=email]` que nunca aparece hasta tocar
+  // "Empecemos". No-op si no está (login directo, o ya logueado).
+  await page.getByText('Empecemos').click({ timeout: 5000 }).catch(() => {});
   const { email, password } = credenciales();
   await page.fill('input[name=email]', email);
   await page.fill('input[name=password]', password);

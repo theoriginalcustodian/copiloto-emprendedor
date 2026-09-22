@@ -1,4 +1,4 @@
-import { ETIQUETA_CATEGORIA, formatearImporte, type Gasto } from '@copiloto/core';
+import { ETIQUETA_CATEGORIA, formatearFechaCorta, formatearImporte, type Gasto } from '@copiloto/core';
 
 import { Surface } from '../../design-system';
 
@@ -36,8 +36,10 @@ export function TarjetaGasto({ gasto, onSelect }: TarjetaGastoProps) {
           {icono != null ? `${icono} ` : ''}
           {titulo}
         </p>
+        {/* H-A4-6: `gasto.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se pinta
+            tal cual. */}
         <p className="tarjeta-gasto__sub" data-testid={`gasto-${gasto.id}-sub`}>
-          {ETIQUETA_CATEGORIA[gasto.categoria]} · {gasto.fecha}
+          {ETIQUETA_CATEGORIA[gasto.categoria]} · {formatearFechaCorta(gasto.fecha)}
         </p>
       </div>
       <span className="tarjeta-gasto__monto" data-testid={`gasto-${gasto.id}-monto`}>
