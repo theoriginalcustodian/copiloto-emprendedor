@@ -154,6 +154,7 @@
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) — `dato_` NO escala; ¿querés reclamo? → `pedido_`.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — nunca a mano.
+- [`>>` a ruta supuesta del buzón + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) — perdí K-07/08/10/11; ubicar con `find` y `mv -n`.
 - [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno mide OCIO.
 - [📱🛑 El TELÉFONO exige dueño único — y ESCRIBE en la base](device-fisico-exige-dueno-unico.md) — dos ADB fabrican evidencia falsa.
 - [📱🍳 Un gate de device se corre con RECETA async](gate-de-device-se-corre-con-receta-no-con-ventana-viva.md) — gestos escritos, no ventana viva.

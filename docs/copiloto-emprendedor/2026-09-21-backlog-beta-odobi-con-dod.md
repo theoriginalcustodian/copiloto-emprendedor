@@ -381,8 +381,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-16, H-33, H-17, T-2 · **Pantallas:** `card`, `gastos`, `vozchat`, `ingresos`
 - **Evidencia:** sin `MicButton`/`BotonVoz`/`useVozComando` en `modules/gastos/` de ninguna app; `TarjetaGastoPropuesto` sólo en `modules/chat`. Riesgo R-3.
 - **DoD:**
-  - [ ] El dispatcher acepta un contexto de función **opcional**; sin él, la ruta del chat queda idéntica (test de regresión del dispatcher en el VPS antes de tocar FE).
-  - [ ] Mic en la fila del rótulo de Gastos, Ingresos, Presupuestos y Clientes; la card propuesta aterriza en esa pantalla, no en el hilo.
+  - [x] ~~El dispatcher acepta un contexto de función **opcional**; sin él, la ruta del chat queda idéntica (test de regresión del dispatcher en el VPS antes de tocar FE).~~ **Corregido por el contrato `K-10` §1 (2026-09-21):** transcribir por el dispatcher arrancaba un workflow por cada dictado de campo y ensuciaba el hilo del chat con mensajes que el emprendedor no mandó. Se resolvió con endpoints nuevos que **no pasan por el dispatcher**: `POST /transcribir` (#573) y `POST /gastos/leer-foto` (#615). La ruta del chat queda idéntica por construcción, porque no se tocó; el replay del `ConversationWorkflow` lo confirma (A3, 15/15 en el VPS sobre `b59588d2`).
+  - [ ] Mic en la fila del rótulo de Gastos, Ingresos, Presupuestos y Clientes; el texto dictado **rellena el formulario de esa pantalla y no se guarda solo** (`K-10` §4: una transcripción es una propuesta, como las cards del agente), no va al hilo.
   - [ ] Foto del ticket como disparador directo desde Gastos.
   - [ ] Chip «Por voz · duración» en la card (H-17): la duración viaja en el mensaje.
   - [ ] Device: dictar un gasto desde Gastos y verlo aterrizar ahí; captura lado a lado con `?ver=card`.
@@ -647,7 +647,7 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [x] Control positivo: borrar un id en una sola app pone el gate en rojo, nombrando `pantalla::id`.
   - [x] Trinquete: el archivo de excepciones sólo puede achicarse — una excepción cuyo id ya no existe o ya tiene su par en la misma pantalla hace fallar el gate ("sacala del baseline"), no se puede acumular en silencio.
   - [x] Ids dinámicos (`testID={...}` / `data-testid={...}`) no se pierden: se cuentan y reportan aparte como "no medidos" (656 usos hoy: 402 mobile / 254 web), nunca como par ni como falta.
-  - [x] Baseline inicial: 535 excepciones `pantalla::id` sin triage id-por-id, con dueño y disparador — ver `BL-V17`.
+  - [x] Baseline inicial: 535 excepciones `pantalla::id` sin triage id-por-id, con dueño y disparador — ver `BL-V17`. Bajó a **484** con #617 (el gate dejó de escanear `*.test.tsx`/`*.spec.tsx`/`__tests__/`: 51 venían de archivos de test, que no son pantallas) y #616 no lo movió (medido en `main` @ `b704a685`).
 
 ### BL-Q2 · Smoke E2E completo contra producción
 - **Tamaño:** S · **Evidencia:** `deploy/copiloto/smoke_beta_e2e.py`; última corrida con evidencia `37/37` el 13/08 (`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:107`); `deploy.sh` sólo corre `/healthz` + un smoke corto.
@@ -696,7 +696,7 @@ No bloquean la beta. Cada uno con su condición de entrada.
 | BL-V14 | TODO muerto del guardrail de narración | Cosmético | `motor/backend/agent/conversation_workflow.py:548` |
 | BL-V15 | Config OAuth propia de Google en Composio (branding propio) | Funciona con la de Composio; sale de `DEC-12` si se decide | `composio_gateway.py:190-234` |
 | BL-V16 | `gate.sh` y `scripts/ci/*.sh` en bash 3.2 (macOS), ex `BL-B4` | `DEC-1`: Martín diseña y no commitea código; vuelve si eso cambia | `scripts/gate.sh` · acta `DEC-1` |
-| BL-V17 | Triage id-por-id de las 535 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (535 entradas, 2026-09-22) |
+| BL-V17 | Triage id-por-id de las 484 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (484 entradas tras #617, `main` @ `b704a685`, 2026-09-22) |
 
 ---
 
