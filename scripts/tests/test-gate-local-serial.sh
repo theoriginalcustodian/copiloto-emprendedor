@@ -5,6 +5,10 @@
 #   2. RC         — el rc del gate se propaga (un gate rojo sigue rojo detrás del wrapper).
 #   3. HUÉRFANO   — un candado con un pid muerto se libera y se toma (control: no espera el TTL).
 #   4. LIBERA     — al terminar, el candado no queda.
+#
+# ⚠️ Pareja: `test-gate-local-serial-fifo.sh` cubre el REPARTO de turnos (cola FIFO), el log propio
+# y que el `tee` no se coma un rojo. Este cubre la EXCLUSIÓN mutua. Se corren los dos: el 2026-09-22
+# el fifo se escribió sin ver que este existía, y fue este el que cazó la regresión que introdujo.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

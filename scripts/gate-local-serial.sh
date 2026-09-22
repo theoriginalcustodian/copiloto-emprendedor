@@ -107,15 +107,23 @@ echo "$yo" > "$LOCK/owner"
 echo "==> candado local tomado ($yo)"
 
 # ── Log completo, fuera de los worktrees ─────────────────────────────────────
-LOGDIR="${GATE_LOCAL_LOGDIR:-$(git rev-parse --path-format=absolute --git-common-dir)/ci-recibos/logs}"
-mkdir -p "$LOGDIR" 2>/dev/null || true
-LOG="$LOGDIR/gate-${UC_SESION:-sin-sesion}-$(git rev-parse --short HEAD 2>/dev/null || echo nohead)-$(date +%Y%m%dT%H%M%S).log"
-echo "==> log: $LOG"
+# Nombres con guión bajo A PROPÓSITO: este wrapper le presta su entorno al gate y a todo lo que el
+# gate lance. Una variable `LOG` acá le pisa la suya a quien corra abajo — pasó con el gate falso de
+# `test-gate-local-serial.sh`, que registra sus tiempos en `$LOG`: quedó escribiendo en el log del
+# wrapper, el test leyó su archivo vacío y reportó «se solaparon» cuando la serialización estaba bien.
+_LOGDIR="${GATE_LOCAL_LOGDIR:-$(git rev-parse --path-format=absolute --git-common-dir)/ci-recibos/logs}"
+mkdir -p "$_LOGDIR" 2>/dev/null || true
+# La sesión se infiere con la MISMA lógica que usa el gate (sesion-env.sh), en un subshell para no
+# heredar la tríada de puertos: si acá pusiéramos otra heurística, el nombre del log podría decir una
+# sesión y el recibo otra.
+_SES="${UC_SESION:-$(bash -c 'source "$0" >/dev/null 2>&1; printf "%s" "${UC_SESION:-}"' "$(dirname "${BASH_SOURCE[0]}")/ci/sesion-env.sh")}"
+_LOG="$_LOGDIR/gate-${_SES:-sin-sesion}-$(git rev-parse --short HEAD 2>/dev/null || echo nohead)-$(date +%Y%m%dT%H%M%S).log"
+echo "==> log: $_LOG"
 
 # `tee` para no perder la salida en pantalla, y PIPESTATUS para devolver el rc del GATE y no el del
 # tee: un gate rojo que sale 0 porque el pipe salió 0 es la peor clase de instrumento.
 set -o pipefail
-$CMD "$@" 2>&1 | tee "$LOG"
+$CMD "$@" 2>&1 | tee "$_LOG"
 rc=${PIPESTATUS[0]}
-echo "==> gate rc=$rc · log completo en $LOG"
+echo "==> gate rc=$rc · log completo en $_LOG"
 exit "$rc"

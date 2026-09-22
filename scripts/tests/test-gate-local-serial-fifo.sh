@@ -14,6 +14,10 @@
 #   4. POSITIVO  cola vacía -> corre, y su ticket NO queda tirado al salir.
 #   5. POSITIVO  el log queda completo y fuera del worktree, con la salida del gate.
 #   6. NEGATIVO  gate ROJO -> el rc que se devuelve es el del gate, no el del `tee` (que sale 0).
+#
+# ⚠️ Pareja: `test-gate-local-serial.sh` (el que ya existía) cubre la EXCLUSIÓN mutua -- dos gates
+# simultáneos que no se pisan, huérfano, liberación. Este archivo se escribió sin verlo, y aquél
+# cazó la regresión: una variable `LOG` del wrapper le pisaba la del gate falso. Corré los dos.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/scripts/gate-local-serial.sh"
