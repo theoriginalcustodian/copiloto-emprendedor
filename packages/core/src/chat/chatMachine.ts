@@ -52,6 +52,15 @@ export interface ChatMessage {
   /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useVozComando`/`MicButton`): alimenta el chip
    * «Por voz · Ns» de la burbuja del usuario en ambas plataformas. Ausente en mensajes escritos. */
   porVoz?: { duracionSeg: number };
+  /** H-A4-9 — si ESTA card HITL (mensaje `assistant` cuyos `choices` clasifican `'hitl'`, ver
+   * `hitl.ts`) ya fue respondida, y con qué. Ausente = todavía activa/clickeable. Se setea ATÓMICO
+   * junto con el mensaje de respuesta (ver `mensaje_usuario_agregado.hitlRespondido` abajo) para que
+   * nunca haya un instante en memoria donde la card esté respondida pero sin marcar — y por lo tanto
+   * SE PERSISTE con `messages` (mismo mecanismo que el resto del historial), así sobrevive a un
+   * reload. Historial viejo que no tiene este campo se migra al rehidratar con
+   * `sanitizarHitlRespondido` (`hitl.ts`) — el caller (hook de cada plataforma) es quien la invoca
+   * ANTES de sembrar el estado inicial. */
+  hitlRespondido?: { value: string; label: string };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -115,8 +124,14 @@ export interface EstadoChat {
 export type EventoChat =
   /** Un mensaje de usuario que ya se sabe mostrar — optimista (`send`, ANTES de que la red
    * responda) o con el transcript ya resuelto (`sendAudio`, DESPUÉS del STT). No toca `sendStatus`:
-   * el caller manda ese evento aparte (`envio_iniciado`), en el orden que corresponda a cada flujo. */
-  | { tipo: 'mensaje_usuario_agregado'; mensaje: ChatMessage }
+   * el caller manda ese evento aparte (`envio_iniciado`), en el orden que corresponda a cada flujo.
+   * `hitlRespondido` (H-A4-9) — presente cuando `mensaje` es la respuesta a UNA card HITL puntual:
+   * marca ESE mensaje (no el que se está agregando) con `hitlRespondido`, en la MISMA transición. */
+  | {
+      tipo: 'mensaje_usuario_agregado';
+      mensaje: ChatMessage;
+      hitlRespondido?: { mensajeId: string; value: string; label: string };
+    }
   /** Arranca el ciclo de envío. */
   | { tipo: 'envio_iniciado' }
   /** El POST se aceptó — el caller arranca el polling (efecto) y el reducer pasa a `waiting`. */
@@ -238,8 +253,25 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
         motivoFallo: null,
       };
 
-    case 'mensaje_usuario_agregado':
-      return { ...estado, messages: [...estado.messages, evento.mensaje].slice(-MAX_MENSAJES_HISTORIAL) };
+    case 'mensaje_usuario_agregado': {
+      // H-A4-9: si esta respuesta resuelve una card HITL puntual, marcarla ANTES de agregar el
+      // mensaje nuevo — atómico en la misma transición, para que nunca haya un estado intermedio
+      // con la card sin marcar.
+      const previos = evento.hitlRespondido
+        ? estado.messages.map((mensaje) =>
+            mensaje.id === evento.hitlRespondido!.mensajeId
+              ? {
+                  ...mensaje,
+                  hitlRespondido: {
+                    value: evento.hitlRespondido!.value,
+                    label: evento.hitlRespondido!.label,
+                  },
+                }
+              : mensaje,
+          )
+        : estado.messages;
+      return { ...estado, messages: [...previos, evento.mensaje].slice(-MAX_MENSAJES_HISTORIAL) };
+    }
 
     case 'envio_iniciado':
       // Limpia el motivo del fallo anterior: si sobreviviera, la pantalla explicaría un fallo que ya

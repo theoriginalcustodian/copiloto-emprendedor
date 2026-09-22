@@ -28,6 +28,10 @@ export interface HitlCardProps {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /** H-A4-9 — la card ya fue respondida: los dos botones quedan `disabled` (nativo — bloquea
+   * `onClick` sin lógica extra, mismo criterio que `Button`/`primitives.css`), sin affordance de
+   * click. Ausente/`false` = card activa, comportamiento de siempre. */
+  disabled?: boolean;
 }
 
 /**
@@ -51,9 +55,14 @@ export function HitlCard({
   cancelLabel,
   onConfirm,
   onCancel,
+  disabled,
 }: HitlCardProps) {
   return (
-    <div className="chat-row chat-row--assistant" data-testid={`hitl-card-${service || 'plain'}`}>
+    <div
+      className="chat-row chat-row--assistant"
+      data-testid={`hitl-card-${service || 'plain'}`}
+      data-hitl-respondida={disabled ? 'true' : undefined}
+    >
       <Surface
         variant="card"
         blur
@@ -112,10 +121,10 @@ export function HitlCard({
         )}
 
         <div className="hitl-card__actions">
-          <Button variant="primary" onClick={onConfirm}>
+          <Button variant="primary" onClick={onConfirm} disabled={disabled}>
             {confirmLabel}
           </Button>
-          <Button variant="cancel" onClick={onCancel}>
+          <Button variant="cancel" onClick={onCancel} disabled={disabled}>
             {cancelLabel}
           </Button>
         </div>

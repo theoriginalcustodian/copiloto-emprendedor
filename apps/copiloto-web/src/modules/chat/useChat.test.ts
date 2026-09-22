@@ -301,6 +301,144 @@ describe('useChat', () => {
     });
   });
 
+  // H-A4-9 — una card HITL ya respondida no debe seguir siendo clickeable, NI SIQUIERA tras un
+  // reload: el estado de "ya respondida" tiene que vivir en el MENSAJE persistido, no en un estado
+  // efímero de React que se pierde al remontar.
+  describe('HITL ya respondida sobrevive a un reload (H-A4-9)', () => {
+    const SESSION_ID = 'sess-hitl-respondida-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('rehidrata un HITL YA marcado hitlRespondido tal cual — sigue deshabilitado', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Cobro a **Juan** por $1.000.',
+          choices: [
+            { label: 'Sí, cobrar', value: 'confirm_1' },
+            { label: 'Cancelar', value: 'cancel_1' },
+          ],
+          card: { service: 'mercadopago', label: 'Mercado Pago' },
+          hitlRespondido: { value: 'cancel_1', label: 'Cancelar' },
+        },
+        { id: 'user-1', role: 'user', text: 'Cancelar' },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      // Control negativo implícito: si el código viejo no soportara `hitlRespondido`, este campo se
+      // perdería al pasar por `acotarMensajes`/`JSON.parse` — no es el caso, viaja tal cual.
+      expect(result.current.messages[0]).toMatchObject({
+        hitlRespondido: { value: 'cancel_1', label: 'Cancelar' },
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('sanitiza un HITL viejo con el token LEGACY (pre-#624, "cancel:2:0") al rehidratar', async () => {
+      // Formato de ANTES de BL-D4/#624: la burbuja de respuesta pintaba el `value` técnico crudo
+      // (`cancel:<turn>:<step>`), no el label — y `hitlRespondido` ni existía todavía.
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+        { id: 'user-1', role: 'user', text: 'cancel:2:0' }, // token crudo LEGACY, no un label
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0]).toMatchObject({
+        hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' },
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('un HITL sin respuesta después (sigue activo) NO se marca hitlRespondido', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0].hitlRespondido).toBeUndefined();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+
+    it('send con hitlMessageId marca ESA card hitlRespondido, atómico con la burbuja nueva, y persiste', async () => {
+      vi.mocked(api.sendChat).mockResolvedValueOnce({ wf_id: 'wf-hitl-2', accepted: true });
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Voy a publicar el posteo. ¿Confirmás?',
+          choices: [
+            { label: 'Sí, publicar', value: 'confirm:2:0' },
+            { label: 'Cancelar', value: 'cancel:2:0' },
+          ],
+          card: { service: 'instagram', label: 'Instagram' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages[0].hitlRespondido).toBeUndefined(); // todavía activa
+
+      await act(async () => {
+        await result.current.send('cancel:2:0', {
+          kind: 'callback',
+          displayText: 'Cancelar',
+          hitlMessageId: 'assistant-1',
+        });
+      });
+
+      expect(result.current.messages[0]).toMatchObject({
+        id: 'assistant-1',
+        hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' },
+      });
+
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([
+        { id: 'assistant-1', hitlRespondido: { value: 'cancel:2:0', label: 'Cancelar' } },
+        { role: 'user', text: 'Cancelar' },
+      ]);
+    });
+  });
+
   describe('cota de historial (C6) — messages no crece sin techo', () => {
     const SESSION_ID = 'sess-cota-test';
     const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;

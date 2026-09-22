@@ -84,6 +84,29 @@ describe('HitlCard', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  // H-A4-9 — control positivo + negativo: con `disabled`, los dos botones quedan `disabled` nativo
+  // (bloquea el click sin lógica extra, ver `Button`) y un click NO dispara ningún callback. Sin
+  // este control, un click tardío sobre una card ya respondida reenviaría confirm/cancel.
+  it('H-A4-9: disabled=true bloquea confirmar/cancelar (nativo) y NO dispara ningún callback', () => {
+    const { onConfirm, onCancel } = renderCard({ disabled: true });
+    const botonConfirmar = screen.getByRole('button', { name: 'Confirmar' });
+    const botonCancelar = screen.getByRole('button', { name: 'Cancelar' });
+
+    expect(botonConfirmar).toBeDisabled();
+    expect(botonCancelar).toBeDisabled();
+
+    fireEvent.click(botonConfirmar);
+    fireEvent.click(botonCancelar);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('sin disabled (default): los botones NO están disabled — control negativo del test anterior', () => {
+    renderCard();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).not.toBeDisabled();
+  });
+
   it.each(THEMES)('renderiza bajo el tema "%s" sin romper', (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     renderCard({
