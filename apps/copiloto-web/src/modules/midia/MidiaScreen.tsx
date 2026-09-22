@@ -3,17 +3,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
-  estadoDeServicio,
   ETIQUETA_CATEGORIA_TARJETA,
   fechaDeHoyMidia,
   filtrarPorCategoria,
   formatearImporte,
   horaDeEvento,
-  KEY_GOOGLE_CALENDAR,
   leerCalendario,
   leerPortada,
   leerTablero,
-  listarCatalogo,
   type CalendarioMiDia,
   type CategoriaTarjeta,
   type EstadoConexion,
@@ -29,6 +26,7 @@ import { EstadoVacio } from '../../design-system/EstadoVacio';
 import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
 import { AgendaScreen } from './AgendaScreen';
 import { PortadaNegocio } from './PortadaNegocio';
+import { useEstadoGoogleCalendar } from './useEstadoGoogleCalendar';
 import './midia.css';
 
 const SKELETON_ROWS = 3;
@@ -71,10 +69,9 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
   const [error, setError] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
-  // BL-W11: `/mi-dia/calendario` sólo trae `conectado: boolean` — no distingue "nunca conectada" de
-  // "caída". Esa salud vive en el catálogo (K-09), se lee aparte y degrada en silencio (fail-soft,
-  // mismo criterio que `AvatarCuenta`): sin catálogo, el panel muestra el texto de "nunca conectada".
-  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
+  // BL-W11/BL-V23: el desempate "nunca conectada" vs "caída" vive en el catálogo (K-09), no en
+  // `/mi-dia/calendario` — ver `useEstadoGoogleCalendar`. Compartido con `AgendaScreen`.
+  const { estadoGoogleCalendar, recargarEstadoGoogleCalendar } = useEstadoGoogleCalendar();
   const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
   const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
@@ -121,32 +118,18 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
     }
   }, []);
 
-  // BL-W11: mismo criterio fail-soft que `AvatarCuenta` — sin catálogo, `estadoGoogleCalendar` queda
-  // `null` y el panel cae al texto de "nunca conectada" (el mismo que mostraba antes de esta fila).
-  const cargarSaludConexiones = useCallback(async () => {
-    try {
-      const res = await listarCatalogo();
-      if (vivo.current && res.status === 'ok') {
-        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
-      }
-    } catch {
-      /* fail-soft: sin catálogo, el panel degrada a "nunca conectada". */
-    }
-  }, []);
-
   useEffect(() => {
     vivo.current = true;
     void cargar();
     void cargarCalendario();
     void cargarPortada();
-    void cargarSaludConexiones();
 
     function alVolverElFoco() {
       if (document.visibilityState === 'visible') {
         void cargar();
         void cargarCalendario();
         void cargarPortada();
-        void cargarSaludConexiones();
+        void recargarEstadoGoogleCalendar();
       }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
@@ -155,7 +138,7 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]);
+  }, [cargar, cargarCalendario, cargarPortada, recargarEstadoGoogleCalendar]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];

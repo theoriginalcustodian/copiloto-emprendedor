@@ -2,20 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * `AgendaScreen` (BL-J13) — `leerAgenda` mockeado (su parseo y el clamp de 14 días se prueban en
- * core); acá: los 4 grupos con el título del backend, el estado vacío de cada uno, «no conectado» ≠
- * «sin eventos», degradación ante un endpoint caído y el puente «Nuevo evento» → chat principal.
+ * `AgendaScreen` (BL-J13, BL-V23) — `leerAgenda` y `listarCatalogo` mockeados (su parseo y el clamp
+ * de 14 días se prueban en core); acá: los 4 grupos con el título del backend, el estado vacío de
+ * cada uno, «no conectado» ≠ «sin eventos», el desempate «nunca conectada» vs «caída» (BL-V23),
+ * degradación ante un endpoint caído y el puente «Nuevo evento» → chat principal.
  */
 vi.mock('@copiloto/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@copiloto/core')>();
-  return { ...original, leerAgenda: vi.fn() };
+  return { ...original, leerAgenda: vi.fn(), listarCatalogo: vi.fn() };
 });
 
-import { leerAgenda, tomarPendiente, TEXTO_NUEVO_EVENTO, type AgendaMiDia } from '@copiloto/core';
+import { KEY_GOOGLE_CALENDAR, leerAgenda, listarCatalogo, tomarPendiente, TEXTO_NUEVO_EVENTO, type AgendaMiDia } from '@copiloto/core';
 
 import { AgendaScreen } from './AgendaScreen';
 
 const leerMock = vi.mocked(leerAgenda);
+const listarCatalogoMock = vi.mocked(listarCatalogo);
 
 const grupo = (id: 'hoy' | 'manana' | 'semana' | 'sin_hora', titulo: string, eventos: AgendaMiDia['grupos'][number]['eventos'] = []) => ({
   id,
@@ -45,6 +47,7 @@ const montar = (over: Partial<Parameters<typeof AgendaScreen>[0]> = {}) => {
 
 beforeEach(() => {
   leerMock.mockReset().mockResolvedValue({ status: 'ok', agenda: AGENDA });
+  listarCatalogoMock.mockReset().mockResolvedValue({ status: 'ok', servicios: [] });
   tomarPendiente();
 });
 
@@ -77,6 +80,40 @@ describe('AgendaScreen', () => {
     expect(screen.queryByText(/Nada por acá/)).not.toBeInTheDocument();
   });
 
+  describe('BL-V23: desempate "nunca conectada" vs "caída" (mismo criterio que Mi día, BL-W11 4b)', () => {
+    it('catálogo dice "caido": copy distinta, ofrece reconectar (no "Conectá")', async () => {
+      leerMock.mockResolvedValue({ status: 'ok', agenda: { ...AGENDA, conectado: false } });
+      listarCatalogoMock.mockResolvedValue({
+        status: 'ok',
+        servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+      });
+      montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-calendario-caida')).toBeInTheDocument());
+      expect(screen.getByText(/Se cayó la conexión con Google Calendar/)).toBeInTheDocument();
+      expect(screen.getByText(/Reconectala/)).toBeInTheDocument();
+      expect(screen.queryByTestId('agenda-no-conectado')).not.toBeInTheDocument();
+    });
+
+    it('control negativo — catálogo dice "nunca_conectado": SIGUE diciendo "Conectá", no "Reconectar"', async () => {
+      leerMock.mockResolvedValue({ status: 'ok', agenda: { ...AGENDA, conectado: false } });
+      listarCatalogoMock.mockResolvedValue({
+        status: 'ok',
+        servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'nunca_conectado' } as never],
+      });
+      montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-no-conectado')).toHaveTextContent(/Conectá Google Calendar/));
+      expect(screen.queryByTestId('agenda-calendario-caida')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Reconectala/)).not.toBeInTheDocument();
+    });
+
+    it('conectado: true — renderiza los eventos como siempre (no-regresión, el desempate no interfiere)', async () => {
+      montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeInTheDocument());
+      expect(screen.queryByTestId('agenda-no-conectado')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('agenda-calendario-caida')).not.toBeInTheDocument();
+    });
+  });
+
   it('endpoint caído (o 400): avisa y deja reintentar, no rompe', async () => {
     leerMock.mockResolvedValueOnce({ status: 'no_disponible' });
     montar();
@@ -88,6 +125,7 @@ describe('AgendaScreen', () => {
 
   it('«Nuevo evento» deja el texto en el buzón del chat y abre el chat (no escribe en Calendar)', async () => {
     const { onAbrirChat } = montar();
+    await waitFor(() => expect(listarCatalogoMock).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId('agenda-nuevo-evento'));
     expect(onAbrirChat).toHaveBeenCalledTimes(1);
     expect(tomarPendiente()).toBe(TEXTO_NUEVO_EVENTO);
@@ -95,6 +133,7 @@ describe('AgendaScreen', () => {
 
   it('«← Mi día» vuelve', async () => {
     const { onVolver } = montar();
+    await waitFor(() => expect(listarCatalogoMock).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId('agenda-volver'));
     expect(onVolver).toHaveBeenCalledTimes(1);
   });
