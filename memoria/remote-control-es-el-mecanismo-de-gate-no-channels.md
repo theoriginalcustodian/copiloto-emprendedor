@@ -46,7 +46,7 @@ que NO expone `--channels`, y no hay ninguna de las 14 settings `claudeCode.*` d
 que lo permita. `--channels plugin:telegram@claude-plugins-official` sólo puede activarse en una
 terminal `claude` pura, fuera de la integración de la IDE — sesión distinta a las de trabajo
 diario en Antigravity. El plugin quedó instalado y pareado (`access.json` con
-`allowFrom: ["7182010185"]`) pero sin uso práctico salvo que el operador abra esa terminal aparte
+`allowFrom: ["<chat_id del operador>"]`) pero sin uso práctico salvo que el operador abra esa terminal aparte
 a propósito.
 
 **Conclusión operativa:** para el caso "avisame y dejame decidir desde el teléfono", usar

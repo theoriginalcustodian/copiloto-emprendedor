@@ -44,5 +44,5 @@ principio, a diferencia de un `claude mcp get` puntual o un lanzamiento manual d
 **Relacionado:** [[telegram-composio-canal-operador]] (el mecanismo alternativo vía Composio SÍ
 es fire-and-forget por tool call, no depende de un proceso long-polling propio — no tiene este
 problema). `access.json` del plugin oficial ya quedó correcto en
-`~/.claude/channels/telegram/access.json` con `chat_id 7182010185` en `allowFrom` — el gap es
+`~/.claude/channels/telegram/access.json` con `chat_id` del operador (valor fuera del repo) en `allowFrom` — el gap es
 sólo el arranque del proceso, no la configuración de acceso.
