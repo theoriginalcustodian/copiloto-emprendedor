@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Partial mock: sólo la red de Actividad/Clientes — mismo arnés que `TarjetaClientePropuesto.test.tsx`.
@@ -13,7 +13,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
   };
 });
 
-import { listarActividad, obtenerCliente, type Cliente } from '@copiloto/core';
+import { listarActividad, obtenerCliente } from '@copiloto/core';
 
 import { SessionProvider } from '../auth/SessionProvider';
 import '../design-system/themes.css';
@@ -23,22 +23,6 @@ import { ModeProvider } from './modeStore';
 
 const mockListarActividad = vi.mocked(listarActividad);
 const mockObtenerCliente = vi.mocked(obtenerCliente);
-
-function clienteFixture(id: number, nombre: string): Cliente {
-  return {
-    id,
-    nombre,
-    docTipo: null,
-    docNro: null,
-    condicionIva: null,
-    domicilio: null,
-    email: null,
-    telefono: null,
-    notas: null,
-    origen: 'derivado',
-    creadoEn: '2026-08-01T00:00:00Z',
-  };
-}
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -167,7 +151,17 @@ describe('AppShell', () => {
   });
 });
 
-describe('AppShell — D14 (fila de Actividad "cliente" abre la ficha por id)', () => {
+// BL-D7 retiró el botón directo a "Actividad" de la barra ‹900px -- la ruta D14 original (fila de
+// Actividad -> `onAbrirCliente` -> ficha) queda intacta y con cobertura COMPLETA en
+// `DesktopShell.test.tsx` (mismo describe, vía Rail -- `tabsVisibles` sin filtrar, no tocado por
+// BL-D7). En el shell angosto "Ver recientes" ya no abre `ActividadScreen`: abre `RecientesScreen`
+// (`AppShell.tsx` -- `onVerRecientes={() => changeTab('recientes')}`), que reusa `FilaActividad`
+// pero SIN pasarle `onAbrirCliente` -- a propósito ("Decisión B" en el docstring de
+// `RecientesScreen.tsx`: *"nunca envuelve nada tocable [...] la actividad reciente es registro, no
+// acción"*), igual que mobile (`PantallaPrincipal.tsx` navega a `/recientes`, no a una Actividad
+// interactiva). Este describe pasa a cubrir ESE contrato -- el fila-a-ficha ya no es alcanzable
+// desde acá, ni debe serlo.
+describe('AppShell — BL-D7: "Ver recientes" abre Recientes (registro), no la Actividad interactiva', () => {
   beforeEach(() => {
     mockMatchMedia();
     window.localStorage.clear();
@@ -189,49 +183,27 @@ describe('AppShell — D14 (fila de Actividad "cliente" abre la ficha por id)', 
     });
   });
 
-  it('tocar la fila navega a Clientes y el id llega a la capa de datos (obtenerCliente) -- abre ESA ficha', async () => {
-    mockObtenerCliente.mockResolvedValue({
-      status: 'ok',
-      ficha: { cliente: clienteFixture(42, 'Panadería La Esquina'), presupuestos: [], facturas: [] },
-    });
+  it('Funciones -> "Actividad reciente" monta RecientesScreen (no ActividadScreen)', async () => {
     renderAppShell();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(await screen.findByTestId('escritorio-encabezado-recientes'));
+
+    expect(await screen.findByTestId('pantalla-recientes')).toBeInTheDocument();
+    expect(screen.queryByTestId('pantalla-actividad')).not.toBeInTheDocument();
+  });
+
+  it('control negativo de Decisión B: tocar la fila en Recientes NO navega a Clientes (registro, no acción)', async () => {
+    renderAppShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funciones' }));
+    fireEvent.click(await screen.findByTestId('escritorio-encabezado-recientes'));
     const fila = await screen.findByTestId('actividad-cliente:42');
     fireEvent.click(fila);
 
-    // El tab cambia solo (no hace falta tocar la barra): `abrirCliente` hace `changeTab` + setea el id.
-    expect(await screen.findByTestId('pantalla-clientes')).toBeInTheDocument();
-    // `FichaCliente` repite su propio `obtenerCliente` al montar (presupuestos/facturas) -- ver el
-    // mismo comentario en `ClientesScreen.test.tsx`. Lo que importa acá es que TODAS las llamadas
-    // sean con el id de ESTA fila (42), no con uno viejo o pegado.
-    await waitFor(() => expect(mockObtenerCliente).toHaveBeenCalledWith(42));
-    expect(mockObtenerCliente.mock.calls.every(([id]) => id === 42)).toBe(true);
-    expect(await screen.findByTestId('ficha-cliente-nombre')).toHaveTextContent('Panadería La Esquina');
-  });
-
-  it('control negativo del reset: volver a Clientes por la BARRA (no por la fila) no reabre la última ficha', async () => {
-    mockObtenerCliente.mockResolvedValue({
-      status: 'ok',
-      ficha: { cliente: clienteFixture(42, 'Panadería La Esquina'), presupuestos: [], facturas: [] },
-    });
-    renderAppShell();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Actividad' }));
-    fireEvent.click(await screen.findByTestId('actividad-cliente:42'));
-    await waitFor(() => expect(screen.getByTestId('ficha-cliente-nombre')).toHaveTextContent('Panadería La Esquina'));
-    const llamadasPrevias = mockObtenerCliente.mock.calls.length;
-
-    // Salgo por la barra (Chat) y vuelvo a Clientes por la barra -- NO por `abrirCliente`.
-    fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Clientes' }));
-
-    expect(await screen.findByTestId('pantalla-clientes')).toBeInTheDocument();
-    expect(screen.queryByTestId('ficha-cliente')).not.toBeInTheDocument();
-    // `changeTab` limpió `clienteIdAbierto` -- sin el reset, este remount volvería a pedir el 42 de
-    // nuevo (más llamadas que las de la apertura original). Doy un margen breve para que, si el
-    // reset fallara, el pedido espurio ya se haya disparado antes de leer el conteo.
+    // Doy un margen breve: si `FilaActividad` navegara acá por error, ya se habría disparado.
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockObtenerCliente.mock.calls.length).toBe(llamadasPrevias);
+    expect(screen.queryByTestId('pantalla-clientes')).not.toBeInTheDocument();
+    expect(mockObtenerCliente).not.toHaveBeenCalled();
   });
 });

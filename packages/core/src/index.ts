@@ -4,6 +4,7 @@ export * from './api';
 export * from './chat';
 export * from './ayuda';
 export * from './dinero/formatoDinero';
+export * from './dinero/totalAproximado';
 export * from './midia';
 export * from './refresco';
 export * from './tema';

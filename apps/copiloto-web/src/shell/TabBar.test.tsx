@@ -49,16 +49,47 @@ describe('TabBar', () => {
     expect(keys).not.toContain('ajustes');
   });
 
-  it('renderiza un botón por cada tab visible del registro', () => {
+  // BL-D7: la barra ‹900px ya NO pinta las 10-11 `tabsVisibles` sueltas (a 390px se pisaban los
+  // rótulos, "Facturafión") — vuelve a las 3 puertas fijas del armazón (chat · Mi día · Funciones),
+  // igual que mobile. El registro completo (`tabsVisibles`) sigue existiendo intacto para `Rail`.
+  it('a 390px sólo renderiza las 3 puertas fijas (Chat, Mi día, Funciones) sin admin', () => {
     renderTabBar();
-    for (const tab of tabsVisibles(false)) {
-      expect(screen.getByRole('button', { name: tab.label })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chat' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mi día' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Funciones' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(3);
+  });
+
+  it('con esAdmin=true suma Consola — 4 puertas, no las 11 del registro completo', () => {
+    renderTabBar('chat', vi.fn(), true);
+    expect(screen.getByRole('button', { name: 'Consola' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+  });
+
+  // Las 7 funciones que salieron de la barra (BL-X2 las había sumado como pestañas, #587) siguen
+  // existiendo como `TabKey` en `tabsVisibles` — sólo dejan de tener un botón PROPIO en esta barra.
+  it('ninguna de las 7 funciones retiradas tiene botón propio en la barra ‹900px', () => {
+    renderTabBar();
+    const KEYS_RETIRADAS_DE_LA_BARRA = tabsVisibles(true).filter(
+      (t) => !['chat', 'midia', 'escritorio', 'admin'].includes(t.key),
+    );
+    expect(KEYS_RETIRADAS_DE_LA_BARRA.map((t) => t.key)).toEqual([
+      'actividad',
+      'ingresos',
+      'gastos',
+      'facturacion',
+      'presupuestos',
+      'clientes',
+      'inteligencia',
+    ]);
+    for (const tab of KEYS_RETIRADAS_DE_LA_BARRA) {
+      expect(screen.queryByRole('button', { name: tab.label })).not.toBeInTheDocument();
     }
   });
 
   it('marca el tab activo con aria-current="page" y los demás sin el atributo', () => {
-    renderTabBar('gastos');
-    expect(screen.getByRole('button', { name: 'Gastos' })).toHaveAttribute('aria-current', 'page');
+    renderTabBar('midia');
+    expect(screen.getByRole('button', { name: 'Mi día' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'Chat' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('button', { name: 'Funciones' })).not.toHaveAttribute('aria-current');
   });
