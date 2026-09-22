@@ -17,9 +17,15 @@ const LOCKUP_SIMBOLO = 44;
 
 type FormState = 'idle' | 'enviando' | 'error-credenciales' | 'no-habilitada' | 'error-red';
 
-export function LoginScreen() {
+export interface LoginScreenProps {
+  /** BL-X12w — prellenado al volver desde el reveal ("Entrar" trae el mail; "Entrar con otra
+   *  cuenta" llega en blanco), gemelo de mobile `PantallaLogin.emailInicial` (BL-X12m). */
+  emailInicial?: string;
+}
+
+export function LoginScreen({ emailInicial = '' }: LoginScreenProps) {
   const { status, avisoSesion, login } = useSession();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState('');
   const [formState, setFormState] = useState<FormState>('idle');
 

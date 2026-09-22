@@ -1,0 +1,157 @@
+/* BL-X10 — identidad (splash): 4 formas -> O + wordmark "dobi" + reveal de pronunciación.
+   Puerto de explorations/splash-o/v2-inmersivo.html. Tempo CALMO, cerrado (tempos.ts). */
+
+.identidad-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #ffffff;
+  animation: identidad-bg 780ms 2660ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes identidad-bg {
+  100% {
+    background: #f7f3ec;
+  }
+}
+
+.identidad-splash__formas {
+  position: absolute;
+  inset: 0;
+}
+
+.identidad-splash__blob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40vmin;
+  height: 40vmin;
+  margin: -20vmin 0 0 -20vmin;
+  opacity: 0;
+  animation-name: identidad-blob-grow;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.identidad-splash__blob--last {
+  animation-name: identidad-blob-grow, identidad-blob-collapse;
+  animation-timing-function:
+    cubic-bezier(0.5, 0, 0.2, 1),
+    cubic-bezier(0.32, 0, 0.16, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-blob-grow {
+  0% {
+    transform: scale(0.04) rotate(var(--rot0));
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(7.8) rotate(var(--rot1));
+    opacity: 1;
+  }
+}
+
+@keyframes identidad-blob-collapse {
+  0% {
+    transform: scale(7.8) rotate(var(--rot1));
+    border-radius: inherit;
+  }
+  100% {
+    transform: translateX(var(--ox, -22vmin)) scale(0.62) rotate(0deg);
+    border-radius: 50%;
+  }
+}
+
+.identidad-splash__wordmark {
+  position: relative;
+  display: flex;
+  font-family: var(--font-mono, monospace);
+  font-size: clamp(28px, 8vmin, 56px);
+  color: var(--identidad-word);
+}
+
+.identidad-splash__letra {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.4em);
+  animation-name: identidad-letra-bounce;
+  animation-duration: 720ms;
+  animation-timing-function: cubic-bezier(0.24, 1.62, 0.4, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-letra-bounce {
+  0% {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.identidad-splash__reveal {
+  position: absolute;
+  bottom: 12vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+  animation: identidad-fade-in 460ms 6200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.identidad-splash__caption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* BL-X12w — aterrizaje "volver" (`?ver=volver`): mismo reveal, dos puertas. */
+.identidad-splash__cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: min(88vw, 320px);
+}
+
+@keyframes identidad-fade-in {
+  100% {
+    opacity: 1;
+  }
+}
+
+.identidad-splash__pronunciar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--core-glow, rgba(222, 114, 80, 0.14));
+  color: var(--core);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .identidad-splash,
+  .identidad-splash__blob,
+  .identidad-splash__blob--last,
+  .identidad-splash__letra,
+  .identidad-splash__reveal {
+    animation: none !important;
+  }
+}

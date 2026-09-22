@@ -22,6 +22,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 import '../src/adapters/plataforma';
 import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
+import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
 
 /**
@@ -65,6 +66,11 @@ function Splash() {
 /** Rutas alcanzables sin sesión. Hoy no hay ninguna: toda la app vive detrás del guard de sesión. */
 const RUTAS_LIBRES: string[] = [];
 
+// Identidad estable (no un arrow inline): `EntradaDiaria` depende de `onFin` en su propio efecto
+// (timer de cierre) -- uno nuevo en cada render de `Guard` lo reiniciaría de más. El fin de la
+// animación no gatea nada acá: en cuanto `estado` resuelve, `Guard` ya cambia de rama solo.
+function sinOp() {}
+
 /**
  * Decide qué se ve según el estado de sesión. Tres estados, no dos: mientras `AsyncStorage` resuelve
  * el token guardado el estado es `verificando`, y ahí NO se puede mostrar el login — quien ya tenía
@@ -75,7 +81,9 @@ function Guard({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
 
   if (RUTAS_LIBRES.includes(ruta)) return <>{children}</>;
-  if (estado === 'verificando') return <Splash />;
+  // BL-X10: arranques 2..n (token restaurado) -- el isotipo dibujándose cubre la latencia real de
+  // `/me`, no la extiende (`EntradaDiaria` no gatea nada por sí sola).
+  if (estado === 'verificando') return <EntradaDiaria onFin={sinOp} />;
   if (estado === 'autenticado') return <>{children}</>;
   return <EntradaSesion />;
 }
