@@ -265,6 +265,37 @@ describe('HITL ya respondida (H-A4-9)', () => {
   });
 });
 
+// K-11 / BL-J8 Parte 1 (mobile) — el sheet «Conectá X» descartado con «Ahora no» tiene que
+// sobrevivir a un reload: la marca vive en el MENSAJE persistido, igual que `hitlRespondido`.
+describe('conexion_descartada (K-11 / BL-J8 Parte 1)', () => {
+  it('marca `conexionDescartada` en el mensaje indicado, sin tocar los demás', () => {
+    const otraCard: ChatMessage = { id: 'assistant-3', role: 'assistant', text: 'otra cosa' };
+    const conCard: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: 'Para eso necesito que conectes Gmail primero.',
+      card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail' },
+    };
+
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [otraCard, conCard] },
+      { tipo: 'conexion_descartada', mensajeId: 'assistant-5' },
+    );
+
+    expect(estado.messages[0]).toEqual(otraCard); // sin marca -- no era el mensaje descartado
+    expect(estado.messages[1]).toMatchObject({ id: 'assistant-5', conexionDescartada: true });
+  });
+
+  it('un `mensajeId` que no existe en `messages` es un no-op (no lanza, no muta nada)', () => {
+    const mensaje: ChatMessage = { id: 'assistant-5', role: 'assistant', text: 'x' };
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [mensaje] },
+      { tipo: 'conexion_descartada', mensajeId: 'no-existe' },
+    );
+    expect(estado.messages).toEqual([mensaje]);
+  });
+});
+
 describe('dedup — un `after_id` viejo no duplica mensajes', () => {
   it('un reply ya visto no se vuelve a agregar, aunque el servidor lo repita', () => {
     const conHistorial = correr(estadoBase(), {

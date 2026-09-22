@@ -61,6 +61,13 @@ export interface ChatMessage {
    * `sanitizarHitlRespondido` (`hitl.ts`) — el caller (hook de cada plataforma) es quien la invoca
    * ANTES de sembrar el estado inicial. */
   hitlRespondido?: { value: string; label: string };
+  /** K-11 / BL-J8 Parte 1 (mobile) — la card `requiere_conexion` de ESTE mensaje (assistant) fue
+   * descartada con «Ahora no» (`useConexionRequerida.ts`). Ausente = la card sigue activa/evaluable
+   * (mismo criterio que `hitlRespondido` ausente = sin responder). Se persiste DENTRO del mensaje —
+   * mismo patrón B que `hitlRespondido` — para que sobreviva a un reload sin la fuga de una clave
+   * separada en storage (esa es la fuga conocida del patrón A de la web, bloqueada para mobile hasta
+   * que se resuelva PODA/BL-V32; ver el contrato de este fix). */
+  conexionDescartada?: true;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -147,6 +154,11 @@ export type EventoChat =
   | { tipo: 'respuestas_recibidas'; replies: ReplyMessage[]; nextId: number }
   /** Venció `WAIT_TIMEOUT_MS` sin respuesta. */
   | { tipo: 'tiempo_agotado' }
+  /** K-11 / BL-J8 Parte 1 (mobile) — «Ahora no» en el sheet de conexión. A diferencia de
+   * `mensaje_usuario_agregado` (que ATA una marca a un mensaje NUEVO que se está agregando), este
+   * evento no agrega ningún mensaje — sólo marca uno YA EXISTENTE (más parecido en forma a
+   * `tiempo_agotado` que a `mensaje_usuario_agregado`). */
+  | { tipo: 'conexion_descartada'; mensajeId: string }
   /** Arranca una conversación nueva: el caller ya generó el `session_id` y ya limpió la
    * persistencia vieja (efectos) — acá sólo se resetea el estado en memoria. */
   | { tipo: 'nueva_sesion'; sessionId: string };
@@ -285,6 +297,16 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
       // Sin motivo -> 'servidor'. NUNCA se adivina 'red': mandar a revisar la conexión cuando el
       // problema era otro es exactamente el error que este campo existe para no repetir.
       return { ...estado, sendStatus: 'error', motivoFallo: evento.motivo ?? 'servidor' };
+
+    case 'conexion_descartada':
+      // Sólo marca el mensaje `evento.mensajeId` — inmutable, spread, mismo patrón que
+      // `mensaje_usuario_agregado` usa para marcar `hitlRespondido` en un mensaje previo.
+      return {
+        ...estado,
+        messages: estado.messages.map((mensaje) =>
+          mensaje.id === evento.mensajeId ? { ...mensaje, conexionDescartada: true } : mensaje,
+        ),
+      };
 
     case 'tiempo_agotado':
       // Sólo degrada 'waiting' -> 'timeout' (mismo guard que el `setSendStatus((current) => ...)`

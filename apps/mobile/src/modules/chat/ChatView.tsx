@@ -94,7 +94,7 @@ export function ChatView() {
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio, enviarFoto } = useChat(me?.cliente_id ?? '');
+  const { estado, send, enviarAudio, enviarFoto, descartarConexion } = useChat(me?.cliente_id ?? '');
   const voz = useVozComando();
   const foto = useCapturaFoto();
   const tecladoVisible = useTecladoVisible();
@@ -121,7 +121,7 @@ export function ChatView() {
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
 
   // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
-  const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio);
+  const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio, descartarConexion);
 
   /**
    * 🔴 **El puente de la Decisión C**: lo que otra pantalla dejó pendiente entra ACÁ, en el chat

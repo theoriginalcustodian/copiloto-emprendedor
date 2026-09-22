@@ -148,6 +148,11 @@ export interface UseChatResult {
   /** Sube una foto de ticket (`useCapturaFoto`) para OCR y despachar -- ver el docstring de
    * `enviarFoto` más abajo. */
   enviarFoto: (foto: ArchivoSubida) => Promise<void>;
+  /** K-11 / BL-J8 Parte 1 — marca la card `requiere_conexion` de `mensajeId` como descartada
+   * («Ahora no» en `useConexionRequerida.ts`) y persiste el cambio. Síncrono y sin red, a diferencia
+   * de `send`/`enviarAudio`/`enviarFoto`: no hay ciclo de envío, sólo una transición de estado sobre
+   * un mensaje ya existente. */
+  descartarConexion: (mensajeId: string) => void;
 }
 
 /**
@@ -464,5 +469,21 @@ export function useChat(clienteId: string): UseChatResult {
     [detenerPolling, actualizarEstado, iniciarEsperaDeRespuesta, clienteId],
   );
 
-  return { estado, send, enviarAudio, enviarFoto };
+  /**
+   * K-11 / BL-J8 Parte 1 — «Ahora no» del sheet de conexión. Sin red, sin ciclo `envio_*`: sólo
+   * marca `conexionDescartada` en el mensaje existente y persiste, mismo patrón B que
+   * `hitlRespondido` (la marca vive DENTRO del mensaje, sin la fuga de una clave separada).
+   */
+  const descartarConexion = useCallback(
+    (mensajeId: string) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+      const siguiente = reducirChat(actual, { tipo: 'conexion_descartada', mensajeId });
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+    },
+    [actualizarEstado, clienteId],
+  );
+
+  return { estado, send, enviarAudio, enviarFoto, descartarConexion };
 }

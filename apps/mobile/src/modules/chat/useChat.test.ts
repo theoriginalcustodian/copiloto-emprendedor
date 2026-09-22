@@ -437,6 +437,82 @@ describe('useChat -- HITL ya respondida sobrevive a un reload (H-A4-9)', () => {
   });
 });
 
+/**
+ * K-11 / BL-J8 Parte 1 (mobile) — mismo criterio que el bloque HITL de arriba: `descartarConexion`
+ * tiene que persistir la marca `conexionDescartada` en `AsyncStorage` (dentro del mensaje), para que
+ * un remonte real (`unmount` + `renderHook` nuevo sobre el MISMO `AlmacenClave`) la rehidrate ya
+ * marcada -- no un `useState` efímero que un remonte real perdería.
+ */
+describe('useChat -- descartarConexion persiste conexionDescartada y sobrevive a un reload', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-conexion-reload';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`copiloto-chat-session-id:${CLIENTE_ID}`, sessionId);
+    store.set(`copiloto-chat-msgs:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  const CARD_CONEXION = { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' };
+
+  it('marca conexionDescartada y persiste -- un remonte nuevo la rehidrata ya marcada', async () => {
+    sembrarHistorial('sess-1', [
+      { id: 'u1', role: 'user', text: 'mandale un mail a Juan' },
+      { id: 'a1', role: 'assistant', text: 'Conectá Gmail primero.', card: CARD_CONEXION },
+    ]);
+
+    const primero = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(primero.result.current.estado?.messages).toHaveLength(2));
+
+    await act(async () => {
+      primero.result.current.descartarConexion('a1');
+    });
+    expect(primero.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      conexionDescartada: true,
+    });
+    await primero.unmount();
+
+    // CONTROL: un remonte real (nuevo hook, mismo AlmacenClave) -- si la marca viviera en un
+    // `useState` en vez de en el mensaje persistido, este segundo montaje la vería sin marcar.
+    const segundo = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(segundo.result.current.estado?.messages).toHaveLength(2));
+    expect(segundo.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      conexionDescartada: true,
+    });
+    await segundo.unmount();
+  });
+
+  it('sin descarte previo, el mensaje rehidrata SIN conexionDescartada', async () => {
+    sembrarHistorial('sess-2', [
+      { id: 'u1', role: 'user', text: 'mandale un mail a Juan' },
+      { id: 'a1', role: 'assistant', text: 'Conectá Gmail primero.', card: CARD_CONEXION },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[1]?.conexionDescartada).toBeUndefined();
+    unmount();
+  });
+});
+
 const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
 const ARCHIVO_FOTO = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
 
