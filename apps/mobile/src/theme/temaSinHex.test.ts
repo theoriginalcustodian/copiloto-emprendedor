@@ -37,6 +37,12 @@ const ARCHIVOS_DE_COLOR = [
    * (`LogoMarca.tsx`) queda cero-hex.
    */
   join('modules', 'apps', 'logosMarca.ts'),
+  /**
+   * BL-X10 — los 4 colores de las formas de `IdentidadEntrada.tsx` (mismo criterio: (a) el
+   * logotipo en construcción no cambia con la piel, gemelo de `--identidad-word` en web; (b)
+   * datos puros, sin lógica). Ver docstring de `identidadPalette.ts`.
+   */
+  join('theme', 'identidadPalette.ts'),
 ];
 /**
  * `.test.ts` / `.test.tsx` (runner nativo) y `.test.web.ts` (runner web, proyecto Jest "web") son las

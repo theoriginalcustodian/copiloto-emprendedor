@@ -28,6 +28,15 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedScrollHandler: () => () => {},
     withTiming: (destino) => destino,
     withSpring: (destino) => destino,
+    // BL-X10 (EntradaDiaria): `withDelay` sólo envuelve la animación real -- bajo test no hay hilo
+    // UI que cruzar, así que se ignora el delay y se resuelve directo al valor final, mismo criterio
+    // que `withTiming`/`withSpring` arriba.
+    withDelay: (_delay, animacion) => animacion,
+    // Ídem `useAnimatedStyle`: sin hilo UI real, no hay props animadas que computar en cada frame.
+    useAnimatedProps: () => ({}),
+    // Sin `AccessibilityInfo` nativo bajo Jest, "sin movimiento reducido" es el default seguro (la
+    // rama animada es la que se ejercita en los tests; el comportamiento reducido real, en el device).
+    useReducedMotion: () => false,
     runOnJS: (fn) => fn,
     Extrapolation: { CLAMP: 'clamp' },
     interpolate: (x) => x,
@@ -179,7 +188,7 @@ jest.mock('react-native-safe-area-context', () =>
 );
 
 jest.mock('expo-audio', () => ({
-  useAudioPlayer: () => ({ play: jest.fn(), pause: jest.fn() }),
+  useAudioPlayer: () => ({ play: jest.fn(), pause: jest.fn(), seekTo: jest.fn().mockResolvedValue(undefined) }),
   useAudioPlayerStatus: () => ({ playing: false, duration: 0, currentTime: 0, isLoaded: true }),
   useAudioRecorder: () => ({
     prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
