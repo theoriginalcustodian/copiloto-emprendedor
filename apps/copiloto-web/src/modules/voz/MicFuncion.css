@@ -13,9 +13,11 @@
 
 /* Chip «Por voz · Ns» (DoD FE1 #5, BL-J7 H-17) — confirma la duración del dictado que acaba de
  * rellenar el campo; texto plano, sin depender de ningún token de color del chat (este componente
- * vive fuera de él). */
+ * vive fuera de él). `--label` es el token real de "texto atenuado" (ajustes.css, account.css,
+ * gastos.css) — `--muted-fg` no existe en ningún tema (censo 2026-09-07) y su fallback #6b7280
+ * rompe AA en las 2 pieles (BL-Q4, `paresPintadosContraste.test.ts`: 3.49–4.08:1). */
 .mic-funcion__chip {
   white-space: nowrap;
   font-size: 12px;
-  color: var(--muted-fg, #6b7280);
+  color: var(--label);
 }
