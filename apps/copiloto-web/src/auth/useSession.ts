@@ -47,6 +47,13 @@ export interface UseSessionResult {
    */
   avisoSesion?: string;
   origenSesion: OrigenSesion;
+  /**
+   * BL-X10/BL-X12w — cierre a PROPÓSITO (botón logout), gemelo de `cierreVoluntario` en mobile
+   * (`modules/auth/useSession.ts`). Sólo se completa en `status === 'anon'`: si la sesión vuelve a
+   * `'authed'` deja de describir nada (ver `SessionProvider`). `undefined` en el resto de los casos
+   * — arranque limpio, sesión caída sola (CTA5) — esos van directo al formulario, no al reveal.
+   */
+  cierreVoluntario?: { email: string | null };
   login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }

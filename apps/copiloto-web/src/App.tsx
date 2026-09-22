@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ThemeProvider } from './design-system/ThemeProvider';
 import { SessionProvider } from './auth/SessionProvider';
-import { LoginScreen } from './auth/LoginScreen';
+import { EntradaSesion } from './auth/EntradaSesion';
 import { SignupScreen } from './auth/SignupScreen';
 import { useSession } from './auth/useSession';
 import { Onboarding } from './modules/onboarding';
@@ -27,9 +27,9 @@ function leerSignupDeQuery(): boolean {
  * 'authed' -> `ResponsiveShell` (UN shell que bifurca por breakpoint: `<900px` -> AppShell
  * mobile con tab-bar Chat·Apps·Conexiones·Cuenta, Task 9; `>=900px` -> DesktopShell con rail
  * lateral, mismas 4 pantallas de módulo — ver `shell/ResponsiveShell.tsx`); cualquier otro estado
- * ('anon' | 'no-habilitada') -> LoginScreen (diseño final, Task 22 — reemplaza el LoginSkeleton
- * funcional-básico; ya sabe mostrar el aviso de cuenta no-habilitada leyendo la sesión compartida
- * — ver auth/LoginScreen.tsx) o `SignupScreen` (BETA-4b, ver `leerSignupDeQuery`).
+ * ('anon' | 'no-habilitada') -> `EntradaSesion` (BL-X12w: reveal «volver» con `cierreVoluntario`,
+ * o `LoginScreen` directo — ver `auth/EntradaSesion.tsx`) o `SignupScreen` (BETA-4b, ver
+ * `leerSignupDeQuery`).
  */
 function AppRouter() {
   const { status, me, origenSesion } = useSession();
@@ -84,7 +84,7 @@ function AppRouter() {
       />
     );
   }
-  return <LoginScreen />;
+  return <EntradaSesion />;
 }
 
 export function App() {

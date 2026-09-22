@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
+import { Button } from '../../design-system';
 import { scallopPath } from './scallopPath';
 import './Splash.css';
 import { BLOB_STAGGER, SPLASH_TOTAL_MS, T_WORDMARK, LETTER_STAGGER } from './tempos';
@@ -59,15 +60,26 @@ function pronunciar() {
   window.speechSynthesis.speak(u);
 }
 
+export interface SplashCta {
+  primario: string;
+  secundario: string;
+  onPrimario: () => void;
+  onSecundario: () => void;
+}
+
 /**
  * BL-X10 — identidad (splash): primer ingreso / post-logout, 4 formas colapsando a una "O" + el
  * wordmark "dobi" entrando letra a letra + reveal de pronunciación. UNA vez por ingreso (no es la
- * entrada diaria acelerada, ver `EntradaDiaria.tsx` — `splash-port-reanimated.md`).
+ * entrada diaria acelerada, ver `EntradaDiaria.tsx` — `splash-port-reanimada.md`).
  *
  * `--ox` (destino X del colapso del último blob) se mide contra el ancho REAL de "dobi" ya
  * renderizado, no un valor fijo: depende de la fuente/tamaño real (spec §7).
+ *
+ * `cta` (BL-X12w, `?ver=volver`): el MISMO aterrizaje sirve para el post-logout — no es una
+ * segunda pantalla, sólo agrega las dos puertas al reveal ya existente (gemelo de mobile
+ * `RevealEntrada`, PR #597 — "no hay un segundo splash"). Sin `cta`, el reveal es el de siempre.
  */
-export function Splash({ onFin }: { onFin: () => void }) {
+export function Splash({ onFin, cta }: { onFin: () => void; cta?: SplashCta }) {
   const reducido = usePrefersReducedMotion();
   const wordRef = useRef<HTMLSpanElement>(null);
   const [ox, setOx] = useState<number | null>(null);
@@ -136,17 +148,30 @@ export function Splash({ onFin }: { onFin: () => void }) {
         className="identidad-splash__reveal"
         style={reducido ? { opacity: 1, animation: 'none' } : undefined}
       >
-        <span>Se dice o-DO-bi</span>
-        <button
-          type="button"
-          className="identidad-splash__pronunciar"
-          aria-label="Escuchar cómo se pronuncia Odobi"
-          onClick={pronunciar}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M6.9 4.54c-.4-.24-.9.05-.9.51v13.9c0 .46.5.75.9.51l11.72-6.95c.4-.23.4-.8 0-1.03L6.9 4.54Z" />
-          </svg>
-        </button>
+        <div className="identidad-splash__caption">
+          <span>Se dice o-DO-bi</span>
+          <button
+            type="button"
+            className="identidad-splash__pronunciar"
+            aria-label="Escuchar cómo se pronuncia Odobi"
+            onClick={pronunciar}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M6.9 4.54c-.4-.24-.9.05-.9.51v13.9c0 .46.5.75.9.51l11.72-6.95c.4-.23.4-.8 0-1.03L6.9 4.54Z" />
+            </svg>
+          </button>
+        </div>
+
+        {cta && (
+          <div className="identidad-splash__cta">
+            <Button variant="primary" onClick={cta.onPrimario}>
+              {cta.primario}
+            </Button>
+            <Button variant="ghost" onClick={cta.onSecundario}>
+              {cta.secundario}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
