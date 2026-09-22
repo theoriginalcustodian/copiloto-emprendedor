@@ -34,13 +34,26 @@ const ContextoTema = createContext<ContextoTema | null>(null);
  * remover o renombrar un skin en un rediseño futuro
  * — y cae al default sin crash, en vez de dejar el contexto en un estado imposible.
  */
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export interface ThemeProviderProps {
+  children: ReactNode;
+  /**
+   * SÓLO PARA TESTS (`paresPintadosContraste.test.tsx`). Fija el skin pintado de forma síncrona y
+   * determinística, sin tocar `useColorScheme` ni `almacenClave.leer` — el gate de contraste necesita
+   * montar cada pantalla bajo CADA piel de `SKINS` sin depender de un storage async ni del esquema del
+   * SO de la máquina que corre el test. Ausente (el uso real de la app) ⇒ comportamiento intacto:
+   * persistencia + "como el teléfono" como siempre.
+   */
+  skinForzado?: NombreSkin;
+}
+
+export function ThemeProvider({ children, skinForzado }: ThemeProviderProps) {
   const [preferencia, setPreferenciaState] = useState<PreferenciaTema>(PREFERENCIA_DEFAULT);
   // `useColorScheme` re-renderiza cuando el sistema cambia de esquema: «Como el teléfono» sigue al
   // sistema EN VIVO con la app abierta, sin listeners propios.
   const esquema = useColorScheme();
 
   useEffect(() => {
+    if (skinForzado) return; // el gate de contraste no persiste ni lee preferencia — ver `skinForzado`.
     let vivo = true;
     almacenClave.leer(CLAVE_SKIN).then((guardado) => {
       // `leerPreferenciaTema` blinda contra valores de versiones viejas (`nocturno` migra a `oscuro`,
@@ -50,7 +63,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [skinForzado]);
 
   const setPreferencia = useCallback((nueva: PreferenciaTema) => {
     setPreferenciaState(nueva);
@@ -59,7 +72,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void almacenClave.guardar(CLAVE_SKIN, nueva);
   }, []);
 
-  const skin: NombreSkin = resolverPiel(preferencia, esquema === 'dark');
+  const skin: NombreSkin = skinForzado ?? resolverPiel(preferencia, esquema === 'dark');
   const valor = useMemo(
     () => ({ skin, preferencia, setPreferencia, setSkin: setPreferencia }),
     [skin, preferencia, setPreferencia],

@@ -17,6 +17,9 @@ export interface ComposerProps {
   onSend: (text: string, mode: string | null) => void;
   /** Blob grabado por `MicButton` (Task 19) — el caller lo reenvía a `useChat().sendAudio(blob)`. */
   onSendAudio: (blob: Blob) => void;
+  /** BL-J7 (H-A3-7) — pasthrough del `onRecordingStart` de `MicButton`: el caller (`ChatScreen`)
+   * lo usa para arrancar el cronómetro y calcular la duración del chip «Por voz · Ns». */
+  onRecordingStart?: () => void;
 }
 
 function StatusHint({ sendStatus }: { sendStatus: SendStatus }) {
@@ -83,7 +86,7 @@ const DEFAULT_PLACEHOLDER = 'Escribí, o hablá…';
  * `sendStatus==='sending'`, mismo criterio que el textarea, para no superponer un envío de texto
  * con uno de audio.
  */
-export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
+export function Composer({ sendStatus, onSend, onSendAudio, onRecordingStart }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const { mode, clearMode } = useMode();
   const canSend = draft.trim() !== '' && sendStatus !== 'sending';
@@ -139,7 +142,11 @@ export function Composer({ sendStatus, onSend, onSendAudio }: ComposerProps) {
           rows={1}
           disabled={sendStatus === 'sending'}
         />
-        <MicButton onSendAudio={onSendAudio} disabled={sendStatus === 'sending'} />
+        <MicButton
+          onSendAudio={onSendAudio}
+          onRecordingStart={onRecordingStart}
+          disabled={sendStatus === 'sending'}
+        />
         <button
           type="submit"
           className="composer__send"

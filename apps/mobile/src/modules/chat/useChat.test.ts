@@ -310,11 +310,11 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.messages).toEqual([
-      expect.objectContaining({ role: 'user', text: 'anotá esto' }),
+      expect.objectContaining({ role: 'user', text: 'anotá esto', porVoz: { duracionSeg: 4 } }),
     ]);
     expect(result.current.estado?.sendStatus).toBe('waiting');
     // `cliente_id` viaja SIEMPRE, vacío -- ver el docstring del módulo.
@@ -329,7 +329,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
@@ -343,7 +343,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(deleteAsync).toHaveBeenCalledWith('file:///cache/voz.m4a', { idempotent: true });
@@ -359,7 +359,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.sendStatus).toBe('error');
@@ -376,7 +376,7 @@ describe('useChat -- enviarAudio (F6, voz-comando corta)', () => {
     await waitFor(() => expect(result.current.estado).not.toBeNull());
 
     await act(async () => {
-      await result.current.enviarAudio(ARCHIVO_VOZ);
+      await result.current.enviarAudio(ARCHIVO_VOZ, 4);
     });
 
     expect(result.current.estado?.motivoFallo).toBe('audio_muy_grande');

@@ -9,6 +9,9 @@ export type RolBurbuja = 'user' | 'assistant';
 export interface BurbujaProps {
   role: RolBurbuja;
   text: string;
+  /** BL-J7 (H-A3-7) — el mensaje llegó por dictado (`useChat().enviarAudio`): chip «Por voz · Ns»,
+   * mismo criterio que `MicFuncion` fuera del chat. `undefined` en mensajes escritos: sin chip. */
+  porVoz?: { duracionSeg: number };
 }
 
 /**
@@ -31,7 +34,7 @@ export interface BurbujaProps {
  * auxiliares del acento", el mismo tono que UB2 a .4, distinta del nivel 1 neutro) porque es una
  * superficie de acento, no una card neutra. Ver `relieve.ts`.
  */
-export function Burbuja({ role, text }: BurbujaProps) {
+export function Burbuja({ role, text, porVoz }: BurbujaProps) {
   const tema = useTema();
   const g = tema.glass;
   const esUsuario = role === 'user';
@@ -63,6 +66,11 @@ export function Burbuja({ role, text }: BurbujaProps) {
         {/* Línea de luz superior: el canto iluminado que despega la burbuja. */}
         <View style={[styles.luzSuperior, { backgroundColor: g.hi }]} pointerEvents="none" />
         <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base }}>{text}</Text>
+        {porVoz && (
+          <Text testID="chat-bubble-voz" style={[styles.chipVoz, { color: tema.color.textoTenue }]}>
+            Por voz · {porVoz.duracionSeg}s
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -78,4 +86,5 @@ const styles = StyleSheet.create({
     // La sombra proyectada la pone `sombraNivel(...)` — ver el docstring del módulo.
   },
   luzSuperior: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
+  chipVoz: { fontSize: 12, marginTop: 4 },
 });

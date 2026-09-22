@@ -35,10 +35,10 @@ _inferir_sesion() {
 
 UC_SESION="${UC_SESION:-$(_inferir_sesion)}"
 case "$UC_SESION" in
-  backend) _sfx=be; _port=55435 ;;
-  fe1)     _sfx=fe1; _port=55433 ;;
-  fe2)     _sfx=fe2; _port=55434 ;;
-  aud)     _sfx=aud; _port=55436 ;;   # auditoría (A1 §4.4: usó copiloto-test-db-aud:55436)
+  backend) _sfx=be; _port=55435; _gport=9975; _gmport=8975 ;;
+  fe1)     _sfx=fe1; _port=55433; _gport=9973; _gmport=8973 ;;
+  fe2)     _sfx=fe2; _port=55434; _gport=9974; _gmport=8974 ;;
+  aud)     _sfx=aud; _port=55436; _gport=9976; _gmport=8976 ;;   # auditoría (A1 §4.4: usó copiloto-test-db-aud:55436; H-A3-11: gotrue-aud:9976/8976, ya usado por el spike del auditor)
   "")      _sfx="" ;;
   *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud)" >&2; return 1 2>/dev/null || exit 1 ;;
 esac
@@ -47,6 +47,12 @@ if [ -n "$_sfx" ]; then
   export UC_TESTDB_NAME="${UC_TESTDB_NAME:-copiloto-test-db-$_sfx}"
   export UC_TESTDB_PORT="${UC_TESTDB_PORT:-$_port}"
   export UC_TEST_STAGE="${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage-$_sfx}"
+  # H-A3-11: misma lógica para la GoTrue de test efímera -- sin esto, dos sesiones que la levantan a
+  # la vez comparten contenedor/stage/puerto (mismo bug que ya pisó test-db.sh, BL-B6).
+  export UC_TESTGOTRUE_NAME="${UC_TESTGOTRUE_NAME:-copiloto-test-gotrue-$_sfx}"
+  export UC_TESTGOTRUE_PORT="${UC_TESTGOTRUE_PORT:-$_gport}"
+  export UC_TESTGOTRUE_MAIL_PORT="${UC_TESTGOTRUE_MAIL_PORT:-$_gmport}"
+  export UC_TESTGOTRUE_STAGE="${UC_TESTGOTRUE_STAGE:-/tmp/copiloto-test-gotrue-$_sfx}"
 fi
 export UC_SESION
 _etiqueta="${UC_SESION:-<sin sesión: defaults históricos>}"
