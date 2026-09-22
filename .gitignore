@@ -86,3 +86,9 @@ client_secret_*.json
 
 # BL-B3: binarios de herramientas bajados por scripts (gitleaks fijado)
 .tools/
+
+# Memoria que NO debe versionarse (repo PÚBLICO): el rescate de seed-memory.sh trae al repo
+# todo lo que sólo vive en el slug, y no puede saber que una entrada es deliberadamente local.
+# `telegram-composio-canal-operador.md` lleva el chat_id del operador — dato semi-sensible, y el
+# propio archivo lo dice. Un chat_id es un número: ni gitleaks ni un escáner de patrones lo cazan.
+memoria/telegram-composio-canal-operador.md

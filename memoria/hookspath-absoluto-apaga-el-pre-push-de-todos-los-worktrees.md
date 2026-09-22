@@ -38,7 +38,31 @@ repo: lo escribe el harness.
   el que ejecuta es otro árbol.
 - El valor correcto es `core.hooksPath=.githooks` **relativo**, que git resuelve contra la raíz de
   cada worktree. Detectores: `gate.sh` da rojo si se desvía (H-A4-1) y `vigilancia-check.sh` alarma en
-  cada latido con la hora del cambio. El control de servidor (push protection de GitHub) se le propuso
-  al operador (Telegram 22).
+  cada latido con la hora del cambio.
+
+**🔴 DETECTAR NO ES BLOQUEAR — probado con un push real (A4-bis, 2026-09-22).** Los dos detectores de
+arriba funcionan y tienen control negativo, y aun así **un commit con secreto entró al remoto**: con el
+`hooksPath` desviado, el push fue ACEPTADO (rc=0) y `rama-b2` quedó escrita. No es una inferencia sobre
+el script: es el ref en el remoto. El control positivo (push limpio, también aceptado) es lo que le da
+sentido al rojo de los casos con `hooksPath` sano.
+
+La conclusión es de arquitectura y vale fuera de este repo: **un control cuyo interruptor está del lado
+del controlado es una advertencia, no un bloqueo.** `.githooks/pre-push` está bien escrito y es
+fail-closed —aborta si el escáner falla— y eso no lo salva, porque cuando `hooksPath` apunta a otro
+árbol git **ni siquiera lo invoca**: no hay código del hook corriendo que pueda notarlo. Ningún parche
+al hook puede arreglarlo; el techo es de la capa. Por eso `gate.sh` (#649) cierra lo que puede cerrar
+—que el *gate* no dé verde con el hook desviado— y deja intacto el agujero del *push*: detecta
+**después**, el push pasa **antes**. En un repo público, el instante del push es el instante de la
+publicación.
+
+Corolario para redactar cierres: el Cierre A afirmaba que «ya no apaga el hook en los demás
+worktrees». Es **falsa**, y la confusión es fácil de repetir: lo que sí se probó es que un segundo
+worktree hereda bien el hook **cuando el `hooksPath` es el relativo**, que es otra afirmación. Antes de
+escribir que un agujero se cerró, preguntá qué caso exacto ejercitó la prueba.
+
+- **La única capa fail-closed es la del servidor**, y en repos públicos es gratis: `secret_scanning` +
+  `secret_scanning_push_protection` de GitHub. Medido por API el 2026-09-22: los dos **`disabled`**.
+  Re-escalado al operador con el comando exacto (Telegram msg 25) porque el `PATCH` lo bloquea el
+  clasificador de permisos — y **pedírselo a otra sesión sería lavado de permisos**, no una salida.
 - Mientras tanto, un scanner que se saltea en silencio no es defensa: antes de commitear algo con
   forma de credencial, asumí que no hay red. Ver [[en-bypasspermissions-solo-sobrevive-permissions-deny]].
