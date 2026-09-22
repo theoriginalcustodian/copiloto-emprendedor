@@ -103,9 +103,26 @@ describe('hitlMapping', () => {
     expect(props.cancelLabel).toBe('Cancelar');
 
     props.onConfirm();
-    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1');
+    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1', 'Sí, cobrar $15.000');
 
     props.onCancel();
-    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1');
+    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1', 'Cancelar');
+  });
+
+  // BL-D4 — control positivo: `onChoice` también recibe el LABEL, no sólo el `value` técnico.
+  // Sin esto, `ChatScreen`/`SoporteScreen` no tienen de dónde sacar el texto legible para la
+  // burbuja optimista y terminan pintando el `value` crudo (`confirm_charge_1`/`cancel_charge_1`).
+  it('dispara onChoice con (value, label) — la burbuja del usuario nunca debe pintar el value', () => {
+    const onChoice = vi.fn();
+    const props = buildHitlCardProps(
+      msg({ text: 'Cobro a **Juan Pérez** por $15.000.', card: { service: 'mercadopago', label: 'Mercado Pago' } }),
+      onChoice,
+    );
+
+    props.onConfirm();
+    expect(onChoice).toHaveBeenCalledWith('confirm_charge_1', 'Sí, cobrar $15.000');
+
+    props.onCancel();
+    expect(onChoice).toHaveBeenCalledWith('cancel_charge_1', 'Cancelar');
   });
 });

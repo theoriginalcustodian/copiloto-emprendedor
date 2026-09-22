@@ -145,8 +145,8 @@ export function ChatView() {
   // El confirm/cancel del gate (`ListaMensajes`/`mapearGate`) reenvía acá como `kind:'callback'` —
   // mismo criterio que `handleChoice` en `ChatScreen.tsx` de la PWA.
   const manejarEleccion = useCallback(
-    (value: string, opts?: { payload?: Record<string, unknown> | null }) =>
-      void send(value, { kind: 'callback', payload: opts?.payload }),
+    (value: string, opts?: { payload?: Record<string, unknown> | null; displayText?: string }) =>
+      void send(value, { kind: 'callback', payload: opts?.payload, displayText: opts?.displayText }),
     [send],
   );
 

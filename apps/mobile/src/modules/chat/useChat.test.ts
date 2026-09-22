@@ -116,6 +116,27 @@ describe('useChat (hook de efectos, fork mobile de DocuMed sin voz/cliente activ
     unmount();
   });
 
+  // BL-D4 — control negativo: el token que viaja al backend (`cancel:2:0`) NUNCA es lo que la
+  // burbuja del usuario pinta. Sin `displayText` (el estado previo al fix, donde la burbuja usaba
+  // `trimmed` directo), este test falla mostrando el token crudo en `estado.messages[0].text`.
+  it('BL-D4: con displayText, la burbuja pinta el label -- NUNCA el token técnico enviado al backend', async () => {
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    jest.mocked(api.sendChat).mockResolvedValue({ wf_id: 'wf-1', accepted: true });
+
+    const { result, unmount } = await renderHook(() => useChat('cli-test'));
+    await waitFor(() => expect(result.current.estado).not.toBeNull());
+
+    await act(async () => {
+      await result.current.send('cancel:2:0', { kind: 'callback', displayText: 'Cancelar' });
+    });
+
+    const burbuja = result.current.estado?.messages[0];
+    expect(burbuja).toMatchObject({ role: 'user', text: 'Cancelar' });
+    expect(burbuja?.text).not.toContain('cancel:');
+    expect(api.sendChat).toHaveBeenCalledWith(expect.objectContaining({ text: 'cancel:2:0' }));
+    unmount();
+  });
+
   it('no se puede enviar vacío o sólo espacios', async () => {
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
 

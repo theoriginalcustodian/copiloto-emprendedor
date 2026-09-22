@@ -1609,6 +1609,13 @@ def make_tool_executor(gateway, *, now_iso_provider, mp_dedup_factory=None, llm=
                                   observation={"result": out.summarize(res)})
             if isinstance(out, Proposal):
                 if not confirmed:
+                    # H-A3-2(b): no pedir HITL sobre algo imposible — si el servicio no está
+                    # conectado, se lo decimos ANTES de pedir confirmación, no recién al ejecutar.
+                    if gateway.connection_status(ctx.composio_user_id, mod.TOOLKIT) != "ACTIVE":
+                        return ToolResult(tool_call_id=idem_key, status="error",
+                                          observation={"error": f"servicio no conectado: {mod.TOOLKIT}",
+                                                       "needs_connect": mod.TOOLKIT,
+                                                       "gate_card": requiere_conexion_card(mod.TOOLKIT, _friendly_toolkit(mod.TOOLKIT))})
                     return ToolResult(tool_call_id=idem_key, is_write=True, status="needs_confirmation",
                                       observation={"preview": out.reply_text, **_obs_service(mod.TOOLKIT)},
                                       artifact=Artifact(kind="pending", data={"reply_text": out.reply_text}))

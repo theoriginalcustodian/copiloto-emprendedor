@@ -46,8 +46,10 @@ export interface ListaMensajesProps {
   messages: ChatMessage[];
   /** `opts.payload` viaja hasta `useChat().send` — queda disponible para un gate futuro que necesite
    * mandar datos extra junto con la confirmación (ver `SendOptions.payload` en `useChat.ts`). Ningún
-   * gate de este sprint lo usa todavía. */
-  onChoice: (value: string, opts?: { payload?: Record<string, unknown> | null }) => void;
+   * gate de este sprint lo usa todavía.
+   * `opts.displayText` (BL-D4) — el label que el usuario vio y tocó (`gate.confirmLabel`/
+   * `cancelLabel`); `useChat().send` lo pinta en la burbuja optimista en vez del `value` técnico. */
+  onChoice: (value: string, opts?: { payload?: Record<string, unknown> | null; displayText?: string }) => void;
 }
 
 interface TarjetaConfirmacionProps {
@@ -247,8 +249,8 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
     return (
       <TarjetaConfirmacion
         gate={gate}
-        onConfirm={() => onChoice(gate.confirmValue)}
-        onCancel={() => onChoice(gate.cancelValue)}
+        onConfirm={() => onChoice(gate.confirmValue, { displayText: gate.confirmLabel })}
+        onCancel={() => onChoice(gate.cancelValue, { displayText: gate.cancelLabel })}
       />
     );
   }

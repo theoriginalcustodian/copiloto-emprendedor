@@ -92,6 +92,34 @@ describe('useChat', () => {
     expect(api.getReply).toHaveBeenCalledTimes(3);
   });
 
+  // BL-D4 — control negativo: un HITL/desambiguación manda al backend el token técnico
+  // (`cancel:2:0`) pero la burbuja del usuario tiene que pintar el LABEL que vio y tocó
+  // ('Cancelar'), nunca el token. Si `send()` no soporta `displayText` (el estado previo al fix,
+  // donde la burbuja usaba directamente `trimmed`), este test falla mostrando el token crudo.
+  it('BL-D4: con displayText, la burbuja pinta el label — NUNCA el token técnico enviado al backend', async () => {
+    vi.mocked(api.sendChat).mockResolvedValueOnce({ wf_id: 'wf-hitl-1', accepted: true });
+    vi.mocked(api.getReply)
+      .mockResolvedValueOnce({ replies: [], next_id: 0 }) // poll de rehidratación al montar
+      .mockResolvedValueOnce({ replies: [], next_id: 0 }); // 1er poll tras el callback
+
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await act(async () => {
+      await result.current.send('cancel:2:0', { kind: 'callback', displayText: 'Cancelar' });
+    });
+
+    // La burbuja optimista muestra el label...
+    expect(result.current.messages[0]).toMatchObject({ role: 'user', text: 'Cancelar' });
+    expect(result.current.messages[0].text).not.toContain('cancel:');
+    // ...pero el backend igual recibe el token técnico que espera el protocolo HITL.
+    expect(api.sendChat).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'cancel:2:0', kind: 'callback' }),
+    );
+  });
+
   it('ignora texto vacío/solo-espacios sin llamar a la API', async () => {
     const { result } = renderHook(() => useChat());
 

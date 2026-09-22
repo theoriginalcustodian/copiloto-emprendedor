@@ -155,6 +155,12 @@ export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
 export interface SendOptions {
   kind?: ChatMessageKind;
   mode?: string | null;
+  /** BL-D4 — texto a mostrar en la burbuja optimista del usuario cuando difiere del `text` que se
+   * manda al backend. Lo usa el HITL (`kind:'callback'`): el backend espera el `value` crudo del
+   * choice elegido (`confirm:<turn>:<step>`), pero el usuario nunca escribió eso — eligió un botón
+   * con un label ("Confirmar"/"Cancelar"). Sin este campo, la burbuja pintaba el `value` técnico
+   * tal cual (`hitlMapping.ts` → `ChatScreen.tsx` → acá). Ausente: se usa `text` como siempre. */
+  displayText?: string;
 }
 
 export interface UseChatResult {
@@ -293,7 +299,12 @@ export function useChat(): UseChatResult {
       if (!trimmed) return;
 
       stopPolling();
-      const userMessage: ChatMessage = { id: `user-${generateId()}`, role: 'user', text: trimmed, creadoEn: Date.now() };
+      const userMessage: ChatMessage = {
+        id: `user-${generateId()}`,
+        role: 'user',
+        text: opts?.displayText ?? trimmed,
+        creadoEn: Date.now(),
+      };
       setMessages((prev) => acotarMensajes([...prev, userMessage]));
       setSendStatus('sending');
 

@@ -73,14 +73,16 @@ describe('MessageList', () => {
     expect(screen.queryByTestId('disambiguation-chips')).not.toBeInTheDocument();
   });
 
-  it('elegir un chip de desambiguación dispara onChoice con el value', () => {
+  it('elegir un chip de desambiguación dispara onChoice con (value, label)', () => {
     const onChoice = vi.fn();
     const messages: ChatMessage[] = [
       { id: 'a1', role: 'assistant', text: '¿Cuál Juan?', choices: DISAMBIGUATION },
     ];
     render(<MessageList messages={messages} onChoice={onChoice} />);
     fireEvent.click(screen.getByRole('button', { name: 'Juan Gómez' }));
-    expect(onChoice).toHaveBeenCalledWith('juan_gomez');
+    // BL-D4 — el label ('Juan Gómez') es lo que la burbuja optimista del usuario debe pintar;
+    // sin él, el caller sólo tiene el `value` técnico y termina mostrando 'juan_gomez' crudo.
+    expect(onChoice).toHaveBeenCalledWith('juan_gomez', 'Juan Gómez');
   });
 
   it('card `presupuesto_propuesto` -> TarjetaPresupuestoPropuesto editable (no burbuja lisa, no HitlCard)', () => {

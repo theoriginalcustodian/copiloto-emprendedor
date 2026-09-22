@@ -123,6 +123,12 @@ export interface SendOptions {
   /** El confirm/cancel del gate de confirmación genérico (ver `mapearGate`, `@copiloto/core/chat`) —
    * viaja tal cual a `ChatRequest.payload`. `null`/ausente en cualquier otro turno. */
   payload?: Record<string, unknown> | null;
+  /** BL-D4 — texto a mostrar en la burbuja optimista del usuario cuando difiere del `text` que se
+   * manda al backend. Lo usa el gate confirmar/cancelar (`kind:'callback'`): el backend espera el
+   * `value` crudo del choice elegido (`confirm:<turn>:<step>`), pero el usuario nunca escribió eso —
+   * tocó un botón con un label ("Confirmar"/"Cancelar", `gate.confirmLabel`/`gate.cancelLabel`). Sin
+   * este campo, la burbuja pintaba el `value` técnico tal cual. Ausente: se usa `text` como siempre. */
+  displayText?: string;
 }
 
 export interface UseChatResult {
@@ -288,7 +294,14 @@ export function useChat(clienteId: string): UseChatResult {
 
       detenerPolling();
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: trimmed, creadoEn: Date.now() };
+      // BL-D4: `opts.displayText` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta
+      // en su burbuja. `trimmed` sigue siendo lo que se manda al backend (`cancel:<turn>:<step>`).
+      const mensajeUsuario: ChatMessage = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: opts?.displayText ?? trimmed,
+        creadoEn: Date.now(),
+      };
       // Dos eventos separados: agregar el mensaje NO toca `sendStatus` — ese cambio es explícito vía
       // `envio_iniciado`, así el mensaje aparece OPTIMISTA (antes de que la red responda).
       let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });

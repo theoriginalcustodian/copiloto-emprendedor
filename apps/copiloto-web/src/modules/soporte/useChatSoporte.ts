@@ -143,6 +143,10 @@ function highestSeenReplyId(messages: ChatMessageSoporte[]): number {
 
 export interface SendOptionsSoporte {
   kind?: ChatMessageKind;
+  /** BL-D4 — mismo criterio que `modules/chat/useChat.ts`: texto a mostrar en la burbuja optimista
+   * cuando difiere del `text` real enviado (el HITL/desambiguación manda el `value` técnico, la
+   * burbuja debe mostrar el label que el usuario tocó). */
+  displayText?: string;
 }
 
 export interface UseChatSoporteResult {
@@ -237,7 +241,11 @@ export function useChatSoporte(clienteId: string, funcion: FuncionSoporte): UseC
       if (!trimmed) return;
 
       stopPolling();
-      const userMessage: ChatMessageSoporte = { id: `user-${generarId()}`, role: 'user', text: trimmed };
+      const userMessage: ChatMessageSoporte = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: opts?.displayText ?? trimmed,
+      };
       setMessages((prev) => [...prev, userMessage]);
       setSendStatus('sending');
 

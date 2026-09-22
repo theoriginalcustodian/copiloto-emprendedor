@@ -196,6 +196,8 @@
 
 ## 📚 Referencia
 
+- [`patched()` se memoiza por run: un fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new. Medí con `TemporalChangeVersion`.
+- [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — corren el hook del checkout viejo: gitleaks (#601) no corría en ningún push.
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 
 ## 🗄️ Historia

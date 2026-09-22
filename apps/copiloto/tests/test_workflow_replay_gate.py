@@ -47,6 +47,11 @@ FIXTURES: dict[str, tuple[str, str]] = {
         "afip_factura_workflow", "FacturaWorkflow"),
     "motor/backend/agent/fixtures/history_conv_en_vuelo_con_narra_guardrail.json": (
         "backend.agent.conversation_workflow", "ConversationWorkflow"),
+    # H-A3-4 (Ola 3): history que atraviesa la rama del CONFIRM-REENTRY cuando la conexión se cae
+    # ENTRE el confirm y la ejecución (`gate_card` extraída ahí, patch `gate-card-sobrevive-confirm`)
+    # -- las otras 2 fixtures de ConversationWorkflow no pasan por esta rama.
+    "motor/backend/agent/fixtures/history_gate_card_sobrevive_confirm.json": (
+        "backend.agent.conversation_workflow", "ConversationWorkflow"),
 }
 
 # Workflows de producción sin fixture todavía. Decisión visible (D4, 2026-08-13), no un olvido.
