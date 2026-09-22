@@ -228,7 +228,7 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Parkear un hook fuera de `hooks` vuelve FATAL todo el settings](parkear-un-hook-fuera-de-hooks-vuelve-fatal-todo-el-settings.md) — Claude Code 2.1.263 descarta el archivo ENTERO; se cayeron los 12 deny ~24 h. El prefijo `_disabled_` no exime.
 - [Plugin oficial Telegram no engancha polling salvo sesión nueva](plugin-telegram-oficial-requiere-sesion-nueva-para-enganchar-polling.md) — `mcp get` "Connected" es falso positivo; verificar con `getUpdates`/`bot.pid`, no con el status del MCP.
 - [Remote Control, no Channels, es el gate de decisión](remote-control-es-el-mecanismo-de-gate-no-channels.md) — responder desde el teléfono continúa la sesión (verif. 2026-08-18). Desde 2026-09-21 NO arranca solo: `/remote-control` por sesión.
-- [Canal Telegram↔Claude Code verificado end-to-end](telegram-composio-canal-operador.md) — chat_id `7182010185` capturado 2026-08-18; updates expiran a las 24h, no es bug de webhook.
+- **Canal Telegram↔Claude Code verificado end-to-end** — entrada **LOCAL, no versionada** (`.gitignore`): guarda el chat_id del operador y el repo es público. Vive sólo en el slug de memoria de cada sesión. Dato reusable sin el identificador: los `getUpdates` de Telegram expiran a las 24 h — que no aparezcan no es un bug de webhook.
 - [Un contrato bajado YA desbloquea las dos mitades](un-contrato-bajado-ya-desbloquea-esperar-la-otra-mitad-vuelve-serie-la-junta.md) — esperar a que el otro lado implemente vuelve serie la junta; FE2 se declaró sin cola con 9 filas arrancables.
 - [Un fixture no aísla lo que el script lee por fuera](un-fixture-no-aisla-lo-que-el-script-lee-por-fuera.md) — sumar una fuente de datos sin parametrizarla volvió 4 controles positivos falsos verdes. Y si la señal CALLA la alarma, ante duda NO contar.
 - [Un instrumento tiene DOS modos de no saber: callarse e inundar](un-instrumento-tiene-dos-modos-de-no-saber-callarse-e-inundar.md) — una variable vacía vale 0 en aritmética bash; el segundo modo aparece al testear el primero.
@@ -241,3 +241,13 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Primer diff de cobertura funcional prototipo↔app (2026-09-08)](diff-cobertura-prototipo-vs-app-2026-09-08.md) — 3 pantallas ausentes, 8 parciales.
 - [Martín diseña, no programa: la vara es su prototipo final](martin-disena-y-la-meta-es-su-prototipo-final.md) — y desde 54fac3ea (2026-09-21) SÍ está en el repo: medila, no la recuerdes.
 - [Gotchas y lecciones aprendidas (agregador)](GOTCHAS.md) — NO es una entrada de memoria: es el archivo que se desprendió de `MEMORY.md` para bajar el bloat, con las lecciones pasadas por tópico. Se consulta por nombre cuando aparece un bug extraño.
+
+## 🔄 2026-09-22 — bajadas del índice por el techo de LÍNEAS
+
+- **🛡️ Manejo de errores — COMPLETO en prod (cerrado ~2026-08-01)** (#151→#185) + autohealing que abre PRs solo, con gate que distingue *arregla* de *no rompe*. [[no-romper-no-es-arreglar]]
+- [Un cierre correcto por la causa equivocada](un-cierre-correcto-por-la-causa-equivocada.md) — el veredicto tapa la causa, y la causa es lo que se hereda; «no verificable» clausura la medición.
+- [Una barrera que excluye el archivo y deja el dato en el índice](una-barrera-que-excluye-el-archivo-y-deja-el-dato-en-el-indice.md) — protegí el continente, no el contenido; grepeá el dato, no la ruta.
+
+- [El control que va antes no detecta deriva](el-control-que-va-antes-no-detecta-deriva.md) — una serie monótona confunde efecto con deriva; repetí el control DESPUÉS de la condición cara.
+
+> Las tres entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
