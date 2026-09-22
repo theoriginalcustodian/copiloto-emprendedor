@@ -137,8 +137,8 @@ export interface UseChatResult {
   estado: EstadoChat | null;
   send: (text: string, opts?: SendOptions) => Promise<void>;
   /** Sube un dictado corto (`useVozComando`) para transcribir y despachar -- ver el docstring de
-   * `enviarAudio` más abajo. */
-  enviarAudio: (audio: ArchivoSubida) => Promise<void>;
+   * `enviarAudio` más abajo. `duracionSeg` (BL-J7 H-A3-7) alimenta el chip «Por voz · Ns». */
+  enviarAudio: (audio: ArchivoSubida, duracionSeg: number) => Promise<void>;
   /** Sube una foto de ticket (`useCapturaFoto`) para OCR y despachar -- ver el docstring de
    * `enviarFoto` más abajo. */
   enviarFoto: (foto: ArchivoSubida) => Promise<void>;
@@ -346,7 +346,7 @@ export function useChat(clienteId: string): UseChatResult {
    * en la caché de `expo-audio` por cada dictado.
    */
   const enviarAudio = useCallback(
-    async (audio: ArchivoSubida) => {
+    async (audio: ArchivoSubida, duracionSeg: number) => {
       const actual = estadoRef.current;
       if (!actual) return;
 
@@ -377,7 +377,13 @@ export function useChat(clienteId: string): UseChatResult {
         return;
       }
 
-      const mensajeUsuario: ChatMessage = { id: `user-${generarId()}`, role: 'user', text: transcript, creadoEn: Date.now() };
+      const mensajeUsuario: ChatMessage = {
+        id: `user-${generarId()}`,
+        role: 'user',
+        text: transcript,
+        creadoEn: Date.now(),
+        porVoz: { duracionSeg },
+      };
       const base = estadoRef.current ?? actual;
       let siguiente = reducirChat(base, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
       siguiente = reducirChat(siguiente, { tipo: 'envio_ok' });

@@ -221,7 +221,7 @@ interface FilaMensajeProps {
  * mida exactamente el contenido de ESTA fila (no el scroller entero). */
 function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMensajeProps) {
   if (message.role === 'user') {
-    return <Bubble role="user" text={message.text} />;
+    return <Bubble role="user" text={message.text} porVoz={message.porVoz} />;
   }
 
   // Ninguna card `*_propuesto` lleva `choices` (mismo motivo en las 4: `classifyChoices` las

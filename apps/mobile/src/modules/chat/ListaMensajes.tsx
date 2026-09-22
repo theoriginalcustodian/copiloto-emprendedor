@@ -186,7 +186,7 @@ interface FilaMensajeProps {
  */
 const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensajeProps) {
   if (mensaje.role === 'user') {
-    return <Burbuja role="user" text={mensaje.text} />;
+    return <Burbuja role="user" text={mensaje.text} porVoz={mensaje.porVoz} />;
   }
 
   // El gasto dictado va ANTES del gate: es una card propia y no lleva `choices`, así que

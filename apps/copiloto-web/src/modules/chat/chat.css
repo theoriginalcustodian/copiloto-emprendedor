@@ -192,6 +192,16 @@
   color: var(--ok-fg);
 }
 
+/* Chip «Por voz · Ns» en la burbuja (BL-J7 H-A3-7) — mismo token/tamaño que `.mic-funcion__chip`
+ * (`modules/voz/MicFuncion.css`), la única otra instancia del chip: `--label` es el token real de
+ * "texto atenuado" verificado contra AA en los 4 temas (BL-Q4). */
+.chat-bubble__voz {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--label);
+}
+
 /* ---------- Artifact view (Task 17, artefactos clicables) ----------
  * `.artifact` sirve DOS roles según el tag: en un `<a>` standalone (doc/sheet/file/email_draft) es
  * un chip clicable propio; en un `<div>` (payment/calendar) es el contenedor flex que agrupa
