@@ -188,9 +188,16 @@ class InteligenciaQueries:
     def portada(self) -> dict:
         """El §3.1 completo, con datos reales. Importes como decimal string (regla del repo: el float
         de JS pierde centavos). `caja.saldo` = «Queda» del MES (ingresos − gastos del mes), coherente
-        con el titular mensual del contrato §1 («Julio · Entró/Salió/Queda»); es igual a
-        `mes.rentabilidad`. [COSTURA a confirmar en el connect: si se quiere la caja ACUMULADA de toda
-        la historia en vez de la del mes, es un cambio de una línea — se marca en el avance.]"""
+        con el titular mensual del contrato §1 («Julio · Entró/Salió/Queda»). [COSTURA a confirmar en
+        el connect: si se quiere la caja ACUMULADA de toda la historia en vez de la del mes, es un
+        cambio de una línea — se marca en el avance.]
+
+        `mes.rentabilidad` (H-A4-3, auditoría A4) es `None`: "rentabilidad" real es ingresos menos
+        gastos ASIGNADOS a un trabajo, y hoy no existe esa asignación (gasto → trabajo) en el modelo —
+        `ingresos_mes - gastos_mes` es flujo de caja del mes (lo que YA calcula `caja.saldo`), no
+        rentabilidad. Mostrar ese mismo número bajo el nombre "rentabilidad" es un estado del prototipo
+        que el código nunca podía alcanzar (auditoría A4, H-A4-3). Vuelve a tener valor cuando exista
+        esa asignación."""
         hoy = hoy_del_negocio()
         ini_mes, ini_prox = _primer_dia_del_mes(hoy), _mes_siguiente(hoy)
         with self._conn_factory() as conn, conn.cursor() as cur:
@@ -216,7 +223,7 @@ class InteligenciaQueries:
             "mes": {
                 "ingresos": dos_decimales(ingresos_mes),
                 "gastos": dos_decimales(gastos_mes),
-                "rentabilidad": dos_decimales(rentabilidad_mes),
+                "rentabilidad": None,  # H-A4-3: sin asignación gasto→trabajo, no hay rentabilidad real
                 "facturado": dos_decimales(facturado_mes),
                 "cobrado": dos_decimales(cobrado_mes),
             },

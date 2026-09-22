@@ -140,13 +140,16 @@ def test_ENTRO_son_los_TRES_origenes_y_el_MP_no_aprobado_no_cuenta(conn_de_tenan
 
 
 @necesita_pg
-def test_caja_y_rentabilidad_son_entro_menos_salio_del_mes(conn_de_tenant, tenants):
+def test_caja_es_entro_menos_salio_del_mes_y_rentabilidad_es_null(conn_de_tenant, tenants):
+    """H-A4-3: `caja.saldo` sigue siendo flujo de caja del mes (ingresos − gastos); `mes.rentabilidad`
+    es `None` porque no existe asignación gasto→trabajo (sin eso, no hay rentabilidad real que
+    calcular — mostrar el mismo número que `caja.saldo` bajo ese nombre era un estado inalcanzable)."""
     a, _ = tenants
     CobroStore(conn_de_tenant(a), a).registrar_suelto(monto="1000.00", medio="efectivo")
     _gasto(conn_de_tenant, a, "400.00", categoria="mercaderia")
     mes = InteligenciaQueries(conn_de_tenant(a), a).portada()
     assert Decimal(mes["mes"]["gastos"]) == Decimal("400.00")
-    assert Decimal(mes["mes"]["rentabilidad"]) == Decimal("600.00")
+    assert mes["mes"]["rentabilidad"] is None
     assert Decimal(mes["caja"]["saldo"]) == Decimal("600.00")
     assert mes["caja"]["moneda"] == "ARS"
 
