@@ -57,6 +57,23 @@ interface Par {
   min: Record<NombreSkin, number>;
 }
 
+/** Compone un hex + alpha en formato hex de 2 dígitos (`tema.color.X + '1f'`, el patrón de
+ *  `PantallaTicket.tsx`) sobre un fondo sólido → hex plano. Mismo resultado que `aplanar` de abajo,
+ *  pero para el formato `#RRGGBB` + `'AA'` en vez de `rgba(...)` — son 2 sintaxis para la misma idea
+ *  de "vidrio", cada una la que ya usaba el componente que se está midiendo. */
+function aplanarHexAlpha(hex6: string, alphaHex2: string, hexFondo: string): string {
+  const aRgbLocal = (hex: string): [number, number, number] => {
+    const s = hex.replace('#', '');
+    return [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16)) as [number, number, number];
+  };
+  const a = parseInt(alphaHex2, 16) / 255;
+  const [r, g, b] = aRgbLocal(hex6);
+  const [fr, fg, fb] = aRgbLocal(hexFondo);
+  const c = (fg2: number, bg2: number) => Math.round(fg2 * a + bg2 * (1 - a));
+  const hex2 = (n: number) => { const h = n.toString(16); return h.length === 1 ? `0${h}` : h; };
+  return `#${hex2(c(r, fr))}${hex2(c(g, fg))}${hex2(c(b, fb))}`;
+}
+
 /** Compone un stop `rgba(...)` del vidrio sobre un fondo sólido → hex plano, misma técnica que
  *  `aplanarRgbaSobre` de `tokens.ts` (no se importa: ese helper es privado del módulo de color). */
 function aplanar(rgba: string, hexFondo: string): string {
@@ -94,9 +111,10 @@ function aplanar(rgba: string, hexFondo: string): string {
  * - `HudGrabacion.tsx` — YA NO es excepción (BL-Q4 / DEC-11): el botón de grabar pinta el gradiente
  *   `glass.ub1 → glass.ub2`, cubierto por el par «burbuja del usuario (peor stop)»; el último `it` de
  *   este archivo fija que no vuelva al degradado que terminaba en `accent2` (1,26:1).
- * - `PantallaTicket.tsx` (burbuja de soporte) usa geometría de color ad-hoc del componente, no un
- *   token de `Tokens.color` reusable — mismo motivo que `HudGrabacion`: no hay token que referenciar
- *   sin reinventar el cálculo local. Documentado, no cubierto — deuda conocida, no silenciada.
+ * - `PantallaTicket.tsx` (burbuja de soporte) — YA NO es excepción (BL-Q4, hallazgo auditoría A2):
+ *   sus 4 pares están abajo (`texto`/`textoTenue` sobre las 2 burbujas), con `aplanarHexAlpha` para
+ *   el `tema.color.acento + '1f'` de la burbuja del operador (mismo `+alpha` que pinta el componente,
+ *   no un cálculo distinto).
  * - `Composer.tsx:138/141` pinta `peligro` sobre `glass.s1→s2`, pero es un punto de estado de 1-2px,
  *   no texto legible: fuera del criterio WCAG que este gate mide.
  */
@@ -132,6 +150,21 @@ const SUPERFICIES: Record<string, Par[]> = {
       superficie: (t) => aplanar(t.glass.s2, t.color.fondo),
       min: { claro: 13.12, oscuro: 12.88 },
     },
+    {
+      // PantallaTicket.tsx — burbuja del OPERADOR (`m.autor === 'operador'`): `tema.color.acento +
+      // '1f'` (~12% alpha) compuesto sobre `fondo`, mismo criterio que web (color-mix 12%).
+      nombre: 'texto sobre burbuja-operador de PantallaTicket (acento 12% sobre fondo)',
+      tinta: (t) => t.color.texto,
+      superficie: (t) => aplanarHexAlpha(t.color.acento, '1f', t.color.fondo),
+      min: { claro: 11.46, oscuro: 12.31 },
+    },
+    {
+      // PantallaTicket.tsx — burbuja de "Vos" (`m.autor !== 'operador'`): fondo sólido, sin alpha.
+      nombre: 'texto sobre burbuja-vos de PantallaTicket (superficie)',
+      tinta: (t) => t.color.texto,
+      superficie: (t) => t.color.superficie,
+      min: { claro: 12.07, oscuro: 13.43 },
+    },
   ],
   textoTenue: [
     {
@@ -154,6 +187,22 @@ const SUPERFICIES: Record<string, Par[]> = {
       tinta: (t) => t.color.textoTenue,
       superficie: (t) => aplanar(t.glass.s2, t.color.fondo),
       min: { claro: 5.39, oscuro: 4.59 },
+    },
+    {
+      // PantallaTicket.tsx — línea "Operador · fecha" / "Vos · fecha" (autor), burbuja del OPERADOR.
+      // 🔴 Deuda YA existente en `oscuro` (4.39 < 4.5 AA) — mismo criterio que `peligro sobre
+      // superficieAlta` arriba: el piso protege contra EMPEORAR, no exige arreglar hoy.
+      nombre: 'textoTenue sobre burbuja-operador de PantallaTicket (acento 12% sobre fondo)',
+      tinta: (t) => t.color.textoTenue,
+      superficie: (t) => aplanarHexAlpha(t.color.acento, '1f', t.color.fondo),
+      min: { claro: 4.71, oscuro: 4.38 },
+    },
+    {
+      // PantallaTicket.tsx — misma línea de autor, burbuja de "Vos".
+      nombre: 'textoTenue sobre burbuja-vos de PantallaTicket (superficie)',
+      tinta: (t) => t.color.textoTenue,
+      superficie: (t) => t.color.superficie,
+      min: { claro: 4.96, oscuro: 4.78 },
     },
   ],
   acentoTinta: [
