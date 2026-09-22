@@ -53,7 +53,7 @@ Si falta alguno de estos datos, la app no te deja avanzar y te dice puntualmente
 
 ### Paso 2 — Vincular tu cuenta con ARCA
 
-Una vez que tenés el perfil fiscal cargado, el siguiente paso es vincular tu cuenta con ARCA (ex AFIP). Son tres pasos dentro de la misma pantalla:
+Una vez que tenés el perfil fiscal cargado, el siguiente paso es vincular tu cuenta con ARCA. Son tres pasos dentro de la misma pantalla:
 
 1. Confirmás el CUIT con el que vas a vincular.
 2. Un mensaje de confirmación: *"Vas a vincular el CUIT [tu CUIT] con ARCA."*
