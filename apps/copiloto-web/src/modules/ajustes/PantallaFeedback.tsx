@@ -153,9 +153,22 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
 
   return (
     <div className="feedback-screen" data-testid="pantalla-feedback">
-      <h1 className="como-hablarle-screen__title" data-testid="feedback-pregunta">
-        ¿Qué le cambiarías?
+      {/* Verbatim `Prototipo frontend/odobi-ui/prototipo/index.html:2195` (`.titulo-pag`) — título de
+          la PÁGINA, matriz web A4 Criterio 3 fila 2. Mismo patrón que las otras pantallas de Ajustes
+          (`apariencia-screen__title`/`__intro`, `como-hablarle-screen__title`/`__intro`). */}
+      <h1 className="feedback-screen__title" data-testid="feedback-titulo">
+        Contanos qué tal
       </h1>
+      <p className="feedback-screen__title-intro">
+        Lo lee el equipo que construye Odobi. No lleva respuesta: sirve para saber qué mejorar.
+      </p>
+
+      {/* La PREGUNTA (proto `.fb-preg`) — sub-encabezado debajo del título, no lo reescribo: sigue
+          siendo la pregunta guiada de siempre, sólo bajo su propia clase (antes usaba, prestada, la
+          de "Cómo usar la app"). */}
+      <h2 className="feedback-screen__pregunta" data-testid="feedback-pregunta">
+        ¿Qué le cambiarías?
+      </h2>
       <p className="como-hablarle-screen__intro">
         Contanos qué te gustaría que mejoremos, o grabá un audio si preferís hablarlo.
       </p>
@@ -190,7 +203,8 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
         disabled={!puedeEnviarTexto}
         data-testid="feedback-texto-enviar"
       >
-        {envioTexto === 'enviando' ? 'Enviando…' : 'Enviar'}
+        {/* Verbatim `index.html:2204` (`.env`) — "Mandar", matriz web A4 Criterio 3 fila 2. */}
+        {envioTexto === 'enviando' ? 'Enviando…' : 'Mandar'}
       </Button>
 
       <button
@@ -213,7 +227,8 @@ export function PantallaFeedback({ onAbrirSoporte, contexto }: PantallaFeedbackP
           data-testid="feedback-mic"
           aria-label={grabando ? 'Detener grabación y enviar' : 'Grabar feedback por voz'}
         >
-          {grabando ? 'Detener y enviar' : 'Grabar por voz'}
+          {/* Verbatim `index.html:2203` (`.adj`) — "Dictarlo", matriz web A4 Criterio 3 fila 2. */}
+          {grabando ? 'Detener y enviar' : 'Dictarlo'}
         </Button>
         <div aria-live="polite">
           <p className="feedback-screen__estado">

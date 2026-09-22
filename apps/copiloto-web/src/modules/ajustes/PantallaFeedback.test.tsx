@@ -31,6 +31,15 @@ describe('PantallaFeedback (BL-W3)', () => {
     expect(screen.getByTestId('feedback-pregunta')).toHaveTextContent('¿Qué le cambiarías?');
   });
 
+  it('A4 Criterio 3 fila 2: título de página «Contanos qué tal» + labels literales del proto', () => {
+    render(<PantallaFeedback />);
+    expect(screen.getByTestId('feedback-titulo')).toHaveTextContent('Contanos qué tal');
+    expect(screen.getByText(/Lo lee el equipo que construye Odobi/)).toBeInTheDocument();
+    // Verbatim `index.html:2203-2204` — «Dictarlo» / «Mandar» (antes «Grabar por voz» / «Enviar»).
+    expect(screen.getByTestId('feedback-mic')).toHaveTextContent('Dictarlo');
+    expect(screen.getByTestId('feedback-texto-enviar')).toHaveTextContent('Mandar');
+  });
+
   it('Enviar está deshabilitado sin texto y habilitado con texto', () => {
     render(<PantallaFeedback />);
     expect(screen.getByTestId('feedback-texto-enviar')).toBeDisabled();

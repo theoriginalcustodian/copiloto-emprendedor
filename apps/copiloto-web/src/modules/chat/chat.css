@@ -119,6 +119,34 @@
   padding: 24px 4px;
 }
 
+/* Estado vacío del chat GENERAL (proto `#vacio`): isotipo + headline + rodillo + contrato,
+   todo centrado. Sólo se monta con `mostrarEjemplos` (Soporte sigue con `.chat-messages__empty`
+   liso, sin este wrapper). */
+.chat-messages__empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 32px 16px;
+}
+
+.chat-messages__empty-headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.chat-messages__empty-state .chat-messages__empty {
+  padding: 0;
+  max-width: 280px;
+}
+
 /* Marcador de sesión al tope del scroll (verbatim Copiloto App.dc.html:64). */
 .chat-messages__session-marker {
   align-self: center;
