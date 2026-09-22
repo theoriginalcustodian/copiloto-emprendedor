@@ -12,7 +12,9 @@ import {
 } from '@copiloto/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Button, Surface } from '../../design-system';
+import { Badge, Button, Chip, MonoLabel, Surface } from '../../design-system';
+import { Bubble } from '../chat/Bubble';
+import '../chat/chat.css';
 import './onboarding.css';
 
 /** Cómo se llama cada permiso ante el usuario: dos permisos, no seis servicios (el alcance se dice ANTES). */
@@ -24,14 +26,18 @@ const FILAS: Record<PermisoDelHilo['id'], { titulo: string; detalle: string; bot
 type Paso = 'promesa' | 'recibo';
 
 /**
- * Onboarding de dos permisos y primer insight (K-14 / BL-X8). Dos actos del guión del mockup
- * `01-onboarding`: la promesa («¿Conectamos tus servicios?») y la promesa cumplida (el recibo con la
- * plata real). El reveal del splash NO es de acá (BL-X10).
+ * Onboarding de dos permisos y primer insight (K-14 / BL-X8 resto, contrato `2026-09-22_contrato_
+ * planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8.md` fila 3). «El onboarding es una
+ * conversación, no un tour» (`mockups/01-onboarding/DECISIONES.md`): se dibuja con las MISMAS
+ * burbujas (`Bubble`) y la MISMA tarjeta HITL (clases `hitl-card` de `chat.css`) que el hilo real,
+ * no un formulario aparte — el guión es literal del prototipo (`prototipo/index.html` → `HILOS['onb-
+ * promesa'/'onb-cumplida']`). Se monta ANTES de `ResponsiveShell` (ver `App.tsx`), así que no hay
+ * tabbar mientras dura, sin depender de que el shell lo sepa.
  *
- * «Después» es una salida legítima del mismo tamaño que el resto: cierra el hilo y marca el
- * onboarding como hecho — lo que falte se pide cuando haga falta, sin bloquear. Los permisos ya
- * conectados se detectan por el catálogo y no se vuelven a pedir; si ya están los dos, el hilo
- * arranca en el recibo.
+ * «Después» es una acción del mismo peso visual que «Conectar» (variant="cancel", no un link
+ * fantasma): cierra el hilo y marca el onboarding como hecho — lo que falte se pide cuando haga
+ * falta, sin bloquear. Los permisos ya conectados se detectan por el catálogo y no se vuelven a
+ * pedir; si ya están los dos, el hilo arranca en el recibo.
  *
  * El OAuth sale de la SPA (`location.assign`): al volver el hilo se remonta, relee el catálogo y
  * refleja lo que el backend confirma — nunca se pinta «Conectado» por haber iniciado la acción.
@@ -95,20 +101,30 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
   if (paso === 'recibo') return <Recibo onEntrar={() => void terminar()} />;
 
   return (
-    <main className="onboarding" data-testid="onboarding">
-      <h1 className="onboarding__titulo">¿Conectamos tus servicios?</h1>
-      <p className="onboarding__texto">Son dos minutos y te digo algo que no sabés.</p>
-      <Surface variant="tile" className="onboarding__permisos" data-testid="onboarding-permisos">
-        {(permisos ?? []).map((p) => (
-          <div key={p.id} className="onboarding__fila" data-testid={`onboarding-permiso-${p.id}`}>
-            <div>
-              <p className="onboarding__fila-titulo">{FILAS[p.id].titulo}</p>
-              <p className="onboarding__fila-detalle">{FILAS[p.id].detalle}</p>
+    <main className="onboarding-hilo" data-testid="onboarding">
+      <Bubble role="assistant" text="Laburo así: vos me hablás, yo resuelvo. Pero primero necesito ver tu negocio." />
+      <Bubble role="assistant" text="¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés." />
+      <div className="chat-row chat-row--assistant" data-testid="onboarding-permisos">
+        <Surface variant="card" blur className="hitl-card" role="group" aria-label="Tus servicios">
+          <div className="hitl-card__header">
+            <div className="hitl-card__header-brand">
+              <MonoLabel className="hitl-card__header-label">Tus servicios</MonoLabel>
             </div>
-            {p.conectado ? (
-              <span className="onboarding__ok" data-testid={`onboarding-conectado-${p.id}`}>Conectado ✓</span>
-            ) : (
-              p.servicio != null && (
+            <Badge variant="neutral">2 permisos</Badge>
+          </div>
+          {(permisos ?? []).map((p) => (
+            <div key={p.id} className="hitl-card__field" data-testid={`onboarding-permiso-${p.id}`}>
+              <MonoLabel>{FILAS[p.id].titulo}</MonoLabel>
+              <p className="hitl-card__name">
+                {FILAS[p.id].detalle}
+                {p.conectado && (
+                  <span className="onboarding__ok" data-testid={`onboarding-conectado-${p.id}`}>
+                    {' '}
+                    Conectado ✓
+                  </span>
+                )}
+              </p>
+              {!p.conectado && p.servicio != null && (
                 <Button
                   onClick={() => void conectar(p)}
                   disabled={pidiendo != null}
@@ -116,22 +132,24 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
                 >
                   {pidiendo === p.id ? 'Abriendo…' : FILAS[p.id].boton}
                 </Button>
-              )
-            )}
+              )}
+            </div>
+          ))}
+          <p className="hitl-card__concept" data-testid="onboarding-alcance">
+            Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Cuenta.
+          </p>
+          {error != null && (
+            <p role="alert" className="hitl-card__concept" data-testid="onboarding-error">
+              {error}
+            </p>
+          )}
+          <div className="hitl-card__actions">
+            <Button variant="cancel" onClick={() => void terminar()} data-testid="onboarding-despues">
+              Después
+            </Button>
           </div>
-        ))}
-      </Surface>
-      <p className="onboarding__alcance" data-testid="onboarding-alcance">
-        Solo leo lo que hace falta para ver tu negocio. Cada permiso se corta cuando quieras, desde Cuenta.
-      </p>
-      {error != null && (
-        <p role="alert" className="onboarding__error" data-testid="onboarding-error">
-          {error}
-        </p>
-      )}
-      <Button variant="ghost" onClick={() => void terminar()} data-testid="onboarding-despues">
-        Después
-      </Button>
+        </Surface>
+      </div>
     </main>
   );
 }
@@ -152,13 +170,29 @@ function Recibo({ onEntrar }: { onEntrar: () => void }) {
     };
   }, []);
 
+  const listo = insight !== 'cargando';
+  const pregunta = listo && insight.tipo === 'dato';
+
   return (
-    <main className="onboarding" data-testid="onboarding-recibo">
-      <h1 className="onboarding__titulo">Listo, ya veo tu negocio.</h1>
-      <p className="onboarding__texto" data-testid="onboarding-insight" aria-live="polite">
-        {insight === 'cargando' ? 'Mirando tus números…' : textoDelInsight(insight)}
-      </p>
-      <Button onClick={onEntrar} disabled={insight === 'cargando'} data-testid="onboarding-entrar">
+    <main className="onboarding-hilo" data-testid="onboarding-recibo">
+      <div className="chat-row chat-row--assistant" data-testid="onboarding-recibo-servicios">
+        <Surface variant="bubble" blur className="propuesta-card--terminal propuesta-card--exito">
+          Servicios conectados · Mercado Pago · Google
+        </Surface>
+      </div>
+      <Bubble role="assistant" text="Listo, ya veo tu negocio." />
+      <div data-testid="onboarding-insight" aria-live="polite">
+        {listo ? <Bubble role="assistant" text={textoDelInsight(insight)} /> : <p className="onboarding-hilo__cargando">Mirando tus números…</p>}
+      </div>
+      {pregunta && (
+        <>
+          <Bubble role="assistant" text="¿Querés que te arme el detalle?" />
+          <div className="disambiguation-chips" role="group" aria-label="Elegí una opción" data-testid="onboarding-chip-detalle">
+            <Chip onClick={onEntrar}>Armame el detalle</Chip>
+          </div>
+        </>
+      )}
+      <Button onClick={onEntrar} disabled={!listo} data-testid="onboarding-entrar">
         Entrar
       </Button>
     </main>

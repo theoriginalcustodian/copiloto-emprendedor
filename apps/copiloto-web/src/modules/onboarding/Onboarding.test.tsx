@@ -127,4 +127,43 @@ describe('Onboarding (K-14 / BL-X8)', () => {
     await waitFor(() => expect(onTerminar).toHaveBeenCalled());
     expect(mockCompletar).toHaveBeenCalledTimes(1);
   });
+
+  // BL-X8 resto (contrato fila 3) — «el onboarding es una conversación en el hilo, no una
+  // pantalla»: la promesa se pinta con burbujas de asistente (`.chat-bubble--assistant`) y la
+  // tarjeta de permisos con las clases HITL reales (`.hitl-card`), NO con el formulario viejo.
+  it('la promesa se dibuja con burbujas de asistente y la tarjeta HITL real, no un formulario', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(false), servicio({})] });
+    const { container } = render(<Onboarding onTerminar={() => {}} />);
+    await screen.findByTestId('onboarding-conectar-google');
+    expect(container.querySelectorAll('.chat-bubble--assistant').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector('.hitl-card')).toBeInTheDocument();
+    expect(screen.getByText('¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés.')).toBeInTheDocument();
+  });
+
+  it('la promesa cumplida trae la pregunta cerrada y el chip «Armame el detalle» sólo si hay dato real', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('147000.00'));
+    render(<Onboarding onTerminar={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/facturados sin cobrar/));
+    expect(screen.getByText('¿Querés que te arme el detalle?')).toBeInTheDocument();
+    expect(screen.getByTestId('onboarding-chip-detalle')).toBeInTheDocument();
+  });
+
+  it('sin dato real (0/vacío) NO hay pregunta cerrada ni chip — no se inventa una', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('0.00'));
+    render(<Onboarding onTerminar={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/Todavía no tenés facturas pendientes/));
+    expect(screen.queryByTestId('onboarding-chip-detalle')).not.toBeInTheDocument();
+  });
+
+  it('el chip «Armame el detalle» entra al hilo real y marca el onboarding UNA sola vez (idempotente)', async () => {
+    mockCatalogo.mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    mockPortada.mockResolvedValue(portada('147000.00'));
+    const onTerminar = vi.fn();
+    render(<Onboarding onTerminar={onTerminar} />);
+    fireEvent.click(await screen.findByText('Armame el detalle'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(mockCompletar).toHaveBeenCalledTimes(1);
+  });
 });

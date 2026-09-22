@@ -10,8 +10,10 @@
  *   - Fuentes antes de renderizar: pintar con la fuente del sistema y re-flowear al cargar la real
  *     es un salto visual que ensuciaría la medición.
  */
+import { debeMostrarOnboarding } from '@copiloto/core';
 import { Inter_400Regular, Inter_500Medium, useFonts } from '@expo-google-fonts/inter';
 import { Stack, usePathname } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -21,6 +23,7 @@ import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-c
 // única vez que se ejecuta en toda la app.
 import '../src/adapters/plataforma';
 import { EntradaSesion, SessionProvider, useSession } from '../src/modules/auth';
+import { PantallaOnboarding } from '../src/modules/onboarding';
 import { LimiteDeError } from '../src/shell/LimiteDeError';
 import { EntradaDiaria } from '../src/modules/splash/EntradaDiaria';
 import { ThemeProvider, useTema } from '../src/theme/ThemeProvider';
@@ -75,16 +78,27 @@ function sinOp() {}
  * Decide qué se ve según el estado de sesión. Tres estados, no dos: mientras `AsyncStorage` resuelve
  * el token guardado el estado es `verificando`, y ahí NO se puede mostrar el login — quien ya tenía
  * sesión vería la pantalla de login parpadear en cada arranque antes de entrar.
+ *
+ * **BL-X8 resto (K-14, ANEXO 2026-09-22):** único punto de montaje del onboarding conversacional en
+ * mobile (`PantallaOnboarding.tsx` lo declara así en su propio docstring). Mismo patrón que
+ * `App.tsx` en web: un flag local `onboardingCerrado` evita que, tras «Entrar»/«Después», un
+ * `me` todavía no refrescado por el backend vuelva a mostrar el hilo en el mismo arranque.
  */
-function Guard({ children }: { children: React.ReactNode }) {
-  const { estado } = useSession();
+export function Guard({ children }: { children: React.ReactNode }) {
+  const { estado, me } = useSession();
   const ruta = usePathname();
+  const [onboardingCerrado, setOnboardingCerrado] = useState(false);
 
   if (RUTAS_LIBRES.includes(ruta)) return <>{children}</>;
   // BL-X10: arranques 2..n (token restaurado) -- el isotipo dibujándose cubre la latencia real de
   // `/me`, no la extiende (`EntradaDiaria` no gatea nada por sí sola).
   if (estado === 'verificando') return <EntradaDiaria onFin={sinOp} />;
-  if (estado === 'autenticado') return <>{children}</>;
+  if (estado === 'autenticado') {
+    if (!onboardingCerrado && debeMostrarOnboarding(me)) {
+      return <PantallaOnboarding onTerminar={() => setOnboardingCerrado(true)} />;
+    }
+    return <>{children}</>;
+  }
   return <EntradaSesion />;
 }
 
