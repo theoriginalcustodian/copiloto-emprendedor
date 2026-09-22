@@ -5,3 +5,10 @@ title = "copiloto-emprendedor"
 
 [extend]
 useDefault = true
+
+# .env.e2e nunca se toca ni se muestra (regla del repo): siempre gitignored, jamás trackeado. Sólo lo
+# alcanza `--arbol` (escanea el filesystem crudo, no git); esta exclusión evita que un secreto REAL
+# local termine, aunque sea redactado, en la salida del escáner.
+[allowlist]
+description = "excluye archivos que nunca deben escanearse (secretos locales gitignored)"
+paths = ['''(^|/)\.env\.e2e$''']

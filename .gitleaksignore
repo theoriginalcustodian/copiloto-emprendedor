@@ -4,3 +4,10 @@
 b7fae2e2221abb8178de76eb6ce975ea6aa0d7d4:docs/copiloto-emprendedor/2026-07-23-harness-e2e-cierre-sprint-device-al-dia.md:generic-api-key:37
 94d495685e17ac17bf9be77e7df10247f51b4e0c:docs/copiloto-emprendedor/2026-07-23-harness-e2e-cierre-sprint-device-al-dia.md:generic-api-key:37
 acaca393caa53db00582959b5d25bbd5522e6f74:memoria/checkpoints/checkpoint_2026-06-30_2008_copiloto_b_skeleton_merged.md:generic-api-key:55
+
+# --- Huellas de ÁRBOL DE TRABAJO (--arbol, sin SHA: archivo:regla:línea) -----------------------------
+# Mismos dos hallazgos de arriba, formato estable independiente de la profundidad del checkout (CI real
+# de #601 lo demostró: con depth=1, el modo `git` re-detecta el mismo contenido bajo un SHA nuevo que
+# esta allowlist no puede prever). El tercero (.env.e2e) no aplica: nunca está trackeado.
+docs/copiloto-emprendedor/2026-07-23-harness-e2e-cierre-sprint-device-al-dia.md:generic-api-key:37
+memoria/checkpoints/checkpoint_2026-06-30_2008_copiloto_b_skeleton_merged.md:generic-api-key:55

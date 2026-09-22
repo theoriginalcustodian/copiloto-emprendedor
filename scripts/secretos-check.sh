@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # secretos-check.sh (BL-B3) — gitleaks fijado, fail-closed. El repo es PÚBLICO.
-#   --historia           toda la historia alcanzable (lint.sh / CI)
+#   --arbol               el ÁRBOL DE TRABAJO actual, sin git (lint.sh / CI): huellas sin SHA
+#                         (`archivo:regla:línea`), estables sea cual sea la profundidad del checkout
+#                         -- un checkout superficial (actions/checkout, depth=1) no tiene historia:
+#                         un escaneo por commits ahí re-detecta el MISMO contenido bajo un SHA nuevo
+#                         que ninguna allowlist por-commit puede prever (medido: CI real, 2026-09-21).
+#   --historia            toda la historia alcanzable (auditoría manual, one-off; NO la corre CI)
 #   --rango <a>..<b>     sólo esos commits (pre-push)
 #   --bin                imprime la ruta del gitleaks fijado (lo usan los tests)
 #   --refs-stdin         líneas de pre-push: "<local_ref> <local_sha> <remote_ref> <remote_sha>"
@@ -48,19 +53,32 @@ BIN="$(resolver_binario)"
 [ "$("$BIN" version 2>/dev/null)" = "$GL_VERSION" ] || fatal "el binario '$BIN' no es gitleaks $GL_VERSION"
 COMUN=(--redact --no-banner --config "$ROOT/.gitleaks.toml" --gitleaks-ignore-path "$ROOT/.gitleaksignore")
 
-escanear() {   # $1 = log-opts opcional
+reportar_rc() {
+  case "$1" in 0) return 0 ;; 1) echo "[secretos] ❌ gitleaks encontró posibles secretos (ver arriba). Repo PÚBLICO: no lo pushees." >&2; return 1 ;;
+    *) fatal "gitleaks falló con rc=$1" ;; esac
+}
+
+escanear() {   # $1 = log-opts opcional (modo `git`, historia)
   local rc=0
   if [ -n "${1:-}" ]; then "$BIN" git "${COMUN[@]}" --log-opts="$1" . || rc=$?
   else "$BIN" git "${COMUN[@]}" . || rc=$?
   fi
-  # gitleaks: 1 = hallazgos (exit-code por defecto); cualquier otro rc≠0 es fallo del escáner.
-  case "$rc" in 0) return 0 ;; 1) echo "[secretos] ❌ gitleaks encontró posibles secretos (ver arriba). Repo PÚBLICO: no lo pushees." >&2; return 1 ;;
-    *) fatal "gitleaks falló con rc=$rc" ;; esac
+  reportar_rc "$rc"
+}
+
+escanear_arbol() {   # modo `detect --no-git`: el checkout actual, sin depender de cuánta historia haya
+  local rc=0
+  # -s . (relativo, con cwd=ROOT ya seteado arriba), NO -s "$ROOT": una ruta absoluta hace que el
+  # fingerprint incluya el path absoluto (`C:/gfw-src/wt-a16/docs/...`), que nunca matchea un
+  # .gitleaksignore escrito en rutas relativas -- medido corriendo el script tal cual esta línea decía.
+  "$BIN" detect --no-git -s . "${COMUN[@]}" || rc=$?
+  reportar_rc "$rc"
 }
 
 modo="${1:-}"
 case "$modo" in
   --bin) echo "$BIN" ;;
+  --arbol) escanear_arbol ;;
   --historia) escanear "" ;;
   --rango) [ -n "${2:-}" ] || fatal "--rango necesita <a>..<b>"; escanear "$2" ;;
   --refs-stdin)
@@ -74,5 +92,5 @@ case "$modo" in
       escanear "$rango" || rc=1
     done
     exit "$rc" ;;
-  *) echo "uso: $0 --historia | --rango <a>..<b> | --refs-stdin" >&2; exit 2 ;;
+  *) echo "uso: $0 --arbol | --historia | --rango <a>..<b> | --refs-stdin" >&2; exit 2 ;;
 esac

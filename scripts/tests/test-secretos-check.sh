@@ -5,7 +5,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CHK="$ROOT/scripts/secretos-check.sh"
-T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+T="$(mktemp -d)"; T2=""; trap 'rm -rf "$T" "$T2"' EXIT
 fallos=0
 ok()  { echo "  ✅ $1"; }
 mal() { echo "  ❌ $1"; fallos=$((fallos+1)); }
@@ -59,6 +59,41 @@ if [ -n "$fp" ]; then
   [ "$rc" = 1 ] && ok "un hallazgo NUEVO no queda cubierto por la allowlist" || mal "un hallazgo nuevo debería fallar (rc=$rc)"
 else
   mal "no pude extraer el fingerprint del hallazgo de control"
+fi
+
+# 7) --arbol: control positivo/negativo, y su allowlist es SIN sha (archivo:regla:línea) -- repo
+# temporal PROPIO (aislado de los checks 1-6: ésos dejan fixtures con tokens sin allowlist para arbol).
+# Regresión del bug real de #601: un checkout superficial (depth=1) re-detecta el mismo contenido
+# bajo un SHA nuevo que una allowlist por-commit (--historia) no puede prever; --arbol no depende del sha.
+T2="$(mktemp -d)"
+(cd "$T2" && git init -q . && git config user.email t@t && git config user.name t
+ cp "$ROOT/.gitleaks.toml" .gitleaks.toml; : > .gitleaksignore
+ echo hola > README.md && git add . && git commit -qm base)
+mkdir -p "$T2/scripts" && cp "$CHK" "$T2/scripts/secretos-check.sh"
+[ -d "$ROOT/.tools" ] && ln -sf "$ROOT/.tools" "$T2/.tools" 2>/dev/null || true
+
+bash "$T2/scripts/secretos-check.sh" --arbol >/dev/null 2>&1 && ok "--arbol: árbol limpio pasa" || mal "--arbol: árbol limpio debería pasar"
+echo "arbol=$(printf 'ghp_''%s' 'Bq3nM5pR7tV9xZ1aC3eG5iK7mO9qS1uW3yA5')" > "$T2/pordisco.txt"
+(cd "$T2" && git add pordisco.txt && git commit -qm pordisco)
+bash "$T2/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc=$?
+[ "$rc" = 1 ] && ok "--arbol: secreto en el árbol se detecta" || mal "--arbol: debería detectar el secreto (rc=$rc)"
+
+GL="$(bash "$CHK" --bin)"
+(cd "$T2" && "$GL" detect --no-git -s . --redact --no-banner -c .gitleaks.toml -r r2.json --exit-code 0 >/dev/null 2>&1)
+fp2="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))[0]['Fingerprint'])" "$T2/r2.json" 2>/dev/null || true)"
+if [ -n "$fp2" ]; then
+  echo "$fp2" > "$T2/.gitleaksignore"
+  bash "$T2/scripts/secretos-check.sh" --arbol >/dev/null 2>&1 && ok "--arbol: fingerprint sin sha se perdona" || mal "--arbol: el fingerprint sin sha debería perdonarse"
+  # el MISMO contenido, ahora clonado depth=1 (SHA distinto en el checkout superficial): --arbol lo sigue
+  # perdonando porque su huella nunca incluyó un sha -- esto es lo que --historia NO puede garantizar.
+  clon="$T2/clon-shallow"
+  git clone -q --depth 1 "file://$T2" "$clon" >/dev/null 2>&1
+  cp "$T2/.gitleaksignore" "$clon/.gitleaksignore"; cp -r "$T2/scripts" "$clon/scripts"
+  [ -d "$ROOT/.tools" ] && ln -sf "$ROOT/.tools" "$clon/.tools" 2>/dev/null || true
+  bash "$clon/scripts/secretos-check.sh" --arbol >/dev/null 2>&1 && ok "--arbol: sobrevive a un checkout superficial (regresión #601)" \
+    || mal "--arbol: un checkout superficial NO debería reintroducir el hallazgo ya perdonado"
+else
+  mal "no pude extraer el fingerprint sin sha del hallazgo de control (--arbol)"
 fi
 
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }

@@ -10,7 +10,7 @@ npx eslint packages/core/src apps/mobile/src apps/copiloto-web/src
 
 # BL-B3: repo PÚBLICO — cero secretos en TODA la historia (gitleaks fijado) y cero fuentes de marca
 # con licencia (.otf) trackeadas (R-8). Fail-closed: si el escáner no puede correr, el job falla.
-bash "$ROOT/scripts/secretos-check.sh" --historia
+bash "$ROOT/scripts/secretos-check.sh" --arbol
 if [ -n "$(git ls-files '*.otf')" ]; then
   echo "❌ hay .otf trackeados (fuentes con licencia en repo público):"; git ls-files '*.otf'; exit 1
 fi
