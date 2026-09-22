@@ -920,19 +920,13 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             tipo="voz", texto=transcript, contexto=contexto)
         return {"id": feedback_id, "ok": True, "transcripcion": transcript, "mensaje": MENSAJE_FEEDBACK_FIJO}
 
-    @app.post("/chat/foto")
-    async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
-                        cliente_id: str = Depends(require_tenant)) -> dict:
-        """Front-door de OCR de tickets (Gastos Fase 2). A diferencia de `/chat`/`/chat/audio`, NO
-        pasa por `route_inbound`/el loop ReAct: la vision call YA decide los campos del gasto, y
-        bajarlos a texto libre para que el LLM los reinterprete perdería la distinción `monto` vacío /
-        `monto_sugerido` que es el punto central del addendum de la foto (spike
-        `spikes/ocr-tickets/RESULT.md` §3 — "legible" nunca es señal de confianza, no se usa acá para
-        nada). El reply se escribe por el MISMO `adapter.send(...)` que usa la activity
-        `send_channel_message` (mismo `reply_store`, mismo `/reply`): la app ve la card idéntica a como
-        la vería si hubiera llegado por voz. `wf_id` en la respuesta es SINTÉTICO (no hay workflow de
-        Temporal en este camino) -- ningún consumidor de `/chat`/`/chat/audio` lo lee hoy (grep vacío en
-        `apps/mobile`); se mantiene solo por paridad de shape con esos dos endpoints."""
+    async def _leer_gasto_de_foto(imagen: UploadFile) -> dict:
+        """Tramo COMÚN de OCR de tickets de `/chat/foto` y `/gastos/leer-foto` (BL-J7, foto SIN chat,
+        contrato `endpoint-foto-gasto-sin-chat` 2026-09-22): tope de tamaño, whitelist de content-type,
+        magic bytes (D6), OCR y el gate de "ningún campo reconocible". UNA sola definición: si cambia
+        el límite o la validación, cambia en los dos. Devuelve el `data` de la card `gasto_propuesto`
+        (`construir_gasto_desde_foto`); los errores salen como `HTTPException` (413/415/422/502/503).
+        NO tiene side effects: no escribe en ningún lado, eso lo decide cada endpoint que la llama."""
         if imagen.size is not None and imagen.size > MAX_IMAGEN_BYTES:
             raise HTTPException(status_code=413, detail="imagen demasiado grande (máx 10 MB)")
         imagen_bytes = await imagen.read()
@@ -959,7 +953,22 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         if not extraido or not any(extraido.get(k) is not None
                                    for k in ("monto", "fecha", "proveedor", "categoria")):
             raise HTTPException(status_code=422, detail="no se reconoció un ticket en la imagen")
-        gasto = construir_gasto_desde_foto(extraido)
+        return construir_gasto_desde_foto(extraido)
+
+    @app.post("/chat/foto")
+    async def chat_foto(session_id: str = Form(...), imagen: UploadFile = File(...),
+                        cliente_id: str = Depends(require_tenant)) -> dict:
+        """Front-door de OCR de tickets (Gastos Fase 2). A diferencia de `/chat`/`/chat/audio`, NO
+        pasa por `route_inbound`/el loop ReAct: la vision call YA decide los campos del gasto, y
+        bajarlos a texto libre para que el LLM los reinterprete perdería la distinción `monto` vacío /
+        `monto_sugerido` que es el punto central del addendum de la foto (spike
+        `spikes/ocr-tickets/RESULT.md` §3 — "legible" nunca es señal de confianza, no se usa acá para
+        nada). El reply se escribe por el MISMO `adapter.send(...)` que usa la activity
+        `send_channel_message` (mismo `reply_store`, mismo `/reply`): la app ve la card idéntica a como
+        la vería si hubiera llegado por voz. `wf_id` en la respuesta es SINTÉTICO (no hay workflow de
+        Temporal en este camino) -- ningún consumidor de `/chat`/`/chat/audio` lo lee hoy (grep vacío en
+        `apps/mobile`); se mantiene solo por paridad de shape con esos dos endpoints."""
+        gasto = await _leer_gasto_de_foto(imagen)
         idem_key = f"foto:{uuid.uuid4().hex}"
         sugerido = f" (leí ${gasto['monto_sugerido']})" if gasto["monto_sugerido"] else ""
         # Mismo guardrail verbal que `_run_registrar_gasto` (ver `tool_catalog.py`):
@@ -969,6 +978,20 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         adapter.send(session_id, texto, None, cliente_id=cliente_id,
                     card={"kind": "gasto_propuesto", "data": gasto}, idem_key=idem_key)
         return {"wf_id": idem_key, "accepted": True}
+
+    @app.post("/gastos/leer-foto")
+    async def gastos_leer_foto(imagen: UploadFile = File(...),
+                               cliente_id: str = Depends(require_tenant)) -> dict:
+        """BL-J7 (3er ítem del DoD): la foto del ticket SIN chat -- mismo patrón hermano que
+        `/transcribir` (K-10) respecto de `/chat/audio`: sin `session_id`, sin despacho, sin
+        persistencia, devuelve sólo `{"gasto": ...}` (el mismo `data` que la card `gasto_propuesto`
+        de `/chat/foto`). `require_tenant` es el único uso de `cliente_id` -- no hay `adapter.send`,
+        `reply_store` ni Temporal en este camino; el gasto recién se guarda cuando el usuario confirma
+        el formulario, por el camino que YA existe (contrato `endpoint-foto-gasto-sin-chat`,
+        2026-09-22)."""
+        del cliente_id  # sólo el guard de require_tenant -- ver docstring
+        gasto = await _leer_gasto_de_foto(imagen)
+        return {"gasto": gasto}
 
     # `def` (NO `async def`): estas rutas hacen I/O BLOQUEANTE síncrono (psycopg2 en
     # read_replies/MpCredentialStore, httpx sync en signup_and_provision). FastAPI corre las rutas
