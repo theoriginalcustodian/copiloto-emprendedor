@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ETIQUETA_CATEGORIA, formatearImporte, type ResumenGastos } from '@copiloto/core';
+import { ETIQUETA_CATEGORIA, formatearFechaCorta, formatearImporte, type ResumenGastos } from '@copiloto/core';
 
 import { BloqueCifra } from '../../theme/BloqueCifra';
 import { useTema } from '../../theme/ThemeProvider';
@@ -34,7 +34,9 @@ export function ResumenMes({ resumen }: ResumenMesProps) {
   return (
     <BloqueCifra
       testID="gastos-resumen"
-      rotulo={`Gastado en ${resumen.periodo}`}
+      // H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend — ISO crudo si se pinta tal
+      // cual. `formatearFechaCorta` ya resuelve un período sin día como su día 1.
+      rotulo={`Gastado en ${formatearFechaCorta(resumen.periodo)}`}
       cifra={formatearImporte(resumen.total)}
       chip={resumen.mesAnterior != null ? `Mes anterior: ${formatearImporte(resumen.mesAnterior)}` : undefined}
     >

@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } 
 
 import {
   borrarIngreso,
+  formatearFechaCorta,
   formatearImporte,
   listarIngresos,
   obtenerResumenIngresos,
@@ -218,7 +219,9 @@ export function PantallaIngresos() {
                         i.concepto,
                         i.comprobanteNro != null ? `Factura N° ${i.comprobanteNro}` : null,
                         i.medio,
-                        i.fecha,
+                        // H-A4-6: `i.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si
+                        // se pinta tal cual. `null` (backend sin fecha) queda `null` y se filtra abajo.
+                        i.fecha != null ? formatearFechaCorta(i.fecha) : null,
                         // La procedencia va SIEMPRE, incluso en las que el emprendedor anotó: es lo
                         // que permite, meses después, separar el dato duro del de memoria.
                         ETIQUETA_ORIGEN[i.origen],

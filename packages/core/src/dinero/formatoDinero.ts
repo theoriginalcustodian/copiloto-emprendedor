@@ -112,17 +112,40 @@ export function formatearImporte(valor: string, simbolo = '$'): string {
  */
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
+/**
+ * `"2026-08-12"` (o `"2026-08"`, un período sin día) → `{ anio: 2026, mes: 7, dia: 12 }`, leído
+ * DIRECTO del string, sin pasar por `Date`.
+ *
+ * 🔴 **El bug que esto evita, medido, no supuesto:** `new Date("2026-08-12")` parsea como
+ * medianoche **UTC**. Leerlo con los getters LOCALES (`getDate`/`getMonth`) —que es lo que hacían
+ * `formatearFechaCorta`/`Larga` antes de esto— retrocede un día ENTERO en cualquier huso con offset
+ * negativo: en Argentina (UTC-3, el mercado de esta app), `new Date("2026-08-12").getDate()` da
+ * **11**, no 12. El backend manda `Gasto.fecha`/`Ingreso.fecha`/`Resumen.periodo` así, SIN hora
+ * (`packages/core/src/api/gastos.ts:98`, `ingresos.ts:45` — fixtures `'2026-07-21'`), así que el
+ * bug no era hipotético: pegaba en cada tarjeta de Gastos e Ingresos. Con hora incluida (`...Z`) el
+ * string SÍ representa un instante real, y ahí local es lo correcto — ese camino no cambia.
+ */
+function partesDeFechaOPeriodo(iso: string): { anio: number; mes: number; dia: number } | null {
+  const soloFecha = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(iso);
+  if (soloFecha !== null) {
+    return { anio: Number(soloFecha[1]), mes: Number(soloFecha[2]) - 1, dia: Number(soloFecha[3] ?? '1') };
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return { anio: d.getFullYear(), mes: d.getMonth(), dia: d.getDate() };
+}
+
 export function formatearFechaCorta(iso: string): string {
   if (iso === '') return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]}`;
+  const p = partesDeFechaOPeriodo(iso);
+  if (p === null) return '';
+  return `${p.dia} ${MESES_CORTOS[p.mes]}`;
 }
 
 /** `"2026-07-21T22:14:03.120Z"` → `"21 jul 2026"`. Para el detalle, donde el año sí importa. */
 export function formatearFechaLarga(iso: string): string {
   if (iso === '') return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]} ${d.getFullYear()}`;
+  const p = partesDeFechaOPeriodo(iso);
+  if (p === null) return '';
+  return `${p.dia} ${MESES_CORTOS[p.mes]} ${p.anio}`;
 }

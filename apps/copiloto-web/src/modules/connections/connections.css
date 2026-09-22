@@ -90,10 +90,16 @@
 }
 
 /* Grid PLANO (diseño línea 332): 2 columnas, SIN agrupar por categoría — `desktop.css` (fuera de
-   mi ownership) sube esto a 3 columnas en escritorio via `.connections-screen__grid`. */
+   mi ownership) sube esto a 3 columnas en escritorio via `.connections-screen__grid`.
+ *
+ * H-A4-14: `1fr 1fr` sin `minmax(0, …)` deja cada track con `min-width: auto` (default de un
+ * grid item) — el algoritmo de sizing le da a cada columna el min-content de su celda MÁS ANCHA
+ * antes de repartir el resto en `fr`, así que una columna con cards de contenido más largo
+ * (ej. `RECONECTAR` + botón «Reconectar») termina más ancha que la otra (medido: ~212 vs ~140 px
+ * a 390). `minmax(0, 1fr)` fuerza el mínimo a 0 — mismo patrón que `min-width: 0` en flex (H-A4-8). */
 .connections-screen__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 13px;
 }
 

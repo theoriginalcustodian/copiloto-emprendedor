@@ -20,6 +20,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import {
   completarIngreso,
+  formatearFechaCorta,
   formatearImporte,
   normalizarDecimal,
   registrarIngreso,
@@ -221,7 +222,8 @@ export function FormularioIngreso({
           {duplicado.candidato != null && (
             <Text testID={`${testID}-duplicado-candidato`} style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
               {duplicado.candidato.monto != null ? formatearImporte(duplicado.candidato.monto) : 'Sin monto'}
-              {duplicado.candidato.fecha != null ? ` · ${duplicado.candidato.fecha}` : ''}
+              {/* H-A4-6: `fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se pinta tal cual. */}
+              {duplicado.candidato.fecha != null ? ` · ${formatearFechaCorta(duplicado.candidato.fecha)}` : ''}
               {duplicado.candidato.clienteNombre != null ? ` · ${duplicado.candidato.clienteNombre}` : ''}
             </Text>
           )}

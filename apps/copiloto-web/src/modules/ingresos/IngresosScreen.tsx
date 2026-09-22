@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { borrarIngreso, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
+import { borrarIngreso, formatearFechaCorta, listarIngresos, obtenerResumenIngresos, type Ingreso, type ResumenIngresos as ResumenIngresosDato } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
 import { MicFuncion } from '../voz';
@@ -126,7 +126,9 @@ export function IngresosScreen() {
             </Button>
           )}
         </span>
-        {resumen != null && <span className="ingresos-screen__periodo">{resumen.periodo}</span>}
+        {/* H-A4-6: `resumen.periodo` llega "YYYY-MM" (sin día) del backend — ISO crudo si se pinta
+            tal cual. `formatearFechaCorta` ya resuelve un período sin día como su día 1. */}
+        {resumen != null && <span className="ingresos-screen__periodo">{formatearFechaCorta(resumen.periodo)}</span>}
       </header>
 
       {estado === 'cargando' && (

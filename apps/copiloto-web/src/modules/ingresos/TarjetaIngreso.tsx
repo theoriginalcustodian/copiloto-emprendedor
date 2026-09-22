@@ -1,4 +1,4 @@
-import { formatearImporte, type Ingreso } from '@copiloto/core';
+import { formatearFechaCorta, formatearImporte, type Ingreso } from '@copiloto/core';
 
 import { Badge, Button, Surface } from '../../design-system';
 
@@ -25,10 +25,14 @@ export function TarjetaIngreso({ ingreso, onBorrar }: TarjetaIngresoProps) {
   const titulo = ingreso.clienteNombre ?? ingreso.concepto ?? 'Cobro sin detalle';
   const sinIdentificar = ingreso.clienteNombre == null && ingreso.concepto == null;
 
+  // H-A4-6: `ingreso.fecha` llega "YYYY-MM-DD" (sin hora) del backend — ISO crudo si se pinta tal
+  // cual. Se formatea ANTES de entrar al array: `formatearFechaCorta` espera `string`, no `null`.
+  const fechaFormateada = ingreso.fecha != null ? formatearFechaCorta(ingreso.fecha) : null;
+
   const subtitulo =
     ingreso.origen === 'factura' && ingreso.comprobanteNro != null
-      ? [`Factura ${ingreso.comprobanteNro}`, ingreso.fecha].filter((x): x is string => x != null && x !== '').join(' · ')
-      : [ingreso.medio, ingreso.fecha].filter((x): x is string => x != null && x !== '').join(' · ');
+      ? [`Factura ${ingreso.comprobanteNro}`, fechaFormateada].filter((x): x is string => x != null && x !== '').join(' · ')
+      : [ingreso.medio, fechaFormateada].filter((x): x is string => x != null && x !== '').join(' · ');
 
   return (
     <Surface variant="tile" className="tarjeta-ingreso" data-testid={`ingreso-${ingreso.id}`}>

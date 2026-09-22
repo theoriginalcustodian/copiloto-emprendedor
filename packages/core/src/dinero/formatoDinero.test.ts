@@ -80,4 +80,19 @@ describe('formatearFecha', () => {
     expect(formatearFechaCorta('no-es-fecha')).toBe('');
     expect(formatearFechaLarga('')).toBe('');
   });
+
+  // H-A4-6: `Gasto.fecha`/`Ingreso.fecha`/`Resumen.periodo` llegan del backend SIN hora
+  // ("2026-08-12", "2026-08"). Sin el fix de `partesDeFechaOPeriodo`, `new Date(...)` + getters
+  // locales retrocedía un día en cualquier huso UTC-negativo (Argentina siempre) — a diferencia del
+  // test de arriba (con hora, ambiguo A PROPÓSITO con `/2[12]/`), acá el resultado tiene que ser
+  // EXACTO: no hay huso en el que "12 ago" pueda leerse "11 ago".
+  it('fecha SIN hora (la que manda el backend en Gasto/Ingreso): día exacto, sin corrimiento de huso', () => {
+    expect(formatearFechaCorta('2026-08-12')).toBe('12 ago');
+    expect(formatearFechaLarga('2026-08-12')).toBe('12 ago 2026');
+  });
+
+  it('período SIN día (Resumen.periodo, "YYYY-MM"): no revienta ni corre de mes', () => {
+    expect(formatearFechaCorta('2026-08')).toBe('1 ago');
+    expect(formatearFechaLarga('2026-08')).toBe('1 ago 2026');
+  });
 });

@@ -392,8 +392,12 @@
   gap: 8px;
 }
 
+/* H-A4-8: sin `min-width: 0` el item flex no baja de su ancho intrínseco (default `min-width: auto`
+   de un flex item) y el par de campos desborda a 390px — el input de precio se corta contra el borde
+   de la card. `flex: 1` ya repartía el espacio; faltaba permitir que ESE espacio se achique. */
 .formulario-presupuesto__item-numeros .formulario-presupuesto__campo {
   flex: 1;
+  min-width: 0;
 }
 
 .formulario-presupuesto__acciones {

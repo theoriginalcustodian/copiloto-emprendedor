@@ -381,8 +381,12 @@
   max-width: 640px;
 }
 
+/* H-A4-14 (mismo bug, ver connections.css): `minmax(0, …)` para que el track no herede el
+   min-content de su celda más ancha. No se reprodujo desigual en escritorio, pero es el mismo
+   patrón — dejarlo sin clamp acá sería reproducir a propósito lo que se acaba de arreglar en la
+   base. */
 .desktop-shell__content .connections-screen__grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* ---------- Overrides puntuales de fidelidad (audit gap-desktop.md) ----------
