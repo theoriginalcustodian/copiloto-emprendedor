@@ -1261,6 +1261,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/ajustes"
     },
+    "modules/ajustes::theme-pill-sistema": {
+      "en": [
+        "apps/copiloto-web/src/modules/ajustes/PantallaApariencia.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-22",
+      "id": "theme-pill-sistema",
+      "motivo": "H-A4-7: el rediseno separo \"Como el telefono\" de las 2 pieles en su propia fila con data-testid literal (\"theme-pill-sistema\"), por eso el escaner de literales lo ve por primera vez -- antes las 3 preferencias vivian en un solo .map() con data-testid={`theme-pill-${p}`}, dinamico y no escaneado. Mobile NO tiene una pantalla equivalente a PantallaApariencia: la eleccion de \"sistema\" vive en PantallaSkins.tsx (pantalla-skins, ya excepcionada arriba), con su propio testID={`skin-card-${nombre}`} tambien dinamico. No es un gap de UX -- es una diferencia de screen/estructura de componente entre plataformas, declarada aca en vez de forzar un literal artificial en mobile. Dueno: frontend1.",
+      "pantalla": "modules/ajustes"
+    },
     "modules/apps::apps-add-button": {
       "en": [
         "apps/copiloto-web/src/modules/apps/AppsScreen.tsx"
