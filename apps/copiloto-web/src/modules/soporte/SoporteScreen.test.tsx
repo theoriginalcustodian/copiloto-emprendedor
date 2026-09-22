@@ -11,10 +11,10 @@ vi.mock('./useChatSoporte', () => ({
 import { SoporteScreen } from './SoporteScreen';
 
 describe('SoporteScreen — encabezado (BL-W10)', () => {
-  it('muestra isotipo y «Soporte de Odobi»', () => {
+  it('muestra isotipo y «Soporte técnico» (H-A4-4: título del prototipo, no "Soporte de Odobi")', () => {
     render(<SoporteScreen funcion="soporte_tecnico" />);
     expect(screen.getByTestId('marca')).toBeInTheDocument();
-    expect(screen.getByTestId('soporte-quien')).toHaveTextContent('Soporte de Odobi');
+    expect(screen.getByTestId('soporte-quien')).toHaveTextContent('Soporte técnico');
   });
 
   it('dice el tiempo de respuesta y qué viaja con el ticket', () => {
@@ -27,5 +27,10 @@ describe('SoporteScreen — encabezado (BL-W10)', () => {
   it('no promete un número de horas (no hay SLA)', () => {
     render(<SoporteScreen funcion="soporte_tecnico" />);
     expect(screen.getByTestId('soporte-detalle').textContent).not.toMatch(/\d+\s*(h|hs|horas|hábiles)/i);
+  });
+
+  it('H-A4-4: el vacío de Soporte NO muestra el rodillo de ejemplos del chat general (gastos/cobros)', () => {
+    render(<SoporteScreen funcion="soporte_tecnico" />);
+    expect(screen.queryByTestId('rodillo-ejemplos')).not.toBeInTheDocument();
   });
 });

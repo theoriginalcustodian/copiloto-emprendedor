@@ -57,6 +57,10 @@ export interface MessageListProps {
    * incompleta (botón "Completar a mano" de `TarjetaFacturaPropuesta`). Pasa a través hasta
    * `FilaMensaje`. Opcional — sin él la card no ofrece el botón. */
   onFacturar?: (facturaId: string) => void;
+  /** H-A4-4: el rodillo de ejemplos ("Gasté 15 lucas en nafta"...) es del chat GENERAL de negocio —
+   * no aplica al chat de Soporte, que tiene su propio `emptyHint` sin ejemplos que mostrar. Default
+   * `true` (comportamiento previo del chat general, sin cambios). */
+  mostrarEjemplos?: boolean;
 }
 
 /**
@@ -80,6 +84,7 @@ export function MessageList({
   sessionMarker,
   onAbrirCliente,
   onFacturar,
+  mostrarEjemplos = true,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -167,7 +172,7 @@ export function MessageList({
       {messages.length === 0 && emptyHint && (
         <>
           <p className="chat-messages__empty">{emptyHint}</p>
-          <RodilloEjemplos />
+          {mostrarEjemplos && <RodilloEjemplos />}
         </>
       )}
 

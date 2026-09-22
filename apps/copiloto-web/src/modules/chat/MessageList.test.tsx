@@ -22,6 +22,26 @@ describe('MessageList', () => {
     expect(screen.getByText('Contame qué necesitás.')).toBeInTheDocument();
   });
 
+  it('sin `mostrarEjemplos` (default), el vacío SÍ dibuja el rodillo de ejemplos (chat general, sin cambios)', () => {
+    render(<MessageList messages={[]} onChoice={vi.fn()} emptyHint="Contame qué necesitás." />);
+    expect(screen.getByTestId('rodillo-ejemplos')).toBeInTheDocument();
+  });
+
+  it('H-A4-4: con `mostrarEjemplos={false}` (Soporte), el vacío NO dibuja el rodillo de ejemplos del chat general', () => {
+    // Control negativo: antes del fix, MessageList montaba RodilloEjemplos siempre que había
+    // `emptyHint`, sin importar el chat — Soporte mostraba "Gasté 15 lucas en nafta" etc.
+    render(
+      <MessageList
+        messages={[]}
+        onChoice={vi.fn()}
+        emptyHint="Algo no funciona como debería"
+        mostrarEjemplos={false}
+      />,
+    );
+    expect(screen.getByText('Algo no funciona como debería')).toBeInTheDocument();
+    expect(screen.queryByTestId('rodillo-ejemplos')).not.toBeInTheDocument();
+  });
+
   it('renderiza burbuja de usuario y de asistente sin choices', () => {
     const messages: ChatMessage[] = [
       { id: 'u1', role: 'user', text: 'Hola' },
