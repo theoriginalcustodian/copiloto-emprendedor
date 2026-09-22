@@ -35,7 +35,10 @@ const OVERSCAN_FILAS = 6;
 
 export interface MessageListProps {
   messages: ChatMessage[];
-  onChoice: (value: string, label: string) => void;
+  /** H-A4-9 — `messageId` (3er arg, opcional) viaja SÓLO desde `HitlCard` (vía
+   * `hitlMapping.buildHitlCardProps`) — `DisambiguationChips` sigue llamando con 2 args, la
+   * marcación de "respondida" es específica de la card HITL, no de la desambiguación. */
+  onChoice: (value: string, label: string, messageId?: string) => void;
   emptyHint?: string;
   /** Hide-on-scroll (EXTRACT §2.3): reporta si la tab-bar debe ocultarse. `true` al scrollear hacia
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
@@ -57,6 +60,10 @@ export interface MessageListProps {
    * incompleta (botón "Completar a mano" de `TarjetaFacturaPropuesta`). Pasa a través hasta
    * `FilaMensaje`. Opcional — sin él la card no ofrece el botón. */
   onFacturar?: (facturaId: string) => void;
+  /** H-A4-4: el rodillo de ejemplos ("Gasté 15 lucas en nafta"...) es del chat GENERAL de negocio —
+   * no aplica al chat de Soporte, que tiene su propio `emptyHint` sin ejemplos que mostrar. Default
+   * `true` (comportamiento previo del chat general, sin cambios). */
+  mostrarEjemplos?: boolean;
 }
 
 /**
@@ -80,6 +87,7 @@ export function MessageList({
   sessionMarker,
   onAbrirCliente,
   onFacturar,
+  mostrarEjemplos = true,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef(0);
@@ -167,7 +175,7 @@ export function MessageList({
       {messages.length === 0 && emptyHint && (
         <>
           <p className="chat-messages__empty">{emptyHint}</p>
-          <RodilloEjemplos />
+          {mostrarEjemplos && <RodilloEjemplos />}
         </>
       )}
 
@@ -212,7 +220,7 @@ export function MessageList({
 
 interface FilaMensajeProps {
   message: ChatMessage;
-  onChoice: (value: string, label: string) => void;
+  onChoice: (value: string, label: string, messageId?: string) => void;
   onAbrirCliente?: (id: number) => void;
   onFacturar?: (facturaId: string) => void;
 }

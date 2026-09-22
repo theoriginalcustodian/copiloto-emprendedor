@@ -5,7 +5,7 @@ import { PRONUNCIACION_MARCA } from '@copiloto/core';
 import { Button } from '../../design-system';
 import { scallopPath } from './scallopPath';
 import './Splash.css';
-import { BLOB_STAGGER, SPLASH_TOTAL_MS, T_WORDMARK, LETTER_STAGGER } from './tempos';
+import { BLOB_STAGGER, SPLASH_TOTAL_MS, T_O, T_WORDMARK, LETTER_STAGGER } from './tempos';
 
 type Blob = {
   key: string;
@@ -62,12 +62,20 @@ export interface SplashCta {
 }
 
 /**
- * BL-X10 — identidad (splash): primer ingreso / post-logout, 4 formas colapsando a una "O" + el
- * wordmark "dobi" entrando letra a letra + reveal de pronunciación. UNA vez por ingreso (no es la
- * entrada diaria acelerada, ver `EntradaDiaria.tsx` — `splash-port-reanimada.md`).
+ * BL-X10 — identidad (splash): primer ingreso / post-logout, 4 formas colapsando (y desvaneciéndose)
+ * en el lugar donde entra la "O" real del wordmark "Odobi" (glifo de texto, no la forma) + reveal de
+ * pronunciación. UNA vez por ingreso (no es la entrada diaria acelerada, ver `EntradaDiaria.tsx` —
+ * `splash-port-reanimada.md`).
  *
- * `--ox` (destino X del colapso del último blob) se mide contra el ancho REAL de "dobi" ya
- * renderizado, no un valor fijo: depende de la fuente/tamaño real (spec §7).
+ * H-A4-2: la "O" es un `<span>` de texto — el mismo lockup del prototipo
+ * (`explorations/splash-o/v2-inmersivo.html`, `<span class="o">O</span>` + `<span class="rest">`),
+ * no la forma que colapsa. La forma sólo simula el tránsito (crece, se contrae, se desvanece a
+ * `opacity:0`) mientras la "O" real hace fade-in por debajo — si la forma quedara visible sería un
+ * disco permanente tapando la palabra, que es el bug que este componente tenía antes del fix.
+ *
+ * `--ox` (destino X del colapso del último blob) se mide contra el ancho de "dobi" SIN la "O"
+ * (`.identidad-splash__rest`, igual que el prototipo: `rest.getBoundingClientRect().width/2`), no
+ * un valor fijo: depende de la fuente/tamaño real (spec §7).
  *
  * `cta` (BL-X12w, `?ver=volver`): el MISMO aterrizaje sirve para el post-logout — no es una
  * segunda pantalla, sólo agrega las dos puertas al reveal ya existente (gemelo de mobile
@@ -84,11 +92,11 @@ export function Splash({
   pronunciacionAsset?: string | null;
 }) {
   const reducido = usePrefersReducedMotion();
-  const wordRef = useRef<HTMLSpanElement>(null);
+  const restRef = useRef<HTMLSpanElement>(null);
   const [ox, setOx] = useState<number | null>(null);
 
   useEffect(() => {
-    if (wordRef.current) setOx(-wordRef.current.getBoundingClientRect().width / 2);
+    if (restRef.current) setOx(-restRef.current.getBoundingClientRect().width / 2);
   }, []);
 
   useEffect(() => {
@@ -104,6 +112,9 @@ export function Splash({
 
   return (
     <div className="identidad-splash" data-testid="identidad-entrada" style={containerStyle}>
+      {/* H-A4-2: con movimiento reducido, las 4 formas NO se dibujan (igual que el prototipo,
+          `.play .blob{opacity:0!important}` sin excepción) — la "O" completa la sigue el glifo
+          de texto de abajo, no una forma congelada. */}
       {!reducido && (
         <div className="identidad-splash__formas" aria-hidden="true">
           {BLOBS.map((b, i) => {
@@ -131,20 +142,32 @@ export function Splash({
         </div>
       )}
 
-      <span className="identidad-splash__wordmark" ref={wordRef}>
-        {LETRAS.map((l, i) => (
-          <span
-            key={l + i}
-            className="identidad-splash__letra"
-            style={{
-              animationDelay: reducido ? '0ms' : `${T_WORDMARK + i * LETTER_STAGGER}ms`,
-              opacity: reducido ? 1 : undefined,
-              transform: reducido ? 'none' : undefined,
-            }}
-          >
-            {l}
-          </span>
-        ))}
+      <span className="identidad-splash__wordmark">
+        <span
+          className="identidad-splash__o"
+          style={{
+            animationDelay: reducido ? '0ms' : `${T_O}ms`,
+            opacity: reducido ? 1 : undefined,
+            transform: reducido ? 'none' : undefined,
+          }}
+        >
+          O
+        </span>
+        <span className="identidad-splash__rest" ref={restRef}>
+          {LETRAS.map((l, i) => (
+            <span
+              key={l + i}
+              className="identidad-splash__letra"
+              style={{
+                animationDelay: reducido ? '0ms' : `${T_WORDMARK + i * LETTER_STAGGER}ms`,
+                opacity: reducido ? 1 : undefined,
+                transform: reducido ? 'none' : undefined,
+              }}
+            >
+              {l}
+            </span>
+          ))}
+        </span>
       </span>
 
       <div

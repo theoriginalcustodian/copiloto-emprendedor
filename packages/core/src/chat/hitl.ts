@@ -1,3 +1,4 @@
+import { formatearImporte } from '../dinero/formatoDinero';
 import type { ReplyChoice } from '../api/types';
 import type { ChatMessage } from './chatMachine';
 
@@ -51,10 +52,15 @@ export interface Gate {
   label: string;
   /** Destinatario: primer **negrita** del texto. */
   name?: string;
-  /** Monto (sólo servicios que lo muestran, hoy Mercado Pago), sin el signo `$`. */
+  /** Monto YA FORMATEADO (`formatearImporte`, separador de miles argentino), sin el signo `$` — el
+   * consumidor lo agrega aparte con su propio token (ver `HitlCard`/`TarjetaConfirmacion`). Sólo
+   * servicios que lo muestran, hoy Mercado Pago. */
   amount?: string;
   /** Riesgo intrínseco del servicio: etiqueta del badge y si no se puede deshacer. */
   riesgo?: { badge: string; tono: 'warning' | 'danger'; irreversible: boolean };
+  /** H-A4-9 — si esta card ya fue respondida (`mensaje.hitlRespondido`). Presente => la vista debe
+   * renderizar la card DESHABILITADA (sin `onPress`/`onClick` activo), nunca ocultarla. */
+  respondido?: { value: string; label: string };
 }
 
 const BOLD_NAME_RE = /\*\*(.+?)\*\*/;
@@ -91,17 +97,63 @@ export function mapearGate(mensaje: ChatMessage): Gate | null {
   const service = (mensaje.card?.service ?? '').toLowerCase();
   const risk = SERVICE_RISK[service];
   const markdown = mensaje.card?.markdown ?? mensaje.text;
+  // El backend manda el monto CRUDO dentro del texto (`f"...por ${amount}..."`, sin separador de
+  // miles — ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar el
+  // signo `$` (ya lo pone el consumidor). H-A4-12.
+  const amountRaw = risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined;
 
   return {
     service,
     label: mensaje.card?.label || 'Confirmación',
     name: markdown.match(BOLD_NAME_RE)?.[1],
-    amount: risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined,
+    amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
     riesgo: risk && { badge: risk.badge, tono: risk.tono, irreversible: risk.irreversible },
     markdown,
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
     confirmValue: confirmChoice.value,
     cancelValue: cancelChoice.value,
+    respondido: mensaje.hitlRespondido,
   };
+}
+
+/** Token técnico LEGACY (pre-#624/BL-D4): antes de ese fix, la burbuja optimista del usuario pintaba
+ * el `value` crudo del choice elegido (`cancel:<turn>:<step>` / `confirm:<turn>:<step>`) en vez del
+ * label que vio y tocó. Sólo sirve para RECONOCER ese formato viejo al rehidratar — nunca se manda
+ * al backend en ese formato "sanitizado", el value real sigue viajando tal cual estaba. */
+const LEGACY_TOKEN_RE = /^(cancel|confirm):/i;
+
+/**
+ * H-A4-9 — migra un historial rehidratado (`localStorage`/`AsyncStorage`) para que una card HITL ya
+ * respondida quede marcada `hitlRespondido` — sin esto, `HitlCard`/`TarjetaConfirmacion` la vuelven a
+ * mostrar activa en cada reload/remount, y un click tardío reenvía confirm/cancel aunque el turno ya
+ * se haya resuelto (incluso con un "Listo 👍" falso, ver hallazgo).
+ *
+ * Heurística: un mensaje `assistant` clasificado `'hitl'` (`clasificarChoices`) SIN `hitlRespondido`
+ * cuyo mensaje INMEDIATO SIGUIENTE es de `role: 'user'` ya fue respondido — el gate bloquea el turno
+ * (el composer no deja escribir libre hasta resolverlo), así que cualquier mensaje de usuario
+ * inmediatamente después es, por construcción, su respuesta. El texto de esa respuesta llega en dos
+ * formatos posibles, según cuándo se generó:
+ *  - el LABEL que el usuario tocó (post-#624, ej. "Cancelar"/"Confirmar" o el label real del choice).
+ *  - el token TÉCNICO crudo LEGACY (pre-#624, `cancel:2:0`/`confirm:2:0` — `LEGACY_TOKEN_RE`).
+ * En los dos casos alcanza con saber QUE fue respondida para deshabilitar la card; el `label` se
+ * normaliza a "Cancelar"/"Confirmar" cuando el formato es el token legacy — mostrar `cancel:2:0` en
+ * cualquier lugar sería peor que no mostrar nada. Mensajes ya migrados (`hitlRespondido` presente,
+ * escritos por esta misma fix) pasan de largo — la migración es idempotente.
+ */
+export function sanitizarHitlRespondido(mensajes: readonly ChatMessage[]): ChatMessage[] {
+  return mensajes.map((mensaje, index) => {
+    if (mensaje.role !== 'assistant') return mensaje;
+    if (mensaje.hitlRespondido) return mensaje;
+    if (clasificarChoices(mensaje.choices) !== 'hitl') return mensaje;
+
+    const siguiente = mensajes[index + 1];
+    if (!siguiente || siguiente.role !== 'user') return mensaje; // sin respuesta después -> sigue activa
+
+    const legacyMatch = LEGACY_TOKEN_RE.exec(siguiente.text);
+    const legacyKind = legacyMatch?.[1]?.toLowerCase();
+    const label = legacyKind ? (legacyKind === 'cancel' ? 'Cancelar' : 'Confirmar') : siguiente.text;
+
+    return { ...mensaje, hitlRespondido: { value: siguiente.text, label } };
+  });
 }
