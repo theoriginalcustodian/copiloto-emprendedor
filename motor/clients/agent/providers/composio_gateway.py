@@ -287,15 +287,22 @@ class ComposioGateway:
 
     def connection_status(self, user_id: str, toolkit: str):
         """Estado de la conexion del toolkit para el user, priorizando ACTIVE sobre estados intermedios
-        (INITIALIZING/INITIATED/EXPIRED) — un intento a medias no debe ocultar una conexion ACTIVE."""
+        (INITIALIZING/INITIATED/EXPIRED) — un intento a medias no debe ocultar una conexion ACTIVE.
+
+        Devuelve siempre NORMALIZADO a mayúsculas (o `None`): así ningún llamador tiene que acordarse
+        de hacer `.upper()` antes de comparar contra "ACTIVE" -- H-A3-2(b) agregó un llamador que
+        comparaba el valor crudo, y de los otros 4 llamadores existentes, 3 ya normalizaban por su
+        cuenta. Si Composio devolviera alguna vez el status en otra caja, un comparador que no
+        normalizara habría cortado TODA escritura con «conectá X» (falso cierre total)."""
         want = (toolkit or "").lower()
         best, best_rank = None, -1
         for c in self.list_connections(user_id):
             if (c["toolkit"] or "").lower() != want:
                 continue
-            rank = _STATUS_RANK.get((c["status"] or "").upper(), 0)
+            estado = (c["status"] or "").upper()
+            rank = _STATUS_RANK.get(estado, 0)
             if rank > best_rank:
-                best, best_rank = c["status"], rank
+                best, best_rank = estado, rank
         return best
 
     def revoke(self, connection_id: str) -> None:
