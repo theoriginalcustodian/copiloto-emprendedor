@@ -248,5 +248,6 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Un cierre correcto por la causa equivocada](un-cierre-correcto-por-la-causa-equivocada.md) — el veredicto tapa la causa, y la causa es lo que se hereda; «no verificable» clausura la medición.
 - [Una barrera que excluye el archivo y deja el dato en el índice](una-barrera-que-excluye-el-archivo-y-deja-el-dato-en-el-indice.md) — protegí el continente, no el contenido; grepeá el dato, no la ruta.
 
-> Las dos entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
+- [El control que va antes no detecta deriva](el-control-que-va-antes-no-detecta-deriva.md) — una serie monótona confunde efecto con deriva; repetí el control DESPUÉS de la condición cara.
 
+> Las tres entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
