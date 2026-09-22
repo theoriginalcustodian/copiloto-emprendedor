@@ -83,6 +83,29 @@ alarma=0
 reporte=()
 add() { reporte+=("$1"); alarma=1; }
 
+# ── 0) HOOKS: el pre-push de secretos depende de una config LOCAL compartida ──────────────────
+# `core.hooksPath` no está versionada y la comparten todos los worktrees: si alguien la deja
+# absoluta, el scanner de secretos (#601) deja de correr en TODOS los pushes sin aviso, y el repo
+# es público. Pasó dos veces (H-A3-1, H-A4-1) y nadie encontró quién la reescribe. `gate.sh` la
+# chequea (mismo criterio, H-A4-1), pero sólo cuando alguien corre un gate. Acá se chequea en cada
+# latido de cron: la ventana ciega baja a ~3 min, y el mtime del config deja la HORA del cambio
+# para correlacionarla con lo que hacía cada sesión en ese minuto (la causa raíz sigue sin nombre).
+# Fuente parametrizada (HOOKS_REPO_DIR): sin eso, un fixture con TRANSCRIPTS_DIR leería el `.git`
+# REAL y su veredicto dependería de la máquina (memoria un-fixture-no-aisla-lo-que-el-script-lee-
+# por-fuera). En modo fixture sin HOOKS_REPO_DIR, el chequeo se salta.
+if [ -n "${HOOKS_REPO_DIR:-}" ] || [ -z "${TRANSCRIPTS_DIR:-}" ]; then
+  hooks_repo="${HOOKS_REPO_DIR:-$REPO_ROOT}"
+  hooks_actual="$(git -C "$hooks_repo" config --get core.hooksPath 2>/dev/null || echo '(sin setear)')"
+  if [ "$hooks_actual" != ".githooks" ]; then
+    hooks_cfg="$(git -C "$hooks_repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/config"
+    hooks_mt="$(stat -c %Y "$hooks_cfg" 2>/dev/null || echo 0)"
+    add "HOOKS: core.hooksPath='$hooks_actual' (esperado '.githooks'). El pre-push de secretos puede
+no estar corriendo en NINGÚN worktree y el repo es PÚBLICO. Config tocado por última vez a las
+$(date -d "@$hooks_mt" '+%H:%M:%S') — cruzalo con lo que hacía cada sesión en ese minuto (H-A4-1).
+Fix: git config core.hooksPath .githooks"
+  fi
+fi
+
 # ── 1) COLA: hito arrancable sin arrancar (sólo aplica al buzón real, ver nota arriba) ─────────
 if [ -f "$BUZON/PLAN.md" ]; then
   cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
