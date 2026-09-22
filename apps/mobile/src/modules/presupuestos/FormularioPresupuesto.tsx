@@ -88,6 +88,14 @@ export interface FormularioPresupuestoProps {
   iniciales?: ValoresInicialesPresupuesto | null;
   onCreado: (presupuesto: Presupuesto, sugerencias: SugerenciasPresupuesto | null) => void;
   onCancelar: () => void;
+  /**
+   * El `id` del `ChatMessage` que trae la card que envuelve este formulario (BL-V32/K-01 ampliado). Si
+   * viene, la `idem_key` se DERIVA de él en vez de nacer con el montaje — así sobrevive a un remount de
+   * la card (scroll, recarga del hilo, reabrir la app) y el backend puede dedupear aunque el guard
+   * cross-remount de `TarjetaPresupuestoPropuesto` (best-effort) falle abierto. Sin `mensajeId` (alta
+   * manual desde `PantallaPresupuestos`, sin card) se mantiene una clave por instancia, como antes.
+   */
+  mensajeId?: string;
   testID?: string;
 }
 
@@ -96,6 +104,7 @@ export function FormularioPresupuesto({
   iniciales = null,
   onCreado,
   onCancelar,
+  mensajeId,
   testID = 'formulario-presupuesto',
 }: FormularioPresupuestoProps) {
   const tema = useTema();
@@ -121,8 +130,11 @@ export function FormularioPresupuesto({
   });
   const [enviando, setEnviando] = useState(false);
   const enviandoRef = useRef(false);
-  // Una `idem_key` por instancia de formulario (K-01): estable a través de reintentos del mismo submit.
-  const idemKey = useRef(generarId());
+  // K-01 ampliado (IDEM/BL-V32): si viene `mensajeId` (la card sobrevive a un remount), la clave se
+  // DERIVA de él — misma card, misma clave, siempre — así el backend dedupea aunque el guard
+  // cross-remount de la card (best-effort, ver TarjetaPresupuestoPropuesto.tsx) falle abierto. Sin
+  // `mensajeId` (alta manual sin card) se mantiene una clave por instancia, como antes.
+  const idemKey = useRef(mensajeId != null ? `presupuesto:${mensajeId}` : generarId());
   const [error, setError] = useState<string | null>(null);
   /**
    * El catálogo de lo que vende, para armar el presupuesto **eligiendo** en vez de tipear lo mismo

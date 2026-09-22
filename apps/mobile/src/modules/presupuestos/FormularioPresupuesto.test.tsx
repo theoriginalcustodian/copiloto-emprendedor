@@ -15,12 +15,13 @@ jest.mock('@copiloto/core', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { listarConceptos, type Concepto } from '@copiloto/core';
+import { crearPresupuesto, listarConceptos, type Concepto, type Presupuesto } from '@copiloto/core';
 
 import { FormularioPresupuesto } from './FormularioPresupuesto';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
 const listarMock = listarConceptos as jest.MockedFunction<typeof listarConceptos>;
+const crearMock = crearPresupuesto as jest.MockedFunction<typeof crearPresupuesto>;
 
 const CORTE: Concepto = { id: 1, nombre: 'Corte de pelo', precioReferencia: '8000.00', activo: true };
 const A_MEDIDA: Concepto = { id: 2, nombre: 'Trabajo a medida', precioReferencia: null, activo: true };
@@ -135,5 +136,76 @@ describe('FormularioPresupuesto — el catálogo', () => {
 
     await waitFor(() => expect(screen.getByTestId('formulario-presupuesto-item-0-descripcion')).toBeTruthy());
     expect(screen.queryByTestId('formulario-presupuesto-catalogo')).toBeNull();
+  });
+});
+
+/**
+ * `FormularioPresupuesto` — BL-V32 (IDEM/K-01 ampliado): la `idem_key` se deriva de `mensajeId`.
+ *
+ * El bug real (prod): la clave nacía con el MONTAJE del formulario. Si la card que lo envuelve
+ * (`TarjetaPresupuestoPropuesto`) se remontaba mientras la propuesta seguía "sin guardar" para el
+ * backend (guard cross-remount best-effort fallando abierto), el remount generaba una clave NUEVA y
+ * el backend no podía dedupear — "un click en Guardar ahí generaba un presupuesto duplicado en prod".
+ *
+ * Estos tests ejercitan el mecanismo REAL de producción (la prop `mensajeId` tal como la pasa
+ * `TarjetaPresupuestoPropuesto`), sin mockear el store: lo que se verifica es la `idem_key` que
+ * `FormularioPresupuesto` efectivamente manda a `crearPresupuesto`.
+ */
+describe('FormularioPresupuesto — idemKey deriva del mensajeId (BL-V32)', () => {
+  const PRESUPUESTO_GUARDADO = { id: 1, numero: 1 } as unknown as Presupuesto;
+
+  beforeEach(() => {
+    crearMock.mockResolvedValue({ status: 'ok', presupuesto: PRESUPUESTO_GUARDADO, sugerencias: null });
+  });
+
+  /** Monta, completa lo mínimo para habilitar "Guardar", guarda, y DESMONTA — como una card real. */
+  async function montarCompletarGuardarYDesmontar(mensajeId: string | undefined) {
+    const r = await render(
+      <ThemeProvider>
+        <FormularioPresupuesto mensajeId={mensajeId} onCreado={() => {}} onCancelar={() => {}} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('formulario-presupuesto-item-0-descripcion')).toBeTruthy());
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-concepto-input'), 'Instalación');
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-nombre-input'), 'Juan Pérez');
+    await fireEvent.changeText(screen.getByTestId('formulario-presupuesto-item-0-descripcion-input'), 'Mano de obra');
+    await fireEvent.press(screen.getByTestId('formulario-presupuesto-guardar'));
+    await waitFor(() => expect(crearMock).toHaveBeenCalled());
+    await r.unmount();
+  }
+
+  it('🔴 CONTROL POSITIVO: mismo mensajeId, tras DESMONTAR y volver a montar ⇒ MISMA idem_key', async () => {
+    // Sin el fix (idemKey = useRef(generarId())) este test da ROJO: cada montaje generaría un UUID
+    // distinto y el backend no podría dedupear el remount — exactamente el bug de prod.
+    await montarCompletarGuardarYDesmontar('assistant-123');
+    await montarCompletarGuardarYDesmontar('assistant-123');
+
+    expect(crearMock).toHaveBeenCalledTimes(2);
+    const primera = crearMock.mock.calls[0]?.[0]?.idemKey;
+    const segunda = crearMock.mock.calls[1]?.[0]?.idemKey;
+    expect(primera).toBe('presupuesto:assistant-123');
+    expect(segunda).toBe('presupuesto:assistant-123');
+  });
+
+  it('CONTROL NEGATIVO: dos mensajeId legítimamente distintos ⇒ idem_key DISTINTAS (no se rompe el alta)', async () => {
+    await montarCompletarGuardarYDesmontar('assistant-123');
+    await montarCompletarGuardarYDesmontar('assistant-456');
+
+    const primera = crearMock.mock.calls[0]?.[0]?.idemKey;
+    const segunda = crearMock.mock.calls[1]?.[0]?.idemKey;
+    expect(primera).toBe('presupuesto:assistant-123');
+    expect(segunda).toBe('presupuesto:assistant-456');
+    expect(primera).not.toBe(segunda);
+  });
+
+  it('sin mensajeId (alta manual, sin card): se mantiene una clave por instancia — comportamiento previo intacto', async () => {
+    await montarCompletarGuardarYDesmontar(undefined);
+    await montarCompletarGuardarYDesmontar(undefined);
+
+    const primera = crearMock.mock.calls[0]?.[0]?.idemKey;
+    const segunda = crearMock.mock.calls[1]?.[0]?.idemKey;
+    expect(primera).toMatch(/^[0-9a-f-]{36}$/);
+    expect(segunda).toMatch(/^[0-9a-f-]{36}$/);
+    expect(primera).not.toBe(segunda);
   });
 });
