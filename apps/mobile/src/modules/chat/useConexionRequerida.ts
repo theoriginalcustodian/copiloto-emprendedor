@@ -21,6 +21,13 @@ import {
  *
  * El pedido a reenviar vive en un ref: la app sigue viva mientras el usuario autoriza (no se recarga
  * como la SPA web).
+ *
+ * 🔴 **El descarte se persiste DENTRO del mensaje (`conexionDescartada`, patrón B — mismo mecanismo
+ * que `hitlRespondido`), no en un `useState` efímero.** Antes vivía en
+ * `useState<ReadonlySet<string>>` y no sobrevivía a un remonte/reload: el historial persistido
+ * volvía intacto pero el set de descartados volvía vacío, y el sheet «Conectá X» reaparecía para una
+ * card que el usuario ya había cerrado (mismo defecto que BL-V29 en la web). `descartados` ahora se
+ * DERIVA de `messages` — no hay estado propio que perder.
  */
 interface Reintento {
   service: string;
@@ -38,8 +45,14 @@ export interface ConexionRequerida {
 export function useConexionRequerida(
   messages: readonly ChatMessage[],
   send: (texto: string) => unknown,
+  descartarConexion: (mensajeId: string) => void,
 ): ConexionRequerida {
-  const [descartados, setDescartados] = useState<ReadonlySet<string>>(new Set());
+  // Derivado de `messages`, no un `useState` propio: la marca vive en el mensaje persistido
+  // (`conexionDescartada`), así que no hay nada que perder al remontar/recargar.
+  const descartados = useMemo(
+    () => new Set(messages.filter((m) => m.conexionDescartada).map((m) => m.id)),
+    [messages],
+  );
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendiente = useMemo(() => conexionPendienteDelHilo(messages, descartados), [messages, descartados]);
@@ -66,8 +79,8 @@ export function useConexionRequerida(
 
   const ahoraNo = useCallback(() => {
     if (pendiente == null) return;
-    setDescartados((prev) => new Set(prev).add(pendiente.mensajeId));
-  }, [pendiente]);
+    descartarConexion(pendiente.mensajeId);
+  }, [pendiente, descartarConexion]);
 
   const conectar = useCallback(() => {
     if (pendiente == null || ocupado) return;
