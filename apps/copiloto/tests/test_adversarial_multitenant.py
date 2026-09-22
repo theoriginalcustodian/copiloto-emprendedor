@@ -483,3 +483,41 @@ def test_K08_el_feedback_de_A_no_aparece_en_la_lista_de_B(two_tenants, conn_de_t
             cur.execute("DELETE FROM uc_factory.copiloto_feedback WHERE cliente_id = %s", (a.cliente_id,))
         conn.commit()
         conn.close()
+
+
+def test_adversarial_http_feedback_a_cannot_read_b_feedback(two_tenants, crypto, conn_de_tenant):
+    """K-08 a nivel HTTP (gap encontrado por planificación, 2026-09-22): el test de arriba ejercita el
+    aislamiento a nivel STORE con el `cliente_id` YA RESUELTO -- no pasa por `require_tenant`, que es
+    justo la pieza que decide de quién es el request. Si `/feedback` derivara el tenant de otra fuente
+    (query param, header custom, default), ese test pasaría igual. Mismo patrón que
+    `test_adversarial_http_reply_endpoint_a_cannot_read_b_session`: token real contra el endpoint HTTP
+    real, con control positivo para que un endpoint que siempre devolviera `[]` no pase por accidente."""
+    from feedback_store import FeedbackStore
+    a, b = two_tenants
+    try:
+        FeedbackStore(conn_de_tenant(a.cliente_id), a.cliente_id).crear(
+            tipo="texto", texto="secreto de A", contexto=None)
+        FeedbackStore(conn_de_tenant(b.cliente_id), b.cliente_id).crear(
+            tipo="texto", texto="secreto de B", contexto=None)
+
+        app = _build_http_app(two_tenants, crypto)
+        client = TestClient(app)
+
+        r_a = client.get("/feedback", headers={"Authorization": f"Bearer {a.token}"})
+        assert r_a.status_code == 200
+        assert [i["texto"] for i in r_a.json()["items"]] == ["secreto de A"]
+
+        # control positivo (misma app, token distinto): B ve SU PROPIO feedback, nunca el de A ni una
+        # lista vacía por accidente -- sin esto, un endpoint que siempre devolviera [] pasaría el
+        # assert de arriba por la razón equivocada.
+        r_b = client.get("/feedback", headers={"Authorization": f"Bearer {b.token}"})
+        assert r_b.status_code == 200
+        assert [i["texto"] for i in r_b.json()["items"]] == ["secreto de B"]
+        declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+    finally:
+        conn = conn_de_tenant(a.cliente_id)()
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM uc_factory.copiloto_feedback WHERE cliente_id IN (%s, %s)",
+                        (a.cliente_id, b.cliente_id))
+        conn.commit()
+        conn.close()
