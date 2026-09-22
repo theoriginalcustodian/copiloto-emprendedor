@@ -430,7 +430,19 @@ class ConversationWorkflow:
                 tc_msg = _assistant_tool_call_msg(pend["tool_call"])
                 # minor (defensa): indexado directo `tr["observation"]` -> KeyError = no-determinismo que
                 # cuelga la corrida; `.get(...) or {}` es la misma defensa que ya usa el resto del loop.
-                tr_msg = _tool_result_msg(pend["tool_call"]["id"], tr.get("observation") or {})
+                observation = tr.get("observation") or {}
+                # H-A3-2(a): si la conexión se cayó ENTRE el confirm y la ejecución (execute_tool de arriba
+                # devuelve `gate_card`, ej. "conectá Gmail"), esta rama reingresaba a _react_loop con
+                # gate_card SIEMPRE en None -- la card se perdía sin llegar al front (medido en prod,
+                # historia e2e-g6-durabilidad-hitl). Misma extracción que `:626-641` (acá gate_card local
+                # arranca en None siempre, así que la "precedencia" es un no-op, pero se replica la forma
+                # para no bifurcar el criterio entre las dos ramas que lo pueblan).
+                initial_gate_card = None
+                if workflow.patched("gate-card-sobrevive-confirm"):
+                    if isinstance(observation.get("gate_card"), dict):
+                        observation = dict(observation)
+                        initial_gate_card = observation.pop("gate_card")
+                tr_msg = _tool_result_msg(pend["tool_call"]["id"], observation)
                 messages.append(tc_msg)
                 messages.append(tr_msg)
                 self._react_transcript.append(tc_msg)   # fix narra-sin-hacer v2 Parte 2: evidencia estructural durable
@@ -438,6 +450,7 @@ class ConversationWorkflow:
                 return await self._react_loop(config, domain, conv, channel, channel_ref, cliente_id,
                                               messages, start_turn_ix=pend["turn_ix"], start_step=pend["step"] + 1,
                                               last_artifact=tr.get("artifact"),
+                                              initial_gate_card=initial_gate_card,
                                               # sembrado: esta tool YA ejecutó (confirmed=True, arriba) ANTES de
                                               # entrar al loop -- sin esto el marcador del cierre "olvida" el
                                               # tool_call que resolvió el gate de confirmación.
@@ -525,14 +538,18 @@ class ConversationWorkflow:
 
     async def _react_loop(self, config: dict, domain: str, conv: dict, channel: str, channel_ref: str,
                           cliente_id: str, messages: list, *, start_turn_ix: int, start_step: int,
-                          last_artifact, tool_trace: list | None = None) -> bool:
+                          last_artifact, tool_trace: list | None = None,
+                          initial_gate_card: dict | None = None) -> bool:
         step = start_step
         last_sig = None                                          # detección de no-progreso (major #7)
         # tools YA ejecutadas de este turno (fix narra-sin-hacer): sembrado con lo que ejecutó el reingreso de
         # confirmación (_run_react_turn) antes de entrar acá, y se sigue completando abajo con cada tool que
         # este loop resuelve. Viaja a _react_finish para que el marcador cubra TODO el turno, no solo esta pasada.
         trace = list(tool_trace) if tool_trace else []
-        gate_card = None      # K-11: card del último gate estructurado (ej. requiere_conexion) que dejó una tool
+        # K-11: card del último gate estructurado (ej. requiere_conexion) que dejó una tool. H-A3-2(a):
+        # sembrada con lo que ya extrajo el reingreso de confirmación (sólo ese call site la pasa; el
+        # arranque normal del turno sigue en None, sin cambio de comportamiento).
+        gate_card = initial_gate_card
         while step < self.REACT_MAX_STEPS:
             resp = await workflow.execute_activity(
                 "call_llm_tools",
