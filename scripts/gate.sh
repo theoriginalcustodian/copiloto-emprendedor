@@ -65,7 +65,7 @@ source "$ROOT/scripts/ci/sesion-env.sh"
 # argumento inválido: un rechazo, no un rojo.
 if quiere backend && [ "${UC_TRIADA_PROPIA:-0}" != 1 ]; then
   echo "gate.sh: el job backend necesita la tríada de TU sesión y acá no se infiere (¿worktree detached?)." >&2
-  echo "         Corré: UC_SESION=<backend|fe1|fe2|aud> bash scripts/gate.sh $*" >&2
+  echo "         Corré: UC_SESION=<backend|fe1|fe2|aud|plan> bash scripts/gate.sh $*" >&2
   exit 2
 fi
 # Candado por tríada: la tríada separa sesiones, el candado separa dos gates de la MISMA sesión.
