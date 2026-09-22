@@ -1,3 +1,4 @@
+import { formatearImporte } from '../dinero/formatoDinero';
 import type { ReplyChoice } from '../api/types';
 import type { ChatMessage } from './chatMachine';
 
@@ -51,7 +52,9 @@ export interface Gate {
   label: string;
   /** Destinatario: primer **negrita** del texto. */
   name?: string;
-  /** Monto (sólo servicios que lo muestran, hoy Mercado Pago), sin el signo `$`. */
+  /** Monto YA FORMATEADO (`formatearImporte`, separador de miles argentino), sin el signo `$` — el
+   * consumidor lo agrega aparte con su propio token (ver `HitlCard`/`TarjetaConfirmacion`). Sólo
+   * servicios que lo muestran, hoy Mercado Pago. */
   amount?: string;
   /** Riesgo intrínseco del servicio: etiqueta del badge y si no se puede deshacer. */
   riesgo?: { badge: string; tono: 'warning' | 'danger'; irreversible: boolean };
@@ -91,12 +94,16 @@ export function mapearGate(mensaje: ChatMessage): Gate | null {
   const service = (mensaje.card?.service ?? '').toLowerCase();
   const risk = SERVICE_RISK[service];
   const markdown = mensaje.card?.markdown ?? mensaje.text;
+  // El backend manda el monto CRUDO dentro del texto (`f"...por ${amount}..."`, sin separador de
+  // miles — ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar el
+  // signo `$` (ya lo pone el consumidor). H-A4-12.
+  const amountRaw = risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined;
 
   return {
     service,
     label: mensaje.card?.label || 'Confirmación',
     name: markdown.match(BOLD_NAME_RE)?.[1],
-    amount: risk?.showAmount ? markdown.match(AMOUNT_RE)?.[1] : undefined,
+    amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
     riesgo: risk && { badge: risk.badge, tono: risk.tono, irreversible: risk.irreversible },
     markdown,
     confirmLabel: confirmChoice.label,

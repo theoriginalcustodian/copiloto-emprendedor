@@ -142,7 +142,28 @@ describe('ListaMensajes', () => {
     expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
     expect(screen.getByText('REVISAR')).toBeTruthy();
     expect(screen.getByTestId('tarjeta-confirmacion-para')).toBeTruthy();
-    expect(screen.getByText('$15.000')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-confirmacion-monto')).toBeTruthy();
+  });
+
+  // H-A4-12 (auditoría 2026-09-22): el backend manda el monto CRUDO, sin separador de miles
+  // (`f"...por ${amount}..."`, ver `dispatcher_emprendedor.py`). Control positivo de esa forma real +
+  // control negativo explícito: con el código viejo (`amount: markdown.match(AMOUNT_RE)?.[1]` sin
+  // formatear) esto pintaba `$80000`, no `$80.000`.
+  it('H-A4-12: monto CRUDO del backend (sin separadores) se muestra formateado con miles', async () => {
+    await envolver([
+      {
+        id: 'assistant-monto-crudo',
+        role: 'assistant',
+        text: 'Voy a generar un link de cobro de MercadoPago por $80000 (Diseño de logo). ¿Confirmás?',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByText('$80.000')).toBeTruthy();
+    expect(screen.queryByText('$80000')).toBeNull();
   });
 
   it('BL-D3: el gate pinta el LOGO real del servicio (por serviceKey)', async () => {
