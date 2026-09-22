@@ -24,3 +24,4 @@ export * from './linkDeCobro';
 export * from './mensajePendiente';
 export * from './avisosCard';
 export * from './requiereConexion';
+export * from './sugerenciaArmarFactura';
