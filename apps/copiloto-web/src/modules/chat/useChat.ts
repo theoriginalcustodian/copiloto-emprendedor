@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_MENSAJES_HISTORIAL, clasificarChoices } from '@copiloto/core';
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 import { generarId as generateId } from '../../util/id';
+import { podarResolucionesCard } from './resolucionCardPropuesta';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -457,7 +458,13 @@ export function useChat(): UseChatResult {
         // best-effort — si localStorage falla, igual reseteamos el estado en memoria.
       }
     }
-    setMessages([]);
+    // PODA (BL-V32): el guard A (`resolucionCardPropuesta.ts`) nunca borraba — sin esto, las
+    // marcas de resolución de los mensajes de la sesión que se descarta quedaban huérfanas para
+    // siempre. `prev` (no una dependencia de closure) para no arrastrar un `messages` desactualizado.
+    setMessages((prev) => {
+      podarResolucionesCard(prev.map((m) => m.id));
+      return [];
+    });
     setSessionId(created);
     setSendStatus('idle');
   }, [stopPolling]);

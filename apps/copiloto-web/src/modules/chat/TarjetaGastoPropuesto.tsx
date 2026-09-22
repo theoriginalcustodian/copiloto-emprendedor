@@ -4,7 +4,12 @@ import { formatearImporte, type GastoPropuesto } from '@copiloto/core';
 
 import { Recibo, Surface } from '../../design-system';
 import { FormularioGasto } from '../gastos/FormularioGasto';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_GASTO,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -23,7 +28,7 @@ type Estado = 'editando' | 'guardado' | 'descartado';
 
 type Resolucion = { estado: 'guardado'; monto: string | null } | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-gasto-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_GASTO;
 
 function leerResolucion(mensajeId: string): Resolucion | null {
   const parsed = leerResolucionCardCruda(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId));

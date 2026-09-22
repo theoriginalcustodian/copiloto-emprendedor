@@ -4,7 +4,12 @@ import type { DatosCliente, DuplicadoCliente } from '@copiloto/core';
 
 import { Recibo, Surface } from '../../design-system';
 import { FormularioCliente } from '../clientes/FormularioCliente';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_CLIENTE,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -42,7 +47,7 @@ type Resolucion =
   | { estado: 'ya_existe'; duenoNombre: string | null; duenoId: number | null }
   | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-cliente-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_CLIENTE;
 
 function leerResolucion(mensajeId: string): Resolucion | null {
   const parsed = leerResolucionCardCruda(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId));
