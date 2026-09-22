@@ -12,6 +12,7 @@ mal() { echo "  ❌ $1"; fallos=$((fallos+1)); }
 
 mkdir -p "$T/apps/mobile/src/modules/gastos" "$T/apps/copiloto-web/src/modules/gastos" \
          "$T/apps/mobile/src/modules/ingresos" "$T/apps/copiloto-web/src/modules/ingresos" \
+         "$T/apps/mobile/src/modules/clientes" "$T/apps/copiloto-web/src/modules/clientes" \
          "$T/scripts/ci"
 
 # --- fixture NEGATIVO: mismo id, misma pantalla (modules/gastos), en las dos plataformas ---------
@@ -193,6 +194,41 @@ python3 "$CHK" --root "$T" --check >/dev/null 2>&1
 rc=$?
 [ "$rc" = 1 ] && ok "fail-closed: JSON válido pero sin la clave 'excepciones' -> rojo" \
   || mal "estructura inválida debería fallar, no dar verde (rc=$rc)"
+
+# --- (hallazgo PR #616) un id que sólo aparece en el arnés de TEST no cuenta -----------------------
+# `sonda-cierre`/`entrada-stub` eran ids de `*.test.tsx` sin contraparte de UI real: contarlos
+# producía un falso rojo que nadie puede resolver del lado de UI. Cubrimos las tres formas del
+# arnés: `.test.tsx`, `.spec.tsx` y `__tests__/` (esta última con nombre de archivo normal).
+# (el bloque fail-closed de arriba dejó el archivo de excepciones roto a propósito -- restaurarlo,
+# perdonando el mismo drift residual de gastos que el resto del fixture todavía tiene)
+cat > "$T/scripts/ci/testid-paridad-excepciones.json" <<'EOF'
+{"excepciones": {"modules/gastos::gastos-chip-solo-mobile": {"falta_en": "web", "fecha": "2026-09-22", "motivo": "test"}}}
+EOF
+mkdir -p "$T/apps/mobile/src/modules/clientes/__tests__"
+cat > "$T/apps/mobile/src/modules/clientes/Pantalla.test.tsx" <<'EOF'
+<View testID="sonda-cierre" />
+EOF
+cat > "$T/apps/mobile/src/modules/clientes/Otra.spec.tsx" <<'EOF'
+<View testID="entrada-stub" />
+EOF
+cat > "$T/apps/mobile/src/modules/clientes/__tests__/Harness.tsx" <<'EOF'
+<View testID="harness-carpeta" />
+EOF
+python3 "$CHK" --root "$T" --check >/tmp/bl-q1-arnes.$$ 2>&1
+rc=$?
+if [ "$rc" = 0 ] && ! grep -qE "sonda-cierre|entrada-stub|harness-carpeta" /tmp/bl-q1-arnes.$$; then
+  ok "id que sólo vive en .test.tsx/.spec.tsx/__tests__/ NO cuenta como drift (verde, sin nombrarlo)"
+else
+  mal "un id de arnés de test no debería aparecer en el veredicto (rc=$rc): $(cat /tmp/bl-q1-arnes.$$)"
+fi
+inv_arnes="$(python3 "$CHK" --root "$T" --inventario 2>&1)"
+if ! echo "$inv_arnes" | grep -qE "sonda-cierre|entrada-stub|harness-carpeta"; then
+  ok "--inventario tampoco lista ids del arnés de test (ni en drift ni en no_medidos)"
+else
+  mal "--inventario no debería mencionar ids del arnés de test"
+fi
+rm -f /tmp/bl-q1-arnes.$$
+rm -rf "$T/apps/mobile/src/modules/clientes"
 
 # --- --inventario no toca disco fuera del root fixture y es JSON válido ----------------------------
 salida="$(python3 "$CHK" --root "$T" --inventario 2>&1)"
