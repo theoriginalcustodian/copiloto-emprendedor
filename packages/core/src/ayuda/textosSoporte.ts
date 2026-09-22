@@ -9,7 +9,7 @@
  * resumen que redacta el agente, atados a la cuenta (`cliente_id`). No viaja la conversación entera ni
  * datos de otras pantallas; decir «va con esta conversación» sería impreciso.
  */
-export const SOPORTE_QUIEN = 'Soporte de Odobi';
+export const SOPORTE_QUIEN = 'Soporte técnico';
 
 export const SOPORTE_PRESENTACION =
   'Contesto al toque. Si no lo puedo resolver, abro un ticket y lo sigue una persona.';

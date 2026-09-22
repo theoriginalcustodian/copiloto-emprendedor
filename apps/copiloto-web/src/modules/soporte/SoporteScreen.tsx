@@ -64,7 +64,12 @@ export function SoporteScreen({ funcion }: SoporteScreenProps) {
           </p>
         </div>
       </header>
-      <MessageList messages={messages} onChoice={handleChoice} emptyHint={WELCOME_TEXT[funcion]} />
+      <MessageList
+        messages={messages}
+        onChoice={handleChoice}
+        emptyHint={WELCOME_TEXT[funcion]}
+        mostrarEjemplos={false}
+      />
       <ComposerSoporte sendStatus={sendStatus} onSend={handleSend} onSendAudio={handleSendAudio} />
     </div>
   );
