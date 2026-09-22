@@ -288,7 +288,12 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
   // experimento controlado. No es una carrera de lógica.
   jest.setTimeout(30000);
 
+  // BL-V12 (2026-09-22): mismo hook (`useVozComando`), mismo `setInterval` real de 100ms mientras
+  // `fase==='grabando'`, mismo riesgo de degradación bajo contención que `PantallaSoporte.test.tsx`
+  // (ver el comentario ahí para el detalle completo) -- decisión de alcance: se arregla también acá
+  // porque es el describe hermano con el patrón idéntico, no porque este archivo haya fallado todavía.
   beforeEach(() => {
+    jest.useFakeTimers({ legacyFakeTimers: false });
     jest.mocked(api.sendChat).mockReset();
     jest.mocked(api.sendAudio).mockReset();
     jest.mocked(api.sendAudio).mockResolvedValue({ replies: [], next_id: 0 } as any);
@@ -296,6 +301,12 @@ describe('ChatView -- voz-comando (F6): hold-graba / soltar-envía / deslizar-fi
     jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
     mockRequestRecordingPermissionsAsync.mockReset().mockResolvedValue({ granted: true });
     mockGrabadorVoz.uri = null;
+  });
+
+  // Teardown OBLIGATORIO -- ver el mismo comentario en `PantallaSoporte.test.tsx` (riesgo de fuga de
+  // timer entre archivos del mismo worker de Jest, documentado en `jest.setup.js:58-68`).
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('mantener apretado (mock: tocar el botón) arranca -- SIN glass, con la onda flotante', async () => {
