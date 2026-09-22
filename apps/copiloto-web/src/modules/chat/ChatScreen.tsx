@@ -58,10 +58,11 @@ export function ChatScreen({
   onAbrirCliente,
   onFacturar,
 }: ChatScreenProps = {}) {
-  const { messages, sendStatus, send, sendAudio } = useChat();
+  const { messages, sendStatus, send, sendAudio, marcarConexionDescartada } = useChat();
   const isDesktop = variant === 'desktop';
-  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
-  const conexion = useConexionRequerida(messages, send);
+  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el
+  // pedido. HOJA: `marcarConexionDescartada` persiste «Ahora no» en el mensaje (sobrevive a un reload).
+  const conexion = useConexionRequerida(messages, send, undefined, marcarConexionDescartada);
 
   // BL-W9: una pantalla de ayuda dejó una pregunta en el buzón — se manda al montar el chat, UNA vez
   // (`tomarPendiente` vacía el buzón, así que no se reenvía sola al volver a esta pantalla).

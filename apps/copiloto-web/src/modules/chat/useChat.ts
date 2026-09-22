@@ -203,6 +203,11 @@ export interface ChatMessage {
    * efecto de la línea 225) así sobrevive a un reload; el historial viejo sin este campo se migra al
    * rehidratar con `sanitizeLegacyHitlTokens` (arriba). */
   hitlRespondido?: { value: string; label: string };
+  /** HOJA — si ESTA card `requiere_conexion` (mensaje `assistant`) ya fue descartada con «Ahora
+   * no», mismo patrón que `hitlRespondido`: la marca vive DENTRO del mensaje persistido, no en un
+   * `useState<Set>` en memoria (`useConexionRequerida.ts`, versión previa) que se perdía al
+   * recargar y reabría la hoja. Ausente = sigue vigente/clickeable. */
+  conexionDescartada?: true;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -236,6 +241,10 @@ export interface UseChatResult {
    * historial viejo y vacía los mensajes. Lo consume el botón "Nueva conversación" del header
    * de escritorio (`Copiloto Web.dc.html:98-101`); el shell mobile no lo usa. */
   startNewSession: () => void;
+  /** HOJA — marca el mensaje `mensajeId` (la card `requiere_conexion`) `conexionDescartada`, para
+   * que «Ahora no» (`useConexionRequerida.ts`) sobreviva a un reload. Atómico vía `setMessages`,
+   * mismo mecanismo que la marca `hitlRespondido` de `send`. */
+  marcarConexionDescartada: (mensajeId: string) => void;
 }
 
 export function useChat(): UseChatResult {
@@ -453,5 +462,9 @@ export function useChat(): UseChatResult {
     setSendStatus('idle');
   }, [stopPolling]);
 
-  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession };
+  const marcarConexionDescartada = useCallback((mensajeId: string) => {
+    setMessages((prev) => prev.map((m) => (m.id === mensajeId ? { ...m, conexionDescartada: true } : m)));
+  }, []);
+
+  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession, marcarConexionDescartada };
 }

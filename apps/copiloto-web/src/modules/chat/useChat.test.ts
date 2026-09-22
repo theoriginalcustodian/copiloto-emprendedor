@@ -439,6 +439,66 @@ describe('useChat', () => {
     });
   });
 
+  // HOJA — «Ahora no» (sheet «conectá X») tiene que sobrevivir a un reload igual que `hitlRespondido`
+  // arriba: la marca vive en el MENSAJE persistido, no en el `useState<Set>` que tenía
+  // `useConexionRequerida.ts` antes del fix (memoria, se perdía al recargar y la hoja reaparecía
+  // tapando el composer — BIS2 paso (c)).
+  describe('«Ahora no» sobrevive a un reload (HOJA)', () => {
+    const SESSION_ID = 'sess-hoja-ahora-no-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('marcarConexionDescartada marca el mensaje y lo persiste en localStorage', async () => {
+      const persisted = [
+        { id: 'user-1', role: 'user', text: 'mandale un mail a Juan' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages[1].conexionDescartada).toBeUndefined(); // todavía vigente
+
+      act(() => result.current.marcarConexionDescartada('assistant-1'));
+
+      expect(result.current.messages[1]).toMatchObject({ id: 'assistant-1', conexionDescartada: true });
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([{ id: 'user-1' }, { id: 'assistant-1', conexionDescartada: true }]);
+    });
+
+    it('rehidrata un mensaje YA marcado conexionDescartada tal cual', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+          conexionDescartada: true,
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0]).toMatchObject({ conexionDescartada: true });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+  });
+
   describe('cota de historial (C6) — messages no crece sin techo', () => {
     const SESSION_ID = 'sess-cota-test';
     const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;

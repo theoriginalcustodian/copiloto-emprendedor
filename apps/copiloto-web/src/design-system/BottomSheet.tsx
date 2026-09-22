@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import './primitives.css';
 
@@ -49,6 +50,15 @@ const INTERACTIVE_SELECTOR = 'button, a, textarea, input, select, [role="button"
  * Se mantiene SIEMPRE montado (controlado por `open`) para poder animar la salida — no desmonta
  * condicionalmente. Cuando `open=false`, `aria-hidden` + `pointer-events:none` lo sacan del árbol
  * de accesibilidad y de la interacción.
+ *
+ * **Portal a `document.body` (HOJA):** un consumidor puede vivir dentro de un ancestro con
+ * `isolation: isolate` (ej. `.app-frame` de `ChatScreen`, shell.css) — eso acota el `z-index:50` de
+ * acá a esa sub-jerarquía, y un hermano NO aislado con menor z-index (`.tab-bar`, z-index:30) igual
+ * pinta por encima del sheet entero al comparar en el contexto de apilamiento de más afuera. Medido:
+ * a 390px la tab-bar tapaba el 100% de «Ahora no» (`elementFromPoint` en su centro devolvía la
+ * tab-bar, no el botón) — ningún píxel del botón recibía el toque. El portal escapa cualquier
+ * `isolation`/`overflow`/stacking-context ajeno: el sheet siempre compite por z-index en el nivel
+ * más alto, donde su 50 gana limpio contra cualquier chrome del shell.
  */
 export function BottomSheet({
   open,
@@ -132,7 +142,7 @@ export function BottomSheet({
     document.addEventListener('pointercancel', handlePointerEnd);
   }
 
-  return (
+  const sheet = (
     <div className={`uc-sheet-root${open ? ' uc-sheet-root--open' : ''}`} aria-hidden={!open}>
       <div className="uc-sheet-scrim" onClick={onClose} data-testid="bottom-sheet-scrim" />
       <div
@@ -152,4 +162,6 @@ export function BottomSheet({
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body);
 }
