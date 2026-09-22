@@ -14,7 +14,8 @@ export interface HitlCardProps {
   label: string;
   /** Nombre de la persona / destinatario (opcional, aislado de **negrita**). */
   name?: string;
-  /** Monto aislado (solo cobros MP), SIN el signo `$` (se renderiza aparte con su propio token). */
+  /** Monto YA FORMATEADO (`formatearImporte`, separador de miles) por `hitlMapping`, SIN el signo `$`
+   * (se renderiza aparte con su propio token). Solo cobros MP. */
   amount?: string;
   /** Cuerpo descriptivo: el texto del reply (qué se va a hacer). */
   concept: string;

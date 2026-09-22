@@ -70,7 +70,23 @@ describe('hitlMapping', () => {
     );
     expect(props.service).toBe('mercadopago');
     expect(props.badge).toEqual({ variant: 'warning', text: 'REVISAR' });
-    expect(props.amount).toBe('15.000');
+    expect(props.amount).toBe('15,000'); // el `.` del texto se lee como DECIMAL (`formatearImporte`), no miles
+  });
+
+  // H-A4-12 (auditoría 2026-09-22): el backend manda el monto CRUDO, sin separador de miles
+  // (`f"...por ${amount}..."`, ver `dispatcher_emprendedor.py`) — control positivo de esa forma real,
+  // y control negativo explícito: con el código viejo (`amount: amountMatch?.[1]` sin formatear) esto
+  // daba `'80000'`, no `'80.000'`.
+  it('Mercado Pago: monto CRUDO del backend (sin separadores) se muestra formateado', () => {
+    const props = buildHitlCardProps(
+      msg({
+        text: 'Voy a generar un link de cobro de MercadoPago por $80000 (Diseño de logo). ¿Confirmás?',
+        card: { service: 'mercadopago', label: 'Mercado Pago' },
+      }),
+      vi.fn(),
+    );
+    expect(props.amount).toBe('80.000');
+    expect(props.amount).not.toBe('80000');
   });
 
   it('Instagram: badge IRREVERSIBLE + dangerBorder', () => {

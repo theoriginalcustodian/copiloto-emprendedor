@@ -1,4 +1,4 @@
-import { esParConfirmarCancelar, type TipoMensaje, clasificarChoices } from '@copiloto/core';
+import { esParConfirmarCancelar, formatearImporte, type TipoMensaje, clasificarChoices } from '@copiloto/core';
 import type { BadgeVariant } from '../../design-system';
 import type { ReplyChoice } from '../../lib/api';
 import type { ChatMessage } from './useChat';
@@ -84,13 +84,17 @@ export function buildHitlCardProps(
   const label = message.card?.label || 'Confirmación';
   const risk = SERVICE_RISK[service] ?? {};
   const boldMatch = message.text.match(BOLD_NAME_RE);
+  // El backend manda el monto CRUDO en el texto (`f"...por ${amount}..."`, sin separador de miles —
+  // ver `dispatcher_emprendedor.py`). `formatearImporte(raw, '')` lo formatea sin agregar `$` (el
+  // consumidor `<HitlCard>` ya pone su propio signo). H-A4-12.
   const amountMatch = risk.showAmount ? message.text.match(AMOUNT_RE) : null;
+  const amountRaw = amountMatch?.[1];
 
   return {
     service,
     label,
     name: boldMatch?.[1],
-    amount: amountMatch?.[1],
+    amount: amountRaw !== undefined ? formatearImporte(amountRaw, '') : undefined,
     concept: message.text,
     badge: risk.badge,
     dangerBorder: risk.dangerBorder,
