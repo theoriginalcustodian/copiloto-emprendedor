@@ -257,3 +257,5 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Un daño afirmado desde UN SOLO lado no es hallazgo](un-dano-afirmado-desde-un-solo-lado-no-es-hallazgo.md) — al buscar la defensa del acusado, preguntá por TODOS sus hermanos: ahí apareció el que no la tenía.
 
 > Estas entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
+- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde" ≠ "fase validada".
+- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
