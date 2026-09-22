@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """e2e §G6 item 2 (backend) -- durabilidad: una conversación Y un HITL sobreviven un restart REAL
-del worker en prod (plan §8.1 fila BL-B1, DoD explícito: "con una conversación y un HITL en
-vuelo" -- no alcanza con una conversación simple). Es el moat del producto (orquestación durable
-con Temporal, spec §0/CLAUDE.md) -- este script prueba la garantía en sí, no una simulación: los
-mensajes se mandan mientras los workflows pueden estar todavía en vuelo, el worker se reinicia, y
-después se sigue la MISMA sesión.
+del worker en prod (plan §8.1 fila BL-B1). Es el moat del producto (orquestación durable con
+Temporal, spec §0/CLAUDE.md) -- este script prueba la garantía en sí, no una simulación: el estado
+se persiste ANTES del restart (turno 1 respondido, gate HITL parqueado) y se verifica DESPUÉS.
+
+⚠️ H-A3-8 (auditoría A3, 2026-09-22): lo que esto prueba es CONTINUIDAD de sesión + persistencia de
+un gate parqueado a través de un restart -- NO recuperación de una activity que estaba activamente
+EJECUTÁNDOSE en el momento exacto del restart. Entre `--armar` y el restart real hay un gap externo
+sin cota (deploy.sh real, o cualquier restart legítimo, corre cuando corre); no hay forma de
+garantizar que algo esté "en vuelo" en ese instante, y una corrida real de A3 midió lo contrario
+para el turno 1 (su reply salió del worker VIEJO, antes del restart). El nombre y los mensajes de
+este script NO afirman "en vuelo" en ningún lado -- si en el futuro hace falta probar recuperación
+de una activity genuinamente en ejecución durante el restart, eso es un script DISTINTO (necesita
+disparar el restart en el medio de una activity corriendo, lo que hoy el operador vetó que este
+script haga por su cuenta).
 
 La mitad HITL ejercita el gate cross-turn del react loop (`conversation_workflow.py::_run_react_turn`,
 `self._state['react']` parqueado): se dispara `calendar_book` SIN confirmar (arma el gate, guarda
@@ -13,8 +22,11 @@ tiene que reconstruirse por REPLAY, no por memoria viva), y recién DESPUÉS se 
 `confirm:<turn_ix>:<step>` (el token que expone `/reply` en `choices[].value`, ver
 `_confirm_choices()`). Si el replay no reconstruyó `self._state['react']` bien, el callback cae en
 la rama "callback SIN gate parqueado" (`_run_react_turn` línea ~406) y responde "Listo 👍" sin
-ejecutar nada -- silencioso, no una excepción. Por eso el chequeo no es sólo "llegó una reply": es
-"llegó una reply que YA NO vuelve a pedir el mismo confirm" (ver `_reply_resolvio_el_gate`).
+ejecutar nada -- silencioso, no una excepción. `_reply_resolvio_el_gate` discrimina por DOS
+señales, no una: que no vuelva a pedir el mismo confirm, Y que la reply no calce con la firma
+exacta de esa rama de fallo -- lo segundo lo agregó H-A3-8 (auditoría A3, 2026-09-22): la rama de
+fallo TAMBIÉN carece de choice 'confirm:', así que mirar sólo lo primero confirmaba un callback
+perdido como resuelto. `--control-negativo` reproduce ese caso y tiene que dar ROJO.
 
 ⚠️ Este script NO dispara ningún restart. Versión anterior (pre 2026-08-13) llamaba
 `ssh ... sudo systemctl restart uc-copiloto-worker.service` por su cuenta -- el operador de este
@@ -38,6 +50,9 @@ Uso:
     python scripts/e2e_g6_durabilidad_worker_restart.py --armar
     # ... correr deploy.sh real, o esperar el próximo restart legítimo del worker ...
     python scripts/e2e_g6_durabilidad_worker_restart.py --verificar
+
+    # H-A3-8: control negativo -- no depende de ningún restart, corre solo, tiene que dar ROJO.
+    python scripts/e2e_g6_durabilidad_worker_restart.py --control-negativo
 """
 from __future__ import annotations
 
@@ -131,11 +146,30 @@ def _token_de_confirmacion(replies: list[dict]) -> str:
     raise AssertionError(f"ninguna reply trae un choice 'confirm:...' -- ¿calendar_book no abrió el gate? {replies}")
 
 
+# H-A3-8: firma EXACTA de `conversation_workflow.py::_run_react_turn`, rama "callback STALE sin
+# gate parqueado" (`kind == "callback" and not parked` -> responde esto y corta, SIN LLM, SIN
+# ejecutar nada). Si esa línea cambia el texto, esta constante hay que actualizarla junto -- no hay
+# forma de leerla en vivo desde acá (el script sólo habla HTTP con prod, no importa el motor).
+_TEXTO_CALLBACK_SIN_GATE = "Listo 👍"  # conversation_workflow.py:407
+
+
 def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
-    """True si NINGUNA reply post-callback vuelve a traer un choice 'confirm:' -- si lo trajera,
-    el callback NO reingresó al gate parqueado (cayó en la rama 'callback sin gate', que responde
-    'Listo 👍' sin ejecutar nada, ver docstring del módulo) y el turno original se perdió."""
-    return not any(c.get("value", "").startswith("confirm:") for r in replies for c in (r.get("choices") or []))
+    """True sólo si el gate se resolvió DE VERDAD. Dos chequeos, no uno:
+
+    1. Ninguna reply post-callback vuelve a traer un choice 'confirm:' -- si lo trajera, el
+       callback NO reingresó al gate parqueado.
+    2. Ninguna reply calza con la firma EXACTA de la rama de fallo ('Listo 👍', ver
+       `_TEXTO_CALLBACK_SIN_GATE`).
+
+    H-A3-8 (auditoría A3): la versión anterior sólo miraba (1). La rama de fallo (`kind ==
+    'callback' and not parked`) TAMBIÉN carece de choice 'confirm:' en su respuesta -- responde
+    'Listo 👍' con `choices=None` -- así que un callback que se perdió (el replay no reconstruyó
+    `self._state['react']`) pasaba como resuelto: el instrumento confirmaba en vez de verificar.
+    Control negativo que reproduce exactamente este caso: `--control-negativo` (más abajo)."""
+    repite_confirm = any(c.get("value", "").startswith("confirm:")
+                          for r in replies for c in (r.get("choices") or []))
+    cayo_en_rama_sin_gate = any((r.get("reply_text") or "") == _TEXTO_CALLBACK_SIN_GATE for r in replies)
+    return not repite_confirm and not cayo_en_rama_sin_gate
 
 
 def _guardar_estado(estado: dict) -> None:
@@ -233,10 +267,49 @@ def verificar() -> int:
     _consumir_estado()
     print("\n=== RESULTADO: VERDE -- CONVERSACIÓN Y HITL SOBREVIVIERON AL RESTART REAL DEL WORKER ===")
     print(f"session_id={session_id}")
-    print(f"turno 1 (en vuelo durante el restart) -> {len(replies_1)} reply(s)")
+    # H-A3-8: "en vuelo durante el restart" es una afirmación que este script NO puede probar --
+    # entre `--armar` y el restart real hay un gap externo sin cota (deploy.sh real, o cualquier
+    # restart legítimo, corre cuando corre); medido en A3: la reply del turno 1 salió del worker
+    # VIEJO, antes del restart. Lo que SÍ se prueba acá es continuidad: la MISMA sesión sigue viva
+    # y responde un turno 2 después del restart. La mitad que sí prueba supervivencia de estado
+    # parqueado A TRAVÉS del restart es el gate HITL (abajo).
+    print(f"turno 1 (mandado antes del restart; prueba CONTINUIDAD, no recuperación en vuelo) -> {len(replies_1)} reply(s)")
     print(f"turno 2 (post-restart, misma sesión)   -> {len(replies_2)} reply(s)")
     print(f"session_id_hitl={session_id_hitl}")
-    print(f"gate HITL (parqueado durante el restart, resuelto después) -> {len(replies_hitl_post)} reply(s)")
+    print(f"gate HITL (parqueado ANTES del restart, resuelto DESPUÉS -- sobrevive por replay) -> {len(replies_hitl_post)} reply(s)")
+    return 0
+
+
+def control_negativo() -> int:
+    """H-A3-8 DoD: control negativo que debe dar ROJO. Manda un callback a una sesión que NUNCA
+    abrió un gate HITL (session_id nuevo, primer mensaje es directamente `kind='callback'`) --
+    ejercita el backend REAL, no una simulación in-process. `conversation_workflow.py` cae en la
+    rama "callback sin gate parqueado" (`kind == 'callback' and not parked`) y responde
+    'Listo 👍' sin ejecutar nada. `_reply_resolvio_el_gate` tiene que detectar esto como NO
+    resuelto -- si el instrumento volviera a dar verde acá, sería la MISMA regresión que H-A3-8
+    encontró (confirma en vez de verificar)."""
+    log(f"BASE={BASE}")
+    log("1) login canónico (e2e-device@copiloto.test)")
+    token = login()
+
+    session_id = f"e2e-g6-control-negativo-{uuid.uuid4()}"
+    log(f"2) callback a session_id NUEVO, SIN gate HITL abierto -- session_id={session_id}")
+    enviar_callback(token, session_id, "confirm:0:0")
+    replies = esperar_reply(token, session_id, after_id=0, segundos=60)
+    log(f"   replies={replies}")
+
+    resolvio = _reply_resolvio_el_gate(replies)
+    if resolvio:
+        print(
+            "\n=== CONTROL NEGATIVO FALLÓ: el instrumento dio VERDE (resolvió=True) donde debía "
+            "dar ROJO -- H-A3-8 sigue vigente ==="
+        )
+        return 1
+    print(
+        "\n=== CONTROL NEGATIVO OK: el instrumento detectó el gate NO resuelto (ROJO esperado) ==="
+    )
+    print(f"session_id={session_id}")
+    print(f"reply(s) recibida(s): {replies}")
     return 0
 
 
@@ -245,10 +318,14 @@ def main() -> int:
     modo = parser.add_mutually_exclusive_group(required=True)
     modo.add_argument("--armar", action="store_true", help="manda el turno 1 y persiste el estado esperado")
     modo.add_argument("--verificar", action="store_true", help="lee el estado y confirma supervivencia post-restart")
+    modo.add_argument("--control-negativo", action="store_true",
+                       help="H-A3-8: callback sin gate pendiente -- tiene que dar ROJO")
     args = parser.parse_args()
 
     if args.armar:
         return armar()
+    if args.control_negativo:
+        return control_negativo()
     return verificar()
 
 

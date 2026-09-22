@@ -6,7 +6,11 @@
 # los dos que costaron plata el 2026-08-13 durante su propia construcción:
 #
 #   1. NEGATIVO — un worktree con trabajo sin commitear JAMÁS puede caer en PODABLES.
-#   2. NEGATIVO — el dry-run (default) no puede cambiar la cantidad de worktrees registrados.
+#   2. NEGATIVO — el dry-run (default) no puede invocar NINGÚN comando git que borre (worktree
+#      remove/prune, branch -d/-D). Se mide lo que el SCRIPT hace, no el estado global: la primera
+#      versión comparaba la cantidad de `git worktree list`, que es compartida por las sesiones
+#      paralelas — el 2026-09-22 dio 27 → 28 porque backend creó un worktree en ese segundo, y el
+#      gate del SHA mergeado de FE2 quedó rojo por algo que el script no hizo.
 #   3. POSITIVO — un worktree recién creado y ensuciado APARECE, y aparece en SUCIOS.
 #      Sin el 3, el 1 pasaría también si el script simplemente no viera nada (verde por ausencia — la
 #      falla que este repo ya pagó dos veces en un solo día).
@@ -54,9 +58,18 @@ fi
 # ninguna rama y su pérdida es total.
 echo "trabajo sin commitear que no está en ninguna rama" > "$victima/NO-BORRAR-ESTO.txt"
 
-antes="$(git -C "$REPO_ROOT" worktree list | wc -l)"
-salida="$(bash "$PODAR" --horas 0 2>&1)"
-despues="$(git -C "$REPO_ROOT" worktree list | wc -l)"
+# Shim de git: registra CADA invocación del script y delega en el git real. El registro es de esta
+# corrida y de nadie más — lo que otra sesión haga con sus worktrees en paralelo no entra.
+shim="$(mktemp -d)"; registro="$shim/llamadas.log"; git_real="$(command -v git)"
+printf '#!/usr/bin/env bash
+printf "%%s\n" "$*" >> "%s"
+exec "%s" "$@"
+' "$registro" "$git_real" > "$shim/git"
+chmod +x "$shim/git"
+trap 'limpiar; rm -rf "$shim"' EXIT
+mutante='worktree (remove|prune)|branch (-d|-D|--delete)'
+
+salida="$(PATH="$shim:$PATH" bash "$PODAR" --horas 0 2>&1)"
 
 # ── 3. POSITIVO primero: si el script no ve al sujeto, los negativos no prueban nada ─────────
 if printf '%s' "$salida" | grep -q ".test-podar-$$"; then
@@ -76,10 +89,17 @@ else
 fi
 
 # ── 2. NEGATIVO: el dry-run no toca nada ─────────────────────────────────────────────────────
-if [ "$antes" = "$despues" ] && [ -f "$victima/NO-BORRAR-ESTO.txt" ]; then
-  ok "2 NEGATIVO · el dry-run no borró worktrees ni archivos ($antes → $despues)"
+# Control positivo del shim, antes del negativo: si el registro no ve las lecturas del script (`worktree
+# list`), un "0 comandos que borran" sería verde por ausencia. Y el patrón tiene que reconocer un
+# comando que borra de verdad: `worktree prune -n` (dry-run de git, inofensivo) pasado por el mismo shim.
+PATH="$shim:$PATH" git -C "$REPO_ROOT" worktree prune -n >/dev/null 2>&1
+lecturas="$(grep -c 'worktree list' "$registro" 2>/dev/null || true)"
+patron_ve="$(tail -1 "$registro" | grep -cE "$mutante" || true)"
+mutaciones="$(sed '$d' "$registro" | grep -E "$mutante" || true)"
+if [ "${lecturas:-0}" -gt 0 ] && [ "$patron_ve" = "1" ] && [ -z "$mutaciones" ] && [ -f "$victima/NO-BORRAR-ESTO.txt" ]; then
+  ok "2 NEGATIVO · el dry-run no invocó ningún git que borre (vio $lecturas lecturas; el patrón sí caza un prune) y el archivo sigue"
 else
-  fail "2 NEGATIVO · el dry-run modificó algo: $antes → $despues, archivo=$( [ -f "$victima/NO-BORRAR-ESTO.txt" ] && echo presente || echo BORRADO)"
+  fail "2 NEGATIVO · lecturas=${lecturas:-0} patrón_ve=$patron_ve mutaciones=<$mutaciones> archivo=$( [ -f "$victima/NO-BORRAR-ESTO.txt" ] && echo presente || echo BORRADO)"
 fi
 
 # ── 4. NEGATIVO: el flag de test no puede usarse para borrar ─────────────────────────────────

@@ -138,4 +138,41 @@ describe('PantallaOnboarding (K-14 / BL-X8)', () => {
     await waitFor(() => expect(onTerminar).toHaveBeenCalled());
     expect(completarOnboarding).toHaveBeenCalledTimes(1);
   });
+
+  // BL-X8 resto (contrato fila 3, ANEXO) — «el onboarding es una conversación en el hilo, no una
+  // pantalla»: la promesa se dibuja con burbujas de asistente (`Burbuja`) y la tarjeta real del chat
+  // (`CristalVidrio nivel="informe"`, mismo nivel que `TarjetaConfirmacion`), no el formulario viejo.
+  it('la promesa se dibuja con burbujas de asistente y la tarjeta real del hilo, no un formulario', async () => {
+    await montar();
+    await screen.findByTestId('onboarding-conectar-google');
+    expect(screen.getByText('Laburo así: vos me hablás, yo resuelvo. Pero primero necesito ver tu negocio.')).toBeTruthy();
+    expect(screen.getByText('¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés.')).toBeTruthy();
+    expect(screen.getByTestId('onboarding-tarjeta-servicios')).toBeTruthy();
+  });
+
+  it('la promesa cumplida trae la pregunta cerrada y el chip «Armame el detalle» sólo si hay dato real', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('147000.00'));
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/facturados sin cobrar/));
+    expect(screen.getByText('¿Querés que te arme el detalle?')).toBeTruthy();
+    expect(screen.getByTestId('onboarding-chip-detalle')).toBeTruthy();
+  });
+
+  it('sin dato real (0/vacío) NO hay pregunta cerrada ni chip — no se inventa una', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('0.00'));
+    await montar();
+    await waitFor(() => expect(screen.getByTestId('onboarding-insight')).toHaveTextContent(/Todavía no tenés facturas pendientes/));
+    expect(screen.queryByTestId('onboarding-chip-detalle')).toBeNull();
+  });
+
+  it('el chip «Armame el detalle» entra al hilo real y marca el onboarding UNA sola vez (idempotente)', async () => {
+    jest.mocked(listarCatalogo).mockResolvedValue({ status: 'ok', servicios: [mp(true), servicio({ conectado: true })] });
+    jest.mocked(leerPortada).mockResolvedValue(portada('147000.00'));
+    const onTerminar = await montar();
+    fireEvent.press(await screen.findByText('Armame el detalle'));
+    await waitFor(() => expect(onTerminar).toHaveBeenCalledTimes(1));
+    expect(completarOnboarding).toHaveBeenCalledTimes(1);
+  });
 });
