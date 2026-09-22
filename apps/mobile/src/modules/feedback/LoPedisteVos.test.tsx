@@ -35,7 +35,7 @@ describe('LoPedisteVos', () => {
     jest
       .mocked(listarFeedbackPropio)
       .mockResolvedValue([item({ id: 1, escuchado: true }), item({ id: 2, texto: 'otro' })]);
-    montar();
+    await montar();
     await waitFor(() => expect(screen.getByTestId('lo-pediste-vos-1-escuchado')).toBeTruthy());
     expect(screen.getByTestId('lo-pediste-vos-2-pendiente')).toBeTruthy();
     expect(screen.queryByTestId('lo-pediste-vos-2-escuchado')).toBeNull();
@@ -43,14 +43,14 @@ describe('LoPedisteVos', () => {
 
   it('fail-soft: sin items no dibuja nada', async () => {
     jest.mocked(listarFeedbackPropio).mockResolvedValue([]);
-    montar();
+    await montar();
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalled());
     expect(screen.queryByTestId('lo-pediste-vos')).toBeNull();
   });
 
   it('fail-soft: si el endpoint falla no dibuja nada ni lanza', async () => {
     jest.mocked(listarFeedbackPropio).mockRejectedValue(new Error('500'));
-    montar();
+    await montar();
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalled());
     expect(screen.queryByTestId('lo-pediste-vos')).toBeNull();
   });

@@ -10,6 +10,7 @@ import {
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  leerSugerenciaArmarFactura,
   mapearGate,
   separadoresDeDia,
   type ChatMessage,
@@ -23,6 +24,7 @@ import { LogoMarca, hayLogoDe } from '../apps/LogoMarca';
 import { RodilloEjemplos } from './RodilloEjemplos';
 import { useTema } from '../../theme/ThemeProvider';
 import { Burbuja } from './Burbuja';
+import { ChipArmarFactura } from './ChipArmarFactura';
 import { TarjetaLinkDeCobro } from './TarjetaLinkDeCobro';
 import { TarjetaClientePropuesto } from './TarjetaClientePropuesto';
 import { TarjetaFacturaPropuesta } from './TarjetaFacturaPropuesta';
@@ -227,6 +229,17 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   const linkDeCobro = leerLinkDeCobro(mensaje.card);
   if (linkDeCobro) {
     return <TarjetaLinkDeCobro link={linkDeCobro} />;
+  }
+
+  // BL-J9 — `sugerencia_armar_factura`: burbuja con el texto + chip que abre el gate de factura.
+  const sugerenciaFactura = leerSugerenciaArmarFactura(mensaje.card);
+  if (sugerenciaFactura) {
+    return (
+      <View style={{ gap: 8 }}>
+        <Burbuja role="assistant" text={mensaje.text} />
+        <ChipArmarFactura sugerencia={sugerenciaFactura} />
+      </View>
+    );
   }
 
   const gate = mapearGate(mensaje);

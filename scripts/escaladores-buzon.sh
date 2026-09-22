@@ -175,22 +175,22 @@ edad_alta_min() {
 # epoch del avance_ MÁS RECIENTE que el frente <destinatario> mandó (patrón *_avance_<frente>-a-*),
 # nacen archivados en cerrado/<fecha>/. 0 si no hay ninguno.
 declare -A _avance_cache=()
+# Deja el resultado en la GLOBAL `AVANCE_EPOCH` (no por stdout): llamarla con `$(...)` corre en un
+# subshell y el cache moría en cada llamada — la memoización nunca funcionó y cada archivo de
+# en-curso/ re-escaneaba cerrado/ entero con un `stat` por match (51 s el 21/09, con cerrado/ de 22
+# días). Además, un solo `stat` por lote en vez de un fork por archivo.
 avance_mas_reciente_epoch() {
-  local frente="$1" mejor=0 f m
-  [ -n "$frente" ] || { echo 0; return; }
-  # Memoizado: la Regla 3 lo llama UNA VEZ POR ARCHIVO de en-curso/, y cada llamada re-escaneaba
-  # `cerrado/*/` entero con un `stat` por match. Con 14 frentes y un cerrado/ que crece todos los
-  # dias eso son cientos de forks para releer lo mismo. El resultado no cambia dentro de una
-  # corrida (`now` ya esta congelado arriba), asi que cachearlo por frente es exacto, no una
-  # aproximacion.
-  if [ -n "${_avance_cache[$frente]:-}" ]; then echo "${_avance_cache[$frente]}"; return; fi
+  local frente="$1" files
+  AVANCE_EPOCH=0
+  [ -n "$frente" ] || return 0
+  if [ -n "${_avance_cache[$frente]:-}" ]; then AVANCE_EPOCH="${_avance_cache[$frente]}"; return 0; fi
   shopt -s nullglob
-  for f in "$CERRADO"/*/????-??-??_avance_"${frente}"-a-*.md; do   # anclado por posición, ver Regla 1
-    m="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
-    [ "$m" -gt "$mejor" ] && mejor="$m"
-  done
-  _avance_cache["$frente"]="$mejor"
-  echo "$mejor"
+  files=("$CERRADO"/*/????-??-??_avance_"${frente}"-a-*.md)   # anclado por posición, ver Regla 1
+  if [ "${#files[@]}" -gt 0 ]; then
+    AVANCE_EPOCH="$(stat -c %Y "${files[@]}" 2>/dev/null | sort -n | tail -1)"
+    [[ "$AVANCE_EPOCH" =~ ^[0-9]+$ ]] || AVANCE_EPOCH=0
+  fi
+  _avance_cache["$frente"]="$AVANCE_EPOCH"
 }
 
 # ── Regla 1: contrato_ con disparador cumplido, viejo, sin tomar ───────────────
@@ -316,7 +316,7 @@ if [ -d "$ENCURSO" ]; then
       anotar_fallo "$b" "en-curso sin avance"; continue
     fi
     [ "$m_movido" -gt "$m_contrato" ] && m_contrato="$m_movido"
-    m_avance="$(avance_mas_reciente_epoch "${para:-desconocido}")"
+    avance_mas_reciente_epoch "${para:-desconocido}"; m_avance="$AVANCE_EPOCH"
     m_mejor="$m_contrato"
     [ "$m_avance" -gt "$m_mejor" ] && m_mejor="$m_avance"
     edad=$(( (now - m_mejor) / 60 ))

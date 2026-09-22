@@ -82,7 +82,25 @@ TODOS_ESP="$(printf '%s\n%s\n%s\n' "$BE_ESP" "$FE1_ESP" "$FE2_ESP" | codigos)"
 # cadena vacía en silencio y el inventario salía sin una sola fila (medido el 21/09). Un filtro que
 # falla callado en un instrumento de auditoría es peor que no tenerlo.
 if [ -n "${PRS_JSON_FILE:-}" ]; then PRS_JSON="$(cat "$PRS_JSON_FILE")"
-else PRS_JSON="$(gh pr list --state merged --limit 60 --json number,title,mergeCommit,mergedAt,files)"; fi
+else
+  # La ventana se pide por FECHA, no por cantidad. Con `--limit 60`, al pasar los 60 merges los
+  # PR más viejos de la ventana (#520–#530) se caían en silencio y sus filas salían «mitad sin
+  # diff» (BL-X12w, 21/09). Si igual se llega al tope, el inventario muere: truncar es mentir.
+  LIMITE_PRS="${LIMITE_PRS:-1000}"
+  PRS_JSON="$(gh pr list --state merged --search "merged:>=$DESDE" --limit "$LIMITE_PRS" \
+                --json number,title,mergeCommit,mergedAt,files)"
+fi
+n_prs="$(PYTHONIOENCODING=utf-8 python -c 'import json,sys; print(len(json.load(sys.stdin)))' <<< "$PRS_JSON" | tr -d '\r')"
+if ! [[ "$n_prs" =~ ^[0-9]+$ ]]; then
+  # gh o el JSON fallaron: un inventario sin PRs daría TODAS las filas como faltas (o ninguna
+  # evidencia) con rc=0 — fail-closed, nunca un reporte que parezca medido.
+  echo "❌ inventario-ola: no pude leer la lista de PR (gh/JSON falló); no genero un inventario sin medir." >&2
+  exit 3
+fi
+if [ -z "${PRS_JSON_FILE:-}" ] && [ "$n_prs" -ge "${LIMITE_PRS:-1000}" ]; then
+  echo "❌ inventario-ola: $n_prs PR = el tope --limit; la ventana puede estar TRUNCADA. Subí LIMITE_PRS o acotá --desde." >&2
+  exit 3
+fi
 export DESDE
 # Sin esto, python en Windows escribe cp1252 a stdout y las rayas y comillas del markdown salen
 # como «?» en el doc que recibe auditoría.
@@ -327,7 +345,13 @@ a archivo, sin sub-agentes vivos en la PC — bajo carga el gate falla por `fork
 # (A1 §4.1). La triada (DB/puerto/stage) sale de UC_SESION; si tu sesión no está en
 # scripts/ci/sesion-env.sh, exportá UC_TESTDB_NAME/UC_TESTDB_PORT/UC_TEST_STAGE propios.
 UC_SESION=<tu-sesión> bash scripts/gate.sh backend > "gate-backend-$(date +%s).log" 2>&1
-grep -c PASSED gate-backend-*.log   # 0 PASSED o un recibo con "jobs":{} es falso verde, no verde
+# Anti falso verde del JOB: la línea de resumen «N passed» contra el piso, y "jobs" no vacío en el
+# recibo. NO cuentes `PASSED`: el job corre `--co -q` + `-q` y nunca imprime PASSED por test (da 0
+# también con la suite sana — pedido de auditoría A2, 21/09).
+grep -Eo '[0-9]+ passed' gate-backend-*.log | tail -1   # piso vigente: 2045 (6b410923)
+# Resultado de UN test puntual (un adversarial): -rA imprime una línea PASSED/FAILED por test.
+bash deploy/copiloto/sync-test-backend.sh tests ../../motor/backend/agent ../../motor/clients/agent -q -rA > rA.log 2>&1
+grep -E '^(PASSED|FAILED|ERROR).*<nombre_del_test>' rA.log
 ```
 
 ## 4. Evidencia de device

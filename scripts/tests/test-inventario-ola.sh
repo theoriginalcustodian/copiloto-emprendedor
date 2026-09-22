@@ -128,6 +128,13 @@ for f in BL-J2 BL-J3; do
   if grep -qF "vía K-03" <<< "$l"; then ok "$f esperada en ola 2 y ✅ vía K-03"; else fail "fila compuesta $f: ${l:-no aparece en §2}"; fi
 done
 
+echo "── 7. FAIL-CLOSED: sin lista de PR legible no hay inventario ──"
+# Si gh/JSON fallan, antes salía un inventario «medido» sin PRs y exit 0 (21/09).
+printf 'gh: boom
+' > "$TMP/prs-roto.json"
+PLAN="$TMP/plan.md" PRS_JSON_FILE="$TMP/prs-roto.json" SHA_MAIN=deadbeef DESDE=2026-09-21   bash "$INV" --ola 2 >/dev/null 2>&1; rc7=$?
+[ "$rc7" -eq 3 ] && ok "JSON ilegible → exit 3" || fail "JSON ilegible → exit $rc7 (esperado 3)"
+
 echo
 if [ "$fallos" -eq 0 ]; then echo "✅ test-inventario-ola: OK"; exit 0; fi
 echo "❌ test-inventario-ola: $fallos fallo(s)"; exit 1

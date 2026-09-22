@@ -376,6 +376,33 @@ describe('PantallaPresupuestos', () => {
       await waitFor(() => expect(mockCrear).toHaveBeenCalled());
     });
 
+    it('K-07: tras guardar con Doc el detalle ofrece «Mandalo por mail»; sin sugerencia no', async () => {
+      mockCrear.mockResolvedValue({
+        status: 'ok',
+        presupuesto: presupuesto({ id: 13, docLink: 'https://docs.google.com/d/13' }),
+        sugerencias: { mandarPorMail: { docLink: 'https://docs.google.com/d/13' } },
+      });
+
+      await montar();
+      await abrirFormularioNuevo();
+      await completarMinimo();
+      fireEvent.press(screen.getByTestId('formulario-presupuesto-guardar'));
+
+      await waitFor(() => expect(screen.getByTestId('detalle-presupuesto-mandar-por-mail')).toBeTruthy());
+    });
+
+    it('K-07: guardar sin sugerencias (sin Doc) no ofrece «Mandalo por mail»', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuesto({ id: 13 }), sugerencias: null });
+
+      await montar();
+      await abrirFormularioNuevo();
+      await completarMinimo();
+      fireEvent.press(screen.getByTestId('formulario-presupuesto-guardar'));
+
+      await waitFor(() => expect(screen.getByTestId('detalle-presupuesto')).toBeTruthy());
+      expect(screen.queryByTestId('detalle-presupuesto-mandar-por-mail')).toBeNull();
+    });
+
     it('relee la lista tras crear — el alta puede haber sacado a otro del listado vigente', async () => {
       mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuesto({ id: 13 }) });
 

@@ -7,10 +7,12 @@ import {
   leerGastoPropuesto,
   leerIngresoPropuesto,
   leerPresupuestoPropuesto,
+  leerSugerenciaArmarFactura,
   separadoresDeDia,
 } from '@copiloto/core';
 
 import { Bubble } from './Bubble';
+import { ChipArmarFactura } from './ChipArmarFactura';
 import { DisambiguationChips } from './DisambiguationChips';
 import { RodilloEjemplos } from './RodilloEjemplos';
 import { HitlCard } from './HitlCard';
@@ -262,6 +264,18 @@ function FilaMensaje({ message, onChoice, onAbrirCliente, onFacturar }: FilaMens
         mensajeId={message.id}
         onCompletarAMano={onFacturar}
       />
+    );
+  }
+
+  // BL-J9 — `sugerencia_armar_factura`: burbuja con el texto + chip. Sin `choices` (mismo motivo que las
+  // `*_propuesto`), así que va antes del gate HITL.
+  const sugerenciaFactura = leerSugerenciaArmarFactura(message.card);
+  if (sugerenciaFactura) {
+    return (
+      <div className="chat-message-group">
+        <Bubble role="assistant" text={message.text} />
+        <ChipArmarFactura sugerencia={sugerenciaFactura} onFacturar={onFacturar} />
+      </div>
     );
   }
 

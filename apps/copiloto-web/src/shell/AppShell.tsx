@@ -216,7 +216,7 @@ export function AppShell({ initialTab }: AppShellProps = {}) {
               />
             )}
             {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
-            {activeTab === 'inteligencia' && <InteligenciaScreen />}
+            {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'midia' && <MidiaScreen avatar={<AvatarCuenta onPress={() => changeTab('ajustes')} />} onAbrirChat={() => changeTab('chat')} />}
             {activeTab === 'escritorio' && (
               <EscritorioScreen

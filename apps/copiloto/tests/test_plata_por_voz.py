@@ -355,6 +355,32 @@ def test_K07_aprobar_ofrece_armar_la_factura_y_descartar_no():
     assert "sugerencia" not in res.observation
 
 
+def test_K07B_aprobar_deja_la_card_sugerencia_armar_factura_y_descartar_no():
+    """K-07-B: al APROBAR la observación lleva `gate_card` (el motor la adjunta al reply); al descartar, no."""
+    store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
+    res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=store)
+    assert res.observation["gate_card"] == {"kind": "sugerencia_armar_factura", "presupuesto_id": 1,
+                                            "texto": "¿Te armo la factura?"}
+    store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería Los Tilos")])
+    res = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "desestimado"}, presupuesto=store)
+    assert "gate_card" not in res.observation
+    # ambigua / sin candidato: tampoco hay card (nada se aprobó)
+    vacio = _PresupuestoFake(filas=[])
+    res = _correr("marcar_presupuesto", {"presupuesto": "x", "estado": "aprobado"}, presupuesto=vacio)
+    assert "gate_card" not in res.observation
+
+
+def test_K07B_la_card_de_A_apunta_al_presupuesto_de_A_y_B_no_puede_aprobarlo():
+    """Adversarial: el `presupuesto_id` de la card sale del store DEL TENANT; B, con su propio store, no ve el
+    presupuesto de A -> ni lo aprueba ni recibe una card que lo apunte."""
+    a = _PresupuestoFake(filas=[_presu(7, "P-0007", "Panadería de A")])
+    b = _PresupuestoFake(filas=[_presu(9, "P-0009", "Kiosco de B")])
+    ra = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=a)
+    rb = _correr("marcar_presupuesto", {"presupuesto": "panadería", "estado": "aprobado"}, presupuesto=b)
+    assert ra.observation["gate_card"]["presupuesto_id"] == 7
+    assert "gate_card" not in rb.observation and b.cambios == []
+
+
 def test_desestimar_dice_descartado_no_desestimado():
     """«Desestimado» es la palabra del schema, no la del emprendedor."""
     store = _PresupuestoFake(filas=[_presu(1, "P-0001", "Panadería")])

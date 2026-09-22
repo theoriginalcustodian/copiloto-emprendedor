@@ -7,6 +7,7 @@ import type { AlmacenTokens } from './tokens';
 import {
   cambiarEstadoPresupuesto,
   crearPresupuesto,
+  mailtoMandarPresupuesto,
   facturarPresupuesto,
   listarPresupuestos,
   obtenerPresupuesto,
@@ -239,6 +240,38 @@ describe('presupuestos.ts', () => {
 
       expect((peticiones[0].cuerpoJson as Record<string, unknown>).idem_key).toBe('c3f1e2a0-0000-4000-8000-000000000001');
       expect(peticiones[1].cuerpoJson as Record<string, unknown>).not.toHaveProperty('idem_key');
+    });
+
+    it('K-07: expone `sugerencias.mandarPorMail` cuando el backend trae el Doc', async () => {
+      const base = { concepto: 'X', receptor: { nombre: 'Y' }, items: [{ descripcion: 'Z', cantidad: '1', precioUnitario: '1' }] };
+      responder = () =>
+        respuesta(201, { presupuesto: presupuestoCrudo(), sugerencias: { mandar_por_mail: { doc_link: 'https://docs.google.com/d/1' } } });
+
+      const res = await crearPresupuesto(base);
+
+      expect(res.status === 'ok' && res.sugerencias).toEqual({ mandarPorMail: { docLink: 'https://docs.google.com/d/1' } });
+    });
+
+    it('K-07: sin `sugerencias` (backend viejo o sin Doc) es null — cliente viejo = comportamiento de antes', async () => {
+      const base = { concepto: 'X', receptor: { nombre: 'Y' }, items: [{ descripcion: 'Z', cantidad: '1', precioUnitario: '1' }] };
+      responder = () => respuesta(201, { presupuesto: presupuestoCrudo() });
+      const sin = await crearPresupuesto(base);
+      responder = () => respuesta(201, { presupuesto: presupuestoCrudo(), sugerencias: null });
+      const nula = await crearPresupuesto(base);
+      responder = () => respuesta(201, { presupuesto: presupuestoCrudo(), sugerencias: { mandar_por_mail: { doc_link: '' } } });
+      const vacia = await crearPresupuesto(base);
+
+      expect(sin.status === 'ok' && sin.sugerencias).toBeNull();
+      expect(nula.status === 'ok' && nula.sugerencias).toBeNull();
+      expect(vacia.status === 'ok' && vacia.sugerencias).toBeNull();
+    });
+
+    it('K-07: mailtoMandarPresupuesto lleva el Doc en el cuerpo y el contacto sólo si es un mail', () => {
+      const conMail = mailtoMandarPresupuesto({ numero: 17, contacto: 'juan@x.com' }, 'https://docs.google.com/d/1');
+      expect(conMail.startsWith('mailto:juan%40x.com?')).toBe(true);
+      expect(decodeURIComponent(conMail)).toContain('https://docs.google.com/d/1');
+      expect(decodeURIComponent(conMail)).toContain('Presupuesto N° 17');
+      expect(mailtoMandarPresupuesto({ numero: 17, contacto: '11-5555' }, 'https://d/1').startsWith('mailto:?')).toBe(true);
     });
 
     it('K-01: expone `repetido` cuando el backend devolvió el presupuesto ya creado', async () => {

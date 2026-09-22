@@ -144,7 +144,7 @@ export function DesktopShell({ initialTab }: DesktopShellProps = {}) {
               />
             )}
             {activeTab === 'presupuestos' && <PresupuestosScreen onFacturar={irAFacturar} />}
-            {activeTab === 'inteligencia' && <InteligenciaScreen />}
+            {activeTab === 'inteligencia' && <InteligenciaScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'midia' && <MidiaScreen onAbrirChat={() => setActiveTab('chat')} />}
             {activeTab === 'escritorio' && (
               <EscritorioScreen

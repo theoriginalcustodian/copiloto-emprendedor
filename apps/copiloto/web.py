@@ -389,13 +389,10 @@ def make_buscar_borrador_dictado_abierto(temporal_client) -> Callable:
     visibility-acotada-por-StartTime`). Sin match, `emitir_factura` abre un borrador nuevo (su propio
     fallback) — nunca produce un CAE de más, como mucho un borrador huérfano.
 
-    Acotado por `StartTime`: un `FacturaWorkflow` NO caduca solo por sí mismo
-    (`await workflow.wait_condition(lambda: self._confirmado or self._cancelado)`, sin timeout,
-    `afip_factura_workflow.py:208`). Sin ventana, un dictado abandonado de hace días podría
-    "continuarse" con los datos de hoy — no se ve como error, se ve como una factura con datos
-    mezclados. TODO(hito9-dictado-sin-ventana-de-vida, backend, antes de habilitar producción): el
-    workflow en sí no expira; ponerle un timeout real es un cambio de historia (versionado/`patched`,
-    no es el momento en medio del hito) — anotado también en `memoria/`.
+    Acotado por `StartTime` (`VENTANA_DICTADO_ABIERTO`, 15 min) para continuar un dictado; y desde BL-B2
+    el propio `FacturaWorkflow` expira a las 24 h sin confirmar (`VENTANA_VIDA_BORRADOR`, con
+    `workflow.patched`): un dictado abandonado termina CANCELADA `dictado_vencido` y el link directo ya
+    no lo reanuda (Temporal contesta NOT_FOUND al update sobre un workflow cerrado → 404).
     """
     async def buscar(cliente_id: str) -> str | None:
         # `cliente_id` hoy es un UUID server-side (`resolve_cliente_id`), pero la query de Visibility

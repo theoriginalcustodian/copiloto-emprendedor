@@ -13,7 +13,9 @@ import { IndicadorModoCeremonia } from './IndicadorModoCeremonia';
 import { ListaMensajes } from './ListaMensajes';
 import { tomarPendiente } from './mensajePendiente';
 import { useCapturaFoto } from './useCapturaFoto';
+import { SheetRequiereConexion } from './SheetRequiereConexion';
 import { useChat } from './useChat';
+import { useConexionRequerida } from './useConexionRequerida';
 import { useVozComando } from './useVozComando';
 
 /**
@@ -118,6 +120,9 @@ export function ChatView() {
 
   const manejarEnvio = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
 
+  // K-11 / BL-J8: gate `requiere_conexion` → sheet en contexto; al volver de conectar se reenvía el pedido.
+  const conexion = useConexionRequerida(estado?.messages ?? [], manejarEnvio);
+
   /**
    * 🔴 **El puente de la Decisión C**: lo que otra pantalla dejó pendiente entra ACÁ, en el chat
    * principal, no en una conversación aparte. Hoy lo usa «Cómo usar la app»: tocás un tema, se cierra
@@ -206,6 +211,14 @@ export function ChatView() {
       </View>
 
       <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+
+      <SheetRequiereConexion
+        conexion={conexion.pendiente?.conexion ?? null}
+        onConectar={conexion.conectar}
+        onAhoraNo={conexion.ahoraNo}
+        ocupado={conexion.ocupado}
+        error={conexion.error}
+      />
 
       {/* Flota sobre la lista, encima del composer -- que sigue disponible para escribir (mientras no
           esté fijado: con controles flotantes abajo, mantener el botón visible sumaría ruido). Se

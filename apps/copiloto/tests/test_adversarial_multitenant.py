@@ -355,6 +355,33 @@ def test_adversarial_http_calendario_a_cannot_read_b_events(two_tenants):
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
+def test_adversarial_http_calendario_con_rango_a_cannot_read_b_events(two_tenants):
+    """K-13: mismo aislamiento que CAL1 pero CON `?desde&hasta` de 7 días. La ventana ampliada no puede
+    cambiar de quién es el `user_id` que viaja a Composio: A pide 7 días y a Composio sólo llega A, con el
+    rango pedido; nada de B se lee ni se devuelve."""
+    a, b = two_tenants
+    eventos_por_user = {
+        a.cliente_id: {"data": {"items": [{"id": "evt-a", "summary": "Evento de A", "start": {}}]}},
+        b.cliente_id: {"data": {"items": [{"id": "evt-b", "summary": "Evento de B", "start": {}}]}},
+    }
+    gw = _SpyComposioGateway(eventos_por_user=eventos_por_user)
+    client = TestClient(_build_mi_dia_http_app(two_tenants, gw=gw))
+    rango = {"desde": "2026-09-22", "hasta": "2026-09-28"}
+
+    r_a = client.get("/mi-dia/calendario", params=rango, headers={"Authorization": f"Bearer {a.token}"})
+    assert r_a.status_code == 200
+    assert [e["id"] for e in r_a.json()["eventos"]] == ["evt-a"]
+    assert [c["user_id"] for c in gw.execute_calls] == [a.cliente_id]   # a Composio no llegó B
+    args = gw.execute_calls[0]["arguments"]
+    assert "2026-09-22" in args["time_min"] and "2026-09-28" in args["time_max"]   # el rango pedido viajó
+
+    # control positivo: B con el mismo rango ve SUS eventos (un endpoint que devolviera vacío pasaría lo de arriba).
+    r_b = client.get("/mi-dia/calendario", params=rango, headers={"Authorization": f"Bearer {b.token}"})
+    assert [e["id"] for e in r_b.json()["eventos"]] == ["evt-b"]
+    assert [c["user_id"] for c in gw.execute_calls] == [a.cliente_id, b.cliente_id]
+    declarar_tenant(None)
+
+
 def test_adversarial_http_reply_endpoint_a_cannot_read_b_session(two_tenants, crypto):
     """A nivel HTTP: token de A + `session_id` de B (ej. adivinado/leakeado por otro canal) -> el
     front-door NUNCA debe devolver el reply de B. Si `/reply` derivara cliente_id de otra fuente que

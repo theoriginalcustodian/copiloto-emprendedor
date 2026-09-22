@@ -40,6 +40,11 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES: dict[str, tuple[str, str]] = {
     "apps/copiloto/tests/fixtures/history_factura_en_vuelo.json": (
         "afip_factura_workflow", "FacturaWorkflow"),
+    # BL-B2: history de una ejecución con el código PREVIO a `ventana-de-vida-borrador` que ya PASÓ el
+    # `wait_condition` (confirmada y emitida). La fixture anterior termina EN la espera, así que no
+    # distingue un timer nuevo sin `patched` (el StartTimer cae después del último evento).
+    "apps/copiloto/tests/fixtures/history_factura_confirmada_sin_ventana.json": (
+        "afip_factura_workflow", "FacturaWorkflow"),
     "motor/backend/agent/fixtures/history_conv_en_vuelo_con_narra_guardrail.json": (
         "backend.agent.conversation_workflow", "ConversationWorkflow"),
 }

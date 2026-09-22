@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { listarPresupuestos, obtenerPresupuesto, type Presupuesto } from '@copiloto/core';
+import { listarPresupuestos, obtenerPresupuesto, type Presupuesto, type SugerenciasPresupuesto } from '@copiloto/core';
 
 import { DetallePresupuesto } from './DetallePresupuesto';
 import { FormularioPresupuesto } from './FormularioPresupuesto';
@@ -62,6 +62,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
   const [vista, setVista] = useState<Vista>('listado');
   const [corrigiendo, setCorrigiendo] = useState<Presupuesto | null>(null);
   const [detalle, setDetalle] = useState<Presupuesto | null>(null);
+  // K-07: «Mandalo por mail» sólo se ofrece sobre el presupuesto recién guardado con Doc.
+  const [sugerenciaMail, setSugerenciaMail] = useState<{ docLink: string } | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   const [verHistorial, setVerHistorial] = useState(false);
   const vivo = useRef(true);
@@ -120,13 +122,14 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
     if (vivo.current) setRefrescando(false);
   }
 
-  function alCrear(nuevo: Presupuesto) {
+  function alCrear(nuevo: Presupuesto, sugerencias: SugerenciasPresupuesto | null) {
     setVista('listado');
     setCorrigiendo(null);
     // Se RELEE en vez de insertar el objeto devuelto en la lista local: el alta puede haber
     // reemplazado a otro, y ese otro tiene que DESAPARECER del listado vigente. Insertar a mano
     // dejaría los dos visibles — justo el problema que el filtro del backend resuelve.
     void cargar(true);
+    setSugerenciaMail(sugerencias?.mandarPorMail ?? null);
     setDetalle(nuevo);
   }
 
@@ -257,7 +260,8 @@ export function PantallaPresupuestos({ onFacturar, presupuestoIdInicial }: Panta
       {detalle != null && (
         <DetallePresupuesto
           presupuesto={detalle}
-          onCerrar={() => setDetalle(null)}
+          sugerenciaMandarPorMail={sugerenciaMail}
+          onCerrar={() => { setDetalle(null); setSugerenciaMail(null); }}
           onFacturar={facturarDesdeDetalle}
           onCorregir={abrirCorreccion}
           // El estado cambió en la hoja: se pisa la fila de la lista de atrás con lo que devolvió el
