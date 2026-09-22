@@ -118,7 +118,16 @@ TMP_TABLA="$TMPD/tabla.py"
 cat > "$TMPD/codigos.py" <<'PY'
 import re
 
-RX = r'(?:BL-[A-Za-z0-9]+|K-[0-9]+)'
+RX = r'\b(?:BL-[A-Za-z0-9]+|K-[0-9]+)'
+
+def _normaliza(c):
+    """`bl-j7` → `BL-J7`, `k-10` → `K-10`, `bl-x12w` → `BL-X12w`.
+
+    Sólo el prefijo y la primera letra: el sufijo en minúscula ES parte del código (`BL-X12w` web,
+    `BL-X12m` mobile), así que pasar todo a mayúscula rompería justo esas filas.
+    """
+    pre, cuerpo = c.split('-', 1)
+    return pre.upper() + '-' + cuerpo[:1].upper() + cuerpo[1:]
 
 def codigos(titulo):
     """Códigos de fila que cita un título de PR.
@@ -126,13 +135,16 @@ def codigos(titulo):
     Expande la notación abreviada que usan las sesiones: `BL-C1/W2/C4/X5` son CUATRO filas, no una.
     Sin esto, `BL-W2`, `BL-C4` y `BL-X5` salían NO CITADOS estando entregados en #521, y el
     inventario habría mandado a auditoría a buscar trabajo que ya estaba hecho (medido el 21/09).
+
+    Ignora mayúsculas: Conventional Commits en minúscula es regla del repo, así que `feat(bl-j7): …`
+    es un título correcto. Antes sólo se leía `BL-` y #614 (`bl-j7`) salía sin fila (medido el 22/09).
     """
-    out = set(re.findall(RX, titulo))
-    for grupo in re.findall(r'BL-[A-Za-z]?[0-9]+(?:/[A-Za-z]?[0-9]+)+', titulo):
+    out = {_normaliza(c) for c in re.findall(RX, titulo, re.I)}
+    for grupo in re.findall(r'\bBL-[A-Za-z]?[0-9]+(?:/[A-Za-z]?[0-9]+)+', titulo, re.I):
         partes = grupo.split('/')
-        out.add(partes[0])
+        out.add(_normaliza(partes[0]))
         for seg in partes[1:]:
-            out.add(seg if seg.startswith('BL-') else 'BL-' + seg)
+            out.add(_normaliza(seg if seg.upper().startswith('BL-') else 'BL-' + seg))
     return out
 
 PY

@@ -42,6 +42,7 @@ cat > "$TMP/plan.md" <<'PLAN'
 | Ola | # | Ítem | Plataformas | Contrato | Nota |
 |---|---|---|---|---|---|
 | 1 | 1 | **BL-D3** tarjeta | mobile | — | |
+| 2 | 2 | **BL-X12w** reveal | web | — | |
 
 ### 8.3 FRONTEND-2
 
@@ -127,6 +128,23 @@ for f in BL-J2 BL-J3; do
   l="$(grep -F "| \`$f\` |" <<< "$(sed -n '/^## 2\. /,/^## 2\.bis/p' <<< "$sal3")")"
   if grep -qF "vía K-03" <<< "$l"; then ok "$f esperada en ola 2 y ✅ vía K-03"; else fail "fila compuesta $f: ${l:-no aparece en §2}"; fi
 done
+
+echo "── 8. MINÚSCULA: Conventional Commits en minúscula también cita la fila ──"
+# Caso real Ola 3 (22/09): #614 «feat(bl-j7): …» salía sin fila; el regex sólo leía `BL-`.
+python - "$TMP/prs.json" > "$TMP/prs-min.json" <<'PYIN'
+import json, sys
+prs = json.load(open(sys.argv[1]))
+prs.append({"number": 614, "title": "feat(bl-x12w): reveal en web", "mergedAt": "2026-09-21T17:00:00Z",
+            "mergeCommit": {"oid": "cdcdcdcd88"}, "files": [{"path": "apps/copiloto-web/src/r.tsx"}]})
+json.dump(prs, sys.stdout)
+PYIN
+sal8="$(PLAN="$TMP/plan.md" PRS_JSON_FILE="$TMP/prs-min.json" SHA_MAIN=deadbeef DESDE=2026-09-21         bash "$INV" --ola 2 2>&1)"
+x="$(grep -F '| `BL-X12w` |' <<< "$sal8")"
+# Si se normalizara todo a mayúscula, el código sería `BL-X12W` ≠ `BL-X12w` y la fila seguiría NO CITADA:
+# el mismo caso controla que no se lea de menos y que no se sobre-normalice el sufijo.
+if grep -qF "✅ sí (#614)" <<< "$x"; then ok "«bl-x12w» en minúscula cita BL-X12w (sufijo intacto)"; else fail "minúscula: ${x:-BL-X12w no aparece}"; fi
+# Control negativo: sin ese PR la fila sigue NO CITADA (el ✅ no viene de otro lado).
+if grep -qF "NO CITADO" <<< "$(grep -F '| `BL-X12w` |' <<< "$sal3")"; then ok "sin #614, BL-X12w NO CITADO (control negativo)"; else fail "control negativo X12w: $(grep -F '| `BL-X12w` |' <<< "$sal3")"; fi
 
 echo "── 7. FAIL-CLOSED: sin lista de PR legible no hay inventario ──"
 # Si gh/JSON fallan, antes salía un inventario «medido» sin PRs y exit 0 (21/09).
