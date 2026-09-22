@@ -345,7 +345,13 @@ a archivo, sin sub-agentes vivos en la PC — bajo carga el gate falla por `fork
 # (A1 §4.1). La triada (DB/puerto/stage) sale de UC_SESION; si tu sesión no está en
 # scripts/ci/sesion-env.sh, exportá UC_TESTDB_NAME/UC_TESTDB_PORT/UC_TEST_STAGE propios.
 UC_SESION=<tu-sesión> bash scripts/gate.sh backend > "gate-backend-$(date +%s).log" 2>&1
-grep -c PASSED gate-backend-*.log   # 0 PASSED o un recibo con "jobs":{} es falso verde, no verde
+# Anti falso verde del JOB: la línea de resumen «N passed» contra el piso, y "jobs" no vacío en el
+# recibo. NO cuentes `PASSED`: el job corre `--co -q` + `-q` y nunca imprime PASSED por test (da 0
+# también con la suite sana — pedido de auditoría A2, 21/09).
+grep -Eo '[0-9]+ passed' gate-backend-*.log | tail -1   # piso vigente: 2045 (6b410923)
+# Resultado de UN test puntual (un adversarial): -rA imprime una línea PASSED/FAILED por test.
+bash deploy/copiloto/sync-test-backend.sh tests ../../motor/backend/agent ../../motor/clients/agent -q -rA > rA.log 2>&1
+grep -E '^(PASSED|FAILED|ERROR).*<nombre_del_test>' rA.log
 ```
 
 ## 4. Evidencia de device
