@@ -101,7 +101,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P4 · Re-emitir el contrato del 16/09 con el estado real
 - **Qué:** el contrato sigue en `abierto/` sin acuse ni avance; el trabajo 2 se hizo en mobile por fuera. Hay que cerrarlo y emitir uno nuevo con `BL-C1`–`BL-C6` y su estado de hoy.
-- **DoD:** [ ] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo; [ ] contrato nuevo en `abierto/` citando este backlog.
+- **DoD:** [x] contrato viejo en `cerrado/<fecha>/` con nota de reemplazo (`cerrado/2026-09-21/2026-09-16_contrato_planificacion-a-frontend_seis-trabajos-…`, línea 1: «REEMPLAZADO … (BL-P4)»); [x] contrato nuevo citando este backlog: `2026-09-21_contrato_planificacion-a-frontend2_cola-del-plan-autonomo-beta-odobi.md` (BL-C1–C6 en la cola de FE2; hoy en `cerrado/2026-09-22/`). Checkboxes tildados el 2026-09-22 tras A4 (auditoría lo verificó).
 
 ### BL-P5 · Marcar spec vs visión en el mapa del prototipo
 - **Qué:** P-3. `mapa.html:97` presenta `plan` como spec aunque `index.html:915` dice VISIÓN; `limite`, `pres-marca`, `fact-sinarca` y `cobro-voz` no figuran en el mapa. Sin esto, «48/48 coherentes» se mide contra pantallas que nadie va a construir.
@@ -114,7 +114,7 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ### BL-P7 · Cerrar los mensajes viejos de `abierto/`
 - **Qué:** 8 `avance_`/`dato_` del 07–08/09 ya materializados siguen en `abierto/` (el barrendero no los movió). Ruido que esconde lo vivo.
-- **DoD:** [ ] cada uno movido a `cerrado/<fecha-original>/`; [ ] `abierto/` sólo contiene trabajo vivo.
+- **DoD:** [x] cada uno movido a `cerrado/<fecha-original>/`; [x] `abierto/` sólo contiene trabajo vivo (2026-09-22: `find abierto -name '2026-09-0[78]_*'` → 0; auditoría contó los archivos de `abierto/`: todos del 22/09).
 
 ---
 
@@ -799,6 +799,8 @@ No bloquean la beta. Cada uno con su condición de entrada.
 | BL-V17 | Triage id-por-id de las 484 excepciones `pantalla::id` del baseline de `BL-Q1` (drift preexistente al encender el gate, cada una con motivo genérico de baseline, no un motivo real por caso) | El gate en verde no exige triage inmediato; sólo exige que no crezca más (trinquete). Dueño: backend. Disparador: la próxima vez que alguien toque la pantalla que contiene la excepción | `scripts/ci/testid-paridad-excepciones.json` (484 entradas tras #617, `main` @ `b704a685`, 2026-09-22) |
 | BL-V18 | Cantidad de comprobantes por cliente en la lista de Clientes (`clientes` del prototipo) | La API de clientes no la expone. El CUIT/DNI sí se muestra cuando existe | barrido BL-Q3 web (FE2) · `apps/copiloto-web/src/modules/clientes/TarjetaCliente.tsx:48-59` |
 | BL-V19 | Persistir los metadatos de voz del mensaje (origen + duración), para que el chip «Por voz · m:ss» sobreviva a recargar el hilo | Para la beta el chip se dibuja en el cliente (BL-J7, H-A3-7); la duración no viaja al backend | A3 §1, fila BL-J7 |
+| BL-V20 | Alinear al prototipo final las divergencias de **patrón** que declaró la matriz web A4 de FE2: `detalle` (pestañas + filtros en «Para hoy» vs lista simple; sin composer embebido en Mi día; Entró/Salió/Por cobrar en texto vs chips) · `ingresos` (botón «Actualizar» y fecha en el encabezado; sin ícono por ítem; «Borrar» visible; montos con decimales; sin composer embebido — el aviso de MercadoPago sí está, bajo el pliegue) · `negocio` (campos sueltos vs card envolvente; etiquetas en pregunta vs mayúsculas; «¿A quién le vendés?» `select` vs texto libre; título duplicado; «el copiloto» vs «Odobi») · `afip` (asistente numerado vs página de ajustes; sin la línea «● ARCA vinculada · CUIT») · `cuenta` (título, enlace «‹ Ajustes», subtítulo, secciones reorganizadas) | Las cinco pantallas funcionan y cada diferencia está declarada con su causa: son decisiones de forma tomadas al construir, que el prototipo del 17–18/09 cambió después. Se alinean cuando Martín cierre su prototipo final (`BL-P2`). «Cambiar el mail» no entra acá: ya es `[DIFERIDO_CIERRE_B]` por K-12 | `dato_frontend2-a-planificacion_matriz-web-re-medida.md` (2026-09-22) · A4 §C, filas `negocio`/`cuenta` ✅ con la misma vara |
+| BL-V21 | Paridad del landing de **Facturación en mobile** con el fix web de `H-A4-5`: hoy `apps/mobile` auto-crea el borrador al montar la pantalla, en vez de aterrizar en el resumen + las emitidas y abrir el wizard desde «Nueva factura» | **Diferida a la tanda de device del sprint siguiente** (orden del operador, 2026-09-22). No es el mismo bug que se arregló en web: en mobile es un diseño intencional distinto, fijado por ~15 tests que el port rompería — necesita decidir el contrato antes de tocarlo, y verificarse en device. La cita de la auditoría («mismo patrón que mobile», `PantallaFacturacion.tsx:428`) está en el archivo **web**, nombrando a mobile como origen del patrón; no es una nota escrita en mobile | A4 `H-A4-5` (§3 `factura`, §5) · `avance_frontend1-a-planificacion_A4-estado-8-filas.md` (2026-09-22) · web cerrada en #644 |
 
 ---
 

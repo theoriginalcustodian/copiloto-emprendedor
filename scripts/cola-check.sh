@@ -41,20 +41,35 @@ if [ -z "$bloque" ]; then
   exit 0
 fi
 
-arrancando=""; head_id=""; head_nombre=""; head_disp=""
-while IFS='|' read -r id nombre disp estado; do
-  id=$(echo "$id" | tr -d ' '); [ -z "$id" ] && continue
-  nombre=$(echo "$nombre" | sed -E 's/^ +| +$//g')
-  disp=$(echo "$disp"     | sed -E 's/^ +| +$//g')
-  estado=$(echo "$estado" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
-  if [ "$estado" = "arrancando" ]; then
-    arrancando="$id ($nombre)"
-  elif [ "$estado" = "pendiente" ] && [ -z "$head_id" ]; then   # primer PENDIENTE = cabeza de la cola
-    head_id="$id"; head_nombre="$nombre"; head_disp="$disp"
-  fi
-  # estados que NO son cabeza de cola: done (✅…), bloqueado, o cualquier otro texto libre —
-  # sólo "pendiente" literal es arrancable-sin-arrancar; el resto ya tiene su propio seguimiento.
+arrancando=""; head_id=""; head_nombre=""; head_disp=""; malformados=""
+while IFS= read -r linea; do
+  id=$(echo "${linea%%|*}" | tr -d ' '); [ -z "$id" ] && continue
+  resto="${linea#*|}"
+  nombre=$(echo "${resto%%|*}" | sed -E 's/^ +| +$//g')
+  # El estado es el ÚLTIMO campo, no el 4.º: la narrativa de un hito lleva `|` adentro (tablas,
+  # alternativas), así que `read id nombre disp estado` le metía «…|arrancando» a $estado y el
+  # hito quedaba INVISIBLE. Pasó dos veces el 2026-09-22: OLA3 estaba `arrancando` desde las 02:40
+  # y la cola no lo veía, y una edición de A4ARR que appendeó texto al final del renglón borró su
+  # enum. En ambos casos el veredicto fue «NADA arrancando» y el monitor mandaba a arrancar el
+  # hito siguiente —los interruptores del operador— con un frente vivo. Silencioso las dos veces.
+  estado=$(echo "${linea##*|}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+  # El disparador es lo que queda entre el nombre y el estado (puede traer `|`).
+  disp=$(echo "$resto" | sed -E 's/^[^|]*\|//; s/\|[^|]*$//; s/^ +| +$//g')
+  case "$estado" in
+    arrancando) arrancando="$id ($nombre)" ;;
+    pendiente)  [ -z "$head_id" ] && { head_id="$id"; head_nombre="$nombre"; head_disp="$disp"; } ;;  # primer PENDIENTE = cabeza
+    ✅*|❌*)     : ;;  # cerrado / entregado: tiene su propio seguimiento, no es cabeza de cola
+    # Cualquier otra cosa NO se traga en silencio: un enum pisado es indistinguible de un hito
+    # legítimamente cerrado, y el precio de confundirlos es no ver un frente activo.
+    *)          malformados="$malformados $id" ;;
+  esac
 done <<< "$bloque"
+
+if [ -n "$malformados" ]; then
+  echo "⚠️  COLA: estado no reconocido en:$malformados — el último campo del renglón debe ser"
+  echo "    exactamente 'pendiente', 'arrancando' o empezar con ✅/❌. Un hito así es INVISIBLE"
+  echo "    para la cola: arreglá el renglón antes de creerle al veredicto de abajo."
+fi
 
 # ── Veredicto ────────────────────────────────────────────────────────────────
 if [ -n "$arrancando" ]; then

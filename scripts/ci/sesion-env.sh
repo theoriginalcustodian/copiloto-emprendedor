@@ -5,8 +5,9 @@
 # VPS. Dos sesiones corriendo el gate a la vez se pisaban la base y el código bajo test (rojos y
 # verdes falsos). Las tres variables ya eran parametrizables; esto sólo les da un valor por sesión.
 #
-# Sesión = `UC_SESION` (backend|fe1|fe2|aud) si viene explícita; si no, se infiere del prefijo de la
-# rama (backend/…, frontend1/…, frontend2/…, aud/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2, wt-audit*).
+# Sesión = `UC_SESION` (backend|fe1|fe2|aud|plan) si viene explícita; si no, se infiere del prefijo de la
+# rama (backend/…, frontend1/…, frontend2/…, aud/…, plan/… y docs/… de planificación) o del nombre
+# del worktree (wt-backend, wt-fe1, wt-fe2, wt-audit*, wt-plan*).
 # Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos, y `UC_TRIADA_PROPIA=0`.
 # gate.sh se NIEGA a correr el job backend con `UC_TRIADA_PROPIA=0` (2026-09-22): un worktree detached
 # (`_ctl/verify-<sha>`, el lugar natural para gatear el SHA mergeado) no tiene rama ni nombre que
@@ -24,12 +25,14 @@ _inferir_sesion() {
     frontend1/*|fe1/*) echo fe1; return ;;
     frontend2/*|fe2/*) echo fe2; return ;;
     aud/*|auditoria/*) echo aud; return ;;
+    plan/*|planificacion/*|docs/*) echo plan; return ;;
   esac
   case "$dir" in
     wt-backend)  echo backend ;;
     wt-fe1|wt-fe1b) echo fe1 ;;
     wt-fe2|wt-fe2-*) echo fe2 ;;
     wt-aud|wt-aud-*|wt-audit|wt-audit-*) echo aud ;;
+    wt-plan|wt-plan-*|wt-plan[0-9]*) echo plan ;;
   esac
 }
 
@@ -39,8 +42,13 @@ case "$UC_SESION" in
   fe1)     _sfx=fe1; _port=55433; _gport=9973; _gmport=8973 ;;
   fe2)     _sfx=fe2; _port=55434; _gport=9974; _gmport=8974 ;;
   aud)     _sfx=aud; _port=55436; _gport=9976; _gmport=8976 ;;   # auditoría (A1 §4.4: usó copiloto-test-db-aud:55436; H-A3-11: gotrue-aud:9976/8976, ya usado por el spike del auditor)
+  # planificación: es dueña de `scripts/` y por lo tanto corre gates sobre sus propios instrumentos,
+  # pero no tenía valor propio. El atajo era firmar con `aud`, y eso rompe dos cosas a la vez: toma
+  # los puertos de auditoría mientras auditoría trabaja, y deja un recibo que dice que la rama la
+  # probó otra sesión. Hoy ya pagamos un recibo mal atribuido (2026-09-22, el pre-squash de #654).
+  plan)    _sfx=plan; _port=55437; _gport=9977; _gmport=8977 ;;
   "")      _sfx="" ;;
-  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud)" >&2; return 1 2>/dev/null || exit 1 ;;
+  *) echo "sesion-env: UC_SESION='$UC_SESION' desconocida (backend|fe1|fe2|aud|plan)" >&2; return 1 2>/dev/null || exit 1 ;;
 esac
 
 if [ -n "$_sfx" ]; then
