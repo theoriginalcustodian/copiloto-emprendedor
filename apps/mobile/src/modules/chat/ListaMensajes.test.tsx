@@ -72,7 +72,9 @@ describe('ListaMensajes', () => {
 
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
 
-    expect(onChoice).toHaveBeenCalledWith('confirm');
+    // BL-D4 — el label ('Cobrar') viaja en `opts.displayText`: es lo que la burbuja optimista del
+    // usuario tiene que pintar, nunca el `value` técnico ('confirm') que espera el backend.
+    expect(onChoice).toHaveBeenCalledWith('confirm', { displayText: 'Cobrar' });
   });
 
   it('cancelar manda el value de cancelar', async () => {
@@ -91,7 +93,7 @@ describe('ListaMensajes', () => {
 
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-cancelar'));
 
-    expect(onChoice).toHaveBeenCalledWith('cancel');
+    expect(onChoice).toHaveBeenCalledWith('cancel', { displayText: 'Cancelar' });
   });
 
   it('BL-D3: gate irreversible (Instagram) EXIGE la advertencia, el badge y el servicio', async () => {

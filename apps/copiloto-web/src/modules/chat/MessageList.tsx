@@ -35,7 +35,7 @@ const OVERSCAN_FILAS = 6;
 
 export interface MessageListProps {
   messages: ChatMessage[];
-  onChoice: (value: string) => void;
+  onChoice: (value: string, label: string) => void;
   emptyHint?: string;
   /** Hide-on-scroll (EXTRACT §2.3): reporta si la tab-bar debe ocultarse. `true` al scrollear hacia
    * abajo por el historial, `false` al subir o cerca del tope/fondo. Opcional — sin él, la lista
@@ -212,7 +212,7 @@ export function MessageList({
 
 interface FilaMensajeProps {
   message: ChatMessage;
-  onChoice: (value: string) => void;
+  onChoice: (value: string, label: string) => void;
   onAbrirCliente?: (id: number) => void;
   onFacturar?: (facturaId: string) => void;
 }

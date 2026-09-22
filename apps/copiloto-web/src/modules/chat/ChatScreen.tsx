@@ -73,8 +73,11 @@ export function ChatScreen({
     (text: string, mode: string | null) => void send(text, { mode }),
     [send],
   );
+  // BL-D4: `label` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta en su burbuja
+  // optimista. `value` es el token técnico que espera el backend (`cancel:<turn>:<step>`) y sigue
+  // siendo lo que se manda en el POST; nunca se muestra.
   const handleChoice = useCallback(
-    (value: string) => void send(value, { kind: 'callback' }),
+    (value: string, label: string) => void send(value, { kind: 'callback', displayText: label }),
     [send],
   );
   const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);

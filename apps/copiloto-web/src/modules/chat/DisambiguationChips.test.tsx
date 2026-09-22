@@ -17,11 +17,11 @@ describe('DisambiguationChips', () => {
     expect(screen.getByRole('button', { name: 'Juan Gómez' })).toBeInTheDocument();
   });
 
-  it('click en un chip envía el callback con su value', () => {
+  it('click en un chip envía el callback con (value, label) — BL-D4: el label es lo que se pinta', () => {
     const onSelect = vi.fn();
     render(<DisambiguationChips choices={CHOICES} onSelect={onSelect} />);
     fireEvent.click(screen.getByRole('button', { name: 'Juan Gómez' }));
-    expect(onSelect).toHaveBeenCalledWith('juan_gomez');
+    expect(onSelect).toHaveBeenCalledWith('juan_gomez', 'Juan Gómez');
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });

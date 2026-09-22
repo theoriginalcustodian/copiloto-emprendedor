@@ -44,7 +44,7 @@ export function SoporteScreen({ funcion }: SoporteScreenProps) {
   const handleSend = useCallback((text: string) => void send(text, { kind: 'text' }), [send]);
   const handleSendAudio = useCallback((blob: Blob) => void sendAudio(blob), [sendAudio]);
   const handleChoice = useCallback(
-    (value: string) => void send(value, { kind: 'callback' }),
+    (value: string, label: string) => void send(value, { kind: 'callback', displayText: label }),
     [send],
   );
 

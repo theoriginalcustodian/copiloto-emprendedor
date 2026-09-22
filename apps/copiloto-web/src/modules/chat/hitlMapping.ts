@@ -66,11 +66,12 @@ export interface HitlCardMappedProps {
 
 /**
  * Convierte un `ChatMessage` (ya clasificado como HITL vía `classifyChoices`) en las props que
- * consume `<HitlCard>`. `onChoice` dispara `send(value, {kind:'callback'})`.
+ * consume `<HitlCard>`. `onChoice(value, label)` dispara `send(value, {kind:'callback', displayText:
+ * label})` — BL-D4: la burbuja del usuario muestra el label elegido, nunca el `value` técnico.
  */
 export function buildHitlCardProps(
   message: ChatMessage,
-  onChoice: (value: string) => void,
+  onChoice: (value: string, label: string) => void,
 ): HitlCardMappedProps {
   const choices = message.choices ?? [];
   const confirmChoice =
@@ -95,7 +96,7 @@ export function buildHitlCardProps(
     dangerBorder: risk.dangerBorder,
     confirmLabel: confirmChoice.label,
     cancelLabel: cancelChoice.label,
-    onConfirm: () => onChoice(confirmChoice.value),
-    onCancel: () => onChoice(cancelChoice.value),
+    onConfirm: () => onChoice(confirmChoice.value, confirmChoice.label),
+    onCancel: () => onChoice(cancelChoice.value, cancelChoice.label),
   };
 }
