@@ -5,6 +5,7 @@ import { listarGastos, obtenerResumenGastos, type Gasto, type ResumenGastos } fr
 import { Button, Skeleton } from '../../design-system';
 import { MicFuncion } from '../voz';
 import { FormularioGasto, type ValoresInicialesGasto } from './FormularioGasto';
+import { FotoFuncion } from './FotoFuncion';
 import { ResumenMes } from './ResumenMes';
 import { TarjetaGasto } from './TarjetaGasto';
 import './gastos.css';
@@ -33,6 +34,10 @@ export function GastosScreen() {
   // que `montoSugerido` del OCR (nunca se autocompleta el número solo). `undefined` = alta en blanco.
   const [inicialesDictado, setInicialesDictado] = useState<ValoresInicialesGasto | undefined>(undefined);
   const [errorMic, setErrorMic] = useState<string | null>(null);
+  // BL-J7 3er ítem del DoD: `origen` viaja con la card que abrió el formulario — 'foto' sólo cuando
+  // `/gastos/leer-foto` devolvió 200, nunca por defecto (ver `FormularioGasto.__origen` que lo pinta).
+  const [origenAlta, setOrigenAlta] = useState<'manual' | 'foto'>('manual');
+  const [errorFoto, setErrorFoto] = useState<string | null>(null);
   // `vivo.current = true` va DENTRO del setup del efecto, no sólo en `useRef(true)` -- en
   // StrictMode (dev) React invoca cada efecto setup→cleanup→setup de nuevo al montar; sin repetir
   // la asignación acá, el cleanup del primer paso deja `vivo.current` en `false` para siempre y
@@ -81,17 +86,40 @@ export function GastosScreen() {
   function alCrear() {
     setVista('listado');
     setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     void cargar(true);
   }
 
   function abrirFormularioEnBlanco() {
     setInicialesDictado(undefined);
+    setOrigenAlta('manual');
+    setErrorFoto(null);
     setVista('formulario');
   }
 
   function alDictarGasto(texto: string) {
     setErrorMic(null);
     setInicialesDictado({ descripcion: texto });
+    setOrigenAlta('manual');
+    setErrorFoto(null);
+    setVista('formulario');
+  }
+
+  // BL-J7 3er ítem del DoD: 200 → abre el alta con la propuesta del OCR, `origen: 'foto'`.
+  function alLeerFoto(iniciales: ValoresInicialesGasto) {
+    setErrorFoto(null);
+    setInicialesDictado(iniciales);
+    setOrigenAlta('foto');
+    setVista('formulario');
+  }
+
+  // Cualquier error (413/415/422/502/503/401) NUNCA bloquea la carga manual (contrato §3): se
+  // muestra el aviso y el alta se abre igual, en blanco, para que el emprendedor tipee a mano.
+  function alErrorFoto(mensaje: string) {
+    setErrorFoto(mensaje);
+    setInicialesDictado(undefined);
+    setOrigenAlta('manual');
     setVista('formulario');
   }
 
@@ -148,12 +176,22 @@ export function GastosScreen() {
 
       {estado === 'ok' && (
         <div className="gastos-screen__body">
+          {/* BL-J7 3er ítem del DoD: un error de lectura de foto se muestra ACÁ, fuera del ternario
+              de abajo — `alErrorFoto` ya abrió el formulario en blanco (contrato §3: nunca bloquea
+              la carga manual), así que el aviso tiene que sobrevivir al cambio de vista o desaparece
+              justo cuando el emprendedor lo necesita leer. */}
+          {errorFoto != null && (
+            <p className="gastos-screen__mic-error" data-testid="gastos-foto-error" role="alert">
+              {errorFoto}
+            </p>
+          )}
+
           {vista === 'formulario' ? (
             <FormularioGasto
-              origen="manual"
+              origen={origenAlta}
               iniciales={inicialesDictado}
               onCreado={alCrear}
-              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); }}
+              onCancelar={() => { setVista('listado'); setInicialesDictado(undefined); setOrigenAlta('manual'); setErrorFoto(null); }}
             />
           ) : (
             <>
@@ -167,6 +205,7 @@ export function GastosScreen() {
               <div className="gastos-screen__fila-lbl">
                 <span className="gastos-screen__lista-lbl">Últimos</span>
                 <div className="gastos-screen__fila-lbl-acciones">
+                  <FotoFuncion onLectura={alLeerFoto} onError={alErrorFoto} />
                   <MicFuncion contexto="gasto" onTranscripcion={alDictarGasto} onError={setErrorMic} />
                   <button
                     type="button"

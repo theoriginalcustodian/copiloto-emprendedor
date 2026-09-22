@@ -66,7 +66,18 @@ function texto(v: unknown): string | null {
  */
 export function leerGastoPropuesto(card: ReplyCard | undefined): GastoPropuesto | null {
   if (card?.kind !== 'gasto_propuesto') return null;
-  const data = card.data;
+  return datosGastoPropuesto(card.data);
+}
+
+/**
+ * El parseo puro, sin el paso previo de "es esta card" — BL-J7 3er ítem del DoD: `POST
+ * /gastos/leer-foto` (`leerFotoGasto.ts`) devuelve `{ gasto: <data> }` con EXACTAMENTE esta misma
+ * forma pero SIN pasar por una `ReplyCard` (no hay sesión de chat de por medio). Extraído de
+ * `leerGastoPropuesto` para que las dos entradas compartan un solo parseo — duplicarlo sería la
+ * misma deuda que el contrato le prohíbe al lado backend (helper único detrás de `/chat/foto` y
+ * `/gastos/leer-foto`).
+ */
+export function datosGastoPropuesto(data: unknown): GastoPropuesto | null {
   if (typeof data !== 'object' || data === null) return null;
 
   const d = data as Record<string, unknown>;

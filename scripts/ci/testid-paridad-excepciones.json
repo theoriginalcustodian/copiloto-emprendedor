@@ -2995,6 +2995,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/gastos"
     },
+    "modules/gastos::foto-funcion-input": {
+      "en": [
+        "apps/copiloto-web/src/modules/gastos/FotoFuncion.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-22",
+      "id": "foto-funcion-input",
+      "motivo": "BL-J7 3er item del DoD (POST /gastos/leer-foto): input file oculto de web (dispara el picker nativo del navegador). Mobile captura con useCapturaFoto (expo-image-picker), sin elemento equivalente -- no hay <input> ni DOM del lado nativo. Unilateral por diseno de plataforma, no deuda pendiente de triar.",
+      "pantalla": "modules/gastos"
+    },
     "modules/gastos::gasto-cancelar": {
       "en": [
         "apps/copiloto-web/src/modules/gastos/FormularioGasto.tsx"
