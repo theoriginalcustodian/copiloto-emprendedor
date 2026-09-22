@@ -11,6 +11,10 @@
 # Uso: bash scripts/gate.sh                  # los 5 jobs
 #      bash scripts/gate.sh backend          # sólo uno
 #      bash scripts/gate.sh core web         # varios
+#      UC_SESION=fe1 bash scripts/gate.sh    # en un worktree DETACHED (`_ctl/verify-<sha>`): la sesión
+#                                            # no se infiere y sin ella el job backend se rechaza (exit 2)
+# El job backend toma un candado por tríada en el VPS (scripts/ci/candado-stage.sh): un segundo gate de
+# la misma sesión espera al primero en vez de pisarle el stage.
 # Un argumento que no es un job (`--solo`, `backnd`) es exit 2 SIN correr nada y SIN recibo: antes
 # corría 0 jobs e imprimía "TODOS los jobs OK" (falso verde, A1 §4.1).
 #
@@ -41,6 +45,17 @@ quiere() { [ "${#SELECCION[@]}" -eq 0 ] && return 0; local j; for j in "${SELECC
 # Triada por sesión (BL-B6): base de tests, puerto y stage propios -> dos sesiones no se pisan.
 # shellcheck source=ci/sesion-env.sh
 source "$ROOT/scripts/ci/sesion-env.sh"
+# Sin tríada propia, el job backend NO corre (2026-09-22): en un worktree detached la sesión no se
+# infiere y el stage/DB legacy es de todos. Exit 2 ANTES de correr nada y sin recibo, igual que un
+# argumento inválido: un rechazo, no un rojo.
+if quiere backend && [ "${UC_TRIADA_PROPIA:-0}" != 1 ]; then
+  echo "gate.sh: el job backend necesita la tríada de TU sesión y acá no se infiere (¿worktree detached?)." >&2
+  echo "         Corré: UC_SESION=<backend|fe1|fe2|aud> bash scripts/gate.sh $*" >&2
+  exit 2
+fi
+# Candado por tríada: la tríada separa sesiones, el candado separa dos gates de la MISMA sesión.
+# shellcheck source=ci/candado-stage.sh
+source "$ROOT/scripts/ci/candado-stage.sh"
 
 JOBS_LOCAL=(core web mobile lint)
 declare -A RESULTADO INICIO_JOB FIN_JOB LOG_JOB
@@ -63,17 +78,23 @@ for job in "${JOBS_LOCAL[@]}"; do
 done
 
 if quiere backend; then
-  echo "==> [backend] provisionando Postgres efímero en el VPS..."
   INICIO_JOB[backend]=$(date +%s)
-  if EXPORTS="$(bash "$ROOT/deploy/copiloto/test-db.sh" --export 2>&1)"; then
-    eval "$(echo "$EXPORTS" | grep '^export ')"
-    # el inicio del job backend es el del provisioning: incluye la DB efímera
-    ini="${INICIO_JOB[backend]}"
-    correr backend bash "$ROOT/deploy/copiloto/sync-test-backend.sh"
-    INICIO_JOB[backend]="$ini"
-  else
-    echo "$EXPORTS" >&2
+  if ! tomar_candado "$UC_TEST_STAGE" "$SHA"; then
     RESULTADO[backend]="failed"; FIN_JOB[backend]=$(date +%s); LOG_JOB[backend]=""
+  else
+    trap 'soltar_candado "$UC_TEST_STAGE"' EXIT
+    echo "==> [backend] provisionando Postgres efímero en el VPS..."
+    if EXPORTS="$(bash "$ROOT/deploy/copiloto/test-db.sh" --export 2>&1)"; then
+      eval "$(echo "$EXPORTS" | grep '^export ')"
+      # el inicio del job backend es el del provisioning: incluye la DB efímera
+      ini="${INICIO_JOB[backend]}"
+      correr backend bash "$ROOT/deploy/copiloto/sync-test-backend.sh"
+      INICIO_JOB[backend]="$ini"
+    else
+      echo "$EXPORTS" >&2
+      RESULTADO[backend]="failed"; FIN_JOB[backend]=$(date +%s); LOG_JOB[backend]=""
+    fi
+    soltar_candado "$UC_TEST_STAGE"; trap - EXIT
   fi
 fi
 
