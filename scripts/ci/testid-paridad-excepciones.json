@@ -3435,6 +3435,16 @@
       "motivo": "baseline BL-Q1 v2 (por pantalla): drift preexistente detectado al encender el gate por-pantalla, sin triage id-por-id todavia. Incluye drift que v1 (comparacion global) no veia -- mismo id en pantallas distintas de cada plataforma no es par real. No implica que sea unilateral por diseno -- es deuda visible, no invisible. Dueno: backend. Disparador para triar: la proxima vez que alguien toque la pantalla que lo contiene.",
       "pantalla": "modules/midia"
     },
+    "modules/midia::agenda-calendario-caida": {
+      "en": [
+        "apps/copiloto-web/src/modules/midia/AgendaScreen.tsx"
+      ],
+      "falta_en": "mobile",
+      "fecha": "2026-09-22",
+      "id": "agenda-calendario-caida",
+      "motivo": "BL-V23: Agenda web ahora distingue \"caida\" de \"nunca_conectado\" leyendo el catalogo (mismo desempate que Mi dia, BL-W11 4b), y este testid es nuevo para esa rama. El par mobile todavia no existe -- FE1 lo esta implementando en apps/mobile/src/modules/midia/PantallaAgenda.tsx (mismo id, derivado del mismo patron `midia-calendario-caida`) en un PR EN CURSO al momento de esta entrada. Dueno: FE1. Disparador para sacar esta excepcion: el merge de ese PR. Si ese PR no llega, esta entrada queda desactualizada y hay que re-triarla, no asumir que sigue vigente.",
+      "pantalla": "modules/midia"
+    },
     "modules/midia::agenda-cargando": {
       "en": [
         "apps/mobile/src/modules/midia/PantallaAgenda.tsx"
