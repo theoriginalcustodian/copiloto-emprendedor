@@ -156,8 +156,15 @@ Lo que hay que saber sin abrir nada más:
    explícitas, nunca `-A`; jamás `checkout` / `pull` / `stash` / `reset --hard`.
 
 **Memoria:** escribí las entradas nuevas en **`memoria/` del repo**, no sólo en el directorio de
-auto-memory del harness — divergen, y `scripts/seed-memory.sh` espeja con `--delete`. Ver
-`memoria/memoria-repo-vs-slug-drift.md` antes de correrlo.
+auto-memory del harness: divergen, y lo versionado es lo que sobrevive al clon.
+⚠️ **Hasta 2026-09-22 acá decía que `scripts/seed-memory.sh` «espeja con `--delete`». Era falso desde
+el 2026-07-31**, cuando se pagó esa deuda: hoy hace `rsync -a --update` (verificado en
+`scripts/seed-memory.sh:116-117`), es **bidireccional** —rescata al repo lo que sólo vive en el slug
+antes de reconciliar— y reporta `rescatados / purgados / divergentes`. **Correrlo es seguro; no
+correrlo es lo que deja divergir las dos memorias.** Medido el 2026-09-22: 34 entradas sólo en el slug
+y 23 sólo en el repo, justamente por el miedo que sembraba esta línea. El único merge que NO hace solo
+es el del índice `MEMORY.md` (lo marca `divergente` y lo deja a mano). Ver
+`memoria/memoria-repo-vs-slug-drift.md`.
 
 ---
 
@@ -175,7 +182,7 @@ El deploy (`deploy/copiloto/deploy.sh`, idempotente, corre desde la PC y orquest
   medidas contra el código. Las que más muerden: `ingreso`/`cobro`/`pago` son hoy casi la misma cosa
   con tres nombres · `actividad` nombra **dos sistemas sin relación** (el feed SQL de negocio y la
   memoria conversacional) · `cliente` es a quien le vende el emprendedor, **nunca** el tenant.
-- **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md` + 113 entradas); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
+- **Arranque / init cero-fricción → [`HANDOFF.md`](HANDOFF.md)** (raíz). **Memoria del proyecto → `memoria/`** (índice `MEMORY.md`; 256 entradas en el repo y 267 en el slug al 2026-09-22 — la cifra se mide, no se cita de memoria); sembrala en el slug de Claude Code con `scripts/seed-memory.sh` (idempotente).
 - **🔍 Auditorías → [`docs/copiloto-emprendedor/Auditorias/`](docs/copiloto-emprendedor/Auditorias/)** (regla del operador, 2026-08-06). **TODO lo relacionado con auditorías se guarda ACÁ**, nunca suelto en `docs/`: el loop Fable (`eval-fable5-*`), los mapas de clases de error, las re-verificaciones, los handoffs de auditoría. Índice + estado vigente en su `README.md`. Doc maestro actual: `Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md` (11 problemas re-verificados + fixes de raíz + decisiones). Loop reutilizable: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 - Plan de graduación (Fase 0/1/2): `docs/copiloto-emprendedor/2026-07-06-graduacion-plan-fase0-fase1.md`.
 - Dominio propio + auth Google: `docs/copiloto-emprendedor/` + config en `deploy/copiloto/`.

@@ -49,6 +49,36 @@ pérdida no habría dado síntoma hasta que alguien buscara una lección que ya 
    rescata al repo lo que sólo vive en el slug antes de reconciliar, y reporta
    `rescatados / purgados / divergentes` en cada corrida.
 
+## 🔁 2026-09-22 — la advertencia sobrevivió al peligro, y ELLA causó el drift siguiente
+
+Medido hoy: **34 entradas sólo en el slug y 23 sólo en el repo** (incluido `GOTCHAS.md`). Mucho peor
+que las 14 de julio. Fui a rescatarlas creyendo que `--delete` iba a borrarlas — y el script hace
+`rsync -a --update` desde hace dos meses (`scripts/seed-memory.sh:116-117`). **Mi alarma era falsa.**
+
+Lo que la produjo: el `CLAUDE.md` del repo siguió diciendo *«`scripts/seed-memory.sh` espeja con
+`--delete`. Ver … antes de correrlo»* **~2 meses después de que eso dejara de ser cierto**. La deuda se
+pagó, la memoria se actualizó con el tachado de arriba… y la advertencia que mandaba a la memoria
+quedó intacta en el archivo que **todas** las sesiones leen al arrancar.
+
+**Why:** una advertencia de peligro es un cache como cualquier otro, pero se invalida al revés y por eso
+nadie la revisa: cuando el peligro se arregla, el texto que lo anunciaba **no molesta a nadie** —
+simplemente hace que todos sigan evitando la acción. Acá la acción evitada era **el remedio**: correr
+`seed-memory.sh` es lo que reconcilia las dos memorias. Dos meses de nadie corriéndolo por miedo a una
+bomba desactivada explican por qué el drift pasó de 14 a 57 archivos. El síntoma de una prohibición
+obsoleta no es un error: es que el problema que ella causa **crece en silencio**.
+
+**How to apply:** (1) cuando pagues una deuda, **buscá los llamadores de la advertencia**, no sólo el
+lugar donde está el bug — `grep` del nombre del script/flag por `CLAUDE.md`, `HANDOFF.md`, prompts de
+cron y skills. Tachar la memoria no alcanza si la orden vive en otro archivo. (2) Toda prohibición
+escrita lleva **su condición de levantamiento**: «no corras X hasta que Y» se puede verificar; «no
+corras X» es para siempre. (3) Ante una advertencia que te frena, **verificá el artefacto antes de
+obedecer**: acá fueron 30 segundos de `grep` sobre el script, contra dos meses de divergencia. Es
+[[una-cifra-en-un-comentario-es-un-cache-sin-invalidacion]] aplicado a una orden en vez de a un número,
+y el costo es mayor: un número mal citado se propaga, una prohibición obsoleta **impide el arreglo**.
+
+Relacionado: [[el-workaround-que-usas-de-rutina-deja-de-parecerte-informacion]] ·
+[[la-excepcion-documentada-que-nunca-disparo]] · [[instrumentos-que-confirman-en-vez-de-verificar]]
+
    ⚠️ **La regla 2 sigue viva igual, y no es redundante:** el script rescata **archivos**, no decide
    cuál de dos versiones **divergentes** es la buena. La corrida del 2026-07-31 dio
    `194 archivos · rescatados: 0 · purgados: 0 · divergentes: 0` **porque la comparación se hizo antes
