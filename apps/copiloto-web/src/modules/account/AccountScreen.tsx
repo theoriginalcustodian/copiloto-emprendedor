@@ -133,7 +133,8 @@ export function AccountScreen({ onNavegarTab }: AccountScreenProps = {}) {
           <div className="account-screen__row-texts">
             <span className="account-screen__row-label">No molestar</span>
             <span className="account-screen__row-desc">
-              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
+              Para silenciarme tengo que tocar una configuración de tu teléfono. Todavía no lo hago
+              solo.
             </span>
           </div>
         </div>
