@@ -250,4 +250,7 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 
 - [El control que va antes no detecta deriva](el-control-que-va-antes-no-detecta-deriva.md) — una serie monótona confunde efecto con deriva; repetí el control DESPUÉS de la condición cara.
 
-> Las tres entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
+- [Cambiar el alcance deja mintiendo lo que otros ya escribieron](cambiar-el-alcance-deja-mintiendo-lo-que-otros-ya-escribieron.md) — el trabajo TERMINADO es donde el alcance viejo quedó congelado; barrelo en el mismo turno.
+- [Romper la capa interna de un control en profundidad sale VERDE](romper-la-capa-interna-de-un-control-en-profundidad-sale-verde.md) — rompé la capa MÁS EXTERNA; el verde de una interna es un hallazgo, no un test roto.
+
+> Estas entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
