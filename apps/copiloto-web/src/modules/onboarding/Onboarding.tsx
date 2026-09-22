@@ -105,7 +105,14 @@ export function Onboarding({ onTerminar }: { onTerminar: () => void }) {
       <Bubble role="assistant" text="Laburo así: vos me hablás, yo resuelvo. Pero primero necesito ver tu negocio." />
       <Bubble role="assistant" text="¿Conectamos tus servicios? Son dos minutos y te digo algo que no sabés." />
       <div className="chat-row chat-row--assistant" data-testid="onboarding-permisos">
-        <Surface variant="card" blur className="hitl-card" role="group" aria-label="Tus servicios">
+        <Surface
+          variant="card"
+          blur
+          className="hitl-card"
+          role="group"
+          aria-label="Tus servicios"
+          data-testid="onboarding-tarjeta-servicios"
+        >
           <div className="hitl-card__header">
             <div className="hitl-card__header-brand">
               <MonoLabel className="hitl-card__header-label">Tus servicios</MonoLabel>
