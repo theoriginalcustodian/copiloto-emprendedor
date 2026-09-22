@@ -7,6 +7,7 @@ import { clearToken, getRefreshToken, getToken, setRefreshToken, setToken } from
 import {
   SessionContext,
   type LoginResult,
+  type OrigenSesion,
   type SessionStatus,
   type UseSessionResult,
 } from './useSession';
@@ -29,6 +30,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('checking');
   const [me, setMe] = useState<MeResponse | undefined>(undefined);
   const [avisoSesion, setAvisoSesion] = useState<string | undefined>(undefined);
+  // BL-X10: 'restaurada' por default (arranque con token guardado, el camino más frecuente); el
+  // efecto de montaje y `login()` lo corrigen a 'recien-autenticada' cuando corresponde, ANTES de
+  // llamar a `fetchMe` — así `AppRouter` ya lo lee bien apenas `status` pasa a 'checking'/'authed'.
+  const [origenSesion, setOrigenSesion] = useState<OrigenSesion>('restaurada');
 
   // Valida el token actual contra /me y deja el estado consistente. Se reusa en el chequeo de
   // montaje y después de un login exitoso.
@@ -78,6 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // 1) ¿Volvemos de un callback OAuth (Google)? GoTrue deja los tokens en el fragment de la URL.
     const oauth = consumeOauthCallback();
     if (oauth) {
+      setOrigenSesion('recien-autenticada'); // BL-X10: callback OAuth = ingreso recién ocurrido
       setToken(oauth.access_token);
       if (oauth.refresh_token) setRefreshToken(oauth.refresh_token);
       void (async () => {
@@ -110,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // El aviso describe la sesión ANTERIOR: dejarlo puesto mientras se reintenta haría convivir
       // «tu sesión expiró» con el error del intento nuevo, y el usuario no sabría cuál leer.
       setAvisoSesion(undefined);
+      setOrigenSesion('recien-autenticada'); // BL-X10: primer ingreso o post-logout -> splash largo
       try {
         const response = await api.login(email, password);
         setToken(response.access_token);
@@ -135,6 +142,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAvisoSesion(undefined);
   }, []);
 
-  const value: UseSessionResult = { status, me, avisoSesion, login, logout };
+  const value: UseSessionResult = { status, me, avisoSesion, origenSesion, login, logout };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

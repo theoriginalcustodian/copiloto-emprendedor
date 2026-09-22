@@ -113,6 +113,8 @@ const DEUDA_CONOCIDA: Record<string, string> = {
     'dual-role acento (trazo/texto): 4,38:1 en claro, decisión de diseño DEC-11/DA-4 — ver themesContrast.test.ts',
   '--danger-btn-fg': 'AA-debt claro 4,00:1 escalada a planificación 2026-09-08 (themesContrast.test.ts)',
   '--ok-fg': 'AA-debt claro 3,77-3,95:1 escalada a planificación 2026-09-08 (themesContrast.test.ts)',
+  '--identidad-word':
+    'logotipo BL-X10 (splash), exención WCAG 1.4.3 — 2,86:1 sobre #F7F3EC, decisión Martín 22/07 (splash-port-reanimated.md §8)',
 };
 
 /**

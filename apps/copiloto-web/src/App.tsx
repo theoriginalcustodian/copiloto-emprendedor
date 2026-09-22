@@ -1,5 +1,5 @@
 import { debeMostrarOnboarding } from '@copiloto/core';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ThemeProvider } from './design-system/ThemeProvider';
 import { SessionProvider } from './auth/SessionProvider';
@@ -7,6 +7,7 @@ import { LoginScreen } from './auth/LoginScreen';
 import { SignupScreen } from './auth/SignupScreen';
 import { useSession } from './auth/useSession';
 import { Onboarding } from './modules/onboarding';
+import { EntradaDiaria, Splash } from './modules/splash';
 import { ResponsiveShell } from './shell/ResponsiveShell';
 import { ModeProvider } from './shell/modeStore';
 
@@ -21,8 +22,9 @@ function leerSignupDeQuery(): boolean {
 }
 
 /**
- * Router raíz por estado de sesión (Task 7/22, + cliente web/desktop 2026-07-04): 'checking' ->
- * splash; 'authed' -> `ResponsiveShell` (UN shell que bifurca por breakpoint: `<900px` -> AppShell
+ * Router raíz por estado de sesión (Task 7/22, + cliente web/desktop 2026-07-04): 'checking' o
+ * recién 'authed' sin identidad mostrada todavía -> `Splash`/`EntradaDiaria` (BL-X10, ver abajo);
+ * 'authed' -> `ResponsiveShell` (UN shell que bifurca por breakpoint: `<900px` -> AppShell
  * mobile con tab-bar Chat·Apps·Conexiones·Cuenta, Task 9; `>=900px` -> DesktopShell con rail
  * lateral, mismas 4 pantallas de módulo — ver `shell/ResponsiveShell.tsx`); cualquier otro estado
  * ('anon' | 'no-habilitada') -> LoginScreen (diseño final, Task 22 — reemplaza el LoginSkeleton
@@ -30,7 +32,7 @@ function leerSignupDeQuery(): boolean {
  * — ver auth/LoginScreen.tsx) o `SignupScreen` (BETA-4b, ver `leerSignupDeQuery`).
  */
 function AppRouter() {
-  const { status, me } = useSession();
+  const { status, me, origenSesion } = useSession();
   const [mostrarSignup, setMostrarSignup] = useState(leerSignupDeQuery);
   // BETA-4b DoD: "conecta al menos un servicio → llega al chat activo" — recién firmado aterriza
   // en Conexiones (no Chat) para que ese paso sea lo primero que ve, sin bloquearlo (sigue
@@ -42,15 +44,27 @@ function AppRouter() {
   // a la app, y `me` ya vive en la sesión. `onboardingCerrado` evita reabrirlo en esta sesión sin
   // depender de que `/me` se relea; en el próximo arranque el backend ya lo trae en `true`.
   const [onboardingCerrado, setOnboardingCerrado] = useState(false);
+  // BL-X10: `checking` (arranque, sea restauración o callback OAuth) y `authed` recién llegado
+  // comparten la MISMA pantalla de identidad -- así el splash de "primer ingreso" (login por
+  // formulario, que nunca pasa por `checking`) y el de OAuth (que sí pasa por `checking`) arrancan
+  // en el mismo instante en que `origenSesion` ya está seteado, sin cortes. Se resetea al salir de
+  // `authed` (logout) para que el próximo ingreso vuelva a mostrar identidad.
+  const [identidadTerminada, setIdentidadTerminada] = useState(false);
+  useEffect(() => {
+    if (status !== 'authed') setIdentidadTerminada(false);
+  }, [status]);
+  // Identidad estable entre renders -- `Splash`/`EntradaDiaria` la usan como dep de su propio
+  // efecto (timer de cierre); un callback inline nuevo en cada render lo reiniciaría de más.
+  const onIdentidadTerminada = useCallback(() => setIdentidadTerminada(true), []);
 
-  if (status === 'checking') {
+  if (status === 'checking' || (status === 'authed' && !identidadTerminada)) {
     return (
       <div className="app-frame" data-testid="app-shell-splash">
-        <main>
-          <p style={{ fontFamily: 'var(--font-mono)', color: 'var(--mono)', padding: 16 }}>
-            Odobi — cargando tu copiloto…
-          </p>
-        </main>
+        {origenSesion === 'recien-autenticada' ? (
+          <Splash onFin={onIdentidadTerminada} />
+        ) : (
+          <EntradaDiaria onFin={onIdentidadTerminada} />
+        )}
       </div>
     );
   }

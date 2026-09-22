@@ -16,6 +16,16 @@ export type SessionStatus = 'checking' | 'anon' | 'authed' | 'no-habilitada';
 
 export type LoginErrorKind = 'credenciales' | 'no-habilitada' | 'red';
 
+/**
+ * BL-X10 — de dónde vino la sesión `'authed'` actual, para decidir splash (identidad, una vez por
+ * ingreso) vs entrada diaria (cubre la carga). `'recien-autenticada'`: el usuario acaba de escribir
+ * credenciales o volver de un callback OAuth — primer ingreso o post-logout, spec admite 6,8 s.
+ * `'restaurada'`: el token ya estaba guardado al abrir la app — se ve 20+ veces por día, sólo 1,5 s.
+ * Default `'restaurada'` porque es el camino más frecuente (arranques 2..n) y evita mostrar el
+ * splash largo un instante antes de que el efecto de montaje corrija el valor real.
+ */
+export type OrigenSesion = 'restaurada' | 'recien-autenticada';
+
 export interface LoginResult {
   ok: boolean;
   error?: LoginErrorKind;
@@ -36,6 +46,7 @@ export interface UseSessionResult {
    * sí corresponde un status propio.
    */
   avisoSesion?: string;
+  origenSesion: OrigenSesion;
   login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }

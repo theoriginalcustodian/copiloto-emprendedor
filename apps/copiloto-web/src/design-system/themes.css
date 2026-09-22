@@ -104,6 +104,11 @@
   --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
   --core-glow: none;
   --halo: none;
+  /* BL-X10 — wordmark del splash/identidad (`modules/splash/`). FIJO, no varía por tema: es la
+     misma pieza de marca (splash-port-reanimated.md) para las tres pieles. Logotipo, exento WCAG
+     1.4.3 (decisión Martin 22/07, citada en la spec §8) — 2,86:1 sobre `#F7F3EC` (crema, el
+     extremo del degradé de fondo con MENOS contraste), mismo patrón de exención que `--core`. */
+  --identidad-word: #DE7250;
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   --chip-fg: #2E2A20;
@@ -239,6 +244,7 @@
   --core: #B04A2E; /* texto/trazo sobre lienzo claro — 4,38:1, mejor valor cerrado disponible (ver cabecera) */
   --core-glow: none;
   --halo: none;
+  --identidad-word: #DE7250; /* BL-X10 — fijo, ver el comentario en el bloque default de arriba */
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   /* Chip: sin declaración propia en el DoD — se reusa el tinte de "Nav activo"
@@ -364,6 +370,7 @@
   --core: #DE7250; /* texto/trazo sobre superficie oscura — 5,33-6,30:1, el caso que la regla permite (CLAUDE.md §2) */
   --core-glow: none;
   --halo: none;
+  --identidad-word: #DE7250; /* BL-X10 — fijo, ver el comentario en el bloque default de arriba */
   --presence-wrap-bg: transparent;
   --presence-wrap-shadow: none;
   --chip-fg: #E8A088; /* Apoyo/Arena (CLAUDE.md §2) sobre chip-bg oscuro — 5,82-6,84:1; el E67A5E viejo era un 3er terracota no declarado */
