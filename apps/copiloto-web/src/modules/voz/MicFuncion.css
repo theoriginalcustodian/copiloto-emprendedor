@@ -1,0 +1,21 @@
+/* BL-J7/K-10 — contenedor propio del mic fuera del chat. `RecordingOverlay` (chat.css) es
+ * `position:absolute; inset:0` y necesita un ancestro `position:relative` del tamaño del botón —
+ * en el chat ese ancestro es `.composer__row`; acá lo aporta este wrapper, sin depender de una
+ * clase del chat (contrato K-10 §3, desacople #1). */
+.mic-funcion {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 38px;
+}
+
+/* Chip «Por voz · Ns» (DoD FE1 #5, BL-J7 H-17) — confirma la duración del dictado que acaba de
+ * rellenar el campo; texto plano, sin depender de ningún token de color del chat (este componente
+ * vive fuera de él). */
+.mic-funcion__chip {
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted-fg, #6b7280);
+}

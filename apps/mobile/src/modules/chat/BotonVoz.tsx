@@ -59,8 +59,11 @@ export interface BotonVozProps {
   disabled?: boolean;
   /** El `ref` de `ListaMensajes` (su `FlatList` de RNGH, ver C6 — antes `ScrollView`) — este botón
    *  flota encima y su gesto tiene que declararse `simultaneousWithExternalGesture` con el scroll
-   *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo. */
-  scrollRef: React.RefObject<FlatList | null>;
+   *  para no comerle el toque ni que el scroll se lo coma a él. Ver el docstring del módulo.
+   *  **Opcional** (BL-J7/K-10, `MicFuncion`): montado dentro de un formulario puede no haber ningún
+   *  scroll con el que arbitrar — sin `scrollRef`, el gesto se declara sin
+   *  `simultaneousWithExternalGesture` (ver el `useMemo` de `gesto`). */
+  scrollRef?: React.RefObject<FlatList | null>;
 }
 
 /**
@@ -245,9 +248,12 @@ export function BotonVoz({
     // vacías) que pide esta firma de RNGH (a diferencia del viejo `ScrollView`, con props opcionales).
     // Es un gap de tipos upstream, no una incompatibilidad real: RNGH sólo usa el handle nativo para
     // la arbitración de gestos, nunca renderiza nada con esas props.
-    const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null>;
-    return Gesture.Pan()
-      .simultaneousWithExternalGesture(refParaArbitraje)
+    const refParaArbitraje = scrollRef as unknown as React.RefObject<React.ComponentType | null> | undefined;
+    const base = Gesture.Pan();
+    // BL-J7/K-10: sin `scrollRef` (montado fuera del chat, sin scroll con el que arbitrar) el gesto
+    // se declara SIN `simultaneousWithExternalGesture` — nada con qué componer.
+    const pan = refParaArbitraje ? base.simultaneousWithExternalGesture(refParaArbitraje) : base;
+    return pan
       .onBegin(() => {
         scheduleOnRN(comenzar);
       })
