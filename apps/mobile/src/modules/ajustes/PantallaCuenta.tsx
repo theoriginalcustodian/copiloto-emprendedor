@@ -74,7 +74,8 @@ export function PantallaCuenta() {
               No molestar
             </Text>
             <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
-              Pendiente — muta un ajuste del sistema operativo, se implementa en otra tarea.
+              Para silenciarme tengo que tocar una configuración de tu teléfono. Todavía no lo hago
+              solo.
             </Text>
           </View>
         </Row>
