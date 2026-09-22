@@ -42,15 +42,6 @@ vi.mock('@copiloto/core', async (orig) => ({
   transcribir: transcribirMock,
 }));
 
-async function grabarYSoltar() {
-  await act(async () => {
-    fireEvent.pointerDown(screen.getByTestId('mic-button'), { clientY: 300 });
-  });
-  await act(async () => {
-    fireEvent.pointerUp(document);
-  });
-}
-
 describe('MicFuncion (web)', () => {
   let getUserMedia: ReturnType<typeof vi.fn>;
 
