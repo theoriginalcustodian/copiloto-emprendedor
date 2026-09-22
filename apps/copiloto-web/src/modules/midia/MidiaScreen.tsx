@@ -22,6 +22,7 @@ import {
 import { Button, Skeleton } from '../../design-system';
 import { EstadoVacio } from '../../design-system/EstadoVacio';
 import { BannerCritico, ChipsCategoria, ContadorTablero } from './ChipsCategoria';
+import { AgendaScreen } from './AgendaScreen';
 import { PortadaNegocio } from './PortadaNegocio';
 import './midia.css';
 
@@ -55,7 +56,9 @@ const SIGUIENTE: Partial<Record<IdSolapa, { estado: IdSolapa; etiqueta: string }
   haciendo: { estado: 'hecha', etiqueta: 'Terminé' },
 };
 
-export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
+export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbrirChat?: () => void } = {}) {
+  // BL-J13: la agenda de varios días es una sub-vista de Mi día (sin ruta propia, como las de Ajustes).
+  const [verAgenda, setVerAgenda] = useState(false);
   const [estado, setEstado] = useState<EstadoLista>('cargando');
   const [tablero, setTablero] = useState<TableroMiDia | null>(null);
   const [solapaActiva, setSolapaActiva] = useState<IdSolapa>('para_hoy');
@@ -154,6 +157,10 @@ export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
     setError('No se pudo borrar la tarjeta. Probá de nuevo en un momento.');
   }
 
+  if (verAgenda && onAbrirChat != null) {
+    return <AgendaScreen onVolver={() => setVerAgenda(false)} onAbrirChat={onAbrirChat} />;
+  }
+
   const solapa = tablero?.solapas.find((s) => s.id === solapaActiva) ?? null;
   const tarjetas = solapa != null ? filtrarPorCategoria(solapa.tarjetas, categoria) : [];
 
@@ -171,6 +178,12 @@ export function MidiaScreen({ avatar }: { avatar?: ReactNode } = {}) {
       <BannerCritico tablero={tablero} />
 
       <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+
+      {estadoCalendario === 'ok' && onAbrirChat != null && (
+        <Button variant="ghost" data-testid="midia-ver-agenda" onClick={() => setVerAgenda(true)}>
+          Ver agenda
+        </Button>
+      )}
 
       <div className="midia-screen__solapas" data-testid="midia-solapas">
         {OPCIONES_SOLAPA.map((o) => {
