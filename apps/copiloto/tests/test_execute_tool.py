@@ -14,13 +14,19 @@ necesita_pg = pytest.mark.skipif(not os.environ.get("DATABASE_URL"),
 
 
 class _FakeGateway:
-    def __init__(self, exec_result=None):
+    def __init__(self, exec_result=None, connected="ACTIVE"):
         self.calls = []
         self._exec_result = exec_result or {"successful": True, "data": {}}
+        self._connected = connected      # H-A3-2(b): "ACTIVE" por defecto -- conectado, como asumían
+        self.connection_status_calls = []  # todos los tests previos a este fix
 
     def execute(self, slug, *, user_id, arguments, confirmed=False):
         self.calls.append((slug, confirmed, dict(arguments)))
         return self._exec_result
+
+    def connection_status(self, user_id, toolkit):
+        self.connection_status_calls.append((user_id, toolkit))
+        return self._connected
 
 
 class _Ctx:
@@ -244,6 +250,32 @@ def test_K11_connection_required_deja_gate_card_con_alcance_del_catalogo():
     card = tr.observation["gate_card"]
     assert card["kind"] == "requiere_conexion" and card["service"] == "gmail" and card["label"] == "Gmail"
     assert card["connect_path"] == "/composio/connect?service=gmail" and card["alcance"]
+
+
+def test_H_A3_2b_proposal_sin_conexion_devuelve_card_antes_de_pedir_confirmacion():
+    """H-A3-2(b): una tool de escritura (Proposal, path de servicio plug-in) sobre un toolkit NO
+    conectado no debe pedir HITL sobre algo imposible -- el chequeo de conexión es PROACTIVO, antes
+    del `needs_confirmation`, no reactivo recién al ejecutar (el K11 de arriba cubre el caso
+    confirmed=True, reactivo, que sigue existiendo como defensa)."""
+    gw = _FakeGateway(connected="EXPIRED")
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-a3-2b")
+    assert tr.status == "error"                       # NO needs_confirmation
+    assert tr.observation["needs_connect"] == "gmail"
+    card = tr.observation["gate_card"]
+    assert card["kind"] == "requiere_conexion" and card["service"] == "gmail"
+    assert gw.calls == []                              # no llamó execute -- el chequeo cortó antes
+    assert gw.connection_status_calls == [("42", "gmail")]
+
+
+def test_H_A3_2b_proposal_conectado_sigue_pidiendo_confirmacion_normal():
+    """Control positivo: con conexión ACTIVA el needs_confirmation de siempre sigue intacto (no
+    regresiona lo que ya cubre test_write_without_confirm_opens_gate_without_executing)."""
+    gw = _FakeGateway()   # default: ACTIVE
+    ex = tool_catalog.make_tool_executor(gw, now_iso_provider=lambda: "2026-07-04T00:00:00")
+    tr = ex("gmail_send", {"to": "a@b.com", "body": "hola"}, _Ctx(), confirmed=False, idem_key="run1-a3-2b-ok")
+    assert tr.status == "needs_confirmation"
+    assert gw.calls == []
 
 
 def test_unexpected_exception_in_executor_returns_error_not_propagates():
