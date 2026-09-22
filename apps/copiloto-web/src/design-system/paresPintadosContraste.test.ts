@@ -134,19 +134,75 @@ function tokenDe(valor: string): string | null {
   return valor.match(/^var\(\s*(--[a-z0-9-]+)/i)?.[1] ?? null;
 }
 
+/**
+ * BL-Q4, hallazgo de auditoría A2 — `pares()` de arriba sólo barre `.css`; un `style={{color:…}}`
+ * inline en un `.tsx` quedaba afuera del gate. Reusa el mismo `Par`/`resolver`/`ratio` de arriba,
+ * mismo criterio (fondo de la MISMA declaración, si no hay se mide contra las 2 superficies de
+ * página) — la única diferencia es CÓMO se extrae el par (brace-matching sobre `style={{…}}` en vez
+ * de un selector CSS).
+ *
+ * Censo de `color:` fuera de `.css` (grep, 2026-09-21): 5 archivos. 4 caen acá (`App.tsx`, `Kit.tsx`,
+ * `Marca.tsx`, `serviceIcons.tsx` — todos `style={{color:…}}` real). El 5º, `GraficosInteligencia.tsx`
+ * (4 asignaciones), es `color` de un objeto `series` que `GraficoBarras.tsx:80` consume como
+ * `backgroundColor` del RELLENO de la barra/punto de leyenda — nunca como `color` de texto; no hay
+ * `style={{` ahí y el barrido de abajo correctamente no lo toca. Documentado, no ignorado (contrato
+ * A2: "sumarlos al barrido o probar que no son texto sobre superficie").
+ */
+const TSX_FILES = import.meta.glob('../**/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<
+  string,
+  string
+>;
+
+function paresInline(): Par[] {
+  const out: Par[] = [];
+  for (const [archivo, src] of Object.entries(TSX_FILES)) {
+    if (/\.test\.tsx$/.test(archivo)) continue;
+    let i = 0;
+    while ((i = src.indexOf('style={{', i)) !== -1) {
+      const inicio = i + 'style={'.length; // apunta a la '{' interna del objeto
+      let profundidad = 0;
+      let fin = -1;
+      for (let j = inicio; j < src.length; j++) {
+        if (src[j] === '{') profundidad++;
+        else if (src[j] === '}') {
+          profundidad--;
+          if (profundidad === 0) {
+            fin = j;
+            break;
+          }
+        }
+      }
+      if (fin === -1) break; // objeto sin cerrar (no debería pasar en TS válido) — no cuelga el barrido
+      const cuerpo = src.slice(inicio, fin + 1);
+      i = fin + 1;
+      const fg = cuerpo.match(/(?:^|[,{\s])color\s*:\s*['"]([^'"]+)['"]/)?.[1];
+      if (!fg || !/^var\(|^#/.test(fg)) continue;
+      const bg = cuerpo.match(/(?:^|[,{\s])background(?:Color)?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null;
+      out.push({ archivo: archivo.replace('../', ''), selector: 'style={{…}} inline', fg, bg });
+    }
+  }
+  return out;
+}
+
 describe('BL-Q4 — pares color/fondo PINTADOS en las pieles vigentes (>=4.5:1)', () => {
   const todos = pares();
+  const inline = paresInline();
 
   it('control positivo: el barrido encuentra pares (no es un no-op)', () => {
     expect(todos.length).toBeGreaterThan(20);
     expect(todos.some((p) => p.bg !== null)).toBe(true);
   });
 
+  it('control positivo (inline): el barrido de `style={{…}}` en .tsx encuentra pares', () => {
+    expect(inline.length).toBeGreaterThan(0);
+    expect(inline.some((p) => p.archivo.endsWith('Marca.tsx'))).toBe(true);
+  });
+
   for (const [tema, vars] of Object.entries(VARS)) {
     it(`${tema}: ningún par pintado queda bajo AA sin deuda declarada`, () => {
       const fallas: string[] = [];
       let medidos = 0;
-      for (const p of todos) {
+      for (const p of [...todos, ...inline]) {
         const tk = tokenDe(p.fg);
         if (tk && tk in DEUDA_CONOCIDA) continue;
         const fg = resolver(p.fg, vars);
