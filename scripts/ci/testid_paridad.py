@@ -59,6 +59,16 @@ def pantalla_de(rel_bajo_subroot: str, prefijo: str) -> str:
     return f"src/{partes[0]}" if len(partes) > 1 else "src/raiz"
 
 
+_ARNES_DE_TEST_RE = re.compile(r'\.(test|spec)\.tsx$')
+
+
+def _es_arnes_de_test(f: Path) -> bool:
+    """Un id que sólo vive en el arnés de test (`*.test.tsx`, `*.spec.tsx`, `__tests__/`) no es UI --
+    es un id fabricado por el test para ubicar un nodo (ver hallazgo #616: `sonda-cierre`, `entrada-
+    stub`). Contarlo como paridad real produce falsos rojos que nadie puede resolver del lado de UI."""
+    return bool(_ARNES_DE_TEST_RE.search(f.name)) or "__tests__" in f.parts
+
+
 def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_re: re.Pattern, dinamico_re: re.Pattern):
     """Devuelve (por_pantalla: {pantalla: {id: [archivo,...]}}, dinamicos: {archivo: n})."""
     por_pantalla: dict[str, dict[str, list[str]]] = {}
@@ -68,6 +78,8 @@ def _escanear_plataforma(root: Path, subroots: list[tuple[str, str]], literal_re
         if not base.exists():
             continue
         for f in sorted(base.rglob("*.tsx")):
+            if _es_arnes_de_test(f):
+                continue
             rel_full = str(f.relative_to(root)).replace("\\", "/")
             rel_bajo = str(f.relative_to(base)).replace("\\", "/")
             texto = f.read_text(encoding="utf-8", errors="ignore")
