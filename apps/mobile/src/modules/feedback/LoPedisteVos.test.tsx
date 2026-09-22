@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
@@ -44,7 +44,13 @@ describe('LoPedisteVos', () => {
   it('fail-soft: sin items no dibuja nada', async () => {
     jest.mocked(listarFeedbackPropio).mockResolvedValue([]);
     await montar();
+    // `toHaveBeenCalled()` se satisface en cuanto el efecto INVOCA el mock, antes de que su promesa
+    // resuelva — la aserción de abajo (nada visible) pasa igual "por casualidad" sin haber esperado
+    // el `.then()` del componente, y esa promesa puede terminar de resolver YA en el test siguiente
+    // (flake reportado por backend: `screen` sin `render` vigente, `setItems` fuera de `act`). Un
+    // `act(async () => {})` fuerza a que el microtask del efecto corra ACÁ, dentro de este test.
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalled());
+    await act(async () => {});
     expect(screen.queryByTestId('lo-pediste-vos')).toBeNull();
   });
 
@@ -52,6 +58,7 @@ describe('LoPedisteVos', () => {
     jest.mocked(listarFeedbackPropio).mockRejectedValue(new Error('500'));
     await montar();
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalled());
+    await act(async () => {}); // mismo cierre de carrera que el test de arriba, ver su comentario.
     expect(screen.queryByTestId('lo-pediste-vos')).toBeNull();
   });
 });

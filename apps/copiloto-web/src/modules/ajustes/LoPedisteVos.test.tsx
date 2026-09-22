@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { listarFeedbackPropio } = vi.hoisted(() => ({ listarFeedbackPropio: vi.fn() }));
@@ -38,13 +38,19 @@ describe('LoPedisteVos (BL-J12, K-08)', () => {
   it('fail-soft: sin pedidos o con el endpoint caído no dibuja nada', async () => {
     listarFeedbackPropio.mockResolvedValueOnce([]);
     const a = render(<LoPedisteVos />);
+    // `toHaveBeenCalledTimes` se satisface en cuanto el efecto INVOCA el mock, antes de que su
+    // promesa resuelva — mismo cierre de carrera que el equivalente mobile (dato_ de backend,
+    // `LoPedisteVos.test.tsx:48`): un `act(async () => {})` fuerza a correr acá el microtask del
+    // `.then()`, para no dejarlo colgando hacia el próximo `render`/test.
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalledTimes(1));
+    await act(async () => {});
     expect(a.container).toBeEmptyDOMElement();
     a.unmount();
 
     listarFeedbackPropio.mockRejectedValueOnce(new Error('500'));
     const b = render(<LoPedisteVos />);
     await waitFor(() => expect(listarFeedbackPropio).toHaveBeenCalledTimes(2));
+    await act(async () => {});
     expect(b.container).toBeEmptyDOMElement();
   });
 
