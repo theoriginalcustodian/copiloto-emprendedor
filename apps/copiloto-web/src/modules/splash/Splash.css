@@ -60,10 +60,17 @@
 
 @keyframes identidad-blob-collapse {
   0% {
+    opacity: 1;
     transform: scale(7.8) rotate(var(--rot1));
     border-radius: inherit;
   }
+  72% {
+    opacity: 1;
+  }
   100% {
+    /* Se desvanece del todo: es un tránsito hacia la "O" real (glifo de texto, `__o` abajo), no
+       queda como disco permanente — si quedara opaca tapa "dobi" (H-A4-2). */
+    opacity: 0;
     transform: translateX(var(--ox, -22vmin)) scale(0.62) rotate(0deg);
     border-radius: 50%;
   }
@@ -72,9 +79,33 @@
 .identidad-splash__wordmark {
   position: relative;
   display: flex;
+  align-items: baseline;
   font-family: var(--font-mono, monospace);
   font-size: clamp(28px, 8vmin, 56px);
   color: var(--identidad-word);
+}
+
+/* H-A4-2 — la "O" de "Odobi": glifo de texto real (mismo lockup que el prototipo), NO la forma que
+   colapsa. Sin esto, "dobi" nunca tuvo un glifo "o" propio y con movimiento reducido se leía sin O. */
+.identidad-splash__o {
+  display: inline-block;
+  opacity: 0;
+  transform: scale(1.06);
+  animation-name: identidad-o-appear;
+  animation-duration: 780ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes identidad-o-appear {
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.identidad-splash__rest {
+  display: flex;
 }
 
 .identidad-splash__letra {
@@ -150,6 +181,7 @@
   .identidad-splash,
   .identidad-splash__blob,
   .identidad-splash__blob--last,
+  .identidad-splash__o,
   .identidad-splash__letra,
   .identidad-splash__reveal {
     animation: none !important;
