@@ -48,12 +48,25 @@ def test_control_el_detector_ve_un_AFIP_visible_e_ignora_docstring_y_equivalenci
 
 
 def test_ningun_string_visible_de_apps_copiloto_dice_AFIP():
+    # Recursivo (rglob, no glob): `APP.glob("*.py")` sólo miraba el nivel superior y se perdía
+    # `services/*.py` (BL-X5, hallazgo del gate de replay al chocar con #618 -- 6 archivos sin barrer).
     malos = []
-    for f in sorted(APP.glob("*.py")):
-        if f.name in INTERNOS or f.name.startswith("test_"):
+    for f in sorted(APP.rglob("*.py")):
+        rel = f.relative_to(APP)
+        if f.name in INTERNOS or f.name.startswith("test_") or "tests" in rel.parts or "__pycache__" in rel.parts:
             continue
-        malos += [f"{f.name}:{ln}: {t}" for ln, t in _hits(f.read_text(encoding="utf-8"))]
+        malos += [f"{rel}:{ln}: {t}" for ln, t in _hits(f.read_text(encoding="utf-8"))]
     assert not malos, "«AFIP» visible (usar «ARCA»):\n" + "\n".join(malos)
+
+
+def test_control_el_barrido_alcanza_un_subdirectorio_no_solo_el_nivel_superior():
+    """Control positivo de la recursión: si `rglob` volviera a `glob` (nivel superior), este archivo
+    real de `services/` no aparecería en el barrido y el AFIP que se le agregue acá abajo pasaría
+    en silencio -- mismo criterio que el resto de los controles positivos de este archivo."""
+    objetivo = APP / "services" / "docs.py"
+    assert objetivo.is_file()
+    barridos = {f.relative_to(APP) for f in APP.rglob("*.py")}
+    assert objetivo.relative_to(APP) in barridos
 
 
 def test_la_kb_de_usuario_no_dice_AFIP_suelta():

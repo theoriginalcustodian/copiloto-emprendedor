@@ -265,7 +265,7 @@ MARCAR_PRESUPUESTO_SCHEMA = {"type": "function", "function": {
 
 EMITIR_FACTURA_SCHEMA = {"type": "function", "function": {
     "name": "emitir_factura",
-    "description": "Arma una factura electrónica ARCA a partir de lo dictado ('facturale 50 mil a Juan por el "
+    "description": "Arma una factura electrónica ARCA (ex AFIP) a partir de lo dictado ('facturale 50 mil a Juan por el "
                    "service', 'facturale a la panadería dos tortas a 8000 cada una'). NO la emite: "
                    "la deja lista para que él la revise y confirme desde una tarjeta, o la termine a "
                    "mano si falta algo. Necesita como mínimo a quién le factura y qué le vendió — el "
