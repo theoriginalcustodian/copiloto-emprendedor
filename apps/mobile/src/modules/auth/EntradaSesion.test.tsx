@@ -12,6 +12,7 @@ function sesion(over: Partial<UseSessionResult> = {}): UseSessionResult {
   return {
     estado: 'anon',
     me: null,
+    primeraVez: false,
     login: jest.fn(),
     loginConGoogle: jest.fn(),
     logout: jest.fn(),
@@ -51,7 +52,22 @@ describe('EntradaSesion', () => {
     expect(screen.getByTestId('login-email').props.value).toBe('');
   });
 
-  it('control negativo: primer arranque o sesión caída sola NO muestran el reveal (directo al formulario)', async () => {
+  it('primer arranque (primeraVez) aterriza en el reveal con "Empecemos", sin botón secundario (mobile no tiene alta)', async () => {
+    await montar(sesion({ primeraVez: true }));
+    expect(screen.getByTestId('reveal-entrada')).toBeTruthy();
+    expect(screen.getByText('Empecemos')).toBeTruthy();
+    expect(screen.queryByTestId('reveal-entrada-secundario')).toBeNull();
+    expect(screen.queryByTestId('login-screen')).toBeNull();
+  });
+
+  it('"Empecemos" del primer arranque va al formulario en blanco', async () => {
+    await montar(sesion({ primeraVez: true }));
+    await fireEvent.press(screen.getByTestId('reveal-entrada-primario'));
+    expect(screen.getByTestId('login-screen')).toBeTruthy();
+    expect(screen.getByTestId('login-email').props.value).toBe('');
+  });
+
+  it('control negativo: sesión caída sola (CTA5, ni primeraVez ni cierreVoluntario) va directo al formulario', async () => {
     await montar(sesion());
     expect(screen.getByTestId('login-screen')).toBeTruthy();
     expect(screen.queryByTestId('reveal-entrada')).toBeNull();

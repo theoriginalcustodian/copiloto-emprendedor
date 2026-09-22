@@ -12,8 +12,11 @@ import { ResponsiveShell } from './shell/ResponsiveShell';
 import { ModeProvider } from './shell/modeStore';
 
 /** BETA-4b: `SignupScreen` es reachable SOLO por `?signup=1` — sin link público desde
- * `LoginScreen` todavía (`POST /auth/signup` no tiene invite-gate, decisión operador #3 sin
- * resolver, ver `hallazgo_frontend-a-todos_BETA-4b-signup-endpoint-existe-pero-publico...md`).
+ * `LoginScreen`. La decisión operador #3 (modo de alta) YA está resuelta desde 2026-08-04
+ * (`Auditorias/2026-08-04-listado-problemas-fixes-reverificado.md:93`, implementado en
+ * `apps/copiloto/web.py:550-592`): dos puertas con allow-list, Google OAuth o invite-token de env.
+ * `SignupScreen` no manda invite-token todavía, así que contra el backend real toda alta por email
+ * se rechaza salvo por ruta directa `?signup=1` para invitados — de ahí que siga sin link público.
  * Leído UNA vez al montar: navegar entre login/signup adentro de la sesión usa el toggle interno
  * de `AppRouter`, no vuelve a leer la URL. */
 function leerSignupDeQuery(): boolean {

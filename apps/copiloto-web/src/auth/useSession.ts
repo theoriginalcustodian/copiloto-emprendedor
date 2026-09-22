@@ -54,6 +54,13 @@ export interface UseSessionResult {
    * — arranque limpio, sesión caída sola (CTA5) — esos van directo al formulario, no al reveal.
    */
   cierreVoluntario?: { email: string | null };
+  /**
+   * BL-X10 (fila 2) — `true` sólo en el arranque SIN token ni refresh guardado (nunca hubo sesión en
+   * este dispositivo): el reveal de «primer ingreso» (`TEXTOS_REVEAL.primeraVez`) se muestra acá, no
+   * en `cierreVoluntario` (eso es «volver»). `false` en el resto — sesión caída sola (CTA5) sigue
+   * yendo directo al formulario, como antes.
+   */
+  primeraVez: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }

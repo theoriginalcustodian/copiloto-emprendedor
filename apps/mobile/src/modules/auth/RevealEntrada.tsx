@@ -14,6 +14,7 @@ const ALTO_BOTON = 54;
 export interface RevealEntradaProps {
   /** Etiquetas de las dos puertas (`TEXTOS_REVEAL`): el mismo reveal aterriza distinto según la sesión. */
   primario: string;
+  /** Vacío = no hay alta disponible todavía (BETA-4b): el botón secundario no se dibuja. */
   secundario: string;
   onPrimario: () => void;
   onSecundario: () => void;
@@ -89,15 +90,17 @@ export function RevealEntrada({
         >
           <Text style={{ color: tema.color.acentoTexto, fontSize: tema.tipo.grande, fontWeight: '700' }}>{primario}</Text>
         </Pressable>
-        <Pressable
-          testID={`${testID}-secundario`}
-          accessibilityRole="button"
-          accessibilityLabel={secundario}
-          onPress={onSecundario}
-          style={pressableStyle([styles.boton, { height: ALTO_BOTON }])}
-        >
-          <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.grande, fontWeight: '600' }}>{secundario}</Text>
-        </Pressable>
+        {secundario !== '' && (
+          <Pressable
+            testID={`${testID}-secundario`}
+            accessibilityRole="button"
+            accessibilityLabel={secundario}
+            onPress={onSecundario}
+            style={pressableStyle([styles.boton, { height: ALTO_BOTON }])}
+          >
+            <Text style={{ color: tema.color.acentoTinta, fontSize: tema.tipo.grande, fontWeight: '600' }}>{secundario}</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );

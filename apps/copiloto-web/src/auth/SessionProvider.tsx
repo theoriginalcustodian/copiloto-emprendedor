@@ -36,6 +36,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [origenSesion, setOrigenSesion] = useState<OrigenSesion>('restaurada');
   // BL-X12w: gemelo de `cierreVoluntario` en mobile (`modules/auth/SessionProvider.tsx`).
   const [cierreVoluntario, setCierreVoluntario] = useState<{ email: string | null } | undefined>(undefined);
+  // BL-X10 (fila 2): `true` sólo cuando el arranque no encuentra NI token NI refresh — nunca hubo
+  // sesión en este dispositivo. Gemelo de mobile (`modules/auth/SessionProvider.tsx`).
+  const [primeraVez, setPrimeraVez] = useState(false);
+  // Espejo en ref de `primeraVez`/`cierreVoluntario`: `login()` los necesita AL MOMENTO del click,
+  // no como dependencia de `useCallback` (cambiarían su identidad en cada logout/arranque).
+  const primeraVezRef = useRef(false);
+  primeraVezRef.current = primeraVez;
+  const cierreVoluntarioRef = useRef<{ email: string | null } | undefined>(undefined);
+  cierreVoluntarioRef.current = cierreVoluntario;
 
   // Valida el token actual contra /me y deja el estado consistente. Se reusa en el chequeo de
   // montaje y después de un login exitoso.
@@ -107,6 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // HTTP al hacer el probe. Cortar acá declarando 'anon' impedía que nadie llegara a intentarlo,
     // y era la razón por la que el fix del cliente no se veía en el navegador.
     if (!getToken() && !getRefreshToken()) {
+      setPrimeraVez(true); // BL-X10: nunca hubo sesión acá -> reveal de primer ingreso, no el formulario
       setStatus('anon');
       return;
     }
@@ -118,7 +128,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // El aviso describe la sesión ANTERIOR: dejarlo puesto mientras se reintenta haría convivir
       // «tu sesión expiró» con el error del intento nuevo, y el usuario no sabría cuál leer.
       setAvisoSesion(undefined);
-      setOrigenSesion('recien-autenticada'); // BL-X10: primer ingreso o post-logout -> splash largo
+      // BL-X10 (fila 2): «después del login no se repite» — si se llega acá desde el reveal (primer
+      // ingreso o volver), la identidad YA se mostró ahí; repetir el splash largo acá sería la
+      // segunda vez. Sólo la sesión caída sola (CTA5, sin reveal previo) preserva el splash largo
+      // post-login de siempre.
+      if (!primeraVezRef.current && cierreVoluntarioRef.current == null) {
+        setOrigenSesion('recien-autenticada');
+      }
       try {
         const response = await api.login(email, password);
         setToken(response.access_token);
@@ -136,9 +152,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [fetchMe],
   );
 
-  // Volvió a entrar: el cierre voluntario ya no describe nada (si luego se cae la sesión sola, no es «volver»).
+  // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
+  // cae la sesión sola, no es «volver» ni «primera vez»).
   useEffect(() => {
-    if (status === 'authed') setCierreVoluntario(undefined);
+    if (status === 'authed') {
+      setCierreVoluntario(undefined);
+      setPrimeraVez(false);
+    }
   }, [status]);
 
   const emailRef = useRef<string | null>(null);
@@ -159,6 +179,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     avisoSesion,
     origenSesion,
     cierreVoluntario: status === 'anon' ? cierreVoluntario : undefined,
+    primeraVez: status === 'anon' ? primeraVez : false,
     login,
     logout,
   };

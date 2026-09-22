@@ -17,8 +17,14 @@ const TAMANO = 132;
 const EASE_GROW = Easing.bezier(0.5, 0, 0.2, 1);
 const EASE_FIN = Easing.bezier(0.2, 0.8, 0.2, 1);
 
-const GROW = 900;
-const BLOB_STAGGER = 180;
+// BL-X10 (H-A3-6) — mismos tiempos que web (`modules/splash/tempos.ts`, "cerrado, Martín 29/07"):
+// GROW=1900, BLOB_STAGGER=380. `COLAPSO` es el análogo de `COLLAPSE=1450` de web (ahí termina el
+// colapso de la última forma). `FADE_LOCKUP` escala proporcional a `GROW` (no tiene 1:1 en web, que
+// no tiene lockup fundido — ahí es wordmark letra a letra).
+const GROW = 1900;
+const BLOB_STAGGER = 380;
+const COLAPSO = 1450;
+const FADE_LOCKUP = 970;
 const N_BLOBS = 4;
 const T_LOCKUP = (N_BLOBS - 1) * BLOB_STAGGER + GROW * 0.55; // las formas ya cubrieron el lockup
 
@@ -63,7 +69,7 @@ function Forma({
     if (reducido) return;
     progreso.value = withDelay(index * BLOB_STAGGER, withTiming(1, { duration: GROW, easing: EASE_GROW }));
     if (ultima) {
-      colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: 520, easing: EASE_FIN }));
+      colapso.value = withDelay(index * BLOB_STAGGER + GROW, withTiming(1, { duration: COLAPSO, easing: EASE_FIN }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
@@ -110,8 +116,8 @@ export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (reducido) return;
-    lockupOpacidad.value = withDelay(T_LOCKUP, withTiming(1, { duration: 460, easing: EASE_FIN }));
-    lockupEscala.value = withDelay(T_LOCKUP, withTiming(1, { duration: 460, easing: EASE_FIN }));
+    lockupOpacidad.value = withDelay(T_LOCKUP, withTiming(1, { duration: FADE_LOCKUP, easing: EASE_FIN }));
+    lockupEscala.value = withDelay(T_LOCKUP, withTiming(1, { duration: FADE_LOCKUP, easing: EASE_FIN }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
   }, []);
 
