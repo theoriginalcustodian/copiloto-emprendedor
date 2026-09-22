@@ -103,6 +103,8 @@ const SOPORTE = {
       origen: { archivo: 'afip_gateway.py' },
       ultima_nota: null,
       dedupe_count: 1,
+      escuchado: false,
+      escuchado_en: null,
     },
     {
       id: 2,
@@ -115,6 +117,8 @@ const SOPORTE = {
       origen: null,
       ultima_nota: null,
       dedupe_count: null,
+      escuchado: false,
+      escuchado_en: null,
     },
   ],
 };
@@ -271,6 +275,16 @@ describe('AdminScreen — CONS6 (A5 Errores + A4 Soporte + A6 Auditoría)', () =
     expect(adminMarcarFeedbackEscuchado).toHaveBeenCalledWith(1);
     // El otro ticket no se marca por arrastre.
     expect(screen.getByTestId('admin-ticket-marcar-escuchado-2')).toBeInTheDocument();
+  });
+
+  it('K-08: un feedback que YA vino «escuchado» del backend muestra el badge sin clickear (persiste al recargar)', async () => {
+    vi.mocked(adminSoporte).mockReset().mockResolvedValue({
+      tickets: [{ ...SOPORTE.tickets[0], escuchado: true, escuchado_en: '2026-09-20T10:00:00Z' }],
+    });
+    renderAdmin();
+    expect(await screen.findByTestId('admin-ticket-escuchado-1')).toHaveTextContent('Escuchado');
+    expect(screen.queryByTestId('admin-ticket-marcar-escuchado-1')).not.toBeInTheDocument();
+    expect(adminMarcarFeedbackEscuchado).not.toHaveBeenCalled();
   });
 
   it('K-08: si el POST falla NO se afirma «Escuchado» (el botón sigue para reintentar)', async () => {

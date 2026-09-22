@@ -746,7 +746,10 @@ export function AdminScreen() {
                           )}
                         </td>
                         <td>
-                          {feedbackEscuchado.has(t.id) ? (
+                          {/* K-08 (BL-J12): `t.escuchado` es lo que persistió el backend (sobrevive
+                              a un reload); `feedbackEscuchado` es sólo la marca optimista de ESTA
+                              sesión, para no esperar el próximo `cargar()` tras clickear. */}
+                          {t.escuchado || feedbackEscuchado.has(t.id) ? (
                             <Badge variant="ok">
                               <span data-testid={`admin-ticket-escuchado-${t.id}`}>Escuchado</span>
                             </Badge>
