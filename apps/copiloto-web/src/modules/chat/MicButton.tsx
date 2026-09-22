@@ -8,6 +8,11 @@ export interface MicButtonProps {
    * botón Enviar del overlay fijado). NUNCA se llama si se cancela o si no hubo audio. */
   onSendAudio: (blob: Blob) => void;
   disabled?: boolean;
+  /** Opcional — se llama sincrónicamente al arrancar el gesto (mismo instante que `pointerDownAtRef`),
+   * ANTES de que `getUserMedia` resuelva. `MicFuncion` (BL-J7/K-10) lo usa para medir la duración del
+   * dictado sin duplicar el cronómetro interno de este componente. Quien no lo pasa no ve ningún
+   * cambio de comportamiento. */
+  onRecordingStart?: () => void;
 }
 
 /** Umbral de arrastre hacia arriba (px) que "fija" la grabación — EXTRACT §2.10 (verbatim: >46px). */
@@ -55,7 +60,7 @@ function pickSupportedMimeType(): string | undefined {
  * overlay. Sin este guard queda un overlay "unlocked" huérfano (sin botones, sin listeners de
  * gesto ya desenganchados) que el usuario no puede cerrar.
  */
-export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
+export function MicButton({ onSendAudio, disabled, onRecordingStart }: MicButtonProps) {
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -232,6 +237,7 @@ export function MicButton({ onSendAudio, disabled }: MicButtonProps) {
     // `handlePointerUp` tengan el dato aunque `getUserMedia` todavía no haya resuelto.
     gestureActiveRef.current = true;
     pointerDownAtRef.current = Date.now();
+    onRecordingStart?.();
     void startRecording(event.clientX, event.clientY);
 
     function handlePointerMove(moveEvent: PointerEvent) {

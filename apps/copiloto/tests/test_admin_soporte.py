@@ -66,6 +66,28 @@ def test_resumen_soporte_trae_el_texto_del_ticket(conn_de_tenant, nuevo_tenant):
     assert fila["tipo"] == "texto"
     assert fila["derivo_en_autosanacion"] is False
     assert fila["estado_reparacion"] is None
+    assert fila["escuchado"] is False
+    assert fila["escuchado_en"] is None
+
+
+@necesita_pg
+@necesita_rol_consola
+def test_resumen_soporte_trae_escuchado_persistido_no_solo_en_memoria(conn_de_tenant, nuevo_tenant):
+    """K-08 (BL-J12) -- causa raíz del hallazgo de auditoría A2: `AdminScreen.tsx` guardaba la marca
+    SÓLO en el estado de React (se perdía al recargar); acá se prueba que el dato persistido en
+    `copiloto_feedback` (vía `FeedbackStore.marcar_escuchado`, el mismo endpoint que usa la consola)
+    efectivamente vuelve en el listado -- no que el frontend lo recuerde."""
+    tenant = nuevo_tenant()
+    factory = conn_de_tenant(tenant)
+    fid = FeedbackStore(factory, tenant).crear(tipo="texto", texto="modo oscuro", contexto=None)
+
+    marcado = FeedbackStore(factory, tenant).marcar_escuchado(fid)
+    assert marcado is not None and marcado["escuchado"] is True
+
+    filas = resumen_soporte(_factory_consola)
+    fila = next(f for f in filas if f["id"] == fid)
+    assert fila["escuchado"] is True
+    assert fila["escuchado_en"] is not None
 
 
 @necesita_pg

@@ -166,6 +166,10 @@ export interface FilaTicket {
   origen: Record<string, unknown> | null;
   ultima_nota: string | null;
   dedupe_count: number | null;
+  /** K-08 (BL-J12) — persistido en `copiloto_feedback`, no inventado por el frontend: antes de esto
+   *  el listado no lo traía y la marca sólo vivía en el estado de React (se perdía al recargar). */
+  escuchado: boolean;
+  escuchado_en: string | null;
 }
 
 /** Fila de `AuditoriaStore.listar()` — append-only, quién hizo qué en la consola. */

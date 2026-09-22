@@ -415,3 +415,8 @@ export type { FuncionSoporte, SoporteAudioResponse, SoporteChatRequest, SoporteC
  * docstring de `soporteTicket.ts` para el `[ASSUMED_PENDING_VERIFY]` de la forma del endpoint. */
 export { obtenerMiTicket } from './soporteTicket';
 export type { EstadoTicketPropio, MensajeTicketPropio, MiTicketResult, TicketPropio } from './soporteTicket';
+
+/** `POST /transcribir` — BL-J7/K-10, transcribe SIN despachar al agente. Ver el docstring de
+ * `transcribir.ts` para la diferencia con `sendAudio` (`/chat/audio`, sí dispara un workflow). */
+export { avisoErrorTranscripcion, transcribir } from './transcribir';
+export type { ContextoTranscripcion, TranscribirResponse } from './transcribir';

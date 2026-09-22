@@ -47,6 +47,7 @@ def resumen_soporte(conn_factory, *, limite: int = 50) -> list[dict]:
         with conn.cursor() as cur:
             cur.execute(
                 f"""SELECT f.id, f.cliente_id::text, f.tipo, f.texto, f.created_at,
+                        f.escuchado, f.escuchado_en,
                         (t.id IS NOT NULL) AS derivo_en_autosanacion,
                         t.estado AS estado_reparacion,
                         t.contexto -> 'origen' AS origen,
