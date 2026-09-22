@@ -44,6 +44,13 @@ export interface UseSessionResult {
    * reveal «volver» (Entrar / Entrar con otra cuenta). `email` es el de la cuenta que salió, si se sabía.
    */
   cierreVoluntario?: { email: string | null };
+  /**
+   * BL-X10 (fila 2) — `true` sólo en el arranque SIN token ni refresh guardado (nunca hubo sesión en
+   * este dispositivo): el reveal de «primer ingreso» (`TEXTOS_REVEAL.primeraVez`) se muestra acá, no
+   * en `cierreVoluntario` (eso es «volver»). `false` en el resto — sesión caída sola (CTA5) sigue
+   * yendo directo al login, como antes. Gemelo exacto de web (`auth/useSession.ts`).
+   */
+  primeraVez: boolean;
   login: (email: string, password: string) => Promise<LoginResult>;
   loginConGoogle: () => Promise<LoginResult>;
   logout: () => void;

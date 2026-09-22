@@ -38,6 +38,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [meData, setMeData] = useState<MeResponse | null>(null);
   const [avisoSesion, setAvisoSesion] = useState<string | undefined>(undefined);
   const [cierreVoluntario, setCierreVoluntario] = useState<{ email: string | null } | undefined>(undefined);
+  // BL-X10 (fila 2): `true` sólo cuando el arranque no encuentra NI token NI refresh — nunca hubo
+  // sesión en este dispositivo. Gemelo exacto de web (`auth/SessionProvider.tsx`).
+  const [primeraVez, setPrimeraVez] = useState(false);
 
   // Valida el token actual contra el probe `GET /me` (mismo gate `require_tenant`: 401 token
   // inválido / 403 sin tenant) y, de paso, trae la identidad del tenant.
@@ -88,7 +91,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const token = await almacenTokens.leerToken();
       const refresh = token ? null : await almacenTokens.leerRefresh();
       if (!token && !refresh) {
-        if (vivo) setEstado('anon');
+        if (vivo) {
+          setPrimeraVez(true); // BL-X10: nunca hubo sesión acá -> reveal de primer ingreso, no el login
+          setEstado('anon');
+        }
         return;
       }
       if (vivo) await validarSesion();
@@ -151,9 +157,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return { ok: false, error: 'no-habilitada' };
   }, [validarSesion]);
 
-  // Volvió a entrar: el cierre voluntario ya no describe nada (si luego se cae la sesión sola, no es «volver»).
+  // Volvió a entrar: ni el cierre voluntario ni el primer-arranque describen ya nada (si luego se
+  // cae la sesión sola, no es «volver» ni «primera vez»).
   useEffect(() => {
-    if (estado === 'autenticado') setCierreVoluntario(undefined);
+    if (estado === 'autenticado') {
+      setCierreVoluntario(undefined);
+      setPrimeraVez(false);
+    }
   }, [estado]);
 
   const emailRef = useRef<string | null>(null);
@@ -173,6 +183,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     me: meData,
     avisoSesion,
     cierreVoluntario: estado === 'anon' ? cierreVoluntario : undefined,
+    primeraVez: estado === 'anon' ? primeraVez : false,
     login,
     loginConGoogle,
     logout,

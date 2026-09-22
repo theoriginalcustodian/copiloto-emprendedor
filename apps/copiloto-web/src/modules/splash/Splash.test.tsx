@@ -41,32 +41,36 @@ describe('Splash (BL-X10, identidad)', () => {
     expect(onFin).toHaveBeenCalledOnce();
   });
 
-  it('el botón de pronunciación llama a speechSynthesis con "odóbi" en es-AR', () => {
-    const speak = vi.fn();
-    const cancel = vi.fn();
-    // jsdom no implementa Web Speech API -- se stubea acá, no en el setup global, porque es la
-    // única suite que la usa.
-    class SpeechSynthesisUtteranceStub {
-      text: string;
-      lang = '';
-      rate = 1;
-      constructor(text: string) {
-        this.text = text;
-      }
-    }
-    vi.stubGlobal('SpeechSynthesisUtterance', SpeechSynthesisUtteranceStub);
-    Object.defineProperty(window, 'speechSynthesis', {
-      value: { speak, cancel },
-      writable: true,
-      configurable: true,
-    });
+  it('el texto de pronunciación usa PRONUNCIACION_MARCA (core), sin literal hardcodeado', () => {
     render(<Splash onFin={vi.fn()} />);
+    expect(screen.getByText('se dice o-DO-bi')).toBeInTheDocument();
+  });
+
+  it('sin pronunciacionAsset, el botón de pronunciación NO se dibuja (BL-X10 fila 2, sin TTS de fallback)', () => {
+    render(<Splash onFin={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Escuchar cómo se pronuncia Odobi' })).not.toBeInTheDocument();
+  });
+
+  it('con pronunciacionAsset, el botón se dibuja y reproduce el audio', () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      'Audio',
+      vi.fn().mockImplementation(() => ({ play })),
+    );
+    render(<Splash onFin={vi.fn()} pronunciacionAsset="/assets/odobi.mp3" />);
     fireEvent.click(screen.getByRole('button', { name: 'Escuchar cómo se pronuncia Odobi' }));
-    expect(cancel).toHaveBeenCalledOnce();
-    expect(speak).toHaveBeenCalledOnce();
-    const u = speak.mock.calls[0][0] as SpeechSynthesisUtterance;
-    expect(u.text).toBe('odóbi');
-    expect(u.lang).toBe('es-AR');
-    expect(u.rate).toBe(0.85);
+    expect(play).toHaveBeenCalledOnce();
+  });
+
+  it('cta.secundario vacío NO dibuja el botón secundario (BETA-4b: sin alta que ofrecer)', () => {
+    render(
+      <Splash
+        onFin={vi.fn()}
+        cta={{ primario: 'Empecemos', secundario: '', onPrimario: vi.fn(), onSecundario: vi.fn() }}
+      />,
+    );
+    expect(screen.getByText('Empecemos')).toBeInTheDocument();
+    // Sin pronunciacionAsset (botón de pronunciación tampoco) + secundario vacío -> un solo botón.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });

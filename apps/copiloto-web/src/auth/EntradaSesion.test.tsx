@@ -8,6 +8,7 @@ function sesion(over: Partial<UseSessionResult> = {}): UseSessionResult {
   return {
     status: 'anon',
     origenSesion: 'restaurada',
+    primeraVez: false,
     login: vi.fn(),
     logout: vi.fn(),
     ...over,
@@ -53,7 +54,22 @@ describe('EntradaSesion (BL-X12w)', () => {
     expect(screen.getByLabelText('Email')).toHaveValue('');
   });
 
-  it('control negativo: primer arranque o sesión caída sola NO muestran el reveal (directo al formulario)', () => {
+  it('primer arranque (primeraVez) aterriza en el reveal con "Empecemos", sin botón secundario (BETA-4b: sin alta pública)', () => {
+    montar(sesion({ primeraVez: true }));
+    expect(screen.getByTestId('identidad-entrada')).toBeInTheDocument();
+    expect(screen.getByText('Empecemos')).toBeInTheDocument();
+    expect(screen.queryByText('Crear una nueva cuenta')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument();
+  });
+
+  it('"Empecemos" del primer arranque va al formulario en blanco', () => {
+    montar(sesion({ primeraVez: true }));
+    fireEvent.click(screen.getByText('Empecemos'));
+    expect(screen.getByTestId('login-screen')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+  });
+
+  it('control negativo: sesión caída sola (CTA5, ni primeraVez ni cierreVoluntario) va directo al formulario', () => {
     montar(sesion());
     expect(screen.getByTestId('login-screen')).toBeInTheDocument();
     expect(screen.queryByTestId('identidad-entrada')).not.toBeInTheDocument();
