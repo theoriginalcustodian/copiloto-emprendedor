@@ -26,6 +26,7 @@ jest.mock('@copiloto/core', () => {
     cambiarEstadoTarjetaMiDia: jest.fn(),
     borrarTarjetaMiDia: jest.fn(),
     leerCalendario: jest.fn(),
+    listarCatalogo: jest.fn(),
   };
 });
 
@@ -51,7 +52,15 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { borrarTarjetaMiDia, cambiarEstadoTarjetaMiDia, leerCalendario, leerTablero } from '@copiloto/core';
+import {
+  borrarTarjetaMiDia,
+  cambiarEstadoTarjetaMiDia,
+  fechaDeHoyMidia,
+  KEY_GOOGLE_CALENDAR,
+  leerCalendario,
+  leerTablero,
+  listarCatalogo,
+} from '@copiloto/core';
 
 import { PantallaMiDia } from './PantallaMiDia';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -60,6 +69,7 @@ const leerMock = leerTablero as jest.MockedFunction<typeof leerTablero>;
 const cambiarEstadoMock = cambiarEstadoTarjetaMiDia as jest.MockedFunction<typeof cambiarEstadoTarjetaMiDia>;
 const borrarMock = borrarTarjetaMiDia as jest.MockedFunction<typeof borrarTarjetaMiDia>;
 const leerCalendarioMock = leerCalendario as jest.MockedFunction<typeof leerCalendario>;
+const listarCatalogoMock = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
 
 const TABLERO = {
   solapas: [
@@ -121,6 +131,7 @@ beforeEach(() => {
   cambiarEstadoMock.mockResolvedValue({ status: 'ok', tarjeta: TABLERO.solapas[0].tarjetas[0] });
   borrarMock.mockResolvedValue({ status: 'ok' });
   leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+  listarCatalogoMock.mockResolvedValue({ status: 'ok', servicios: [] });
 });
 
 describe('PantallaMiDia — las 3 solapas', () => {
@@ -369,6 +380,44 @@ describe('PantallaMiDia — panel de calendario (CAL1 §3, fuera del Kanban)', (
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeTruthy());
     expect(screen.queryByTestId('midia-calendario')).toBeNull();
     expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
+  });
+
+  it('BL-W11 fila 4b: sin conexión pero el catálogo dice que ESTÁ caída — copy distinta, ofrece reconectar', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({
+      status: 'ok',
+      servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+    });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-caida')).toBeTruthy());
+    expect(screen.getByText(/Se cayó la conexión con Google Calendar/)).toBeTruthy();
+    expect(screen.getByText(/Reconectala/)).toBeTruthy();
+    expect(screen.queryByTestId('midia-calendario-no-conectado')).toBeNull();
+  });
+
+  it('sin catálogo (fail-soft) degrada al texto de "nunca conectada", no se inventa una caída', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({ status: 'no_disponible' });
+
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeTruthy());
+    expect(screen.queryByTestId('midia-calendario-caida')).toBeNull();
+  });
+});
+
+describe('PantallaMiDia — fecha de hoy en la portada (BL-W11 fila 4a)', () => {
+  it('la portada (home) muestra la fecha de hoy, sin hora, junto al wordmark', async () => {
+    render(
+      <ThemeProvider>
+        <PantallaMiDia comoPortada />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('midia-fecha')).toBeTruthy());
+    expect(screen.getByText(fechaDeHoyMidia())).toBeTruthy();
   });
 });
 

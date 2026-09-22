@@ -50,6 +50,24 @@ export function hayConexionCaida(servicios: readonly { estado: EstadoConexion }[
   return servicios.some((s) => s.estado === 'caido');
 }
 
+/** El slug del catálogo para Google Calendar — mismo `key` que el resto de los toolkits Composio
+ *  (verificado contra el catálogo vivo, ver `ServiceCard.test.tsx`). Único lugar que lo escribe: el
+ *  panel de agenda de Mi día (BL-W11) lo usa para filtrar, nunca lo reconstruye a mano. */
+export const KEY_GOOGLE_CALENDAR = 'googlecalendar';
+
+/**
+ * El estado de conexión de UN servicio del catálogo por su `key` (BL-W11: el panel de agenda de Mi
+ * día necesita distinguir "nunca conectada" de "caída", algo que `/mi-dia/calendario` no trae —
+ * ver el docstring de `CalendarioMiDia`). `null` si el catálogo no tiene ese servicio (no
+ * desplegado, o no vino en la respuesta): el llamador decide cómo degradar, nunca se inventa acá.
+ */
+export function estadoDeServicio(
+  servicios: readonly { key: string; estado: EstadoConexion }[],
+  key: string,
+): EstadoConexion | null {
+  return servicios.find((s) => s.key === key)?.estado ?? null;
+}
+
 export interface ServicioCatalogo {
   /** El slug real del toolkit (`googledrive`, `gmail`…) o `mercadopago`. */
   key: string;

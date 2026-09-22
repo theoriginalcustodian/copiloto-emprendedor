@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';
+import { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';
 
 describe('formatearFechaCorte', () => {
   it('«2026-08-19» → «Al 19 de agosto» sin correr el día por la zona horaria', () => {
@@ -44,6 +44,13 @@ describe('chipDeCaja', () => {
   });
   it('sin ninguna de las dos → null (no hay chip)', () => {
     expect(chipDeCaja({ fechaCorte: null, variacionPct: null })).toBeNull();
+  });
+});
+
+describe('AVISO_CAJA_INCOMPLETA (BL-W11 fila 4c: nombra Mercado Pago explícitamente)', () => {
+  it('menciona Mercado Pago, no "una conexión" genérica', () => {
+    expect(AVISO_CAJA_INCOMPLETA).toContain('Mercado Pago');
+    expect(AVISO_CAJA_INCOMPLETA).not.toContain('una conexión');
   });
 });
 
