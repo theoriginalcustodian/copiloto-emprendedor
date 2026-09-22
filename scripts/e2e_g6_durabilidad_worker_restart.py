@@ -21,8 +21,8 @@ La mitad HITL ejercita el gate cross-turn del react loop (`conversation_workflow
 tiene que reconstruirse por REPLAY, no por memoria viva), y recién DESPUÉS se manda el callback
 `confirm:<turn_ix>:<step>` (el token que expone `/reply` en `choices[].value`, ver
 `_confirm_choices()`). Si el replay no reconstruyó `self._state['react']` bien, el callback cae en
-la rama "callback SIN gate parqueado" (`_run_react_turn` línea ~406) y responde "Listo 👍" sin
-ejecutar nada -- silencioso, no una excepción. `_reply_resolvio_el_gate` discrimina por DOS
+la rama "callback SIN gate parqueado" (`_run_react_turn` línea ~409) y responde con
+`_TEXTO_CALLBACK_SIN_GATE` sin ejecutar nada -- silencioso, no una excepción. `_reply_resolvio_el_gate` discrimina por DOS
 señales, no una: que no vuelva a pedir el mismo confirm, Y que la reply no calce con la firma
 exacta de esa rama de fallo -- lo segundo lo agregó H-A3-8 (auditoría A3, 2026-09-22): la rama de
 fallo TAMBIÉN carece de choice 'confirm:', así que mirar sólo lo primero confirmaba un callback
@@ -150,7 +150,7 @@ def _token_de_confirmacion(replies: list[dict]) -> str:
 # gate parqueado" (`kind == "callback" and not parked` -> responde esto y corta, SIN LLM, SIN
 # ejecutar nada). Si esa línea cambia el texto, esta constante hay que actualizarla junto -- no hay
 # forma de leerla en vivo desde acá (el script sólo habla HTTP con prod, no importa el motor).
-_TEXTO_CALLBACK_SIN_GATE = "Listo 👍"  # conversation_workflow.py:407
+_TEXTO_CALLBACK_SIN_GATE = "Ese botón ya no sirve: se resolvió antes o llegó tarde 🙈"  # conversation_workflow.py:410, H-A4-9
 
 
 def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
@@ -158,12 +158,11 @@ def _reply_resolvio_el_gate(replies: list[dict]) -> bool:
 
     1. Ninguna reply post-callback vuelve a traer un choice 'confirm:' -- si lo trajera, el
        callback NO reingresó al gate parqueado.
-    2. Ninguna reply calza con la firma EXACTA de la rama de fallo ('Listo 👍', ver
-       `_TEXTO_CALLBACK_SIN_GATE`).
+    2. Ninguna reply calza con la firma EXACTA de la rama de fallo (ver `_TEXTO_CALLBACK_SIN_GATE`).
 
     H-A3-8 (auditoría A3): la versión anterior sólo miraba (1). La rama de fallo (`kind ==
     'callback' and not parked`) TAMBIÉN carece de choice 'confirm:' en su respuesta -- responde
-    'Listo 👍' con `choices=None` -- así que un callback que se perdió (el replay no reconstruyó
+    `_TEXTO_CALLBACK_SIN_GATE` con `choices=None` -- así que un callback que se perdió (el replay no reconstruyó
     `self._state['react']`) pasaba como resuelto: el instrumento confirmaba en vez de verificar.
     Control negativo que reproduce exactamente este caso: `--control-negativo` (más abajo)."""
     repite_confirm = any(c.get("value", "").startswith("confirm:")
@@ -285,7 +284,7 @@ def control_negativo() -> int:
     abrió un gate HITL (session_id nuevo, primer mensaje es directamente `kind='callback'`) --
     ejercita el backend REAL, no una simulación in-process. `conversation_workflow.py` cae en la
     rama "callback sin gate parqueado" (`kind == 'callback' and not parked`) y responde
-    'Listo 👍' sin ejecutar nada. `_reply_resolvio_el_gate` tiene que detectar esto como NO
+    `_TEXTO_CALLBACK_SIN_GATE` sin ejecutar nada. `_reply_resolvio_el_gate` tiene que detectar esto como NO
     resuelto -- si el instrumento volviera a dar verde acá, sería la MISMA regresión que H-A3-8
     encontró (confirma en vez de verificar)."""
     log(f"BASE={BASE}")

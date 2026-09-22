@@ -32,7 +32,9 @@ _CATALOGO = """\
 Herramientas SQL disponibles (números exactos, todas de `inteligencia_queries`):
 - portada: caja del mes, entró/salió/rentabilidad/facturado/cobrado, mejores clientes, por cobrar.
   Sirve para: "¿cuánto me queda?", "¿quién me debe?" (aproximado, vía por_cobrar), "¿quiénes son mis
-  mejores clientes?".
+  mejores clientes?". `rentabilidad` puede venir null (no hay asignación gasto→trabajo todavía): si
+  es null, decilo así ("no tengo ese dato todavía"), nunca inventes un número ni uses "lo que queda"
+  en su lugar.
 - facturacion_por_mes: serie de 6 meses de lo facturado.
 - entro_vs_salio: serie de 6 meses de entró/salió (los 3 orígenes: factura, dictado, MercadoPago).
   Sirve para: "¿cuánto entró en efectivo este mes?", "¿gasté más que el mes anterior?".
