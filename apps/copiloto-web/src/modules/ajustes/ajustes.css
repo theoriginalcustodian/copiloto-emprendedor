@@ -733,7 +733,15 @@
   text-align: left;
 }
 
-/* ---------- Cómo usar la app: los temas que abren el chat principal (BL-W9) ---------- */
+/* ---------- Cómo usar la app: los temas que abren el chat principal (BL-W9, fusión BL-W12) ---------- */
+.como-usar-screen__seccion {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--core);
+}
+
 .como-usar-tema {
   display: flex;
   flex-direction: column;

@@ -77,9 +77,32 @@ describe('PantallaComoUsarLaApp — la fusión de la guía y el «cómo uso la a
 
   it('trae los ejemplos de `GET /capacidades`, no escritos a mano', async () => {
     await montar();
-    await waitFor(() => expect(screen.getByTestId('como-usar-anotar_gasto')).toBeTruthy());
-    expect(screen.getByTestId('como-usar-anotar_gasto')).toHaveTextContent(/gasté 15 lucas en nafta/);
+    await waitFor(() => expect(screen.getByTestId('como-usar-grupo-0')).toBeTruthy());
+    expect(screen.getByTestId('como-usar-grupo-0')).toHaveTextContent(/gasté 15 lucas en nafta/);
     expect(screen.getByTestId('como-usar-fechas')).toHaveTextContent(/ayer/);
+  });
+
+  it('🔴 BL-W12: dos capacidades con el MISMO rótulo (dos "Presupuestos" del catálogo) no repiten encabezado', async () => {
+    // Caso real citado en el contrato: `tool_catalog.py:369-370` publica `crear_presupuesto` y
+    // `listar_presupuestos` con el mismo rótulo «Presupuestos» — sin agrupar, la guía mostraba el
+    // encabezado dos veces y cada bloque sólo la mitad de los ejemplos.
+    mockCapacidades.mockResolvedValue({
+      status: 'ok',
+      guia: {
+        capacidades: [
+          { tool: 'crear_presupuesto', rotulo: 'Presupuestos', ejemplos: ['armame un presupuesto para Juan'] },
+          { tool: 'listar_presupuestos', rotulo: 'Presupuestos', ejemplos: ['qué presupuestos tengo pendientes'] },
+        ],
+        fechas: { entiendo: [], siNoEsta: null },
+      },
+    });
+    await montar();
+
+    await waitFor(() => expect(screen.getByTestId('como-usar-grupo-0')).toBeTruthy());
+    expect(screen.queryByTestId('como-usar-grupo-1')).toBeNull(); // UN solo grupo, no dos
+    expect(screen.getAllByText('Presupuestos')).toHaveLength(1); // el encabezado no se repite
+    expect(screen.getByTestId('como-usar-grupo-0')).toHaveTextContent(/armame un presupuesto para Juan/);
+    expect(screen.getByTestId('como-usar-grupo-0')).toHaveTextContent(/qué presupuestos tengo pendientes/);
   });
 
   it('🔴 si la guía no está disponible, los TEMAS siguen ahí', async () => {
