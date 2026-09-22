@@ -3,15 +3,20 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  estadoDeServicio,
   ETIQUETA_CATEGORIA_TARJETA,
+  fechaDeHoyMidia,
   filtrarPorCategoria,
   formatearImporte,
   horaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerCalendario,
   leerPortada,
   leerTablero,
+  listarCatalogo,
   type CalendarioMiDia,
   type CategoriaTarjeta,
+  type EstadoConexion,
   type EventoCalendario,
   type IdSolapa,
   type Portada,
@@ -66,6 +71,10 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
   const [error, setError] = useState<string | null>(null);
   const [estadoCalendario, setEstadoCalendario] = useState<EstadoLista>('cargando');
   const [calendario, setCalendario] = useState<CalendarioMiDia | null>(null);
+  // BL-W11: `/mi-dia/calendario` sólo trae `conectado: boolean` — no distingue "nunca conectada" de
+  // "caída". Esa salud vive en el catálogo (K-09), se lee aparte y degrada en silencio (fail-soft,
+  // mismo criterio que `AvatarCuenta`): sin catálogo, el panel muestra el texto de "nunca conectada".
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const [categoria, setCategoria] = useState<CategoriaTarjeta>('todo');
   const [portada, setPortada] = useState<Portada | null>(null);
   const vivo = useRef(true);
@@ -112,17 +121,32 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
     }
   }, []);
 
+  // BL-W11: mismo criterio fail-soft que `AvatarCuenta` — sin catálogo, `estadoGoogleCalendar` queda
+  // `null` y el panel cae al texto de "nunca conectada" (el mismo que mostraba antes de esta fila).
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (vivo.current && res.status === 'ok') {
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo, el panel degrada a "nunca conectada". */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
     void cargarCalendario();
     void cargarPortada();
+    void cargarSaludConexiones();
 
     function alVolverElFoco() {
       if (document.visibilityState === 'visible') {
         void cargar();
         void cargarCalendario();
         void cargarPortada();
+        void cargarSaludConexiones();
       }
     }
     document.addEventListener('visibilitychange', alVolverElFoco);
@@ -131,7 +155,7 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
       vivo.current = false;
       document.removeEventListener('visibilitychange', alVolverElFoco);
     };
-  }, [cargar, cargarCalendario, cargarPortada]);
+  }, [cargar, cargarCalendario, cargarPortada, cargarSaludConexiones]);
 
   async function avanzar(t: TarjetaMiDia) {
     const siguiente = SIGUIENTE[solapaActiva];
@@ -167,7 +191,10 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
   return (
     <div className="midia-screen" data-testid="pantalla-midia">
       <header className="midia-screen__header">
-        <h1 className="midia-screen__title">Mi día</h1>
+        <div>
+          <h1 className="midia-screen__title">Mi día</h1>
+          <p className="midia-screen__fecha" data-testid="midia-fecha">{fechaDeHoyMidia()}</p>
+        </div>
         {avatar}
       </header>
 
@@ -177,7 +204,7 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
 
       <BannerCritico tablero={tablero} />
 
-      <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+      <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
 
       {estadoCalendario === 'ok' && onAbrirChat != null && (
         <Button variant="ghost" data-testid="midia-ver-agenda" onClick={() => setVerAgenda(true)}>
@@ -277,11 +304,32 @@ export function MidiaScreen({ avatar, onAbrirChat }: { avatar?: ReactNode; onAbr
 }
 
 /** Panel de sólo lectura de eventos de hoy (CAL1 §3) — mismo criterio que la versión mobile: sin
- *  acciones, sin swipe, un evento sin hora reconocible se muestra igual sólo con el título. */
-function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+ *  acciones, sin swipe, un evento sin hora reconocible se muestra igual sólo con el título.
+ *
+ *  BL-W11 fila 4b: `!calendario.conectado` agrupa DOS casos que `/mi-dia/calendario` no distingue
+ *  (nunca conectada / caída) — `estadoConexion`, leído aparte del catálogo (K-09), desempata. Sin
+ *  esa señal (`null`, catálogo caído o backend viejo) se degrada al texto de "nunca conectada", que
+ *  ya era correcto para ese caso y es el menos alarmante de los dos ante la duda. */
+function PanelCalendario({
+  estado,
+  calendario,
+  estadoConexion,
+}: {
+  estado: EstadoLista;
+  calendario: CalendarioMiDia | null;
+  estadoConexion: EstadoConexion | null;
+}) {
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
+    if (estadoConexion === 'caido') {
+      return (
+        <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-caida">
+          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
+          tus eventos de hoy.
+        </p>
+      );
+    }
     return (
       <p className="midia-screen__calendario-invitacion" data-testid="midia-calendario-no-conectado">
         Conectá Google Calendar en Ajustes → Apps para ver acá tus eventos de hoy.
