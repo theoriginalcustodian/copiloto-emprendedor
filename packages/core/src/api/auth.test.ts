@@ -53,6 +53,15 @@ describe('cambiar credenciales (K-12 / BL-J11)', () => {
     expect(await cambiarEmail('a@b.com')).toMatchObject({ ok: false, codigo: 'email_ya_registrado' });
   });
 
+  it('cuenta sin email (400 con detail.codigo, A2/K-12): mensaje propio, no el genérico', async () => {
+    responder = () => respuesta(400, { detail: { codigo: 'cuenta_sin_email', mensaje: 'Esta cuenta no tiene un email asociado.' } });
+    expect(await cambiarContrasena('vieja', 'nueva-larga')).toEqual({
+      ok: false,
+      codigo: 'cuenta_sin_email',
+      mensaje: 'Esta cuenta no tiene un email asociado.',
+    });
+  });
+
   it('cambiarEmail: 200 confirmacion_pendiente', async () => {
     responder = () => respuesta(200, { ok: true, confirmacion_pendiente: true });
     expect(await cambiarEmail('nueva@direccion.com')).toEqual({ ok: true, confirmacionPendiente: true });
