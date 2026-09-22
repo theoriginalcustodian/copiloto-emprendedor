@@ -59,6 +59,8 @@ def _client_key(request: Request, *, jwt_secret: str | None = None, jwt_issuer: 
             try:
                 claims = decode_supabase_jwt(token, secret=jwt_secret, issuer=jwt_issuer)
             except InvalidToken:
+                # Documentado (censo-except.py): roto/expirado/ajeno cae a IP más abajo -- el
+                # docstring de esta función ya explica por qué eso es lo correcto, no un fallo a loguear.
                 claims = {}
             sub = claims.get("sub")
             if sub:
