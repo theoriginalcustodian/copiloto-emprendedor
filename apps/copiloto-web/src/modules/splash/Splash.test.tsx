@@ -73,4 +73,46 @@ describe('Splash (BL-X10, identidad)', () => {
     // Sin pronunciacionAsset (botón de pronunciación tampoco) + secundario vacío -> un solo botón.
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
+
+  describe('H-A4-2 — la "O" de "Odobi" es un glifo de texto real, no la forma que colapsa', () => {
+    it('la "O" (glifo de texto) está SIEMPRE en el DOM, con o sin movimiento reducido', () => {
+      mockMatchMedia(true);
+      const { container } = render(<Splash onFin={vi.fn()} />);
+      // Control negativo: con el bug viejo, `dobi` no tenía NINGÚN glifo "o" propio (sólo la forma
+      // animada, que con reducido desaparecía entera) — "Odobi" se leía "dobi".
+      const o = container.querySelector('.identidad-splash__o');
+      expect(o).toBeInTheDocument();
+      expect(o).toHaveTextContent('O');
+    });
+
+    it('con movimiento reducido, NINGUNA de las 4 formas se dibuja (van derecho al fondo final)', () => {
+      mockMatchMedia(true);
+      const { container } = render(<Splash onFin={vi.fn()} />);
+      expect(container.querySelectorAll('.identidad-splash__blob').length).toBe(0);
+    });
+
+    it('sin movimiento reducido, la forma final SÍ se dibuja (es el tránsito hacia la "O")', () => {
+      const { container } = render(<Splash onFin={vi.fn()} />);
+      expect(container.querySelector('.identidad-splash__blob--last')).toBeInTheDocument();
+    });
+
+    it('el --ox del contenedor se mide contra "dobi" SIN la "O" (`.identidad-splash__rest`), no contra el wordmark completo', () => {
+      // Control negativo: si el cálculo tomara el wordmark ENTERO (con la "O" ya adentro), el
+      // colapso apuntaría a un punto distinto y corrido — la spec (`targetX()` del prototipo) mide
+      // sólo `rest` ("dobi"), nunca el wordmark completo.
+      const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const width = this.className?.includes('identidad-splash__rest') ? 80 : 200;
+        return { width, height: 40, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON() {} } as DOMRect;
+      });
+
+      const { container } = render(<Splash onFin={vi.fn()} />);
+      const splash = container.querySelector('.identidad-splash') as HTMLElement;
+      const oxPx = parseFloat(splash.style.getPropertyValue('--ox'));
+
+      // Fórmula esperada (igual a `targetX()` del prototipo): -(anchoRest/2) = -(80/2) = -40.
+      expect(oxPx).toBeCloseTo(-40, 1);
+
+      rectSpy.mockRestore();
+    });
+  });
 });

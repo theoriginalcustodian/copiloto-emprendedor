@@ -280,6 +280,8 @@ describe('PantallaSoporte -- encabezado (BL-W10)', () => {
     expect(texto).toContain('plazo de respuesta');
     expect(texto).toContain('asunto y un resumen');
     expect(texto).not.toMatch(/\d+\s*(h|hs|horas|hábiles)/i);
-    expect(screen.getByTestId('soporte-quien').props.children).toBe('Soporte de Odobi');
+    // H-A4-4: SOPORTE_QUIEN (packages/core/src/ayuda/textosSoporte.ts) es compartido con web; el
+    // cambio de "Soporte de Odobi" a "Soporte técnico" pegó acá sin tocar código de mobile.
+    expect(screen.getByTestId('soporte-quien').props.children).toBe('Soporte técnico');
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** Partial mock: sólo la red — mismo arnés que `ClientesScreen.test.tsx`/`TarjetaClientePropuesto.test.tsx`. */
@@ -170,5 +170,47 @@ describe('PantallaFacturacion (web) — adoptar un borrador ya creado (facturaId
     await waitFor(() =>
       expect(screen.getByTestId('facturacion-paso-resumen-cliente-no-disponible')).toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * 🔴 **H-A4-5 (auditoría 2026-09-22).** Antes de este fix, abrir la pantalla SIN un borrador externo
+ * (`facturaIdInicial`) creaba uno solo -- el efecto 3 llamaba `crearFactura` apenas el gate resolvía
+ * `puedeFacturar:true`, así que el aterrizaje era el wizard, no «Te deben»/«Últimas emitidas». El
+ * mockup fuente (`Prototipo frontend/odobi-ui/mockups/05-facturacion/DECISIONES.md`) es explícito:
+ * la pantalla standalone de Facturación es historial/listado, no flujo de creación -- crear vive en el
+ * chat. Control negativo: con el código viejo, `mockCrearFactura` SÍ se llama sin ninguna acción del
+ * usuario -- este test falla contra ese código.
+ */
+describe('PantallaFacturacion (web) — aterrizaje en listado, wizard detrás de "Nueva factura" (H-A4-5)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEstadoAfip.mockResolvedValue(estadoAfipMock());
+    mockCrearFactura.mockResolvedValue({ status: 'ok', ok: true, facturaId: 'factura-1' });
+  });
+
+  it('sin facturaIdInicial -- aterriza en el listado y NO crea un borrador solo', async () => {
+    render(<PantallaFacturacion />);
+
+    // El pill "Nueva factura" (de «Últimas emitidas») es la señal de que el listado ya pintó.
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('facturacion-paso-datos-venta')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('facturacion-cargando')).not.toBeInTheDocument();
+  });
+
+  it('tocar "Nueva factura" -- recién ahí crea el borrador y entra al wizard', async () => {
+    mockEsperarEstadoEstable.mockResolvedValue({ convergio: true, estado: estadoMock() });
+
+    render(<PantallaFacturacion />);
+
+    await waitFor(() => expect(screen.getByTestId('facturacion-nueva-factura-pill')).toBeInTheDocument());
+    expect(mockCrearFactura).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('facturacion-nueva-factura-pill'));
+
+    await waitFor(() => expect(mockCrearFactura).toHaveBeenCalledWith('20111111112'));
+    await waitFor(() => expect(screen.getByTestId('facturacion-paso-datos-venta')).toBeInTheDocument());
   });
 });

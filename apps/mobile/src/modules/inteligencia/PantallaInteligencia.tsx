@@ -225,14 +225,15 @@ export function PantallaInteligencia() {
             </View>
           </BloqueCifra>
 
-          {/* EL MES — cinco números, en una grilla de dos columnas. */}
+          {/* EL MES — cuatro números en grilla de dos columnas + Rentabilidad en fila completa con
+              su nota cuando falta el dato (mismo patrón que web `.kpi.sindato`: «no es cero, es que
+              todavía no se puede calcular» — H-A4-3). */}
           <Text style={rotulo(tema)}>ESTE MES</Text>
           <View style={styles.grillaKpis}>
             {(
               [
                 ['Ingresos', portada.mes.ingresos, tema.color.exito],
                 ['Gastos', portada.mes.gastos, tema.color.peligro],
-                ['Rentabilidad', portada.mes.rentabilidad, tema.color.acento],
                 ['Facturado', portada.mes.facturado, tema.color.texto],
                 ['Cobrado', portada.mes.cobrado, tema.color.texto],
               ] as const
@@ -244,6 +245,25 @@ export function PantallaInteligencia() {
                 </Text>
               </View>
             ))}
+            <View
+              style={[styles.kpiCelda, styles.kpiCeldaAncha]}
+              testID="inteligencia-mes-rentabilidad"
+            >
+              <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>Rentabilidad</Text>
+              <Text
+                style={{ color: tema.color.acento, fontFamily: tema.fuente.uiSemibold, fontSize: tema.tipo.titulo }}
+              >
+                {kpi(portada.mes.rentabilidad)}
+              </Text>
+              {portada.mes.rentabilidad == null && (
+                <Text
+                  testID="inteligencia-rentabilidad-nota"
+                  style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}
+                >
+                  Falta asignar gastos a trabajos. No es cero: es que todavía no se puede calcular.
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* ACUMULADO DEL AÑO + tope de monotributo — llegó de Contabilidad al fundirse las dos
@@ -370,6 +390,7 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   grillaKpis: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kpiCelda: { flexGrow: 1, flexBasis: '44%', gap: 2 },
+  kpiCeldaAncha: { flexBasis: '100%' },
   filaEntre: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   serieFila: { flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginTop: 8 },
   serieCol: { alignItems: 'center', gap: 4 },

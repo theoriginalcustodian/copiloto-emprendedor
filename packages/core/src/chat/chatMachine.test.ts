@@ -10,7 +10,7 @@ import {
   type EventoChat,
 } from './chatMachine';
 import type { ChatContenido } from '../api/types';
-import { mapearGate } from './hitl';
+import { mapearGate, sanitizarHitlRespondido } from './hitl';
 
 /**
  * Estos tests prueban el reducer AISLADO de red/timers/storage: cada evento es la traducción pura de
@@ -132,6 +132,136 @@ describe('una respuesta con `card` dispara el gate correcto', () => {
 
     const [mensaje] = estado.messages;
     expect(mapearGate(mensaje!)).toBeNull();
+  });
+});
+
+// H-A4-9 — una card HITL ya respondida no puede seguir siendo clickeable, NI SIQUIERA tras un
+// reload: el estado "ya respondida" tiene que vivir en el MENSAJE persistido (`hitlRespondido`),
+// no en un estado efímero de React/hook que se pierde al remontar.
+describe('HITL ya respondida (H-A4-9)', () => {
+  it('`mensaje_usuario_agregado` con `hitlRespondido` marca ESE mensaje, atómico con la burbuja nueva', () => {
+    const gateMsg: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: '¿Confirmás?',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:0:0' },
+        { label: 'Cancelar', value: 'cancel:0:0' },
+      ],
+    };
+    const respuesta: ChatMessage = { id: 'user-9', role: 'user', text: 'Cancelar' };
+
+    const estado = correr(
+      { ...estadoBase(), messages: [gateMsg] },
+      {
+        tipo: 'mensaje_usuario_agregado',
+        mensaje: respuesta,
+        hitlRespondido: { mensajeId: 'assistant-5', value: 'cancel:0:0', label: 'Cancelar' },
+      },
+    );
+
+    expect(estado.messages).toHaveLength(2);
+    expect(estado.messages[0]).toMatchObject({
+      id: 'assistant-5',
+      hitlRespondido: { value: 'cancel:0:0', label: 'Cancelar' },
+    });
+    expect(estado.messages[1]).toEqual(respuesta);
+    // `mapearGate` refleja `hitlRespondido` en `respondido` — la vista lo usa para deshabilitar.
+    expect(mapearGate(estado.messages[0]!)?.respondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+  });
+
+  it('`mensaje_usuario_agregado` SIN `hitlRespondido` (texto libre) no marca ningún mensaje previo', () => {
+    const gateMsg: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: '¿Confirmás?',
+      choices: [
+        { label: 'Confirmar', value: 'confirm:0:0' },
+        { label: 'Cancelar', value: 'cancel:0:0' },
+      ],
+    };
+    const libre: ChatMessage = { id: 'user-9', role: 'user', text: 'otra cosa' };
+
+    const estado = correr({ ...estadoBase(), messages: [gateMsg] }, { tipo: 'mensaje_usuario_agregado', mensaje: libre });
+
+    expect(estado.messages[0]!.hitlRespondido).toBeUndefined();
+    expect(mapearGate(estado.messages[0]!)?.respondido).toBeUndefined();
+  });
+
+  it('sanitizarHitlRespondido migra el token LEGACY (pre-#624, "cancel:0:0") al rehidratar', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'cancel:0:0' }, // token crudo LEGACY, no un label
+    ];
+
+    const migrado = sanitizarHitlRespondido(historial);
+
+    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'cancel:0:0', label: 'Cancelar' });
+    expect(migrado[1]).toEqual(historial[1]); // el mensaje de usuario no cambia
+  });
+
+  it('sanitizarHitlRespondido migra el formato NUEVO (post-#624, label "Confirmar") al rehidratar', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+      { id: 'user-9', role: 'user', text: 'Confirmar' }, // label BL-D4, sin `hitlRespondido` todavía
+    ];
+
+    const migrado = sanitizarHitlRespondido(historial);
+
+    expect(migrado[0]!.hitlRespondido).toEqual({ value: 'Confirmar', label: 'Confirmar' });
+  });
+
+  it('sin respuesta después, sigue activa — sanitizarHitlRespondido NO la marca', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+      },
+    ];
+
+    expect(sanitizarHitlRespondido(historial)[0]!.hitlRespondido).toBeUndefined();
+  });
+
+  it('sanitizarHitlRespondido es idempotente — no re-marca un mensaje ya migrado', () => {
+    const historial: ChatMessage[] = [
+      {
+        id: 'assistant-5',
+        role: 'assistant',
+        text: '¿Confirmás?',
+        choices: [
+          { label: 'Confirmar', value: 'confirm:0:0' },
+          { label: 'Cancelar', value: 'cancel:0:0' },
+        ],
+        hitlRespondido: { value: 'confirm:0:0', label: 'Confirmar' },
+      },
+      { id: 'user-9', role: 'user', text: 'algo distinto que no debería pisar nada' },
+    ];
+
+    expect(sanitizarHitlRespondido(historial)[0]!.hitlRespondido).toEqual({
+      value: 'confirm:0:0',
+      label: 'Confirmar',
+    });
   });
 });
 

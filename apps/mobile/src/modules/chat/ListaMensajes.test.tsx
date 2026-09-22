@@ -86,7 +86,9 @@ describe('ListaMensajes', () => {
 
     // BL-D4 — el label ('Cobrar') viaja en `opts.displayText`: es lo que la burbuja optimista del
     // usuario tiene que pintar, nunca el `value` técnico ('confirm') que espera el backend.
-    expect(onChoice).toHaveBeenCalledWith('confirm', { displayText: 'Cobrar' });
+    // H-A4-9 — `opts.hitlMessageId` (`message.id`) es lo que permite a `useChat().send` marcar ESTA
+    // card `hitlRespondido` para que quede deshabilitada aun después de un reload.
+    expect(onChoice).toHaveBeenCalledWith('confirm', { displayText: 'Cobrar', hitlMessageId: 'assistant-1' });
   });
 
   it('cancelar manda el value de cancelar', async () => {
@@ -105,7 +107,63 @@ describe('ListaMensajes', () => {
 
     await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-cancelar'));
 
-    expect(onChoice).toHaveBeenCalledWith('cancel', { displayText: 'Cancelar' });
+    expect(onChoice).toHaveBeenCalledWith('cancel', { displayText: 'Cancelar', hitlMessageId: 'assistant-1' });
+  });
+
+  // H-A4-9 — control positivo + negativo: una card HITL YA respondida (`hitlRespondido` en el
+  // mensaje) queda deshabilitada — `disabled` nativo de `Pressable` bloquea el toque, y
+  // `fireEvent.press` no dispara ningún callback. Sin el fix, la card seguiría activa y el press
+  // reenviaría confirm/cancel aunque el turno ya esté resuelto.
+  it('H-A4-9: card HITL con hitlRespondido queda deshabilitada — press no dispara onChoice', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrar $500 por MercadoPago. ¿Confirmás?',
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+        hitlRespondido: { value: 'cancel', label: 'Cancelar' },
+      },
+    ];
+    const { onChoice } = await envolver(mensajes);
+
+    const botonConfirmar = screen.getByTestId('tarjeta-confirmacion-confirmar');
+    const botonCancelar = screen.getByTestId('tarjeta-confirmacion-cancelar');
+
+    // `Pressable` NO reenvía `disabled`/`onPress` tal cual al host node: los consume y los traduce a
+    // `accessibilityState.disabled` (ver `Pressable.js` de RN) — por eso se lee ahí, no en `.props.disabled`.
+    // Y el control funcional (abajo) es la prueba real: aunque algo leyera mal el accessibilityState,
+    // el press no debe disparar `onChoice`.
+    expect(botonConfirmar.props.accessibilityState?.disabled).toBe(true);
+    expect(botonCancelar.props.accessibilityState?.disabled).toBe(true);
+
+    await fireEvent.press(botonConfirmar);
+    await fireEvent.press(botonCancelar);
+
+    expect(onChoice).not.toHaveBeenCalled();
+  });
+
+  it('sin hitlRespondido (control negativo): la card sigue activa, press dispara onChoice', async () => {
+    const mensajes: ChatMessage[] = [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Vas a cobrar $500 por MercadoPago. ¿Confirmás?',
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ];
+    const { onChoice } = await envolver(mensajes);
+
+    // control negativo del test H-A4-9 de arriba — misma lectura via `accessibilityState`.
+    expect(screen.getByTestId('tarjeta-confirmacion-confirmar').props.accessibilityState?.disabled).toBeFalsy();
+
+    await fireEvent.press(screen.getByTestId('tarjeta-confirmacion-confirmar'));
+    expect(onChoice).toHaveBeenCalledTimes(1);
   });
 
   it('BL-D3: gate irreversible (Instagram) EXIGE la advertencia, el badge y el servicio', async () => {
@@ -142,7 +200,28 @@ describe('ListaMensajes', () => {
     expect(screen.queryByTestId('tarjeta-confirmacion-irreversible')).toBeNull();
     expect(screen.getByText('REVISAR')).toBeTruthy();
     expect(screen.getByTestId('tarjeta-confirmacion-para')).toBeTruthy();
-    expect(screen.getByText('$15.000')).toBeTruthy();
+    expect(screen.getByTestId('tarjeta-confirmacion-monto')).toBeTruthy();
+  });
+
+  // H-A4-12 (auditoría 2026-09-22): el backend manda el monto CRUDO, sin separador de miles
+  // (`f"...por ${amount}..."`, ver `dispatcher_emprendedor.py`). Control positivo de esa forma real +
+  // control negativo explícito: con el código viejo (`amount: markdown.match(AMOUNT_RE)?.[1]` sin
+  // formatear) esto pintaba `$80000`, no `$80.000`.
+  it('H-A4-12: monto CRUDO del backend (sin separadores) se muestra formateado con miles', async () => {
+    await envolver([
+      {
+        id: 'assistant-monto-crudo',
+        role: 'assistant',
+        text: 'Voy a generar un link de cobro de MercadoPago por $80000 (Diseño de logo). ¿Confirmás?',
+        card: { kind: 'confirm', service: 'mercadopago', label: 'Mercado Pago' },
+        choices: [
+          { label: 'Cobrar', value: 'confirm' },
+          { label: 'Cancelar', value: 'cancel' },
+        ],
+      },
+    ]);
+    expect(screen.getByText('$80.000')).toBeTruthy();
+    expect(screen.queryByText('$80000')).toBeNull();
   });
 
   it('BL-D3: el gate pinta el LOGO real del servicio (por serviceKey)', async () => {

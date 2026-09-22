@@ -76,8 +76,11 @@ export function ChatScreen({
   // BL-D4: `label` es lo que el usuario vio y "eligió" (p. ej. "Cancelar") — se pinta en su burbuja
   // optimista. `value` es el token técnico que espera el backend (`cancel:<turn>:<step>`) y sigue
   // siendo lo que se manda en el POST; nunca se muestra.
+  // H-A4-9: `messageId` (3er arg, sólo desde `HitlCard`) marca esa card `hitlRespondido` en la MISMA
+  // actualización que agrega la burbuja — así queda deshabilitada aun después de un reload.
   const handleChoice = useCallback(
-    (value: string, label: string) => void send(value, { kind: 'callback', displayText: label }),
+    (value: string, label: string, messageId?: string) =>
+      void send(value, { kind: 'callback', displayText: label, hitlMessageId: messageId }),
     [send],
   );
   // BL-J7 (H-A3-7) — mismo patrón que `MicFuncion.tsx`: el instante del `pointerdown` (vía

@@ -9,6 +9,7 @@ import {
   hidratarEstado,
   motivoDeError,
   reducirChat,
+  sanitizarHitlRespondido,
   type ArchivoSubida,
   type ChatMessage,
   type ChatMessageKind,
@@ -129,6 +130,11 @@ export interface SendOptions {
    * tocó un botón con un label ("Confirmar"/"Cancelar", `gate.confirmLabel`/`gate.cancelLabel`). Sin
    * este campo, la burbuja pintaba el `value` técnico tal cual. Ausente: se usa `text` como siempre. */
   displayText?: string;
+  /** H-A4-9 — id del `ChatMessage` HITL que esta respuesta resuelve (`mensaje.id` de la card en
+   * `ListaMensajes`). Presente en el confirm/cancel del gate: además de mandar la respuesta, marca
+   * ESE mensaje `hitlRespondido` (atómico, ver `reducirChat`) para que quede deshabilitado aun
+   * después de un reload. Ausente en cualquier otro `send` (texto libre, voz, foto). */
+  hitlMessageId?: string;
 }
 
 export interface UseChatResult {
@@ -244,7 +250,9 @@ export function useChat(clienteId: string): UseChatResult {
       const sessionId = await leerOCrearSessionId(clienteId);
       const persistidos = await leerMensajesPersistidos(clienteId, sessionId);
       if (!montadoRef.current) return;
-      actualizarEstado(hidratarEstado(sessionId, persistidos));
+      // H-A4-9 — migra historial viejo (sin `hitlRespondido`, o con el token legacy pre-#624) ANTES
+      // de sembrar el reducer: ver el docstring de `sanitizarHitlRespondido`.
+      actualizarEstado(hidratarEstado(sessionId, sanitizarHitlRespondido(persistidos)));
       void poll();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `poll` se omite: recrearlo en cada
@@ -304,7 +312,15 @@ export function useChat(clienteId: string): UseChatResult {
       };
       // Dos eventos separados: agregar el mensaje NO toca `sendStatus` — ese cambio es explícito vía
       // `envio_iniciado`, así el mensaje aparece OPTIMISTA (antes de que la red responda).
-      let siguiente = reducirChat(actual, { tipo: 'mensaje_usuario_agregado', mensaje: mensajeUsuario });
+      // H-A4-9 — `opts.hitlMessageId` viaja como `hitlRespondido` del evento: el reducer marca la
+      // card HITL respondida en la MISMA transición que agrega esta burbuja.
+      let siguiente = reducirChat(actual, {
+        tipo: 'mensaje_usuario_agregado',
+        mensaje: mensajeUsuario,
+        hitlRespondido: opts?.hitlMessageId
+          ? { mensajeId: opts.hitlMessageId, value: trimmed, label: mensajeUsuario.text }
+          : undefined,
+      });
       siguiente = reducirChat(siguiente, { tipo: 'envio_iniciado' });
       persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
       actualizarEstado(siguiente);
