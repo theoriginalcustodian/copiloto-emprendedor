@@ -21,6 +21,7 @@
 - **🔀 Tres sesiones** por buzón · **identidad:** agentes durables (moat = Temporal). [[coordinacion-tres-sesiones-buzon]] · [[copiloto-emprendedor-roadmap]]
 
 ## 🔑 Órdenes del operador (reglas duras — se cumplen, no se evalúan)
+- [Móvil/device pasa al SPRINT SIGUIENTE; este cierra sin device](device-tests-al-final-telefono-limpio.md) — 2026-09-22; el teléfono lo prepara BACKEND; crones off al terminar la implementación.
 
 - [Autorización PERMANENTE de merges/deploys — y de toda decisión TÁCTICA](autorizacion-permanente-merges-y-deploys.md) — no re-preguntar nimiedades; sólo escala lo MAYOR.
 - [Autónomo = ejecutar, no esperar un "dale"](ejecutar-autonomo-no-esperar-si-dale.md) — disparador cumplido ⇒ se ejecuta. Costó ~400 min de ocio.
