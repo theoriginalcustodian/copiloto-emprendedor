@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { desconectarServicio, estadoDeConexion, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion, type ServicioCatalogo } from './catalogo';
+import {
+  desconectarServicio,
+  estadoDeConexion,
+  estadoDeServicio,
+  hayConexionCaida,
+  KEY_GOOGLE_CALENDAR,
+  listarCatalogo,
+  pedirLinkDeVinculacion,
+  type ServicioCatalogo,
+} from './catalogo';
 import { configurarApi } from './config';
 import type { HttpPort, PeticionHttp, RespuestaHttp } from './http';
 import type { AlmacenTokens } from './tokens';
@@ -240,5 +249,20 @@ describe('estado de conexión (K-09 / BL-J4)', () => {
     expect(hayConexionCaida([{ estado: 'conectado' }, { estado: 'nunca_conectado' }])).toBe(false);
     expect(hayConexionCaida([{ estado: 'conectado' }, { estado: 'caido' }])).toBe(true);
     expect(hayConexionCaida([])).toBe(false);
+  });
+});
+
+describe('estadoDeServicio (BL-W11: panel de agenda de Mi día por conexión)', () => {
+  it('devuelve el estado del servicio que matchea la key', () => {
+    const servicios = [
+      { key: 'gmail', estado: 'conectado' as const },
+      { key: KEY_GOOGLE_CALENDAR, estado: 'caido' as const },
+    ];
+    expect(estadoDeServicio(servicios, KEY_GOOGLE_CALENDAR)).toBe('caido');
+  });
+
+  it('key ausente del catálogo -> null, no se inventa un estado', () => {
+    expect(estadoDeServicio([{ key: 'gmail', estado: 'conectado' as const }], KEY_GOOGLE_CALENDAR)).toBeNull();
+    expect(estadoDeServicio([], KEY_GOOGLE_CALENDAR)).toBeNull();
   });
 });

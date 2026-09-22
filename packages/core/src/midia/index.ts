@@ -17,3 +17,4 @@ export {
 } from './filtroTablero';
 export type { CategoriaTarjeta } from './filtroTablero';
 export { AVISO_CAJA_INCOMPLETA, chipDeCaja, formatearFechaCorte, formatearVariacion } from './caja';
+export { fechaDeHoyMidia } from './fechaMiDia';

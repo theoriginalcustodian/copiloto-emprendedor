@@ -59,6 +59,13 @@ export function chipDeCaja(caja: {
   return partes.length > 0 ? partes.join(' · ') : null;
 }
 
-/** El aviso de K-09 bajo el saldo cuando `caja.incompleta`: dice qué falta, no un error genérico. */
+/**
+ * El aviso de K-09 bajo el saldo cuando `caja.incompleta`: dice qué falta, no un error genérico.
+ *
+ * 🔴 **Nombra Mercado Pago explícitamente (BL-W11 fila 4c).** `caja.incompleta` sólo se prende con
+ * la salud de MP (`inteligencia_queries.py:210` — la única conexión que este número depende), así
+ * que "una conexión" era vago sobre un hecho que el backend ya sabe con precisión: cuál. Nombrarla
+ * le dice al emprendedor DÓNDE ir a reconectar, no sólo que algo se cayó.
+ */
 export const AVISO_CAJA_INCOMPLETA =
-  'Se cayó una conexión: faltan los cobros de hoy, así que estos números pueden estar incompletos.';
+  'Se cayó la conexión con Mercado Pago: faltan los cobros de hoy, así que estos números pueden estar incompletos.';

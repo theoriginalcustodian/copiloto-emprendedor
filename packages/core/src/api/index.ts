@@ -93,7 +93,14 @@ export {
   type PermisoOnboarding,
   type PrimerInsight,
 } from './onboarding';
-export { desconectarServicio, hayConexionCaida, listarCatalogo, pedirLinkDeVinculacion } from './catalogo';
+export {
+  desconectarServicio,
+  estadoDeServicio,
+  hayConexionCaida,
+  KEY_GOOGLE_CALENDAR,
+  listarCatalogo,
+  pedirLinkDeVinculacion,
+} from './catalogo';
 export type { EstadoConexion, ServicioCatalogo } from './catalogo';
 
 // `/perfil-negocio` — qué vende el emprendedor y cómo quiere que le hable el copiloto. `perfil: null`

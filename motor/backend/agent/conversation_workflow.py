@@ -213,8 +213,11 @@ class ConversationWorkflow:
             #
             # Versionado porque el `except` agenda una activity que no está en el history de las
             # ejecuciones que ya venían corriendo (78 medidas contra el Temporal del VPS): en un
-            # replay, `patched` devuelve False y toman el camino de siempre; de su próximo turno
-            # NUEVO en adelante, el fix ya las cubre.
+            # replay, `patched` devuelve False y toman el camino de siempre. OJO (ADR-003, enmienda
+            # 2026-09-22, H-A3-3): `patched()` se memoiza POR RUN — ese `False` se pega para TODOS
+            # los turnos siguientes del mismo run, incluidos los nuevos, no sólo para el turno
+            # reproducido. El fix recién cubre a una sesión vieja desde su PRÓXIMO CONTINUE-AS-NEW,
+            # no desde su próximo turno. Ver `memoria/patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md`.
             if workflow.patched("un-turno-roto-no-mata-la-sesion"):
                 try:
                     done = await self._despachar_turno(config, msg, domain, channel, channel_ref,
@@ -585,8 +588,13 @@ class ConversationWorkflow:
                 # rompería el replay (NonDeterminismError). Retirar vía patch NUEVO que envuelve el viejo es
                 # replay-safe para AMBOS: al reproducir turnos VIEJOS (el marker `narra-guardrail-retirado`
                 # no existe en esa porción de la historia) devuelve False y el chequeo viejo se evalúa
-                # IDÉNTICO a como quedó grabado -- ningún turno pasado cambia. Para cualquier turno NUEVO
-                # (sesión vieja continuando o sesión nueva) devuelve True y el guardrail queda retirado.
+                # IDÉNTICO a como quedó grabado -- ningún turno pasado cambia. OJO (ADR-003, enmienda
+                # 2026-09-22, H-A3-3): `patched()` se memoiza POR RUN, no por turno -- si el replay de un
+                # turno viejo de ESTE run ya consultó el marker y recibió False, ese False se pega para
+                # todos los turnos siguientes del MISMO run, incluidos los nuevos, hasta su próximo
+                # continue-as-new. El guardrail queda retirado desde el próximo turno nuevo sólo en runs
+                # que todavía no lo consultaron en falso; en runs que sí, recién en el continue-as-new. Ver
+                # `memoria/patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md`.
                 # Evidencia de que retirarlo es seguro: `scripts/retest_narra_guardrail_caso2.py`, 10/10
                 # rondas honestas contra el LLM real Y el guardrail nunca disparó (verificado contando
                 # `call_llm_tools` en el history real de Temporal: 2/2, nunca 3) -- ver

@@ -16,6 +16,7 @@ vi.mock('@copiloto/core', async (importOriginal) => {
     leerCalendario: vi.fn(),
     leerPortada: vi.fn(),
     leerAgenda: vi.fn(),
+    listarCatalogo: vi.fn(),
   };
 });
 
@@ -23,10 +24,13 @@ import {
   CLAVE_DIAS_CALMA,
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  fechaDeHoyMidia,
+  KEY_GOOGLE_CALENDAR,
   leerAgenda,
   leerCalendario,
   leerPortada,
   leerTablero,
+  listarCatalogo,
 } from '@copiloto/core';
 
 import { MidiaScreen } from './MidiaScreen';
@@ -36,6 +40,7 @@ const cambiarEstadoMock = vi.mocked(cambiarEstadoTarjetaMiDia);
 const borrarMock = vi.mocked(borrarTarjetaMiDia);
 const leerCalendarioMock = vi.mocked(leerCalendario);
 const leerPortadaMock = vi.mocked(leerPortada);
+const listarCatalogoMock = vi.mocked(listarCatalogo);
 
 const TABLERO = {
   solapas: [
@@ -70,6 +75,7 @@ beforeEach(() => {
   borrarMock.mockReset().mockResolvedValue({ status: 'ok' });
   leerCalendarioMock.mockReset().mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
   leerPortadaMock.mockReset().mockResolvedValue({ status: 'no_disponible' });
+  listarCatalogoMock.mockReset().mockResolvedValue({ status: 'ok', servicios: [] });
   window.localStorage.clear();
 });
 
@@ -78,6 +84,12 @@ describe('MidiaScreen — el Kanban (wiring básico)', () => {
     render(<MidiaScreen />);
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
     expect(screen.getByText('El trabajo de la panadería te dejó $8.000 en contra.')).toBeInTheDocument();
+  });
+
+  it('BL-W11 fila 4a: el encabezado muestra la fecha de hoy, sin hora', async () => {
+    render(<MidiaScreen />);
+    await waitFor(() => expect(screen.getByTestId('midia-fecha')).toBeInTheDocument());
+    expect(screen.getByTestId('midia-fecha')).toHaveTextContent(fechaDeHoyMidia());
   });
 });
 
@@ -89,6 +101,29 @@ describe('MidiaScreen — panel de calendario (CAL1 §3, fuera del Kanban)', () 
     await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeInTheDocument());
     expect(screen.getByText(/Conectá Google Calendar/)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId('midia-tarjeta-t1')).toBeInTheDocument());
+  });
+
+  it('BL-W11 fila 4b: sin conexión pero el catálogo dice que ESTÁ caída — copy distinta, ofrece reconectar', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({
+      status: 'ok',
+      servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+    });
+    render(<MidiaScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-caida')).toBeInTheDocument());
+    expect(screen.getByText(/Se cayó la conexión con Google Calendar/)).toBeInTheDocument();
+    expect(screen.getByText(/Reconectala/)).toBeInTheDocument();
+    expect(screen.queryByTestId('midia-calendario-no-conectado')).not.toBeInTheDocument();
+  });
+
+  it('sin catálogo (fail-soft) degrada al texto de "nunca conectada", no se inventa una caída', async () => {
+    leerCalendarioMock.mockResolvedValue({ status: 'ok', calendario: { conectado: false, eventos: [] } });
+    listarCatalogoMock.mockResolvedValue({ status: 'no_disponible' });
+    render(<MidiaScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('midia-calendario-no-conectado')).toBeInTheDocument());
+    expect(screen.queryByTestId('midia-calendario-caida')).not.toBeInTheDocument();
   });
 
   it('conectado sin eventos hoy: lo dice, no una lista vacía silenciosa', async () => {

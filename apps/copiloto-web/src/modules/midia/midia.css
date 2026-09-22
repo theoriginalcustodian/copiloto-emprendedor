@@ -29,6 +29,13 @@
   margin: 0;
 }
 
+/* BL-W11 fila 4a: fecha de hoy bajo el título, sin hora. */
+.midia-screen__fecha {
+  font-size: 13px;
+  color: var(--label);
+  margin: 2px 0 0;
+}
+
 /* ---------- Solapas ---------- */
 .midia-screen__solapas {
   display: flex;

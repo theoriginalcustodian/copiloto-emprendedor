@@ -7,9 +7,11 @@
 #
 # Sesión = `UC_SESION` (backend|fe1|fe2|aud) si viene explícita; si no, se infiere del prefijo de la
 # rama (backend/…, frontend1/…, frontend2/…, aud/…) o del nombre del worktree (wt-backend, wt-fe1, wt-fe2, wt-audit*).
-# Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos (compatibilidad).
-# `copiloto-test-db` en el 55432 es el default LEGACY de `gate.sh` sin sesión: ninguna sesión lo usa
-# (backend pasó a 55435 el 2026-09-21 porque ese contenedor ocupa el 55432). Retirarlo: deuda de Cierre B.
+# Sin sesión reconocible NO se inventa una triada: quedan los defaults históricos, y `UC_TRIADA_PROPIA=0`.
+# gate.sh se NIEGA a correr el job backend con `UC_TRIADA_PROPIA=0` (2026-09-22): un worktree detached
+# (`_ctl/verify-<sha>`, el lugar natural para gatear el SHA mergeado) no tiene rama ni nombre que
+# delaten la sesión, caía callado al stage legacy, y tres gates de tres corridas se pisaron ahí.
+# `copiloto-test-db` en el 55432 queda sin consumidores desde gate.sh. Retirar el contenedor: deuda de Cierre B.
 # Un valor ya exportado por quien invoca (UC_TESTDB_NAME/PORT, UC_TEST_STAGE) siempre gana.
 _ROOT_SESION="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -54,6 +56,8 @@ if [ -n "$_sfx" ]; then
 fi
 export UC_SESION
 _etiqueta="${UC_SESION:-<sin sesión: defaults históricos>}"
+UC_TRIADA_PROPIA=0; [ -n "$_sfx" ] && UC_TRIADA_PROPIA=1
 # triada exportada explícita por quien invoca (sin sesión inferida): no es «sin sesión» (A1 §4.4)
-[ -z "$UC_SESION" ] && [ -n "${UC_TESTDB_NAME:-}" ] && [ -n "${UC_TESTDB_PORT:-}" ] && [ -n "${UC_TEST_STAGE:-}" ] && _etiqueta="<triada exportada explícita>"
+[ -z "$UC_SESION" ] && [ -n "${UC_TESTDB_NAME:-}" ] && [ -n "${UC_TESTDB_PORT:-}" ] && [ -n "${UC_TEST_STAGE:-}" ] && { _etiqueta="<triada exportada explícita>"; UC_TRIADA_PROPIA=1; }
+export UC_TRIADA_PROPIA
 echo "==> sesión del gate: $_etiqueta · db=${UC_TESTDB_NAME:-copiloto-test-db}:${UC_TESTDB_PORT:-55432} · stage=${UC_TEST_STAGE:-/opt/uc-copiloto-cliente-stage}"

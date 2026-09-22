@@ -9,8 +9,11 @@ import Animated, { type SharedValue } from 'react-native-reanimated';
 import {
   borrarTarjetaMiDia,
   cambiarEstadoTarjetaMiDia,
+  estadoDeServicio,
+  fechaDeHoyMidia,
   formatearImporte,
   horaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerCalendario,
   hayConexionCaida,
   leerPortada,
@@ -23,6 +26,7 @@ import {
   hayCategorias,
   tarjetasCriticas,
   type CategoriaTarjeta,
+  type EstadoConexion,
   type EventoCalendario,
   type IdSolapa,
   type Portada,
@@ -283,6 +287,10 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
   const [portada, setPortada] = useState<Portada | null>(null);
   // K-09: ≥ 1 servicio con la conexión caída → punto en el avatar. Apagado si el catálogo no responde.
   const [conexionCaida, setConexionCaida] = useState(false);
+  // BL-W11: la salud DE Google Calendar puntual (distinta de `conexionCaida`, que es "hay ≥1 caída
+  // en cualquier servicio") — desempata "nunca conectada" de "caída" en `PanelCalendario`, algo que
+  // `/mi-dia/calendario` no trae (ver `CalendarioMiDia`). `null` si el catálogo no responde.
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -335,7 +343,10 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
     try {
       const res = await listarCatalogo();
       if (!vivo.current) return;
-      if (res.status === 'ok') setConexionCaida(hayConexionCaida(res.servicios));
+      if (res.status === 'ok') {
+        setConexionCaida(hayConexionCaida(res.servicios));
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
     } catch {
       /* fail-soft: sin catálogo el punto queda como estaba. */
     }
@@ -388,7 +399,7 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
             sería peor que la ausencia. */}
         {portada != null && <PortadaNegocio portada={portada} />}
 
-        <PanelCalendario estado={estadoCalendario} calendario={calendario} />
+        <PanelCalendario estado={estadoCalendario} calendario={calendario} estadoConexion={estadoGoogleCalendar} />
 
         {estadoCalendario === 'ok' && onAgenda != null && (
           <Pressable
@@ -495,12 +506,18 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
       {/* El encabezado de la BASE: el wordmark a la izquierda, el avatar a la derecha. No lleva
           ícono de función ni "Volver" — no se entró a ningún lado, se está en el lugar. */}
       <View style={styles.encabezadoPortada}>
-        <Text
-          testID="midia-wordmark"
-          style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
-        >
-          Odobi
-        </Text>
+        <View>
+          <Text
+            testID="midia-wordmark"
+            style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.display, fontSize: tema.tipo.titulo }}
+          >
+            Odobi
+          </Text>
+          {/* BL-W11 fila 4a: fecha de hoy, sin hora — bajo el wordmark, no compite con él. */}
+          <Text testID="midia-fecha" style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            {fechaDeHoyMidia()}
+          </Text>
+        </View>
         <AvatarCuenta avisa={conexionCaida} onPress={onAjustes} />
       </View>
       {cuerpo}
@@ -513,8 +530,20 @@ export function PantallaMiDia({ comoPortada = false, onAjustes, onAgenda }: Pant
  * "información para mostrar", como fija el contrato (§0, decisión de arquitectura ya cerrada). Un
  * evento sin hora reconocible (`horaDeEvento` → `null`, ver `@copiloto/core`) igual se muestra, sólo
  * con el título — no se descarta ni se inventa una hora.
+ *
+ * BL-W11 fila 4b: `!calendario.conectado` agrupa "nunca conectada" y "caída" —
+ * `/mi-dia/calendario` no las distingue. `estadoConexion` (leído del catálogo, K-09) desempata; sin
+ * esa señal se degrada al texto de "nunca conectada", el menos alarmante ante la duda.
  */
-function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendario: CalendarioMiDia | null }) {
+function PanelCalendario({
+  estado,
+  calendario,
+  estadoConexion,
+}: {
+  estado: EstadoLista;
+  calendario: CalendarioMiDia | null;
+  estadoConexion: EstadoConexion | null;
+}) {
   const tema = useTema();
 
   // `cargando`/`no_disponible` no tienen su propio texto: un calendario que no está listo (o que
@@ -523,6 +552,16 @@ function PanelCalendario({ estado, calendario }: { estado: EstadoLista; calendar
   if (estado !== 'ok' || calendario == null) return null;
 
   if (!calendario.conectado) {
+    if (estadoConexion === 'caido') {
+      return (
+        <View style={styles.calendario} testID="midia-calendario-caida">
+          <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
+            Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
+            tus eventos de hoy.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.calendario} testID="midia-calendario-no-conectado">
         <Text style={{ color: tema.color.textoTenue, fontSize: tema.tipo.chico }}>
