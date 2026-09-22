@@ -13,9 +13,21 @@
 #   - si el pid del dueño ya no vive, o el candado pasó el TTL, se libera y se toma;
 #   - si otro gate vive, se espera con tope (GATE_LOCAL_WAIT) y se sale con rc=1 si no se libera.
 #
+# FIFO por ticket (2026-09-22, 2.ª vuelta): el `mkdir` solo NO reparte turnos. Al liberarse el
+# candado, todos los que esperaban competían y ganaba el que despertara antes de su `sleep`, así que
+# una sesión podía quedar postergada mientras las otras se turnaban: se saltearon 3 turnos en un día.
+# Ahora cada aspirante deja un ticket `<epoch-ns>-<pid>` en la cola y sólo intenta tomar el candado
+# cuando su ticket es el más viejo de los que siguen vivos; los tickets de procesos muertos se
+# purgan. Sin esto, el wrapper serializa (que era su objetivo) pero reparte por sorteo.
+#
+# Log propio: todo lo que imprime el gate va COMPLETO a `<git-common-dir>/ci-recibos/logs/`, que
+# viven fuera de los worktrees y sobreviven al scratchpad efímero de cada sesión. El rc que se
+# devuelve es el del gate, no el del `tee` (memoria: pipear un proceso largo borra la evidencia).
+#
 # Uso (desde TU worktree; la ruta absoluta sirve antes de que esto llegue a main):
 #   UC_SESION=fe1 bash /c/gfw-src/wt-plan2/scripts/gate-local-serial.sh [jobs de gate.sh...]
-# Overrides para test: GATE_LOCAL_LOCK · GATE_LOCAL_CMD · GATE_LOCAL_WAIT · GATE_LOCAL_TTL · GATE_LOCAL_POLL
+# Overrides para test: GATE_LOCAL_LOCK · GATE_LOCAL_CMD · GATE_LOCAL_WAIT · GATE_LOCAL_TTL ·
+#                      GATE_LOCAL_POLL · GATE_LOCAL_LOGDIR · GATE_LOCAL_NOFIFO=1 (desactiva la cola)
 set -uo pipefail
 
 LOCK="${GATE_LOCAL_LOCK:-$(git rev-parse --path-format=absolute --git-common-dir)/gate-local.lock}"
@@ -27,7 +39,43 @@ CMD="${GATE_LOCAL_CMD:-bash scripts/gate.sh}"
 yo="$$ $(basename "$PWD")"
 t0=$(date +%s)
 
-while ! mkdir "$LOCK" 2>/dev/null; do
+# ── Cola FIFO ────────────────────────────────────────────────────────────────
+# Carpeta HERMANA del candado: si viviera adentro, el `rm -rf "$LOCK"` del dueño al salir se
+# llevaría los tickets de todos los que esperan y volveríamos al sorteo.
+COLA="$LOCK.cola"
+TICKET=""
+if [ "${GATE_LOCAL_NOFIFO:-0}" != "1" ]; then
+  mkdir -p "$COLA" 2>/dev/null || true
+  # epoch en nanosegundos: 19 dígitos de ancho fijo, así el orden lexicográfico ES el cronológico.
+  TICKET="$COLA/$(date +%s%N)-$$"
+  echo "$yo" > "$TICKET"
+fi
+
+# Borra el ticket propio pase lo que pase; el candado sólo si sigue siendo nuestro (otro pudo
+# liberarlo por TTL y tomarlo).
+limpiar() {
+  [ -n "$TICKET" ] && rm -f "$TICKET"
+  [ "$(cat "$LOCK/owner" 2>/dev/null)" = "$yo" ] && rm -rf "$LOCK"
+  return 0
+}
+trap limpiar EXIT
+
+# ¿Soy el primero de la cola? Purga los tickets de procesos que ya no viven antes de decidir.
+mi_turno() {
+  [ -z "$TICKET" ] && return 0
+  local t pid primero=""
+  for t in "$COLA"/*; do
+    [ -e "$t" ] || continue
+    pid="${t##*-}"
+    if [ "$t" != "$TICKET" ] && ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$t"; continue                       # aspirante muerto: no bloquea la cola
+    fi
+    [ -z "$primero" ] && primero="$t"            # el glob ya viene ordenado
+  done
+  [ "$primero" = "$TICKET" ]
+}
+
+while ! { mi_turno && mkdir "$LOCK" 2>/dev/null; }; do
   dueno="$(cat "$LOCK/owner" 2>/dev/null || echo '')"
   pid="${dueno%% *}"
   edad=$(( $(date +%s) - $(stat -c %Y "$LOCK" 2>/dev/null || date +%s) ))
@@ -41,16 +89,33 @@ while ! mkdir "$LOCK" 2>/dev/null; do
     rm -rf "$LOCK"; continue
   fi
   if [ $(( $(date +%s) - t0 )) -ge "$ESPERA" ]; then
-    echo "==> ❌ otro gate local sigue corriendo tras ${ESPERA}s (dueño '$dueno'). No corro encima." >&2
+    echo "==> ❌ sigo sin turno tras ${ESPERA}s (dueño del candado: '$dueno'). No corro encima." >&2
     exit 1
   fi
-  echo "==> otro gate local corre (dueño '$dueno', ${edad}s) — espero ${POLL}s"
+  # Dos esperas distintas, y conviene poder distinguirlas en el log: el candado está tomado, o
+  # está libre pero hay tickets más viejos que el mío todavía vivos.
+  if [ -n "$dueno" ]; then
+    echo "==> otro gate local corre (dueño '$dueno', ${edad}s) — espero ${POLL}s"
+  else
+    echo "==> candado libre pero no es mi turno ($(ls "$COLA" 2>/dev/null | wc -l) en cola) — espero ${POLL}s"
+  fi
   sleep "$POLL"
 done
 
 echo "$yo" > "$LOCK/owner"
-# Sólo borra el candado si sigue siendo nuestro (otro pudo liberarlo por TTL y tomarlo).
-trap '[ "$(cat "$LOCK/owner" 2>/dev/null)" = "$yo" ] && rm -rf "$LOCK"' EXIT
+[ -n "$TICKET" ] && rm -f "$TICKET"   # ya tengo el candado: libero mi lugar en la cola
 echo "==> candado local tomado ($yo)"
 
-$CMD "$@"
+# ── Log completo, fuera de los worktrees ─────────────────────────────────────
+LOGDIR="${GATE_LOCAL_LOGDIR:-$(git rev-parse --path-format=absolute --git-common-dir)/ci-recibos/logs}"
+mkdir -p "$LOGDIR" 2>/dev/null || true
+LOG="$LOGDIR/gate-${UC_SESION:-sin-sesion}-$(git rev-parse --short HEAD 2>/dev/null || echo nohead)-$(date +%Y%m%dT%H%M%S).log"
+echo "==> log: $LOG"
+
+# `tee` para no perder la salida en pantalla, y PIPESTATUS para devolver el rc del GATE y no el del
+# tee: un gate rojo que sale 0 porque el pipe salió 0 es la peor clase de instrumento.
+set -o pipefail
+$CMD "$@" 2>&1 | tee "$LOG"
+rc=${PIPESTATUS[0]}
+echo "==> gate rc=$rc · log completo en $LOG"
+exit "$rc"
