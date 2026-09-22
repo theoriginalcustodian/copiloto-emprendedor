@@ -118,3 +118,15 @@ def test_connection_status_hereda_el_cache_de_list_connections():
     assert gw.connection_status("juan", "gmail") == "ACTIVE"
     assert gw.connection_status("juan", "gmail") == "ACTIVE"
     assert sdk.llamadas_list == 1
+
+
+def test_connection_status_normaliza_a_mayusculas_aunque_composio_devuelva_otra_caja():
+    """Revisión de pares (PR #626): el status crudo de Composio no tiene garantía de venir en
+    mayúsculas, y H-A3-2(b) (`tool_catalog.py`) compara el resultado de `connection_status` contra
+    el literal "ACTIVE" SIN normalizar -- si el SDK alguna vez devolviera "active" en minúsculas, un
+    `connection_status` que no normalizara haría que esa comparación falle SIEMPRE, cortando TODA
+    escritura con la card `requiere_conexion` aunque el servicio esté conectado (falso cierre total).
+    `connection_status` normaliza para que ningún llamador, presente o futuro, tenga que acordarse."""
+    sdk = _SdkFalso([_Cuenta("c1", "gmail", "active", "juan")])
+    gw = _gateway(sdk)
+    assert gw.connection_status("juan", "gmail") == "ACTIVE"
