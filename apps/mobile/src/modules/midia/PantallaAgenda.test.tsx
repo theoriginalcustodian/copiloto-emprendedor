@@ -8,18 +8,19 @@ jest.mock('expo-router', () => ({
 /** Partial mock: sólo la red. El parseo, el clamp de 14 días y la franja se prueban en core. */
 jest.mock('@copiloto/core', () => {
   const actual = jest.requireActual('@copiloto/core');
-  return { ...actual, leerAgenda: jest.fn() };
+  return { ...actual, leerAgenda: jest.fn(), listarCatalogo: jest.fn() };
 });
 
 import { router } from 'expo-router';
 
-import { TEXTO_NUEVO_EVENTO, leerAgenda, type AgendaMiDia } from '@copiloto/core';
+import { KEY_GOOGLE_CALENDAR, TEXTO_NUEVO_EVENTO, leerAgenda, listarCatalogo, type AgendaMiDia } from '@copiloto/core';
 
 import { tomarPendiente } from '../chat/mensajePendiente';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaAgenda } from './PantallaAgenda';
 
 const mockLeer = leerAgenda as jest.MockedFunction<typeof leerAgenda>;
+const mockListarCatalogo = listarCatalogo as jest.MockedFunction<typeof listarCatalogo>;
 
 const AGENDA: AgendaMiDia = {
   conectado: true,
@@ -54,6 +55,7 @@ describe('PantallaAgenda (BL-J13)', () => {
     jest.clearAllMocks();
     tomarPendiente();
     mockLeer.mockResolvedValue({ status: 'ok', agenda: AGENDA });
+    mockListarCatalogo.mockResolvedValue({ status: 'ok', servicios: [] });
   });
 
   it('pinta los 4 grupos con el título del backend y el estado vacío de cada uno', async () => {
@@ -82,6 +84,52 @@ describe('PantallaAgenda (BL-J13)', () => {
     await waitFor(() => expect(screen.getByTestId('agenda-no-conectado')).toHaveTextContent(/Conectá Google Calendar/));
     expect(screen.queryByTestId('agenda-grupo-hoy')).toBeNull();
     expect(screen.queryByText(/Nada por acá/)).toBeNull();
+  });
+
+  describe('BL-V23 (mobile): desempate "nunca conectada" vs "caída"', () => {
+    it('conectado:true → sigue pintando la agenda como hoy (no-regresión)', async () => {
+      mockListarCatalogo.mockResolvedValue({
+        status: 'ok',
+        servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+      });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-grupo-hoy')).toBeTruthy());
+      expect(screen.queryByTestId('agenda-no-conectado')).toBeNull();
+      expect(screen.queryByTestId('agenda-calendario-caida')).toBeNull();
+    });
+
+    it('catálogo dice `nunca_conectado` (o sin catálogo): CONTROL NEGATIVO — dice "Conectá", no "Reconectar"', async () => {
+      mockLeer.mockResolvedValue({ status: 'ok', agenda: { ...AGENDA, conectado: false } });
+      mockListarCatalogo.mockResolvedValue({
+        status: 'ok',
+        servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'nunca_conectado' } as never],
+      });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-no-conectado')).toHaveTextContent(/Conectá Google Calendar/));
+      expect(screen.queryByTestId('agenda-calendario-caida')).toBeNull();
+    });
+
+    it('catálogo dice `caido`: ofrece "Reconectar", no "Conectá"', async () => {
+      mockLeer.mockResolvedValue({ status: 'ok', agenda: { ...AGENDA, conectado: false } });
+      mockListarCatalogo.mockResolvedValue({
+        status: 'ok',
+        servicios: [{ key: KEY_GOOGLE_CALENDAR, estado: 'caido' } as never],
+      });
+      await montar();
+      await waitFor(() =>
+        expect(screen.getByTestId('agenda-calendario-caida')).toHaveTextContent(/Se cayó la conexión con Google Calendar/),
+      );
+      expect(screen.getByText(/Reconectala/)).toBeTruthy();
+      expect(screen.queryByTestId('agenda-no-conectado')).toBeNull();
+    });
+
+    it('sin catálogo (fail-soft): degrada a "Conectá", no inventa una caída', async () => {
+      mockLeer.mockResolvedValue({ status: 'ok', agenda: { ...AGENDA, conectado: false } });
+      mockListarCatalogo.mockResolvedValue({ status: 'no_disponible' });
+      await montar();
+      await waitFor(() => expect(screen.getByTestId('agenda-no-conectado')).toBeTruthy());
+      expect(screen.queryByTestId('agenda-calendario-caida')).toBeNull();
+    });
   });
 
   it('endpoint caído (o 400): avisa y deja reintentar, no rompe', async () => {

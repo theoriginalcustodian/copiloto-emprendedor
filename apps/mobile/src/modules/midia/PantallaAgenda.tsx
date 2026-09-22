@@ -4,10 +4,14 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import {
   TEXTO_NUEVO_EVENTO,
+  estadoDeServicio,
   franjaDeEvento,
+  KEY_GOOGLE_CALENDAR,
   leerAgenda,
+  listarCatalogo,
   rangoAgenda,
   type AgendaMiDia,
+  type EstadoConexion,
 } from '@copiloto/core';
 
 import { dejarPendiente } from '../chat/mensajePendiente';
@@ -24,6 +28,12 @@ import { useTema } from '../../theme/ThemeProvider';
  * 🔴 **Con Calendar sin conectar NUNCA se dice «no tenés eventos»**: es falso, no sabemos nada. Se
  * ofrece conectar. Un endpoint caído (incluido un 400) degrada a un aviso con «Reintentar».
  *
+ * 🔴 **BL-V23 (mobile):** `agenda.conectado === false` agrupa "nunca conectada" con "caída" —
+ * `leerAgenda` no las distingue. Igual que `PanelCalendario` en `PantallaMiDia.tsx`, se desempata
+ * leyendo `estadoConexion` del catálogo (`listarCatalogo` + `estadoDeServicio`, fail-soft): si dice
+ * `caido` se ofrece "Reconectar", si no (incluido sin catálogo) se degrada al texto de "nunca
+ * conectada", el menos alarmante ante la duda.
+ *
  * 🔴 **«Nuevo evento» no escribe en Calendar**: deja «Quiero agendar un evento» en el buzón del chat
  * principal (`dejarPendiente`, el puente de BL-W9) y cierra el glass — mismo mecanismo que «Cómo usar
  * la app». El alta la hace el agente con `calendar_book` y confirm-gate HITL (ADR-004 §3).
@@ -36,6 +46,9 @@ export function PantallaAgenda() {
   const tema = useTema();
   const [estado, setEstado] = useState<Estado>('cargando');
   const [agenda, setAgenda] = useState<AgendaMiDia | null>(null);
+  // BL-V23 (mobile): la salud DE Google Calendar puntual — desempata "nunca conectada" de "caída"
+  // más abajo, algo que `leerAgenda` no distingue (mismo patrón que `PantallaMiDia`/`PanelCalendario`).
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -50,13 +63,26 @@ export function PantallaAgenda() {
     setEstado('no_disponible');
   }, []);
 
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (!vivo.current) return;
+      if (res.status === 'ok') {
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo el punto queda como estaba. */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
+    void cargarSaludConexiones();
     return () => {
       vivo.current = false;
     };
-  }, [cargar]);
+  }, [cargar, cargarSaludConexiones]);
 
   function nuevoEvento() {
     dejarPendiente(TEXTO_NUEVO_EVENTO);
@@ -88,7 +114,14 @@ export function PantallaAgenda() {
           </View>
         )}
 
-        {estado === 'ok' && agenda != null && !agenda.conectado && (
+        {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar === 'caido' && (
+          <Text testID="agenda-calendario-caida" style={tenue}>
+            Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
+            tu agenda.
+          </Text>
+        )}
+
+        {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar !== 'caido' && (
           <Text testID="agenda-no-conectado" style={tenue}>
             Conectá Google Calendar en Ajustes → Apps para ver acá tu agenda.
           </Text>
