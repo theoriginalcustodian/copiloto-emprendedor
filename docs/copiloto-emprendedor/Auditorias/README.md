@@ -32,6 +32,7 @@ Detalle: `memoria/loop-auditoria-fable-analisis-opus-contratos-e2e.md`.
 | 2026-08-12 | `2026-08-12-pasada-3-pulido-y-eficiencia-HALLAZGOS.md` | **Hallazgos Pasada 3:** 0 P0 · 0 P1 · 3 P2 · 1 P3 — casi todo control positivo |
 | 2026-08-12 | `2026-08-12-G8-INFORME-DE-CIERRE-de-la-ronda.md` | **🏁 EMPEZAR POR ACÁ:** informe de cierre (G8) que consolida las 3 pasadas + el estado final de los 11 + los nuevos. Sustituye a leer los 19 archivos sueltos |
 | 2026-09-21 | `2026-09-21-auditoria-A1-ola-1.md` | **Auditoría A1 — Ola 1 de la beta Odobi @ `fc583792`:** gate y adversariales corridos, 21 filas medidas contra su DoD (7 NO CIERRA · 14 CIERRA_SALVO_DEVICE), 7 costuras OK y 5 clases de hallazgo (instrumento del gate, recibos ADR-001, DoD desactualizado, filas a medias, afirmaciones de PR) |
+| 2026-09-21 | `2026-09-21-auditoria-A2-ola-2.md` | **Auditoría A2 — Ola 2 de la beta Odobi @ `6b410923`:** gate 5/5, backend re-corrido por test (`-rA`), 5 costuras, 18 filas (12 `[PENDIENTE_DEVICE]` · 1 ASSUMED · 1 ✅ · 4 ❌) y 6 clases de hallazgo; K-07-B «gana `requiere_conexion`» demostrado roto en runtime. Trae la **fe de erratas de A1 §1.2** |
 
 ## Estado vigente
 
