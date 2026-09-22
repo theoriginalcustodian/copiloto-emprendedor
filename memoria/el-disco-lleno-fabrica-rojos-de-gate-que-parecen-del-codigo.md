@@ -48,8 +48,13 @@ fallo que *parece* señal («justo web y lint, que son los que toca este PR»).
    de atribuirlo al código.** Grepeá `ENOSPC|no space left|disk full|EMFILE|ENOMEM` con control
    positivo. El semáforo del rollup no distingue «falló» de «no pudo correr».
    Hermana: [[el-parte-del-proveedor-existe-y-no-lo-lei]].
-2. **Todo recibo de gate producido en una ventana de disco lleno queda `[INVALIDADO]`, verde o rojo.**
-   Un verde ahí tampoco vale: pudo pasar porque el job ni llegó a escribir.
+2. **Un rojo producido en una ventana de disco lleno queda `[INVALIDADO]` hasta releerlo.** Con el
+   **verde** el caso es distinto y conviene no exagerarlo: en esta corrida el gate de `wt-a4reg`
+   completó 5/5 en verde (583 s, `sucio:false`) durante la misma ventana, y `vitest`/`eslint` fallan
+   **ruidosamente** ante `ENOSPC` — no lo saltean en silencio. Así que el verde queda **en duda, no
+   anulado**: se confirma releyendo el log por `ENOSPC` y mirando que la duración y el número de
+   tests sean los de siempre. Decir «ningún recibo de esa ventana vale» suena riguroso y es una
+   afirmación más fuerte que la evidencia — el espejo exacto del error que esta entrada denuncia.
 3. **Medí la máquina antes de la hipótesis de código** cuando el fallo es transversal: `df -h` cuesta
    un segundo. La señal «varias sesiones fallan a la vez» casi nunca es código: es un recurso común.
 4. **La duplicación por worktree es deuda de disco con interés.** Cada `git worktree add` + `npm
