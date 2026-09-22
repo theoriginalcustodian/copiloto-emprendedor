@@ -402,6 +402,8 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
   - [ ] La respuesta de guardar trae «Mandalo por mail» / link al Doc; la de aprobar trae «¿Te armo la factura?» con chip.
   - [ ] Tocar «Armá la factura» abre la propuesta de factura con los ítems del presupuesto (HITL normal).
   - [ ] Decisión explícita en el PR sobre el botón Aprobar en pantalla (`presupuestos/DetallePresupuesto.tsx:28` dice que no hay).
+  - [ ] Si el mismo turno deja una card que bloquea (`requiere_conexion`) y la sugerencia, **gana la que bloquea**, en los dos órdenes de llegada; test de regresión en el motor con ambos órdenes y el replay intacto. *(Agregado tras A2: estaba en la forma de K-07-B §2 y no en su DoD, y quedó sin implementar.)*
+  - [ ] Adversarial a nivel **reply** (par `two_tenants` de `test_adversarial_multitenant.py`): la card de A nunca aparece en el `GET /reply` de B.
   - [ ] Device: ciclo presupuesto → aprobado → factura de punta a punta.
 
 ### BL-J10 · Teléfono y email del negocio
@@ -417,7 +419,7 @@ Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **Evidencia:** `packages/core/src/api/auth.ts` sólo expone login · web `AccountScreen.tsx:88-224` · mobile `PantallaCuenta.tsx:28-122`.
 - **DoD:**
   - [ ] Cambiar mail con confirmación al mail nuevo; cambiar contraseña con reautenticación.
-  - [ ] Test de integración contra la GoTrue dedicada (`copiloto-auth`); un token de A no cambia la cuenta de B.
+  - [ ] Test de integración contra una GoTrue de **TEST** (nunca `copiloto-auth` de prod), con cuentas efímeras creadas y destruidas por el propio test; un token de A no cambia la cuenta de B. *(Corregido tras A2: la línea anterior decía `copiloto-auth`, y el contrato K-12 §3 prohíbe prod. `MockTransport` no cumple esta línea.)*
   - [ ] Cuentas creadas con Google: la fila de contraseña se oculta o explica (decisión en el contrato).
   - [ ] Cerrar sesión queda en su propio grupo.
   - [ ] Probado con una cuenta descartable, **no** con `e2e-device` (no romper el usuario canónico).
@@ -488,7 +490,7 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 - **Plataforma:** web + mobile + repo · **Tamaño:** M · **Origen:** DA-4, §6.1.5 · **Depende de:** `DEC-5`
 - **Evidencia:** web `apps/copiloto-web/src/design-system/fonts.css:38-39,79` (`@font-face` a un `.woff2` que no existe) · 9 `.otf` en `docs/Imagen de marca/Neue_Einstellung/` (desde #264) + 1 en `Prototipo frontend/odobi-ui/assets/fonts/`. Mobile **ya la retiró** del bundle por la licencia de app impaga (`apps/mobile/app/_layout.tsx:83-87`; hoy Plus Jakarta Sans + Inter); web la sigue nombrando primero en `--font-display` con su propio TODO «antes de abrir la beta a testers externos» (`fonts.css:32-36`).
 - **DoD:**
-  - [ ] La fuente decidida cargada en ambas; ningún `@font-face` apunta a un archivo inexistente (test que resuelve cada `src`).
+  - [ ] La fuente decidida cargada en ambas; ningún `@font-face` apunta a un archivo inexistente (test que cruza cada `src` contra lo que baja `fetch-fonts.sh`: los `.otf` no se versionan, así que resolverlos en el test es imposible sin red. *Sustituto aceptado por planificación tras A2.*).
   - [ ] Si la licencia no permite redistribuir: archivos fuera del árbol **y** de la historia según lo que decida `DEC-5` (filter-repo = MAYOR).
   - [ ] Capturas de las dos pieles.
 
