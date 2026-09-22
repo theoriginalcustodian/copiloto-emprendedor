@@ -22,11 +22,26 @@
 # resultado por job; `detalle.<job>` = último {resultado, inicio, fin, log} + `historial` con TODAS las
 # corridas: un `failed` no desaparece bajo un `ok` posterior. `inicio`/`fin` en epoch (BL-B6: prueba de
 # que dos gates se solaparon). Cada job vuelca su salida a `.ci-recibos/logs/<sha>-<job>-<inicio>.log`.
-# Overrides para test: GATE_CI_DIR (dónde están los <job>.sh), GATE_RECIBO_DIR.
+# Copia durable del recibo en `<git-common-dir>/ci-recibos/` (sobrevive a `git worktree remove`); un
+# worktree nuevo del mismo SHA acumula desde ahí. `scripts/recibo-cubre.sh <sha>` busca en los dos.
+# Overrides para test: GATE_CI_DIR (dónde están los <job>.sh), GATE_RECIBO_DIR, GATE_RECIBO_COMUN.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHA="$(git -C "$ROOT" rev-parse HEAD)"
+# Lo que el gate prueba es un ÁRBOL, no un SHA: con squash-merge el SHA mergeado es otro, pero si la
+# rama estaba al día con main su árbol es idéntico — `scripts/recibo-cubre.sh` lo compara por árbol.
+# Y los jobs leen el DISCO, no git (sync-test-backend.sh tarea el worktree): un cambio sin commitear
+# o un archivo nuevo entra a la corrida sin estar en ningún árbol. `sucio` lo deja escrito en el recibo.
+ARBOL="$(git -C "$ROOT" rev-parse 'HEAD^{tree}')"
+SUCIO_AL_INICIO="$(git -C "$ROOT" status --porcelain | grep -v '^?? \.ci-recibos/' || true)"
 RECIBO_DIR="${GATE_RECIBO_DIR:-$ROOT/.ci-recibos}"
+# Copia durable en el git common dir: `.ci-recibos/` muere con el worktree, y los de verificación
+# (`_ctl/verify-<sha>`) se borran — el recibo 5/5 de 107fdf61 se perdió así (2026-09-22).
+# Una corrida con overrides es un TEST (jobs stub): su recibo jamás va a la copia real, o un stub
+# `exit 0` quedaría cubriendo un SHA que nadie probó.
+if [ -n "${GATE_RECIBO_COMUN:-}" ]; then RECIBO_COMUN="$GATE_RECIBO_COMUN"
+elif [ -n "${GATE_RECIBO_DIR:-}${GATE_CI_DIR:-}" ]; then RECIBO_COMUN="$RECIBO_DIR/comun"
+else RECIBO_COMUN="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)/ci-recibos"; fi
 CI_DIR="${GATE_CI_DIR:-$ROOT/scripts/ci}"
 
 JOBS_VALIDOS=(core web mobile lint backend)
@@ -101,17 +116,26 @@ fi
 DURACION=$(( $(date +%s) - INICIO_TOTAL ))
 
 # --- recibo, atado al SHA, escrito por ESTE script; ACUMULA con corridas previas del mismo SHA ------
+# `sucio` va POR JOB (en su entrada y en su historial): el recibo acumula corridas, y una corrida
+# sucia de ayer no puede quedar tapada por el `sucio:false` de la corrida limpia de hoy de otro job.
+SUCIO_AL_FIN="$(git -C "$ROOT" status --porcelain | grep -v '^?? \.ci-recibos/' || true)"
+SUCIO=false; [ -n "$SUCIO_AL_INICIO$SUCIO_AL_FIN" ] && SUCIO=true
+[ "$SUCIO" = true ] && echo "==> ⚠️  árbol SUCIO durante la corrida: estos jobs no cubren ningún SHA (recibo-cubre.sh los descarta)" >&2
 RECIBO="$RECIBO_DIR/$SHA.json"
-PREVIO='{}'; [ -f "$RECIBO" ] && PREVIO="$(cat "$RECIBO")"
+PREVIO='{}'
+if [ -f "$RECIBO" ]; then PREVIO="$(cat "$RECIBO")"
+elif [ -f "$RECIBO_COMUN/$SHA.json" ]; then PREVIO="$(cat "$RECIBO_COMUN/$SHA.json")"; fi  # mismo SHA, otro worktree
 NUEVO="$PREVIO"
 for job in "${!RESULTADO[@]}"; do
-  NUEVO="$(printf '%s' "$NUEVO" | jq -c --arg job "$job" --arg r "${RESULTADO[$job]}"     --argjson ini "${INICIO_JOB[$job]}" --argjson fin "${FIN_JOB[$job]}" --arg log "${LOG_JOB[$job]}" '
-      ($job) as $j | {resultado:$r, inicio:$ini, fin:$fin, log:$log} as $c
+  NUEVO="$(printf '%s' "$NUEVO" | jq -c --arg job "$job" --arg r "${RESULTADO[$job]}"     --argjson ini "${INICIO_JOB[$job]}" --argjson fin "${FIN_JOB[$job]}" --arg log "${LOG_JOB[$job]}" --argjson sucio "$SUCIO" '
+      ($job) as $j | {resultado:$r, inicio:$ini, fin:$fin, log:$log, sucio:$sucio} as $c
       | .jobs[$j] = $r
       | .detalle[$j] = ($c + {historial: (((.detalle[$j].historial) // []) + [$c])})')"
 done
-printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION"   '. + {sha:$sha, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur}' > "$RECIBO.tmp" && mv "$RECIBO.tmp" "$RECIBO"
-echo "==> recibo: $RECIBO"
+printf '%s' "$NUEVO" | jq -c --arg sha "$SHA" --arg arbol "$ARBOL" --arg ses "${UC_SESION:-}" --arg f "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   --arg host "$(hostname)" --argjson dur "$DURACION"   '. + {sha:$sha, arbol:$arbol, sesion:$ses, fecha:$f, host:$host, duracion_seg:$dur} | .sucio = ([.detalle[]? | .sucio == true] | any)' > "$RECIBO.tmp.$$" && mv "$RECIBO.tmp.$$" "$RECIBO"
+mkdir -p "$RECIBO_COMUN" && cp "$RECIBO" "$RECIBO_COMUN/$SHA.json.tmp.$$" && mv "$RECIBO_COMUN/$SHA.json.tmp.$$" "$RECIBO_COMUN/$SHA.json" \
+  || echo "==> ⚠️  no pude copiar el recibo a $RECIBO_COMUN: si borrás este worktree, se pierde" >&2
+echo "==> recibo: $RECIBO (copia durable: $RECIBO_COMUN/$SHA.json)"
 cat "$RECIBO"; echo
 
 # veredicto de ESTA corrida (no del acumulado): un job fallido de otra corrida no la contamina, pero
