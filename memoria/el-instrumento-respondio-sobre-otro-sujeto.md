@@ -1,6 +1,6 @@
 ---
 name: el-instrumento-respondio-sobre-otro-sujeto
-description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día, y una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar.
+description: Un chequeo que sale limpio porque miró el lugar equivocado es indistinguible de uno que pasó. Seis veces en un día, y una séptima con git log -S sin ref, que arranca en HEAD y fabrica un cero. El caso peor - git -C sobre un worktree roto responde por el checkout principal sin fallar. Y dos mas el 22/09: el gemelo del caso 1 sin arreglar 40 dias en el mismo archivo, y comparar el estado de HOY para explicar lo que un proceso leyo dias atras.
 metadata:
   type: feedback
 ---
@@ -100,3 +100,34 @@ Antes de creerle a un chequeo que sale limpio, **verificá que vio al sujeto**:
 Relacionadas: [[el-checkout-compartido-sirve-comandos-viejos]] (el contador de commits no mide el
 working tree) · [[instrumentos-que-confirman-en-vez-de-verificar]] ·
 [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]].
+
+---
+
+## Dos más el 2026-09-22 — y el primero es el GEMELO del caso 1
+
+**Caso 8 — el mismo `-f $BUZON/PLAN.md`, en el chequeo de al lado.** El caso 1 de la tabla se
+arregló: el bloque DEUDA de `vigilancia-check.sh` pasó a gatearse con «`BUZON_DIR` sin setear», y
+se le escribió el porqué al lado, **nombrando explícitamente a COLA** como el contraejemplo que
+todavía tenía la condición vieja. COLA siguió 40 días con el defecto idéntico, en el MISMO archivo,
+60 líneas más abajo. Desde cualquier worktree —26 vivos, el caso normal de este repo— el paso COLA
+no se medía y tampoco se decía: el ciclo cerraba «sin novedades». Y abajo, `cola-check.sh` remataba
+con `exit 0` sobre «No existe $PLAN» — el instrumento que existe para cazar una fábrica parada en
+silencio se paraba en silencio él mismo.
+
+Lo que esto agrega: **escribir el hallazgo no propaga el fix.** El comentario que nombraba al
+gemelo estuvo ahí todo el tiempo y no alcanzó. Al arreglar un instrumento, grepeá el patrón del
+**FIX** —no el del bug— en el mismo archivo y en sus vecinos: [[el-fix-ya-existe-en-otro-call-site]].
+
+**Caso 9 — comparar el estado de HOY para explicar lo que un proceso leyó DÍAS ATRÁS.** El bridge
+del grafo tenía un árbol configurado y el reconcile quiso borrar 420 objetos. Para decidir si el
+borrado era legítimo comparé los dos árboles candidatos: los dos sanos, a una hora uno del otro, 0
+archivos borrados entre ellos. Conclusión: «no hay divergencia que justifique 420 borrados».
+**Falsa** — y encima había refutado con ella una hipótesis correcta. Los árboles que miraba no eran
+los que el bridge leyó durante las ingestas: el `reflog` de uno tenía UNA entrada, de ese mismo día
+a las 21:15. Lo habían **creado una hora antes**; hasta entonces el path configurado no existía y
+el grafo estaba clavado en el pasado.
+
+`ls`, `rev-parse` y `git log` contestan por el estado ACTUAL. Cuando la pregunta es «¿qué leyó este
+proceso cuando escribió esto?», el sujeto es la **historia** del árbol, no el árbol: `git reflog`,
+el mtime del marcador, la bitácora. Un árbol sano hoy no declara nada sobre lo que fue ayer — y la
+trampa es que responde igual de rápido y de seguro.
