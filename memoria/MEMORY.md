@@ -70,6 +70,7 @@
 - [💾🎭 El DISCO LLENO fabrica rojos de gate que parecen del código](el-disco-lleno-fabrica-rojos-de-gate-que-parecen-del-codigo.md) — `ENOSPC`, no el PR. Varias sesiones fallando a la vez = recurso común.
 - [🫥 Un instrumento que NO MIRA nunca falla](instrumento-que-no-mira-nunca-falla.md) — preguntá cuántos elementos miró.
 - [🪞 El guard se satisface con su PROPIO comentario](el-guard-se-satisface-con-su-propio-comentario.md) — descartá comentarios al buscar.
+- [🧪🔌 Aislar un binario del PATH se hace por WHITELIST, no por dirname](aislar-un-binario-del-path-se-hace-por-whitelist-no-por-dirname.md) — `dirname(sh):dirname(cat)` asumía separación que el runner no tenía.
 - [🔢🎭 Contar un símbolo no dice en qué ROL aparece](contar-un-simbolo-no-dice-en-que-rol-aparece.md) — contá la FORMA, no el conteo.
 - [🔇🔨 Mudo ≠ parado — el silencio mide REPORTE, no TRABAJO](mudo-no-es-parado-el-silencio-mide-reporte-no-trabajo.md) — mirá toda la corrida.
 - [🗂️🕳️ Una sesión en WORKTREE es invisible al monitor](una-sesion-en-worktree-es-invisible-para-el-monitor-el-slug-sale-del-cwd.md) — el buzón manda.
@@ -183,7 +184,6 @@
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
 
 ## 📚 Referencia
-- [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
 - [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. Ídem [[playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono]].
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
