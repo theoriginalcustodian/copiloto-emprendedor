@@ -253,4 +253,10 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Cambiar el alcance deja mintiendo lo que otros ya escribieron](cambiar-el-alcance-deja-mintiendo-lo-que-otros-ya-escribieron.md) — el trabajo TERMINADO es donde el alcance viejo quedó congelado; barrelo en el mismo turno.
 - [Romper la capa interna de un control en profundidad sale VERDE](romper-la-capa-interna-de-un-control-en-profundidad-sale-verde.md) — rompé la capa MÁS EXTERNA; el verde de una interna es un hallazgo, no un test roto.
 
+- [El sujeto correcto al empezar dejó de serlo a mitad de la corrida](el-sujeto-correcto-al-empezar-dejo-de-serlo-a-mitad-de-la-corrida.md) — fijá el SHA y re-medilo AL ENTREGAR; verificar al abrir no protege nada.
+- [Un daño afirmado desde UN SOLO lado no es hallazgo](un-dano-afirmado-desde-un-solo-lado-no-es-hallazgo.md) — al buscar la defensa del acusado, preguntá por TODOS sus hermanos: ahí apareció el que no la tenía.
+
 > Estas entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
+- [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde" ≠ "fase validada".
+- [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
+- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.

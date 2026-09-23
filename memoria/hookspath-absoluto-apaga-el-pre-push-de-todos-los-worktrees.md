@@ -64,5 +64,12 @@ escribir que un agujero se cerró, preguntá qué caso exacto ejercitó la prueb
   `secret_scanning_push_protection` de GitHub. Medido por API el 2026-09-22: los dos **`disabled`**.
   Re-escalado al operador con el comando exacto (Telegram msg 25) porque el `PATCH` lo bloquea el
   clasificador de permisos — y **pedírselo a otra sesión sería lavado de permisos**, no una salida.
+  **Actualización del mismo día, post-reboot:** el operador los activó y la relectura por API da
+  `secret_scanning: enabled` y `push_protection: enabled`. **El agujero no cerró**: queda
+  `secret_scanning_non_provider_patterns: disabled`, o sea el servidor sólo intercepta el **catálogo
+  de proveedores** — un `.env`, un token interno o un connection string pasan. El operador decidió
+  encenderlo **al terminar el sprint**: sus falsos positivos frenarían pushes legítimos, y
+  [[el-guard-que-grita-en-el-caso-normal-se-desarma-solo]]. Dejar la cifra vieja sin fecha era
+  reincidir en [[una-cifra-en-un-comentario-es-un-cache-sin-invalidacion]].
 - Mientras tanto, un scanner que se saltea en silencio no es defensa: antes de commitear algo con
   forma de credencial, asumí que no hay red. Ver [[en-bypasspermissions-solo-sobrevive-permissions-deny]].

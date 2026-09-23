@@ -1,5 +1,7 @@
 # Auditoría A4 — Cierre A de la beta Odobi
 
+> ⏱️ **Esta es la foto del día de la auditoría, no el estado de hoy.** La columna «Qué cerraría» de la §6 está en condicional: se escribió antes de que existiera ningún fix. El **estado vigente de las 15 filas**, con la evidencia de cada cierre, está en [`2026-09-22-registro-A4-estado-vigente.md`](2026-09-22-registro-A4-estado-vigente.md). Este informe no se actualiza a propósito: su valor es no moverse.
+
 > **SHA medido:** `b76cb47b`. Es el deploy de prod: el manifiesto dice `origin_main_sha b76cb47b…` y el bundle web es `index-BXDl2uCf.js`, en todas las capturas. `main` avanzó a `643e695c` sólo con #640 (docs, memoria y scripts; 0 archivos de app). · **Fecha:** 2026-09-22 · **Sesión:** auditoría (tríada `aud`).
 > **Contrato:** A4 de planificación (§0.1: A los 12 hallazgos de A3 · B los arreglos del barrido BL-Q3 web · C una muestra propia de 8 pantallas · D el smoke contra prod · E el veredicto de los criterios 1–4 del §13).
 > **Regla de la sesión:** auditoría no abre trabajo. Cada ❌ y cada hallazgo de §6 es una fila para que planificación la asigne. La entrega al buzón es `dato_auditoria-a-planificacion_A4-cierre-A-veredicto`.
