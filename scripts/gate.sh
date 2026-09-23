@@ -109,6 +109,18 @@ if [ -z "${GATE_CI_DIR:-}${GATE_RECIBO_DIR:-}" ] && [ -f "$ROOT/.githooks/pre-pu
     echo "         El pre-push de secretos (#601) puede no estar corriendo en NINGÚN worktree" >&2
     echo "         (todos comparten esta config). Repo público: gate ROJO hasta que se arregle." >&2
     echo "         Fix: git config core.hooksPath .githooks" >&2
+  elif ! grep -vE '^[[:space:]]*#' "$ROOT/.githooks/pre-push" | grep -q 'secretos-check'; then
+    # El check de arriba (#649) verifica A DÓNDE apunta el hook; éste verifica QUÉ CONTIENE. Un árbol
+    # anterior a #601 tiene `.githooks/pre-push` y `core.hooksPath=.githooks` — las dos condiciones en
+    # verde — y un hook SIN escáner de secretos. Medido el 2026-09-22 (M-3, caso C): el push entró y el
+    # log muestra que el hook corrió entero; simplemente no tenía nada que escanear. 4 de 26 árboles
+    # vivos estaban así, el checkout compartido entre ellos. Los comentarios se descartan a propósito:
+    # si no, este guard se satisfaría con la mención de `secretos-check` en un comentario del hook.
+    HOOKSPATH_ROTO=1
+    echo "gate.sh: ❌ .githooks/pre-push existe pero NO invoca secretos-check.sh." >&2
+    echo "         core.hooksPath apunta bien; el problema es el contenido: este árbol es anterior a" >&2
+    echo "         #601, así que el hook corre y no escanea nada. Repo público: gate ROJO." >&2
+    echo "         Fix: traé este worktree a un main posterior a #601 (245fc3f2)." >&2
   fi
 fi
 

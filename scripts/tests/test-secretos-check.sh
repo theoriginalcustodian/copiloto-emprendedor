@@ -96,4 +96,31 @@ else
   mal "no pude extraer el fingerprint sin sha del hallazgo de control (--arbol)"
 fi
 
+# 8) config rota != hallazgo. gitleaks devuelve rc=1 por las DOS causas y el script las mapeaba al
+# mismo mensaje: el 2026-09-22 dos casos de un test adversarial se anunciaron «ABORTA - hallazgo»
+# habiendo abortado SIN ESCANEAR NADA (MSYS_NO_PATHCONV=1 heredada -> gitleaks no cargo .gitleaks.toml).
+# Fail-closed en ambos casos, pero el mensaje equivocado manda a buscar un secreto inexistente, y eso
+# es lo que empuja al --no-verify, que apaga el hook entero.
+T3="$(mktemp -d)"; trap 'rm -rf "$T" "$T2" "$T3"' EXIT
+cd "$T3" && git init -q . && git config user.email t@t && git config user.name t
+mkdir -p "$T3/scripts" && cp "$CHK" "$T3/scripts/secretos-check.sh"
+[ -d "$ROOT/.tools" ] && ln -s "$ROOT/.tools" "$T3/.tools" 2>/dev/null || true
+: > "$T3/.gitleaksignore"; echo "limpio" > ok.txt && git add . && git commit -qm base
+
+# control NEGATIVO primero: con la config BUENA y el arbol limpio, rc=0. Sin esto, el rc=2 de abajo
+# podria venir del fixture y no de la config rota.
+cp "$ROOT/.gitleaks.toml" "$T3/.gitleaks.toml"
+bash "$T3/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc_ok=$?
+
+printf 'esto ][ no es TOML valido
+' > "$T3/.gitleaks.toml"
+bash "$T3/scripts/secretos-check.sh" --arbol > "$T3/salida" 2>&1; rc_rota=$?
+
+if [ "$rc_ok" = 0 ] && [ "$rc_rota" = 2 ] && grep -q "NUNCA CORRI" "$T3/salida"; then
+  ok "config rota -> rc=2 y dice que no escaneo (no rc=1 'encontre secretos')"
+else
+  mal "config rota: rc_limpio=$rc_ok rc_rota=$rc_rota (esperado 0 y 2) msg=$(grep -c 'NUNCA CORRI' "$T3/salida")"
+fi
+cd "$T"
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
