@@ -141,3 +141,63 @@ Antes de creerle a un chequeo que sale limpio, **verificá que vio al sujeto**:
 Relacionadas: [[el-checkout-compartido-sirve-comandos-viejos]] (el contador de commits no mide el
 working tree) · [[instrumentos-que-confirman-en-vez-de-verificar]] ·
 [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]].
+
+## Dos más el 2026-09-22 — y el primero es el GEMELO del caso 1
+
+**Caso 8 — el mismo `-f $BUZON/PLAN.md`, en el chequeo de al lado.** El caso 1 de la tabla se
+arregló: el bloque DEUDA de `vigilancia-check.sh` pasó a gatearse con «`BUZON_DIR` sin setear», y
+se le escribió el porqué al lado, **nombrando explícitamente a COLA** como el contraejemplo que
+todavía tenía la condición vieja. COLA siguió 40 días con el defecto idéntico, en el MISMO archivo,
+60 líneas más abajo. Desde cualquier worktree —26 vivos, el caso normal de este repo— el paso COLA
+no se medía y tampoco se decía: el ciclo cerraba «sin novedades». Y abajo, `cola-check.sh` remataba
+con `exit 0` sobre «No existe $PLAN» — el instrumento que existe para cazar una fábrica parada en
+silencio se paraba en silencio él mismo.
+
+Lo que esto agrega: **escribir el hallazgo no propaga el fix.** El comentario que nombraba al
+gemelo estuvo ahí todo el tiempo y no alcanzó. Al arreglar un instrumento, grepeá el patrón del
+**FIX** —no el del bug— en el mismo archivo y en sus vecinos: [[el-fix-ya-existe-en-otro-call-site]].
+
+**Caso 9 — comparar el estado de HOY para explicar lo que un proceso leyó DÍAS ATRÁS.** El bridge
+del grafo tenía un árbol configurado y el reconcile quiso borrar 420 objetos. Para decidir si el
+borrado era legítimo comparé los dos árboles candidatos: los dos sanos, a una hora uno del otro, 0
+archivos borrados entre ellos. Conclusión: «no hay divergencia que justifique 420 borrados».
+**Falsa** — y encima había refutado con ella una hipótesis correcta. Los árboles que miraba no eran
+los que el bridge leyó durante las ingestas: el `reflog` de uno tenía UNA entrada, de ese mismo día
+a las 21:15. Lo habían **creado una hora antes**; hasta entonces el path configurado no existía y
+el grafo estaba clavado en el pasado.
+
+`ls`, `rev-parse` y `git log` contestan por el estado ACTUAL. Cuando la pregunta es «¿qué leyó este
+proceso cuando escribió esto?», el sujeto es la **historia** del árbol, no el árbol: `git reflog`,
+el mtime del marcador, la bitácora. Un árbol sano hoy no declara nada sobre lo que fue ayer — y la
+trampa es que responde igual de rápido y de seguro.
+
+## Caso 10, el mismo día — escribí «el hallazgo no propaga el fix» y no lo propagué
+
+El caso 8 (arriba) cierra diciendo: *al arreglar un instrumento, grepeá el patrón del **FIX** —no el
+del bug— en el mismo archivo y en sus vecinos*. Lo escribí, abrí el PR con `cola-check.sh` y
+`vigilancia-check.sh` arreglados… y **no grepeé**. Horas después corrí `scripts/archivar-buzon.sh`
+desde un worktree y salió:
+
+```
+No existe /c/gfw-src/wt-a4reg/coordinacion/abierto
+```
+
+Exit **0**. El tercer gemelo, con **las dos líneas idénticas**: `BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"`
+y `[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }`.
+
+Y este tenía consecuencia acumulada: el vigía lo invoca en su paso 4 desde cualquier worktree, así
+que **el janitor no corría nunca** y el ciclo reportaba el buzón ordenado. Al arreglarlo, la primera
+corrida archivó **11** — el mismo número que una medición independiente había contado como vencidos.
+La cuenta ya estaba ahí; lo que faltaba era un instrumento que la mirara.
+
+**Lo que esto agrega sobre el caso 8:** la lección escrita no se aplica sola **ni siquiera al autor,
+ni siquiera el mismo día, ni siquiera con el texto fresco**. Un hallazgo sobre un patrón no es un
+recordatorio: es una tarea de barrido, y termina cuando corriste el grep, no cuando redactaste el
+párrafo. El grep que faltaba era de una línea:
+
+```bash
+grep -rn 'exit 0; }' scripts/ | grep -i 'no existe'
+```
+
+Si el hallazgo no viene con su barrido **en el mismo commit**, el gemelo siguiente ya está esperando.
+Ver [[el-fix-ya-existe-en-otro-call-site]] y [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].

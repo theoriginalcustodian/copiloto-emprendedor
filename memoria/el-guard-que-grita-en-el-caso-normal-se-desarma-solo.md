@@ -48,3 +48,50 @@ Hermana de [[el-control-corrido-contra-la-base-equivocada]]: **el mismo error de
 mi control manual y después encontrado en un guard del repo. Cuando un modo de fallo aparece dos veces
 en un día en lugares sin relación, no es casualidad: es la herramienta invitando al error
 (`git diff` sin base explícita hereda la base del contexto).
+
+---
+
+## Agravante 2026-09-23 — el falso positivo que NO SE PUEDE aceptar, y el guard que acusa sin señalar
+
+La entrada de arriba dice que un guard que grita en el caso normal enseña a saltearlo. Este caso
+suma dos vueltas de tuerca, y la segunda es la que lo hizo inevitable.
+
+`secretos-check.sh --arbol` corre `gitleaks detect --no-git`, que escanea el filesystem crudo. Desde
+el checkout compartido empezó a dar `leaks found: 12`. Cuatro de esos doce eran **los mismos dos
+archivos ya aceptados** en `.gitleaksignore`, re-reportados con el prefijo
+`.claude/worktrees/agent-a74fba7c1503928d3/…` porque el harness deja checkouts de agente adentro del
+árbol.
+
+**El fingerprint de gitleaks incluye la ruta. El nombre del worktree es aleatorio por agente.** O sea:
+cada agente nuevo fabrica hallazgos con una huella que nunca existió antes y que nunca se va a
+repetir. **No hay excepción que se pueda pre-escribir.** El mecanismo legítimo para decir «esto ya lo
+miré y está bien» simplemente no alcanza a este caso.
+
+Eso es peor que ruido. Un falso positivo que se puede aceptar es una molestia con salida. Un falso
+positivo **incobrable** deja una sola salida: saltear el guard. Y se saltó — FE2 metió los 12
+fingerprints en un `.gitleaksignore` temporal para poder sacar su PR. Hizo lo razonable (verificó
+que su diff no aportaba nada, revirtió el archivo, lo reportó). El guard igual quedó desarmado por
+un rato, en un repo público, y eso es exactamente cómo se pierde: nadie lo apaga de una.
+
+**La segunda vuelta: el guard acusaba sin señalar.** Sin `-v`, gitleaks sólo dice `leaks found: 12`
+— no dice qué archivos. Quien corre el gate queda con una acusación y ningún lugar donde mirar, y
+desde ahí la única acción posible es genérica: silenciar todo. Con `-v` imprime File/Line/**Fingerprint**,
+y el fingerprint es justo lo que hace falta para aceptar una excepción *de a una* en vez de barrer
+las doce. Un guard que no señala no deja hacer lo correcto aunque quieras.
+
+**La pregunta que faltaba hacerle al guard, antes de que alguien lo saltee:**
+1. *Cuando esto grita de más, ¿se puede callar de forma legítima?* Si la excepción no se puede
+   escribir —huella que cambia sola, ruta con azar adentro, un id por corrida— el guard está
+   condenado, no molesto.
+2. *Cuando grita, ¿dice dónde?* Si sólo dice cuántos, la única acción disponible es la más gruesa.
+
+Verificado que `-v` no empeora el remedio: con `--redact` sale `Secret: REDACTED`. El primer control
+que escribí para eso **no servía** — el canario era un string inventado que ninguna regla matcheaba,
+gitleaks dijo «no leaks found» y el «0 ocurrencias en claro» no medía nada. Ver
+[[el-canario-el-control-positivo-de-lo-que-falla-callado]]: el control positivo va **primero**, si no
+el veredicto lo firma un instrumento que no vio nada.
+
+Y la exclusión que apaga el ruido se probó por sus dos mitades en la misma corrida, porque un
+allowlist de paths es un guard al revés —cada patrón es un lugar donde se deja de mirar—: el secreto
+dentro de `.claude/worktrees/` se calla **y** el mismo secreto en `docs/` sigue dando rc=1. Sin esa
+segunda mitad, un `.*` habría pasado el test igual.

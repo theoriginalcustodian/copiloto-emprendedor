@@ -84,6 +84,78 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
+# BITÁCORA (2026-09-22): este script no dejaba NINGÚN rastro en disco. Cuando el marcador no avanza
+# hay al menos cuatro causas con remedios distintos —contención con otro sync, drift de config, fallo
+# de verificación, control positivo rojo— y desde afuera las cuatro se ven igual: el marcador viejo.
+# El día que el bridge quedó apuntando a un árbol inexistente, discriminar «está trabajando» de
+# «falló» sólo se pudo porque el proceso seguía vivo y se lo agarró en el acto; media hora más tarde
+# habría sido indistinguible. Dos causas y un solo síntoma es el patrón que este repo ya paga caro.
+BITACORA="${UC_GRAPH_LOG:-$BRIDGE/.bridge/graph-sync.log}"
+MOTIVO="salida-inesperada"
+registrar_sync() {
+  local rc="${1:-$?}"
+  mkdir -p "$(dirname "$BITACORA")" 2>/dev/null || return "$rc"
+  printf '%s pid=%s rc=%s motivo=%s wt=%s marcador=%s origin_main=%s
+'     "$(date '+%Y-%m-%dT%H:%M:%S')" "$$" "$rc" "$MOTIVO" "$WT"     "$(cut -c1-12 "$BRIDGE/.bridge/last-synced-${REPO_NAME}.sha" 2>/dev/null || echo '-')"     "$(git -C "$REPO" rev-parse --short=12 origin/main 2>/dev/null || echo '-')"     >> "$BITACORA" 2>/dev/null || true
+  return "$rc"
+}
+trap registrar_sync EXIT
+
+# Guarda dura 4 (2026-09-22): ESTE script escribe `$WT` y el bridge LEE el `path` de su repos.toml.
+# Son dos configs independientes del MISMO árbol, y nada verificaba que coincidieran. El 2026-08-19 el
+# default de `WT` pasó de `copiloto-main` a `copiloto-grafo` y la del bridge no se movió: durante más
+# de un mes el bridge leyó un árbol que nadie actualizaba. No dio síntoma porque el hook sólo
+# sincroniza cuando `origin/main` ≠ marcador — el atajo tapaba el drift. Al mergear #663/#664
+# (20:56) el sync empezó a correr siempre y, como ese árbol ya no existía, abortó TODO push del repo
+# para las 5 sesiones a la vez.
+#
+# Lo que hace falta NO es que el árbol exista: es que sea EL MISMO. Recrear el que falta destraba el
+# push y deja al bridge ingiriendo un árbol congelado en silencio, con el marcador avanzando igual —
+# un error ruidoso convertido en un grafo desactualizado sin síntoma. Por eso acá se COMPARA, no se
+# crea: un instrumento que lee lo que nadie escribe no falla nunca, y eso es peor que fallar.
+BRIDGE_PATH="$(awk -v target="$REPO_NAME" '
+  /^\[\[repo\]\]/      { name=""; }
+  /^name[[:space:]]*=/ { v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/".*$/,"",v); name=v }
+  /^path[[:space:]]*=/ { v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/".*$/,"",v);
+                         if (name==target) { print v; exit } }
+' "$BRIDGE/config/repos.toml" 2>/dev/null || true)"
+# Normalizar antes de comparar. Del MISMO path conviven tres escrituras, y compararlas crudas
+# convierte este guard en un falso positivo — que es justamente lo que enseña a saltearlo:
+#   · mayúsculas: `C:` vs `c:`
+#   · separador:  `\` vs `/`
+#   · y la forma MSYS de Git-Bash (`/c/gfw-src/...`, `/tmp/...`), que es como sale
+#     UC_GRAPH_WORKTREE escrito desde una terminal, contra la forma Windows (`C:/gfw-src/...`)
+#     que usa repos.toml.
+# Medido el 2026-09-22 con el control negativo de este mismo guard: sin reconciliar la forma MSYS,
+# exportar la variable desde una terminal dispara un DRIFT falso apuntando al mismo árbol.
+#
+# La conversión la hace `cygpath`, no un sed a mano: MSYS no sólo antepone la letra de unidad, tiene
+# una TABLA DE MOUNTS — `/tmp` no es `t:/mp`, es `C:/Users/<user>/AppData/Local/Temp`. Un sed
+# `s#^/\([a-z]\)/#\1:/#` cubre `/c/...` y falla justo en esos casos, callado y pareciendo correcto.
+# Fuera de Git-Bash (CI en Linux) cygpath no existe y los paths ya son nativos: ahí el fallback basta.
+norm_path() {
+  local v="${1:-}"
+  if command -v cygpath >/dev/null 2>&1; then
+    v="$(cygpath -m "$v" 2>/dev/null || printf '%s' "$v")"
+  fi
+  printf '%s' "$v" | tr 'A-Z\\' 'a-z/' | sed -e 's#^/\([a-z]\)/#\1:/#' -e 's#/*$##'
+}
+if [ -z "$BRIDGE_PATH" ]; then
+  MOTIVO="repo-ausente-en-repos-toml"
+  echo "[graph-sync] ❌ no encuentro el repo '$REPO_NAME' en '$BRIDGE/config/repos.toml'." >&2
+  echo "[graph-sync]    Sin esa entrada el bridge no sabe qué ingerir. Abortando antes de sincronizar." >&2
+  exit 1
+fi
+if [ "$(norm_path "$BRIDGE_PATH")" != "$(norm_path "$WT")" ]; then
+  MOTIVO="drift-de-config"
+  echo "[graph-sync] ❌ DRIFT de configuración: este script y el bridge apuntan a árboles DISTINTOS." >&2
+  echo "[graph-sync]    graph-sync ESCRIBE : $WT" >&2
+  echo "[graph-sync]    el bridge LEE      : $BRIDGE_PATH   (config/repos.toml, repo '$REPO_NAME')" >&2
+  echo "[graph-sync]    El grafo ingeriría un árbol que este script nunca actualiza." >&2
+  echo "[graph-sync]    Fix: alinear repos.toml con éste, o exportar UC_GRAPH_WORKTREE=$BRIDGE_PATH" >&2
+  exit 1
+fi
+
 # Guarda dura 1: el worktree del grafo NO puede ser el checkout de trabajo. Si lo fuera, este script
 # haría `checkout --detach` sobre el árbol donde otra sesión está trabajando y le volaría el WIP.
 if [ "$(cd "$WT" 2>/dev/null && pwd || echo _)" = "$(cd "$REPO" && pwd)" ]; then
@@ -144,12 +216,18 @@ fi
 # el sync bloqueado para siempre.
 LOCKDIR="${UC_GRAPH_LOCK:-${WT}.sync.lock}"
 LOCK_MAX_AGE="${UC_GRAPH_LOCK_MAX_AGE:-600}"
+# Techo absoluto para el caso de PID reciclado (ver adquirir_lock): 4 h, muy por encima de
+# cualquier sync legítimo medido.
+LOCK_HARD_MAX="${UC_GRAPH_LOCK_HARD_MAX:-14400}"
 LOCK_OWNED=0
 OUT=""
 
 cleanup_exit() {
+  local rc=$?
   [ -n "$OUT" ] && rm -f "$OUT"
   [ "$LOCK_OWNED" = "1" ] && rm -rf "$LOCKDIR"
+  registrar_sync "$rc"   # este trap REEMPLAZA al de la bitácora: sin esta línea, todo lo que pasa
+                         # del lock para adelante -que es donde ocurren los fallos- no se registra.
 }
 trap cleanup_exit EXIT
 
@@ -159,11 +237,29 @@ adquirir_lock() {
     LOCK_OWNED=1
     return 0
   fi
-  local mtime edad
+  local mtime edad pid_lock
   mtime="$(stat -c %Y "$LOCKDIR" 2>/dev/null || echo 0)"
   edad=$(( $(date +%s) - mtime ))
-  if [ "$edad" -gt "$LOCK_MAX_AGE" ]; then
-    echo "[graph-sync] lock huérfano (${edad}s > ${LOCK_MAX_AGE}s, pid=$(cat "$LOCKDIR/pid" 2>/dev/null || echo '?')) — lo tomo." >&2
+  pid_lock="$(cat "$LOCKDIR/pid" 2>/dev/null || echo '')"
+
+  # El PID se guardaba desde siempre y NUNCA se leía: la única prueba de vida era la edad. Medido el
+  # 2026-09-22: el primer sync completo tras un mes de drift ingiere durante >17 min, o sea pasa
+  # holgado los 600s — con la regla vieja, la siguiente sesión le roba el lock a un sync VIVO y las
+  # dos reescriben el mismo árbol y el mismo checkpoint, que es exactamente lo que el lock evita.
+  # `$$` y `kill -0` viven en el MISMO espacio de nombres (MSYS), así que la prueba es válida acá;
+  # `Get-Process` NO sirve: mide PIDs de Windows y da "muerto" para cualquier proceso de Git-Bash.
+  if [ -n "$pid_lock" ] && kill -0 "$pid_lock" 2>/dev/null; then
+    if [ "$edad" -le "$LOCK_HARD_MAX" ]; then
+      return 1   # dueño VIVO: el lock vale por viejo que sea
+    fi
+    # Techo absoluto: un PID de MSYS puede reciclarse y hacer pasar por vivo a un dueño muerto. Sin
+    # este tope, ese caso trabaría el sync para siempre — el fallo que la edad sí sabía resolver.
+    echo "[graph-sync] lock con pid=$pid_lock vivo pero de hace ${edad}s (> ${LOCK_HARD_MAX}s): lo trato" >&2
+    echo "[graph-sync]    como PID reciclado y lo tomo." >&2
+  fi
+  # Dueño muerto (o sin pid anotado): no hay por qué esperar a que venza la edad.
+  if [ -z "$pid_lock" ] || ! kill -0 "$pid_lock" 2>/dev/null || [ "$edad" -gt "$LOCK_HARD_MAX" ]; then
+    echo "[graph-sync] lock huérfano (pid=${pid_lock:-?} no responde, ${edad}s) — lo tomo." >&2
     rm -rf "$LOCKDIR"
     if mkdir "$LOCKDIR" 2>/dev/null; then
       echo "$$" > "$LOCKDIR/pid" 2>/dev/null || true
@@ -178,10 +274,12 @@ if ! adquirir_lock; then
   # Salir 0, no 1: un lock ocupado NO es un fallo, es OTRO sync en curso que va a dejar el árbol
   # en origin/main igual. Si abortáramos con error acá volveríamos a bloquear pushes ajenos —
   # exactamente el problema que este repo viene arrastrando todo el día con el pre-push.
+  MOTIVO="contencion-otro-sync"
   echo "[graph-sync] otro sync está corriendo ($LOCKDIR ocupado, pid=$(cat "$LOCKDIR/pid" 2>/dev/null || echo '?')) — salgo sin tocar el árbol."
   exit 0
 fi
 
+MOTIVO="sync-en-curso"
 echo "[graph-sync] actualizando el árbol del grafo a origin/main…"
 git -C "$REPO" fetch origin main --quiet
 if [ ! -d "$WT" ]; then
@@ -287,4 +385,5 @@ fi
 # falta sincronizar en absoluto.
 mkdir -p "$BRIDGE/.bridge"
 printf '%s\n' "$SHA" > "$BRIDGE/.bridge/last-synced-copiloto-emprendedor.sha"
+MOTIVO="ok"
 echo "[graph-sync] ✅ grafo sincronizado y verificado desde origin/main @ ${SHA:0:12} (checkpoint: $BRIDGE/$CKPT)"

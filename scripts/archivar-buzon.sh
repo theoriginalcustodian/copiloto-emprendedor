@@ -39,7 +39,22 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
+# `coordinacion/` NO está versionada y existe UNA sola vez: en el checkout principal. Derivarla del
+# root de ESTE script hacía que el janitor no viera nada desde ningún worktree —26 vivos, el caso
+# NORMAL— y como abajo salía con exit 0, el vigía lo invocaba y creía haber ordenado el buzón.
+# Mismo defecto y mismo fix que cola-check.sh / vigilancia-check.sh (PR #676): el tercer gemelo.
+if [ -n "${BUZON_DIR:-}" ]; then
+  BUZON="$BUZON_DIR"                        # override de test (fixture): gana siempre
+elif [ -d "$REPO_ROOT/coordinacion" ]; then
+  BUZON="$REPO_ROOT/coordinacion"           # checkout principal: el camino de siempre
+else
+  _gitcommon="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_gitcommon" ]; then
+    BUZON="$(dirname "$_gitcommon")/coordinacion"
+  else
+    BUZON="$REPO_ROOT/coordinacion"         # sin git: que falle nombrando el path de siempre
+  fi
+fi
 ABIERTO="$BUZON/abierto"
 ENCURSO="$BUZON/en-curso"
 CERRADO="$BUZON/cerrado"
@@ -50,7 +65,15 @@ DRY_RUN=0
 # Obligaciones que jamás se auto-archivan (se cierran a mano al resolverse).
 OBLIGACIONES='^[0-9-]+_(contrato|pedido|urgente|hallazgo)_'
 
-[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }
+if [ ! -d "$ABIERTO" ]; then
+  # Fail-CLOSED a propósito: el exit 0 de antes reportaba «nada que archivar» sobre una carpeta que
+  # ni siquiera había mirado, y el buzón se apilaba sin que nadie lo notara (11 vencidos medidos el
+  # 2026-09-22). «No medí nada» NO es «está en orden».
+  echo "❌ JANITOR: no puedo ver mi sujeto — no existe $ABIERTO" >&2
+  echo "    'coordinacion/' no está versionada y existe UNA sola vez (el checkout principal)." >&2
+  echo "    Apuntala con: BUZON_DIR=<ruta>/coordinacion $0" >&2
+  exit 2
+fi
 
 moved=0; kept_obl=0; kept_fresh=0
 shopt -s nullglob

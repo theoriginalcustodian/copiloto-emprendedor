@@ -96,4 +96,79 @@ else
   mal "no pude extraer el fingerprint sin sha del hallazgo de control (--arbol)"
 fi
 
+# 8) config rota != hallazgo. gitleaks devuelve rc=1 por las DOS causas y el script las mapeaba al
+# mismo mensaje: el 2026-09-22 dos casos de un test adversarial se anunciaron «ABORTA - hallazgo»
+# habiendo abortado SIN ESCANEAR NADA (MSYS_NO_PATHCONV=1 heredada -> gitleaks no cargo .gitleaks.toml).
+# Fail-closed en ambos casos, pero el mensaje equivocado manda a buscar un secreto inexistente, y eso
+# es lo que empuja al --no-verify, que apaga el hook entero.
+T3="$(mktemp -d)"; trap 'rm -rf "$T" "$T2" "$T3"' EXIT
+cd "$T3" && git init -q . && git config user.email t@t && git config user.name t
+mkdir -p "$T3/scripts" && cp "$CHK" "$T3/scripts/secretos-check.sh"
+[ -d "$ROOT/.tools" ] && ln -s "$ROOT/.tools" "$T3/.tools" 2>/dev/null || true
+: > "$T3/.gitleaksignore"; echo "limpio" > ok.txt && git add . && git commit -qm base
+
+# control NEGATIVO primero: con la config BUENA y el arbol limpio, rc=0. Sin esto, el rc=2 de abajo
+# podria venir del fixture y no de la config rota.
+cp "$ROOT/.gitleaks.toml" "$T3/.gitleaks.toml"
+bash "$T3/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc_ok=$?
+
+printf 'esto ][ no es TOML valido
+' > "$T3/.gitleaks.toml"
+bash "$T3/scripts/secretos-check.sh" --arbol > "$T3/salida" 2>&1; rc_rota=$?
+
+if [ "$rc_ok" = 0 ] && [ "$rc_rota" = 2 ] && grep -q "NUNCA CORRI" "$T3/salida"; then
+  ok "config rota -> rc=2 y dice que no escaneo (no rc=1 'encontre secretos')"
+else
+  mal "config rota: rc_limpio=$rc_ok rc_rota=$rc_rota (esperado 0 y 2) msg=$(grep -c 'NUNCA CORRI' "$T3/salida")"
+fi
+cd "$T"
+
+
+# 9) la exclusión de `.claude/worktrees/` calla RUIDO, no contenido. Un allowlist de paths es un guard
+# al revés: cada patrón es un lugar donde el escáner deja de mirar, así que el caso que importa no es
+# "el ruido se fue" (un `.*` también lo lograría) sino "lo demás se SIGUE viendo". Por eso las dos
+# aserciones van sobre el MISMO árbol y en la misma corrida.
+# Raíz 2026-09-22: `--arbol` re-reportaba, con prefijo `.claude/worktrees/agent-<azar>/`, hallazgos ya
+# aceptados en .gitleaksignore para su ruta canónica. Como el nombre del worktree es aleatorio por
+# agente, ese ruido es INCOBRABLE: no hay fingerprint que lo cubra. Bloqueó el gate de todas las
+# sesiones y empujó a una a editar .gitleaksignore a mano para destrabar su PR -- el guard desarmándose.
+T4="$(mktemp -d)"; trap 'rm -rf "$T" "$T2" "$T3" "$T4"' EXIT
+(cd "$T4" && git init -q . && git config user.email t@t && git config user.name t
+ cp "$ROOT/.gitleaks.toml" .gitleaks.toml; : > .gitleaksignore
+ echo hola > README.md && git add . && git commit -qm base)
+mkdir -p "$T4/scripts" && cp "$CHK" "$T4/scripts/secretos-check.sh"
+[ -d "$ROOT/.tools" ] && ln -sf "$ROOT/.tools" "$T4/.tools" 2>/dev/null || true
+
+bash "$T4/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc_limpio=$?
+mkdir -p "$T4/.claude/worktrees/agent-a74fba7c1503928d3/docs"
+echo "wt=$(printf 'ghp_''%s' 'Cx5vB7nM9qW1eR3tY5uI7oP9aS1dF3gH5jK7')" > "$T4/.claude/worktrees/agent-a74fba7c1503928d3/docs/viejo.md"
+bash "$T4/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc_wt=$?
+
+# anti-`.*`: el MISMO secreto, fuera del patrón, tiene que seguir cazándose
+mkdir -p "$T4/docs" && cp "$T4/.claude/worktrees/agent-a74fba7c1503928d3/docs/viejo.md" "$T4/docs/normal.md"
+bash "$T4/scripts/secretos-check.sh" --arbol >/dev/null 2>&1; rc_normal=$?
+
+if [ "$rc_limpio" = 0 ] && [ "$rc_wt" = 0 ] && [ "$rc_normal" = 1 ]; then
+  ok "--arbol: worktrees de agente se excluyen, y el MISMO secreto fuera del patrón sigue cazándose"
+else
+  mal "--arbol/worktrees: limpio=$rc_limpio wt=$rc_wt normal=$rc_normal (esperado 0/0/1)"
+fi
+
+# 10) `-v` dice DÓNDE sin decir QUÉ. Sin él, gitleaks sólo informa «leaks found: N» y quien corre el
+# gate no sabe qué archivo mirar -- eso fue lo que empujó a editar .gitleaksignore a ciegas. Pero el
+# repo es PÚBLICO y esta salida queda en logs y recibos: si `-v` filtrara el valor, la mejora sería
+# un empeoramiento neto. El control positivo (el hallazgo aparece) va primero: sin él, "0 en claro"
+# lo cumple igual un escáner que no detectó nada.
+salida="$(bash "$T4/scripts/secretos-check.sh" --arbol 2>&1)"
+if echo "$salida" | grep -q "docs/normal.md"; then
+  ok "el reporte NOMBRA el archivo del hallazgo (no sólo cuántos)"
+  if echo "$salida" | grep -q "Cx5vB7nM9qW1eR3tY5uI7oP9aS1dF3gH5jK7"; then
+    mal "el reporte FILTRA el secreto en claro -- repo público: --redact no está surtiendo efecto"
+  else
+    ok "y no filtra el valor: sale redactado"
+  fi
+else
+  mal "el reporte no nombra el archivo del hallazgo: falta -v (o cambió el formato de gitleaks)"
+fi
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }
