@@ -54,3 +54,28 @@ sin fecha se lee como permanente.
 **con un cartel que dice 100%**, y nadie vuelve a mirar lo que ya figura cerrado. Hermana de
 [[instrumentos-que-confirman-en-vez-de-verificar]]: allá el instrumento confirmaba de más; acá el
 registro **sigue confirmando después de que dejó de ser cierto**.
+
+---
+
+## El vencimiento lo fija el ritmo de merges de lo que medís (2026-09-23)
+
+El caso de arriba tardó dos semanas en morderse. **Una matriz de conformidad de UI caducó en menos de
+tres horas.**
+
+`agenda` se publicó COHERENTE a las 14:28. A las 17:23 entró un PR que le agregó un cuarto estado a
+esa misma pantalla. La fila no estaba mal cuando se escribió: **envejeció**. Y `chat` corrió igual
+suerte — declarado sobre un commit, y otro que tocaba esa pantalla entró después.
+
+> **El período de validez de una medición no lo elige el que mide: lo fija el ritmo de cambio de lo
+> medido.** Si medís algo que se mergea varias veces por día, tu evidencia vence en horas.
+
+**Lo que hay que escribir en el DoD**, y esto es lo accionable: un DoD que pide «republicar la matriz»
+**tiene que decir contra qué SHA y qué la invalida**. Sin eso se convierte en un documento que
+envejece en silencio mientras todos lo citan como vigente.
+
+El detalle que lo prueba: en este caso el DoD **sí** estaba bien escrito —pedía «los veredictos nuevos
+**y la fecha del SHA medido**»— y fue **exactamente esa cláusula** la que destapó que las filas habían
+caducado. Sin ella, la matriz se habría citado como vigente sin que nada fallara.
+
+Origen: la sesión de auditoría. Ver [[el-veredicto-no-dice-cuantas-veces-lo-miraron]] ·
+[[medicion-de-estado-volatil-vence]].

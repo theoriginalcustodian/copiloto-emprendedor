@@ -63,3 +63,24 @@ auditoría lo detectó antes de aplicarlo.
 
 Ver [[el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno]] ·
 [[instrumento-que-no-mira-nunca-falla]] · [[el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio]]
+
+## Y cómo se hace barata la segunda pasada: donde hay literales, es grep
+
+Si la segunda pasada costara como la primera, nadie la haría. **Cuando el contrato se escribió en
+literales —textos exactos, no disposición— la segunda pasada es `grep`, no captura.**
+
+Medido: `ingresar` e `ingresar-error` tenían seis cambios declarados, cada uno con su texto exacto.
+Los seis se verificaron por grep **en minutos, sin abrir un navegador**, con control positivo (un
+literal que tiene que estar). Los 6 aplicados. Y de yapa: el único literal que había que **sacar**
+aparecía sólo dentro de un test que verifica que no esté — o sea, regresión ya cubierta, hallada sin
+buscarla.
+
+**Por qué es mejor instrumento, no sólo más barato:** el grep **no tiene timing, ni transición, ni
+viewport**. Es inmune justamente a los modos de falla que hacen dudar de las capturas —la foto a
+mitad de animación, el timeout corto, la pantalla equivocada. Cuesta dos órdenes de magnitud menos.
+
+**La captura queda para lo que el grep no puede ver:** disposición, jerarquía visual, si algo entra en
+pantalla. Elegir foto donde alcanzaba un grep es pagar de más **y** medir peor.
+
+Origen: la sesión de auditoría, que además bajó su propia tanda de 13 ids a 10 con este método — y los
+sacó **por verificados, no por baratos**, que es la distinción que hace válida la reducción.
