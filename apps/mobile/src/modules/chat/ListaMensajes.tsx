@@ -55,6 +55,23 @@ export interface ListaMensajesProps {
     value: string,
     opts?: { payload?: Record<string, unknown> | null; displayText?: string; hitlMessageId?: string },
   ) => void;
+  /** GUARDM parte 2 — `useChat().marcarCardResuelta`. Persiste el estado terminal de cualquiera de
+   * las 5 cards de propuesta (gasto/ingreso/cliente/factura/presupuesto) en el mensaje que la trae,
+   * para que sobreviva a un remount (scroll, recarga del hilo, reabrir la app) sin volver a mostrarse
+   * editable. `FilaMensaje` la ata al `mensaje.id` de cada card antes de pasarla — las cards mismas
+   * nunca conocen ningún id, sólo llaman `onResolver(patch)`.
+   * Opcional: `PantallaSoporte.tsx` (hilo de soporte) y algún test montan `ListaMensajes` sin ninguna
+   * de las 5 cards de propuesta posibles en sus mensajes — ahí no hay nada que persistir y no vale
+   * forzarles un callback que nunca van a necesitar. Sin ella, `FilaMensaje` usa un no-op. */
+  onResolverTarjeta?: (
+    mensajeId: string,
+    patch: Partial<
+      Pick<
+        ChatMessage,
+        'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+      >
+    >,
+  ) => void;
 }
 
 interface TarjetaConfirmacionProps {
@@ -189,6 +206,7 @@ function TarjetaConfirmacion({ gate, onConfirm, onCancel, disabled }: TarjetaCon
 interface FilaMensajeProps {
   mensaje: ChatMessage;
   onChoice: ListaMensajesProps['onChoice'];
+  onResolverTarjeta: ListaMensajesProps['onResolverTarjeta'];
 }
 
 /**
@@ -199,7 +217,11 @@ interface FilaMensajeProps {
  * cambia SI el `renderItem` no es una arrow function inline (si lo fuera, `React.memo` no podría
  * comparar props y memoizar no serviría de nada) — de ahí que viva afuera, no inline en el JSX.
  */
-const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensajeProps) {
+const FilaMensaje = memo(function FilaMensaje({
+  mensaje,
+  onChoice,
+  onResolverTarjeta = () => {},
+}: FilaMensajeProps) {
   if (mensaje.role === 'user') {
     return <Burbuja role="user" text={mensaje.text} porVoz={mensaje.porVoz} />;
   }
@@ -209,7 +231,16 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   // copiloto y ningún lugar donde corregir el monto.
   const propuesta = leerGastoPropuesto(mensaje.card);
   if (propuesta) {
-    return <TarjetaGastoPropuesto propuesta={propuesta} />;
+    // GUARDM parte 2 — `resuelto` viene de `mensaje.gastoResuelto` (mismo criterio que
+    // `gate.respondido` viniendo de `mensaje.hitlRespondido` más abajo); `onResolver` ya llega atado
+    // a ESTE `mensaje.id`, la card nunca conoce ningún id.
+    return (
+      <TarjetaGastoPropuesto
+        propuesta={propuesta}
+        resuelto={mensaje.gastoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { gastoResuelto: patch })}
+      />
+    );
   }
 
   // Mismo motivo que el gasto: `cliente_propuesto` no lleva `choices`, así que `mapearGate` la
@@ -219,27 +250,53 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
   if (clientePropuesto) {
     // 🔴 `mensaje.text` VIAJA a la card. La card reemplaza a la burbuja, así que lo que no se
     // pase acá no se ve nunca — y ahí es donde el backend explica un documento que no cierra.
-    return <TarjetaClientePropuesto propuesta={clientePropuesto} texto={mensaje.text} />;
+    return (
+      <TarjetaClientePropuesto
+        propuesta={clientePropuesto}
+        texto={mensaje.text}
+        resuelto={mensaje.clienteResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { clienteResuelto: patch })}
+      />
+    );
   }
 
   // `ingreso_propuesto` — CONFIRMADO en device (hito 8, PR#111/#112).
   const ingresoPropuesto = leerIngresoPropuesto(mensaje.card);
   if (ingresoPropuesto) {
-    return <TarjetaIngresoPropuesto propuesta={ingresoPropuesto} />;
+    return (
+      <TarjetaIngresoPropuesto
+        propuesta={ingresoPropuesto}
+        resuelto={mensaje.ingresoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { ingresoResuelto: patch })}
+      />
+    );
   }
 
   // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato §2.4 de
   // Presupuestos). Si backend nunca manda este `kind`, esta rama no dispara y cae a `Burbuja`.
   const presupuestoPropuesto = leerPresupuestoPropuesto(mensaje.card);
   if (presupuestoPropuesto) {
-    return <TarjetaPresupuestoPropuesto propuesta={presupuestoPropuesto} mensajeId={mensaje.id} />;
+    return (
+      <TarjetaPresupuestoPropuesto
+        propuesta={presupuestoPropuesto}
+        mensajeId={mensaje.id}
+        resuelto={mensaje.presupuestoResuelto}
+        onResolver={(patch) => onResolverTarjeta(mensaje.id, { presupuestoResuelto: patch })}
+      />
+    );
   }
 
   // 🔴 [ASSUMED_PENDING_VERIFY] sólo en el `kind` — `data` ya está confirmada (contrato de hito
   // 9 §2.1). Si backend nunca manda `factura_propuesta`, esta rama no dispara y cae a `Burbuja`.
   const facturaPropuesta = leerFacturaPropuesta(mensaje.card);
   if (facturaPropuesta) {
-    return <TarjetaFacturaPropuesta propuesta={facturaPropuesta} />;
+    return (
+      <TarjetaFacturaPropuesta
+        propuesta={facturaPropuesta}
+        resuelto={mensaje.facturaResuelta}
+        onResolver={() => onResolverTarjeta(mensaje.id, { facturaResuelta: true })}
+      />
+    );
   }
 
   // `payment_link` — el link que `mp_charge` ya generó (BL-F2). Sin `url` no hay card y cae a `Burbuja`.
@@ -312,7 +369,7 @@ const FilaMensaje = memo(function FilaMensaje({ mensaje, onChoice }: FilaMensaje
  * `scrollToEnd` interno, no un objeto envoltorio.
  */
 export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProps>(
-  function ListaMensajes({ messages, onChoice }, refExterno) {
+  function ListaMensajes({ messages, onChoice, onResolverTarjeta }, refExterno) {
     const tema = useTema();
     const listRef = useRef<FlatList<ChatMessage>>(null);
     useImperativeHandle(refExterno, () => listRef.current as FlatList<ChatMessage>, []);
@@ -342,10 +399,10 @@ export const ListaMensajes = forwardRef<FlatList<ChatMessage>, ListaMensajesProp
               {separadores.get(item.id)}
             </Text>
           )}
-          <FilaMensaje mensaje={item} onChoice={onChoice} />
+          <FilaMensaje mensaje={item} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
         </View>
       ),
-      [onChoice, separadores, tema],
+      [onChoice, onResolverTarjeta, separadores, tema],
     );
     const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 

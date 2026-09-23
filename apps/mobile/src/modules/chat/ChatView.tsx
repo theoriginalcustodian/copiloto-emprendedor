@@ -94,7 +94,9 @@ export function ChatView() {
   // efímera sin persistir, nunca a una clave compartida entre tenants. Ver el hallazgo del
   // 2026-07-23 en `memoria/`.
   const { me } = useSession();
-  const { estado, send, enviarAudio, enviarFoto, descartarConexion } = useChat(me?.cliente_id ?? '');
+  const { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta } = useChat(
+    me?.cliente_id ?? '',
+  );
   const voz = useVozComando();
   const foto = useCapturaFoto();
   const tecladoVisible = useTecladoVisible();
@@ -218,7 +220,12 @@ export function ChatView() {
         <IndicadorModoCeremonia />
       </View>
 
-      <ListaMensajes ref={scrollRef} messages={estado?.messages ?? []} onChoice={manejarEleccion} />
+      <ListaMensajes
+        ref={scrollRef}
+        messages={estado?.messages ?? []}
+        onChoice={manejarEleccion}
+        onResolverTarjeta={marcarCardResuelta}
+      />
 
       <SheetRequiereConexion
         conexion={conexion.pendiente?.conexion ?? null}

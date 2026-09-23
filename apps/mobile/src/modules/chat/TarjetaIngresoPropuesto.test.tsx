@@ -6,7 +6,7 @@ jest.mock('@copiloto/core', () => {
   return { ...actual, registrarIngreso: jest.fn() };
 });
 
-import { leerIngresoPropuesto, registrarIngreso, type Ingreso } from '@copiloto/core';
+import { leerIngresoPropuesto, registrarIngreso, type ChatMessage, type Ingreso } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaIngresoPropuesto } from './TarjetaIngresoPropuesto';
@@ -37,10 +37,13 @@ function ingresoGuardado(over: Partial<Ingreso> = {}): Ingreso {
   };
 }
 
-async function montar(p = propuesta()) {
+async function montar(
+  p = propuesta(),
+  opts: { resuelto?: ChatMessage['ingresoResuelto']; onResolver?: (patch: NonNullable<ChatMessage['ingresoResuelto']>) => void } = {},
+) {
   return render(
     <ThemeProvider>
-      <TarjetaIngresoPropuesto propuesta={p} />
+      <TarjetaIngresoPropuesto propuesta={p} resuelto={opts.resuelto} onResolver={opts.onResolver} />
     </ThemeProvider>,
   );
 }
@@ -143,5 +146,68 @@ describe('TarjetaIngresoPropuesto', () => {
 
     expect(screen.getByTestId('ingreso-propuesto-descartado')).toBeTruthy();
     expect(mockRegistrar).not.toHaveBeenCalled();
+  });
+
+  /**
+   * GUARDM parte 2 — guard cross-remount patrón B, mismo criterio que `TarjetaGastoPropuesto`. La
+   * persistencia ocurre en el instante equivalente a `onListo` (ver docstring de la card), no en
+   * `onGuardado` -- por eso el test de "al guardar" dispara TAMBIÉN "Así está bien" antes de verificar
+   * `onResolver`.
+   */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: guardado` renderiza DIRECTO el terminal, sin el formulario', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'guardado', monto: '85000.00' } });
+
+      expect(screen.getByTestId('ingreso-propuesto-guardado')).toHaveTextContent('Ingreso anotado: $85.000,00');
+      expect(screen.queryByTestId('ingreso-propuesto-formulario-monto-input')).toBeNull();
+      expect(mockRegistrar).not.toHaveBeenCalled();
+    });
+
+    it('control positivo: `resuelto: descartado` renderiza DIRECTO el terminal de descarte', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'descartado' } });
+
+      expect(screen.getByTestId('ingreso-propuesto-descartado')).toBeTruthy();
+      expect(screen.queryByTestId('ingreso-propuesto-formulario-monto-input')).toBeNull();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('ingreso-propuesto-formulario-monto-input')).toBeTruthy();
+      expect(screen.queryByTestId('ingreso-propuesto-guardado')).toBeNull();
+    });
+
+    it('al pasar por "Así está bien" (onListo), llama a `onResolver` con el monto guardado', async () => {
+      // El botón "Así está bien" (`-listo`) sólo existe en la rama `falta.length > 0` de
+      // `FormularioIngreso` (línea ~253) — con `falta: []` (el default de `ingresoGuardado()`) el
+      // formulario cae directo en "-completo" y jamás dispara `onListo`. Por eso ACÁ, a diferencia
+      // del resto del archivo, se fuerza un `falta` no vacío: es el único camino real hacia el botón
+      // que este test necesita ejercitar.
+      mockRegistrar.mockResolvedValue({ status: 'ok', ingreso: ingresoGuardado({ falta: ['medio'] }) });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-guardar'));
+      });
+      await waitFor(() => expect(screen.getByTestId('ingreso-propuesto-formulario-listo')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-listo'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', monto: '85000.00' });
+    });
+
+    it('al descartar, llama a `onResolver` con `descartado`', async () => {
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('ingreso-propuesto-formulario-cancelar'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
+    });
   });
 });

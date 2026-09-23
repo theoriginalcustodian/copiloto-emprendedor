@@ -296,6 +296,68 @@ describe('conexion_descartada (K-11 / BL-J8 Parte 1)', () => {
   });
 });
 
+describe('tarjeta_resuelta (GUARDM parte 2) — guard cross-remount genérico de las 5 cards de propuesta', () => {
+  it('marca SÓLO el campo del patch, en el mensaje indicado, sin tocar los demás', () => {
+    const otraCard: ChatMessage = { id: 'assistant-3', role: 'assistant', text: 'otra cosa' };
+    const conCard: ChatMessage = {
+      id: 'assistant-5',
+      role: 'assistant',
+      text: 'Entendí este gasto.',
+      card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+    };
+
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [otraCard, conCard] },
+      {
+        tipo: 'tarjeta_resuelta',
+        mensajeId: 'assistant-5',
+        patch: { gastoResuelto: { estado: 'guardado', monto: '50000.00' } },
+      },
+    );
+
+    expect(estado.messages[0]).toEqual(otraCard); // sin marca -- no era el mensaje resuelto
+    expect(estado.messages[1]).toMatchObject({
+      id: 'assistant-5',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+  });
+
+  it('es genérico entre las 5 cards -- cada campo del patch cae en su propia clave', () => {
+    const base: ChatMessage = { id: 'assistant-1', role: 'assistant', text: 'x' };
+
+    const conGasto = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'assistant-1', patch: { gastoResuelto: { estado: 'descartado' } } },
+    );
+    expect(conGasto.messages[0]).toMatchObject({ gastoResuelto: { estado: 'descartado' } });
+
+    const conFactura = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'assistant-1', patch: { facturaResuelta: true } },
+    );
+    expect(conFactura.messages[0]).toMatchObject({ facturaResuelta: true });
+
+    const conPresupuesto = reducirChat(
+      { ...estadoBase(), messages: [base] },
+      {
+        tipo: 'tarjeta_resuelta',
+        mensajeId: 'assistant-1',
+        patch: { presupuestoResuelto: { estado: 'guardado', numero: 7 } },
+      },
+    );
+    expect(conPresupuesto.messages[0]).toMatchObject({ presupuestoResuelto: { estado: 'guardado', numero: 7 } });
+  });
+
+  it('un `mensajeId` que no existe en `messages` es un no-op (no lanza, no muta nada)', () => {
+    const mensaje: ChatMessage = { id: 'assistant-5', role: 'assistant', text: 'x' };
+    const estado = reducirChat(
+      { ...estadoBase(), messages: [mensaje] },
+      { tipo: 'tarjeta_resuelta', mensajeId: 'no-existe', patch: { gastoResuelto: { estado: 'descartado' } } },
+    );
+    expect(estado.messages).toEqual([mensaje]);
+  });
+});
+
 describe('dedup — un `after_id` viejo no duplica mensajes', () => {
   it('un reply ya visto no se vuelve a agregar, aunque el servidor lo repita', () => {
     const conHistorial = correr(estadoBase(), {

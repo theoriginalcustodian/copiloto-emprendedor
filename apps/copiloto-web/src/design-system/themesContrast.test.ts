@@ -103,10 +103,11 @@ const TEXT_TOKENS = [
  * `--core` (acento como trazo de ícono / texto chico) queda A PROPÓSITO fuera de `TEXT_TOKENS`: no
  * es un token de texto puro, es dual — la mayoría de sus consumidores son gráficos decorativos
  * (trazo SVG 1.7px, outline, tinte `color-mix`, umbral WCAG 1.4.11 no-texto ≥3:1). Consumidores de
- * TEXTO real medidos (`.midia-screen__calendario-hora`, 13px/600, y 5 más en `ajustes.css` —
+ * TEXTO real medidos (`.midia-screen__calendario-hora`, 13px/600, y 4 más en `ajustes.css` —
  * `.como-hablarle-bloque__rotulo`, `.catalogo-seccion__fila-alternar`,
- * `.afip-setup-cuit-fijo__cambiar`, `.afip-setup-ambiente-chip__estado/__accion`, hallazgo de FE2
- * 2026-09-07 con arnés real, dos de ellos sobre `color-mix` y no `--bg` plano): los 6 dan
+ * `.afip-setup-ambiente-chip__estado/__accion`, hallazgo de FE2 2026-09-07 con arnés real
+ * (`.afip-setup-cuit-fijo__cambiar` retirado el 2026-09-22, BL-V27: el CUIT vinculado ya no tiene
+ * control para cambiarlo), dos de ellos sobre `color-mix` y no `--bg` plano): los 5 dan
  * EXACTAMENTE el mismo número (el tinte no mueve la aguja) — 4.38:1 en `claro`, 5.63:1 `oscuro`,
  * 6.30:1 `nocturno`. `claro` queda por debajo del 4.5:1 estricto de este gate, deuda heredada y
  * documentada en `themes.css` (cabecera del archivo): el valor viejo daba 4.04:1, así que no es una

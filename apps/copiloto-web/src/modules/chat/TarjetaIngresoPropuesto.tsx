@@ -4,7 +4,12 @@ import { formatearImporte, type FaltanteIngreso, type IngresoPropuesto } from '@
 
 import { Recibo, Surface } from '../../design-system';
 import { FormularioIngreso } from '../ingresos/FormularioIngreso';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_INGRESO,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -39,7 +44,7 @@ type Resolucion =
   | { estado: 'guardado'; monto: string | null; faltan: FaltanteIngreso[] }
   | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-ingreso-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_INGRESO;
 
 function leerResolucion(mensajeId: string): Resolucion | null {
   const parsed = leerResolucionCardCruda(claveResolucionCard(RESOLUCION_STORAGE_PREFIX, mensajeId));

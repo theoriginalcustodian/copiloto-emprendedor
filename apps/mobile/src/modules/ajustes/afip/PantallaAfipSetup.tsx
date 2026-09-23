@@ -545,13 +545,24 @@ export function PantallaAfipSetup() {
                   >
                     {formatearCuit(cuit)}
                   </Text>
-                  <Pressable
-                    testID="afip-perfil-cuit-cambiar"
-                    onPress={() => setCuitBloqueado(false)}
-                    style={pressableStyle(undefined)}
+                  {/* Vinculado con ARCA: el CUIT no se cambia desde la app (implicancia fiscal, no
+                      preferencia de UI -- decisión del operador, BL-V27). Por eso acá no hay ningún
+                      control: sólo el chip de estado, no interactivo, mismo patrón visual que
+                      `styles.chipAmbiente` pero sin acción. */}
+                  <View
+                    testID="afip-perfil-cuit-bloqueado"
+                    style={[styles.chipBloqueado, { borderColor: tema.color.borde }]}
                   >
-                    <Text style={{ color: tema.color.acentoTinta, fontFamily: tema.fuente.uiSemibold }}>Cambiar</Text>
-                  </Pressable>
+                    <Text
+                      style={{
+                        color: tema.color.textoTenue,
+                        fontSize: tema.tipo.chico,
+                        fontFamily: tema.fuente.uiSemibold,
+                      }}
+                    >
+                      Bloqueado
+                    </Text>
+                  </View>
                 </View>
               </View>
             ) : (
@@ -989,5 +1000,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 4,
     minWidth: 140,
+  },
+  chipBloqueado: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
   },
 });

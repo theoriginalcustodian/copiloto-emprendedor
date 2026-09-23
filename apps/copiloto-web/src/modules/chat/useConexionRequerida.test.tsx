@@ -45,17 +45,53 @@ describe('useConexionRequerida (K-11 / BL-J8)', () => {
     expect(sin.current.pendiente).toBeNull();
   });
 
-  it('«Ahora no» cierra el sheet sin navegar ni reenviar', () => {
+  // HOJA cambió el mecanismo: el hook ya NO guarda el descarte en memoria — delega en
+  // `marcarConexionDescartada` y depende de que el LLAMADOR actualice `messages` (así sobrevive a
+  // un reload). Por eso el cierre real se ejercita con un `rerender` que simula esa actualización,
+  // en vez de esperar que `pendiente` cambie solo tras llamar `ahoraNo`.
+  it('«Ahora no» delega el cierre (no navega ni reenvía) y el sheet cierra cuando el llamador actualiza `messages`', () => {
     const irA = vi.fn();
     const send = vi.fn();
-    const { result } = renderHook(() => useConexionRequerida(HILO, send, irA));
+    const marcarConexionDescartada = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ messages }) => useConexionRequerida(messages, send, irA, marcarConexionDescartada),
+      { initialProps: { messages: HILO } },
+    );
 
     act(() => result.current.ahoraNo());
 
-    expect(result.current.pendiente).toBeNull();
+    expect(marcarConexionDescartada).toHaveBeenCalledWith('a1');
     expect(irA).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
     expect(pedirLinkDeVinculacion).not.toHaveBeenCalled();
+
+    const hiloDescartado = [HILO[0]!, { ...HILO[1]!, conexionDescartada: true as const }];
+    rerender({ messages: hiloDescartado });
+    expect(result.current.pendiente).toBeNull();
+  });
+
+  describe('HOJA: «Ahora no» persiste en el MENSAJE, no en memoria', () => {
+    it('«Ahora no» delega en `marcarConexionDescartada` con el id del mensaje — no guarda estado propio', () => {
+      const marcarConexionDescartada = vi.fn();
+      const { result } = renderHook(() => useConexionRequerida(HILO, vi.fn(), vi.fn(), marcarConexionDescartada));
+
+      act(() => result.current.ahoraNo());
+
+      expect(marcarConexionDescartada).toHaveBeenCalledWith('a1');
+    });
+
+    it('un hilo con la card YA marcada `conexionDescartada` no abre el sheet (deriva de `messages`, no de un Set en memoria)', () => {
+      const hiloDescartado = [HILO[0]!, { ...HILO[1]!, conexionDescartada: true as const }];
+      const { result } = renderHook(() => useConexionRequerida(hiloDescartado, vi.fn(), vi.fn()));
+
+      expect(result.current.pendiente).toBeNull();
+    });
+
+    it('control negativo — el MISMO hilo sin la marca sigue abriendo el sheet', () => {
+      const { result } = renderHook(() => useConexionRequerida(HILO, vi.fn(), vi.fn()));
+
+      expect(result.current.pendiente?.conexion.service).toBe('gmail');
+    });
   });
 
   it('«Conectar» pide el link con el connect_path de la card y navega; guarda el pedido original', async () => {

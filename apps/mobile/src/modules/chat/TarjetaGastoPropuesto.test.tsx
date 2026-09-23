@@ -6,7 +6,7 @@ jest.mock('@copiloto/core', () => {
   return { ...actual, crearGasto: jest.fn() };
 });
 
-import { crearGasto, leerGastoPropuesto, type Gasto } from '@copiloto/core';
+import { crearGasto, leerGastoPropuesto, type ChatMessage, type Gasto } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaGastoPropuesto } from './TarjetaGastoPropuesto';
@@ -39,10 +39,13 @@ function gastoGuardado(monto: string): Gasto {
   };
 }
 
-async function montar(p = propuesta()) {
+async function montar(
+  p = propuesta(),
+  opts: { resuelto?: ChatMessage['gastoResuelto']; onResolver?: (patch: NonNullable<ChatMessage['gastoResuelto']>) => void } = {},
+) {
   return render(
     <ThemeProvider>
-      <TarjetaGastoPropuesto propuesta={p} />
+      <TarjetaGastoPropuesto propuesta={p} resuelto={opts.resuelto} onResolver={opts.onResolver} />
     </ThemeProvider>,
   );
 }
@@ -171,6 +174,59 @@ describe('TarjetaGastoPropuesto', () => {
       await montar(p);
 
       expect(screen.queryByTestId('gasto-monto-sugerido')).toBeNull();
+    });
+  });
+
+  /**
+   * GUARDM parte 2 — guard cross-remount patrón B: la marca vive en `mensaje.gastoResuelto`
+   * (`ListaMensajes.tsx` la deriva y la pasa como `resuelto`), no en un `useState` que se evapora al
+   * remontar. Control positivo/negativo mismo criterio que `hitlRespondido` en `ListaMensajes.test.tsx`.
+   */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: guardado` renderiza DIRECTO el terminal, sin el formulario', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'guardado', monto: '50000.00' } });
+
+      expect(screen.getByTestId('gasto-propuesto-guardado')).toHaveTextContent('Gasto anotado: $50.000,00');
+      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+      expect(mockCrear).not.toHaveBeenCalled();
+    });
+
+    it('control positivo: `resuelto: descartado` renderiza DIRECTO el terminal de descarte', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'descartado' } });
+
+      expect(screen.getByTestId('gasto-propuesto-descartado')).toBeTruthy();
+      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+      expect(screen.queryByTestId('gasto-propuesto-guardado')).toBeNull();
+    });
+
+    it('al guardar, llama a `onResolver` con el monto guardado -- lo que persiste el mensaje', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', gasto: gastoGuardado('50000.00') });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('gasto-guardar'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('gasto-propuesto-guardado')).toBeTruthy());
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', monto: '50000.00' });
+    });
+
+    it('al descartar, llama a `onResolver` con `descartado`', async () => {
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('gasto-cancelar'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
     });
   });
 });

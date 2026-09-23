@@ -5,6 +5,7 @@ import {
   AVISO_FACTURA_ANULACION,
   confirmarConTokenFresco,
   estadoFactura as consultarEstadoFactura,
+  type ChatMessage,
   type EstadoFacturaResp,
   type FacturaPropuesta,
 } from '@copiloto/core';
@@ -60,15 +61,27 @@ const INTERVALO_POLL_EMISION_MS = 1500;
 
 export interface TarjetaFacturaPropuestaProps {
   propuesta: FacturaPropuesta;
+  /** GUARDM parte 2 — `mensaje.facturaResuelta`. Ausente = sigue en `'mostrando'`. Emitir es un acto
+   * fiscal irreversible: no hay camino `'descartado'` — "Completar a mano" navega afuera sin marcar
+   * nada (ver docstring del módulo). */
+  resuelto?: ChatMessage['facturaResuelta'];
+  /** Persiste `facturaResuelta: true` en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`).
+   * Opcional: los tests que no verifican persistencia lo omiten sin romper nada. */
+  onResolver?: () => void;
   testID?: string;
 }
 
 export function TarjetaFacturaPropuesta({
   propuesta,
+  resuelto,
+  onResolver,
   testID = 'factura-propuesta',
 }: TarjetaFacturaPropuestaProps) {
   const tema = useTema();
-  const [estado, setEstado] = useState<Estado>('mostrando');
+  // GUARDM parte 2 — guard cross-remount: siembra sincrónicamente desde `resuelto` (patrón B), mismo
+  // mecanismo que las otras 3 cards de propuesta. Sin esto, un remount tras emitir volvía a mostrar
+  // el formulario de Emitir sobre una factura que YA se mandó.
+  const [estado, setEstado] = useState<Estado>(resuelto ? 'emitida' : 'mostrando');
   const [enviando, setEnviando] = useState(false);
   const [motivo, setMotivo] = useState<string | null>(null);
   const [comprobante, setComprobante] = useState<EstadoFacturaResp | null>(null);
@@ -79,6 +92,21 @@ export function TarjetaFacturaPropuesta({
     return () => {
       vivo.current = false;
     };
+  }, []);
+
+  // GUARDM parte 2 — al REHIDRATAR ya emitida, el comprobante (CAE/PDF) no viaja en el mensaje: vive
+  // en estado efímero, y se perdió con el remount. Se re-consulta UNA vez al montar para poblarlo; si
+  // no viene `terminado` todavía, el efecto de polling de abajo (gateado por `comprobante == null ||
+  // !comprobante.terminado`) sigue reintentando solo -- no hace falta duplicar ese loop acá.
+  useEffect(() => {
+    if (resuelto !== true) return;
+    void consultarEstadoFactura(propuesta.facturaId)
+      .then((res) => {
+        if (vivo.current) setComprobante(res);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo corre una vez, al montar ya
+    // resuelta; `resuelto`/`propuesta.facturaId` no cambian entre renders de la MISMA card.
   }, []);
 
   // Sigue leyendo hasta `terminado` — ver el docstring: el PDF llega después del CAE. Un fallo de red
@@ -129,6 +157,7 @@ export function TarjetaFacturaPropuesta({
       if (res.emitida) {
         setComprobante(res.estado ?? null);
         setEstado('emitida');
+        onResolver?.();
       } else {
         setMotivo(res.motivo ?? 'No pudimos emitirla. Revisá el resumen antes de reintentar.');
       }

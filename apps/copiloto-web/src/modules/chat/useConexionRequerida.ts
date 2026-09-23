@@ -4,9 +4,14 @@ import {
   conexionEstablecida,
   conexionPendienteDelHilo,
   pedirLinkDeVinculacion,
-  type ChatMessage,
+  type ChatMessage as CoreChatMessage,
   type ConexionPendiente,
 } from '@copiloto/core';
+
+/** El campo `conexionDescartada` vive en `useChat.ts` (web), no en el `ChatMessage` de
+ * `@copiloto/core` (que también usa mobile, fuera de este contrato) — misma duplicación ya
+ * documentada para `hitlRespondido`. */
+type ChatMessage = CoreChatMessage & { conexionDescartada?: true };
 
 /**
  * K-11 / BL-J8 — la lógica del sheet «conectá X» del chat (web).
@@ -19,6 +24,11 @@ import {
  *
  * El pedido original se guarda en `sessionStorage` antes de salir: el `location.assign` a Google
  * recarga la SPA al volver y el estado en memoria se pierde.
+ *
+ * **HOJA — «descartados» ya NO es memoria.** Antes: `useState<Set>` en este hook, perdido al
+ * recargar (la hoja volvía a abrirse y tapaba el composer). Ahora se DERIVA de `messages` (patrón
+ * B, como `hitlRespondido`): cada mensaje `conexionDescartada` cuenta, y `marcarConexionDescartada`
+ * (de `useChat`) escribe la marca en el mensaje persistido — sobrevive al reload sin storage nuevo.
  */
 const CLAVE = 'copiloto.conexion.pendiente';
 
@@ -59,8 +69,14 @@ export function useConexionRequerida(
   messages: readonly ChatMessage[],
   send: (texto: string, opts: { mode: string | null }) => unknown,
   irA: (url: string) => void = (url) => window.location.assign(url),
+  marcarConexionDescartada: (mensajeId: string) => void = () => {},
 ): ConexionRequerida {
-  const [descartados, setDescartados] = useState<ReadonlySet<string>>(new Set());
+  // HOJA: derivado de `messages` (persistido), no un `useState<Set>` en memoria — sobrevive a un
+  // reload porque `conexionDescartada` viaja DENTRO del mensaje ya guardado en localStorage.
+  const descartados = useMemo(
+    () => new Set(messages.filter((m) => m.conexionDescartada).map((m) => m.id)),
+    [messages],
+  );
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendiente = useMemo(() => conexionPendienteDelHilo(messages, descartados), [messages, descartados]);
@@ -87,8 +103,8 @@ export function useConexionRequerida(
 
   const ahoraNo = useCallback(() => {
     if (pendiente == null) return;
-    setDescartados((prev) => new Set(prev).add(pendiente.mensajeId));
-  }, [pendiente]);
+    marcarConexionDescartada(pendiente.mensajeId);
+  }, [pendiente, marcarConexionDescartada]);
 
   const conectar = useCallback(() => {
     if (pendiente == null || ocupado) return;
