@@ -61,8 +61,21 @@ Allá el instrumento decía **«no hay»** donde correspondía **«no veo»**. A
 correspondía **«no puedo medir esto»** — y es peor, porque el primero al menos suena a ausencia.
 
 Una matriz de conformidad visual comparaba capturas de la app contra el prototipo. Dos de sus filas,
-`splash` y `entrada`, son **animaciones en loop de 11 y 6 segundos**. Una captura toma **un frame
-cualquiera** del loop. Las dos figuran **COHERENTE**.
+`splash` y `entrada`, figuran **COHERENTE** — y la comparación **no podía hacerse**:
+
+| | app | prototipo |
+|---|---|---|
+| `splash` | 6840 ms, **termina en estado final estable** | `setInterval` de 11 s, **en loop, sin estado final** |
+| `entrada` | 1500 ms, termina | loop de 6 s |
+
+**El lado no medible era el PROTOTIPO, no la app** — dato que importa, porque cambia el remedio: no
+hay que renunciar a medir la app, hay que **congelar el proto** (puede alcanzar con
+`animation-play-state: paused`). Sólo es irreductible si el loop no pasa por ningún frame que
+corresponda al estado final de la app.
+
+⚠️ **Y el atajo que parece la solución no lo es:** *no* emular `prefers-reduced-motion` para
+congelarlas. La app colapsa su timeout a 0 ms y la pantalla **no llega a pintarse** — se captura un
+blanco y no se entiende por qué.
 
 **El instrumento no falló.** Sacó una foto perfectamente válida de algo que no se puede medir con una
 foto. No hay nada raro en el resultado: un verde así es **indistinguible** de un verde real, y no se

@@ -102,6 +102,7 @@
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
 - [🚦💥 El guard da LUZ VERDE justo en su caso de activación](el-guard-falla-abierto-en-su-caso-de-activacion.md) — leé la rama de ERROR.
 - [🪤 El guard que caza a su propio AUTOR](el-guard-que-caza-a-su-propio-autor.md) — si nunca te frenó, no sabés si funciona.
+- [📜 La exención cita una autoridad que NO la ampara](exencion-sin-autoridad.md) — 34 exentos citaban un acta de 2 casos. Contá.
 - [⚖️🗺️ Al JUEZ también hay que darle el plano](al-juez-tambien-hay-que-darle-el-plano.md) — sin contexto rechaza, y parece prudencia.
 - [🔨🎯 El forjador NO acierta siempre](el-forjador-no-acierta-siempre-el-gate-de-tests-no-es-opcional.md) — formato válido ≠ contenido correcto.
 - [🎰 El gate compartido PERDONA al que llega acompañado](el-gate-compartido-perdona-al-que-llega-acompanado.md) — pasó por contención, no por salud.
@@ -187,7 +188,6 @@
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
 
 ## 📚 Referencia
-- [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
 - [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash.
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 

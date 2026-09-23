@@ -261,3 +261,38 @@ encontró**, no sólo cuánto. Un `repr()` del match habría cerrado el caso en 
 
 **El barrido corregido, con control:** 311 archivos, **2** escapes reales (uno recién introducido por
 mí, otro preexistente), ambos convertidos a su carácter; re-escaneo posterior → **0**.
+
+---
+
+## La variante más barata de provocar esto: un typo en el NOMBRE de una variable de entorno (2026-09-23)
+
+Se le pidió al generador medir **3 ids** pasando `IDS=...`. La variable que el script lee es
+`SOLO_IDS`. **El script ignoró el filtro, cayó a su default y midió 7 — informando con total
+normalidad.**
+
+> **Un nombre de variable de entorno mal escrito no da error: da otra medición.** No hay «variable no
+> definida» que salte, porque el script tiene un default razonable. El valor que pasaste simplemente
+> no existe para nadie.
+
+Es el mismo daño que el `git -C` sobre un worktree roto: **el instrumento contestó bien, sobre otro
+sujeto**. Y acá es peor de detectar, porque la salida tiene la forma esperada — sólo el N delata, si
+alguien lo mira.
+
+**El remedio no es acordarse del nombre: es quitarle la oportunidad.** Que el script tome los sujetos
+como **argumento posicional**, que no se puede errar sin que falte, en vez de una variable de entorno
+opcional que se puede escribir mal en silencio.
+
+**Y el control que lo caza en cualquier corrida:** *comparar el N pedido contra el N medido*. Si
+pediste 3 y el informe dice 7, no hace falta saber por qué para saber que no sirve.
+
+## La precondición que se resuelve a mano se pierde justo cuando hay apuro
+
+El mismo incidente tuvo una segunda mitad: el generador necesitaba cuatro precondiciones
+(`NODE_PATH`, `CHROME_PATH`, entorno E2E, servidor del prototipo). **Las cuatro estaban documentadas
+en el header del script.** Se perdieron igual.
+
+> **Una precondición que hay que resolver a mano en cada corrida se pierde en la corrida en que uno
+> tiene apuro** — y esa es, sistemáticamente, la corrida que importa.
+
+Documentar no es un remedio: es una nota al que ya está apurado. El remedio fue un script que
+**resuelve** las cuatro y, si no puede, **aborta imprimiendo el comando exacto que falta**.
