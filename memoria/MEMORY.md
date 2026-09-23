@@ -25,7 +25,7 @@
 - ["Terminado" exige evidencia de DEVICE](una-orden-cerrada-exige-evidencia-de-device.md) — implementado + desplegado + probado en device + `cierre_`.
 - [Iterar en device NO compila nada](iterar-en-device-es-metro-local-con-dev-client-ya-instalado.md) — dev-client ya instalado + Metro local por USB.
 - [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.
-- [Para gestos RNGH, `adb input motionevent` — nunca `input tap`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — DOWN/MOVE/UP sí ejercita un Pan; `uiautomator dump` miente si hay animación.
+- [Para gestos RNGH, `adb input motionevent` — nunca `input tap`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — DOWN/MOVE/UP sí ejercita un Pan.
 - [Aplicar `/ejecutar-con-eficiencia` siempre](aplicar-siempre-ejecutar-con-eficiencia.md) — proactiva y constante, no sólo si se invoca.
 - [TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — la PC SOLO edita. Montar en local rechazado 2×.
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) — leerla ANTES de implementar. Portar adaptando, no copiar ciego.
@@ -87,15 +87,16 @@
 - [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) — C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
+- [🔁👁️ El veredicto no dice cuántas veces lo MIRARON](el-veredicto-no-dice-cuantas-veces-lo-miraron.md) — la 2ª pasada siempre encuentra algo: el riesgo está en lo menos mirado.
 - [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real.
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) — 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — medí contra la expectativa, no contra el reloj.
 - [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: `CronList` al reanudar.
-- [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
+- [✂️ Pipear por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la verde tapa a la roja. Background → archivo COMPLETO.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 - [📅📏 Un umbral calibrado es una FOTO del sistema de ese día](un-umbral-calibrado-es-una-foto-del-sistema-de-ese-dia.md) — el freno no es un monitor.
 - [🗂️🈳 Registro en CUATRO idiomas, lector de uno](el-registro-vivia-en-tres-idiomas-y-el-lector-hablaba-uno.md) — 71→4 en un día.
-- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en un worktree roto contesta por el checkout principal, sin fallar. El positivo va primero.
+- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en worktree roto contesta por el principal, sin fallar.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
@@ -187,7 +188,7 @@
 
 ## 📚 Referencia
 - [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
-- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. Ídem [[playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono]].
+- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash.
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 
 ## 🗄️ Historia
