@@ -55,3 +55,37 @@ describe('PantallaAfipSetup — 409 cuit_no_vinculado (K-02, BL-C6)', () => {
     expect(screen.queryByTestId('afip-perfil-cuit-fijo')).toBeNull();
   });
 });
+
+/**
+ * BL-V27, mitad web. Una vez que `guardarPerfil` confirma (200), el CUIT queda bloqueado -- y desde
+ * el 2026-09-22 el bloqueo NO tiene control para deshacerlo: es una decisión con implicancia fiscal,
+ * no una preferencia de UI. El chip "Bloqueado" reemplaza al botón "Cambiar" que existía antes.
+ */
+describe('PantallaAfipSetup — CUIT vinculado queda bloqueado sin salida (BL-V27)', () => {
+  const CUIT_OK = '20111222339';
+  const CUIT_OK_FORMATEADO = '20-11122233-9';
+
+  beforeEach(() => {
+    const http: HttpPort = {
+      async enviar(p) {
+        if (p.metodo === 'POST' && p.path === '/afip/perfil') {
+          return respuesta(200, { ok: true });
+        }
+        return respuesta(404, {}); // estado/perfil no disponibles fuera de este caso puntual.
+      },
+    };
+    configurarApi({ http, tokens });
+  });
+
+  it('tras guardar el perfil, muestra el chip "Bloqueado" y ningún control para cambiar el CUIT', async () => {
+    render(<PantallaAfipSetup />);
+
+    fireEvent.change(await screen.findByTestId('afip-perfil-cuit'), { target: { value: CUIT_OK } });
+    fireEvent.click(screen.getByTestId('afip-perfil-guardar'));
+
+    expect(await screen.findByTestId('afip-perfil-cuit-fijo')).toHaveTextContent(CUIT_OK_FORMATEADO);
+    expect(screen.getByTestId('afip-perfil-cuit-bloqueado')).toHaveTextContent('Bloqueado');
+    expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
+    expect(screen.queryByTestId('afip-perfil-cuit')).toBeNull();
+  });
+});

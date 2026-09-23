@@ -563,17 +563,6 @@
   color: var(--text);
 }
 
-.afip-setup-cuit-fijo__cambiar {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--core);
-  padding: 4px;
-}
-
 .afip-setup-ambiente-lista {
   display: flex;
   flex-wrap: wrap;

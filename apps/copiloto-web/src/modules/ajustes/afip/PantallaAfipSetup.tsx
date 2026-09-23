@@ -13,7 +13,7 @@ import {
   type EstadoAfip,
 } from '@copiloto/core';
 
-import { Button } from '../../../design-system';
+import { Badge, Button } from '../../../design-system';
 import '../ajustes.css';
 
 /**
@@ -372,14 +372,15 @@ export function PantallaAfipSetup() {
             <span className="afip-setup-cuit-fijo__valor" data-testid="afip-perfil-cuit-fijo">
               CUIT {formatearCuit(cuit)}
             </span>
-            <button
-              type="button"
-              className="afip-setup-cuit-fijo__cambiar"
-              data-testid="afip-perfil-cuit-cambiar"
-              onClick={() => setCuitBloqueado(false)}
-            >
-              Cambiar
-            </button>
+            {/* Vinculado con ARCA: el CUIT no se cambia desde la app (implicancia fiscal, no
+                preferencia de UI -- decisión del operador, BL-V27). Por eso acá no hay ningún
+                control, sólo el chip de estado.
+                `Badge` no reenvía props DOM extra (`data-testid` incluido) a su `<span>` -- envolver
+                acá, en vez de tocar el primitivo compartido del design-system (otras sesiones lo
+                usan en paralelo). */}
+            <span data-testid="afip-perfil-cuit-bloqueado">
+              <Badge variant="neutral">Bloqueado</Badge>
+            </span>
           </div>
         ) : (
           <label className="afip-setup-bloque__campo">
