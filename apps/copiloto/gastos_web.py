@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gasto_store import CATEGORIAS, LIMITES, ORIGENES
 from trabajo_store import TrabajoInexistente
@@ -40,6 +40,9 @@ class NuevoGastoBody(BaseModel):
     descripcion: str | None = None
     origen: str | None = None
     monto_sugerido: str | float | int | None = None
+    # IDEM: UUID estable por instancia de formulario. Opcional: un cliente viejo sin él se comporta
+    # exactamente como antes (mismo criterio que `NuevoPresupuestoBody.idem_key`).
+    idem_key: str | None = Field(default=None, max_length=100)
 
 
 def _monto_o_400(valor, campo: str = "monto") -> Decimal:
@@ -124,7 +127,12 @@ def create_gastos_app(*, require_tenant: Callable, gasto_store_factory: Callable
     async def crear_gasto(body: NuevoGastoBody,
                           cliente_id: str = Depends(require_tenant)) -> dict:
         datos = _validar(body)      # 400 ANTES de tocar la base: la sonda manda `{}` y no debe escribir
-        return await asyncio.to_thread(lambda: gasto_store_factory(cliente_id).crear(**datos))
+        gasto, repetido = await asyncio.to_thread(
+            lambda: gasto_store_factory(cliente_id).crear_idem(**datos, idem_key=body.idem_key))
+        # Se aplana en vez de anidar (a diferencia de `{"presupuesto": ...}`): `POST /gastos` ya
+        # devolvía el gasto SIN envolver, y envolverlo ahora rompería a todo consumidor existente.
+        # `repetido` viaja como campo extra — quien no lo lee, sigue viendo exactamente lo de antes.
+        return {**gasto, "repetido": repetido}
 
     @app.get("/gastos")
     async def listar_gastos(limit: int = LIMITE_LISTADO_DEFAULT,

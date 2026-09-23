@@ -39,7 +39,18 @@ class _FakeGastoStore:
         self._b.setdefault("_seq", 0)
 
     def crear(self, *, monto, fecha=None, categoria="otros", proveedor="", medio_pago="",
-              descripcion="", origen="manual", monto_sugerido=None) -> dict:
+              descripcion="", origen="manual", monto_sugerido=None, idem_key=None) -> dict:
+        return self.crear_idem(monto=monto, fecha=fecha, categoria=categoria, proveedor=proveedor,
+                               medio_pago=medio_pago, descripcion=descripcion, origen=origen,
+                               monto_sugerido=monto_sugerido, idem_key=idem_key)[0]
+
+    def crear_idem(self, *, monto, fecha=None, categoria="otros", proveedor="", medio_pago="",
+                   descripcion="", origen="manual", monto_sugerido=None, idem_key=None):
+        mios = self._b.setdefault(self._cid, {})
+        if idem_key:
+            previo = next((g for g in mios.values() if g.get("_idem_key") == idem_key), None)
+            if previo:
+                return previo, True
         self._b["_seq"] += 1
         g = {"id": self._b["_seq"], "monto": f"{Decimal(str(monto)):.2f}",
              "fecha": (fecha or datetime.date(2026, 7, 21)).isoformat(), "categoria": categoria,
@@ -47,8 +58,10 @@ class _FakeGastoStore:
              "descripcion": descripcion or None, "origen": origen,
              "monto_sugerido": f"{Decimal(str(monto_sugerido)):.2f}" if monto_sugerido else None,
              "creado_en": "2026-07-21T22:00:00+00:00"}
-        self._b.setdefault(self._cid, {})[g["id"]] = g
-        return g
+        if idem_key:
+            g["_idem_key"] = idem_key
+        mios[g["id"]] = g
+        return g, False
 
     def listar(self, *, limit=50):
         mios = list(self._b.get(self._cid, {}).values())
@@ -152,7 +165,8 @@ def test_crear_devuelve_201_y_el_objeto_COMPLETO():
     assert r.status_code == 201
     g = r.json()
     assert set(g) == {"id", "monto", "fecha", "categoria", "proveedor", "medio_pago",
-                      "descripcion", "origen", "monto_sugerido", "creado_en"}
+                      "descripcion", "origen", "monto_sugerido", "creado_en", "repetido"}
+    assert g["repetido"] is False, "alta nueva sin idem_key: nunca es un repetido"
     assert g["proveedor"] is None and g["medio_pago"] is None
     assert g["categoria"] == "otros", "sin categoría cae en otros, no falla"
     assert g["monto"] == "500.00", "2 decimales SIEMPRE: el cliente formatea el string sin convertir"
@@ -212,6 +226,36 @@ def test_CONTROL_el_test_adversarial_PUEDE_fallar():
     id_de_b = cli_b.post("/gastos", json=_BODY).json()["id"]
     mismo = _FakeGastoStore(bucket, "cid-B")
     assert mismo.detalle(id_de_b) is not None, "el fake tiene que poder mostrar la fuga si existiera"
+
+
+# --- IDEM-gasto-duplica-plata: idempotencia del alta, a nivel HTTP -----------------------------
+
+def test_IDEM_misma_idem_key_devuelve_el_mismo_gasto_y_repetido_true():
+    cli, _ = _app()
+    clave = "c3f1e2a0-0000-4000-8000-000000000001"
+    r1 = cli.post("/gastos", json={**_BODY, "idem_key": clave})
+    r2 = cli.post("/gastos", json={**_BODY, "idem_key": clave})
+    assert (r1.status_code, r2.status_code) == (201, 201)
+    assert r1.json()["repetido"] is False and r2.json()["repetido"] is True
+    assert r1.json()["id"] == r2.json()["id"]
+    assert cli.get("/gastos").json()["total"] == 1
+
+
+def test_IDEM_dos_claves_distintas_dejan_dos_gastos():
+    """Control positivo: si esto diera un solo gasto, la deduplicación está sobre-aplicando."""
+    cli, _ = _app()
+    r1 = cli.post("/gastos", json={**_BODY, "idem_key": "clave-a"})
+    r2 = cli.post("/gastos", json={**_BODY, "idem_key": "clave-b"})
+    assert r1.json()["repetido"] is False and r2.json()["repetido"] is False
+    assert r1.json()["id"] != r2.json()["id"]
+    assert cli.get("/gastos").json()["total"] == 2
+
+
+def test_IDEM_compatibilidad_sin_idem_key_sigue_creando_una_fila_por_alta():
+    cli, _ = _app()
+    assert cli.post("/gastos", json=_BODY).json()["repetido"] is False
+    assert cli.post("/gastos", json=_BODY).json()["repetido"] is False
+    assert cli.get("/gastos").json()["total"] == 2
 
 
 def test_sin_token_es_401():
