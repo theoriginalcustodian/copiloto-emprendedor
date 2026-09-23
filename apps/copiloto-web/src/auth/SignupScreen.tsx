@@ -50,6 +50,10 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
   // router, "abrir" ToS/Privacidad es reemplazar el form por `LegalScreen` y volver reconstruye el
   // mismo estado (email/password NO se pierden, siguen en el `useState` de este componente).
   const [legalAbierto, setLegalAbierto] = useState<LegalKind | null>(null);
+  // 409 de `/me/legal/aceptar`: `errores_web.conflicto()` manda la versión vigente en
+  // `extra.vigente` (ver `pedido_..._BL-O6-parte-A-el-409-cambio-de-shape...md`) — sin esto el
+  // aviso sólo podía decir "recargá", no CUÁL versión hay que aceptar.
+  const [vigenteNueva, setVigenteNueva] = useState<string | null>(null);
 
   const disabled = formState === 'enviando';
 
@@ -69,7 +73,12 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
     } catch (err) {
       // 409 = el bundle que sirvió este form quedó viejo (la versión vigente en el server cambió
       // entre el render y el submit) — no es un error de red, es "recargá la página".
-      setFormState(err instanceof ApiError && err.status === 409 ? 'error-legal-desactualizada' : 'error-legal');
+      const es409 = err instanceof ApiError && err.status === 409;
+      if (es409) {
+        const vigente = err.extra?.vigente;
+        setVigenteNueva(typeof vigente === 'string' ? vigente : null);
+      }
+      setFormState(es409 ? 'error-legal-desactualizada' : 'error-legal');
       return false;
     }
   }
@@ -192,8 +201,9 @@ export function SignupScreen({ onVolverALogin, onSignupExitoso }: SignupScreenPr
           )}
           {formState === 'error-legal-desactualizada' && (
             <p role="alert" className="login-screen__alert login-screen__alert--warning">
-              Se actualizó el texto legal mientras completabas el formulario. Recargá la página
-              para ver la versión vigente y volvé a intentar.
+              Se actualizó el texto legal mientras completabas el formulario
+              {vigenteNueva ? ` (versión vigente: ${vigenteNueva})` : ''}. Recargá la página para
+              verla y volvé a intentar.
             </p>
           )}
           {formState === 'error-legal' && (

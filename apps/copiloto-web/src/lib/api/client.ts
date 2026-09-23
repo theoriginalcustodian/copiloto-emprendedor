@@ -9,12 +9,17 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 export class ApiError extends Error {
   readonly status: number;
   readonly detail?: string;
+  /** Campos extra de un 409 `errores_web.conflicto(codigo, mensaje, **extra)` (ej. `vigente`,
+   * `factura_id`, `candidato`) -- `detail` ya se resolvió al `mensaje` legible, esto es lo que
+   * queda para el caller que necesita el dato estructurado, no sólo el texto. */
+  readonly extra?: Record<string, unknown>;
 
-  constructor(status: number, message: string, detail?: string) {
+  constructor(status: number, message: string, detail?: string, extra?: Record<string, unknown>) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.extra = extra;
   }
 }
 
@@ -95,26 +100,36 @@ async function bearerVigente(): Promise<{ token: string | null; sesionMuerta: bo
   return { token: ok ? getToken() : null, sesionMuerta: !ok };
 }
 
-async function readErrorDetail(res: Response): Promise<string | undefined> {
+interface ErrorDetail {
+  mensaje?: string;
+  /** `{codigo, ...extra}` de `errores_web.conflicto()` -- `codigo` viaja adentro para que el
+   * caller pueda discriminar sin volver a tocar `client.ts` (ver BL-O6 parte B: `vigente`). */
+  extra?: Record<string, unknown>;
+}
+
+async function readErrorDetail(res: Response): Promise<ErrorDetail> {
   try {
     const data: unknown = await res.json();
     if (data && typeof data === 'object' && 'detail' in data) {
       const detail = (data as { detail?: unknown }).detail;
-      if (typeof detail === 'string') return detail;
-      // `detail` OBJETO: es la forma de `errores_web.conflicto()` —
+      if (typeof detail === 'string') return { mensaje: detail };
+      // `detail` OBJETO: es la forma de `errores_web.conflicto(codigo, mensaje, **extra)` —
       // `{codigo, mensaje, ...extra}`. Su docstring dice que `mensaje` "sigue siendo el texto que
       // el emprendedor puede leer: el código es para la app, no para la persona". Hasta el
       // 2026-08-07 acá se caía al piso y la UI mostraba el texto genérico del status en su lugar,
-      // que no explica nada. Aditivo: sólo agrega un caso que antes devolvía `undefined`.
-      if (detail && typeof detail === 'object' && 'mensaje' in detail) {
-        const mensaje = (detail as { mensaje?: unknown }).mensaje;
-        if (typeof mensaje === 'string') return mensaje;
+      // que no explica nada. El resto de los campos (`codigo`, `vigente`, `factura_id`,
+      // `candidato`, ...) viajaban ya en el body pero `client.ts` los descartaba enteros -- ningún
+      // caller podía leerlos sin re-implementar el parseo. `extra` es lo que faltaba.
+      if (detail && typeof detail === 'object') {
+        const { mensaje, ...resto } = detail as Record<string, unknown>;
+        const mensajeStr = typeof mensaje === 'string' ? mensaje : undefined;
+        return { mensaje: mensajeStr, extra: Object.keys(resto).length > 0 ? resto : undefined };
       }
     }
   } catch {
     // body no-JSON o vacío — sin detail, se usa el mensaje genérico del status.
   }
-  return undefined;
+  return {};
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -161,7 +176,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     return (await res.json()) as T;
   }
 
-  const detail = await readErrorDetail(res);
+  const { mensaje, extra } = await readErrorDetail(res);
 
   if (res.status === 401) {
     // Antes era `if (auth) clearToken()`: CUALQUIER 401 de CUALQUIER endpoint autenticado destruía
@@ -177,12 +192,12 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       clearToken();
       notificarSesionExpirada();
     }
-    throw new UnauthorizedError(detail);
+    throw new UnauthorizedError(mensaje);
   }
   if (res.status === 403) {
-    throw new ForbiddenError(detail);
+    throw new ForbiddenError(mensaje);
   }
-  throw new ApiError(res.status, detail ?? `Error HTTP ${res.status}`, detail);
+  throw new ApiError(res.status, mensaje ?? `Error HTTP ${res.status}`, mensaje, extra);
 }
 
 export const apiClient = {
@@ -230,7 +245,7 @@ export async function postMultipart<T>(path: string, form: FormData): Promise<T>
 
   if (res.ok) return (await res.json()) as T;
 
-  const detail = await readErrorDetail(res);
+  const { mensaje, extra } = await readErrorDetail(res);
 
   if (res.status === 401) {
     // Mismo par que en `request()` — si el aviso viviera sólo allá, un dictado sería el único camino
@@ -239,10 +254,10 @@ export async function postMultipart<T>(path: string, form: FormData): Promise<T>
       clearToken();
       notificarSesionExpirada();
     }
-    throw new UnauthorizedError(detail);
+    throw new UnauthorizedError(mensaje);
   }
   if (res.status === 403) {
-    throw new ForbiddenError(detail);
+    throw new ForbiddenError(mensaje);
   }
-  throw new ApiError(res.status, detail ?? `Error HTTP ${res.status}`, detail);
+  throw new ApiError(res.status, mensaje ?? `Error HTTP ${res.status}`, mensaje, extra);
 }
