@@ -25,8 +25,8 @@
 - [Un solo usuario de prueba canónico, a fuego](usuario-de-prueba-canonico-uno-solo-a-fuego.md) — `e2e-device@copiloto.test`. Ningún agente elige otro.
 - ["Terminado" exige evidencia de DEVICE](una-orden-cerrada-exige-evidencia-de-device.md) — implementado + desplegado + probado en device + `cierre_`.
 - [Iterar en device NO compila nada](iterar-en-device-es-metro-local-con-dev-client-ya-instalado.md) — dev-client ya instalado + Metro local por USB.
-- [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — y ese árbol era el del grafo: `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.
-- [Para gestos RNGH, `adb input motionevent` — nunca `input tap`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — DOWN/MOVE/UP sí ejercita un Pan y los botones flotantes; y `uiautomator dump` miente si hay animación.
+- [El device no corre `main` — corre lo que Metro sirve](el-device-no-corre-main-corre-lo-que-metro-sirve.md) — `graph-sync` le hacía `reset --hard` en CADA push. Preguntá quién ESCRIBE lo que tu proceso lee.
+- [Para gestos RNGH, `adb input motionevent` — nunca `input tap`](adb-no-puede-ejercitar-el-toque-corto-de-un-gesture-pan.md) — DOWN/MOVE/UP sí ejercita un Pan; `uiautomator dump` miente si hay animación.
 - [Aplicar `/ejecutar-con-eficiencia` siempre](aplicar-siempre-ejecutar-con-eficiencia.md) — proactiva y constante, no sólo si se invoca.
 - [TODA la fábrica corre en el VPS, nunca en local](apps-deploys-siempre-vps.md) — la PC SOLO edita. Montar en local rechazado 2×.
 - [documed-front es la app CANÓNICA de UI](consultar-documed-siempre-antes-de-implementar.md) — leerla ANTES de implementar. Portar adaptando, no copiar ciego.
@@ -76,6 +76,7 @@
 - [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — preguntá qué evento reinicia el contador.
 - [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar causa no refuta hecho.
 - [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
+- [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA y el mensaje elige una](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — rc=1 = hallazgo O config rota; el falso empuja al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — horneá el control en el script.
@@ -86,13 +87,13 @@
 - [📋❌ El DoD mal escrito, corregido por la evidencia](el-dod-que-escribi-estaba-mal-y-la-evidencia-lo-corrigio.md) — el cierre envejece en silencio.
 - [🎯 Un supuesto cuya falla parece LEGÍTIMA es pregunta](supuesto-cuya-falla-parece-un-estado-legitimo.md) — *¿cómo se vería si fuera falso?*
 - [🧹 Barrer llamadores incluye los INSTRUMENTOS](barrer-llamadores-incluye-los-instrumentos-de-verificacion.md) — C4.1 iba a tumbar el smoke que era su propio control positivo. Mismo PR.
-- [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real. Discriminá antes de atribuir.
+- [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real.
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) — 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — medí contra la expectativa, no contra el reloj.
-- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: un corte de créditos apagó los 3 sin que sonara nada. `CronList` al reanudar, antes de retomar.
-- [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la corrida verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
+- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: un corte de créditos apagó los 3 en silencio. `CronList` al reanudar.
+- [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
-- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — 4 veces en un día. `git -C` en un worktree roto contesta por el checkout principal, sin fallar. El positivo va primero.
+- [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en un worktree roto contesta por el checkout principal, sin fallar. El positivo va primero.
 
 ### Guards, gates y jueces
 - [🛡️💥 Un guard que grita en el caso NORMAL se desarma](el-guard-que-grita-en-el-caso-normal-se-desarma-solo.md) — el falso positivo enseña a saltear.
@@ -181,9 +182,9 @@
 - [🕐💥 El backup de Graphity tumba su API 4×/día, 60-90 s](graphity-backup-cron-tumba-el-api-4x-dia-60-90s.md) — 03:30/09:30/15:30/21:30: el `pre-push` aborta con 503.
 
 ## 📚 Referencia
-- [`patched()` se memoiza por run: un fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new. Medí con `TemporalChangeVersion`.
-- [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code (`isolation`/`--worktree`): hook viejo, sin gitleaks.
-- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. Ídem el navegador del Playwright MCP: [[playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono]].
+- [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
+- [`core.hooksPath` absoluto apaga el pre-push de todos los worktrees](hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees.md) — lo escribe cada worktree de Claude Code: hook viejo, sin gitleaks.
+- [`git stash` es común a TODOS los worktrees](git-stash-es-comun-a-todos-los-worktrees.md) — el `pop` de otra sesión levanta tu stash. Ídem [[playwright-mcp-compartido-es-de-una-sesion-y-no-concede-microfono]].
 - [Un procedimiento nuevo mueve el instrumento a un contexto que nadie probó](un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo.md) — detached: stage compartido (#632) y recibo perdido (#634).
 - [Tests se corren en el VPS, no en la PC](tests-se-corren-en-vps.md) — worker venv `/opt/uc-worker-venv`; MCP `.venv` separado.
 
