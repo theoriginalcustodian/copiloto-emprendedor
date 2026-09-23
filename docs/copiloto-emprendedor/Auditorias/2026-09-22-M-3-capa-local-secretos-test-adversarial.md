@@ -3,9 +3,10 @@
 **Fecha:** 2026-09-22 · **Sesión:** AUDITORÍA · **Disparador:** verde explícito de planificación para M-3.
 
 > **Qué NO cierra este documento.** H-A4-1 pregunta por **push protection del servidor**. Acá se midió
-> la capa **local**, contra un remoto bare en disco: **nada se publicó, GitHub no se tocó**. La capa
-> server-side sigue **sin medir** y su caso non-provider *publicaría por diseño* en un repo público,
-> así que requiere decisión explícita antes de correrse.
+> la capa **local**, contra un remoto bare en disco: **nada se publicó, GitHub no se tocó**.
+> La capa server-side quedó medida **por configuración** (ver §«La capa server-side, medida por
+> configuración») pero **no ejercitada**, y su caso non-provider *publicaría por diseño* en un repo
+> público — por eso este informe **recomienda no correrlo acá** y cerrar el gap en su lugar.
 
 ---
 
@@ -153,8 +154,51 @@ sesión y es idempotente, con `--limpiar`:
 
 ---
 
-## Qué falta para cerrar H-A4-1
+## La capa server-side, medida por configuración (2026-09-22, posterior a la corrida)
 
-Un push **real a GitHub** desde un árbol al día con material non-provider. Predicción escrita:
-**pasa** (`non_provider_patterns: disabled`). Ese push **publica el cebo en un repo público** — es el
-resultado esperado, no un accidente —, así que **no se corre sin decisión explícita del operador**.
+Antes de pedir la decisión sobre el push, se consultó la configuración real del repo por API —
+**read-only, sin publicar nada**:
+
+| clave | valor |
+|---|---|
+| `visibility` | **public** |
+| `secret_scanning` | enabled |
+| `secret_scanning_push_protection` | **enabled** |
+| `secret_scanning_non_provider_patterns` | **disabled** ← el gap |
+| `secret_scanning_validity_checks` | disabled |
+
+Control positivo: la API respondió `full_name = theoriginalcustodian/copiloto-emprendedor`, o sea
+sobre este repo y no sobre otro.
+
+Hasta acá `non_provider_patterns: disabled` se venía **citando**; ahora está **medido**. Sostiene la
+predicción escrita: un push con `DB_PASSWORD`, `UC_INTERNAL_TOKEN` o una cadena de conexión **pasa**,
+porque push protection sólo intercepta patrones de proveedor. Y confirma H1 por el otro lado: las dos
+capas —la local, ausente en 4 de 26 árboles, y la del servidor, ciega a lo genérico— fallan sobre
+**la misma clase de secreto**, que es la que este repo realmente usa.
+
+## Qué falta para cerrar H-A4-1, y por qué se recomienda NO correrlo acá
+
+Faltaría un push **real a GitHub** con material non-provider. Predicción escrita: **pasa**. Ese push
+**publica el cebo en un repo público** — resultado esperado, no accidente.
+
+**Recomendación de esta auditoría: no correrlo en este repo.** El test demostraría empíricamente algo
+que la configuración ya **declara y que acaba de medirse**; su valor marginal es verificar que GitHub
+se comporta como su propia config dice. Contra eso, dos costos que sólo se ven al diseñar el control:
+
+1. **Borrar la rama no borra el objeto**, y con `secret_scanning: enabled` el repo se escanea de forma
+   continua, no sólo en el push: el cebo queda alcanzable por SHA y visible para cualquier fork o mirror.
+2. **El control positivo es peor que el caso real.** Para que la fila valga hay que pushear también un
+   cebo **de proveedor**, que GitHub *sí* debe rechazar. Si ese bloqueo fallara, se publica algo con
+   forma de credencial de proveedor — justo el patrón que dispara alertas automáticas hacia terceros.
+   Un control cuyo modo de falla es más grave que lo que mide no es un buen control.
+
+**Alternativa propuesta: cerrar el gap en vez de demostrarlo.**
+`secret_scanning_non_provider_patterns` es un toggle de la misma API con la que se hizo esta medición.
+Activarlo elimina el gap, se verifica por el mismo instrumento sin publicar nada, y deja el ejercicio
+adversarial —si se lo sigue queriendo— para un **repo privado desechable**, donde el cebo no le importa
+a nadie y el control positivo de proveedor no tiene filo.
+
+Así el disparador pendiente deja de ser «¿autorizás publicar un secreto?» y pasa a ser
+**«¿activamos non-provider patterns?»**: la misma pregunta de fondo, sin costo irreversible.
+**Es una decisión MAYOR sobre la configuración de seguridad de un repo público, así que la toma el
+operador; esta auditoría no la ejecuta.**
