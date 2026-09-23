@@ -56,6 +56,7 @@
 - [🔌🎭 El puerto que contesta puede ser de OTRA sesión](el-puerto-que-contesta-puede-ser-de-otra-sesion.md) — cruzá el PID contra tu proceso.
 - [📋 Lo que NO está en la TABLA DE HITOS no existe](lo-que-no-esta-en-la-tabla-de-hitos-no-existe.md) — cada dueño necesita su renglón.
 - [🗂️ Índice de frentes abiertos → UN tablero](frentes-abiertos-tablero.md) — acá es `coordinacion/PLAN.md`.
+- [🧭⏳ El puntero al doc ACTUAL sobrevive a su ronda](el-puntero-al-doc-actual-sobrevive-a-la-ronda-que-describia.md) — 3 en una noche; barrelos al cerrar.
 - [Propagar el cierre a TODOS los docs maestros](propagar-cierre-a-docs-maestros.md) — al doc-de-registro único.
 
 ### Evidencia: el instrumento antes que el resultado
@@ -75,7 +76,7 @@
 - [🔕⬆️ Trabajar en un pedido lo SILENCIA](trabajar-en-un-pedido-lo-silencia.md) — preguntá qué evento reinicia el contador.
 - [🔬🙈 Probar que miente NO exime de leer lo que señala](probar-que-el-instrumento-miente-no-te-exime-de-leer-lo-que-senala.md) — refutar causa no refuta hecho.
 - [🕶️ Un instrumento CIEGO por RLS dice "no hay"](un-instrumento-ciego-por-rls-dice-no-hay-en-vez-de-no-veo.md) — control de ceguera antes.
-- [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA y el mensaje elige una](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — rc=1 = hallazgo O config rota; el falso empuja al `--no-verify`.
+- [🎭🚪 Dos causas distintas comparten el CÓDIGO DE SALIDA](dos-causas-distintas-comparten-el-codigo-de-salida-y-el-mensaje-elige-una.md) — el falso empuja al `--no-verify`.
 - [🔇🚫 Un mecanismo roto hacia el "NO" no da síntoma](un-mecanismo-roto-hacia-el-no-no-da-sintoma.md) — todo gate necesita control POSITIVO.
 - [📄🕳️ Un control ARCHIVO no ve la divergencia ADENTRO](un-control-a-nivel-archivo-no-ve-la-divergencia-adentro.md) — `feedback`. Cero ≠ luz verde.
 - [🕳️ Un vacío del PROPIO instrumento no es hallazgo](vacio-no-es-hallazgo-correr-el-control.md) — horneá el control en el script.
@@ -89,7 +90,7 @@
 - [🎲 Un instrumento compartido INTERMITENTE fabrica una excusa lista](un-instrumento-compartido-intermitente-fabrica-una-excusa-lista.md) — "es el flake conocido" lava la próxima regresión real.
 - [Un enum al final del renglón lo borra el que appendea](un-enum-al-final-del-renglon-lo-borra-el-que-appendea.md) — 2 frentes invisibles: el estado va en el ÚLTIMO campo.
 - [🐕‍🦺 El watchdog sólo ve al que LLEGA TARDE, nunca al que NO VINO](el-watchdog-que-solo-ve-al-que-llega-tarde-nunca-al-que-no-vino.md) — medí contra la expectativa, no contra el reloj.
-- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: un corte de créditos apagó los 3 en silencio. `CronList` al reanudar.
+- [💀 El vigilante MUERE con la sesión y nadie lo vigila a él](el-vigilante-muere-con-la-sesion-y-nadie-lo-vigila-a-el.md) — crones session-only: `CronList` al reanudar.
 - [✂️ Pipear un proceso largo por `tail` BORRA la evidencia del fallo](pipear-un-proceso-largo-por-tail-borra-la-evidencia-del-fallo.md) — la verde borra a la roja. Gate/deploy en background van a archivo COMPLETO.
 - [⏰🔕 Un disparador CUMPLIDO no avisa a nadie](un-disparador-cumplido-no-avisa-a-nadie.md) — la cola vive en 2 lugares y sólo uno se mira solo. Cerralo con instrumento.
 - [🎯🕳️ El instrumento respondió, pero sobre OTRO sujeto](el-instrumento-respondio-sobre-otro-sujeto.md) — `git -C` en un worktree roto contesta por el checkout principal, sin fallar. El positivo va primero.
@@ -139,12 +140,12 @@
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — sin cargar completo ⇒ duplicados.
 - [🧠💣 Memoria repo vs slug divergen — `seed-memory.sh` BORRA](memoria-repo-vs-slug-drift.md) — leer antes. Escribí en `memoria/` del repo.
 - [Anti-adulación NO es aguafiestas](anti-adulacion-no-es-aguafiestas.md) — el espejo: pesimismo performativo.
-- [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) — planificar gasta tokens baratos primero; el contrato apunta a paths, no dice "explorá".
+- [💸 Sesión con modelo CARO → se le entrega el inventario hecho](sesion-con-modelo-caro-se-le-entrega-el-inventario-hecho.md) — el contrato apunta a paths, no dice «explorá».
 
 ### Coordinación entre sesiones
 - [📬 Un mensaje entregado DONDE NADIE MIRA no fue entregado](mensaje-entregado-donde-nadie-mira.md) — probá el cable.
 - [📮🕳️ El TIPO de mensaje decide si lo PERSIGUEN](el-tipo-de-mensaje-decide-si-alguien-lo-persigue.md) — `dato_` NO escala; ¿querés reclamo? → `pedido_`.
-- [📢📋 De dos artefactos con distinta precisión gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) — el tablero decía «pasa a veces»; el mensaje, «bloqueado». Paró a 2 sesiones.
+- [📢📋 De dos artefactos, gana el que CIRCULA](de-dos-artefactos-con-distinta-precision-gana-el-que-circula.md) — corregir appendeando deja el titular refutado al frente.
 - [🧹🤖 El buzón se ordena por JANITOR, no por disciplina](buzon-se-ordena-por-janitor-no-por-disciplina.md) — nunca a mano.
 - [`>>` a ruta supuesta del buzón + `mv` pisa el contrato](append-a-ruta-supuesta-del-buzon-crea-un-stub-y-el-mv-pisa-el-contrato.md) — perdí K-07/08/10/11; ubicar con `find` y `mv -n`.
 - [⏱️🌀 El cron dispara MÁS cuanto MENOS trabaja la sesión](el-cron-dispara-mas-cuanto-menos-trabaja-la-sesion.md) — un turno mide OCIO.
