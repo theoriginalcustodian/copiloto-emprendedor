@@ -24,6 +24,23 @@ ok()  { printf '  ✅ %s\n' "$1"; }
 mal() { printf '  ❌ %s\n' "$1"; fallos=$((fallos+1)); }
 echo "test-graph-sync-lock-y-drift"
 
+# `uv` no participa de NADA de lo que estos casos miden —lock, drift de config, bitácora: todas
+# guardas ANTERIORES a la ingesta—, pero `graph-sync.sh:82` lo exige como dependencia y aborta
+# antes de llegar a ellas. En el runner de CI no está instalado, así que allá los 5 primeros casos
+# medían «falta uv» y no lo que dicen medir: rojo en GitHub y verde en la PC, indefinidamente.
+# El stub satisface la dependencia sin simular nada de lo que se prueba — lo único falso es la
+# herramienta externa que no interviene. Se ANTEPONE al PATH para ganarle también al uv real (esta
+# PC tiene dos instalados, en `.local/bin` y en `hermes/bin`): si se dejara ganar al de la máquina,
+# el test seguiría midiendo cosas distintas en cada una, que es exactamente el defecto que esto
+# corrige.
+mkdir -p "$T/bin"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$T/bin/uv"
+chmod +x "$T/bin/uv"
+export PATH="$T/bin:$PATH"
+# Control de que el stub tomó efecto: sin él, un stub que no quedó en el PATH nos devolvería al
+# mismo verde falso por el otro lado (memoria/instrumento-que-no-mira-nunca-falla.md).
+command -v uv >/dev/null || { echo "  ❌ el stub de uv no quedó en el PATH — no mido nada"; exit 2; }
+
 # Fixture: copia del script en un repo propio, para que su $REPO sea ÉSTE y no el repo real (mismo
 # mecanismo que test-gate-hook-secretos.sh). Sin remoto: cualquier `fetch` de más muere solo.
 R="$T/repo"; mkdir -p "$R/scripts"
