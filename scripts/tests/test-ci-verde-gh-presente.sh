@@ -21,16 +21,24 @@ mal() { printf '  ❌ %s\n' "$1"; fallos=$((fallos+1)); }
 echo "test-ci-verde-gh-presente"
 
 # --- Caso 1: gh AUSENTE ---------------------------------------------------------------------
-# PATH mínimo con sólo lo indispensable para que bash arranque (sh, coreutils), sin ningún `gh`.
+# BASH_BIN se resuelve ANTES de recortar el PATH e invoca por ruta absoluta: así el PATH
+# restringido sólo tiene que cumplir UNA cosa (no traer `gh`), sin tener que además resolver
+# `bash`. Primer intento fue `dirname(sh):dirname(cat)`, que en el runner de GitHub Actions
+# falló -- ahí /usr/bin trae sh, cat Y gh juntos, así que la "exclusión" reincluía a gh sin
+# querer (cazado por el control positivo de abajo: "el aislamiento no tomó", no un falso OK).
+# El segundo intento symlinkeaba `bash` a un bindir propio, y ESO rompió en Windows/Git Bash:
+# MSYS resuelve su DLL (msys-2.0.dll) relativa a la ruta real del .exe, así que un symlink en
+# otro directorio lo deja sin poder cargar. Ruta absoluta + PATH vacío evita los dos.
+BASH_BIN="$(command -v bash)"
+PATH_SIN_GH=""
 # Control de que el aislamiento tomó efecto: si `gh` siguiera visible acá, el caso 1 mediría
 # la máquina real, no el guard (memoria/instrumento-que-no-mira-nunca-falla.md).
-PATH_SIN_GH="$(dirname "$(command -v sh)"):$(dirname "$(command -v cat)")"
 if PATH="$PATH_SIN_GH" command -v gh >/dev/null 2>&1; then
   echo "  ❌ gh sigue visible en el PATH recortado — el aislamiento no tomó, no mido nada"; exit 2
 fi
 
 out="$T/out1.txt"
-PATH="$PATH_SIN_GH" bash "$ROOT/scripts/ci-verde.sh" 999 > "$out" 2>&1
+PATH="$PATH_SIN_GH" "$BASH_BIN" "$ROOT/scripts/ci-verde.sh" 999 > "$out" 2>&1
 rc=$?
 if [ "$rc" -eq 2 ] && grep -q "no está en el PATH" "$out"; then
   ok "1 gh ausente -> exit 2 con mensaje, sin intentar medir"
