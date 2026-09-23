@@ -43,6 +43,31 @@ prohibidos por razones propias — `--no-verify` saca el escáner de secretos en
 **tres veces**, dejar de tratarlo como propio: es bloqueo de flota, va escalado con el dry-run ya
 mirado. El trabajo no se pierde — queda commiteado y con gate verde esperando el push.
 
+## La vuelta de tuerca: medir el MECANISMO no es medir su CONDICIÓN
+
+Describí la lotería bien y aun así comuniqué mal. Durante una hora le dije a las cuatro sesiones
+«el push es una lotería: pasa si chocás con otro sync» — correcto como mecanismo— sin medir nunca
+**si quedaba algún sorteo**. A las 03:43 lo medí:
+
+```
+gh pr list --state open   →  []         (cero PR abiertos)
+git ls-remote origin main →  78320bf    (congelado hace ~51 min)
+```
+
+El salvavidas exige que **otra** sesión esté pusheando en ese mismo instante. Sin PR abiertos y con
+todas las sesiones en tareas de medición en vez de commit, no hay con quién chocar: **la lotería no
+tenía sorteos**. El mismo sistema, sin que nada cambiara en él, había pasado de «bloquea a veces» a
+«bloquea siempre» — y yo seguía repartiendo la palabra «intermitente», que invita a reintentar.
+
+**Y el vuelco es cruel al final del sprint:** cuando lo mergeable ya se mergeó, todos pasan a medir,
+el tráfico cae a cero y el gate se cierra **justo cuando cada sesión vuelve sola con su último
+commit**. El alivio escasea exactamente cuando más se lo necesita.
+
+**La regla:** un mecanismo probabilístico se describe con su **condición de disparo medida**, no con
+su fórmula. «Pasa si hay contención» y «hoy no hay contención» son el mismo sistema y **dos
+instrucciones opuestas**: la primera dice reintentá, la segunda dice escalá y no gastes intentos.
+Antes de publicar «a veces funciona», correr la consulta que cuenta **cuántas veces, hoy**.
+
 Relacionado: [[instrumentos-que-confirman-en-vez-de-verificar]] ·
 [[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]] ·
 [[un-instrumento-compartido-intermitente-fabrica-una-excusa-lista]] ·
