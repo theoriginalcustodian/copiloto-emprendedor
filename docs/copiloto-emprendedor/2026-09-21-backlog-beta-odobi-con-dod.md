@@ -133,7 +133,9 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 
 ## 2. Prerrequisitos sin código (`BL-P`)
 
-### BL-P1 · Respuesta del operador a §6.1 de la auditoría y estado de la Parte 2
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **CERRADO por el acta.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — su encabezado dice literalmente «Cierra: `BL-P1` y `BL-P3`». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Qué:** saber si la reunión con Martín ocurrió y qué se decidió; responder DEC-1, DEC-2 y el estado de la Parte 2 del contrato del 16/09 (en mobile se aplicó igual).
 - **DoD:** [ ] `dato_` o acta en el buzón con la respuesta a DEC-1 y DEC-2 y la lista de lo que la Parte 2 deja liberado.
 
@@ -141,7 +143,9 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 - **Qué:** su versión del prototipo y `mobile-coherencia.md` (Parte 2 = las formas propuestas de los pedidos a backend) no están en el repo. Sin ella, la referencia de «prototipo final» es la del 07/09.
 - **DoD:** [ ] PR con la carpeta, sin `.otf` nuevos ni credenciales (revisión de `git status` y grep de formas de credencial antes del commit); [ ] auditoría re-mide las filas que cambian contra la versión nueva.
 
-### BL-P3 · Acta de decisiones ya aplicadas
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **CERRADO por el acta.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — su encabezado dice literalmente «Cierra: `BL-P1` y `BL-P3`». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Qué:** registrar como cerradas, con alcance por plataforma, las decisiones que mobile ya aplicó y el prototipo ya dibuja (DA-1, DA-2, DA-3, DA-4 en tokens, DA-5 en mobile, DA-11) y las de DEC-10.
 - **DoD:** [ ] un documento de acta en `docs/copiloto-emprendedor/` con cada DA: estado, dueño, fecha, plataformas, ítems que destraba.
 
@@ -154,7 +158,9 @@ No se resuelven en este documento. Cada una necesita **acta** con dueño y fecha
 - **Depende de:** `BL-P2` (sobre la versión final), DEC-8.
 - **DoD:** [x] cada `?ver=` del prototipo clasificado spec / visión / propuesta en un solo lugar (`2026-09-22-BL-P5-pantallas-del-prototipo-spec-vision-propuesta.md`: 54 spec · 2 visión · 1 propuesta · 7 fuera); [x] el criterio de cierre del frente (§13) cita esa lista.
 
-### BL-P6 · Corregir `fact-sinarca` en el prototipo
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **PEDIDO ya emitido.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — §4.1 del acta ya se lo pide a Martín; lo lleva el operador. Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Qué:** el hilo muestra facturar con un solo comando de voz y CAE inmediato, sin confirmación. El producto **prohíbe** emitir sin HITL: `apps/copiloto/tool_catalog.py:267-269` («NO la emite: la deja lista para que él la revise») y `kb-usuario/chat.md:96-98` («No emite una factura solo con la voz»). El hilo real es `fact-voz` → `fact-hitl` → `fact-cae`. No se implementa: se corrige el prototipo.
 - **DoD:** [ ] Martín ajusta o retira el hilo; [ ] queda anotado en el acta (`BL-P3`).
 
@@ -308,7 +314,9 @@ Contrato `coordinacion/abierto/2026-09-16_contrato_planificacion-a-frontend_seis
   - [ ] Test de componente por valor de `origen`.
   - [ ] Captura de una propuesta por voz y una por foto en device.
 
-### BL-C5 · Login de apps en `expo-web-browser` (mobile)
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **ATADO a EAS.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-4: builds EAS a cargo de BACKEND, máximo 2 — y el operador mandó device/EAS al sprint siguiente. Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Plataforma:** mobile (nativo) · **Tamaño:** S + build · **Origen:** trabajo 5, H-45
 - **Evidencia:** `apps/mobile/src/modules/apps/PantallaApps.tsx:2,171,176` (sigue con `Linking`; su comentario `:166-167` dice que falta el build) · dependencia instalada `apps/mobile/package.json:30`.
 - **Depende de:** `DEC-4` (build EAS nativo).
@@ -721,7 +729,9 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 - **DoD:** se escribe cuando `DEC-7` fije el alcance. Mínimo: alta → hilo de 2 permisos con alcance dicho antes → recibo con un primer dato real del negocio; probado con una cuenta nueva en device.
 - **Estado 2026-09-22:** backend ✅ (#558, `K-14`, adversariales en verde en A3). Web está montado, pero como **pantalla completa** (`App.tsx`). Mobile está **sin montar**: `PantallaOnboarding` tiene 0 consumidores (A3, H-A3-5). DEC-7 + `mockups/01-onboarding/DECISIONES.md` fijan que el onboarding es una **conversación en el hilo**, no una pantalla. Resto → `contrato_planificacion-a-frontend1_BL-Q3-web-arreglos-D4-X10-X8`, fila 3 + anexo: el hilo en web y mobile, montado en el Guard de `_layout.tsx`, sin tabbar, receipt + completar idempotente y la promesa cumplida con el insight real. `onb-cumplida` → tanda de device.
 
-### BL-X9 · Plan, medidor de acciones y tope
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **FUERA de la beta.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-8: «Plan y límites **no** entran en la beta» → pasa a `BL-V2`. Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Plataforma:** backend + web + mobile · **Tamaño:** L · **Origen:** H-31, H-32, T-7, DA-7 · **Depende de:** `DEC-8`
 - **Evidencia:** web `AccountScreen.tsx:106-115` (TODO backend) · mobile `app/ajustes-mi-plan.tsx:1-22` (andamiaje).
 - **DoD:** se escribe cuando `DEC-8` fije el modelo. Mínimo: ledger de acciones por tenant con RLS + test adversarial; preguntar no gasta (test); mensaje de tope en el chat con dos salidas del mismo tamaño.
@@ -784,7 +794,9 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
   - [ ] Pasada sobre la historia completa con el resultado anotado.
   - [ ] **(A3, H-A3-1)** El hook corre **de verdad** en cada worktree. `core.hooksPath` era absoluto y apuntaba al checkout compartido (114 commits atrás, sin el paso de #601), así que ningún push corría gitleaks. Arreglo: `hooksPath` relativo, más un push de prueba con una credencial sintética que **falla**. Está en `contrato_planificacion-a-backend_A3-arreglos-*`, fila 1; ver la memoria `hookspath-absoluto-apaga-el-pre-push-de-todos-los-worktrees`.
 
-### BL-B4 · `gate.sh` que corra en macOS (bash 3.2)
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **POST-BETA.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-1: «`BL-B4` → post-beta (`BL-V16`)». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **➡️ Movido a post-beta `BL-V16`** por `DEC-1` (acta `:11`, plan `:87`). No se implementa en la beta.
 - **Plataforma:** repo · **Tamaño:** S · **Origen:** ADR-001; PR #511–#513 mergeados sin recibo
 - **Depende de:** `DEC-1` (si la sesión de Martín sigue implementando).
@@ -807,7 +819,9 @@ Se construyen **cuando** la decisión tenga acta. Hasta entonces, tocarlas es tr
 
 Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que alguien del equipo esté mirando. Verificado read-only en el VPS `unreal-copilot` el 21/09: `uc-copiloto-web`, `uc-copiloto-worker` y `caddy` activos; `https://copilotoemprendedor.duckdns.org` responde con TLS.
 
-### BL-O1 · Lista de testers y alta por invitación
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **DIFERIDO a Cierre B.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-12: «Google OAuth y lista de testers: más adelante (Cierre B)». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Evidencia:** alta cerrada por invitación, fail-closed (`apps/copiloto/web.py:548-591,1079-1158`, #399); `COPILOTO_INVITE_TOKEN` y `COPILOTO_SIGNUP_ALLOWLIST` seteadas en el proceso vivo (hoy 4 emails).
 - **Depende de:** lista de testers del operador.
 - **DoD:**
@@ -815,7 +829,9 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Cada tester recibe el link y completa el alta sin ayuda (verificado con el primero).
   - [ ] Un email fuera de la lista es rechazado (control negativo en prod).
 
-### BL-O2 · Google OAuth para testers externos
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **DIFERIDO a Cierre B.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-12: «Google OAuth y lista de testers: más adelante (Cierre B)». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Depende de:** `DEC-12`.
 - **Evidencia:** `docs/copiloto-emprendedor/2026-07-21-runbook-oauth-google-propio.md:18,90,92,199` (consent screen en Testing «a propósito») · `motor/clients/agent/providers/composio_gateway.py:190-234` (prefiere config propia, 7 de 8 configs de Composio son `is_composio_managed`, `apps/copiloto/tests/test_composio_auth_config.py:5-9`).
 - **DoD:**
@@ -823,7 +839,9 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Según DEC-12: testers cargados como test users, o verificación de Google iniciada con su número de caso.
   - [ ] Login con Google E2E en un navegador real con una cuenta de tester (pendiente de «lo que la auditoría no pudo ver», `PLAN.md:711`).
 
-### BL-O3 · Distribución de la app mobile a testers
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **ATADO a EAS.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — DEC-4 + DEC-13 (sin iOS: sólo Android) — device/EAS van al sprint siguiente. Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Evidencia:** `apps/mobile/eas.json` sólo tiene `development` y `preview` (Android, APK, `distribution: internal`); sin perfil `production` ni iOS.
 - **Depende de:** `DEC-4`, `DEC-13`.
 - **DoD:**
@@ -839,7 +857,9 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Cada alerta disparada una vez a propósito y recibida en el canal del operador (Telegram).
   - [ ] Runbook corto de qué hacer con cada alerta.
 
-### BL-O5 · Backups de la base de producción
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **DIFERIDO a Cierre B.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — fila final del §1: «No se enciende todavía: backups, legal propio, horario de soporte». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Evidencia:** WAL-G + Backblaze B2 construidos y **apagados por decisión del operador** hasta que haya clientes reales (`memoria/backups-fusion-y-temporal-apagados-por-diseno-deuda-diferida.md`). No verificado en el host `fusion` en esta pasada.
 - **Depende de:** decisión del operador: ¿los testers de la beta cuentan como «clientes reales»? (sus facturas y presupuestos son datos reales).
 - **DoD:**
@@ -855,7 +875,9 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
   - [ ] Aceptación registrada al alta (fecha y versión) en web **y** mobile.
   - [ ] El aviso «plantilla genérica» retirado.
 
-### BL-O7 · Soporte humano: quién contesta y en cuánto
+
+
+> **🖊️ Decisión firmada 2026-09-21:** **DIFERIDO a Cierre B.** El acta [`2026-09-21-acta-decisiones-beta-odobi.md`](2026-09-21-acta-decisiones-beta-odobi.md) — fila final del §1: «No se enciende todavía: backups, legal propio, horario de soporte». Este ítem **no está esperando trabajo ni una decisión nueva**: ya tiene una. Si hay que revertirla, se revierte **con otra acta**, no editando acá.
 - **Evidencia:** el agente de soporte abre tickets (SOP, cerrado 12/08) y web tiene `MiTicketScreen.tsx:46-153`; no hay SLA escrito.
 - **DoD:**
   - [ ] Responsable y horario de atención de tickets escritos.
