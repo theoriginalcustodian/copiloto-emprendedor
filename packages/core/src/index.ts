@@ -3,3 +3,4 @@ export * from './artefactos';
 export * from './api';
 export * from './chat';
 export * from './dinero/formatoDinero';
+export * from './legal';

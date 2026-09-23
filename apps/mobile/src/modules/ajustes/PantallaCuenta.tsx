@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -47,6 +48,22 @@ export function PantallaCuenta() {
               {me?.email ?? 'Tu cuenta no tiene un email asociado.'}
             </Text>
           </View>
+        </Row>
+
+        {/* 🔴 **BL-O6 parte A (2026-09-22): van ACÁ y no en el alta, porque mobile no tiene alta.**
+            El DoD original decía "desde el alta de mobile se llega a ToS y a Privacidad" — pero
+            `PantallaLogin` es login-only (no hay `SignupScreen` en esta plataforma, sólo en web).
+            Mismo criterio que las filas de Feedback/Soporte antes de Ola 5 (ver el bloque de abajo):
+            un enlace suelto vive acá hasta que junte compañía propia. */}
+        <Row testID="cuenta-legal-tos" onPress={() => router.push('/legal?kind=tos')}>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
+            Términos y Condiciones
+          </Text>
+        </Row>
+        <Row testID="cuenta-legal-privacidad" onPress={() => router.push('/legal?kind=privacidad')}>
+          <Text style={{ color: tema.color.texto, fontSize: tema.tipo.base, flex: 1 }}>
+            Política de Privacidad
+          </Text>
         </Row>
 
         {/* 🔴 **Acá había tres filas —Feedback, Soporte técnico y «Cómo uso la app»— y se fueron a

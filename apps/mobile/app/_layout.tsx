@@ -145,6 +145,8 @@ export default function LayoutRaiz() {
                     // Ayuda (Ola 5). `ajustes-soporte` y `ajustes-feedback` ya existían como
                     // pantallas y se entraba desde Mi cuenta; lo que cambió es la puerta.
                     'ajustes-como-usar', 'ajustes-soporte', 'ajustes-feedback', 'soporte-ticket',
+                    // BL-O6 parte A: ToS/Privacidad, mismo tratamiento — se abre sobre Mi cuenta.
+                    'legal',
                   ] as const).map(
                     (glass) => (
                       <Stack.Screen

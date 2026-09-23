@@ -117,6 +117,13 @@
   color: var(--badge-fg);
 }
 
+.login-screen__version {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.6;
+  margin: 14px 0 0;
+}
+
 /* ---------- Separador + botón "Entrar con Google" ---------- */
 .login-screen__divider {
   display: flex;

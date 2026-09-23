@@ -72,6 +72,23 @@ export interface MeResponse {
 }
 
 // ---------------------------------------------------------------------------
+// POST /me/legal/aceptar
+// ---------------------------------------------------------------------------
+
+export interface AceptarLegalRequest {
+  version: string;
+}
+
+/** `apps/copiloto/web.py` (BL-O6 parte B) — 200 siempre trae la versión VIGENTE del server, que es
+ * la misma que se mandó salvo que el server haya rotado la constante entre el render y el submit
+ * (caso 409, ver `ApiError.status`). */
+export interface AceptarLegalResponse {
+  aceptado: boolean;
+  version: string;
+  en: string;
+}
+
+// ---------------------------------------------------------------------------
 // GET /catalog
 // ---------------------------------------------------------------------------
 
@@ -233,6 +250,9 @@ export interface CopilotApi {
   /** First-login OAuth (Google): provisiona el tenant. Idempotente en el backend. */
   ensureOauthTenant(): Promise<OauthEnsureResponse>;
   me(): Promise<MeResponse>;
+  /** POST /me/legal/aceptar (BL-O6 parte B) — Bearer requerido. 409 = versión vigente cambió
+   *  desde que el usuario vio el texto (`ApiError.status === 409`). */
+  aceptarLegal(version: string): Promise<AceptarLegalResponse>;
   catalog(): Promise<CatalogResponse>;
   /** Pide la URL de OAuth de un servicio vía su `connect_path` (viene de `CatalogService`). */
   connect(connectPath: string): Promise<ConnectResponse>;

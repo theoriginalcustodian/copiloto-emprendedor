@@ -27,7 +27,7 @@ vi.mock('./lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/api')>();
   return {
     ...actual,
-    api: { ...actual.api, login: vi.fn(), signup: vi.fn(), me: vi.fn() },
+    api: { ...actual.api, login: vi.fn(), signup: vi.fn(), me: vi.fn(), aceptarLegal: vi.fn() },
   };
 });
 
@@ -87,6 +87,11 @@ describe('App (router raíz)', () => {
       cliente_id: 'c-nuevo',
       auth_user_id: 'u-nuevo',
       email: 'nueva@a.com',
+    });
+    vi.mocked(api.aceptarLegal).mockResolvedValueOnce({
+      aceptado: true,
+      version: 'v-test',
+      en: '2026-09-22T00:00:00Z',
     });
     const loginMock = vi.fn().mockResolvedValue({ ok: true });
     mockUseSession.mockReturnValue({ status: 'anon', login: loginMock, logout: vi.fn() });
