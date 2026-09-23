@@ -459,12 +459,86 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
+def test_adversarial_http_catalog_reflects_only_own_tenant_state(two_tenants, crypto, conn_de_tenant):
+    """`GET /catalog` (gap store-only señalado en #660, contrato STORE3): usa
+    `MpCredentialStore.salud()` + `composio_gateway.list_connections`, mismo dato que `/me` pero con
+    metadata de presentación. Mismo patrón que `test_adversarial_http_me_endpoint_...`: si `/catalog`
+    derivara el tenant de otra fuente que no fuera `Depends(require_tenant)`, este test lo cazaría.
+
+    Borro la credencial MP de B (que el fixture `two_tenants` sembró vencida, igual que la de A) para
+    que A y B queden en estados DISTINTOS ("caido" vs "nunca_conectado") -- si el status cruzara de
+    tenant, ambos leerían el mismo valor por accidente."""
+    a, b = two_tenants
+    MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).delete_all()
+    composio_connections = {a.cliente_id: [{"id": "1", "toolkit": "gmail", "status": "ACTIVE"}]}
+    app = _build_http_app(two_tenants, crypto, composio_connections=composio_connections)
+    client = TestClient(app)
+
+    cat_a = client.get("/catalog", headers={"Authorization": f"Bearer {a.token}"}).json()["services"]
+    cat_b = client.get("/catalog", headers={"Authorization": f"Bearer {b.token}"}).json()["services"]
+
+    mp_a = next(s for s in cat_a if s["key"] == "mercadopago")
+    mp_b = next(s for s in cat_b if s["key"] == "mercadopago")
+    assert mp_a["status"] == "caido"            # A: la credencial vencida del fixture
+    assert mp_b["status"] == "nunca_conectado"  # B: borrada -- si "caido" cruzara de A, fallaría acá
+
+    gmail_a = next(s for s in cat_a if s["key"] == "gmail")
+    gmail_b = next(s for s in cat_b if s["key"] == "gmail")
+    assert gmail_a["connected"] is True
+    assert gmail_b["connected"] is False  # composio_connected de A no se filtra hacia B
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+def test_adversarial_http_mp_disconnect_a_cannot_delete_b_connection(two_tenants, crypto, conn_de_tenant):
+    """`DELETE /mp/connection` AGRAVA respecto a los tests de arriba: no es una lectura que se filtra,
+    es una MUTACIÓN que borra filas. El caso hostil no es "A ve algo de B" -- es que la conexión de B,
+    sembrada por el MISMO fixture, siga viva después de que A la borra con SU PROPIO token. Que la
+    respuesta de A sea 200/404 no prueba nada por sí solo (contrato STORE3 §3): lo que prueba el
+    aislamiento es leer la fila de B directamente del store DESPUÉS del DELETE de A."""
+    a, b = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    # control positivo de la mutación misma: A borra SU PROPIA conexión (sembrada por el fixture).
+    r = client.delete("/mp/connection", headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json() == {"desconectado": True, "revocadas": 1}
+
+    # el caso hostil: la conexión de B sigue viva -- el DELETE de A no debe haber tocado su fila.
+    assert MpCredentialStore(conn_de_tenant(b.cliente_id), b.cliente_id, crypto).get(b.seller) is not None
+
+    # A ya no tiene nada que borrar -> 404 (no hay ambigüedad entre "no tenía" y "no puede").
+    r2 = client.delete("/mp/connection", headers={"Authorization": f"Bearer {a.token}"})
+    assert r2.status_code == 404
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a A entre tests
+
+
 # --- K-14: onboarding_completado por tenant ---------------------------------------
 
 def test_K14_completar_con_el_cliente_de_A_no_cambia_la_fila_de_B(two_tenants, conn_de_tenant):
     a, b = two_tenants
     TenantOnboardingStore(conn_de_tenant(a.cliente_id), a.cliente_id).completar()
     assert TenantOnboardingStore(conn_de_tenant(b.cliente_id), b.cliente_id).completado() is False
+
+
+def test_adversarial_http_onboarding_completar_a_cannot_complete_for_b(two_tenants, crypto):
+    """`POST /me/onboarding/completar` a nivel HTTP (gap del mismo patrón que K-14 store-level, señalado
+    por planificación en #660/contrato STORE3): el test de arriba recibe el `cliente_id` YA RESUELTO y
+    no ejercita `require_tenant`. De paso cierra el menor de la misma corrida: el test HTTP de `/me`
+    nunca ejercitaba `onboarding_completado=True` -- acá sí, vía `/me` después de completar."""
+    a, b = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    r = client.post("/me/onboarding/completar", headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json() == {"onboarding_completado": True}
+
+    me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
+    me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
+    assert me_a["onboarding_completado"] is True
+    assert me_b["onboarding_completado"] is False  # completar de A no cambió la fila de B
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
 # --- K-08: feedback propio ("Lo pediste vos") -------------------------------------
