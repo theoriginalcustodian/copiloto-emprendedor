@@ -404,6 +404,18 @@ Ninguna tiene contrato (salvo la del CUIT, `BL-C6`). La dueña de la junta es pl
 ### BL-J1 · Clave de idempotencia en `presupuesto_store.crear`
 Es la mitad backend de `BL-D1`; se contrata junto con él. **Tamaño:** S.
 - **DoD:** el que figura en `BL-D1`.
+- **Puente `K-01` ≡ `BL-J1`: SÍ**, verificado contra el código, no por título de PR (2026-09-23). #522
+  («feat(presupuestos): idempotencia del alta con idem_key (K-01 backend)», mergeado 2026-09-21)
+  implementa exactamente el primer checkbox backend de `BL-D1` — `PresupuestoStore.crear_idem`
+  (`apps/copiloto/presupuesto_store.py:221-253`): con `idem_key`, un índice único parcial
+  `(cliente_id, idem_key)` cierra la ventana SELECT→INSERT; sin `idem_key`, comportamiento sin
+  cambios. Test que cita el propio DoD palabra por palabra —
+  `test_K01_dos_crear_con_la_misma_idem_key_dejan_UN_registro`
+  (`apps/copiloto/tests/test_presupuesto_store.py:101-108`)—: dos `crear` con la misma clave dejan
+  **un** registro (`_cuantos(...) == 1`) y la misma respuesta (`p1["id"] == p2["id"]`); más carrera
+  concurrente (`:120-130`) y aislamiento por tenant (`:134-139`, la clave es única POR `cliente_id`,
+  no global). El puente se escribe acá porque no vivía en ningún lado — el sello
+  `[PENDIENTE_INTEGRACION]` de los ítems `BL-J*` no se retira solo cuando cierra la mitad backend.
 
 ### BL-J2 · Fecha de corte del saldo
 - **Plataforma:** backend + web + mobile · **Tamaño:** S · **Origen:** H-04, sesión de Martín (#511, «Lo que NO entra» 1)
@@ -730,8 +742,26 @@ Lo que hace falta para que testers reales entren, usen y reciban ayuda sin que a
 ### BL-Q2 · Smoke E2E completo contra producción
 - **Tamaño:** S · **Evidencia:** `deploy/copiloto/smoke_beta_e2e.py`; última corrida con evidencia `37/37` el 13/08 (`Auditorias/2026-08-12-DEUDA-diferidos-con-dueno-y-fecha.md:107`); `deploy.sh` sólo corre `/healthz` + un smoke corto.
 - **DoD:**
-  - [ ] Corrido hoy contra prod con salida completa a archivo; 0 fallas o cada falla con ítem nuevo.
-  - [ ] Se vuelve a correr al cerrar cada bloque del plan y antes de invitar testers.
+  - [x] Corrido hoy contra prod con salida completa a archivo; 0 fallas o cada falla con ítem nuevo.
+    **2026-09-23**, `sha=1c011840f2015ea76a0251e21d4402babae5d34f` (diff vacío en `apps/` contra el
+    SHA desplegado `5aed9442`, verificado con `git diff --stat 5aed9442..1c011840 -- apps/`) —
+    `total=37 pass=37 fail=0`, log íntegro (no sólo el exit code) en
+    `_evidencia/2026-09-23/smoke-main-1c011840.txt` (worktree `wt-bl-o6-legal`): alta+login+chat
+    ReAct, adversarial de `/admin/*` (7 endpoints → 403), consola con mutación+auditoría, reintento
+    de trauma, y control negativo del bundle servido.
+  - [ ] Se vuelve a correr al cerrar cada bloque del plan y antes de invitar testers. **No se
+    tilda**: es un compromiso recurrente, no un hecho de una sola corrida — queda abierto a
+    propósito. Próximo disparador: el siguiente cierre de bloque del plan o la invitación a
+    testers, lo que ocurra primero.
+- **Veredicto sobre el control positivo del instrumento** (pedido explícito, por el hallazgo de
+  auditoría del generador de la matriz de 48 pantallas con `console.log('OK')` incondicional y sin
+  `process.exit(1)`): `smoke_beta_e2e.py` **sí tiene control positivo real** — no es el mismo
+  patrón. Cada paso usa `rec(step, ok, detail)` con una condición booleana genuina (ej.
+  `r.status_code == 403`, `deploy/copiloto/smoke_beta_e2e.py:71`); el propio script ejercita un
+  caso adversarial como parte de los críticos («alta SIN invite-token es rechazada», `:63-73`,
+  incluida en el set `CRIT`); y el veredicto final (`:433-444`) calcula `fails`/`crit_fails` sobre
+  ese `CRIT` explícito y hace `sys.exit(1 if crit_fails else 0)` (`:444`) — falla de verdad si un
+  crítico falla. El 37/37 vale.
 
 ### BL-Q3 · Barrido de device de todo lo marcado ✅ sin ver
 - **Tamaño:** M · **Origen:** R-7; `[NO VERIFICADO]` de H-15 (papelera), H-22 y H-25 (un dato por vez), H-35 (chips de estado), H-36 (layout), H-39 (WCAG 1.4.1), H-43 («la clave fiscal no se guarda», vinculación de varios minutos); `PWA` con service worker viejo (`memoria/pwa-sw-staleness-gotcha.md`).
