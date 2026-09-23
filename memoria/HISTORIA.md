@@ -259,3 +259,4 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 > Estas entran acá y no al índice porque el índice quedó a 15 chars del techo. Suben cuando se libere cupo.
 - [Trabajo por fases — no anticipar](trabajo-por-fases-no-anticipar.md) — "luz verde" ≠ "fase validada".
 - [Trabajo oportunista en esperas asíncronas](trabajo-oportunista-esperas.md) — adelantá lo independiente, no una fase futura.
+- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.

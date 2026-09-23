@@ -62,6 +62,7 @@
 ### Evidencia: el instrumento antes que el resultado
 - [🔌🕳️ La costura leía un campo que NADIE escribe](la-costura-leia-un-campo-que-nadie-escribe.md) — grepeá quién ESCRIBE, no quién lee.
 - [🐤 El canario: control positivo de lo que falla CALLADO](el-canario-el-control-positivo-de-lo-que-falla-callado.md) — inyectá el caso a propósito.
+- [📸⌛ Un inventario de procesos vivos es un SNAPSHOT](un-inventario-de-procesos-vivos-es-un-snapshot-no-un-estado.md) — re-medí al AFIRMAR, no al planear.
 
 - [No codificar la esperanza — el TRONCO](no-codificar-la-esperanza-principio-raiz.md) — la prueba vale, la aserción no.
 - [Spike-first es central](spike-first-central-proyecto.md) — un cimiento no verificado se amplifica
@@ -132,7 +133,6 @@
 - [🔒⚡ 3 gates que FRENAN — script-first · headless · modelo-por-tarea](gates-mecanicos-de-eficiencia-script-first-y-modelo-por-tarea.md) — nivel 1.
 - [🖥️➡️📡 Sub-agentes van HEADLESS, no inline](subagentes-van-headless-no-inline-en-la-terminal.md) — `claude -p`, misma auth.
 - [🕸️🔍 GRAFO primero, código después — para LOCALIZAR](grafo-primero-codigo-despues-para-localizar.md) — MCP `graphity-code`.
-- [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.
 - [Orquestación de waves — parent valida + commitea](orquestacion-waves-parent-valida.md) — verificá el estado, no el reporte.
 - [🔬 Loop auditoría Fable → análisis Opus → contratos → E2E](loop-auditoria-fable-analisis-opus-contratos-e2e.md) — loop reutilizable.
 - [📚 El índice truncado FABRICA duplicados](el-indice-truncado-fabrica-duplicados.md) — sin cargar completo ⇒ duplicados.
