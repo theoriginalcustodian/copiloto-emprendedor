@@ -21,8 +21,13 @@
 #   bash scripts/ci-verde.sh 311 "core lint"          # sólo dos, para un PR docs-only
 #   bash scripts/ci-verde.sh 311 && gh pr merge 311 --squash    # el patrón que importa
 #
-# SALIDA: exit 0 = verde (mergeable) · exit 1 = NO verde (falta alguno o alguno falló).
+# SALIDA: exit 0 = verde (mergeable) · exit 1 = NO verde (falta alguno o alguno falló) ·
+#         exit 2 = no se pudo medir (mismo molde que `command -v uv` en graph-sync.sh: sin
+#         esta guarda, `gh` ausente da un error de "comando no encontrado" indistinguible de
+#         un rollup vacío, y NO-VERDE por falta de herramienta se confunde con NO-VERDE real).
 set -uo pipefail
+
+command -v gh >/dev/null 2>&1 || { echo "❌ gh no está en el PATH — no puedo medir nada"; exit 2; }
 
 PR="${1:?uso: ci-verde.sh <numero-de-PR> [\"job1 job2 ...\"]}"
 ESPERADOS="${2:-backend core web mobile lint drift}"
