@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  estadoDeServicio,
+  KEY_GOOGLE_CALENDAR,
+  leerAgenda,
+  listarCatalogo,
+  rangoAgenda,
   TEXTO_NUEVO_EVENTO,
   dejarPendiente,
   franjaDeEvento,
-  leerAgenda,
-  rangoAgenda,
   type AgendaMiDia,
+  type EstadoConexion,
 } from '@copiloto/core';
 
 import { Button, Skeleton } from '../../design-system';
-import { useEstadoGoogleCalendar } from './useEstadoGoogleCalendar';
+import { AvisoConexionCalendario } from './AvisoConexionCalendario';
 import './midia.css';
 
 /**
@@ -20,15 +24,15 @@ import './midia.css';
  * 🔴 **Con Calendar sin conectar NUNCA se dice «no tenés eventos»**: es falso, no sabemos nada. Se
  * ofrece conectar. Un endpoint caído (incluido un 400) degrada a un aviso; no rompe la pantalla.
  *
- * 🔴 **BL-V23: «sin conectar» no es un caso único.** `/mi-dia/agenda` manda `conectado: false` tanto
- * si nunca se conectó como si la conexión se cayó — el mismo hueco que Mi día ya resolvió (BL-W11
- * 4b) leyendo el catálogo aparte (`useEstadoGoogleCalendar`, compartido con `MidiaScreen`). Sin el
- * desempate, a quien ya conectó y se le cayó se lo mandaba a "Conectá" — una acción que ya hizo,
- * perdiendo la acción correcta ("Reconectar").
- *
  * 🔴 **«Nuevo evento» no escribe en Calendar**: deja «Quiero agendar un evento» en el buzón del chat
  * principal (`dejarPendiente`, puente de BL-W9) y navega ahí. El alta la hace el agente con
  * `calendar_book` y confirm-gate HITL (ADR-004 §3).
+ *
+ * 🔴 **BL-V23:** `/mi-dia/agenda` trae sólo `conectado: boolean`, igual que `/mi-dia/calendario` —
+ * no distingue "nunca conectada" de "caída". Esta pantalla decía siempre «Conectá», mandando a
+ * reconectar a quien ya lo había hecho. Mismo desempate que `MidiaScreen` (BL-W11 fila 4b): la salud
+ * real vive en el catálogo (`estadoDeServicio`, K-09), se lee aparte y degrada fail-soft — sin ella
+ * (`null`, catálogo caído, backend viejo) cae a "nunca conectada", la lectura menos alarmante.
  */
 type Estado = 'cargando' | 'ok' | 'no_disponible';
 
@@ -41,7 +45,10 @@ export interface AgendaScreenProps {
 export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
   const [estado, setEstado] = useState<Estado>('cargando');
   const [agenda, setAgenda] = useState<AgendaMiDia | null>(null);
-  const { estadoGoogleCalendar } = useEstadoGoogleCalendar();
+  // BL-V23: mismo criterio fail-soft que `MidiaScreen` — sin catálogo, `estadoGoogleCalendar` queda
+  // `null` y el aviso cae al texto de "nunca conectada" (el que mostraba esta pantalla antes de leer
+  // la señal).
+  const [estadoGoogleCalendar, setEstadoGoogleCalendar] = useState<EstadoConexion | null>(null);
   const vivo = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -56,13 +63,25 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
     setEstado('no_disponible');
   }, []);
 
+  const cargarSaludConexiones = useCallback(async () => {
+    try {
+      const res = await listarCatalogo();
+      if (vivo.current && res.status === 'ok') {
+        setEstadoGoogleCalendar(estadoDeServicio(res.servicios, KEY_GOOGLE_CALENDAR));
+      }
+    } catch {
+      /* fail-soft: sin catálogo, el aviso degrada a "nunca conectada". */
+    }
+  }, []);
+
   useEffect(() => {
     vivo.current = true;
     void cargar();
+    void cargarSaludConexiones();
     return () => {
       vivo.current = false;
     };
-  }, [cargar]);
+  }, [cargar, cargarSaludConexiones]);
 
   return (
     <div className="midia-screen agenda-screen" data-testid="pantalla-agenda">
@@ -96,20 +115,14 @@ export function AgendaScreen({ onVolver, onAbrirChat }: AgendaScreenProps) {
         </p>
       )}
 
-      {/* BL-V23: mismo desempate que Mi día (BL-W11 4b) — `!conectado` agrupa "nunca conectada" y
-          "caída", que el catálogo sí distingue. Sin la señal (`null`) degrada al texto de "nunca
-          conectada", el menos alarmante ante la duda. */}
-      {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar === 'caido' && (
-        <p className="midia-screen__calendario-invitacion" data-testid="agenda-calendario-caida">
-          Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver
-          tu agenda.
-        </p>
-      )}
-
-      {estado === 'ok' && agenda != null && !agenda.conectado && estadoGoogleCalendar !== 'caido' && (
-        <p className="midia-screen__calendario-invitacion" data-testid="agenda-no-conectado">
-          Conectá Google Calendar en Ajustes → Apps para ver acá tu agenda.
-        </p>
+      {estado === 'ok' && agenda != null && !agenda.conectado && (
+        <AvisoConexionCalendario
+          estadoConexion={estadoGoogleCalendar}
+          testIdCaida="agenda-calendario-caida"
+          testIdNoConectado="agenda-no-conectado"
+          mensajeCaida="Se cayó la conexión con Google Calendar. Reconectala en Ajustes → Apps para volver a ver tu agenda."
+          mensajeNoConectado="Conectá Google Calendar en Ajustes → Apps para ver acá tu agenda."
+        />
       )}
 
       {estado === 'ok' && agenda != null && agenda.conectado && (
