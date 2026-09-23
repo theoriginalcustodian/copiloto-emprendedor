@@ -30,7 +30,20 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLAN="${COLA_PLAN:-$REPO_ROOT/coordinacion/PLAN.md}"
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
-[ -f "$PLAN" ] || { echo "No existe $PLAN"; exit 0; }
+
+# NO PUEDO VER MI SUJETO ≠ LA COLA ESTÁ EN ORDEN. Acá había un `exit 0`: este script —que existe
+# para cazar una fábrica parada en silencio— se paraba en silencio él mismo cuando no encontraba el
+# PLAN. Peor, el vigilante lo componía detrás de un `if [ -f "$BUZON/PLAN.md" ]`, así que desde
+# cualquier worktree la dimensión COLA no se medía Y no se decía. El fix del 21/09 (no gritar en
+# cada ciclo) NO se revierte: sigue en pie por su causa raíz, que era otra — el vigilante ahora
+# RESUELVE el buzón físico desde cualquier worktree, así que este camino sólo se toma cuando de
+# verdad no hay PLAN que leer. Y entonces hay que enterarse, no que lo tape un rc=0.
+if [ ! -f "$PLAN" ]; then
+  echo "❌ COLA: no puedo ver mi sujeto — no existe $PLAN"
+  echo "    Esto NO es «cola en orden»: es «no medí nada». 'coordinacion/' no está versionada y"
+  echo "    existe UNA sola vez (el checkout principal). Apuntala: COLA_PLAN=<ruta>/PLAN.md"
+  exit 2
+fi
 
 # Extraer sólo las líneas del bloque COLA-VIVA (entre los marcadores, sin las fences ```).
 bloque="$(awk '/COLA-VIVA:INICIO/{on=1;next} /COLA-VIVA:FIN/{on=0} on' "$PLAN" \

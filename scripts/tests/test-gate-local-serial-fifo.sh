@@ -43,7 +43,14 @@ ticket_viejo() { mkdir -p "$COLA"; rm -f "$COLA"/*; echo 'otro wt' > "$COLA/1000
 # 1
 ticket_viejo "$VIVO"
 correr GATE_LOCAL_CMD="echo CORRIO"; rc=$?
-[ "$rc" -ne 0 ] && ! grep -q CORRIO "$T/out" && grep -q 'no es mi turno' "$T/out" \
+# La aserción acepta las DOS salidas legítimas de la cola. Con WAIT=1s y la máquina cargada (5
+# sesiones), la primera vuelta del loop puede caer YA pasado el segundo y salir por TIMEOUT sin
+# imprimir nunca «no es mi turno»: afirmar sólo esa línea medía la carga de la máquina, no la cola.
+# Lo capturó FE2 el 2026-09-22 y acá no se reproducía. Lo que el caso 1 mide se mantiene entero
+# —no corrió, y fue la cola— porque ambas ramas atribuyen a la cola y el caso 2 (NOFIFO) aísla que
+# sea ella. Subir el WAIT haría el flake más raro, no imposible: eso sería tapar, no arreglar.
+[ "$rc" -ne 0 ] && ! grep -q CORRIO "$T/out" \
+  && grep -qE 'no es mi turno|más viejo\(s\) delante en la cola' "$T/out" \
   && ok "1 ticket más viejo vivo -> espera su turno, no corre" \
   || fail "1 rc=$rc corrió=$(grep -c CORRIO "$T/out") out=$(tail -1 "$T/out" | cut -c1-60)"
 

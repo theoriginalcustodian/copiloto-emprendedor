@@ -89,7 +89,15 @@ while ! { mi_turno && mkdir "$LOCK" 2>/dev/null; }; do
     rm -rf "$LOCK"; continue
   fi
   if [ $(( $(date +%s) - t0 )) -ge "$ESPERA" ]; then
-    echo "==> ❌ sigo sin turno tras ${ESPERA}s (dueño del candado: '$dueno'). No corro encima." >&2
+    # Las dos razones para no tener turno son distintas y el mensaje tiene que distinguirlas: con
+    # el candado LIBRE, «dueño del candado: ''» mandaba a buscar un dueño que no existe, cuando lo
+    # que posterga es la cola de tickets. El discriminante es el candado en sí, no `$dueno`: quien
+    # acaba de hacer `mkdir` todavía no escribió su owner.
+    if [ -d "$LOCK" ]; then
+      echo "==> ❌ sigo sin turno tras ${ESPERA}s: lo tiene '${dueno:-(dueño aún sin escribir)}'. No corro encima." >&2
+    else
+      echo "==> ❌ sigo sin turno tras ${ESPERA}s: el candado está LIBRE, pero hay $(ls "$COLA" 2>/dev/null | wc -l) ticket(s) más viejo(s) delante en la cola. No corro encima." >&2
+    fi
     exit 1
   fi
   # Dos esperas distintas, y conviene poder distinguirlas en el log: el candado está tomado, o
