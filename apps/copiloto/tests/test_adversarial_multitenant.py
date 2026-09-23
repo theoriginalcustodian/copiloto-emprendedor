@@ -582,7 +582,8 @@ def test_adversarial_http_legal_aceptar_version_vieja_es_409_y_no_escribe(two_te
     r = client.post("/me/legal/aceptar", json={"version": "2020-01-01"},
                     headers={"Authorization": f"Bearer {a.token}"})
     assert r.status_code == 409
-    assert r.json() == {"detail": "version_desactualizada", "vigente": LEGAL_VERSION_VIGENTE}
+    assert r.json()["detail"]["codigo"] == "version_desactualizada"
+    assert r.json()["detail"]["vigente"] == LEGAL_VERSION_VIGENTE
 
     me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
     assert me_a["legal_aceptado"] is False  # el 409 no escribió nada

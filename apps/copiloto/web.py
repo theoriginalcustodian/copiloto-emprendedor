@@ -31,7 +31,7 @@ from _paths import ensure_paths
 ensure_paths()
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from temporalio.common import WorkflowIDConflictPolicy
@@ -62,7 +62,7 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
-from errores_web import EMAIL_YA_REGISTRADO, conflicto
+from errores_web import EMAIL_YA_REGISTRADO, LEGAL_VERSION_DESACTUALIZADA, conflicto
 from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
@@ -1055,9 +1055,8 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         TenantOnboardingStore(conn_factory, cliente_id).completar()
         return {"onboarding_completado": True}
 
-    @app.post("/me/legal/aceptar", response_model=None)
-    def aceptar_legal(body: LegalAceptarIn,
-                       cliente_id: str = Depends(require_tenant)) -> dict | JSONResponse:
+    @app.post("/me/legal/aceptar")
+    def aceptar_legal(body: LegalAceptarIn, cliente_id: str = Depends(require_tenant)) -> dict:
         """BL-O6 Parte B: registra qué versión del documento legal vio y aceptó el tenant.
 
         `cliente_id` sale SOLO de `require_tenant` -- el body no trae identidad, sólo `version`
@@ -1065,16 +1064,19 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         que no necesita body porque no hay nada que el cliente deba declarar). Mismo BOLA
         (OWASP API1:2023) que `composio_disconnect`: aceptar CUALQUIER `cliente_id` del body sería
         dejar que un tenant marque la aceptación de otro. Idempotente: aceptar la misma versión dos
-        veces pisa la misma fila y devuelve 200 las dos veces."""
+        veces pisa la misma fila y devuelve 200 las dos veces.
+
+        El 409 usa `errores_web.conflicto` (con `vigente` como campo extra), NO un `HTTPException`
+        a mano -- `test_ningun_409_escrito_a_mano` lo exige para todo el módulo; el body real es
+        `{"codigo", "mensaje", "vigente"}`, no el `{"detail", "vigente"}` que había en el borrador
+        del contrato (avisado a planificación por mailbox)."""
         version = body.version.strip()
         if not version:
             raise HTTPException(status_code=400, detail="version_requerida")
         if version != LEGAL_VERSION_VIGENTE:
-            # `JSONResponse` directa, no `HTTPException`: el contrato pide `{"detail": ...,
-            # "vigente": ...}` como cuerpo, y `HTTPException` siempre anida lo que le pasás bajo
-            # una única clave `"detail"` -- no puede producir esta forma con dos claves top-level.
-            return JSONResponse(status_code=409, content={"detail": "version_desactualizada",
-                                                            "vigente": LEGAL_VERSION_VIGENTE})
+            raise conflicto(LEGAL_VERSION_DESACTUALIZADA,
+                            "Aceptaste una versión del documento legal que ya no es la vigente.",
+                            vigente=LEGAL_VERSION_VIGENTE)
         en = TenantLegalStore(conn_factory, cliente_id).aceptar(version)
         return {"aceptado": True, "version": version, "en": en.isoformat()}
 
