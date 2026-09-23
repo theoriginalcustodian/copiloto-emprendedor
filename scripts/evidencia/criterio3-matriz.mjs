@@ -43,7 +43,7 @@
 // Uso: PROTO_PORT=8123 [SOLO_IDS=ingresos,presu] node scripts/evidencia/criterio3-matriz.mjs
 // Sale 1 si alguna captura esperada falta o quedó sin reescribir en esta corrida.
 import { abrirLogueado, chromium, OUT } from './pwa-lib.mjs';
-import { mkdirSync, existsSync, statSync } from 'node:fs';
+import { mkdirSync, existsSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PROTO_PORT = process.env.PROTO_PORT ?? '8123';
@@ -123,6 +123,27 @@ async function esperarCargado(page, testidCargando, timeout = 30000) {
   if (!ok) console.log(`  ⚠️  ${testidCargando}: seguía visible tras ${timeout}ms — la captura puede estar en loading`);
 }
 
+// Un contrato de medición visual tiene que nombrar el CAMINO DE ACCESO, no sólo la pantalla.
+// El 2026-09-22 cuatro filas de la matriz se midieron por el camino equivocado: el pill «+Nuevo» abre
+// un formulario manual EN BLANCO, mientras que dictarle al chat produce una card de revisión
+// PRELLENADA — dos UI distintas de la «misma» pantalla. El contrato decía «medí `card`» y nada más,
+// así que quien midió eligió un camino y acertó o no por suerte. No fue un error de ejecución: fue un
+// contrato incompleto, y un contrato así no se puede ejecutar bien.
+//
+// Por eso el camino vive acá y no en la cabeza del que corre el script: es un dato obligatorio de cada
+// fila, se imprime en el log y se escribe junto a las capturas (`criterio3-caminos.json`), para que la
+// evidencia diga por dónde se llegó. Un contrato incompleto se puede repetir; un instrumento que exige
+// el dato, no. Al agregar un id nuevo, escribí su camino ANTES que su navegación.
+const CAMINO = {
+  ingresos: 'Funciones -> tile «Ingresos». La LISTA de cobros, no el formulario de «+Nuevo».',
+  presu: 'Funciones -> tile «Presupuestos». La LISTA, no el alta.',
+  negocio: 'Menú de cuenta -> «Mi negocio». Formulario de perfil.',
+  afip: 'Menú de cuenta -> «Facturación ARCA». Wizard de vinculación.',
+  cuenta: 'Menú de cuenta -> «Mi cuenta». Ajustes de la cuenta.',
+  detalle: 'Mi día -> click en la PRIMERA tarjeta. Exige que el tenant tenga al menos una.',
+  agenda: 'Mi día -> «Ver agenda». El cuerpo sólo es comparable con Google Calendar conectado.',
+};
+
 async function appNavegar(page, id) {
   switch (id) {
     case 'ingresos':
@@ -192,7 +213,14 @@ async function appNavegar(page, id) {
 const IDS = (process.env.SOLO_IDS ?? 'detalle,agenda,ingresos,presu,negocio,afip,cuenta').split(',');
 
 for (const id of IDS) {
-  console.log(`→ ${id}`);
+  // Sin camino declarado no se mide: es la diferencia entre medir la pantalla y medir una de sus
+  // dos caras. Preferimos una fila ausente y ruidosa a una fila presente y silenciosamente errada.
+  if (!CAMINO[id]) {
+    fallos.push(`SIN CAMINO DECLARADO: '${id}' — escribi su entrada en CAMINO antes de medirlo`);
+    console.error(`✗ ${id}: sin camino declarado — no se mide`);
+    continue;
+  }
+  console.log(`→ ${id}  ·  ${CAMINO[id]}`);
   for (const [sufijo, viewport] of [['390', MOVIL], ['desktop', DESKTOP]]) {
     esperados.add(join(OUT, `criterio3-${id}-app-${sufijo}.png`));
     esperados.add(join(OUT, `criterio3-${id}-proto-${sufijo}.png`));
@@ -214,6 +242,14 @@ for (const id of IDS) {
     });
   }
 }
+
+// La evidencia tiene que decir por DONDE se llego, no solo que se llego: una captura sin su camino
+// no se puede reproducir ni refutar. Se escribe con los ids realmente medidos en esta corrida.
+writeFileSync(
+  join(OUT, 'criterio3-caminos.json'),
+  JSON.stringify({ corrida: new Date(INICIO).toISOString(), caminos: Object.fromEntries(IDS.filter((i) => CAMINO[i]).map((i) => [i, CAMINO[i]])) }, null, 2),
+  'utf-8',
+);
 
 // Control de frescura: no alcanza con que el archivo exista. `evidencia-out/` acumula corridas, y
 // un PNG de ayer con bytes plausibles se juzga igual que uno de hoy — así es como un veredicto se
