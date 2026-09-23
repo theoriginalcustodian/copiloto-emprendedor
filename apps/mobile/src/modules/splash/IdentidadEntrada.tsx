@@ -17,16 +17,33 @@ const TAMANO = 132;
 const EASE_GROW = Easing.bezier(0.5, 0, 0.2, 1);
 const EASE_FIN = Easing.bezier(0.2, 0.8, 0.2, 1);
 
-// BL-X10 (H-A3-6) — mismos tiempos que web (`modules/splash/tempos.ts`, "cerrado, Martín 29/07"):
-// GROW=1900, BLOB_STAGGER=380. `COLAPSO` es el análogo de `COLLAPSE=1450` de web (ahí termina el
-// colapso de la última forma). `FADE_LOCKUP` escala proporcional a `GROW` (no tiene 1:1 en web, que
-// no tiene lockup fundido — ahí es wordmark letra a letra).
-const GROW = 1900;
-const BLOB_STAGGER = 380;
-const COLAPSO = 1450;
-const FADE_LOCKUP = 970;
+// BL-X10 (H-A3-6, port fiel) — mismos tiempos y curvas que web (`modules/splash/tempos.ts` +
+// `Splash.css`, "cerrado, Martín 29/07"). El lockup (Marca = glifo "O", wordmark "dobi" letra a
+// letra) ya NO se anima acá: vive en `RevealEntrada`, que es donde está el contenido real. Estas
+// constantes se exportan para que ese componente derive T_O/T_WORDMARK sin re-declarar el tempo.
+export const GROW = 1900;
+export const BLOB_STAGGER = 380;
+export const COLAPSO = 1450;
+export const SETTLE = 780;
+export const LETTER = 720;
+export const LETTER_STAGGER = 150;
 const N_BLOBS = 4;
-const T_LOCKUP = (N_BLOBS - 1) * BLOB_STAGGER + GROW * 0.55; // las formas ya cubrieron el lockup
+
+/** Arranque del colapso: cuando el último blob (egg) empieza a nacer + su propio GROW. */
+export const T_COLLAPSE_START = (N_BLOBS - 1) * BLOB_STAGGER + GROW; // 3040
+/** La "O" (glifo `Marca`) queda visible un poco antes de que el colapso termine del todo. */
+export const T_O = T_COLLAPSE_START + COLAPSO - Math.round(COLAPSO * 0.3); // 4055
+/** El wordmark "dobi" empieza a entrar. */
+export const T_WORDMARK = T_COLLAPSE_START + COLAPSO + 300; // 4790
+/** Fin del bounce de la última letra. */
+export const T_BOUNCE_END = T_WORDMARK + LETTER_STAGGER * 3 + LETTER + 120; // 6080
+/** Duración total de la identidad (splash), primer ingreso / post-logout. Gemelo de `SPLASH_TOTAL_MS` web. */
+export const SPLASH_TOTAL_MS = 6840;
+
+/** Settle de la "O": mismo `cubic-bezier(.2,0,0,1)` que `identidad-o-appear` en `Splash.css`. */
+export const EASE_SETTLE = Easing.bezier(0.2, 0, 0, 1);
+/** Bounce del wordmark: mismo `cubic-bezier(.24,1.62,.4,1)` que `identidad-letra-bounce` (overshoot real, no error de transcripción). */
+export const EASE_BOUNCE = Easing.bezier(0.24, 1.62, 0.4, 1);
 
 /**
  * Colores FIJOS de marca (no salen de `tema.color`, mismo criterio que `--identidad-word` en web
@@ -104,27 +121,14 @@ function Forma({
 }
 
 /**
- * BL-X10 — animación de entrada SOBRE el lockup de `RevealEntrada` (no hay un segundo splash, ver
- * docstring de ese componente): 4 formas creciendo con stagger, la última colapsando para revelar
- * el lockup real por debajo. `children` es el lockup ya renderizado (Marca + "Odobi"), que funde
- * entrada recién cuando las formas terminan de cubrirlo -- así nunca se ven los dos al mismo tiempo.
+ * BL-X10 (port fiel) — animación de entrada SOBRE el lockup de `RevealEntrada` (no hay un segundo
+ * splash, ver docstring de ese componente): 4 formas creciendo con stagger, la última colapsando
+ * hacia donde entra la "O" real. `children` es el lockup real (`Marca` + wordmark "dobi"), que ya
+ * NO se anima acá como bloque: cada pieza tiene su propio settle/bounce en `RevealEntrada`, igual
+ * que web separa la forma que colapsa (H-A4-2) del glifo de texto que aparece por debajo.
  */
 export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
   const reducido = useReducedMotion();
-  const lockupOpacidad = useSharedValue(reducido ? 1 : 0);
-  const lockupEscala = useSharedValue(reducido ? 1 : 0.85);
-
-  useEffect(() => {
-    if (reducido) return;
-    lockupOpacidad.value = withDelay(T_LOCKUP, withTiming(1, { duration: FADE_LOCKUP, easing: EASE_FIN }));
-    lockupEscala.value = withDelay(T_LOCKUP, withTiming(1, { duration: FADE_LOCKUP, easing: EASE_FIN }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara UNA vez al montar, tempo fijo
-  }, []);
-
-  const estiloLockup = useAnimatedStyle(() => ({
-    opacity: lockupOpacidad.value,
-    transform: [{ scale: lockupEscala.value }],
-  }));
 
   return (
     <View testID="identidad-entrada" style={styles.raiz}>
@@ -145,7 +149,7 @@ export function IdentidadEntrada({ children }: { children: React.ReactNode }) {
           ))}
         </View>
       )}
-      <Animated.View style={estiloLockup}>{children}</Animated.View>
+      {children}
     </View>
   );
 }
