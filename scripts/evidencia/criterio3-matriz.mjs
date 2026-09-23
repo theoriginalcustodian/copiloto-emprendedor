@@ -59,11 +59,55 @@ const MOVIL = { ancho: 390, alto: 844 };
 // acumula corridas y un archivo viejo con bytes plausibles es indistinguible de uno recién escrito.
 const INICIO = Date.now();
 const fallos = [];
+const noMedibles = [];
 const esperados = new Set();
 
 // Selector que prueba que el prototipo montó LA vista pedida. Sale de `index.html` (bloque
 // `if (ver === '…')`): cada id agrega la clase `on` a un contenedor propio. Esperar esto en vez de
 // un `waitForTimeout` es la diferencia entre medir la pantalla pedida y medir la pantalla de inicio.
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIBILIDAD declarada. El camino dice POR DÓNDE se llega; esto dice SI la pantalla
+// se puede juzgar con una captura. No son lo mismo, y confundirlos tiene un costo asimétrico:
+// el camino equivocado deja una foto que alguien puede notar rara; un frame arbitrario de una
+// animación en loop deja una foto PERFECTA de algo irrelevante, y nadie puede detectarlo mirando
+// el resultado. Sin este campo, el instrumento convierte lo no medible en aprobado.
+//
+// Regla: `captura: false` ⇒ el par no se toma y el id sale `NO_MEDIBLE_POR_CAPTURA`,
+// que es un estado honesto y distinto tanto de COHERENTE como de «falla».
+const MEDIBILIDAD = {
+  hitl: {
+    captura: false,
+    porque:
+      'TERCERA CLASE, distinta de las dos de arriba: `hitl` es técnicamente medible — la pantalla es ' +
+      'determinista y tiene estado estable. Lo que no se puede es LLEGAR a ella sin cruzar el contrato ' +
+      'del barrido (§2.5, «prohibido producir efectos reales para llegar a un estado»): su único camino ' +
+      'es pedirle al chat una acción real que dispare la confirmación. La propuesta HITL es inerte por ' +
+      'diseño y no confirmar la deja sin efecto — pero eso VALE LO QUE VALGA EL HITL, y el barrido no ' +
+      'es el lugar para apostar a que un control funciona. Si el HITL fallara abierto, el costo sería un ' +
+      'cobro o una factura reales emitidos para sacar una captura de paridad visual. ' +
+      'Se mide cuando exista una ruta de fixture, o en el pase de device con un operador mirando.',
+  },
+  splash: {
+    captura: false,
+    porque:
+      'Animación de transición en AMBOS lados, pero por motivos distintos y ahí está el detalle: la APP es determinista ' +
+      '(SPLASH_TOTAL_MS = 6840 y termina en un estado final estable); el PROTOTIPO corre en loop `setInterval` de 11 s ' +
+      'para demo y no tiene estado final. El lado no medible es el proto, no la app. Una captura compara un frame ' +
+      'arbitrario del loop contra el final de la app: la foto sale limpia y la comparación no significa nada.',
+  },
+  entrada: {
+    captura: false,
+    porque:
+      'Mismo caso que `splash` con otros números: app determinista (ENTRADA_TOTAL_MS = 1500, sólo en reload); ' +
+      'prototipo en loop de 6 s. Además NO emular `prefers-reduced-motion` para medirlas: la app colapsa el timeout ' +
+      'a 0 ms y la pantalla no llega a pintarse.',
+  },
+};
+
+// Los dos ids de arriba están hoy declarados COHERENTE en la matriz de FE1. Ese veredicto se emitió
+// sobre un par de capturas que el instrumento no podía tomar bien — no es una medición equivocada,
+// es una medición imposible que salió verde.
+
 const PROTO_VISTA = {
   detalle: '#tablero .fi.on',
   agenda: '#agenda.on',
@@ -142,6 +186,17 @@ const CAMINO = {
   cuenta: 'Menú de cuenta -> «Mi cuenta». Ajustes de la cuenta.',
   detalle: 'Mi día -> click en la PRIMERA tarjeta. Exige que el tenant tenga al menos una.',
   agenda: 'Mi día -> «Ver agenda». El cuerpo sólo es comparable con Google Calendar conectado.',
+  // --- Bloque B1 (ids de FE1 con una sola pasada de medicion) ---
+  apar: 'Ajustes -> tile «Apariencia». (`rail-user` NO abre menu: va derecho a Ajustes.)',
+  bi: 'Funciones -> tile «Inteligencia» (mobile) / item «Inteligencia» del rail (desktop). Vista «Resumen».',
+  'bi-refresh': 'Igual que `bi`, + click en el BOTON «Actualizar». OJO: el proto usa un GESTO (tirar para actualizar) que en web no existe — reemplazado a proposito por WCAG 2.5.1 (InteligenciaScreen.tsx:138-140). La comparacion es funcional, no de interaccion.',
+  comousar: 'Ajustes -> tile «Como usar la app». NO clickear un tema: navega al chat.',
+  soporte: 'Ajustes -> tile «Soporte tecnico». NO el tile «Como usar la app»: comparten TabKey y muestran componentes distintos.',
+  esc: 'Tab/rail «Funciones». El header difiere a proposito entre shells: mobile monta `avatar-cuenta`, desktop no.',
+  factura: 'Funciones -> tile «Facturacion». EL LISTADO, no el wizard — y ese es justamente el punto: el wizard tiene DOS origenes con UI distinta (pill «Nueva factura» = borrador VACIO · chip del chat «Completar a mano» = borrador PRELLENADO).',
+  splash: 'Arranque de sesión: aparece sola tras el login. No hay navegación que la abra.',
+  entrada: 'Reload de la app ya logueada. No hay navegación que la abra.',
+  hitl: 'Chat -> pedir una acción que requiera confirmación -> la tarjeta de propuesta. NO tocar «Confirmar».',
 };
 
 async function appNavegar(page, id) {
@@ -162,6 +217,7 @@ async function appNavegar(page, id) {
     case 'afip':
     case 'cuenta': {
       // El shell mobile expone `avatar-cuenta`; el de escritorio, `rail-user` (Rail.tsx, PR #299).
+      // Ninguno abre un menu intermedio: los dos navegan DIRECTO a la pantalla de Ajustes.
       const tile = { negocio: 'perfilNegocio', afip: 'facturacionAfip', cuenta: 'cuenta' }[id];
       await page.getByRole('button', { name: 'Mi día' }).click().catch(() => {});
       const boton = page.locator('[data-testid=avatar-cuenta], [data-testid=rail-user]');
@@ -204,6 +260,57 @@ async function appNavegar(page, id) {
       }
       break;
     }
+    case 'apar':
+    case 'comousar':
+    case 'soporte': {
+      const tile = { apar: 'apariencia', comousar: 'comoUsar', soporte: 'soporte' }[id];
+      await page.getByRole('button', { name: 'Mi día' }).click().catch(() => {});
+      const puerta = page.locator('[data-testid=avatar-cuenta], [data-testid=rail-user]');
+      await puerta.first().waitFor({ timeout: 15000 });
+      await puerta.first().click();
+      await page.waitForSelector(`[data-testid=ajuste-tile-${tile}]`, { timeout: 15000 });
+      await page.getByTestId(`ajuste-tile-${tile}`).click();
+      if (id === 'apar') await page.waitForSelector('[data-testid=pantalla-apariencia]', { timeout: 15000 });
+      if (id === 'comousar') {
+        await page.waitForSelector('[data-testid=pantalla-como-usar]', { timeout: 15000 });
+        await esperarCargado(page, 'como-usar-cargando');
+      }
+      if (id === 'soporte') await page.waitForSelector('[data-testid=soporte-screen]', { timeout: 15000 });
+      break;
+    }
+    case 'esc':
+      await page.getByRole('button', { name: 'Funciones' }).click().catch(() => {});
+      await page.waitForSelector('[data-testid=pantalla-escritorio]', { timeout: 15000 });
+      await page.waitForSelector('[data-testid=escritorio-grid]', { timeout: 15000 });
+      break;
+    case 'factura':
+      await page.getByRole('button', { name: 'Funciones' }).click().catch(() => {});
+      await page.getByTestId('tile-facturacion').click();
+      await page.waitForSelector('[data-testid=pantalla-facturacion]', { timeout: 15000 });
+      await esperarCargado(page, 'facturacion-cargando');
+      // El LISTADO. Tocar «Nueva factura» abriria el wizard vacio y mediria el camino equivocado.
+      await page.waitForSelector('[data-testid=facturacion-nueva-factura-pill]', { timeout: 15000 });
+      break;
+    case 'bi':
+    case 'bi-refresh': {
+      // Desktop tiene «Inteligencia» en el rail; mobile hay que pasar por Funciones.
+      const directo = page.getByRole('button', { name: 'Inteligencia' });
+      if (await directo.isVisible({ timeout: 2000 }).catch(() => false)) await directo.click();
+      else {
+        await page.getByRole('button', { name: 'Funciones' }).click().catch(() => {});
+        await page.getByTestId('tile-inteligencia').click();
+      }
+      await page.waitForSelector('[data-testid=pantalla-inteligencia]', { timeout: 15000 });
+      await esperarCargado(page, 'inteligencia-cargando');
+      if (id === 'bi-refresh') {
+        await page.getByTestId('inteligencia-actualizar').click();
+        // Ventana corta y auto-resolutiva: se captura el estado «Actualizando…» mientras dura.
+        await page
+          .waitForSelector('[data-testid=inteligencia-refresco-estado]', { timeout: 10000 })
+          .catch(() => console.log('  ⚠️  bi-refresh: el refresco termino antes de poder verlo'));
+      }
+      break;
+    }
     default:
       throw new Error(`id desconocido: ${id}`);
   }
@@ -213,8 +320,19 @@ async function appNavegar(page, id) {
 const IDS = (process.env.SOLO_IDS ?? 'detalle,agenda,ingresos,presu,negocio,afip,cuenta').split(',');
 
 for (const id of IDS) {
-  // Sin camino declarado no se mide: es la diferencia entre medir la pantalla y medir una de sus
-  // dos caras. Preferimos una fila ausente y ruidosa a una fila presente y silenciosamente errada.
+  // ORDEN: primero «¿se puede medir?», después «¿por dónde se llega?». Invertido, un id no medible
+  // que además no tiene camino sale reportado como «falta el camino» — veredicto correcto (no se
+  // midió) con la causa equivocada, que manda a arreglar lo que no está roto. Peor: la evidencia
+  // escribía `no_medibles_por_captura: []`, afirmando que no había ids no medibles justo en la
+  // corrida donde se pidieron dos. Lo cazó el control positivo de este guard, no una revisión.
+  if (MEDIBILIDAD[id]?.captura === false) {
+    noMedibles.push({ id, porque: MEDIBILIDAD[id].porque });
+    console.log(`⊘ ${id}: NO_MEDIBLE_POR_CAPTURA`);
+    console.log(`   ${MEDIBILIDAD[id].porque}`);
+    continue;
+  }
+  // Medible pero sin camino declarado: la diferencia entre medir la pantalla y medir una de sus dos
+  // caras. Preferimos una fila ausente y ruidosa a una fila presente y silenciosamente errada.
   if (!CAMINO[id]) {
     fallos.push(`SIN CAMINO DECLARADO: '${id}' — escribi su entrada en CAMINO antes de medirlo`);
     console.error(`✗ ${id}: sin camino declarado — no se mide`);
@@ -247,7 +365,17 @@ for (const id of IDS) {
 // no se puede reproducir ni refutar. Se escribe con los ids realmente medidos en esta corrida.
 writeFileSync(
   join(OUT, 'criterio3-caminos.json'),
-  JSON.stringify({ corrida: new Date(INICIO).toISOString(), caminos: Object.fromEntries(IDS.filter((i) => CAMINO[i]).map((i) => [i, CAMINO[i]])) }, null, 2),
+  JSON.stringify(
+    {
+      corrida: new Date(INICIO).toISOString(),
+      caminos: Object.fromEntries(IDS.filter((i) => CAMINO[i] && MEDIBILIDAD[i]?.captura !== false).map((i) => [i, CAMINO[i]])),
+      // Va en la evidencia, no sólo en el log: quien mañana vea N pares de PNG contra un contrato de
+      // M ids tiene que poder leer acá por qué faltan los M−N, sin volver a abrir el script.
+      no_medibles_por_captura: noMedibles,
+    },
+    null,
+    2,
+  ),
   'utf-8',
 );
 
