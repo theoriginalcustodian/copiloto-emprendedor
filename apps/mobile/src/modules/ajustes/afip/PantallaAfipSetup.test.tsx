@@ -192,7 +192,7 @@ describe('PantallaAfipSetup', () => {
   // -----------------------------------------------------------------------------------------
   // Precarga del perfil.
   // -----------------------------------------------------------------------------------------
-  it('precarga el perfil desde el CUIT cacheado al montar, y bloquea el CUIT', async () => {
+  it('precarga el perfil desde el CUIT cacheado al montar, bloquea el CUIT y no ofrece cambiarlo', async () => {
     jest.mocked(almacenClave.leer).mockResolvedValue(CUIT);
     jest.mocked(leerPerfil).mockResolvedValue({ status: 'ok', perfil: perfilMock() });
 
@@ -206,6 +206,9 @@ describe('PantallaAfipSetup', () => {
     expect(screen.getByTestId('afip-perfil-punto-venta-input').props.value).toBe('3');
     // Bloqueado -- el CampoTexto editable del CUIT ya no está en el árbol.
     expect(screen.queryByTestId('afip-perfil-cuit-input')).toBeNull();
+    // BL-V27: chip "Bloqueado" visible y CERO control que sugiera cambiar el CUIT vinculado.
+    expect(screen.getByTestId('afip-perfil-cuit-bloqueado')).toHaveTextContent('Bloqueado');
+    expect(screen.queryByTestId('afip-perfil-cuit-cambiar')).toBeNull();
   });
 
   it('sin CUIT cacheado, el CUIT del perfil arranca editable y sin datos precargados', async () => {
