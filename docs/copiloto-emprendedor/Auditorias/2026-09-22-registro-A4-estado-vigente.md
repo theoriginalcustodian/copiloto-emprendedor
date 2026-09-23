@@ -49,8 +49,8 @@ local. El control que debía suplirlo es **server-side**, y el 2026-09-22 el ope
 "enabled"`, `"secret_scanning": "enabled"`).
 
 **Ahí habría terminado el análisis si el `PATCH` con código 200 contara como verificación.** Al ir a
-leer la configuración en vez de confiar en el 200, apareció
-el control —en vez de darlo por bueno porque el `PATCH` devolvió 200— apareció el alcance real:
+**leer la configuración** en vez de darla por buena porque el `PATCH` devolvió 200, apareció el
+alcance real:
 
 ```
 secret_scanning:                        enabled
@@ -138,6 +138,47 @@ reinicio de la PC y auditoría tiene el **verde explícito**, con el diseño de 
 nueva cuenta» **no va** en el reveal: en una beta cerrada las altas las hace él y nadie se registra
 solo. Cero trabajo de código. Se registra acá porque una decisión que sólo vive en un chat envejece
 igual que un cierre que sólo vive en el buzón — que es la razón por la que este archivo existe.
+
+## A5 (2026-09-23) — re-check del Cierre A: NO cierra, y el motivo es el criterio 3
+
+Re-verificación acotada, con juez independiente. **Veredicto: el Cierre A no cierra.** No por una
+fila nueva, sino por el criterio 3 (paridad de testids web/mobile).
+
+**Lo que bloquea no es la falta de medición: es quién mide.** El DoD de `BL-Q5` pide que **auditoría**
+republique la matriz. Las **29 filas web** que hay las publicaron FE1 y FE2 —la fuente que A4 §C
+invalidó— y auditoría dejó por escrito que no re-midió (§116 del informe A4: «A4 muestrea; no
+re-midió los 54 ids»). Aunque mañana estuvieran los 54 con veredicto, si los publica el propio medido
+el criterio sigue sin cumplir su DoD. La salida es una decisión del operador: reabrir auditoría,
+re-declarar la vara con acta, o aceptar las 29 filas web dejando constancia de quién las midió.
+
+**Cuidado con los dos «54» del backlog**, que se mezclan fácil (me pasó al bajar el primer veredicto):
+uno es el universo de ids de la spec (`BL-Q5`, tras el salto `48 → 51 → 54` del PR #611 — el título
+del frente todavía dice «48 pantallas» y quedó viejo); el otro, «54 spec · 2 visión · 1 propuesta»,
+son **pantallas** clasificadas en `BL-P5`. Y el headline «matriz web 16/16» **no es 16 de 48**: son
+las 16 filas que estaban sin veredicto.
+
+**El generador mide 7, no 54.** `scripts/evidencia/criterio3-matriz.mjs:125` recorre
+`detalle,agenda,ingresos,presu,negocio,afip,cuenta`, con navegación escrita a mano por id. Extenderlo
+es trabajo real que **no** cierra el criterio, por lo de arriba.
+
+### Hallazgos del re-check
+
+| ID | Qué | Estado |
+|---|---|---|
+| **H-A4-1** | El juez lo dio por **refutado** en su mitad local: el guard fail-closed de `core.hooksPath` existe (`gate.sh:90-121` + `test-gate-hook-secretos.sh`, 4 casos). Este registro ya lo decía en su fila; lo que sigue abierta es la mitad **server-side** (`non_provider_patterns` disabled) | sin cambio — ver «Lo que falta» |
+| **H-A5-3** | Drift docstring↔código en `scripts/e2e_bl_o6_legal_aceptacion.py`. **Verificado: el código está bien** (L131 compara `"version_desactualizada"`, el valor real de `errores_web.py:35`); miente el **docstring** (L16 promete `"legal_version_desactualizada"`, que es el *nombre* de la constante, no su valor). En la misma línea, fija `detail.vigente == "2026-09-22"` en vez de citar `LEGAL_VERSION_VIGENTE` | 🟡 cosmético, 1 renglón, sin PR propio |
+| **H-A5-4** | «Falta ratchet en el control cross-tenant». **Parcialmente refutado:** para RLS el ratchet **existe y enumera solo** — `test_rls_invariantes.py::test_toda_tabla_con_RLS_forzado_tiene_politica_de_LECTURA_y_de_ESCRITURA` consulta `pg_policy` y falla ante cualquier policy `FOR ALL` sin `WITH CHECK`, sin depender de ninguna lista. **No verificado:** si existe un ratchet equivalente a nivel **endpoint** (que un endpoint nuevo sin test adversarial haga fallar el gate). `TABLAS_CONSOLA` (L29) sí es lista fija, pero cubre otro invariante | 🟡 abierto sólo en su mitad no verificada |
+
+### Lo que este re-check dice del método
+
+El estado del criterio 3 **ya estaba escrito, y mejor**, en `BL-Q5` del backlog, **un día antes** de
+que el re-check lo «descubriera» y lo escalara con un número mezclado. No faltó medición: faltó abrir
+la fila del frente que ya la tenía. Antes de publicar un hallazgo sobre un frente con id propio, se
+lee su fila del backlog — cuesta un `grep` y es la diferencia entre aportar y hacer ruido.
+
+Y los dos hallazgos que sobrevivieron al re-check se **achicaron** al verificarlos de a uno contra el
+código: uno era un comentario, el otro estaba medio hecho. Un hallazgo sin verificar cuesta el tiempo
+de quien lo recibe, no el de quien lo emite.
 
 ## Cómo se construyó este registro
 

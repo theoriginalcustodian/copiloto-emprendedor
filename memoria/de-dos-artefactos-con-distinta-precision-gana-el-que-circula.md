@@ -41,3 +41,25 @@ Ver [[una-espera-sin-disparador-nombrable-es-paralisis]] y [[supuesto-cuya-falla
 
 Corolario para el que recibe: un bloqueo ajeno **heredado** se re-mide una vez antes de adoptarlo,
 sobre todo si adoptarlo significa parar con el trabajo terminado. Cuesta un comando.
+
+---
+
+## 2026-09-23 (mismo día) — y adentro de UN artefacto pasa igual: gana el ENCABEZADO
+
+Corregí la afirmación equivocada **appendeando** el matiz al final del mismo campo, y quedó tan
+invisible como si no la hubiera corregido. La fila `GRAFO` del tablero abría con «🔴 **El sync del
+grafo aborta y con él TODO push de las 4 sesiones**» y cerraba, 900 caracteres después, con la
+corrección medida. `cola-check.sh` imprime el **principio** del campo, así que el veredicto que
+seguía circulando en cada corrida era el titular refutado.
+
+**La corrección tiene que ir donde el lector mira, no donde el texto termina.** Y quién es «el
+lector» hay que medirlo, no suponerlo: acá no es una persona leyendo la tabla, es un script que
+trunca a los primeros N caracteres. Un `head -c` decide qué versión de la verdad circula.
+
+La prueba de que está bien corregido no es haber escrito el matiz: es **volver a correr el
+instrumento** y leer lo que ahora imprime. Cuesta dos segundos y es el mismo gesto que
+[[un-enum-al-final-del-renglon-lo-borra-el-que-appendea]] pide para el enum — sólo que ahí lo que se
+rompe es el parseo y acá, lo que se rompe es el titular.
+
+Regla corta: **appendear sirve para agregar, nunca para desmentir.** Si lo nuevo contradice lo viejo,
+se edita el encabezado; el detalle histórico puede quedar abajo.
