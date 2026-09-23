@@ -262,3 +262,8 @@ checkout compartido, "El producto"— quedaron intactos en el índice activo.
 - [Localización estructurada en feedback a agentes](localizacion-estructurada-feedback-agentes.md) — −70% regresiones.
 - [Un procedimiento nuevo mueve el instrumento a un contexto que nadie probó](un-procedimiento-nuevo-mueve-el-instrumento-a-un-contexto-que-nadie-probo.md) — detached: stage compartido (#632) y recibo perdido (#634).  _(bajada del índice 2026-09-23 por el techo de 24.000 chars; la entrada sigue viva en `memoria/`)_
 - **Cerrados de la beta Odobi** (bajado del índice 2026-09-23): AFIP E2E en device · presupuestos + perfil · mobile-first. [[copiloto-facturacion-afip]] · [[copiloto-mobile-first-cascara-glass]] — *clientes por voz sigue ABIERTO y quedó en el índice.*
+
+## Bajadas del índice
+
+- [`patched()` se memoiza por run: el fix con patch no llega a sesiones vivas](patched-se-memoiza-por-run-un-fix-con-patch-no-llega-a-sesiones-vivas.md) — el False del replay se pega hasta el continue-as-new.
+  *(bajada el 2026-09-23 por presupuesto del índice: aplica sólo al aplicar `patch` de Temporal sobre workflows vivos, que no está en la cola de ninguna sesión. Sigue buscable acá.)*
