@@ -94,3 +94,35 @@ Corolario práctico: el bloqueo se escaló con su fila propia en la cola y cada 
 trabajando. La deuda del grafo no desapareció — pero **nadie quedó parado esperándola**, que es lo
 único que estaba realmente en mis manos. Ver [[cero-deuda-no-gestionada]] y
 [[deteccion-de-paralisis-sin-resolucion-es-ocio-pasivo]].
+
+---
+
+## 2026-09-23 — el cuello de botella puede ser **circular**: el guard escala con el atraso que causa
+
+El caso de arriba es un guard que frena más de lo que debería. Éste es peor: **cuanto más frena,
+más razones tiene para frenar.**
+
+El reconcile del grafo aborta si hay más de **200** objetos a borrar — un tope sensato contra el
+borrado a ciegas, que ya cazó una anomalía real (221 objetos, 2026-07-31). Pero el tope está
+calibrado para un grafo **que se reconcilia seguido**. Cuando el reconcile deja de correr, los
+símbolos que los refactors van dejando muertos se acumulan: medido hoy, **433** (100 nodos —81 de
+ellos `Function`— y 333 aristas), con duplicados exactos del mismo símbolo, que son la huella de
+ingestas repetidas sin reconcile.
+
+Y ahí se cierra el círculo: **el tope impide el reconcile, la falta de reconcile engorda la deuda,
+y la deuda engordada aleja más el tope.** No converge solo. Cada día de trabajo normal lo empeora,
+y el sistema no emite un error nuevo: emite **el mismo** error, cada vez más lejos de poder pasar.
+
+**Cómo se reconoce.** La pregunta es si la magnitud que el guard mide **crece por estar bloqueada**.
+Si sí, el umbral no es un umbral: es una **carrera** que el sistema pierde sola. Un guard sano mide
+algo que no depende de él (tamaño de un diff, cantidad de llamadas); uno circular mide una deuda que
+él mismo deja crecer.
+
+**Qué NO hacer:** bajar el umbral al valor de hoy para «destrabarlo». Eso lo desarma justo para el
+caso que iba a cazar — ver el caso de arriba. Las salidas legítimas son dos: **pagar la deuda una
+vez** con el override explícito (mirando la lista, que es la precondición que el propio script pide),
+o **subir el tope de forma versionada**, con ADR. Las dos son decisiones; la trampa es tratarlo como
+un ajuste al paso.
+
+Corolario operativo: un guard circular necesita un **dueño y una cadencia**, no sólo un número. Si
+nadie tiene la tarea de correr el reconcile, el número sólo decide cuándo explota.

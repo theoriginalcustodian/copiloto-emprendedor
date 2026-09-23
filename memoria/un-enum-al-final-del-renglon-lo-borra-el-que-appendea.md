@@ -69,3 +69,25 @@ agregando una nota. Por eso el formato sigue invitando al error aunque todos con
 palabra del texto histórico. El registro queda intacto y el parser vuelve a ver el estado — y como el
 appendeo natural es al final, el próximo que agregue una nota vuelve a romperlo. La única defensa
 real es la validación ruidosa, no la disciplina.
+
+---
+
+## 2026-09-23 — el que rompió el enum no fue un append: fui yo, "mejorando" la redacción
+
+La entrada nació con el appendeo ciego. El tercer caso llegó por otra puerta y es peor, porque fue
+**deliberado**: al cerrar seis frentes escribí el último campo como `CERRADA -- #676 en main` en vez
+de `✅ cerrada`. Más informativo para un humano; **vacío** para el parser, que normaliza el campo y
+exige `pendiente` | `arrancando` | prefijo ✅/❌.
+
+Nueve hitos quedaron invisibles, entre ellos el único frente **vivo**. El veredicto pasó a ser
+«NADA arrancando → arrancá CIERREB», que son los interruptores del **operador**: el instrumento
+mandaba a las tres sesiones a un frente sin nada arrancable, con LEGAL activo al lado.
+
+**La regla: un campo que un instrumento parsea no admite mejoras de redacción.** El contexto va al
+campo de texto libre —acá el disparador—, nunca al del enum. Un enum es una interfaz, y ampliarla
+unilateralmente desde el lado del escritor rompe al lector sin error.
+
+Y el remate: el modo de falla estaba escrito **en el comentario del propio `cola-check.sh`**, que yo
+había leído ese mismo día al arreglar los dos casos anteriores. **Conocer el modo de falla no lo
+evita.** Lo único que lo evita es correr el instrumento **después** de editar el archivo que el
+instrumento lee — acá, un `bash scripts/cola-check.sh` de dos segundos.

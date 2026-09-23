@@ -201,3 +201,34 @@ grep -rn 'exit 0; }' scripts/ | grep -i 'no existe'
 
 Si el hallazgo no viene con su barrido **en el mismo commit**, el gemelo siguiente ya está esperando.
 Ver [[el-fix-ya-existe-en-otro-call-site]] y [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
+
+---
+
+## 2026-09-23 — `git diff A B` no contesta «¿qué agrega esta rama?», y sus borrados son una ilusión
+
+Quise saber qué aportaba la rama de backend y corrí `git diff --stat origin/main 4489ea19`. La
+salida mostraba **745 borrados**, entre ellos `PantallaLegal.tsx`, `legal.ts` y `_layout.tsx` — justo
+los archivos que la otra sesión acababa de mergear. La lectura inmediata fue: *«si backend mergea sin
+traer main, revierte la pantalla legal de FE2»*. Estuve a un mensaje de bajar esa alarma.
+
+**Era falsa.** `git diff A B` compara **dos puntas**: lo que aparece como `-` es simplemente lo que
+A tiene y B no. No describe lo que un merge haría — un merge es un three-way contra la **base
+común**, y los archivos que sólo existen en `main` **se quedan**. El instrumento contestó bien; yo
+le había preguntado otra cosa.
+
+La pregunta «¿qué agrega esta rama sobre main?» tiene su propia forma, con **tres** puntos:
+
+```bash
+git log origin/main..LA_RAMA --oneline      # commits que la rama suma
+git diff origin/main...LA_RAMA              # el diff desde la BASE COMUN, no entre puntas
+git diff origin/main..LA_RAMA -- <paths>    # vacio => su contenido YA esta en main
+```
+
+Ese último fue el que cerró el caso: **vacío** ⇒ el trabajo de backend ya estaba íntegro en `main`
+(entró por #679 mientras yo medía), sin duplicar nada. El mismo control que había cerrado #677 horas
+antes — un PR que se cerró sin mergear porque su patch-id ya estaba aplicado.
+
+**Lo que hay que aprender no es el flag, es el reflejo:** una medición que produce una alarma
+grande y barata merece una segunda forma de preguntar **antes** de que la alarma circule. La primera
+lectura era plausible, urgente y reenviable — la peor combinación. Ver
+[[de-dos-artefactos-con-distinta-precision-gana-el-que-circula]].
