@@ -19,6 +19,11 @@ fi
 # excepción unilateral se declara a mano, con motivo y fecha (scripts/ci/testid-paridad-excepciones.json).
 python3 "$ROOT/scripts/ci/testid_paridad.py" --root "$ROOT" --check
 
+# PARID: paridad mobile<->web del patrón "idemKey deriva de mensajeId" (IDEM-gasto-duplica-plata).
+# El escaneo es del script; sólo una asimetría aceptada POR DISEÑO se declara a mano, con motivo y
+# fecha (scripts/ci/idemkey-paridad-excepciones.json).
+python3 "$ROOT/scripts/ci/idemkey_paridad.py" --root "$ROOT" --check
+
 # Tests de los scripts de coordinación. Van en "lint" y no en "core" porque son bash puro: no
 # necesitan DB, node ni el venv del VPS, y corren en segundos. Sin este bucle, `scripts/tests/`
 # es letra muerta — un test que nadie ejecuta no es un control, es un archivo.
