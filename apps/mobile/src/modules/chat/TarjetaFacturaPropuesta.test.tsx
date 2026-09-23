@@ -20,6 +20,7 @@ import {
   confirmarConTokenFresco,
   estadoFactura,
   leerFacturaPropuesta,
+  type ChatMessage,
   type EstadoFacturaResp,
 } from '@copiloto/core';
 
@@ -77,10 +78,13 @@ function emitida(over: Partial<EstadoFacturaResp> = {}): EstadoFacturaResp {
   };
 }
 
-async function montar(p = propuesta()) {
+async function montar(
+  p = propuesta(),
+  opts: { resuelto?: ChatMessage['facturaResuelta']; onResolver?: () => void } = {},
+) {
   return render(
     <ThemeProvider>
-      <TarjetaFacturaPropuesta propuesta={p} />
+      <TarjetaFacturaPropuesta propuesta={p} resuelto={opts.resuelto} onResolver={opts.onResolver} />
     </ThemeProvider>,
   );
 }
@@ -245,5 +249,54 @@ describe('TarjetaFacturaPropuesta', () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/facturacion', params: { facturaId: 'presu-12' } });
+  });
+
+  /**
+   * GUARDM parte 2 — guard cross-remount patrón B. Único camino terminal real: `emitida` (emitir es
+   * un acto fiscal irreversible; "Completar a mano" no marca nada, ver docstring de la card). Al
+   * rehidratar ya emitida, el comprobante NO viaja en el mensaje: se re-consulta con `estadoFactura`.
+   */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: true` re-consulta el estado y muestra el Recibo, sin pasar por Emitir', async () => {
+      mockEstado.mockResolvedValue(emitida());
+      await montar(propuesta(), { resuelto: true });
+
+      await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
+      expect(mockEstado).toHaveBeenCalledWith('presu-12');
+      expect(mockConfirmar).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('factura-propuesta-emitir')).toBeNull();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando en "mostrando", como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('factura-propuesta-emitir')).toBeTruthy();
+      expect(mockEstado).not.toHaveBeenCalled();
+    });
+
+    it('al emitir con éxito, llama a `onResolver`', async () => {
+      mockConfirmar.mockResolvedValue({ emitida: true, estado: emitida() });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('factura-propuesta-emitida')).toBeTruthy());
+      expect(onResolver).toHaveBeenCalledTimes(1);
+    });
+
+    it('`emitida:false` NO llama a `onResolver` -- no es terminal, se puede reintentar', async () => {
+      mockConfirmar.mockResolvedValue({ emitida: false, motivo: 'revisá el resumen' });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('factura-propuesta-emitir'));
+      });
+
+      expect(onResolver).not.toHaveBeenCalled();
+    });
   });
 });

@@ -513,6 +513,83 @@ describe('useChat -- descartarConexion persiste conexionDescartada y sobrevive a
   });
 });
 
+/**
+ * GUARDM parte 2 — `marcarCardResuelta` es el mismo mecanismo que `descartarConexion` (evento
+ * `tarjeta_resuelta` de `reducirChat`, persistencia vía `AlmacenClave`), genérico entre las 5 cards
+ * de propuesta. Mismo criterio de control: un remonte real (no un re-render) tiene que rehidratar la
+ * marca ya puesta.
+ */
+describe('useChat -- marcarCardResuelta persiste el campo terminal y sobrevive a un reload', () => {
+  let store: Map<string, string>;
+  const CLIENTE_ID = 'cli-tarjeta-reload';
+
+  beforeEach(() => {
+    store = new Map();
+    jest.mocked(almacenClave.leer).mockImplementation(async (clave) => store.get(clave) ?? null);
+    jest.mocked(almacenClave.guardar).mockImplementation(async (clave, valor) => {
+      store.set(clave, valor);
+    });
+    jest.mocked(api.sendChat).mockReset();
+    jest.mocked(api.getReply).mockReset();
+    jest.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 5 });
+  });
+
+  afterEach(() => {
+    jest.mocked(almacenClave.leer).mockResolvedValue(null);
+    jest.mocked(almacenClave.guardar).mockResolvedValue(undefined);
+  });
+
+  function sembrarHistorial(sessionId: string, mensajes: unknown[]) {
+    store.set(`copiloto-chat-session-id:${CLIENTE_ID}`, sessionId);
+    store.set(`copiloto-chat-msgs:${CLIENTE_ID}:${sessionId}`, JSON.stringify(mensajes));
+  }
+
+  const CARD_GASTO = { kind: 'gasto_propuesto', data: { monto: '50000.00' } };
+
+  it('marca gastoResuelto y persiste -- un remonte nuevo la rehidrata ya marcada', async () => {
+    sembrarHistorial('sess-1', [
+      { id: 'u1', role: 'user', text: 'anotá un gasto de 50000' },
+      { id: 'a1', role: 'assistant', text: 'Entendí este gasto.', card: CARD_GASTO },
+    ]);
+
+    const primero = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(primero.result.current.estado?.messages).toHaveLength(2));
+
+    await act(async () => {
+      primero.result.current.marcarCardResuelta('a1', { gastoResuelto: { estado: 'guardado', monto: '50000.00' } });
+    });
+    expect(primero.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+    await primero.unmount();
+
+    // CONTROL: un remonte real (nuevo hook, mismo AlmacenClave) -- si la marca viviera en un
+    // `useState` de la card en vez de en el mensaje persistido, este segundo montaje la vería sin
+    // marcar y la card volvería a mostrarse editable (el bug original de esta tanda).
+    const segundo = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(segundo.result.current.estado?.messages).toHaveLength(2));
+    expect(segundo.result.current.estado?.messages[1]).toMatchObject({
+      id: 'a1',
+      gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+    });
+    await segundo.unmount();
+  });
+
+  it('sin resolución previa, el mensaje rehidrata SIN gastoResuelto', async () => {
+    sembrarHistorial('sess-2', [
+      { id: 'u1', role: 'user', text: 'anotá un gasto de 50000' },
+      { id: 'a1', role: 'assistant', text: 'Entendí este gasto.', card: CARD_GASTO },
+    ]);
+
+    const { result, unmount } = await renderHook(() => useChat(CLIENTE_ID));
+    await waitFor(() => expect(result.current.estado?.messages).toHaveLength(2));
+
+    expect(result.current.estado?.messages[1]?.gastoResuelto).toBeUndefined();
+    unmount();
+  });
+});
+
 const ARCHIVO_VOZ = { nombre: 'voz.m4a', mime: 'audio/mp4', datos: 'file:///cache/voz.m4a' };
 const ARCHIVO_FOTO = { nombre: 'ticket.jpg', mime: 'image/jpeg', datos: 'file:///cache/ticket.jpg' };
 

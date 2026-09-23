@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 /** Partial mock: sólo la red. `leerPresupuestoPropuesto`, REAL. `listarConceptos` resuelve vacío —
@@ -12,7 +11,7 @@ jest.mock('@copiloto/core', () => {
   };
 });
 
-import { crearPresupuesto, leerPresupuestoPropuesto, type Presupuesto } from '@copiloto/core';
+import { crearPresupuesto, leerPresupuestoPropuesto, type ChatMessage, type Presupuesto } from '@copiloto/core';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { TarjetaPresupuestoPropuesto } from './TarjetaPresupuestoPropuesto';
@@ -45,17 +44,25 @@ function presupuestoGuardado(numero: number): Presupuesto {
   } as unknown as Presupuesto;
 }
 
-function arbol(p = propuesta(), mensajeId = 'assistant-1') {
-  return (
+/** `resuelto` ya llega SINCRÓNICO (patrón B, vive en el mensaje) — pero `FormularioPresupuesto`
+ *  sigue disparando `listarConceptos()` (red, async) sin gate en su propio mount (línea ~155-157).
+ *  Sin esperar a que asiente, esa resolución de promesa cae FUERA de cualquier `act()` de este test
+ *  y pisa el `screen` del próximo — mismo `waitFor` que usaba el `montar()` original (pre-migración,
+ *  cuando lo que flusheaba era la lectura async de `AsyncStorage`), ahora sólo para el catálogo. */
+async function montar(
+  p = propuesta(),
+  opts: { mensajeId?: string; resuelto?: ChatMessage['presupuestoResuelto']; onResolver?: (patch: NonNullable<ChatMessage['presupuestoResuelto']>) => void } = {},
+) {
+  const r = render(
     <ThemeProvider>
-      <TarjetaPresupuestoPropuesto propuesta={p} mensajeId={mensajeId} />
-    </ThemeProvider>
+      <TarjetaPresupuestoPropuesto
+        propuesta={p}
+        mensajeId={opts.mensajeId ?? 'assistant-1'}
+        resuelto={opts.resuelto}
+        onResolver={opts.onResolver}
+      />
+    </ThemeProvider>,
   );
-}
-
-/** La card lee su estado del almacén (async): se espera a que aparezca ALGO — formulario o terminal. */
-async function montar(p = propuesta(), mensajeId = 'assistant-1') {
-  const r = await render(arbol(p, mensajeId));
   await waitFor(() =>
     expect(
       screen.queryByTestId('presupuesto-propuesto') ??
@@ -67,10 +74,7 @@ async function montar(p = propuesta(), mensajeId = 'assistant-1') {
 }
 
 describe('TarjetaPresupuestoPropuesto', () => {
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    await AsyncStorage.clear();
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   it('dice explícitamente que TODAVÍA no se guardó', async () => {
     await montar();
@@ -164,54 +168,7 @@ describe('TarjetaPresupuestoPropuesto', () => {
     expect(mockCrear).not.toHaveBeenCalled();
   });
 
-  const CLAVE = 'copiloto-presupuesto-propuesto-resuelto:assistant-1';
-
-  it('🔴 K-01: al guardar, la resolución queda persistida por mensajeId', async () => {
-    mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
-    await montar();
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
-    });
-    await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
-
-    expect(JSON.parse((await AsyncStorage.getItem(CLAVE)) ?? 'null')).toEqual({ estado: 'guardado', numero: 7 });
-  });
-
-  it('🔴 K-01: montar una card cuyo mensaje YA se guardó (remount/recarga) queda terminal, sin botón Guardar', async () => {
-    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'guardado', numero: 7 }));
-
-    await montar();
-
-    expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent('Presupuesto anotado — N° 7');
-    expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
-    expect(mockCrear).not.toHaveBeenCalled();
-  });
-
-  it('K-01: la marca es por mensajeId — otro mensaje sigue editable', async () => {
-    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'guardado', numero: 7 }));
-
-    await montar(propuesta(), 'assistant-2');
-
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
-  });
-
-  it('K-01: un descarte también sobrevive al remount', async () => {
-    await AsyncStorage.setItem(CLAVE, JSON.stringify({ estado: 'descartado' }));
-
-    await montar();
-
-    expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
-  });
-
-  it('K-01: una marca corrupta no rompe — la card vuelve a verse editable', async () => {
-    await AsyncStorage.setItem(CLAVE, '{no es json');
-
-    await montar();
-
-    expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
-  });
-
-  it('🔴 K-01: tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key derivada del mensajeId', async () => {
+  it('🔴 tocar Guardar dos veces rápido NO dispara una segunda llamada, y manda la idem_key derivada del mensajeId', async () => {
     let resolver: (v: Awaited<ReturnType<typeof crearPresupuesto>>) => void = () => {};
     mockCrear.mockReturnValue(new Promise((r) => { resolver = r; }));
     await montar();
@@ -241,5 +198,59 @@ describe('TarjetaPresupuestoPropuesto', () => {
 
     expect(mockCrear).toHaveBeenCalledTimes(2);
     expect(mockCrear.mock.calls[1]?.[0].idemKey).toBe(mockCrear.mock.calls[0]?.[0].idemKey);
+  });
+
+  /**
+   * GUARDM parte 2 — guard cross-remount MIGRADO de patrón A (`AsyncStorage`, K-01/BL-D1) a patrón B
+   * (`resuelto`/`onResolver`, la marca vive DENTRO del mensaje). Control positivo/negativo mismo
+   * criterio que `hitlRespondido` en `ListaMensajes.test.tsx`.
+   */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: guardado` renderiza DIRECTO el terminal, sin el formulario', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'guardado', numero: 7 } });
+
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent(
+        'Presupuesto anotado — N° 7',
+      );
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+      expect(mockCrear).not.toHaveBeenCalled();
+    });
+
+    it('control positivo: `resuelto: descartado` renderiza DIRECTO el terminal de descarte', async () => {
+      await montar(propuesta(), { resuelto: { estado: 'descartado' } });
+
+      expect(screen.getByTestId('presupuesto-propuesto-descartado')).toBeTruthy();
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario-guardar')).toBeNull();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('presupuesto-propuesto-formulario-guardar')).toBeTruthy();
+    });
+
+    it('al guardar, llama a `onResolver` con el número asignado', async () => {
+      mockCrear.mockResolvedValue({ status: 'ok', presupuesto: presupuestoGuardado(7) });
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-guardar'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('presupuesto-propuesto-guardado')).toBeTruthy());
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', numero: 7 });
+    });
+
+    it('al descartar, llama a `onResolver` con `descartado`', async () => {
+      const onResolver = jest.fn();
+      await montar(propuesta(), { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('presupuesto-propuesto-formulario-cancelar'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
+    });
   });
 });

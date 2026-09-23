@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { formatearImporte, type IngresoPropuesto } from '@copiloto/core';
+import { formatearImporte, type ChatMessage, type IngresoPropuesto } from '@copiloto/core';
 
 import { FormularioIngreso } from '../ingresos/FormularioIngreso';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
@@ -18,23 +18,36 @@ import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropue
  * lleva la card a su Tile de éxito recién en ese punto, igual que la card web equivalente (bug real
  * medido en vivo contra prod, 2026-08-12: antes reusaba `onCancelar` y mostraba "No lo anotamos"
  * sobre un ingreso que sí tenía POST 201).
+ *
+ * 🔴 **Guard cross-remount (GUARDM parte 2), mismo mecanismo que `TarjetaGastoPropuesto`.** El
+ * terminal se persiste recién en el instante equivalente a `onListo` (cuando la card de verdad pasa a
+ * `'guardado'` visualmente) — nunca en `onGuardado`, que sólo actualiza `monto` mientras el
+ * formulario sigue mostrando su propia confirmación interna.
  */
 
 type Estado = 'editando' | 'guardado' | 'descartado';
 
 export interface TarjetaIngresoPropuestoProps {
   propuesta: IngresoPropuesto;
+  /** GUARDM parte 2 — `mensaje.ingresoResuelto`. Ausente = sigue en `'editando'`. */
+  resuelto?: ChatMessage['ingresoResuelto'];
+  /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
+   * los tests que no verifican persistencia lo omiten sin romper nada. */
+  onResolver?: (patch: NonNullable<ChatMessage['ingresoResuelto']>) => void;
   testID?: string;
 }
 
 export function TarjetaIngresoPropuesto({
   propuesta,
+  resuelto,
+  onResolver,
   testID = 'ingreso-propuesto',
 }: TarjetaIngresoPropuestoProps) {
-  const [estado, setEstado] = useState<Estado>('editando');
+  const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
   // Se actualiza en `onGuardado` (sesión viva) para que el Tile de éxito, si `onListo` lo dispara
-  // después, muestre el monto real y no un `null` de haberse leído sólo una vez al montar.
-  const [monto, setMonto] = useState<string | null>(null);
+  // después, muestre el monto real y no un `null` de haberse leído sólo una vez al montar. Sembrado
+  // desde `resuelto` para que un remount YA guardado también tenga el monto a mano.
+  const [monto, setMonto] = useState<string | null>(resuelto?.estado === 'guardado' ? resuelto.monto : null);
 
   if (estado === 'guardado') {
     return (
@@ -67,11 +80,18 @@ export function TarjetaIngresoPropuesto({
         }}
         onGuardado={(ingreso) => {
           /* Sigue montado: FormularioIngreso muestra su propia confirmación (con "falta"/"completo")
-             mientras se puede completar. Sólo se guarda el monto para el Tile que `onListo` arma. */
+             mientras se puede completar. Sólo se guarda el monto para el Tile que `onListo` arma —
+             la persistencia del guard ocurre recién en `onListo`, no acá (ver docstring). */
           setMonto(ingreso.monto);
         }}
-        onListo={() => setEstado('guardado')}
-        onCancelar={() => setEstado('descartado')}
+        onListo={() => {
+          setEstado('guardado');
+          onResolver?.({ estado: 'guardado', monto: monto ?? '' });
+        }}
+        onCancelar={() => {
+          setEstado('descartado');
+          onResolver?.({ estado: 'descartado' });
+        }}
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

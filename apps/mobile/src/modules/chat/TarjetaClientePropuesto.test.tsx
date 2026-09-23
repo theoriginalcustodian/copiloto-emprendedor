@@ -17,7 +17,7 @@ jest.mock('@copiloto/core', () => {
 
 import { router } from 'expo-router';
 
-import { crearCliente, leerClientePropuesto, type Cliente } from '@copiloto/core';
+import { crearCliente, leerClientePropuesto, type ChatMessage, type Cliente } from '@copiloto/core';
 
 import { reabrirNavegacion } from '../../navegacion/empujarUnaVez';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -63,10 +63,14 @@ function clienteGuardado(nombre: string, id = 7): Cliente {
   };
 }
 
-async function montar(p = propuesta(), texto?: string) {
+async function montar(
+  p = propuesta(),
+  texto?: string,
+  opts: { resuelto?: ChatMessage['clienteResuelto']; onResolver?: (patch: NonNullable<ChatMessage['clienteResuelto']>) => void } = {},
+) {
   return render(
     <ThemeProvider>
-      <TarjetaClientePropuesto propuesta={p} texto={texto} />
+      <TarjetaClientePropuesto propuesta={p} texto={texto} resuelto={opts.resuelto} onResolver={opts.onResolver} />
     </ThemeProvider>,
   );
 }
@@ -270,5 +274,67 @@ describe('TarjetaClientePropuesto', () => {
 
     expect(screen.getByTestId('cliente-propuesto-descartado')).toBeTruthy();
     expect(mockCrear).not.toHaveBeenCalled();
+  });
+
+  /** GUARDM parte 2 — guard cross-remount patrón B, mismo criterio que las otras cards. 3 salidas
+   *  terminales: se prueban las 3 en control positivo, más el negativo compartido. */
+  describe('guard cross-remount (patrón B)', () => {
+    it('control positivo: `resuelto: guardado` renderiza DIRECTO el terminal', async () => {
+      await montar(propuesta(), undefined, {
+        resuelto: { estado: 'guardado', cliente: clienteGuardado('Ferretería El Tornillo') },
+      });
+
+      expect(screen.getByTestId('cliente-propuesto-guardado')).toHaveTextContent(
+        'Cliente agregado: Ferretería El Tornillo',
+      );
+      expect(screen.queryByTestId('cliente-propuesto-formulario-guardar')).toBeNull();
+      expect(mockCrear).not.toHaveBeenCalled();
+    });
+
+    it('control positivo: `resuelto: ya_existe` renderiza DIRECTO el Tile "ya lo tenés"', async () => {
+      await montar(propuesta(), undefined, {
+        resuelto: { estado: 'ya_existe', duplicado: { por: 'documento', dueno: clienteGuardado('Ferretería SA', 42) } },
+      });
+
+      expect(screen.getByTestId('cliente-propuesto-ya-existe')).toBeTruthy();
+      expect(screen.queryByTestId('cliente-propuesto-formulario-guardar')).toBeNull();
+    });
+
+    it('control positivo: `resuelto: descartado` renderiza DIRECTO el terminal de descarte', async () => {
+      await montar(propuesta(), undefined, { resuelto: { estado: 'descartado' } });
+
+      expect(screen.getByTestId('cliente-propuesto-descartado')).toBeTruthy();
+    });
+
+    it('control negativo: sin `resuelto` sigue arrancando editable, como antes', async () => {
+      await montar();
+
+      expect(screen.getByTestId('cliente-propuesto-formulario-guardar')).toBeTruthy();
+    });
+
+    it('al guardar, llama a `onResolver` con el cliente guardado', async () => {
+      const cliente = clienteGuardado('Ferretería El Tornillo');
+      mockCrear.mockResolvedValue({ status: 'ok', cliente });
+      const onResolver = jest.fn();
+      await montar(propuesta(), undefined, { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-guardar'));
+      });
+
+      await waitFor(() => expect(screen.getByTestId('cliente-propuesto-guardado')).toBeTruthy());
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'guardado', cliente });
+    });
+
+    it('al descartar, llama a `onResolver` con `descartado`', async () => {
+      const onResolver = jest.fn();
+      await montar(propuesta(), undefined, { onResolver });
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-cancelar'));
+      });
+
+      expect(onResolver).toHaveBeenCalledWith({ estado: 'descartado' });
+    });
   });
 });
