@@ -80,3 +80,34 @@ más buscadas. Un fallo que se lleva justo lo más valioso sin levantar la mano.
 Relacionadas: [[vacio-no-es-hallazgo-correr-el-control]] (el vacío es una pregunta) ·
 [[el-pipe-se-come-el-exit-code]] (la otra forma de leer verde sin medir) ·
 [[bucle-canonico-dos-auditorias-y-el-enganche]] (§12, la ley de los instrumentos).
+
+---
+
+## 2026-09-23 — «el escáner dio limpio» significa «ninguno de los formatos que conozco»
+
+Variante del mismo defecto, pero el instrumento acá **sí mira**: mira todo el árbol, archivo por
+archivo. Lo que no tiene es una **regla** para lo que está buscando.
+
+Después de sacar del repo público cinco archivos con credenciales que gitleaks había marcado, barrí
+los 25 worktrees por *nombre* de archivo —`*token*.txt`, `*apikey*.txt`, `client_secret_*.json`,
+`*.pem`— y apareció un sexto en la misma raíz: `apikey Composio Copiloto Emprendedores.txt`. **No
+estaba entre los 12 hallazgos.** No lo perdonó una allowlist ni un fingerprint: las keys de Composio
+no matchean ninguna regla, así que el escáner nunca lo vio.
+
+Y el stack está lleno de proveedores sin regla: Composio, MercadoPago, Graphity, ARCA, DuckDNS.
+Todos los secretos de esos servicios son invisibles para el escáner de contenido, en un repo
+público, para siempre — no hasta que se actualice: **hasta que alguien escriba esa regla**.
+
+**La pregunta que falta hacerle a todo detector basado en catálogo** —escáneres de secretos, linters
+de seguridad, antivirus, validadores de esquema—: *¿contra qué lista compara, y qué de lo mío no
+está en esa lista?* La respuesta no es «casi todo»: es enumerable, y en este repo son los cuatro o
+cinco proveedores del stack.
+
+**El complemento cuesta un `find`.** Lo que una persona guarda a mano casi siempre **se llama como
+lo que es** —«apikey …», «token …», «client_secret_…»—, así que un barrido por nombre cubre justo el
+hueco que deja el barrido por contenido. Son ortogonales: el de contenido caza el secreto pegado
+adentro de un archivo con nombre inocente; el de nombre caza el archivo que el catálogo no reconoce.
+
+Control positivo obligatorio también acá: el primer barrido tiene que encontrar algo que ya sabés
+que existe, o el «cero resultados» no distingue entre *limpio* y *mal escrito el patrón*. Lo corrí
+contra la carpeta donde acababa de mover los cinco: 4 de 4.
