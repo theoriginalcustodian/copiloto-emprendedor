@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
-import type { Cliente, DatosCliente, DuplicadoCliente } from '@copiloto/core';
+import type { ChatMessage, Cliente, DatosCliente, DuplicadoCliente } from '@copiloto/core';
 
 import { FormularioCliente } from '../clientes/FormularioCliente';
 import { empujarUnaVez } from '../../navegacion/empujarUnaVez';
@@ -62,6 +62,11 @@ export interface TarjetaClientePropuestoProps {
    * quedó a medias.
    */
   texto?: string;
+  /** GUARDM parte 2 — `mensaje.clienteResuelto`. Ausente = sigue en `{fase:'editando'}`. */
+  resuelto?: ChatMessage['clienteResuelto'];
+  /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
+   * los tests que no verifican persistencia lo omiten sin romper nada. */
+  onResolver?: (patch: NonNullable<ChatMessage['clienteResuelto']>) => void;
   testID?: string;
 }
 
@@ -73,10 +78,24 @@ function abrirFicha(id: number): void {
 export function TarjetaClientePropuesto({
   propuesta,
   texto,
+  resuelto,
+  onResolver,
   testID = 'cliente-propuesto',
 }: TarjetaClientePropuestoProps) {
   const tema = useTema();
-  const [estado, setEstado] = useState<Estado>({ fase: 'editando' });
+  // GUARDM parte 2 — guard cross-remount: siembra sincrónicamente desde `resuelto`
+  // (`mensaje.clienteResuelto`, patrón B), mismo mecanismo que `TarjetaGastoPropuesto`. Sin esto, un
+  // remount del mensaje (scroll, recarga del hilo, reabrir la app) devolvía una card YA resuelta a
+  // `editando`, y tocar Dar de alta ahí creaba un cliente duplicado.
+  const [estado, setEstado] = useState<Estado>(
+    resuelto == null
+      ? { fase: 'editando' }
+      : resuelto.estado === 'guardado'
+        ? { fase: 'guardado', cliente: resuelto.cliente }
+        : resuelto.estado === 'ya_existe'
+          ? { fase: 'ya_existe', duplicado: resuelto.duplicado }
+          : { fase: 'descartado' },
+  );
 
   if (estado.fase === 'guardado') {
     return (
@@ -145,15 +164,26 @@ export function TarjetaClientePropuesto({
 
       <FormularioCliente
         iniciales={propuesta}
-        onGuardado={(cliente) => setEstado({ fase: 'guardado', cliente })}
-        onDuplicado={(duplicado) => setEstado({ fase: 'ya_existe', duplicado })}
+        onGuardado={(cliente) => {
+          setEstado({ fase: 'guardado', cliente });
+          onResolver?.({ estado: 'guardado', cliente });
+        }}
+        onDuplicado={(duplicado) => {
+          setEstado({ fase: 'ya_existe', duplicado });
+          onResolver?.({ estado: 'ya_existe', duplicado });
+        }}
         // El homónimo se resolvió abriendo al otro: no se creó nada, y decirlo evita que se vaya
         // creyendo que además quedó cargado el suyo.
         onAbrirCliente={(c) => {
-          setEstado({ fase: 'ya_existe', duplicado: { por: 'nombre', dueno: c } });
+          const duplicado: DuplicadoCliente = { por: 'nombre', dueno: c };
+          setEstado({ fase: 'ya_existe', duplicado });
+          onResolver?.({ estado: 'ya_existe', duplicado });
           abrirFicha(c.id);
         }}
-        onCancelar={() => setEstado({ fase: 'descartado' })}
+        onCancelar={() => {
+          setEstado({ fase: 'descartado' });
+          onResolver?.({ estado: 'descartado' });
+        }}
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

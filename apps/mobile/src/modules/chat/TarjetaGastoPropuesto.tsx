@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { formatearImporte, type GastoPropuesto } from '@copiloto/core';
+import { formatearImporte, type ChatMessage, type GastoPropuesto } from '@copiloto/core';
 
 import { FormularioGasto } from '../gastos/FormularioGasto';
 import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropuestaShell';
@@ -22,21 +22,37 @@ import { TarjetaPropuestaShell, TarjetaPropuestaTerminal } from './TarjetaPropue
  * instrucción, cierra con *«listo, ya lo anoté»* — el emprendedor lo lee, no toca Guardar, y el gasto
  * se pierde creyendo los dos que estaba hecho. El backend ya se lo prohíbe al LLM; este cartel es la
  * segunda mitad, del lado que el usuario mira.
+ *
+ * 🔴 **Guard cross-remount (GUARDM parte 2) — antes esta card era `useState` puro, sin persistencia.**
+ * Un remount del mensaje (scroll de la lista, recarga del hilo, reabrir la app) devolvía una card YA
+ * resuelta a `'editando'`, y tocar Guardar ahí creaba un gasto duplicado. `resuelto` (derivado de
+ * `mensaje.gastoResuelto` por `ListaMensajes.tsx`) siembra el estado inicial sincrónicamente — sin
+ * `useEffect` async, a diferencia del guard viejo de Presupuesto (patrón A, `AsyncStorage`): el valor
+ * ya está disponible en la prop, porque vive DENTRO del mensaje persistido (patrón B, mismo mecanismo
+ * que `hitlRespondido`/`conexionDescartada`). `onResolver` persiste la transición vía
+ * `useChat().marcarCardResuelta`.
  */
 
 type Estado = 'editando' | 'guardado' | 'descartado';
 
 export interface TarjetaGastoPropuestoProps {
   propuesta: GastoPropuesto;
+  /** GUARDM parte 2 — `mensaje.gastoResuelto`. Ausente = sigue en `'editando'`. */
+  resuelto?: ChatMessage['gastoResuelto'];
+  /** Persiste la resolución en el mensaje (atada a `mensaje.id` por `ListaMensajes.tsx`). Opcional:
+   * los tests que no verifican persistencia lo omiten sin romper nada. */
+  onResolver?: (patch: NonNullable<ChatMessage['gastoResuelto']>) => void;
   testID?: string;
 }
 
 export function TarjetaGastoPropuesto({
   propuesta,
+  resuelto,
+  onResolver,
   testID = 'gasto-propuesto',
 }: TarjetaGastoPropuestoProps) {
-  const [estado, setEstado] = useState<Estado>('editando');
-  const [guardado, setGuardado] = useState<string | null>(null);
+  const [estado, setEstado] = useState<Estado>(resuelto?.estado ?? 'editando');
+  const [guardado, setGuardado] = useState<string | null>(resuelto?.estado === 'guardado' ? resuelto.monto : null);
 
   if (estado === 'guardado') {
     return (
@@ -80,8 +96,12 @@ export function TarjetaGastoPropuesto({
         onCreado={(g) => {
           setGuardado(g.monto);
           setEstado('guardado');
+          onResolver?.({ estado: 'guardado', monto: g.monto });
         }}
-        onCancelar={() => setEstado('descartado')}
+        onCancelar={() => {
+          setEstado('descartado');
+          onResolver?.({ estado: 'descartado' });
+        }}
         testID={`${testID}-formulario`}
       />
     </TarjetaPropuestaShell>

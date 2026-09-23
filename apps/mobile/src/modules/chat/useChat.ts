@@ -153,6 +153,22 @@ export interface UseChatResult {
    * de `send`/`enviarAudio`/`enviarFoto`: no hay ciclo de envío, sólo una transición de estado sobre
    * un mensaje ya existente. */
   descartarConexion: (mensajeId: string) => void;
+  /** GUARDM parte 2 — marca el campo terminal (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/
+   * `facturaResuelta`/`presupuestoResuelto`) de `mensajeId` y persiste, mismo mecanismo síncrono y sin
+   * red que `descartarConexion` (patrón B: la marca vive DENTRO del mensaje, no en una clave
+   * `AsyncStorage` aparte). Genérico entre las 5 cards porque todas necesitan exactamente lo mismo:
+   * pisar un campo del mensaje ya existente sin tocar el resto del estado. La transición vive en
+   * `reducirChat` (evento `tarjeta_resuelta`) — este hook sólo dispara el evento y persiste, mismo
+   * criterio que el resto de las acciones del módulo. */
+  marcarCardResuelta: (
+    mensajeId: string,
+    patch: Partial<
+      Pick<
+        ChatMessage,
+        'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+      >
+    >,
+  ) => void;
 }
 
 /**
@@ -485,5 +501,31 @@ export function useChat(clienteId: string): UseChatResult {
     [actualizarEstado, clienteId],
   );
 
-  return { estado, send, enviarAudio, enviarFoto, descartarConexion };
+  /**
+   * GUARDM parte 2 — mismo mecanismo exacto que `descartarConexion` (sin red, sin ciclo `envio_*`),
+   * genérico entre las 5 cards de propuesta: el evento `tarjeta_resuelta` (`reducirChat`) decide QUÉ
+   * campo pisar, este hook sólo dispara y persiste. Lee `estadoRef.current` (no un `estado` cerrado
+   * por closure) por el mismo motivo que el resto del módulo: evitar el closure stale si la card llama
+   * esto después de que algún otro evento (un poll, un envío) ya actualizó el estado.
+   */
+  const marcarCardResuelta = useCallback(
+    (
+      mensajeId: string,
+      patch: Partial<
+        Pick<
+          ChatMessage,
+          'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+        >
+      >,
+    ) => {
+      const actual = estadoRef.current;
+      if (!actual) return;
+      const siguiente = reducirChat(actual, { tipo: 'tarjeta_resuelta', mensajeId, patch });
+      persistirMensajes(clienteId, siguiente.sessionId, siguiente.messages);
+      actualizarEstado(siguiente);
+    },
+    [actualizarEstado, clienteId],
+  );
+
+  return { estado, send, enviarAudio, enviarFoto, descartarConexion, marcarCardResuelta };
 }

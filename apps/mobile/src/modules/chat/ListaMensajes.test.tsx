@@ -11,13 +11,13 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ListaMensajes } from './ListaMensajes';
 
 // `render` de esta versión de @testing-library/react-native es `async` -- hay que awaitearlo.
-async function envolver(messages: ChatMessage[], onChoice = jest.fn()) {
+async function envolver(messages: ChatMessage[], onChoice = jest.fn(), onResolverTarjeta = jest.fn()) {
   await render(
     <ThemeProvider>
-      <ListaMensajes messages={messages} onChoice={onChoice} />
+      <ListaMensajes messages={messages} onChoice={onChoice} onResolverTarjeta={onResolverTarjeta} />
     </ThemeProvider>,
   );
-  return { onChoice };
+  return { onChoice, onResolverTarjeta };
 }
 
 describe('ListaMensajes', () => {
@@ -499,5 +499,111 @@ describe('ListaMensajes', () => {
 
     expect(screen.queryByTestId('tarjeta-link-cobro')).toBeNull();
     expect(screen.getByText('No pude armar el link.')).toBeTruthy();
+  });
+
+  /**
+   * GUARDM parte 2 — la parte que ningún test a nivel card puede ver: que `ListaMensajes` derive
+   * `resuelto` de CADA campo correcto del mensaje (`gastoResuelto`/`ingresoResuelto`/`clienteResuelto`/
+   * `facturaResuelta`/`presupuestoResuelto`) y ate `onResolverTarjeta` al `mensaje.id` real, con el
+   * patch envuelto en la clave que le corresponde a esa card. Mismo criterio de control
+   * positivo/negativo que H-A4-9 arriba.
+   */
+  describe('GUARDM parte 2 — wiring de `resuelto`/`onResolverTarjeta` por card', () => {
+    it('gasto: con `gastoResuelto` ya seteado, renderiza DIRECTO el terminal (control positivo)', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+          gastoResuelto: { estado: 'guardado', monto: '50000.00' },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('gasto-propuesto-guardado')).toBeTruthy();
+      expect(screen.queryByTestId('gasto-monto-input')).toBeNull();
+    });
+
+    it('gasto: sin `gastoResuelto` sigue editable (control negativo)', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('gasto-monto-input')).toBeTruthy();
+    });
+
+    it('gasto: descartar llama a `onResolverTarjeta` con el `mensaje.id` real y el patch bajo `gastoResuelto`', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-gasto-7',
+          role: 'assistant',
+          text: 'Entendí este gasto.',
+          card: { kind: 'gasto_propuesto', data: { monto: '50000.00' } },
+        },
+      ];
+      const { onResolverTarjeta } = await envolver(mensajes);
+
+      await fireEvent.press(screen.getByTestId('gasto-cancelar'));
+
+      expect(onResolverTarjeta).toHaveBeenCalledWith('assistant-gasto-7', {
+        gastoResuelto: { estado: 'descartado' },
+      });
+    });
+
+    it('presupuesto: con `presupuestoResuelto` ya seteado, renderiza DIRECTO el terminal', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Entendí este presupuesto.',
+          card: {
+            kind: 'presupuesto_propuesto',
+            data: {
+              concepto: 'Instalación eléctrica',
+              receptor: { nombre: 'Juan Pérez' },
+              items: [{ descripcion: 'Mano de obra', cantidad: '1', precio_unitario: '30000' }],
+            },
+          },
+          presupuestoResuelto: { estado: 'guardado', numero: 7 },
+        },
+      ];
+
+      await envolver(mensajes);
+
+      expect(screen.getByTestId('presupuesto-propuesto-guardado')).toHaveTextContent(
+        'Presupuesto anotado — N° 7',
+      );
+      expect(screen.queryByTestId('presupuesto-propuesto-formulario')).toBeNull();
+    });
+
+    it('cliente: cancelar llama a `onResolverTarjeta` con el `mensaje.id` real y el patch bajo `clienteResuelto`', async () => {
+      const mensajes: ChatMessage[] = [
+        {
+          id: 'assistant-cliente-3',
+          role: 'assistant',
+          text: 'Entendí este cliente.',
+          card: {
+            kind: 'cliente_propuesto',
+            data: { nombre: 'Ferretería El Tornillo', doc_tipo: 80, doc_nro: '30712345678', origen: 'voz' },
+          },
+        },
+      ];
+      const { onResolverTarjeta } = await envolver(mensajes);
+
+      await fireEvent.press(screen.getByTestId('cliente-propuesto-formulario-cancelar'));
+
+      expect(onResolverTarjeta).toHaveBeenCalledWith('assistant-cliente-3', {
+        clienteResuelto: { estado: 'descartado' },
+      });
+    });
   });
 });

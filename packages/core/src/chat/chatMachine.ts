@@ -24,6 +24,7 @@
  */
 
 import type { ChatContenido, ReplyCard, ReplyChoice, ReplyMessage } from '../api/types';
+import type { Cliente, DuplicadoCliente } from '../api/clientes';
 
 /**
  * Cota dura del historial en memoria/persistido (C6, ver
@@ -68,6 +69,37 @@ export interface ChatMessage {
    * separada en storage (esa es la fuga conocida del patrón A de la web, bloqueada para mobile hasta
    * que se resuelva PODA/BL-V32; ver el contrato de este fix). */
   conexionDescartada?: true;
+  /** GUARDM parte 2 — estado terminal de la card `gasto_propuesto` de ESTE mensaje
+   * (`TarjetaGastoPropuesto.tsx`). Ausente = sigue en `'editando'` (mismo criterio que
+   * `hitlRespondido`/`conexionDescartada` ausentes = sin resolver). Patrón B: se persiste DENTRO del
+   * mensaje, no en una clave `AsyncStorage` separada — la fuga que tenía ESE mecanismo (patrón A,
+   * mobile no poda esas claves) es la razón por la que `TarjetaPresupuestoPropuesto` migró a este
+   * mismo patrón (`presupuestoResuelto`, abajo) en la misma tanda que esta card. */
+  gastoResuelto?: { estado: 'guardado'; monto: string } | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo que `gastoResuelto`, para `ingreso_propuesto`
+   * (`TarjetaIngresoPropuesto.tsx`). */
+  ingresoResuelto?: { estado: 'guardado'; monto: string } | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo que `gastoResuelto`, para `cliente_propuesto`
+   * (`TarjetaClientePropuesto.tsx`) — 3 salidas terminales en vez de 2, porque el 409 por documento
+   * ("ya existe") no es ni guardado ni descartado. */
+  clienteResuelto?:
+    | { estado: 'guardado'; cliente: Cliente }
+    | { estado: 'ya_existe'; duplicado: DuplicadoCliente }
+    | { estado: 'descartado' };
+  /** GUARDM parte 2 — mismo mecanismo, para `factura_propuesta` (`TarjetaFacturaPropuesta.tsx`).
+   * Sólo hay un camino terminal real: `emitida` (emitir es un acto fiscal irreversible; "Completar a
+   * mano" navega afuera sin cambiar el estado de esta card, así que NO tiene marca — ver docstring de
+   * la card). Al rehidratar con esto en `true`, la card no tiene el comprobante (CAE/PDF) porque ese
+   * dato vive en estado efímero: re-consulta `estadoFactura` para poblarlo, en vez de asumirlo. */
+  facturaResuelta?: true;
+  /** GUARDM parte 2 — mismo mecanismo, para `presupuesto_propuesto` (`TarjetaPresupuestoPropuesto.tsx`).
+   * 🔴 **Migración de patrón A a patrón B** (corrección de alcance de planificación, no parte del
+   * diseño original de esta tanda): esta card nació con un guard cross-remount propio en
+   * `AsyncStorage` (`copiloto-presupuesto-propuesto-resuelto:<mensajeId>`, PR #663/K-01) — funcional,
+   * pero mobile no tiene ningún mecanismo de poda para esas claves (a diferencia de la web, que ya
+   * podó su propio patrón A), así que cada mensaje resuelto deja una clave que nunca se borra. Patrón
+   * B no tiene nada que podar: la marca vive y muere con el mensaje persistido. */
+  presupuestoResuelto?: { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -159,6 +191,21 @@ export type EventoChat =
    * evento no agrega ningún mensaje — sólo marca uno YA EXISTENTE (más parecido en forma a
    * `tiempo_agotado` que a `mensaje_usuario_agregado`). */
   | { tipo: 'conexion_descartada'; mensajeId: string }
+  /** GUARDM parte 2 — mismo criterio de forma que `conexion_descartada` (marca un mensaje YA
+   * EXISTENTE, no agrega ninguno): una de las 5 cards de propuesta
+   * (gasto/ingreso/cliente/factura/presupuesto) llegó a su estado terminal. `patch` trae SÓLO el
+   * campo que corresponde a esa card —genérico entre las 5 porque la transición es idéntica: pisar
+   * ese campo del mensaje sin tocar el resto. */
+  | {
+      tipo: 'tarjeta_resuelta';
+      mensajeId: string;
+      patch: Partial<
+        Pick<
+          ChatMessage,
+          'gastoResuelto' | 'ingresoResuelto' | 'clienteResuelto' | 'facturaResuelta' | 'presupuestoResuelto'
+        >
+      >;
+    }
   /** Arranca una conversación nueva: el caller ya generó el `session_id` y ya limpió la
    * persistencia vieja (efectos) — acá sólo se resetea el estado en memoria. */
   | { tipo: 'nueva_sesion'; sessionId: string };
@@ -305,6 +352,15 @@ export function reducirChat(estado: EstadoChat, evento: EventoChat): EstadoChat 
         ...estado,
         messages: estado.messages.map((mensaje) =>
           mensaje.id === evento.mensajeId ? { ...mensaje, conexionDescartada: true } : mensaje,
+        ),
+      };
+
+    case 'tarjeta_resuelta':
+      // Mismo criterio que `conexion_descartada`: inmutable, spread, sólo toca el mensaje de este id.
+      return {
+        ...estado,
+        messages: estado.messages.map((mensaje) =>
+          mensaje.id === evento.mensajeId ? { ...mensaje, ...evento.patch } : mensaje,
         ),
       };
 
