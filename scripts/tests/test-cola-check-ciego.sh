@@ -87,4 +87,36 @@ else
   printf '  ·  5 n/a: esta máquina no tiene el buzón físico (CI) — no hay raíz que verificar\n'
 fi
 
+# ── El TERCER gemelo: scripts/archivar-buzon.sh ────────────────────────────────────────────────
+# Mismo par de líneas que cola-check: derivaba el buzón de su propio root y salía `exit 0` sobre
+# "No existe". Desde cualquier worktree el vigía lo invocaba (paso 4) y creía haber ordenado un
+# buzón que nunca miró: 11 archivos vencidos apilados, medidos el 2026-09-22.
+JAN="$ROOT/scripts/archivar-buzon.sh"
+
+# 6 — POSITIVO: sin sujeto tiene que fallar Y decirlo, no reportar calma
+out="$(BUZON_DIR=/tmp/no-existe-jamas-$$ bash "$JAN" 2>&1)"; rc=$?
+[ "$rc" -ne 0 ] && echo "$out" | grep -qF "no puedo ver mi sujeto"   && ok "6 janitor sin sujeto: rc=$rc y lo dice"   || mal "6 rc=$rc · el janitor reportó orden sobre una carpeta que no miró: $out"
+
+# 7 — CONTROL del 6: con un buzón sano NO grita (si no, el 6 sólo mide que falla siempre)
+mkdir -p "$T/buzon/abierto"
+: > "$T/buzon/abierto/2026-01-01_dato_x-a-y_viejo.md"
+out="$(BUZON_DIR="$T/buzon" bash "$JAN" --dry-run 2>&1)"; rc=$?
+[ "$rc" = 0 ] && ! echo "$out" | grep -qF "no puedo ver mi sujeto"   && ok "7 control: con un buzón sano el janitor corre limpio (rc=0)"   || mal "7 falso positivo del janitor sobre un buzón sano: rc=$rc · $out"
+
+# 8 — LA RAÍZ, para el janitor: desde un worktree, SIN override, tiene que resolver el buzón físico.
+# `--dry-run` para no mover nada real. El bloque resolvedor está COPIADO de vigilancia-check.sh, y
+# código copiado diverge: por eso se verifica acá en vez de confiar en que sigue igual.
+if [ -f "$PRINCIPAL/coordinacion/abierto" ] || [ -d "$PRINCIPAL/coordinacion/abierto" ]; then
+  if [ ! -d "$ROOT/coordinacion" ]; then
+    out="$(bash "$JAN" --dry-run 2>&1)"; rc=$?
+    [ "$rc" = 0 ] && ! echo "$out" | grep -qF "no puedo ver mi sujeto"       && ok "8 janitor desde un worktree sin override -> resuelve el buzón físico"       || mal "8 el janitor sigue ciego desde un worktree: rc=$rc · $out"
+  else
+    printf '  ·  8 n/a: corriendo desde el checkout principal (el buzón está al lado)
+'
+  fi
+else
+  printf '  ·  8 n/a: esta máquina no tiene el buzón físico (CI)
+'
+fi
+
 [ "$fallos" = 0 ] && { echo "OK"; exit 0; } || { echo "$fallos check(s) fallaron"; exit 1; }

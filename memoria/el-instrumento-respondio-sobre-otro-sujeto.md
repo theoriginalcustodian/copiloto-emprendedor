@@ -131,3 +131,34 @@ el grafo estaba clavado en el pasado.
 proceso cuando escribió esto?», el sujeto es la **historia** del árbol, no el árbol: `git reflog`,
 el mtime del marcador, la bitácora. Un árbol sano hoy no declara nada sobre lo que fue ayer — y la
 trampa es que responde igual de rápido y de seguro.
+
+## Caso 10, el mismo día — escribí «el hallazgo no propaga el fix» y no lo propagué
+
+El caso 8 (arriba) cierra diciendo: *al arreglar un instrumento, grepeá el patrón del **FIX** —no el
+del bug— en el mismo archivo y en sus vecinos*. Lo escribí, abrí el PR con `cola-check.sh` y
+`vigilancia-check.sh` arreglados… y **no grepeé**. Horas después corrí `scripts/archivar-buzon.sh`
+desde un worktree y salió:
+
+```
+No existe /c/gfw-src/wt-a4reg/coordinacion/abierto
+```
+
+Exit **0**. El tercer gemelo, con **las dos líneas idénticas**: `BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"`
+y `[ -d "$ABIERTO" ] || { echo "No existe $ABIERTO"; exit 0; }`.
+
+Y este tenía consecuencia acumulada: el vigía lo invoca en su paso 4 desde cualquier worktree, así
+que **el janitor no corría nunca** y el ciclo reportaba el buzón ordenado. Al arreglarlo, la primera
+corrida archivó **11** — el mismo número que una medición independiente había contado como vencidos.
+La cuenta ya estaba ahí; lo que faltaba era un instrumento que la mirara.
+
+**Lo que esto agrega sobre el caso 8:** la lección escrita no se aplica sola **ni siquiera al autor,
+ni siquiera el mismo día, ni siquiera con el texto fresco**. Un hallazgo sobre un patrón no es un
+recordatorio: es una tarea de barrido, y termina cuando corriste el grep, no cuando redactaste el
+párrafo. El grep que faltaba era de una línea:
+
+```bash
+grep -rn 'exit 0; }' scripts/ | grep -i 'no existe'
+```
+
+Si el hallazgo no viene con su barrido **en el mismo commit**, el gemelo siguiente ya está esperando.
+Ver [[el-fix-ya-existe-en-otro-call-site]] y [[barrer-llamadores-incluye-los-instrumentos-de-verificacion]].
