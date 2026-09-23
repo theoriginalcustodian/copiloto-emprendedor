@@ -35,6 +35,7 @@ from contexto_tenant import conexion_con_tenant, declarar_tenant  # noqa: E402
 from mi_dia_web import create_mi_dia_app  # noqa: E402
 from mp_credential_store import MpCredentialStore  # noqa: E402
 from tenant_onboarding_store import TenantOnboardingStore  # noqa: E402
+from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore  # noqa: E402
 from mp_payment_store import MpPaymentStore  # noqa: E402
 from mp_web import create_mp_app  # noqa: E402
 from reply_store import make_pg_reply_sink, read_replies  # noqa: E402
@@ -451,11 +452,13 @@ def test_adversarial_http_me_endpoint_reflects_only_own_tenant_state(two_tenants
     me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
 
     assert me_a == {"cliente_id": a.cliente_id, "mp_connected": True, "composio_connected": ["gmail"],
-                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
+                    "legal_aceptado": False}
     # B también conectó MP (su propio seller) -- prueba que el true de A no es un default global;
     # y B NO ve la conexión composio que solo existe para A.
     assert me_b == {"cliente_id": b.cliente_id, "mp_connected": True, "composio_connected": [],
-                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
+                    "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
+                    "legal_aceptado": False}
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
 
 
@@ -539,6 +542,63 @@ def test_adversarial_http_onboarding_completar_a_cannot_complete_for_b(two_tenan
     assert me_a["onboarding_completado"] is True
     assert me_b["onboarding_completado"] is False  # completar de A no cambió la fila de B
     declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+# --- BL-O6 Parte B: legal_version/legal_aceptado_en por tenant ---------------------
+
+def test_BLO6_aceptar_con_el_cliente_de_A_no_cambia_la_fila_de_B(two_tenants, conn_de_tenant):
+    a, b = two_tenants
+    TenantLegalStore(conn_de_tenant(a.cliente_id), a.cliente_id).aceptar(LEGAL_VERSION_VIGENTE)
+    assert TenantLegalStore(conn_de_tenant(b.cliente_id), b.cliente_id).version_aceptada() is None
+
+
+def test_adversarial_http_legal_aceptar_a_cannot_accept_for_b(two_tenants, crypto):
+    """`POST /me/legal/aceptar` a nivel HTTP -- mismo patrón/motivo que el adversarial de
+    `/me/onboarding/completar` (STORE3/#660): el test store-level de arriba recibe el `cliente_id`
+    YA RESUELTO y no ejercita `require_tenant`. El control positivo acá es que A acepte CON SU
+    PROPIO token y la fila de B, sembrada por el mismo fixture, siga sin tocar."""
+    a, b = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    r = client.post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE},
+                    headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 200
+    assert r.json()["aceptado"] is True
+    assert r.json()["version"] == LEGAL_VERSION_VIGENTE
+
+    me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
+    me_b = client.get("/me", headers={"Authorization": f"Bearer {b.token}"}).json()
+    assert me_a["legal_aceptado"] is True
+    assert me_b["legal_aceptado"] is False  # el aceptar de A no cambió la fila de B
+    declarar_tenant(None)  # higiene: no dejar el ContextVar de proceso apuntando a B entre tests
+
+
+def test_adversarial_http_legal_aceptar_version_vieja_es_409_y_no_escribe(two_tenants, crypto):
+    a, _ = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    r = client.post("/me/legal/aceptar", json={"version": "2020-01-01"},
+                    headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 409
+    assert r.json()["detail"]["codigo"] == "version_desactualizada"
+    assert r.json()["detail"]["vigente"] == LEGAL_VERSION_VIGENTE
+
+    me_a = client.get("/me", headers={"Authorization": f"Bearer {a.token}"}).json()
+    assert me_a["legal_aceptado"] is False  # el 409 no escribió nada
+    declarar_tenant(None)
+
+
+def test_adversarial_http_legal_aceptar_sin_version_es_400(two_tenants, crypto):
+    a, _ = two_tenants
+    app = _build_http_app(two_tenants, crypto)
+    client = TestClient(app)
+
+    r = client.post("/me/legal/aceptar", json={"version": "  "},
+                    headers={"Authorization": f"Bearer {a.token}"})
+    assert r.status_code == 400
+    declarar_tenant(None)
 
 
 # --- K-08: feedback propio ("Lo pediste vos") -------------------------------------
