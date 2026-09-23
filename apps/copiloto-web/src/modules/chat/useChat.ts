@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MAX_MENSAJES_HISTORIAL, clasificarChoices } from '@copiloto/core';
 import { api, type ChatMessageKind, type ReplyCard, type ReplyChoice } from '../../lib/api';
 import { generarId as generateId } from '../../util/id';
+import { podarResolucionesCard } from './resolucionCardPropuesta';
 
 /**
  * Hook reusable de lógica del chat (Task 8) — agnóstico de presentación, consumible por ambos
@@ -203,6 +204,11 @@ export interface ChatMessage {
    * efecto de la línea 225) así sobrevive a un reload; el historial viejo sin este campo se migra al
    * rehidratar con `sanitizeLegacyHitlTokens` (arriba). */
   hitlRespondido?: { value: string; label: string };
+  /** HOJA — si ESTA card `requiere_conexion` (mensaje `assistant`) ya fue descartada con «Ahora
+   * no», mismo patrón que `hitlRespondido`: la marca vive DENTRO del mensaje persistido, no en un
+   * `useState<Set>` en memoria (`useConexionRequerida.ts`, versión previa) que se perdía al
+   * recargar y reabría la hoja. Ausente = sigue vigente/clickeable. */
+  conexionDescartada?: true;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'waiting' | 'timeout' | 'error';
@@ -236,6 +242,10 @@ export interface UseChatResult {
    * historial viejo y vacía los mensajes. Lo consume el botón "Nueva conversación" del header
    * de escritorio (`Copiloto Web.dc.html:98-101`); el shell mobile no lo usa. */
   startNewSession: () => void;
+  /** HOJA — marca el mensaje `mensajeId` (la card `requiere_conexion`) `conexionDescartada`, para
+   * que «Ahora no» (`useConexionRequerida.ts`) sobreviva a un reload. Atómico vía `setMessages`,
+   * mismo mecanismo que la marca `hitlRespondido` de `send`. */
+  marcarConexionDescartada: (mensajeId: string) => void;
 }
 
 export function useChat(): UseChatResult {
@@ -448,10 +458,20 @@ export function useChat(): UseChatResult {
         // best-effort — si localStorage falla, igual reseteamos el estado en memoria.
       }
     }
-    setMessages([]);
+    // PODA (BL-V32): el guard A (`resolucionCardPropuesta.ts`) nunca borraba — sin esto, las
+    // marcas de resolución de los mensajes de la sesión que se descarta quedaban huérfanas para
+    // siempre. `prev` (no una dependencia de closure) para no arrastrar un `messages` desactualizado.
+    setMessages((prev) => {
+      podarResolucionesCard(prev.map((m) => m.id));
+      return [];
+    });
     setSessionId(created);
     setSendStatus('idle');
   }, [stopPolling]);
 
-  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession };
+  const marcarConexionDescartada = useCallback((mensajeId: string) => {
+    setMessages((prev) => prev.map((m) => (m.id === mensajeId ? { ...m, conexionDescartada: true } : m)));
+  }, []);
+
+  return { messages, sendStatus, send, sendAudio, sessionId, startNewSession, marcarConexionDescartada };
 }

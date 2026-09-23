@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { dejarPendiente, tomarPendiente } from '@copiloto/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,5 +75,54 @@ describe('ChatScreen', () => {
     renderChatScreen();
     expect(await screen.findByText('¿Cómo emito mi primera factura?')).toBeInTheDocument();
     expect(tomarPendiente()).toBeNull();
+  });
+
+  // HOJA — BIS2 paso (c): «Ahora no» tenía que sobrevivir a un reload y no lo hacía (memoria pura en
+  // `useConexionRequerida.ts`). Este bloque ejercita el camino REAL (useChat + useConexionRequerida +
+  // SheetRequiereConexion tal como los usa ChatScreen), no sólo cada pieza por separado.
+  describe('HOJA: la hoja «conectá X» y su «Ahora no» sobreviven a un reload', () => {
+    const SESSION_ID = 'sess-hoja-integracion-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+    const HILO_PENDIENTE = [
+      { id: 'user-1', role: 'user', text: 'mandale un mail a Juan' },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        text: 'Para eso necesito que conectes Gmail primero.',
+        card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+      },
+    ];
+
+    function persistirHilo(mensajes: unknown[]) {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(mensajes));
+    }
+
+    it('tocar «Ahora no» + reload (remount): el sheet NO vuelve a abrirse', async () => {
+      persistirHilo(HILO_PENDIENTE);
+      renderChatScreen();
+
+      expect(await screen.findByTestId('sheet-requiere-conexion')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('sheet-requiere-conexion-ahora-no'));
+      expect(screen.queryByTestId('sheet-requiere-conexion')).not.toBeInTheDocument();
+
+      // La marca tiene que haber quedado en el MENSAJE persistido (no en memoria).
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([{ id: 'user-1' }, { id: 'assistant-1', conexionDescartada: true }]);
+
+      cleanup(); // desmonta — simula el reload real (recarga = remount desde cero)
+      renderChatScreen();
+      expect(screen.queryByTestId('sheet-requiere-conexion')).not.toBeInTheDocument();
+    });
+
+    it('control negativo — el MISMO hilo pendiente SIN descarte previo sigue abriendo el sheet tras un remount', async () => {
+      persistirHilo(HILO_PENDIENTE);
+      renderChatScreen();
+      expect(await screen.findByTestId('sheet-requiere-conexion')).toBeInTheDocument();
+
+      cleanup();
+      renderChatScreen();
+      expect(await screen.findByTestId('sheet-requiere-conexion')).toBeInTheDocument();
+    });
   });
 });

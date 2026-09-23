@@ -4,7 +4,12 @@ import type { PresupuestoPropuesto } from '@copiloto/core';
 
 import { Recibo, Surface } from '../../design-system';
 import { FormularioPresupuesto } from '../presupuestos/FormularioPresupuesto';
-import { claveResolucionCard, guardarResolucionCard, leerResolucionCardCruda } from './resolucionCardPropuesta';
+import {
+  claveResolucionCard,
+  guardarResolucionCard,
+  leerResolucionCardCruda,
+  PREFIJO_RESOLUCION_PRESUPUESTO,
+} from './resolucionCardPropuesta';
 import './chat.css';
 
 /**
@@ -37,7 +42,7 @@ type Estado = 'editando' | 'guardado' | 'descartado';
 
 type Resolucion = { estado: 'guardado'; numero: number | null } | { estado: 'descartado' };
 
-const RESOLUCION_STORAGE_PREFIX = 'copiloto-presupuesto-propuesto-resuelto';
+const RESOLUCION_STORAGE_PREFIX = PREFIJO_RESOLUCION_PRESUPUESTO;
 
 /** Valida lo que vino de `localStorage` — la parte genérica (lectura/escritura best-effort) vive en
  * `resolucionCardPropuesta.ts`, compartida con las demás cards `*_propuesto`. */

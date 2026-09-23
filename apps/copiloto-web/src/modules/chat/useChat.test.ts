@@ -439,6 +439,125 @@ describe('useChat', () => {
     });
   });
 
+  // HOJA — «Ahora no» (sheet «conectá X») tiene que sobrevivir a un reload igual que `hitlRespondido`
+  // arriba: la marca vive en el MENSAJE persistido, no en el `useState<Set>` que tenía
+  // `useConexionRequerida.ts` antes del fix (memoria, se perdía al recargar y la hoja reaparecía
+  // tapando el composer — BIS2 paso (c)).
+  describe('«Ahora no» sobrevive a un reload (HOJA)', () => {
+    const SESSION_ID = 'sess-hoja-ahora-no-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('marcarConexionDescartada marca el mensaje y lo persiste en localStorage', async () => {
+      const persisted = [
+        { id: 'user-1', role: 'user', text: 'mandale un mail a Juan' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages[1].conexionDescartada).toBeUndefined(); // todavía vigente
+
+      act(() => result.current.marcarConexionDescartada('assistant-1'));
+
+      expect(result.current.messages[1]).toMatchObject({ id: 'assistant-1', conexionDescartada: true });
+      const stored: unknown = JSON.parse(window.localStorage.getItem(MESSAGES_KEY) ?? '[]');
+      expect(stored).toMatchObject([{ id: 'user-1' }, { id: 'assistant-1', conexionDescartada: true }]);
+    });
+
+    it('rehidrata un mensaje YA marcado conexionDescartada tal cual', async () => {
+      const persisted = [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          text: 'Para eso necesito que conectes Gmail primero.',
+          card: { kind: 'requiere_conexion', service: 'gmail', label: 'Gmail', connect_path: '/x' },
+          conexionDescartada: true,
+        },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+
+      const { result } = renderHook(() => useChat());
+
+      expect(result.current.messages[0]).toMatchObject({ conexionDescartada: true });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    });
+  });
+
+  // PODA (BL-V32) — el guard A (`resolucionCardPropuesta.ts`) nunca borraba: `startNewSession`
+  // borraba los MENSAJES de la sesión previa pero dejaba huérfana la marca de resolución de cada
+  // card `*_propuesto` de esos mensajes (medido en prod: ~20 claves acumuladas en un tenant de
+  // prueba). Control negativo obligatorio (pedido del peer antes de cerrar): sin el `podarResolucionesCard`
+  // dentro de `startNewSession`, este test tiene que dar ROJO — lo verifiqué comentando esa línea
+  // antes de escribir el fix.
+  describe('poda de marcas huérfanas del guard A al arrancar sesión nueva (PODA / BL-V32)', () => {
+    const SESSION_ID = 'sess-poda-test';
+    const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
+
+    beforeEach(() => {
+      window.localStorage.setItem('copiloto-chat-session-id', SESSION_ID);
+      vi.mocked(api.getReply).mockResolvedValue({ replies: [], next_id: 0 });
+    });
+
+    it('startNewSession borra las marcas de resolución (guard A) de los mensajes de la sesión descartada', async () => {
+      const persisted = [
+        { id: 'user-1', role: 'user', text: 'gasté 5000 en nafta' },
+        { id: 'assistant-1', role: 'assistant', text: 'Anoté el gasto.', card: { kind: 'gasto_propuesto' } },
+      ];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+      // Simula lo que `TarjetaGastoPropuesto` ya habría guardado (guard A, prefijo real).
+      window.localStorage.setItem(
+        'copiloto-gasto-propuesto-resuelto:assistant-1',
+        JSON.stringify({ estado: 'guardado', monto: '5000' }),
+      );
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(result.current.messages).toHaveLength(2);
+
+      act(() => result.current.startNewSession());
+
+      expect(window.localStorage.getItem('copiloto-gasto-propuesto-resuelto:assistant-1')).toBeNull();
+    });
+
+    it('control negativo — una marca de OTRO mensaje (no de la sesión descartada) sobrevive', async () => {
+      const persisted = [{ id: 'assistant-1', role: 'assistant', text: 'x', card: { kind: 'gasto_propuesto' } }];
+      window.localStorage.setItem(MESSAGES_KEY, JSON.stringify(persisted));
+      window.localStorage.setItem(
+        'copiloto-gasto-propuesto-resuelto:assistant-999',
+        JSON.stringify({ estado: 'guardado', monto: '1' }),
+      );
+
+      const { result } = renderHook(() => useChat());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => result.current.startNewSession());
+
+      // Si la poda fuera un `clear()` general en vez de por `id` de mensaje, esto también
+      // desaparecería — el control demuestra que borra lo que corresponde, no todo.
+      expect(window.localStorage.getItem('copiloto-gasto-propuesto-resuelto:assistant-999')).not.toBeNull();
+    });
+  });
+
   describe('cota de historial (C6) — messages no crece sin techo', () => {
     const SESSION_ID = 'sess-cota-test';
     const MESSAGES_KEY = `copiloto-chat-msgs:${SESSION_ID}`;
