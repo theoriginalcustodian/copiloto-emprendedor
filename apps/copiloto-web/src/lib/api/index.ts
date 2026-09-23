@@ -7,7 +7,7 @@ import { login, signup } from './auth';
 import { catalog } from './catalog';
 import { sendChat } from './chat';
 import { deleteConnection, getConnect } from './connect';
-import { me } from './me';
+import { aceptarLegal, me } from './me';
 import { mockApi } from './mock';
 import { ensureOauthTenant } from './oauth';
 import { getReply } from './reply';
@@ -19,6 +19,7 @@ const realApi: CopilotApi = {
   signup,
   ensureOauthTenant,
   me,
+  aceptarLegal,
   catalog,
   connect: getConnect,
   disconnect: deleteConnection,

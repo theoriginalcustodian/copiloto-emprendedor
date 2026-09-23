@@ -9,6 +9,7 @@ vi.mock('../lib/api', async (importOriginal) => {
       login: vi.fn(),
       signup: vi.fn(),
       me: vi.fn(),
+      aceptarLegal: vi.fn(),
       catalog: vi.fn(),
       connect: vi.fn(),
       sendChat: vi.fn(),
@@ -18,7 +19,9 @@ vi.mock('../lib/api', async (importOriginal) => {
 });
 
 import '../design-system/themes.css';
-import { api } from '../lib/api';
+import { LEGAL_VERSION } from '@copiloto/core';
+
+import { api, ApiError } from '../lib/api';
 import { THEMES } from '../design-system/ThemeProvider';
 import { SessionProvider } from './SessionProvider';
 import { SignupScreen } from './SignupScreen';
@@ -49,6 +52,7 @@ describe('SignupScreen', () => {
     vi.mocked(api.signup).mockReset();
     vi.mocked(api.login).mockReset();
     vi.mocked(api.me).mockReset();
+    vi.mocked(api.aceptarLegal).mockReset();
   });
 
   it('renderiza el form con marca y campos', async () => {
@@ -78,6 +82,11 @@ describe('SignupScreen', () => {
       composio_connected: [],
       es_admin: false,
     });
+    vi.mocked(api.aceptarLegal).mockResolvedValueOnce({
+      aceptado: true,
+      version: LEGAL_VERSION,
+      en: '2026-09-22T00:00:00Z',
+    });
 
     const { onSignupExitoso } = renderSignupScreen();
     await waitFor(() => expect(screen.getByTestId('signup-screen')).toBeInTheDocument());
@@ -86,8 +95,121 @@ describe('SignupScreen', () => {
 
     await waitFor(() => expect(api.signup).toHaveBeenCalledWith('nueva@a.com', 'unaClaveLarga1'));
     await waitFor(() => expect(api.login).toHaveBeenCalledWith('nueva@a.com', 'unaClaveLarga1'));
+    // BL-O6 parte B: la aceptación se registra ANTES de dar el alta por terminada.
+    await waitFor(() => expect(api.aceptarLegal).toHaveBeenCalledWith(LEGAL_VERSION));
     await waitFor(() => expect(onSignupExitoso).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('BL-O6 parte B: la versión rotó entre el render y el submit (409) -> aviso de recargar, no completa el alta', async () => {
+    vi.mocked(api.signup).mockResolvedValueOnce({
+      cliente_id: 'c-nuevo',
+      auth_user_id: 'u-nuevo',
+      email: 'nueva@a.com',
+    });
+    vi.mocked(api.login).mockResolvedValueOnce({
+      access_token: 'tok',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'r',
+      user: {},
+    });
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'c-nuevo',
+      mp_connected: false,
+      composio_connected: [],
+      es_admin: false,
+    });
+    vi.mocked(api.aceptarLegal).mockRejectedValueOnce(new ApiError(409, 'version_desactualizada'));
+
+    const { onSignupExitoso } = renderSignupScreen();
+    await waitFor(() => expect(screen.getByTestId('signup-screen')).toBeInTheDocument());
+
+    await fillAndSubmit('nueva@a.com', 'unaClaveLarga1');
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Se actualizó el texto legal'));
+    expect(onSignupExitoso).not.toHaveBeenCalled();
+  });
+
+  it('BL-O6 parte B: el 409 real de `errores_web.conflicto()` trae `extra.vigente` -> se muestra en el aviso', async () => {
+    // Shape real del server (no el del contrato original, que pedía `detail` string plano —
+    // ver `pedido_..._BL-O6-parte-A-el-409-cambio-de-shape-leer-detail-codigo.md`): `client.ts`
+    // ya resuelve `detail` al `mensaje` legible y separa el resto en `.extra`.
+    vi.mocked(api.signup).mockResolvedValueOnce({
+      cliente_id: 'c-nuevo',
+      auth_user_id: 'u-nuevo',
+      email: 'nueva@a.com',
+    });
+    vi.mocked(api.login).mockResolvedValueOnce({
+      access_token: 'tok',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'r',
+      user: {},
+    });
+    vi.mocked(api.me).mockResolvedValueOnce({
+      cliente_id: 'c-nuevo',
+      mp_connected: false,
+      composio_connected: [],
+      es_admin: false,
+    });
+    vi.mocked(api.aceptarLegal).mockRejectedValueOnce(
+      new ApiError(
+        409,
+        'Aceptaste una versión del documento legal que ya no es la vigente.',
+        'Aceptaste una versión del documento legal que ya no es la vigente.',
+        { codigo: 'version_desactualizada', vigente: '2026-09-22' },
+      ),
+    );
+
+    const { onSignupExitoso } = renderSignupScreen();
+    await waitFor(() => expect(screen.getByTestId('signup-screen')).toBeInTheDocument());
+
+    await fillAndSubmit('nueva@a.com', 'unaClaveLarga1');
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('2026-09-22'));
+    expect(onSignupExitoso).not.toHaveBeenCalled();
+  });
+
+  it('BL-O6 parte B: falla el POST de aceptación (no-409) -> no completa el alta, "Reintentar" reintenta sólo eso', async () => {
+    vi.mocked(api.signup).mockResolvedValueOnce({
+      cliente_id: 'c-nuevo',
+      auth_user_id: 'u-nuevo',
+      email: 'nueva@a.com',
+    });
+    vi.mocked(api.login).mockResolvedValueOnce({
+      access_token: 'tok',
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: 'r',
+      user: {},
+    });
+    vi.mocked(api.me).mockResolvedValue({
+      cliente_id: 'c-nuevo',
+      mp_connected: false,
+      composio_connected: [],
+      es_admin: false,
+    });
+    vi.mocked(api.aceptarLegal).mockRejectedValueOnce(new Error('network down'));
+
+    const { onSignupExitoso } = renderSignupScreen();
+    await waitFor(() => expect(screen.getByTestId('signup-screen')).toBeInTheDocument());
+
+    await fillAndSubmit('nueva@a.com', 'unaClaveLarga1');
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('no pudimos registrar la aceptación'));
+    expect(onSignupExitoso).not.toHaveBeenCalled();
+
+    // Reintentar NO reenvía signup/login (chocaría con "el email ya existe") — sólo el POST de aceptación.
+    vi.mocked(api.aceptarLegal).mockResolvedValueOnce({
+      aceptado: true,
+      version: LEGAL_VERSION,
+      en: '2026-09-22T00:00:00Z',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    await waitFor(() => expect(onSignupExitoso).toHaveBeenCalledTimes(1));
+    expect(api.signup).toHaveBeenCalledTimes(1);
   });
 
   it('signup OK pero login falla (email ya existía con otra password) -> aviso específico', async () => {

@@ -72,12 +72,26 @@ mkdir -p "$DEST"
 HAY_GIT=0
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 && HAY_GIT=1
 
-rescatados=0; purgados=0; divergentes=0
+rescatados=0; purgados=0; divergentes=0; excluidos=0
 
 # ── 1. RESCATE: lo que vive SÓLO en el slug ──────────────────────────────────────────────────────
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
   [ -e "$SRC/$rel" ] && continue
+
+  # ¿Está EXCLUIDO a propósito? `.gitignore` es una decisión versionada y explícita: el archivo no
+  # está en memoria/ porque NO DEBE estar. Caso raíz 2026-09-22: `telegram-composio-canal-operador.md`
+  # guarda el chat_id del operador y el repo es PÚBLICO desde 2026-08-06; su propio cuerpo dice «no
+  # debe quedar versionado» y .gitignore:94 lo excluye. El rescate lo copiaba a memoria/ en CADA
+  # corrida y encima imprimía «(COMMITEAR)» + «git add memoria/» — o sea, instruía a publicar
+  # exactamente el dato que .gitignore protege. El guard de abajo NO lo cubre: mira `--diff-filter=D`,
+  # y un archivo que nunca estuvo versionado no tiene commit de borrado que encontrar.
+  if [ "$HAY_GIT" = "1" ] && git -C "$REPO" check-ignore -q "memoria/$rel" 2>/dev/null; then
+    printf '  [EXCLUIDO ] %s  (.gitignore: vive sólo en el slug a propósito — ni se rescata ni se purga)
+' "$rel"
+    excluidos=$((excluidos + 1))
+    continue
+  fi
 
   # ¿Estuvo versionado y se borró a propósito? Ese borrado SÍ debe propagarse: si no, una memoria
   # que se eliminó por ser incorrecta resucitaría en cada corrida y volvería a contaminar el contexto.
@@ -121,7 +135,7 @@ fi
 
 sembrados="$(find "$DEST" -type f -name '*.md' | wc -l | tr -d ' ')"
 echo "memoria reconciliada -> $DEST"
-echo "  $sembrados archivos .md · rescatados: $rescatados · purgados: $purgados · divergentes: $divergentes"
+echo "  $sembrados archivos .md · rescatados: $rescatados · purgados: $purgados · divergentes: $divergentes · excluidos: $excluidos"
 [ "$rescatados" -gt 0 ] && echo "  ⚠️  Hay entradas rescatadas SIN COMMITEAR: git add memoria/ && git commit"
 [ "$divergentes" -gt 0 ] && echo "  ⚠️  Hay archivos divergentes: resolvelos a mano (el índice no se mergea solo)"
 

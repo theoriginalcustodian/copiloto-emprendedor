@@ -1,4 +1,5 @@
 import type {
+  AceptarLegalResponse,
   CatalogResponse,
   ChatRequest,
   ChatResponse,
@@ -74,6 +75,11 @@ export const mockApi: CopilotApi = {
       // no la consola interna. Para ver la Consola en desarrollo se cambia acá a mano.
       es_admin: false,
     };
+  },
+
+  async aceptarLegal(version: string): Promise<AceptarLegalResponse> {
+    await delay(undefined, 50);
+    return { aceptado: true, version, en: new Date().toISOString() };
   },
 
   async catalog(): Promise<CatalogResponse> {

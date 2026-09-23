@@ -432,6 +432,19 @@ def _ensure_onboarding_completado(conn) -> None:
     print(f"OK {SCHEMA}.{TENANTS_TABLE}.onboarding_completado (idempotente)", flush=True)
 
 
+def _ensure_legal_aceptado(conn) -> None:
+    """`tenants.legal_version text NULL` + `tenants.legal_aceptado_en timestamptz NULL` (BL-O6 Parte B).
+    `tenants` es DDL bespoke (`_provision_tenants`), fuera de `uc_tables.json`: la columna se agrega
+    acá, mismo molde que `_ensure_onboarding_completado`. `NULL` es lo correcto para los tenants que
+    ya existen: ninguno aceptó nada todavía -- es un hecho, no un default que haya que inventar."""
+    cur = conn.cursor()
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.{TENANTS_TABLE} "
+                f"ADD COLUMN IF NOT EXISTS legal_version text;")
+    cur.execute(f"ALTER TABLE IF EXISTS {SCHEMA}.{TENANTS_TABLE} "
+                f"ADD COLUMN IF NOT EXISTS legal_aceptado_en timestamptz;")
+    print(f"OK {SCHEMA}.{TENANTS_TABLE}.legal_version/.legal_aceptado_en (idempotente)", flush=True)
+
+
 def _ensure_feedback_escuchado(conn) -> None:
     """`copiloto_feedback.escuchado boolean NOT NULL DEFAULT false` + `.escuchado_en timestamptz NULL`
     (K-08, BL-J12, «Lo pediste vos»). Las marca el operador desde la consola; el emprendedor ve el badge
@@ -629,6 +642,7 @@ def provision(conn) -> dict:
     standard_done = _provision_standard(standard_spec, conn)
     _provision_tenants(conn)
     _ensure_onboarding_completado(conn)             # K-14: flag del onboarding en `tenants`.
+    _ensure_legal_aceptado(conn)                    # BL-O6 Parte B: aceptación de términos legales.
     _provision_ticket_secuencia(conn)  # SOP3/B3: contador atómico por tenant del código SOP-XXXX.
     sql_aplicados = _apply_sql_files(conn)
     return {"standard_tables": standard_done, "tenants": TENANTS_TABLE,

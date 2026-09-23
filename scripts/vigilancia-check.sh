@@ -24,8 +24,9 @@
 #
 # COLA: cola-check.sh lee el PLAN.md del MISMO buzón que se vigila (COLA_PLAN="$BUZON/PLAN.md").
 # Antes lo derivaba de su propio path: desde un worktree buscaba `coordinacion/` ahí, no existe, y
-# el vigilante daba exit 1 fijo por «No existe PLAN.md» (21/09). Si el buzón no tiene PLAN.md
-# (fixture de prueba), el paso se salta solo.
+# el vigilante daba exit 1 fijo por «No existe PLAN.md» (21/09). Si el buzón no tiene PLAN.md, el
+# paso NO se saltea: alarma. «No hay PLAN» es un supuesto sobre el fixture, no un hecho — y ese
+# supuesto convertía cada worktree en un punto ciego mudo (2026-09-22).
 #
 # Uso:
 #   scripts/vigilancia-check.sh                  # contra el buzón y transcripts reales
@@ -36,7 +37,23 @@
 set -uo pipefail   # SIN -e: un chequeo que falle no debe abortar los demás
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUZON="${BUZON_DIR:-$REPO_ROOT/coordinacion}"
+# BUZÓN FÍSICO. `coordinacion/` NO está versionada y existe UNA sola vez, en el checkout principal
+# (si se versionara, `git worktree add` la duplicaría y el mensaje de una sesión no existiría para
+# la otra). Derivarla de $REPO_ROOT hacía que desde cualquier worktree apuntara a una carpeta
+# inexistente — y el worktree es el caso NORMAL acá, no la excepción. `git-common-dir` devuelve el
+# .git del checkout principal desde cualquier worktree, y su directorio padre ES ese checkout.
+if [ -n "${BUZON_DIR:-}" ]; then
+  BUZON="$BUZON_DIR"                        # override de test (fixture): gana siempre
+elif [ -d "$REPO_ROOT/coordinacion" ]; then
+  BUZON="$REPO_ROOT/coordinacion"           # checkout principal: el camino de siempre
+else
+  _gitcommon="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_gitcommon" ]; then
+    BUZON="$(dirname "$_gitcommon")/coordinacion"
+  else
+    BUZON="$REPO_ROOT/coordinacion"         # sin git: que falle nombrando el path de siempre
+  fi
+fi
 # shellcheck source=lib/buzon-roles.sh
 . "$REPO_ROOT/scripts/lib/buzon-roles.sh"   # roles del buzón: FUENTE ÚNICA
 TRANSCRIPTS="${TRANSCRIPTS_DIR:-$HOME/.claude/projects/c--Proyectos-Claude-Claude-code-copiloto-emprendedor}"
@@ -106,12 +123,15 @@ Fix: git config core.hooksPath .githooks"
   fi
 fi
 
-# ── 1) COLA: hito arrancable sin arrancar (sólo aplica al buzón real, ver nota arriba) ─────────
-if [ -f "$BUZON/PLAN.md" ]; then
-  cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
-  [ -n "$cola_out" ] && add "COLA:
+# ── 1) COLA: hito arrancable sin arrancar ──────────────────────────────────────────────────────
+# SIN gate de existencia, a propósito: si no hay PLAN.md que leer, cola-check lo DICE y eso ES la
+# alarma. El `if [ -f "$BUZON/PLAN.md" ]` que había acá se salteaba entero en cualquier worktree
+# —el caso normal— y el ciclo reportaba calma sobre una dimensión que nunca se midió: el control
+# positivo daba verde POR AUSENCIA. Es exactamente el defecto que el bloque de DEUDA (más abajo)
+# ya había corregido, y que su comentario nombra citando a COLA. El fix existía en otro call-site.
+cola_out="$(COLA_PLAN="$BUZON/PLAN.md" bash "$REPO_ROOT/scripts/cola-check.sh" --quiet 2>&1 || true)"
+[ -n "$cola_out" ] && add "COLA:
 $cola_out"
-fi
 
 # ── 2) ESCALADORES DE EDAD (Gancho 3): contrato_/pedido_/en-curso viejos ───────────────────────
 # --dry-run se propaga: permite correr TODO este script contra el buzón real sin escribir

@@ -77,6 +77,7 @@ class _FakeTenantsDB:
         self.tenants: dict[str, dict] = {}     # auth_user_id -> {cliente_id, email, composio_user_id}
         self.mp_sellers: dict[str, str] = {}   # cliente_id -> seller_user_id (más reciente)
         self.onboarding: dict[str, bool] = {}  # cliente_id -> onboarding_completado (K-14)
+        self.legal: dict[str, tuple] = {}      # cliente_id -> (legal_version, legal_aceptado_en) (BL-O6)
         self.replies: list[dict] = []          # [{id, cliente_id, session_id, reply_text, choices}]
         self.tickets: dict[tuple[str, int], dict] = {}   # (cliente_id, id) -> fila de copiloto_tickets
         self.mensajes: list[dict] = []                   # [{cliente_id, ticket_id, id, autor, texto, created_at}]
@@ -114,6 +115,13 @@ class _FakeCursor:
         elif s.startswith("UPDATE UC_FACTORY.TENANTS SET ONBOARDING_COMPLETADO"):
             (cliente_id,) = params
             self._db.onboarding[cliente_id] = True
+        elif s.startswith("SELECT LEGAL_VERSION FROM UC_FACTORY.TENANTS"):
+            (cliente_id,) = params
+            fila = self._db.legal.get(cliente_id)
+            self._result = (fila[0],) if fila else None
+        elif s.startswith("UPDATE UC_FACTORY.TENANTS SET LEGAL_VERSION"):
+            version, en, cliente_id = params
+            self._db.legal[cliente_id] = (version, en)
         elif s.startswith("SELECT SELLER_USER_ID FROM UC_FACTORY.MP_CREDENTIALS"):
             (cliente_id,) = params
             seller = self._db.mp_sellers.get(cliente_id)
@@ -561,14 +569,16 @@ def test_me_with_token_reports_mp_connected_true():
     r = TestClient(app).get("/me")
     assert r.status_code == 200
     assert r.json() == {"cliente_id": "cid-A", "mp_connected": True, "composio_connected": [],
-                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
+                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
+                        "legal_aceptado": False}
 
 
 def test_me_without_mp_connection_reports_false():
     app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"))
     r = TestClient(app).get("/me")
     assert r.json() == {"cliente_id": "cid-B", "mp_connected": False, "composio_connected": [],
-                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
+                        "es_admin": False, "cuenta_google": False, "onboarding_completado": False,
+                        "legal_aceptado": False}
 
 
 def test_K14_completar_onboarding_es_idempotente_y_se_refleja_en_me():
@@ -595,6 +605,53 @@ def test_K14_el_onboarding_de_A_no_se_ve_ni_se_marca_desde_B():
     TestClient(app_a).post("/me/onboarding/completar")
     assert TestClient(app_b).get("/me").json()["onboarding_completado"] is False
     assert db.onboarding == {"cid-A": True}
+
+
+def test_BLO6_aceptar_legal_es_idempotente_y_se_refleja_en_me():
+    from tenant_legal_store import LEGAL_VERSION_VIGENTE
+    db = _FakeTenantsDB()
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    cli = TestClient(app)
+    assert cli.get("/me").json()["legal_aceptado"] is False
+    r = cli.post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE})
+    assert r.status_code == 200
+    assert r.json() == {"aceptado": True, "version": LEGAL_VERSION_VIGENTE, "en": r.json()["en"]}
+    assert cli.post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE}).status_code == 200
+    assert cli.get("/me").json()["legal_aceptado"] is True
+
+
+def test_BLO6_aceptar_legal_version_vieja_es_409_y_no_escribe():
+    db = _FakeTenantsDB()
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    cli = TestClient(app)
+    r = cli.post("/me/legal/aceptar", json={"version": "2020-01-01"})
+    assert r.status_code == 409
+    assert db.legal == {}
+
+
+def test_BLO6_aceptar_legal_sin_version_es_400():
+    db = _FakeTenantsDB()
+    app, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    assert TestClient(app).post("/me/legal/aceptar", json={"version": ""}).status_code == 400
+
+
+def test_BLO6_aceptar_legal_sin_token_es_401_y_no_escribe():
+    db = _FakeTenantsDB()
+    app, _ = _build_app(require_tenant=_require_tenant_401(), db=db)
+    from tenant_legal_store import LEGAL_VERSION_VIGENTE
+    r = TestClient(app).post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE})
+    assert r.status_code == 401
+    assert db.legal == {}
+
+
+def test_BLO6_la_aceptacion_de_A_no_se_ve_ni_se_marca_desde_B():
+    from tenant_legal_store import LEGAL_VERSION_VIGENTE
+    db = _FakeTenantsDB()
+    app_a, _ = _build_app(require_tenant=_require_tenant_fixed("cid-A"), db=db)
+    app_b, _ = _build_app(require_tenant=_require_tenant_fixed("cid-B"), db=db)
+    TestClient(app_a).post("/me/legal/aceptar", json={"version": LEGAL_VERSION_VIGENTE})
+    assert TestClient(app_b).get("/me").json()["legal_aceptado"] is False
+    assert db.legal == {"cid-A": (LEGAL_VERSION_VIGENTE, db.legal["cid-A"][1])}
 
 
 def test_me_two_tenants_do_not_leak_mp_state():
@@ -705,7 +762,8 @@ def test_sync_routes_still_respond_correctly(monkeypatch, alta_habilitada):
     client = TestClient(app)
     assert client.get("/reply", params={"session_id": "s1"}).json()["next_id"] == 7
     assert client.get("/me").json() == {"cliente_id": "cid-A", "mp_connected": True,
-                                        "composio_connected": [], "es_admin": False, "cuenta_google": False, "onboarding_completado": False}
+                                        "composio_connected": [], "es_admin": False, "cuenta_google": False,
+                                        "onboarding_completado": False, "legal_aceptado": False}
     assert client.post("/auth/signup", json={"email": "x@test.com", "password": "pw",
                                              "invite_token": alta_habilitada}).json()["auth_user_id"] == "auth-user-X"
 

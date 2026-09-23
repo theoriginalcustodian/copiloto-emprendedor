@@ -42,6 +42,7 @@ from auth import es_admin
 from catalog import build_catalog
 from conexiones_salud import composio_caidos
 from tenant_onboarding_store import TenantOnboardingStore
+from tenant_legal_store import LEGAL_VERSION_VIGENTE, TenantLegalStore
 from rate_limit import RateLimitMiddleware
 # `tool_catalog` dispara la discovery de servicios al importarse (ver su docstring), y ya la dispara
 # el worker. Acá se importa por `capacidades_vivas`: es la MISMA fuente que decide qué tools existen,
@@ -61,7 +62,7 @@ from feedback_store import FeedbackStore
 from gasto_desde_foto import construir_gasto_desde_foto
 from gasto_store import CATEGORIAS as _CATEGORIAS_GASTO
 from mp_credential_store import MpCredentialStore
-from errores_web import EMAIL_YA_REGISTRADO, conflicto
+from errores_web import EMAIL_YA_REGISTRADO, LEGAL_VERSION_DESACTUALIZADA, conflicto
 from onboarding import GoTrueUserError, InvalidCredentials, provision_oauth_tenant, signup_and_provision
 from reply_store import read_replies as _read_replies
 from soporte_store import CANALES_VALIDOS as SOPORTE_FUNCIONES_VALIDAS
@@ -641,6 +642,10 @@ class GoogleIdTokenIn(BaseModel):
     id_token: str
 
 
+class LegalAceptarIn(BaseModel):
+    version: str
+
+
 def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_tenant: Callable,
                    mp_app: FastAPI, gotrue, mp_gateway, composio_gateway,
                    afip_app: FastAPI | None = None,
@@ -1024,7 +1029,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             return {"cliente_id": cliente_id, "email": claims.get("email"),
                     "mp_connected": seller is not None, "composio_connected": composio_connected,
                     "es_admin": es_admin(claims), "cuenta_google": _es_cuenta_google(claims),
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
+                                       == LEGAL_VERSION_VIGENTE}
     else:
         @app.get("/me")
         def me(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1037,7 +1044,9 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
             # `require_admin` en `/admin/*`, que este composition root ni siquiera monta acá).
             return {"cliente_id": cliente_id, "mp_connected": seller is not None,
                     "composio_connected": composio_connected, "es_admin": False, "cuenta_google": False,
-                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado()}
+                    "onboarding_completado": TenantOnboardingStore(conn_factory, cliente_id).completado(),
+                    "legal_aceptado": TenantLegalStore(conn_factory, cliente_id).version_aceptada()
+                                       == LEGAL_VERSION_VIGENTE}
 
     @app.post("/me/onboarding/completar")
     def completar_onboarding(cliente_id: str = Depends(require_tenant)) -> dict:
@@ -1045,6 +1054,31 @@ def create_web_app(*, temporal_client, adapter, conn_factory: Callable, require_
         Sin body: el tenant sale SÓLO del token, nunca de un valor que mande el cliente. Idempotente."""
         TenantOnboardingStore(conn_factory, cliente_id).completar()
         return {"onboarding_completado": True}
+
+    @app.post("/me/legal/aceptar")
+    def aceptar_legal(body: LegalAceptarIn, cliente_id: str = Depends(require_tenant)) -> dict:
+        """BL-O6 Parte B: registra qué versión del documento legal vio y aceptó el tenant.
+
+        `cliente_id` sale SOLO de `require_tenant` -- el body no trae identidad, sólo `version`
+        (qué texto vio el usuario, dato legítimo del cliente; distinto de `/me/onboarding/completar`,
+        que no necesita body porque no hay nada que el cliente deba declarar). Mismo BOLA
+        (OWASP API1:2023) que `composio_disconnect`: aceptar CUALQUIER `cliente_id` del body sería
+        dejar que un tenant marque la aceptación de otro. Idempotente: aceptar la misma versión dos
+        veces pisa la misma fila y devuelve 200 las dos veces.
+
+        El 409 usa `errores_web.conflicto` (con `vigente` como campo extra), NO un `HTTPException`
+        a mano -- `test_ningun_409_escrito_a_mano` lo exige para todo el módulo; el body real es
+        `{"codigo", "mensaje", "vigente"}`, no el `{"detail", "vigente"}` que había en el borrador
+        del contrato (avisado a planificación por mailbox)."""
+        version = body.version.strip()
+        if not version:
+            raise HTTPException(status_code=400, detail="version_requerida")
+        if version != LEGAL_VERSION_VIGENTE:
+            raise conflicto(LEGAL_VERSION_DESACTUALIZADA,
+                            "Aceptaste una versión del documento legal que ya no es la vigente.",
+                            vigente=LEGAL_VERSION_VIGENTE)
+        en = TenantLegalStore(conn_factory, cliente_id).aceptar(version)
+        return {"aceptado": True, "version": version, "en": en.isoformat()}
 
     @app.post("/warm")
     def warm(cliente_id: str = Depends(require_tenant)) -> dict:

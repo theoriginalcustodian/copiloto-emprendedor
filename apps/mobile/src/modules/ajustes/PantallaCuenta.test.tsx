@@ -31,6 +31,8 @@ const mockSesion = {
 };
 jest.mock('../auth', () => ({ useSession: () => mockSesion }));
 
+import { router } from 'expo-router';
+
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { PantallaCuenta } from './PantallaCuenta';
 
@@ -45,6 +47,7 @@ async function montar() {
 describe('PantallaCuenta', () => {
   beforeEach(() => {
     mockLogout.mockClear();
+    jest.mocked(router.push).mockClear();
     mockSesion.me = { cliente_id: 'c-1', email: 'ana@negocio.test' };
   });
 
@@ -74,6 +77,15 @@ describe('PantallaCuenta', () => {
 
     expect(screen.getByTestId('cuenta-confirmar-salida')).toBeTruthy();
     expect(mockLogout).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['cuenta-legal-tos', '/legal?kind=tos'],
+    ['cuenta-legal-privacidad', '/legal?kind=privacidad'],
+  ])('%s navega a %s (BL-O6: mobile no tiene alta, el enlace vive en Mi cuenta)', async (testId, ruta) => {
+    await montar();
+    await fireEvent.press(screen.getByTestId(testId));
+    expect(router.push).toHaveBeenCalledWith(ruta);
   });
 
   it('confirmar cierra la sesión; decir que no, no', async () => {
